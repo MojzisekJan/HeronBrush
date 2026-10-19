@@ -1,0 +1,6 @@
+attribute highp vec4 position;
+uniform highp mat4 mtx_view;
+uniform highp mat4 mtx_proj;
+varying highp vec3 var_direction;
+// The cube turns with the camera but never moves; z = w puts it behind everything.
+void main(){var_direction=position.xyz;vec4 p=mtx_proj*vec4((mtx_view*vec4(position.xyz,0.)).xyz,1.);gl_Position=p.xyww;}

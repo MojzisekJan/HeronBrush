@@ -1,0 +1,12 @@
+// Game: Quake 2
+// Format: Valve
+// heron_brush format 2
+{
+"classname" "worldspawn"
+"mapversion" "220"
+}
+{
+"classname" "prop_md2"
+"origin" "0 0 0"
+"angles" "0 0 0"
+}

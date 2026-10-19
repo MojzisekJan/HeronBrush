@@ -1,0 +1,1 @@
+@PointClass size(-32 -24 0, 32 24 64) model({ "path": ":models/check/preview.md2" }) = prop_md2 : "Self-authored MD2 pyramid" []

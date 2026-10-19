@@ -1,0 +1,798 @@
+{
+  "units_per_metre": 32,
+  "player_height_units": 64,
+  "assets": {
+    "airship": {
+      "units": [
+        704.0,
+        309.0,
+        350.0
+      ],
+      "anchor": "X = 22.0000 m"
+    },
+    "boat": {
+      "units": [
+        320.0,
+        100.375,
+        187.625
+      ],
+      "anchor": "X = 10.0000 m"
+    },
+    "bookshelf": {
+      "units": [
+        44.25,
+        14.125,
+        64.0
+      ],
+      "anchor": "Z = 2.0000 m"
+    },
+    "car": {
+      "units": [
+        144.0,
+        59.0,
+        62.0
+      ],
+      "anchor": "X = 4.5000 m"
+    },
+    "crane": {
+      "units": [
+        596.625,
+        154.75,
+        576.0
+      ],
+      "anchor": "Z = 18.0000 m"
+    },
+    "crate": {
+      "units": [
+        29.5,
+        32.0,
+        28.875
+      ],
+      "anchor": "Y = 1.0000 m"
+    },
+    "factory_chimney": {
+      "units": [
+        101.75,
+        101.75,
+        384.0
+      ],
+      "anchor": "Z = 12.0000 m"
+    },
+    "house": {
+      "units": [
+        215.75,
+        184.5,
+        211.75
+      ],
+      "anchor": "Z = 6.6174 m"
+    },
+    "lamp": {
+      "units": [
+        28.75,
+        28.75,
+        128.0
+      ],
+      "anchor": "Z = 4.0000 m"
+    },
+    "locomotive": {
+      "units": [
+        288.0,
+        81.375,
+        137.0
+      ],
+      "anchor": "X = 9.0000 m"
+    },
+    "motorcycle": {
+      "units": [
+        70.375,
+        25.5,
+        51.5
+      ],
+      "anchor": "X = 2.2000 m"
+    },
+    "pillar": {
+      "units": [
+        39.25,
+        39.25,
+        96.0
+      ],
+      "anchor": "Z = 3.0000 m"
+    },
+    "plane": {
+      "units": [
+        304.0,
+        318.0,
+        120.75
+      ],
+      "anchor": "X = 9.5000 m"
+    },
+    "sailboat": {
+      "units": [
+        176.0,
+        54.5,
+        180.125
+      ],
+      "anchor": "X = 5.5000 m"
+    },
+    "tree_birch": {
+      "units": [
+        67.625,
+        46.0,
+        160.0
+      ],
+      "anchor": "Z = 5.0000 m"
+    },
+    "tree_oak": {
+      "units": [
+        98.25,
+        81.25,
+        144.0
+      ],
+      "anchor": "Z = 4.5000 m"
+    },
+    "tree_pine": {
+      "units": [
+        99.0,
+        99.0,
+        192.0
+      ],
+      "anchor": "Z = 6.0000 m"
+    },
+    "truck": {
+      "units": [
+        208.0,
+        79.25,
+        88.75
+      ],
+      "anchor": "X = 6.5000 m"
+    },
+    "well": {
+      "units": [
+        73.625,
+        47.75,
+        88.75
+      ],
+      "anchor": "Z = 2.7725 m"
+    },
+    "windmill": {
+      "units": [
+        208,
+        157,
+        320
+      ],
+      "anchor": "Z = 10.0000 m"
+    },
+    "cactus": {
+      "units": [
+        48.5,
+        17.75,
+        80.0
+      ],
+      "anchor": "Z = 2.5000 m"
+    },
+    "bench": {
+      "units": [
+        57.5,
+        17.625,
+        30.375
+      ],
+      "anchor": "Seat about 0.49 m; length 1.8 m, total height 0.95 m."
+    },
+    "bridge": {
+      "units": [
+        414.0,
+        112.0,
+        160.0
+      ],
+      "anchor": "Existing scale retained: bridge parapet 0.94 m; tram doors 2.19 m."
+    },
+    "tram": {
+      "units": [
+        312.0,
+        80.0,
+        165.0
+      ],
+      "anchor": "Existing scale retained: bridge parapet 0.94 m; tram doors 2.19 m."
+    },
+    "tree_elm": {
+      "units": [
+        234.375,
+        196.0,
+        320.0
+      ],
+      "anchor": "Tall branching tree, height 10 m; 13 brushes."
+    },
+    "tree_acacia": {
+      "units": [
+        295.625,
+        221.625,
+        256.0
+      ],
+      "anchor": "Tall branching tree, height 8 m; 13 brushes."
+    },
+    "tree_maple": {
+      "units": [
+        248.0,
+        212.0,
+        384.0
+      ],
+      "anchor": "Tall branching tree, height 12 m; 14 brushes."
+    },
+    "rock_boulder": {
+      "units": [
+        52.875,
+        38.125,
+        35.25
+      ],
+      "anchor": "Minimal ground prop: height 1.1 m, 1 brushes."
+    },
+    "shrub": {
+      "units": [
+        48.625,
+        29.75,
+        28.75
+      ],
+      "anchor": "Minimal ground prop: height 0.9 m, 2 brushes."
+    },
+    "stump": {
+      "units": [
+        27.5,
+        27.5,
+        19.25
+      ],
+      "anchor": "Minimal ground prop: height 0.6 m, 2 brushes."
+    },
+    "car_retro_compact": {
+      "units": [
+        113.875,
+        51.25,
+        48.0
+      ],
+      "anchor": "Retro car, length 3.562 m, height 1.5 m; 29 brushes."
+    },
+    "car_retro_sedan": {
+      "units": [
+        156.75,
+        58.25,
+        47.375
+      ],
+      "anchor": "Retro car, length 4.9 m, height 1.48 m; 35 brushes."
+    },
+    "portal_frame": {
+      "units": [
+        96.0,
+        27.5,
+        105.625
+      ],
+      "anchor": "Rounded ancient-stone portal, 3 m wide, 3.3 m tall, 0.86 m deep; 22 convex brushes. Six editable teal gradient crystals; native gradients and hidden-face skip."
+    },
+    "portal_gate": {
+      "units": [
+        104,
+        96,
+        104
+      ],
+      "anchor": "32 units/metre; base and insertion bounds aligned to grid 4; dais 8 units, steps 4 units; 23 convex brushes"
+    },
+    "portal_ring": {
+      "units": [
+        88.25,
+        25.5,
+        88.25
+      ],
+      "anchor": "Square-section circular portal, about 2.76 m wide/tall; 0.3125 m radial thickness and depth with small chamfers. 31 brushes, three blue inset chevrons on each side, two sockets and low sill. Grid 0.125, hidden-face skip."
+    },
+    "hydrant": {
+      "units": [
+        21.5,
+        16.875,
+        33.625
+      ],
+      "anchor": "Stylised hydrant, 0.67 m wide, 0.53 m deep, 1.05 m tall. 14 convex brushes, three capped outlets and a rounded dome. Native gradients and hidden-face skip."
+    },
+    "submarine": {
+      "units": [
+        190.875,
+        67.25,
+        95.25
+      ],
+      "anchor": "Stylised compact submarine, approx. 6 m long, 2.1 m across tail planes, 2.975 m tall including periscope. 24 convex brushes; native gradients and hidden-face skip. Decorative portholes and three-bladed propeller."
+    },
+    "bush_flowering": {
+      "units": [
+        56.375,
+        39.75,
+        34.75
+      ],
+      "anchor": "32 units/metre; ground at Z=0"
+    },
+    "fallen_log": {
+      "units": [
+        80.5,
+        19.25,
+        30.75
+      ],
+      "anchor": "32 units/metre; ground at Z=0"
+    },
+    "fountain": {
+      "units": [
+        71.75,
+        71.75,
+        48.0
+      ],
+      "anchor": "32 units/metre; ground at Z=0"
+    },
+    "gate_open": {
+      "units": [
+        137.5,
+        53.625,
+        85.5
+      ],
+      "anchor": "32 units/metre; pillars 2.67m; leaves open 60 and 35 degrees"
+    },
+    "gate_paifang": {
+      "units": [
+        142.75,
+        36.5,
+        131.625
+      ],
+      "anchor": "32 units/metre; reference-shaped red gate; clear height 2.59m"
+    },
+    "bamboo_clump": {
+      "units": [
+        73.125,
+        14.125,
+        102.75
+      ],
+      "anchor": "32 units/metre; lowest point at Z=0"
+    },
+    "lantern_red": {
+      "units": [
+        18.25,
+        19.25,
+        32.625
+      ],
+      "anchor": "32 units/metre; lowest point at Z=0"
+    },
+    "tree_palm": {
+      "units": [
+        118.625,
+        112.25,
+        153.25
+      ],
+      "anchor": "32 units/metre; ground Z=0; height 4.79m"
+    },
+    "beaver": {
+      "units": [
+        17.25,
+        35.25,
+        25.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; seated beaver 0.783m tall including ears"
+    },
+    "heron": {
+      "units": [
+        36.5,
+        11.5,
+        41.25
+      ],
+      "anchor": "32 units/metre; ground Z=0; standing heron 1.29m tall"
+    },
+    "airliner": {
+      "units": [
+        1280.0,
+        1152.0,
+        351.25
+      ],
+      "anchor": "32 units/metre; ground or keel Z=0"
+    },
+    "fighter_jet": {
+      "units": [
+        520.0,
+        320.0,
+        143.5
+      ],
+      "anchor": "32 units/metre; ground or keel Z=0"
+    },
+    "locomotive_diesel": {
+      "units": [
+        592.0,
+        103.75,
+        144.75
+      ],
+      "anchor": "32 units/metre; ground or keel Z=0"
+    },
+    "steamship": {
+      "units": [
+        896,
+        217.6,
+        345.6
+      ],
+      "anchor": "32 units/metre; ground or keel Z=0"
+    },
+    "fire_engine": {
+      "units": [
+        224.0,
+        82.5,
+        95.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "donkey": {
+      "units": [
+        76.0,
+        21.0,
+        69.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "utility_pole": {
+      "units": [
+        88.0,
+        35.0,
+        256.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "column_classical": {
+      "units": [
+        48.0,
+        48.0,
+        128.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "column_lotus": {
+      "units": [
+        46.0,
+        46.0,
+        128.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "radar": {
+      "units": [
+        88.0,
+        59.0,
+        146.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; rotor axis Z at (0,0,60), 30 degrees/sec"
+    },
+    "gear_machine": {
+      "units": [
+        140.0,
+        65.0,
+        107.875
+      ],
+      "anchor": "32 units/metre; ground Z=0; two Y-axis rotors at +/-30 degrees/sec"
+    },
+    "barrel_red": {
+      "units": [
+        20.0,
+        20.0,
+        30.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on grid 1"
+    },
+    "barrel_blue": {
+      "units": [
+        20.0,
+        20.0,
+        30.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on grid 1"
+    },
+    "barrel_yellow": {
+      "units": [
+        20.0,
+        20.0,
+        30.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on grid 1"
+    },
+    "shipping_container": {
+      "units": [
+        196.0,
+        80.0,
+        84.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "utility_pole_metal": {
+      "units": [
+        128.0,
+        42.0,
+        320.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "industrial_piston": {
+      "units": [
+        140,
+        52,
+        67
+      ],
+      "anchor": "32 units/metre; ground Z=0; X-axis stroke 32 units at 24 units/sec, 0.5 sec endpoint wait"
+    },
+    "ishtar_gate": {
+      "units": [
+        228.0,
+        76.0,
+        232.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "column_temple": {
+      "units": [
+        56.0,
+        56.0,
+        144.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "column_atlantis": {
+      "units": [
+        52.0,
+        52.0,
+        148.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "chest": {
+      "units": [
+        52.0,
+        30.625,
+        35.5
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "crystal_cluster": {
+      "units": [
+        50.5,
+        42.5,
+        64.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "pipe_straight": {
+      "units": [
+        64.0,
+        24.0,
+        24.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "pipe_elbow": {
+      "units": [
+        48.0,
+        48.0,
+        24.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "pipe_tee": {
+      "units": [
+        64.0,
+        48.0,
+        24.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "pipe_valve": {
+      "units": [
+        64.0,
+        24.0,
+        40.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "pipe_reducer": {
+      "units": [
+        48.0,
+        24.0,
+        24.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "portal_marble": {
+      "units": [
+        148,
+        56,
+        151
+      ],
+      "anchor": "32 units/metre; ground Z=0; clear ring diameter 80; rotor axis Y at (0,0,64), 12 degrees/sec"
+    },
+    "chair_dining": {
+      "units": [
+        15,
+        14,
+        30
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "table_dining": {
+      "units": [
+        48,
+        28,
+        25
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "refrigerator": {
+      "units": [
+        22,
+        25.5,
+        60
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "vending_snacks": {
+      "units": [
+        34,
+        27,
+        64
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "street_lamp": {
+      "units": [
+        36.5,
+        13,
+        127
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "pallet_wood": {
+      "units": [
+        38.5,
+        32,
+        5.5
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "tree_cypress": {
+      "units": [
+        35,
+        28,
+        160
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "door_wooden": {
+      "units": [
+        86,
+        21,
+        84.5
+      ],
+      "anchor": "32 units/metre; ground Z=0; 0.125-unit grid; func_door leaves, separate worldspawn frame"
+    },
+    "door_industrial": {
+      "units": [
+        50,
+        19.25,
+        94
+      ],
+      "anchor": "32 units/metre; ground Z=0; 0.125-unit grid; func_door leaves, separate worldspawn frame"
+    },
+    "door_double": {
+      "units": [
+        82,
+        22.5,
+        84
+      ],
+      "anchor": "32 units/metre; ground Z=0; 0.125-unit grid; func_door leaves, separate worldspawn frame"
+    },
+    "wall_brick_normal": {
+      "units": [
+        96,
+        8,
+        80
+      ],
+      "anchor": "32 units/metre; 3 x 0.25 x 2.5 m; one textured brush; ground Z=0"
+    },
+    "sofa": {
+      "units": [
+        62.0,
+        28.0,
+        32.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "armchair": {
+      "units": [
+        32.0,
+        28.0,
+        33.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "bed_single": {
+      "units": [
+        32.0,
+        66.0,
+        32.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "desk_office": {
+      "units": [
+        56.0,
+        28.0,
+        26.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "locker_metal": {
+      "units": [
+        24.0,
+        22.5,
+        60.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "toilet": {
+      "units": [
+        19.0,
+        26.5,
+        28.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "sink_pedestal": {
+      "units": [
+        24.0,
+        19.0,
+        35.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "traffic_cone": {
+      "units": [
+        12.0,
+        12.0,
+        16.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "bollard": {
+      "units": [
+        10.0,
+        10.0,
+        32.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "trash_bin": {
+      "units": [
+        22.0,
+        20.0,
+        35.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "barrel_green": {
+      "units": [
+        20.0,
+        20.0,
+        30.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on grid 1"
+    },
+    "pipe_broken": {
+      "units": [
+        64.0,
+        24.0,
+        24.0
+      ],
+      "anchor": "32 units/metre; ground Z=0; authored on 0.125-unit grid"
+    },
+    "temple_jade": {
+      "units": [
+        480,
+        320,
+        319
+      ],
+      "anchor": "32 units/metre; three-tier jade temple, grid 1; base Z=0"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+local previous_init,previous_update,previous_message=init,update,on_message
+local function activate(self)
+    if (hb_trigger.once and self.hb_fired) or self.hb_wait>0 then return end
+    self.hb_fired=true;self.hb_wait=hb_trigger.wait
+    local action=hb_trigger.action or "toggle"
+    local messages={toggle="heron_activate_animation",play="heron_play_animation",open="heron_play_animation",close="heron_play_animation",pause="heron_pause_animation",resume="heron_resume_animation",stop="heron_stop_animation"}
+    local clip=hb_trigger.clip
+    if action=="open" or action=="close" then clip=action end
+    if clip=="" then clip=nil end
+    for _,name in ipairs(hb_trigger.targets) do if messages[action] then msg.post(msg.url(nil,go.get_id(name),"properties"),messages[action],{clip=clip}) end end
+end
+function init(self) if previous_init then previous_init(self) end;self.hb_wait=0;self.hb_fired=false end
+function update(self,dt) if previous_update then previous_update(self,dt) end;self.hb_wait=math.max(0,self.hb_wait-dt) end
+function on_message(self,id,message,sender)
+    if previous_message then previous_message(self,id,message,sender) end
+    if id==hash("heron_activate") then activate(self)
+    elseif id==hash("trigger_response") and message.enter and message.other_group==hash("player") then activate(self)
+    end
+end

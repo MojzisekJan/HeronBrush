@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Heron Brush playtest</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#18212b;color:#edf3f7;font:16px system-ui}canvas{display:block}#menu{position:fixed;inset:0;display:grid;place-items:center;background:#101820b3}#panel{max-width:420px;padding:32px;border:1px solid #ffffff24;border-radius:12px;background:#18212bed}h1{margin:0 0 12px;font-size:26px}p{line-height:1.6;color:#c2ced8}button{padding:12px 24px;border:0;border-radius:6px;background:#79e0bf;color:#11251f;font:600 16px system-ui;cursor:pointer}button:disabled{opacity:.5;cursor:wait}#crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;color:white;font:20px monospace}#hint{position:fixed;bottom:16px;left:16px;font-size:13px;color:white;text-shadow:0 1px 3px black} [hidden]{display:none!important}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="crosshair" hidden>+</div>
+<div id="hint">WASD · Mouse · Space jump · Shift run · R restart · Esc pause</div>
+<div id="menu"><div id="panel"><h1 id="title">Playtest</h1><p id="status">Loading the level. Internet access is needed to load Three.js.</p><button id="play" disabled>Play</button> <button id="fallback" hidden>Play with drag-to-look</button><p>Click Play to capture the mouse. Press Esc to release it.</p></div></div>
+<script id="level-data" type="application/json">__LEVEL_DATA__</script>
+<script>
+window.playerError = error => {
+  if (parent !== window) parent.postMessage({type:'heron-error',message:String(error.message || error)}, window.origin);
+  document.getElementById('menu').hidden = false;
+  document.getElementById('status').textContent = 'Could not start the level: ' + (error.message || error);
+};
+window.addEventListener('error', event => window.playerError(event.error || event.message));
+window.addEventListener('unhandledrejection', event => window.playerError(event.reason));
+</script>
+<script type="module">
+__ANIMATION_RUNTIME__
+__WATER_RUNTIME__
+__COLLISION_RUNTIME__
+try {
+  const [THREE, {GLTFLoader}, {PointerLockControls}, {Octree}, {Capsule}, {ConvexGeometry}] = await Promise.all([
+    import('three'), import('three/addons/loaders/GLTFLoader.js'),
+    import('three/addons/controls/PointerLockControls.js'), import('three/addons/math/Octree.js'),
+    import('three/addons/math/Capsule.js'), import('three/addons/geometries/ConvexGeometry.js')
+  ]);
+  const sceneStarted=performance.now();
+  let data = JSON.parse(document.getElementById('level-data').textContent);
+  let level = data.level;
+  document.title = level.name + ' · Playtest';
+  document.getElementById('title').textContent = level.name;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x91a8bb);
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.prepend(renderer.domElement);
+  const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.03, 10000);
+  camera.rotation.order = 'YXZ';
+  const hemisphere = new THREE.HemisphereLight(0xffffff, 0x596476, 2);
+  scene.add(hemisphere);
+  const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+  sun.position.set(10, 20, 8);
+  scene.add(sun);
+  // The editor's sky as an equirectangular texture, evaluated as its 3D view draws it
+  // (render_wgpu common.wgsl sky_radiance, scene_export sky.rs), in the level's frame.
+  function skyTexture(env) {
+    const W = 512, H = 256, pixels = new Uint16Array(W * H * 4);
+    const ss = (a, b, x) => {const t = Math.min(Math.max((x - a) / (b - a), 0), 1); return t * t * (3 - 2 * t);};
+    const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+    const length = Math.hypot(...env.to_sun), s = env.to_sun.map(v => v / length), height = s[1];
+    const daylight = ss(-0.12, 0.08, height), sunset = (1 - ss(0.04, 0.4, Math.abs(height))) * daylight;
+    const zenith = mix(env.sky, [env.sky[0] * 0.65, env.sky[1] * 0.55, env.sky[2] * 0.85], sunset * 0.3);
+    const warmth = mix([1, 1, 1], [1, 0.48, 0.16], sunset), night = 0.055 + (1 - 0.055) * daylight;
+    const visible = ss(-0.06, 0, height + 0.75 * Math.PI / 180);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      // A data texture's first row is v = 0, which three.js samples looking straight down.
+      const latitude = ((y + 0.5) / H - 0.5) * Math.PI, phi = ((x + 0.5) / W - 0.5) * 2 * Math.PI;
+      const d = [Math.cos(phi) * Math.cos(latitude), Math.sin(latitude), Math.sin(phi) * Math.cos(latitude)];
+      const up = d[1], flat = Math.max(d[0] * s[0] + d[2] * s[2], 0);
+      const horizon = mix(env.horizon, [1, 0.4, 0.12], sunset * flat * flat * flat * 0.55);
+      const base = up >= 0 ? mix(horizon, zenith, Math.pow(up, 0.38)) : mix(horizon, env.ground, Math.pow(-up, 0.35));
+      const angle = Math.acos(Math.min(Math.max(d[0] * s[0] + d[1] * s[1] + d[2] * s[2], -1), 1));
+      const glow = (0.65 * Math.exp(-angle * 18) + 0.12 * Math.exp(-angle * 3)) * ss(-0.12, 0.06, up) * visible;
+      const o = (y * W + x) * 4;
+      for (let i = 0; i < 3; i++) pixels[o + i] = THREE.DataUtils.toHalfFloat(base[i] * night + env.sun_color[i] * warmth[i] * glow);
+      pixels[o + 3] = THREE.DataUtils.toHalfFloat(1);
+    }
+    const texture = new THREE.DataTexture(pixels, W, H, THREE.RGBAFormat, THREE.HalfFloatType);
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.magFilter = texture.minFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
+    return texture;
+  }
+  let environmentKey, baseFog = null;
+  function applyEnvironment(env) {
+    const key = JSON.stringify(env ?? null);
+    if (key === environmentKey) return;
+    environmentKey = key;
+    scene.background?.dispose?.();
+    if (!env) {
+      scene.background = new THREE.Color(0x91a8bb); scene.environment = null; baseFog = null;
+      hemisphere.visible = true; sun.color.set(0xffffff); sun.intensity = 2.2; sun.position.set(10, 20, 8);
+      renderer.toneMapping = THREE.NoToneMapping; renderer.toneMappingExposure = 1;
+      return;
+    }
+    const texture = skyTexture(env);
+    scene.background = texture; scene.environment = texture; scene.environmentIntensity = env.ambient_intensity;
+    hemisphere.visible = false;
+    // The view lights diffuse surfaces by sun / pi, as three.js does with this intensity.
+    sun.color.setRGB(...env.sun_color, THREE.LinearSRGBColorSpace); sun.intensity = env.sun_intensity;
+    sun.position.fromArray(env.to_sun).multiplyScalar(50);
+    renderer.toneMapping = THREE.AgXToneMapping; renderer.toneMappingExposure = env.exposure * 1.8;
+    baseFog = env.fog ? new THREE.FogExp2(new THREE.Color().setRGB(...env.fog.color, THREE.LinearSRGBColorSpace), env.fog.density) : null;
+  }
+  applyEnvironment(level.environment);
+  const controls = new PointerLockControls(camera, renderer.domElement);
+  const menu = document.getElementById('menu');
+  const play = document.getElementById('play');
+  const crosshair = document.getElementById('crosshair');
+  const status = document.getElementById('status');
+  let playing = false, dragLook = false, dragging = false;
+  const keys = new Set();
+  const velocity = new THREE.Vector3();
+  const loader = new GLTFLoader(), textureLoader = new THREE.TextureLoader();
+  const models = new Map(), pictures = new Map(), collisionShapes = new Map();
+  const metrics = {meshDecodes:0,textureLoads:0,updates:0,collisionBuildMs:0,lastUpdateMs:0};
+  const recordTimings = () => {document.documentElement.dataset.heronPlaytestTiming=JSON.stringify(metrics);};
+  async function model(path, encoded) {
+    if (!encoded) throw new Error('Missing embedded mesh: ' + path);
+    const cached=models.get(path);
+    if (cached?.encoded===encoded) return cached.scene;
+    const bytes=typeof Uint8Array.fromBase64==='function' ? Uint8Array.fromBase64(encoded) : Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));
+    const gltf=await loader.parseAsync(bytes.buffer,'');
+    metrics.meshDecodes++;models.set(path,{encoded,scene:gltf.scene});return gltf.scene;
+  }
+  async function picture(name, uri) {
+    const cached=pictures.get(name);
+    if(cached?.uri===uri) return cached.texture;
+    const texture=await textureLoader.loadAsync(uri);
+    texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.flipY=false;
+    metrics.textureLoads++;pictures.set(name,{uri,texture});return texture;
+  }
+  function transform(object, entity) {
+    const t = entity.transform;
+    if(![t.translation,t.rotation_yxz,t.scale].every(v=>Array.isArray(v)&&v.length===3&&v.every(Number.isFinite))) throw new Error("Invalid entity transform: "+entity.name);
+    object.position.fromArray(t.translation);
+    object.rotation.set(...t.rotation_yxz, 'YXZ');
+    object.scale.fromArray(t.scale);
+    return object;
+  }
+  function trianglesGeometry(triangles) {
+    const geometry = new THREE.BufferGeometry();
+    // Exported collision triangles use Godot's clockwise winding; Three.js uses CCW.
+    const ccw = triangles.slice();
+    for (let i = 0; i < ccw.length; i += 9) {
+      for (let axis = 0; axis < 3; axis++) [ccw[i+3+axis], ccw[i+6+axis]] = [ccw[i+6+axis], ccw[i+3+axis]];
+    }
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(ccw, 3));
+    return geometry;
+  }
+  async function assemble(data) {
+    const level=data.level;
+    const visuals=new THREE.Group(), colliders=new THREE.Group(),staticColliders=new THREE.Group(),movingColliders=new THREE.Group();
+    colliders.add(staticColliders,movingColliders);
+    const textures=new Map(await Promise.all(Object.entries(data.textures).map(async([name,uri])=>[name,await picture(name,uri)])));
+    const animations=new Map(),triggers=[],animatedColliders=[],waters=[];
+  for (const entity of level.entities) {
+    const root = transform(new THREE.Group(), entity);
+    visuals.add(root);
+    const waterData=entity.properties?._heron_water?.value;
+    const water=waterData ? new HeronWater(THREE,waterData,root) : null;if(water)waters.push(water);
+    const animationData = entity.properties?._heron_animation?.value;
+    if (animationData) animations.set(entity.name, new HeronAnimation(THREE, animationData, root));
+    const triggerData = entity.properties?._heron_trigger?.value;
+    if (triggerData) { const trigger = new HeronAnimationTrigger(triggerData, root); trigger.entityName = entity.name; triggers.push(trigger); }
+    if (entity.mesh) {
+      const mesh = (await model(entity.mesh, data.meshes[entity.mesh])).clone(true);
+      mesh.traverse(object => {
+        if (object.isMesh) object.material=Array.isArray(object.material) ? object.material.map(m=>m.clone()) : object.material.clone();
+        if (!object.isMesh) return;
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+          material.map = textures.get(material.name) || null;
+          const surface = level.textures.find(t => t.name === material.name)?.surface;
+          if (surface) {
+            material.roughness = surface[0];
+            material.metalness = surface[1];
+            material.emissive.setRGB(1, 1, 1);
+            material.emissiveMap = material.map;
+            material.emissiveIntensity = surface[2];
+          }
+          if(water)water.material(material);
+          material.needsUpdate = true;
+        }
+      });
+      root.add(mesh);
+    }
+    const collision = entity.collision;
+    if (!collision || collision.sensor) continue;
+    const shapeKey=JSON.stringify(collision);
+    let shape=collisionShapes.get(shapeKey);
+    if(!shape) {
+    const group = new THREE.Group();
+    if (collision.triangles?.length) {
+      group.add(new THREE.Mesh(trianglesGeometry(collision.triangles)));
+    }
+    for (const hull of collision.hulls || []) {
+      const points = [];
+      for (let i = 0; i < hull.length; i += 3) points.push(new THREE.Vector3().fromArray(hull, i));
+      if (points.length >= 4) group.add(new THREE.Mesh(new ConvexGeometry(points)));
+    }
+      shape=group;collisionShapes.set(shapeKey,shape);
+    }
+    const group=transform(shape.clone(true),entity);
+    (animationData ? movingColliders : staticColliders).add(group);
+    if (animationData) animatedColliders.push({root, group});
+  }
+    return {visuals,colliders,staticColliders,movingColliders,animations,triggers,animatedColliders,waters};
+  }
+  let {visuals,colliders,staticColliders,movingColliders,animations,triggers,animatedColliders,waters}=await assemble(data);
+  scene.add(visuals);
+  colliders.updateMatrixWorld(true);
+  const buildCollisionTree = group => {
+    const start=performance.now(),tree=collisionTree(THREE,Octree,group);
+    metrics.collisionBuildMs+=performance.now()-start;
+    return tree;
+  };
+  let staticWorld = buildCollisionTree(staticColliders);
+  let movingWorld = buildCollisionTree(movingColliders);
+  const world = {
+    rayIntersect(ray) {
+      const a = staticWorld.rayIntersect(ray), b = movingWorld.rayIntersect(ray);
+      return !a ? b : !b || a.distance <= b.distance ? a : b;
+    },
+    capsuleIntersect(capsule) {
+      const a = staticWorld.capsuleIntersect(capsule), b = movingWorld.capsuleIntersect(capsule);
+      return !a ? b : !b || a.depth >= b.depth ? a : b;
+    }
+  };
+  let hasCollision = staticColliders.children.length + movingColliders.children.length > 0;
+  // Quake-sized player: 56 units high, 16 units wide. Scale follows the export.
+  const unit = 1 / level.scale;
+  const radius = 8 * unit, height = 56 * unit, eye = 50 * unit;
+  const capsule = new Capsule(new THREE.Vector3(), new THREE.Vector3(), radius);
+  const bounds = new THREE.Box3().setFromObject(visuals);
+  if (bounds.isEmpty()) bounds.set(new THREE.Vector3(-2, 0, -2), new THREE.Vector3(2, 0, 2));
+  let spawnEntity = level.entities.find(e => ['info_player_start', 'info_player_deathmatch', 'player_start', 'fps_player'].includes(e.classname));
+  const spawn = new THREE.Vector3();
+  function refreshSpawn() {
+    bounds.setFromObject(visuals);
+    if(bounds.isEmpty()) bounds.set(new THREE.Vector3(-2,0,-2),new THREE.Vector3(2,0,2));
+    if (spawnEntity) {
+      spawn.fromArray(spawnEntity.transform.translation);
+      // A Quake player origin is at the centre of its bounding box.
+      const floor = world.rayIntersect(new THREE.Ray(spawn.clone(), new THREE.Vector3(0, -1, 0)));
+      if (floor && floor.distance < height * 2) spawn.y = floor.position.y + 0.02 * unit;
+    } else {
+      bounds.getCenter(spawn);
+      spawn.y = bounds.max.y + height;
+      const floor = world.rayIntersect(new THREE.Ray(spawn.clone(), new THREE.Vector3(0, -1, 0)));
+      if (floor) spawn.y = floor.position.y + 0.02 * unit;
+    }
+  }
+  refreshSpawn();
+  let grounded = false;
+  function reset() {
+    capsule.start.copy(spawn).y += radius;
+    capsule.end.copy(spawn).y += height - radius;
+    velocity.set(0, 0, 0);
+    grounded = false;
+    keys.clear();
+    camera.rotation.set(...(spawnEntity?.transform.rotation_yxz || [0, 0, 0]), 'YXZ');
+    camera.position.copy(capsule.start).y += eye - radius;
+  }
+  reset();
+  const forward = new THREE.Vector3(), right = new THREE.Vector3(), wish = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
+  function step(dt) {
+    const wasGrounded = grounded;
+    const feet = capsule.start.clone().addScaledVector(THREE.Object3D.DEFAULT_UP, -radius);
+    for (const trigger of triggers) trigger.update(dt, new Map([['player', feet]]), animations);
+    let support = null;
+    if (grounded && !keys.has('Space')) {
+      const ray = new THREE.Raycaster(feet.clone().add(new THREE.Vector3(0, radius, 0)), new THREE.Vector3(0,-1,0), 0, radius + 0.05);
+      const hit = ray.intersectObject(colliders, true)[0];
+      let object = hit?.object;
+      while (object && !support) {
+        support = animatedColliders.find(pair => pair.group === object);
+        object = object.parent;
+      }
+    }
+    const oldSupport = support?.group.matrixWorld.clone();
+    for (const animation of animations.values()) animation.update(dt);
+    if (animatedColliders.length) {
+      visuals.updateMatrixWorld(true);
+      for (const {root, group} of animatedColliders) {
+        group.position.copy(root.position); group.quaternion.copy(root.quaternion); group.scale.copy(root.scale);
+      }
+      colliders.updateMatrixWorld(true);
+      if (support) {
+        const delta = new THREE.Matrix4().multiplyMatrices(support.group.matrixWorld, oldSupport.invert());
+        capsule.start.applyMatrix4(delta); capsule.end.applyMatrix4(delta);
+      }
+      movingWorld = buildCollisionTree(movingColliders);
+    }
+    camera.getWorldDirection(forward);
+    forward.y = 0;
+    forward.normalize();
+    right.crossVectors(forward, up);
+    wish.set(0, 0, 0);
+    if (keys.has('KeyW')) wish.add(forward);
+    if (keys.has('KeyS')) wish.sub(forward);
+    if (keys.has('KeyD')) wish.add(right);
+    if (keys.has('KeyA')) wish.sub(right);
+    const waterSample=HeronWater.sample(waters,capsule.start.clone().add(capsule.end).multiplyScalar(0.5));
+    const speed = waterSample ? waterSample.data.swim_speed : (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 240 : 150) * unit;
+    wish.normalize().multiplyScalar(speed);
+    const blend = 1 - Math.exp(-(waterSample?.data.drag ?? 14) * dt);
+    velocity.x += (wish.x - velocity.x) * blend;
+    velocity.z += (wish.z - velocity.z) * blend;
+    if (waterSample) {
+      const d=waterSample.data,vertical=(keys.has('Space')?1:0)-(keys.has('ControlLeft')?1:0);
+      velocity.y+=(vertical*d.rise_speed-(vertical===0?d.sink_speed:0)-velocity.y)*(1-Math.exp(-d.drag*dt));
+      grounded=false;
+    } else if (hasCollision) {
+      if (grounded && keys.has('Space')) {velocity.y = 230 * unit; grounded = false; keys.delete('Space');}
+      velocity.y = Math.max(velocity.y - 600 * unit * dt, -900 * unit);
+    } else {
+      velocity.y = ((keys.has('Space') ? 1 : 0) - (keys.has('ControlLeft') ? 1 : 0)) * speed;
+    }
+    capsule.translate(velocity.clone().multiplyScalar(dt));
+    grounded = false;
+    for (let i = 0; i < 4; i++) {
+      const hit = world.capsuleIntersect(capsule);
+      if (!hit) break;
+      grounded ||= hit.normal.y > 0.5;
+      const inward = velocity.dot(hit.normal);
+      if (inward < 0) velocity.addScaledVector(hit.normal, -inward);
+      capsule.translate(hit.normal.multiplyScalar(hit.depth + 0.001 * unit));
+    }
+    if (capsule.start.y < bounds.min.y - height * 10) reset();
+    if (window.heronPlaytest) window.heronPlaytest.diagnostic = {wasGrounded, support: !!support,
+      floor: world.rayIntersect(new THREE.Ray(capsule.start.clone(), new THREE.Vector3(0,-1,0)))?.distance};
+    camera.position.copy(capsule.start).y += eye - radius;
+  }
+  // Opt-in inspection for the native browser regression, using the same player
+  // step and collision geometry as interactive play.
+  if (new URLSearchParams(location.search).has('verify')) {
+    window.heronPlaytest = {step, reset, capsule, get animations(){return animations;}, get triggers(){return triggers;}, keys, get colliders(){return colliders;}, world, velocity, metrics,
+      get grounded() {return grounded;},get waters(){return waters;},get camera(){return camera;},get scene(){return scene;},get water(){return HeronWater.sample(waters,capsule.start.clone().add(capsule.end).multiplyScalar(0.5));},
+      teleport(feet) {
+        capsule.start.copy(feet).y += radius;
+        capsule.end.copy(feet).y += height - radius;
+        velocity.set(0,0,0); grounded = false; keys.clear();
+      },
+      feet() {return capsule.start.clone().add(new THREE.Vector3(0,-radius,0));},
+      face(yaw) {camera.rotation.set(0,yaw,0,'YXZ');},
+      THREE};
+  }
+  const snapshot = () => ({feet:(hasCollision ? capsule.start.clone().add(new THREE.Vector3(0,-radius,0)) : camera.position.clone().add(new THREE.Vector3(0,-eye,0))).toArray(),rotation:camera.rotation.toArray().slice(0,3),animations:Object.fromEntries([...animations].map(([name,a])=>[name,a.snapshot()])),triggers:Object.fromEntries(triggers.map(t=>[t.entityName,t.snapshot()]))});
+  function restore(state, placement=true) {
+      const valid = values => Array.isArray(values) && values.length === 3 && values.every(Number.isFinite);
+      if (placement && state && valid(state.feet) && valid(state.rotation)) {
+        capsule.start.fromArray(state.feet).y += radius;
+        capsule.end.fromArray(state.feet).y += height - radius;
+        camera.rotation.set(...state.rotation, 'YXZ');
+        camera.position.copy(capsule.start).y += eye - radius;
+        velocity.set(0,0,0); grounded = false; keys.clear();
+      }
+      restoreClocks(state,{animations,triggers,animatedColliders,movingColliders});
+      movingWorld=buildCollisionTree(movingColliders);
+  }
+  function restoreClocks(state,target) {
+      for(const [name,animation] of target.animations) animation.restore(state?.animations?.[name]);
+      for(const trigger of target.triggers) trigger.restore(state?.triggers?.[trigger.entityName]);
+      for(const pair of target.animatedColliders) {pair.group.position.copy(pair.root.position);pair.group.quaternion.copy(pair.root.quaternion);pair.group.scale.copy(pair.root.scale);}
+      target.movingColliders.updateMatrixWorld(true);
+  }
+
+  function resources(graph) {
+    const geometry=new Set(),materials=new Set(),textures=new Set();
+    graph.traverse(object=>{if(object.isMesh) {geometry.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material]) {materials.add(m);for(const value of Object.values(m)) if(value?.isTexture) textures.add(value);}}});
+    return {geometry,materials,textures};
+  }
+  function release(graph, keep) {
+    const owned=resources(graph);
+    for(const material of owned.materials) if(!keep.materials.has(material)) material.dispose();
+    for(const geometry of owned.geometry) if(!keep.geometry.has(geometry)) geometry.dispose();
+    for(const texture of owned.textures) if(!keep.textures.has(texture)) {texture.dispose();texture.image?.close?.();}
+  }
+  function trimCaches(next, keep) {
+    const paths=new Set(next.level.entities.map(e=>e.mesh).filter(Boolean));
+    for(const [path,entry] of models) if(!paths.has(path) || entry.encoded!==next.meshes[path]) {release(entry.scene,keep);models.delete(path);}
+    for(const [name,entry] of pictures) if(entry.uri!==next.textures[name]) {if(!keep.textures.has(entry.texture)) {entry.texture.dispose();entry.texture.image?.close?.();} pictures.delete(name);}
+    const shapes=new Set(next.level.entities.filter(e=>e.collision && !e.collision.sensor).map(e=>JSON.stringify(e.collision)));
+    for(const [key,shape] of collisionShapes) if(!shapes.has(key)) {release(shape,keep);collisionShapes.delete(key);}
+  }
+  let updateTicket=0,updateTail=Promise.resolve();
+  window.heronPlaytestUpdate=next=> {
+    if(next.level.scale!==level.scale) return Promise.resolve(false);
+    const ticket=++updateTicket;
+    const job=updateTail.then(async()=> {
+      if(ticket!==updateTicket) return true;
+      let staged;
+      const updateStarted=performance.now(),collisionStarted=metrics.collisionBuildMs;
+      try {
+        staged=await assemble(next);
+        if(ticket!==updateTicket) {release(staged.visuals,resources(visuals));return true;}
+        // Read clocks at commit, after asynchronous loads; the old world stayed playable.
+        const saved=snapshot(),oldVisuals=visuals,oldColliders=colliders,hadCollision=hasCollision;
+        restoreClocks(saved,staged);
+        const nextStatic=buildCollisionTree(staged.staticColliders),nextMoving=buildCollisionTree(staged.movingColliders);
+        renderer.compile(staged.visuals,camera,scene);
+        ({visuals,colliders,staticColliders,movingColliders,animations,triggers,animatedColliders,waters}=staged);
+        data=next;level=next.level;staticWorld=nextStatic;movingWorld=nextMoving;
+        applyEnvironment(level.environment);
+        hasCollision=staticColliders.children.length+movingColliders.children.length>0;
+        scene.remove(oldVisuals);scene.add(visuals);
+        if(hadCollision!==hasCollision) {
+          capsule.start.fromArray(saved.feet).y+=radius;capsule.end.fromArray(saved.feet).y+=height-radius;
+          velocity.set(0,0,0);grounded=false;
+        }
+        spawnEntity=level.entities.find(e=>['info_player_start','info_player_deathmatch','player_start','fps_player'].includes(e.classname));
+        refreshSpawn();
+        const keep=resources(visuals),collisionKeep=resources(colliders);
+        for(const geometry of collisionKeep.geometry) keep.geometry.add(geometry);
+        for(const material of collisionKeep.materials) keep.materials.add(material);
+        for(const [name,entry] of pictures) if(entry.uri===next.textures[name]) keep.textures.add(entry.texture);
+        release(oldVisuals,keep);release(oldColliders,keep);trimCaches(next,keep);
+        document.title=level.name+' · Playtest';document.getElementById('title').textContent=level.name;
+        document.getElementById('level-data').textContent=JSON.stringify(next).replaceAll('<','\\u003c');
+        metrics.lastUpdateMs=performance.now()-updateStarted;
+        metrics.lastCollisionBuildMs=metrics.collisionBuildMs-collisionStarted;
+        metrics.updates++;recordTimings();return true;
+      } catch(error) {
+        const keep=resources(visuals);for(const geometry of resources(colliders).geometry) keep.geometry.add(geometry);
+        if(staged) release(staged.visuals,keep);trimCaches(data,keep);throw error;
+      }
+    });
+    updateTail=job.catch(()=>{});return job;
+  };
+  if(parent!==window) {
+    window.heronPlaytestSnapshot=snapshot;
+    window.addEventListener('message',event=> {
+      if(event.source!==parent || event.origin!==window.origin || event.data?.type!=='heron-restore') return;
+      restore(event.data.state);
+      parent.postMessage({type:'heron-state',state:snapshot()},window.origin);
+    });
+    parent.postMessage({type:'heron-ready'},window.origin);
+  }
+  metrics.initialAssemblyMs=performance.now()-sceneStarted;recordTimings();
+  play.disabled = false;
+  status.textContent = hasCollision ? 'Ready. Walk around the level with WASD and look with the mouse.' : 'No collision geometry. Fly with WASD, Space up and Ctrl down.';
+  function start() {playing = true; menu.hidden = true; crosshair.hidden = false;}
+  function pause() {
+    playing = false; dragging = false; menu.hidden = false; crosshair.hidden = true;
+    keys.clear(); velocity.set(0,0,0); play.textContent = 'Resume';
+  }
+  function captureFailed() {
+    status.textContent = 'Mouse capture is unavailable in this browser. Use drag-to-look, or open the HTML in a desktop browser.';
+    document.getElementById('fallback').hidden = false;
+  }
+  play.addEventListener('click', async () => {
+    dragLook = false;
+    try {await renderer.domElement.requestPointerLock();} catch (_) {captureFailed();}
+  });
+  document.getElementById('fallback').addEventListener('click', () => {
+    dragLook = true; start();
+    document.getElementById('hint').textContent = 'WASD · Drag mouse to look · Space jump · Shift run · R restart · Esc pause';
+  });
+  controls.addEventListener('lock', start);
+  controls.addEventListener('unlock', pause);
+  document.addEventListener('pointerlockerror', captureFailed);
+  renderer.domElement.addEventListener('pointerdown', event => {
+    if (playing && dragLook) {dragging = true; renderer.domElement.setPointerCapture(event.pointerId);}
+  });
+  renderer.domElement.addEventListener('pointerup', () => {dragging = false;});
+  renderer.domElement.addEventListener('pointermove', event => {
+    if (!playing || !dragLook || !dragging) return;
+    camera.rotation.y -= event.movementX * 0.002;
+    camera.rotation.x = THREE.MathUtils.clamp(camera.rotation.x - event.movementY * 0.002, -1.55, 1.55);
+  });
+  const movementKeys = new Set(['KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','ShiftRight','ControlLeft','KeyR']);
+  document.addEventListener('keydown', event => {
+    if (event.code === 'Escape') {pause(); controls.unlock(); return;}
+    if (!playing || !movementKeys.has(event.code)) return;
+    event.preventDefault();
+    if (event.code === 'KeyR') reset(); else keys.add(event.code);
+  });
+  document.addEventListener('keyup', event => keys.delete(event.code));
+  window.addEventListener('blur', () => {pause(); controls.unlock();});
+  document.addEventListener('visibilitychange', () => {if (document.hidden) {pause(); controls.unlock();}});
+  window.addEventListener('resize', () => {camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);});
+  let previous = performance.now();
+  renderer.setAnimationLoop(now => {
+    const dt = Math.min((now - previous) / 1000, 0.05);
+    previous = now;
+    if (playing) {
+      // Keep each movement shorter than half the capsule radius, even during a fall.
+      const steps = Math.max(5, Math.ceil((velocity.length() + 240 * unit) * dt / (radius * 0.5)));
+      for (let i = 0; i < steps; i++) step(dt / steps);
+    }
+    for(const water of waters)water.animate(now/1000);
+    const underwater=HeronWater.sample(waters,camera.position);
+    if(underwater){const d=underwater.data;scene.fog=new THREE.FogExp2(new THREE.Color(...d.color),d.fog_density);}else scene.fog=baseFog;
+    renderer.render(scene, camera);
+  });
+} catch (error) { window.playerError(error); }
+</script>
+</body>
+</html>

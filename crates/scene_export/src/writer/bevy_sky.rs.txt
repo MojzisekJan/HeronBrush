@@ -1,0 +1,94 @@
+//! The map's sky, sun and fog for Bevy 0.19, from the level file's `environment`.
+//!
+//! The sky is an HDR cube (`environment.cubemap`, KTX2) drawn as the camera's skybox
+//! and filtered at runtime into its environment light. The light comes in the editor's
+//! own units -- the sun lights a white floor at its intensity over pi -- so the camera
+//! gets the exposure that shows those units as the editor's view does, with AgX:
+//! lights tuned in lux for Bevy's default exposure will be far too bright beside it.
+//!
+//! ```ignore
+//! let sky = heron_sky::HeronSky::from_json(&level_json["environment"])?;
+//! let cube = asset_server.load(level_dir.join(&sky.cubemap));
+//! commands.spawn((Camera3d::default(), sky.camera(cube)));
+//! commands.spawn(sky.sun());
+//! if let Some(fog) = sky.fog() { commands.entity(camera).insert(fog); }
+//! ```
+use bevy::{
+    camera::{Exposure, Hdr},
+    core_pipeline::tonemapping::Tonemapping,
+    light::{GeneratedEnvironmentMapLight, Skybox},
+    pbr::{DistanceFog, FogFalloff},
+    prelude::*,
+};
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct HeronSky {
+    /// The sky cube, relative to the level file, as its meshes are.
+    pub cubemap: String,
+    /// Towards the sun, in the level's frame.
+    pub to_sun: [f32; 3],
+    /// Linear.
+    pub sun_color: [f32; 3],
+    pub sun_intensity: f32,
+    pub ambient_intensity: f32,
+    pub exposure: f32,
+    #[serde(default)]
+    pub fog: Option<HeronFog>,
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct HeronFog {
+    /// Linear.
+    pub color: [f32; 3],
+    /// Per metre.
+    pub density: f32,
+}
+
+/// The editor's view multiplies its exposure by this ahead of AgX.
+const VIEW_EXPOSURE: f32 = 1.8;
+
+impl HeronSky {
+    pub fn from_json(environment: &serde_json::Value) -> Result<Self, serde_json::Error> {
+        serde_json::from_value(environment.clone())
+    }
+
+    /// The skybox, its environment light, and the view's exposure and tone map. The
+    /// camera renders in HDR: without it the sky reaches the screen untone-mapped.
+    pub fn camera(&self, cube: Handle<Image>) -> impl Bundle {
+        (
+            Skybox { image: Some(cube.clone()), brightness: 1.0, rotation: Quat::IDENTITY },
+            GeneratedEnvironmentMapLight { environment_map: cube, intensity: self.ambient_intensity, ..default() },
+            // Bevy scales light by 2^-ev100 / 1.2.
+            Exposure { ev100: -(1.2 * self.exposure * VIEW_EXPOSURE).log2() },
+            Tonemapping::AgX,
+            Hdr,
+        )
+    }
+
+    /// The sun as a shadowed directional light.
+    pub fn sun(&self) -> impl Bundle {
+        let [r, g, b] = self.sun_color;
+        (
+            DirectionalLight {
+                color: Color::linear_rgb(r, g, b),
+                illuminance: self.sun_intensity,
+                shadow_maps_enabled: true,
+                ..default()
+            },
+            Transform::default().looking_to(-Vec3::from(self.to_sun), Vec3::Y),
+        )
+    }
+
+    /// The map's fog, if it asks for any.
+    pub fn fog(&self) -> Option<DistanceFog> {
+        self.fog.as_ref().map(|fog| {
+            let [r, g, b] = fog.color;
+            DistanceFog {
+                color: Color::linear_rgb(r, g, b),
+                directional_light_color: Color::NONE,
+                falloff: FogFalloff::Exponential { density: fog.density },
+                ..default()
+            }
+        })
+    }
+}

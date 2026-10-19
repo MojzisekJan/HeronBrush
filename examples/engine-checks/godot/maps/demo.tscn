@@ -1,0 +1,956 @@
+[gd_scene load_steps=75 format=3]
+
+[ext_resource type="ArrayMesh" path="demo/worldspawn.obj" id="1_pzidm"]
+[ext_resource type="PackedScene" path="res://objects/pickup.tscn" id="2_erd2m"]
+[ext_resource type="Script" path="res://scripts/mover.gd" id="3_23awq"]
+[ext_resource type="ArrayMesh" path="demo/func_door.obj" id="4_fssyb"]
+[ext_resource type="ArrayMesh" path="demo/func_door_1.obj" id="5_z1dg1"]
+[ext_resource type="ArrayMesh" path="demo/func_button.obj" id="6_78m4x"]
+[ext_resource type="ArrayMesh" path="demo/fps_use_button.obj" id="7_yly80"]
+[ext_resource type="PackedScene" path="res://objects/key.tscn" id="8_jkc9b"]
+[ext_resource type="ArrayMesh" path="demo/fps_key_door.obj" id="9_262oh"]
+[ext_resource type="PackedScene" path="res://objects/portal.tscn" id="10_ggvh9"]
+[ext_resource type="Script" path="res://scripts/jump_pad.gd" id="11_jifrn"]
+[ext_resource type="ArrayMesh" path="demo/fps_jump_pad.obj" id="12_8852s"]
+[ext_resource type="Script" path="res://scripts/ladder.gd" id="13_pio34"]
+[ext_resource type="ArrayMesh" path="demo/fps_lift.obj" id="14_vllsi"]
+[ext_resource type="Script" path="res://scripts/water.gd" id="15_4pubr"]
+[ext_resource type="ArrayMesh" path="demo/fps_water.obj" id="16_jnmcg"]
+[ext_resource type="Material" path="res://materials/water.tres" id="17_f5688"]
+[ext_resource type="Script" path="res://scripts/hurt.gd" id="18_6qhey"]
+[ext_resource type="PackedScene" path="res://objects/barrel.tscn" id="19_mkc80"]
+[ext_resource type="PackedScene" path="res://objects/enemy.tscn" id="20_el6cq"]
+[ext_resource type="Script" path="res://scripts/spinner.gd" id="21_mkohv"]
+[ext_resource type="ArrayMesh" path="demo/func_rotate.obj" id="22_8c76m"]
+[ext_resource type="Script" path="res://scripts/shuttle.gd" id="23_ywe4h"]
+[ext_resource type="ArrayMesh" path="demo/func_shuttle.obj" id="24_i63hu"]
+[ext_resource type="Script" path="res://scripts/checkpoint.gd" id="25_z72eq"]
+[ext_resource type="Script" path="res://scripts/spawner.gd" id="26_lxuhg"]
+[ext_resource type="PackedScene" path="res://objects/particles.tscn" id="27_3k9i2"]
+[ext_resource type="PackedScene" path="res://objects/cloud.tscn" id="28_18hp5"]
+[ext_resource type="PackedScene" path="res://objects/platform.tscn" id="29_np80t"]
+[ext_resource type="ArrayMesh" path="demo/func_door_2.obj" id="30_m0cun"]
+[ext_resource type="Script" path="res://scripts/sign.gd" id="31_2lofg"]
+[ext_resource type="Script" path="res://scripts/gate.gd" id="32_c4xf4"]
+[ext_resource type="Script" path="res://scripts/exit.gd" id="33_td6pv"]
+[ext_resource type="Texture2D" path="res://maps/demo_paint/bbpaint_3005a1af286fb263.png" id="34_k2d5s"]
+[ext_resource type="Texture2D" path="res://maps/demo_paint/bbpaint_662b4f610ec6823c.png" id="35_xbx9l"]
+[ext_resource type="Texture2D" path="res://textures/concrete.png" id="36_gv489"]
+[ext_resource type="Texture2D" path="res://textures/grass.png" id="37_h73k9"]
+[ext_resource type="Texture2D" path="res://textures/dirt.png" id="38_es5fr"]
+[ext_resource type="Texture2D" path="res://textures/wall.png" id="39_33qay"]
+[ext_resource type="Texture2D" path="res://textures/metal.png" id="40_sc4pc"]
+[ext_resource type="Texture2D" path="res://textures/crate.png" id="41_cwybk"]
+[ext_resource type="Texture2D" path="res://textures/hazard.png" id="42_75dtt"]
+[ext_resource type="Texture2D" path="res://textures/wood.png" id="43_mznj2"]
+
+[sub_resource type="StandardMaterial3D" id="Material_bbpaint_3005a1af286fb263"]
+resource_name = "bbpaint_3005a1af286fb263"
+albedo_texture = ExtResource("34_k2d5s")
+texture_repeat = false
+
+[sub_resource type="StandardMaterial3D" id="Material_bbpaint_662b4f610ec6823c"]
+resource_name = "bbpaint_662b4f610ec6823c"
+albedo_texture = ExtResource("35_xbx9l")
+texture_repeat = false
+
+[sub_resource type="StandardMaterial3D" id="Material_concrete"]
+resource_name = "concrete"
+albedo_texture = ExtResource("36_gv489")
+
+[sub_resource type="StandardMaterial3D" id="Material_grass"]
+resource_name = "grass"
+albedo_texture = ExtResource("37_h73k9")
+
+[sub_resource type="StandardMaterial3D" id="Material_dirt"]
+resource_name = "dirt"
+albedo_texture = ExtResource("38_es5fr")
+
+[sub_resource type="StandardMaterial3D" id="Material_wall"]
+resource_name = "wall"
+albedo_texture = ExtResource("39_33qay")
+
+[sub_resource type="StandardMaterial3D" id="Material_metal"]
+resource_name = "metal"
+albedo_texture = ExtResource("40_sc4pc")
+
+[sub_resource type="StandardMaterial3D" id="Material_crate"]
+resource_name = "crate"
+albedo_texture = ExtResource("41_cwybk")
+
+[sub_resource type="StandardMaterial3D" id="Material_hazard"]
+resource_name = "hazard"
+albedo_texture = ExtResource("42_75dtt")
+
+[sub_resource type="StandardMaterial3D" id="Material_wood"]
+resource_name = "wood"
+albedo_texture = ExtResource("43_mznj2")
+
+[sub_resource type="ArrayOccluder3D" id="Occluder_worldspawn"]
+vertices = PackedVector3Array(-12.0, 0.0, -16.0, -12.0, -0.5, -16.0, 12.0, -0.5, -16.0, 12.0, 0.0, -16.0, -12.0, -0.5, -16.0, -12.0, 0.0, -16.0, -12.0, 0.0, 16.0, -12.0, -0.5, 16.0, 12.0, -0.5, 6.0, 12.0, -0.5, -16.0, -12.0, -0.5, -16.0, -12.0, -0.5, 6.0, -4.0, -0.5, 6.0, 4.0, -0.5, 6.0, -12.0, 0.0, 6.0, -12.0, 0.0, -16.0, 12.0, 0.0, -16.0, 12.0, 0.0, 6.0, 4.0, 0.0, 6.0, -4.0, 0.0, 6.0, 12.0, 0.0, -16.0, 12.0, -0.5, -16.0, 12.0, -0.5, 16.0, 12.0, 0.0, 16.0, 12.0, -0.5, 6.0, 4.5, -0.5, 6.0, -4.5, -0.5, 6.0, -12.0, -0.5, 6.0, -12.0, 0.0, 6.0, 12.0, 0.0, 6.0, -12.0, 0.0, 14.0, -12.0, -0.5, 14.0, -4.5, -0.5, 14.0, 4.5, -0.5, 14.0, 12.0, -0.5, 14.0, 12.0, 0.0, 14.0, 12.0, -0.5, 16.0, 12.0, -0.5, 14.0, 4.0, -0.5, 14.0, -4.0, -0.5, 14.0, -12.0, -0.5, 14.0, -12.0, -0.5, 16.0, -12.0, 0.0, 16.0, -12.0, 0.0, 14.0, -4.0, 0.0, 14.0, 4.0, 0.0, 14.0, 12.0, 0.0, 14.0, 12.0, 0.0, 16.0, 12.0, -0.5, 16.0, -12.0, -0.5, 16.0, -12.0, 0.0, 16.0, 12.0, 0.0, 16.0, -4.0, -0.5, 14.0, -4.0, -0.5, 6.0, -12.0, -0.5, 6.0, -12.0, -0.5, 14.0, -12.0, 0.0, 14.0, -12.0, 0.0, 6.0, -4.0, 0.0, 6.0, -4.0, 0.0, 14.0, 12.0, -0.5, 14.0, 12.0, -0.5, 6.0, 4.0, -0.5, 6.0, 4.0, -0.5, 14.0, 4.0, 0.0, 14.0, 4.0, 0.0, 6.0, 12.0, 0.0, 6.0, 12.0, 0.0, 14.0, -4.0, -3.0, 14.0, -4.0, -3.0, 6.0, 4.0, -3.0, 6.0, 4.0, -3.0, 14.0, -4.5, -0.5, 5.5, -4.5, -3.5, 5.5, 4.5, -3.5, 5.5, 4.5, -0.5, 5.5, -4.5, -3.5, 5.5, -4.5, -0.5, 5.5, -4.5, -0.5, 14.5, -4.5, -3.5, 14.5, 4.5, -3.5, 5.5, -4.5, -3.5, 5.5, -4.5, -3.5, 14.5, 4.5, -3.5, 14.5, 4.5, -0.5, 5.5, 4.5, -3.5, 5.5, 4.5, -3.5, 14.5, 4.5, -0.5, 14.5, 4.5, -3.5, 6.0, -4.5, -3.5, 6.0, -4.5, -0.5, 6.0, 4.5, -0.5, 6.0, -4.5, -0.5, 14.0, -4.5, -3.5, 14.0, 4.5, -3.5, 14.0, 4.5, -0.5, 14.0, 4.5, -3.5, 14.5, -4.5, -3.5, 14.5, -4.5, -0.5, 14.5, 4.5, -0.5, 14.5, -4.0, -0.5, 6.0, -4.0, -3.5, 6.0, -4.0, -3.5, 14.0, -4.0, -0.5, 14.0, 4.0, -3.5, 14.0, 4.0, -3.5, 6.0, 4.0, -0.5, 6.0, 4.0, -0.5, 14.0, -12.5, 0.0, -16.5, -12.5, 10.5, -16.5, -12.5, 10.5, 16.5, -12.5, 0.0, 16.5, 12.5, 0.0, -16.0, 12.5, 0.0, -16.5, -12.5, 0.0, -16.5, -12.5, 0.0, -16.0, -12.0, 0.0, -16.0, 12.0, 0.0, -16.0, 12.5, 0.0, -16.0, -12.5, 0.0, -16.0, -12.5, 10.0, -16.0, 12.5, 10.0, -16.0, -12.5, 10.0, 16.0, -12.5, 0.0, 16.0, 12.5, 0.0, 16.0, 12.5, 10.0, 16.0, 12.5, 0.0, 16.5, 12.5, 0.0, 16.0, 12.0, 0.0, 16.0, 6.5, 0.0, 16.0, 6.0, 0.0, 16.0, -12.0, 0.0, 16.0, -12.5, 0.0, 16.0, -12.5, 0.0, 16.5, -12.5, 0.0, 16.5, -12.5, 10.5, 16.5, 12.5, 10.5, 16.5, 12.5, 0.0, 16.5, -12.0, 0.0, 16.0, -12.0, 0.0, -16.0, -12.5, 0.0, -16.0, -12.5, 0.0, 16.0, -12.0, 10.0, -16.0, -12.0, 0.0, -16.0, -12.0, 0.0, 16.0, -12.0, 10.0, 16.0, 12.0, 0.0, 16.0, 12.0, 0.0, -16.0, 12.0, 10.0, -16.0, 12.0, 10.0, 16.0, 12.5, 0.0, 16.0, 12.5, 0.0, -16.0, 12.0, 0.0, -16.0, 12.0, 0.0, 16.0, -12.5, 10.5, -16.5, -12.5, 0.0, -16.5, 12.5, 0.0, -16.5, 12.5, 10.5, -16.5, 12.5, 10.0, 16.5, 12.5, 10.0, -16.5, -12.5, 10.0, -16.5, -12.5, 10.0, 16.5, -12.5, 10.5, 16.5, -12.5, 10.5, -16.5, 12.5, 10.5, -16.5, 12.5, 10.5, 16.5, 12.5, 10.5, -16.5, 12.5, 0.0, -16.5, 12.5, 0.0, 16.5, 12.5, 10.5, 16.5, 6.0, 2.5, 16.0, 6.0, 2.5, 2.0, 6.0, 2.5, -4.0, 6.0, 2.5, -16.0, 6.0, 3.0, -16.0, 6.0, 3.0, 16.0, 12.0, 2.5, 16.0, 12.0, 2.5, -16.0, 6.0, 2.5, -16.0, 6.0, 2.5, 16.0, 6.0, 3.0, 16.0, 6.0, 3.0, -16.0, 12.0, 3.0, -16.0, 12.0, 3.0, 16.0, 6.0, 0.0, -4.0, 6.0, 0.0, -16.0, 6.0, 2.5, -16.0, 6.0, 2.5, -4.0, 6.5, 2.5, -16.0, 6.5, 0.0, -16.0, 6.5, 0.0, -4.0, 6.5, 2.5, -4.0, 6.0, 0.0, 16.0, 6.0, 0.0, 2.0, 6.0, 2.5, 2.0, 6.0, 2.5, 16.0, 6.5, 2.5, 2.0, 6.5, 0.0, 2.0, 6.5, 0.0, 16.0, 6.5, 2.5, 16.0)
+indices = PackedInt32Array(0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 8, 11, 12, 8, 12, 13, 14, 15, 16, 14, 16, 17, 14, 17, 18, 14, 18, 19, 20, 21, 22, 20, 22, 23, 24, 25, 26, 24, 26, 27, 24, 27, 28, 24, 28, 29, 30, 31, 32, 30, 32, 33, 30, 33, 34, 30, 34, 35, 36, 37, 38, 36, 38, 39, 36, 39, 40, 36, 40, 41, 42, 43, 44, 42, 44, 45, 42, 45, 46, 42, 46, 47, 48, 49, 50, 48, 50, 51, 52, 53, 54, 52, 54, 55, 56, 57, 58, 56, 58, 59, 60, 61, 62, 60, 62, 63, 64, 65, 66, 64, 66, 67, 68, 69, 70, 68, 70, 71, 72, 73, 74, 72, 74, 75, 76, 77, 78, 76, 78, 79, 80, 81, 82, 80, 82, 83, 84, 85, 86, 84, 86, 87, 88, 89, 90, 88, 90, 91, 92, 93, 94, 92, 94, 95, 96, 97, 98, 96, 98, 99, 100, 101, 102, 100, 102, 103, 104, 105, 106, 104, 106, 107, 108, 109, 110, 108, 110, 111, 112, 113, 114, 112, 114, 115, 112, 115, 116, 112, 116, 117, 118, 119, 120, 118, 120, 121, 122, 123, 124, 122, 124, 125, 126, 127, 128, 126, 128, 129, 126, 129, 130, 126, 130, 131, 126, 131, 132, 126, 132, 133, 134, 135, 136, 134, 136, 137, 138, 139, 140, 138, 140, 141, 142, 143, 144, 142, 144, 145, 146, 147, 148, 146, 148, 149, 150, 151, 152, 150, 152, 153, 154, 155, 156, 154, 156, 157, 158, 159, 160, 158, 160, 161, 162, 163, 164, 162, 164, 165, 166, 167, 168, 166, 168, 169, 170, 171, 172, 170, 172, 173, 170, 173, 174, 170, 174, 175, 176, 177, 178, 176, 178, 179, 180, 181, 182, 180, 182, 183, 184, 185, 186, 184, 186, 187, 188, 189, 190, 188, 190, 191, 192, 193, 194, 192, 194, 195, 196, 197, 198, 196, 198, 199)
+
+[sub_resource type="ConcavePolygonShape3D" id="Concave_worldspawn"]
+data = PackedVector3Array(12.0, 0.0, -16.0, -12.0, 0.0, -16.0, -12.0, -0.5, -16.0, -12.0, -0.5, -16.0, 12.0, -0.5, -16.0, 12.0, 0.0, -16.0, -12.0, -0.5, 16.0, -12.0, -0.5, -16.0, -12.0, 0.0, -16.0, -12.0, 0.0, -16.0, -12.0, 0.0, 16.0, -12.0, -0.5, 16.0, 4.0, -0.5, 6.0, 12.0, -0.5, 6.0, 12.0, -0.5, -16.0, 4.0, -0.5, 6.0, 12.0, -0.5, -16.0, -12.0, -0.5, -16.0, 4.0, -0.5, 6.0, -12.0, -0.5, -16.0, -12.0, -0.5, 6.0, -4.0, 0.0, 6.0, -12.0, 0.0, 6.0, -12.0, 0.0, -16.0, -4.0, 0.0, 6.0, -12.0, 0.0, -16.0, 12.0, 0.0, -16.0, -4.0, 0.0, 6.0, 12.0, 0.0, -16.0, 12.0, 0.0, 6.0, 12.0, 0.0, 16.0, 12.0, 0.0, -16.0, 12.0, -0.5, -16.0, 12.0, -0.5, -16.0, 12.0, -0.5, 16.0, 12.0, 0.0, 16.0, 12.0, 0.0, 6.0, 12.0, -0.5, 6.0, 4.5, -0.5, 6.0, 12.0, 0.0, 6.0, 4.5, -0.5, 6.0, -4.5, -0.5, 6.0, 12.0, 0.0, 6.0, -4.5, -0.5, 6.0, -12.0, -0.5, 6.0, -12.0, -0.5, 6.0, -12.0, 0.0, 6.0, 12.0, 0.0, 6.0, 12.0, 0.0, 14.0, -12.0, 0.0, 14.0, -12.0, -0.5, 14.0, 12.0, 0.0, 14.0, -12.0, -0.5, 14.0, -4.5, -0.5, 14.0, 12.0, 0.0, 14.0, -4.5, -0.5, 14.0, 4.5, -0.5, 14.0, 4.5, -0.5, 14.0, 12.0, -0.5, 14.0, 12.0, 0.0, 14.0, -12.0, -0.5, 16.0, 12.0, -0.5, 16.0, 12.0, -0.5, 14.0, -12.0, -0.5, 16.0, 12.0, -0.5, 14.0, 4.0, -0.5, 14.0, -12.0, -0.5, 16.0, 4.0, -0.5, 14.0, -4.0, -0.5, 14.0, -4.0, -0.5, 14.0, -12.0, -0.5, 14.0, -12.0, -0.5, 16.0, 12.0, 0.0, 16.0, -12.0, 0.0, 16.0, -12.0, 0.0, 14.0, 12.0, 0.0, 16.0, -12.0, 0.0, 14.0, -4.0, 0.0, 14.0, 12.0, 0.0, 16.0, -4.0, 0.0, 14.0, 4.0, 0.0, 14.0, 4.0, 0.0, 14.0, 12.0, 0.0, 14.0, 12.0, 0.0, 16.0, 12.0, 0.0, 16.0, 12.0, -0.5, 16.0, -12.0, -0.5, 16.0, -12.0, -0.5, 16.0, -12.0, 0.0, 16.0, 12.0, 0.0, 16.0, -12.0, -0.5, 14.0, -4.0, -0.5, 14.0, -4.0, -0.5, 6.0, -4.0, -0.5, 6.0, -12.0, -0.5, 6.0, -12.0, -0.5, 14.0, -4.0, 0.0, 14.0, -12.0, 0.0, 14.0, -12.0, 0.0, 6.0, -12.0, 0.0, 6.0, -4.0, 0.0, 6.0, -4.0, 0.0, 14.0, -4.0, 0.0, 14.0, -4.0, 0.0, 6.0, -4.0, -0.5, 6.0, -4.0, -0.5, 6.0, -4.0, -0.5, 14.0, -4.0, 0.0, 14.0, 4.0, 0.0, 14.0, 4.0, -0.5, 14.0, 4.0, -0.5, 6.0, 4.0, -0.5, 6.0, 4.0, 0.0, 6.0, 4.0, 0.0, 14.0, 4.0, -0.5, 14.0, 12.0, -0.5, 14.0, 12.0, -0.5, 6.0, 12.0, -0.5, 6.0, 4.0, -0.5, 6.0, 4.0, -0.5, 14.0, 12.0, 0.0, 14.0, 4.0, 0.0, 14.0, 4.0, 0.0, 6.0, 4.0, 0.0, 6.0, 12.0, 0.0, 6.0, 12.0, 0.0, 14.0, 4.0, -3.0, 14.0, -4.0, -3.0, 14.0, -4.0, -3.0, 6.0, -4.0, -3.0, 6.0, 4.0, -3.0, 6.0, 4.0, -3.0, 14.0, 4.5, -0.5, 5.5, -4.5, -0.5, 5.5, -4.5, -3.5, 5.5, -4.5, -3.5, 5.5, 4.5, -3.5, 5.5, 4.5, -0.5, 5.5, -4.5, -3.5, 14.5, -4.5, -3.5, 5.5, -4.5, -0.5, 5.5, -4.5, -0.5, 5.5, -4.5, -0.5, 14.5, -4.5, -3.5, 14.5, 4.5, -3.5, 14.5, 4.5, -3.5, 5.5, -4.5, -3.5, 5.5, -4.5, -3.5, 5.5, -4.5, -3.5, 14.5, 4.5, -3.5, 14.5, 4.5, -0.5, 14.5, 4.5, -0.5, 5.5, 4.5, -3.5, 5.5, 4.5, -3.5, 5.5, 4.5, -3.5, 14.5, 4.5, -0.5, 14.5, 4.5, -0.5, 6.0, 4.5, -3.5, 6.0, -4.5, -3.5, 6.0, -4.5, -3.5, 6.0, -4.5, -0.5, 6.0, 4.5, -0.5, 6.0, 4.5, -0.5, 14.0, -4.5, -0.5, 14.0, -4.5, -3.5, 14.0, -4.5, -3.5, 14.0, 4.5, -3.5, 14.0, 4.5, -0.5, 14.0, 4.5, -0.5, 14.5, 4.5, -3.5, 14.5, -4.5, -3.5, 14.5, -4.5, -3.5, 14.5, -4.5, -0.5, 14.5, 4.5, -0.5, 14.5, -4.0, -0.5, 14.0, -4.0, -0.5, 6.0, -4.0, -3.5, 6.0, -4.0, -3.5, 6.0, -4.0, -3.5, 14.0, -4.0, -0.5, 14.0, 4.0, -0.5, 14.0, 4.0, -3.5, 14.0, 4.0, -3.5, 6.0, 4.0, -3.5, 6.0, 4.0, -0.5, 6.0, 4.0, -0.5, 14.0, -12.5, 0.0, 16.5, -12.5, 0.0, -16.5, -12.5, 10.5, -16.5, -12.5, 10.5, -16.5, -12.5, 10.5, 16.5, -12.5, 0.0, 16.5, 12.0, 0.0, -16.0, 12.5, 0.0, -16.0, 12.5, 0.0, -16.5, 12.0, 0.0, -16.0, 12.5, 0.0, -16.5, -12.5, 0.0, -16.5, 12.0, 0.0, -16.0, -12.5, 0.0, -16.5, -12.5, 0.0, -16.0, 12.5, 10.0, -16.0, 12.5, 0.0, -16.0, -12.5, 0.0, -16.0, -12.5, 0.0, -16.0, -12.5, 10.0, -16.0, 12.5, 10.0, -16.0, 12.5, 10.0, 16.0, -12.5, 10.0, 16.0, -12.5, 0.0, 16.0, -12.5, 0.0, 16.0, 12.5, 0.0, 16.0, 12.5, 10.0, 16.0, -12.5, 0.0, 16.5, 12.5, 0.0, 16.5, 12.5, 0.0, 16.0, -12.5, 0.0, 16.5, 12.5, 0.0, 16.0, 12.0, 0.0, 16.0, -12.5, 0.0, 16.5, 12.0, 0.0, 16.0, 6.5, 0.0, 16.0, -12.5, 0.0, 16.5, 6.5, 0.0, 16.0, 6.0, 0.0, 16.0, -12.5, 0.0, 16.5, 6.0, 0.0, 16.0, -12.0, 0.0, 16.0, -12.0, 0.0, 16.0, -12.5, 0.0, 16.0, -12.5, 0.0, 16.5, 12.5, 0.0, 16.5, -12.5, 0.0, 16.5, -12.5, 10.5, 16.5, -12.5, 10.5, 16.5, 12.5, 10.5, 16.5, 12.5, 0.0, 16.5, -12.5, 0.0, 16.0, -12.0, 0.0, 16.0, -12.0, 0.0, -16.0, -12.0, 0.0, -16.0, -12.5, 0.0, -16.0, -12.5, 0.0, 16.0, -12.0, 10.0, 16.0, -12.0, 10.0, -16.0, -12.0, 0.0, -16.0, -12.0, 0.0, -16.0, -12.0, 0.0, 16.0, -12.0, 10.0, 16.0, 12.0, 10.0, 16.0, 12.0, 0.0, 16.0, 12.0, 0.0, -16.0, 12.0, 0.0, -16.0, 12.0, 10.0, -16.0, 12.0, 10.0, 16.0, 12.0, 0.0, 16.0, 12.5, 0.0, 16.0, 12.5, 0.0, -16.0, 12.5, 0.0, -16.0, 12.0, 0.0, -16.0, 12.0, 0.0, 16.0, 12.5, 10.5, -16.5, -12.5, 10.5, -16.5, -12.5, 0.0, -16.5, -12.5, 0.0, -16.5, 12.5, 0.0, -16.5, 12.5, 10.5, -16.5, -12.5, 10.0, 16.5, 12.5, 10.0, 16.5, 12.5, 10.0, -16.5, 12.5, 10.0, -16.5, -12.5, 10.0, -16.5, -12.5, 10.0, 16.5, 12.5, 10.5, 16.5, -12.5, 10.5, 16.5, -12.5, 10.5, -16.5, -12.5, 10.5, -16.5, 12.5, 10.5, -16.5, 12.5, 10.5, 16.5, 12.5, 10.5, 16.5, 12.5, 10.5, -16.5, 12.5, 0.0, -16.5, 12.5, 0.0, -16.5, 12.5, 0.0, 16.5, 12.5, 10.5, 16.5, 6.0, 3.0, 16.0, 6.0, 2.5, 16.0, 6.0, 2.5, 2.0, 6.0, 3.0, 16.0, 6.0, 2.5, 2.0, 6.0, 2.5, -4.0, 6.0, 3.0, 16.0, 6.0, 2.5, -4.0, 6.0, 2.5, -16.0, 6.0, 2.5, -16.0, 6.0, 3.0, -16.0, 6.0, 3.0, 16.0, 6.0, 2.5, 16.0, 12.0, 2.5, 16.0, 12.0, 2.5, -16.0, 12.0, 2.5, -16.0, 6.0, 2.5, -16.0, 6.0, 2.5, 16.0, 12.0, 3.0, 16.0, 6.0, 3.0, 16.0, 6.0, 3.0, -16.0, 6.0, 3.0, -16.0, 12.0, 3.0, -16.0, 12.0, 3.0, 16.0, 6.0, 2.5, -4.0, 6.0, 0.0, -4.0, 6.0, 0.0, -16.0, 6.0, 0.0, -16.0, 6.0, 2.5, -16.0, 6.0, 2.5, -4.0, 6.5, 2.5, -4.0, 6.5, 2.5, -16.0, 6.5, 0.0, -16.0, 6.5, 0.0, -16.0, 6.5, 0.0, -4.0, 6.5, 2.5, -4.0, 6.5, 2.5, -4.0, 6.5, 0.0, -4.0, 6.0, 0.0, -4.0, 6.0, 0.0, -4.0, 6.0, 2.5, -4.0, 6.5, 2.5, -4.0, 6.5, 2.5, 2.0, 6.0, 2.5, 2.0, 6.0, 0.0, 2.0, 6.0, 0.0, 2.0, 6.5, 0.0, 2.0, 6.5, 2.5, 2.0, 6.0, 2.5, 16.0, 6.0, 0.0, 16.0, 6.0, 0.0, 2.0, 6.0, 0.0, 2.0, 6.0, 2.5, 2.0, 6.0, 2.5, 16.0, 6.0, 0.0, 16.0, 6.5, 0.0, 16.0, 6.5, 0.0, 2.0, 6.5, 0.0, 2.0, 6.0, 0.0, 2.0, 6.0, 0.0, 16.0, 6.5, 2.5, 16.0, 6.5, 2.5, 2.0, 6.5, 0.0, 2.0, 6.5, 0.0, 2.0, 6.5, 0.0, 16.0, 6.5, 2.5, 16.0, 2.0, 1.5, -10.0, -2.0, 1.5, -10.0, -2.0, 0.0, -10.0, -2.0, 0.0, -10.0, 2.0, 0.0, -10.0, 2.0, 1.5, -10.0, -2.0, 1.5, -9.0, -2.0, 0.0, -9.0, -2.0, 0.0, -10.0, -2.0, 0.0, -10.0, -2.0, 1.5, -10.0, -2.0, 1.5, -9.0, 2.0, 1.5, -9.0, -2.0, 1.5, -9.0, -2.0, 1.5, -10.0, -2.0, 1.5, -10.0, 2.0, 1.5, -10.0, 2.0, 1.5, -9.0, 2.0, 1.5, -9.0, 2.0, 1.5, -10.0, 2.0, 0.0, -10.0, 2.0, 0.0, -10.0, 2.0, 0.0, -9.0, 2.0, 1.5, -9.0, 2.0, 1.5, -9.0, 2.0, 0.0, -9.0, -2.0, 0.0, -9.0, -2.0, 0.0, -9.0, -2.0, 1.5, -9.0, 2.0, 1.5, -9.0, 2.0, 0.375, -14.0, 0.0, 0.375, -14.0, 0.0, 0.0, -14.0, 0.0, 0.0, -14.0, 2.0, 0.0, -14.0, 2.0, 0.375, -14.0, 0.0, 0.375, -12.0, 0.0, 0.0, -12.0, 0.0, 0.0, -14.0, 0.0, 0.0, -14.0, 0.0, 0.375, -14.0, 0.0, 0.375, -12.0, 2.0, 0.375, -12.0, 0.0, 0.375, -12.0, 0.0, 0.375, -14.0, 0.0, 0.375, -14.0, 2.0, 0.375, -14.0, 2.0, 0.375, -12.0, 2.0, 0.375, -12.0, 2.0, 0.0, -12.0, 0.0, 0.0, -12.0, 0.0, 0.0, -12.0, 0.0, 0.375, -12.0, 2.0, 0.375, -12.0, 4.0, 0.75, -14.0, 2.0, 0.75, -14.0, 2.0, 0.375, -14.0, 4.0, 0.75, -14.0, 2.0, 0.375, -14.0, 2.0, 0.0, -14.0, 2.0, 0.0, -14.0, 4.0, 0.0, -14.0, 4.0, 0.75, -14.0, 2.0, 0.75, -12.0, 2.0, 0.0, -12.0, 2.0, 0.0, -14.0, 2.0, 0.0, -14.0, 2.0, 0.75, -14.0, 2.0, 0.75, -12.0, 4.0, 0.75, -12.0, 2.0, 0.75, -12.0, 2.0, 0.75, -14.0, 2.0, 0.75, -14.0, 4.0, 0.75, -14.0, 4.0, 0.75, -12.0, 4.0, 0.75, -12.0, 4.0, 0.75, -14.0, 4.0, 0.0, -14.0, 4.0, 0.0, -14.0, 4.0, 0.0, -12.0, 4.0, 0.75, -12.0, 4.0, 0.75, -12.0, 4.0, 0.0, -12.0, 2.0, 0.0, -12.0, 4.0, 0.75, -12.0, 2.0, 0.0, -12.0, 2.0, 0.375, -12.0, 2.0, 0.375, -12.0, 2.0, 0.75, -12.0, 4.0, 0.75, -12.0, -5.0, 3.0, -14.25, -5.375, 3.0, -14.25, -5.375, 0.0, -14.25, -5.0, 3.0, -14.25, -5.375, 0.0, -14.25, -5.0, 0.0, -14.25, -5.375, 3.0, -13.75, -5.0, 3.0, -13.75, -5.0, 2.625, -13.75, -5.375, 3.0, -13.75, -5.0, 2.625, -13.75, -5.0, 0.0, -13.75, -5.0, 0.0, -13.75, -5.375, 0.0, -13.75, -5.375, 3.0, -13.75, -5.375, 3.0, -14.25, -5.375, 3.0, -13.75, -5.375, 0.0, -13.75, -5.375, 0.0, -13.75, -5.375, 0.0, -14.25, -5.375, 3.0, -14.25, -5.0, 3.0, -13.75, -5.0, 3.0, -14.25, -5.0, 0.0, -14.25, -5.0, 0.0, -14.25, -5.0, 0.0, -13.75, -5.0, 3.0, -13.75, -5.375, 3.0, -13.75, -5.375, 3.0, -14.25, -5.0, 3.0, -14.25, -5.0, 3.0, -14.25, -5.0, 3.0, -13.75, -5.375, 3.0, -13.75, -2.625, 3.0, -14.25, -3.0, 3.0, -14.25, -3.0, 2.625, -14.25, -2.625, 3.0, -14.25, -3.0, 2.625, -14.25, -3.0, 0.0, -14.25, -3.0, 0.0, -14.25, -2.625, 0.0, -14.25, -2.625, 3.0, -14.25, -3.0, 3.0, -13.75, -2.625, 3.0, -13.75, -2.625, 0.0, -13.75, -3.0, 3.0, -13.75, -2.625, 0.0, -13.75, -3.0, 0.0, -13.75, -3.0, 3.0, -14.25, -3.0, 3.0, -13.75, -3.0, 0.0, -13.75, -3.0, 0.0, -13.75, -3.0, 0.0, -14.25, -3.0, 3.0, -14.25, -2.625, 3.0, -13.75, -2.625, 3.0, -14.25, -2.625, 0.0, -14.25, -2.625, 0.0, -14.25, -2.625, 0.0, -13.75, -2.625, 3.0, -13.75, -3.0, 3.0, -13.75, -3.0, 3.0, -14.25, -2.625, 3.0, -14.25, -2.625, 3.0, -14.25, -2.625, 3.0, -13.75, -3.0, 3.0, -13.75, -3.0, 3.0, -14.25, -5.0, 3.0, -14.25, -5.0, 2.625, -14.25, -5.0, 2.625, -14.25, -3.0, 2.625, -14.25, -3.0, 3.0, -14.25, -5.0, 3.0, -13.75, -3.0, 3.0, -13.75, -3.0, 2.625, -13.75, -3.0, 2.625, -13.75, -5.0, 2.625, -13.75, -5.0, 3.0, -13.75, -5.0, 3.0, -13.75, -5.0, 3.0, -14.25, -3.0, 3.0, -14.25, -3.0, 3.0, -14.25, -3.0, 3.0, -13.75, -5.0, 3.0, -13.75, -3.0, 2.625, -13.75, -3.0, 2.625, -14.25, -5.0, 2.625, -14.25, -5.0, 2.625, -14.25, -5.0, 2.625, -13.75, -3.0, 2.625, -13.75, 9.0, 6.0, -14.25, 8.625, 6.0, -14.25, 8.625, 3.0, -14.25, 9.0, 6.0, -14.25, 8.625, 3.0, -14.25, 9.0, 3.0, -14.25, 8.625, 6.0, -13.75, 9.0, 6.0, -13.75, 9.0, 5.625, -13.75, 8.625, 6.0, -13.75, 9.0, 5.625, -13.75, 9.0, 3.0, -13.75, 9.0, 3.0, -13.75, 8.625, 3.0, -13.75, 8.625, 6.0, -13.75, 8.625, 6.0, -14.25, 8.625, 6.0, -13.75, 8.625, 3.0, -13.75, 8.625, 3.0, -13.75, 8.625, 3.0, -14.25, 8.625, 6.0, -14.25, 9.0, 6.0, -13.75, 9.0, 6.0, -14.25, 9.0, 3.0, -14.25, 9.0, 3.0, -14.25, 9.0, 3.0, -13.75, 9.0, 6.0, -13.75, 8.625, 6.0, -13.75, 8.625, 6.0, -14.25, 9.0, 6.0, -14.25, 9.0, 6.0, -14.25, 9.0, 6.0, -13.75, 8.625, 6.0, -13.75, 11.375, 6.0, -14.25, 11.0, 6.0, -14.25, 11.0, 5.625, -14.25, 11.375, 6.0, -14.25, 11.0, 5.625, -14.25, 11.0, 3.0, -14.25, 11.0, 3.0, -14.25, 11.375, 3.0, -14.25, 11.375, 6.0, -14.25, 11.0, 6.0, -13.75, 11.375, 6.0, -13.75, 11.375, 3.0, -13.75, 11.0, 6.0, -13.75, 11.375, 3.0, -13.75, 11.0, 3.0, -13.75, 11.0, 6.0, -14.25, 11.0, 6.0, -13.75, 11.0, 3.0, -13.75, 11.0, 3.0, -13.75, 11.0, 3.0, -14.25, 11.0, 6.0, -14.25, 11.375, 6.0, -13.75, 11.375, 6.0, -14.25, 11.375, 3.0, -14.25, 11.375, 3.0, -14.25, 11.375, 3.0, -13.75, 11.375, 6.0, -13.75, 11.0, 6.0, -13.75, 11.0, 6.0, -14.25, 11.375, 6.0, -14.25, 11.375, 6.0, -14.25, 11.375, 6.0, -13.75, 11.0, 6.0, -13.75, 11.0, 6.0, -14.25, 9.0, 6.0, -14.25, 9.0, 5.625, -14.25, 9.0, 5.625, -14.25, 11.0, 5.625, -14.25, 11.0, 6.0, -14.25, 9.0, 6.0, -13.75, 11.0, 6.0, -13.75, 11.0, 5.625, -13.75, 11.0, 5.625, -13.75, 9.0, 5.625, -13.75, 9.0, 6.0, -13.75, 9.0, 6.0, -13.75, 9.0, 6.0, -14.25, 11.0, 6.0, -14.25, 11.0, 6.0, -14.25, 11.0, 6.0, -13.75, 9.0, 6.0, -13.75, 11.0, 5.625, -13.75, 11.0, 5.625, -14.25, 9.0, 5.625, -14.25, 9.0, 5.625, -14.25, 9.0, 5.625, -13.75, 11.0, 5.625, -13.75)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_door_0"]
+points = PackedVector3Array(-0.5, 1.5, -1.5, -0.5, -1.5, -1.5, 0.5, -1.5, -1.5, 0.5, 1.5, -1.5, -0.5, -1.5, 1.5, -0.5, 1.5, 1.5, 0.5, -1.5, 1.5, 0.5, 1.5, 1.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_trigger_multiple_0"]
+points = PackedVector3Array(-1.0, 1.5, -1.5, -1.0, -1.5, -1.5, 1.0, -1.5, -1.5, 1.0, 1.5, -1.5, -1.0, -1.5, 1.5, -1.0, 1.5, 1.5, 1.0, -1.5, 1.5, 1.0, 1.5, 1.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_door_1_0"]
+points = PackedVector3Array(-0.5, 1.5, -1.5, -0.5, -1.5, -1.5, 0.5, -1.5, -1.5, 0.5, 1.5, -1.5, -0.5, -1.5, 1.5, -0.5, 1.5, 1.5, 0.5, -1.5, 1.5, 0.5, 1.5, 1.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_button_0"]
+points = PackedVector3Array(-1.0, 0.125, -1.5, -1.0, -0.125, -1.5, 1.0, -0.125, -1.5, 1.0, 0.125, -1.5, -1.0, -0.125, 1.5, -1.0, 0.125, 1.5, 1.0, -0.125, 1.5, 1.0, 0.125, 1.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_use_button_0"]
+points = PackedVector3Array(-0.5, 0.5, -0.125, -0.5, -0.5, -0.125, 0.5, -0.5, -0.125, 0.5, 0.5, -0.125, -0.5, -0.5, 0.125, -0.5, 0.5, 0.125, 0.5, -0.5, 0.125, 0.5, 0.5, 0.125)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_key_door_0"]
+points = PackedVector3Array(-1.0, 1.5, -1.0, -1.0, -1.5, -1.0, 1.0, -1.5, -1.0, 1.0, 1.5, -1.0, -1.0, -1.5, 1.0, -1.0, 1.5, 1.0, 1.0, -1.5, 1.0, 1.0, 1.5, 1.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_jump_pad_0"]
+points = PackedVector3Array(-1.0, 0.125, -1.0, -1.0, -0.125, -1.0, 1.0, -0.125, -1.0, 1.0, 0.125, -1.0, -1.0, -0.125, 1.0, -1.0, 0.125, 1.0, 1.0, -0.125, 1.0, 1.0, 0.125, 1.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_ladder_0"]
+points = PackedVector3Array(-0.5, 1.5, -1.0, -0.5, -1.5, -1.0, 0.5, -1.5, -1.0, 0.5, 1.5, -1.0, -0.5, -1.5, 1.0, -0.5, 1.5, 1.0, 0.5, -1.5, 1.0, 0.5, 1.5, 1.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_lift_0"]
+points = PackedVector3Array(-1.0, 0.25, -1.0, -1.0, -0.25, -1.0, 1.0, -0.25, -1.0, 1.0, 0.25, -1.0, -1.0, -0.25, 1.0, -1.0, 0.25, 1.0, 1.0, -0.25, 1.0, 1.0, 0.25, 1.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_trigger_multiple_1_0"]
+points = PackedVector3Array(-0.875, 1.0, -1.0, -0.875, -1.0, -1.0, 0.875, -1.0, -1.0, 0.875, 1.0, -1.0, -0.875, -1.0, 1.0, -0.875, 1.0, 1.0, 0.875, -1.0, 1.0, 0.875, 1.0, 1.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_water_0"]
+points = PackedVector3Array(-4.0, 1.0, -4.0, -4.0, -1.0, -4.0, 4.0, -1.0, -4.0, 4.0, 1.0, -4.0, -4.0, -1.0, 4.0, -4.0, 1.0, 4.0, 4.0, -1.0, 4.0, 4.0, 1.0, 4.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_hurt_0"]
+points = PackedVector3Array(-2.0, 0.75, -2.0, -2.0, -0.75, -2.0, 2.0, -0.75, -2.0, 2.0, 0.75, -2.0, -2.0, -0.75, 2.0, -2.0, 0.75, 2.0, 2.0, -0.75, 2.0, 2.0, 0.75, 2.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_rotate_0"]
+points = PackedVector3Array(-0.5, 0.25, -2.5, -0.5, -0.25, -2.5, 0.5, -0.25, -2.5, 0.5, 0.25, -2.5, -0.5, -0.25, 2.5, -0.5, 0.25, 2.5, 0.5, -0.25, 2.5, 0.5, 0.25, 2.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_shuttle_0"]
+points = PackedVector3Array(-1.0, 0.25, -1.0, -1.0, -0.25, -1.0, 1.0, -0.25, -1.0, 1.0, 0.25, -1.0, -1.0, -0.25, 1.0, -1.0, 0.25, 1.0, 1.0, -0.25, 1.0, 1.0, 0.25, 1.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_checkpoint_0"]
+points = PackedVector3Array(-1.0, 1.5, -1.0, -1.0, -1.5, -1.0, 1.0, -1.5, -1.0, 1.0, 1.5, -1.0, -1.0, -1.5, 1.0, -1.0, 1.5, 1.0, 1.0, -1.5, 1.0, 1.0, 1.5, 1.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_trigger_once_0"]
+points = PackedVector3Array(-0.5, 1.5, -1.5, -0.5, -1.5, -1.5, 0.5, -1.5, -1.5, 0.5, 1.5, -1.5, -0.5, -1.5, 1.5, -0.5, 1.5, 1.5, 0.5, -1.5, 1.5, 0.5, 1.5, 1.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_door_2_0"]
+points = PackedVector3Array(-0.5, 1.5, -1.5, -0.5, -1.5, -1.5, 0.5, -1.5, -1.5, 0.5, 1.5, -1.5, -0.5, -1.5, 1.5, -0.5, 1.5, 1.5, 0.5, -1.5, 1.5, 0.5, 1.5, 1.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_sign_0"]
+points = PackedVector3Array(-1.5, 1.5, -1.5, -1.5, -1.5, -1.5, 1.5, -1.5, -1.5, 1.5, 1.5, -1.5, -1.5, -1.5, 1.5, -1.5, 1.5, 1.5, 1.5, -1.5, 1.5, 1.5, 1.5, 1.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_exit_0"]
+points = PackedVector3Array(-1.5, 1.5, -1.5, -1.5, -1.5, -1.5, 1.5, -1.5, -1.5, 1.5, 1.5, -1.5, -1.5, -1.5, 1.5, -1.5, 1.5, 1.5, 1.5, -1.5, 1.5, 1.5, 1.5, 1.5)
+
+[node name="demo" type="Node3D"]
+
+[node name="worldspawn" type="StaticBody3D" parent="."]
+metadata/properties = {
+"_phong": 0,
+"_phong_angle": 89.0,
+"_vertex_merge_distance": 0.0,
+"_cull_interior_faces": 1,
+"wad": "",
+"sky": 1,
+"sky_top_color": Color(0.235294, 0.431373, 0.784314, 1.0),
+"sky_horizon_color": Color(0.862745, 0.803922, 0.705882, 1.0),
+"fog_enabled": 1,
+"fog_light_color": Color(0.784314, 0.803922, 0.862745, 1.0),
+"fog_density": 0.008,
+"ambient_light_color": Color(0.686275, 0.705882, 0.764706, 1.0),
+"ambient_light_energy": 1.0,
+"occluders": 1,
+"occluder_min_size": 96.0,
+"classname": "worldspawn",
+"mapversion": "220"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="worldspawn"]
+mesh = ExtResource("1_pzidm")
+surface_material_override/0 = SubResource("Material_concrete")
+surface_material_override/1 = SubResource("Material_grass")
+surface_material_override/2 = SubResource("Material_dirt")
+surface_material_override/3 = SubResource("Material_wall")
+surface_material_override/4 = SubResource("Material_metal")
+surface_material_override/5 = SubResource("Material_crate")
+surface_material_override/6 = SubResource("Material_bbpaint_3005a1af286fb263")
+surface_material_override/7 = SubResource("Material_bbpaint_662b4f610ec6823c")
+
+[node name="occluder" type="OccluderInstance3D" parent="worldspawn"]
+occluder = SubResource("Occluder_worldspawn")
+
+[node name="shape" type="CollisionShape3D" parent="worldspawn"]
+shape = SubResource("Concave_worldspawn")
+
+[node name="info_player_start" type="Marker3D" parent="." groups=["spawn_points"]]
+transform = Transform3D(-0.707107, 0.0, -0.707107, 0.0, 1.0, 0.0, 0.707107, 0.0, -0.707107, -10.0, 0.75, -14.0)
+metadata/properties = {
+"targetname": "",
+"angles": "0 45 0",
+"classname": "info_player_start",
+"origin": "-448 -320 24"
+}
+
+[node name="fps_weapon_pickup" type="Node3D" parent="." groups=["pickups"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -10.0, 0.75, -12.0)
+metadata/properties = {
+"targetname": "",
+"weapon": "blaster-repeater",
+"classname": "fps_weapon_pickup",
+"origin": "-384 -320 24"
+}
+
+[node name="light_sun" type="DirectionalLight3D" parent="." groups=["lights"]]
+transform = Transform3D(0.707107, -0.541675, -0.454519, 0.0, 0.642788, -0.766044, 0.707107, 0.541675, 0.454519, 0.0, 9.0, 0.0)
+light_color = Color(1.0, 0.980392, 0.921569, 1.0)
+light_energy = 0.8
+shadow_enabled = true
+directional_shadow_max_distance = 100.0
+metadata/properties = {
+"targetname": "",
+"angles": "-50 135 0",
+"light_color": Color(1.0, 0.980392, 0.921569, 1.0),
+"light_energy": 0.8,
+"shadow_enabled": 1,
+"directional_shadow_max_distance": 100.0,
+"classname": "light_sun",
+"origin": "0 0 288"
+}
+
+[node name="light" type="OmniLight3D" parent="." groups=["lights"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -8.0, 7.5, -10.0)
+light_color = Color(1.0, 1.0, 1.0, 1.0)
+light_energy = 1.6
+light_indirect_energy = 1.0
+light_specular = 0.5
+omni_range = 12.0
+omni_attenuation = 1.0
+shadow_enabled = true
+light_bake_mode = 2
+metadata/properties = {
+"targetname": "",
+"style": 0,
+"light_color": Color(1.0, 1.0, 1.0, 1.0),
+"light_energy": 1.6,
+"light_indirect_energy": 1.0,
+"light_specular": 0.5,
+"omni_range": 12.0,
+"omni_attenuation": 1.0,
+"shadow_enabled": 1,
+"light_bake_mode": 2,
+"classname": "light",
+"origin": "-320 -256 240"
+}
+
+[node name="light_1" type="OmniLight3D" parent="." groups=["lights"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -8.0, 7.5, 0.0)
+light_color = Color(1.0, 1.0, 1.0, 1.0)
+light_energy = 1.6
+light_indirect_energy = 1.0
+light_specular = 0.5
+omni_range = 12.0
+omni_attenuation = 1.0
+shadow_enabled = true
+light_bake_mode = 2
+metadata/properties = {
+"targetname": "",
+"style": 0,
+"light_color": Color(1.0, 1.0, 1.0, 1.0),
+"light_energy": 1.6,
+"light_indirect_energy": 1.0,
+"light_specular": 0.5,
+"omni_range": 12.0,
+"omni_attenuation": 1.0,
+"shadow_enabled": 1,
+"light_bake_mode": 2,
+"classname": "light",
+"origin": "0 -256 240"
+}
+
+[node name="light_2" type="OmniLight3D" parent="." groups=["lights"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -8.0, 7.5, 10.0)
+light_color = Color(1.0, 1.0, 1.0, 1.0)
+light_energy = 1.6
+light_indirect_energy = 1.0
+light_specular = 0.5
+omni_range = 12.0
+omni_attenuation = 1.0
+shadow_enabled = true
+light_bake_mode = 2
+metadata/properties = {
+"targetname": "",
+"style": 0,
+"light_color": Color(1.0, 1.0, 1.0, 1.0),
+"light_energy": 1.6,
+"light_indirect_energy": 1.0,
+"light_specular": 0.5,
+"omni_range": 12.0,
+"omni_attenuation": 1.0,
+"shadow_enabled": 1,
+"light_bake_mode": 2,
+"classname": "light",
+"origin": "320 -256 240"
+}
+
+[node name="light_3" type="OmniLight3D" parent="." groups=["lights"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 3.0, 7.5, 0.0)
+light_color = Color(1.0, 1.0, 1.0, 1.0)
+light_energy = 1.6
+light_indirect_energy = 1.0
+light_specular = 0.5
+omni_range = 12.0
+omni_attenuation = 1.0
+shadow_enabled = true
+light_bake_mode = 2
+metadata/properties = {
+"targetname": "",
+"style": 0,
+"light_color": Color(1.0, 1.0, 1.0, 1.0),
+"light_energy": 1.6,
+"light_indirect_energy": 1.0,
+"light_specular": 0.5,
+"omni_range": 12.0,
+"omni_attenuation": 1.0,
+"shadow_enabled": 1,
+"light_bake_mode": 2,
+"classname": "light",
+"origin": "0 96 240"
+}
+
+[node name="light_4" type="OmniLight3D" parent="." groups=["lights"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 9.0, 7.5, -8.0)
+light_color = Color(1.0, 1.0, 1.0, 1.0)
+light_energy = 1.6
+light_indirect_energy = 1.0
+light_specular = 0.5
+omni_range = 12.0
+omni_attenuation = 1.0
+shadow_enabled = true
+light_bake_mode = 2
+metadata/properties = {
+"targetname": "",
+"style": 1,
+"light_color": Color(1.0, 1.0, 1.0, 1.0),
+"light_energy": 1.6,
+"light_indirect_energy": 1.0,
+"light_specular": 0.5,
+"omni_range": 12.0,
+"omni_attenuation": 1.0,
+"shadow_enabled": 1,
+"light_bake_mode": 2,
+"classname": "light",
+"origin": "-256 288 240"
+}
+
+[node name="fps_pickup" parent="." instance=ExtResource("2_erd2m") groups=["collectibles"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -8.0, 1.0, -13.0)
+metadata/properties = {
+"targetname": "",
+"value": 1,
+"kind": "present",
+"classname": "fps_pickup",
+"origin": "-416 -256 32"
+}
+
+[node name="fps_pickup_1" parent="." instance=ExtResource("2_erd2m") groups=["collectibles"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -8.0, 1.0, -11.5)
+metadata/properties = {
+"targetname": "",
+"value": 1,
+"kind": "present",
+"classname": "fps_pickup",
+"origin": "-368 -256 32"
+}
+
+[node name="fps_pickup_2" parent="." instance=ExtResource("2_erd2m") groups=["collectibles"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -8.0, 1.0, -10.0)
+metadata/properties = {
+"targetname": "",
+"value": 1,
+"kind": "present",
+"classname": "fps_pickup",
+"origin": "-320 -256 32"
+}
+
+[node name="fps_pickup_3" parent="." instance=ExtResource("2_erd2m") groups=["collectibles"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -8.0, 1.0, -8.5)
+metadata/properties = {
+"targetname": "",
+"value": 1,
+"kind": "",
+"classname": "fps_pickup",
+"origin": "-272 -256 32"
+}
+
+[node name="fps_pickup_4" parent="." instance=ExtResource("2_erd2m") groups=["collectibles"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -8.0, 1.0, -7.0)
+metadata/properties = {
+"targetname": "",
+"value": 1,
+"kind": "",
+"classname": "fps_pickup",
+"origin": "-224 -256 32"
+}
+
+[node name="fps_pickup_5" parent="." instance=ExtResource("2_erd2m") groups=["collectibles"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -8.0, 1.0, -5.5)
+metadata/properties = {
+"targetname": "",
+"value": 1,
+"kind": "",
+"classname": "fps_pickup",
+"origin": "-176 -256 32"
+}
+
+[node name="func_door" type="AnimatableBody3D" parent="."]
+script = ExtResource("3_23awq")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -9.5, 1.5, -5.5)
+metadata/properties = {
+"targetname": "door_trigger",
+"target": "",
+"script": "res://scripts/mover.gd",
+"_phong": 0,
+"_phong_angle": 89.0,
+"speed": 180.0,
+"travel": 96.0,
+"wait": 3.0,
+"open_direction": "0 0 1",
+"classname": "func_door"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_door"]
+mesh = ExtResource("4_fssyb")
+surface_material_override/0 = SubResource("Material_metal")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_door"]
+shape = SubResource("Convex_func_door_0")
+
+[node name="trigger_multiple" type="Area3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -7.0, 1.5, -5.5)
+monitoring = true
+collision_mask = 1
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"target": "door_trigger",
+"script": "",
+"monitoring": 1,
+"collision_mask": 1,
+"wait": 1.0,
+"classname": "trigger_multiple"
+}
+metadata/target_paths = [NodePath("../func_door")]
+
+[node name="shape_0" type="CollisionShape3D" parent="trigger_multiple"]
+shape = SubResource("Convex_trigger_multiple_0")
+
+[node name="func_door_1" type="AnimatableBody3D" parent="."]
+script = ExtResource("3_23awq")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -9.5, 1.5, -0.5)
+metadata/properties = {
+"targetname": "door_button",
+"target": "",
+"script": "res://scripts/mover.gd",
+"_phong": 0,
+"_phong_angle": 89.0,
+"speed": 180.0,
+"travel": 96.0,
+"wait": 5.0,
+"open_direction": "0 0 1",
+"classname": "func_door"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_door_1"]
+mesh = ExtResource("5_z1dg1")
+surface_material_override/0 = SubResource("Material_metal")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_door_1"]
+shape = SubResource("Convex_func_door_1_0")
+
+[node name="func_button" type="Area3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -6.0, 0.125, -0.5)
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"target": "door_button",
+"script": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"classname": "func_button"
+}
+metadata/target_paths = [NodePath("../func_door_1")]
+
+[node name="mesh" type="MeshInstance3D" parent="func_button"]
+mesh = ExtResource("6_78m4x")
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_button"]
+shape = SubResource("Convex_func_button_0")
+
+[node name="fps_use_button" type="Area3D" parent="." groups=["usable"]]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -8.875, 1.75, 1.625)
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"target": "door_button",
+"_phong": 0,
+"_phong_angle": 89.0,
+"classname": "fps_use_button"
+}
+metadata/target_paths = [NodePath("../func_door_1")]
+
+[node name="mesh" type="MeshInstance3D" parent="fps_use_button"]
+mesh = ExtResource("7_yly80")
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_use_button"]
+shape = SubResource("Convex_fps_use_button_0")
+
+[node name="fps_key" parent="." instance=ExtResource("8_jkc9b") groups=["keys"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 9.0, 1.0, -14.0)
+metadata/properties = {
+"targetname": "",
+"key": "red",
+"color": Color(1.0, 0.235294, 0.235294, 1.0),
+"classname": "fps_key",
+"origin": "-448 288 32"
+}
+
+[node name="fps_key_door" type="AnimatableBody3D" parent="."]
+script = ExtResource("3_23awq")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -10.0, 1.5, 13.0)
+metadata/properties = {
+"targetname": "vault",
+"target": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"key": "red",
+"speed": 120.0,
+"travel": 64.0,
+"wait": 6.0,
+"open_direction": "0 1 0",
+"classname": "fps_key_door"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="fps_key_door"]
+mesh = ExtResource("9_262oh")
+surface_material_override/0 = SubResource("Material_metal")
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_key_door"]
+shape = SubResource("Convex_fps_key_door_0")
+
+[node name="fps_portal" parent="." instance=ExtResource("10_ggvh9") groups=["portals"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -4.0, 1.0, -14.0)
+metadata/properties = {
+"targetname": "portal_low",
+"target": "portal_high",
+"angles": "0 0 0",
+"color": Color(0.352941, 0.745098, 1.0, 1.0),
+"classname": "fps_portal",
+"origin": "-448 -128 32"
+}
+metadata/target_paths = [NodePath("../fps_portal_1")]
+
+[node name="fps_portal_1" parent="." instance=ExtResource("10_ggvh9") groups=["portals"]]
+transform = Transform3D(0.0, 0.0, 1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 10.0, 4.0, -14.0)
+metadata/properties = {
+"targetname": "portal_high",
+"target": "portal_low",
+"angles": "0 -90 0",
+"color": Color(0.352941, 0.745098, 1.0, 1.0),
+"classname": "fps_portal",
+"origin": "-448 320 128"
+}
+metadata/target_paths = [NodePath("../fps_portal")]
+
+[node name="fps_jump_pad" type="Area3D" parent="." groups=["jump_pads"]]
+script = ExtResource("11_jifrn")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 4.0, 0.125, -2.0)
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"strength": 17.0,
+"classname": "fps_jump_pad"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="fps_jump_pad"]
+mesh = ExtResource("12_8852s")
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_jump_pad"]
+shape = SubResource("Convex_fps_jump_pad_0")
+
+[node name="fps_ladder" type="Area3D" parent="." groups=["ladders"]]
+script = ExtResource("13_pio34")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 5.5, 1.5, 0.0)
+collision_layer = 4
+metadata/properties = {
+"targetname": "ladder",
+"speed": 0.0,
+"classname": "fps_ladder"
+}
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_ladder"]
+shape = SubResource("Convex_fps_ladder_0")
+
+[node name="fps_lift" type="AnimatableBody3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 5.0, 0.25, 6.0)
+metadata/properties = {
+"targetname": "lift",
+"target": "",
+"script": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"speed": 90.0,
+"travel": 96.0,
+"wait": 4.0,
+"open_direction": "0 0 1",
+"classname": "fps_lift"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="fps_lift"]
+mesh = ExtResource("14_vllsi")
+surface_material_override/0 = SubResource("Material_metal")
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_lift"]
+shape = SubResource("Convex_fps_lift_0")
+
+[node name="trigger_multiple_1" type="Area3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 2.875, 1.0, 6.0)
+monitoring = true
+collision_mask = 1
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"target": "lift",
+"script": "",
+"monitoring": 1,
+"collision_mask": 1,
+"wait": 1.0,
+"classname": "trigger_multiple"
+}
+metadata/target_paths = [NodePath("../fps_lift")]
+
+[node name="shape_0" type="CollisionShape3D" parent="trigger_multiple_1"]
+shape = SubResource("Convex_trigger_multiple_1_0")
+
+[node name="fps_water" type="Area3D" parent="." groups=["water"]]
+script = ExtResource("15_4pubr")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, -2.0, 10.0)
+collision_layer = 4
+metadata/properties = {
+"targetname": "pool",
+"_phong": 0,
+"_phong_angle": 89.0,
+"sink_speed": 0.8,
+"rise_speed": 3.5,
+"swim_speed": 3.0,
+"classname": "fps_water"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="fps_water"]
+mesh = ExtResource("16_jnmcg")
+surface_material_override/0 = ExtResource("17_f5688")
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_water"]
+shape = SubResource("Convex_fps_water_0")
+
+[node name="fps_hurt" type="Area3D" parent="." groups=["hurt"]]
+script = ExtResource("18_6qhey")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 9.0, 3.75, 9.0)
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"damage": 25.0,
+"interval": 0.5,
+"instant": 0,
+"message": "That burns",
+"classname": "fps_hurt"
+}
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_hurt"]
+shape = SubResource("Convex_fps_hurt_0")
+
+[node name="fps_barrel" parent="." instance=ExtResource("19_mkc80") groups=["barrels"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -3.0, 0.0, 4.0)
+metadata/properties = {
+"targetname": "",
+"health": 20,
+"damage": 55,
+"radius": 4.0,
+"push": 9.0,
+"fuse": 0.0,
+"classname": "fps_barrel",
+"origin": "128 -96 0"
+}
+
+[node name="fps_barrel_1" parent="." instance=ExtResource("19_mkc80") groups=["barrels"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -3.0, 0.0, 5.5)
+metadata/properties = {
+"targetname": "",
+"health": 20,
+"damage": 55,
+"radius": 4.0,
+"push": 9.0,
+"fuse": 0.0,
+"classname": "fps_barrel",
+"origin": "176 -96 0"
+}
+
+[node name="fps_barrel_2" parent="." instance=ExtResource("19_mkc80") groups=["barrels"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -3.0, 0.0, 7.0)
+metadata/properties = {
+"targetname": "",
+"health": 20,
+"damage": 55,
+"radius": 4.0,
+"push": 9.0,
+"fuse": 0.0,
+"classname": "fps_barrel",
+"origin": "224 -96 0"
+}
+
+[node name="fps_enemy" parent="." instance=ExtResource("20_el6cq") groups=["enemies"]]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -1.0, 3.0, 6.0)
+metadata/properties = {
+"targetname": "",
+"angles": "0 180 0",
+"classname": "fps_enemy",
+"origin": "192 -32 96"
+}
+
+[node name="fps_enemy_1" parent="." instance=ExtResource("20_el6cq") groups=["enemies"]]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -1.0, 3.0, 9.0)
+metadata/properties = {
+"targetname": "",
+"angles": "0 180 0",
+"classname": "fps_enemy",
+"origin": "288 -32 96"
+}
+
+[node name="func_rotate" type="AnimatableBody3D" parent="."]
+script = ExtResource("21_mkohv")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -0.5, 6.75, 0.0)
+metadata/properties = {
+"targetname": "",
+"script": "res://scripts/spinner.gd",
+"_phong": 0,
+"_phong_angle": 89.0,
+"axis": "0 0 1",
+"speed": 140.0,
+"start_on": 1,
+"classname": "func_rotate"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_rotate"]
+mesh = ExtResource("22_8c76m")
+surface_material_override/0 = SubResource("Material_metal")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_rotate"]
+shape = SubResource("Convex_func_rotate_0")
+
+[node name="func_shuttle" type="AnimatableBody3D" parent="."]
+script = ExtResource("23_ywe4h")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.25, 10.0)
+metadata/properties = {
+"targetname": "piston",
+"script": "res://scripts/shuttle.gd",
+"_phong": 0,
+"_phong_angle": 89.0,
+"direction": "0 1 0",
+"travel": 160.0,
+"speed": 70.0,
+"wait": 0.8,
+"start_on": 1,
+"classname": "func_shuttle"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_shuttle"]
+mesh = ExtResource("24_i63hu")
+surface_material_override/0 = SubResource("Material_crate")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_shuttle"]
+shape = SubResource("Convex_func_shuttle_0")
+
+[node name="fps_checkpoint" type="Area3D" parent="." groups=["checkpoints"]]
+script = ExtResource("25_z72eq")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.5, 0.0)
+collision_layer = 4
+metadata/properties = {
+"targetname": "halfway",
+"classname": "fps_checkpoint"
+}
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_checkpoint"]
+shape = SubResource("Convex_fps_checkpoint_0")
+
+[node name="fps_spawner" type="Node3D" parent="." groups=["spawners"]]
+script = ExtResource("26_lxuhg")
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 7.0, 4.0, 3.0)
+metadata/properties = {
+"targetname": "ambush",
+"count": 3,
+"interval": 0.8,
+"spread": 2.5,
+"classname": "fps_spawner",
+"origin": "96 224 128"
+}
+
+[node name="trigger_once" type="Area3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 5.5, 4.5, 3.5)
+collision_mask = 1
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"target": "ambush",
+"script": "",
+"collision_mask": 1,
+"classname": "trigger_once"
+}
+metadata/target_paths = [NodePath("../fps_spawner")]
+
+[node name="shape_0" type="CollisionShape3D" parent="trigger_once"]
+shape = SubResource("Convex_trigger_once_0")
+
+[node name="fps_smoke" parent="." instance=ExtResource("27_3k9i2") groups=["particles"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 7.0, 3.0, -9.0)
+metadata/properties = {
+"targetname": "",
+"amount": 26,
+"lifetime": 3.0,
+"size": 0.7,
+"grow": 2.4,
+"speed": 1.1,
+"spread": 20.0,
+"swirl": 0.3,
+"color": Color(0.784314, 0.784314, 0.803922, 1.0),
+"alpha": 0.35,
+"start_on": 1,
+"classname": "fps_smoke",
+"origin": "-288 224 96"
+}
+
+[node name="fps_particles" parent="." instance=ExtResource("27_3k9i2") groups=["particles"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 3.0, 0.75, 11.0)
+metadata/properties = {
+"targetname": "",
+"amount": 40,
+"lifetime": 1.2,
+"size": 0.1,
+"grow": 1.0,
+"speed": 4.0,
+"direction": "0 1 0",
+"spread": 40.0,
+"swirl": 0.0,
+"gravity": "0 -6 0",
+"drag": 0.2,
+"color": Color(1.0, 0.745098, 0.352941, 1.0),
+"alpha": 0.9,
+"from": "0.1 0.1 0.1",
+"carried": 0,
+"start_on": 1,
+"classname": "fps_particles",
+"origin": "352 96 24"
+}
+
+[node name="fps_cloud" parent="." instance=ExtResource("28_18hp5") groups=["decoration"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 9.0, 0.0)
+metadata/properties = {
+"classname": "fps_cloud",
+"origin": "0 0 288"
+}
+
+[node name="prop_static" parent="." instance=ExtResource("29_np80t")]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 7.0, 3.0, 14.0)
+metadata/properties = {
+"targetname": "",
+"angles": "0 0 0",
+"scene": "res://objects/platform.tscn",
+"scale": "1",
+"classname": "prop_static",
+"origin": "448 224 96"
+}
+
+[node name="func_door_2" type="AnimatableBody3D" parent="."]
+script = ExtResource("3_23awq")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 10.5, 1.5, 12.5)
+metadata/properties = {
+"targetname": "side_door",
+"target": "",
+"script": "res://scripts/mover.gd",
+"_phong": 0,
+"_phong_angle": 89.0,
+"speed": 160.0,
+"travel": 96.0,
+"wait": 0.0,
+"open_direction": "0 0 1",
+"classname": "func_door"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_door_2"]
+mesh = ExtResource("30_m0cun")
+surface_material_override/0 = SubResource("Material_wood")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_door_2"]
+shape = SubResource("Convex_func_door_2_0")
+
+[node name="fps_sign" type="Area3D" parent="." groups=["signs"]]
+script = ExtResource("31_2lofg")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 8.5, 4.5, 12.5)
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"title": "The ledge",
+"text": "Three presents and the door opens",
+"seconds": 4.0,
+"once": 1,
+"classname": "fps_sign"
+}
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_sign"]
+shape = SubResource("Convex_fps_sign_0")
+
+[node name="fps_gate" type="Node3D" parent="." groups=["gates"]]
+script = ExtResource("32_c4xf4")
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 4.0, 4.0, 11.0)
+metadata/properties = {
+"targetname": "present_gate",
+"target": "side_door",
+"needs_count": 3,
+"needs_kind": "present",
+"needs_key": "",
+"needs_flag": "",
+"message": "The door swings open",
+"classname": "fps_gate",
+"origin": "352 128 128"
+}
+metadata/target_paths = [NodePath("../func_door_2")]
+
+[node name="fps_exit" type="Area3D" parent="." groups=["exits"]]
+script = ExtResource("33_td6pv")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 10.5, 4.5, 14.5)
+collision_layer = 4
+metadata/properties = {
+"targetname": "way_out",
+"next_map": "arena",
+"message": "Off to the arena",
+"needs": "",
+"classname": "fps_exit"
+}
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_exit"]
+shape = SubResource("Convex_fps_exit_0")
+
+[connection signal="body_entered" from="trigger_multiple" to="func_door" method="_on_triggered"]
+[connection signal="body_entered" from="func_button" to="func_door_1" method="_on_triggered"]
+[connection signal="body_entered" from="trigger_once" to="fps_spawner" method="_on_triggered"]

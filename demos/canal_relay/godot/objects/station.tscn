@@ -1,0 +1,21 @@
+[gd_scene load_steps=5 format=3]
+[ext_resource type="Script" path="res://scripts/station.gd" id="1"]
+[sub_resource type="CylinderMesh" id="base"]
+top_radius = 0.35
+bottom_radius = 0.5
+height = 0.9
+radial_segments = 8
+[sub_resource type="SphereMesh" id="lamp"]
+radius = 0.25
+height = 0.5
+[sub_resource type="StandardMaterial3D" id="material"]
+albedo_color = Color(0.16,0.31,0.35,1)
+[node name="Station" type="Node3D"]
+script = ExtResource("1")
+[node name="Base" type="MeshInstance3D" parent="."]
+position = Vector3(0,0.45,0)
+mesh = SubResource("base")
+material_override = SubResource("material")
+[node name="Lamp" type="MeshInstance3D" parent="."]
+position = Vector3(0,1.1,0)
+mesh = SubResource("lamp")

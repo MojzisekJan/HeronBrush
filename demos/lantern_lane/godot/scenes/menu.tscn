@@ -1,0 +1,96 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/menu.gd" id="1_menu"]
+[ext_resource type="FontFile" path="res://fonts/lilita_one_regular.ttf" id="2_menu"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_menu"]
+font = ExtResource("2_menu")
+font_size = 64
+outline_size = 10
+outline_color = Color(0, 0, 0, 0.47)
+
+[node name="Menu" type="Control" unique_id=1139726106]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_menu")
+
+[node name="Background" type="ColorRect" parent="." unique_id=618242284]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.09, 0.11, 0.16, 1)
+
+[node name="Center" type="CenterContainer" parent="." unique_id=1443293342]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Root" type="VBoxContainer" parent="Center" unique_id=766423761]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="Title" type="Label" parent="Center/Root" unique_id=1771527171]
+layout_mode = 2
+text = "ARENA"
+label_settings = SubResource("LabelSettings_menu")
+horizontal_alignment = 1
+
+[node name="Buttons" type="VBoxContainer" parent="Center/Root" unique_id=645730036]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NewGame" type="Button" parent="Center/Root/Buttons" unique_id=231125290]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "New game"
+
+[node name="Continue" type="Button" parent="Center/Root/Buttons" unique_id=1049582349]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "Continue"
+
+[node name="Levels_Button" type="Button" parent="Center/Root/Buttons" unique_id=1126686366]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "Choose level"
+
+[node name="Settings" type="Button" parent="Center/Root/Buttons" unique_id=1802518998]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "Settings"
+
+[node name="Quit" type="Button" parent="Center/Root/Buttons" unique_id=279738845]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "Quit"
+
+[node name="Levels" type="VBoxContainer" parent="Center/Root" unique_id=1780443219]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LevelsTitle" type="Label" parent="Center/Root/Levels" unique_id=1716999581]
+layout_mode = 2
+text = "Choose a level"
+horizontal_alignment = 1
+
+[node name="Back" type="Button" parent="Center/Root/Levels" unique_id=1214921522]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "Back"

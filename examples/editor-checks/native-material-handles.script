@@ -1,0 +1,24 @@
+wait 0.8
+size 1360 900
+wait 0.3
+snapshot base
+key A cmd
+key F
+click 196 293
+key 3 cmd
+wait 0.3
+click 1050 122
+wait 0.3
+click 1080 315
+move 900 400
+wait 0.2
+snapshot changed
+shot material-applied
+key Z cmd
+snapshot undo
+key Z cmd,shift
+snapshot redo
+key S cmd
+wait 0.2
+snapshot saved
+quit

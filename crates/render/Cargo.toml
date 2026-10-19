@@ -1,0 +1,15 @@
+[package]
+name = "render"
+description = "The editor's 3D renderer, context-agnostic: glow over whatever GL context the frontend brings"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+map_model = { path = "../map_model" }
+geometry_math = { path = "../geometry_math" }
+glow = "0.18.0"
+
+[lints]
+workspace = true

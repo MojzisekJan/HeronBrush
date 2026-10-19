@@ -1,0 +1,38 @@
+wait 0.8
+size 1360 900
+wait 0.3
+key O
+snapshot base
+click 695 272
+snapshot picked_2d
+click 833 272 cmd
+snapshot added_2d
+click 695 272 cmd
+snapshot removed_2d
+click 695 272 cmd
+snapshot selected_two
+shot fillet-multiselect
+click 661 238
+move 1100 850
+snapshot preview
+key Enter
+snapshot changed
+key Z cmd
+snapshot undo
+click 980 400
+snapshot cleared
+click 195 320
+snapshot picked_3d
+click 290 260 cmd
+snapshot added_3d
+click 290 260 cmd
+snapshot removed_3d
+click 980 400 cmd
+snapshot kept_on_ctrl_empty
+click 980 400
+snapshot cleared_again
+key S cmd
+wait 0.2
+snapshot saved
+shot fillet-empty
+quit

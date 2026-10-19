@@ -1,0 +1,13 @@
+[package]
+name = "expression_lang"
+description = "Entity-definition expressions and interpolation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+text_utils = { path = "../text_utils" }
+
+[lints]
+workspace = true

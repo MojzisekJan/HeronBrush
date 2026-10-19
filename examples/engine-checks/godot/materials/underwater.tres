@@ -1,0 +1,14 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://materials/underwater.gdshader" id="1_underwater"]
+
+[resource]
+resource_name = "underwater"
+shader = ExtResource("1_underwater")
+shader_parameter/water_level = 0.0
+shader_parameter/underwater_colour = Color(0.07, 0.52, 0.72, 1)
+shader_parameter/absorption = 0.4
+shader_parameter/tint = 0.55
+shader_parameter/wobble = 0.004
+shader_parameter/wobble_speed = 0.6
+shader_parameter/vignette = 0.35

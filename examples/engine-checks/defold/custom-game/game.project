@@ -1,0 +1,14 @@
+[project]
+title = Heron Brush custom game verification
+[bootstrap]
+main_collection = /main/workshop.collectionc
+[input]
+game_binding = /main/empty.input_bindingc
+[physics]
+type = 3D
+gravity_y = -10
+scale = 1
+[display]
+width = 320
+height = 240
+update_frequency = 60

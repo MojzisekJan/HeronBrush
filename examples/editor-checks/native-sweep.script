@@ -1,0 +1,32 @@
+wait 0.8
+snapshot base
+click 740 230
+click 18 53
+click 250 250 shift
+snapshot selected
+click 1150 85
+click 1100 122
+wait 0.3
+click 1100 157
+wait 0.3
+click 1100 191
+wait 0.3
+click 1205 278 double
+key A cmd
+text 64
+key Enter
+click 1265 278 double
+key A cmd
+text 64
+key Enter
+click 640 18
+click 1185 458
+wait 0.2
+shot sweep
+snapshot changed
+key Z cmd
+wait 0.2
+snapshot undo
+key S cmd
+wait 0.2
+quit

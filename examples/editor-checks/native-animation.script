@@ -1,0 +1,23 @@
+wait 0.8
+snapshot base
+click 740 230
+click 355 18
+click 410 53
+wait 0.3
+click 409 330
+wait 0.3
+click 438 399
+wait 0.2
+snapshot changed
+click 1300 640
+wait 0.2
+click 120 361
+wait 0.8
+shot playing
+click 120 361
+key Z cmd
+wait 0.2
+snapshot undo
+key S cmd
+wait 0.2
+quit

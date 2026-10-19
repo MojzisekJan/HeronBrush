@@ -1,0 +1,14 @@
+wait 0.8
+snapshot base
+click 740 230
+key V
+drag 845 156 885 156
+wait 0.2
+shot vertex
+snapshot changed
+key Z cmd
+wait 0.2
+snapshot undo
+key S cmd
+wait 0.2
+quit

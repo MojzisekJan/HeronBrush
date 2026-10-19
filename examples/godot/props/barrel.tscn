@@ -1,0 +1,20 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="CylinderMesh" id="Cylinder_barrel"]
+top_radius = 0.35
+bottom_radius = 0.35
+height = 1.0
+
+[sub_resource type="CylinderShape3D" id="Shape_barrel"]
+height = 1.0
+radius = 0.35
+
+[node name="barrel" type="StaticBody3D"]
+
+[node name="mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("Cylinder_barrel")
+
+[node name="shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("Shape_barrel")

@@ -1,0 +1,10 @@
+wait 0.8
+size 1100 720
+wait 0.3
+click 54 18
+wait 0.2
+click 80 49
+wait 0.5
+snapshot welcome-dialog
+shot welcome-dialog
+quit

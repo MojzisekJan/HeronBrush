@@ -1,0 +1,3152 @@
+{
+  "entities": [
+    {
+      "classname": "worldspawn",
+      "collision": {
+        "kind": "trimesh",
+        "mesh": 1,
+        "parts": 1
+      },
+      "mesh": "demo/worldspawn.glb",
+      "name": "worldspawn",
+      "properties": {
+        "_cull_interior_faces": {
+          "type": "int",
+          "value": 1
+        },
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "_vertex_merge_distance": {
+          "type": "float",
+          "value": 0.0
+        },
+        "ambient_light_color": {
+          "type": "color",
+          "value": [
+            0.6862745098039216,
+            0.7058823529411765,
+            0.7647058823529411,
+            1.0
+          ]
+        },
+        "ambient_light_energy": {
+          "type": "float",
+          "value": 1.0
+        },
+        "classname": {
+          "type": "string",
+          "value": "worldspawn"
+        },
+        "fog_density": {
+          "type": "float",
+          "value": 0.008
+        },
+        "fog_enabled": {
+          "type": "int",
+          "value": 1
+        },
+        "fog_light_color": {
+          "type": "color",
+          "value": [
+            0.7843137254901961,
+            0.803921568627451,
+            0.8627450980392157,
+            1.0
+          ]
+        },
+        "mapversion": {
+          "type": "string",
+          "value": "220"
+        },
+        "occluder_min_size": {
+          "type": "float",
+          "value": 96.0
+        },
+        "occluders": {
+          "type": "int",
+          "value": 1
+        },
+        "sky": {
+          "type": "int",
+          "value": 1
+        },
+        "sky_horizon_color": {
+          "type": "color",
+          "value": [
+            0.8627450980392157,
+            0.803921568627451,
+            0.7058823529411765,
+            1.0
+          ]
+        },
+        "sky_top_color": {
+          "type": "color",
+          "value": [
+            0.23529411764705882,
+            0.43137254901960786,
+            0.7843137254901961,
+            1.0
+          ]
+        },
+        "wad": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "concrete"
+        },
+        {
+          "primitive": 1,
+          "texture": "grass"
+        },
+        {
+          "primitive": 2,
+          "texture": "dirt"
+        },
+        {
+          "primitive": 3,
+          "texture": "wall"
+        },
+        {
+          "primitive": 4,
+          "texture": "metal"
+        },
+        {
+          "primitive": 5,
+          "texture": "crate"
+        },
+        {
+          "primitive": 6,
+          "texture": "bbpaint_58746627617e1457"
+        },
+        {
+          "primitive": 7,
+          "texture": "bbpaint_37e4acaa9504e424"
+        }
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "classname": "info_player_start",
+      "name": "info_player_start",
+      "properties": {
+        "angles": {
+          "type": "string",
+          "value": "0 45 0"
+        },
+        "classname": {
+          "type": "string",
+          "value": "info_player_start"
+        },
+        "origin": {
+          "type": "string",
+          "value": "-448 -320 24"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": false,
+      "tags": [
+        "spawn_points"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          -0.0,
+          3.9269908169872414,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -10.0,
+          0.75,
+          -14.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_weapon_pickup",
+      "name": "fps_weapon_pickup",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_weapon_pickup"
+        },
+        "origin": {
+          "type": "string",
+          "value": "-384 -320 24"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        },
+        "weapon": {
+          "type": "string",
+          "value": "blaster-repeater"
+        }
+      },
+      "solid": false,
+      "tags": [
+        "pickups"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -10.0,
+          0.75,
+          -12.0
+        ]
+      }
+    },
+    {
+      "classname": "light_sun",
+      "name": "light_sun",
+      "properties": {
+        "angles": {
+          "type": "string",
+          "value": "-50 135 0"
+        },
+        "classname": {
+          "type": "string",
+          "value": "light_sun"
+        },
+        "directional_shadow_max_distance": {
+          "type": "float",
+          "value": 100.0
+        },
+        "light_color": {
+          "type": "color",
+          "value": [
+            1.0,
+            0.9803921568627451,
+            0.9215686274509803,
+            1.0
+          ]
+        },
+        "light_energy": {
+          "type": "float",
+          "value": 0.8
+        },
+        "origin": {
+          "type": "string",
+          "value": "0 0 288"
+        },
+        "shadow_enabled": {
+          "type": "int",
+          "value": 1
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": false,
+      "tags": [
+        "lights"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.8726646259971648,
+          5.497787143782138,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          0.0,
+          9.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "classname": "light",
+      "name": "light",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "light"
+        },
+        "light_bake_mode": {
+          "type": "int",
+          "value": 2
+        },
+        "light_color": {
+          "type": "color",
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "light_energy": {
+          "type": "float",
+          "value": 1.6
+        },
+        "light_indirect_energy": {
+          "type": "float",
+          "value": 1.0
+        },
+        "light_specular": {
+          "type": "float",
+          "value": 0.5
+        },
+        "omni_attenuation": {
+          "type": "float",
+          "value": 1.0
+        },
+        "omni_range": {
+          "type": "float",
+          "value": 12.0
+        },
+        "origin": {
+          "type": "string",
+          "value": "-320 -256 240"
+        },
+        "shadow_enabled": {
+          "type": "int",
+          "value": 1
+        },
+        "style": {
+          "type": "int",
+          "value": 0
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": false,
+      "tags": [
+        "lights"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -8.0,
+          7.5,
+          -10.0
+        ]
+      }
+    },
+    {
+      "classname": "light",
+      "name": "light_1",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "light"
+        },
+        "light_bake_mode": {
+          "type": "int",
+          "value": 2
+        },
+        "light_color": {
+          "type": "color",
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "light_energy": {
+          "type": "float",
+          "value": 1.6
+        },
+        "light_indirect_energy": {
+          "type": "float",
+          "value": 1.0
+        },
+        "light_specular": {
+          "type": "float",
+          "value": 0.5
+        },
+        "omni_attenuation": {
+          "type": "float",
+          "value": 1.0
+        },
+        "omni_range": {
+          "type": "float",
+          "value": 12.0
+        },
+        "origin": {
+          "type": "string",
+          "value": "0 -256 240"
+        },
+        "shadow_enabled": {
+          "type": "int",
+          "value": 1
+        },
+        "style": {
+          "type": "int",
+          "value": 0
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": false,
+      "tags": [
+        "lights"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -8.0,
+          7.5,
+          0.0
+        ]
+      }
+    },
+    {
+      "classname": "light",
+      "name": "light_2",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "light"
+        },
+        "light_bake_mode": {
+          "type": "int",
+          "value": 2
+        },
+        "light_color": {
+          "type": "color",
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "light_energy": {
+          "type": "float",
+          "value": 1.6
+        },
+        "light_indirect_energy": {
+          "type": "float",
+          "value": 1.0
+        },
+        "light_specular": {
+          "type": "float",
+          "value": 0.5
+        },
+        "omni_attenuation": {
+          "type": "float",
+          "value": 1.0
+        },
+        "omni_range": {
+          "type": "float",
+          "value": 12.0
+        },
+        "origin": {
+          "type": "string",
+          "value": "320 -256 240"
+        },
+        "shadow_enabled": {
+          "type": "int",
+          "value": 1
+        },
+        "style": {
+          "type": "int",
+          "value": 0
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": false,
+      "tags": [
+        "lights"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -8.0,
+          7.5,
+          10.0
+        ]
+      }
+    },
+    {
+      "classname": "light",
+      "name": "light_3",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "light"
+        },
+        "light_bake_mode": {
+          "type": "int",
+          "value": 2
+        },
+        "light_color": {
+          "type": "color",
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "light_energy": {
+          "type": "float",
+          "value": 1.6
+        },
+        "light_indirect_energy": {
+          "type": "float",
+          "value": 1.0
+        },
+        "light_specular": {
+          "type": "float",
+          "value": 0.5
+        },
+        "omni_attenuation": {
+          "type": "float",
+          "value": 1.0
+        },
+        "omni_range": {
+          "type": "float",
+          "value": 12.0
+        },
+        "origin": {
+          "type": "string",
+          "value": "0 96 240"
+        },
+        "shadow_enabled": {
+          "type": "int",
+          "value": 1
+        },
+        "style": {
+          "type": "int",
+          "value": 0
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": false,
+      "tags": [
+        "lights"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          3.0,
+          7.5,
+          0.0
+        ]
+      }
+    },
+    {
+      "classname": "light",
+      "name": "light_4",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "light"
+        },
+        "light_bake_mode": {
+          "type": "int",
+          "value": 2
+        },
+        "light_color": {
+          "type": "color",
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "light_energy": {
+          "type": "float",
+          "value": 1.6
+        },
+        "light_indirect_energy": {
+          "type": "float",
+          "value": 1.0
+        },
+        "light_specular": {
+          "type": "float",
+          "value": 0.5
+        },
+        "omni_attenuation": {
+          "type": "float",
+          "value": 1.0
+        },
+        "omni_range": {
+          "type": "float",
+          "value": 12.0
+        },
+        "origin": {
+          "type": "string",
+          "value": "-256 288 240"
+        },
+        "shadow_enabled": {
+          "type": "int",
+          "value": 1
+        },
+        "style": {
+          "type": "int",
+          "value": 1
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": false,
+      "tags": [
+        "lights"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          9.0,
+          7.5,
+          -8.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_pickup",
+      "name": "fps_pickup",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_pickup"
+        },
+        "kind": {
+          "type": "string",
+          "value": "present"
+        },
+        "origin": {
+          "type": "string",
+          "value": "-416 -256 32"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        },
+        "value": {
+          "type": "int",
+          "value": 1
+        }
+      },
+      "scene": "res://objects/pickup.tscn",
+      "solid": false,
+      "tags": [
+        "collectibles"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -8.0,
+          1.0,
+          -13.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_pickup",
+      "name": "fps_pickup_1",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_pickup"
+        },
+        "kind": {
+          "type": "string",
+          "value": "present"
+        },
+        "origin": {
+          "type": "string",
+          "value": "-368 -256 32"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        },
+        "value": {
+          "type": "int",
+          "value": 1
+        }
+      },
+      "scene": "res://objects/pickup.tscn",
+      "solid": false,
+      "tags": [
+        "collectibles"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -8.0,
+          1.0,
+          -11.5
+        ]
+      }
+    },
+    {
+      "classname": "fps_pickup",
+      "name": "fps_pickup_2",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_pickup"
+        },
+        "kind": {
+          "type": "string",
+          "value": "present"
+        },
+        "origin": {
+          "type": "string",
+          "value": "-320 -256 32"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        },
+        "value": {
+          "type": "int",
+          "value": 1
+        }
+      },
+      "scene": "res://objects/pickup.tscn",
+      "solid": false,
+      "tags": [
+        "collectibles"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -8.0,
+          1.0,
+          -10.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_pickup",
+      "name": "fps_pickup_3",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_pickup"
+        },
+        "kind": {
+          "type": "string",
+          "value": ""
+        },
+        "origin": {
+          "type": "string",
+          "value": "-272 -256 32"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        },
+        "value": {
+          "type": "int",
+          "value": 1
+        }
+      },
+      "scene": "res://objects/pickup.tscn",
+      "solid": false,
+      "tags": [
+        "collectibles"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -8.0,
+          1.0,
+          -8.5
+        ]
+      }
+    },
+    {
+      "classname": "fps_pickup",
+      "name": "fps_pickup_4",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_pickup"
+        },
+        "kind": {
+          "type": "string",
+          "value": ""
+        },
+        "origin": {
+          "type": "string",
+          "value": "-224 -256 32"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        },
+        "value": {
+          "type": "int",
+          "value": 1
+        }
+      },
+      "scene": "res://objects/pickup.tscn",
+      "solid": false,
+      "tags": [
+        "collectibles"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -8.0,
+          1.0,
+          -7.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_pickup",
+      "name": "fps_pickup_5",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_pickup"
+        },
+        "kind": {
+          "type": "string",
+          "value": ""
+        },
+        "origin": {
+          "type": "string",
+          "value": "-176 -256 32"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        },
+        "value": {
+          "type": "int",
+          "value": 1
+        }
+      },
+      "scene": "res://objects/pickup.tscn",
+      "solid": false,
+      "tags": [
+        "collectibles"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -8.0,
+          1.0,
+          -5.5
+        ]
+      }
+    },
+    {
+      "classname": "func_door",
+      "collision": {
+        "kind": "convex",
+        "mesh": 1,
+        "parts": 1
+      },
+      "mesh": "demo/func_door.glb",
+      "name": "func_door",
+      "properties": {
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "classname": {
+          "type": "string",
+          "value": "func_door"
+        },
+        "open_direction": {
+          "type": "string",
+          "value": "0 0 1"
+        },
+        "script": {
+          "type": "string",
+          "value": "res://scripts/mover.gd"
+        },
+        "speed": {
+          "type": "float",
+          "value": 180.0
+        },
+        "target": {
+          "type": "string",
+          "value": ""
+        },
+        "targetname": {
+          "type": "string",
+          "value": "door_trigger"
+        },
+        "travel": {
+          "type": "float",
+          "value": 96.0
+        },
+        "wait": {
+          "type": "float",
+          "value": 3.0
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "metal"
+        }
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -9.5,
+          1.5,
+          -5.5
+        ]
+      }
+    },
+    {
+      "classname": "trigger_multiple",
+      "collision": {
+        "kind": "convex",
+        "mesh": 0,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/trigger_multiple.glb",
+      "name": "trigger_multiple",
+      "properties": {
+        "_heron_trigger_volumes": {
+          "type": "string",
+          "value": "[[[-0.0,-0.0,-1.0,7.0],[-1.0,-0.0,-0.0,8.0],[-0.0,-1.0,-0.0,0.0],[0.0,1.0,0.0,3.0],[1.0,0.0,0.0,-6.0],[0.0,0.0,1.0,-4.0]]]"
+        },
+        "classname": {
+          "type": "string",
+          "value": "trigger_multiple"
+        },
+        "collision_mask": {
+          "type": "int",
+          "value": 1
+        },
+        "monitoring": {
+          "type": "int",
+          "value": 1
+        },
+        "script": {
+          "type": "string",
+          "value": ""
+        },
+        "target": {
+          "type": "string",
+          "value": "door_trigger"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        },
+        "wait": {
+          "type": "float",
+          "value": 1.0
+        }
+      },
+      "solid": true,
+      "targets": [
+        "func_door"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -7.0,
+          1.5,
+          -5.5
+        ]
+      }
+    },
+    {
+      "classname": "func_door",
+      "collision": {
+        "kind": "convex",
+        "mesh": 1,
+        "parts": 1
+      },
+      "mesh": "demo/func_door_1.glb",
+      "name": "func_door_1",
+      "properties": {
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "classname": {
+          "type": "string",
+          "value": "func_door"
+        },
+        "open_direction": {
+          "type": "string",
+          "value": "0 0 1"
+        },
+        "script": {
+          "type": "string",
+          "value": "res://scripts/mover.gd"
+        },
+        "speed": {
+          "type": "float",
+          "value": 180.0
+        },
+        "target": {
+          "type": "string",
+          "value": ""
+        },
+        "targetname": {
+          "type": "string",
+          "value": "door_button"
+        },
+        "travel": {
+          "type": "float",
+          "value": 96.0
+        },
+        "wait": {
+          "type": "float",
+          "value": 5.0
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "metal"
+        }
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -9.5,
+          1.5,
+          -0.5
+        ]
+      }
+    },
+    {
+      "classname": "func_button",
+      "collision": {
+        "kind": "convex",
+        "mesh": 1,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/func_button.glb",
+      "name": "func_button",
+      "properties": {
+        "_heron_trigger_volumes": {
+          "type": "string",
+          "value": "[[[-0.0,-0.0,-1.0,2.0],[-1.0,-0.0,-0.0,7.0],[-0.0,-1.0,-0.0,0.0],[0.0,1.0,0.0,0.25],[1.0,0.0,0.0,-5.0],[0.0,0.0,1.0,1.0]]]"
+        },
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "classname": {
+          "type": "string",
+          "value": "func_button"
+        },
+        "script": {
+          "type": "string",
+          "value": ""
+        },
+        "target": {
+          "type": "string",
+          "value": "door_button"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "hazard"
+        }
+      ],
+      "targets": [
+        "func_door_1"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -6.0,
+          0.125,
+          -0.5
+        ]
+      }
+    },
+    {
+      "classname": "fps_use_button",
+      "collision": {
+        "kind": "convex",
+        "mesh": 1,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/fps_use_button.glb",
+      "name": "fps_use_button",
+      "properties": {
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "classname": {
+          "type": "string",
+          "value": "fps_use_button"
+        },
+        "target": {
+          "type": "string",
+          "value": "door_button"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "hazard"
+        }
+      ],
+      "tags": [
+        "usable"
+      ],
+      "targets": [
+        "func_door_1"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -8.875,
+          1.75,
+          1.625
+        ]
+      }
+    },
+    {
+      "classname": "fps_key",
+      "name": "fps_key",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_key"
+        },
+        "color": {
+          "type": "color",
+          "value": [
+            1.0,
+            0.23529411764705882,
+            0.23529411764705882,
+            1.0
+          ]
+        },
+        "key": {
+          "type": "string",
+          "value": "red"
+        },
+        "origin": {
+          "type": "string",
+          "value": "-448 288 32"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "scene": "res://objects/key.tscn",
+      "solid": false,
+      "tags": [
+        "keys"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          9.0,
+          1.0,
+          -14.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_key_door",
+      "collision": {
+        "kind": "convex",
+        "mesh": 1,
+        "parts": 1
+      },
+      "mesh": "demo/fps_key_door.glb",
+      "name": "fps_key_door",
+      "properties": {
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "classname": {
+          "type": "string",
+          "value": "fps_key_door"
+        },
+        "key": {
+          "type": "string",
+          "value": "red"
+        },
+        "open_direction": {
+          "type": "string",
+          "value": "0 1 0"
+        },
+        "speed": {
+          "type": "float",
+          "value": 120.0
+        },
+        "target": {
+          "type": "string",
+          "value": ""
+        },
+        "targetname": {
+          "type": "string",
+          "value": "vault"
+        },
+        "travel": {
+          "type": "float",
+          "value": 64.0
+        },
+        "wait": {
+          "type": "float",
+          "value": 6.0
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "metal"
+        }
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -10.0,
+          1.5,
+          13.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_portal",
+      "name": "fps_portal",
+      "properties": {
+        "angles": {
+          "type": "string",
+          "value": "0 0 0"
+        },
+        "classname": {
+          "type": "string",
+          "value": "fps_portal"
+        },
+        "color": {
+          "type": "color",
+          "value": [
+            0.35294117647058826,
+            0.7450980392156863,
+            1.0,
+            1.0
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "value": "-448 -128 32"
+        },
+        "target": {
+          "type": "string",
+          "value": "portal_high"
+        },
+        "targetname": {
+          "type": "string",
+          "value": "portal_low"
+        }
+      },
+      "scene": "res://objects/portal.tscn",
+      "solid": false,
+      "tags": [
+        "portals"
+      ],
+      "targets": [
+        "fps_portal_1"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          -0.0,
+          3.141592653589793,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -4.0,
+          1.0,
+          -14.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_portal",
+      "name": "fps_portal_1",
+      "properties": {
+        "angles": {
+          "type": "string",
+          "value": "0 -90 0"
+        },
+        "classname": {
+          "type": "string",
+          "value": "fps_portal"
+        },
+        "color": {
+          "type": "color",
+          "value": [
+            0.35294117647058826,
+            0.7450980392156863,
+            1.0,
+            1.0
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "value": "-448 320 128"
+        },
+        "target": {
+          "type": "string",
+          "value": "portal_low"
+        },
+        "targetname": {
+          "type": "string",
+          "value": "portal_high"
+        }
+      },
+      "scene": "res://objects/portal.tscn",
+      "solid": false,
+      "tags": [
+        "portals"
+      ],
+      "targets": [
+        "fps_portal"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          -0.0,
+          1.5707963267948966,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          10.0,
+          4.0,
+          -14.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_jump_pad",
+      "collision": {
+        "kind": "convex",
+        "mesh": 1,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/fps_jump_pad.glb",
+      "name": "fps_jump_pad",
+      "properties": {
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "classname": {
+          "type": "string",
+          "value": "fps_jump_pad"
+        },
+        "strength": {
+          "type": "float",
+          "value": 17.0
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "hazard"
+        }
+      ],
+      "tags": [
+        "jump_pads"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          4.0,
+          0.125,
+          -2.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_ladder",
+      "collision": {
+        "kind": "convex",
+        "mesh": 0,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/fps_ladder.glb",
+      "name": "fps_ladder",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_ladder"
+        },
+        "speed": {
+          "type": "float",
+          "value": 0.0
+        },
+        "targetname": {
+          "type": "string",
+          "value": "ladder"
+        }
+      },
+      "solid": true,
+      "tags": [
+        "ladders"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          5.5,
+          1.5,
+          0.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_lift",
+      "collision": {
+        "kind": "convex",
+        "mesh": 1,
+        "parts": 1
+      },
+      "mesh": "demo/fps_lift.glb",
+      "name": "fps_lift",
+      "properties": {
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "classname": {
+          "type": "string",
+          "value": "fps_lift"
+        },
+        "open_direction": {
+          "type": "string",
+          "value": "0 0 1"
+        },
+        "script": {
+          "type": "string",
+          "value": ""
+        },
+        "speed": {
+          "type": "float",
+          "value": 90.0
+        },
+        "target": {
+          "type": "string",
+          "value": ""
+        },
+        "targetname": {
+          "type": "string",
+          "value": "lift"
+        },
+        "travel": {
+          "type": "float",
+          "value": 96.0
+        },
+        "wait": {
+          "type": "float",
+          "value": 4.0
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "metal"
+        }
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          5.0,
+          0.25,
+          6.0
+        ]
+      }
+    },
+    {
+      "classname": "trigger_multiple",
+      "collision": {
+        "kind": "convex",
+        "mesh": 0,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/trigger_multiple_1.glb",
+      "name": "trigger_multiple_1",
+      "properties": {
+        "_heron_trigger_volumes": {
+          "type": "string",
+          "value": "[[[-0.0,-0.0,-1.0,-5.0],[-1.0,-0.0,-0.0,-2.0],[-0.0,-1.0,-0.0,-0.0],[0.0,1.0,0.0,2.0],[1.0,0.0,0.0,3.75],[0.0,0.0,1.0,7.0]]]"
+        },
+        "classname": {
+          "type": "string",
+          "value": "trigger_multiple"
+        },
+        "collision_mask": {
+          "type": "int",
+          "value": 1
+        },
+        "monitoring": {
+          "type": "int",
+          "value": 1
+        },
+        "script": {
+          "type": "string",
+          "value": ""
+        },
+        "target": {
+          "type": "string",
+          "value": "lift"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        },
+        "wait": {
+          "type": "float",
+          "value": 1.0
+        }
+      },
+      "solid": true,
+      "targets": [
+        "fps_lift"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          2.875,
+          1.0,
+          6.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_water",
+      "collision": {
+        "kind": "convex",
+        "mesh": 1,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/fps_water.glb",
+      "name": "fps_water",
+      "properties": {
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "classname": {
+          "type": "string",
+          "value": "fps_water"
+        },
+        "rise_speed": {
+          "type": "float",
+          "value": 3.5
+        },
+        "sink_speed": {
+          "type": "float",
+          "value": 0.8
+        },
+        "swim_speed": {
+          "type": "float",
+          "value": 3.0
+        },
+        "targetname": {
+          "type": "string",
+          "value": "pool"
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "water"
+        }
+      ],
+      "tags": [
+        "water"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          0.0,
+          -2.0,
+          10.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_hurt",
+      "collision": {
+        "kind": "convex",
+        "mesh": 0,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/fps_hurt.glb",
+      "name": "fps_hurt",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_hurt"
+        },
+        "damage": {
+          "type": "float",
+          "value": 25.0
+        },
+        "instant": {
+          "type": "int",
+          "value": 0
+        },
+        "interval": {
+          "type": "float",
+          "value": 0.5
+        },
+        "message": {
+          "type": "string",
+          "value": "That burns"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": true,
+      "tags": [
+        "hurt"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          9.0,
+          3.75,
+          9.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_barrel",
+      "name": "fps_barrel",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_barrel"
+        },
+        "damage": {
+          "type": "int",
+          "value": 55
+        },
+        "fuse": {
+          "type": "float",
+          "value": 0.0
+        },
+        "health": {
+          "type": "int",
+          "value": 20
+        },
+        "origin": {
+          "type": "string",
+          "value": "128 -96 0"
+        },
+        "push": {
+          "type": "float",
+          "value": 9.0
+        },
+        "radius": {
+          "type": "float",
+          "value": 4.0
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "scene": "res://objects/barrel.tscn",
+      "solid": false,
+      "tags": [
+        "barrels"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -3.0,
+          0.0,
+          4.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_barrel",
+      "name": "fps_barrel_1",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_barrel"
+        },
+        "damage": {
+          "type": "int",
+          "value": 55
+        },
+        "fuse": {
+          "type": "float",
+          "value": 0.0
+        },
+        "health": {
+          "type": "int",
+          "value": 20
+        },
+        "origin": {
+          "type": "string",
+          "value": "176 -96 0"
+        },
+        "push": {
+          "type": "float",
+          "value": 9.0
+        },
+        "radius": {
+          "type": "float",
+          "value": 4.0
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "scene": "res://objects/barrel.tscn",
+      "solid": false,
+      "tags": [
+        "barrels"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -3.0,
+          0.0,
+          5.5
+        ]
+      }
+    },
+    {
+      "classname": "fps_barrel",
+      "name": "fps_barrel_2",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_barrel"
+        },
+        "damage": {
+          "type": "int",
+          "value": 55
+        },
+        "fuse": {
+          "type": "float",
+          "value": 0.0
+        },
+        "health": {
+          "type": "int",
+          "value": 20
+        },
+        "origin": {
+          "type": "string",
+          "value": "224 -96 0"
+        },
+        "push": {
+          "type": "float",
+          "value": 9.0
+        },
+        "radius": {
+          "type": "float",
+          "value": 4.0
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "scene": "res://objects/barrel.tscn",
+      "solid": false,
+      "tags": [
+        "barrels"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -3.0,
+          0.0,
+          7.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_enemy",
+      "name": "fps_enemy",
+      "properties": {
+        "angles": {
+          "type": "string",
+          "value": "0 180 0"
+        },
+        "classname": {
+          "type": "string",
+          "value": "fps_enemy"
+        },
+        "origin": {
+          "type": "string",
+          "value": "192 -32 96"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "scene": "res://objects/enemy.tscn",
+      "solid": false,
+      "tags": [
+        "enemies"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          -0.0,
+          6.283185307179586,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -1.0,
+          3.0,
+          6.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_enemy",
+      "name": "fps_enemy_1",
+      "properties": {
+        "angles": {
+          "type": "string",
+          "value": "0 180 0"
+        },
+        "classname": {
+          "type": "string",
+          "value": "fps_enemy"
+        },
+        "origin": {
+          "type": "string",
+          "value": "288 -32 96"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "scene": "res://objects/enemy.tscn",
+      "solid": false,
+      "tags": [
+        "enemies"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          -0.0,
+          6.283185307179586,
+          -0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -1.0,
+          3.0,
+          9.0
+        ]
+      }
+    },
+    {
+      "classname": "func_rotate",
+      "collision": {
+        "kind": "convex",
+        "mesh": 1,
+        "parts": 1
+      },
+      "mesh": "demo/func_rotate.glb",
+      "name": "func_rotate",
+      "properties": {
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "axis": {
+          "type": "string",
+          "value": "0 0 1"
+        },
+        "classname": {
+          "type": "string",
+          "value": "func_rotate"
+        },
+        "script": {
+          "type": "string",
+          "value": "res://scripts/spinner.gd"
+        },
+        "speed": {
+          "type": "float",
+          "value": 140.0
+        },
+        "start_on": {
+          "type": "int",
+          "value": 1
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "metal"
+        }
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          -0.5,
+          6.75,
+          0.0
+        ]
+      }
+    },
+    {
+      "classname": "func_shuttle",
+      "collision": {
+        "kind": "convex",
+        "mesh": 1,
+        "parts": 1
+      },
+      "mesh": "demo/func_shuttle.glb",
+      "name": "func_shuttle",
+      "properties": {
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "classname": {
+          "type": "string",
+          "value": "func_shuttle"
+        },
+        "direction": {
+          "type": "string",
+          "value": "0 1 0"
+        },
+        "script": {
+          "type": "string",
+          "value": "res://scripts/shuttle.gd"
+        },
+        "speed": {
+          "type": "float",
+          "value": 70.0
+        },
+        "start_on": {
+          "type": "int",
+          "value": 1
+        },
+        "targetname": {
+          "type": "string",
+          "value": "piston"
+        },
+        "travel": {
+          "type": "float",
+          "value": 160.0
+        },
+        "wait": {
+          "type": "float",
+          "value": 0.8
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "crate"
+        }
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          0.0,
+          0.25,
+          10.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_checkpoint",
+      "collision": {
+        "kind": "convex",
+        "mesh": 0,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/fps_checkpoint.glb",
+      "name": "fps_checkpoint",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_checkpoint"
+        },
+        "targetname": {
+          "type": "string",
+          "value": "halfway"
+        }
+      },
+      "solid": true,
+      "tags": [
+        "checkpoints"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          2.0,
+          1.5,
+          0.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_spawner",
+      "name": "fps_spawner",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_spawner"
+        },
+        "count": {
+          "type": "int",
+          "value": 3
+        },
+        "interval": {
+          "type": "float",
+          "value": 0.8
+        },
+        "origin": {
+          "type": "string",
+          "value": "96 224 128"
+        },
+        "spread": {
+          "type": "float",
+          "value": 2.5
+        },
+        "targetname": {
+          "type": "string",
+          "value": "ambush"
+        }
+      },
+      "solid": false,
+      "tags": [
+        "spawners"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          7.0,
+          4.0,
+          3.0
+        ]
+      }
+    },
+    {
+      "classname": "trigger_once",
+      "collision": {
+        "kind": "convex",
+        "mesh": 0,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/trigger_once.glb",
+      "name": "trigger_once",
+      "properties": {
+        "_heron_trigger_volumes": {
+          "type": "string",
+          "value": "[[[-0.0,-0.0,-1.0,-2.0],[-1.0,-0.0,-0.0,-5.0],[-0.0,-1.0,-0.0,-3.0],[0.0,1.0,0.0,6.0],[1.0,0.0,0.0,6.0],[0.0,0.0,1.0,5.0]]]"
+        },
+        "classname": {
+          "type": "string",
+          "value": "trigger_once"
+        },
+        "collision_mask": {
+          "type": "int",
+          "value": 1
+        },
+        "script": {
+          "type": "string",
+          "value": ""
+        },
+        "target": {
+          "type": "string",
+          "value": "ambush"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "solid": true,
+      "targets": [
+        "fps_spawner"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          5.5,
+          4.5,
+          3.5
+        ]
+      }
+    },
+    {
+      "classname": "fps_smoke",
+      "name": "fps_smoke",
+      "properties": {
+        "alpha": {
+          "type": "float",
+          "value": 0.35
+        },
+        "amount": {
+          "type": "int",
+          "value": 26
+        },
+        "classname": {
+          "type": "string",
+          "value": "fps_smoke"
+        },
+        "color": {
+          "type": "color",
+          "value": [
+            0.7843137254901961,
+            0.7843137254901961,
+            0.803921568627451,
+            1.0
+          ]
+        },
+        "grow": {
+          "type": "float",
+          "value": 2.4
+        },
+        "lifetime": {
+          "type": "float",
+          "value": 3.0
+        },
+        "origin": {
+          "type": "string",
+          "value": "-288 224 96"
+        },
+        "size": {
+          "type": "float",
+          "value": 0.7
+        },
+        "speed": {
+          "type": "float",
+          "value": 1.1
+        },
+        "spread": {
+          "type": "float",
+          "value": 20.0
+        },
+        "start_on": {
+          "type": "int",
+          "value": 1
+        },
+        "swirl": {
+          "type": "float",
+          "value": 0.3
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "scene": "res://objects/particles.tscn",
+      "solid": false,
+      "tags": [
+        "particles"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          7.0,
+          3.0,
+          -9.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_particles",
+      "name": "fps_particles",
+      "properties": {
+        "alpha": {
+          "type": "float",
+          "value": 0.9
+        },
+        "amount": {
+          "type": "int",
+          "value": 40
+        },
+        "carried": {
+          "type": "int",
+          "value": 0
+        },
+        "classname": {
+          "type": "string",
+          "value": "fps_particles"
+        },
+        "color": {
+          "type": "color",
+          "value": [
+            1.0,
+            0.7450980392156863,
+            0.35294117647058826,
+            1.0
+          ]
+        },
+        "direction": {
+          "type": "string",
+          "value": "0 1 0"
+        },
+        "drag": {
+          "type": "float",
+          "value": 0.2
+        },
+        "from": {
+          "type": "string",
+          "value": "0.1 0.1 0.1"
+        },
+        "gravity": {
+          "type": "string",
+          "value": "0 -6 0"
+        },
+        "grow": {
+          "type": "float",
+          "value": 1.0
+        },
+        "lifetime": {
+          "type": "float",
+          "value": 1.2
+        },
+        "origin": {
+          "type": "string",
+          "value": "352 96 24"
+        },
+        "size": {
+          "type": "float",
+          "value": 0.1
+        },
+        "speed": {
+          "type": "float",
+          "value": 4.0
+        },
+        "spread": {
+          "type": "float",
+          "value": 40.0
+        },
+        "start_on": {
+          "type": "int",
+          "value": 1
+        },
+        "swirl": {
+          "type": "float",
+          "value": 0.0
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "scene": "res://objects/particles.tscn",
+      "solid": false,
+      "tags": [
+        "particles"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          3.0,
+          0.75,
+          11.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_cloud",
+      "name": "fps_cloud",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_cloud"
+        },
+        "origin": {
+          "type": "string",
+          "value": "0 0 288"
+        }
+      },
+      "scene": "res://objects/cloud.tscn",
+      "solid": false,
+      "tags": [
+        "decoration"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          0.0,
+          9.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "classname": "prop_static",
+      "name": "prop_static",
+      "properties": {
+        "angles": {
+          "type": "string",
+          "value": "0 0 0"
+        },
+        "classname": {
+          "type": "string",
+          "value": "prop_static"
+        },
+        "origin": {
+          "type": "string",
+          "value": "448 224 96"
+        },
+        "scale": {
+          "type": "string",
+          "value": "1"
+        },
+        "scene": {
+          "type": "string",
+          "value": "res://objects/platform.tscn"
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        }
+      },
+      "scene": "res://objects/platform.tscn",
+      "solid": false,
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          7.0,
+          3.0,
+          14.0
+        ]
+      }
+    },
+    {
+      "classname": "func_door",
+      "collision": {
+        "kind": "convex",
+        "mesh": 1,
+        "parts": 1
+      },
+      "mesh": "demo/func_door_2.glb",
+      "name": "func_door_2",
+      "properties": {
+        "_phong": {
+          "type": "int",
+          "value": 0
+        },
+        "_phong_angle": {
+          "type": "float",
+          "value": 89.0
+        },
+        "classname": {
+          "type": "string",
+          "value": "func_door"
+        },
+        "open_direction": {
+          "type": "string",
+          "value": "0 0 1"
+        },
+        "script": {
+          "type": "string",
+          "value": "res://scripts/mover.gd"
+        },
+        "speed": {
+          "type": "float",
+          "value": 160.0
+        },
+        "target": {
+          "type": "string",
+          "value": ""
+        },
+        "targetname": {
+          "type": "string",
+          "value": "side_door"
+        },
+        "travel": {
+          "type": "float",
+          "value": 96.0
+        },
+        "wait": {
+          "type": "float",
+          "value": 0.0
+        }
+      },
+      "solid": true,
+      "surfaces": [
+        {
+          "primitive": 0,
+          "texture": "wood"
+        }
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          10.5,
+          1.5,
+          12.5
+        ]
+      }
+    },
+    {
+      "classname": "fps_sign",
+      "collision": {
+        "kind": "convex",
+        "mesh": 0,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/fps_sign.glb",
+      "name": "fps_sign",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_sign"
+        },
+        "once": {
+          "type": "int",
+          "value": 1
+        },
+        "seconds": {
+          "type": "float",
+          "value": 4.0
+        },
+        "targetname": {
+          "type": "string",
+          "value": ""
+        },
+        "text": {
+          "type": "string",
+          "value": "Three presents and the door opens"
+        },
+        "title": {
+          "type": "string",
+          "value": "The ledge"
+        }
+      },
+      "solid": true,
+      "tags": [
+        "signs"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          8.5,
+          4.5,
+          12.5
+        ]
+      }
+    },
+    {
+      "classname": "fps_gate",
+      "name": "fps_gate",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_gate"
+        },
+        "message": {
+          "type": "string",
+          "value": "The door swings open"
+        },
+        "needs_count": {
+          "type": "int",
+          "value": 3
+        },
+        "needs_flag": {
+          "type": "string",
+          "value": ""
+        },
+        "needs_key": {
+          "type": "string",
+          "value": ""
+        },
+        "needs_kind": {
+          "type": "string",
+          "value": "present"
+        },
+        "origin": {
+          "type": "string",
+          "value": "352 128 128"
+        },
+        "target": {
+          "type": "string",
+          "value": "side_door"
+        },
+        "targetname": {
+          "type": "string",
+          "value": "present_gate"
+        }
+      },
+      "solid": false,
+      "tags": [
+        "gates"
+      ],
+      "targets": [
+        "func_door_2"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          3.141592653589793,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          4.0,
+          4.0,
+          11.0
+        ]
+      }
+    },
+    {
+      "classname": "fps_exit",
+      "collision": {
+        "kind": "convex",
+        "mesh": 0,
+        "parts": 1,
+        "sensor": true
+      },
+      "mesh": "demo/fps_exit.glb",
+      "name": "fps_exit",
+      "properties": {
+        "classname": {
+          "type": "string",
+          "value": "fps_exit"
+        },
+        "message": {
+          "type": "string",
+          "value": "Off to the arena"
+        },
+        "needs": {
+          "type": "string",
+          "value": ""
+        },
+        "next_map": {
+          "type": "string",
+          "value": "arena"
+        },
+        "targetname": {
+          "type": "string",
+          "value": "way_out"
+        }
+      },
+      "solid": true,
+      "tags": [
+        "exits"
+      ],
+      "transform": {
+        "rotation_yxz": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "translation": [
+          10.5,
+          4.5,
+          14.5
+        ]
+      }
+    }
+  ],
+  "format": 2,
+  "generator": "heron_brush 0.1.0-alpha.2",
+  "name": "demo",
+  "scale": 32.0,
+  "textures": [
+    {
+      "image": "maps/demo_paint/bbpaint_58746627617e1457.png",
+      "name": "bbpaint_58746627617e1457",
+      "size": [
+        64.0,
+        96.0
+      ]
+    },
+    {
+      "image": "maps/demo_paint/bbpaint_37e4acaa9504e424.png",
+      "name": "bbpaint_37e4acaa9504e424",
+      "size": [
+        64.0,
+        64.0
+      ]
+    },
+    {
+      "image": "textures/concrete.png",
+      "name": "concrete",
+      "size": [
+        64.0,
+        64.0
+      ]
+    },
+    {
+      "image": "textures/grass.png",
+      "name": "grass",
+      "size": [
+        64.0,
+        64.0
+      ]
+    },
+    {
+      "image": "textures/dirt.png",
+      "name": "dirt",
+      "size": [
+        64.0,
+        64.0
+      ]
+    },
+    {
+      "image": "textures/wall.png",
+      "name": "wall",
+      "size": [
+        64.0,
+        64.0
+      ]
+    },
+    {
+      "image": "textures/metal.png",
+      "name": "metal",
+      "size": [
+        64.0,
+        64.0
+      ]
+    },
+    {
+      "image": "textures/crate.png",
+      "name": "crate",
+      "size": [
+        64.0,
+        64.0
+      ]
+    },
+    {
+      "image": "textures/hazard.png",
+      "name": "hazard",
+      "size": [
+        64.0,
+        64.0
+      ]
+    },
+    {
+      "image": "textures/water.png",
+      "name": "water",
+      "size": [
+        64.0,
+        64.0
+      ]
+    },
+    {
+      "image": "textures/wood.png",
+      "name": "wood",
+      "size": [
+        64.0,
+        64.0
+      ]
+    }
+  ]
+}

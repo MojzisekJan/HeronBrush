@@ -1,0 +1,33 @@
+name: "player"
+scale_along_z: 0
+instances {
+  id: "body"
+  prototype: "/main/player.go"
+  children: "cam"
+  position {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+}
+instances {
+  id: "cam"
+  prototype: "/main/camera.go"
+  position {
+    x: 0.0
+    y: 0.7
+    z: 0.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+}

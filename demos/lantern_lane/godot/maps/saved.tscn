@@ -1,0 +1,36 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="ArrayMesh" path="saved/worldspawn.obj" id="1_j6dwb"]
+
+[sub_resource type="ConcavePolygonShape3D" id="Concave_worldspawn"]
+data = PackedVector3Array(1.0, 0.5, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.5, 0.0, 0.0, 0.5, 2.0, 1.0, 0.5, 2.0, 1.0, 0.0, 2.0, 1.0, 0.0, 2.0, 0.0, 0.0, 2.0, 0.0, 0.5, 2.0, 0.0, 0.5, 0.0, 0.0, 0.5, 2.0, 0.0, 0.0, 2.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 1.0, 0.5, 2.0, 1.0, 0.5, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 2.0, 1.0, 0.5, 2.0, 0.0, 0.5, 2.0, 0.0, 0.5, 0.0, 1.0, 0.5, 0.0, 1.0, 0.5, 0.0, 1.0, 0.5, 2.0, 0.0, 0.5, 2.0, 1.0, 0.0, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 1.0, 0.0, 2.0)
+
+[node name="saved" type="Node3D"]
+
+[node name="worldspawn" type="StaticBody3D" parent="."]
+metadata/properties = {
+"_phong": 0,
+"_phong_angle": 89.0,
+"_vertex_merge_distance": 0.0,
+"_cull_interior_faces": 1,
+"wad": "",
+"sky": 0,
+"sky_top_color": Color(0.313725, 0.509804, 0.823529, 1.0),
+"sky_horizon_color": Color(0.784314, 0.843137, 0.921569, 1.0),
+"fog_enabled": 0,
+"fog_light_color": Color(0.588235, 0.666667, 0.784314, 1.0),
+"fog_density": 0.01,
+"ambient_light_color": Color(0.666667, 0.698039, 0.772549, 1.0),
+"ambient_light_energy": 1.0,
+"occluders": 0,
+"occluder_min_size": 64.0,
+"mapversion": "220",
+"classname": "worldspawn"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="worldspawn"]
+mesh = ExtResource("1_j6dwb")
+
+[node name="shape" type="CollisionShape3D" parent="worldspawn"]
+shape = SubResource("Concave_worldspawn")
+

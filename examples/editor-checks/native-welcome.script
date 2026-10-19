@@ -1,0 +1,13 @@
+wait 0.8
+size 1100 720
+wait 0.4
+snapshot welcome
+shot welcome
+click 150 255
+wait 0.3
+shot profiles
+key Escape
+click 150 645
+wait 0.4
+shot preferences
+quit

@@ -1,0 +1,21 @@
+[package]
+name = "heron-brush-web"
+description = "Heron Brush in the browser: the WebAssembly module web/index.html loads"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "heron_brush_web"
+crate-type = ["cdylib"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+heron-brush = { path = "../heron-brush" }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Document", "Window", "Element"] }
+
+[lints]
+workspace = true

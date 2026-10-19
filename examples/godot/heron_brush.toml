@@ -1,0 +1,4 @@
+# Defaults for this project. See examples/fps-kit/heron_brush.toml for the full story.
+
+game = "heron_brush"
+out = "res://maps"

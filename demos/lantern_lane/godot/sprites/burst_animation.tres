@@ -1,0 +1,28 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://sprites/burst.png" id="1_bh1wj"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mdaww"]
+atlas = ExtResource("1_bh1wj")
+region = Rect2(0, 0, 256, 256)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3nr3w"]
+atlas = ExtResource("1_bh1wj")
+region = Rect2(256, 0, 256, 256)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mdaww")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3nr3w")
+}, {
+"duration": 1.0,
+"texture": null
+}],
+"loop": 0,
+"name": &"default",
+"speed": 30.0
+}]

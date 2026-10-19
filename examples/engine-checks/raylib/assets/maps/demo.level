@@ -1,0 +1,1252 @@
+# heron_brush level, flat text for raylib and other C loaders.
+# One keyword per line. '#' and blank lines are comments.
+format 2
+generator heron_brush 0.1.0-alpha.2
+name demo
+scale 32
+
+texture bbpaint_58746627617e1457 maps/demo_paint/bbpaint_58746627617e1457.png 64 96
+texture bbpaint_37e4acaa9504e424 maps/demo_paint/bbpaint_37e4acaa9504e424.png 64 64
+texture concrete textures/concrete.png 64 64
+texture grass textures/grass.png 64 64
+texture dirt textures/dirt.png 64 64
+texture wall textures/wall.png 64 64
+texture metal textures/metal.png 64 64
+texture crate textures/crate.png 64 64
+texture hazard textures/hazard.png 64 64
+texture water textures/water.png 64 64
+texture wood textures/wood.png 64 64
+
+entity worldspawn worldspawn
+solid 1
+mesh demo/worldspawn.glb
+pos 0 0 0
+rot 0 0 0
+scale 1 1 1
+surface 0 concrete
+surface 1 grass
+surface 2 dirt
+surface 3 wall
+surface 4 metal
+surface 5 crate
+surface 6 bbpaint_58746627617e1457
+surface 7 bbpaint_37e4acaa9504e424
+collision trimesh 1 1
+ctri 12 0 -16 -12 0 -16 -12 -0.5 -16
+ctri -12 -0.5 -16 12 -0.5 -16 12 0 -16
+ctri -12 -0.5 16 -12 -0.5 -16 -12 0 -16
+ctri -12 0 -16 -12 0 16 -12 -0.5 16
+ctri 4 -0.5 6 12 -0.5 6 12 -0.5 -16
+ctri 4 -0.5 6 12 -0.5 -16 -12 -0.5 -16
+ctri 4 -0.5 6 -12 -0.5 -16 -12 -0.5 6
+ctri -4 0 6 -12 0 6 -12 0 -16
+ctri -4 0 6 -12 0 -16 12 0 -16
+ctri -4 0 6 12 0 -16 12 0 6
+ctri 12 0 16 12 0 -16 12 -0.5 -16
+ctri 12 -0.5 -16 12 -0.5 16 12 0 16
+ctri 12 0 6 12 -0.5 6 4.5 -0.5 6
+ctri 12 0 6 4.5 -0.5 6 -4.5 -0.5 6
+ctri 12 0 6 -4.5 -0.5 6 -12 -0.5 6
+ctri -12 -0.5 6 -12 0 6 12 0 6
+ctri 12 0 14 -12 0 14 -12 -0.5 14
+ctri 12 0 14 -12 -0.5 14 -4.5 -0.5 14
+ctri 12 0 14 -4.5 -0.5 14 4.5 -0.5 14
+ctri 4.5 -0.5 14 12 -0.5 14 12 0 14
+ctri -12 -0.5 16 12 -0.5 16 12 -0.5 14
+ctri -12 -0.5 16 12 -0.5 14 4 -0.5 14
+ctri -12 -0.5 16 4 -0.5 14 -4 -0.5 14
+ctri -4 -0.5 14 -12 -0.5 14 -12 -0.5 16
+ctri 12 0 16 -12 0 16 -12 0 14
+ctri 12 0 16 -12 0 14 -4 0 14
+ctri 12 0 16 -4 0 14 4 0 14
+ctri 4 0 14 12 0 14 12 0 16
+ctri 12 0 16 12 -0.5 16 -12 -0.5 16
+ctri -12 -0.5 16 -12 0 16 12 0 16
+ctri -12 -0.5 14 -4 -0.5 14 -4 -0.5 6
+ctri -4 -0.5 6 -12 -0.5 6 -12 -0.5 14
+ctri -4 0 14 -12 0 14 -12 0 6
+ctri -12 0 6 -4 0 6 -4 0 14
+ctri -4 0 14 -4 0 6 -4 -0.5 6
+ctri -4 -0.5 6 -4 -0.5 14 -4 0 14
+ctri 4 0 14 4 -0.5 14 4 -0.5 6
+ctri 4 -0.5 6 4 0 6 4 0 14
+ctri 4 -0.5 14 12 -0.5 14 12 -0.5 6
+ctri 12 -0.5 6 4 -0.5 6 4 -0.5 14
+ctri 12 0 14 4 0 14 4 0 6
+ctri 4 0 6 12 0 6 12 0 14
+ctri 4 -3 14 -4 -3 14 -4 -3 6
+ctri -4 -3 6 4 -3 6 4 -3 14
+ctri 4.5 -0.5 5.5 -4.5 -0.5 5.5 -4.5 -3.5 5.5
+ctri -4.5 -3.5 5.5 4.5 -3.5 5.5 4.5 -0.5 5.5
+ctri -4.5 -3.5 14.5 -4.5 -3.5 5.5 -4.5 -0.5 5.5
+ctri -4.5 -0.5 5.5 -4.5 -0.5 14.5 -4.5 -3.5 14.5
+ctri 4.5 -3.5 14.5 4.5 -3.5 5.5 -4.5 -3.5 5.5
+ctri -4.5 -3.5 5.5 -4.5 -3.5 14.5 4.5 -3.5 14.5
+ctri 4.5 -0.5 14.5 4.5 -0.5 5.5 4.5 -3.5 5.5
+ctri 4.5 -3.5 5.5 4.5 -3.5 14.5 4.5 -0.5 14.5
+ctri 4.5 -0.5 6 4.5 -3.5 6 -4.5 -3.5 6
+ctri -4.5 -3.5 6 -4.5 -0.5 6 4.5 -0.5 6
+ctri 4.5 -0.5 14 -4.5 -0.5 14 -4.5 -3.5 14
+ctri -4.5 -3.5 14 4.5 -3.5 14 4.5 -0.5 14
+ctri 4.5 -0.5 14.5 4.5 -3.5 14.5 -4.5 -3.5 14.5
+ctri -4.5 -3.5 14.5 -4.5 -0.5 14.5 4.5 -0.5 14.5
+ctri -4 -0.5 14 -4 -0.5 6 -4 -3.5 6
+ctri -4 -3.5 6 -4 -3.5 14 -4 -0.5 14
+ctri 4 -0.5 14 4 -3.5 14 4 -3.5 6
+ctri 4 -3.5 6 4 -0.5 6 4 -0.5 14
+ctri -12.5 0 16.5 -12.5 0 -16.5 -12.5 10.5 -16.5
+ctri -12.5 10.5 -16.5 -12.5 10.5 16.5 -12.5 0 16.5
+ctri 12 0 -16 12.5 0 -16 12.5 0 -16.5
+ctri 12 0 -16 12.5 0 -16.5 -12.5 0 -16.5
+ctri 12 0 -16 -12.5 0 -16.5 -12.5 0 -16
+ctri 12.5 10 -16 12.5 0 -16 -12.5 0 -16
+ctri -12.5 0 -16 -12.5 10 -16 12.5 10 -16
+ctri 12.5 10 16 -12.5 10 16 -12.5 0 16
+ctri -12.5 0 16 12.5 0 16 12.5 10 16
+ctri -12.5 0 16.5 12.5 0 16.5 12.5 0 16
+ctri -12.5 0 16.5 12.5 0 16 12 0 16
+ctri -12.5 0 16.5 12 0 16 6.5 0 16
+ctri -12.5 0 16.5 6.5 0 16 6 0 16
+ctri -12.5 0 16.5 6 0 16 -12 0 16
+ctri -12 0 16 -12.5 0 16 -12.5 0 16.5
+ctri 12.5 0 16.5 -12.5 0 16.5 -12.5 10.5 16.5
+ctri -12.5 10.5 16.5 12.5 10.5 16.5 12.5 0 16.5
+ctri -12.5 0 16 -12 0 16 -12 0 -16
+ctri -12 0 -16 -12.5 0 -16 -12.5 0 16
+ctri -12 10 16 -12 10 -16 -12 0 -16
+ctri -12 0 -16 -12 0 16 -12 10 16
+ctri 12 10 16 12 0 16 12 0 -16
+ctri 12 0 -16 12 10 -16 12 10 16
+ctri 12 0 16 12.5 0 16 12.5 0 -16
+ctri 12.5 0 -16 12 0 -16 12 0 16
+ctri 12.5 10.5 -16.5 -12.5 10.5 -16.5 -12.5 0 -16.5
+ctri -12.5 0 -16.5 12.5 0 -16.5 12.5 10.5 -16.5
+ctri -12.5 10 16.5 12.5 10 16.5 12.5 10 -16.5
+ctri 12.5 10 -16.5 -12.5 10 -16.5 -12.5 10 16.5
+ctri 12.5 10.5 16.5 -12.5 10.5 16.5 -12.5 10.5 -16.5
+ctri -12.5 10.5 -16.5 12.5 10.5 -16.5 12.5 10.5 16.5
+ctri 12.5 10.5 16.5 12.5 10.5 -16.5 12.5 0 -16.5
+ctri 12.5 0 -16.5 12.5 0 16.5 12.5 10.5 16.5
+ctri 6 3 16 6 2.5 16 6 2.5 2
+ctri 6 3 16 6 2.5 2 6 2.5 -4
+ctri 6 3 16 6 2.5 -4 6 2.5 -16
+ctri 6 2.5 -16 6 3 -16 6 3 16
+ctri 6 2.5 16 12 2.5 16 12 2.5 -16
+ctri 12 2.5 -16 6 2.5 -16 6 2.5 16
+ctri 12 3 16 6 3 16 6 3 -16
+ctri 6 3 -16 12 3 -16 12 3 16
+ctri 6 2.5 -4 6 0 -4 6 0 -16
+ctri 6 0 -16 6 2.5 -16 6 2.5 -4
+ctri 6.5 2.5 -4 6.5 2.5 -16 6.5 0 -16
+ctri 6.5 0 -16 6.5 0 -4 6.5 2.5 -4
+ctri 6.5 2.5 -4 6.5 0 -4 6 0 -4
+ctri 6 0 -4 6 2.5 -4 6.5 2.5 -4
+ctri 6.5 2.5 2 6 2.5 2 6 0 2
+ctri 6 0 2 6.5 0 2 6.5 2.5 2
+ctri 6 2.5 16 6 0 16 6 0 2
+ctri 6 0 2 6 2.5 2 6 2.5 16
+ctri 6 0 16 6.5 0 16 6.5 0 2
+ctri 6.5 0 2 6 0 2 6 0 16
+ctri 6.5 2.5 16 6.5 2.5 2 6.5 0 2
+ctri 6.5 0 2 6.5 0 16 6.5 2.5 16
+ctri 2 1.5 -10 -2 1.5 -10 -2 0 -10
+ctri -2 0 -10 2 0 -10 2 1.5 -10
+ctri -2 1.5 -9 -2 0 -9 -2 0 -10
+ctri -2 0 -10 -2 1.5 -10 -2 1.5 -9
+ctri 2 1.5 -9 -2 1.5 -9 -2 1.5 -10
+ctri -2 1.5 -10 2 1.5 -10 2 1.5 -9
+ctri 2 1.5 -9 2 1.5 -10 2 0 -10
+ctri 2 0 -10 2 0 -9 2 1.5 -9
+ctri 2 1.5 -9 2 0 -9 -2 0 -9
+ctri -2 0 -9 -2 1.5 -9 2 1.5 -9
+ctri 2 0.375 -14 0 0.375 -14 0 0 -14
+ctri 0 0 -14 2 0 -14 2 0.375 -14
+ctri 0 0.375 -12 0 0 -12 0 0 -14
+ctri 0 0 -14 0 0.375 -14 0 0.375 -12
+ctri 2 0.375 -12 0 0.375 -12 0 0.375 -14
+ctri 0 0.375 -14 2 0.375 -14 2 0.375 -12
+ctri 2 0.375 -12 2 0 -12 0 0 -12
+ctri 0 0 -12 0 0.375 -12 2 0.375 -12
+ctri 4 0.75 -14 2 0.75 -14 2 0.375 -14
+ctri 4 0.75 -14 2 0.375 -14 2 0 -14
+ctri 2 0 -14 4 0 -14 4 0.75 -14
+ctri 2 0.75 -12 2 0 -12 2 0 -14
+ctri 2 0 -14 2 0.75 -14 2 0.75 -12
+ctri 4 0.75 -12 2 0.75 -12 2 0.75 -14
+ctri 2 0.75 -14 4 0.75 -14 4 0.75 -12
+ctri 4 0.75 -12 4 0.75 -14 4 0 -14
+ctri 4 0 -14 4 0 -12 4 0.75 -12
+ctri 4 0.75 -12 4 0 -12 2 0 -12
+ctri 4 0.75 -12 2 0 -12 2 0.375 -12
+ctri 2 0.375 -12 2 0.75 -12 4 0.75 -12
+ctri -5 3 -14.25 -5.375 3 -14.25 -5.375 0 -14.25
+ctri -5 3 -14.25 -5.375 0 -14.25 -5 0 -14.25
+ctri -5.375 3 -13.75 -5 3 -13.75 -5 2.625 -13.75
+ctri -5.375 3 -13.75 -5 2.625 -13.75 -5 0 -13.75
+ctri -5 0 -13.75 -5.375 0 -13.75 -5.375 3 -13.75
+ctri -5.375 3 -14.25 -5.375 3 -13.75 -5.375 0 -13.75
+ctri -5.375 0 -13.75 -5.375 0 -14.25 -5.375 3 -14.25
+ctri -5 3 -13.75 -5 3 -14.25 -5 0 -14.25
+ctri -5 0 -14.25 -5 0 -13.75 -5 3 -13.75
+ctri -5.375 3 -13.75 -5.375 3 -14.25 -5 3 -14.25
+ctri -5 3 -14.25 -5 3 -13.75 -5.375 3 -13.75
+ctri -2.625 3 -14.25 -3 3 -14.25 -3 2.625 -14.25
+ctri -2.625 3 -14.25 -3 2.625 -14.25 -3 0 -14.25
+ctri -3 0 -14.25 -2.625 0 -14.25 -2.625 3 -14.25
+ctri -3 3 -13.75 -2.625 3 -13.75 -2.625 0 -13.75
+ctri -3 3 -13.75 -2.625 0 -13.75 -3 0 -13.75
+ctri -3 3 -14.25 -3 3 -13.75 -3 0 -13.75
+ctri -3 0 -13.75 -3 0 -14.25 -3 3 -14.25
+ctri -2.625 3 -13.75 -2.625 3 -14.25 -2.625 0 -14.25
+ctri -2.625 0 -14.25 -2.625 0 -13.75 -2.625 3 -13.75
+ctri -3 3 -13.75 -3 3 -14.25 -2.625 3 -14.25
+ctri -2.625 3 -14.25 -2.625 3 -13.75 -3 3 -13.75
+ctri -3 3 -14.25 -5 3 -14.25 -5 2.625 -14.25
+ctri -5 2.625 -14.25 -3 2.625 -14.25 -3 3 -14.25
+ctri -5 3 -13.75 -3 3 -13.75 -3 2.625 -13.75
+ctri -3 2.625 -13.75 -5 2.625 -13.75 -5 3 -13.75
+ctri -5 3 -13.75 -5 3 -14.25 -3 3 -14.25
+ctri -3 3 -14.25 -3 3 -13.75 -5 3 -13.75
+ctri -3 2.625 -13.75 -3 2.625 -14.25 -5 2.625 -14.25
+ctri -5 2.625 -14.25 -5 2.625 -13.75 -3 2.625 -13.75
+ctri 9 6 -14.25 8.625 6 -14.25 8.625 3 -14.25
+ctri 9 6 -14.25 8.625 3 -14.25 9 3 -14.25
+ctri 8.625 6 -13.75 9 6 -13.75 9 5.625 -13.75
+ctri 8.625 6 -13.75 9 5.625 -13.75 9 3 -13.75
+ctri 9 3 -13.75 8.625 3 -13.75 8.625 6 -13.75
+ctri 8.625 6 -14.25 8.625 6 -13.75 8.625 3 -13.75
+ctri 8.625 3 -13.75 8.625 3 -14.25 8.625 6 -14.25
+ctri 9 6 -13.75 9 6 -14.25 9 3 -14.25
+ctri 9 3 -14.25 9 3 -13.75 9 6 -13.75
+ctri 8.625 6 -13.75 8.625 6 -14.25 9 6 -14.25
+ctri 9 6 -14.25 9 6 -13.75 8.625 6 -13.75
+ctri 11.375 6 -14.25 11 6 -14.25 11 5.625 -14.25
+ctri 11.375 6 -14.25 11 5.625 -14.25 11 3 -14.25
+ctri 11 3 -14.25 11.375 3 -14.25 11.375 6 -14.25
+ctri 11 6 -13.75 11.375 6 -13.75 11.375 3 -13.75
+ctri 11 6 -13.75 11.375 3 -13.75 11 3 -13.75
+ctri 11 6 -14.25 11 6 -13.75 11 3 -13.75
+ctri 11 3 -13.75 11 3 -14.25 11 6 -14.25
+ctri 11.375 6 -13.75 11.375 6 -14.25 11.375 3 -14.25
+ctri 11.375 3 -14.25 11.375 3 -13.75 11.375 6 -13.75
+ctri 11 6 -13.75 11 6 -14.25 11.375 6 -14.25
+ctri 11.375 6 -14.25 11.375 6 -13.75 11 6 -13.75
+ctri 11 6 -14.25 9 6 -14.25 9 5.625 -14.25
+ctri 9 5.625 -14.25 11 5.625 -14.25 11 6 -14.25
+ctri 9 6 -13.75 11 6 -13.75 11 5.625 -13.75
+ctri 11 5.625 -13.75 9 5.625 -13.75 9 6 -13.75
+ctri 9 6 -13.75 9 6 -14.25 11 6 -14.25
+ctri 11 6 -14.25 11 6 -13.75 9 6 -13.75
+ctri 11 5.625 -13.75 11 5.625 -14.25 9 5.625 -14.25
+ctri 9 5.625 -14.25 9 5.625 -13.75 11 5.625 -13.75
+prop int _phong 0
+prop float _phong_angle 89
+prop float _vertex_merge_distance 0
+prop int _cull_interior_faces 1
+prop string wad
+prop int sky 1
+prop color sky_top_color 0.23529411764705882 0.43137254901960786 0.7843137254901961 1
+prop color sky_horizon_color 0.8627450980392157 0.803921568627451 0.7058823529411765 1
+prop int fog_enabled 1
+prop color fog_light_color 0.7843137254901961 0.803921568627451 0.8627450980392157 1
+prop float fog_density 0.008
+prop color ambient_light_color 0.6862745098039216 0.7058823529411765 0.7647058823529411 1
+prop float ambient_light_energy 1
+prop int occluders 1
+prop float occluder_min_size 96
+prop string classname worldspawn
+prop string mapversion 220
+end
+
+entity info_player_start info_player_start
+solid 0
+pos -10 0.75 -14
+rot 0 3.9269908169872414 0
+scale 1 1 1
+tag spawn_points
+prop string targetname
+prop string angles 0 45 0
+prop string classname info_player_start
+prop string origin -448 -320 24
+end
+
+entity fps_weapon_pickup fps_weapon_pickup
+solid 0
+pos -10 0.75 -12
+rot 0 3.141592653589793 0
+scale 1 1 1
+tag pickups
+prop string targetname
+prop string weapon blaster-repeater
+prop string classname fps_weapon_pickup
+prop string origin -384 -320 24
+end
+
+entity light_sun light_sun
+solid 0
+pos 0 9 0
+rot 0.8726646259971648 5.497787143782138 0
+scale 1 1 1
+tag lights
+prop string targetname
+prop string angles -50 135 0
+prop color light_color 1 0.9803921568627451 0.9215686274509803 1
+prop float light_energy 0.8
+prop int shadow_enabled 1
+prop float directional_shadow_max_distance 100
+prop string classname light_sun
+prop string origin 0 0 288
+end
+
+entity light light
+solid 0
+pos -8 7.5 -10
+rot 0 3.141592653589793 0
+scale 1 1 1
+tag lights
+prop string targetname
+prop int style 0
+prop color light_color 1 1 1 1
+prop float light_energy 1.6
+prop float light_indirect_energy 1
+prop float light_specular 0.5
+prop float omni_range 12
+prop float omni_attenuation 1
+prop int shadow_enabled 1
+prop int light_bake_mode 2
+prop string classname light
+prop string origin -320 -256 240
+end
+
+entity light light_1
+solid 0
+pos -8 7.5 0
+rot 0 3.141592653589793 0
+scale 1 1 1
+tag lights
+prop string targetname
+prop int style 0
+prop color light_color 1 1 1 1
+prop float light_energy 1.6
+prop float light_indirect_energy 1
+prop float light_specular 0.5
+prop float omni_range 12
+prop float omni_attenuation 1
+prop int shadow_enabled 1
+prop int light_bake_mode 2
+prop string classname light
+prop string origin 0 -256 240
+end
+
+entity light light_2
+solid 0
+pos -8 7.5 10
+rot 0 3.141592653589793 0
+scale 1 1 1
+tag lights
+prop string targetname
+prop int style 0
+prop color light_color 1 1 1 1
+prop float light_energy 1.6
+prop float light_indirect_energy 1
+prop float light_specular 0.5
+prop float omni_range 12
+prop float omni_attenuation 1
+prop int shadow_enabled 1
+prop int light_bake_mode 2
+prop string classname light
+prop string origin 320 -256 240
+end
+
+entity light light_3
+solid 0
+pos 3 7.5 0
+rot 0 3.141592653589793 0
+scale 1 1 1
+tag lights
+prop string targetname
+prop int style 0
+prop color light_color 1 1 1 1
+prop float light_energy 1.6
+prop float light_indirect_energy 1
+prop float light_specular 0.5
+prop float omni_range 12
+prop float omni_attenuation 1
+prop int shadow_enabled 1
+prop int light_bake_mode 2
+prop string classname light
+prop string origin 0 96 240
+end
+
+entity light light_4
+solid 0
+pos 9 7.5 -8
+rot 0 3.141592653589793 0
+scale 1 1 1
+tag lights
+prop string targetname
+prop int style 1
+prop color light_color 1 1 1 1
+prop float light_energy 1.6
+prop float light_indirect_energy 1
+prop float light_specular 0.5
+prop float omni_range 12
+prop float omni_attenuation 1
+prop int shadow_enabled 1
+prop int light_bake_mode 2
+prop string classname light
+prop string origin -256 288 240
+end
+
+entity fps_pickup fps_pickup
+solid 0
+pos -8 1 -13
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/pickup.tscn
+tag collectibles
+prop string targetname
+prop int value 1
+prop string kind present
+prop string classname fps_pickup
+prop string origin -416 -256 32
+end
+
+entity fps_pickup fps_pickup_1
+solid 0
+pos -8 1 -11.5
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/pickup.tscn
+tag collectibles
+prop string targetname
+prop int value 1
+prop string kind present
+prop string classname fps_pickup
+prop string origin -368 -256 32
+end
+
+entity fps_pickup fps_pickup_2
+solid 0
+pos -8 1 -10
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/pickup.tscn
+tag collectibles
+prop string targetname
+prop int value 1
+prop string kind present
+prop string classname fps_pickup
+prop string origin -320 -256 32
+end
+
+entity fps_pickup fps_pickup_3
+solid 0
+pos -8 1 -8.5
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/pickup.tscn
+tag collectibles
+prop string targetname
+prop int value 1
+prop string kind
+prop string classname fps_pickup
+prop string origin -272 -256 32
+end
+
+entity fps_pickup fps_pickup_4
+solid 0
+pos -8 1 -7
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/pickup.tscn
+tag collectibles
+prop string targetname
+prop int value 1
+prop string kind
+prop string classname fps_pickup
+prop string origin -224 -256 32
+end
+
+entity fps_pickup fps_pickup_5
+solid 0
+pos -8 1 -5.5
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/pickup.tscn
+tag collectibles
+prop string targetname
+prop int value 1
+prop string kind
+prop string classname fps_pickup
+prop string origin -176 -256 32
+end
+
+entity func_door func_door
+solid 1
+mesh demo/func_door.glb
+pos -9.5 1.5 -5.5
+rot 0 0 0
+scale 1 1 1
+surface 0 metal
+collision convex 1 1
+chull 8
+chv -0.5 1.5 -1.5
+chv -0.5 -1.5 -1.5
+chv 0.5 -1.5 -1.5
+chv 0.5 1.5 -1.5
+chv -0.5 -1.5 1.5
+chv -0.5 1.5 1.5
+chv 0.5 -1.5 1.5
+chv 0.5 1.5 1.5
+chend
+cbox -0.5 -1.5 -1.5 0.5 1.5 1.5
+prop string targetname door_trigger
+prop string target
+prop string script res://scripts/mover.gd
+prop int _phong 0
+prop float _phong_angle 89
+prop float speed 180
+prop float travel 96
+prop float wait 3
+prop string open_direction 0 0 1
+prop string classname func_door
+end
+
+entity trigger_multiple trigger_multiple
+solid 1
+mesh demo/trigger_multiple.glb
+pos -7 1.5 -5.5
+rot 0 0 0
+scale 1 1 1
+collision convex 0 1 sensor
+chull 8
+chv -1 1.5 -1.5
+chv -1 -1.5 -1.5
+chv 1 -1.5 -1.5
+chv 1 1.5 -1.5
+chv -1 -1.5 1.5
+chv -1 1.5 1.5
+chv 1 -1.5 1.5
+chv 1 1.5 1.5
+chend
+cbox -1 -1.5 -1.5 1 1.5 1.5
+target func_door
+prop string targetname
+prop string target door_trigger
+prop string script
+prop int monitoring 1
+prop int collision_mask 1
+prop float wait 1
+prop string classname trigger_multiple
+prop string _heron_trigger_volumes [[[-0.0,-0.0,-1.0,7.0],[-1.0,-0.0,-0.0,8.0],[-0.0,-1.0,-0.0,0.0],[0.0,1.0,0.0,3.0],[1.0,0.0,0.0,-6.0],[0.0,0.0,1.0,-4.0]]]
+end
+
+entity func_door func_door_1
+solid 1
+mesh demo/func_door_1.glb
+pos -9.5 1.5 -0.5
+rot 0 0 0
+scale 1 1 1
+surface 0 metal
+collision convex 1 1
+chull 8
+chv -0.5 1.5 -1.5
+chv -0.5 -1.5 -1.5
+chv 0.5 -1.5 -1.5
+chv 0.5 1.5 -1.5
+chv -0.5 -1.5 1.5
+chv -0.5 1.5 1.5
+chv 0.5 -1.5 1.5
+chv 0.5 1.5 1.5
+chend
+cbox -0.5 -1.5 -1.5 0.5 1.5 1.5
+prop string targetname door_button
+prop string target
+prop string script res://scripts/mover.gd
+prop int _phong 0
+prop float _phong_angle 89
+prop float speed 180
+prop float travel 96
+prop float wait 5
+prop string open_direction 0 0 1
+prop string classname func_door
+end
+
+entity func_button func_button
+solid 1
+mesh demo/func_button.glb
+pos -6 0.125 -0.5
+rot 0 0 0
+scale 1 1 1
+surface 0 hazard
+collision convex 1 1 sensor
+chull 8
+chv -1 0.125 -1.5
+chv -1 -0.125 -1.5
+chv 1 -0.125 -1.5
+chv 1 0.125 -1.5
+chv -1 -0.125 1.5
+chv -1 0.125 1.5
+chv 1 -0.125 1.5
+chv 1 0.125 1.5
+chend
+cbox -1 -0.125 -1.5 1 0.125 1.5
+target func_door_1
+prop string targetname
+prop string target door_button
+prop string script
+prop int _phong 0
+prop float _phong_angle 89
+prop string classname func_button
+prop string _heron_trigger_volumes [[[-0.0,-0.0,-1.0,2.0],[-1.0,-0.0,-0.0,7.0],[-0.0,-1.0,-0.0,0.0],[0.0,1.0,0.0,0.25],[1.0,0.0,0.0,-5.0],[0.0,0.0,1.0,1.0]]]
+end
+
+entity fps_use_button fps_use_button
+solid 1
+mesh demo/fps_use_button.glb
+pos -8.875 1.75 1.625
+rot 0 0 0
+scale 1 1 1
+surface 0 hazard
+collision convex 1 1 sensor
+chull 8
+chv -0.5 0.5 -0.125
+chv -0.5 -0.5 -0.125
+chv 0.5 -0.5 -0.125
+chv 0.5 0.5 -0.125
+chv -0.5 -0.5 0.125
+chv -0.5 0.5 0.125
+chv 0.5 -0.5 0.125
+chv 0.5 0.5 0.125
+chend
+cbox -0.5 -0.5 -0.125 0.5 0.5 0.125
+target func_door_1
+tag usable
+prop string targetname
+prop string target door_button
+prop int _phong 0
+prop float _phong_angle 89
+prop string classname fps_use_button
+end
+
+entity fps_key fps_key
+solid 0
+pos 9 1 -14
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/key.tscn
+tag keys
+prop string targetname
+prop string key red
+prop color color 1 0.23529411764705882 0.23529411764705882 1
+prop string classname fps_key
+prop string origin -448 288 32
+end
+
+entity fps_key_door fps_key_door
+solid 1
+mesh demo/fps_key_door.glb
+pos -10 1.5 13
+rot 0 0 0
+scale 1 1 1
+surface 0 metal
+collision convex 1 1
+chull 8
+chv -1 1.5 -1
+chv -1 -1.5 -1
+chv 1 -1.5 -1
+chv 1 1.5 -1
+chv -1 -1.5 1
+chv -1 1.5 1
+chv 1 -1.5 1
+chv 1 1.5 1
+chend
+cbox -1 -1.5 -1 1 1.5 1
+prop string targetname vault
+prop string target
+prop int _phong 0
+prop float _phong_angle 89
+prop string key red
+prop float speed 120
+prop float travel 64
+prop float wait 6
+prop string open_direction 0 1 0
+prop string classname fps_key_door
+end
+
+entity fps_portal fps_portal
+solid 0
+pos -4 1 -14
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/portal.tscn
+target fps_portal_1
+tag portals
+prop string targetname portal_low
+prop string target portal_high
+prop string angles 0 0 0
+prop color color 0.35294117647058826 0.7450980392156863 1 1
+prop string classname fps_portal
+prop string origin -448 -128 32
+end
+
+entity fps_portal fps_portal_1
+solid 0
+pos 10 4 -14
+rot 0 1.5707963267948966 0
+scale 1 1 1
+scene res://objects/portal.tscn
+target fps_portal
+tag portals
+prop string targetname portal_high
+prop string target portal_low
+prop string angles 0 -90 0
+prop color color 0.35294117647058826 0.7450980392156863 1 1
+prop string classname fps_portal
+prop string origin -448 320 128
+end
+
+entity fps_jump_pad fps_jump_pad
+solid 1
+mesh demo/fps_jump_pad.glb
+pos 4 0.125 -2
+rot 0 0 0
+scale 1 1 1
+surface 0 hazard
+collision convex 1 1 sensor
+chull 8
+chv -1 0.125 -1
+chv -1 -0.125 -1
+chv 1 -0.125 -1
+chv 1 0.125 -1
+chv -1 -0.125 1
+chv -1 0.125 1
+chv 1 -0.125 1
+chv 1 0.125 1
+chend
+cbox -1 -0.125 -1 1 0.125 1
+tag jump_pads
+prop string targetname
+prop int _phong 0
+prop float _phong_angle 89
+prop float strength 17
+prop string classname fps_jump_pad
+end
+
+entity fps_ladder fps_ladder
+solid 1
+mesh demo/fps_ladder.glb
+pos 5.5 1.5 0
+rot 0 0 0
+scale 1 1 1
+collision convex 0 1 sensor
+chull 8
+chv -0.5 1.5 -1
+chv -0.5 -1.5 -1
+chv 0.5 -1.5 -1
+chv 0.5 1.5 -1
+chv -0.5 -1.5 1
+chv -0.5 1.5 1
+chv 0.5 -1.5 1
+chv 0.5 1.5 1
+chend
+cbox -0.5 -1.5 -1 0.5 1.5 1
+tag ladders
+prop string targetname ladder
+prop float speed 0
+prop string classname fps_ladder
+end
+
+entity fps_lift fps_lift
+solid 1
+mesh demo/fps_lift.glb
+pos 5 0.25 6
+rot 0 0 0
+scale 1 1 1
+surface 0 metal
+collision convex 1 1
+chull 8
+chv -1 0.25 -1
+chv -1 -0.25 -1
+chv 1 -0.25 -1
+chv 1 0.25 -1
+chv -1 -0.25 1
+chv -1 0.25 1
+chv 1 -0.25 1
+chv 1 0.25 1
+chend
+cbox -1 -0.25 -1 1 0.25 1
+prop string targetname lift
+prop string target
+prop string script
+prop int _phong 0
+prop float _phong_angle 89
+prop float speed 90
+prop float travel 96
+prop float wait 4
+prop string open_direction 0 0 1
+prop string classname fps_lift
+end
+
+entity trigger_multiple trigger_multiple_1
+solid 1
+mesh demo/trigger_multiple_1.glb
+pos 2.875 1 6
+rot 0 0 0
+scale 1 1 1
+collision convex 0 1 sensor
+chull 8
+chv -0.875 1 -1
+chv -0.875 -1 -1
+chv 0.875 -1 -1
+chv 0.875 1 -1
+chv -0.875 -1 1
+chv -0.875 1 1
+chv 0.875 -1 1
+chv 0.875 1 1
+chend
+cbox -0.875 -1 -1 0.875 1 1
+target fps_lift
+prop string targetname
+prop string target lift
+prop string script
+prop int monitoring 1
+prop int collision_mask 1
+prop float wait 1
+prop string classname trigger_multiple
+prop string _heron_trigger_volumes [[[-0.0,-0.0,-1.0,-5.0],[-1.0,-0.0,-0.0,-2.0],[-0.0,-1.0,-0.0,-0.0],[0.0,1.0,0.0,2.0],[1.0,0.0,0.0,3.75],[0.0,0.0,1.0,7.0]]]
+end
+
+entity fps_water fps_water
+solid 1
+mesh demo/fps_water.glb
+pos 0 -2 10
+rot 0 0 0
+scale 1 1 1
+surface 0 water
+collision convex 1 1 sensor
+chull 8
+chv -4 1 -4
+chv -4 -1 -4
+chv 4 -1 -4
+chv 4 1 -4
+chv -4 -1 4
+chv -4 1 4
+chv 4 -1 4
+chv 4 1 4
+chend
+cbox -4 -1 -4 4 1 4
+tag water
+prop string targetname pool
+prop int _phong 0
+prop float _phong_angle 89
+prop float sink_speed 0.8
+prop float rise_speed 3.5
+prop float swim_speed 3
+prop string classname fps_water
+end
+
+entity fps_hurt fps_hurt
+solid 1
+mesh demo/fps_hurt.glb
+pos 9 3.75 9
+rot 0 0 0
+scale 1 1 1
+collision convex 0 1 sensor
+chull 8
+chv -2 0.75 -2
+chv -2 -0.75 -2
+chv 2 -0.75 -2
+chv 2 0.75 -2
+chv -2 -0.75 2
+chv -2 0.75 2
+chv 2 -0.75 2
+chv 2 0.75 2
+chend
+cbox -2 -0.75 -2 2 0.75 2
+tag hurt
+prop string targetname
+prop float damage 25
+prop float interval 0.5
+prop int instant 0
+prop string message That burns
+prop string classname fps_hurt
+end
+
+entity fps_barrel fps_barrel
+solid 0
+pos -3 0 4
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/barrel.tscn
+tag barrels
+prop string targetname
+prop int health 20
+prop int damage 55
+prop float radius 4
+prop float push 9
+prop float fuse 0
+prop string classname fps_barrel
+prop string origin 128 -96 0
+end
+
+entity fps_barrel fps_barrel_1
+solid 0
+pos -3 0 5.5
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/barrel.tscn
+tag barrels
+prop string targetname
+prop int health 20
+prop int damage 55
+prop float radius 4
+prop float push 9
+prop float fuse 0
+prop string classname fps_barrel
+prop string origin 176 -96 0
+end
+
+entity fps_barrel fps_barrel_2
+solid 0
+pos -3 0 7
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/barrel.tscn
+tag barrels
+prop string targetname
+prop int health 20
+prop int damage 55
+prop float radius 4
+prop float push 9
+prop float fuse 0
+prop string classname fps_barrel
+prop string origin 224 -96 0
+end
+
+entity fps_enemy fps_enemy
+solid 0
+pos -1 3 6
+rot 0 6.283185307179586 0
+scale 1 1 1
+scene res://objects/enemy.tscn
+tag enemies
+prop string targetname
+prop string angles 0 180 0
+prop string classname fps_enemy
+prop string origin 192 -32 96
+end
+
+entity fps_enemy fps_enemy_1
+solid 0
+pos -1 3 9
+rot 0 6.283185307179586 0
+scale 1 1 1
+scene res://objects/enemy.tscn
+tag enemies
+prop string targetname
+prop string angles 0 180 0
+prop string classname fps_enemy
+prop string origin 288 -32 96
+end
+
+entity func_rotate func_rotate
+solid 1
+mesh demo/func_rotate.glb
+pos -0.5 6.75 0
+rot 0 0 0
+scale 1 1 1
+surface 0 metal
+collision convex 1 1
+chull 8
+chv -0.5 0.25 -2.5
+chv -0.5 -0.25 -2.5
+chv 0.5 -0.25 -2.5
+chv 0.5 0.25 -2.5
+chv -0.5 -0.25 2.5
+chv -0.5 0.25 2.5
+chv 0.5 -0.25 2.5
+chv 0.5 0.25 2.5
+chend
+cbox -0.5 -0.25 -2.5 0.5 0.25 2.5
+prop string targetname
+prop string script res://scripts/spinner.gd
+prop int _phong 0
+prop float _phong_angle 89
+prop string axis 0 0 1
+prop float speed 140
+prop int start_on 1
+prop string classname func_rotate
+end
+
+entity func_shuttle func_shuttle
+solid 1
+mesh demo/func_shuttle.glb
+pos 0 0.25 10
+rot 0 0 0
+scale 1 1 1
+surface 0 crate
+collision convex 1 1
+chull 8
+chv -1 0.25 -1
+chv -1 -0.25 -1
+chv 1 -0.25 -1
+chv 1 0.25 -1
+chv -1 -0.25 1
+chv -1 0.25 1
+chv 1 -0.25 1
+chv 1 0.25 1
+chend
+cbox -1 -0.25 -1 1 0.25 1
+prop string targetname piston
+prop string script res://scripts/shuttle.gd
+prop int _phong 0
+prop float _phong_angle 89
+prop string direction 0 1 0
+prop float travel 160
+prop float speed 70
+prop float wait 0.8
+prop int start_on 1
+prop string classname func_shuttle
+end
+
+entity fps_checkpoint fps_checkpoint
+solid 1
+mesh demo/fps_checkpoint.glb
+pos 2 1.5 0
+rot 0 0 0
+scale 1 1 1
+collision convex 0 1 sensor
+chull 8
+chv -1 1.5 -1
+chv -1 -1.5 -1
+chv 1 -1.5 -1
+chv 1 1.5 -1
+chv -1 -1.5 1
+chv -1 1.5 1
+chv 1 -1.5 1
+chv 1 1.5 1
+chend
+cbox -1 -1.5 -1 1 1.5 1
+tag checkpoints
+prop string targetname halfway
+prop string classname fps_checkpoint
+end
+
+entity fps_spawner fps_spawner
+solid 0
+pos 7 4 3
+rot 0 3.141592653589793 0
+scale 1 1 1
+tag spawners
+prop string targetname ambush
+prop int count 3
+prop float interval 0.8
+prop float spread 2.5
+prop string classname fps_spawner
+prop string origin 96 224 128
+end
+
+entity trigger_once trigger_once
+solid 1
+mesh demo/trigger_once.glb
+pos 5.5 4.5 3.5
+rot 0 0 0
+scale 1 1 1
+collision convex 0 1 sensor
+chull 8
+chv -0.5 1.5 -1.5
+chv -0.5 -1.5 -1.5
+chv 0.5 -1.5 -1.5
+chv 0.5 1.5 -1.5
+chv -0.5 -1.5 1.5
+chv -0.5 1.5 1.5
+chv 0.5 -1.5 1.5
+chv 0.5 1.5 1.5
+chend
+cbox -0.5 -1.5 -1.5 0.5 1.5 1.5
+target fps_spawner
+prop string targetname
+prop string target ambush
+prop string script
+prop int collision_mask 1
+prop string classname trigger_once
+prop string _heron_trigger_volumes [[[-0.0,-0.0,-1.0,-2.0],[-1.0,-0.0,-0.0,-5.0],[-0.0,-1.0,-0.0,-3.0],[0.0,1.0,0.0,6.0],[1.0,0.0,0.0,6.0],[0.0,0.0,1.0,5.0]]]
+end
+
+entity fps_smoke fps_smoke
+solid 0
+pos 7 3 -9
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/particles.tscn
+tag particles
+prop string targetname
+prop int amount 26
+prop float lifetime 3
+prop float size 0.7
+prop float grow 2.4
+prop float speed 1.1
+prop float spread 20
+prop float swirl 0.3
+prop color color 0.7843137254901961 0.7843137254901961 0.803921568627451 1
+prop float alpha 0.35
+prop int start_on 1
+prop string classname fps_smoke
+prop string origin -288 224 96
+end
+
+entity fps_particles fps_particles
+solid 0
+pos 3 0.75 11
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/particles.tscn
+tag particles
+prop string targetname
+prop int amount 40
+prop float lifetime 1.2
+prop float size 0.1
+prop float grow 1
+prop float speed 4
+prop string direction 0 1 0
+prop float spread 40
+prop float swirl 0
+prop string gravity 0 -6 0
+prop float drag 0.2
+prop color color 1 0.7450980392156863 0.35294117647058826 1
+prop float alpha 0.9
+prop string from 0.1 0.1 0.1
+prop int carried 0
+prop int start_on 1
+prop string classname fps_particles
+prop string origin 352 96 24
+end
+
+entity fps_cloud fps_cloud
+solid 0
+pos 0 9 0
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/cloud.tscn
+tag decoration
+prop string classname fps_cloud
+prop string origin 0 0 288
+end
+
+entity prop_static prop_static
+solid 0
+pos 7 3 14
+rot 0 3.141592653589793 0
+scale 1 1 1
+scene res://objects/platform.tscn
+prop string targetname
+prop string angles 0 0 0
+prop string scene res://objects/platform.tscn
+prop string scale 1
+prop string classname prop_static
+prop string origin 448 224 96
+end
+
+entity func_door func_door_2
+solid 1
+mesh demo/func_door_2.glb
+pos 10.5 1.5 12.5
+rot 0 0 0
+scale 1 1 1
+surface 0 wood
+collision convex 1 1
+chull 8
+chv -0.5 1.5 -1.5
+chv -0.5 -1.5 -1.5
+chv 0.5 -1.5 -1.5
+chv 0.5 1.5 -1.5
+chv -0.5 -1.5 1.5
+chv -0.5 1.5 1.5
+chv 0.5 -1.5 1.5
+chv 0.5 1.5 1.5
+chend
+cbox -0.5 -1.5 -1.5 0.5 1.5 1.5
+prop string targetname side_door
+prop string target
+prop string script res://scripts/mover.gd
+prop int _phong 0
+prop float _phong_angle 89
+prop float speed 160
+prop float travel 96
+prop float wait 0
+prop string open_direction 0 0 1
+prop string classname func_door
+end
+
+entity fps_sign fps_sign
+solid 1
+mesh demo/fps_sign.glb
+pos 8.5 4.5 12.5
+rot 0 0 0
+scale 1 1 1
+collision convex 0 1 sensor
+chull 8
+chv -1.5 1.5 -1.5
+chv -1.5 -1.5 -1.5
+chv 1.5 -1.5 -1.5
+chv 1.5 1.5 -1.5
+chv -1.5 -1.5 1.5
+chv -1.5 1.5 1.5
+chv 1.5 -1.5 1.5
+chv 1.5 1.5 1.5
+chend
+cbox -1.5 -1.5 -1.5 1.5 1.5 1.5
+tag signs
+prop string targetname
+prop string title The ledge
+prop string text Three presents and the door opens
+prop float seconds 4
+prop int once 1
+prop string classname fps_sign
+end
+
+entity fps_gate fps_gate
+solid 0
+pos 4 4 11
+rot 0 3.141592653589793 0
+scale 1 1 1
+target func_door_2
+tag gates
+prop string targetname present_gate
+prop string target side_door
+prop int needs_count 3
+prop string needs_kind present
+prop string needs_key
+prop string needs_flag
+prop string message The door swings open
+prop string classname fps_gate
+prop string origin 352 128 128
+end
+
+entity fps_exit fps_exit
+solid 1
+mesh demo/fps_exit.glb
+pos 10.5 4.5 14.5
+rot 0 0 0
+scale 1 1 1
+collision convex 0 1 sensor
+chull 8
+chv -1.5 1.5 -1.5
+chv -1.5 -1.5 -1.5
+chv 1.5 -1.5 -1.5
+chv 1.5 1.5 -1.5
+chv -1.5 -1.5 1.5
+chv -1.5 1.5 1.5
+chv 1.5 -1.5 1.5
+chv 1.5 1.5 1.5
+chend
+cbox -1.5 -1.5 -1.5 1.5 1.5 1.5
+tag exits
+prop string targetname way_out
+prop string next_map arena
+prop string message Off to the arena
+prop string needs
+prop string classname fps_exit
+end

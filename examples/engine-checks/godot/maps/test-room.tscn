@@ -1,0 +1,264 @@
+[gd_scene load_steps=24 format=3]
+
+[ext_resource type="ArrayMesh" path="res://maps/test-room/worldspawn.obj" id="1_eis81"]
+[ext_resource type="PackedScene" path="res://objects/pickup.tscn" id="2_erd2m"]
+[ext_resource type="PackedScene" path="res://objects/particles.tscn" id="3_3k9i2"]
+[ext_resource type="Script" path="res://scripts/exit.gd" id="4_td6pv"]
+[ext_resource type="Script" path="res://scripts/hurt.gd" id="5_6qhey"]
+[ext_resource type="Script" path="res://scripts/ladder.gd" id="6_pio34"]
+[ext_resource type="PackedScene" path="res://objects/barrel.tscn" id="7_mkc80"]
+[ext_resource type="Script" path="res://scripts/spinner.gd" id="8_mkohv"]
+[ext_resource type="ArrayMesh" path="res://maps/test-room/func_rotate.obj" id="9_xcxpl"]
+[ext_resource type="Script" path="res://scripts/shuttle.gd" id="10_ywe4h"]
+[ext_resource type="ArrayMesh" path="res://maps/test-room/func_shuttle.obj" id="11_x3wb9"]
+[ext_resource type="Texture2D" path="res://textures/wall.png" id="12_33qay"]
+[ext_resource type="Texture2D" path="res://textures/metal.png" id="13_sc4pc"]
+[ext_resource type="Texture2D" path="res://textures/crate.png" id="14_cwybk"]
+
+[sub_resource type="StandardMaterial3D" id="Material_wall"]
+resource_name = "wall"
+albedo_texture = ExtResource("12_33qay")
+
+[sub_resource type="StandardMaterial3D" id="Material_metal"]
+resource_name = "metal"
+albedo_texture = ExtResource("13_sc4pc")
+
+[sub_resource type="StandardMaterial3D" id="Material_crate"]
+resource_name = "crate"
+albedo_texture = ExtResource("14_cwybk")
+
+[sub_resource type="ConcavePolygonShape3D" id="Concave_worldspawn"]
+data = PackedVector3Array(4.0, 0.0, -4.0, -4.0, 0.0, -4.0, -4.0, -0.5, -4.0, -4.0, -0.5, -4.0, 4.0, -0.5, -4.0, 4.0, 0.0, -4.0, -4.0, 0.0, 4.0, 4.0, 0.0, 4.0, 4.0, -0.5, 4.0, 4.0, -0.5, 4.0, -4.0, -0.5, 4.0, -4.0, 0.0, 4.0, -4.0, 0.0, -4.0, -4.0, 0.0, 4.0, -4.0, -0.5, 4.0, -4.0, -0.5, 4.0, -4.0, -0.5, -4.0, -4.0, 0.0, -4.0, 4.0, 0.0, 4.0, 4.0, 0.0, -4.0, 4.0, -0.5, -4.0, 4.0, -0.5, -4.0, 4.0, -0.5, 4.0, 4.0, 0.0, 4.0, 4.0, -0.5, 4.0, 4.0, -0.5, -4.0, -4.0, -0.5, -4.0, -4.0, -0.5, -4.0, -4.0, -0.5, 4.0, 4.0, -0.5, 4.0, -4.0, 0.0, 4.0, -4.0, 0.0, -4.0, 4.0, 0.0, -4.0, 4.0, 0.0, -4.0, 4.0, 0.0, 4.0, -4.0, 0.0, 4.0, 4.0, 4.5, -4.0, -4.0, 4.5, -4.0, -4.0, 4.0, -4.0, -4.0, 4.0, -4.0, 4.0, 4.0, -4.0, 4.0, 4.5, -4.0, -4.0, 4.5, 4.0, 4.0, 4.5, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, -4.0, 4.0, 4.0, -4.0, 4.5, 4.0, -4.0, 4.5, -4.0, -4.0, 4.5, 4.0, -4.0, 4.0, 4.0, -4.0, 4.0, 4.0, -4.0, 4.0, -4.0, -4.0, 4.5, -4.0, 4.0, 4.5, 4.0, 4.0, 4.5, -4.0, 4.0, 4.0, -4.0, 4.0, 4.0, -4.0, 4.0, 4.0, 4.0, 4.0, 4.5, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, -4.0, -4.0, 4.0, -4.0, -4.0, 4.0, -4.0, -4.0, 4.0, 4.0, 4.0, 4.0, 4.0, -4.0, 4.5, 4.0, -4.0, 4.5, -4.0, 4.0, 4.5, -4.0, 4.0, 4.5, -4.0, 4.0, 4.5, 4.0, -4.0, 4.5, 4.0, 4.5, 4.0, -4.5, -4.5, 4.0, -4.5, -4.5, 0.0, -4.5, -4.5, 0.0, -4.5, 4.5, 0.0, -4.5, 4.5, 4.0, -4.5, -4.0, 4.0, -4.0, 4.0, 4.0, -4.0, 4.0, 0.0, -4.0, 4.0, 0.0, -4.0, -4.0, 0.0, -4.0, -4.0, 4.0, -4.0, 4.0, 0.0, -4.0, 4.0, 0.0, -4.5, -4.0, 0.0, -4.5, -4.0, 0.0, -4.5, -4.0, 0.0, -4.0, 4.0, 0.0, -4.0, -4.0, 4.0, -4.0, -4.0, 4.0, -4.5, 4.0, 4.0, -4.5, 4.0, 4.0, -4.5, 4.0, 4.0, -4.0, -4.0, 4.0, -4.0, 4.0, 4.0, 4.0, -4.0, 4.0, 4.0, -4.0, 0.0, 4.0, -4.0, 0.0, 4.0, 4.0, 0.0, 4.0, 4.0, 4.0, 4.0, 4.5, 0.0, 4.5, -4.5, 0.0, 4.5, -4.5, 4.0, 4.5, -4.5, 4.0, 4.5, 4.5, 4.0, 4.5, 4.5, 0.0, 4.5, 4.0, 0.0, 4.5, 4.0, 0.0, 4.0, -4.0, 0.0, 4.0, -4.0, 0.0, 4.0, -4.0, 0.0, 4.5, 4.0, 0.0, 4.5, -4.0, 4.0, 4.5, -4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.5, -4.0, 4.0, 4.5, -4.5, 4.0, -4.5, -4.5, 4.0, 4.5, -4.5, 0.0, 4.5, -4.5, 0.0, 4.5, -4.5, 0.0, -4.5, -4.5, 4.0, -4.5, -4.0, 4.0, 4.5, -4.0, 4.0, -4.5, -4.0, 0.0, -4.5, -4.0, 0.0, -4.5, -4.0, 0.0, 4.5, -4.0, 4.0, 4.5, -4.0, 0.0, -4.0, -4.0, 0.0, -4.5, -4.5, 0.0, -4.5, -4.0, 0.0, -4.0, -4.5, 0.0, -4.5, -4.5, 0.0, 4.5, -4.0, 0.0, -4.0, -4.5, 0.0, 4.5, -4.0, 0.0, 4.5, -4.5, 4.0, 4.5, -4.5, 4.0, -4.5, -4.0, 4.0, -4.5, -4.5, 4.0, 4.5, -4.0, 4.0, -4.5, -4.0, 4.0, -4.0, -4.5, 4.0, 4.5, -4.0, 4.0, -4.0, -4.0, 4.0, 4.0, -4.0, 4.0, 4.0, -4.0, 4.0, 4.5, -4.5, 4.0, 4.5, 4.0, 4.0, -4.5, 4.0, 4.0, 4.5, 4.0, 0.0, 4.5, 4.0, 0.0, 4.5, 4.0, 0.0, -4.5, 4.0, 4.0, -4.5, 4.5, 4.0, 4.5, 4.5, 4.0, -4.5, 4.5, 0.0, -4.5, 4.5, 0.0, -4.5, 4.5, 0.0, 4.5, 4.5, 4.0, 4.5, 4.5, 0.0, 4.5, 4.5, 0.0, -4.5, 4.0, 0.0, -4.5, 4.5, 0.0, 4.5, 4.0, 0.0, -4.5, 4.0, 0.0, -4.0, 4.5, 0.0, 4.5, 4.0, 0.0, -4.0, 4.0, 0.0, 4.0, 4.0, 0.0, 4.0, 4.0, 0.0, 4.5, 4.5, 0.0, 4.5, 4.0, 4.0, -4.0, 4.0, 4.0, -4.5, 4.5, 4.0, -4.5, 4.0, 4.0, -4.0, 4.5, 4.0, -4.5, 4.5, 4.0, 4.5, 4.0, 4.0, -4.0, 4.5, 4.0, 4.5, 4.0, 4.0, 4.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_exit_0"]
+points = PackedVector3Array(-4.0, 1.0, -0.5, -4.0, -1.0, -0.5, 4.0, -1.0, -0.5, 4.0, 1.0, -0.5, -4.0, -1.0, 0.5, -4.0, 1.0, 0.5, 4.0, -1.0, 0.5, 4.0, 1.0, 0.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_hurt_0"]
+points = PackedVector3Array(-4.0, 0.5, -1.0, -4.0, -0.5, -1.0, 4.0, -0.5, -1.0, 4.0, 0.5, -1.0, -4.0, -0.5, 1.0, -4.0, 0.5, 1.0, 4.0, -0.5, 1.0, 4.0, 0.5, 1.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_fps_ladder_0"]
+points = PackedVector3Array(-0.25, 1.75, -1.0, -0.25, -1.75, -1.0, 0.25, -1.75, -1.0, 0.25, 1.75, -1.0, -0.25, -1.75, 1.0, -0.25, 1.75, 1.0, 0.25, -1.75, 1.0, 0.25, 1.75, 1.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_rotate_0"]
+points = PackedVector3Array(-0.5, 0.125, -0.5, -0.5, -0.125, -0.5, 0.5, -0.125, -0.5, 0.5, 0.125, -0.5, -0.5, -0.125, 0.5, -0.5, 0.125, 0.5, 0.5, -0.125, 0.5, 0.5, 0.125, 0.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_shuttle_0"]
+points = PackedVector3Array(-1.0, 0.125, -1.0, -1.0, -0.125, -1.0, 1.0, -0.125, -1.0, 1.0, 0.125, -1.0, -1.0, -0.125, 1.0, -1.0, 0.125, 1.0, 1.0, -0.125, 1.0, 1.0, 0.125, 1.0)
+
+[node name="test-room" type="Node3D"]
+
+[node name="worldspawn" type="StaticBody3D" parent="."]
+metadata/properties = {
+"_phong": 0,
+"_phong_angle": 89.0,
+"_vertex_merge_distance": 0.0,
+"_cull_interior_faces": 1,
+"wad": "",
+"sky": 1,
+"sky_top_color": Color(0.156863, 0.352941, 0.745098, 1.0),
+"sky_horizon_color": Color(0.901961, 0.784314, 0.627451, 1.0),
+"fog_enabled": 1,
+"fog_light_color": Color(0.862745, 0.745098, 0.588235, 1.0),
+"fog_density": 0.03,
+"ambient_light_color": Color(0.705882, 0.666667, 0.627451, 1.0),
+"ambient_light_energy": 1.2,
+"occluders": 0,
+"occluder_min_size": 64.0,
+"mapversion": "220",
+"classname": "worldspawn"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="worldspawn"]
+mesh = ExtResource("1_eis81")
+surface_material_override/2 = SubResource("Material_wall")
+
+[node name="shape" type="CollisionShape3D" parent="worldspawn"]
+shape = SubResource("Concave_worldspawn")
+
+[node name="info_player_start" type="Marker3D" parent="." groups=["spawn_points"]]
+transform = Transform3D(0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, -2.0, 1.0, 0.0)
+metadata/properties = {
+"targetname": "",
+"angles": "0 90 0",
+"classname": "info_player_start",
+"origin": "0 -64 32"
+}
+
+[node name="light" type="OmniLight3D" parent="." groups=["lights"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 3.0, 0.0)
+light_color = Color(1.0, 1.0, 1.0, 1.0)
+light_energy = 3.0
+light_indirect_energy = 1.0
+light_specular = 0.5
+omni_range = 8.0
+omni_attenuation = 1.0
+shadow_enabled = true
+light_bake_mode = 2
+metadata/properties = {
+"targetname": "",
+"style": 0,
+"light_color": Color(1.0, 1.0, 1.0, 1.0),
+"light_energy": 3.0,
+"light_indirect_energy": 1.0,
+"light_specular": 0.5,
+"omni_range": 8.0,
+"omni_attenuation": 1.0,
+"shadow_enabled": 1,
+"light_bake_mode": 2,
+"classname": "light",
+"origin": "0 0 96"
+}
+
+[node name="light_1" type="OmniLight3D" parent="." groups=["lights"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 3.0, 0.0)
+light_color = Color(1.0, 1.0, 1.0, 1.0)
+light_energy = 3.0
+light_indirect_energy = 1.0
+light_specular = 0.5
+omni_range = 12.0
+omni_attenuation = 1.0
+shadow_enabled = true
+light_bake_mode = 2
+metadata/properties = {
+"targetname": "",
+"style": 1,
+"light_color": Color(1.0, 1.0, 1.0, 1.0),
+"light_energy": 3.0,
+"light_indirect_energy": 1.0,
+"light_specular": 0.5,
+"omni_range": 12.0,
+"omni_attenuation": 1.0,
+"shadow_enabled": 1,
+"light_bake_mode": 2,
+"classname": "light",
+"origin": "0 0 96"
+}
+
+[node name="fps_pickup" parent="." instance=ExtResource("2_erd2m") groups=["collectibles"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 2.0)
+metadata/properties = {
+"targetname": "",
+"value": 5,
+"kind": "",
+"classname": "fps_pickup",
+"origin": "64 0 32"
+}
+
+[node name="fps_smoke" parent="." instance=ExtResource("3_3k9i2") groups=["particles"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.5, -2.0)
+metadata/properties = {
+"targetname": "",
+"amount": 20,
+"lifetime": 3.0,
+"size": 0.5,
+"grow": 2.0,
+"speed": 1.2,
+"spread": 20.0,
+"swirl": 0.3,
+"color": Color(0.784314, 0.784314, 0.803922, 1.0),
+"alpha": 0.35,
+"start_on": 1,
+"classname": "fps_smoke",
+"origin": "-64 0 16"
+}
+
+[node name="fps_exit" type="Area3D" parent="." groups=["exits"]]
+script = ExtResource("4_td6pv")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 3.5)
+collision_layer = 4
+metadata/properties = {
+"targetname": "way_out",
+"next_map": "arena",
+"message": "Off to the arena",
+"needs": "",
+"classname": "fps_exit"
+}
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_exit"]
+shape = SubResource("Convex_fps_exit_0")
+
+[node name="fps_hurt" type="Area3D" parent="." groups=["hurt"]]
+script = ExtResource("5_6qhey")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.5, -3.0)
+collision_layer = 4
+metadata/properties = {
+"targetname": "lava",
+"damage": 20.0,
+"interval": 0.5,
+"instant": 0,
+"message": "That burns",
+"classname": "fps_hurt"
+}
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_hurt"]
+shape = SubResource("Convex_fps_hurt_0")
+
+[node name="fps_ladder" type="Area3D" parent="." groups=["ladders"]]
+script = ExtResource("6_pio34")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 3.75, 1.75, 0.0)
+collision_layer = 4
+metadata/properties = {
+"targetname": "up_the_wall",
+"speed": 0.0,
+"classname": "fps_ladder"
+}
+
+[node name="shape_0" type="CollisionShape3D" parent="fps_ladder"]
+shape = SubResource("Convex_fps_ladder_0")
+
+[node name="fps_barrel" parent="." instance=ExtResource("7_mkc80") groups=["barrels"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 2.0, 0.0, 2.0)
+metadata/properties = {
+"targetname": "",
+"health": 20,
+"damage": 60,
+"radius": 4.0,
+"push": 9.0,
+"fuse": 0.0,
+"classname": "fps_barrel",
+"origin": "64 64 0"
+}
+
+[node name="func_rotate" type="AnimatableBody3D" parent="."]
+script = ExtResource("8_mkohv")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 2.125, -1.0)
+metadata/properties = {
+"targetname": "",
+"script": "res://scripts/spinner.gd",
+"_phong": 0,
+"_phong_angle": 89.0,
+"axis": "0 0 1",
+"speed": 120.0,
+"start_on": 1,
+"classname": "func_rotate"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_rotate"]
+mesh = ExtResource("9_xcxpl")
+surface_material_override/0 = SubResource("Material_metal")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_rotate"]
+shape = SubResource("Convex_func_rotate_0")
+
+[node name="func_shuttle" type="AnimatableBody3D" parent="."]
+script = ExtResource("10_ywe4h")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 0.625, 0.0)
+metadata/properties = {
+"targetname": "piston",
+"script": "res://scripts/shuttle.gd",
+"_phong": 0,
+"_phong_angle": 89.0,
+"direction": "1 0 0",
+"travel": 64.0,
+"speed": 48.0,
+"wait": 0.6,
+"start_on": 1,
+"classname": "func_shuttle"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_shuttle"]
+mesh = ExtResource("11_x3wb9")
+surface_material_override/0 = SubResource("Material_crate")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_shuttle"]
+shape = SubResource("Convex_func_shuttle_0")

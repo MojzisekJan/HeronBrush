@@ -1,0 +1,17 @@
+name = "Bulk entity properties"
+description = "Preview and apply one property to selected entities. Nothing is changed until Apply."
+api = 1
+panel_action = "inspect"
+[[setting]]
+key = "key"
+label = "Property"
+kind = "text"
+default = "team"
+[[setting]]
+key = "value"
+label = "Value"
+kind = "text"
+default = "neutral"
+[[action]]
+id = "apply"
+label = "Apply to selected entities"

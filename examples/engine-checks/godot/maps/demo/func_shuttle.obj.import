@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://c4p0vq37iy85j"
+path="res://.godot/imported/func_shuttle.obj-6c4df71818dee8d55a84d77b5c0d6c3b.mesh"
+
+[deps]
+
+files=["res://.godot/imported/func_shuttle.obj-6c4df71818dee8d55a84d77b5c0d6c3b.mesh"]
+
+source_file="res://maps/demo/func_shuttle.obj"
+dest_files=["res://.godot/imported/func_shuttle.obj-6c4df71818dee8d55a84d77b5c0d6c3b.mesh", "res://.godot/imported/func_shuttle.obj-6c4df71818dee8d55a84d77b5c0d6c3b.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=true

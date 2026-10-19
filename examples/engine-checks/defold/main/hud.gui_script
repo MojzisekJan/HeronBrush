@@ -1,0 +1,11 @@
+-- Optional screen tint. Send heron_water_view { color=vector4(...) } from a camera.
+function init(self)
+ self.water=gui.new_box_node(vmath.vector3(),vmath.vector3(1,1,0))
+ gui.set_color(self.water,vmath.vector4(0,0,0,0));gui.set_enabled(self.water,false)
+end
+function update(self,dt)
+ local w,h=gui.get_width(),gui.get_height();gui.set_position(self.water,vmath.vector3(w*.5,h*.5,0));gui.set_size(self.water,vmath.vector3(w,h,0))
+end
+function on_message(self,id,message,sender)
+ if id==hash('heron_water_view') then gui.set_color(self.water,message.color);gui.set_enabled(self.water,message.color.w>0) end
+end

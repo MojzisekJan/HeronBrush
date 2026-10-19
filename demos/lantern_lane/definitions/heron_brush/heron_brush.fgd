@@ -1,0 +1,372 @@
+// heron_brush entity definitions.
+//
+// Standard FGD, with one addition: a `// @heron_brush key=value` comment above a class
+// tells the build what the entity becomes in Godot. Editors ignore those
+// comments, so this one file is the only place entities are described.
+//
+//   node=<Class>       Godot node class to create
+//   scene=<res://...>  instance a PackedScene instead of creating a node
+//   script=<res://...> attach a script
+//   collision=none|convex|concave
+//   origin=brush|bounds_center|bounds_mins|bounds_maxs|averaged|absolute|relative
+//   spawn=entity|merge_worldspawn
+//   visuals=true|false
+//            write every property onto the node, not only known ones
+//   groups=a,b         add the node to these scene groups
+//   name_property=<key>  name the node after this property's value
+//   connect=<signal>:<method>   wire this signal to that method on whatever
+//                               this entity's Target names
+
+//=============================================================================
+// Base classes
+//=============================================================================
+
+@BaseClass = Targetname
+[
+    targetname(target_source) : "Name" : "" : "Name other entities use to reach this one."
+]
+
+@BaseClass = Target
+[
+    target(target_destination) : "Target" : "" : "Name of the entity this one activates."
+]
+
+// Point an entity at its own script. The build attaches it, and any entity
+// aiming at this one can then have its signal wired straight to a method.
+@BaseClass = Scripted
+[
+    script(string) : "Script" : "" : "res:// path of a script to attach, such as res://scripts/door.gd"
+]
+
+@BaseClass = Angles
+[
+    angles(string) : "Pitch Yaw Roll" : "0 0 0"
+]
+
+// Smooth shading across faces that meet at a shallow angle.
+@BaseClass = Phong
+[
+    _phong(choices) : "Smooth shading" : 0 =
+    [
+        0 : "Off"
+        1 : "On"
+    ]
+    _phong_angle(float) : "Smoothing angle" : "89" : "Faces meeting below this angle get averaged normals."
+]
+
+@BaseClass = VertexMerge
+[
+    _vertex_merge_distance(float) : "Vertex snap" : "0" : "Snap vertices to this grid, in map units. 0 leaves them alone."
+]
+
+// Removes faces that two brushes press together back to back. Only exact
+// matches go, so nothing that is partly visible is touched, and two brushes
+// inside one entity cannot come apart later to reveal what was dropped. On by
+// default; switch it off for an entity whose brushes you want left verbatim.
+@BaseClass = CullInterior
+[
+    _cull_interior_faces(choices) : "Drop buried faces" : 1 =
+    [
+        0 : "Off"
+        1 : "On"
+    ]
+]
+
+//=============================================================================
+// World
+//=============================================================================
+
+// @heron_brush node=StaticBody3D collision=concave
+@SolidClass base(Phong, VertexMerge, CullInterior) = worldspawn : "The level itself."
+[
+    wad(string) : "WAD" : ""
+    _tb_textures(string) : "Material folders" : "textures"
+    // The mood of the level, set here rather than in the engine. heron_brush writes
+    // these onto the worldspawn node and the game reads them; the names are
+    // Godot's own Environment properties, so there is nothing to translate.
+    sky(choices) : "Sky" : 0 =
+    [
+        0 : "Leave the project's own"
+        1 : "The two colours below"
+    ]
+    sky_top_color(color255) : "Sky, overhead" : "80 130 210"
+    sky_horizon_color(color255) : "Sky, at the horizon" : "200 215 235"
+    fog_enabled(choices) : "Fog" : 0 =
+    [
+        0 : "Off"
+        1 : "On"
+    ]
+    fog_light_color(color255) : "Fog colour" : "150 170 200"
+    fog_density(float) : "Fog density" : "0.01" : "Per metre. 0.01 is a haze, 0.1 is soup."
+    ambient_light_color(color255) : "Ambient colour" : "170 178 197"
+    ambient_light_energy(float) : "Ambient energy" : "1.0"
+    // Occlusion culling. Off by default: an occluder is drawn on the processor
+    // every frame, so on an open level it costs and saves nothing. Turn it on
+    // for corridors and rooms. Godot also needs
+    // rendering/occlusion_culling/use_occlusion_culling switched on, and the
+    // build says so if it is not.
+    occluders(choices) : "Occluders" : 0 =
+    [
+        0 : "Off"
+        1 : "From the big flat walls"
+    ]
+    occluder_min_size(float) : "Smallest wall that counts, in map units" : "64" : "The side of a square. 64 leaves out anything smaller than 64 by 64."
+]
+
+// Structural geometry that joins the world mesh.
+// @heron_brush spawn=merge_worldspawn
+@SolidClass base(Phong) = func_group : "Geometry merged into worldspawn."
+[]
+
+// The four classes below are the same geometry with two switches: does it
+// collide, and does it block sight. In Quake the "detail" prefix meant the
+// compiler left the brush out of the visibility pass. Godot has no such pass,
+// so here it means the same thing by a different mechanism: no occluder.
+
+// @heron_brush node=StaticBody3D collision=concave occluder=true
+@SolidClass base(Targetname, Phong, CullInterior) = func_geo : "Solid geometry that hides what is behind it."
+[]
+
+// @heron_brush node=StaticBody3D collision=concave
+@SolidClass base(Targetname, Phong, CullInterior) = func_detail : "Solid geometry that does not hide anything. For trim, pipes and clutter."
+[]
+
+// @heron_brush node=Node3D collision=none occluder=true
+@SolidClass base(Phong, CullInterior) = func_illusionary : "Walk-through geometry that still hides what is behind it."
+[]
+
+// @heron_brush node=Node3D collision=none
+@SolidClass base(Phong, CullInterior) = func_detail_illusionary : "Walk-through geometry that hides nothing."
+[]
+
+// Collision without a mesh.
+// @heron_brush node=StaticBody3D visuals=false collision=convex
+@SolidClass = func_clip : "Invisible collision."
+[]
+
+//=============================================================================
+// Brush entities
+//=============================================================================
+
+// @heron_brush node=StaticBody3D collision=convex
+@SolidClass base(Targetname, Phong) = func_wall : "A solid block that stands on its own."
+[]
+
+// @heron_brush node=AnimatableBody3D collision=convex origin=brush
+@SolidClass base(Targetname, Target, Scripted, Phong) = func_door : "A door. Put an origin brush where it should pivot."
+[
+    speed(float) : "Speed" : "100" : "Map units per second."
+    travel(float) : "Travel distance" : "128" : "How far it moves, in map units."
+    wait(float) : "Wait before closing" : "3"
+    open_direction(string) : "Open direction" : "0 0 1" : "In map axes: x east, y north, z up."
+]
+
+// @heron_brush node=AnimatableBody3D collision=convex origin=brush
+@SolidClass base(Targetname, Target, Scripted, Phong) = func_platform : "A moving platform."
+[
+    speed(float) : "Speed" : "100"
+    height(float) : "Travel height" : "128"
+]
+
+// Brushwork that spins for ever. Put an origin brush in it to set the pivot,
+// or it turns about the middle of its own bounds.
+// @heron_brush node=AnimatableBody3D collision=convex origin=brush
+@SolidClass base(Targetname, Scripted, Phong) = func_rotate : "Brushwork that spins."
+[
+    axis(string) : "Axis, x y z in map axes" : "0 0 1" : "Map axes: x east, y north, z up."
+    speed(float) : "Degrees a second" : "90"
+    start_on(choices) : "Turning to start with" : 1 =
+    [
+        1 : "Yes"
+        0 : "No, wait to be set off"
+    ]
+]
+
+// Brushwork that slides back and forth for ever. A lift that never stops, a
+// piston, a crusher, a platform crossing a gap.
+// @heron_brush node=AnimatableBody3D collision=convex origin=brush
+@SolidClass base(Targetname, Scripted, Phong) = func_shuttle : "Brushwork that slides back and forth."
+[
+    direction(string) : "Which way, x y z in map axes" : "1 0 0"
+    travel(float) : "How far, in map units" : "128"
+    speed(float) : "Map units a second" : "64"
+    wait(float) : "Seconds paused at each end" : "0.5"
+    start_on(choices) : "Moving to start with" : 1 =
+    [
+        1 : "Yes"
+        0 : "No, wait to be set off"
+    ]
+]
+
+// A brush you walk into to work something else. Aim it with Target.
+// @heron_brush node=Area3D collision=convex connect=body_entered:_on_triggered
+@SolidClass base(Targetname, Target, Scripted, Phong) = func_button : "A button. Set Target to the name of what it works."
+[]
+
+// @heron_brush node=RigidBody3D collision=convex origin=bounds_center
+@SolidClass base(Targetname, Phong) = func_physics : "Brushwork that falls over."
+[
+    mass(float) : "Mass" : "10.0"
+    freeze(choices) : "Start frozen" : 0 =
+    [
+        0 : "No"
+        1 : "Yes"
+    ]
+]
+
+// @heron_brush node=Area3D collision=convex visuals=false connect=body_entered:_on_triggered
+@SolidClass base(Targetname, Target, Scripted) = trigger_multiple : "Fires every time something enters."
+[
+    monitoring(choices) : "Monitoring" : 1 =
+    [
+        0 : "Off"
+        1 : "On"
+    ]
+    collision_mask(integer) : "Collision mask" : 1
+    wait(float) : "Retrigger delay" : "1"
+]
+
+// @heron_brush node=Area3D collision=convex visuals=false connect=body_entered:_on_triggered
+@SolidClass base(Targetname, Target, Scripted) = trigger_once : "Fires the first time something enters, then stops."
+[
+    collision_mask(integer) : "Collision mask" : 1
+]
+
+//=============================================================================
+// Lights
+//=============================================================================
+
+// @heron_brush node=OmniLight3D groups=lights
+@PointClass size(-8 -8 -8, 8 8 8) color(255 255 40) base(Targetname) = light : "Point light."
+[
+    // Quake's light styles, the same letter patterns it used: one letter per
+    // tenth of a second, `a` dark and `m` the light's own brightness. The game
+    // reads this and drives light_energy; nothing here needs a script.
+    style(choices) : "Flicker" : 0 =
+    [
+        0 : "Steady"
+        1 : "Fluorescent, failing"
+        2 : "Candle"
+        3 : "Slow pulse"
+        4 : "Fast strobe"
+        5 : "Torch"
+        6 : "Gentle breathing"
+    ]
+    light_color(color255) : "Colour" : "255 255 255"
+    light_energy(float) : "Energy" : "1.0"
+    light_indirect_energy(float) : "Indirect energy" : "1.0"
+    light_specular(float) : "Specular" : "0.5"
+    omni_range(float) : "Range" : "5.0" : "In Godot units, not map units."
+    omni_attenuation(float) : "Attenuation" : "1.0"
+    shadow_enabled(choices) : "Shadows" : 1 =
+    [
+        0 : "Off"
+        1 : "On"
+    ]
+    light_bake_mode(choices) : "Bake mode" : 2 =
+    [
+        0 : "Disabled"
+        1 : "Static"
+        2 : "Dynamic"
+    ]
+]
+
+// @heron_brush node=SpotLight3D groups=lights
+@PointClass size(-8 -8 -8, 8 8 8) color(255 200 40) base(Targetname, Angles) = light_spot : "Cone light. Aim it with Pitch Yaw Roll."
+[
+    // Quake's light styles, the same letter patterns it used: one letter per
+    // tenth of a second, `a` dark and `m` the light's own brightness. The game
+    // reads this and drives light_energy; nothing here needs a script.
+    style(choices) : "Flicker" : 0 =
+    [
+        0 : "Steady"
+        1 : "Fluorescent, failing"
+        2 : "Candle"
+        3 : "Slow pulse"
+        4 : "Fast strobe"
+        5 : "Torch"
+        6 : "Gentle breathing"
+    ]
+    light_color(color255) : "Colour" : "255 255 255"
+    light_energy(float) : "Energy" : "1.0"
+    spot_range(float) : "Range" : "5.0"
+    spot_angle(float) : "Cone angle" : "45.0"
+    spot_angle_attenuation(float) : "Cone falloff" : "1.0"
+    spot_attenuation(float) : "Attenuation" : "1.0"
+    shadow_enabled(choices) : "Shadows" : 1 =
+    [
+        0 : "Off"
+        1 : "On"
+    ]
+]
+
+// @heron_brush node=DirectionalLight3D groups=lights
+@PointClass size(-16 -16 -16, 16 16 16) color(255 255 150) base(Targetname, Angles) = light_sun : "Sunlight. Only the direction matters."
+[
+    light_color(color255) : "Colour" : "255 255 255"
+    light_energy(float) : "Energy" : "1.0"
+    shadow_enabled(choices) : "Shadows" : 1 =
+    [
+        0 : "Off"
+        1 : "On"
+    ]
+    directional_shadow_max_distance(float) : "Shadow distance" : "100.0"
+]
+
+//=============================================================================
+// Markers and props
+//=============================================================================
+
+// @heron_brush node=Marker3D groups=spawn_points
+@PointClass size(-16 -16 -32, 16 16 32) color(0 255 0) base(Targetname, Angles) = info_player_start : "Where the player starts."
+[]
+
+// @heron_brush node=Marker3D groups=spawn_points
+@PointClass size(-16 -16 -32, 16 16 32) color(0 200 100) base(Targetname, Angles) = info_player_deathmatch : "A respawn point."
+[]
+
+// @heron_brush node=Marker3D
+@PointClass size(-8 -8 -8, 8 8 8) color(200 200 200) base(Targetname, Angles) = info_waypoint : "A named point in space."
+[]
+
+// @heron_brush node=Camera3D
+@PointClass size(-8 -8 -8, 8 8 8) color(100 100 255) base(Targetname, Angles) = info_camera : "A camera."
+[
+    fov(float) : "Field of view" : "75.0"
+    near(float) : "Near plane" : "0.05"
+    far(float) : "Far plane" : "4000.0"
+    current(choices) : "Active on load" : 0 =
+    [
+        0 : "No"
+        1 : "Yes"
+    ]
+]
+
+// Set the scene path per instance; the build reads `scene` off the entity.
+// @heron_brush node=Node3D
+@PointClass size(-16 -16 -16, 16 16 16) color(255 128 0) base(Targetname, Angles) = prop_static : "A model placed by path."
+[
+    scene(string) : "Scene path" : "res://" : "res:// path of a scene or model to place here."
+    scale(string) : "Scale" : "1"
+]
+
+// @heron_brush node=AudioStreamPlayer3D groups=ambience script=res://scripts/demo_ambience.gd
+@PointClass size(-8 -8 -8, 8 8 8) color(255 0 255) base(Targetname) = ambient_sound : "A positional sound. Looping is configured in the audio resource."
+[
+    volume_db(float) : "Volume in dB" : "0.0"
+    unit_size(float) : "Unit size" : "10.0"
+    max_distance(float) : "Max distance" : "0.0"
+    autoplay(choices) : "Autoplay" : 1 =
+    [
+        0 : "No"
+        1 : "Yes"
+    ]
+    stream(string) : "Stream path" : "res://"
+]
+
+// @heron_brush node=ReflectionProbe
+@PointClass size(-32 -32 -32, 32 32 32) color(0 255 255) base(Targetname) = reflection_probe : "A reflection probe."
+[
+    intensity(float) : "Intensity" : "1.0"
+    max_distance(float) : "Max distance" : "0.0"
+]

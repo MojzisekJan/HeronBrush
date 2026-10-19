@@ -1,0 +1,174 @@
+[gd_scene load_steps=19 format=3]
+
+[ext_resource type="ArrayMesh" path="wiring/worldspawn.obj" id="1_ia6dq"]
+[ext_resource type="Script" path="res://scripts/door.gd" id="2_1o9vo"]
+[ext_resource type="ArrayMesh" path="wiring/func_door.obj" id="3_e3hum"]
+[ext_resource type="ArrayMesh" path="wiring/func_button.obj" id="4_mvjk3"]
+[ext_resource type="Texture2D" path="res://textures/floor.png" id="5_x4bxh"]
+[ext_resource type="Texture2D" path="res://textures/ceiling.png" id="6_o8jjl"]
+[ext_resource type="Texture2D" path="res://textures/wall.png" id="7_33qay"]
+[ext_resource type="Texture2D" path="res://textures/door.png" id="8_vqz55"]
+[ext_resource type="Texture2D" path="res://textures/crate.png" id="9_cwybk"]
+
+[sub_resource type="StandardMaterial3D" id="Material_floor"]
+resource_name = "floor"
+albedo_texture = ExtResource("5_x4bxh")
+
+[sub_resource type="StandardMaterial3D" id="Material_ceiling"]
+resource_name = "ceiling"
+albedo_texture = ExtResource("6_o8jjl")
+
+[sub_resource type="StandardMaterial3D" id="Material_wall"]
+resource_name = "wall"
+albedo_texture = ExtResource("7_33qay")
+
+[sub_resource type="StandardMaterial3D" id="Material_door"]
+resource_name = "door"
+albedo_texture = ExtResource("8_vqz55")
+
+[sub_resource type="StandardMaterial3D" id="Material_crate"]
+resource_name = "crate"
+albedo_texture = ExtResource("9_cwybk")
+
+[sub_resource type="ConcavePolygonShape3D" id="Concave_worldspawn"]
+data = PackedVector3Array(8.0, 0.0, -8.0, -8.0, 0.0, -8.0, -8.0, -0.5, -8.0, -8.0, -0.5, -8.0, 8.0, -0.5, -8.0, 8.0, 0.0, -8.0, -8.0, 0.0, 8.0, 8.0, 0.0, 8.0, 8.0, -0.5, 8.0, 8.0, -0.5, 8.0, -8.0, -0.5, 8.0, -8.0, 0.0, 8.0, -8.0, 0.0, -8.0, -8.0, 0.0, 8.0, -8.0, -0.5, 8.0, -8.0, -0.5, 8.0, -8.0, -0.5, -8.0, -8.0, 0.0, -8.0, 8.0, 0.0, 8.0, 8.0, 0.0, -8.0, 8.0, -0.5, -8.0, 8.0, -0.5, -8.0, 8.0, -0.5, 8.0, 8.0, 0.0, 8.0, 8.0, -0.5, 8.0, 8.0, -0.5, -8.0, -8.0, -0.5, -8.0, -8.0, -0.5, -8.0, -8.0, -0.5, 8.0, 8.0, -0.5, 8.0, -8.0, 0.0, 8.0, -8.0, 0.0, -8.0, 8.0, 0.0, -8.0, 8.0, 0.0, -8.0, 8.0, 0.0, 8.0, -8.0, 0.0, 8.0, 8.0, 8.5, -8.0, -8.0, 8.5, -8.0, -8.0, 8.0, -8.0, -8.0, 8.0, -8.0, 8.0, 8.0, -8.0, 8.0, 8.5, -8.0, -8.0, 8.5, 8.0, 8.0, 8.5, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, -8.0, 8.0, 8.0, -8.0, 8.5, 8.0, -8.0, 8.5, -8.0, -8.0, 8.5, 8.0, -8.0, 8.0, 8.0, -8.0, 8.0, 8.0, -8.0, 8.0, -8.0, -8.0, 8.5, -8.0, 8.0, 8.5, 8.0, 8.0, 8.5, -8.0, 8.0, 8.0, -8.0, 8.0, 8.0, -8.0, 8.0, 8.0, 8.0, 8.0, 8.5, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, -8.0, -8.0, 8.0, -8.0, -8.0, 8.0, -8.0, -8.0, 8.0, 8.0, 8.0, 8.0, 8.0, -8.0, 8.5, 8.0, -8.0, 8.5, -8.0, 8.0, 8.5, -8.0, 8.0, 8.5, -8.0, 8.0, 8.5, 8.0, -8.0, 8.5, 8.0, 8.5, 8.0, -8.5, -8.5, 8.0, -8.5, -8.5, 0.0, -8.5, -8.5, 0.0, -8.5, 8.5, 0.0, -8.5, 8.5, 8.0, -8.5, -8.0, 8.0, -8.0, 8.0, 8.0, -8.0, 8.0, 0.0, -8.0, 8.0, 0.0, -8.0, -8.0, 0.0, -8.0, -8.0, 8.0, -8.0, 8.0, 0.0, -8.0, 8.0, 0.0, -8.5, -8.0, 0.0, -8.5, -8.0, 0.0, -8.5, -8.0, 0.0, -8.0, 8.0, 0.0, -8.0, -8.0, 8.0, -8.0, -8.0, 8.0, -8.5, 8.0, 8.0, -8.5, 8.0, 8.0, -8.5, 8.0, 8.0, -8.0, -8.0, 8.0, -8.0, 8.0, 8.0, 8.0, -8.0, 8.0, 8.0, -8.0, 0.0, 8.0, -8.0, 0.0, 8.0, 8.0, 0.0, 8.0, 8.0, 8.0, 8.0, 8.5, 0.0, 8.5, -8.5, 0.0, 8.5, -8.5, 8.0, 8.5, -8.5, 8.0, 8.5, 8.5, 8.0, 8.5, 8.5, 0.0, 8.5, 8.0, 0.0, 8.5, 8.0, 0.0, 8.0, -8.0, 0.0, 8.0, -8.0, 0.0, 8.0, -8.0, 0.0, 8.5, 8.0, 0.0, 8.5, -8.0, 8.0, 8.5, -8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.5, -8.0, 8.0, 8.5, -8.5, 8.0, -8.5, -8.5, 8.0, 8.5, -8.5, 0.0, 8.5, -8.5, 0.0, 8.5, -8.5, 0.0, -8.5, -8.5, 8.0, -8.5, -8.0, 8.0, 8.5, -8.0, 8.0, -8.5, -8.0, 0.0, -8.5, -8.0, 0.0, -8.5, -8.0, 0.0, 8.5, -8.0, 8.0, 8.5, -8.0, 0.0, -8.0, -8.0, 0.0, -8.5, -8.5, 0.0, -8.5, -8.0, 0.0, -8.0, -8.5, 0.0, -8.5, -8.5, 0.0, 8.5, -8.0, 0.0, -8.0, -8.5, 0.0, 8.5, -8.0, 0.0, 8.5, -8.5, 8.0, 8.5, -8.5, 8.0, -8.5, -8.0, 8.0, -8.5, -8.5, 8.0, 8.5, -8.0, 8.0, -8.5, -8.0, 8.0, -8.0, -8.5, 8.0, 8.5, -8.0, 8.0, -8.0, -8.0, 8.0, 8.0, -8.0, 8.0, 8.0, -8.0, 8.0, 8.5, -8.5, 8.0, 8.5, 8.0, 8.0, -8.5, 8.0, 8.0, 8.5, 8.0, 0.0, 8.5, 8.0, 0.0, 8.5, 8.0, 0.0, -8.5, 8.0, 8.0, -8.5, 8.5, 8.0, 8.5, 8.5, 8.0, -8.5, 8.5, 0.0, -8.5, 8.5, 0.0, -8.5, 8.5, 0.0, 8.5, 8.5, 8.0, 8.5, 8.5, 0.0, 8.5, 8.5, 0.0, -8.5, 8.0, 0.0, -8.5, 8.5, 0.0, 8.5, 8.0, 0.0, -8.5, 8.0, 0.0, -8.0, 8.5, 0.0, 8.5, 8.0, 0.0, -8.0, 8.0, 0.0, 8.0, 8.0, 0.0, 8.0, 8.0, 0.0, 8.5, 8.5, 0.0, 8.5, 8.0, 8.0, -8.0, 8.0, 8.0, -8.5, 8.5, 8.0, -8.5, 8.0, 8.0, -8.0, 8.5, 8.0, -8.5, 8.5, 8.0, 8.5, 8.0, 8.0, -8.0, 8.5, 8.0, 8.5, 8.0, 8.0, 8.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_door_0"]
+points = PackedVector3Array(-0.25, 2.0, 0.0, -0.25, -2.0, 0.0, 0.25, -2.0, 0.0, 0.25, 2.0, 0.0, 0.25, 2.0, 3.0, 0.25, -2.0, 3.0, -0.25, -2.0, 3.0, -0.25, 2.0, 3.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_trigger_multiple_0"]
+points = PackedVector3Array(-1.25, 2.0, -2.0, -1.25, -2.0, -2.0, 1.25, -2.0, -2.0, 1.25, 2.0, -2.0, 1.25, 2.0, 2.0, 1.25, -2.0, 2.0, -1.25, -2.0, 2.0, -1.25, 2.0, 2.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_button_0"]
+points = PackedVector3Array(-1.0, 0.25, -0.5, -1.0, -0.25, -0.5, 1.0, -0.25, -0.5, 1.0, 0.25, -0.5, 1.0, 0.25, 0.5, 1.0, -0.25, 0.5, -1.0, -0.25, 0.5, -1.0, 0.25, 0.5)
+
+[node name="wiring" type="Node3D"]
+
+[node name="worldspawn" type="StaticBody3D" parent="."]
+metadata/properties = {
+"_phong": 0,
+"_phong_angle": 89.0,
+"_vertex_merge_distance": 0.0,
+"_cull_interior_faces": 1,
+"wad": "",
+"sky": 0,
+"sky_top_color": Color(0.313725, 0.509804, 0.823529, 1.0),
+"sky_horizon_color": Color(0.784314, 0.843137, 0.921569, 1.0),
+"fog_enabled": 0,
+"fog_light_color": Color(0.588235, 0.666667, 0.784314, 1.0),
+"fog_density": 0.01,
+"ambient_light_color": Color(0.666667, 0.698039, 0.772549, 1.0),
+"ambient_light_energy": 1.0,
+"occluders": 0,
+"occluder_min_size": 64.0,
+"mapversion": "220",
+"classname": "worldspawn"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="worldspawn"]
+mesh = ExtResource("1_ia6dq")
+surface_material_override/0 = SubResource("Material_floor")
+surface_material_override/1 = SubResource("Material_ceiling")
+surface_material_override/2 = SubResource("Material_wall")
+
+[node name="shape" type="CollisionShape3D" parent="worldspawn"]
+shape = SubResource("Concave_worldspawn")
+
+[node name="func_door" type="AnimatableBody3D" parent="."]
+script = ExtResource("2_1o9vo")
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 7.75, 2.0, -1.5)
+metadata/properties = {
+"targetname": "door1",
+"target": "",
+"script": "res://scripts/door.gd",
+"_phong": 0,
+"_phong_angle": 89.0,
+"speed": 200.0,
+"travel": 128.0,
+"wait": 2.0,
+"open_direction": "0 0 1",
+"classname": "func_door"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_door"]
+mesh = ExtResource("3_e3hum")
+surface_material_override/0 = SubResource("Material_door")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_door"]
+shape = SubResource("Convex_func_door_0")
+
+[node name="trigger_multiple" type="Area3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 5.75, 2.0, 0.0)
+monitoring = true
+collision_mask = 1
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"target": "door1",
+"script": "",
+"monitoring": 1,
+"collision_mask": 1,
+"wait": 1.0,
+"classname": "trigger_multiple"
+}
+metadata/target_paths = [NodePath("../func_door")]
+
+[node name="shape_0" type="CollisionShape3D" parent="trigger_multiple"]
+shape = SubResource("Convex_trigger_multiple_0")
+
+[node name="func_button" type="Area3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.25, 5.5)
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"target": "door1",
+"script": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"classname": "func_button"
+}
+metadata/target_paths = [NodePath("../func_door")]
+
+[node name="mesh" type="MeshInstance3D" parent="func_button"]
+mesh = ExtResource("4_mvjk3")
+surface_material_override/0 = SubResource("Material_crate")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_button"]
+shape = SubResource("Convex_func_button_0")
+
+[node name="info_player_start" type="Marker3D" parent="." groups=["spawn_points"]]
+transform = Transform3D(0.0, 0.0, -1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, -5.0, 1.0, 0.0)
+metadata/properties = {
+"targetname": "",
+"angles": "0 90 0",
+"classname": "info_player_start",
+"origin": "0 -160 32"
+}
+
+[node name="light" type="OmniLight3D" parent="." groups=["lights"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 5.5, 0.0)
+light_color = Color(1.0, 1.0, 1.0, 1.0)
+light_energy = 4.0
+light_indirect_energy = 1.0
+light_specular = 0.5
+omni_range = 14.0
+omni_attenuation = 1.0
+shadow_enabled = true
+light_bake_mode = 2
+metadata/properties = {
+"targetname": "",
+"style": 0,
+"light_color": Color(1.0, 1.0, 1.0, 1.0),
+"light_energy": 4.0,
+"light_indirect_energy": 1.0,
+"light_specular": 0.5,
+"omni_range": 14.0,
+"omni_attenuation": 1.0,
+"shadow_enabled": 1,
+"light_bake_mode": 2,
+"classname": "light",
+"origin": "0 0 176"
+}
+
+[connection signal="body_entered" from="trigger_multiple" to="func_door" method="_on_triggered"]
+[connection signal="body_entered" from="func_button" to="func_door" method="_on_triggered"]

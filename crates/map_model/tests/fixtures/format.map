@@ -1,0 +1,68 @@
+// Format: Valve
+// heron_brush format 3
+// entity 0
+{
+"mapversion" "220"
+"classname" "worldspawn"
+"_tb_def" "external:heron_brush.fgd"
+"wad" "textures.wad"
+// heron_brush id 68a0b50000000002
+// heron_brush color 210 90 40
+// brush 0
+{
+( -64 -64 -16 ) ( -64 -63 -16 ) ( -64 -64 -15 ) west [ 0 1 0 4 ] [ 0 0 -1 8 ] 0 1 1 // heron_brush primitive_uv 0.0078125 0 0.25 0 0.015625 -0.125
+( -64 -64 -16 ) ( -64 -64 -15 ) ( -63 -64 -16 ) south 12 16 0 1 1 1 8 700
+( -64 -64 -16 ) ( -63 -64 -16 ) ( -64 -63 -16 ) floor 20 24 0 1 1
+( 64 64 16 ) ( 64 65 16 ) ( 65 64 16 ) ceiling [ 1 0 0 3 ] [ 0 -1 0 5 ] 0 1 1
+( 64 64 16 ) ( 65 64 16 ) ( 64 64 17 ) north [ 0 1 0 7 ] [ 0 0 -1 9 ] 0 2 2
+( 64 64 16 ) ( 64 64 17 ) ( 64 65 16 ) east [ 0 1 0 11 ] [ 0 0 -1 13 ] 0 1 1
+}
+// heron_brush id 68a0b50000000001
+{
+patchDef2
+{
+common/caulk
+( 3 3 0 0 0 )
+(
+( ( -64 -64 0 0 0 ) ( -64 0 32 0 0.5 ) ( -64 64 0 0 1 ) )
+( ( 0 -64 32 0.5 0 ) ( 0 0 64 0.5 0.5 ) ( 0 64 32 0.5 1 ) )
+( ( 64 -64 0 1 0 ) ( 64 0 32 1 0.5 ) ( 64 64 0 1 1 ) )
+)
+}
+}
+}
+// heron_brush id 68a0b50000000005
+// entity 1
+{
+"classname" "info_player_start"
+"origin" "-192 -192 24"
+"angle" "90"
+}
+// heron_brush id 68a0b50000000004
+// entity 2
+{
+"classname" "func_door"
+"targetname" "door1"
+"_tb_protected_properties" "targetname"
+"_tb_layer" "7"
+// heron_brush id 68a0b50000000003
+// heron_brush gradient 20 40 90 200 220 255 35
+// brush 0
+{
+( 0 0 0 ) ( 0 1 0 ) ( 0 0 1 ) door 0 0 0 1 1
+( 32 32 32 ) ( 32 32 33 ) ( 32 33 32 ) door 0 0 0 1 1
+( 0 0 0 ) ( 0 0 1 ) ( 1 0 0 ) door 0 0 0 1 1
+( 32 32 32 ) ( 33 32 32 ) ( 32 32 33 ) door 0 0 0 1 1
+( 0 0 0 ) ( 1 0 0 ) ( 0 1 0 ) door 0 0 0 1 1
+( 32 32 32 ) ( 32 33 32 ) ( 33 32 32 ) door 0 0 0 1 1
+}
+}
+// entity 3
+{
+"classname" "func_group"
+"_tb_type" "_tb_layer"
+"_tb_name" "Detail"
+"_tb_id" "7"
+"_tb_layer_sort_index" "0"
+"_tb_layer_omit_from_export" "1"
+}

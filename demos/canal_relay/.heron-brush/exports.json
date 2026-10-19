@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "targets": {
+    "godot": {
+      "project_dir": "godot",
+      "directory": "godot/maps",
+      "name_property": "targetname",
+      "entities": {
+        "relay_door": {
+          "build": {
+            "node": "AnimatableBody3D",
+            "collision": "convex",
+            "script": "res://scripts/door.gd",
+            "groups": "relay_doors"
+          }
+        },
+        "relay_zone": {
+          "build": {
+            "node": "Area3D",
+            "collision": "convex",
+            "visuals": "false",
+            "script": "res://scripts/zone.gd",
+            "groups": "relay_zones"
+          }
+        },
+        "relay_cell": {
+          "build": {
+            "scene": "res://objects/cell.tscn",
+            "auto": "true",
+            "groups": "relay_cells"
+          }
+        },
+        "relay_station": {
+          "build": {
+            "scene": "res://objects/station.tscn",
+            "auto": "true",
+            "groups": "relay_stations"
+          }
+        },
+        "relay_spawn": {
+          "build": {
+            "node": "Marker3D",
+            "groups": "relay_spawns",
+            "auto": "true"
+          }
+        }
+      }
+    }
+  }
+}

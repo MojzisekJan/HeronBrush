@@ -1,0 +1,17 @@
+wait 0.8
+size 1360 900
+wait 0.3
+snapshot base
+click 180 220 shift
+snapshot selected
+key Right
+snapshot changed
+key Z cmd
+snapshot undo
+key Z cmd,shift
+snapshot redo
+key S cmd
+wait 0.3
+snapshot saved
+shot uv-edited
+quit

@@ -1,0 +1,17 @@
+[package]
+name = "geometry_math"
+description = "Const-generic vector maths and geometric primitives"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+# Serialize `Vector` and `Plane`, for the live-editing wire format in `heron-brush`.
+serde = ["dep:serde"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+
+[lints]
+workspace = true

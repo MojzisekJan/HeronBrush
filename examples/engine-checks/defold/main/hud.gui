@@ -1,0 +1,70 @@
+script: "/main/hud.gui_script"
+fonts {
+  name: "system_font"
+  font: "/builtins/fonts/default.font"
+}
+background_color {
+  x: 0.0
+  y: 0.0
+  z: 0.0
+  w: 0.0
+}
+nodes {
+  position { x: 640.0 y: 360.0 z: 0.0 w: 1.0 }
+  rotation { x: 0.0 y: 0.0 z: 0.0 w: 1.0 }
+  scale { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  size { x: 16.0 y: 2.0 z: 0.0 w: 1.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 0.85 }
+  type: TYPE_BOX
+  blend_mode: BLEND_MODE_ALPHA
+  id: "cross_h"
+  pivot: PIVOT_CENTER
+  adjust_mode: ADJUST_MODE_FIT
+  inherit_alpha: true
+  size_mode: SIZE_MODE_MANUAL
+  enabled: true
+  visible: true
+}
+nodes {
+  position { x: 640.0 y: 360.0 z: 0.0 w: 1.0 }
+  rotation { x: 0.0 y: 0.0 z: 0.0 w: 1.0 }
+  scale { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  size { x: 2.0 y: 16.0 z: 0.0 w: 1.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 0.85 }
+  type: TYPE_BOX
+  blend_mode: BLEND_MODE_ALPHA
+  id: "cross_v"
+  pivot: PIVOT_CENTER
+  adjust_mode: ADJUST_MODE_FIT
+  inherit_alpha: true
+  size_mode: SIZE_MODE_MANUAL
+  enabled: true
+  visible: true
+}
+nodes {
+  position { x: 640.0 y: 40.0 z: 0.0 w: 1.0 }
+  rotation { x: 0.0 y: 0.0 z: 0.0 w: 1.0 }
+  scale { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  size { x: 1100.0 y: 40.0 z: 0.0 w: 1.0 }
+  color { x: 0.85 y: 0.9 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  blend_mode: BLEND_MODE_ALPHA
+  text: "WASD move   Shift run   Space jump   Esc frees the mouse   -   the arena, exported by Heron Brush"
+  font: "system_font"
+  id: "hint"
+  pivot: PIVOT_CENTER
+  outline { x: 0.0 y: 0.0 z: 0.0 w: 1.0 }
+  shadow { x: 0.0 y: 0.0 z: 0.0 w: 1.0 }
+  adjust_mode: ADJUST_MODE_FIT
+  line_break: false
+  inherit_alpha: true
+  outline_alpha: 0.7
+  shadow_alpha: 0.0
+  text_leading: 1.0
+  text_tracking: 0.0
+  enabled: true
+  visible: true
+}
+material: "/builtins/materials/gui.material"
+adjust_reference: ADJUST_REFERENCE_PARENT
+max_nodes: 512

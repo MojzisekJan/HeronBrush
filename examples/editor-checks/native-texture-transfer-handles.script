@@ -1,0 +1,26 @@
+wait 0.8
+size 1360 900
+wait 0.3
+click 180 220 shift
+key 3 cmd
+wait 0.3
+click 1050 122
+wait 0.3
+click 1080 315
+move 900 400
+key A cmd
+key F
+click 196 293
+snapshot base
+click 310 260 alt
+wait 0.3
+snapshot changed
+shot texture-copied
+key Z cmd
+snapshot undo
+key Z cmd,shift
+snapshot redo
+key S cmd
+wait 0.2
+snapshot saved
+quit

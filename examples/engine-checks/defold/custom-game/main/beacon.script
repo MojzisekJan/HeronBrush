@@ -1,0 +1,10 @@
+go.property("charge",0)
+go.property("destination",msg.url())
+go.property("orientation",vmath.quat())
+function init(self)
+    assert(self.charge==11,"prototype component override was not passed")
+    assert(self.destination.path==hash("/relic") and self.destination.fragment==hash("logic"),"URL override was not passed")
+    assert(math.abs(self.orientation.w-1)<0.0001 and math.abs(self.orientation.x)<0.0001,"quaternion override was not passed")
+    assert(vmath.length(go.get_position()-vmath.vector3(4,2,3))<0.0001,"prototype placement was not preserved")
+    print("HERON_DEFOLD_PROTOTYPE_OK: custom .go, charge=11, authored placement")
+end

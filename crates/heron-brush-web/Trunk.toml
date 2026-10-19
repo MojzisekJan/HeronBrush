@@ -1,0 +1,18 @@
+[build]
+# Leave cargo_profile unset so `trunk build --release` really uses release.
+# For quick optimized development use `trunk serve --cargo-profile web-dev`.
+
+# `trunk serve` rebuilds when any crate of the workspace changes, not only this one.
+[watch]
+watch = ["..", "../../demos", "../../assets"]
+ignore = ["dist"]
+
+[serve]
+addresses = ["127.0.0.1"]
+port = 8080
+
+# The data a package ships (assets/, gamedata/), staged as dist/bundle with a file list.
+[[hooks]]
+stage = "post_build"
+command = "sh"
+command_arguments = ["../../scripts/stage-web-bundle.sh"]

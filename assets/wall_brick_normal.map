@@ -1,0 +1,17 @@
+// Format: Valve
+// heron_brush format 1
+// entity 0
+{
+"mapversion" "220"
+"classname" "worldspawn"
+// heron_brush id 9d5b480000000001
+// brush 0
+{
+( -48 -4 0 ) ( -48 4 0 ) ( -48 -4 80 ) heron_demo/brick_wall 0 0 0 0.1875 0.1875 // heron_brush pbr 88 0 0
+( -48 -4 0 ) ( -48 -4 80 ) ( 48 -4 0 ) heron_demo/brick_wall 0 0 0 0.1875 0.1875 // heron_brush pbr 88 0 0
+( -48 -4 0 ) ( 48 -4 0 ) ( -48 4 0 ) heron_demo/brick_wall 0 0 0 0.1875 0.1875 // heron_brush pbr 88 0 0
+( -48 -4 80 ) ( -48 4 80 ) ( 48 -4 80 ) heron_demo/brick_wall 0 0 0 0.1875 0.1875 // heron_brush pbr 88 0 0
+( -48 4 0 ) ( 48 4 0 ) ( -48 4 80 ) heron_demo/brick_wall 0 0 0 0.1875 0.1875 // heron_brush pbr 88 0 0
+( 48 -4 0 ) ( 48 -4 80 ) ( 48 4 0 ) heron_demo/brick_wall 0 0 0 0.1875 0.1875 // heron_brush pbr 88 0 0
+}
+}

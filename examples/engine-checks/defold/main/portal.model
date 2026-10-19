@@ -1,0 +1,2 @@
+mesh: "/main/portal.glb"
+materials { name: "portal" material: "/main/model.material" textures { sampler: "tex0" texture: "/main/portal.png" } }

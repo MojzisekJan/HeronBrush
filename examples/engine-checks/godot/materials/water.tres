@@ -1,0 +1,57 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://da2x0obplbbak"]
+
+[ext_resource type="Shader" path="res://materials/water.gdshader" id="1_water"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_caustics"]
+noise_type = 2
+seed = 3
+frequency = 0.03
+cellular_distance_function = 1
+cellular_return_type = 4
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_caustics"]
+width = 256
+height = 256
+noise = SubResource("FastNoiseLite_caustics")
+seamless = true
+
+[resource]
+resource_name = "water"
+render_priority = 0
+shader = ExtResource("1_water")
+shader_parameter/shallow_colour = Color(0.55, 0.97, 0.95, 1)
+shader_parameter/deep_colour = Color(0.05, 0.55, 0.78, 1)
+shader_parameter/fog_colour = Color(0.07, 0.5, 0.72, 1)
+shader_parameter/absorption = Color(0.13, 0.05, 0.03, 1)
+shader_parameter/max_depth = 2.0
+shader_parameter/fade_start = 0.15
+shader_parameter/seabed_tint = 0.55
+shader_parameter/opacity = 0.8
+shader_parameter/opacity_floor = 0.45
+shader_parameter/colour_bands = 4
+shader_parameter/wave_height = 0.12
+shader_parameter/wave_choppy = 2.0
+shader_parameter/wave_speed = 0.6
+shader_parameter/wave_freq = 0.8
+shader_parameter/wave_strength = 1.0
+shader_parameter/wave_octaves = 4
+shader_parameter/smoothing_distance = 18.0
+shader_parameter/foam_colour = Color(1, 1, 1, 1)
+shader_parameter/foam_edge_colour = Color(0, 0.05, 0.12, 1)
+shader_parameter/foam_depth = 0.22
+shader_parameter/foam_scale = 2.2
+shader_parameter/foam_speed = 0.7
+shader_parameter/foam_cutoff = 0.58
+shader_parameter/foam_on_crests = 0.0
+shader_parameter/foam_edge_offset = Vector2(0.05, 0.05)
+shader_parameter/bubble_scale = 14.0
+shader_parameter/bubble_strength = 0.9
+shader_parameter/caustics_texture = SubResource("NoiseTexture2D_caustics")
+shader_parameter/caustics_scale = 1.6
+shader_parameter/caustics_speed = 0.06
+shader_parameter/caustics_intensity = 0.7
+shader_parameter/caustics_depth_fade = 0.35
+shader_parameter/refraction = 0.6
+shader_parameter/refraction_distance = 6.0
+shader_parameter/water_roughness = 0.08
+shader_parameter/water_specular = 0.6

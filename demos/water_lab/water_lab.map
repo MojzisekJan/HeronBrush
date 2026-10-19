@@ -1,0 +1,81 @@
+// Format: Valve
+// heron_brush format 2
+// entity 0
+{
+"mapversion" "220"
+"classname" "worldspawn"
+// heron_brush id 75180000000d09
+// heron_brush color 255 255 255
+// brush 0
+{
+( -320 -320 -160 ) ( -320 -319 -160 ) ( -320 -320 -159 ) plain 0 0 0 1 1
+( 320 320 -128 ) ( 320 320 -127 ) ( 320 321 -128 ) plain 0 0 0 1 1
+( -320 -320 -160 ) ( -320 -320 -159 ) ( -319 -320 -160 ) plain 0 0 0 1 1
+( 320 320 -128 ) ( 321 320 -128 ) ( 320 320 -127 ) plain 0 0 0 1 1
+( 320 320 -128 ) ( 320 321 -128 ) ( 321 320 -128 ) plain 0 0 0 1 1
+( -320 -320 -160 ) ( -319 -320 -160 ) ( -320 -319 -160 ) plain 0 0 0 1 1
+}
+}
+// heron_brush id 75180000000d0b
+// entity 1
+{
+"classname" "water_volume"
+"targetname" "pool"
+"water_color" "0.05 0.38 0.48"
+// heron_brush id 75180000000d0a
+// heron_brush color 255 255 255
+// brush 0
+{
+( -128 -128 -128 ) ( -128 -127 -128 ) ( -128 -128 -127 ) plain 0 0 0 1 1
+( 128 128 0 ) ( 128 128 1 ) ( 128 129 0 ) plain 0 0 0 1 1
+( -128 -128 -128 ) ( -128 -128 -127 ) ( -127 -128 -128 ) plain 0 0 0 1 1
+( 128 128 0 ) ( 129 128 0 ) ( 128 128 1 ) plain 0 0 0 1 1
+( 128 128 0 ) ( 128 129 0 ) ( 129 128 0 ) plain 0 0 0 1 1
+( -128 -128 -128 ) ( -127 -128 -128 ) ( -128 -127 -128 ) plain 0 0 0 1 1
+}
+}
+// heron_brush id 75180000000d0d
+// entity 2
+{
+"classname" "custom_pool"
+"water_enabled" "1"
+"water_priority" "10"
+"water_surface_material" "0"
+"targetname" "overlap"
+// heron_brush id 75180000000d0c
+// heron_brush color 255 255 255
+// brush 0
+{
+( -64 -64 -96 ) ( -64 -63 -96 ) ( -64 -64 -95 ) plain 0 0 0 1 1
+( 64 64 -32 ) ( 64 64 -31 ) ( 64 65 -32 ) plain 0 0 0 1 1
+( -64 -64 -96 ) ( -64 -64 -95 ) ( -63 -64 -96 ) plain 0 0 0 1 1
+( 64 64 -32 ) ( 65 64 -32 ) ( 64 64 -31 ) plain 0 0 0 1 1
+( 64 64 -32 ) ( 64 65 -32 ) ( 65 64 -32 ) plain 0 0 0 1 1
+( -64 -64 -96 ) ( -63 -64 -96 ) ( -64 -63 -96 ) plain 0 0 0 1 1
+}
+}
+// heron_brush id 75180000000d0f
+// entity 3
+{
+"classname" "water_volume"
+"water_enabled" "0"
+"targetname" "disabled"
+// heron_brush id 75180000000d0e
+// heron_brush color 255 255 255
+// brush 0
+{
+( 256 256 -128 ) ( 256 257 -128 ) ( 256 256 -127 ) plain 0 0 0 1 1
+( 320 320 0 ) ( 320 320 1 ) ( 320 321 0 ) plain 0 0 0 1 1
+( 256 256 -128 ) ( 256 256 -127 ) ( 257 256 -128 ) plain 0 0 0 1 1
+( 320 320 0 ) ( 321 320 0 ) ( 320 320 1 ) plain 0 0 0 1 1
+( 320 320 0 ) ( 320 321 0 ) ( 321 320 0 ) plain 0 0 0 1 1
+( 256 256 -128 ) ( 257 256 -128 ) ( 256 257 -128 ) plain 0 0 0 1 1
+}
+}
+// heron_brush id 75180000000d10
+// entity 4
+{
+"classname" "info_player_start"
+"origin" "0 0 -96"
+"angles" "0 0 0"
+}

@@ -1,0 +1,19 @@
+/target
+.DS_Store
+/assets/*_preview.png
+
+.claude/worktrees/
+
+# Godot's own import cache in the example project. It is machine-local, it is
+# rebuilt on open, and it holds a copy of every imported asset.
+/examples/godot/.godot/
+
+# Python caches from asset generators.
+__pycache__/
+*.py[cod]
+
+# Motion lab engine cache and generated verification measurements.
+/demos/motion_lab/godot/.godot/
+/demos/motion_lab/godot/verification.json
+/demos/motion_lab/godot/**/*.uid
+/crates/heron-brush-web/dist

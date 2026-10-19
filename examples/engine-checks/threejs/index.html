@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heron Brush scene in Three.js</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #7891b8; }
+  #view { display: block; width: 100vw; height: 100vh; }
+  #hud {
+    position: fixed; inset: 0; pointer-events: none;
+    font: 14px/1.4 system-ui, sans-serif; color: #eef;
+  }
+  #hud .prompt {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    background: rgba(10, 14, 22, 0.55); padding: 14px 20px; border-radius: 10px;
+    text-align: center;
+  }
+  #hud.locked .prompt { display: none; }
+  #hud .cross {
+    position: absolute; left: 50%; top: 50%; width: 16px; height: 16px;
+    margin: -8px 0 0 -8px; display: none;
+  }
+  #hud.locked .cross { display: block; }
+  #hud .cross::before, #hud .cross::after {
+    content: ""; position: absolute; background: rgba(255, 255, 255, 0.85);
+  }
+  #hud .cross::before { left: 7px; top: 0; width: 2px; height: 16px; }
+  #hud .cross::after { top: 7px; left: 0; height: 2px; width: 16px; }
+  #hud .keys {
+    position: absolute; left: 0; right: 0; bottom: 16px; text-align: center;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  #err {
+    position: fixed; left: 12px; top: 12px; right: 12px; max-height: 40vh;
+    overflow: auto; margin: 0; padding: 10px 12px; border-radius: 8px;
+    background: rgba(120, 20, 20, 0.85); color: #fee; font: 12px/1.5 ui-monospace, monospace;
+    white-space: pre-wrap; display: none;
+  }
+  #err:not(:empty) { display: block; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="hud">
+  <div class="cross"></div>
+  <div class="prompt">click to play<br><small>WASD move · shift run · space jump · esc to release</small></div>
+  <div class="keys">Heron Brush JSON + GLB scene · no FPS gameplay</div>
+</div>
+<pre id="err"></pre>
+<script>
+  const _err = document.getElementById("err");
+  const _show = (m) => { _err.textContent += m + "\n"; };
+  addEventListener("error", (e) => _show("Error: " + (e.message || e.error) +
+    (e.filename ? "\n  " + e.filename + ":" + e.lineno : "")));
+  addEventListener("unhandledrejection", (e) => _show("Unhandled: " +
+    (e.reason && e.reason.stack || e.reason)));
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

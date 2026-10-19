@@ -1,0 +1,5 @@
+config_version=5
+[application]
+config/name="Heron Brush custom project verification"
+[rendering]
+renderer/rendering_method="gl_compatibility"

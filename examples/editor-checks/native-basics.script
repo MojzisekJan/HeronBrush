@@ -1,0 +1,48 @@
+wait 0.8
+size 1360 900
+wait 0.3
+snapshot base
+key A cmd
+snapshot selected
+key D cmd
+wait 0.2
+snapshot duplicated
+move 940 400
+key Right
+wait 0.2
+snapshot moved
+key Z cmd
+snapshot move_undo
+key Z cmd
+snapshot dup_undo
+key Z cmd,shift
+snapshot dup_redo
+key Z cmd
+snapshot base_again
+key A cmd
+key C cmd
+wait 0.3
+move 940 400
+key V cmd
+wait 0.5
+snapshot changed
+key Z cmd
+snapshot undo
+key Z cmd,shift
+snapshot redo
+key A cmd
+key Delete
+snapshot deleted
+key Z cmd
+snapshot delete_undo
+key A cmd
+key X cmd
+wait 0.2
+snapshot cut
+key Z cmd
+snapshot cut_undo
+key S cmd
+wait 0.3
+snapshot saved
+shot basic-actions
+quit

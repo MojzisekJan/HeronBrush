@@ -1,0 +1,10 @@
+# What a plugin folder tells the editor about itself. Every key is optional; `api` is
+# the only one that decides anything -- a plugin asking for an API this build does not
+# offer is listed but refused. Copy this folder into ~/.config/heron-brush/plugins/, or
+# install it from the Plugins window.
+
+name = "Face report"
+description = "Counts the faces of the selection and reports what is painted."
+version = "1.0"
+author = "Heron Brush"
+api = 1

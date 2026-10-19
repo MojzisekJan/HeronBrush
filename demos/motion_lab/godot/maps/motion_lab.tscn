@@ -1,0 +1,1140 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="motion_lab/worldspawn.obj" id="1_yla3m"]
+[ext_resource type="ArrayMesh" path="motion_lab/func_animate.obj" id="2_z3ho8"]
+[ext_resource type="ArrayMesh" path="motion_lab/func_animate_1.obj" id="3_vmq2i"]
+[ext_resource type="ArrayMesh" path="motion_lab/func_animate_2.obj" id="4_ixy1u"]
+[ext_resource type="ArrayMesh" path="motion_lab/func_animate_3.obj" id="5_5ipdd"]
+[ext_resource type="ArrayMesh" path="motion_lab/func_button.obj" id="6_q9hue"]
+[ext_resource type="ArrayMesh" path="motion_lab/func_button_1.obj" id="7_u3n69"]
+[ext_resource type="ArrayMesh" path="motion_lab/func_button_2.obj" id="8_3h8ld"]
+[ext_resource type="ArrayMesh" path="motion_lab/func_button_3.obj" id="9_o0yj7"]
+[ext_resource type="Texture2D" path="res://maps/motion_lab_paint/bbpaint_90f4891fa6d38b5d.png" id="10_151ft"]
+[ext_resource type="Texture2D" path="res://maps/motion_lab_paint/bbpaint_763ce23066173d49.png" id="11_kk3c8"]
+[ext_resource type="Texture2D" path="res://maps/motion_lab_paint/bbpaint_0ad9ab8b18127df1.png" id="12_6hgw6"]
+[ext_resource type="Texture2D" path="res://maps/motion_lab_paint/bbpaint_455079bc80197814.png" id="13_eopkm"]
+[ext_resource type="Texture2D" path="res://maps/motion_lab_paint/bbpaint_11c622a6f00f0197.png" id="14_othkq"]
+[ext_resource type="Texture2D" path="res://maps/motion_lab_paint/bbpaint_04743d23e6ed148d.png" id="15_vjjt0"]
+[ext_resource type="Texture2D" path="res://maps/motion_lab_paint/bbpaint_18a4e7e34771bd3a.png" id="16_4xn3d"]
+
+[sub_resource type="StandardMaterial3D" id="Material_bbpaint_90f4891fa6d38b5d"]
+resource_name = "bbpaint_90f4891fa6d38b5d"
+albedo_texture = ExtResource("10_151ft")
+texture_repeat = false
+
+[sub_resource type="StandardMaterial3D" id="Material_bbpaint_763ce23066173d49"]
+resource_name = "bbpaint_763ce23066173d49"
+albedo_texture = ExtResource("11_kk3c8")
+texture_repeat = false
+
+[sub_resource type="StandardMaterial3D" id="Material_bbpaint_0ad9ab8b18127df1"]
+resource_name = "bbpaint_0ad9ab8b18127df1"
+albedo_texture = ExtResource("12_6hgw6")
+texture_repeat = false
+
+[sub_resource type="StandardMaterial3D" id="Material_bbpaint_455079bc80197814"]
+resource_name = "bbpaint_455079bc80197814"
+albedo_texture = ExtResource("13_eopkm")
+texture_repeat = false
+
+[sub_resource type="StandardMaterial3D" id="Material_bbpaint_11c622a6f00f0197"]
+resource_name = "bbpaint_11c622a6f00f0197"
+albedo_texture = ExtResource("14_othkq")
+texture_repeat = false
+
+[sub_resource type="StandardMaterial3D" id="Material_bbpaint_04743d23e6ed148d"]
+resource_name = "bbpaint_04743d23e6ed148d"
+albedo_texture = ExtResource("15_vjjt0")
+texture_repeat = false
+
+[sub_resource type="StandardMaterial3D" id="Material_bbpaint_18a4e7e34771bd3a"]
+resource_name = "bbpaint_18a4e7e34771bd3a"
+albedo_texture = ExtResource("16_4xn3d")
+texture_repeat = false
+
+[sub_resource type="ConcavePolygonShape3D" id="Concave_worldspawn"]
+data = PackedVector3Array(18.0, 0.0, -14.0, -18.0, 0.0, -14.0, -18.0, -1.0, -14.0, -18.0, -1.0, -14.0, 18.0, -1.0, -14.0, 18.0, 0.0, -14.0, -18.0, 0.0, 14.0, 18.0, 0.0, 14.0, 18.0, -1.0, 14.0, 18.0, -1.0, 14.0, -18.0, -1.0, 14.0, -18.0, 0.0, 14.0, -18.0, 0.0, 1.5, -18.0, 0.0, 14.0, -18.0, -1.0, 14.0, -18.0, 0.0, 1.5, -18.0, -1.0, 14.0, -18.0, -1.0, -14.0, -18.0, 0.0, 1.5, -18.0, -1.0, -14.0, -18.0, 0.0, -14.0, 18.0, 0.0, -1.5, 18.0, 0.0, -14.0, 18.0, -1.0, -14.0, 18.0, 0.0, -1.5, 18.0, -1.0, -14.0, 18.0, -1.0, 14.0, 18.0, 0.0, -1.5, 18.0, -1.0, 14.0, 18.0, 0.0, 14.0, -18.0, 0.0, 14.0, -18.0, 0.0, -14.0, 18.0, 0.0, -14.0, 18.0, 0.0, -14.0, 18.0, 0.0, 14.0, -18.0, 0.0, 14.0, 18.0, -1.0, 14.0, 18.0, -1.0, -14.0, -18.0, -1.0, -14.0, -18.0, -1.0, -14.0, -18.0, -1.0, 14.0, 18.0, -1.0, 14.0, 18.0, 0.08, -1.5, -18.0, 0.08, -1.5, -18.0, 0.0, -1.5, -18.0, 0.0, -1.5, 18.0, 0.0, -1.5, 18.0, 0.08, -1.5, -18.0, 0.08, 1.5, 18.0, 0.08, 1.5, 18.0, 0.0, 1.5, 18.0, 0.0, 1.5, -18.0, 0.0, 1.5, -18.0, 0.08, 1.5, -18.0, 0.08, -1.5, -18.0, 0.08, 1.5, -18.0, 0.0, 1.5, -18.0, 0.0, 1.5, -18.0, 0.0, -1.5, -18.0, 0.08, -1.5, 18.0, 0.08, 1.5, 18.0, 0.08, -1.5, 18.0, 0.0, -1.5, 18.0, 0.0, -1.5, 18.0, 0.0, 1.5, 18.0, 0.08, 1.5, -18.0, 0.08, 1.5, -18.0, 0.08, -1.5, 18.0, 0.08, -1.5, 18.0, 0.08, -1.5, 18.0, 0.08, 1.5, -18.0, 0.08, 1.5, 0.8, 0.12, -14.0, -0.8, 0.12, -14.0, -0.8, 0.08, -14.0, -0.8, 0.08, -14.0, 0.8, 0.08, -14.0, 0.8, 0.12, -14.0, -0.8, 0.12, 14.0, 0.8, 0.12, 14.0, 0.8, 0.08, 14.0, 0.8, 0.08, 14.0, -0.8, 0.08, 14.0, -0.8, 0.12, 14.0, -0.8, 0.12, -14.0, -0.8, 0.12, 14.0, -0.8, 0.08, 14.0, -0.8, 0.08, 14.0, -0.8, 0.08, -14.0, -0.8, 0.12, -14.0, 0.8, 0.12, 14.0, 0.8, 0.12, -14.0, 0.8, 0.08, -14.0, 0.8, 0.08, -14.0, 0.8, 0.08, 14.0, 0.8, 0.12, 14.0, -0.8, 0.12, 14.0, -0.8, 0.12, -14.0, 0.8, 0.12, -14.0, 0.8, 0.12, -14.0, 0.8, 0.12, 14.0, -0.8, 0.12, 14.0, 0.8, 0.08, 14.0, 0.8, 0.08, -14.0, -0.8, 0.08, -14.0, -0.8, 0.08, -14.0, -0.8, 0.08, 14.0, 0.8, 0.08, 14.0, -13.0, 0.1, -0.12, -14.0, 0.1, -0.12, -14.0, 0.085, -0.12, -14.0, 0.085, -0.12, -13.0, 0.085, -0.12, -13.0, 0.1, -0.12, -14.0, 0.1, 0.12, -13.0, 0.1, 0.12, -13.0, 0.085, 0.12, -13.0, 0.085, 0.12, -14.0, 0.085, 0.12, -14.0, 0.1, 0.12, -14.0, 0.1, -0.12, -14.0, 0.1, 0.12, -14.0, 0.085, 0.12, -14.0, 0.085, 0.12, -14.0, 0.085, -0.12, -14.0, 0.1, -0.12, -13.0, 0.1, 0.12, -13.0, 0.1, -0.12, -13.0, 0.085, -0.12, -13.0, 0.085, -0.12, -13.0, 0.085, 0.12, -13.0, 0.1, 0.12, -14.0, 0.1, 0.12, -14.0, 0.1, -0.12, -13.0, 0.1, -0.12, -13.0, 0.1, -0.12, -13.0, 0.1, 0.12, -14.0, 0.1, 0.12, -13.0, 0.085, 0.12, -13.0, 0.085, -0.12, -14.0, 0.085, -0.12, -14.0, 0.085, -0.12, -14.0, 0.085, 0.12, -13.0, 0.085, 0.12, -4.0, 0.1, -0.12, -5.0, 0.1, -0.12, -5.0, 0.085, -0.12, -5.0, 0.085, -0.12, -4.0, 0.085, -0.12, -4.0, 0.1, -0.12, -5.0, 0.1, 0.12, -4.0, 0.1, 0.12, -4.0, 0.085, 0.12, -4.0, 0.085, 0.12, -5.0, 0.085, 0.12, -5.0, 0.1, 0.12, -5.0, 0.1, -0.12, -5.0, 0.1, 0.12, -5.0, 0.085, 0.12, -5.0, 0.085, 0.12, -5.0, 0.085, -0.12, -5.0, 0.1, -0.12, -4.0, 0.1, 0.12, -4.0, 0.1, -0.12, -4.0, 0.085, -0.12, -4.0, 0.085, -0.12, -4.0, 0.085, 0.12, -4.0, 0.1, 0.12, -5.0, 0.1, 0.12, -5.0, 0.1, -0.12, -4.0, 0.1, -0.12, -4.0, 0.1, -0.12, -4.0, 0.1, 0.12, -5.0, 0.1, 0.12, -4.0, 0.085, 0.12, -4.0, 0.085, -0.12, -5.0, 0.085, -0.12, -5.0, 0.085, -0.12, -5.0, 0.085, 0.12, -4.0, 0.085, 0.12, 5.0, 0.1, -0.12, 4.0, 0.1, -0.12, 4.0, 0.085, -0.12, 4.0, 0.085, -0.12, 5.0, 0.085, -0.12, 5.0, 0.1, -0.12, 4.0, 0.1, 0.12, 5.0, 0.1, 0.12, 5.0, 0.085, 0.12, 5.0, 0.085, 0.12, 4.0, 0.085, 0.12, 4.0, 0.1, 0.12, 4.0, 0.1, -0.12, 4.0, 0.1, 0.12, 4.0, 0.085, 0.12, 4.0, 0.085, 0.12, 4.0, 0.085, -0.12, 4.0, 0.1, -0.12, 5.0, 0.1, 0.12, 5.0, 0.1, -0.12, 5.0, 0.085, -0.12, 5.0, 0.085, -0.12, 5.0, 0.085, 0.12, 5.0, 0.1, 0.12, 4.0, 0.1, 0.12, 4.0, 0.1, -0.12, 5.0, 0.1, -0.12, 5.0, 0.1, -0.12, 5.0, 0.1, 0.12, 4.0, 0.1, 0.12, 5.0, 0.085, 0.12, 5.0, 0.085, -0.12, 4.0, 0.085, -0.12, 4.0, 0.085, -0.12, 4.0, 0.085, 0.12, 5.0, 0.085, 0.12, 13.0, 0.1, -0.12, 12.0, 0.1, -0.12, 12.0, 0.085, -0.12, 12.0, 0.085, -0.12, 13.0, 0.085, -0.12, 13.0, 0.1, -0.12, 12.0, 0.1, 0.12, 13.0, 0.1, 0.12, 13.0, 0.085, 0.12, 13.0, 0.085, 0.12, 12.0, 0.085, 0.12, 12.0, 0.1, 0.12, 12.0, 0.1, -0.12, 12.0, 0.1, 0.12, 12.0, 0.085, 0.12, 12.0, 0.085, 0.12, 12.0, 0.085, -0.12, 12.0, 0.1, -0.12, 13.0, 0.1, 0.12, 13.0, 0.1, -0.12, 13.0, 0.085, -0.12, 13.0, 0.085, -0.12, 13.0, 0.085, 0.12, 13.0, 0.1, 0.12, 12.0, 0.1, 0.12, 12.0, 0.1, -0.12, 13.0, 0.1, -0.12, 13.0, 0.1, -0.12, 13.0, 0.1, 0.12, 12.0, 0.1, 0.12, 13.0, 0.085, 0.12, 13.0, 0.085, -0.12, 12.0, 0.085, -0.12, 12.0, 0.085, -0.12, 12.0, 0.085, 0.12, 13.0, 0.085, 0.12, -14.55, 0.3, -7.75, -15.0, 0.3, -7.75, -15.0, 0.0, -7.75, -15.0, 0.0, -7.75, -14.55, 0.0, -7.75, -14.55, 0.3, -7.75, -15.0, 0.3, -4.25, -14.55, 0.3, -4.25, -14.55, 0.0, -4.25, -14.55, 0.0, -4.25, -15.0, 0.0, -4.25, -15.0, 0.3, -4.25, -15.0, 0.3, -7.75, -15.0, 0.3, -4.25, -15.0, 0.0, -4.25, -15.0, 0.0, -4.25, -15.0, 0.0, -7.75, -15.0, 0.3, -7.75, -15.0, 0.3, -4.25, -15.0, 0.3, -7.75, -14.55, 0.3, -7.75, -14.55, 0.3, -7.75, -14.55, 0.3, -4.25, -15.0, 0.3, -4.25, -14.1, 0.6, -7.75, -14.55, 0.6, -7.75, -14.55, 0.3, -7.75, -14.1, 0.6, -7.75, -14.55, 0.3, -7.75, -14.55, 0.0, -7.75, -14.55, 0.0, -7.75, -14.1, 0.0, -7.75, -14.1, 0.6, -7.75, -14.55, 0.6, -4.25, -14.1, 0.6, -4.25, -14.1, 0.0, -4.25, -14.55, 0.6, -4.25, -14.1, 0.0, -4.25, -14.55, 0.0, -4.25, -14.55, 0.6, -7.75, -14.55, 0.6, -4.25, -14.55, 0.0, -4.25, -14.55, 0.0, -4.25, -14.55, 0.0, -7.75, -14.55, 0.6, -7.75, -14.55, 0.6, -4.25, -14.55, 0.6, -7.75, -14.1, 0.6, -7.75, -14.1, 0.6, -7.75, -14.1, 0.6, -4.25, -14.55, 0.6, -4.25, -13.65, 0.9, -7.75, -14.1, 0.9, -7.75, -14.1, 0.6, -7.75, -13.65, 0.9, -7.75, -14.1, 0.6, -7.75, -14.1, 0.0, -7.75, -14.1, 0.0, -7.75, -13.65, 0.0, -7.75, -13.65, 0.9, -7.75, -14.1, 0.9, -4.25, -13.65, 0.9, -4.25, -13.65, 0.0, -4.25, -14.1, 0.9, -4.25, -13.65, 0.0, -4.25, -14.1, 0.0, -4.25, -14.1, 0.9, -7.75, -14.1, 0.9, -4.25, -14.1, 0.0, -4.25, -14.1, 0.0, -4.25, -14.1, 0.0, -7.75, -14.1, 0.9, -7.75, -14.1, 0.9, -4.25, -14.1, 0.9, -7.75, -13.65, 0.9, -7.75, -13.65, 0.9, -7.75, -13.65, 0.9, -4.25, -14.1, 0.9, -4.25, -11.75, 1.2, -7.75, -13.65, 1.2, -7.75, -13.65, 0.9, -7.75, -11.75, 1.2, -7.75, -13.65, 0.9, -7.75, -13.65, 0.0, -7.75, -13.65, 0.0, -7.75, -11.75, 0.0, -7.75, -11.75, 1.2, -7.75, -11.75, 0.0, -4.25, -13.65, 0.0, -4.25, -13.65, 0.9, -4.25, -11.75, 0.0, -4.25, -13.65, 0.9, -4.25, -13.65, 1.2, -4.25, -13.65, 1.2, -4.25, -11.75, 1.2, -4.25, -11.75, 0.0, -4.25, -13.65, 1.2, -7.75, -13.65, 1.2, -4.25, -13.65, 0.0, -4.25, -13.65, 0.0, -4.25, -13.65, 0.0, -7.75, -13.65, 1.2, -7.75, -13.65, 1.2, -4.25, -13.65, 1.2, -7.75, -11.75, 1.2, -7.75, -11.75, 1.2, -7.75, -11.75, 1.2, -4.25, -13.65, 1.2, -4.25, -11.75, 1.2, -4.25, -11.75, 1.2, -7.75, -11.75, 0.0, -7.75, -11.75, 0.0, -7.75, -11.75, 0.0, -4.25, -11.75, 1.2, -4.25, -2.25, 1.2, 1.75, -5.75, 1.2, 1.75, -5.75, 0.0, 1.75, -5.75, 0.0, 1.75, -2.25, 0.0, 1.75, -2.25, 1.2, 1.75, -5.75, 1.2, 3.25, -2.25, 1.2, 3.25, -2.25, 0.0, 3.25, -2.25, 0.0, 3.25, -5.75, 0.0, 3.25, -5.75, 1.2, 3.25, -5.75, 1.2, 1.75, -5.75, 1.2, 3.25, -5.75, 0.0, 3.25, -5.75, 0.0, 3.25, -5.75, 0.0, 1.75, -5.75, 1.2, 1.75, -2.25, 1.2, 3.25, -2.25, 1.2, 1.75, -2.25, 0.0, 1.75, -2.25, 0.0, 1.75, -2.25, 0.0, 3.25, -2.25, 1.2, 3.25, -5.75, 1.2, 3.25, -5.75, 1.2, 1.75, -2.25, 1.2, 1.75, -2.25, 1.2, 1.75, -2.25, 1.2, 3.25, -5.75, 1.2, 3.25, -4.0, 0.025, -6.07, -10.0, 0.025, -6.07, -10.0, 0.01, -6.07, -10.0, 0.01, -6.07, -4.0, 0.01, -6.07, -4.0, 0.025, -6.07, -10.0, 0.025, -5.93, -4.0, 0.025, -5.93, -4.0, 0.01, -5.93, -4.0, 0.01, -5.93, -10.0, 0.01, -5.93, -10.0, 0.025, -5.93, -10.0, 0.025, -6.07, -10.0, 0.025, -5.93, -10.0, 0.01, -5.93, -10.0, 0.01, -5.93, -10.0, 0.01, -6.07, -10.0, 0.025, -6.07, -4.0, 0.025, -5.93, -4.0, 0.025, -6.07, -4.0, 0.01, -6.07, -4.0, 0.01, -6.07, -4.0, 0.01, -5.93, -4.0, 0.025, -5.93, -10.0, 0.025, -5.93, -10.0, 0.025, -6.07, -4.0, 0.025, -6.07, -4.0, 0.025, -6.07, -4.0, 0.025, -5.93, -10.0, 0.025, -5.93, -4.0, 0.01, -5.93, -4.0, 0.01, -6.07, -10.0, 0.01, -6.07, -10.0, 0.01, -6.07, -10.0, 0.01, -5.93, -4.0, 0.01, -5.93, -3.93, 0.025, -6.0, -4.07, 0.025, -6.0, -4.07, 0.01, -6.0, -4.07, 0.01, -6.0, -3.93, 0.01, -6.0, -3.93, 0.025, -6.0, -4.07, 0.025, 0.0, -3.93, 0.025, 0.0, -3.93, 0.01, 0.0, -3.93, 0.01, 0.0, -4.07, 0.01, 0.0, -4.07, 0.025, 0.0, -4.07, 0.025, -6.0, -4.07, 0.025, 0.0, -4.07, 0.01, 0.0, -4.07, 0.01, 0.0, -4.07, 0.01, -6.0, -4.07, 0.025, -6.0, -3.93, 0.025, 0.0, -3.93, 0.025, -6.0, -3.93, 0.01, -6.0, -3.93, 0.01, -6.0, -3.93, 0.01, 0.0, -3.93, 0.025, 0.0, -4.07, 0.025, 0.0, -4.07, 0.025, -6.0, -3.93, 0.025, -6.0, -3.93, 0.025, -6.0, -3.93, 0.025, 0.0, -4.07, 0.025, 0.0, -3.93, 0.01, 0.0, -3.93, 0.01, -6.0, -4.07, 0.01, -6.0, -4.07, 0.01, -6.0, -4.07, 0.01, 0.0, -3.93, 0.01, 0.0, 10.5, 6.6, -10.5, 4.5, 6.6, -10.5, 4.5, 6.2, -10.5, 4.5, 6.2, -10.5, 10.5, 6.2, -10.5, 10.5, 6.6, -10.5, 4.5, 6.6, -7.6, 10.5, 6.6, -7.6, 10.5, 6.2, -7.6, 10.5, 6.2, -7.6, 4.5, 6.2, -7.6, 4.5, 6.6, -7.6, 4.5, 6.6, -7.7, 4.5, 6.6, -7.6, 4.5, 6.2, -7.6, 4.5, 6.6, -7.7, 4.5, 6.2, -7.6, 4.5, 6.2, -10.5, 4.5, 6.2, -10.5, 4.5, 6.6, -10.5, 4.5, 6.6, -7.7, 10.5, 6.6, -7.7, 10.5, 6.6, -10.5, 10.5, 6.2, -10.5, 10.5, 6.6, -7.7, 10.5, 6.2, -10.5, 10.5, 6.2, -7.6, 10.5, 6.2, -7.6, 10.5, 6.6, -7.6, 10.5, 6.6, -7.7, 4.5, 6.6, -7.6, 4.5, 6.6, -10.5, 10.5, 6.6, -10.5, 10.5, 6.6, -10.5, 10.5, 6.6, -7.6, 4.5, 6.6, -7.6, 10.5, 6.2, -7.6, 10.5, 6.2, -10.5, 4.5, 6.2, -10.5, 4.5, 6.2, -10.5, 4.5, 6.2, -7.6, 10.5, 6.2, -7.6, 4.35, 7.0, -7.8, 4.15, 7.0, -7.8, 4.15, 0.0, -7.8, 4.15, 0.0, -7.8, 4.35, 0.0, -7.8, 4.35, 7.0, -7.8, 4.15, 7.0, -7.6, 4.35, 7.0, -7.6, 4.35, 0.0, -7.6, 4.35, 0.0, -7.6, 4.15, 0.0, -7.6, 4.15, 7.0, -7.6, 4.15, 7.0, -7.8, 4.15, 7.0, -7.6, 4.15, 0.0, -7.6, 4.15, 0.0, -7.6, 4.15, 0.0, -7.8, 4.15, 7.0, -7.8, 4.35, 7.0, -7.6, 4.35, 7.0, -7.8, 4.35, 0.0, -7.8, 4.35, 0.0, -7.8, 4.35, 0.0, -7.6, 4.35, 7.0, -7.6, 4.15, 7.0, -7.6, 4.15, 7.0, -7.8, 4.35, 7.0, -7.8, 4.35, 7.0, -7.8, 4.35, 7.0, -7.6, 4.15, 7.0, -7.6, 7.8, 7.0, -7.8, 7.6, 7.0, -7.8, 7.6, 0.0, -7.8, 7.6, 0.0, -7.8, 7.8, 0.0, -7.8, 7.8, 7.0, -7.8, 7.6, 7.0, -7.6, 7.8, 7.0, -7.6, 7.8, 0.0, -7.6, 7.8, 0.0, -7.6, 7.6, 0.0, -7.6, 7.6, 7.0, -7.6, 7.6, 7.0, -7.8, 7.6, 7.0, -7.6, 7.6, 0.0, -7.6, 7.6, 0.0, -7.6, 7.6, 0.0, -7.8, 7.6, 7.0, -7.8, 7.8, 7.0, -7.6, 7.8, 7.0, -7.8, 7.8, 0.0, -7.8, 7.8, 0.0, -7.8, 7.8, 0.0, -7.6, 7.8, 7.0, -7.6, 7.6, 7.0, -7.6, 7.6, 7.0, -7.8, 7.8, 7.0, -7.8, 7.8, 7.0, -7.8, 7.8, 7.0, -7.6, 7.6, 7.0, -7.6, 10.5, 7.5, -10.5, 4.5, 7.5, -10.5, 4.5, 6.6, -10.5, 4.5, 6.6, -10.5, 10.5, 6.6, -10.5, 10.5, 7.5, -10.5, 4.5, 7.5, -7.7, 4.7, 7.5, -7.7, 4.7, 6.6, -7.7, 4.7, 6.6, -7.7, 4.5, 6.6, -7.7, 4.5, 7.5, -7.7, 4.5, 6.6, -7.7, 4.5, 6.6, -10.5, 4.5, 7.5, -10.5, 4.5, 7.5, -10.5, 4.5, 7.5, -7.7, 4.5, 6.6, -7.7, 4.7, 7.5, -7.7, 4.7, 7.5, -10.5, 4.7, 6.6, -10.5, 4.7, 6.6, -10.5, 4.7, 6.6, -7.7, 4.7, 7.5, -7.7, 4.5, 7.5, -10.3, 4.5, 7.5, -10.5, 4.7, 7.5, -10.5, 4.5, 7.5, -10.3, 4.7, 7.5, -10.5, 4.7, 7.5, -7.7, 4.7, 7.5, -7.7, 4.5, 7.5, -7.7, 4.5, 7.5, -10.3, 10.3, 7.5, -7.7, 10.5, 7.5, -7.7, 10.5, 6.6, -7.7, 10.5, 6.6, -7.7, 10.3, 6.6, -7.7, 10.3, 7.5, -7.7, 10.3, 7.5, -10.5, 10.3, 7.5, -7.7, 10.3, 6.6, -7.7, 10.3, 6.6, -7.7, 10.3, 6.6, -10.5, 10.3, 7.5, -10.5, 10.5, 7.5, -7.7, 10.5, 7.5, -10.5, 10.5, 6.6, -10.5, 10.5, 6.6, -10.5, 10.5, 6.6, -7.7, 10.5, 7.5, -7.7, 10.3, 7.5, -7.7, 10.3, 7.5, -10.5, 10.5, 7.5, -10.5, 10.3, 7.5, -7.7, 10.5, 7.5, -10.5, 10.5, 7.5, -10.3, 10.5, 7.5, -10.3, 10.5, 7.5, -7.7, 10.3, 7.5, -7.7, 4.5, 7.5, -10.3, 10.5, 7.5, -10.3, 10.5, 6.6, -10.3, 10.5, 6.6, -10.3, 4.5, 6.6, -10.3, 4.5, 7.5, -10.3, 4.5, 7.5, -10.3, 4.5, 7.5, -10.5, 4.7, 7.5, -10.5, 4.5, 7.5, -10.3, 4.7, 7.5, -10.5, 10.3, 7.5, -10.5, 4.5, 7.5, -10.3, 10.3, 7.5, -10.5, 10.5, 7.5, -10.5, 10.5, 7.5, -10.5, 10.5, 7.5, -10.3, 4.5, 7.5, -10.3, 10.3, 6.2, -10.0, 9.9, 6.2, -10.0, 9.9, 0.0, -10.0, 9.9, 0.0, -10.0, 10.3, 0.0, -10.0, 10.3, 6.2, -10.0, 9.9, 6.2, -9.6, 10.3, 6.2, -9.6, 10.3, 0.0, -9.6, 10.3, 0.0, -9.6, 9.9, 0.0, -9.6, 9.9, 6.2, -9.6, 9.9, 6.2, -10.0, 9.9, 6.2, -9.6, 9.9, 0.0, -9.6, 9.9, 0.0, -9.6, 9.9, 0.0, -10.0, 9.9, 6.2, -10.0, 10.3, 6.2, -9.6, 10.3, 6.2, -10.0, 10.3, 0.0, -10.0, 10.3, 0.0, -10.0, 10.3, 0.0, -9.6, 10.3, 6.2, -9.6, 6.4, 4.5, 6.0, 3.0, 4.5, 6.0, 3.0, 0.0, 6.0, 6.4, 4.5, 6.0, 3.0, 0.0, 6.0, 6.4, 0.0, 6.0, 3.0, 4.5, 6.4, 6.4, 4.5, 6.4, 6.4, 4.0, 6.4, 3.0, 4.5, 6.4, 6.4, 4.0, 6.4, 6.4, 0.0, 6.4, 6.4, 0.0, 6.4, 3.0, 0.0, 6.4, 3.0, 4.5, 6.4, 3.0, 4.5, 6.0, 3.0, 4.5, 6.4, 3.0, 0.0, 6.4, 3.0, 0.0, 6.4, 3.0, 0.0, 6.0, 3.0, 4.5, 6.0, 6.4, 4.5, 6.4, 6.4, 4.5, 6.0, 6.4, 0.0, 6.0, 6.4, 0.0, 6.0, 6.4, 0.0, 6.4, 6.4, 4.5, 6.4, 3.0, 4.5, 6.4, 3.0, 4.5, 6.0, 13.0, 4.5, 6.0, 13.0, 4.5, 6.0, 13.0, 4.5, 6.4, 3.0, 4.5, 6.4, 13.0, 4.5, 6.0, 9.6, 4.5, 6.0, 9.6, 4.0, 6.0, 13.0, 4.5, 6.0, 9.6, 4.0, 6.0, 9.6, 0.0, 6.0, 9.6, 0.0, 6.0, 13.0, 0.0, 6.0, 13.0, 4.5, 6.0, 9.6, 4.5, 6.4, 13.0, 4.5, 6.4, 13.0, 0.0, 6.4, 9.6, 4.5, 6.4, 13.0, 0.0, 6.4, 9.6, 0.0, 6.4, 9.6, 4.5, 6.0, 9.6, 4.5, 6.4, 9.6, 0.0, 6.4, 9.6, 0.0, 6.4, 9.6, 0.0, 6.0, 9.6, 4.5, 6.0, 13.0, 4.5, 6.4, 13.0, 4.5, 6.0, 13.0, 0.0, 6.0, 13.0, 0.0, 6.0, 13.0, 0.0, 6.4, 13.0, 4.5, 6.4, 9.6, 4.5, 6.0, 6.4, 4.5, 6.0, 6.4, 4.0, 6.0, 6.4, 4.0, 6.0, 9.6, 4.0, 6.0, 9.6, 4.5, 6.0, 6.4, 4.5, 6.4, 9.6, 4.5, 6.4, 9.6, 4.0, 6.4, 9.6, 4.0, 6.4, 6.4, 4.0, 6.4, 6.4, 4.5, 6.4, 9.6, 4.0, 6.4, 9.6, 4.0, 6.0, 6.4, 4.0, 6.0, 6.4, 4.0, 6.0, 6.4, 4.0, 6.4, 9.6, 4.0, 6.4)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_animate_0"]
+points = PackedVector3Array(-1.75, 0.2, -1.75, -1.75, -0.2, -1.75, 1.75, -0.2, -1.75, 1.75, 0.2, -1.75, 1.75, 0.2, 1.75, 1.75, -0.2, 1.75, -1.75, -0.2, 1.75, -1.75, 0.2, 1.75)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_animate_1_0"]
+points = PackedVector3Array(-1.5, 0.2, -1.5, -1.5, -0.2, -1.5, 1.5, -0.2, -1.5, 1.5, 0.2, -1.5, 1.5, 0.2, 1.5, 1.5, -0.2, 1.5, -1.5, -0.2, 1.5, -1.5, 0.2, 1.5)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_animate_2_0"]
+points = PackedVector3Array(-2.0, 0.2, -2.0, -2.0, -0.2, -2.0, 2.0, -0.2, -2.0, 2.0, 0.2, -2.0, 2.0, 0.2, 2.0, 2.0, -0.2, 2.0, -2.0, -0.2, 2.0, -2.0, 0.2, 2.0)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_animate_3_0"]
+points = PackedVector3Array(-1.5, 2.0, -0.125, -1.5, -2.0, -0.125, 1.5, -2.0, -0.125, 1.5, 2.0, -0.125, 1.5, 2.0, 0.125, 1.5, -2.0, 0.125, -1.5, -2.0, 0.125, -1.5, 2.0, 0.125)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_button_0"]
+points = PackedVector3Array(-0.6, 0.075, -0.6, -0.6, -0.075, -0.6, 0.6, -0.075, -0.6, 0.6, 0.075, -0.6, 0.6, 0.075, 0.6, 0.6, -0.075, 0.6, -0.6, -0.075, 0.6, -0.6, 0.075, 0.6)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_button_1_0"]
+points = PackedVector3Array(-0.6, 0.075, -0.6, -0.6, -0.075, -0.6, 0.6, -0.075, -0.6, 0.6, 0.075, -0.6, 0.6, 0.075, 0.6, 0.6, -0.075, 0.6, -0.6, -0.075, 0.6, -0.6, 0.075, 0.6)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_button_2_0"]
+points = PackedVector3Array(-0.6, 0.075, -0.6, -0.6, -0.075, -0.6, 0.6, -0.075, -0.6, 0.6, 0.075, -0.6, 0.6, 0.075, 0.6, 0.6, -0.075, 0.6, -0.6, -0.075, 0.6, -0.6, 0.075, 0.6)
+
+[sub_resource type="ConvexPolygonShape3D" id="Convex_func_button_3_0"]
+points = PackedVector3Array(-0.6, 0.075, -0.6, -0.6, -0.075, -0.6, 0.6, -0.075, -0.6, 0.6, 0.075, -0.6, 0.6, 0.075, 0.6, 0.6, -0.075, 0.6, -0.6, -0.075, 0.6, -0.6, 0.075, 0.6)
+
+[sub_resource type="Animation" id="HeronClip_16"]
+resource_name = "default"
+length = 8.0
+step = 0.016667
+loop_mode = 2
+tracks/0/type = "bezier"
+tracks/0/path = NodePath(".:map_x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = false
+tracks/0/keys = {
+"times": PackedFloat64Array(0, 1, 4, 7, 8),
+"points": PackedFloat64Array(0, 0, 0, 0.3333333333333333, 0, 0, -0.3333333333333333, -0, 1, 0, 0, -1, -0, 1, 64, 192, -1, -64, 0.3333333333333333, 0, 192, -0.3333333333333333, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0)
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath(".:step_x")
+tracks/1/interp = 0
+tracks/1/loop_wrap = false
+tracks/1/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/2/type = "bezier"
+tracks/2/path = NodePath(".:map_y")
+tracks/2/interp = 1
+tracks/2/loop_wrap = false
+tracks/2/keys = {
+"times": PackedFloat64Array(0, 1, 4, 7, 8),
+"points": PackedFloat64Array(0, 0, 0, 0.3333333333333333, 0, 0, -0.3333333333333333, -0, 1, 64, 192, -1, -64, 1, 0, 192, -1, -0, 0.3333333333333333, 0, 192, -0.3333333333333333, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0, 0, 0, 0)
+}
+tracks/3/type = "value"
+tracks/3/path = NodePath(".:step_y")
+tracks/3/interp = 0
+tracks/3/loop_wrap = false
+tracks/3/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/4/type = "bezier"
+tracks/4/path = NodePath(".:map_z")
+tracks/4/interp = 1
+tracks/4/loop_wrap = false
+tracks/4/keys = {
+"times": PackedFloat64Array(0, 8),
+"points": PackedFloat64Array(0, 0, 0, 2.6666666666666665, 0, 0, -2.6666666666666665, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/5/type = "value"
+tracks/5/path = NodePath(".:step_z")
+tracks/5/interp = 0
+tracks/5/loop_wrap = false
+tracks/5/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/6/type = "bezier"
+tracks/6/path = NodePath(".:map_rx")
+tracks/6/interp = 1
+tracks/6/loop_wrap = false
+tracks/6/keys = {
+"times": PackedFloat64Array(0, 8),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/7/type = "value"
+tracks/7/path = NodePath(".:step_rx")
+tracks/7/interp = 0
+tracks/7/loop_wrap = false
+tracks/7/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/8/type = "bezier"
+tracks/8/path = NodePath(".:map_ry")
+tracks/8/interp = 1
+tracks/8/loop_wrap = false
+tracks/8/keys = {
+"times": PackedFloat64Array(0, 8),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/9/type = "value"
+tracks/9/path = NodePath(".:step_ry")
+tracks/9/interp = 0
+tracks/9/loop_wrap = false
+tracks/9/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/10/type = "bezier"
+tracks/10/path = NodePath(".:map_rz")
+tracks/10/interp = 1
+tracks/10/loop_wrap = false
+tracks/10/keys = {
+"times": PackedFloat64Array(0, 8),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/11/type = "value"
+tracks/11/path = NodePath(".:step_rz")
+tracks/11/interp = 0
+tracks/11/loop_wrap = false
+tracks/11/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+
+[sub_resource type="AnimationLibrary" id="HeronLibrary_17"]
+_data = {
+"default": SubResource("HeronClip_16")
+}
+
+[sub_resource type="Animation" id="HeronClip_18"]
+resource_name = "default"
+length = 7.0
+step = 0.016667
+loop_mode = 2
+tracks/0/type = "bezier"
+tracks/0/path = NodePath(".:map_x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = false
+tracks/0/keys = {
+"times": PackedFloat64Array(0, 7),
+"points": PackedFloat64Array(0, 0, 0, 2.3333333333333335, 0, 0, -2.3333333333333335, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath(".:step_x")
+tracks/1/interp = 0
+tracks/1/loop_wrap = false
+tracks/1/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/2/type = "bezier"
+tracks/2/path = NodePath(".:map_y")
+tracks/2/interp = 1
+tracks/2/loop_wrap = false
+tracks/2/keys = {
+"times": PackedFloat64Array(0, 7),
+"points": PackedFloat64Array(0, 0, 0, 2.3333333333333335, 0, 0, -2.3333333333333335, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/3/type = "value"
+tracks/3/path = NodePath(".:step_y")
+tracks/3/interp = 0
+tracks/3/loop_wrap = false
+tracks/3/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/4/type = "bezier"
+tracks/4/path = NodePath(".:map_z")
+tracks/4/interp = 1
+tracks/4/loop_wrap = false
+tracks/4/keys = {
+"times": PackedFloat64Array(0, 1, 5, 7),
+"points": PackedFloat64Array(0, 0, 0, 0.3333333333333333, 0, 0, -0.3333333333333333, -0, 1.3333333333333333, 64, 192, -1.3333333333333333, -64, 0.6666666666666666, 0, 192, -0.6666666666666666, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0, 0, 0)
+}
+tracks/5/type = "value"
+tracks/5/path = NodePath(".:step_z")
+tracks/5/interp = 0
+tracks/5/loop_wrap = false
+tracks/5/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/6/type = "bezier"
+tracks/6/path = NodePath(".:map_rx")
+tracks/6/interp = 1
+tracks/6/loop_wrap = false
+tracks/6/keys = {
+"times": PackedFloat64Array(0, 7),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/7/type = "value"
+tracks/7/path = NodePath(".:step_rx")
+tracks/7/interp = 0
+tracks/7/loop_wrap = false
+tracks/7/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/8/type = "bezier"
+tracks/8/path = NodePath(".:map_ry")
+tracks/8/interp = 1
+tracks/8/loop_wrap = false
+tracks/8/keys = {
+"times": PackedFloat64Array(0, 7),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/9/type = "value"
+tracks/9/path = NodePath(".:step_ry")
+tracks/9/interp = 0
+tracks/9/loop_wrap = false
+tracks/9/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/10/type = "bezier"
+tracks/10/path = NodePath(".:map_rz")
+tracks/10/interp = 1
+tracks/10/loop_wrap = false
+tracks/10/keys = {
+"times": PackedFloat64Array(0, 7),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/11/type = "value"
+tracks/11/path = NodePath(".:step_rz")
+tracks/11/interp = 0
+tracks/11/loop_wrap = false
+tracks/11/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+
+[sub_resource type="AnimationLibrary" id="HeronLibrary_19"]
+_data = {
+"default": SubResource("HeronClip_18")
+}
+
+[sub_resource type="Animation" id="HeronClip_20"]
+resource_name = "default"
+length = 12.0
+step = 0.016667
+loop_mode = 1
+tracks/0/type = "bezier"
+tracks/0/path = NodePath(".:map_x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = false
+tracks/0/keys = {
+"times": PackedFloat64Array(0, 12),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath(".:step_x")
+tracks/1/interp = 0
+tracks/1/loop_wrap = false
+tracks/1/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/2/type = "bezier"
+tracks/2/path = NodePath(".:map_y")
+tracks/2/interp = 1
+tracks/2/loop_wrap = false
+tracks/2/keys = {
+"times": PackedFloat64Array(0, 12),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/3/type = "value"
+tracks/3/path = NodePath(".:step_y")
+tracks/3/interp = 0
+tracks/3/loop_wrap = false
+tracks/3/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/4/type = "bezier"
+tracks/4/path = NodePath(".:map_z")
+tracks/4/interp = 1
+tracks/4/loop_wrap = false
+tracks/4/keys = {
+"times": PackedFloat64Array(0, 12),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/5/type = "value"
+tracks/5/path = NodePath(".:step_z")
+tracks/5/interp = 0
+tracks/5/loop_wrap = false
+tracks/5/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/6/type = "bezier"
+tracks/6/path = NodePath(".:map_rx")
+tracks/6/interp = 1
+tracks/6/loop_wrap = false
+tracks/6/keys = {
+"times": PackedFloat64Array(0, 12),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/7/type = "value"
+tracks/7/path = NodePath(".:step_rx")
+tracks/7/interp = 0
+tracks/7/loop_wrap = false
+tracks/7/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/8/type = "bezier"
+tracks/8/path = NodePath(".:map_ry")
+tracks/8/interp = 1
+tracks/8/loop_wrap = false
+tracks/8/keys = {
+"times": PackedFloat64Array(0, 12),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/9/type = "value"
+tracks/9/path = NodePath(".:step_ry")
+tracks/9/interp = 0
+tracks/9/loop_wrap = false
+tracks/9/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/10/type = "bezier"
+tracks/10/path = NodePath(".:map_rz")
+tracks/10/interp = 1
+tracks/10/loop_wrap = false
+tracks/10/keys = {
+"times": PackedFloat64Array(0, 12),
+"points": PackedFloat64Array(0, 0, 0, 4, 120, 360, -4, -120, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/11/type = "value"
+tracks/11/path = NodePath(".:step_rz")
+tracks/11/interp = 0
+tracks/11/loop_wrap = false
+tracks/11/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+
+[sub_resource type="AnimationLibrary" id="HeronLibrary_21"]
+_data = {
+"default": SubResource("HeronClip_20")
+}
+
+[sub_resource type="Animation" id="HeronClip_22"]
+resource_name = "close"
+length = 2.0
+step = 0.033333
+loop_mode = 0
+tracks/0/type = "bezier"
+tracks/0/path = NodePath(".:map_x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = false
+tracks/0/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath(".:step_x")
+tracks/1/interp = 0
+tracks/1/loop_wrap = false
+tracks/1/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/2/type = "bezier"
+tracks/2/path = NodePath(".:map_y")
+tracks/2/interp = 1
+tracks/2/loop_wrap = false
+tracks/2/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/3/type = "value"
+tracks/3/path = NodePath(".:step_y")
+tracks/3/interp = 0
+tracks/3/loop_wrap = false
+tracks/3/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/4/type = "bezier"
+tracks/4/path = NodePath(".:map_z")
+tracks/4/interp = 1
+tracks/4/loop_wrap = false
+tracks/4/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/5/type = "value"
+tracks/5/path = NodePath(".:step_z")
+tracks/5/interp = 0
+tracks/5/loop_wrap = false
+tracks/5/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/6/type = "bezier"
+tracks/6/path = NodePath(".:map_rx")
+tracks/6/interp = 1
+tracks/6/loop_wrap = false
+tracks/6/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/7/type = "value"
+tracks/7/path = NodePath(".:step_rx")
+tracks/7/interp = 0
+tracks/7/loop_wrap = false
+tracks/7/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/8/type = "bezier"
+tracks/8/path = NodePath(".:map_ry")
+tracks/8/interp = 1
+tracks/8/loop_wrap = false
+tracks/8/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/9/type = "value"
+tracks/9/path = NodePath(".:step_ry")
+tracks/9/interp = 0
+tracks/9/loop_wrap = false
+tracks/9/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/10/type = "bezier"
+tracks/10/path = NodePath(".:map_rz")
+tracks/10/interp = 1
+tracks/10/loop_wrap = false
+tracks/10/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(90, 0, 0, 0.6666666666666666, -0, 0, -0.6666666666666666, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/11/type = "value"
+tracks/11/path = NodePath(".:step_rz")
+tracks/11/interp = 0
+tracks/11/loop_wrap = false
+tracks/11/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+
+[sub_resource type="Animation" id="HeronClip_23"]
+resource_name = "default"
+length = 2.0
+step = 0.033333
+loop_mode = 1
+tracks/0/type = "bezier"
+tracks/0/path = NodePath(".:map_x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = false
+tracks/0/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0.6666666666666666, 0, 0, -0.6666666666666666, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath(".:step_x")
+tracks/1/interp = 0
+tracks/1/loop_wrap = false
+tracks/1/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/2/type = "bezier"
+tracks/2/path = NodePath(".:map_y")
+tracks/2/interp = 1
+tracks/2/loop_wrap = false
+tracks/2/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0.6666666666666666, 0, 0, -0.6666666666666666, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/3/type = "value"
+tracks/3/path = NodePath(".:step_y")
+tracks/3/interp = 0
+tracks/3/loop_wrap = false
+tracks/3/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/4/type = "bezier"
+tracks/4/path = NodePath(".:map_z")
+tracks/4/interp = 1
+tracks/4/loop_wrap = false
+tracks/4/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0.6666666666666666, 0, 0, -0.6666666666666666, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/5/type = "value"
+tracks/5/path = NodePath(".:step_z")
+tracks/5/interp = 0
+tracks/5/loop_wrap = false
+tracks/5/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/6/type = "bezier"
+tracks/6/path = NodePath(".:map_rx")
+tracks/6/interp = 1
+tracks/6/loop_wrap = false
+tracks/6/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0.6666666666666666, 0, 0, -0.6666666666666666, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/7/type = "value"
+tracks/7/path = NodePath(".:step_rx")
+tracks/7/interp = 0
+tracks/7/loop_wrap = false
+tracks/7/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/8/type = "bezier"
+tracks/8/path = NodePath(".:map_ry")
+tracks/8/interp = 1
+tracks/8/loop_wrap = false
+tracks/8/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0.6666666666666666, 0, 0, -0.6666666666666666, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/9/type = "value"
+tracks/9/path = NodePath(".:step_ry")
+tracks/9/interp = 0
+tracks/9/loop_wrap = false
+tracks/9/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/10/type = "bezier"
+tracks/10/path = NodePath(".:map_rz")
+tracks/10/interp = 1
+tracks/10/loop_wrap = false
+tracks/10/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0.6666666666666666, 0, 0, -0.6666666666666666, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/11/type = "value"
+tracks/11/path = NodePath(".:step_rz")
+tracks/11/interp = 0
+tracks/11/loop_wrap = false
+tracks/11/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+
+[sub_resource type="Animation" id="HeronClip_24"]
+resource_name = "open"
+length = 2.0
+step = 0.033333
+loop_mode = 0
+tracks/0/type = "bezier"
+tracks/0/path = NodePath(".:map_x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = false
+tracks/0/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath(".:step_x")
+tracks/1/interp = 0
+tracks/1/loop_wrap = false
+tracks/1/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/2/type = "bezier"
+tracks/2/path = NodePath(".:map_y")
+tracks/2/interp = 1
+tracks/2/loop_wrap = false
+tracks/2/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/3/type = "value"
+tracks/3/path = NodePath(".:step_y")
+tracks/3/interp = 0
+tracks/3/loop_wrap = false
+tracks/3/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/4/type = "bezier"
+tracks/4/path = NodePath(".:map_z")
+tracks/4/interp = 1
+tracks/4/loop_wrap = false
+tracks/4/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/5/type = "value"
+tracks/5/path = NodePath(".:step_z")
+tracks/5/interp = 0
+tracks/5/loop_wrap = false
+tracks/5/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/6/type = "bezier"
+tracks/6/path = NodePath(".:map_rx")
+tracks/6/interp = 1
+tracks/6/loop_wrap = false
+tracks/6/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/7/type = "value"
+tracks/7/path = NodePath(".:step_rx")
+tracks/7/interp = 0
+tracks/7/loop_wrap = false
+tracks/7/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/8/type = "bezier"
+tracks/8/path = NodePath(".:map_ry")
+tracks/8/interp = 1
+tracks/8/loop_wrap = false
+tracks/8/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/9/type = "value"
+tracks/9/path = NodePath(".:step_ry")
+tracks/9/interp = 0
+tracks/9/loop_wrap = false
+tracks/9/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/10/type = "bezier"
+tracks/10/path = NodePath(".:map_rz")
+tracks/10/interp = 1
+tracks/10/loop_wrap = false
+tracks/10/keys = {
+"times": PackedFloat64Array(0, 2),
+"points": PackedFloat64Array(0, 0, 0, 0.6666666666666666, 0, 90, -0.6666666666666666, -0, 0, 0),
+"handle_modes": PackedInt32Array(0, 0)
+}
+tracks/11/type = "value"
+tracks/11/path = NodePath(".:step_rz")
+tracks/11/interp = 0
+tracks/11/loop_wrap = false
+tracks/11/keys = {
+"times": PackedFloat64Array(0),
+"transitions": PackedFloat64Array(1),
+"update": 0,
+"values": [0.0]
+}
+
+[sub_resource type="AnimationLibrary" id="HeronLibrary_25"]
+_data = {
+"close": SubResource("HeronClip_22"),
+"default": SubResource("HeronClip_23"),
+"open": SubResource("HeronClip_24")
+}
+
+[sub_resource type="GDScript" id="HeronKeyframes_16"]
+script/source = "@tool\nextends Node\n## Native AnimationPlayer supplies scalar channels; this adapter applies the map pivot.\nsignal finished\n@export var default_clip: String = \"default\"\n@export var autoplay: bool = true\n@export var pivot: Vector3 = Vector3.ZERO\n@export var map_scale: float = 0.03125\n@export var rest_transform: Transform3D = Transform3D.IDENTITY\nvar _opened: bool = false\nvar _player: AnimationPlayer\nvar playing: bool:\n\tget: return is_instance_valid(_player) and _player.is_playing()\n@export var map_x: float = 0.0:\n\tset(value):\n\t\tmap_x = value\n\t\t_apply()\n@export var map_y: float = 0.0:\n\tset(value):\n\t\tmap_y = value\n\t\t_apply()\n@export var map_z: float = 0.0:\n\tset(value):\n\t\tmap_z = value\n\t\t_apply()\n@export var map_rx: float = 0.0:\n\tset(value):\n\t\tmap_rx = value\n\t\t_apply()\n@export var map_ry: float = 0.0:\n\tset(value):\n\t\tmap_ry = value\n\t\t_apply()\n@export var map_rz: float = 0.0:\n\tset(value):\n\t\tmap_rz = value\n\t\t_apply()\n@export var step_x: float = 0.0:\n\tset(value):\n\t\tstep_x = value\n\t\t_apply()\n@export var step_y: float = 0.0:\n\tset(value):\n\t\tstep_y = value\n\t\t_apply()\n@export var step_z: float = 0.0:\n\tset(value):\n\t\tstep_z = value\n\t\t_apply()\n@export var step_rx: float = 0.0:\n\tset(value):\n\t\tstep_rx = value\n\t\t_apply()\n@export var step_ry: float = 0.0:\n\tset(value):\n\t\tstep_ry = value\n\t\t_apply()\n@export var step_rz: float = 0.0:\n\tset(value):\n\t\tstep_rz = value\n\t\t_apply()\n\nfunc _ready() -> void:\n\t_player = get_node(\"AnimationPlayer\")\n\t_player.animation_finished.connect(_finished)\n\tif autoplay and not Engine.is_editor_hint():\n\t\tplay()\n\nfunc _apply() -> void:\n\tif not is_inside_tree():\n\t\treturn\n\tvar body := get_parent() as Node3D\n\tif body == null:\n\t\treturn\n\tvar rotation := Basis(Vector3.UP, deg_to_rad(map_rz + step_rz)) * Basis(Vector3.RIGHT, deg_to_rad(map_ry + step_ry)) * Basis(Vector3.BACK, deg_to_rad(map_rx + step_rx))\n\tvar offset := Vector3(map_y + step_y, map_z + step_z, map_x + step_x) * map_scale\n\tbody.transform = Transform3D(rotation * rest_transform.basis, rotation * (rest_transform.origin - pivot) + pivot + offset)\n\nfunc play(clip: String = \"\") -> bool:\n\tvar name := default_clip if clip.is_empty() else clip\n\tif not _player.has_animation(name):\n\t\tpush_warning(\"Unknown animation: \" + name)\n\t\treturn false\n\t_player.stop()\n\t_player.play(name)\n\t_player.advance(0.0)\n\tif name == \"open\": _opened = true\n\telif name == \"close\": _opened = false\n\treturn true\n\nfunc pause() -> void:\n\t_player.pause()\n\nfunc resume() -> void:\n\t_player.play()\n\nfunc stop() -> void:\n\t_player.stop()\n\tget_parent().transform = rest_transform\n\t_opened = false\n\nfunc seek(seconds: float) -> void:\n\tif _player.assigned_animation.is_empty():\n\t\t_player.assigned_animation = default_clip\n\tvar animation := _player.get_animation(_player.assigned_animation)\n\tvar duration: float = animation.length\n\tvar t: float = maxf(seconds, 0.0)\n\tif animation.loop_mode == Animation.LOOP_LINEAR:\n\t\tt = fposmod(t, duration)\n\telif animation.loop_mode == Animation.LOOP_PINGPONG:\n\t\tt = fposmod(t, duration * 2.0)\n\t\tif t > duration:\n\t\t\tt = duration * 2.0 - t\n\telse:\n\t\tt = minf(t, duration)\n\t_player.seek(t, true)\n\nfunc _finished(_name: StringName) -> void:\n\tfinished.emit()\n\nfunc _on_triggered(body: Node3D = null) -> void:\n\tif body != null and not body is CharacterBody3D:\n\t\treturn\n\tif _player.has_animation(\"open\") and _player.has_animation(\"close\"):\n\t\tvar phase := 0.0\n\t\tvar reverse := _player.is_playing()\n\t\tif reverse:\n\t\t\tphase = _player.current_animation_position / _player.current_animation_length\n\t\t_opened = not _opened\n\t\tplay(\"open\" if _opened else \"close\")\n\t\tif reverse:\n\t\t\t_player.seek((1.0 - phase) * _player.current_animation_length, true)\n\telse:\n\t\tplay()\n"
+
+[sub_resource type="GDScript" id="HeronAnimationTrigger_27"]
+script/source = "extends Node\n## Per-trigger state, shared by all of this trigger's animation targets.\n@export var targets: Array = []\n@export var once: bool = false\n@export var action: String = \"toggle\"\n@export var clip: String = \"\"\n@export var delay: float = 0.0\nvar _used: bool = false\nvar _last: float = -INF\nfunc _on_body_entered(body: Node3D) -> void:\n\tif not body is CharacterBody3D:\n\t\treturn\n\tvar now := Time.get_ticks_msec() * 0.001\n\tif (once and _used) or now - _last < delay:\n\t\treturn\n\tvar delivered := false\n\tfor path in targets:\n\t\tvar target := get_node_or_null(path)\n\t\tif target != null:\n\t\t\tmatch action:\n\t\t\t\t\"play\": delivered = target.play(clip) or delivered\n\t\t\t\t\"open\", \"close\": delivered = target.play(action) or delivered\n\t\t\t\t\"pause\": target.pause(); delivered = true\n\t\t\t\t\"resume\": target.resume(); delivered = true\n\t\t\t\t\"stop\": target.stop(); delivered = true\n\t\t\t\t\"\", \"toggle\": target._on_triggered(body); delivered = true\n\tif delivered:\n\t\t_used = true\n\t\t_last = now\n"
+
+[node name="motion_lab" type="Node3D"]
+
+[node name="worldspawn" type="StaticBody3D" parent="."]
+metadata/properties = {
+"_phong": 0,
+"_phong_angle": 89.0,
+"_vertex_merge_distance": 0.0,
+"_cull_interior_faces": 1,
+"wad": "",
+"sky": 0,
+"sky_top_color": Color(0.313725, 0.509804, 0.823529, 1.0),
+"sky_horizon_color": Color(0.784314, 0.843137, 0.921569, 1.0),
+"fog_enabled": 0,
+"fog_light_color": Color(0.588235, 0.666667, 0.784314, 1.0),
+"fog_density": 0.01,
+"ambient_light_color": Color(0.666667, 0.698039, 0.772549, 1.0),
+"ambient_light_energy": 1.0,
+"occluders": 0,
+"occluder_min_size": 64.0,
+"mapversion": "220",
+"classname": "worldspawn"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="worldspawn"]
+mesh = ExtResource("1_yla3m")
+surface_material_override/0 = SubResource("Material_bbpaint_90f4891fa6d38b5d")
+surface_material_override/1 = SubResource("Material_bbpaint_763ce23066173d49")
+surface_material_override/2 = SubResource("Material_bbpaint_0ad9ab8b18127df1")
+surface_material_override/3 = SubResource("Material_bbpaint_455079bc80197814")
+surface_material_override/4 = SubResource("Material_bbpaint_11c622a6f00f0197")
+
+[node name="shape" type="CollisionShape3D" parent="worldspawn"]
+shape = SubResource("Concave_worldspawn")
+
+[node name="func_animate" type="AnimatableBody3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -10.0, 1.0, -6.0)
+metadata/properties = {
+"targetname": "shuttle",
+"script": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"animation_keys": "0 0 0 0 0 0 0; 8 192 192 0 0 0 0",
+"animation_curves": "{\"version\":1,\"duration\":8.0,\"fps\":60,\"tracks\":[[{\"id\":6,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":7,\"time\":1.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":8,\"time\":4.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":9,\"time\":7.0,\"value\":192.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":10,\"time\":8.0,\"value\":192.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":1,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":2,\"time\":1.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":3,\"time\":4.0,\"value\":192.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":4,\"time\":7.0,\"value\":192.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":5,\"time\":8.0,\"value\":192.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":11,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":12,\"time\":8.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[],[],[]]}",
+"animation_name": "default",
+"animation_library": "",
+"animation_mode": "pingpong",
+"animation_pivot": "-192 -320 32",
+"start_on": 1,
+"classname": "func_animate"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_animate"]
+mesh = ExtResource("2_z3ho8")
+surface_material_override/0 = SubResource("Material_bbpaint_455079bc80197814")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_animate"]
+shape = SubResource("Convex_func_animate_0")
+
+[node name="HeronAnimation" type="Node" parent="func_animate"]
+script = SubResource("HeronKeyframes_16")
+default_clip = "default"
+rest_transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -10.0, 1.0, -6.0)
+autoplay = true
+pivot = Vector3(-10.0, 1.0, -6.0)
+map_scale = 0.03125
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="func_animate/HeronAnimation"]
+libraries = {
+"": SubResource("HeronLibrary_17")
+}
+callback_mode_process = 0
+
+[node name="func_animate_1" type="AnimatableBody3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 6.0, 0.4, -6.0)
+metadata/properties = {
+"targetname": "lift",
+"script": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"animation_keys": "0 0 0 0 0 0 0; 7 0 0 192 0 0 0",
+"animation_curves": "{\"version\":1,\"duration\":7.0,\"fps\":60,\"tracks\":[[{\"id\":5,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":6,\"time\":7.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":7,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":8,\"time\":7.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":1,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":2,\"time\":1.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":3,\"time\":5.0,\"value\":192.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":4,\"time\":7.0,\"value\":192.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[],[],[]]}",
+"animation_name": "default",
+"animation_library": "",
+"animation_mode": "pingpong",
+"animation_pivot": "-192 192 12.8",
+"start_on": 0,
+"classname": "func_animate"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_animate_1"]
+mesh = ExtResource("3_vmq2i")
+surface_material_override/0 = SubResource("Material_bbpaint_11c622a6f00f0197")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_animate_1"]
+shape = SubResource("Convex_func_animate_1_0")
+
+[node name="HeronAnimation" type="Node" parent="func_animate_1"]
+script = SubResource("HeronKeyframes_16")
+default_clip = "default"
+rest_transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 6.0, 0.4, -6.0)
+autoplay = false
+pivot = Vector3(6.0, 0.4, -6.0)
+map_scale = 0.03125
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="func_animate_1/HeronAnimation"]
+libraries = {
+"": SubResource("HeronLibrary_19")
+}
+callback_mode_process = 0
+
+[node name="func_animate_2" type="AnimatableBody3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -7.0, 0.4, 7.0)
+metadata/properties = {
+"targetname": "rotor",
+"script": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"animation_keys": "0 0 0 0 0 0 0; 12 0 0 0 0 0 360",
+"animation_curves": "{\"version\":1,\"duration\":12.0,\"fps\":60,\"tracks\":[[],[],[],[],[],[{\"id\":1,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":2,\"time\":12.0,\"value\":360.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}]]}",
+"animation_name": "default",
+"animation_library": "",
+"animation_mode": "loop",
+"animation_pivot": "224 -224 12.8",
+"start_on": 1,
+"classname": "func_animate"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_animate_2"]
+mesh = ExtResource("4_ixy1u")
+surface_material_override/0 = SubResource("Material_bbpaint_04743d23e6ed148d")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_animate_2"]
+shape = SubResource("Convex_func_animate_2_0")
+
+[node name="HeronAnimation" type="Node" parent="func_animate_2"]
+script = SubResource("HeronKeyframes_16")
+default_clip = "default"
+rest_transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -7.0, 0.4, 7.0)
+autoplay = true
+pivot = Vector3(-7.0, 0.4, 7.0)
+map_scale = 0.03125
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="func_animate_2/HeronAnimation"]
+libraries = {
+"": SubResource("HeronLibrary_21")
+}
+callback_mode_process = 0
+
+[node name="func_animate_3" type="AnimatableBody3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 8.0, 2.0, 6.125)
+metadata/properties = {
+"targetname": "door",
+"script": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"animation_keys": "0 0 0 0 0 0 0; 2 0 0 0 0 0 90",
+"animation_curves": "{\"version\":1,\"duration\":2.0,\"fps\":30,\"tracks\":[[],[],[],[],[],[{\"id\":1,\"time\":0.0,\"value\":0.0,\"interpolation\":\"bezier\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":2,\"time\":2.0,\"value\":90.0,\"interpolation\":\"bezier\",\"incoming\":0.0,\"outgoing\":0.0}]]}",
+"animation_name": "open",
+"animation_library": "{\"version\":1,\"clips\":{\"close\":{\"clip\":{\"version\":1,\"duration\":2.0,\"fps\":30,\"tracks\":[[],[],[],[],[],[{\"id\":2,\"time\":0.0,\"value\":90.0,\"interpolation\":\"bezier\",\"incoming\":-0.0,\"outgoing\":-0.0},{\"id\":1,\"time\":2.0,\"value\":0.0,\"interpolation\":\"bezier\",\"incoming\":-0.0,\"outgoing\":-0.0}]]},\"mode\":\"once\"},\"default\":{\"clip\":{\"version\":1,\"duration\":2.0,\"fps\":30,\"tracks\":[[{\"id\":1,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":2,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":3,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":4,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":5,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":6,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":7,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":8,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":9,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":10,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":11,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":12,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}]]},\"mode\":\"loop\"},\"open\":{\"clip\":{\"version\":1,\"duration\":2.0,\"fps\":30,\"tracks\":[[],[],[],[],[],[{\"id\":1,\"time\":0.0,\"value\":0.0,\"interpolation\":\"bezier\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":2,\"time\":2.0,\"value\":90.0,\"interpolation\":\"bezier\",\"incoming\":0.0,\"outgoing\":0.0}]]},\"mode\":\"once\"}}}",
+"animation_mode": "once",
+"animation_pivot": "192 208 0",
+"start_on": 0,
+"classname": "func_animate"
+}
+
+[node name="mesh" type="MeshInstance3D" parent="func_animate_3"]
+mesh = ExtResource("5_5ipdd")
+surface_material_override/0 = SubResource("Material_bbpaint_18a4e7e34771bd3a")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_animate_3"]
+shape = SubResource("Convex_func_animate_3_0")
+
+[node name="HeronAnimation" type="Node" parent="func_animate_3"]
+script = SubResource("HeronKeyframes_16")
+default_clip = "open"
+rest_transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 8.0, 2.0, 6.125)
+autoplay = false
+pivot = Vector3(6.5, 0.0, 6.0)
+map_scale = 0.03125
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="func_animate_3/HeronAnimation"]
+libraries = {
+"": SubResource("HeronLibrary_25")
+}
+callback_mode_process = 0
+
+[node name="func_button" type="Area3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -14.0, 0.075, -3.0)
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"target": "shuttle",
+"script": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"classname": "func_button"
+}
+metadata/target_paths = [NodePath("../func_animate")]
+
+[node name="mesh" type="MeshInstance3D" parent="func_button"]
+mesh = ExtResource("6_q9hue")
+surface_material_override/0 = SubResource("Material_bbpaint_455079bc80197814")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_button"]
+shape = SubResource("Convex_func_button_0")
+
+[node name="HeronAnimationTrigger" type="Node" parent="func_button"]
+script = SubResource("HeronAnimationTrigger_27")
+targets = [NodePath("../../func_animate/HeronAnimation")]
+once = false
+delay = 0.0
+action = ""
+clip = ""
+
+[node name="func_button_1" type="Area3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 6.0, 0.075, -3.0)
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"target": "lift",
+"script": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"classname": "func_button"
+}
+metadata/target_paths = [NodePath("../func_animate_1")]
+
+[node name="mesh" type="MeshInstance3D" parent="func_button_1"]
+mesh = ExtResource("7_u3n69")
+surface_material_override/0 = SubResource("Material_bbpaint_11c622a6f00f0197")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_button_1"]
+shape = SubResource("Convex_func_button_1_0")
+
+[node name="HeronAnimationTrigger" type="Node" parent="func_button_1"]
+script = SubResource("HeronAnimationTrigger_27")
+targets = [NodePath("../../func_animate_1/HeronAnimation")]
+once = false
+delay = 0.0
+action = ""
+clip = ""
+
+[node name="func_button_2" type="Area3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -7.0, 0.075, 3.0)
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"target": "rotor",
+"script": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"classname": "func_button"
+}
+metadata/target_paths = [NodePath("../func_animate_2")]
+
+[node name="mesh" type="MeshInstance3D" parent="func_button_2"]
+mesh = ExtResource("8_3h8ld")
+surface_material_override/0 = SubResource("Material_bbpaint_04743d23e6ed148d")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_button_2"]
+shape = SubResource("Convex_func_button_2_0")
+
+[node name="HeronAnimationTrigger" type="Node" parent="func_button_2"]
+script = SubResource("HeronAnimationTrigger_27")
+targets = [NodePath("../../func_animate_2/HeronAnimation")]
+once = false
+delay = 0.0
+action = ""
+clip = ""
+
+[node name="func_button_3" type="Area3D" parent="."]
+transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 8.0, 0.075, 3.0)
+collision_layer = 4
+metadata/properties = {
+"targetname": "",
+"target": "door",
+"script": "",
+"_phong": 0,
+"_phong_angle": 89.0,
+"classname": "func_button"
+}
+metadata/target_paths = [NodePath("../func_animate_3")]
+
+[node name="mesh" type="MeshInstance3D" parent="func_button_3"]
+mesh = ExtResource("9_o0yj7")
+surface_material_override/0 = SubResource("Material_bbpaint_18a4e7e34771bd3a")
+
+[node name="shape_0" type="CollisionShape3D" parent="func_button_3"]
+shape = SubResource("Convex_func_button_3_0")
+
+[node name="HeronAnimationTrigger" type="Node" parent="func_button_3"]
+script = SubResource("HeronAnimationTrigger_27")
+targets = [NodePath("../../func_animate_3/HeronAnimation")]
+once = false
+delay = 0.0
+action = ""
+clip = ""
+
+[node name="info_player_start" type="Marker3D" parent="." groups=["spawn_points"]]
+transform = Transform3D(-1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 11.0)
+metadata/properties = {
+"targetname": "",
+"angles": "0 0 0",
+"classname": "info_player_start",
+"origin": "352 0 32"
+}
+
+[connection signal="body_entered" from="func_button" to="func_button/HeronAnimationTrigger" method="_on_body_entered"]
+[connection signal="body_entered" from="func_button_1" to="func_button_1/HeronAnimationTrigger" method="_on_body_entered"]
+[connection signal="body_entered" from="func_button_2" to="func_button_2/HeronAnimationTrigger" method="_on_body_entered"]
+[connection signal="body_entered" from="func_button_3" to="func_button_3/HeronAnimationTrigger" method="_on_body_entered"]

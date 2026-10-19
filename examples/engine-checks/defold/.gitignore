@@ -1,0 +1,10 @@
+build/
+.internal/
+main/arena/
+main/arena_paint/
+main/arena.collection
+main/arena.json
+textures/
+evidence/
+mcp-export.json
+runtime.log

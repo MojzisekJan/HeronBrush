@@ -1,0 +1,63 @@
+//! Project-owned entity factories. Bevy 0.19 + serde_json; no renderer or FPS kit.
+use bevy::prelude::*;
+use serde_json::Value;
+use std::collections::HashMap;
+
+#[derive(Component,Clone,Debug)]
+pub struct HeronEntityData {
+    pub name:String,
+    pub classname:String,
+    pub properties:HashMap<String,Value>,
+    pub targets:Vec<String>,
+    pub tags:Vec<String>,
+}
+impl HeronEntityData {
+    /// Accepts an entity from the tagged version 2 level JSON.
+    pub fn from_json(entity:&Value)->Result<Self,String>{
+        fn plain(value:&Value)->Value {
+            if let Some(array)=value.as_array(){return Value::Array(array.iter().map(plain).collect())}
+            if let Some(value)=value.as_object().and_then(|object|object.get("value")){return plain(value)}
+            value.clone()
+        }
+        let field=|name|entity.get(name).and_then(Value::as_str).map(str::to_owned).ok_or_else(||format!("entity missing {name}"));
+        let list=|name|->Result<Vec<String>,String>{match entity.get(name){None=>Ok(vec![]),Some(value)=>serde_json::from_value(value.clone()).map_err(|error|format!("invalid entity {name}: {error}"))}};
+        let properties=entity.get("properties").and_then(Value::as_object).map(|properties|properties.iter().map(|(name,value)|(name.clone(),plain(value))).collect()).unwrap_or_default();
+        Ok(Self{name:field("name")?,classname:field("classname")?,properties,targets:list("targets")?,tags:list("tags")?})
+    }
+}
+
+pub type HeronEntityFactory=fn(&mut World,Entity,&HeronEntityData,&HashMap<String,Entity>)->Result<(),String>;
+#[derive(Resource,Default)]
+pub struct HeronEntityFactories(pub HashMap<String,HeronEntityFactory>);
+#[derive(Component)]
+pub struct HeronEntityConfigured;
+/// Attach the same level root to every imported entity, to scope names when
+/// several maps or copies of the same map exist in one World.
+#[derive(Component,Clone,Copy)]
+pub struct HeronEntityScope(pub Entity);
+pub struct HeronEntityPlugin;
+impl Plugin for HeronEntityPlugin {
+    fn build(&self,app:&mut App){app.init_resource::<HeronEntityFactories>().add_systems(Update,configure_entities);}
+}
+/// Call after creating all level roots, before starting your physics/game schedule.
+/// Additional roots on later loads are handled by the plugin. Remove the configured
+/// marker explicitly when project code wants to apply a changed definition again.
+pub fn configure_entities(world:&mut World){
+    let mut query=world.query::<(Entity,&HeronEntityData,Option<&HeronEntityConfigured>,Option<&HeronEntityScope>)>();
+    let Some(factories)=world.get_resource::<HeronEntityFactories>() else{return};
+    if factories.0.is_empty(){return}
+    let pending:Vec<_>=query.iter(world).filter_map(|(entity,data,configured,scope)|{
+        if configured.is_some(){return None}
+        let name=data.properties.get("bevy_factory").and_then(Value::as_str).unwrap_or(&data.classname);
+        factories.0.get(name).copied().map(|factory|(entity,data.clone(),scope.map(|scope|scope.0),factory))
+    }).collect();
+    if pending.is_empty(){return}
+    let mut scopes:HashMap<Option<Entity>,HashMap<String,Entity>>=HashMap::new();
+    for (entity,data,_,scope) in query.iter(world){scopes.entry(scope.map(|scope|scope.0)).or_default().insert(data.name.clone(),entity);}
+    for (entity,data,scope,factory) in pending {
+            match factory(world,entity,&data,&scopes[&scope]){
+                Ok(())=>{if let Ok(mut entity)=world.get_entity_mut(entity){entity.insert(HeronEntityConfigured);}},
+                Err(error)=>error!("Heron entity {}: {error}",data.name),
+            }
+    }
+}

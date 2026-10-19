@@ -1,0 +1,8 @@
+attribute highp vec4 position;
+attribute mediump vec3 normal;
+attribute mediump vec2 texcoord0;
+uniform mediump mat4 mtx_worldview;
+uniform mediump mat4 mtx_proj;
+uniform mediump vec4 water_params;
+varying mediump vec2 var_texcoord0;
+void main(){vec3 p=position.xyz;p.y+=smoothstep(.5,.9,normal.y)*water_params.y*sin(p.x*1.7+water_params.x*water_params.z)*cos(p.z*1.3-water_params.x*water_params.z*.8);var_texcoord0=texcoord0;gl_Position=mtx_proj*mtx_worldview*vec4(p,1.);}

@@ -1,0 +1,72 @@
+-- `hb_data` is a validated, versioned payload baked into this script by the exporter.
+local function sample(keys, t)
+    if #keys == 0 then return 0 end
+    if t <= keys[1].time then return keys[1].value end
+    local lo, hi = 1, #keys
+    while lo < hi do local mid=math.floor((lo+hi+1)/2); if keys[mid].time<=t then lo=mid else hi=mid-1 end end
+    local a,b=keys[lo],keys[lo+1]
+    if not b or a.interpolation=="hold" then return a.value end
+    local dt=b.time-a.time;local f=(t-a.time)/dt
+    if a.interpolation=="bezier" then local u=1-f;return u*u*u*a.value+3*u*u*f*(a.value+a.outgoing*dt/3)+3*u*f*f*(b.value-b.incoming*dt/3)+f*f*f*b.value end
+    return a.value+(b.value-a.value)*f
+end
+local function folded(c,t)
+    t=math.max(0,t)
+    if c.mode=="once" then return math.min(t,c.duration) end
+    t=t%(c.duration*(c.mode=="pingpong" and 2 or 1))
+    return t>c.duration and 2*c.duration-t or t
+end
+local function apply(self)
+    local h=self.hb
+    if not h.posed then go.set_position(h.rest_position);go.set_rotation(h.rest_rotation);return end
+    local c=h.clip;local t=folded(c,h.time);local v={}
+    for i=1,6 do v[i]=sample(c.channels[i].keys,t) end
+    local q=vmath.quat_rotation_y(math.rad(v[6]))*vmath.quat_rotation_x(math.rad(v[5]))*vmath.quat_rotation_z(math.rad(v[4]))
+    local offset=vmath.vector3(v[2],v[3],v[1])/hb_data.scale
+    go.set_position(vmath.rotate(q,h.rest_position-h.pivot)+h.pivot+offset)
+    go.set_rotation(q*h.rest_rotation)
+end
+local function play(self,name)
+    for _,c in ipairs(hb_data.clips) do if c.name==(name or hb_data.selected) then
+        self.hb.clip=c;self.hb.time=0;self.hb.playing=true;self.hb.posed=true;apply(self);return true
+    end end
+    return false
+end
+function init(self)
+    self.hb={rest_position=go.get_position(),rest_rotation=go.get_rotation(),time=0,playing=false,posed=false,
+        pivot=vmath.vector3(hb_data.pivot[2],hb_data.pivot[3],hb_data.pivot[1])/hb_data.scale}
+    for _,c in ipairs(hb_data.clips) do if c.name==hb_data.selected then self.hb.clip=c end end
+    if hb_data.autoplay then play(self) end
+end
+local function advance(self,dt)
+    local h=self.hb
+    if h.playing then
+        h.time=h.time+dt
+        if h.clip.mode=="once" and h.time>=h.clip.duration then h.time=h.clip.duration;h.playing=false
+        elseif h.clip.mode~="once" then h.time=h.time%(h.clip.duration*(h.clip.mode=="pingpong" and 2 or 1)) end
+        apply(self)
+    end
+end
+function update(self,dt)
+    if sys.get_config_string("physics.use_fixed_timestep","0")~="1" then advance(self,dt) end
+end
+function fixed_update(self,dt)
+    if sys.get_config_string("physics.use_fixed_timestep","0")=="1" then advance(self,dt) end
+end
+-- Send to the exported entity's #properties component. `clip` is a string name.
+function on_message(self,id,message,sender)
+    local h=self.hb
+    if id==hash("heron_activate_animation") then
+        local has_open,has_close=false,false
+        for _,c in ipairs(hb_data.clips) do has_open=has_open or c.name=="open";has_close=has_close or c.name=="close" end
+        if has_open and has_close then
+            local reverse=h.posed and h.playing;local phase=h.clip and math.min(h.time/h.clip.duration,1) or 1
+            play(self,h.posed and h.clip.name=="open" and "close" or "open")
+            if reverse then h.time=(1-phase)*h.clip.duration;apply(self) end
+        else play(self) end
+    elseif id==hash("heron_play_animation") then play(self,message.clip)
+    elseif id==hash("heron_pause_animation") then h.playing=false
+    elseif id==hash("heron_resume_animation") then h.playing=true;h.posed=true
+    elseif id==hash("heron_stop_animation") then h.playing=false;h.posed=false;h.time=0;apply(self)
+    elseif id==hash("heron_seek_animation") and type(message.time)=="number" and message.time==message.time and math.abs(message.time)<math.huge then h.time=math.max(0,message.time);h.posed=true;apply(self) end
+end

@@ -1,0 +1,11 @@
+config_version=5
+[application]
+config/name="Heron Brush · Motion lab"
+run/main_scene="res://main.tscn"
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=800
+[rendering]
+anti_aliasing/quality/msaa_3d=2
+renderer/rendering_method="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.045, 0.065, 0.095, 1)

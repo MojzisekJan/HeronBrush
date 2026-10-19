@@ -1,0 +1,32 @@
+wait 0.8
+size 1360 900
+wait 0.3
+key K
+click 180 220
+key K
+click 180 220 shift
+key C cmd
+wait 0.3
+snapshot base
+key 3 cmd
+wait 0.3
+click 1220 372 double
+click 310 260 middle
+wait 0.4
+snapshot changed
+shot middle-paste
+key Z cmd
+snapshot undo
+drag 360 200 410 240 middle
+snapshot panned
+click 765 272 middle
+wait 0.4
+snapshot pasted_2d
+key Z cmd
+snapshot undo_2d
+drag 765 272 805 292 middle
+snapshot panned_2d
+key S cmd
+wait 0.2
+snapshot saved
+quit

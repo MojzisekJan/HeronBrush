@@ -1,0 +1,4 @@
+__pycache__/
+godot/.godot/
+godot/**/*.import
+godot/**/*.uid

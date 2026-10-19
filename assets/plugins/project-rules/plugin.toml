@@ -1,0 +1,17 @@
+name = "Project entity rules"
+description = "Check missing required properties, duplicate target names and unresolved target links."
+api = 1
+panel_action = "check"
+[[setting]]
+key = "classname"
+label = "Class to check"
+kind = "text"
+default = "fps_exit"
+[[setting]]
+key = "required"
+label = "Required property"
+kind = "text"
+default = "next_map"
+[[action]]
+id = "check"
+label = "Check project"

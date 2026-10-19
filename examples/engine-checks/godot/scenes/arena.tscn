@@ -1,0 +1,105 @@
+[gd_scene format=3 uid="uid://dxvvlck8lej3f"]
+
+[ext_resource type="Environment" path="res://scenes/main-environment.tres" id="1_q8fpv"]
+[ext_resource type="PackedScene" path="res://objects/player.tscn" id="2_elriq"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="3_s8mkj"]
+[ext_resource type="FontFile" path="res://fonts/lilita_one_regular.ttf" id="3_w27de"]
+[ext_resource type="PackedScene" path="res://maps/arena.tscn" id="heron_brush_arena"]
+[ext_resource type="Script" path="res://scripts/arena.gd" id="heron_brush_arena_script"]
+[ext_resource type="PackedScene" path="res://objects/pause_menu.tscn" id="heron_brush_pause"]
+[ext_resource type="Script" path="res://scripts/inspector.gd" id="heron_brush_inspector"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_fpmwk"]
+font = ExtResource("3_w27de")
+font_size = 36
+outline_size = 12
+outline_color = Color(0, 0, 0, 0.470588)
+
+[node name="Main" type="Node3D" unique_id=1176673032]
+script = ExtResource("heron_brush_arena_script")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=529470734]
+environment = ExtResource("1_q8fpv")
+
+[node name="Player" parent="." unique_id=1938858786 node_paths=PackedStringArray("crosshair") instance=ExtResource("2_elriq")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1000, 0)
+crosshair = NodePath("../HUD/Crosshair")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1419663090]
+script = ExtResource("3_s8mkj")
+
+[node name="Crosshair" type="TextureRect" parent="HUD" unique_id=288362464]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(0.35, 0.35)
+pivot_offset = Vector2(64, 64)
+
+[node name="Health" type="Label" parent="HUD" unique_id=212586905]
+offset_left = 48.0
+offset_top = 627.0
+offset_right = 138.0
+offset_bottom = 672.0
+size_flags_horizontal = 0
+size_flags_vertical = 8
+text = "100%"
+label_settings = SubResource("LabelSettings_fpmwk")
+vertical_alignment = 2
+
+[node name="Collected" type="Label" parent="HUD" unique_id=1335368048]
+offset_left = 48.0
+offset_top = 566.0
+offset_right = 260.0
+offset_bottom = 611.0
+size_flags_horizontal = 0
+size_flags_vertical = 8
+text = "0"
+label_settings = SubResource("LabelSettings_fpmwk")
+vertical_alignment = 2
+
+[node name="UseHint" type="Label" parent="HUD" unique_id=966076262]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -110.0
+offset_top = 40.0
+offset_right = 110.0
+offset_bottom = 85.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "F"
+label_settings = SubResource("LabelSettings_fpmwk")
+horizontal_alignment = 1
+
+[node name="Message" type="Label" parent="HUD"]
+visible = false
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -400.0
+offset_top = 120.0
+offset_right = 400.0
+offset_bottom = 170.0
+grow_horizontal = 2
+horizontal_alignment = 1
+label_settings = SubResource("LabelSettings_fpmwk")
+
+[node name="Arena" parent="." unique_id=578455932 instance=ExtResource("heron_brush_arena")]
+
+[node name="PauseMenu" parent="." instance=ExtResource("heron_brush_pause")]
+
+[node name="Inspector" type="Node" parent="."]
+script = ExtResource("heron_brush_inspector")
+
+[connection signal="health_updated" from="Player" to="HUD" method="_on_health_updated"]

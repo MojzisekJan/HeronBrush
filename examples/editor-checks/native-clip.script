@@ -1,0 +1,16 @@
+wait 0.8
+snapshot base
+click 740 230
+key C
+click 765 165
+click 765 310
+key Enter
+wait 0.2
+shot clip
+snapshot changed
+key Z cmd
+wait 0.2
+snapshot undo
+key S cmd
+wait 0.2
+quit

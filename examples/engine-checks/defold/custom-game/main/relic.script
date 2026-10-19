@@ -1,0 +1,21 @@
+-- Project-owned component. The exporter must never replace this file.
+go.property("charge",0)
+go.property("armed",false)
+go.property("offset",vmath.vector3())
+function init(self)
+    self.time=0
+    assert(go.get("#properties","charge")==7,"custom gameplay property was not passed")
+    assert(self.charge==9 and self.armed,"project component property overrides were not passed")
+    assert(vmath.length(self.offset-vmath.vector3(1,2,3))<0.0001,"vector override was not passed")
+    assert(math.abs(go.get("#collision","mass")-2)<0.0001,"custom dynamic mass was not applied")
+    self.initial=go.get_position().y
+end
+function update(self,dt)
+    self.time=self.time+dt
+    if self.time>2 then
+        local y=go.get_position().y
+        assert(self.initial>3.9 and math.abs(y-0.5)<0.1,"dynamic relic did not settle on the custom geometry group: "..y)
+        print("HERON_DEFOLD_CUSTOM_GAME_OK: project component, charge=7, mass=2, settled y="..y)
+        sys.exit(0)
+    end
+end

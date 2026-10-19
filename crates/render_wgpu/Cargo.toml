@@ -1,0 +1,28 @@
+[package]
+name = "render_wgpu"
+description = "Retained wgpu renderer for Heron Brush's 3D view (egui frontend), Bevy-style"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# std::time, with an Instant and a SystemTime that work in the browser too.
+web-time = "1"
+editor_core = { path = "../editor_core" }
+render = { path = "../render" }
+map_model = { path = "../map_model" }
+geometry_math = { path = "../geometry_math" }
+# Backends come from the host (eframe enables Metal/Vulkan/DX12/GL through egui-wgpu).
+wgpu = { version = "30.0", default-features = false, features = ["std", "wgsl"] }
+bytemuck = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+wgpu = { version = "30.0" }
+# The generated big maps of the benchmarks.
+editor_core = { path = "../editor_core", features = ["test-support"] }
+pollster = "0.4"
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+
+[lints]
+workspace = true

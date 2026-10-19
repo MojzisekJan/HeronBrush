@@ -1,0 +1,5 @@
+# The web build. rhai hashes through ahash, which seeds itself from getrandom; in the
+# browser getrandom reads crypto.getRandomValues, and 0.3 wants that chosen by this cfg
+# as well as by its `wasm_js` feature (crates/editor_core/Cargo.toml).
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']

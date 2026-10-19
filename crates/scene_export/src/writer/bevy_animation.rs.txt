@@ -1,0 +1,87 @@
+//! Copy into src/heron_animation.rs. Requires Bevy 0.19, serde and serde_json.
+//! Attach HeronAnimation to the entity root carrying its rest Transform.
+use bevy::prelude::*;
+use serde::Deserialize;
+#[derive(Clone,Deserialize)] struct Key {time:f64,value:f64,incoming:f64,outgoing:f64,interpolation:String}
+#[derive(Clone,Deserialize)] struct Channel {keys:Vec<Key>}
+#[derive(Clone,Deserialize)] struct Clip {name:String,mode:String,duration:f64,channels:Vec<Channel>}
+#[derive(Clone,Deserialize)] struct Data {version:u32,scale:f64,pivot:[f64;3],selected:String,autoplay:bool,clips:Vec<Clip>}
+#[derive(Component)]
+pub struct HeronAnimation {data:Data,clip:usize,time:f64,playing:bool,posed:bool,rest:Option<Transform>}
+impl HeronAnimation {
+    pub fn from_json(json:&str)->Result<Self,String>{
+        let data:Data=serde_json::from_str(json).map_err(|e|e.to_string())?;
+        if data.version!=1||!data.scale.is_finite()||data.scale<=0.||data.clips.is_empty()||data.clips.iter().any(|c|c.channels.len()!=6||c.duration<=0.){return Err("Invalid animation payload".into());}
+        let clip=data.clips.iter().position(|c|c.name==data.selected).ok_or("Missing selected clip")?;
+        let playing=data.autoplay;Ok(Self{data,clip,time:0.,playing,posed:playing,rest:None})
+    }
+    pub fn play(&mut self,name:&str)->bool{if let Some(i)=self.data.clips.iter().position(|c|c.name==name){self.clip=i;self.time=0.;self.playing=true;self.posed=true;true}else{false}}
+    pub fn activate(&mut self) {
+        let has=self.data.clips.iter().any(|c|c.name=="open")&&self.data.clips.iter().any(|c|c.name=="close");
+        if has {let next=if self.data.clips[self.clip].name=="open"&&self.posed {"close"}else{"open"};let phase=(self.time/self.data.clips[self.clip].duration).min(1.);let reverse=self.playing&&self.posed;self.play(next);if reverse {self.time=(1.-phase)*self.data.clips[self.clip].duration;}} else {let name=self.data.selected.clone();self.play(&name);}
+    }
+    pub fn pause(&mut self){self.playing=false;}
+    pub fn resume(&mut self){self.playing=true;self.posed=true;}
+    pub fn stop(&mut self){self.playing=false;self.posed=false;self.time=0.;}
+    pub fn seek(&mut self,t:f64){if t.is_finite(){self.time=t.max(0.);self.posed=true;}}
+    pub fn is_playing(&self)->bool{self.playing}
+    pub fn current_clip(&self)->&str{&self.data.clips[self.clip].name}
+}
+fn sample(channel:&Channel,t:f64)->f64 {
+    let keys=&channel.keys;if keys.is_empty(){return 0.;}if t<=keys[0].time{return keys[0].value;}
+    let i=keys.partition_point(|k|k.time<=t)-1;let a=&keys[i];let Some(b)=keys.get(i+1) else{return a.value;};
+    if a.interpolation=="hold"{return a.value;}
+    let dt=b.time-a.time;let f=(t-a.time)/dt;let u=1.-f;
+    if a.interpolation=="bezier"{u*u*u*a.value+3.*u*u*f*(a.value+a.outgoing*dt/3.)+3.*u*f*f*(b.value-b.incoming*dt/3.)+f*f*f*b.value}else{a.value+(b.value-a.value)*f}
+}
+fn advance(mut q:Query<(&mut HeronAnimation,&mut Transform)>,time:Res<Time>){
+    for(mut a,mut transform) in &mut q {
+        let rest=*a.rest.get_or_insert(*transform);
+        if a.playing{a.time+=time.delta_secs_f64();let c=&a.data.clips[a.clip];let duration=c.duration;let mode=c.mode.clone();if mode=="once"&&a.time>=duration{a.time=duration;a.playing=false;}else if mode!="once"{a.time%=duration*if mode=="pingpong"{2.}else{1.};}}
+        if !a.posed{*transform=rest;continue;}
+        let c=&a.data.clips[a.clip];let mut t=if c.mode=="once"{a.time.min(c.duration)}else{a.time%(c.duration*if c.mode=="pingpong"{2.}else{1.})};if t>c.duration{t=2.*c.duration-t;}
+        let v:[f64;6]=std::array::from_fn(|i|sample(&c.channels[i],t));
+        let q=Quat::from_rotation_y(v[5].to_radians() as f32)*Quat::from_rotation_x(v[4].to_radians() as f32)*Quat::from_rotation_z(v[3].to_radians() as f32);
+        let p=a.data.pivot;let scale=a.data.scale as f32;let pivot=Vec3::new(p[1] as f32,p[2] as f32,p[0] as f32)/scale;
+        transform.translation=q*(rest.translation-pivot)+pivot+Vec3::new(v[1] as f32,v[2] as f32,v[0] as f32)/scale;
+        transform.rotation=q*rest.rotation;transform.scale=rest.scale;
+    }
+}
+#[derive(SystemSet,Debug,Clone,PartialEq,Eq,Hash)]
+pub struct HeronAnimationSet;
+pub struct HeronAnimationPlugin;
+impl Plugin for HeronAnimationPlugin {fn build(&self,app:&mut App){app.add_systems(Update,(activate_triggers,advance).chain().in_set(HeronAnimationSet));}}
+
+/// For Avian's default FixedPostUpdate physics schedule. Animate and carry
+/// supports in FixedPreUpdate so collision simulation sees their current poses.
+pub struct HeronAnimationFixedPlugin;
+impl Plugin for HeronAnimationFixedPlugin {fn build(&self,app:&mut App){app.add_systems(FixedPreUpdate,(activate_triggers,advance).chain().in_set(HeronAnimationSet));}}
+
+/// Attach to the player root; a point-in-convex-volume test detects entrances.
+#[derive(Component)] pub struct HeronActivator;
+#[derive(Component)] pub struct HeronAnimationName(pub String);
+#[derive(Deserialize)] struct TriggerData {#[serde(default)] action:String,#[serde(default)] clip:String,targets:Vec<String>,once:bool,wait:f64,origin:[f64;3],volumes:Vec<Vec<[f64;4]>>}
+#[derive(Component)] pub struct HeronAnimationTrigger {data:TriggerData,inside:std::collections::HashSet<Entity>,wait:f64,fired:bool,pending:bool}
+impl HeronAnimationTrigger {
+    pub fn from_json(json:&str)->Result<Self,serde_json::Error>{Ok(Self{data:serde_json::from_str(json)?,inside:Default::default(),wait:0.,fired:false,pending:false})}
+    /// Use from an interaction or physics system for explicit button presses.
+    pub fn activate(&mut self){self.pending=true;}
+}
+fn activate_triggers(time:Res<Time>,actors:Query<(Entity,&GlobalTransform),With<HeronActivator>>,mut triggers:Query<(&mut HeronAnimationTrigger,&GlobalTransform)>,mut animations:Query<(&HeronAnimationName,&mut HeronAnimation)>) {
+    let mut targets=Vec::new();
+    for (mut trigger,transform) in &mut triggers {
+        trigger.wait=(trigger.wait-time.delta_secs_f64()).max(0.);
+        let mut inside=std::collections::HashSet::new();
+        for (entity,actor) in &actors {
+            let p=transform.affine().inverse().transform_point3(actor.translation());let o=trigger.data.origin;
+            if trigger.data.volumes.iter().any(|planes|!planes.is_empty()&&planes.iter().all(|v|v[0]*(p.x as f64+o[0])+v[1]*(p.y as f64+o[1])+v[2]*(p.z as f64+o[2])<=v[3]+1e-5)){inside.insert(entity);}
+        }
+        let entered=inside.iter().any(|entity|!trigger.inside.contains(entity));trigger.inside=inside;
+        let requested=trigger.pending||entered;trigger.pending=false;
+        if requested&&trigger.wait<=0.&&!(trigger.data.once&&trigger.fired) {targets.extend(trigger.data.targets.iter().map(|name|(name.clone(),trigger.data.action.clone(),trigger.data.clip.clone())));trigger.fired=true;trigger.wait=trigger.data.wait;}
+    }
+    for (name,mut animation) in &mut animations {for (_,action,clip) in targets.iter().filter(|(target,_,_)|target==&name.0){match action.as_str(){
+        "play"=>{let clip=if clip.is_empty(){animation.data.selected.clone()}else{clip.clone()};animation.play(&clip);},
+        "open"|"close"=>{animation.play(action);},"pause"=>animation.pause(),"resume"=>animation.resume(),"stop"=>animation.stop(),""|"toggle"=>animation.activate(),_=>{}
+    }}}
+}

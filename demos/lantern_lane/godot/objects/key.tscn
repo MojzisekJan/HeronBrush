@@ -1,0 +1,30 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://objects/../scripts/key.gd" id="1_key"]
+
+[sub_resource type="PrismMesh" id="Prism_key"]
+size = Vector3(0.3, 0.5, 0.3)
+
+[sub_resource type="StandardMaterial3D" id="Material_key"]
+albedo_color = Color(1, 0.25, 0.25, 1)
+emission_enabled = true
+emission = Color(1, 0.25, 0.25, 1)
+emission_energy_multiplier = 1.5
+
+[sub_resource type="BoxShape3D" id="Shape_key"]
+size = Vector3(0.7, 0.9, 0.7)
+
+[node name="key" type="Area3D"]
+script = ExtResource("1_key")
+collision_layer = 0
+collision_mask = 1
+monitoring = true
+
+[node name="mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+mesh = SubResource("Prism_key")
+surface_material_override/0 = SubResource("Material_key")
+
+[node name="shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+shape = SubResource("Shape_key")

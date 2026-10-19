@@ -1,0 +1,34 @@
+[workspace]
+resolver = "2"
+members = ["crates/expression_lang", "crates/text_utils", "crates/map_model", "crates/render", "crates/geometry_math", "crates/scene_export", "crates/heron-brush", "crates/editor_core", "crates/render_wgpu", "crates/heron-brush-android", "crates/heron-brush-web", "crates/file_store", "crates/heron-brush-export-web"]
+
+[workspace.package]
+version = "0.1.0-alpha.2"
+edition = "2021"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/MojzisekJan/HeronBrush"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+
+[profile.dev]
+# Keep full debug info, but in a `.dwp` beside the binary rather than inside it: the
+# executable drops from ~380 MB to ~50 MB and gdb/backtraces still work.
+split-debuginfo = "packed"
+
+# `trunk serve` builds the web build with this (crates/heron-brush-web/Trunk.toml): an
+# unoptimised wasm module is 100 MB and slow in the browser, while the release profile's
+# LTO takes minutes per change. Optimised like a release, but built in parallel.
+[profile.web-dev]
+inherits = "release"
+lto = false
+codegen-units = 256
+incremental = true
+strip = false
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+# 25.9 MB of binary become 21.3. Nothing here reads its own symbols, and a
+# backtrace from a release build was never going to name a line anyway.
+strip = true

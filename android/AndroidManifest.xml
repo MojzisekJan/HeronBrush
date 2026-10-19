@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Heron Brush for Android: a NativeActivity with no Java code of its own, which loads
+  libheron_brush_android.so (crates/heron-brush-android). scripts/build-android.sh
+  packages it; see docs/android.md.
+
+  The activity is not edge-to-edge (targetSdk 34): the system lays it out between the
+  status and navigation bars, and resizes it for the soft keyboard (adjustResize).
+  Configuration changes (rotation, keyboard, density) are handled in place, so the
+  editor and its document survive them.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="io.github.mojzisekjan.HeronBrush">
+
+    <!-- wgpu prefers Vulkan; GLES 3 is its fallback (the 3D renderer needs Vulkan, see docs). -->
+    <uses-feature android:glEsVersion="0x00030000" android:required="true" />
+    <uses-feature android:name="android.hardware.vulkan.version" android:version="0x400003" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <!-- Live sessions on the local network, and the MCP endpoint on 127.0.0.1. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Shared Documents and Download before Android 11's scoped storage. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+
+    <application
+        android:label="Heron Brush"
+        android:icon="@mipmap/ic_launcher"
+        android:hasCode="false"
+        android:extractNativeLibs="true"
+        android:requestLegacyExternalStorage="true"
+        android:appCategory="productivity"
+        android:theme="@android:style/Theme.Material.NoActionBar">
+        <activity
+            android:name="android.app.NativeActivity"
+            android:label="Heron Brush"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|locale|layoutDirection">
+            <meta-data android:name="android.app.lib_name" android:value="heron_brush_android" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

@@ -1,0 +1,16 @@
+// A project-owned schema with no FPS kit or special mover classnames.
+// @heron_brush collision=convex visuals=false
+@SolidClass = worldspawn : "Workshop floor" [
+    defold_group(string) : "Physics group" : "geometry"
+    defold_mask(string) : "Physics masks" : "artifact"
+]
+// @heron_brush collision=convex visuals=false
+@SolidClass = relic : "Falling puzzle object" [
+    charge(integer) : "Puzzle charge" : 7
+    defold_body_type(string) : "Body type" : "dynamic"
+    defold_mass(float) : "Mass" : 2
+    defold_group(string) : "Physics group" : "artifact"
+    defold_mask(string) : "Physics masks" : "geometry"
+    defold_component_logic(string) : "Project component" : "/main/relic.script"
+]
+@PointClass size(-8 -8 -8, 8 8 8) = beacon : "Project-owned prototype" [ ]

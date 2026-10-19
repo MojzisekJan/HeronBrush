@@ -1,0 +1,16 @@
+-- Optional baseline 3D render script. Custom games should add just the sky and water passes.
+function init(self)
+ self.sky=render.predicate({'heron_sky'});self.model=render.predicate({'model'});self.water=render.predicate({'heron_water'});self.gui=render.predicate({'gui'});self.text=render.predicate({'text'})
+end
+function update(self,dt)
+ render.set_depth_mask(true);render.clear({[graphics.BUFFER_TYPE_COLOR0_BIT]=vmath.vector4(.08,.12,.17,1),[graphics.BUFFER_TYPE_DEPTH_BIT]=1,[graphics.BUFFER_TYPE_STENCIL_BIT]=0})
+ render.set_viewport(0,0,render.get_window_width(),render.get_window_height())
+ local cameras,view=camera.get_cameras();for i=#cameras,1,-1 do if camera.get_enabled(cameras[i]) then view=cameras[i];break end end
+ -- The sky's cube sits round the origin and turns with the camera, so it is drawn unculled.
+ if view then render.set_camera(view) end
+ render.disable_state(graphics.STATE_BLEND);render.disable_state(graphics.STATE_DEPTH_TEST);render.disable_state(graphics.STATE_CULL_FACE);render.set_depth_mask(false);render.draw(self.sky);render.set_depth_mask(true)
+ if view then render.set_camera(view,{use_frustum=true}) end
+ render.enable_state(graphics.STATE_DEPTH_TEST);render.enable_state(graphics.STATE_CULL_FACE);render.draw(self.model)
+ render.set_depth_mask(false);render.disable_state(graphics.STATE_CULL_FACE);render.enable_state(graphics.STATE_BLEND);render.set_blend_func(graphics.BLEND_FACTOR_SRC_ALPHA,graphics.BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);render.draw(self.water)
+ render.set_camera();render.disable_state(graphics.STATE_DEPTH_TEST);render.set_view(vmath.matrix4());render.set_projection(vmath.matrix4_orthographic(0,render.get_width(),0,render.get_height(),-1,1));render.enable_state(graphics.STATE_STENCIL_TEST);render.draw(self.gui);render.draw(self.text);render.disable_state(graphics.STATE_STENCIL_TEST);render.disable_state(graphics.STATE_BLEND)
+end

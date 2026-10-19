@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+<title>Heron Brush heron</title>
+<defs><linearGradient id="badge" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#20364c"/><stop offset="1" stop-color="#101e30"/></linearGradient></defs>
+<circle cx="64" cy="64" r="60" fill="url(#badge)" stroke="#52768e" stroke-width="1.5"/>
+<g transform="translate(11 6) scale(.86)">
+<!-- A faceted heron bust: folded neck, blue crown and golden bill. -->
+<path d="M19 111 28 94 64 70 51 51 66 44 84 70 78 84 44 113Z" fill="#a9cbd7"/>
+<path d="m19 111 9-17 36-24 9 8-29 35Z" fill="#cee2e7"/>
+<path d="m51 51 15-7 18 26-11 8-9-8Z" fill="#85b0c3"/>
+<path d="m15 42 28-21 29-5 18 21-18 17-30-7Z" fill="#3b8bc4"/>
+<path d="m15 42 28-21 29-5-10 17-20 14Z" fill="#54a3d3"/>
+<path d="m42 47 20-14 28 4-18 17Z" fill="#286c9f"/>
+<path d="m8 48 21-18 18-4-12 18Z" fill="#284357"/>
+<path d="m86 35 35 19-49-3Z" fill="#e7a93b"/>
+<path d="m86 35 35 19-36-9Z" fill="#f0be5c"/>
+<path d="m85 45 36 9-49-3Z" fill="#c58c31"/>
+<path d="m68 30 6 1 2 5-5 3-5-4Z" fill="#233c50"/>
+
+</g>
+</svg>

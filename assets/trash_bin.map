@@ -1,0 +1,177 @@
+// Format: Valve
+// heron_brush format 1
+// entity 0
+{
+"mapversion" "220"
+"classname" "worldspawn"
+// heron_brush id a766740000000060
+// heron_brush color 43 54 59
+// brush 0
+{
+( -9 -7.5 0.5 ) ( -9 7.5 0.5 ) ( -9 -7.5 1.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -9 -7.5 0.5 ) ( -9 -7.5 1.5 ) ( -8.5 -8 0.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -9 -7.5 0.5 ) ( -8.5 -7.5 0 ) ( -9 7.5 0.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -9 -7.5 0.5 ) ( -8.5 -8 0.5 ) ( -8.5 -7.5 0 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -9 -7.5 1.5 ) ( -9 7.5 1.5 ) ( -8.5 -7.5 2 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -9 -7.5 1.5 ) ( -8.5 -7.5 2 ) ( -8.5 -8 1.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -9 7.5 0.5 ) ( -8.5 8 0.5 ) ( -9 7.5 1.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -9 7.5 0.5 ) ( -8.5 7.5 0 ) ( -8.5 8 0.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -9 7.5 1.5 ) ( -8.5 8 1.5 ) ( -8.5 7.5 2 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( 9 -7.5 0.5 ) ( 9 -7.5 1.5 ) ( 9 7.5 0.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( 9 -7.5 0.5 ) ( 8.5 -8 0.5 ) ( 9 -7.5 1.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( 9 -7.5 0.5 ) ( 9 7.5 0.5 ) ( 8.5 -7.5 0 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( 9 -7.5 0.5 ) ( 8.5 -7.5 0 ) ( 8.5 -8 0.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( 9 -7.5 1.5 ) ( 8.5 -7.5 2 ) ( 9 7.5 1.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( 9 -7.5 1.5 ) ( 8.5 -8 1.5 ) ( 8.5 -7.5 2 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( 9 7.5 0.5 ) ( 9 7.5 1.5 ) ( 8.5 8 0.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( 9 7.5 0.5 ) ( 8.5 8 0.5 ) ( 8.5 7.5 0 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( 9 7.5 1.5 ) ( 8.5 7.5 2 ) ( 8.5 8 1.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -8.5 -8 0.5 ) ( -8.5 -8 1.5 ) ( 8.5 -8 0.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -8.5 -8 0.5 ) ( 8.5 -8 0.5 ) ( -8.5 -7.5 0 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -8.5 -8 1.5 ) ( -8.5 -7.5 2 ) ( 8.5 -8 1.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -8.5 8 0.5 ) ( 8.5 8 0.5 ) ( -8.5 8 1.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -8.5 8 0.5 ) ( -8.5 7.5 0 ) ( 8.5 8 0.5 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -8.5 8 1.5 ) ( 8.5 8 1.5 ) ( -8.5 7.5 2 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -8.5 -7.5 0 ) ( 8.5 -7.5 0 ) ( -8.5 7.5 0 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 88 0 0
+( -8.5 -7.5 2 ) ( -8.5 7.5 2 ) ( 8.5 -7.5 2 ) skip 0 0 0 1 1 // heron_brush pbr 88 0 0
+}
+// heron_brush id a766740000000061
+// heron_brush color 75 116 133
+// brush 1
+{
+( -10 -8 3 ) ( -10 8 3 ) ( -10 -8 24 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -8 3 ) ( -10 -8 24 ) ( -9 -9 3 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -8 3 ) ( -9 -8 2 ) ( -10 8 3 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -8 3 ) ( -9 -9 3 ) ( -9 -8 2 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -8 24 ) ( -10 8 24 ) ( -9 -8 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -8 24 ) ( -9 -8 25 ) ( -9 -9 24 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 8 3 ) ( -9 9 3 ) ( -10 8 24 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 8 3 ) ( -9 8 2 ) ( -9 9 3 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 8 24 ) ( -9 9 24 ) ( -9 8 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 10 -8 3 ) ( 10 -8 24 ) ( 10 8 3 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 10 -8 3 ) ( 9 -9 3 ) ( 10 -8 24 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 10 -8 3 ) ( 10 8 3 ) ( 9 -8 2 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 10 -8 3 ) ( 9 -8 2 ) ( 9 -9 3 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 10 -8 24 ) ( 9 -8 25 ) ( 10 8 24 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 10 -8 24 ) ( 9 -9 24 ) ( 9 -8 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 10 8 3 ) ( 10 8 24 ) ( 9 9 3 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 10 8 3 ) ( 9 9 3 ) ( 9 8 2 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 10 8 24 ) ( 9 8 25 ) ( 9 9 24 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -9 -9 3 ) ( -9 -9 24 ) ( 9 -9 3 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -9 -9 3 ) ( 9 -9 3 ) ( -9 -8 2 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -9 -9 24 ) ( -9 -8 25 ) ( 9 -9 24 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -9 9 3 ) ( 9 9 3 ) ( -9 9 24 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -9 9 3 ) ( -9 8 2 ) ( 9 9 3 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -9 9 24 ) ( 9 9 24 ) ( -9 8 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -9 -8 2 ) ( 9 -8 2 ) ( -9 8 2 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -9 -8 25 ) ( -9 8 25 ) ( 9 -8 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+}
+// heron_brush id a766740000000062
+// heron_brush color 75 116 133
+// brush 2
+{
+( -10 -9 25 ) ( -10 -7 25 ) ( -10 -9 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -9 25 ) ( -10 -9 32 ) ( 10 -9 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -9 25 ) ( 10 -9 25 ) ( -10 -7 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -9 32 ) ( -10 -7 32 ) ( 10 -9 32 ) skip 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -7 25 ) ( 10 -7 25 ) ( -10 -7 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 10 -9 25 ) ( 10 -9 32 ) ( 10 -7 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+}
+// heron_brush id a766740000000063
+// heron_brush color 75 116 133
+// brush 3
+{
+( -10 -7 25 ) ( -10 9 25 ) ( -10 -7 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -7 25 ) ( -10 -7 32 ) ( -8 -7 25 ) skip 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -7 25 ) ( -8 -7 25 ) ( -10 9 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 -7 32 ) ( -10 9 32 ) ( -8 -7 32 ) skip 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -10 9 25 ) ( -8 9 25 ) ( -10 9 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -8 -7 25 ) ( -8 -7 32 ) ( -8 9 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+}
+// heron_brush id a766740000000064
+// heron_brush color 75 116 133
+// brush 4
+{
+( 8 -7 25 ) ( 8 9 25 ) ( 8 -7 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 8 -7 25 ) ( 8 -7 32 ) ( 10 -7 25 ) skip 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 8 -7 25 ) ( 10 -7 25 ) ( 8 9 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 8 -7 32 ) ( 8 9 32 ) ( 10 -7 32 ) skip 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 8 9 25 ) ( 10 9 25 ) ( 8 9 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 10 -7 25 ) ( 10 -7 32 ) ( 10 9 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+}
+// heron_brush id a766740000000065
+// heron_brush color 75 116 133
+// brush 5
+{
+( -1 7 25 ) ( -1 9 25 ) ( -1 7 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -1 7 25 ) ( -1 7 32 ) ( 1 7 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -1 7 25 ) ( 1 7 25 ) ( -1 9 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -1 7 32 ) ( -1 9 32 ) ( 1 7 32 ) skip 0 0 0 1 1 // heron_brush pbr 32 0 0
+( -1 9 25 ) ( 1 9 25 ) ( -1 9 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+( 1 7 25 ) ( 1 7 32 ) ( 1 9 25 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 32 0 0
+}
+// heron_brush id a766740000000066
+// heron_brush color 155 175 182
+// brush 6
+{
+( -11 -9 33 ) ( -11 9 33 ) ( -11 -9 34 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -11 -9 33 ) ( -11 -9 34 ) ( -10 -10 33 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -11 -9 33 ) ( -10 -9 32 ) ( -11 9 33 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -11 -9 33 ) ( -10 -10 33 ) ( -10 -9 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -11 -9 34 ) ( -11 9 34 ) ( -10 -9 35 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -11 -9 34 ) ( -10 -9 35 ) ( -10 -10 34 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -11 9 33 ) ( -10 10 33 ) ( -11 9 34 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -11 9 33 ) ( -10 9 32 ) ( -10 10 33 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -11 9 34 ) ( -10 10 34 ) ( -10 9 35 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 11 -9 33 ) ( 11 -9 34 ) ( 11 9 33 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 11 -9 33 ) ( 10 -10 33 ) ( 11 -9 34 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 11 -9 33 ) ( 11 9 33 ) ( 10 -9 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 11 -9 33 ) ( 10 -9 32 ) ( 10 -10 33 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 11 -9 34 ) ( 10 -9 35 ) ( 11 9 34 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 11 -9 34 ) ( 10 -10 34 ) ( 10 -9 35 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 11 9 33 ) ( 11 9 34 ) ( 10 10 33 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 11 9 33 ) ( 10 10 33 ) ( 10 9 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 11 9 34 ) ( 10 9 35 ) ( 10 10 34 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -10 -10 33 ) ( -10 -10 34 ) ( 10 -10 33 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -10 -10 33 ) ( 10 -10 33 ) ( -10 -9 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -10 -10 34 ) ( -10 -9 35 ) ( 10 -10 34 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -10 10 33 ) ( 10 10 33 ) ( -10 10 34 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -10 10 33 ) ( -10 9 32 ) ( 10 10 33 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -10 10 34 ) ( 10 10 34 ) ( -10 9 35 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -10 -9 32 ) ( 10 -9 32 ) ( -10 9 32 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -10 -9 35 ) ( -10 9 35 ) ( 10 -9 35 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+}
+// heron_brush id a766740000000067
+// heron_brush color 155 175 182
+// brush 7
+{
+( -5.5 9 6 ) ( -5.5 9.25 6 ) ( -5.5 9 20 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -5.5 9 6 ) ( -5.5 9 20 ) ( -4.5 9 6 ) skip 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -5.5 9 6 ) ( -4.5 9 6 ) ( -5.5 9.25 6 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -5.5 9 20 ) ( -5.5 9.25 20 ) ( -4.5 9 20 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -5.5 9.25 6 ) ( -4.5 9.25 6 ) ( -5.5 9.25 20 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -4.5 9 6 ) ( -4.5 9 20 ) ( -4.5 9.25 6 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+}
+// heron_brush id a766740000000068
+// heron_brush color 155 175 182
+// brush 8
+{
+( -0.5 9 6 ) ( -0.5 9.25 6 ) ( -0.5 9 20 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -0.5 9 6 ) ( -0.5 9 20 ) ( 0.5 9 6 ) skip 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -0.5 9 6 ) ( 0.5 9 6 ) ( -0.5 9.25 6 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -0.5 9 20 ) ( -0.5 9.25 20 ) ( 0.5 9 20 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( -0.5 9.25 6 ) ( 0.5 9.25 6 ) ( -0.5 9.25 20 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 0.5 9 6 ) ( 0.5 9 20 ) ( 0.5 9.25 6 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+}
+// heron_brush id a766740000000069
+// heron_brush color 155 175 182
+// brush 9
+{
+( 4.5 9 6 ) ( 4.5 9.25 6 ) ( 4.5 9 20 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 4.5 9 6 ) ( 4.5 9 20 ) ( 5.5 9 6 ) skip 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 4.5 9 6 ) ( 5.5 9 6 ) ( 4.5 9.25 6 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 4.5 9 20 ) ( 4.5 9.25 20 ) ( 5.5 9 20 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 4.5 9.25 6 ) ( 5.5 9.25 6 ) ( 4.5 9.25 20 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+( 5.5 9 6 ) ( 5.5 9 20 ) ( 5.5 9.25 6 ) __TB_empty 0 0 0 1 1 // heron_brush pbr 36 100 0
+}
+}

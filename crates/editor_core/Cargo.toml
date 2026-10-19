@@ -1,0 +1,73 @@
+[package]
+name = "editor_core"
+description = "Heron Brush's editor, without a user interface: the document, history, tools, exports, plugins, collaboration and MCP"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+# Live sessions over the open internet; see the note in crates/heron-brush/Cargo.toml.
+default = []
+iroh = ["dep:iroh", "dep:tokio"]
+# Test fixtures the frontends' own tests build on.
+test-support = []
+
+[dependencies]
+file_store = { path = "../file_store" }
+# std::time, with an Instant and a SystemTime that work in the browser too.
+web-time = "1"
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
+text_utils = { path = "../text_utils" }
+map_model = { path = "../map_model", features = ["serde"] }
+render = { path = "../render" }
+geometry_math = { path = "../geometry_math" }
+scene_export = { path = "../scene_export" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+iroh = { version = "1", default-features = false, features = ["tls-ring"], optional = true }
+tokio = { version = "1", features = ["rt", "sync", "io-util", "macros", "time"], optional = true }
+data-encoding = "2"
+rhai = { version = "1", features = ["only_i64"] }
+# CPU rasterisation for what the editor draws without a window: entity sprites, asset
+# previews, the headless preview.
+tiny-skia = "0.11"
+# Transforms of big selections, thumbnails.
+rayon = "1"
+# Hash maps keyed by node id on the per-frame paths (the 3D surfaces' cache).
+rustc-hash = "2"
+
+# A browser joins a live session over a WebSocket on the host's port (collab/net.rs).
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "rustls-no-provider"] }
+rustls = { version = "0.23.43", default-features = false, features = ["ring"] }
+semver = "1.0.28"
+sha2 = "0.11.0"
+
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# See .cargo/config.toml.
+getrandom = { version = "0.3", features = ["wasm_js"] }
+# The browser's WebSocket, for joining a live session (collab/net.rs).
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["WebSocket", "MessageEvent"] }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+proc-macro2 = "1"
+syn = "2"
+
+# The performance benchmarks: `#[ignore]`d tests over generated maps. See docs/performance.md.
+[[test]]
+name = "perf"
+required-features = ["test-support"]
+
+[[test]]
+name = "perf_special"
+required-features = ["test-support"]
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

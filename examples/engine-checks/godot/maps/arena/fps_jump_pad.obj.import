@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://dop1no6u1arng"
+path="res://.godot/imported/fps_jump_pad.obj-5c6eba3408663565ce28d3bbf70437fb.mesh"
+
+[deps]
+
+files=["res://.godot/imported/fps_jump_pad.obj-5c6eba3408663565ce28d3bbf70437fb.mesh"]
+
+source_file="res://maps/arena/fps_jump_pad.obj"
+dest_files=["res://.godot/imported/fps_jump_pad.obj-5c6eba3408663565ce28d3bbf70437fb.mesh", "res://.godot/imported/fps_jump_pad.obj-5c6eba3408663565ce28d3bbf70437fb.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

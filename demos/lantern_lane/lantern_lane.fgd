@@ -1,0 +1,245 @@
+// Entities for Kenney's Starter Kit FPS, on top of the generic heron_brush set.
+//
+// The shared classes live next door, so both games have to be installed:
+//   heron_brush install-game
+//   heron_brush install-game --from gamedata/heron_brush-fps --name heron_brush-fps
+@include "definitions/heron_brush/heron_brush.fgd"
+
+//=============================================================================
+// Kit objects
+//=============================================================================
+
+// A flying enemy from the kit. The arena script hands it the player on load.
+// @heron_brush scene=res://objects/enemy.tscn groups=enemies
+@PointClass size(-16 -16 -16, 16 16 16) color(255 60 60) base(Targetname, Angles) = fps_enemy : "A flying enemy."
+[]
+
+// A ground enemy: it does not fly, it walks the floor toward the player. The
+// Godot kit has no scene for it yet; the raylib demo draws it as a dark block.
+// @heron_brush node=Node3D groups=enemies
+@PointClass size(-16 -16 -24, 16 16 24) color(70 70 85) base(Targetname, Angles) = fps_walker : "A ground enemy that walks toward the player."
+[]
+
+// A pair of these teleports the player between them. Give each one a Name,
+// and set Target to the Name of the portal it should send you to. Point two at
+// each other and the link works both ways; leave Target empty for an exit only.
+// The Pitch Yaw Roll of the far portal decides which way you are facing when
+// you come out.
+// @heron_brush scene=res://objects/portal.tscn groups=portals
+@PointClass size(-24 -24 0, 24 24 72) color(90 190 255) base(Targetname, Target, Angles) = fps_portal : "A portal. Walk in, come out of the one it targets."
+[
+    color(color255) : "Colour" : "90 190 255"
+]
+
+// Something the player walks through to take. Scatter them along a route the
+// way a platformer scatters rings.
+// @heron_brush scene=res://objects/pickup.tscn groups=collectibles
+@PointClass size(-10 -10 -10, 10 10 10) color(255 210 40) base(Targetname) = fps_pickup : "A collectible. Walk through it to take it."
+[
+    value(integer) : "Value" : 1 : "How much this one is worth."
+    kind(string) : "Kind" : "" : "Groups it with others, so a gate can ask for ten of this kind."
+]
+
+// @heron_brush node=Node3D groups=pickups
+@PointClass size(-12 -12 -12, 12 12 12) color(60 200 255) base(Targetname) = fps_weapon_pickup : "A weapon lying on the ground."
+[
+    weapon(choices) : "Weapon" : "blaster" =
+    [
+        "blaster" : "Blaster"
+        "blaster-repeater" : "Blaster Repeater"
+    ]
+]
+
+// A cloud from the kit, purely decorative.
+// @heron_brush scene=res://objects/cloud.tscn groups=decoration
+@PointClass size(-32 -32 -32, 32 32 32) color(200 220 255) = fps_cloud : "A drifting cloud."
+[]
+
+// A panel you look at and press Use on, rather than one you stand on. Draw it
+// as brushwork on a wall and point Target at what it should work.
+// @heron_brush node=Area3D collision=convex groups=usable
+@SolidClass base(Targetname, Target, Phong) = fps_use_button : "A panel. Look at it and press Use."
+[]
+
+// Walk through one and you come back here after dying rather than at the start.
+// @heron_brush node=Area3D collision=convex visuals=false script=res://scripts/checkpoint.gd groups=checkpoints
+@SolidClass base(Targetname) = fps_checkpoint : "Records where the player comes back."
+[]
+
+// Point a trigger or a button at one of these and a wave of enemies arrives.
+// @heron_brush node=Node3D script=res://scripts/spawner.gd groups=spawners
+@PointClass size(-16 -16 -16, 16 16 16) color(255 90 60) base(Targetname) = fps_spawner : "Puts enemies into the level when set off."
+[
+    count(integer) : "How many" : 3
+    interval(float) : "Seconds between them" : "0.8"
+    spread(float) : "Scatter, in metres" : "2.0"
+]
+
+// Shoot it and it goes off, taking whatever is standing near it with it.
+// @heron_brush scene=res://objects/barrel.tscn groups=barrels
+@PointClass size(-16 -16 -26, 16 16 26) color(255 120 0) base(Targetname) = fps_barrel : "A barrel that explodes when shot."
+[
+    health(integer) : "How much shooting it takes" : 30
+    damage(integer) : "Damage at the centre" : 60
+    radius(float) : "Blast radius, in metres" : "4.0"
+    push(float) : "How hard it throws things" : "9.0"
+    fuse(float) : "Seconds between the last shot and the bang" : "0.0"
+]
+
+// A volume you climb. Draw it against the wall, in front of whatever the ladder
+// looks like. Texture it with skip if the ladder itself is separate geometry.
+// @heron_brush node=Area3D collision=convex script=res://scripts/ladder.gd groups=ladders
+@SolidClass base(Targetname) = fps_ladder : "Climbable. Stand in it and look where you want to go."
+[
+    speed(float) : "Climb speed, m/s" : "0" : "Zero uses the player's own."
+]
+
+// Walk into it and it says something: a street name, a word about the church,
+// a nudge about where to go next.
+// @heron_brush node=Area3D collision=convex visuals=false script=res://scripts/sign.gd groups=signs
+@SolidClass base(Targetname) = fps_sign : "Says something when the player walks in."
+[
+    title(string) : "Title" : "" : "The first line, if there is one."
+    text(string) : "Text" : ""
+    seconds(float) : "Seconds on screen" : "3.0"
+    once(choices) : "Say it once" : 1 =
+    [
+        0 : "No, every time"
+        1 : "Yes, the first time only"
+    ]
+]
+
+// Fires whatever it points at once a condition is met: so many presents
+// collected, a key in hand, or a flag the story sets from a script. The target
+// is anything that can be triggered, so this opens doors, starts lifts and
+// lights windows without any of them knowing why.
+// @heron_brush node=Node3D script=res://scripts/gate.gd groups=gates
+@PointClass size(-16 -16 -16, 16 16 16) color(120 255 160) base(Targetname, Target) = fps_gate : "Opens something when a condition is met."
+[
+    needs_count(integer) : "Pickups needed" : 0 : "How many have to be collected. 0 means no count."
+    needs_kind(string) : "Of which kind" : "" : "The Kind field on the pickups. Empty counts them all."
+    needs_key(string) : "Key needed" : "" : "The name of an fps_key."
+    needs_flag(string) : "Story flag needed" : "" : "Set from a script with level.set_flag()."
+    message(string) : "Message" : "" : "Said when it opens."
+]
+
+// Lava, spikes, acid, a bottomless pit. Stand in it and it hurts.
+// @heron_brush node=Area3D collision=convex visuals=false script=res://scripts/hurt.gd groups=hurt
+@SolidClass base(Targetname) = fps_hurt : "Hurts whatever stands in it."
+[
+    damage(float) : "Damage a second" : "20.0"
+    interval(float) : "Seconds between hits" : "0.5" : "Damage is dealt in bites this far apart, not every frame."
+    instant(choices) : "Kill outright" : 0 =
+    [
+        0 : "No, wear them down"
+        1 : "Yes, whatever their health"
+    ]
+    message(string) : "Message" : "" : "Shown the first time it bites."
+]
+
+// Walk into one and the level is over. Give it Next map to go straight on to
+// another one, or leave it empty to just finish.
+// @heron_brush node=Area3D collision=convex visuals=false script=res://scripts/exit.gd groups=exits
+@SolidClass base(Targetname) = fps_exit : "The way out. Ends the level."
+[
+    next_map(string) : "Next map" : "" : "A map name such as `arena`, or a full res:// path. Empty finishes here."
+    message(string) : "Message" : "Level done" : "Shown on screen as it happens."
+    needs(string) : "Needs key" : "" : "The name of a key the player has to be carrying."
+]
+
+// A chimney, a fire, a steam vent. Aim a trigger or a button at one to switch
+// it on and off.
+// @heron_brush scene=res://objects/particles.tscn groups=particles
+@PointClass size(-8 -8 -8, 8 8 8) color(170 170 175) base(Targetname) = fps_smoke : "Gives off smoke."
+[
+    amount(integer) : "How much" : 24 : "Puffs in the air at once."
+    lifetime(float) : "Seconds each lasts" : "3.0"
+    size(float) : "Size in metres" : "0.6"
+    grow(float) : "How much it swells" : "2.0" : "Multiplied onto the size by the end of its life."
+    speed(float) : "How fast it leaves, m/s" : "1.2"
+    spread(float) : "How wide it fans out, degrees" : "20"
+    swirl(float) : "How much it curls" : "0.3"
+    color(color255) : "Colour" : "200 200 205"
+    alpha(float) : "How solid" : "0.35"
+    start_on(choices) : "On to start with" : 1 =
+    [
+        1 : "Yes"
+        0 : "No, wait to be set off"
+    ]
+]
+
+// The same emitter with every knob out, for steam, dust, sparks, embers,
+// anything that is not smoke.
+// @heron_brush scene=res://objects/particles.tscn groups=particles
+@PointClass size(-8 -8 -8, 8 8 8) color(255 200 120) base(Targetname) = fps_particles : "An emitter you set up yourself."
+[
+    amount(integer) : "How much" : 32
+    lifetime(float) : "Seconds each lasts" : "2.0"
+    size(float) : "Size in metres" : "0.25"
+    grow(float) : "How much it swells" : "1.0"
+    speed(float) : "How fast it leaves, m/s" : "3.0"
+    direction(string) : "Which way, x y z" : "0 1 0"
+    spread(float) : "How wide it fans out, degrees" : "35" : "180 is every direction at once."
+    swirl(float) : "How much it wanders" : "0.0"
+    gravity(string) : "What pulls on it, x y z in m/s2" : "0 -4 0"
+    drag(float) : "How fast it slows down" : "0.2"
+    color(color255) : "Colour" : "255 200 120"
+    alpha(float) : "How solid" : "0.9"
+    from(string) : "Size of the source, x y z in metres" : "0.1 0.1 0.1"
+    carried(choices) : "Carried by the emitter" : 0 =
+    [
+        0 : "No, they stay where they were made"
+        1 : "Yes, they move with it"
+    ]
+    start_on(choices) : "On to start with" : 1 =
+    [
+        1 : "Yes"
+        0 : "No, wait to be set off"
+    ]
+]
+
+// Carry one of these to open the door that asks for it.
+// @heron_brush scene=res://objects/key.tscn groups=keys
+@PointClass size(-10 -10 -10, 10 10 10) color(255 60 60) base(Targetname) = fps_key : "A key. Walk through it to carry it."
+[
+    key(string) : "Key name" : "red" : "A door asking for the same name will open."
+    color(color255) : "Colour" : "255 60 60"
+]
+
+// Draw a low slab on the floor and walk onto it to be thrown upwards.
+// @heron_brush node=Area3D collision=convex script=res://scripts/jump_pad.gd groups=jump_pads
+@SolidClass base(Targetname, Phong) = fps_jump_pad : "Throws whoever steps on it upwards."
+[
+    strength(float) : "Strength" : "15" : "The player's own jump is 8."
+]
+
+// Fill a basin with one of these. It does not block movement; it slows what is
+// inside it and stops it sinking fast, so the jump key works as a swim stroke.
+// @heron_brush node=Area3D collision=convex script=res://scripts/water.gd groups=water
+@SolidClass base(Targetname, Phong) = fps_water : "A body of water."
+[
+    sink_speed(float) : "Sink speed" : "0.8" : "Metres per second you drift down at when you stop swimming."
+    rise_speed(float) : "Rise speed" : "3.5" : "How fast Jump carries you up and Sprint takes you down."
+    swim_speed(float) : "Swim speed" : "3.0" : "How fast you move through it, against 5 on land."
+]
+
+// A door that stays shut until the player is carrying the right key.
+// @heron_brush node=AnimatableBody3D collision=convex origin=brush script=res://scripts/mover.gd
+@SolidClass base(Targetname, Target, Phong) = fps_key_door : "A locked door. Set Key to the name of the key that opens it."
+[
+    key(string) : "Key needed" : "red"
+    speed(float) : "Speed" : "200"
+    travel(float) : "Travel distance" : "64"
+    wait(float) : "Wait before closing" : "4"
+    open_direction(string) : "Direction" : "1 0 0"
+]
+
+// A moving platform built out of brushwork rather than the kit's prefab.
+// @heron_brush node=AnimatableBody3D collision=convex origin=brush
+@SolidClass base(Targetname, Target, Scripted, Phong) = fps_lift : "A lift. Point a trigger at it."
+[
+    speed(float) : "Speed" : "120"
+    travel(float) : "Travel distance" : "192"
+    wait(float) : "Wait before returning" : "3"
+    open_direction(string) : "Direction" : "0 0 1"
+]

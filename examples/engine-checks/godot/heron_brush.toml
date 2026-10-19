@@ -1,0 +1,25 @@
+# Defaults for this project, read by heron_brush whenever a map under it is built.
+# With this file the everyday command is just:
+#
+#     heron_brush build maps/arena.map
+#     heron_brush watch maps
+#
+# Anything given on the command line still wins, and paths here are read
+# relative to this file rather than to wherever the command was run.
+
+game = "heron_brush-fps"
+out = "res://maps"
+
+# Hand made materials win over the loose texture of the same name.
+# res://materials/water.tres is what makes the pool a shader rather than
+# a blue box.
+material_dir = "res://materials"
+
+# What `heron_brush play maps/x.map` opens. One scene plays every level: the built map
+# is handed to it on the command line, so a new level needs nothing assembled
+# in the editor.
+play_scene = "res://scenes/play.tscn"
+
+# Godot unwraps a second UV set on import, which LightmapGI needs. It costs
+# about a percent more vertices and a fraction of a second at import.
+lightmaps = true

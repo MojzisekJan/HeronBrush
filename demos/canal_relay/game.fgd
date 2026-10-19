@@ -1,0 +1,5 @@
+@SolidClass = relay_door : "Powered canal gate" [targetname(string) : "Name" rise(float) : "Rise in metres" : 3]
+@SolidClass = relay_zone : "Campaign exit or water hazard" [kind(string) : "Kind" : "exit" next_level(string) : "Next chapter" required(string) : "Required station"]
+@PointClass size(-8 -8 -8,8 8 8) color(255 180 40) = relay_cell : "Energy cell" [cell_id(string) : "Persistent ID" value(integer) : "Energy" : 1]
+@PointClass size(-16 -16 0,16 16 32) color(40 230 180) = relay_station : "Relay station" [station_id(string) : "Persistent ID" cost(integer) : "Energy cost" : 2 target(string) : "Gate name"]
+@PointClass size(-8 -8 0,8 8 48) = relay_spawn : "Player start" []

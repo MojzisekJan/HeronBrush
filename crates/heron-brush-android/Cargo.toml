@@ -1,0 +1,21 @@
+[package]
+name = "heron-brush-android"
+description = "Heron Brush for Android: the native library a NativeActivity loads"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+# A crate of its own so that only an Android build links the application as a shared
+# library; the desktop build of `heron-brush` stays a plain executable. On other targets
+# this is an empty library. Built by scripts/build-android.sh; see docs/android.md.
+[lib]
+name = "heron_brush_android"
+crate-type = ["cdylib"]
+
+[target.'cfg(target_os = "android")'.dependencies]
+heron-brush = { path = "../heron-brush" }
+
+[lints]
+workspace = true

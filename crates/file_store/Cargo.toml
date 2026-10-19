@@ -1,0 +1,10 @@
+[package]
+name = "file_store"
+description = "The files the editor reads and writes: std::fs on the desktop, memory in the browser"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true

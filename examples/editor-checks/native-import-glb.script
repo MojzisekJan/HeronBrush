@@ -1,0 +1,26 @@
+wait 0.8
+snapshot base
+move 945 205
+click 275 18
+click 320 53
+click 651 172
+wait 0.3
+shot files
+click 450 239 double
+wait 0.3
+move 250 200
+key U cmd
+wait 0.2
+shot imported
+click 1105 85
+shot properties
+snapshot changed
+key Z cmd
+wait 0.2
+snapshot undo
+key Z cmd,shift
+wait 0.2
+snapshot redone
+key S cmd
+wait 0.2
+quit

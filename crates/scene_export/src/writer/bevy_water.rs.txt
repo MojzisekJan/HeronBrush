@@ -1,0 +1,13 @@
+//! Optional water adapter, independent of the game's physics/controller.
+use bevy::prelude::*;
+use serde::Deserialize;
+#[derive(Clone,Deserialize)] pub struct Plane{pub x:f32,pub y:f32,pub z:f32,pub d:f32}
+#[derive(Clone,Deserialize)] pub struct Volume{pub planes:Vec<Plane>,pub surface:f32}
+#[derive(Clone,Deserialize)] pub struct Data{pub version:u32,pub volumes:Vec<Volume>,pub swim_speed:f32,pub rise_speed:f32,pub sink_speed:f32,pub drag:f32,pub priority:i32,pub color:[f32;3],pub opacity:f32,pub fog_density:f32,pub wave_height:f32,pub wave_speed:f32,pub surface_material:bool}
+#[derive(Component,Clone)] pub struct HeronWater(pub Data);
+impl HeronWater{
+ pub fn from_json(json:&str)->Result<Self,String>{let d:Data=serde_json::from_str(json).map_err(|e|e.to_string())?;if d.version!=1{return Err("Unsupported water payload".into());}Ok(Self(d))}
+ pub fn sample(&self,pose:&GlobalTransform,world:Vec3)->Option<f32>{let p=pose.affine().inverse().transform_point3(world);self.0.volumes.iter().filter(|v|v.planes.len()>=4&&v.planes.iter().all(|v|v.x*p.x+v.y*p.y+v.z*p.z<=v.d+1e-5)).map(|v|(v.surface-p.y)*pose.to_scale_rotation_translation().0.y.abs()).filter(|d|*d>=0.).max_by(f32::total_cmp)}
+ pub fn velocity(&self,current:Vec3,walk:Vec3,rise:bool,dive:bool,dt:f32)->Vec3{let d=&self.0;let mut wish=walk.clamp_length_max(1.)*d.swim_speed;wish.y=(if rise{d.rise_speed}else{0.})-(if dive{d.rise_speed}else{0.})-if !rise&&!dive{d.sink_speed}else{0.};current.lerp(wish,1.-(-d.drag*dt).exp())}
+
+}

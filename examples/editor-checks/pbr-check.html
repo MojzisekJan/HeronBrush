@@ -1,0 +1,44 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Heron Brush PBR check</title>
+<script type="importmap">{"imports":{"three":"/three/build/three.module.js","three/addons/":"/three/examples/jsm/"}}</script>
+<style>body{font:16px sans-serif;background:#202830;color:#eee;margin:24px}pre{white-space:pre-wrap}canvas{border:1px solid #667}</style></head><body><h1 id="status">Testing local PBR exports…</h1><pre id="details"></pre>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+const ensure=(ok,message)=>{if(!ok)throw new Error(message)};
+const near=(a,b)=>Math.abs(a-b)<1e-5;
+try {
+ const level=await (await fetch('/fixtures/ThreeJs/pbr.json')).json();
+ const entity=level.entities.find(e=>e.mesh);const engine=entity.mesh;
+ const results=[];let shown;
+ for(const url of ['/fixtures/Glb/pbr.glb','/fixtures/ThreeJs/'+engine]) {
+  const gltf=await new GLTFLoader().loadAsync(url);const meshes=[];gltf.scene.traverse(n=>{if(n.isMesh)meshes.push(n)});
+  const materials=meshes.flatMap(m=>Array.isArray(m.material)?m.material:[m.material]).sort((a,b)=>a.roughness-b.roughness);
+  ensure(materials.length===2,'Both PBR materials must load');
+  for(let i=0;i<2;i++) {
+   const m=materials[i];ensure(near(m.roughness,i?0.9:0.6)&&near(m.metalness,0.4),'PBR factors changed');
+   ensure(near(m.normalScale.x,0.35)&&near(m.aoMapIntensity,0.25),'Normal/AO strength changed');
+   ensure(near(m.emissive.r,0.2)&&near(m.emissive.g,0.4)&&near(m.emissive.b,0.6),'Emissive factor changed');
+   for(const slot of ['normalMap','roughnessMap','metalnessMap','aoMap','emissiveMap'])ensure(m[slot],'Missing '+slot);
+   ensure(m.normalMap.colorSpace===THREE.NoColorSpace&&m.roughnessMap.colorSpace===THREE.NoColorSpace,'Data maps must be linear');
+   ensure(m.emissiveMap.colorSpace===THREE.SRGBColorSpace,'Emissive map must be sRGB');
+   ensure(m.roughnessMap.image.width===2&&m.roughnessMap.image.height===1&&m.aoMap.image.height===2,'Map dimensions changed');
+  }
+  ensure(meshes.every(m=>m.geometry.hasAttribute('tangent')),'Normal-mapped export needs tangents');
+  results.push({url,materials:materials.map(m=>({roughness:m.roughness,metallic:m.metalness,normalScale:m.normalScale.x,aoStrength:m.aoMapIntensity,emissive:m.emissive.toArray()}))});
+  shown=gltf.scene;
+  if(url.includes('/ThreeJs/')) {
+   shown.position.fromArray(entity.transform.translation);
+   shown.rotation.set(...entity.transform.rotation_yxz,'YXZ');
+   shown.scale.fromArray(entity.transform.scale);
+  }
+ }
+ const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(640,400);document.body.insertBefore(renderer.domElement,document.querySelector('#details'));
+ renderer.toneMapping=THREE.ACESFilmicToneMapping;
+ const scene=new THREE.Scene();scene.background=new THREE.Color(0x303c49);scene.add(shown,new THREE.HemisphereLight(0xffffff,0x607050,2));
+ const sun=new THREE.DirectionalLight(0xffffff,3);sun.position.set(2,5,3);scene.add(sun);
+ const camera=new THREE.PerspectiveCamera(45,640/400,0.1,100);camera.position.set(3,3,4);camera.lookAt(-0.2,0,0.8);renderer.render(scene,camera);
+ ensure(renderer.info.render.triangles>=2,'No PBR geometry was drawn');
+ document.querySelector('#status').textContent='PASS: Three.js PBR import and rendered preview';
+ document.querySelector('#details').textContent=JSON.stringify(results,null,2);
+} catch(error) {document.querySelector('#status').textContent='FAIL: '+error.message;document.querySelector('#details').textContent=error.stack;}
+</script></body></html>

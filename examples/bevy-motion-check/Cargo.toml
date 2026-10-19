@@ -1,0 +1,24 @@
+[package]
+name = "heron-bevy-motion-check"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-or-later"
+
+[workspace]
+resolver = "2"
+
+[dependencies]
+bevy = { version = "0.19", default-features = false, features = ["std", "multi_threaded", "bevy_asset", "bevy_mesh", "bevy_camera", "bevy_window"] }
+avian3d = { version = "0.7", default-features = false, features = ["3d", "f32", "parry-f32", "collider-from-mesh", "parallel"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+gltf = { version = "1.4", default-features = false, features = ["utils"] }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 1

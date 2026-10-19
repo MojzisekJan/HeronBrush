@@ -1,0 +1,18 @@
+{
+  "brushes": 371,
+  "grid": 1,
+  "off_grid_vertices": 0,
+  "skip_faces": 868,
+  "units": [
+    480,
+    320,
+    319
+  ],
+  "metres": [
+    15.0,
+    10.0,
+    9.96875
+  ],
+  "positive_volume_overlaps": 0,
+  "layout": "Three curved roof tiers; open lower hall with eight columns"
+}

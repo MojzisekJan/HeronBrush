@@ -1,0 +1,10 @@
+barrel_blue
+barrel_green
+barrel_red
+barrel_yellow
+pipe_broken
+pipe_straight
+pipe_tee
+steve
+temple_jade
+wall_brick_normal

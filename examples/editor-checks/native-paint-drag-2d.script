@@ -1,0 +1,16 @@
+wait 0.8
+size 1360 900
+wait 0.3
+key K
+snapshot base
+drag 695 272 833 272
+snapshot changed
+shot painted-stroke
+key Z cmd
+snapshot undo
+key Z cmd,shift
+snapshot redo
+key S cmd
+wait 0.2
+snapshot saved
+quit

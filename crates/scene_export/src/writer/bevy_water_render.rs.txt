@@ -1,0 +1,12 @@
+//! Optional renderer adapter. Declare both heron_water and heron_water_render modules.
+use bevy::prelude::*;
+use crate::heron_water::{Data,HeronWater};
+impl HeronWater {
+ pub fn material(&self,image:Option<Handle<Image>>)->StandardMaterial{StandardMaterial{base_color:Color::srgba(self.0.color[0],self.0.color[1],self.0.color[2],self.0.opacity),base_color_texture:image,alpha_mode:AlphaMode::Blend,cull_mode:None,perceptual_roughness:0.14,reflectance:0.6,..default()}}
+}
+#[derive(Component)] pub struct HeronWaterSurface{pub data:Data,pub rest:Vec<[f32;3]>,pub upward:Vec<bool>}
+#[derive(Component,Default)] pub struct HeronWaterCamera{dry:Option<DistanceFog>,wet:bool}
+pub struct HeronWaterPlugin;
+impl Plugin for HeronWaterPlugin{fn build(&self,app:&mut App){app.add_systems(Update,(waves,view));}}
+fn waves(time:Res<Time>,mut meshes:ResMut<Assets<Mesh>>,surfaces:Query<(&Mesh3d,&HeronWaterSurface)>){for (handle,surface) in &surfaces{let Some(mut mesh)=meshes.get_mut(&handle.0)else{continue};let t=time.elapsed_secs()*surface.data.wave_speed;let positions:Vec<_>=surface.rest.iter().zip(&surface.upward).map(|(p,up)|[p[0],p[1]+if *up{surface.data.wave_height*(p[0]*1.7+t).sin()*(p[2]*1.3-t*0.8).cos()}else{0.},p[2]]).collect();mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION,positions);}}
+fn view(mut commands:Commands,waters:Query<(&HeronWater,&GlobalTransform)>,mut cameras:Query<(Entity,&GlobalTransform,&mut HeronWaterCamera,Option<&DistanceFog>)>){for (entity,pose,mut state,fog) in &mut cameras{let mut best:Option<(&HeronWater,f32)>=None;for (water,transform) in &waters{if let Some(depth)=water.sample(transform,pose.translation()){if best.is_none_or(|(old,d)|water.0.priority>old.0.priority||(water.0.priority==old.0.priority&&depth>d)){best=Some((water,depth));}}}if let Some((water,_))=best{if !state.wet{state.dry=fog.cloned();state.wet=true;}commands.entity(entity).insert(DistanceFog{color:Color::srgb(water.0.color[0],water.0.color[1],water.0.color[2]),falloff:FogFalloff::ExponentialSquared{density:water.0.fog_density},..default()});}else if state.wet{state.wet=false;if let Some(dry)=state.dry.take(){commands.entity(entity).insert(dry);}else{commands.entity(entity).remove::<DistanceFog>();}}}}

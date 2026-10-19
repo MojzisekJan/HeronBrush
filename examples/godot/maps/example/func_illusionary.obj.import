@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://dws3nwh8no2cf"
+path="res://.godot/imported/func_illusionary.obj-e03e6c74e4c701a59c0144dcac3809de.mesh"
+
+[deps]
+
+files=["res://.godot/imported/func_illusionary.obj-e03e6c74e4c701a59c0144dcac3809de.mesh"]
+
+source_file="res://maps/example/func_illusionary.obj"
+dest_files=["res://.godot/imported/func_illusionary.obj-e03e6c74e4c701a59c0144dcac3809de.mesh", "res://.godot/imported/func_illusionary.obj-e03e6c74e4c701a59c0144dcac3809de.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=true

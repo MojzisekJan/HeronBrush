@@ -1,0 +1,27 @@
+[project]
+title = Heron Brush export check
+version = 0.1
+custom_resources = /main/arena.json
+
+[bootstrap]
+main_collection = /main/main.collectionc
+
+[input]
+game_binding = /main/game.input_bindingc
+
+[physics]
+type = 3D
+gravity_y = -22
+scale = 1
+max_collision_object_count = 1024
+
+[display]
+width = 1280
+height = 720
+update_frequency = 60
+
+[engine]
+fixed_update_frequency = 60
+
+[script]
+shared_state = 1

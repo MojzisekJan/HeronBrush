@@ -1,0 +1,33 @@
+{
+  "checked": false,
+  "files": [
+    "godot/maps/motion_lab_paint/bbpaint_90f4891fa6d38b5d.png",
+    "godot/maps/motion_lab_paint/bbpaint_763ce23066173d49.png",
+    "godot/maps/motion_lab_paint/bbpaint_0ad9ab8b18127df1.png",
+    "godot/maps/motion_lab_paint/bbpaint_455079bc80197814.png",
+    "godot/maps/motion_lab_paint/bbpaint_11c622a6f00f0197.png",
+    "godot/maps/motion_lab_paint/bbpaint_04743d23e6ed148d.png",
+    "godot/maps/motion_lab_paint/bbpaint_18a4e7e34771bd3a.png",
+    "godot/maps/motion_lab.tscn",
+    "godot/maps/motion_lab/worldspawn.obj",
+    "godot/maps/motion_lab/func_animate.obj",
+    "godot/maps/motion_lab/func_animate_1.obj",
+    "godot/maps/motion_lab/func_animate_2.obj",
+    "godot/maps/motion_lab/func_animate_3.obj",
+    "godot/maps/motion_lab/func_button.obj",
+    "godot/maps/motion_lab/func_button_1.obj",
+    "godot/maps/motion_lab/func_button_2.obj",
+    "godot/maps/motion_lab/func_button_3.obj"
+  ],
+  "saved_faces": 32,
+  "triangles": 346,
+  "warnings": [
+    "hidden face: func_button (entity 6) brush 0 face 5 (`bbpaint_11c622a6f00f0197`, 1475 units square, around (-96 192 0)) is flat against worldspawn (entity 0) brush 0 and cannot be seen; texture it with skip",
+    "hidden face: func_button (entity 5) brush 0 face 5 (`bbpaint_455079bc80197814`, 1475 units square, around (-96 -448 0)) is flat against worldspawn (entity 0) brush 0 and cannot be seen; texture it with skip",
+    "hidden face: func_button (entity 8) brush 0 face 5 (`bbpaint_18a4e7e34771bd3a`, 1475 units square, around (96 256 0)) is flat against worldspawn (entity 0) brush 0 and cannot be seen; texture it with skip",
+    "hidden face: func_button (entity 7) brush 0 face 5 (`bbpaint_04743d23e6ed148d`, 1475 units square, around (96 -224 0)) is flat against worldspawn (entity 0) brush 0 and cannot be seen; texture it with skip",
+    "hidden face: func_animate (entity 1) brush 0 face 2 (`bbpaint_455079bc80197814`, 1434 units square, around (-192 -376 32)) is flat against worldspawn (entity 0) brush 11 and cannot be seen; texture it with skip",
+    "hidden face: func_animate (entity 4) brush 0 face 4 (`bbpaint_18a4e7e34771bd3a`, 768 units square, around (196 256 128)) is flat against worldspawn (entity 0) brush 24 and cannot be seen; texture it with skip",
+    "hidden face: func_animate (entity 4) brush 0 face 5 (`bbpaint_18a4e7e34771bd3a`, 768 units square, around (196 256 0)) is flat against worldspawn (entity 0) brush 0 and cannot be seen; texture it with skip"
+  ]
+}

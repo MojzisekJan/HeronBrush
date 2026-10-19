@@ -1,0 +1,6 @@
+wait 0.8
+size 1360 900
+wait 0.3
+snapshot reopened
+shot reopened
+quit

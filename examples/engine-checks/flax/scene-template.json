@@ -1,0 +1,81 @@
+{
+  "ID": "089f82bc00c5a57a65d0d101b7e34ab2",
+  "TypeName": "FlaxEngine.SceneAsset",
+  "EngineBuild": 6912,
+  "Data": [
+    {
+      "ID": "089f82bc00c5a57a65d0d101b7e34ab2",
+      "TypeName": "FlaxEngine.Scene",
+      "LightmapSettings": {
+        "IndirectLightingIntensity": 1.0,
+        "GlobalObjectsScale": 1.0,
+        "ChartsPadding": 3,
+        "AtlasSize": 1024,
+        "BounceCount": 1,
+        "CompressLightmaps": true,
+        "UseGeometryWithNoMaterials": true,
+        "Quality": 10
+      }
+    },
+    {
+      "ID": "089f82bc00c6f03f65d0d672b7e3811c",
+      "TypeName": "FlaxEngine.DirectionalLight",
+      "ParentID": "089f82bc00c5a57a65d0d101b7e34ab2",
+      "Name": "Sun",
+      "Transform": {
+        "Translation": {
+          "X": 40.0,
+          "Y": 160.0,
+          "Z": 0.0
+        },
+        "Orientation": {
+          "X": 0.3826834559440613,
+          "Y": 0.0,
+          "Z": 0.0,
+          "W": 0.9238795042037964
+        }
+      }
+    },
+    {
+      "ID": "089f82bc00c79b0d65d0e5e0b7e41b68",
+      "TypeName": "FlaxEngine.Sky",
+      "ParentID": "089f82bc00c5a57a65d0d101b7e34ab2",
+      "Name": "Sky",
+      "Transform": {
+        "Translation": {
+          "X": 40.0,
+          "Y": 150.0,
+          "Z": 0.0
+        }
+      },
+      "Sun": "089f82bc00c6f03f65d0d672b7e3811c"
+    },
+    {
+      "ID": "089f82bc00c9c76365d0e713b7e42782",
+      "TypeName": "FlaxEngine.SkyLight",
+      "ParentID": "089f82bc00c5a57a65d0d101b7e34ab2",
+      "Name": "SkyLight",
+      "Brightness": 2.5,
+      "CustomTexture": "c54410104ff39427bc11e5bc761d66b0"
+    },
+    {
+      "ID": "089f82bc00cc1d3265d0eae6b7e44db8",
+      "TypeName": "FlaxEngine.Camera",
+      "ParentID": "089f82bc00c5a57a65d0d101b7e34ab2",
+      "Name": "Camera",
+      "Transform": {
+        "Translation": {
+          "X": -3000.0,
+          "Y": 170.0,
+          "Z": 3000.0
+        }
+      }
+    },
+    {
+      "ID": "089f82bc00cd98f665d0ebb2b7e455b2",
+      "TypeName": "FlaxEngine.AudioListener",
+      "ParentID": "089f82bc00cc1d3265d0eae6b7e44db8",
+      "Name": "Audio Listener"
+    }
+  ]
+}

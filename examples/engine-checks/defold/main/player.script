@@ -1,0 +1,198 @@
+local game=require "main.entity_runtime"
+local water=require "main.arena_water"
+local checks=require "main.gameplay_checks"
+local motion_checks=require "main.motion_checks"
+-- A small first-person controller for the exported map: a kinematic capsule on
+-- the `body` game object, mouse look, WASD, gravity, and Defold's standard
+-- contact-point separation against the map's static collision. The camera is a
+-- `camera` component on the `cam` child, which the built-in render script
+-- picks up on its own -- no camera messages here.
+--
+-- This is deliberately minimal. Swap in defold-scene3d or defold-operator for
+-- a fuller camera + controller; the `body` game object is the handoff point.
+
+go.property("yaw", 3.9269908)   -- radians; info_player_start faces here
+
+local GRAVITY = 22.0
+local WALK = 5.5
+local RUN = 9.0
+local JUMP = 7.5
+local LOOK = 0.0022
+local PITCH_LIMIT = 1.5
+local FALL_FLOOR = -30.0
+
+local FWD = vmath.vector3(0, 0, -1)
+local RIGHT = vmath.vector3(1, 0, 0)
+local UP = vmath.vector3(0, 1, 0)
+local function point(matrix, p)
+    local v=matrix*vmath.vector4(p.x,p.y,p.z,1)
+    return vmath.vector3(v.x,v.y,v.z)
+end
+
+function init(self)
+    msg.post(".", "acquire_input_focus")
+    window.set_mouse_lock(sys.get_config_string("check.enabled", "0") == "0")
+    self.check_time = 0
+    self.check_contacts = 0
+    self.vel = vmath.vector3()
+    self.pitch = 0.0
+    self.look=vmath.quat_rotation_y(self.yaw)
+    for _,e in pairs(game.entities) do
+        if e.classname=="info_player_start" then
+            go.set_position(game.vec(e.transform.translation)+vmath.vector3(0,0.4,0))
+            self.look=game.rotation(e)
+            break
+        end
+    end
+    self.momentum_grace=0
+    self.keys = {}
+    self.grounded = false
+    self.want_jump = false
+    self.support=nil
+    self.support_pose=nil
+    self.correction = vmath.vector3()
+end
+
+function final(self)
+    window.set_mouse_lock(false)
+end
+
+local function step(self, dt)
+    if sys.get_config_string("check.enabled","0")=="4" then dt=1/60;require("main.water_checks").before(self,dt) end
+    if sys.get_config_string("check.enabled", "0")=="3" then dt=1/60;motion_checks.update(self,dt) end
+    game.time=game.time+dt
+    if self.grounded then self.check_contacts=self.check_contacts+1 end
+    if sys.get_config_string("check.enabled", "0")=="2" then checks.update(self,dt) end
+    if self.grounded and not self.in_water and not self.want_jump and self.support and go.exists(self.support) then
+        local current=go.get_world_transform(self.support)
+        if self.support_pose then
+            local position=go.get_world_position()
+            local carried=point(current,point(vmath.inv(self.support_pose),position))
+            go.set_position(go.get_position()+carried-position)
+        end
+        self.support_pose=current
+    else
+        self.support=nil;self.support_pose=nil
+    end
+    self.momentum_grace=math.max(0,self.momentum_grace-dt)
+    if sys.get_config_string("check.enabled", "0") == "1" then
+        self.check_time = self.check_time + dt
+        if self.check_time > 5 then
+            print("EXPORT_CHECK position=" .. tostring(go.get_position()) .. " grounded_frames=" .. self.check_contacts)
+            sys.exit(self.check_contacts > 0 and 0 or 2)
+        end
+    end
+    local yq = self.look
+
+    local f = (self.keys[hash("key_w")] and 1 or 0) - (self.keys[hash("key_s")] and 1 or 0)
+    local s = (self.keys[hash("key_d")] and 1 or 0) - (self.keys[hash("key_a")] and 1 or 0)
+    local wish = vmath.rotate(yq, FWD) * f + vmath.rotate(yq, RIGHT) * s
+    if vmath.length_sqr(wish) > 1e-4 then
+        wish = vmath.normalize(wish)
+    end
+    local wet=water.sample(go.get_world_position())
+    self.in_water=wet~=nil
+    local speed = wet and wet.swim_speed or (self.keys[hash("key_lshift")] and RUN or WALK)
+    if self.momentum_grace==0 and not self.freeze and not wet then
+        self.vel.x = wish.x * speed
+        self.vel.z = wish.z * speed
+    end
+
+    if wet and not self.freeze then self.vel=water.velocity(wet,self.vel,wish,self.keys[hash("key_space")],self.keys[hash("key_lctrl")],dt)
+    elseif not self.freeze then self.vel.y = self.vel.y - GRAVITY * dt end
+    if self.grounded and not wet then
+        if self.vel.y < 0 then self.vel.y = -1.0 end
+        if self.want_jump then
+            self.vel.y = JUMP
+            self.grounded = false
+        end
+    end
+    self.want_jump = false
+    local view=water.sample(go.get_world_position("cam"))
+    msg.post('/hud#hud','heron_water_view',{color=view and vmath.vector4(view.color[1],view.color[2],view.color[3],1-math.exp(-view.fog_density*2)) or vmath.vector4()})
+
+    -- Move; contact_point_response fixes the overlap this frame.
+    self.correction = vmath.vector3()
+    self.grounded = false
+    if not self.freeze then go.set_position(go.get_position() + self.vel * dt) end
+
+    local p = go.get_position()
+    if p.y < FALL_FLOOR then
+        go.set_position(vmath.vector3(p.x, 20, p.z))
+        self.vel = vmath.vector3()
+    end
+
+    -- Aim the camera child: yaw about world up, pitch about its local right.
+    go.set_rotation(self.look, "cam")
+end
+
+function update(self,dt)
+    if sys.get_config_string("physics.use_fixed_timestep","0")~="1" then step(self,dt) end
+end
+function fixed_update(self,dt)
+    if sys.get_config_string("physics.use_fixed_timestep","0")=="1" then step(self,dt) end
+end
+
+function late_update(self,dt)
+    if sys.get_config_string("check.enabled", "0")=="3" then motion_checks.observe(self,1/60) end
+end
+
+function on_message(self, message_id, message)
+    if message_id==hash('portal_transport') then
+        local before_velocity=vmath.vector3(self.vel)
+        local before_look=vmath.quat(self.look)
+        self.vel=vmath.rotate(message.delta,self.vel)
+        self.look=message.delta*self.look
+        self.momentum_grace=0.2
+        self.grounded=false
+        self.support=nil;self.support_pose=nil
+        self.correction=vmath.vector3()
+        go.set_position(message.position)
+        go.set_rotation(self.look,"cam")
+        game.teleports[#game.teleports+1]={source=message.source,destination=message.destination,before_velocity=before_velocity,after_velocity=vmath.vector3(self.vel),before_look=before_look,after_look=vmath.quat(self.look)}
+        return
+    end
+    if message_id ~= hash("contact_point_response") then
+        return
+    end
+    -- Standard kinematic separation: push out along the contact normal,
+    -- discounting what a previous contact this frame already handled.
+    if message.distance > 0 then
+        local proj = vmath.project(self.correction, message.normal * message.distance)
+        if proj < 1 then
+            local comp = (message.distance - message.distance * proj) * message.normal
+            go.set_position(go.get_position() + comp)
+            self.correction = self.correction + comp
+        end
+    end
+    local vn = vmath.dot(self.vel, message.normal)
+    if vn < 0 then
+        self.vel = self.vel - vn * message.normal
+    end
+    if message.normal.y > 0.6 and self.vel.y <= 0.1 then
+        self.grounded = true
+        if self.support~=message.other_id then
+            self.support=message.other_id
+            self.support_pose=go.get_world_transform(self.support)
+        end
+    end
+end
+
+function on_input(self, action_id, action)
+    if sys.get_config_string("check.enabled", "0") ~= "0" then return end
+    if action_id == nil then
+        local pitch=math.max(-PITCH_LIMIT,math.min(PITCH_LIMIT,self.pitch+action.dy*LOOK))
+        self.look=vmath.quat_rotation_y(-action.dx*LOOK)*self.look*vmath.quat_rotation_x(pitch-self.pitch)
+        self.pitch=pitch
+    elseif action_id == hash("key_space") then
+        if action.pressed then self.want_jump = true;self.keys[action_id]=true elseif action.released then self.keys[action_id]=nil end
+    elseif action_id == hash("key_esc") then
+        if action.pressed then window.set_mouse_lock(false) end
+    elseif action_id == hash("touch") then
+        if action.pressed then window.set_mouse_lock(true) end
+    elseif action.pressed then
+        self.keys[action_id] = true
+    elseif action.released then
+        self.keys[action_id] = nil
+    end
+end

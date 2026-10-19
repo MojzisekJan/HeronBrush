@@ -1,0 +1,48 @@
+[package]
+name = "map_model"
+description = "Editable map geometry, document nodes and resource readers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+# Enables the manual WASM archive memory regression example.
+archive-bench = []
+# Serialize the plain-data map types (faces, patches, UV, node metadata), for the
+# live-editing wire format in `heron-brush`.
+serde = ["dep:serde", "geometry_math/serde"]
+
+[dependencies]
+flate2 = "1"
+crc32fast = "1"
+serde_json = "1"
+file_store = { path = "../file_store" }
+# std::time, with an Instant and a SystemTime that work in the browser too.
+web-time = "1"
+image = { version = "0.25.10", default-features = false, features = ["png", "tga", "jpeg"] }
+expression_lang = { path = "../expression_lang" }
+text_utils = { path = "../text_utils" }
+# The `.ent` entity definitions are XML; already in the tree through the exporters.
+quick-xml = "0.41"
+geometry_math = { path = "../geometry_math" }
+rustc-hash = "2"
+serde = { version = "1", features = ["derive"], optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false }
+
+[[bench]]
+name = "pipeline"
+harness = false
+
+[lints]
+workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen = "0.2.127"
+
+[[example]]
+name = "web_archive_residency"
+required-features = ["archive-bench"]
+crate-type = ["cdylib"]

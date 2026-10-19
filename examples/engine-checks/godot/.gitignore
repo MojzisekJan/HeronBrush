@@ -1,0 +1,5 @@
+.godot/
+*.tmp
+core
+core.*
+evidence/

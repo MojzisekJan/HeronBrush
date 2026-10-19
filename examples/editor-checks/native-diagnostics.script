@@ -1,0 +1,19 @@
+wait 0.8
+snapshot base
+click 1030 85
+click 1060 568
+wait 0.2
+shot fixed
+snapshot changed
+key Z cmd
+wait 0.2
+snapshot undo
+click 1140 568
+wait 0.2
+shot hidden
+click 1120 503
+wait 0.2
+shot restored
+key S cmd
+wait 0.2
+quit

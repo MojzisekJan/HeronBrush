@@ -1,0 +1,199 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/pause_menu.gd" id="1_pause"]
+
+[node name="PauseMenu" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1_pause")
+
+[node name="Dim" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.65)
+
+[node name="Center" type="CenterContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 32
+
+[node name="Root" type="VBoxContainer" parent="Center/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Title" type="Label" parent="Center/Panel/Margin/Root"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+text = "PAUSED"
+horizontal_alignment = 1
+
+[node name="MainPage" type="VBoxContainer" parent="Center/Panel/Margin/Root"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Resume" type="Button" parent="Center/Panel/Margin/Root/MainPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "Resume"
+
+[node name="Options" type="Button" parent="Center/Panel/Margin/Root/MainPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "Settings"
+
+[node name="Save" type="Button" parent="Center/Panel/Margin/Root/MainPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "Save game"
+
+[node name="Load" type="Button" parent="Center/Panel/Margin/Root/MainPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "Load game"
+
+[node name="Restart" type="Button" parent="Center/Panel/Margin/Root/MainPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "Restart level"
+
+[node name="Quit" type="Button" parent="Center/Panel/Margin/Root/MainPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 44)
+layout_mode = 2
+text = "Quit game"
+
+[node name="OptionsPage" type="VBoxContainer" parent="Center/Panel/Margin/Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Grid" type="GridContainer" parent="Center/Panel/Margin/Root/OptionsPage"]
+layout_mode = 2
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 12
+columns = 3
+
+[node name="VolumeLabel" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+layout_mode = 2
+text = "Volume"
+
+[node name="VolumeSlider" type="HSlider" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.05
+value = 0.8
+
+[node name="VolumeValue" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+text = "80 %"
+horizontal_alignment = 2
+
+[node name="SensLabel" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+layout_mode = 2
+text = "Mouse sensitivity"
+
+[node name="SensSlider" type="HSlider" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_vertical = 4
+min_value = 0.1
+max_value = 3.0
+step = 0.05
+value = 1.0
+
+[node name="SensValue" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+text = "1.00"
+horizontal_alignment = 2
+
+[node name="FovLabel" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+layout_mode = 2
+text = "Field of view"
+
+[node name="FovSlider" type="HSlider" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_vertical = 4
+min_value = 60.0
+max_value = 110.0
+step = 1.0
+value = 80.0
+
+[node name="FovValue" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+text = "80"
+horizontal_alignment = 2
+
+[node name="InvertLabel" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+layout_mode = 2
+text = "Invert vertical look"
+
+[node name="InvertCheck" type="CheckButton" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="InvertPad" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+layout_mode = 2
+
+[node name="FullscreenLabel" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+layout_mode = 2
+text = "Fullscreen"
+
+[node name="FullscreenCheck" type="CheckButton" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="FullscreenPad" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+
+[node name="VsyncLabel" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+layout_mode = 2
+text = "V-Sync"
+
+[node name="VsyncCheck" type="CheckButton" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+
+[node name="VsyncPad" type="Label" parent="Center/Panel/Margin/Root/OptionsPage/Grid"]
+layout_mode = 2
+
+[node name="Back" type="Button" parent="Center/Panel/Margin/Root/OptionsPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "Back"
