@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="nb" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heron Brush manual · Norsk bokmål</title>
+<meta name="description" content="The Heron Brush manual: modelling, materials, entities, animation, export and live links.">
+<link rel="icon" type="image/svg+xml" href="../../images/logo.svg">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../manual.css">
+<link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
+</head>
+<body class="manual-page">
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../../#"><img src="../../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar-top" d="M4 7h16"/><path class="bar-mid" d="M4 12h16"/><path class="bar-bot" d="M4 17h16"/></svg>
+    </button>
+    <nav class="menu" id="site-menu" aria-label="Main">
+      <div class="nav-links">
+        <a href="../../#modelling">Modelling</a>
+        <a href="../../#materials">Materials</a>
+        <a href="../../#animation">Animation</a>
+        <a href="../../#export">Export</a>
+        <a href="#" aria-current="page">Manual</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <mask id="moon-mask"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="moon-cut" cx="17" cy="7" r="6.5" fill="#000"/></mask>
+            <circle class="sun-core" cx="12" cy="12" r="8" fill="currentColor" mask="url(#moon-mask)"/>
+            <g class="rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>
+            </g>
+          </svg>
+          <span class="theme-label">Dark theme</span>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/MojzisekJan/HeronBrush">GitHub</a>
+        <a class="btn btn-primary" href="../../editor/">Try in the browser</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<script>
+  // The menu folds behind the button on narrow windows; without this script the links stay in view.
+  (function () {
+    var root = document.documentElement, header = document.querySelector('.nav');
+    var toggle = header.querySelector('.menu-toggle'), menu = document.getElementById('site-menu');
+    root.classList.add('js');
+    function set(open) {
+      header.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () { set(!header.classList.contains('open')); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && header.classList.contains('open')) { set(false); toggle.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!header.contains(e.target)) set(false); });
+    matchMedia('(min-width: 961px)').addEventListener('change', function () { set(false); });
+
+    // The theme toggle: remembers the choice; without one the page follows the system.
+    var themeButton = header.querySelector('.theme-toggle'), label = themeButton.querySelector('.theme-label');
+    function show(theme) {
+      root.dataset.theme = theme;
+      themeButton.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = theme === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+    show(root.dataset.theme);
+    themeButton.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      show(next);
+      root.classList.add('theme-switched');
+      try { localStorage.setItem('heron-theme', next); } catch (e) {}
+    });
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+      var stored = null;
+      try { stored = localStorage.getItem('heron-theme'); } catch (err) {}
+      if (!stored) show(e.matches ? 'light' : 'dark');
+    });
+  })();
+</script>
+<div class="manual wrap">
+  <aside class="toc" id="toc" aria-label="Contents">
+    <div class="toc-tools">
+      <label class="sr-only" for="lang">Language</label>
+      <select id="lang" class="lang-select"><option value="../" lang="en">English</option><option value="../cs/" lang="cs">Čeština</option><option value="../de/" lang="de">Deutsch</option><option value="../zh/" lang="zh-Hans">中文</option><option value="../es/" lang="es">Español</option><option value="../uk/" lang="uk">Українська</option><option value="../pl/" lang="pl">Polski</option><option value="../it/" lang="it">Italiano</option><option value="../fr/" lang="fr">Français</option><option value="../pt-BR/" lang="pt-BR">Português (Brasil)</option><option value="../ja/" lang="ja">日本語</option><option value="../ko/" lang="ko">한국어</option><option value="../tr/" lang="tr">Türkçe</option><option value="../id/" lang="id">Bahasa Indonesia</option><option value="../ru/" lang="ru">Русский</option><option value="../nl/" lang="nl">Nederlands</option><option value="../sv/" lang="sv">Svenska</option><option value="../da/" lang="da">Dansk</option><option value="../nb/" selected lang="nb">Norsk bokmål</option><option value="../fi/" lang="fi">Suomi</option><option value="../hu/" lang="hu">Magyar</option><option value="../ro/" lang="ro">Română</option><option value="../sk/" lang="sk">Slovenčina</option><option value="../el/" lang="el">Ελληνικά</option><option value="../vi/" lang="vi">Tiếng Việt</option><option value="../zh-TW/" lang="zh-Hant">繁體中文</option><option value="../bg/" lang="bg">Български</option><option value="../hr/" lang="hr">Hrvatski</option><option value="../sl/" lang="sl">Slovenščina</option><option value="../lt/" lang="lt">Lietuvių</option></select>
+      <div class="search">
+        <input id="search" type="search" placeholder="Søk i dokumentasjonen" autocomplete="off" aria-label="Søk i dokumentasjonen">
+        <ol id="results" class="results" hidden data-nothing="Ingen samsvarende kapitler"></ol>
+      </div>
+    </div>
+    <nav class="toc-list"><ul><li class="chapter"><a href="#s1">Kom i gang</a><ul><li><a href="#s1-1">Velkomstskjermen</a></li><li><a href="#s1-2">Ditt første kart</a></li><li><a href="#s1-3">Filer og lagring</a></li></ul></li><li class="chapter"><a href="#s2">Grensesnittet</a><ul><li><a href="#s2-1">Tittellinje og menyer</a></li><li><a href="#s2-2">Verktøylinjen</a></li><li><a href="#s2-3">Kartvisninger</a></li><li><a href="#s2-4">Inspektøren</a></li><li><a href="#s2-5">Statuslinjen og utdataruten</a></li><li><a href="#s2-6">Dialoger og utseende</a></li></ul></li><li class="chapter"><a href="#s3">Navigasjon og tastatur</a><ul><li><a href="#s3-1">Bevege seg i 3D-visningen</a></li><li><a href="#s3-2">Bevege seg i 2D-visninger</a></li><li><a href="#s3-3">Rutenett og festing</a></li><li><a href="#s3-4">Vanlige hurtigtaster</a></li><li><a href="#s3-5">Hurtigtaster for utvalg</a></li><li><a href="#s3-6">Hurtigtaster for transformering</a></li><li><a href="#s3-7">Blender-tastaturoppsettet</a></li></ul></li><li class="chapter"><a href="#s4">Brusher og modelleringsverktøy</a><ul><li><a href="#s4-1">Tegne brusher</a></li><li><a href="#s4-2">Velge</a></li><li><a href="#s4-3">Formingsverktøy</a></li><li><a href="#s4-4">Kombinere brusher</a></li><li><a href="#s4-5">Sveip, avrunding, patch og avfasing</a></li><li><a href="#s4-6">3D-tekst</a></li></ul></li><li class="chapter"><a href="#s5">Materialer og UV-er</a><ul><li><a href="#s5-1">Laste inn og bruke materialer</a></li><li><a href="#s5-2">UV-redigering</a></li><li><a href="#s5-3">UV-taster</a></li><li><a href="#s5-4">Verktøymaterialer</a></li><li><a href="#s5-5">Utelate flater fra eksport</a></li></ul></li><li class="chapter"><a href="#s6">Farge og gradienter</a><ul><li><a href="#s6-1">Palett og blandingsfarge</a></li><li><a href="#s6-2">Fargevelgeren</a></li><li><a href="#s6-3">Gradienter</a></li><li><a href="#s6-4">Overflatemateriale</a></li></ul></li><li class="chapter"><a href="#s7">Ressurser, lag og grupper</a><ul><li><a href="#s7-1">Ressursbiblioteket</a></li><li><a href="#s7-2">Lag</a></li><li><a href="#s7-3">Grupper og koblede grupper</a></li><li><a href="#s7-4">En felles skala</a></li></ul></li><li class="chapter"><a href="#s8">Entiteter og spillmekanikk</a><ul><li><a href="#s8-1">Plassere entiteter</a></li><li><a href="#s8-2">Egenskaper</a></li><li><a href="#s8-3">Hva en eksport kan gjøre</a></li></ul></li><li class="chapter"><a href="#s9">Animasjon</a><ul><li><a href="#s9-1">Forhåndsvise animasjoner</a></li><li><a href="#s9-2">Nøkkelbilderedigering</a></li><li><a href="#s9-3">Klipp</a></li><li><a href="#s9-4">Transport og avspilling</a></li><li><a href="#s9-5">Tidslinjen</a></li><li><a href="#s9-6">Taster i redigeringen</a></li><li><a href="#s9-7">Stille opp i visningene</a></li><li><a href="#s9-8">Koble knapper til animasjoner</a></li><li><a href="#s9-9">Animasjon i eksporter</a></li><li><a href="#s9-10">Eksempelet Motion lab</a></li></ul></li><li class="chapter"><a href="#s10">Eksportere til en motor</a><ul><li><a href="#s10-1">Vanlige alternativer</a></li><li><a href="#s10-2">Merknader om målene</a></li></ul></li><li class="chapter"><a href="#s11">Live-koblinger: Godot, Unity, Defold og Flax</a><ul><li><a href="#s11-1">Godot</a></li><li><a href="#s11-2">Unity</a></li><li><a href="#s11-3">Defold</a></li><li><a href="#s11-4">Flax</a></li></ul></li><li class="chapter"><a href="#s12">Samarbeid i live-økter</a><ul><li><a href="#s12-1">Være vert og bli med</a></li></ul></li><li class="chapter"><a href="#s13">3D-visning og en ekstra skjerm</a><ul><li><a href="#s13-1">Visningsmoduser</a></li><li><a href="#s13-2">Et eget 3D-vindu</a></li><li><a href="#s13-3">Prosedyrisk himmel</a></li></ul></li><li class="chapter"><a href="#s14">Renderkameraer og PNG-bilder</a><ul><li><a href="#s14-1">Plassere kameraet</a></li><li><a href="#s14-2">Innstillinger</a></li><li><a href="#s14-3">Rendering</a></li></ul></li><li class="chapter"><a href="#s15">Innstillinger</a><ul><li><a href="#s15-1">Sidene</a></li><li><a href="#s15-2">Språk</a></li></ul></li><li class="chapter"><a href="#s16">Programtillegg og MCP</a><ul><li><a href="#s16-1">Programtillegg</a></li><li><a href="#s16-2">MCP</a></li></ul></li><li class="chapter"><a href="#s17">Kommandolinje</a><ul><li><a href="#s17-1">Åpne filer</a></li><li><a href="#s17-2">Kommandoer</a></li></ul></li><li class="chapter"><a href="#s18">Feilsøking</a><ul><li><a href="#s18-1">Når noe ser feil ut</a></li><li><a href="#s18-2">Innstillinger og sikkerhetskopier</a></li><li><a href="#s18-3">Rapportere en feil</a></li><li><a href="#s18-4">Bruke denne veiledningen</a></li></ul></li></ul></nav>
+  </aside>
+  <button class="toc-toggle" type="button" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+    <span class="toc-current">Kom i gang</span>
+  </button>
+  <article class="manual-body">
+<h2 id="s1"><a class="anchor" href="#s1" aria-hidden="true" tabindex="-1">#</a>Kom i gang</h2>
+<p>Heron Brush er et brush-basert banedigeringsprogram. Du bygger baner av konvekse brusher, maler og teksturerer flatene deres, plasserer entiteter, animerer dører og plattformer og eksporterer resultatet til en spillmotor. Programmet har også innebygde ressurser, parametriske former, live-koblinger til motorenes redigeringsprogrammer, delte redigeringsøkter og rendering av stillbilder. Denne brukerveiledningen følger med programmet og fungerer uten nett.</p>
+<p>På macOS fungerer <span class="keys"><kbd>Cmd</kbd></span> overalt der denne veiledningen sier <span class="keys"><kbd>Ctrl</kbd></span>, og Option er Alt.</p>
+<h3 id="s1-1"><a class="anchor" href="#s1-1" aria-hidden="true" tabindex="-1">#</a>Velkomstskjermen</h3>
+<p>Når Heron Brush starter uten et kart, åpnes velkomstskjermen. Til venstre finner du <strong>Fortsett</strong> (det siste kartet du hadde åpent), <strong>Nytt kart</strong> og <strong>Bla gjennom</strong> for å åpne en eksisterende <code>.map</code>, samt <strong>Spill</strong>, <strong>Brukerveiledning</strong> og <strong>Innstillinger</strong>. Til høyre er en liste over nylige kart med miniatyrbilder, etterfulgt av <strong>Eksempler</strong>. Stjernen (<strong>Hold øverst</strong>) fester et kart øverst i listen; søppelbøtta (<strong>Flytt til papirkurven</strong>) flytter filen til systemets papirkurv, slik at den kan gjenopprettes. Piltastene flytter rundt på skjermen, og Enter åpner elementet som har fokus. Fil → Velkommen henter fram skjermen igjen når som helst.</p>
+<h3 id="s1-2"><a class="anchor" href="#s1-2" aria-hidden="true" tabindex="-1">#</a>Ditt første kart</h3>
+<ol>
+<li>Velg <strong>Nytt kart</strong> på velkomstskjermen, eller Fil → Nytt kart (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>).</li>
+<li>Velg Brushverktøyet (<span class="keys"><kbd>B</kbd></span>) i verktøylinjen og dra i en 2D-visning for å tegne den valgte formen. Kontroller dybden i en annen 2D-visning.</li>
+<li>Merk brushen og flytt den ved å dra. Bruk fanen <strong>Flate</strong> for å gi den et materiale eller en farge.</li>
+<li>Lagre kildekartet med <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>. Når du er klar til å bruke det i et spill, åpner du Fil → Eksporter og skriver en scene for motoren din.</li>
+</ol>
+<h3 id="s1-3"><a class="anchor" href="#s1-3" aria-hidden="true" tabindex="-1">#</a>Filer og lagring</h3>
+<p><code>.map</code>-filen er den redigerbare kilden din. Lagre jevnlig: eksport, live-koblinger og rendering lagrer aldri kartet for deg. Fil → Lagre som (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>) legger til filendelsen <code>.map</code> hvis du utelater den. Fil → Gå tilbake til lagret kart forkaster ulagrede endringer og laster inn filen på nytt. Hvis du lukker et vindu eller åpner et annet kart mens det finnes ulagrede endringer, spør Heron Brush om du vil <strong>Lagre</strong>, <strong>Forkast</strong> eller <strong>Avbryt</strong>.</p>
+<p>Så lenge et lagret kart har ulagrede endringer, skrives nummererte sikkerhetskopier hvert tiende minutt til en <code>autosave</code>-mappe ved siden av kartet. De 50 nyeste sikkerhetskopiene beholdes.</p>
+<p>Åpner du et kart mens Heron Brush allerede kjører, overtas det av det kjørende vinduet, som kommer fram i forgrunnen. Bruk <code>--new-instance</code> på kommandolinjen når du vil ha et eget vindu (se Kommandolinje).</p>
+<h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>Grensesnittet</h2>
+<p>Hovedvinduet har en tittellinje med menyene, en verktøylinje under den, kartvisningene, inspektøren til høyre og en statuslinje nederst.</p>
+<h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>Tittellinje og menyer</h3>
+<p>Tittellinjen viser logoen, menyene, kartnavnet i midten og vindusknappene. På macOS sitter de vanlige røde, gule og grønne knappene til venstre. Dra i tittellinjen for å flytte vinduet, og dobbeltklikk på den for å maksimere. Mens noe kjører i bakgrunnen, vises en indikator nær enden av linjen: en live-kobling til en motor, en live-økt eller <strong>MCP aktiv</strong>. Klikk på en indikator for å stoppe live-koblingen eller åpne vinduet dens.</p>
+<ul>
+<li><strong>Fil</strong>: Velkommen, Nytt kart (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>), Åpne kart (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span>), Lagre (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>), Lagre som (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>), Gå tilbake til lagret kart, Eksporter, Render bilde, Programtillegg og Innstillinger (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>).</li>
+<li><strong>Rediger</strong>: Angre (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Gjør om (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Klipp ut, Kopier, Lim inn, Dupliser (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>), Slett, Velg alt (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>), Gjenta siste kommandoer (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>) og Glem gjentakbare kommandoer.</li>
+<li><strong>Vis</strong>: 3D-visning i eget vindu, Gå til, Fest til rutenett (<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>), Vis rutenett (<span class="keys"><kbd>0</kbd></span>), Forhåndsvis animasjoner og Vis utelatte flater.</li>
+<li><strong>Geometri</strong>: Sett inn 3D-tekst, Sammenføyd hjørne, Konverter flater til patcher, Flytt utvalget ut av entiteten og Synkroniser koblede grupper.</li>
+<li><strong>Animasjon</strong>: Nøkkelbildeanimasjon, Forhåndsvis animasjoner og Plasser kamera fra 3D-visningen (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>).</li>
+<li><strong>Kart</strong>: Last inn, last inn på nytt og lukk punktfil; last inn, last inn på nytt og lukk portalfil. Disse viser lekkasjespor og portaler skrevet av kartkompilatorer.</li>
+<li><strong>Samarbeid</strong>: Live-økt og Server for en agent (MCP).</li>
+<li><strong>Hjelp</strong>: Brukerveiledning og Om.</li>
+</ul>
+<h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>Verktøylinjen</h3>
+<p>Verktøylinjen inneholder alle verktøyene. Den første gruppen brukes hele tiden: Velg, Brush, Klipp, Hjørnepunkt, Kant, Flate, Roter og Skaler. Den andre gruppen inneholder Skjær, Sett sammen, Sveip, Kontrollpunkt, Avrunding og Mal. Hold pekeren over en knapp for å se navnet og hurtigtasten. Klikker du på det aktive verktøyet igjen, går du tilbake til Velg.</p>
+<p>Etter verktøyene kommer <strong>Speilvend vannrett</strong> og <strong>Speilvend loddrett</strong>, deretter to brytere: <strong>Lås</strong> beholder materialtilordningen når en brush flyttes, og <strong>UV</strong> beholder den når en brush roteres (<span class="keys"><kbd>U</kbd></span> slår den av og på). Deretter følger innstillingene for det aktive verktøyet: Brushverktøyet viser formen og alternativene for den, og Avrundingsverktøyet viser radius, flater og hjørner med <strong>Bruk</strong>. Helt til høyre står verktøynavnet, rutenettstørrelsen (<strong>Rutenett 16</strong> osv.; klikk for å velge en annen) og menyen <strong>Rutenettinnstillinger</strong> med Fest til rutenett, Vis rutenett, Forhåndsvis animasjoner, Vis utelatte flater og Nøkkelbildeanimasjon.</p>
+<h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>Kartvisninger</h3>
+<p>Det finnes fire visninger: 3D-visningen og tre flate visninger, Ovenfra (XY), Forfra (XZ) og Side (YZ). Innstillinger → Vis → Oppsett velger mellom Én rute, To ruter, Tre ruter og Fire ruter. Dra i skillelinjene for å endre størrelsen på rutene. Klikker du i en visning, får den tastaturet. <span class="keys"><kbd>Space</kbd></span> setter en rute som viser én visning om gangen over til neste visning, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> maksimerer visningen som har tastaturet, og gjenoppretter oppsettet igjen.</p>
+<p>Høyreklikk uten å dra i en hvilken som helst visning for å åpne en hurtigmeny for utvalget og det som ligger under pekeren. Den tilbyr gruppering, lag, koblede grupper, oppretting av entiteter, flytting av brusher inn i eller ut av en entitet, kopiering av et materialnavn og visning av det i materialleseren.</p>
+<h3 id="s2-4"><a class="anchor" href="#s2-4" aria-hidden="true" tabindex="-1">#</a>Inspektøren</h3>
+<p>Inspektøren til høyre har fire faner. Dra i venstrekanten for å endre bredden.</p>
+<ul>
+<li><strong>Kart</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>1</kbd></span>): Lag, Grupper, Programtillegg, Problemer, View filters og Merker.</li>
+<li><strong>Entitet</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>2</kbd></span>): entitetsleseren, entitetsdefinisjonene, egenskapene til den valgte entiteten og, for knapper og utløsere, Animasjonsutløser.</li>
+<li><strong>Flate</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>3</kbd></span>): UV, Materialer, Farge, Sveip, Avrunding, Patch og Innfelling og avfasing. Hver seksjon kan felles sammen.</li>
+<li><strong>Ressurser</strong>: biblioteket med gjenbrukbare brush-modeller.</li>
+</ul>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>5</kbd></span> skjuler eller viser inspektøren, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>T</kbd></span> skjuler eller viser verktøylinjen, slik at visningene får mer plass.</p>
+<h3 id="s2-5"><a class="anchor" href="#s2-5" aria-hidden="true" tabindex="-1">#</a>Statuslinjen og utdataruten</h3>
+<p>Statuslinjen nederst viser den siste meldingen fra redigeringsprogrammet. Feil vises i rødt. Klikk på linjen, eller trykk <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>, for å åpne utdataruten med hele meldingshistorikken. De fleste kommandoer rapporterer her hva de gjorde, for eksempel hvor mange brusher som ble klippet.</p>
+<h3 id="s2-6"><a class="anchor" href="#s2-6" aria-hidden="true" tabindex="-1">#</a>Dialoger og utseende</h3>
+<p>Dialoger som Innstillinger, Eksporter og Render bilde åpnes i egne vinduer. Innstillinger → Vis → Fargetema velger mellom Følg skrivebordet, Lyst og Mørkt. <strong>Panelets dekkevne (%)</strong> på siden Oversikt gjør panelene gjennomsiktige over visningene. Vinduet tegner sine egne knapper i systemets stil: innebygd på macOS, Windows 11-stil på Windows og GNOME-stil på Linux.</p>
+<h2 id="s3"><a class="anchor" href="#s3" aria-hidden="true" tabindex="-1">#</a>Navigasjon og tastatur</h2>
+<h3 id="s3-1"><a class="anchor" href="#s3-1" aria-hidden="true" tabindex="-1">#</a>Bevege seg i 3D-visningen</h3>
+<p>Hold inne høyre museknapp og dra for å se deg rundt. Dra med midtknappen for å panorere. Hjulet flytter fram og tilbake. <span class="keys"><kbd>W</kbd></span>, <span class="keys"><kbd>A</kbd></span>, <span class="keys"><kbd>S</kbd></span> og <span class="keys"><kbd>D</kbd></span> flyr framover, til venstre, bakover og til høyre, <span class="keys"><kbd>Q</kbd></span> stiger og <span class="keys"><kbd>X</kbd></span> synker; hold <span class="keys"><kbd>Shift</kbd></span> for større steg. Når <strong>Alt + dra med midtknappen flytter kameraet</strong> er slått på i Innstillinger → Mus, beveger Alt med midtknappen seg langs visningsretningen. Hastigheter, inverteringer og synsfeltet finner du i Innstillinger → Mus.</p>
+<h3 id="s3-2"><a class="anchor" href="#s3-2" aria-hidden="true" tabindex="-1">#</a>Bevege seg i 2D-visninger</h3>
+<p>Dra med midtknappen for å panorere, og bruk hjulet for å zoome rundt pekeren. Panorering og zooming i én flat visning holder de andre på linje; <strong>Koble 2D-visninger</strong> i Innstillinger → Mus styrer dette. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span> tilbakestiller zoomen, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>U</kbd></span> tilbakestiller de flate visningene til origo.</p>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>U</kbd></span> rammer inn utvalget i alle visninger. Vis → Gå til (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>M</kbd></span>) flytter kameraet til inntastede koordinater, velger det som står på en linje i kartfilen, eller flytter utvalget med en inntastet avstand.</p>
+<h3 id="s3-3"><a class="anchor" href="#s3-3" aria-hidden="true" tabindex="-1">#</a>Rutenett og festing</h3>
+<p><span class="keys"><kbd>+</kbd></span> og <span class="keys"><kbd>-</kbd></span> endrer rutenettstørrelsen, og talltastene <span class="keys"><kbd>1</kbd></span> til <span class="keys"><kbd>9</kbd></span> velger en størrelse direkte, fra 1 til 256 enheter. <span class="keys"><kbd>0</kbd></span> eller <span class="keys"><kbd>#</kbd></span> viser eller skjuler rutenettet, og <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> slår festing av eller på. <span class="keys"><kbd>S</kbd></span> fester hjørnepunktene til de valgte brushene til gjeldende rutenett, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> fester dem til hele enheter og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> til rutenettet.</p>
+<h3 id="s3-4"><a class="anchor" href="#s3-4" aria-hidden="true" tabindex="-1">#</a>Vanlige hurtigtaster</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>: lagre kartet. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>: lagre som.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>: angre. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> eller <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>: gjør om.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>: kopier, klipp ut og lim inn. Lim inn plasserer objektene ved pekeren; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></span> beholder de opprinnelige koordinatene. Når flater er valgt, kopierer kopier materialet og UV-innstillingene deres.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>: dupliser. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>: koblet duplikat av en gruppe.</li>
+<li><span class="keys"><kbd>Delete</kbd></span> eller <span class="keys"><kbd>Backspace</kbd></span>: slett utvalget.</li>
+<li><span class="keys"><kbd>Esc</kbd></span>: avbryt den pågående dra-operasjonen, gå et steg tilbake i det aktive verktøyet, gå tilbake til Velg og til slutt tøm utvalget. <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Esc</kbd></span> går direkte tilbake til Velg.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>: gjenta de siste gjentakbare kommandoene. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span>: glem dem.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> eller <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>: plasser renderkameraet ved 3D-visningen.</li>
+<li><span class="keys"><kbd>F5</kbd></span>: last inn materialene på nytt. <span class="keys"><kbd>F6</kbd></span>: last inn entitetsdefinisjonene på nytt.</li>
+</ul>
+<h3 id="s3-5"><a class="anchor" href="#s3-5" aria-hidden="true" tabindex="-1">#</a>Hurtigtaster for utvalg</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>: velg alt, eller alle håndtak mens et hjørnepunkt-, kant- eller flateverktøy er aktivt. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd></span>: velg ingenting. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span>: inverter utvalget.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B</kbd></span>: velg de andre objektene i samme entitet eller gruppe.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>T</kbd></span>: velg alt som de valgte brushene berører. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd></span>: velg alt inne i dem. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>E</kbd></span>: velg alt i søylen deres langs visningsaksen. Disse forbruker de velgende brushene.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>I</kbd></span>: isoler utvalget. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>I</kbd></span>: skjul det. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span>: vis alt igjen.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span>: grupper. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span>: opphev gruppering.</li>
+</ul>
+<h3 id="s3-6"><a class="anchor" href="#s3-6" aria-hidden="true" tabindex="-1">#</a>Hurtigtaster for transformering</h3>
+<ul>
+<li>Piltastene og <span class="keys"><kbd>Page Up</kbd></span> / <span class="keys"><kbd>Page Down</kbd></span> flytter utvalget ett rutenettsteg i retningen de peker i den aktive visningen. Med <span class="keys"><kbd>Ctrl</kbd></span> dupliserer de mens de flytter, og med <span class="keys"><kbd>Alt</kbd></span> roterer de.</li>
+<li><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Y</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span>: roter en kvart omdreining om den aksen; legg til <span class="keys"><kbd>Shift</kbd></span> for motsatt retning.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span>: speilvend på tvers av visningen; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span>: speilvend opp-ned. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>X</kbd></span> og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Y</kbd></span> speiler langs X eller Y.</li>
+<li><span class="keys"><kbd>Insert</kbd></span>: plasser en punktentitet i midten av utvalget.</li>
+<li><span class="keys"><kbd>Tab</kbd></span>: med en brush valgt, gå i ring gjennom Velg → Hjørnepunkt → Kant → Flate → Velg.</li>
+</ul>
+<h3 id="s3-7"><a class="anchor" href="#s3-7" aria-hidden="true" tabindex="-1">#</a>Blender-tastaturoppsettet</h3>
+<p>Innstillinger → Tastatur → Tastaturoppsett tilbyr Heron Brush (standard, brukt gjennom hele denne veiledningen) og Blender. Med Blender: <span class="keys"><kbd>G</kbd></span> velger og flytter, <span class="keys"><kbd>R</kbd></span> roterer, <span class="keys"><kbd>S</kbd></span> skalerer, <span class="keys"><kbd>E</kbd></span> sveiper, <span class="keys"><kbd>1</kbd></span>, <span class="keys"><kbd>2</kbd></span> og <span class="keys"><kbd>3</kbd></span> velger hjørnepunkt-, kant- og flateverktøyet, <span class="keys"><kbd>K</kbd></span> klipper, <span class="keys"><kbd>B</kbd></span> velger, <span class="keys"><kbd>A</kbd></span> velger alt og <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span> fjerner utvalget, <span class="keys"><kbd>X</kbd></span> sletter, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> dupliserer, <span class="keys"><kbd>H</kbd></span> skjuler og <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>H</kbd></span> viser alt, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> gjør om. Alt annet er likt i begge.</p>
+<h2 id="s4"><a class="anchor" href="#s4" aria-hidden="true" tabindex="-1">#</a>Brusher og modelleringsverktøy</h2>
+<p>Brusher er konvekse legemer definert av plan. Bygg sammensatte objekter av flere enkle brusher i stedet for å prøve å gjøre én brush konkav. Hold antallet brusher lavt der en enkel form er nok.</p>
+<h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>Tegne brusher</h3>
+<p>Velg Brushverktøyet (<span class="keys"><kbd>B</kbd></span>) og dra i en visning. Verktøylinjen viser <strong>Form som skal tegnes</strong>: Rett prisme, Trapp, Hvelving, Sylinder, Kjegle, Kule (UV), Kule (ikosaeder) og Sett inn 3D-tekst. <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span> til <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>7</kbd></span> velger en form direkte. Avhengig av formen viser linjen <strong>Hul</strong> og <strong>Tykkelse:</strong>, <strong>Trinnhøyde:</strong> og <strong>Retning:</strong> for trapper, <strong>Akse:</strong>, <strong>Sider:</strong> og sirkelmodusen for runde former, <strong>Ringer:</strong> for kuler og <strong>Nøyaktighet:</strong> for ikosaederet. Angi alternativene før du drar. Kontroller resultatet i mer enn én visning.</p>
+<h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>Velge</h3>
+<p>Klikk på en brush for å velge den, og <span class="keys"><kbd>Ctrl</kbd></span>-klikk for å legge til i utvalget. Drar du fra et tomt område, tegnes en utvalgsramme. I 3D-visningen velger <span class="keys"><kbd>Shift</kbd></span>-klikk én enkelt flate, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span>-klikk legger til flere flater. Drar du en valgt brush, flyttes den; drar du en som ikke er valgt, velges og flyttes bare den.</p>
+<p>I 3D-visningen kan du <span class="keys"><kbd>Shift</kbd></span>-dra en flate på en valgt brush for å ekstrudere den. <span class="keys"><kbd>Alt</kbd></span>-klikk på en annen flate for å kopiere materialet og justeringen fra den valgte flaten over på den; <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> kopierer bare materialet, og <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> kopierer rotasjonen.</p>
+<h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>Formingsverktøy</h3>
+<ul>
+<li><strong>Velg</strong> (<span class="keys"><kbd>Esc</kbd></span>): velg og flytt.</li>
+<li><strong>Hjørnepunkt</strong> (<span class="keys"><kbd>V</kbd></span>), <strong>Kant</strong> (<span class="keys"><kbd>E</kbd></span>), <strong>Flate</strong> (<span class="keys"><kbd>F</kbd></span>): dra hjørner, kanter eller flater. <span class="keys"><kbd>Shift</kbd></span>-dra fra midten av en kant eller flate for å legge til et hjørne der. <span class="keys"><kbd>Delete</kbd></span> fjerner de valgte hjørnene.</li>
+<li><strong>Roter</strong> (<span class="keys"><kbd>R</kbd></span>), <strong>Skaler</strong> (<span class="keys"><kbd>T</kbd></span>), <strong>Skjær</strong> (<span class="keys"><kbd>G</kbd></span>): transformer utvalget med håndtak.</li>
+<li><strong>Klipp</strong> (<span class="keys"><kbd>C</kbd></span>): klikk to eller tre punkter for å definere et snittplan. <span class="keys"><kbd>Enter</kbd></span> klipper, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> velger hvilken side som skal beholdes, og <span class="keys"><kbd>Backspace</kbd></span> eller <span class="keys"><kbd>Esc</kbd></span> fjerner det siste punktet.</li>
+<li><strong>Sett sammen</strong> (<span class="keys"><kbd>N</kbd></span>): plasser punkter rundt et volum og trykk <span class="keys"><kbd>Enter</kbd></span> for å lage en konveks brush av dem. <span class="keys"><kbd>Backspace</kbd></span> fjerner det siste punktet.</li>
+<li><strong>Sveip</strong> (<span class="keys"><kbd>Y</kbd></span>): se avsnittet om sveip nedenfor.</li>
+<li><strong>Kontrollpunkt</strong> (<span class="keys"><kbd>P</kbd></span>): endre formen på kontrollnettet til en patch.</li>
+<li><strong>Avrunding</strong> (<span class="keys"><kbd>O</kbd></span>): klikk på en kant for å runde den av, eller velg kanter eller hjørnepunkter med verktøyene deres og trykk <span class="keys"><kbd>Enter</kbd></span>. Flere flater gir et jevnere resultat og mer geometri.</li>
+<li><strong>Mal</strong> (<span class="keys"><kbd>K</kbd></span>): se Materialer og UV-er.</li>
+</ul>
+<h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>Kombinere brusher</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>: slå sammen de valgte brushene til deres konvekse hylster.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>K</kbd></span>: trekk de valgte brushene fra brushene de berører.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></span>: gjør utvalget hult, med vegger som er ett rutenettsteg tykke.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>L</kbd></span>: finn snittet av utvalget.</li>
+</ul>
+<h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>Sveip, avrunding, patch og avfasing</h3>
+<p><strong>Sveip</strong> bygger geometri langs en bane ut fra valgte flater. Velg flatene (i Sveip-verktøyet med <span class="keys"><kbd>Alt</kbd></span>-klikk), angi deretter <strong>Bevegelse</strong>, <strong>Rotasjon</strong> (akse og vinkel), <strong>Skaler</strong>, <strong>Trinn</strong> og <strong>Bane</strong> (justering Heltall eller Fri; Bue, Rett eller S-kurve) i Sveip-seksjonen på fanen Flate, og trykk <strong>Sveip</strong>. Linjen under kontrollene forteller hvor mange brusher som vil bli laget.</p>
+<p>Seksjonen <strong>Avrunding</strong> runder av de valgte kantene med <strong>Radius</strong>, <strong>Flater</strong> og <strong>Hjørner</strong> (Gjæret eller Avrundet); én flate gir en avfasing.</p>
+<p><strong>Patch</strong> viser <strong>Kolonner</strong> og <strong>Rader</strong> for den valgte patchen, med knapper for å legge til eller fjerne et par. Geometri → Konverter flater til patcher (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>) lager patcher av valgte flater.</p>
+<p><strong>Innfelling og avfasing</strong> virker på valgte flater: <strong>Innfelling</strong> trekker flaten innover fra kantene, og <strong>Dybde</strong> skyver den ut (eller inn, når verdien er negativ). <strong>Avfas flater</strong> bruker begge; den tredje knappen legger til et panel eller skjærer ut en fordypning, avhengig av fortegnet til Dybde. <strong>Sammenføyd hjørne</strong> åpner en dialog som føyer sammen to brusher i et gjæret eller avrundet hjørne, med forhåndsvisning.</p>
+<h3 id="s4-6"><a class="anchor" href="#s4-6" aria-hidden="true" tabindex="-1">#</a>3D-tekst</h3>
+<p>Geometri → Sett inn 3D-tekst (også det siste elementet i formlisten til Brushverktøyet) bygger brusher av tekst. Den bruker Heron Block, en innebygd polygonskrift med avskårne hjørner, proporsjonale bredder og tsjekkiske aksenter; små bokstaver bruker store bokstavformer. Skriv inn <strong>Tekst</strong>, angi <strong>Høyde</strong> (versalhøyden; aksentene stiger over den) og <strong>Dybde</strong>, følg med på den direkte forhåndsvisningen og trykk <strong>Sett inn</strong>.</p>
+<p>Hvis en operasjon ikke kan lage gyldig geometri, juster målene, eller angre og forenkle formen.</p>
+<h2 id="s5"><a class="anchor" href="#s5" aria-hidden="true" tabindex="-1">#</a>Materialer og UV-er</h2>
+<h3 id="s5-1"><a class="anchor" href="#s5-1" aria-hidden="true" tabindex="-1">#</a>Laste inn og bruke materialer</h3>
+<p>Åpne seksjonen <strong>Materialer</strong> på fanen Flate. <strong>Last inn mappe</strong> legger til en mappe med bilder, og <strong>Last inn .wad</strong> legger til en teksturpakke; begge vises under <strong>Samlinger</strong>, der krysset fjerner en av dem. Skriv i <strong>Filtrer materialer</strong> for å snevre inn listen. Klikk på et materiale for å gjøre det gjeldende, og <strong>Bruk på utvalget</strong> legger det deretter på alle valgte flater. <strong>Velg</strong> tilbyr Velg brusher med det og Velg flater med det. <strong>Erstatt</strong> bytter ut ett materiale med et annet i hele kartet eller bare i utvalget.</p>
+<p>Verktøyet <strong>Mal</strong> (<span class="keys"><kbd>K</kbd></span>) legger det gjeldende materialet på flaten under pekeren: et klikk maler én flate, et dobbeltklikk maler hele brushen, og <span class="keys"><kbd>Shift</kbd></span>-klikk henter flatens materiale som det gjeldende, som en pipette.</p>
+<h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>UV-redigering</h3>
+<p>Seksjonen <strong>UV</strong> på fanen Flate viser materialet og omrisset til den valgte flaten. Musekontroller på lerretet:</p>
+<ul>
+<li>Hjulet zoomer rundt pekeren. Dra med høyre knapp eller midtknappen for å panorere. Dobbeltklikk med høyre knapp for å ramme inn flaten igjen; velger du en annen flate, rammes den inn automatisk.</li>
+<li>Dra med venstre knapp for å flytte materialet mens flatens omriss blir stående. Ringen roterer tilordningen, hjørnehåndtakene skalerer den, og midthåndtaket angir origo for disse endringene.</li>
+<li><span class="keys"><kbd>Alt</kbd></span>-dra med venstre knapp på kanten av en flis for å skjære, det samme gjør <span class="keys"><kbd>Shift</kbd></span>-dra med midtknappen.</li>
+<li>Hver dra-operasjon er ett angresteg, og <span class="keys"><kbd>Esc</kbd></span> avbryter en dra-operasjon som pågår.</li>
+</ul>
+<p>Under lerretet finner du <strong>Forskyvning</strong>, <strong>Skaler</strong>, <strong>Vinkel</strong> og, når spillet bruker dem, <strong>Innholdsflagg</strong>, <strong>Overflateflagg</strong> og <strong>Overflateverdi</strong>. Knappene er <strong>Tilbakestill</strong>, <strong>Tilbakestill til verden</strong>, <strong>Tilpass</strong>, <strong>Speilvend H</strong>, <strong>Speilvend V</strong> og de to 90°-rotasjonene. <strong>Juster</strong> dreier materialet langs en av flatens kanter (trykk igjen for neste kant, <span class="keys"><kbd>Shift</kbd></span> for forrige). De fire justeringsknappene skyver materialet inntil en kant. <strong>Tilpass U</strong> og <strong>Tilpass V</strong> skalerer slik at et helt antall kopier dekker flaten; trykk igjen for neste antall, og hold <span class="keys"><kbd>Ctrl</kbd></span> for å beholde inndelingen i et trim sheet.</p>
+<h3 id="s5-3"><a class="anchor" href="#s5-3" aria-hidden="true" tabindex="-1">#</a>UV-taster</h3>
+<p>Når flater er valgt, flytter piltastene materialet, <span class="keys"><kbd>[</kbd></span> og <span class="keys"><kbd>]</kbd></span> dreier det 15°, <span class="keys"><kbd>,</kbd></span> og <span class="keys"><kbd>.</kbd></span> halverer eller dobler skalaen, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span> speilvender det, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> tilbakestiller det, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> tilbakestiller det til verdensaksene, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>F</kbd></span> tilpasser det til hver flate.</p>
+<p><strong>Lås</strong> i verktøylinjen beholder tilordningen mens brusher flyttes, og <strong>UV</strong> (<span class="keys"><kbd>U</kbd></span>) beholder den mens brusher roteres.</p>
+<h3 id="s5-4"><a class="anchor" href="#s5-4" aria-hidden="true" tabindex="-1">#</a>Verktøymaterialer</h3>
+<ul>
+<li>skip: fjerner den merkede flaten fra motoreksporter.</li>
+<li>clip: lager kollisjon uten synlig geometri.</li>
+<li>origin: markerer pivotpunktet til en brush-entitet.</li>
+</ul>
+<p>Navnene kan endres på kortet <strong>Verktøymaterialer</strong> i Eksporter-vinduet. Bruk skip for flater du vet er skjult.</p>
+<h3 id="s5-5"><a class="anchor" href="#s5-5" aria-hidden="true" tabindex="-1">#</a>Utelate flater fra eksport</h3>
+<p>Velg en flate og slå på <strong>Utelat flaten fra eksport</strong> i UV-seksjonen. Oransje skravering markerer den i UV-forhåndsvisningen. Materialet og malingen blir lagret, og brushen forblir lukket og redigerbar. Eksporterte rendermesher utelater den flaten, mens kollisjonen beholdes. Utelater du én firkant av en kube, blir det to rendertrekanter. Dette gjør ikke flater tosidige og slår ikke sammen mesher.</p>
+<p><strong>Utelat tildekkede flater</strong> merker flater som er helt dekket av statiske brusher, også identiske flater som berører hverandre og innesluttede brusher. Det virker på de valgte brushene, eller på all synlig, ulåst verdensgeometri når ingenting er valgt. Brush-entiteter, gjennomsiktige materialer og brusher som allerede har utelatte flater, hoppes over. Delvis dekkede flater deles ikke. Ett angresteg gjenoppretter alt. Vis → Vis utelatte flater skjuler eller viser slike flater i visningene i redigeringsprogrammet; plukking bruker fortsatt hele brushen.</p>
+<h2 id="s6"><a class="anchor" href="#s6" aria-hidden="true" tabindex="-1">#</a>Farge og gradienter</h2>
+<p>Seksjonen <strong>Farge</strong> på fanen Flate maler flater med ensfargede farger eller gradienter oppå materialene deres. Det er nyttig for å skissere en bane og for stilisert grafikk. Malte flater beholder sine virkelige farger i visningene; utvalget vises med omrisset.</p>
+<h3 id="s6-1"><a class="anchor" href="#s6-1" aria-hidden="true" tabindex="-1">#</a>Palett og blandingsfarge</h3>
+<p>Klikk på en av de tolv fargeprøvene i paletten for å male de valgte flatene, eller hele valgte brusher, med den. <strong>Dekkevne</strong> angir hvor dekkende neste maling er, i prosent. <strong>Bland</strong> har en fargeknapp som åpner fargevelgeren; dra i velgeren, så følger utvalget med direkte, eller trykk <strong>Mal</strong> for å bruke blandingsfargen som ett steg. <strong>Tilbake til materialet</strong> fjerner malingen, slik at flaten viser materialet sitt igjen. Linjen øverst i seksjonen forteller hva som er valgt og hva det har på seg.</p>
+<h3 id="s6-2"><a class="anchor" href="#s6-2" aria-hidden="true" tabindex="-1">#</a>Fargevelgeren</h3>
+<p>Alle fargeknapper i redigeringsprogrammet åpner den samme velgeren. Dra i kvadratet for å velge metning og lysstyrke, og i stripen ved siden av for å velge fargetone. Under finner du verdiene <strong>R</strong>, <strong>G</strong> og <strong>B</strong> og en glidebryter for <strong>Dekkevne</strong> der fargen har en. Heksadesimalfeltet tar <code>#RRGGBB</code> eller <code>#RRGGBBAA</code>; det blir rødt så lenge teksten ikke er en gyldig farge. <strong>Kopier</strong> legger heksadesimalkoden på utklippstavlen. Klikk utenfor velgeren for å lukke den.</p>
+<h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>Gradienter</h3>
+<p><strong>Gradient</strong> velger Lineær gradient eller Radiell gradient, og knappen ved siden av bytter om fargene fra ende til ende. Hvert stopp har en fargeknapp og <strong>Posisjon (%)</strong>, og stopp mellom endene har en fjernknapp. <strong>Legg til fargestopp</strong> legger til et stopp i det største mellomrommet; en gradient kan ha opptil åtte stopp. <strong>Gradientvinkel</strong> angir retningen til en lineær gradient, med knappene <strong>+45°</strong> og <strong>−45°</strong>.</p>
+<p>Under forhåndsvisningen er en skinne med en markør for hvert stopp. Klikk på skinnen for å legge til et stopp, klikk på en markør for å åpne velgeren dens, dra en markør for å flytte den, og høyreklikk på en markør for å fjerne den. De tre fargeprøvene under skinnen er forhåndsinnstillinger: Varm gradient, Kald gradient og Gråtonegradient. Endringer i en gradient brukes på utvalget direkte.</p>
+<p>Retningen til en gradient betyr noe: legg den langs en takflate eller langs et buet objekt, ikke på tvers av flater som ikke hører sammen. Kontroller modellen fra begge sider etter malingen.</p>
+<h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>Overflatemateriale</h3>
+<p><strong>Overflatemateriale</strong> angir <strong>Ruhet</strong> (0 er blankt, 100 er matt), <strong>Metallisk</strong> (0 for tre, stein eller plast, 100 for metall) og <strong>Emisjon</strong> (0 til 8; overflaten gløder i sin egen farge, også gradienter, men lyser ikke opp objekter i nærheten). Endringene brukes direkte på de valgte flatene eller brushene. <strong>Bruk standardoverflate</strong> fjerner overstyringen. Alle endringer kan angres.</p>
+<p>Overflateeffekter vises i den opplyste 3D-visningen og i kamerarenderinger. Flat visning og trådmodellvisning utelater høylysene med vilje. Glød kan legge til et skjær rundt selvlysende overflater. Godot og glTF/GLB mottar materialverdiene, og Unity-importøren gjør ruhet om til glatthet. Se <code>docs/surface-materials.md</code> for begrensningene til hvert mål.</p>
+<h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>Ressurser, lag og grupper</h2>
+<h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>Ressursbiblioteket</h3>
+<p>Åpne fanen <strong>Ressurser</strong>. Legg til en mappe med <code>.map</code>-modeller med <strong>Legg til mappe</strong>; det innebygde biblioteket er alltid der. Skriv i <strong>Filtrer ressurser</strong> for å søke. Klikk på en modell for å velge den, og dobbeltklikk deretter på den, trykk <span class="keys"><kbd>Enter</kbd></span> eller klikk <strong>Sett inn</strong> for å legge den til der pekeren sist var. Du kan også dra en modell inn i en visning. Ressursbrusher settes inn som én gruppe, slik at modellen flyttes samlet.</p>
+<p><strong>Lagre utvalget som ressurs</strong> skriver de valgte brushene til biblioteket som en <code>.map</code>. Ressurser i biblioteket er vanlige redigerbare brusher, ikke importerte mesher.</p>
+<h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>Lag</h3>
+<p>Listen <strong>Lag</strong> på fanen Kart organiserer store områder. Skriv inn et navn og klikk <strong>Legg til</strong> for å lage et lag, eller trykk <span class="keys"><kbd>Enter</kbd></span> for å gi det gjeldende laget nytt navn. Hvert lag kan skjules, låses eller utelates fra eksport. <strong>Flytt hit</strong> flytter utvalget til det gjeldende laget. Hurtigmenyen i visningene tilbyr også Flytt til lag, Gjør til aktivt lag, Skjul lag og Isoler lag.</p>
+<h3 id="s7-3"><a class="anchor" href="#s7-3" aria-hidden="true" tabindex="-1">#</a>Grupper og koblede grupper</h3>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span> grupperer utvalget, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span> opphever grupperingen. Seksjonen <strong>Grupper</strong> på fanen Kart viser gruppene og tilbyr <strong>Åpne</strong>, <strong>Gi nytt navn</strong>, <strong>Slå sammen</strong>, <strong>Opphev gruppering</strong>, <strong>Ta ut</strong> og <strong>Trekk ut</strong>. En koblet gruppe er et sett med kopier som deler endringer: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> lager et koblet duplikat, Geometri → Synkroniser koblede grupper oppdaterer kopiene, og <strong>Fjern kobling</strong> gjør en kopi uavhengig. På fanen Entitet kan en egenskap beholdes som en kopis egen når koblede grupper synkroniseres.</p>
+<h3 id="s7-4"><a class="anchor" href="#s7-4" aria-hidden="true" tabindex="-1">#</a>En felles skala</h3>
+<p>Standard eksportskala er 32 kartenheter per meter. Den innebygde startmarkøren for spilleren er 64 enheter høy, en referanse på 2 meter. Sammenlign døråpninger, kjøretøy, møbler og planter med den. Endre eksportskalaen bare med vilje, og hold beslektede ressurser konsekvente.</p>
+<h2 id="s8"><a class="anchor" href="#s8" aria-hidden="true" tabindex="-1">#</a>Entiteter og spillmekanikk</h2>
+<p>Vanlige entitetsdefinisjoner er innebygd og alltid tilgjengelige: lys, startpunkter for spillere, dører, knapper, plattformer, utløsere, statiske rekvisitter, lyder og veipunkter. Laster du inn en FGD for prosjektet med <strong>Entitetsdefinisjoner</strong> på fanen Entitet, erstattes klasser med samme navn, mens de andre innebygde beholdes.</p>
+<h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>Plassere entiteter</h3>
+<p>I leseren <strong>Entiteter</strong> på fanen Entitet skriver du i <strong>Filtrer klasser</strong> og velger en klasse. For en punktklasse, for eksempel et lys, klikker du <strong>Plasser</strong> eller dobbeltklikker på klassen; <span class="keys"><kbd>Insert</kbd></span> plasserer en i midten av utvalget. For en brush-klasse, for eksempel en dør eller en utløser, velger du brushene og klikker <strong>Lag</strong>. Klasser kan også dras inn i en visning.</p>
+<h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>Egenskaper</h3>
+<p>Egenskapslisten redigerer den valgte entiteten. Entiteter av samme klasse redigeres sammen. <strong>Legg til egenskap</strong> legger til en nøkkel som definisjonen kanskje ikke kjenner; <strong>Standardverdier</strong> kan sette eksisterende egenskaper tilbake til standardverdiene eller legge til de manglende. Egenskaper som klassen definerer, men som entiteten ikke har, vises nedtonet; skriver du inn en verdi, legges de til. Bruk targetname og target for å koble entiteter sammen.</p>
+<h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>Hva en eksport kan gjøre</h3>
+<p>Godots direktiver lager innebygde noder, kollisjonslegemer og utløserområder. Unity og Unreal støtter vanlige lys som innebygde lys, og Unreal lager også PlayerStart-aktører. Andre data beholdes så langt målets importør tillater.</p>
+<p>En dørentitet alene gir ingen spilloppførsel. Bevegelse, reaksjoner på utløsere, spillerkontrollere og prosjektskript må fortsatt lages i motoren. Defold eksporterer entitetsegenskaper og kollisjonsobjekter; Flax plasserer modeller og generiske entiteter. Kontroller resultatet i motoren før du bygger spillmekanikk på det.</p>
+<h2 id="s9"><a class="anchor" href="#s9" aria-hidden="true" tabindex="-1">#</a>Animasjon</h2>
+<p>Heron Brush kan forhåndsvise enkel bevegelse og redigere nøkkelbildeanimasjoner av brush-entiteter, og deretter eksportere dem til flere motorer.</p>
+<h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>Forhåndsvise animasjoner</h3>
+<p>Slå på <strong>Forhåndsvis animasjoner</strong> i menyen Vis, menyen Animasjon, menyen Rutenettinnstillinger eller Vis-seksjonen på fanen Kart. Den spiller av rotasjonen til func_rotate og fram-og-tilbake-bevegelsen til func_shuttle når start_on er slått på, ved hjelp av entitetens egenskaper for akse, hastighet, retning, bevegelse og ventetid, og den spiller av nøkkelbildeklipp som er satt til Spill av ved start. Vifte- og vindmølleressursene har allerede roterende deler.</p>
+<p>Når du slår av forhåndsvisningen, gjenopprettes den opprinnelige stillingen. Et klikk i en visning stopper avspillingen før noe velges eller redigeres; kameranavigeringen fungerer fortsatt. Forhåndsvisningen endrer ikke kartet, angrehistorikken eller eksportene, og den kjører verken fysikk eller spillogikk.</p>
+<h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>Nøkkelbilderedigering</h3>
+<p>Åpne den med Animasjon → Nøkkelbildeanimasjon eller fra menyen Rutenettinnstillinger. Den forankres under visningene, eller i 3D-vinduet mens det er separat. Vindusikonet i overskriften flytter den til et eget vindu; den beholder bildet og angrehistorikken. <strong>Rediger animasjon</strong> setter visningene over til den animerte stillingen, og <strong>Rediger kart</strong> går tilbake til hvilegeometrien. I animasjonsmodus viser hver visning <strong>Rediger animasjon</strong> og bildenummeret nederst.</p>
+<p>Velg en brush-entitet, eller en brush eller brushgruppe, for å animere den. En flat brushgruppe deler én animasjon og ett pivotpunkt; grupper som inneholder flere entiteter, trenger separate animasjoner.</p>
+<h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>Klipp</h3>
+<p>Velgeren <strong>Animasjon</strong> bytter mellom navngitte klipp. Skriv inn et navn i <strong>Animasjonsnavn</strong> og klikk <strong>Lagre som</strong> for å kopiere det gjeldende klippet under det navnet; <strong>Slett</strong> fjerner et klipp. <strong>Flytt</strong> lager et <code>translate</code>-klipp uten rotasjon. <strong>Døranimasjoner</strong> lager jevne <code>open</code>- og <code>close</code>-klipp med en dreining på 90 grader rundt det gjeldende pivotpunktet; flytt pivotpunktet til hengselen først. <strong>Spill av ved start</strong> får klippet til å spilles av når banen starter; dørforhåndsinnstillingen slår det av.</p>
+<h3 id="s9-4"><a class="anchor" href="#s9-4" aria-hidden="true" tabindex="-1">#</a>Transport og avspilling</h3>
+<p>Transportknappene er <strong>Start</strong>, <strong>Forrige nøkkel</strong>, <strong>Avspilling</strong>, <strong>Neste nøkkel</strong> og <strong>Slutt</strong>. <strong>Bilde</strong> viser og angir det gjeldende bildet, og <strong>Varighet (s)</strong> angir lengden på klippet. Modusen er <strong>Én gang</strong>, <strong>Løkke</strong> eller <strong>Frem og tilbake</strong>.</p>
+<h3 id="s9-5"><a class="anchor" href="#s9-5" aria-hidden="true" tabindex="-1">#</a>Tidslinjen</h3>
+<p>Tidslinjen har en linjal med avspillingshodet og et spor for <strong>Posisjon</strong> (X, Y og Z med felles nøkler) og for hver rotasjonsvinkel, RX, RY og RZ. Klikk eller dra i linjalen for å flytte avspillingshodet og forhåndsvise den stillingen i alle visninger. Dra med midtknappen for å panorere tidslinjen. Dra nøkler for å flytte dem i tid; <span class="keys"><kbd>Shift</kbd></span> legger til i utvalget; dobbeltklikk på et spor for å sette inn en nøkkel; <span class="keys"><kbd>Ctrl</kbd></span>+hjul zoomer. <strong>Kurver</strong> viser verdikurvene i stedet for sporene.</p>
+<p>Knappene over den er <strong>Legg til nøkkel</strong>, <strong>Fjern</strong>, <strong>Kopier</strong>, <strong>Lim inn</strong> og <strong>Dupliser</strong>. <strong>Fest til bilder</strong> holder nøklene på hele bilder, og <strong>Tilpass</strong> viser hele klippet. <strong>Endre tidspunkt for nøkler</strong> åpner <strong>Tidsskala</strong>, <strong>Forskyvning (bilder)</strong>, <strong>Skaler fra avspillingshodet</strong>, <strong>Forleng varigheten</strong> og <strong>Endre tidspunkt for utvalget</strong>.</p>
+<p>Nøkkelinspektøren ved siden av tidslinjen redigerer den valgte nøkkelen: <strong>Bilde</strong>, <strong>Verdi</strong> (eller de tre koordinatene til en posisjonsnøkkel), interpolasjonen <strong>Lineær</strong>, <strong>Konstant</strong> eller <strong>Bézier</strong>, <strong>Innkommende helning</strong> og <strong>Utgående helning</strong>, og <strong>Glatte tangenter</strong>.</p>
+<h3 id="s9-6"><a class="anchor" href="#s9-6" aria-hidden="true" tabindex="-1">#</a>Taster i redigeringen</h3>
+<p>Mens tidslinjen har tastaturet: <span class="keys"><kbd>Space</kbd></span> spiller av eller setter på pause, venstre og høyre piltast går ett bilde, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span> velger alle nøkler, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span> og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span> kopierer, klipper ut og limer inn nøkler, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span> dupliserer dem, <span class="keys"><kbd>Delete</kbd></span> fjerner dem, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span> angrer og <span class="keys"><kbd>Esc</kbd></span> avbryter en dra-operasjon. Utenfor tidslinjen går <span class="keys"><kbd>Esc</kbd></span> ut av animasjonsmodus. Angre beholder zoomen, utvalget og avspillingshodet der de var.</p>
+<h3 id="s9-7"><a class="anchor" href="#s9-7" aria-hidden="true" tabindex="-1">#</a>Stille opp i visningene</h3>
+<p>Raden under tidslinjen har <strong>Løkskall</strong> med et antall og <strong>Avstand</strong>, som viser stillinger i nærheten som spøkelser; koordinatene for <strong>Pivotpunkt</strong>; <strong>Automatisk nøkkel</strong>; og stillingsverktøyene <strong>Flytt</strong>, <strong>Roter</strong> og <strong>Pivotpunkt</strong>.</p>
+<ul>
+<li><strong>Legg til nøkkel</strong> slår på Automatisk nøkkel og setter avspillingen på pause. Med Automatisk nøkkel på og <strong>Flytt</strong> valgt kan du dra en farget akse på håndtaket til den valgte entiteten i 3D-visningen for å sette en nøkkel for posisjonen ved det gjeldende bildet.</li>
+<li>I en 2D-visning kan du dra den valgte brushen eller et medlem av gruppen dens for å sette nøkler for forflytning langs de to synlige aksene, med festing til rutenettet. Automatisk nøkkel trenger ikke være på for dette.</li>
+<li>Med <strong>Roter</strong> drar du brushen i en 2D-visning rundt den oransje pivotmarkøren. Ovenfra setter nøkler for RZ, Forfra for RY og Side for RX, festet til rutenettvinkler.</li>
+<li>Med <strong>Pivotpunkt</strong> drar du det gule rotasjonssenteret i en hvilken som helst 2D-visning. Det festes til rutenettet og beholder dybden. Nøkler og hvilegeometri forblir uendret.</li>
+</ul>
+<p>Den turkise banen i 2D og 3D viser hvordan pivotpunktet beveger seg. Klikk på et banepunkt for å velge tidspunktet og nøklene, eller dra det for å endre posisjonen; med Automatisk nøkkel på kan du også dra banepunkter i 3D-visningen. Etiketter viser bildenumre, og stiplede segmenter markerer hopp. <span class="keys"><kbd>Esc</kbd></span> avbryter alle disse dra-operasjonene, og ett angresteg omgjør en hel dra-operasjon.</p>
+<p>Nye animasjoner starter i hvilestilling med nøkler ved tidspunkt null. Lag bevegelse ved å endre stillingen ved et annet bilde. For en skarp L-formet bane setter du nøkler for starten, hjørnet og slutten, og bruker Lineær med Frem og tilbake.</p>
+<h3 id="s9-8"><a class="anchor" href="#s9-8" aria-hidden="true" tabindex="-1">#</a>Koble knapper til animasjoner</h3>
+<p>Velg en func_button, trigger_multiple eller trigger_once. Fanen Entitet viser <strong>Animasjonsutløser</strong> over egenskapene. Velg et mål fra listen, eller klikk <strong>Velg mål i visningen</strong> og deretter et animert objekt i en hvilken som helst visning; <span class="keys"><kbd>Esc</kbd></span> avbryter valget. Manglende mål eller klipp rapporteres under kontrollene. Entitetskoblinger viser piler til målene sine når visning av koblinger er slått på.</p>
+<p><strong>Handling</strong> velger hva aktivering gjør: <strong>Spill av</strong> starter et navngitt klipp eller den valgte animasjonen; <strong>Veksle</strong> veksler mellom <code>open</code> og <code>close</code> når de finnes, ellers starter den den valgte animasjonen på nytt; <strong>Åpne</strong> og <strong>Lukk</strong> starter de klippene; <strong>Pause</strong> holder stillingen, <strong>Fortsett</strong> fortsetter, og <strong>Stopp</strong> gjenoppretter den opprinnelige stillingen. <strong>Bare én gang</strong> overstyrer klassens standard. <strong>Gjentakelsesforsinkelse (s)</strong> angir korteste tid mellom aktiveringer; den forsinker ikke den første.</p>
+<p><strong>Test utløser</strong> kjører handlingen i forhåndsvisningen uten å redigere kartet eller legge til angresteg. <strong>Tilbakestill forhåndsvisning</strong> gjenoppretter de opprinnelige stillingene og nullstiller tilstanden for én gang og nedkjøling. Dette simulerer verken spillerkollisjoner eller spillskript.</p>
+<h3 id="s9-9"><a class="anchor" href="#s9-9" aria-hidden="true" tabindex="-1">#</a>Animasjon i eksporter</h3>
+<p>Godot eksporterer innebygde AnimationPlayer- og AnimationLibrary-ressurser, inkludert kurver og bevegelig kollisjon. En CharacterBody3D som går inn i området til en knapp, aktiverer målet dens. Endringer du gjør i disse klippene i Godot, kommer ikke tilbake til kartet og erstattes ved neste eksport.</p>
+<p>Raylib-eksporten legger til <code>&lt;map&gt;_animation.h</code> med en avspiller i C og <code>&lt;map&gt;_preview.c</code> med en forhåndsvisning med fritt kamera; følg <code>&lt;map&gt;_raylib.md</code> for å bygge den. I forhåndsvisningen setter <code>SPACE</code> på pause, <span class="keys"><kbd>R</kbd></span> starter standardklippene på nytt og <span class="keys"><kbd>N</kbd></span> går gjennom de navngitte klippene. Defold bygger avspillingen inn i entitetsskriptet med dokumenterte <code>heron_*_animation</code>-meldinger. Build Level i Unity legger til <code>HeronBrushAnimation</code> og et kinematisk legeme. Bevy-eksporten inneholder <code>heron_animation.rs</code> og instruksjoner. Godot, Unity, Defold, Bevy og raylib beholder utløserkoblingene, én gang-flagget og gjentakelsesforsinkelsen. Spillet ditt må fortsatt registrere avspilleren og koble sine egne knapper til API-et for hver kjøretid.</p>
+<h3 id="s9-10"><a class="anchor" href="#s9-10" aria-hidden="true" tabindex="-1">#</a>Eksempelet Motion lab</h3>
+<p>Åpne <code>motion_lab</code> fra Eksempler på velkomstskjermen. Det har en plattform med L-bane, en heis, en roterende plattform og en hengslet dør med knapper. Åpne <code>godot/project.godot</code> ved siden av det i Godot og trykk <span class="keys"><kbd>F5</kbd></span>. WASD og musen flytter spilleren, Space hopper, 1 til 4 besøker stasjonene og R starter den gjeldende stasjonen på nytt. Tråkk på en farget plate for å aktivere målet dens. Den medfølgende README-filen forklarer ny eksport.</p>
+<h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>Eksportere til en motor</h2>
+<p>Fil → Eksporter åpner Eksporter-vinduet. Motorene står i en liste ned langs venstre side med logoene sine: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb og til slutt <code>.map</code>. Siden til høyre forteller hva målet vil få. <strong>Skriv</strong> skriver det, <strong>Kontroller</strong> bygger banen uten å skrive den og viser problemene, og <strong>Lukk</strong> lukker vinduet.</p>
+<p>Eksport er atskilt fra lagring: <code>.map</code> forblir den redigerbare kilden din. Hver kontroll lagrer innstillingene for motoren sin så snart den endres, slik at hver motor beholder sine egne svar og vinduet åpnes slik du forlot det.</p>
+<h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>Vanlige alternativer</h3>
+<ul>
+<li><strong>Skaler</strong>: <strong>Enheter per meter</strong>, 32 som standard.</li>
+<li><strong>Hva som skal skrives</strong>: <strong>Kollisjonsgeometri</strong>.</li>
+<li><strong>Optimaliseringer</strong>: <strong>Grupper statiske mesher i celler på 1024 enheter</strong>, <strong>Fjern flater som ligger begravd i geometrien</strong>, <strong>Slå sammen flater som deler plan</strong> og <strong>Slå sammen kollisjonsformer</strong>.</li>
+<li><strong>Prosjektstier</strong>: hvor banen og ressursene dens havner i prosjektet.</li>
+<li><strong>Verktøymaterialer</strong>: navnene på materialene clip, skip og origin.</li>
+<li><strong>Mer</strong>: motorspesifikke brytere som <strong>Navngi noder etter</strong>, <strong>Gjenoppbygg lag og grupper som foreldernoder</strong>, <strong>Snu trekantenes omløpsretning</strong>, speilvending av teksturkoordinater og et ekstra UV-sett for bakt lys med <strong>Lightmap-texel</strong>.</li>
+<li><strong>Holder følge med kartet</strong>: <strong>Skriv på nytt hver gang kartet lagres</strong>. Dette blir tilgjengelig etter at motoren er eksportert én gang, fordi den eksporten forteller hvor det skal skrives.</li>
+</ul>
+<p>Statiske celler tilordner verdensbrusher etter sentrum og slår dem sammen etter materiale innenfor hver celle på 1024 enheter, slik at motorer kan utelate mindre deler av kartet fra tegning. Kollisjonen beholdes, og spillentiteter holdes atskilt. Det kan gi flere tegnekall enn én verdensmesh, så det er slått av som standard. Frittstående OBJ-, glTF- og GLB-eksporter bruker ikke celler.</p>
+<h3 id="s10-2"><a class="anchor" href="#s10-2" aria-hidden="true" tabindex="-1">#</a>Merknader om målene</h3>
+<ul>
+<li>Godot: <code>res://</code>-stier for teksturer og materialer, det fysiske laget for utløsere og lightmap-UV2. Velg en eksportmappe i Godot-prosjektet.</li>
+<li>Defold: ressursmappen for ressurser, modellmaterialet og teksturutvalgeren, som må finnes i det valgte materialet.</li>
+<li>Unity: OBJ-mesher og en importør for redigeringsprogrammet; eksporter under prosjektets Assets-mappe.</li>
+<li>Unreal Engine: et generert importskript og en innholdssti, vanligvis /Game/<level>.</li>
+<li>Flax Engine: en innholdssti for modeller relativt til prosjektets Content-mappe.</li>
+<li>three.js, Bevy, raylib og Cocos Creator: scener eller kode for disse kjøretidene, med instruksjoner ved siden av eksporten.</li>
+<li>glTF / GLB: flyttbar geometri for kompatible verktøy; GLB er den binære formen. OBJ: geometri og materialer for modelleringsverktøy.</li>
+<li><code>.map</code>: <strong>Skriv som</strong> velger Valve 220, Standard, Quake 2 eller Quake 2 (Valve). Vinduet forteller hva den valgte dialekten ville miste.</li>
+</ul>
+<p>Les advarslene etter skrivingen, for eksempel om manglende teksturer. <strong>Hva kontrollen fant</strong> viser dem i vinduet.</p>
+<h2 id="s11"><a class="anchor" href="#s11" aria-hidden="true" tabindex="-1">#</a>Live-koblinger: Godot, Unity, Defold og Flax</h2>
+<p>En live-kobling sender ulagrede endringer fra Heron Brush til redigeringsprogrammet for en motor mens du arbeider. Den går én vei: endringer gjort i motoren kommer ikke tilbake. Én live-kobling kan kjøre per kartvindu. Stopp den før du bytter motor, og start den på nytt for å ta i bruk endrede eksportalternativer. Kontrollene finner du i Eksporter-vinduet, på siden for motoren, på kortet <strong>Live-kobling med</strong>.</p>
+<p>Indikatoren i tittellinjen viser tilstanden til koblingen; klikk på den for å stoppe koblingen. Lukker eller erstatter du kartet, stopper publiseringen. Etter en importfeil retter du problemet og starter koblingen på nytt.</p>
+<h3 id="s11-1"><a class="anchor" href="#s11-1" aria-hidden="true" tabindex="-1">#</a>Godot</h3>
+<ol>
+<li>Eksporter én gang til et Godot-prosjekt.</li>
+<li>Klikk <strong>Installer Godot-tillegget</strong>.</li>
+<li>Slå på Heron Brush Live i Godots Project Settings → Plugins.</li>
+<li>Klikk <strong>Start live-kobling</strong> og koble kartet fra Godot-panelet til en åpen 3D-scene.</li>
+</ol>
+<p>Tillegget erstatter bare sin egen genererte gren og beholder plasseringen av tilkoblingen og andre noder. Lagre Godot-scenen selv, og hold dine egne skript og noder utenfor den genererte grenen.</p>
+<h3 id="s11-2"><a class="anchor" href="#s11-2" aria-hidden="true" tabindex="-1">#</a>Unity</h3>
+<ol>
+<li>Eksporter én gang under Unity-prosjektets Assets-mappe.</li>
+<li>Klikk <strong>Installer Unity-tillegget</strong> og la Unity kompilere det.</li>
+<li>Åpne Window → Heron Brush → Live Link i Unity.</li>
+<li>Start koblingen og koble kartet til den aktive Unity-scenen.</li>
+</ol>
+<p>Hold Unitys live-vindu åpent. Oppdateringer settes på pause i Play Mode og Prefab Mode. Bare underobjektet Generated i kartobjektet erstattes. Ikke rediger de genererte filene.</p>
+<h3 id="s11-3"><a class="anchor" href="#s11-3" aria-hidden="true" tabindex="-1">#</a>Defold</h3>
+<ol>
+<li>Eksporter én gang til Defold-prosjektet ditt og hold prosjektet åpent i Defold.</li>
+<li>Klikk <strong>Start live-kobling</strong>. Ingen tillegg trengs.</li>
+<li>Åpne heron_brush_live/preview.collection i Defold, eller referer til den fra din egen scene.</li>
+</ol>
+<p>Koblingen skriver til en egen generert mappe og lar den endelige eksporten og game.project være i fred. <strong>Last inn det kjørende spillet på nytt</strong> oppdaterer også et spill startet fra Defold; å legge til objekter eller endre kollisjon kan kreve at banen startes på nytt. Mislykkede tilkoblinger prøves på nytt automatisk.</p>
+<h3 id="s11-4"><a class="anchor" href="#s11-4" aria-hidden="true" tabindex="-1">#</a>Flax</h3>
+<p>Eksporter til prosjektets Content-mappe og klikk <strong>Installer Flax-tillegget</strong>. La Flax kompilere det, start koblingen, og velg deretter Tools → Heron Brush: attach live map i den åpne Flax-scenen. Den genererte roten beholder plasseringen sin, og andre objekter røres ikke. Lagre scenen selv. Oppdateringer settes på pause i Play Mode. Tools → Heron Brush: stop live map setter mottaket på pause.</p>
+<h2 id="s12"><a class="anchor" href="#s12" aria-hidden="true" tabindex="-1">#</a>Samarbeid i live-økter</h2>
+<p>Samarbeid → Live-økt åpner et vindu for å være vert for eller bli med hos en annen Heron Brush-bruker. Dette deler kartredigering mellom personer; det er atskilt fra en live-kobling til en motor.</p>
+<h3 id="s12-1"><a class="anchor" href="#s12-1" aria-hidden="true" tabindex="-1">#</a>Være vert og bli med</h3>
+<p>Skriv inn <strong>Navnet ditt</strong>. For å være vert velger du <strong>Vær vert for en økt</strong>, klikker <strong>Start økt</strong> og sender detaljene fra <strong>Kopier tilkoblingsdetaljer</strong> til gjestene dine. For å bli med velger du <strong>Bli med i en økt</strong>, limer inn detaljene og klikker <strong>Bli med</strong>. Når du blir med, erstattes det åpne kartet med vertens kart, så lagre arbeidet ditt først.</p>
+<p>Standardversjonen fungerer i det lokale nettverket, og <strong>Port i lokalt nettverk</strong> angir porten. Økter over internett (<strong>Koble til over internett</strong>) krever en versjon med den valgfrie nettverksfunksjonen. Deltakerne ser hverandres kameramarkører og navn i 3D-visningen.</p>
+<p>Lukker du vinduet, fortsetter økten å kjøre; indikatoren i tittellinjen viser tilstanden. <strong>Stopp økten</strong> eller <strong>Forlat økten</strong> avslutter den. Når to personer redigerer samme objekt, avgjør vertens rekkefølge den endelige versjonen, og angring er også en delt endring. Arbeid i separate områder der du kan, og lagre kontrollpunkter.</p>
+<h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D-visning og en ekstra skjerm</h2>
+<h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>Visningsmoduser</h3>
+<p>Seksjonen <strong>Vis</strong> på fanen Kart bytter hva visningene tegner: Brusher, Punktentiteter, Entitetsmodeller, Entitetsklassenavn, Omriss av grupper, Patcher, Materialer, Vis utelatte flater, Forhåndsvis animasjoner, Trådramme, Kanter og Omriss av brush-entiteter. Trådramme tegner trekantkanter, også diagonaler og kanter bak overflater, uten materialer. Det er en midlertidig feilsøkingsvisning og påvirker ikke eksporter eller renderinger.</p>
+<p>Belysning, skygger, omgivelsesokklusjon, refleksjoner, glød og utjevning for 3D-visningen finner du i Innstillinger → Renderer. Dette er innstillinger for forhåndsvisningen; ferdige bilder bruker renderkameraets egne innstillinger.</p>
+<h3 id="s13-2"><a class="anchor" href="#s13-2" aria-hidden="true" tabindex="-1">#</a>Et eget 3D-vindu</h3>
+<p>Vis → 3D-visning i eget vindu flytter 3D-visningen til et eget vindu, som du kan plassere på en annen skjerm. Det deler kameraet, dokumentet og verktøyene, og de flate visningene tar plassen i hovedvinduet. Menyen tilbyr Materialer, Heldekkende visning og Trådramme; en Vis-undermeny med Vis utelatte flater, Forhåndsvis animasjoner, Kanter, Omriss av grupper, Punktentiteter, Entitetsmodeller og Omriss av brush-entiteter; Fokuser på utvalget; Forfra, Side og Ovenfra, som dreier kameraet rundt utvalget (eller et punkt foran kameraet); Plasser kamera fra 3D-visningen; Fullskjerm (<span class="keys"><kbd>F11</kbd></span>); Render bilde; og Tilbake til hovedvinduet. Lukker du vinduet, forankres visningen igjen.</p>
+<h3 id="s13-3"><a class="anchor" href="#s13-3" aria-hidden="true" tabindex="-1">#</a>Prosedyrisk himmel</h3>
+<p>Den prosedyriske himmelen er slått på som standard i 3D-visningen og kan slås av i Innstillinger → Renderer → Lys. Renderkameraer har sin egen bryter for <strong>Prosedyrisk himmel</strong>, som lagres med kartet. Fargene på himmel, horisont og bakke kommer fra miljøinnstillingene, og solen følger belysningen i scenen. Himmelen har ingen geometri og eksporteres ikke.</p>
+<h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>Renderkameraer og PNG-bilder</h2>
+<p>Fil → Render bilde åpner renderingsvinduet: kameraet og innstillingene til venstre og en direkte forhåndsvisning til høyre som tegnes på nytt mens du endrer dem. Kameraer lagres i <code>.map</code>-filen i et Render cameras-lag som bare finnes i redigeringsprogrammet og utelates fra motoreksporter.</p>
+<h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>Plassere kameraet</h3>
+<p>Komponer bildet i 3D-visningen og trykk <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> (eller <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>), eller klikk <strong>Plasser kamera fra 3D-visningen</strong>. Hvis ingen kamera er valgt, oppdateres det første lagrede; hvis ingen finnes, opprettes ett. Dette kan angres og beholder innstillingene for utdata og belysning. <strong>Velg kameraet i kartet</strong>, <strong>Last inn kamera fra kartet</strong> og <strong>Flytt 3D-visningen til kameraet</strong> virker motsatt vei. <strong>Kameraramme i 3D-visning</strong> viser grensen for utdataene, og <strong>Styr kameraet fra 3D-visningen</strong> lar vanlig navigering flytte det lagrede kameraet.</p>
+<h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>Innstillinger</h3>
+<ul>
+<li><strong>Kameraposisjon</strong>: X, Y, Z, giring og stigning.</li>
+<li><strong>Utdata og objektiv</strong>: <strong>Forhåndsinnstillinger</strong> (Full HD, Kvadrat, Stående), bredde, høyde, samples, <strong>Vertikalt synsfelt</strong> og <strong>Fjernt klippeplan</strong>.</li>
+<li><strong>Belysning</strong>: Dagslys, Solnedgang eller Overskyet, eller angi eksponering, solen, fargene på himmel, horisont og bakke, <strong>Prosedyrisk himmel</strong>, <strong>Skygger</strong>, <strong>Omgivelsesokklusjon</strong> og <strong>Glød</strong>.</li>
+<li><strong>Dybdeskarphet</strong>: <strong>Slå på dybdeskarphet</strong>, fokusavstand, skarpt område og uskarphetsradius. <strong>Fokuser på utvalget</strong> fokuserer på midten av et valgt objekt foran kameraet.</li>
+</ul>
+<p><strong>Lagre kamera og innstillinger</strong> lagrer skjemaet i kartet; lagre kartet for å beholde det på disken.</p>
+<h3 id="s14-3"><a class="anchor" href="#s14-3" aria-hidden="true" tabindex="-1">#</a>Rendering</h3>
+<p><strong>Render PNG</strong> spør hvor filen skal lagres, og starter en progressiv rendering, som fylles ut sample for sample i forhåndsvisningen. Flere samples ser bedre ut, men tar lengre tid. <strong>Avbryt rendering</strong> stopper uten å skrive en fil. Rendereren bruker rasterpipelinen til redigeringsprogrammet, ikke strålesporing. PNG-filen har en ugjennomsiktig bakgrunn, og animasjoner renderes ikke. Svært store bilder kan stoppe redigeringsprogrammet et kort øyeblikk.</p>
+<h2 id="s15"><a class="anchor" href="#s15" aria-hidden="true" tabindex="-1">#</a>Innstillinger</h2>
+<p>Fil → Innstillinger (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>) åpner innstillingene. Endringer trer i kraft umiddelbart og lagres. Sidepanelet viser Oversikt, Spill, Vis, Farger, Mus, Tastatur og Renderer. Søkefeltet øverst finner en innstilling etter navn eller beskrivelse på alle sider. Hver endret innstilling har sin egen knapp for å gjenopprette standardverdien, og <strong>Gjenopprett standardverdier</strong> tilbakestiller den gjeldende siden.</p>
+<h3 id="s15-1"><a class="anchor" href="#s15-1" aria-hidden="true" tabindex="-1">#</a>Sidene</h3>
+<ul>
+<li><strong>Oversikt</strong>: de vanlige innstillingene samlet: Utseende (Panelets dekkevne (%), Fargetema, Oppsett, Språk), Redigering, Vis og Brukerveiledning.</li>
+<li><strong>Spill</strong>: spillet, hvor filene til det ligger, og navnet ditt for samarbeid. Et spill bestemmer hvilket kartformat som skrives, hvilke entitetsdefinisjoner som lastes og hvor materialene ligger. Spillkonfigurasjoner leses fra <code>games</code>-mappen i konfigurasjonsmappen (<code>~/.config/heron-brush/games</code> på Linux og macOS, <code>%LOCALAPPDATA%\heron-brush\games</code> på Windows) og fra <code>games</code>-mappen ved siden av programmet, der pakkene legger den medfølgende konfigurasjonen.</li>
+<li><strong>Vis</strong>: Oppsett, Fargetema, Språk, verdensakser, rutenettets dekkevne, cellestørrelse for lekkasjekontroll og låsene for materialtilordning.</li>
+<li><strong>Farger</strong>: fargene på visningene, geometrien og håndtakene.</li>
+<li><strong>Mus</strong>: hastigheter og invertering for å se, panorere og flytte, flyhastighet, synsfelt, Koble 2D-visninger og størrelse på håndtak.</li>
+<li><strong>Tastatur</strong>: tastaturoppsettet, Heron Brush eller Blender.</li>
+<li><strong>Renderer</strong>: realistisk skyggelegging, utvalgsomriss, lys, skygger, omgivelsesokklusjon, refleksjoner, glød og overflater.</li>
+</ul>
+<h3 id="s15-2"><a class="anchor" href="#s15-2" aria-hidden="true" tabindex="-1">#</a>Språk</h3>
+<p><strong>Språk</strong> tilbyr Følg skrivebordet og alle oversatte språk. Grensesnittet endres med en gang. Brukerveiledningen åpnes på grensesnittspråket når det finnes en oversettelse av den, og ellers på engelsk.</p>
+<h2 id="s16"><a class="anchor" href="#s16" aria-hidden="true" tabindex="-1">#</a>Programtillegg og MCP</h2>
+<h3 id="s16-1"><a class="anchor" href="#s16-1" aria-hidden="true" tabindex="-1">#</a>Programtillegg</h3>
+<p>Programtillegg utvider redigeringsprogrammet med Rhai-skript. Fil → Programtillegg åpner vinduet Programtillegg. <strong>Installer et programtillegg</strong> installerer en <code>.rhai</code>-fil, og <strong>Installer en programtilleggsmappe</strong> installerer en mappe som inneholder <code>main.rhai</code>; valgfrie metadata i <code>plugin.toml</code> beskriver programtillegget og innstillingene for det. Programtillegg grupperes under <strong>Aktive programtillegg</strong> og <strong>Inaktive programtillegg</strong>, og <strong>Slå på programtillegg</strong> slår et av eller på; dette overlever en omstart. <strong>Last inn programtillegg på nytt</strong> leser skriptene fra disken igjen og tilbakestiller verdiene i panelene deres.</p>
+<p>Aktive programtillegg vises også i seksjonen <strong>Programtillegg</strong> på fanen Kart, med innstillingene sine, handlingsknapper (<strong>Kjør</strong>) og utdata. En handling virker på utvalget, eller på alt når ingenting er valgt, og er ett angresteg. Den medfølgende Selection inspector viser antall og handlinger for å flytte opp og ned.</p>
+<h3 id="s16-2"><a class="anchor" href="#s16-2" aria-hidden="true" tabindex="-1">#</a>MCP</h3>
+<p>Samarbeid → Server for en agent (MCP) lar en KI-agent eller et annet verktøy styre det åpne redigeringsprogrammet via Model Context Protocol. Vinduet viser den lokale adressen med <strong>Kopier</strong>, og <strong>Stopp serveren</strong> avslutter den; mens den kjører, viser tittellinjen <strong>MCP aktiv</strong>. Kommandolinjealternativet <code>--mcp</code> kjører det samme grensesnittet uten vindu. Klienter kan finne verktøy for geometri, ressurser, egenskaper, animasjon, eksport og økter. MCP og programtillegg i redigeringsprogrammet er forskjellige grensesnitt.</p>
+<h2 id="s17"><a class="anchor" href="#s17" aria-hidden="true" tabindex="-1">#</a>Kommandolinje</h2>
+<p>Programmet heter <code>heron-brush</code>. Uten alternativer åpner det velkomstskjermen.</p>
+<h3 id="s17-1"><a class="anchor" href="#s17-1" aria-hidden="true" tabindex="-1">#</a>Åpne filer</h3>
+<p><code>heron-brush map.map [entities.fgd] [materials/]</code> åpner et kart, eventuelt med entitetsdefinisjoner og en materialmappe. Et tomt argument hopper over ett, for eksempel <code>heron-brush map.map "" materials/</code>. Hvis et redigeringsprogram allerede kjører, åpnes kartet i det; <code>--new-instance</code> åpner i stedet et eget vindu.</p>
+<h3 id="s17-2"><a class="anchor" href="#s17-2" aria-hidden="true" tabindex="-1">#</a>Kommandoer</h3>
+<ul>
+<li><code>--help</code> eller <code>-h</code>: skriv ut bruken. <code>--version</code> eller <code>-V</code>: skriv ut versjonen.</li>
+<li><code>--mcp</code>: server MCP over standard inn- og utdata, uten vindu.</li>
+<li><code>--merge-map &lt;base&gt; &lt;ours&gt; &lt;theirs&gt; [&lt;output&gt;]</code>: en treveis sammenslåing av <code>.map</code>-filer for git. Utdata er som standard ours. Konflikter skrives ut og gir en avslutningskode som ikke er null.</li>
+<li><code>--obj-to-map &lt;in.obj&gt; &lt;out.map&gt; [size] [thickness] [snap] [material]</code>: gjør en mesh om til brusher. Size er lengden på den lengste siden i kartenheter (standard 256), snap er et rutenett for hjørnene (0 for ingen), og ordene <code>solid</code> eller <code>layered</code> bygger rutenettbokser eller konvekse plater i stedet for tynne kiler.</li>
+<li><code>--render-preview &lt;in.map&gt; &lt;out.png&gt; [size]</code>: skriv et PNG-miniatyrbilde av et kart, 512 piksler som standard.</li>
+<li><code>--run-script &lt;script.rhai&gt; &lt;in.map&gt; [out.map] [key=value ...]</code>: kjør et programtilleggsskript på et kart med alt valgt, og skriv resultatet (som standard tilbake til inndatafilen). <code>key=value</code> besvarer innstillingene til programtillegget.</li>
+</ul>
+<h2 id="s18"><a class="anchor" href="#s18" aria-hidden="true" tabindex="-1">#</a>Feilsøking</h2>
+<h3 id="s18-1"><a class="anchor" href="#s18-1" aria-hidden="true" tabindex="-1">#</a>Når noe ser feil ut</h3>
+<ul>
+<li>Manglende materiale: kontroller materialmappen eller -pakken og prosjektstiene i eksporten.</li>
+<li>Feil modellstørrelse: sammenlign med spillermarkøren på 64 enheter og eksportskalaen.</li>
+<li>Feil gradientretning: kontroller gradientvinkelen og flatens orientering.</li>
+<li>Tom motorscene: les eksportadvarslene og følg importinstruksjonene for målet.</li>
+<li>Live-koblingen venter: kontroller at tillegget er installert, at scenen er koblet til og at oppdateringer ikke er satt på pause.</li>
+<li>Bare linjer, ingen flater: slå av Trådramme i Vis-seksjonen på fanen Kart, eller velg Materialer eller Heldekkende visning i menyen til 3D-vinduet.</li>
+<li>Objekter mangler i visningene: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span> viser skjulte objekter; kontroller lagene og View filters.</li>
+<li>En tast gjør ingenting: klikk i visningen først, slik at den har tastaturet, og sjekk tastaturoppsettet i Innstillinger → Tastatur.</li>
+<li>En redigering mislyktes: angre, forenkle geometrien, og bruk <strong>Kontroller kart</strong> og <strong>Se etter lekkasjer</strong> i seksjonen <strong>Problemer</strong> på fanen Kart.</li>
+<li>Et kart åpnes ikke fra filbehandleren: det kan ha blitt overlevert til et redigeringsprogram som allerede kjører; se etter det vinduet.</li>
+</ul>
+<h3 id="s18-2"><a class="anchor" href="#s18-2" aria-hidden="true" tabindex="-1">#</a>Innstillinger og sikkerhetskopier</h3>
+<p>Innstillinger, nylige kart, stjerner, eksportinnstillinger og programtillegg ligger i konfigurasjonsmappen: <code>~/.config/heron-brush</code> på Linux og macOS, og <code>%LOCALAPPDATA%\heron-brush</code> på Windows. Automatiske sikkerhetskopier ligger i <code>autosave</code>-mappen ved siden av hvert kart.</p>
+<h3 id="s18-3"><a class="anchor" href="#s18-3" aria-hidden="true" tabindex="-1">#</a>Rapportere en feil</h3>
+<p>Ta med versjonen av redigeringsprogrammet (Hjelp → Om), operativsystemet ditt, et lite kart som viser problemet, og de nøyaktige trinnene. Utdataruten (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>) forteller ofte hva som gikk galt. Lagre en kopi før du eksperimenterer.</p>
+<h3 id="s18-4"><a class="anchor" href="#s18-4" aria-hidden="true" tabindex="-1">#</a>Bruke denne veiledningen</h3>
+<p>Velg et kapittel i innholdsfortegnelsen til venstre. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> viser innholdsfortegnelsen og flytter til søkefeltet; <span class="keys"><kbd>Esc</kbd></span> tømmer søket, eller lukker veiledningen når søket er tomt. <strong>Innhold</strong> skjuler eller viser kapittellisten, og <strong>Tekststørrelse</strong> endrer skriftstørrelsen; begge huskes. Språklisten øverst bytter mellom de tilgjengelige oversettelsene.</p>
+  </article>
+</div>
+<script src="../../manual.js"></script>
+</body>
+</html>

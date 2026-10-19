@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Heron Brush</title>
+  
+<script type="module">
+async function __trunkInitializer(init, source, sourceSize, initializer, initWithObject) {
+  if (initializer === undefined) {
+    return await init(initWithObject ? { module_or_path: source } : source);
+  }
+
+  const {
+    onStart, onProgress, onComplete, onSuccess, onFailure
+  } = initializer;
+
+  onStart?.();
+
+  const response = fetch(source)
+      .then((response) => {
+        const reader = response.body.getReader();
+        const headers = response.headers;
+        const status = response.status;
+        const statusText = response.statusText;
+
+        const total = sourceSize;
+        let current = 0;
+
+        const stream = new ReadableStream({
+          start(controller) {
+            function push() {
+              reader.read().then(({done, value}) => {
+                if (done) {
+                  onProgress?.({current: total, total});
+                  controller.close();
+                  return;
+                }
+
+                current += value.byteLength;
+                onProgress?.({current, total});
+                controller.enqueue(value);
+                push();
+              });
+            }
+
+            push();
+          },
+        });
+
+        return {
+          stream, init: {
+            headers, status, statusText
+          }
+        };
+      })
+      .then(({stream, init}) =>
+          new Response(stream, init),
+      );
+
+  return init(initWithObject ? { module_or_path: response } : response)
+      .then((value) => {
+        onComplete?.();
+        onSuccess?.(value);
+        return value;
+      }, (reason) => {
+        onComplete?.();
+        onFailure?.(reason);
+        return reason;
+      });
+}
+
+
+import init, * as bindings from './heron-brush-web-899b7e5864cf5983.js';
+import initializer from './b6abbfacfb296fef-loader.mjs';
+
+const wasm = await __trunkInitializer(init, './heron-brush-web-899b7e5864cf5983_bg.wasm', 29755691, initializer(), true);
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+  
+  
+  <link rel="icon" href="./heron-brush-f5e7065ae860ad7c.png" integrity="sha384-Y0ynfnJeryGo83e03L6218bhf9BKyrZvvvcYgwrdYFYcDvu7zubwQeRztQozgqgD"/>
+  
+  
+  
+  
+  
+  <style>
+    /* The editor's own colours (crates/heron-brush/src/theme.rs), light or dark as the
+       system is, so the loader hands over to the editor without a flash. */
+    :root { --bg: #eceef1; --fg: #1d2025; --dim: #5e646c; --track: #cdd1d6; --accent: #3d8bfd; --error: #c0392b; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #1b1c1f; --fg: #e4e6ea; --dim: #8b9199; --track: #2f3237; --error: #ef6b5b; }
+    }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+    /* eframe sizes the canvas to its parent and sets its pixel size from the device's scale. */
+    #heron-brush { display: block; width: 100%; height: 100%; touch-action: none; }
+    #loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+               justify-content: center; gap: 14px; background: var(--bg); color: var(--fg);
+               font: 15px system-ui, -apple-system, "Segoe UI", sans-serif; }
+    #loading img { width: 72px; height: 72px; }
+    #loading .name { font-size: 20px; font-weight: 600; }
+    #loading .bar { width: 260px; max-width: 70vw; height: 4px; border-radius: 2px; background: var(--track);
+                    overflow: hidden; margin-top: 6px; }
+    #loading .fill { height: 100%; width: 0; border-radius: 2px; background: var(--accent); transition: width 0.15s; }
+    /* Until the first progress arrives, a sliver sweeps the track. */
+    #loading.waiting .fill { width: 30%; animation: sweep 1.2s ease-in-out infinite; }
+    @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+    #loading .status { color: var(--dim); font-size: 13px; min-height: 1.3em; text-align: center; max-width: 80vw; }
+    #loading.failed .status { color: var(--error); }
+    #loading.failed .bar { display: none; }
+  </style>
+  <script>
+    // How far the page has got, for loader.mjs, the bundled data (src/web_files.js) and
+    // the start (heron-brush-web): a status line and, where known, a fraction of the way.
+    window.heronLoading = (status, fraction, failed) => {
+      const loading = document.getElementById("loading");
+      if (!loading) return;
+      loading.querySelector(".status").textContent = status;
+      if (typeof fraction === "number") {
+        loading.classList.remove("waiting");
+        loading.querySelector(".fill").style.width = Math.round(Math.min(1, Math.max(0, fraction)) * 100) + "%";
+      }
+      loading.classList.toggle("failed", Boolean(failed));
+    };
+  </script>
+<link rel="modulepreload" href="./heron-brush-web-899b7e5864cf5983.js" crossorigin="anonymous" integrity="sha384-hBk+KwRTZV5HNMkng1Wlzk1H4znFzTW6tNdOXSt2BtYUMr54QV6I5982fZJT8zIP"><link rel="modulepreload" href="./snippets/heron-brush-1158badfa40b3c1e/src/web_files.js" crossorigin="anonymous" integrity="sha384-f+AdGWK6Z6dG3vTVwLUZaNVvk/EyIHiK5OPusoyH5ddQLUEdqrsWSvWiGykcCnEA"><link rel="modulepreload" href="./snippets/heron-brush-export-web-e3a22fe81bd2e037/inline0.js" crossorigin="anonymous" integrity="sha384-VF/GQdbXuVLP1LX/lcq5ZX6O3NWyHNY7jAP1UjbKCRzi61cS69BSPPbde+qwYAlP"><link rel="modulepreload" href="./b6abbfacfb296fef-loader.mjs" crossorigin="anonymous" integrity="sha384-iMi/uETUbOz5EElf9ihnhMUsT9ukZ8/rnW1qYZUUg7mFfej7ehMFo3AqvTnzlQ6E"><link rel="preload" href="./heron-brush-web-899b7e5864cf5983_bg.wasm" crossorigin="anonymous" integrity="sha384-1lHHp9QtWGXF9mnhWXgbLxII27MszXOpg8EItErTq51g6rmIDYzjclzGyijv/95/" as="fetch" type="application/wasm"></head>
+<body>
+  <canvas id="heron-brush"></canvas>
+  <div id="loading" class="waiting">
+    <img src="heron-brush.png" alt="">
+    <div class="name">Heron Brush</div>
+    <div class="bar"><div class="fill"></div></div>
+    <div class="status">Loading</div>
+  </div>
+</body>
+</html>

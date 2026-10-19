@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="ja" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heron Brush manual · 日本語</title>
+<meta name="description" content="The Heron Brush manual: modelling, materials, entities, animation, export and live links.">
+<link rel="icon" type="image/svg+xml" href="../../images/logo.svg">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../manual.css">
+<link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
+</head>
+<body class="manual-page">
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../../#"><img src="../../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar-top" d="M4 7h16"/><path class="bar-mid" d="M4 12h16"/><path class="bar-bot" d="M4 17h16"/></svg>
+    </button>
+    <nav class="menu" id="site-menu" aria-label="Main">
+      <div class="nav-links">
+        <a href="../../#modelling">Modelling</a>
+        <a href="../../#materials">Materials</a>
+        <a href="../../#animation">Animation</a>
+        <a href="../../#export">Export</a>
+        <a href="#" aria-current="page">Manual</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <mask id="moon-mask"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="moon-cut" cx="17" cy="7" r="6.5" fill="#000"/></mask>
+            <circle class="sun-core" cx="12" cy="12" r="8" fill="currentColor" mask="url(#moon-mask)"/>
+            <g class="rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>
+            </g>
+          </svg>
+          <span class="theme-label">Dark theme</span>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/MojzisekJan/HeronBrush">GitHub</a>
+        <a class="btn btn-primary" href="../../editor/">Try in the browser</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<script>
+  // The menu folds behind the button on narrow windows; without this script the links stay in view.
+  (function () {
+    var root = document.documentElement, header = document.querySelector('.nav');
+    var toggle = header.querySelector('.menu-toggle'), menu = document.getElementById('site-menu');
+    root.classList.add('js');
+    function set(open) {
+      header.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () { set(!header.classList.contains('open')); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && header.classList.contains('open')) { set(false); toggle.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!header.contains(e.target)) set(false); });
+    matchMedia('(min-width: 961px)').addEventListener('change', function () { set(false); });
+
+    // The theme toggle: remembers the choice; without one the page follows the system.
+    var themeButton = header.querySelector('.theme-toggle'), label = themeButton.querySelector('.theme-label');
+    function show(theme) {
+      root.dataset.theme = theme;
+      themeButton.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = theme === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+    show(root.dataset.theme);
+    themeButton.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      show(next);
+      root.classList.add('theme-switched');
+      try { localStorage.setItem('heron-theme', next); } catch (e) {}
+    });
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+      var stored = null;
+      try { stored = localStorage.getItem('heron-theme'); } catch (err) {}
+      if (!stored) show(e.matches ? 'light' : 'dark');
+    });
+  })();
+</script>
+<div class="manual wrap">
+  <aside class="toc" id="toc" aria-label="Contents">
+    <div class="toc-tools">
+      <label class="sr-only" for="lang">Language</label>
+      <select id="lang" class="lang-select"><option value="../" lang="en">English</option><option value="../cs/" lang="cs">Čeština</option><option value="../de/" lang="de">Deutsch</option><option value="../zh/" lang="zh-Hans">中文</option><option value="../es/" lang="es">Español</option><option value="../uk/" lang="uk">Українська</option><option value="../pl/" lang="pl">Polski</option><option value="../it/" lang="it">Italiano</option><option value="../fr/" lang="fr">Français</option><option value="../pt-BR/" lang="pt-BR">Português (Brasil)</option><option value="../ja/" selected lang="ja">日本語</option><option value="../ko/" lang="ko">한국어</option><option value="../tr/" lang="tr">Türkçe</option><option value="../id/" lang="id">Bahasa Indonesia</option><option value="../ru/" lang="ru">Русский</option><option value="../nl/" lang="nl">Nederlands</option><option value="../sv/" lang="sv">Svenska</option><option value="../da/" lang="da">Dansk</option><option value="../nb/" lang="nb">Norsk bokmål</option><option value="../fi/" lang="fi">Suomi</option><option value="../hu/" lang="hu">Magyar</option><option value="../ro/" lang="ro">Română</option><option value="../sk/" lang="sk">Slovenčina</option><option value="../el/" lang="el">Ελληνικά</option><option value="../vi/" lang="vi">Tiếng Việt</option><option value="../zh-TW/" lang="zh-Hant">繁體中文</option><option value="../bg/" lang="bg">Български</option><option value="../hr/" lang="hr">Hrvatski</option><option value="../sl/" lang="sl">Slovenščina</option><option value="../lt/" lang="lt">Lietuvių</option></select>
+      <div class="search">
+        <input id="search" type="search" placeholder="ドキュメントを検索" autocomplete="off" aria-label="ドキュメントを検索">
+        <ol id="results" class="results" hidden data-nothing="一致する章がありません"></ol>
+      </div>
+    </div>
+    <nav class="toc-list"><ul><li class="chapter"><a href="#s1">はじめに</a><ul><li><a href="#s1-1">ようこそ画面</a></li><li><a href="#s1-2">最初のマップ</a></li><li><a href="#s1-3">ファイルと保存</a></li></ul></li><li class="chapter"><a href="#s2">インターフェース</a><ul><li><a href="#s2-1">タイトルバーとメニュー</a></li><li><a href="#s2-2">ツールストリップ</a></li><li><a href="#s2-3">マップビュー</a></li><li><a href="#s2-4">インスペクター</a></li><li><a href="#s2-5">ステータスバーと出力ペイン</a></li><li><a href="#s2-6">ダイアログと外観</a></li></ul></li><li class="chapter"><a href="#s3">ナビゲーションとキーボード</a><ul><li><a href="#s3-1">3D ビューでの移動</a></li><li><a href="#s3-2">2D ビューでの移動</a></li><li><a href="#s3-3">グリッドとスナップ</a></li><li><a href="#s3-4">よく使うショートカット</a></li><li><a href="#s3-5">選択のショートカット</a></li><li><a href="#s3-6">変形のショートカット</a></li><li><a href="#s3-7">Blender キーマップ</a></li></ul></li><li class="chapter"><a href="#s4">ブラシとモデリングツール</a><ul><li><a href="#s4-1">ブラシの描画</a></li><li><a href="#s4-2">選択</a></li><li><a href="#s4-3">形状編集ツール</a></li><li><a href="#s4-4">ブラシの結合</a></li><li><a href="#s4-5">スイープ、フィレット、パッチ、ベベル</a></li><li><a href="#s4-6">3D テキスト</a></li></ul></li><li class="chapter"><a href="#s5">マテリアルと UV</a><ul><li><a href="#s5-1">マテリアルの読み込みと適用</a></li><li><a href="#s5-2">UV エディター</a></li><li><a href="#s5-3">UV のキー操作</a></li><li><a href="#s5-4">ツール用マテリアル</a></li><li><a href="#s5-5">面をエクスポートから除外する</a></li></ul></li><li class="chapter"><a href="#s6">色とグラデーション</a><ul><li><a href="#s6-1">パレットと混合色</a></li><li><a href="#s6-2">カラーピッカー</a></li><li><a href="#s6-3">グラデーション</a></li><li><a href="#s6-4">サーフェスマテリアル</a></li></ul></li><li class="chapter"><a href="#s7">アセット、レイヤー、グループ</a><ul><li><a href="#s7-1">アセットライブラリ</a></li><li><a href="#s7-2">レイヤー</a></li><li><a href="#s7-3">グループとリンクグループ</a></li><li><a href="#s7-4">共通のスケール</a></li></ul></li><li class="chapter"><a href="#s8">エンティティとゲームプレイ</a><ul><li><a href="#s8-1">エンティティの配置</a></li><li><a href="#s8-2">プロパティ</a></li><li><a href="#s8-3">エクスポートでできること</a></li></ul></li><li class="chapter"><a href="#s9">アニメーション</a><ul><li><a href="#s9-1">アニメーションのプレビュー</a></li><li><a href="#s9-2">キーフレームエディター</a></li><li><a href="#s9-3">クリップ</a></li><li><a href="#s9-4">トランスポートと再生</a></li><li><a href="#s9-5">タイムライン</a></li><li><a href="#s9-6">エディター内のキー操作</a></li><li><a href="#s9-7">ビューでのポーズ設定</a></li><li><a href="#s9-8">ボタンとアニメーションの接続</a></li><li><a href="#s9-9">エクスポートでのアニメーション</a></li><li><a href="#s9-10">Motion lab サンプル</a></li></ul></li><li class="chapter"><a href="#s10">エンジンへのエクスポート</a><ul><li><a href="#s10-1">共通オプション</a></li><li><a href="#s10-2">出力先ごとの注意</a></li></ul></li><li class="chapter"><a href="#s11">ライブリンク：Godot、Unity、Defold、Flax</a><ul><li><a href="#s11-1">Godot</a></li><li><a href="#s11-2">Unity</a></li><li><a href="#s11-3">Defold</a></li><li><a href="#s11-4">Flax</a></li></ul></li><li class="chapter"><a href="#s12">共同編集ライブセッション</a><ul><li><a href="#s12-1">ホストと参加</a></li></ul></li><li class="chapter"><a href="#s13">3D 表示とセカンドモニター</a><ul><li><a href="#s13-1">表示モード</a></li><li><a href="#s13-2">3D ビューを別ウィンドウにする</a></li><li><a href="#s13-3">プロシージャルスカイ</a></li></ul></li><li class="chapter"><a href="#s14">レンダーカメラと PNG 画像</a><ul><li><a href="#s14-1">カメラの配置</a></li><li><a href="#s14-2">設定</a></li><li><a href="#s14-3">レンダリング</a></li></ul></li><li class="chapter"><a href="#s15">環境設定</a><ul><li><a href="#s15-1">各ページ</a></li><li><a href="#s15-2">言語</a></li></ul></li><li class="chapter"><a href="#s16">プラグインと MCP</a><ul><li><a href="#s16-1">プラグイン</a></li><li><a href="#s16-2">MCP</a></li></ul></li><li class="chapter"><a href="#s17">コマンドライン</a><ul><li><a href="#s17-1">ファイルを開く</a></li><li><a href="#s17-2">コマンド</a></li></ul></li><li class="chapter"><a href="#s18">トラブルシューティング</a><ul><li><a href="#s18-1">表示がおかしいとき</a></li><li><a href="#s18-2">設定とバックアップ</a></li><li><a href="#s18-3">バグの報告</a></li><li><a href="#s18-4">このマニュアルの使い方</a></li></ul></li></ul></nav>
+  </aside>
+  <button class="toc-toggle" type="button" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+    <span class="toc-current">はじめに</span>
+  </button>
+  <article class="manual-body">
+<h2 id="s1"><a class="anchor" href="#s1" aria-hidden="true" tabindex="-1">#</a>はじめに</h2>
+<p>Heron Brush はブラシベースのレベルエディターです。凸型のブラシでレベルを組み立て、面にペイントやテクスチャーを施し、エンティティを配置し、ドアや足場をアニメーションさせ、結果をゲームエンジンへエクスポートします。内蔵アセット、パラメトリック形状、エンジンのエディターとのライブリンク、共同編集セッション、静止画のレンダリングも備えています。このマニュアルはアプリケーションに同梱されており、オフラインでも読めます。</p>
+<p>macOS では、このマニュアルで <span class="keys"><kbd>Ctrl</kbd></span> と書かれている箇所はすべて <span class="keys"><kbd>Cmd</kbd></span> でも操作でき、Option は Alt に相当します。</p>
+<h3 id="s1-1"><a class="anchor" href="#s1-1" aria-hidden="true" tabindex="-1">#</a>ようこそ画面</h3>
+<p>マップを開かずに Heron Brush を起動すると、ようこそ画面が開きます。左側には <strong>○○ を続ける</strong>（○○ は最後に開いていたマップ）、<strong>新しいマップ</strong>、既存の <code>.map</code> を開く <strong>参照</strong> に加えて、<strong>ゲーム</strong>、<strong>マニュアル</strong>、<strong>環境設定</strong> があります。右側には最近使ったマップがサムネイル付きで並び、その下に <strong>サンプル</strong> があります。星（<strong>一覧の先頭に固定</strong>）はマップをリストの先頭に固定し、ゴミ箱（<strong>ゴミ箱へ移動</strong>）はファイルをシステムのゴミ箱へ移すので、あとで復元できます。矢印キーで画面内を移動し、Enter でフォーカス中の項目を開きます。ファイル → ようこそ でいつでもこの画面に戻れます。</p>
+<h3 id="s1-2"><a class="anchor" href="#s1-2" aria-hidden="true" tabindex="-1">#</a>最初のマップ</h3>
+<ol>
+<li>ようこそ画面で <strong>新しいマップ</strong> を選ぶか、ファイル → 新しいマップ（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>）を選びます。</li>
+<li>ツールストリップで ブラシツール（<span class="keys"><kbd>B</kbd></span>）を選び、2D ビュー内でドラッグして選択中の形状を描きます。別の 2D ビューで奥行きを確認します。</li>
+<li>ブラシを選択し、ドラッグして移動します。<strong>面</strong> タブでマテリアルや色を設定します。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span> でソースマップを保存します。ゲームで使う準備ができたら、ファイル → エクスポート を開き、使用するエンジン向けのシーンを書き出します。</li>
+</ol>
+<h3 id="s1-3"><a class="anchor" href="#s1-3" aria-hidden="true" tabindex="-1">#</a>ファイルと保存</h3>
+<p><code>.map</code> ファイルが編集用のソースです。こまめに保存してください。エクスポート、ライブリンク、レンダリングがマップを保存してくれることはありません。ファイル → 名前を付けて保存（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>）では、拡張子を省略すると <code>.map</code> が付加されます。ファイル → 保存済みのマップに戻す は、未保存の変更を破棄してファイルを読み込み直します。未保存の変更があるままウィンドウを閉じたり別のマップを開いたりすると、Heron Brush は <strong>保存</strong>、<strong>破棄</strong>、<strong>キャンセル</strong> のどれにするかを尋ねます。</p>
+<p>保存済みのマップに未保存の変更があるあいだは、10 分ごとに番号付きのバックアップがマップと同じ場所の <code>autosave</code> フォルダーに書き込まれます。新しいものから 50 個のバックアップが保持されます。</p>
+<p>Heron Brush の実行中にマップを開くと、そのマップは実行中のウィンドウに渡され、ウィンドウが前面に出ます。別のウィンドウで開きたい場合は、コマンドラインで <code>--new-instance</code> を指定します（「コマンドライン」を参照）。</p>
+<h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>インターフェース</h2>
+<p>メインウィンドウには、メニューを含むタイトルバー、その下のツールストリップ、マップビュー、右側のインスペクター、下端のステータスバーがあります。</p>
+<h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>タイトルバーとメニュー</h3>
+<p>タイトルバーには、ロゴ、メニュー、中央のマップ名、ウィンドウボタンが表示されます。macOS では、おなじみの赤・黄・緑のボタンが左端にあります。タイトルバーをドラッグするとウィンドウを移動でき、ダブルクリックすると最大化します。バックグラウンドで何かが動いているときは、バーの右端近くにインジケーターが表示されます。エンジンとのライブリンク、ライブセッション、または <strong>MCP 実行中</strong> です。インジケーターをクリックすると、ライブリンクを停止したり、該当するウィンドウを開いたりできます。</p>
+<ul>
+<li><strong>ファイル</strong>：ようこそ、新しいマップ（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>）、マップを開く（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span>）、保存（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>）、名前を付けて保存（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>）、保存済みのマップに戻す、エクスポート、画像をレンダリング、プラグイン、環境設定（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>）。</li>
+<li><strong>編集</strong>：元に戻す（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>）、やり直す（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span>）、切り取り、コピー、貼り付け、複製（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>）、削除、すべて選択（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>）、直前の操作を繰り返す（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>）、繰り返し操作の履歴を消去。</li>
+<li><strong>表示</strong>：3D ビューを別ウィンドウで表示、移動先、グリッドにスナップ（<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>）、グリッドを表示（<span class="keys"><kbd>0</kbd></span>）、アニメーションをプレビュー、除外した面を表示。</li>
+<li><strong>形状</strong>：3D テキストを挿入、角を接合、面をパッチに変換、選択範囲をエンティティの外へ移動、リンクグループを同期。</li>
+<li><strong>アニメーション</strong>：キーフレームアニメーション、アニメーションをプレビュー、3D ビューからカメラを配置（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>）。</li>
+<li><strong>マップ</strong>：ポイントファイルを読み込む、ポイントファイルを再読み込み、ポイントファイルを解除、ポータルファイルを読み込む、ポータルファイルを再読み込み、ポータルファイルを解除。マップコンパイラーが書き出したリークの軌跡やポータルを表示します。</li>
+<li><strong>共同作業</strong>：ライブセッション、エージェント用サーバーを起動 (MCP)。</li>
+<li><strong>ヘルプ</strong>：マニュアル、このアプリについて。</li>
+</ul>
+<h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>ツールストリップ</h3>
+<p>ツールストリップにはすべてのツールが並んでいます。最初のグループは常に使うもので、選択、ブラシ、クリップ、頂点、辺、面、回転、拡大縮小です。2 番目のグループには、せん断、組み立て、スイープ、制御点、フィレット、ペイントがあります。ボタンにポインターを合わせると、名前とショートカットが表示されます。アクティブなツールをもう一度クリックすると、選択ツールに戻ります。</p>
+<p>ツールの後には <strong>水平方向に反転</strong> と <strong>垂直方向に反転</strong>、続いて 2 つのスイッチがあります。<strong>ロック</strong> はブラシを移動してもマテリアルのマッピングを保ち、<strong>UV</strong> はブラシを回転しても保ちます（<span class="keys"><kbd>U</kbd></span> で切り替え）。その後にアクティブなツール固有の設定が続きます。ブラシツールでは形状とそのオプション、フィレットツールでは半径・面数・角と <strong>適用</strong> が表示されます。右端には、ツール名、グリッドサイズ（<strong>グリッド 16</strong> など。クリックで別のサイズを選択）、そして <strong>グリッド設定</strong> メニューがあり、グリッドにスナップ、グリッドを表示、アニメーションをプレビュー、除外した面を表示、キーフレームアニメーションが含まれます。</p>
+<h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>マップビュー</h3>
+<p>ビューは 4 つあります。3D ビューと、3 つの平面ビュー、上面 (XY)、正面 (XZ)、側面 (YZ) です。環境設定 → 表示 → レイアウト で、単一ビュー、2 分割、3 分割、4 分割 を選べます。区切り線をドラッグするとペインの大きさを変えられます。ビュー内をクリックすると、そのビューがキーボード入力を受け取ります。<span class="keys"><kbd>Space</kbd></span> は一度に 1 つのビューを表示するペインを次のビューに切り替え、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> はキーボード入力を受けているビューを最大化し、もう一度押すとレイアウトを元に戻します。</p>
+<p>どのビューでも、ドラッグせずに右クリックすると、選択範囲とポインター下のオブジェクトに対するコンテキストメニューが開きます。グループ化、レイヤー、リンクグループ、エンティティの作成、ブラシのエンティティへの出し入れ、マテリアル名のコピー、マテリアルブラウザーでの表示などができます。</p>
+<h3 id="s2-4"><a class="anchor" href="#s2-4" aria-hidden="true" tabindex="-1">#</a>インスペクター</h3>
+<p>右側のインスペクターには 4 つのタブがあります。左端をドラッグすると幅を変えられます。</p>
+<ul>
+<li><strong>マップ</strong>（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>1</kbd></span>）：レイヤー、グループ、プラグイン、問題、表示 セクションのフィルター、タグ。</li>
+<li><strong>エンティティ</strong>（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>2</kbd></span>）：エンティティブラウザー、エンティティ定義、選択したエンティティのプロパティ、そしてボタンやトリガーの場合はアニメーショントリガー。</li>
+<li><strong>面</strong>（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>3</kbd></span>）：UV、マテリアル、色、スイープ、フィレット、パッチ、インセットとベベル。各セクションは折りたためます。</li>
+<li><strong>アセット</strong>：再利用できるブラシモデルのライブラリ。</li>
+</ul>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>5</kbd></span> でインスペクターの表示／非表示を、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>T</kbd></span> でツールストリップの表示／非表示を切り替えられ、ビューを広く使えます。</p>
+<h3 id="s2-5"><a class="anchor" href="#s2-5" aria-hidden="true" tabindex="-1">#</a>ステータスバーと出力ペイン</h3>
+<p>下端のステータスバーには、エディターの最新のメッセージが表示されます。エラーは赤で表示されます。バーをクリックするか <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span> を押すと、メッセージの全履歴を表示する出力ペインが開きます。ほとんどのコマンドは、クリップしたブラシの数など、実行した内容をここに報告します。</p>
+<h3 id="s2-6"><a class="anchor" href="#s2-6" aria-hidden="true" tabindex="-1">#</a>ダイアログと外観</h3>
+<p>環境設定、エクスポート、画像をレンダリング などのダイアログは、独立したウィンドウとして開きます。環境設定 → 表示 → 配色 で、デスクトップの設定に従う、ライト、ダーク を選べます。概要ページの <strong>パネルの不透明度 (%)</strong> を使うと、ビューの上に重なるパネルが半透明になります。ウィンドウのボタンはシステムに合わせたスタイルで描画されます。macOS ではネイティブ、Windows では Windows 11 風、Linux では GNOME 風です。</p>
+<h2 id="s3"><a class="anchor" href="#s3" aria-hidden="true" tabindex="-1">#</a>ナビゲーションとキーボード</h2>
+<h3 id="s3-1"><a class="anchor" href="#s3-1" aria-hidden="true" tabindex="-1">#</a>3D ビューでの移動</h3>
+<p>右ボタンを押したままドラッグすると周囲を見回せます。中ボタンでドラッグするとパンします。ホイールで前後に移動します。<span class="keys"><kbd>W</kbd></span>、<span class="keys"><kbd>A</kbd></span>、<span class="keys"><kbd>S</kbd></span>、<span class="keys"><kbd>D</kbd></span> で前・左・後ろ・右へ飛行し、<span class="keys"><kbd>Q</kbd></span> で上昇、<span class="keys"><kbd>X</kbd></span> で下降します。<span class="keys"><kbd>Shift</kbd></span> を押すと移動幅が大きくなります。環境設定 → マウス で <strong>Alt + 中ボタンドラッグでカメラを移動</strong> をオンにすると、Alt と中ボタンで視線方向に沿って移動します。速度、反転、視野角の設定は 環境設定 → マウス にあります。</p>
+<h3 id="s3-2"><a class="anchor" href="#s3-2" aria-hidden="true" tabindex="-1">#</a>2D ビューでの移動</h3>
+<p>中ボタンでドラッグするとパンし、ホイールでポインターを中心にズームします。1 つの平面ビューでパンやズームをすると、他のビューも揃って動きます。この動作は 環境設定 → マウス の <strong>2D ビューを連動</strong> で切り替えます。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span> でズームをリセットし、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>U</kbd></span> で平面ビューを原点に戻します。</p>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>U</kbd></span> で選択範囲をすべてのビューに収めます。表示 → 移動先（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>M</kbd></span>）では、入力した座標へカメラを移動したり、マップファイルの指定した行にあるものを選択したり、入力した量だけ選択範囲を移動したりできます。</p>
+<h3 id="s3-3"><a class="anchor" href="#s3-3" aria-hidden="true" tabindex="-1">#</a>グリッドとスナップ</h3>
+<p><span class="keys"><kbd>+</kbd></span> と <span class="keys"><kbd>-</kbd></span> でグリッドサイズを変更し、数字キー <span class="keys"><kbd>1</kbd></span>～<span class="keys"><kbd>9</kbd></span> で 1～256 単位のサイズを直接選べます。<span class="keys"><kbd>0</kbd></span> または <span class="keys"><kbd>#</kbd></span> でグリッドの表示／非表示を切り替え、<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> でスナップのオン／オフを切り替えます。<span class="keys"><kbd>S</kbd></span> は選択したブラシの頂点を現在のグリッドにスナップし、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> は整数単位に、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> はグリッドにスナップします。</p>
+<h3 id="s3-4"><a class="anchor" href="#s3-4" aria-hidden="true" tabindex="-1">#</a>よく使うショートカット</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>：マップを保存。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>：名前を付けて保存。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>：元に戻す。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> または <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>：やり直す。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span>、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>：コピー、切り取り、貼り付け。貼り付けたオブジェクトはポインターの位置に置かれます。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></span> では元の座標が保たれます。面を選択している場合、コピーではマテリアルと UV 設定がコピーされます。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>：複製。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>：グループのリンク複製。</li>
+<li><span class="keys"><kbd>Delete</kbd></span> または <span class="keys"><kbd>Backspace</kbd></span>：選択範囲を削除。</li>
+<li><span class="keys"><kbd>Esc</kbd></span>：進行中のドラッグをキャンセルし、アクティブなツール内で 1 段階戻り、選択ツールに戻り、最後に選択を解除します。<span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Esc</kbd></span> で直接選択ツールに戻ります。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>：直前の繰り返し可能なコマンドを繰り返す。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span>：その履歴を消去。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> または <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>：レンダーカメラを 3D ビューの位置に配置。</li>
+<li><span class="keys"><kbd>F5</kbd></span>：マテリアルを再読み込み。<span class="keys"><kbd>F6</kbd></span>：エンティティ定義を再読み込み。</li>
+</ul>
+<h3 id="s3-5"><a class="anchor" href="#s3-5" aria-hidden="true" tabindex="-1">#</a>選択のショートカット</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>：すべて選択。頂点・辺・面ツールがアクティブなときは、すべてのハンドルを選択。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd></span>：選択を解除。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span>：選択を反転。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B</kbd></span>：同じエンティティまたはグループ内の他のオブジェクトを選択。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>T</kbd></span>：選択したブラシに接するものをすべて選択。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd></span>：ブラシの内側にあるものをすべて選択。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>E</kbd></span>：ビューの軸方向で、ブラシと同じ列にあるものをすべて選択。これらの操作では、選択に使ったブラシは消費されます。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>I</kbd></span>：選択範囲だけを表示。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>I</kbd></span>：選択範囲を非表示。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span>：すべてを再表示。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span>：グループ化。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span>：グループ解除。</li>
+</ul>
+<h3 id="s3-6"><a class="anchor" href="#s3-6" aria-hidden="true" tabindex="-1">#</a>変形のショートカット</h3>
+<ul>
+<li>矢印キーと <span class="keys"><kbd>Page Up</kbd></span> / <span class="keys"><kbd>Page Down</kbd></span> は、アクティブなビューで指している方向へ選択範囲をグリッド 1 ステップ分移動します。<span class="keys"><kbd>Ctrl</kbd></span> を押していると移動しながら複製し、<span class="keys"><kbd>Alt</kbd></span> を押していると回転します。</li>
+<li><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>X</kbd></span>、<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Y</kbd></span>、<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span>：その軸を中心に 90 度回転。<span class="keys"><kbd>Shift</kbd></span> を加えると逆方向。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span>：ビューの左右方向に反転。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span>：上下に反転。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>X</kbd></span> と <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Y</kbd></span> は X または Y に沿ってミラーします。</li>
+<li><span class="keys"><kbd>Insert</kbd></span>：選択範囲の中心にポイントエンティティを配置。</li>
+<li><span class="keys"><kbd>Tab</kbd></span>：ブラシを選択しているとき、選択 → 頂点 → 辺 → 面 → 選択 の順に切り替え。</li>
+</ul>
+<h3 id="s3-7"><a class="anchor" href="#s3-7" aria-hidden="true" tabindex="-1">#</a>Blender キーマップ</h3>
+<p>環境設定 → キーボード → キー割り当て では、Heron Brush（既定。このマニュアルではこちらを前提にしています）と Blender を選べます。Blender では、<span class="keys"><kbd>G</kbd></span> で選択して移動、<span class="keys"><kbd>R</kbd></span> で回転、<span class="keys"><kbd>S</kbd></span> で拡大縮小、<span class="keys"><kbd>E</kbd></span> でスイープ、<span class="keys"><kbd>1</kbd></span>、<span class="keys"><kbd>2</kbd></span>、<span class="keys"><kbd>3</kbd></span> で頂点・辺・面ツールの選択、<span class="keys"><kbd>K</kbd></span> でクリップ、<span class="keys"><kbd>B</kbd></span> で選択、<span class="keys"><kbd>A</kbd></span> ですべて選択、<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span> で選択解除、<span class="keys"><kbd>X</kbd></span> で削除、<span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> で複製、<span class="keys"><kbd>H</kbd></span> で非表示、<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>H</kbd></span> ですべて表示、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> でやり直しです。それ以外の操作はどちらも同じです。</p>
+<h2 id="s4"><a class="anchor" href="#s4" aria-hidden="true" tabindex="-1">#</a>ブラシとモデリングツール</h2>
+<p>ブラシは平面で定義される凸型のソリッドです。1 つのブラシを凹型にしようとするのではなく、複数の単純なブラシを組み合わせて複雑なオブジェクトを作ります。単純な形状で十分な箇所では、ブラシの数を少なく抑えましょう。</p>
+<h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>ブラシの描画</h3>
+<p>ブラシツール（<span class="keys"><kbd>B</kbd></span>）を選び、ビュー内でドラッグします。ツールストリップに <strong>描画する形状</strong> が表示され、直方体、階段、アーチ、円柱、円錐、回転楕円体 (UV)、回転楕円体 (正二十面体)、3D テキストを挿入 から選べます。<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span>～<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>7</kbd></span> で形状を直接選択できます。形状に応じて、ストリップには <strong>中空化</strong> と <strong>厚さ:</strong>、階段では <strong>段の高さ:</strong> と <strong>方向:</strong>、円形の形状では <strong>軸:</strong>、<strong>側面数:</strong> と円の作り方、球では <strong>リング数:</strong>、正二十面体では <strong>精度:</strong> が表示されます。オプションはドラッグする前に設定してください。結果は複数のビューで確認しましょう。</p>
+<h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>選択</h3>
+<p>ブラシをクリックすると選択され、<span class="keys"><kbd>Ctrl</kbd></span> を押しながらクリックすると選択に追加されます。何もない場所からドラッグすると選択ボックスを描けます。3D ビューでは、<span class="keys"><kbd>Shift</kbd></span> を押しながらクリックすると面を 1 つだけ選択し、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span> を押しながらクリックすると面を追加します。選択中のブラシをドラッグすると移動し、未選択のブラシをドラッグすると、そのブラシだけを選択して移動します。</p>
+<p>3D ビューで、選択中のブラシの面を <span class="keys"><kbd>Shift</kbd></span> を押しながらドラッグすると押し出せます。別の面を <span class="keys"><kbd>Alt</kbd></span> を押しながらクリックすると、選択中の面のマテリアルと配置をその面にコピーします。<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> ではマテリアルだけを、<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> では回転をコピーします。</p>
+<h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>形状編集ツール</h3>
+<ul>
+<li><strong>選択</strong>（<span class="keys"><kbd>Esc</kbd></span>）：選択と移動。</li>
+<li><strong>頂点</strong>（<span class="keys"><kbd>V</kbd></span>）、<strong>辺</strong>（<span class="keys"><kbd>E</kbd></span>）、<strong>面</strong>（<span class="keys"><kbd>F</kbd></span>）：角、辺、面をドラッグします。辺や面の中央から <span class="keys"><kbd>Shift</kbd></span> を押しながらドラッグすると、そこに角を追加します。<span class="keys"><kbd>Delete</kbd></span> で選んだ角を削除します。</li>
+<li><strong>回転</strong>（<span class="keys"><kbd>R</kbd></span>）、<strong>拡大縮小</strong>（<span class="keys"><kbd>T</kbd></span>）、<strong>せん断</strong>（<span class="keys"><kbd>G</kbd></span>）：ハンドルで選択範囲を変形します。</li>
+<li><strong>クリップ</strong>（<span class="keys"><kbd>C</kbd></span>）：2 点または 3 点をクリックして切断面を定義します。<span class="keys"><kbd>Enter</kbd></span> で切断し、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> で残す側を選び、<span class="keys"><kbd>Backspace</kbd></span> または <span class="keys"><kbd>Esc</kbd></span> で最後の点を取り消します。</li>
+<li><strong>組み立て</strong>（<span class="keys"><kbd>N</kbd></span>）：立体を囲むように点を置き、<span class="keys"><kbd>Enter</kbd></span> を押すと、それらの点から凸型のブラシを作成します。<span class="keys"><kbd>Backspace</kbd></span> で最後の点を取り消します。</li>
+<li><strong>スイープ</strong>（<span class="keys"><kbd>Y</kbd></span>）：後述の「スイープ」を参照。</li>
+<li><strong>制御点</strong>（<span class="keys"><kbd>P</kbd></span>）：パッチの制御グリッドを変形します。</li>
+<li><strong>フィレット</strong>（<span class="keys"><kbd>O</kbd></span>）：辺をクリックして丸めるか、各ツールで辺や頂点を選んで <span class="keys"><kbd>Enter</kbd></span> を押します。面数を増やすほど滑らかになりますが、ジオメトリも増えます。</li>
+<li><strong>ペイント</strong>（<span class="keys"><kbd>K</kbd></span>）：「マテリアルと UV」を参照。</li>
+</ul>
+<h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>ブラシの結合</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>：選択したブラシを凸包に統合。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>K</kbd></span>：選択したブラシを、接しているブラシから減算。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></span>：選択範囲を中空化。壁の厚さはグリッド 1 ステップ分。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>L</kbd></span>：選択範囲の交差部分を残す。</li>
+</ul>
+<h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>スイープ、フィレット、パッチ、ベベル</h3>
+<p><strong>スイープ</strong> は、選択した面からパスに沿ってジオメトリを生成します。面を選択し（スイープツールでは <span class="keys"><kbd>Alt</kbd></span> を押しながらクリック）、面タブのスイープセクションで <strong>移動</strong>、<strong>回転</strong>（軸と角度）、<strong>拡大縮小</strong>、<strong>ステップ数</strong>、<strong>パス</strong>（整数 または 自由 の配置、円弧、直線、S 字カーブ）を設定して、<strong>スイープ</strong> を押します。コントロールの下の行に、作成されるブラシの数が表示されます。</p>
+<p><strong>フィレット</strong> セクションでは、選んだ辺を <strong>半径</strong>、<strong>面</strong>、<strong>角</strong>（留め継ぎ または 丸め）の設定で丸めます。面を 1 にすると面取りになります。</p>
+<p><strong>パッチ</strong> には選択したパッチの <strong>列</strong> と <strong>行</strong> が表示され、ボタンで 1 組ずつ追加・削除できます。形状 → 面をパッチに変換（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>）で、選択した面からパッチを作成します。</p>
+<p><strong>インセットとベベル</strong> は選択した面に作用します。<strong>インセット</strong> は面を辺から内側に縮め、<strong>深さ</strong> は面を外側へ（負の値なら内側へ）押し出します。<strong>面をベベル</strong> は両方を適用します。3 番目のボタンは、深さの符号に応じてパネルを追加するか、くぼみを彫ります。<strong>角を接合</strong> は、2 つのブラシを留め継ぎまたは丸めた角で接合するダイアログを、プレビュー付きで開きます。</p>
+<h3 id="s4-6"><a class="anchor" href="#s4-6" aria-hidden="true" tabindex="-1">#</a>3D テキスト</h3>
+<p>形状 → 3D テキストを挿入（ブラシツールの形状リストの最後の項目でもあります）で、テキストからブラシを作成します。フォントは内蔵のポリゴンフォント Heron Block で、角が切り落とされたデザイン、プロポーショナルな字幅、チェコ語のアクセント記号を備えています。小文字は大文字の字形で作られます。<strong>テキスト</strong> を入力し、<strong>高さ</strong>（キャップハイト。アクセント記号はその上にはみ出します）と <strong>深さ</strong> を設定し、ライブプレビューを確認して <strong>挿入</strong> を押します。</p>
+<p>操作で有効なジオメトリを作れない場合は、寸法を調整するか、元に戻して形状を単純にしてください。</p>
+<h2 id="s5"><a class="anchor" href="#s5" aria-hidden="true" tabindex="-1">#</a>マテリアルと UV</h2>
+<h3 id="s5-1"><a class="anchor" href="#s5-1" aria-hidden="true" tabindex="-1">#</a>マテリアルの読み込みと適用</h3>
+<p>面タブの <strong>マテリアル</strong> セクションを開きます。<strong>フォルダーを読み込む</strong> は画像のフォルダーを、<strong>.wad を読み込む</strong> はテクスチャーパッケージを追加します。どちらも <strong>コレクション</strong> の下に表示され、× ボタンで削除できます。<strong>マテリアルを絞り込む</strong> に入力するとリストを絞り込めます。マテリアルをクリックして現在のマテリアルにし、<strong>選択範囲に適用</strong> を押すと、選択中のすべての面に適用されます。<strong>選択</strong> には このマテリアルのブラシを選択 と このマテリアルの面を選択 があります。<strong>置換</strong> は、マップ全体または選択範囲内だけで、あるマテリアルを別のマテリアルに置き換えます。</p>
+<p><strong>ペイント</strong> ツール（<span class="keys"><kbd>K</kbd></span>）は、ポインター下の面に現在のマテリアルを適用します。クリックで 1 つの面を、ダブルクリックでブラシ全体をペイントします。<span class="keys"><kbd>Shift</kbd></span> を押しながらクリックすると、スポイトのようにその面のマテリアルを現在のマテリアルとして取得します。</p>
+<h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>UV エディター</h3>
+<p>面タブの <strong>UV</strong> セクションには、選択した面のマテリアルと輪郭が表示されます。キャンバス上のマウス操作は次のとおりです。</p>
+<ul>
+<li>ホイールでポインターを中心にズームします。右ボタンまたは中ボタンでドラッグするとパンします。右ボタンをダブルクリックすると面が再びフレームに収まります。別の面を選択すると自動的にフレームに収まります。</li>
+<li>左ドラッグでマテリアルを移動します。面の輪郭はその場に留まります。リングはマッピングを回転し、角のハンドルは拡大縮小し、中央のハンドルはこれらの変形の原点を設定します。</li>
+<li>タイルの辺を <span class="keys"><kbd>Alt</kbd></span> を押しながら左ドラッグするとせん断します。<span class="keys"><kbd>Shift</kbd></span> を押しながら中ボタンでドラッグしても同じです。</li>
+<li>1 回のドラッグが 1 回の取り消し単位になり、<span class="keys"><kbd>Esc</kbd></span> で進行中のドラッグをキャンセルできます。</li>
+</ul>
+<p>キャンバスの下には <strong>オフセット</strong>、<strong>拡大縮小</strong>、<strong>角度</strong>、そしてゲームが使用する場合は <strong>コンテンツフラグ</strong>、<strong>サーフェスフラグ</strong>、<strong>サーフェス値</strong> があります。ボタンは <strong>リセット</strong>、<strong>ワールド基準にリセット</strong>、<strong>フィット</strong>、<strong>左右反転</strong>、<strong>上下反転</strong>、そして 2 つの 90° 回転です。<strong>整列</strong> は面のいずれかの辺に沿ってマテリアルを回転させます（もう一度押すと次の辺、<span class="keys"><kbd>Shift</kbd></span> を押すと前の辺）。4 つの位置揃えボタンは、マテリアルを辺に寄せます。<strong>U にフィット</strong> と <strong>V にフィット</strong> は、面がちょうど整数個のタイルで覆われるように拡大縮小します。もう一度押すと次の個数になり、<span class="keys"><kbd>Ctrl</kbd></span> を押したままにするとトリムシートの分割が保たれます。</p>
+<h3 id="s5-3"><a class="anchor" href="#s5-3" aria-hidden="true" tabindex="-1">#</a>UV のキー操作</h3>
+<p>面を選択しているとき、矢印キーでマテリアルを移動し、<span class="keys"><kbd>[</kbd></span> と <span class="keys"><kbd>]</kbd></span> で 15° 回転し、<span class="keys"><kbd>,</kbd></span> と <span class="keys"><kbd>.</kbd></span> でスケールを半分または 2 倍にし、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> と <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span> で反転し、<span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> でリセットし、<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> でワールド軸基準にリセットし、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>F</kbd></span> で各面にフィットさせます。</p>
+<p>ツールストリップの <strong>ロック</strong> はブラシの移動中にマッピングを保ち、<strong>UV</strong>（<span class="keys"><kbd>U</kbd></span>）はブラシの回転中に保ちます。</p>
+<h3 id="s5-4"><a class="anchor" href="#s5-4" aria-hidden="true" tabindex="-1">#</a>ツール用マテリアル</h3>
+<ul>
+<li>skip：その面をエンジンへのエクスポートから除外します。</li>
+<li>clip：目に見えるジオメトリなしでコリジョンを作成します。</li>
+<li>origin：ブラシエンティティのピボットを示します。</li>
+</ul>
+<p>これらの名前は、エクスポートウィンドウの <strong>ツール用マテリアル</strong> カードで変更できます。隠れているとわかっている面には skip を使ってください。</p>
+<h3 id="s5-5"><a class="anchor" href="#s5-5" aria-hidden="true" tabindex="-1">#</a>面をエクスポートから除外する</h3>
+<p>面を選択し、UV セクションで <strong>エクスポートから面を除外</strong> をオンにします。UV プレビューではオレンジ色の斜線で示されます。マテリアルとペイントは保存されたままで、ブラシは閉じた状態を保ち、編集もできます。エクスポートされる描画用メッシュではその面が省かれますが、コリジョンは残ります。立方体の四角形を 1 つだけ残すと、描画用の三角形は 2 つになります。この機能で面が両面表示になったり、メッシュが結合されたりすることはありません。</p>
+<p><strong>覆われた面を除外</strong> は、静的なブラシで完全に覆われた面をマークします。接している同一の面や、内側に閉じ込められたブラシも対象です。選択したブラシに作用し、何も選択していないときは、表示中でロックされていないワールドジオメトリ全体に作用します。ブラシエンティティ、透明なマテリアル、すでに除外した面を持つブラシはスキップされます。一部だけ覆われた面は分割されません。1 回の取り消しですべて元に戻ります。表示 → 除外した面を表示 で、エディターのビューでこうした面の表示／非表示を切り替えます。クリックによる選択には引き続きブラシ全体が使われます。</p>
+<h2 id="s6"><a class="anchor" href="#s6" aria-hidden="true" tabindex="-1">#</a>色とグラデーション</h2>
+<p>面タブの <strong>色</strong> セクションでは、マテリアルの上から単色やグラデーションで面をペイントします。レベルのブロックアウトや、スタイライズされたアートに役立ちます。ペイントした面はビュー内で実際の色のまま表示され、選択状態は輪郭線で示されます。</p>
+<h3 id="s6-1"><a class="anchor" href="#s6-1" aria-hidden="true" tabindex="-1">#</a>パレットと混合色</h3>
+<p>12 個あるパレットの色見本のいずれかをクリックすると、選択した面、または選択したブラシ全体をその色でペイントします。<strong>不透明度</strong> は次のペイントの不透明度をパーセントで設定します。<strong>混合</strong> にはカラーピッカーを開く色ボタンがあります。ピッカー内でドラッグすると選択範囲がリアルタイムで追従し、<strong>ペイント</strong> を押すと混合色を 1 回の操作として適用します。<strong>マテリアルに戻る</strong> はペイントを取り除き、面が再びマテリアルを表示するようにします。セクション上部の行には、何が選択されていて、それに何が適用されているかが表示されます。</p>
+<h3 id="s6-2"><a class="anchor" href="#s6-2" aria-hidden="true" tabindex="-1">#</a>カラーピッカー</h3>
+<p>エディター内のどの色ボタンも、同じピッカーを開きます。四角形の中をドラッグして彩度と明度を、その横の帯をドラッグして色相を選びます。下には <strong>R</strong>、<strong>G</strong>、<strong>B</strong> の値があり、色に不透明度がある場合は <strong>不透明度</strong> スライダーもあります。16 進数フィールドには <code>#RRGGBB</code> または <code>#RRGGBBAA</code> を入力でき、有効な色でないあいだは赤く表示されます。<strong>コピー</strong> は 16 進コードをクリップボードにコピーします。ピッカーの外をクリックすると閉じます。</p>
+<h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>グラデーション</h3>
+<p><strong>グラデーション</strong> では 線形グラデーション と 放射状グラデーション を選び、その横のボタンで色の並びを反転します。各分岐点には色ボタンと <strong>位置 (%)</strong> があり、両端の間にある分岐点には削除ボタンがあります。<strong>色の分岐点を追加</strong> は最も広い間隔に分岐点を追加します。分岐点は 1 つのグラデーションにつき最大 8 個です。<strong>グラデーションの角度</strong> は線形グラデーションの方向を設定し、<strong>+45°</strong> と <strong>−45°</strong> のボタンがあります。</p>
+<p>プレビューの下には、分岐点ごとにマーカーが付いたレールがあります。レールをクリックすると分岐点を追加し、マーカーをクリックするとそのピッカーを開き、マーカーをドラッグすると移動し、マーカーを右クリックすると削除します。レールの下にある 3 つの色見本はプリセットで、暖色グラデーション、寒色グラデーション、グレースケールのグラデーション です。グラデーションへの変更は、選択範囲にリアルタイムで適用されます。</p>
+<p>グラデーションでは向きが重要です。無関係な面をまたぐのではなく、屋根の傾斜や曲がったオブジェクトに沿って向けてください。ペイントした後は、モデルを両側から確認しましょう。</p>
+<h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>サーフェスマテリアル</h3>
+<p><strong>サーフェスマテリアル</strong> では、<strong>粗さ</strong>（0 は光沢、100 はつや消し）、<strong>金属度</strong>（木材・石・プラスチックは 0、金属は 100）、<strong>発光</strong>（0～8。サーフェスはグラデーションを含め自身の色で光りますが、周囲のオブジェクトを照らすことはありません）を設定します。変更は選択した面やブラシにリアルタイムで適用されます。<strong>既定のサーフェスを使用</strong> で上書きを解除します。すべての変更は元に戻せます。</p>
+<p>サーフェスの効果は、ライティングされた 3D ビューとカメラのレンダリングに表示されます。フラット表示とワイヤーフレーム表示では、意図的にハイライトを省いています。ブルームを使うと、発光するサーフェスの周りにグローを加えられます。Godot と glTF/GLB にはマテリアルの値が渡され、Unity のインポーターは粗さを滑らかさ（smoothness）に変換します。各出力先の制限については <code>docs/surface-materials.md</code> を参照してください。</p>
+<h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>アセット、レイヤー、グループ</h2>
+<h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>アセットライブラリ</h3>
+<p><strong>アセット</strong> タブを開きます。<strong>フォルダーを追加</strong> で <code>.map</code> モデルのフォルダーを追加します。内蔵ライブラリは常に利用できます。<strong>アセットを絞り込む</strong> に入力して検索します。モデルをクリックして選択し、ダブルクリックするか、<span class="keys"><kbd>Enter</kbd></span> を押すか、<strong>挿入</strong> をクリックすると、最後にポインターがあった位置に追加されます。モデルをビューにドラッグすることもできます。アセットのブラシは 1 つのグループとして挿入されるので、モデル全体がまとまって動きます。</p>
+<p><strong>選択範囲をアセットとして保存</strong> は、選択したブラシを <code>.map</code> としてライブラリに書き込みます。ライブラリのアセットは通常の編集可能なブラシで、インポートしたメッシュではありません。</p>
+<h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>レイヤー</h3>
+<p>マップタブの <strong>レイヤー</strong> リストで、広いエリアを整理します。名前を入力して <strong>追加</strong> をクリックするとレイヤーを作成でき、<span class="keys"><kbd>Enter</kbd></span> を押すと現在のレイヤーの名前を変更します。各レイヤーは、非表示、ロック、エクスポート対象外にできます。<strong>ここへ移動</strong> は選択範囲を現在のレイヤーに移動します。ビューのコンテキストメニューにも、レイヤーへ移動、アクティブレイヤーに設定、レイヤーを非表示、指定レイヤーのみ表示 があります。</p>
+<h3 id="s7-3"><a class="anchor" href="#s7-3" aria-hidden="true" tabindex="-1">#</a>グループとリンクグループ</h3>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span> で選択範囲をグループ化し、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span> でグループを解除します。マップタブの <strong>グループ</strong> セクションにはグループが一覧表示され、<strong>開く</strong>、<strong>名前を変更</strong>、<strong>マージ</strong>、<strong>グループ解除</strong>、<strong>取り出す</strong>、<strong>抽出</strong> を使えます。リンクグループは、編集内容を共有するコピーの集まりです。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> でリンク複製を作成し、形状 → リンクグループを同期 でコピーを更新し、<strong>リンク解除</strong> でコピーを独立させます。エンティティタブでは、リンクグループを同期するときに、プロパティをそのコピー固有の値として残すように設定できます。</p>
+<h3 id="s7-4"><a class="anchor" href="#s7-4" aria-hidden="true" tabindex="-1">#</a>共通のスケール</h3>
+<p>既定のエクスポートスケールは 1 メートルあたり 32 マップ単位です。内蔵のプレイヤースタートマーカーは高さ 64 単位で、2 メートルの基準になります。出入口、乗り物、家具、植物などをこれと比べてください。エクスポートスケールは意図がある場合にだけ変更し、関連するアセットの一貫性を保ちましょう。</p>
+<h2 id="s8"><a class="anchor" href="#s8" aria-hidden="true" tabindex="-1">#</a>エンティティとゲームプレイ</h2>
+<p>よく使うエンティティ定義は内蔵されており、常に利用できます。ライト、プレイヤースタート、ドア、ボタン、足場、トリガー、静的なプロップ、サウンド、ウェイポイントです。エンティティタブの <strong>エンティティ定義</strong> でプロジェクトの FGD を読み込むと、同じ名前のクラスが置き換えられ、それ以外の内蔵クラスはそのまま残ります。</p>
+<h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>エンティティの配置</h3>
+<p>エンティティタブの <strong>エンティティ</strong> ブラウザーで、<strong>クラスを絞り込む</strong> に入力してクラスを選びます。ライトのようなポイントクラスは、<strong>配置</strong> をクリックするかクラスをダブルクリックします。<span class="keys"><kbd>Insert</kbd></span> で選択範囲の中心に 1 つ配置します。ドアやトリガーのようなブラシクラスは、ブラシを選択して <strong>作成</strong> をクリックします。クラスをビューにドラッグすることもできます。</p>
+<h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>プロパティ</h3>
+<p>プロパティリストでは、選択したエンティティを編集します。同じクラスのエンティティはまとめて編集されます。<strong>プロパティを追加</strong> では、定義にないキーも追加できます。<strong>既定値</strong> では、既存のプロパティを既定値に戻したり、足りないプロパティを追加したりできます。クラスで定義されていてもエンティティにないプロパティは淡色で表示され、値を入力すると追加されます。エンティティ同士をつなぐには targetname と target を使います。</p>
+<h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>エクスポートでできること</h3>
+<p>Godot のディレクティブは、ネイティブのノード、コリジョンボディ、トリガーエリアを作成します。Unity と Unreal は一般的なライトをネイティブに扱い、Unreal はさらに PlayerStart アクターも作成します。その他のデータは、出力先のインポーターが許す範囲で保持されます。</p>
+<p>ドアエンティティを置いただけでは、ゲームの動作は加わりません。移動、トリガーへの反応、プレイヤーコントローラー、プロジェクトのスクリプトは、エンジン側で作り込む必要があります。Defold はエンティティのプロパティとコリジョンオブジェクトをエクスポートし、Flax はモデルと汎用エンティティを配置します。ゲームプレイを組み立てる前に、エンジンで結果を確認してください。</p>
+<h2 id="s9"><a class="anchor" href="#s9" aria-hidden="true" tabindex="-1">#</a>アニメーション</h2>
+<p>Heron Brush では、簡単な動きをプレビューしたり、ブラシエンティティのキーフレームアニメーションを編集したりして、それを複数のエンジンへエクスポートできます。</p>
+<h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>アニメーションのプレビュー</h3>
+<p>表示メニュー、アニメーションメニュー、グリッド設定メニュー、またはマップタブの表示セクションで <strong>アニメーションをプレビュー</strong> をオンにします。start_on が有効な場合、エンティティの axis、speed、direction、travel、wait の各プロパティを使って、func_rotate の回転と func_shuttle の往復運動を再生します。また、開始時に再生 に設定されたキーフレームクリップも再生します。扇風機と風車のアセットには、最初から回転するパーツが含まれています。</p>
+<p>プレビューをオフにすると、元のポーズに戻ります。ビュー内をクリックすると、選択や編集の前に再生が止まります。カメラ操作はそのまま使えます。プレビューは、マップ、取り消し履歴、エクスポートを変更せず、物理演算やゲームロジックも実行しません。</p>
+<h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>キーフレームエディター</h3>
+<p>アニメーション → キーフレームアニメーション、またはグリッド設定メニューから開きます。ビューの下にドッキングされ、3D ウィンドウが分離しているときはそのウィンドウ内にドッキングされます。見出しにあるウィンドウアイコンを押すと独立したウィンドウに移り、フレームと取り消し履歴は保たれます。<strong>アニメーションを編集</strong> はビューをアニメーションのポーズに切り替え、<strong>マップを編集</strong> は静止状態のジオメトリに戻します。アニメーションモードでは、各ビューの下部に <strong>アニメーションを編集</strong> とフレーム番号が表示されます。</p>
+<p>アニメーションさせるには、ブラシエンティティ、またはブラシやブラシのグループを選択します。入れ子のないブラシグループは 1 つのアニメーションとピボットを共有します。複数のエンティティを含むグループには、それぞれ別のアニメーションが必要です。</p>
+<h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>クリップ</h3>
+<p><strong>アニメーション</strong> セレクターで、名前付きのクリップを切り替えます。<strong>アニメーション名</strong> に名前を入力して <strong>名前を付けて保存</strong> をクリックすると、現在のクリップをその名前でコピーします。<strong>削除</strong> はクリップを削除します。<strong>移動</strong> は回転のない <code>translate</code> クリップを作成します。<strong>ドアのアニメーション</strong> は、現在のピボットを中心に 90 度回転する滑らかな <code>open</code> と <code>close</code> のクリップを作成します。先にピボットを蝶番の位置へ移動してください。<strong>開始時に再生</strong> を使うと、レベルの開始時にクリップが再生されます。ドアのプリセットではオフになります。</p>
+<h3 id="s9-4"><a class="anchor" href="#s9-4" aria-hidden="true" tabindex="-1">#</a>トランスポートと再生</h3>
+<p>トランスポートボタンは <strong>先頭</strong>、<strong>前のキー</strong>、<strong>再生</strong>、<strong>次のキー</strong>、<strong>末尾</strong> です。<strong>フレーム</strong> は現在のフレームを表示・設定し、<strong>長さ（秒）</strong> はクリップの長さを設定します。モードは <strong>1 回のみ</strong>、<strong>ループ</strong>、<strong>往復</strong> です。</p>
+<h3 id="s9-5"><a class="anchor" href="#s9-5" aria-hidden="true" tabindex="-1">#</a>タイムライン</h3>
+<p>タイムラインには、再生ヘッドのあるルーラーと、<strong>位置</strong>（X、Y、Z をまとめてキー設定）および各回転角 RX、RY、RZ のレーンがあります。ルーラーをクリックまたはドラッグすると再生ヘッドが移動し、そのポーズがすべてのビューでプレビューされます。中ボタンでドラッグするとタイムラインをパンします。キーをドラッグすると時間方向に移動します。<span class="keys"><kbd>Shift</kbd></span> で選択に追加し、レーンをダブルクリックするとキーを挿入し、<span class="keys"><kbd>Ctrl</kbd></span>+ホイールでズームします。<strong>カーブ</strong> はレーンの代わりに値のカーブを表示します。</p>
+<p>その上にあるボタンは <strong>キーを追加</strong>、<strong>削除</strong>、<strong>コピー</strong>、<strong>貼り付け</strong>、<strong>複製</strong> です。<strong>フレームにスナップ</strong> はキーを整数フレームに揃え、<strong>フィット</strong> はクリップ全体を表示します。<strong>キーの時間を変更</strong> を開くと、<strong>時間スケール</strong>、<strong>オフセット（フレーム）</strong>、<strong>再生ヘッドを基準に拡縮</strong>、<strong>再生時間を延長</strong>、<strong>選択キーの時間を変更</strong> があります。</p>
+<p>タイムラインの横にあるキーインスペクターでは、選択したキーを編集します。<strong>フレーム</strong>、<strong>値</strong>（位置キーの場合は 3 つの座標）、補間方法の <strong>線形</strong>、<strong>一定</strong>、<strong>ベジェ</strong>、<strong>入力側の傾き</strong> と <strong>出力側の傾き</strong>、そして <strong>接線を滑らかにする</strong> です。</p>
+<h3 id="s9-6"><a class="anchor" href="#s9-6" aria-hidden="true" tabindex="-1">#</a>エディター内のキー操作</h3>
+<p>タイムラインがキーボード入力を受けているとき、<span class="keys"><kbd>Space</kbd></span> で再生／一時停止、左右の矢印キーで 1 フレームずつ移動、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span> ですべてのキーを選択、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span>、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span> でキーのコピー、切り取り、貼り付け、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span> で複製、<span class="keys"><kbd>Delete</kbd></span> で削除、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span> で取り消し、<span class="keys"><kbd>Esc</kbd></span> でドラッグをキャンセルします。タイムラインの外では、<span class="keys"><kbd>Esc</kbd></span> でアニメーションモードを終了します。取り消しを行っても、ズーム、選択、再生ヘッドはそのまま保たれます。</p>
+<h3 id="s9-7"><a class="anchor" href="#s9-7" aria-hidden="true" tabindex="-1">#</a>ビューでのポーズ設定</h3>
+<p>タイムラインの下の行には、近くのポーズをゴーストとして表示する <strong>オニオンスキン</strong>（表示数と <strong>間隔</strong> を指定）、<strong>ピボット</strong> の座標、<strong>自動キー</strong>、そしてポーズツールの <strong>移動</strong>、<strong>回転</strong>、<strong>ピボット</strong> があります。</p>
+<ul>
+<li><strong>キーを追加</strong> は自動キーをオンにし、再生を一時停止します。自動キーがオンで <strong>移動</strong> を選んでいるとき、3D ビューで選択したエンティティのハンドルの色付きの軸をドラッグすると、現在のフレームに位置のキーが打たれます。</li>
+<li>2D ビューで、選択したブラシまたはそのグループのメンバーをドラッグすると、見えている 2 軸に沿った移動がグリッドスナップ付きでキーとして記録されます。この操作では自動キーをオンにする必要はありません。</li>
+<li><strong>回転</strong> では、2D ビューでオレンジ色のピボットマーカーを中心にブラシをドラッグします。上面ビューでは RZ、正面ビューでは RY、側面ビューでは RX にキーが打たれ、グリッドの角度にスナップします。</li>
+<li><strong>ピボット</strong> では、任意の 2D ビューで黄色の回転中心をドラッグします。グリッドにスナップし、奥行きは保たれます。キーと静止状態のジオメトリは変わりません。</li>
+</ul>
+<p>2D と 3D に表示されるシアンのパスは、ピボットの軌跡を示します。パス上の点をクリックするとその時刻とキーを選択し、ドラッグすると位置を変更します。自動キーがオンのときは、3D ビューでもパスの点をドラッグできます。ラベルにはフレーム番号が表示され、破線の区間はジャンプを示します。<span class="keys"><kbd>Esc</kbd></span> でこれらのドラッグをキャンセルでき、ドラッグ全体を 1 回の取り消しで元に戻せます。</p>
+<p>新しいアニメーションは、時刻 0 にキーがある静止状態から始まります。別のフレームでポーズを変えると動きが生まれます。鋭い L 字型の経路にするには、始点、角、終点にキーを打ち、線形 と 往復 を使います。</p>
+<h3 id="s9-8"><a class="anchor" href="#s9-8" aria-hidden="true" tabindex="-1">#</a>ボタンとアニメーションの接続</h3>
+<p>func_button、trigger_multiple、trigger_once のいずれかを選択します。エンティティタブのプロパティの上に <strong>アニメーショントリガー</strong> が表示されます。リストからターゲットを選ぶか、<strong>ビューで対象を選択</strong> をクリックしてから、任意のビューでアニメーションするオブジェクトをクリックします。<span class="keys"><kbd>Esc</kbd></span> で選択をキャンセルします。ターゲットやクリップが見つからない場合は、コントロールの下に表示されます。リンク表示がオンのとき、エンティティのリンクはターゲットへの矢印で示されます。</p>
+<p><strong>アクション</strong> では、起動時の動作を選びます。<strong>再生</strong> は名前付きのクリップか選択したアニメーションを開始します。<strong>切り替え</strong> は <code>open</code> と <code>close</code> があればそれらを交互に再生し、なければ選択したアニメーションを最初から再生します。<strong>開く</strong> と <strong>閉じる</strong> はそれぞれのクリップを開始します。<strong>一時停止</strong> はポーズを保持し、<strong>再開</strong> は続きを再生し、<strong>停止</strong> は元のポーズに戻します。<strong>一度だけ</strong> はクラスの既定値を上書きします。<strong>繰り返し間隔（秒）</strong> は起動の最短間隔を設定します。最初の起動が遅れることはありません。</p>
+<p><strong>トリガーをテスト</strong> は、マップを編集したり取り消しステップを追加したりせずに、プレビュー内でアクションを実行します。<strong>プレビューをリセット</strong> は元のポーズに戻し、一度だけの状態とクールダウンの状態をクリアします。プレイヤーとの衝突やゲームスクリプトはシミュレートされません。</p>
+<h3 id="s9-9"><a class="anchor" href="#s9-9" aria-hidden="true" tabindex="-1">#</a>エクスポートでのアニメーション</h3>
+<p>Godot には、カーブや動くコリジョンを含む、ネイティブの AnimationPlayer と AnimationLibrary リソースがエクスポートされます。CharacterBody3D がボタンのエリアに入ると、そのターゲットが起動します。Godot でこれらのクリップに加えた編集はマップには戻らず、次のエクスポートで置き換えられます。</p>
+<p>raylib へのエクスポートでは、C で書かれたアニメーションプレイヤーを含む <code>&lt;map&gt;_animation.h</code> と、フリーカメラのプレビューを含む <code>&lt;map&gt;_preview.c</code> が追加されます。ビルド方法は <code>&lt;map&gt;_raylib.md</code> に従ってください。プレビューでは、<code>SPACE</code> で一時停止、<span class="keys"><kbd>R</kbd></span> で既定のクリップを最初から再生、<span class="keys"><kbd>N</kbd></span> で名前付きクリップを順に切り替えます。Defold では、ドキュメント化された <code>heron_*_animation</code> メッセージを使って、再生処理がエンティティスクリプトに組み込まれます。Unity の Build Level は <code>HeronBrushAnimation</code> とキネマティックボディを追加します。Bevy へのエクスポートには <code>heron_animation.rs</code> と説明書が含まれます。Godot、Unity、Defold、Bevy、raylib は、トリガーのリンク、一度だけのフラグ、繰り返し間隔を保持します。プレイヤーの登録と、独自のボタンを各ランタイムの API に接続する作業は、ゲーム側で行う必要があります。</p>
+<h3 id="s9-10"><a class="anchor" href="#s9-10" aria-hidden="true" tabindex="-1">#</a>Motion lab サンプル</h3>
+<p>ようこそ画面のサンプルから <code>motion_lab</code> を開きます。L 字型の経路を動く足場、リフト、回転する足場、ボタン付きの蝶番式ドアがあります。隣にある <code>godot/project.godot</code> を Godot で開き、<span class="keys"><kbd>F5</kbd></span> を押します。WASD とマウスでプレイヤーを動かし、Space でジャンプ、1～4 で各ステーションへ移動、R で現在のステーションをやり直します。色の付いたパッドに乗ると、そのターゲットが起動します。再エクスポートの方法は、同梱の README で説明しています。</p>
+<h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>エンジンへのエクスポート</h2>
+<p>ファイル → エクスポート で、エクスポートウィンドウが開きます。左側にエンジンがロゴ付きで並んでいます。Godot、Defold、three.js、Bevy、raylib、Unity、Unreal Engine、Flax Engine、Cocos Creator、Wavefront .obj、glTF .gltf、GLB .glb、そして最後に <code>.map</code> です。右側のページには、その出力先に何が書き出されるかが説明されています。<strong>書き出す</strong> で書き出し、<strong>検証</strong> は書き出さずにレベルをビルドして問題を一覧表示し、<strong>閉じる</strong> でウィンドウを閉じます。</p>
+<p>エクスポートは保存とは別の操作で、<code>.map</code> は編集用のソースとして残ります。各コントロールは変更されるとすぐにそのエンジンの設定を保存するので、エンジンごとに設定が保持され、ウィンドウは前回閉じたときの状態で開きます。</p>
+<h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>共通オプション</h3>
+<ul>
+<li><strong>拡大縮小</strong>：<strong>1 メートルあたりの単位数</strong>。既定は 32。</li>
+<li><strong>出力する内容</strong>：<strong>衝突形状</strong>。</li>
+<li><strong>最適化</strong>：<strong>静的メッシュを1024単位のセルにまとめる</strong>、<strong>形状内部に埋もれた面を除去</strong>、<strong>同一平面上の面を結合</strong>、<strong>衝突形状を結合</strong>。</li>
+<li><strong>プロジェクトのパス</strong>：レベルとそのリソースをプロジェクト内のどこに置くか。</li>
+<li><strong>ツール用マテリアル</strong>：clip、skip、origin の各マテリアルの名前。</li>
+<li><strong>その他</strong>：<strong>ノード名に使用する値</strong>、<strong>レイヤーとグループを親ノードとして再構成</strong>、<strong>三角形の頂点順序を反転</strong> などのエンジン固有のスイッチ、テクスチャー座標の反転、そして <strong>ライトマップのテクセル</strong> で指定するベイクライト用の 2 つ目の UV セット。</li>
+<li><strong>マップに追従</strong>：<strong>マップを保存するたびに書き出す</strong>。そのエンジンへ一度エクスポートすると使用できるようになります。そのエクスポートで書き出し先が決まるためです。</li>
+</ul>
+<p>静的セルは、ワールドブラシを中心位置に基づいて 1024 単位のセルに割り当て、セルごとにマテリアル単位でまとめるので、エンジンはマップのより小さな部分ごとにカリングできます。コリジョンは保持され、ゲームプレイ用のエンティティは別のまま残ります。ワールド全体を 1 つのメッシュにする場合よりドローコールが増えることがあるため、既定ではオフです。単体の OBJ、glTF、GLB エクスポートではセルを使いません。</p>
+<h3 id="s10-2"><a class="anchor" href="#s10-2" aria-hidden="true" tabindex="-1">#</a>出力先ごとの注意</h3>
+<ul>
+<li>Godot：テクスチャーとマテリアルの <code>res://</code> パス、トリガーの物理レイヤー、ライトマップ用の UV2。エクスポート先には Godot プロジェクト内のフォルダーを選んでください。</li>
+<li>Defold：アセットのリソースディレクトリ、モデルのマテリアル、テクスチャーサンプラー（選択したマテリアルに存在する必要があります）。</li>
+<li>Unity：OBJ メッシュとエディター用インポーター。プロジェクトの Assets フォルダー内にエクスポートします。</li>
+<li>Unreal Engine：生成されるインポートスクリプトとコンテンツパス（通常は /Game/<level>）。</li>
+<li>Flax Engine：プロジェクトの Content フォルダーからの相対パスで指定するモデルのコンテンツパス。</li>
+<li>three.js、Bevy、raylib、Cocos Creator：各ランタイム向けのシーンまたはコード。エクスポート先に説明書が付きます。</li>
+<li>glTF / GLB：対応ツール向けの汎用的なジオメトリ。GLB はそのバイナリ形式です。OBJ：モデリングツール向けのジオメトリとマテリアル。</li>
+<li><code>.map</code>：<strong>出力形式</strong> で Valve 220、標準、Quake 2、Quake 2 (Valve) を選びます。選んだ方言で失われるものはウィンドウに表示されます。</li>
+</ul>
+<p>書き出した後は、テクスチャーの欠落などの警告を確認してください。警告はウィンドウ内の <strong>検証結果</strong> に一覧表示されます。</p>
+<h2 id="s11"><a class="anchor" href="#s11" aria-hidden="true" tabindex="-1">#</a>ライブリンク：Godot、Unity、Defold、Flax</h2>
+<p>ライブリンクは、作業中に Heron Brush の未保存の編集内容をエンジンのエディターへ送ります。送信は一方向で、エンジン側で行った編集は戻ってきません。ライブリンクはマップウィンドウごとに 1 つだけ実行できます。エンジンを切り替える前に停止し、エクスポートオプションを変更した場合は再起動して反映させてください。操作は、エクスポートウィンドウの各エンジンのページにある <strong>Godot とライブリンク</strong> などのカードで行います。</p>
+<p>タイトルバーのインジケーターがリンクの状態を示し、クリックするとリンクを停止します。マップを閉じたり置き換えたりすると、送信は停止します。インポートに失敗した場合は、問題を修正してからリンクをもう一度開始してください。</p>
+<h3 id="s11-1"><a class="anchor" href="#s11-1" aria-hidden="true" tabindex="-1">#</a>Godot</h3>
+<ol>
+<li>Godot プロジェクトに一度エクスポートします。</li>
+<li><strong>Godot アドオンをインストール</strong> をクリックします。</li>
+<li>Godot のプロジェクト設定 → プラグイン で Heron Brush Live を有効にします。</li>
+<li><strong>ライブリンクを開始</strong> をクリックし、Godot のドックから、開いている 3D シーンにマップをアタッチします。</li>
+</ol>
+<p>アドオンは自身が生成したブランチだけを置き換え、アタッチ先の配置やその他のノードはそのまま残します。Godot のシーンは自分で保存し、独自のスクリプトやノードは生成されたブランチの外に置いてください。</p>
+<h3 id="s11-2"><a class="anchor" href="#s11-2" aria-hidden="true" tabindex="-1">#</a>Unity</h3>
+<ol>
+<li>Unity プロジェクトの Assets フォルダー内に一度エクスポートします。</li>
+<li><strong>Unity アドオンをインストール</strong> をクリックし、Unity にコンパイルさせます。</li>
+<li>Unity で Window → Heron Brush → Live Link を開きます。</li>
+<li>リンクを開始し、アクティブな Unity シーンにマップをアタッチします。</li>
+</ol>
+<p>Unity のライブウィンドウは開いたままにしてください。Play モードと Prefab モードでは更新が一時停止します。置き換えられるのは、マップオブジェクトの子である Generated だけです。生成されたファイルは編集しないでください。</p>
+<h3 id="s11-3"><a class="anchor" href="#s11-3" aria-hidden="true" tabindex="-1">#</a>Defold</h3>
+<ol>
+<li>Defold プロジェクトに一度エクスポートし、そのプロジェクトを Defold で開いたままにします。</li>
+<li><strong>ライブリンクを開始</strong> をクリックします。アドオンは不要です。</li>
+<li>Defold で heron_brush_live/preview.collection を開くか、独自のシーンから参照します。</li>
+</ol>
+<p>リンクは別の生成フォルダーに書き込み、最終的なエクスポートと game.project には手を付けません。<strong>実行中のゲームをホットリロード</strong> を使うと、Defold から起動したゲームも更新されます。オブジェクトを追加したりコリジョンを変更したりした場合は、レベルの再起動が必要になることがあります。接続に失敗した場合は自動的に再試行されます。</p>
+<h3 id="s11-4"><a class="anchor" href="#s11-4" aria-hidden="true" tabindex="-1">#</a>Flax</h3>
+<p>プロジェクトの Content フォルダーにエクスポートし、<strong>Flax アドオンをインストール</strong> をクリックします。Flax にコンパイルさせてからリンクを開始し、開いている Flax シーンで Tools → Heron Brush: attach live map を選びます。生成されたルートは配置が保たれ、その他のオブジェクトには手が加えられません。シーンは自分で保存してください。Play モードでは更新が一時停止します。Tools → Heron Brush: stop live map で受信を一時停止します。</p>
+<h2 id="s12"><a class="anchor" href="#s12" aria-hidden="true" tabindex="-1">#</a>共同編集ライブセッション</h2>
+<p>共同作業 → ライブセッション で、ほかの Heron Brush ユーザーとのセッションをホストしたり、セッションに参加したりするためのウィンドウが開きます。これは複数の人でマップの編集を共有する機能で、エンジンとのライブリンクとは別のものです。</p>
+<h3 id="s12-1"><a class="anchor" href="#s12-1" aria-hidden="true" tabindex="-1">#</a>ホストと参加</h3>
+<p><strong>あなたの名前</strong> を入力します。ホストする場合は <strong>セッションをホスト</strong> を選び、<strong>セッションを開始</strong> をクリックして、<strong>接続情報をコピー</strong> でコピーした情報をゲストに送ります。参加する場合は <strong>セッションに参加</strong> を選び、情報を貼り付けて <strong>参加</strong> をクリックします。参加すると開いているマップがホストのマップに置き換わるので、先に作業を保存してください。</p>
+<p>標準ビルドはローカルネットワークで動作し、<strong>ローカルネットワークのポート</strong> でポートを設定します。インターネット経由のセッション（<strong>インターネット経由で接続</strong>）には、オプションのネットワーク機能を含むビルドが必要です。参加者には、3D ビュー内でお互いのカメラマーカーと名前が表示されます。</p>
+<p>ウィンドウを閉じてもセッションは続き、タイトルバーのインジケーターに状態が表示されます。<strong>セッションを停止</strong> または <strong>セッションから退出</strong> で終了します。2 人が同じオブジェクトを編集した場合は、ホスト側の順序で最終的な状態が決まり、取り消しも共有された編集として扱われます。できるだけ別々のエリアで作業し、こまめにチェックポイントを保存しましょう。</p>
+<h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D 表示とセカンドモニター</h2>
+<h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>表示モード</h3>
+<p>マップタブの <strong>表示</strong> セクションで、ビューに描画するものを切り替えます。ブラシ、ポイントエンティティ、エンティティモデル、エンティティのクラス名、グループの輪郭、パッチ、マテリアル、除外した面を表示、アニメーションをプレビュー、ワイヤーフレーム、辺、ブラシエンティティの輪郭 です。ワイヤーフレームは、対角線や面の裏側の辺も含めて三角形の辺をマテリアルなしで描画します。一時的なデバッグ用の表示で、エクスポートやレンダリングには影響しません。</p>
+<p>3D ビューのライティング、影、アンビエントオクルージョン、反射、ブルーム、スムージングは 環境設定 → レンダラー にあります。これらはプレビュー用の設定で、最終的な画像にはレンダーカメラ自身の設定が使われます。</p>
+<h3 id="s13-2"><a class="anchor" href="#s13-2" aria-hidden="true" tabindex="-1">#</a>3D ビューを別ウィンドウにする</h3>
+<p>表示 → 3D ビューを別ウィンドウで表示 で、3D ビューを独立したウィンドウに移し、別のモニターに置けます。カメラ、ドキュメント、ツールは共有され、メインウィンドウでは平面ビューがその分の領域を使います。このウィンドウのメニューには、マテリアル、ソリッド表示、ワイヤーフレーム、表示 サブメニュー（除外した面を表示、アニメーションをプレビュー、辺、グループの輪郭、ポイントエンティティ、エンティティモデル、ブラシエンティティの輪郭）、選択範囲にフォーカス、選択範囲（またはカメラ前方の点）を中心にカメラを回り込ませる 正面、側面、上面、3D ビューからカメラを配置、全画面（<span class="keys"><kbd>F11</kbd></span>）、画像をレンダリング、メインウィンドウに戻る があります。ウィンドウを閉じると、ビューは再びドッキングされます。</p>
+<h3 id="s13-3"><a class="anchor" href="#s13-3" aria-hidden="true" tabindex="-1">#</a>プロシージャルスカイ</h3>
+<p>プロシージャルスカイは 3D ビューで既定でオンになっており、環境設定 → レンダラー → ライト でオフにできます。レンダーカメラには独自の <strong>プロシージャルスカイ</strong> スイッチがあり、マップと一緒に保存されます。空、地平線、地面の色はエンバイロメントの設定から取得され、太陽はシーンのライティングに従います。空にはジオメトリがなく、エクスポートもされません。</p>
+<h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>レンダーカメラと PNG 画像</h2>
+<p>ファイル → 画像をレンダリング でレンダリングウィンドウが開きます。左側にカメラとその設定、右側にライブプレビューがあり、設定を変更すると再描画されます。カメラは <code>.map</code> 内のエディター専用の Render cameras レイヤーに保存され、このレイヤーはエンジンへのエクスポートから除外されます。</p>
+<h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>カメラの配置</h3>
+<p>3D ビューで構図を決めて <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>（または <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>）を押すか、<strong>3D ビューからカメラを配置</strong> をクリックします。カメラを選択していない場合は、保存されている最初のカメラが更新され、カメラがない場合は新しく作成されます。この操作は取り消し可能で、出力とライティングの設定は保たれます。<strong>マップ内のカメラを選択</strong>、<strong>マップからカメラを読み込む</strong>、<strong>3D ビューをカメラ位置へ移動</strong> は逆方向の操作です。<strong>3D ビューのカメラ枠</strong> は出力範囲の境界を表示し、<strong>3D ビューからカメラを操作</strong> をオンにすると、通常のナビゲーションで保存済みのカメラを動かせます。</p>
+<h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>設定</h3>
+<ul>
+<li><strong>カメラ位置</strong>：X、Y、Z、ヨー、ピッチ。</li>
+<li><strong>出力とレンズ</strong>：<strong>プリセット</strong>（フル HD、正方形、縦向き）、幅、高さ、サンプル数、<strong>垂直視野角</strong>、<strong>遠方クリップ</strong>。</li>
+<li><strong>ライティング</strong>：昼光、夕日、曇天 から選ぶか、露出、太陽・空・地平線・地面の色、<strong>プロシージャルスカイ</strong>、<strong>影</strong>、<strong>アンビエントオクルージョン</strong>、<strong>ブルーム</strong> を個別に設定します。</li>
+<li><strong>被写界深度</strong>：<strong>被写界深度を有効化</strong>、合焦距離、ピントの合う範囲、ぼかし半径。<strong>選択範囲にフォーカス</strong> は、カメラの前にある選択オブジェクトの中心にピントを合わせます。</li>
+</ul>
+<p><strong>カメラと設定を保存</strong> でフォームの内容をマップに保存します。ディスクに残すには、マップも保存してください。</p>
+<h3 id="s14-3"><a class="anchor" href="#s14-3" aria-hidden="true" tabindex="-1">#</a>レンダリング</h3>
+<p><strong>PNG をレンダリング</strong> は保存先を尋ねてから、プログレッシブレンダリングを開始します。プレビュー内でサンプルごとに画像が仕上がっていきます。サンプル数を増やすほど画質は上がりますが、時間がかかります。<strong>レンダリングをキャンセル</strong> は、ファイルを書き出さずに停止します。レンダラーはパストレーシングではなく、エディターのラスタライズパイプラインを使います。PNG の背景は不透明で、アニメーションはレンダリングされません。非常に大きな画像では、エディターが一時的に止まることがあります。</p>
+<h2 id="s15"><a class="anchor" href="#s15" aria-hidden="true" tabindex="-1">#</a>環境設定</h2>
+<p>ファイル → 環境設定（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>）で設定を開きます。変更はすぐに反映され、保存されます。サイドバーには 概要、ゲーム、表示、色設定、マウス、キーボード、レンダラー が並びます。上部の検索フィールドでは、どのページの設定でも名前や説明から探せます。変更した設定にはそれぞれ既定値に戻すボタンがあり、<strong>既定値に戻す</strong> で現在のページ全体をリセットします。</p>
+<h3 id="s15-1"><a class="anchor" href="#s15-1" aria-hidden="true" tabindex="-1">#</a>各ページ</h3>
+<ul>
+<li><strong>概要</strong>：よく使う設定をまとめたページ。外観（パネルの不透明度 (%)、配色、レイアウト、言語）、編集設定、表示、マニュアル。</li>
+<li><strong>ゲーム</strong>：ゲーム、そのファイルの場所、共同作業で使う名前。ゲームは、どのマップ形式で書き出すか、どのエンティティ定義を読み込むか、マテリアルがどこにあるかを決めます。ゲーム設定は、設定フォルダー内の <code>games</code> フォルダー（Linux と macOS では <code>~/.config/heron-brush/games</code>、Windows では <code>%LOCALAPPDATA%\heron-brush\games</code>）と、アプリケーションと同じ場所にある <code>games</code> フォルダーから読み込まれます。パッケージには同梱の設定がこちらに入っています。</li>
+<li><strong>表示</strong>：レイアウト、配色、言語、ワールド軸、グリッドの不透明度、リークチェックのセルサイズ、マッピングのロック。</li>
+<li><strong>色設定</strong>：ビュー、ジオメトリ、ハンドルの色。</li>
+<li><strong>マウス</strong>：見回し・パン・移動の速度と反転、飛行速度、視野角、2D ビューを連動、ハンドルのサイズ。</li>
+<li><strong>キーボード</strong>：キー割り当て（Heron Brush または Blender）。</li>
+<li><strong>レンダラー</strong>：リアルなシェーディング、選択範囲の輪郭、ライト、影、アンビエントオクルージョン、反射、ブルーム、サーフェス。</li>
+</ul>
+<h3 id="s15-2"><a class="anchor" href="#s15-2" aria-hidden="true" tabindex="-1">#</a>言語</h3>
+<p><strong>言語</strong> では、デスクトップの設定に従う と、翻訳済みのすべての言語を選べます。インターフェースはすぐに切り替わります。マニュアルは、翻訳がある場合はインターフェースの言語で、ない場合は英語で開きます。</p>
+<h2 id="s16"><a class="anchor" href="#s16" aria-hidden="true" tabindex="-1">#</a>プラグインと MCP</h2>
+<h3 id="s16-1"><a class="anchor" href="#s16-1" aria-hidden="true" tabindex="-1">#</a>プラグイン</h3>
+<p>プラグインは Rhai スクリプトでエディターを拡張します。ファイル → プラグイン でプラグインウィンドウが開きます。<strong>プラグインをインストール</strong> は <code>.rhai</code> ファイルを、<strong>プラグインフォルダーをインストール</strong> は <code>main.rhai</code> を含むフォルダーをインストールします。任意の <code>plugin.toml</code> メタデータで、プラグインとその設定を記述します。プラグインは <strong>有効なプラグイン</strong> と <strong>無効なプラグイン</strong> に分けて表示され、<strong>プラグインを有効化</strong> で個別にオン／オフを切り替えます。この設定は再起動後も保持されます。<strong>プラグインを再読み込み</strong> は、スクリプトをディスクから読み込み直し、パネルの値をリセットします。</p>
+<p>有効なプラグインは、マップタブの <strong>プラグイン</strong> セクションにも、設定、アクションボタン（<strong>実行</strong>）、出力とともに表示されます。アクションは選択範囲に、何も選択していないときはすべてに作用し、1 回の取り消し単位になります。同梱の Selection inspector は、個数と、上へ移動・下へ移動のアクションを表示します。</p>
+<h3 id="s16-2"><a class="anchor" href="#s16-2" aria-hidden="true" tabindex="-1">#</a>MCP</h3>
+<p>共同作業 → エージェント用サーバーを起動 (MCP) を使うと、AI エージェントやほかのツールが、Model Context Protocol を通じて開いているエディターを操作できます。ウィンドウにはローカルアドレスと <strong>コピー</strong> が表示され、<strong>サーバーを停止</strong> で終了します。実行中は、タイトルバーに <strong>MCP 実行中</strong> と表示されます。コマンドラインオプション <code>--mcp</code> を使うと、同じインターフェースをウィンドウなしで実行できます。クライアントは、ジオメトリ、アセット、プロパティ、アニメーション、エクスポート、セッション向けのツールを検出できます。MCP とエディターのプラグインは別々のインターフェースです。</p>
+<h2 id="s17"><a class="anchor" href="#s17" aria-hidden="true" tabindex="-1">#</a>コマンドライン</h2>
+<p>プログラム名は <code>heron-brush</code> です。オプションなしで起動すると、ようこそ画面が開きます。</p>
+<h3 id="s17-1"><a class="anchor" href="#s17-1" aria-hidden="true" tabindex="-1">#</a>ファイルを開く</h3>
+<p><code>heron-brush map.map [entities.fgd] [materials/]</code> はマップを開きます。エンティティ定義とマテリアルフォルダーも指定できます。空の引数を渡すと、その項目を省略できます。たとえば <code>heron-brush map.map "" materials/</code> です。エディターがすでに起動している場合は、そこでマップが開きます。代わりに別のウィンドウで開くには <code>--new-instance</code> を使います。</p>
+<h3 id="s17-2"><a class="anchor" href="#s17-2" aria-hidden="true" tabindex="-1">#</a>コマンド</h3>
+<ul>
+<li><code>--help</code> または <code>-h</code>：使い方を表示。<code>--version</code> または <code>-V</code>：バージョンを表示。</li>
+<li><code>--mcp</code>：ウィンドウなしで、標準入出力経由で MCP を提供します。</li>
+<li><code>--merge-map &lt;base&gt; &lt;ours&gt; &lt;theirs&gt; [&lt;output&gt;]</code>：git 用の <code>.map</code> ファイルの 3 方向マージ。出力先の既定は ours です。競合は表示され、終了コードは 0 以外になります。</li>
+<li><code>--obj-to-map &lt;in.obj&gt; &lt;out.map&gt; [size] [thickness] [snap] [material]</code>：メッシュをブラシに変換します。size は最も長い辺のマップ単位での長さ（既定は 256）、snap は角を合わせるグリッド（0 でなし）です。<code>solid</code> または <code>layered</code> を指定すると、細いくさび形の代わりに、グリッド状の箱または凸型の板を作ります。</li>
+<li><code>--render-preview &lt;in.map&gt; &lt;out.png&gt; [size]</code>：マップの PNG サムネイルを書き出します。既定は 512 ピクセル。</li>
+<li><code>--run-script &lt;script.rhai&gt; &lt;in.map&gt; [out.map] [key=value ...]</code>：すべてを選択した状態でマップにプラグインスクリプトを実行し、結果を書き出します（既定では入力ファイルに上書き）。<code>key=value</code> でプラグインの設定に値を渡します。</li>
+</ul>
+<h2 id="s18"><a class="anchor" href="#s18" aria-hidden="true" tabindex="-1">#</a>トラブルシューティング</h2>
+<h3 id="s18-1"><a class="anchor" href="#s18-1" aria-hidden="true" tabindex="-1">#</a>表示がおかしいとき</h3>
+<ul>
+<li>マテリアルが見つからない：マテリアルのフォルダーやパッケージと、エクスポートのプロジェクトのパスを確認します。</li>
+<li>モデルのサイズがおかしい：64 単位のプレイヤーマーカーやエクスポートスケールと比べます。</li>
+<li>グラデーションの向きがおかしい：グラデーションの角度と面の向きを確認します。</li>
+<li>エンジンのシーンが空：エクスポートの警告を読み、出力先のインポート手順に従います。</li>
+<li>ライブリンクが待機したまま：アドオンがインストールされていること、シーンがアタッチされていること、更新が一時停止していないことを確認します。</li>
+<li>線だけで面が表示されない：マップタブの表示セクションでワイヤーフレームをオフにするか、3D ウィンドウのメニューでマテリアルまたはソリッド表示を選びます。</li>
+<li>ビューからオブジェクトが消えた：<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span> で非表示のオブジェクトを表示し、レイヤーと 表示 セクションのフィルターを確認します。</li>
+<li>キーが効かない：まずビューをクリックしてキーボード入力を受け取れるようにし、環境設定 → キーボード でキー割り当てを確認します。</li>
+<li>編集に失敗した：元に戻してジオメトリを単純にし、マップタブの <strong>問題</strong> セクションにある <strong>マップを検証</strong> と <strong>リークを検査</strong> を使います。</li>
+<li>ファイルマネージャーからマップが開けない：すでに起動しているエディターに渡された可能性があります。そのウィンドウを探してください。</li>
+</ul>
+<h3 id="s18-2"><a class="anchor" href="#s18-2" aria-hidden="true" tabindex="-1">#</a>設定とバックアップ</h3>
+<p>環境設定、最近使ったマップ、星、エクスポート設定、プラグインは設定フォルダーに保存されます。Linux と macOS では <code>~/.config/heron-brush</code>、Windows では <code>%LOCALAPPDATA%\heron-brush</code> です。自動保存のバックアップは、各マップと同じ場所の <code>autosave</code> フォルダーにあります。</p>
+<h3 id="s18-3"><a class="anchor" href="#s18-3" aria-hidden="true" tabindex="-1">#</a>バグの報告</h3>
+<p>エディターのバージョン（ヘルプ → このアプリについて）、オペレーティングシステム、問題を再現できる小さなマップ、正確な手順を添えてください。出力ペイン（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>）に原因が表示されていることがよくあります。いろいろ試す前に、コピーを保存しておきましょう。</p>
+<h3 id="s18-4"><a class="anchor" href="#s18-4" aria-hidden="true" tabindex="-1">#</a>このマニュアルの使い方</h3>
+<p>左側の目次から章を選びます。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> で目次を表示して検索フィールドに移動します。<span class="keys"><kbd>Esc</kbd></span> で検索をクリアし、検索が空のときはマニュアルを閉じます。<strong>目次</strong> は章リストの表示／非表示を切り替え、<strong>文字サイズ</strong> はフォントサイズを変更します。どちらの設定も記憶されます。上部の言語リストで、利用できる翻訳を切り替えられます。</p>
+  </article>
+</div>
+<script src="../../manual.js"></script>
+</body>
+</html>

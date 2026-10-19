@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="ru" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heron Brush manual · Русский</title>
+<meta name="description" content="The Heron Brush manual: modelling, materials, entities, animation, export and live links.">
+<link rel="icon" type="image/svg+xml" href="../../images/logo.svg">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../manual.css">
+<link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
+</head>
+<body class="manual-page">
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../../#"><img src="../../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar-top" d="M4 7h16"/><path class="bar-mid" d="M4 12h16"/><path class="bar-bot" d="M4 17h16"/></svg>
+    </button>
+    <nav class="menu" id="site-menu" aria-label="Main">
+      <div class="nav-links">
+        <a href="../../#modelling">Modelling</a>
+        <a href="../../#materials">Materials</a>
+        <a href="../../#animation">Animation</a>
+        <a href="../../#export">Export</a>
+        <a href="#" aria-current="page">Manual</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <mask id="moon-mask"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="moon-cut" cx="17" cy="7" r="6.5" fill="#000"/></mask>
+            <circle class="sun-core" cx="12" cy="12" r="8" fill="currentColor" mask="url(#moon-mask)"/>
+            <g class="rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>
+            </g>
+          </svg>
+          <span class="theme-label">Dark theme</span>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/MojzisekJan/HeronBrush">GitHub</a>
+        <a class="btn btn-primary" href="../../editor/">Try in the browser</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<script>
+  // The menu folds behind the button on narrow windows; without this script the links stay in view.
+  (function () {
+    var root = document.documentElement, header = document.querySelector('.nav');
+    var toggle = header.querySelector('.menu-toggle'), menu = document.getElementById('site-menu');
+    root.classList.add('js');
+    function set(open) {
+      header.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () { set(!header.classList.contains('open')); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && header.classList.contains('open')) { set(false); toggle.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!header.contains(e.target)) set(false); });
+    matchMedia('(min-width: 961px)').addEventListener('change', function () { set(false); });
+
+    // The theme toggle: remembers the choice; without one the page follows the system.
+    var themeButton = header.querySelector('.theme-toggle'), label = themeButton.querySelector('.theme-label');
+    function show(theme) {
+      root.dataset.theme = theme;
+      themeButton.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = theme === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+    show(root.dataset.theme);
+    themeButton.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      show(next);
+      root.classList.add('theme-switched');
+      try { localStorage.setItem('heron-theme', next); } catch (e) {}
+    });
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+      var stored = null;
+      try { stored = localStorage.getItem('heron-theme'); } catch (err) {}
+      if (!stored) show(e.matches ? 'light' : 'dark');
+    });
+  })();
+</script>
+<div class="manual wrap">
+  <aside class="toc" id="toc" aria-label="Contents">
+    <div class="toc-tools">
+      <label class="sr-only" for="lang">Language</label>
+      <select id="lang" class="lang-select"><option value="../" lang="en">English</option><option value="../cs/" lang="cs">Čeština</option><option value="../de/" lang="de">Deutsch</option><option value="../zh/" lang="zh-Hans">中文</option><option value="../es/" lang="es">Español</option><option value="../uk/" lang="uk">Українська</option><option value="../pl/" lang="pl">Polski</option><option value="../it/" lang="it">Italiano</option><option value="../fr/" lang="fr">Français</option><option value="../pt-BR/" lang="pt-BR">Português (Brasil)</option><option value="../ja/" lang="ja">日本語</option><option value="../ko/" lang="ko">한국어</option><option value="../tr/" lang="tr">Türkçe</option><option value="../id/" lang="id">Bahasa Indonesia</option><option value="../ru/" selected lang="ru">Русский</option><option value="../nl/" lang="nl">Nederlands</option><option value="../sv/" lang="sv">Svenska</option><option value="../da/" lang="da">Dansk</option><option value="../nb/" lang="nb">Norsk bokmål</option><option value="../fi/" lang="fi">Suomi</option><option value="../hu/" lang="hu">Magyar</option><option value="../ro/" lang="ro">Română</option><option value="../sk/" lang="sk">Slovenčina</option><option value="../el/" lang="el">Ελληνικά</option><option value="../vi/" lang="vi">Tiếng Việt</option><option value="../zh-TW/" lang="zh-Hant">繁體中文</option><option value="../bg/" lang="bg">Български</option><option value="../hr/" lang="hr">Hrvatski</option><option value="../sl/" lang="sl">Slovenščina</option><option value="../lt/" lang="lt">Lietuvių</option></select>
+      <div class="search">
+        <input id="search" type="search" placeholder="Поиск в документации" autocomplete="off" aria-label="Поиск в документации">
+        <ol id="results" class="results" hidden data-nothing="Нет подходящих глав"></ol>
+      </div>
+    </div>
+    <nav class="toc-list"><ul><li class="chapter"><a href="#s1">Начало работы</a><ul><li><a href="#s1-1">Экран приветствия</a></li><li><a href="#s1-2">Ваша первая карта</a></li><li><a href="#s1-3">Файлы и сохранение</a></li></ul></li><li class="chapter"><a href="#s2">Интерфейс</a><ul><li><a href="#s2-1">Строка заголовка и меню</a></li><li><a href="#s2-2">Панель инструментов</a></li><li><a href="#s2-3">Виды карты</a></li><li><a href="#s2-4">Инспектор</a></li><li><a href="#s2-5">Строка состояния и панель вывода</a></li><li><a href="#s2-6">Диалоги и внешний вид</a></li></ul></li><li class="chapter"><a href="#s3">Навигация и клавиатура</a><ul><li><a href="#s3-1">Перемещение в 3D-виде</a></li><li><a href="#s3-2">Перемещение в 2D-видах</a></li><li><a href="#s3-3">Сетка и привязка</a></li><li><a href="#s3-4">Основные сочетания клавиш</a></li><li><a href="#s3-5">Сочетания для выделения</a></li><li><a href="#s3-6">Сочетания для преобразований</a></li><li><a href="#s3-7">Раскладка Blender</a></li></ul></li><li class="chapter"><a href="#s4">Браши и инструменты моделирования</a><ul><li><a href="#s4-1">Рисование брашей</a></li><li><a href="#s4-2">Выделение</a></li><li><a href="#s4-3">Инструменты формы</a></li><li><a href="#s4-4">Комбинирование брашей</a></li><li><a href="#s4-5">Протягивание, скругление, патч и фаска</a></li><li><a href="#s4-6">3D-текст</a></li></ul></li><li class="chapter"><a href="#s5">Материалы и UV</a><ul><li><a href="#s5-1">Загрузка и назначение материалов</a></li><li><a href="#s5-2">Редактор UV</a></li><li><a href="#s5-3">Клавиши UV</a></li><li><a href="#s5-4">Материалы-инструменты</a></li><li><a href="#s5-5">Исключение граней из экспорта</a></li></ul></li><li class="chapter"><a href="#s6">Цвет и градиенты</a><ul><li><a href="#s6-1">Палитра и цвет смешивания</a></li><li><a href="#s6-2">Выбор цвета</a></li><li><a href="#s6-3">Градиенты</a></li><li><a href="#s6-4">Материал поверхности</a></li></ul></li><li class="chapter"><a href="#s7">Ассеты, слои и группы</a><ul><li><a href="#s7-1">Библиотека ассетов</a></li><li><a href="#s7-2">Слои</a></li><li><a href="#s7-3">Группы и связанные группы</a></li><li><a href="#s7-4">Общий масштаб</a></li></ul></li><li class="chapter"><a href="#s8">Сущности и игровой процесс</a><ul><li><a href="#s8-1">Размещение сущностей</a></li><li><a href="#s8-2">Свойства</a></li><li><a href="#s8-3">Что может экспорт</a></li></ul></li><li class="chapter"><a href="#s9">Анимация</a><ul><li><a href="#s9-1">Предпросмотр анимаций</a></li><li><a href="#s9-2">Редактор ключевых кадров</a></li><li><a href="#s9-3">Клипы</a></li><li><a href="#s9-4">Транспорт и воспроизведение</a></li><li><a href="#s9-5">Временная шкала</a></li><li><a href="#s9-6">Клавиши в редакторе</a></li><li><a href="#s9-7">Позирование в видах</a></li><li><a href="#s9-8">Связь кнопок с анимациями</a></li><li><a href="#s9-9">Анимация в экспорте</a></li><li><a href="#s9-10">Пример Motion lab</a></li></ul></li><li class="chapter"><a href="#s10">Экспорт в движок</a><ul><li><a href="#s10-1">Общие параметры</a></li><li><a href="#s10-2">Заметки о целях</a></li></ul></li><li class="chapter"><a href="#s11">Живая связь: Godot, Unity, Defold и Flax</a><ul><li><a href="#s11-1">Godot</a></li><li><a href="#s11-2">Unity</a></li><li><a href="#s11-3">Defold</a></li><li><a href="#s11-4">Flax</a></li></ul></li><li class="chapter"><a href="#s12">Совместные сеансы</a><ul><li><a href="#s12-1">Создание сеанса и подключение</a></li></ul></li><li class="chapter"><a href="#s13">3D-отображение и второй монитор</a><ul><li><a href="#s13-1">Режимы отображения</a></li><li><a href="#s13-2">Отдельное 3D-окно</a></li><li><a href="#s13-3">Процедурное небо</a></li></ul></li><li class="chapter"><a href="#s14">Камеры рендера и изображения PNG</a><ul><li><a href="#s14-1">Размещение камеры</a></li><li><a href="#s14-2">Настройки</a></li><li><a href="#s14-3">Рендер</a></li></ul></li><li class="chapter"><a href="#s15">Настройки</a><ul><li><a href="#s15-1">Страницы</a></li><li><a href="#s15-2">Язык</a></li></ul></li><li class="chapter"><a href="#s16">Плагины и MCP</a><ul><li><a href="#s16-1">Плагины</a></li><li><a href="#s16-2">MCP</a></li></ul></li><li class="chapter"><a href="#s17">Командная строка</a><ul><li><a href="#s17-1">Открытие файлов</a></li><li><a href="#s17-2">Команды</a></li></ul></li><li class="chapter"><a href="#s18">Устранение неполадок</a><ul><li><a href="#s18-1">Если что-то выглядит неправильно</a></li><li><a href="#s18-2">Настройки и резервные копии</a></li><li><a href="#s18-3">Сообщение об ошибке</a></li><li><a href="#s18-4">Как пользоваться руководством</a></li></ul></li></ul></nav>
+  </aside>
+  <button class="toc-toggle" type="button" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+    <span class="toc-current">Начало работы</span>
+  </button>
+  <article class="manual-body">
+<h2 id="s1"><a class="anchor" href="#s1" aria-hidden="true" tabindex="-1">#</a>Начало работы</h2>
+<p>Heron Brush — редактор уровней на основе брашей. Вы строите уровни из выпуклых брашей, раскрашиваете и текстурируете их грани, расставляете сущности, анимируете двери и платформы и экспортируете результат в игровой движок. В редакторе также есть встроенные ассеты, параметрические фигуры, живая связь с редакторами движков, совместные сеансы редактирования и рендер статичных изображений. Это руководство поставляется вместе с программой и работает без интернета.</p>
+<p>В macOS везде, где в руководстве написано <span class="keys"><kbd>Ctrl</kbd></span>, работает <span class="keys"><kbd>Cmd</kbd></span>, а Option — это Alt.</p>
+<h3 id="s1-1"><a class="anchor" href="#s1-1" aria-hidden="true" tabindex="-1">#</a>Экран приветствия</h3>
+<p>Если Heron Brush запускается без карты, открывается экран приветствия. Слева находятся <strong>Продолжить</strong> (последняя открытая карта), <strong>Новая карта</strong> и <strong>Обзор</strong> для открытия существующего файла <code>.map</code>, а также <strong>Игра</strong>, <strong>Руководство</strong> и <strong>Настройки</strong>. Справа — список недавних карт с миниатюрами, а под ним <strong>Примеры</strong>. Звёздочка (<strong>Закрепить сверху</strong>) закрепляет карту в начале списка; корзина (<strong>Переместить в корзину</strong>) перемещает файл в системную корзину, откуда его можно восстановить. Клавиши со стрелками перемещают фокус по экрану, а Enter открывает выбранный элемент. Файл → Добро пожаловать в любой момент возвращает этот экран.</p>
+<h3 id="s1-2"><a class="anchor" href="#s1-2" aria-hidden="true" tabindex="-1">#</a>Ваша первая карта</h3>
+<ol>
+<li>Выберите <strong>Новая карта</strong> на экране приветствия или Файл → Новая карта (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>).</li>
+<li>Выберите инструмент Браш (<span class="keys"><kbd>B</kbd></span>) на панели инструментов и потяните мышью в 2D-виде, чтобы нарисовать выбранную фигуру. Проверьте её глубину в другом 2D-виде.</li>
+<li>Выделите браш и переместите его перетаскиванием. На вкладке <strong>Грань</strong> назначьте ему материал или цвет.</li>
+<li>Сохраните исходную карту с помощью <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>. Когда карта будет готова для игры, откройте Файл → Экспорт и запишите сцену для своего движка.</li>
+</ol>
+<h3 id="s1-3"><a class="anchor" href="#s1-3" aria-hidden="true" tabindex="-1">#</a>Файлы и сохранение</h3>
+<p>Файл <code>.map</code> — это ваш редактируемый исходник. Сохраняйте его регулярно: экспорт, живая связь и рендер никогда не сохраняют карту за вас. Файл → Сохранить как (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>) добавляет расширение <code>.map</code>, если вы его не указали. Файл → Вернуться к сохранённой карте отбрасывает несохранённые изменения и заново загружает файл. Если вы закрываете окно или открываете другую карту при несохранённых изменениях, Heron Brush спросит, нужно ли <strong>Сохранить</strong>, <strong>Отбросить</strong> или <strong>Отмена</strong>.</p>
+<p>Пока у сохранённой карты есть несохранённые изменения, каждые десять минут в папку <code>autosave</code> рядом с картой записываются пронумерованные резервные копии. Хранятся 50 самых новых копий.</p>
+<p>Если открыть карту, когда Heron Brush уже запущен, она передаётся работающему окну, и оно выходит на передний план. Если нужно отдельное окно, используйте в командной строке <code>--new-instance</code> (см. Командная строка).</p>
+<h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>Интерфейс</h2>
+<p>Главное окно состоит из строки заголовка с меню, панели инструментов под ней, видов карты, инспектора справа и строки состояния внизу.</p>
+<h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>Строка заголовка и меню</h3>
+<p>В строке заголовка находятся логотип, меню, имя карты посередине и кнопки окна. В macOS привычные красная, жёлтая и зелёная кнопки расположены слева. Перетащите строку заголовка, чтобы переместить окно, и дважды щёлкните по ней, чтобы развернуть его. Пока что-то работает в фоне, ближе к концу строки появляется индикатор: живая связь с движком, совместный сеанс или <strong>MCP активен</strong>. Щёлкните по индикатору, чтобы остановить живую связь или открыть её окно.</p>
+<ul>
+<li><strong>Файл</strong>: Добро пожаловать, Новая карта (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>), Открыть карту (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span>), Сохранить (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>), Сохранить как (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>), Вернуться к сохранённой карте, Экспорт, Рендер изображения, Плагины и Настройки (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>).</li>
+<li><strong>Правка</strong>: Отменить (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Повторить (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Вырезать, Копировать, Вставить, Дублировать (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>), Удалить, Выделить всё (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>), Повторить последние команды (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>) и Забыть повторяемые команды.</li>
+<li><strong>Вид</strong>: 3D-вид в отдельном окне, Перейти к, Привязка к сетке (<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>), Показать сетку (<span class="keys"><kbd>0</kbd></span>), Предпросмотр анимаций и Показать пропущенные грани.</li>
+<li><strong>Геометрия</strong>: Вставить 3D-текст, Соединить угол, Преобразовать грани в патчи, Вынести выделенное из его сущности и Синхронизировать связанные группы.</li>
+<li><strong>Анимация</strong>: Анимация по ключевым кадрам, Предпросмотр анимаций и Разместить камеру по 3D-виду (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>).</li>
+<li><strong>Карта</strong>: загрузка, перезагрузка и выгрузка файла точек; загрузка, перезагрузка и выгрузка файла порталов. Они показывают следы утечек и порталы, записанные компиляторами карт.</li>
+<li><strong>Совместная работа</strong>: Совместный сеанс и Открыть доступ агенту (MCP).</li>
+<li><strong>Справка</strong>: Руководство и О программе.</li>
+</ul>
+<h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>Панель инструментов</h3>
+<p>На панели инструментов собраны все инструменты. Первая группа используется постоянно: Выделение, Браш, Разрез, Вершина, Ребро, Грань, Поворот и Масштаб. Во второй группе — Скос, Сборка, Протягивание, Контрольная точка, Скругление и Окраска. Наведите указатель на кнопку, чтобы увидеть её название и сочетание клавиш. Повторный щелчок по активному инструменту возвращает к выделению.</p>
+<p>После инструментов идут <strong>Отразить по горизонтали</strong> и <strong>Отразить по вертикали</strong>, затем два переключателя: <strong>Блокировка</strong> сохраняет наложение материала при перемещении браша, а <strong>UV</strong> — при его повороте (<span class="keys"><kbd>U</kbd></span> переключает его). Дальше следуют собственные настройки активного инструмента: инструмент Браш показывает фигуру и её параметры, а инструмент Скругление — радиус, число граней и углы с кнопкой <strong>Применить</strong>. На правом краю находятся название инструмента, размер сетки (<strong>Сетка 16</strong> и т. п.; щёлкните, чтобы выбрать другой) и меню <strong>Настройки сетки</strong> с пунктами Привязка к сетке, Показать сетку, Предпросмотр анимаций, Показать пропущенные грани и Анимация по ключевым кадрам.</p>
+<h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>Виды карты</h3>
+<p>Видов четыре: 3D-вид и три плоских вида — Сверху (XY), Спереди (XZ) и Сбоку (YZ). Настройки → Вид → Компоновка позволяет выбрать Одна панель, Две панели, Три панели или Четыре панели. Перетаскивайте разделители, чтобы менять размер панелей. Щелчок в виде передаёт ему клавиатуру. <span class="keys"><kbd>Space</kbd></span> переключает панель, которая показывает по одному виду, на следующий вид, а <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> разворачивает вид, у которого клавиатура, и снова восстанавливает компоновку.</p>
+<p>Щелчок правой кнопкой без перетаскивания в любом виде открывает контекстное меню для выделения и того, что находится под указателем. В нём есть группировка, слои, связанные группы, создание сущностей, перенос брашей в сущность и из неё, копирование имени материала и его показ в браузере материалов.</p>
+<h3 id="s2-4"><a class="anchor" href="#s2-4" aria-hidden="true" tabindex="-1">#</a>Инспектор</h3>
+<p>У инспектора справа четыре вкладки. Перетащите его левый край, чтобы изменить ширину.</p>
+<ul>
+<li><strong>Карта</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>1</kbd></span>): Слои, Группы, Плагины, Проблемы, фильтры вида и Теги.</li>
+<li><strong>Сущность</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>2</kbd></span>): браузер сущностей, определения сущностей, свойства выделенной сущности и, для кнопок и триггеров, Триггер анимации.</li>
+<li><strong>Грань</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>3</kbd></span>): UV, Материалы, Цвет, Протягивание, Скругление, Патч и Вставка и фаска. Каждый раздел можно свернуть.</li>
+<li><strong>Ассеты</strong>: библиотека повторно используемых моделей из брашей.</li>
+</ul>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>5</kbd></span> скрывает или показывает инспектор, а <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>T</kbd></span> — панель инструментов, что даёт видам больше места.</p>
+<h3 id="s2-5"><a class="anchor" href="#s2-5" aria-hidden="true" tabindex="-1">#</a>Строка состояния и панель вывода</h3>
+<p>Строка состояния внизу показывает последнее сообщение редактора. Ошибки выделяются красным. Щёлкните по строке или нажмите <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>, чтобы открыть панель вывода с полной историей сообщений. Большинство команд сообщают здесь, что они сделали, например сколько брашей было разрезано.</p>
+<h3 id="s2-6"><a class="anchor" href="#s2-6" aria-hidden="true" tabindex="-1">#</a>Диалоги и внешний вид</h3>
+<p>Диалоги, такие как Настройки, Экспорт и Рендер изображения, открываются в отдельных окнах. Настройки → Вид → Цветовая схема позволяет выбрать Как в системе, Светлая или Тёмная. <strong>Непрозрачность панелей (%)</strong> на странице Обзор делает панели полупрозрачными поверх видов. Окно само рисует свои кнопки в стиле вашей системы: нативно в macOS, в стиле Windows 11 в Windows и в стиле GNOME в Linux.</p>
+<h2 id="s3"><a class="anchor" href="#s3" aria-hidden="true" tabindex="-1">#</a>Навигация и клавиатура</h2>
+<h3 id="s3-1"><a class="anchor" href="#s3-1" aria-hidden="true" tabindex="-1">#</a>Перемещение в 3D-виде</h3>
+<p>Удерживайте правую кнопку мыши и перетаскивайте, чтобы осматриваться. Перетаскивание средней кнопкой сдвигает вид. Колесо перемещает вперёд и назад. <span class="keys"><kbd>W</kbd></span>, <span class="keys"><kbd>A</kbd></span>, <span class="keys"><kbd>S</kbd></span> и <span class="keys"><kbd>D</kbd></span> — полёт вперёд, влево, назад и вправо, <span class="keys"><kbd>Q</kbd></span> — подъём, <span class="keys"><kbd>X</kbd></span> — спуск; удерживайте <span class="keys"><kbd>Shift</kbd></span> для более крупных шагов. Если в Настройки → Мышь включено <strong>Alt + перетаскивание средней кнопкой перемещает камеру</strong>, Alt со средней кнопкой двигает камеру вдоль направления взгляда. Скорости, инверсии и угол обзора настраиваются в Настройки → Мышь.</p>
+<h3 id="s3-2"><a class="anchor" href="#s3-2" aria-hidden="true" tabindex="-1">#</a>Перемещение в 2D-видах</h3>
+<p>Перетаскивание средней кнопкой сдвигает вид, а колесо масштабирует вокруг указателя. Сдвиг и масштабирование одного плоского вида сохраняют выравнивание остальных; это управляется параметром <strong>Связать 2D-виды</strong> в Настройки → Мышь. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span> сбрасывает масштаб, а <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>U</kbd></span> возвращает плоские виды к началу координат.</p>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>U</kbd></span> показывает выделение целиком во всех видах. Вид → Перейти к (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>M</kbd></span>) перемещает камеру к введённым координатам, выделяет то, что находится на строке файла карты, или сдвигает выделение на введённую величину.</p>
+<h3 id="s3-3"><a class="anchor" href="#s3-3" aria-hidden="true" tabindex="-1">#</a>Сетка и привязка</h3>
+<p><span class="keys"><kbd>+</kbd></span> и <span class="keys"><kbd>-</kbd></span> меняют размер сетки, а цифровые клавиши от <span class="keys"><kbd>1</kbd></span> до <span class="keys"><kbd>9</kbd></span> выбирают размер напрямую, от 1 до 256 единиц. <span class="keys"><kbd>0</kbd></span> или <span class="keys"><kbd>#</kbd></span> показывает или скрывает сетку, а <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> включает или выключает привязку. <span class="keys"><kbd>S</kbd></span> привязывает вершины выделенных брашей к текущей сетке, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> — к целым единицам, а <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> — к сетке.</p>
+<h3 id="s3-4"><a class="anchor" href="#s3-4" aria-hidden="true" tabindex="-1">#</a>Основные сочетания клавиш</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>: сохранить карту. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>: сохранить как.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>: отменить. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> или <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>: повторить.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>: копировать, вырезать и вставить. Вставка помещает объекты под указатель; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></span> сохраняет их исходные координаты. Если выделены грани, копирование берёт их материал и настройки UV.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>: дублировать. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>: связанный дубликат группы.</li>
+<li><span class="keys"><kbd>Delete</kbd></span> или <span class="keys"><kbd>Backspace</kbd></span>: удалить выделенное.</li>
+<li><span class="keys"><kbd>Esc</kbd></span>: отменить текущее перетаскивание, сделать шаг назад в активном инструменте, вернуться к выделению и, наконец, снять выделение. <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Esc</kbd></span> сразу возвращает к выделению.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>: повторить последние повторяемые команды. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span>: забыть их.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> или <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>: поставить камеру рендера в положение 3D-вида.</li>
+<li><span class="keys"><kbd>F5</kbd></span>: перезагрузить материалы. <span class="keys"><kbd>F6</kbd></span>: перезагрузить определения сущностей.</li>
+</ul>
+<h3 id="s3-5"><a class="anchor" href="#s3-5" aria-hidden="true" tabindex="-1">#</a>Сочетания для выделения</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>: выделить всё, а при активном инструменте вершин, рёбер или граней — все маркеры. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd></span>: снять выделение. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span>: инвертировать выделение.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B</kbd></span>: выделить остальные объекты той же сущности или группы.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>T</kbd></span>: выделить всё, чего касаются выделенные браши. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd></span>: выделить всё внутри них. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>E</kbd></span>: выделить всё в их столбце вдоль оси вида. Выделяющие браши при этом расходуются.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>I</kbd></span>: изолировать выделенное. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>I</kbd></span>: скрыть его. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span>: снова показать всё.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span>: сгруппировать. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span>: разгруппировать.</li>
+</ul>
+<h3 id="s3-6"><a class="anchor" href="#s3-6" aria-hidden="true" tabindex="-1">#</a>Сочетания для преобразований</h3>
+<ul>
+<li>Клавиши со стрелками и <span class="keys"><kbd>Page Up</kbd></span> / <span class="keys"><kbd>Page Down</kbd></span> сдвигают выделение на один шаг сетки в указанном направлении в активном виде. С <span class="keys"><kbd>Ctrl</kbd></span> они дублируют при перемещении, а с <span class="keys"><kbd>Alt</kbd></span> — поворачивают.</li>
+<li><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Y</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span>: повернуть на четверть оборота вокруг этой оси; добавьте <span class="keys"><kbd>Shift</kbd></span> для обратного направления.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span>: отразить поперёк вида; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span>: отразить сверху вниз. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>X</kbd></span> и <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Y</kbd></span> зеркалят по X или Y.</li>
+<li><span class="keys"><kbd>Insert</kbd></span>: поставить точечную сущность в центр выделения.</li>
+<li><span class="keys"><kbd>Tab</kbd></span>: при выделенном браше переключает Выделение → Вершина → Ребро → Грань → Выделение.</li>
+</ul>
+<h3 id="s3-7"><a class="anchor" href="#s3-7" aria-hidden="true" tabindex="-1">#</a>Раскладка Blender</h3>
+<p>Настройки → Клавиатура → Раскладка клавиш предлагает Heron Brush (по умолчанию, используется во всём руководстве) и Blender. В раскладке Blender: <span class="keys"><kbd>G</kbd></span> выделяет и перемещает, <span class="keys"><kbd>R</kbd></span> поворачивает, <span class="keys"><kbd>S</kbd></span> масштабирует, <span class="keys"><kbd>E</kbd></span> протягивает, <span class="keys"><kbd>1</kbd></span>, <span class="keys"><kbd>2</kbd></span> и <span class="keys"><kbd>3</kbd></span> выбирают инструменты вершин, рёбер и граней, <span class="keys"><kbd>K</kbd></span> разрезает, <span class="keys"><kbd>B</kbd></span> выделяет, <span class="keys"><kbd>A</kbd></span> выделяет всё, а <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span> снимает выделение, <span class="keys"><kbd>X</kbd></span> удаляет, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> дублирует, <span class="keys"><kbd>H</kbd></span> скрывает, а <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>H</kbd></span> показывает всё, и <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> повторяет. Всё остальное в обеих раскладках одинаково.</p>
+<h2 id="s4"><a class="anchor" href="#s4" aria-hidden="true" tabindex="-1">#</a>Браши и инструменты моделирования</h2>
+<p>Браши — это выпуклые тела, заданные плоскостями. Сложные объекты собирайте из нескольких простых брашей, а не пытайтесь сделать один браш вогнутым. Там, где хватает простой формы, держите число брашей небольшим.</p>
+<h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>Рисование брашей</h3>
+<p>Выберите инструмент Браш (<span class="keys"><kbd>B</kbd></span>) и потяните мышью в виде. Панель инструментов показывает <strong>Фигура для рисования</strong>: Кубоид, Лестница, Арка, Цилиндр, Конус, Сфероид (UV), Сфероид (икосаэдр) и Вставить 3D-текст. <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span>–<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>7</kbd></span> выбирают фигуру напрямую. В зависимости от фигуры на панели появляются <strong>Сделать полым</strong> и <strong>Толщина:</strong>, <strong>Высота ступени:</strong> и <strong>Направление:</strong> для лестницы, <strong>Ось:</strong>, <strong>Сторон:</strong> и режим окружности для круглых фигур, <strong>Колец:</strong> для сфер и <strong>Точность:</strong> для икосаэдра. Задайте параметры до того, как начнёте тянуть. Проверяйте результат в нескольких видах.</p>
+<h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>Выделение</h3>
+<p>Щёлкните по брашу, чтобы выделить его, и щёлкните с <span class="keys"><kbd>Ctrl</kbd></span>, чтобы добавить к выделению. Перетаскивание из пустого места рисует рамку выделения. В 3D-виде щелчок с <span class="keys"><kbd>Shift</kbd></span> выделяет одну грань, а щелчок с <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span> добавляет грани. Перетаскивание выделенного браша перемещает его; перетаскивание невыделенного выделяет и перемещает только его.</p>
+<p>В 3D-виде перетаскивание грани выделенного браша с <span class="keys"><kbd>Shift</kbd></span> выдавливает её. Щелчок с <span class="keys"><kbd>Alt</kbd></span> по другой грани копирует на неё материал и выравнивание выделенной грани; <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> копирует только материал, а <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> — поворот.</p>
+<h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>Инструменты формы</h3>
+<ul>
+<li><strong>Выделить</strong> (<span class="keys"><kbd>Esc</kbd></span>): выделение и перемещение.</li>
+<li><strong>Вершина</strong> (<span class="keys"><kbd>V</kbd></span>), <strong>Ребро</strong> (<span class="keys"><kbd>E</kbd></span>), <strong>Грань</strong> (<span class="keys"><kbd>F</kbd></span>): перетаскивание углов, рёбер или граней. Перетаскивание с <span class="keys"><kbd>Shift</kbd></span> из середины ребра или грани добавляет там угол. <span class="keys"><kbd>Delete</kbd></span> удаляет выбранные углы.</li>
+<li><strong>Повернуть</strong> (<span class="keys"><kbd>R</kbd></span>), <strong>Масштаб</strong> (<span class="keys"><kbd>T</kbd></span>), <strong>Скос</strong> (<span class="keys"><kbd>G</kbd></span>): преобразование выделения с помощью маркеров.</li>
+<li><strong>Разрез</strong> (<span class="keys"><kbd>C</kbd></span>): щёлкните две или три точки, чтобы задать плоскость разреза. <span class="keys"><kbd>Enter</kbd></span> разрезает, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> выбирает, какую сторону оставить, а <span class="keys"><kbd>Backspace</kbd></span> или <span class="keys"><kbd>Esc</kbd></span> удаляет последнюю точку.</li>
+<li><strong>Собрать</strong> (<span class="keys"><kbd>N</kbd></span>): расставьте точки вокруг объёма и нажмите <span class="keys"><kbd>Enter</kbd></span>, чтобы создать из них выпуклый браш. <span class="keys"><kbd>Backspace</kbd></span> удаляет последнюю точку.</li>
+<li><strong>Протягивание</strong> (<span class="keys"><kbd>Y</kbd></span>): см. раздел о протягивании ниже.</li>
+<li><strong>Контрольная точка</strong> (<span class="keys"><kbd>P</kbd></span>): изменение контрольной сетки патча.</li>
+<li><strong>Скругление</strong> (<span class="keys"><kbd>O</kbd></span>): щёлкните по ребру, чтобы скруглить его, или выберите рёбра или вершины их инструментами и нажмите <span class="keys"><kbd>Enter</kbd></span>. Больше граней — более гладкий результат и больше геометрии.</li>
+<li><strong>Окраска</strong> (<span class="keys"><kbd>K</kbd></span>): см. Материалы и UV.</li>
+</ul>
+<h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>Комбинирование брашей</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>: объединить выделенные браши в их выпуклую оболочку.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>K</kbd></span>: вычесть выделенные браши из брашей, которых они касаются.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></span>: сделать выделение полым, со стенками толщиной в один шаг сетки.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>L</kbd></span>: пересечение выделения.</li>
+</ul>
+<h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>Протягивание, скругление, патч и фаска</h3>
+<p><strong>Протягивание</strong> строит геометрию вдоль пути от выделенных граней. Выделите грани (в инструменте протягивания — щелчком с <span class="keys"><kbd>Alt</kbd></span>), затем задайте <strong>Перемещение</strong>, <strong>Поворот</strong> (ось и угол), <strong>Масштаб</strong>, <strong>Ступени</strong> и <strong>Путь</strong> (выравнивание Целое или Свободно; Дуга, Прямая или S-образный изгиб) в разделе протягивания на вкладке Грань и нажмите <strong>Протягивание</strong>. Строка под элементами управления сообщает, сколько брашей будет создано.</p>
+<p>Раздел <strong>Скругление</strong> скругляет выбранные рёбра с параметрами <strong>Радиус</strong>, <strong>Грани</strong> и <strong>Углы</strong> (На ус или Скруглённый); одна грань даёт фаску.</p>
+<p><strong>Патч</strong> показывает <strong>Столбцы</strong> и <strong>Строки</strong> выделенного патча с кнопками для добавления или удаления пары. Геометрия → Преобразовать грани в патчи (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>) создаёт патчи из выделенных граней.</p>
+<p><strong>Вставка и фаска</strong> работает с выделенными гранями: <strong>Вставка</strong> сдвигает грань внутрь от её рёбер, а <strong>Глубина</strong> выдвигает её наружу (или внутрь, если значение отрицательное). <strong>Снять фаску с граней</strong> применяет оба параметра; третья кнопка добавляет панель или вырезает углубление в зависимости от знака глубины. <strong>Соединить угол</strong> открывает диалог, который соединяет два браша углом на ус или скруглённым углом с предпросмотром.</p>
+<h3 id="s4-6"><a class="anchor" href="#s4-6" aria-hidden="true" tabindex="-1">#</a>3D-текст</h3>
+<p>Геометрия → Вставить 3D-текст (это также последний пункт в списке фигур инструмента Браш) строит браши из текста. Используется Heron Block — встроенный полигональный шрифт со срезанными углами, пропорциональной шириной и чешскими диакритическими знаками; строчные буквы имеют форму заглавных. Введите <strong>Текст</strong>, задайте <strong>Высота</strong> (высота заглавных; диакритика выступает над ней) и <strong>Глубина</strong>, следите за предпросмотром и нажмите <strong>Вставить</strong>.</p>
+<p>Если операция не может создать корректную геометрию, измените её размеры или отмените её и упростите форму.</p>
+<h2 id="s5"><a class="anchor" href="#s5" aria-hidden="true" tabindex="-1">#</a>Материалы и UV</h2>
+<h3 id="s5-1"><a class="anchor" href="#s5-1" aria-hidden="true" tabindex="-1">#</a>Загрузка и назначение материалов</h3>
+<p>Откройте раздел <strong>Материалы</strong> на вкладке Грань. <strong>Загрузить папку</strong> добавляет папку с изображениями, а <strong>Загрузить .wad</strong> — пакет текстур; оба появляются в разделе <strong>Коллекции</strong>, где крестик удаляет элемент. Вводите текст в <strong>Фильтр материалов</strong>, чтобы сузить список. Щёлкните по материалу, чтобы сделать его текущим, затем <strong>Применить к выделенному</strong> назначит его всем выделенным граням. <strong>Выделить</strong> предлагает Выделить браши с ним и Выделить грани с ним. <strong>Заменить</strong> заменяет один материал другим во всей карте или только в выделении.</p>
+<p>Инструмент <strong>Окраска</strong> (<span class="keys"><kbd>K</kbd></span>) наносит текущий материал на грань под указателем: щелчок окрашивает одну грань, двойной щелчок — весь браш, а щелчок с <span class="keys"><kbd>Shift</kbd></span> берёт материал грани как текущий, словно пипетка.</p>
+<h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>Редактор UV</h3>
+<p>Раздел <strong>UV</strong> на вкладке Грань показывает материал и контур выделенной грани. Управление мышью на холсте:</p>
+<ul>
+<li>Колесо масштабирует вокруг указателя. Перетаскивание правой или средней кнопкой сдвигает вид. Двойной щелчок правой кнопкой снова показывает грань целиком; выделение другой грани показывает её автоматически.</li>
+<li>Перетаскивание левой кнопкой двигает материал, а контур грани остаётся на месте. Кольцо поворачивает наложение, угловые маркеры масштабируют его, а центральный маркер задаёт точку отсчёта этих изменений.</li>
+<li>Перетаскивание левой кнопкой с <span class="keys"><kbd>Alt</kbd></span> по краю плитки делает скос, как и перетаскивание средней кнопкой с <span class="keys"><kbd>Shift</kbd></span>.</li>
+<li>Каждое перетаскивание — один шаг отмены, а <span class="keys"><kbd>Esc</kbd></span> отменяет перетаскивание в процессе.</li>
+</ul>
+<p>Под холстом находятся <strong>Смещение</strong>, <strong>Масштаб</strong>, <strong>Угол</strong> и, если игра их использует, <strong>Флаги содержимого</strong>, <strong>Флаги поверхности</strong> и <strong>Значение поверхности</strong>. Кнопки: <strong>Сбросить</strong>, <strong>Выровнять по миру</strong>, <strong>Подогнать</strong>, <strong>Отразить Г</strong>, <strong>Отразить В</strong> и два поворота на 90°. <strong>Выровнять</strong> поворачивает материал вдоль одного из рёбер грани (нажмите снова для следующего ребра, с <span class="keys"><kbd>Shift</kbd></span> — для предыдущего). Четыре кнопки выключки прижимают материал к краю. <strong>Вписать U</strong> и <strong>Вписать V</strong> масштабируют так, чтобы грань покрывало целое число повторов; нажмите снова для следующего числа и удерживайте <span class="keys"><kbd>Ctrl</kbd></span>, чтобы сохранить разбиение trim sheet.</p>
+<h3 id="s5-3"><a class="anchor" href="#s5-3" aria-hidden="true" tabindex="-1">#</a>Клавиши UV</h3>
+<p>При выделенных гранях клавиши со стрелками двигают материал, <span class="keys"><kbd>[</kbd></span> и <span class="keys"><kbd>]</kbd></span> поворачивают его на 15°, <span class="keys"><kbd>,</kbd></span> и <span class="keys"><kbd>.</kbd></span> уменьшают или увеличивают его масштаб вдвое, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> и <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span> отражают его, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> сбрасывает его, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> выравнивает его по осям мира, а <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>F</kbd></span> вписывает его в каждую грань.</p>
+<p><strong>Блокировка</strong> на панели инструментов сохраняет наложение при перемещении брашей, а <strong>UV</strong> (<span class="keys"><kbd>U</kbd></span>) — при их повороте.</p>
+<h3 id="s5-4"><a class="anchor" href="#s5-4" aria-hidden="true" tabindex="-1">#</a>Материалы-инструменты</h3>
+<ul>
+<li>skip: исключает отмеченную грань из экспорта в движок.</li>
+<li>clip: создаёт столкновения без видимой геометрии.</li>
+<li>origin: отмечает центр вращения браш-сущности.</li>
+</ul>
+<p>Имена можно изменить в карточке <strong>Материалы-инструменты</strong> окна экспорта. Используйте skip для граней, которые точно не видны.</p>
+<h3 id="s5-5"><a class="anchor" href="#s5-5" aria-hidden="true" tabindex="-1">#</a>Исключение граней из экспорта</h3>
+<p>Выделите грань и включите <strong>Не экспортировать грань</strong> в разделе UV. В предпросмотре UV она отмечается оранжевой штриховкой. Её материал и окраска сохраняются, а браш остаётся замкнутым и редактируемым. Экспортированные меши для рендера не содержат эту грань, но столкновения сохраняются. Если оставить один квад куба, получатся два треугольника для рендера. Это не делает грани двусторонними и не объединяет меши.</p>
+<p><strong>Пропускать закрытые грани</strong> отмечает грани, полностью закрытые статичными брашами, включая одинаковые соприкасающиеся грани и замкнутые браши. Функция работает с выделенными брашами, а если ничего не выделено — со всей видимой незаблокированной геометрией мира. Браш-сущности, прозрачные материалы и браши, у которых уже есть пропущенные грани, пропускаются. Частично закрытые грани не разделяются. Одна отмена восстанавливает всё. Вид → Показать пропущенные грани скрывает или показывает такие грани в видах редактора; выбор указателем по-прежнему учитывает весь браш.</p>
+<h2 id="s6"><a class="anchor" href="#s6" aria-hidden="true" tabindex="-1">#</a>Цвет и градиенты</h2>
+<p>Раздел <strong>Цвет</strong> на вкладке Грань окрашивает грани сплошными цветами или градиентами поверх их материалов. Это удобно для черновой разметки уровня и для стилизованной графики. Окрашенные грани сохраняют в видах свои настоящие цвета; выделение показывается контуром.</p>
+<h3 id="s6-1"><a class="anchor" href="#s6-1" aria-hidden="true" tabindex="-1">#</a>Палитра и цвет смешивания</h3>
+<p>Щёлкните по одному из двенадцати образцов палитры, чтобы окрасить им выделенные грани или целые выделенные браши. <strong>Непрозрачность</strong> задаёт непрозрачность следующей окраски в процентах. У <strong>Смешивание</strong> есть кнопка цвета, открывающая палитру выбора цвета; тяните в палитре, и выделение будет меняться вживую, или нажмите <strong>Окраска</strong>, чтобы применить цвет смешивания одним шагом. <strong>Назад к материалу</strong> убирает окраску, и грань снова показывает свой материал. Строка в верхней части раздела сообщает, что выделено и как оно окрашено.</p>
+<h3 id="s6-2"><a class="anchor" href="#s6-2" aria-hidden="true" tabindex="-1">#</a>Выбор цвета</h3>
+<p>Каждая кнопка цвета в редакторе открывает одну и ту же палитру выбора цвета. Тяните в квадрате, чтобы выбрать насыщенность и яркость, и в полосе рядом — чтобы выбрать оттенок. Ниже находятся значения <strong>R</strong>, <strong>G</strong> и <strong>B</strong> и ползунок <strong>Непрозрачность</strong>, если у цвета она есть. Поле hex принимает <code>#RRGGBB</code> или <code>#RRGGBBAA</code>; оно становится красным, пока текст не является допустимым цветом. <strong>Копировать</strong> помещает hex-код в буфер обмена. Щёлкните вне палитры, чтобы закрыть её.</p>
+<h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>Градиенты</h3>
+<p><strong>Градиент</strong> выбирает Линейный градиент или Радиальный градиент, а кнопка рядом меняет цвета местами. У каждой точки есть кнопка цвета и <strong>Позиция (%)</strong>, а у точек между концами — кнопка удаления. <strong>Добавить цветовую точку</strong> добавляет точку в самый широкий промежуток; у градиента может быть до восьми точек. <strong>Угол градиента</strong> задаёт направление линейного градиента, с кнопками <strong>+45°</strong> и <strong>−45°</strong>.</p>
+<p>Под предпросмотром находится шкала с маркером для каждой точки. Щёлкните по шкале, чтобы добавить точку, щёлкните по маркеру, чтобы открыть его палитру, перетащите маркер, чтобы сдвинуть его, и щёлкните по маркеру правой кнопкой, чтобы удалить его. Три образца под шкалой — это пресеты: Тёплый градиент, Холодный градиент и Серый градиент. Изменения градиента применяются к выделению вживую.</p>
+<p>Направление градиента важно: ориентируйте его вдоль ската крыши или вдоль изогнутого объекта, а не поперёк несвязанных граней. После окраски проверьте модель с обеих сторон.</p>
+<h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>Материал поверхности</h3>
+<p><strong>Материал поверхности</strong> задаёт <strong>Шероховатость</strong> (0 — глянец, 100 — матовая поверхность), <strong>Металличность</strong> (0 для дерева, камня или пластика, 100 для металла) и <strong>Излучение</strong> (от 0 до 8; поверхность светится собственным цветом, включая градиенты, но не освещает соседние объекты). Изменения применяются к выделенным граням или брашам вживую. <strong>Поверхность по умолчанию</strong> убирает переопределение. Все изменения можно отменить.</p>
+<p>Эффекты поверхности видны в освещённом 3D-виде и в рендерах камеры. Плоское и каркасное отображение намеренно не показывают блики. Bloom может добавить свечение вокруг излучающих поверхностей. Godot и glTF/GLB получают значения материала, а импортёр Unity превращает шероховатость в гладкость. Ограничения каждой цели описаны в <code>docs/surface-materials.md</code>.</p>
+<h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>Ассеты, слои и группы</h2>
+<h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>Библиотека ассетов</h3>
+<p>Откройте вкладку <strong>Ассеты</strong>. Добавьте папку с моделями <code>.map</code> кнопкой <strong>Добавить папку</strong>; встроенная библиотека доступна всегда. Вводите текст в <strong>Фильтр ассетов</strong> для поиска. Щёлкните по модели, чтобы выбрать её, затем дважды щёлкните по ней, нажмите <span class="keys"><kbd>Enter</kbd></span> или <strong>Вставить</strong>, чтобы добавить её туда, где последний раз был указатель. Модель можно также перетащить в вид. Браши ассета вставляются одной группой, поэтому модель перемещается целиком.</p>
+<p><strong>Сохранить выделенное как ассет</strong> записывает выделенные браши в библиотеку в виде <code>.map</code>. Ассеты библиотеки — это обычные редактируемые браши, а не импортированные меши.</p>
+<h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>Слои</h3>
+<p>Список <strong>Слои</strong> на вкладке Карта помогает упорядочить большие области. Введите имя и нажмите <strong>Добавить</strong>, чтобы создать слой, или нажмите <span class="keys"><kbd>Enter</kbd></span>, чтобы переименовать текущий. Каждый слой можно скрыть, заблокировать или исключить из экспорта. <strong>Переместить сюда</strong> переносит выделение в текущий слой. Контекстное меню в видах также предлагает Переместить в слой, Сделать активным слоем, Скрыть слои и Изолировать слои.</p>
+<h3 id="s7-3"><a class="anchor" href="#s7-3" aria-hidden="true" tabindex="-1">#</a>Группы и связанные группы</h3>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span> группирует выделение, а <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span> разгруппировывает его. Раздел <strong>Группы</strong> на вкладке Карта перечисляет группы и предлагает <strong>Открыть</strong>, <strong>Переименовать</strong>, <strong>Объединить</strong>, <strong>Разгруппировать</strong>, <strong>Вынуть</strong> и <strong>Извлечь</strong>. Связанная группа — это набор копий с общими правками: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> создаёт связанный дубликат, Геометрия → Синхронизировать связанные группы обновляет копии, а <strong>Отвязать</strong> делает копию независимой. На вкладке Сущность свойство можно оставить собственным для одной копии при синхронизации связанных групп.</p>
+<h3 id="s7-4"><a class="anchor" href="#s7-4" aria-hidden="true" tabindex="-1">#</a>Общий масштаб</h3>
+<p>Масштаб экспорта по умолчанию — 32 единицы карты на метр. Встроенный маркер стартовой позиции игрока высотой 64 единицы служит эталоном в 2 метра. Сравнивайте с ним дверные проёмы, транспорт, мебель и растения. Меняйте масштаб экспорта только намеренно и сохраняйте согласованность связанных ассетов.</p>
+<h2 id="s8"><a class="anchor" href="#s8" aria-hidden="true" tabindex="-1">#</a>Сущности и игровой процесс</h2>
+<p>Распространённые определения сущностей встроены и доступны всегда: источники света, стартовые позиции игрока, двери, кнопки, платформы, триггеры, статичные объекты, звуки и путевые точки. Загрузка FGD проекта через <strong>Определения сущностей</strong> на вкладке Сущность заменяет классы с теми же именами и сохраняет остальные встроенные.</p>
+<h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>Размещение сущностей</h3>
+<p>В браузере <strong>Сущности</strong> на вкладке Сущность введите текст в <strong>Фильтр классов</strong> и выберите класс. Для точечного класса, например источника света, нажмите <strong>Разместить</strong> или дважды щёлкните по классу; <span class="keys"><kbd>Insert</kbd></span> ставит сущность в центр выделения. Для браш-класса, например двери или триггера, выделите браши и нажмите <strong>Создать</strong>. Классы можно также перетаскивать в вид.</p>
+<h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>Свойства</h3>
+<p>Список свойств редактирует выделенную сущность. Сущности одного класса редактируются вместе. <strong>Добавить свойство</strong> добавляет ключ, который может быть неизвестен определению; <strong>По умолчанию</strong> может вернуть существующим свойствам значения по умолчанию или добавить недостающие. Свойства, которые класс определяет, но которых у сущности нет, показаны приглушённо; ввод значения добавляет их. Для связи сущностей используйте targetname и target.</p>
+<h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>Что может экспорт</h3>
+<p>Директивы Godot создают нативные узлы, тела столкновений и области триггеров. Unity и Unreal поддерживают нативные распространённые источники света, а Unreal также создаёт акторы PlayerStart. Остальные данные сохраняются настолько, насколько позволяет импортёр цели.</p>
+<p>Сама по себе сущность двери не добавляет игрового поведения. Движение, реакции на триггеры, контроллеры игрока и скрипты проекта всё равно нужно делать в движке. Defold экспортирует свойства сущностей и объекты столкновений; Flax размещает модели и общие сущности. Проверьте результат в своём движке, прежде чем строить на нём игровой процесс.</p>
+<h2 id="s9"><a class="anchor" href="#s9" aria-hidden="true" tabindex="-1">#</a>Анимация</h2>
+<p>Heron Brush умеет показывать предпросмотр простого движения и редактировать анимации браш-сущностей по ключевым кадрам, а затем экспортировать их в несколько движков.</p>
+<h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>Предпросмотр анимаций</h3>
+<p>Включите <strong>Предпросмотр анимаций</strong> в меню Вид, меню Анимация, меню Настройки сетки или в разделе Вид на вкладке Карта. Он воспроизводит вращение func_rotate и движение туда и обратно func_shuttle, если включён start_on, используя свойства сущности axis, speed, direction, travel и wait, а также воспроизводит клипы ключевых кадров с включённым Воспроизводить при запуске. Ассеты вентилятора и ветряной мельницы уже содержат вращающиеся части.</p>
+<p>Выключение предпросмотра восстанавливает исходную позу. Щелчок в виде останавливает воспроизведение перед выделением или редактированием; навигация камерой продолжает работать. Предпросмотр не меняет карту, историю отмен и экспорт, а также не запускает физику или игровую логику.</p>
+<h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>Редактор ключевых кадров</h3>
+<p>Откройте его через Анимация → Анимация по ключевым кадрам или из меню Настройки сетки. Он закрепляется под видами или в 3D-окне, пока оно отдельно. Значок окна в его заголовке переносит его в собственное окно; кадр и история отмен при этом сохраняются. <strong>Редактировать анимацию</strong> переключает виды на анимированную позу, а <strong>Редактировать карту</strong> возвращает к геометрии покоя. В режиме анимации каждый вид внизу показывает <strong>Редактировать анимацию</strong> и номер кадра.</p>
+<p>Чтобы анимировать браш-сущность, браш или группу брашей, выделите её. Плоская группа брашей имеет одну общую анимацию и опорную точку; группам, содержащим несколько сущностей, нужны отдельные анимации.</p>
+<h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>Клипы</h3>
+<p>Переключатель <strong>Анимация</strong> выбирает между именованными клипами. Введите имя в <strong>Имя анимации</strong> и нажмите <strong>Сохранить как</strong>, чтобы скопировать текущий клип под этим именем; <strong>Удалить</strong> удаляет клип. <strong>Перемещение</strong> создаёт клип <code>translate</code> без вращения. <strong>Анимации дверей</strong> создаёт плавные клипы <code>open</code> и <code>close</code> с поворотом на 90 градусов вокруг текущей опорной точки; сначала переместите опорную точку на петлю. <strong>Воспроизводить при запуске</strong> запускает клип при старте уровня; пресет двери выключает его.</p>
+<h3 id="s9-4"><a class="anchor" href="#s9-4" aria-hidden="true" tabindex="-1">#</a>Транспорт и воспроизведение</h3>
+<p>Кнопки транспорта: <strong>Начало</strong>, <strong>Предыдущий ключ</strong>, <strong>Воспроизведение</strong>, <strong>Следующий ключ</strong> и <strong>Конец</strong>. <strong>Кадр</strong> показывает и задаёт текущий кадр, а <strong>Длительность (с)</strong> задаёт длину клипа. Режим: <strong>Один раз</strong>, <strong>Цикл</strong> или <strong>Туда и обратно</strong>.</p>
+<h3 id="s9-5"><a class="anchor" href="#s9-5" aria-hidden="true" tabindex="-1">#</a>Временная шкала</h3>
+<p>На временной шкале есть линейка с указателем воспроизведения и дорожки для <strong>Положение</strong> (X, Y и Z ставятся ключом вместе) и для каждого угла поворота RX, RY и RZ. Щёлкните или потяните по линейке, чтобы переместить указатель и увидеть эту позу во всех видах. Перетаскивание средней кнопкой сдвигает шкалу. Перетаскивайте ключи, чтобы сдвинуть их во времени; <span class="keys"><kbd>Shift</kbd></span> добавляет к выделению; двойной щелчок по дорожке вставляет ключ; <span class="keys"><kbd>Ctrl</kbd></span>+колесо масштабирует. <strong>Кривые</strong> показывает кривые значений вместо дорожек.</p>
+<p>Кнопки над шкалой: <strong>Добавить ключ</strong>, <strong>Убрать</strong>, <strong>Копировать</strong>, <strong>Вставить</strong> и <strong>Дублировать</strong>. <strong>Привязка к кадрам</strong> удерживает ключи на целых кадрах, а <strong>Подогнать</strong> показывает клип целиком. <strong>Изменить время ключей</strong> открывает <strong>Масштаб времени</strong>, <strong>Смещение (кадры)</strong>, <strong>Масштабировать от указателя воспроизведения</strong>, <strong>Удлинить анимацию</strong> и <strong>Изменить время выделенного</strong>.</p>
+<p>Инспектор ключей рядом со шкалой редактирует выделенный ключ: <strong>Кадр</strong>, <strong>Значение</strong> (или три координаты ключа Положение), интерполяцию <strong>Линейная</strong>, <strong>Ступенчатая</strong> или <strong>Безье</strong>, <strong>Входящий наклон</strong> и <strong>Исходящий наклон</strong>, а также <strong>Сглаживать касательные</strong>.</p>
+<h3 id="s9-6"><a class="anchor" href="#s9-6" aria-hidden="true" tabindex="-1">#</a>Клавиши в редакторе</h3>
+<p>Пока клавиатура у временной шкалы: <span class="keys"><kbd>Space</kbd></span> запускает или приостанавливает воспроизведение, стрелки влево и вправо переходят на один кадр, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span> выделяет все ключи, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span> и <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span> копируют, вырезают и вставляют ключи, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span> дублирует их, <span class="keys"><kbd>Delete</kbd></span> удаляет их, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span> отменяет, а <span class="keys"><kbd>Esc</kbd></span> отменяет перетаскивание. Вне шкалы <span class="keys"><kbd>Esc</kbd></span> выходит из режима анимации. Отмена оставляет масштаб, выделение и указатель воспроизведения там, где они были.</p>
+<h3 id="s9-7"><a class="anchor" href="#s9-7" aria-hidden="true" tabindex="-1">#</a>Позирование в видах</h3>
+<p>В строке под временной шкалой находятся <strong>Калька анимации</strong> с количеством и <strong>Интервал</strong>, которая показывает соседние позы как призраки; координаты <strong>Опорная точка</strong>; <strong>Автоключи</strong>; и инструменты позы <strong>Перемещение</strong>, <strong>Повернуть</strong> и <strong>Опорная точка</strong>.</p>
+<ul>
+<li><strong>Добавить ключ</strong> включает Автоключи и приостанавливает воспроизведение. При включённых Автоключах и выбранном <strong>Перемещение</strong> перетащите цветную ось маркера выделенной сущности в 3D-виде, чтобы поставить ключ положения на текущем кадре.</li>
+<li>В 2D-виде перетащите выделенный браш или элемент его группы, чтобы поставить ключ перемещения вдоль двух видимых осей с привязкой к сетке. Автоключи для этого включать не нужно.</li>
+<li>С <strong>Повернуть</strong> перетаскивайте браш в 2D-виде вокруг его оранжевого маркера опорной точки. Вид сверху ставит ключ RZ, спереди — RY, сбоку — RX, с привязкой к углам сетки.</li>
+<li>С <strong>Опорная точка</strong> перетаскивайте жёлтый центр вращения в любом 2D-виде. Он привязывается к сетке и сохраняет свою глубину. Ключи и геометрия покоя не меняются.</li>
+</ul>
+<p>Голубой путь в 2D и 3D показывает перемещение опорной точки. Щёлкните по точке пути, чтобы выбрать её время и ключи, или перетащите её, чтобы изменить положение; при включённых Автоключах точки пути можно перетаскивать и в 3D-виде. Подписи показывают номера кадров, а пунктирные отрезки отмечают скачки. <span class="keys"><kbd>Esc</kbd></span> отменяет любое из этих перетаскиваний, а одна отмена откатывает всё перетаскивание целиком.</p>
+<p>Новые анимации начинаются в состоянии покоя с ключами в нулевой момент времени. Движение создаётся изменением позы на другом кадре. Для резкого L-образного пути поставьте ключи в начале, в углу и в конце и используйте Линейная с Туда и обратно.</p>
+<h3 id="s9-8"><a class="anchor" href="#s9-8" aria-hidden="true" tabindex="-1">#</a>Связь кнопок с анимациями</h3>
+<p>Выделите func_button, trigger_multiple или trigger_once. Вкладка Сущность показывает <strong>Триггер анимации</strong> над свойствами. Выберите цель из списка или нажмите <strong>Выбрать цель</strong>, а затем анимированный объект в любом виде; <span class="keys"><kbd>Esc</kbd></span> отменяет выбор. Отсутствующие цели или клипы указываются под элементами управления. Связи сущностей показывают стрелки к своим целям, когда отображение связей включено.</p>
+<p><strong>Действие</strong> определяет, что делает активация: <strong>Воспроизвести</strong> запускает именованный клип или выбранную анимацию; <strong>Переключить</strong> чередует <code>open</code> и <code>close</code>, если они есть, иначе перезапускает выбранную анимацию; <strong>Открыть</strong> и <strong>Закрыть</strong> запускают соответствующие клипы; <strong>Пауза</strong> удерживает позу, <strong>Продолжить</strong> продолжает, а <strong>Остановить</strong> восстанавливает исходную позу. <strong>Только один раз</strong> переопределяет значение класса по умолчанию. <strong>Задержка повтора (с)</strong> задаёт минимальное время между активациями; первую активацию она не задерживает.</p>
+<p><strong>Проверить триггер</strong> выполняет действие в предпросмотре без изменения карты и без добавления шагов отмены. <strong>Сбросить предпросмотр</strong> восстанавливает исходные позы и сбрасывает состояние однократности и перезарядки. Это не моделирует столкновения игрока и игровые скрипты.</p>
+<h3 id="s9-9"><a class="anchor" href="#s9-9" aria-hidden="true" tabindex="-1">#</a>Анимация в экспорте</h3>
+<p>Godot экспортирует нативные ресурсы AnimationPlayer и AnimationLibrary, включая кривые и движущиеся столкновения. CharacterBody3D, входящий в область кнопки, активирует её цель. Правки этих клипов в Godot не возвращаются в карту и заменяются при следующем экспорте.</p>
+<p>Экспорт raylib добавляет <code>&lt;map&gt;_animation.h</code> с проигрывателем на C и <code>&lt;map&gt;_preview.c</code> с предпросмотром со свободной камерой; чтобы собрать его, следуйте <code>&lt;map&gt;_raylib.md</code>. В предпросмотре <code>SPACE</code> ставит на паузу, <span class="keys"><kbd>R</kbd></span> перезапускает клипы по умолчанию, а <span class="keys"><kbd>N</kbd></span> перебирает именованные клипы. Defold встраивает воспроизведение в скрипт сущности с документированными сообщениями <code>heron_*_animation</code>. Build Level в Unity добавляет <code>HeronBrushAnimation</code> и кинематическое тело. Экспорт Bevy содержит <code>heron_animation.rs</code> и инструкции. Godot, Unity, Defold, Bevy и raylib сохраняют связи триггеров, флаг однократности и задержку повтора. Вашей игре всё равно нужно зарегистрировать проигрыватель и подключить свои кнопки к API каждой среды выполнения.</p>
+<h3 id="s9-10"><a class="anchor" href="#s9-10" aria-hidden="true" tabindex="-1">#</a>Пример Motion lab</h3>
+<p>Откройте <code>motion_lab</code> из раздела Примеры на экране приветствия. В нём есть платформа с L-образным путём, лифт, вращающаяся платформа и дверь на петлях с кнопками. Откройте лежащий рядом <code>godot/project.godot</code> в Godot и нажмите <span class="keys"><kbd>F5</kbd></span>. WASD и мышь управляют игроком, пробел — прыжок, клавиши с 1 по 4 переносят к станциям, а R перезапускает текущую станцию. Встаньте на цветную площадку, чтобы активировать её цель. Прилагаемый README объясняет повторный экспорт.</p>
+<h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>Экспорт в движок</h2>
+<p>Файл → Экспорт открывает окно экспорта. Движки перечислены слева со своими логотипами: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb и последним <code>.map</code>. Страница справа сообщает, что получит цель. <strong>Записать</strong> записывает экспорт, <strong>Проверить</strong> собирает уровень без записи и перечисляет проблемы, а <strong>Закрыть</strong> закрывает окно.</p>
+<p>Экспорт отделён от сохранения: <code>.map</code> остаётся вашим редактируемым исходником. Каждый элемент управления сохраняет настройки своего движка сразу после изменения, поэтому у каждого движка свои ответы, а окно открывается таким, каким вы его оставили.</p>
+<h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>Общие параметры</h3>
+<ul>
+<li><strong>Масштаб</strong>: <strong>Единиц на метр</strong>, по умолчанию 32.</li>
+<li><strong>Что записывать</strong>: <strong>Геометрия столкновений</strong>.</li>
+<li><strong>Оптимизации</strong>: <strong>Группировать статические меши в ячейки по 1024 единицы</strong>, <strong>Отбросить грани, скрытые внутри геометрии</strong>, <strong>Объединить грани в одной плоскости</strong> и <strong>Объединить формы столкновений</strong>.</li>
+<li><strong>Пути проекта</strong>: куда внутри проекта попадают уровень и его ресурсы.</li>
+<li><strong>Материалы-инструменты</strong>: имена материалов clip, skip и origin.</li>
+<li><strong>Ещё</strong>: переключатели для конкретного движка, такие как <strong>Называть узлы по</strong>, <strong>Воссоздать слои и группы как родительские узлы</strong>, <strong>Обратить порядок обхода треугольников</strong>, отражение текстурных координат и второй набор UV для запечённого света с <strong>Тексель карты освещения</strong>.</li>
+<li><strong>Обновлять вместе с картой</strong>: <strong>Перезаписывать при каждом сохранении карты</strong>. Параметр становится доступен после первого экспорта в движок, потому что этот экспорт задаёт, куда записывать.</li>
+</ul>
+<p>Статические ячейки распределяют браши мира по их центрам и объединяют их по материалу внутри каждой ячейки размером 1024 единицы, чтобы движки могли отсекать меньшие части карты. Столкновения сохраняются, а игровые сущности остаются отдельными. Это может дать больше вызовов отрисовки, чем один меш мира, поэтому по умолчанию функция выключена. Отдельные экспорты OBJ, glTF и GLB ячейки не используют.</p>
+<h3 id="s10-2"><a class="anchor" href="#s10-2" aria-hidden="true" tabindex="-1">#</a>Заметки о целях</h3>
+<ul>
+<li>Godot: пути <code>res://</code> к текстурам и материалам, физический слой триггеров и UV2 для карт освещения. Выберите папку экспорта внутри проекта Godot.</li>
+<li>Defold: каталог ресурсов ассетов, материал модели и сэмплер текстуры, который должен существовать в выбранном материале.</li>
+<li>Unity: меши OBJ и импортёр для редактора; экспортируйте в папку Assets проекта.</li>
+<li>Unreal Engine: сгенерированный скрипт импорта и путь к контенту, обычно /Game/<level>.</li>
+<li>Flax Engine: путь к контенту модели относительно папки Content проекта.</li>
+<li>three.js, Bevy, raylib и Cocos Creator: сцены или код для этих сред выполнения, с инструкциями рядом с экспортом.</li>
+<li>glTF / GLB: переносимая геометрия для совместимых инструментов; GLB — двоичная форма. OBJ: геометрия и материалы для программ моделирования.</li>
+<li><code>.map</code>: <strong>Записать как</strong> выбирает Valve 220, Стандартный, Quake 2 или Quake 2 (Valve). Окно сообщает, что потеряет выбранный диалект.</li>
+</ul>
+<p>После записи прочитайте предупреждения, например об отсутствующих текстурах. <strong>Результаты проверки</strong> перечисляет их в окне.</p>
+<h2 id="s11"><a class="anchor" href="#s11" aria-hidden="true" tabindex="-1">#</a>Живая связь: Godot, Unity, Defold и Flax</h2>
+<p>Живая связь отправляет несохранённые правки из Heron Brush в редактор движка прямо во время работы. Она односторонняя: правки, сделанные в движке, обратно не возвращаются. На одно окно карты может работать одна живая связь. Остановите её перед сменой движка и перезапустите, чтобы применить изменённые параметры экспорта. Элементы управления находятся в окне экспорта, на странице движка, в карточке <strong>Живая связь с</strong>.</p>
+<p>Индикатор в строке заголовка показывает состояние связи; щёлкните по нему, чтобы остановить связь. Закрытие или замена карты прекращает публикацию. После ошибки импорта устраните проблему и снова запустите связь.</p>
+<h3 id="s11-1"><a class="anchor" href="#s11-1" aria-hidden="true" tabindex="-1">#</a>Godot</h3>
+<ol>
+<li>Один раз выполните экспорт в проект Godot.</li>
+<li>Нажмите <strong>Установить дополнение Godot</strong>.</li>
+<li>Включите Heron Brush Live в Project Settings → Plugins в Godot.</li>
+<li>Нажмите <strong>Запустить живую связь</strong> и прикрепите карту из панели Godot к открытой 3D-сцене.</li>
+</ol>
+<p>Дополнение заменяет только свою сгенерированную ветку и сохраняет размещение прикрепления и другие узлы. Сохраняйте сцену Godot сами, а свои скрипты и узлы держите вне сгенерированной ветки.</p>
+<h3 id="s11-2"><a class="anchor" href="#s11-2" aria-hidden="true" tabindex="-1">#</a>Unity</h3>
+<ol>
+<li>Один раз выполните экспорт в папку Assets проекта Unity.</li>
+<li>Нажмите <strong>Установить дополнение Unity</strong> и дайте Unity его скомпилировать.</li>
+<li>В Unity откройте Window → Heron Brush → Live Link.</li>
+<li>Запустите связь и прикрепите карту к активной сцене Unity.</li>
+</ol>
+<p>Держите живое окно Unity открытым. В Play Mode и Prefab Mode обновления приостанавливаются. Заменяется только дочерний объект Generated у объекта карты. Не редактируйте сгенерированные файлы.</p>
+<h3 id="s11-3"><a class="anchor" href="#s11-3" aria-hidden="true" tabindex="-1">#</a>Defold</h3>
+<ol>
+<li>Один раз выполните экспорт в свой проект Defold и держите проект открытым в Defold.</li>
+<li>Нажмите <strong>Запустить живую связь</strong>. Дополнение не требуется.</li>
+<li>Откройте heron_brush_live/preview.collection в Defold или сошлитесь на неё из своей сцены.</li>
+</ol>
+<p>Связь записывает в отдельную сгенерированную папку и не трогает итоговый экспорт и game.project. <strong>Горячая перезагрузка запущенной игры</strong> также обновляет игру, запущенную из Defold; после добавления объектов или изменения столкновений может потребоваться перезапуск уровня. Неудачные подключения повторяются автоматически.</p>
+<h3 id="s11-4"><a class="anchor" href="#s11-4" aria-hidden="true" tabindex="-1">#</a>Flax</h3>
+<p>Выполните экспорт в папку Content проекта и нажмите <strong>Установить дополнение Flax</strong>. Дайте Flax его скомпилировать, запустите связь, затем выберите Tools → Heron Brush: attach live map в открытой сцене Flax. Сгенерированный корень сохраняет своё размещение, а другие объекты не затрагиваются. Сохраняйте сцену сами. В Play Mode обновления приостанавливаются. Tools → Heron Brush: stop live map приостанавливает приём.</p>
+<h2 id="s12"><a class="anchor" href="#s12" aria-hidden="true" tabindex="-1">#</a>Совместные сеансы</h2>
+<p>Совместная работа → Совместный сеанс открывает окно, в котором можно создать сеанс или присоединиться к другому пользователю Heron Brush. Так люди совместно редактируют карту; это не то же самое, что живая связь с движком.</p>
+<h3 id="s12-1"><a class="anchor" href="#s12-1" aria-hidden="true" tabindex="-1">#</a>Создание сеанса и подключение</h3>
+<p>Введите <strong>Ваше имя</strong>. Чтобы создать сеанс, выберите <strong>Создать сеанс</strong>, нажмите <strong>Запустить сеанс</strong> и отправьте гостям данные из <strong>Копировать данные подключения</strong>. Чтобы присоединиться, выберите <strong>Присоединиться к сеансу</strong>, вставьте данные и нажмите <strong>Присоединиться</strong>. Подключение заменяет открытую карту картой хозяина, поэтому сначала сохраните свою работу.</p>
+<p>Стандартная сборка работает в локальной сети, а <strong>Порт локальной сети</strong> задаёт порт. Сеансам через интернет (<strong>Подключиться через интернет</strong>) нужна сборка с дополнительной сетевой функцией. Участники видят маркеры камер и имена друг друга в 3D-виде.</p>
+<p>Закрытие окна не останавливает сеанс; индикатор в строке заголовка показывает его состояние. <strong>Остановить сеанс</strong> или <strong>Покинуть сеанс</strong> завершает его. Когда двое редактируют один и тот же объект, окончательную версию определяет порядок хозяина, и отмена тоже является общей правкой. По возможности работайте в разных областях и сохраняйте контрольные точки.</p>
+<h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D-отображение и второй монитор</h2>
+<h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>Режимы отображения</h3>
+<p>Раздел <strong>Вид</strong> на вкладке Карта переключает, что рисуют виды: Браши, Точечные сущности, Модели сущностей, Имена классов сущностей, Контуры групп, Патчи, Материалы, Показать пропущенные грани, Предпросмотр анимаций, Каркас, Рёбра и Контуры браш-сущностей. Каркас рисует рёбра треугольников, включая диагонали и рёбра за поверхностями, без материалов. Это временный отладочный вид, он не влияет на экспорт и рендеры.</p>
+<p>Освещение, тени, ambient occlusion, отражения, bloom и сглаживание для 3D-вида находятся в Настройки → Рендерер. Это настройки предпросмотра; итоговые изображения используют собственные настройки камеры рендера.</p>
+<h3 id="s13-2"><a class="anchor" href="#s13-2" aria-hidden="true" tabindex="-1">#</a>Отдельное 3D-окно</h3>
+<p>Вид → 3D-вид в отдельном окне переносит 3D-вид в собственное окно, которое можно поместить на другой монитор. Оно использует общую камеру, документ и инструменты, а плоские виды занимают место в главном окне. Его меню предлагает Материалы, Сплошной вид и Каркас; подменю Вид с пунктами Показать пропущенные грани, Предпросмотр анимаций, Рёбра, Контуры групп, Точечные сущности, Модели сущностей и Контуры браш-сущностей; Сфокусироваться на выделенном; Спереди, Сбоку и Сверху, которые поворачивают камеру вокруг выделения (или точки перед камерой); Разместить камеру по 3D-виду; Полный экран (<span class="keys"><kbd>F11</kbd></span>); Рендер изображения; и Вернуть в главное окно. Закрытие окна возвращает вид обратно.</p>
+<h3 id="s13-3"><a class="anchor" href="#s13-3" aria-hidden="true" tabindex="-1">#</a>Процедурное небо</h3>
+<p>Процедурное небо по умолчанию включено в 3D-виде, его можно выключить в Настройки → Рендерер → Свет. У камер рендера есть собственный переключатель <strong>Процедурное небо</strong>, который сохраняется вместе с картой. Цвета неба, горизонта и земли берутся из настроек окружения, а солнце следует освещению сцены. У неба нет геометрии, и оно не экспортируется.</p>
+<h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>Камеры рендера и изображения PNG</h2>
+<p>Файл → Рендер изображения открывает окно рендера: слева камера и её настройки, справа живой предпросмотр, который перерисовывается при их изменении. Камеры сохраняются в <code>.map</code> в слое камер рендера, который существует только в редакторе и исключается из экспорта в движок.</p>
+<h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>Размещение камеры</h3>
+<p>Выстройте кадр в 3D-виде и нажмите <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> (или <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>) либо нажмите <strong>Разместить камеру по 3D-виду</strong>. Если камера не выделена, обновляется первая сохранённая; если камер нет, создаётся новая. Это можно отменить, а настройки вывода и освещения сохраняются. <strong>Выделить камеру на карте</strong>, <strong>Загрузить камеру из карты</strong> и <strong>Переместить 3D-вид к камере</strong> работают в обратную сторону. <strong>Рамка камеры в 3D-виде</strong> показывает границу вывода, а <strong>Управлять камерой из 3D-вида</strong> позволяет обычной навигации двигать сохранённую камеру.</p>
+<h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>Настройки</h3>
+<ul>
+<li><strong>Положение камеры</strong>: X, Y, Z, рыскание и тангаж.</li>
+<li><strong>Вывод и объектив</strong>: <strong>Пресеты</strong> (Full HD, Квадрат, Портретная), ширина, высота, сэмплы, <strong>Вертикальный угол обзора</strong> и <strong>Дальняя плоскость отсечения</strong>.</li>
+<li><strong>Освещение</strong>: Дневной свет, Закат или Пасмурно, либо задайте экспозицию, солнце, цвета неба, горизонта и земли, <strong>Процедурное небо</strong>, <strong>Тени</strong>, <strong>Ambient occlusion</strong> и <strong>Bloom</strong>.</li>
+<li><strong>Глубина резкости</strong>: <strong>Включить глубину резкости</strong>, расстояние фокусировки, зона резкости и радиус размытия. <strong>Сфокусироваться на выделенном</strong> фокусирует на центре выделенного объекта перед камерой.</li>
+</ul>
+<p><strong>Сохранить камеру и настройки</strong> сохраняет форму в карте; сохраните карту, чтобы записать это на диск.</p>
+<h3 id="s14-3"><a class="anchor" href="#s14-3" aria-hidden="true" tabindex="-1">#</a>Рендер</h3>
+<p><strong>Рендер PNG</strong> спрашивает, куда сохранить, и запускает прогрессивный рендер, который сэмпл за сэмплом проявляется в предпросмотре. Больше сэмплов — лучше качество, но дольше. <strong>Отменить рендер</strong> останавливает его без записи файла. Рендерер использует растровый конвейер редактора, а не трассировку путей. PNG имеет непрозрачный фон, анимации не рендерятся. Очень большие изображения могут ненадолго приостановить редактор.</p>
+<h2 id="s15"><a class="anchor" href="#s15" aria-hidden="true" tabindex="-1">#</a>Настройки</h2>
+<p>Файл → Настройки (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>) открывает настройки. Изменения применяются сразу и сохраняются. Боковая панель перечисляет Обзор, Игры, Вид, Цвета, Мышь, Клавиатура и Рендерер. Поле поиска вверху находит настройку по имени или описанию на любой странице. У каждой изменённой настройки есть своя кнопка для восстановления значения по умолчанию, а <strong>Восстановить по умолчанию</strong> сбрасывает текущую страницу.</p>
+<h3 id="s15-1"><a class="anchor" href="#s15-1" aria-hidden="true" tabindex="-1">#</a>Страницы</h3>
+<ul>
+<li><strong>Обзор</strong>: основные настройки вместе: Внешний вид (Непрозрачность панелей (%), Цветовая схема, Компоновка, Язык), Редактирование, Вид и Руководство.</li>
+<li><strong>Игры</strong>: игра, где лежат её файлы, и ваше имя для совместной работы. Игра определяет, в каком формате записывать карту, какие определения сущностей загружать и где находятся её материалы. Конфигурации игр читаются из папки <code>games</code> в папке конфигурации (<code>~/.config/heron-brush/games</code> в Linux и macOS, <code>%LOCALAPPDATA%\heron-brush\games</code> в Windows) и из папки <code>games</code> рядом с приложением, куда пакеты кладут встроенную конфигурацию.</li>
+<li><strong>Вид</strong>: Компоновка, Цветовая схема, Язык, оси мира, непрозрачность сетки, размер ячейки проверки утечек и блокировки наложения.</li>
+<li><strong>Цвета</strong>: цвета видов, геометрии и маркеров.</li>
+<li><strong>Мышь</strong>: скорости и инверсии обзора, сдвига и перемещения, скорость полёта, угол обзора, Связать 2D-виды и размеры маркеров.</li>
+<li><strong>Клавиатура</strong>: раскладка клавиш, Heron Brush или Blender.</li>
+<li><strong>Рендерер</strong>: реалистичное затенение, контур выделения, свет, тени, ambient occlusion, отражения, bloom и поверхности.</li>
+</ul>
+<h3 id="s15-2"><a class="anchor" href="#s15-2" aria-hidden="true" tabindex="-1">#</a>Язык</h3>
+<p><strong>Язык</strong> предлагает Как в системе и все переведённые языки. Интерфейс меняется сразу. Руководство открывается на языке интерфейса, если для него есть перевод, а иначе на английском.</p>
+<h2 id="s16"><a class="anchor" href="#s16" aria-hidden="true" tabindex="-1">#</a>Плагины и MCP</h2>
+<h3 id="s16-1"><a class="anchor" href="#s16-1" aria-hidden="true" tabindex="-1">#</a>Плагины</h3>
+<p>Плагины расширяют редактор скриптами на Rhai. Файл → Плагины открывает окно плагинов. <strong>Установить плагин</strong> устанавливает файл <code>.rhai</code>, а <strong>Установить папку плагина</strong> — папку с <code>main.rhai</code>; необязательные метаданные <code>plugin.toml</code> описывают плагин и его настройки. Плагины сгруппированы в <strong>Активные плагины</strong> и <strong>Неактивные плагины</strong>, а <strong>Включить плагин</strong> включает или выключает плагин; это сохраняется после перезапуска. <strong>Перезагрузить плагины</strong> заново читает скрипты с диска и сбрасывает значения их панелей.</p>
+<p>Активные плагины также появляются в разделе <strong>Плагины</strong> на вкладке Карта со своими настройками, кнопками действий (<strong>Запустить</strong>) и выводом. Действие работает с выделением, а если ничего не выделено — со всем, и составляет один шаг отмены. Встроенный инспектор выделения показывает количества и действия перемещения вверх и вниз.</p>
+<h3 id="s16-2"><a class="anchor" href="#s16-2" aria-hidden="true" tabindex="-1">#</a>MCP</h3>
+<p>Совместная работа → Открыть доступ агенту (MCP) позволяет ИИ-агенту или другому инструменту управлять открытым редактором по протоколу Model Context Protocol. Окно показывает локальный адрес с кнопкой <strong>Копировать</strong>, а <strong>Остановить сервер</strong> завершает работу; пока сервер работает, в строке заголовка видно <strong>MCP активен</strong>. Параметр командной строки <code>--mcp</code> запускает тот же интерфейс без окна. Клиенты могут обнаружить инструменты для геометрии, ассетов, свойств, анимации, экспорта и сеансов. MCP и плагины редактора — разные интерфейсы.</p>
+<h2 id="s17"><a class="anchor" href="#s17" aria-hidden="true" tabindex="-1">#</a>Командная строка</h2>
+<p>Программа называется <code>heron-brush</code>. Без параметров она открывает экран приветствия.</p>
+<h3 id="s17-1"><a class="anchor" href="#s17-1" aria-hidden="true" tabindex="-1">#</a>Открытие файлов</h3>
+<p><code>heron-brush map.map [entities.fgd] [materials/]</code> открывает карту, при желании с определениями сущностей и папкой материалов. Пустой аргумент пропускает один из них, например <code>heron-brush map.map "" materials/</code>. Если редактор уже запущен, карта открывается в нём; <code>--new-instance</code> вместо этого открывает отдельное окно.</p>
+<h3 id="s17-2"><a class="anchor" href="#s17-2" aria-hidden="true" tabindex="-1">#</a>Команды</h3>
+<ul>
+<li><code>--help</code> или <code>-h</code>: вывести справку по использованию. <code>--version</code> или <code>-V</code>: вывести версию.</li>
+<li><code>--mcp</code>: обслуживать MCP через стандартный ввод и вывод, без окна.</li>
+<li><code>--merge-map &lt;base&gt; &lt;ours&gt; &lt;theirs&gt; [&lt;output&gt;]</code>: трёхстороннее слияние файлов <code>.map</code> для git. По умолчанию результат записывается в ours. Конфликты выводятся и дают ненулевой код завершения.</li>
+<li><code>--obj-to-map &lt;in.obj&gt; &lt;out.map&gt; [size] [thickness] [snap] [material]</code>: превратить меш в браши. size — длина самой длинной стороны в единицах карты (по умолчанию 256), snap — сетка для углов (0 — без неё), а слова <code>solid</code> или <code>layered</code> строят коробки по сетке или выпуклые пластины вместо тонких клиньев.</li>
+<li><code>--render-preview &lt;in.map&gt; &lt;out.png&gt; [size]</code>: записать миниатюру карты в PNG, по умолчанию 512 пикселей.</li>
+<li><code>--run-script &lt;script.rhai&gt; &lt;in.map&gt; [out.map] [key=value ...]</code>: выполнить скрипт плагина над картой, где всё выделено, и записать результат (по умолчанию обратно во входной файл). <code>key=value</code> задаёт ответы на настройки плагина.</li>
+</ul>
+<h2 id="s18"><a class="anchor" href="#s18" aria-hidden="true" tabindex="-1">#</a>Устранение неполадок</h2>
+<h3 id="s18-1"><a class="anchor" href="#s18-1" aria-hidden="true" tabindex="-1">#</a>Если что-то выглядит неправильно</h3>
+<ul>
+<li>Нет материала: проверьте папку или пакет материалов и пути проекта в экспорте.</li>
+<li>Неверный размер модели: сравните с маркером игрока высотой 64 единицы и с масштабом экспорта.</li>
+<li>Неверное направление градиента: проверьте угол градиента и ориентацию грани.</li>
+<li>Пустая сцена в движке: прочитайте предупреждения экспорта и следуйте инструкциям по импорту для цели.</li>
+<li>Живая связь ожидает: проверьте, что дополнение установлено, сцена прикреплена и обновления не приостановлены.</li>
+<li>Только линии, без граней: выключите Каркас в разделе Вид на вкладке Карта или выберите Материалы или Сплошной вид в меню 3D-окна.</li>
+<li>Объекты пропали из видов: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span> показывает скрытые объекты; проверьте слои и фильтры вида.</li>
+<li>Клавиша ничего не делает: сначала щёлкните в виде, чтобы передать ему клавиатуру, и проверьте раскладку в Настройки → Клавиатура.</li>
+<li>Правка не удалась: отмените её, упростите геометрию и воспользуйтесь <strong>Проверить карту</strong> и <strong>Проверить на утечки</strong> в разделе <strong>Проблемы</strong> на вкладке Карта.</li>
+<li>Карта не открывается из файлового менеджера: возможно, она передана уже запущенному редактору; найдите это окно.</li>
+</ul>
+<h3 id="s18-2"><a class="anchor" href="#s18-2" aria-hidden="true" tabindex="-1">#</a>Настройки и резервные копии</h3>
+<p>Настройки, недавние карты, звёздочки, настройки экспорта и плагины хранятся в папке конфигурации: <code>~/.config/heron-brush</code> в Linux и macOS и <code>%LOCALAPPDATA%\heron-brush</code> в Windows. Резервные копии автосохранения лежат в папке <code>autosave</code> рядом с каждой картой.</p>
+<h3 id="s18-3"><a class="anchor" href="#s18-3" aria-hidden="true" tabindex="-1">#</a>Сообщение об ошибке</h3>
+<p>Укажите версию редактора (Справка → О программе), свою операционную систему, небольшую карту, на которой видна проблема, и точные шаги. Панель вывода (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>) часто сообщает, что пошло не так. Перед экспериментами сохраните копию.</p>
+<h3 id="s18-4"><a class="anchor" href="#s18-4" aria-hidden="true" tabindex="-1">#</a>Как пользоваться руководством</h3>
+<p>Выберите главу в оглавлении слева. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> показывает оглавление и переходит в поле поиска; <span class="keys"><kbd>Esc</kbd></span> очищает поиск, а если поиск пуст — закрывает руководство. <strong>Содержимое</strong> скрывает или показывает список глав, а <strong>Размер текста</strong> меняет размер шрифта; оба параметра запоминаются. Список языков вверху переключает доступные переводы.</p>
+  </article>
+</div>
+<script src="../../manual.js"></script>
+</body>
+</html>

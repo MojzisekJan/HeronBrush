@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="sl" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heron Brush manual · Slovenščina</title>
+<meta name="description" content="The Heron Brush manual: modelling, materials, entities, animation, export and live links.">
+<link rel="icon" type="image/svg+xml" href="../../images/logo.svg">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../manual.css">
+<link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
+</head>
+<body class="manual-page">
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../../#"><img src="../../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar-top" d="M4 7h16"/><path class="bar-mid" d="M4 12h16"/><path class="bar-bot" d="M4 17h16"/></svg>
+    </button>
+    <nav class="menu" id="site-menu" aria-label="Main">
+      <div class="nav-links">
+        <a href="../../#modelling">Modelling</a>
+        <a href="../../#materials">Materials</a>
+        <a href="../../#animation">Animation</a>
+        <a href="../../#export">Export</a>
+        <a href="#" aria-current="page">Manual</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <mask id="moon-mask"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="moon-cut" cx="17" cy="7" r="6.5" fill="#000"/></mask>
+            <circle class="sun-core" cx="12" cy="12" r="8" fill="currentColor" mask="url(#moon-mask)"/>
+            <g class="rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>
+            </g>
+          </svg>
+          <span class="theme-label">Dark theme</span>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/MojzisekJan/HeronBrush">GitHub</a>
+        <a class="btn btn-primary" href="../../editor/">Try in the browser</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<script>
+  // The menu folds behind the button on narrow windows; without this script the links stay in view.
+  (function () {
+    var root = document.documentElement, header = document.querySelector('.nav');
+    var toggle = header.querySelector('.menu-toggle'), menu = document.getElementById('site-menu');
+    root.classList.add('js');
+    function set(open) {
+      header.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () { set(!header.classList.contains('open')); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && header.classList.contains('open')) { set(false); toggle.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!header.contains(e.target)) set(false); });
+    matchMedia('(min-width: 961px)').addEventListener('change', function () { set(false); });
+
+    // The theme toggle: remembers the choice; without one the page follows the system.
+    var themeButton = header.querySelector('.theme-toggle'), label = themeButton.querySelector('.theme-label');
+    function show(theme) {
+      root.dataset.theme = theme;
+      themeButton.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = theme === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+    show(root.dataset.theme);
+    themeButton.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      show(next);
+      root.classList.add('theme-switched');
+      try { localStorage.setItem('heron-theme', next); } catch (e) {}
+    });
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+      var stored = null;
+      try { stored = localStorage.getItem('heron-theme'); } catch (err) {}
+      if (!stored) show(e.matches ? 'light' : 'dark');
+    });
+  })();
+</script>
+<div class="manual wrap">
+  <aside class="toc" id="toc" aria-label="Contents">
+    <div class="toc-tools">
+      <label class="sr-only" for="lang">Language</label>
+      <select id="lang" class="lang-select"><option value="../" lang="en">English</option><option value="../cs/" lang="cs">Čeština</option><option value="../de/" lang="de">Deutsch</option><option value="../zh/" lang="zh-Hans">中文</option><option value="../es/" lang="es">Español</option><option value="../uk/" lang="uk">Українська</option><option value="../pl/" lang="pl">Polski</option><option value="../it/" lang="it">Italiano</option><option value="../fr/" lang="fr">Français</option><option value="../pt-BR/" lang="pt-BR">Português (Brasil)</option><option value="../ja/" lang="ja">日本語</option><option value="../ko/" lang="ko">한국어</option><option value="../tr/" lang="tr">Türkçe</option><option value="../id/" lang="id">Bahasa Indonesia</option><option value="../ru/" lang="ru">Русский</option><option value="../nl/" lang="nl">Nederlands</option><option value="../sv/" lang="sv">Svenska</option><option value="../da/" lang="da">Dansk</option><option value="../nb/" lang="nb">Norsk bokmål</option><option value="../fi/" lang="fi">Suomi</option><option value="../hu/" lang="hu">Magyar</option><option value="../ro/" lang="ro">Română</option><option value="../sk/" lang="sk">Slovenčina</option><option value="../el/" lang="el">Ελληνικά</option><option value="../vi/" lang="vi">Tiếng Việt</option><option value="../zh-TW/" lang="zh-Hant">繁體中文</option><option value="../bg/" lang="bg">Български</option><option value="../hr/" lang="hr">Hrvatski</option><option value="../sl/" selected lang="sl">Slovenščina</option><option value="../lt/" lang="lt">Lietuvių</option></select>
+      <div class="search">
+        <input id="search" type="search" placeholder="Iskanje po dokumentaciji" autocomplete="off" aria-label="Iskanje po dokumentaciji">
+        <ol id="results" class="results" hidden data-nothing="Ni ustreznih poglavij"></ol>
+      </div>
+    </div>
+    <nav class="toc-list"><ul><li class="chapter"><a href="#s1">Prvi koraki</a><ul><li><a href="#s1-1">Pozdravni zaslon</a></li><li><a href="#s1-2">Vaš prvi zemljevid</a></li><li><a href="#s1-3">Datoteke in shranjevanje</a></li></ul></li><li class="chapter"><a href="#s2">Uporabniški vmesnik</a><ul><li><a href="#s2-1">Naslovna vrstica in meniji</a></li><li><a href="#s2-2">Vrstica orodij</a></li><li><a href="#s2-3">Pogledi zemljevida</a></li><li><a href="#s2-4">Inšpektor</a></li><li><a href="#s2-5">Vrstica stanja in podokno izpisa</a></li><li><a href="#s2-6">Pogovorna okna in videz</a></li></ul></li><li class="chapter"><a href="#s3">Navigacija in tipkovnica</a><ul><li><a href="#s3-1">Premikanje v 3D-pogledu</a></li><li><a href="#s3-2">Premikanje v 2D-pogledih</a></li><li><a href="#s3-3">Mreža in pripenjanje</a></li><li><a href="#s3-4">Pogoste bližnjice</a></li><li><a href="#s3-5">Bližnjice za izbiranje</a></li><li><a href="#s3-6">Bližnjice za preoblikovanje</a></li><li><a href="#s3-7">Razpored bližnjic Blender</a></li></ul></li><li class="chapter"><a href="#s4">Brushi in orodja za modeliranje</a><ul><li><a href="#s4-1">Risanje brushev</a></li><li><a href="#s4-2">Izbiranje</a></li><li><a href="#s4-3">Orodja za oblikovanje</a></li><li><a href="#s4-4">Združevanje brushev</a></li><li><a href="#s4-5">Izvlek, zaobljanje, patch in posnetje</a></li><li><a href="#s4-6">3D-besedilo</a></li></ul></li><li class="chapter"><a href="#s5">Materiali in UV</a><ul><li><a href="#s5-1">Nalaganje in uporaba materialov</a></li><li><a href="#s5-2">Urejevalnik UV</a></li><li><a href="#s5-3">Tipke za UV</a></li><li><a href="#s5-4">Materiali orodij</a></li><li><a href="#s5-5">Izpuščanje ploskev iz izvoza</a></li></ul></li><li class="chapter"><a href="#s6">Barva in prelivi</a><ul><li><a href="#s6-1">Paleta in mešana barva</a></li><li><a href="#s6-2">Izbirnik barv</a></li><li><a href="#s6-3">Prelivi</a></li><li><a href="#s6-4">Material površine</a></li></ul></li><li class="chapter"><a href="#s7">Sredstva, plasti in skupine</a><ul><li><a href="#s7-1">Knjižnica sredstev</a></li><li><a href="#s7-2">Plasti</a></li><li><a href="#s7-3">Skupine in povezane skupine</a></li><li><a href="#s7-4">Skupno merilo</a></li></ul></li><li class="chapter"><a href="#s8">Entitete in igranje</a><ul><li><a href="#s8-1">Postavljanje entitet</a></li><li><a href="#s8-2">Lastnosti</a></li><li><a href="#s8-3">Kaj zmore izvoz</a></li></ul></li><li class="chapter"><a href="#s9">Animacija</a><ul><li><a href="#s9-1">Predogled animacij</a></li><li><a href="#s9-2">Urejevalnik ključnih sličic</a></li><li><a href="#s9-3">Posnetki</a></li><li><a href="#s9-4">Upravljanje in predvajanje</a></li><li><a href="#s9-5">Časovnica</a></li><li><a href="#s9-6">Tipke v urejevalniku</a></li><li><a href="#s9-7">Poziranje v pogledih</a></li><li><a href="#s9-8">Povezovanje gumbov z animacijami</a></li><li><a href="#s9-9">Animacija v izvozih</a></li><li><a href="#s9-10">Primer Motion lab</a></li></ul></li><li class="chapter"><a href="#s10">Izvoz v pogon</a><ul><li><a href="#s10-1">Skupne možnosti</a></li><li><a href="#s10-2">Opombe o ciljih</a></li></ul></li><li class="chapter"><a href="#s11">Povezave v živo: Godot, Unity, Defold in Flax</a><ul><li><a href="#s11-1">Godot</a></li><li><a href="#s11-2">Unity</a></li><li><a href="#s11-3">Defold</a></li><li><a href="#s11-4">Flax</a></li></ul></li><li class="chapter"><a href="#s12">Skupne seje v živo</a><ul><li><a href="#s12-1">Gostovanje in pridružitev</a></li></ul></li><li class="chapter"><a href="#s13">3D-prikaz in drugi zaslon</a><ul><li><a href="#s13-1">Načini prikaza</a></li><li><a href="#s13-2">Ločeno 3D-okno</a></li><li><a href="#s13-3">Proceduralno nebo</a></li></ul></li><li class="chapter"><a href="#s14">Kamere za upodabljanje in slike PNG</a><ul><li><a href="#s14-1">Postavljanje kamere</a></li><li><a href="#s14-2">Nastavitve</a></li><li><a href="#s14-3">Upodabljanje</a></li></ul></li><li class="chapter"><a href="#s15">Nastavitve</a><ul><li><a href="#s15-1">Strani</a></li><li><a href="#s15-2">Jezik</a></li></ul></li><li class="chapter"><a href="#s16">Vtičniki in MCP</a><ul><li><a href="#s16-1">Vtičniki</a></li><li><a href="#s16-2">MCP</a></li></ul></li><li class="chapter"><a href="#s17">Ukazna vrstica</a><ul><li><a href="#s17-1">Odpiranje datotek</a></li><li><a href="#s17-2">Ukazi</a></li></ul></li><li class="chapter"><a href="#s18">Odpravljanje težav</a><ul><li><a href="#s18-1">Ko je nekaj videti narobe</a></li><li><a href="#s18-2">Nastavitve in varnostne kopije</a></li><li><a href="#s18-3">Prijava napake</a></li><li><a href="#s18-4">Uporaba tega priročnika</a></li></ul></li></ul></nav>
+  </aside>
+  <button class="toc-toggle" type="button" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+    <span class="toc-current">Prvi koraki</span>
+  </button>
+  <article class="manual-body">
+<h2 id="s1"><a class="anchor" href="#s1" aria-hidden="true" tabindex="-1">#</a>Prvi koraki</h2>
+<p>Heron Brush je urejevalnik stopenj, ki temelji na brushih. Stopnje gradite iz konveksnih brushev, barvate in teksturirate njihove ploskve, postavljate entitete, animirate vrata in ploščadi ter rezultat izvozite v igralni pogon. Na voljo so tudi vgrajena sredstva, parametrične oblike, povezave v živo z urejevalniki pogonov, skupne seje urejanja in upodabljanje statičnih slik. Ta priročnik je priložen programu in deluje brez povezave.</p>
+<p>V macOS deluje <span class="keys"><kbd>Cmd</kbd></span> povsod, kjer priročnik omenja <span class="keys"><kbd>Ctrl</kbd></span>, Option pa je Alt.</p>
+<h3 id="s1-1"><a class="anchor" href="#s1-1" aria-hidden="true" tabindex="-1">#</a>Pozdravni zaslon</h3>
+<p>Če se Heron Brush zažene brez zemljevida, se odpre pozdravni zaslon. Na levi so <strong>Nadaljuj</strong> (nazadnje odprti zemljevid), <strong>Nov zemljevid</strong> in <strong>Prebrskaj</strong> za odpiranje obstoječe datoteke <code>.map</code>, poleg tega še <strong>Igra</strong>, <strong>Priročnik</strong> in <strong>Nastavitve</strong>. Na desni je seznam nedavnih zemljevidov s sličicami, ki mu sledijo <strong>Primeri</strong>. Zvezdica (<strong>Pripni na vrh</strong>) pripne zemljevid na vrh seznama; koš (<strong>Premakni v koš</strong>) premakne datoteko v sistemski koš, od koder jo je mogoče obnoviti. S puščičnimi tipkami se premikate po zaslonu, Enter pa odpre izbrani element. Datoteka → Dobrodošli pozdravni zaslon kadar koli prikliče nazaj.</p>
+<h3 id="s1-2"><a class="anchor" href="#s1-2" aria-hidden="true" tabindex="-1">#</a>Vaš prvi zemljevid</h3>
+<ol>
+<li>Na pozdravnem zaslonu izberite <strong>Nov zemljevid</strong> ali Datoteka → Nov zemljevid (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>).</li>
+<li>V vrstici orodij izberite orodje Brush (<span class="keys"><kbd>B</kbd></span>) in povlecite v 2D-pogledu, da narišete izbrano obliko. Njeno globino preverite v drugem 2D-pogledu.</li>
+<li>Izberite brush in ga premaknite z vlečenjem. Na zavihku <strong>Ploskev</strong> mu dodelite material ali barvo.</li>
+<li>Izvorni zemljevid shranite s <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>. Ko ga želite uporabiti v igri, odprite Datoteka → Izvoz in zapišite sceno za svoj pogon.</li>
+</ol>
+<h3 id="s1-3"><a class="anchor" href="#s1-3" aria-hidden="true" tabindex="-1">#</a>Datoteke in shranjevanje</h3>
+<p>Datoteka <code>.map</code> je vaš urejljivi izvor. Redno shranjujte: izvoz, povezave v živo in upodabljanje zemljevida nikoli ne shranijo namesto vas. Datoteka → Shrani kot (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>) doda končnico <code>.map</code>, če jo izpustite. Datoteka → Povrni na shranjeni zemljevid zavrže neshranjene spremembe in znova naloži datoteko. Če zaprete okno ali odprete drug zemljevid, medtem ko so spremembe neshranjene, Heron Brush vpraša, ali naj jih <strong>Shrani</strong>, <strong>Zavrzi</strong> ali <strong>Prekliči</strong>.</p>
+<p>Dokler ima shranjeni zemljevid neshranjene spremembe, se vsakih deset minut zapišejo oštevilčene varnostne kopije v mapo <code>autosave</code> poleg zemljevida. Ohrani se 50 najnovejših kopij.</p>
+<p>Če zemljevid odprete, ko Heron Brush že teče, se preda odprtemu oknu, ki pride v ospredje. Če želite ločeno okno, v ukazni vrstici uporabite <code>--new-instance</code> (glejte Ukazna vrstica).</p>
+<h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>Uporabniški vmesnik</h2>
+<p>Glavno okno ima naslovno vrstico z meniji, pod njo vrstico orodij, poglede zemljevida, inšpektor na desni in vrstico stanja na dnu.</p>
+<h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>Naslovna vrstica in meniji</h3>
+<p>Naslovna vrstica prikazuje logotip, menije, ime zemljevida na sredini in gumbe okna. V macOS so običajni rdeči, rumeni in zeleni gumbi na levi. Z vlečenjem naslovne vrstice premikate okno, z dvoklikom ga povečate. Ko se nekaj izvaja v ozadju, se proti koncu vrstice prikaže kazalnik: povezava v živo s pogonom, seja v živo ali <strong>MCP je aktiven</strong>. S klikom na kazalnik ustavite povezavo v živo ali odprete njeno okno.</p>
+<ul>
+<li><strong>Datoteka</strong>: Dobrodošli, Nov zemljevid (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>), Odpri zemljevid (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span>), Shrani (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>), Shrani kot (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>), Povrni na shranjeni zemljevid, Izvoz, Upodobi sliko, Vtičniki in Nastavitve (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>).</li>
+<li><strong>Uredi</strong>: Razveljavi (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Uveljavi znova (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Izreži, Kopiraj, Prilepi, Podvoji (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>), Izbriši, Izberi vse (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>), Ponovi zadnje ukaze (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>) in Pozabi ponovljive ukaze.</li>
+<li><strong>Pogled</strong>: 3D-pogled v ločenem oknu, Pojdi na, Pripni na mrežo (<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>), Pokaži mrežo (<span class="keys"><kbd>0</kbd></span>), Predogled animacij in Pokaži izpuščene ploskve.</li>
+<li><strong>Geometrija</strong>: Vstavi 3D-besedilo, Spoji kot, Pretvori ploskve v patche, Premakni izbor iz njegove entitete in Sinhroniziraj povezane skupine.</li>
+<li><strong>Animacija</strong>: Animacija s ključnimi sličicami, Predogled animacij in Postavi kamero po 3D-pogledu (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>).</li>
+<li><strong>Zemljevid</strong>: Naloži, Znova naloži in Zapri datoteko točk; Naloži, Znova naloži in Zapri datoteko portalov. Te prikazujejo sledi puščanj in portale, ki jih zapišejo prevajalniki zemljevidov.</li>
+<li><strong>Sodelovanje</strong>: Seja v živo in Ponudi agentu (MCP).</li>
+<li><strong>Pomoč</strong>: Priročnik in O programu.</li>
+</ul>
+<h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>Vrstica orodij</h3>
+<p>Vrstica orodij vsebuje vsa orodja. Prva skupina se uporablja ves čas: Izberi, Brush, Rez, Oglišče, Rob, Ploskev, Zasukaj in Merilo. Druga skupina vsebuje Striži, Sestavi, Izvlek, Kontrolna točka, Zaobljanje in Barvanje. Ko s kazalcem pridržite nad gumbom, se prikažeta njegovo ime in bližnjica. Ponoven klik na aktivno orodje vas vrne na Izberi.</p>
+<p>Za orodji sledita <strong>Zrcali vodoravno</strong> in <strong>Zrcali navpično</strong>, nato dve stikali: <strong>Zakleni</strong> ohrani preslikavo materiala ob premiku brusha, <strong>UV</strong> pa jo ohrani ob zasuku brusha (<span class="keys"><kbd>U</kbd></span> ga preklopi). Sledijo nastavitve aktivnega orodja: orodje Brush prikaže obliko in njene možnosti, orodje Zaobljanje pa polmer, ploskve in kote z gumbom <strong>Uporabi</strong>. Na desnem koncu so ime orodja, velikost mreže (<strong>Mreža 16</strong> in podobno; s klikom izberete drugo) in meni <strong>Nastavitve mreže</strong> z možnostmi Pripni na mrežo, Pokaži mrežo, Predogled animacij, Pokaži izpuščene ploskve in Animacija s ključnimi sličicami.</p>
+<h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>Pogledi zemljevida</h3>
+<p>Na voljo so štirje pogledi: 3D-pogled in trije ravninski pogledi, Zgoraj (XY), Spredaj (XZ) in Od strani (YZ). Nastavitve → Pogled → Postavitev izbere Eno podokno, Dve podokni, Tri podokna ali Štiri podokna. Velikost podoken spremenite z vlečenjem razdelilnikov. Klik v pogled mu preda tipkovnico. <span class="keys"><kbd>Space</kbd></span> v podoknu, ki prikazuje po en pogled, preklopi na naslednji pogled, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> pa poveča pogled, ki ima tipkovnico, in znova obnovi postavitev.</p>
+<p>Desni klik brez vlečenja v katerem koli pogledu odpre priročni meni za izbor in za to, kar je pod kazalcem. Ponuja združevanje v skupine, plasti, povezane skupine, ustvarjanje entitet, premikanje brushev v entiteto ali iz nje, kopiranje imena materiala in prikaz materiala v brskalniku materialov.</p>
+<h3 id="s2-4"><a class="anchor" href="#s2-4" aria-hidden="true" tabindex="-1">#</a>Inšpektor</h3>
+<p>Inšpektor na desni ima štiri zavihke. Njegovo širino spremenite z vlečenjem levega roba.</p>
+<ul>
+<li><strong>Zemljevid</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>1</kbd></span>): Plasti, Skupine, Vtičniki, Težave, filtri pogleda in Oznake.</li>
+<li><strong>Entiteta</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>2</kbd></span>): brskalnik entitet, definicije entitet, lastnosti izbrane entitete in pri gumbih in sprožilcih Sprožilec animacije.</li>
+<li><strong>Ploskev</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>3</kbd></span>): UV, Materiali, Barva, Izvlek, Zaobljanje, Patch ter Vgrez in posnetje. Vsak razdelek je mogoče strniti.</li>
+<li><strong>Sredstva</strong>: knjižnica modelov iz brushev za večkratno uporabo.</li>
+</ul>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>5</kbd></span> skrije ali prikaže inšpektor, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>T</kbd></span> pa skrije ali prikaže vrstico orodij, kar pogledom da več prostora.</p>
+<h3 id="s2-5"><a class="anchor" href="#s2-5" aria-hidden="true" tabindex="-1">#</a>Vrstica stanja in podokno izpisa</h3>
+<p>Vrstica stanja na dnu prikazuje zadnje sporočilo urejevalnika. Napake so prikazane rdeče. Klik na vrstico ali <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span> odpre podokno izpisa s celotno zgodovino sporočil. Večina ukazov tu sporoči, kaj je naredila, na primer koliko brushev je bilo prerezanih.</p>
+<h3 id="s2-6"><a class="anchor" href="#s2-6" aria-hidden="true" tabindex="-1">#</a>Pogovorna okna in videz</h3>
+<p>Pogovorna okna, kot so Nastavitve, Izvoz in Upodobi sliko, se odprejo kot samostojna okna. Nastavitve → Pogled → Barvna shema izbere Kot v sistemu, Svetla ali Temna. <strong>Prekrivnost plošč (%)</strong> na strani Pregled naredi plošče nad pogledi prosojne. Okno riše lastne gumbe v slogu vašega sistema: izvorno v macOS, v slogu Windows 11 v sistemu Windows in v slogu GNOME v Linuxu.</p>
+<h2 id="s3"><a class="anchor" href="#s3" aria-hidden="true" tabindex="-1">#</a>Navigacija in tipkovnica</h2>
+<h3 id="s3-1"><a class="anchor" href="#s3-1" aria-hidden="true" tabindex="-1">#</a>Premikanje v 3D-pogledu</h3>
+<p>Za razgledovanje držite desni gumb miške in vlecite. Z vlečenjem s srednjim gumbom pomikate pogled. Kolesce premika naprej in nazaj. <span class="keys"><kbd>W</kbd></span>, <span class="keys"><kbd>A</kbd></span>, <span class="keys"><kbd>S</kbd></span> in <span class="keys"><kbd>D</kbd></span> letijo naprej, levo, nazaj in desno, <span class="keys"><kbd>Q</kbd></span> dviga in <span class="keys"><kbd>X</kbd></span> spušča; za večje korake držite <span class="keys"><kbd>Shift</kbd></span>. Če je v Nastavitve → Miška vklopljeno <strong>Alt + vlečenje s srednjim gumbom premika kamero</strong>, Alt s srednjim gumbom premika v smeri pogleda. Hitrosti, obračanje smeri in vidno polje so v Nastavitve → Miška.</p>
+<h3 id="s3-2"><a class="anchor" href="#s3-2" aria-hidden="true" tabindex="-1">#</a>Premikanje v 2D-pogledih</h3>
+<p>Z vlečenjem s srednjim gumbom pomikate pogled, s kolescem pa povečujete okoli kazalca. Pomikanje in povečava enega ravninskega pogleda ohranita poravnanost ostalih; to nadzira <strong>Poveži 2D-poglede</strong> v Nastavitve → Miška. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span> ponastavi povečavo, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>U</kbd></span> pa ravninske poglede vrne v izhodišče.</p>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>U</kbd></span> uokviri izbor v vseh pogledih. Pogled → Pojdi na (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>M</kbd></span>) premakne kamero na vtipkane koordinate, izbere tisto, kar je v določeni vrstici datoteke zemljevida, ali premakne izbor za vtipkano vrednost.</p>
+<h3 id="s3-3"><a class="anchor" href="#s3-3" aria-hidden="true" tabindex="-1">#</a>Mreža in pripenjanje</h3>
+<p><span class="keys"><kbd>+</kbd></span> in <span class="keys"><kbd>-</kbd></span> spreminjata velikost mreže, številske tipke <span class="keys"><kbd>1</kbd></span> do <span class="keys"><kbd>9</kbd></span> pa velikost izberejo neposredno, od 1 do 256 enot. <span class="keys"><kbd>0</kbd></span> ali <span class="keys"><kbd>#</kbd></span> prikaže ali skrije mrežo, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> pa vklopi ali izklopi pripenjanje. <span class="keys"><kbd>S</kbd></span> pripne oglišča izbranih brushev na trenutno mrežo, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> jih pripne na cele enote, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> pa na mrežo.</p>
+<h3 id="s3-4"><a class="anchor" href="#s3-4" aria-hidden="true" tabindex="-1">#</a>Pogoste bližnjice</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>: shrani zemljevid. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>: shrani kot.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>: razveljavi. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> ali <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>: uveljavi znova.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>: kopiraj, izreži in prilepi. Lepljenje postavi predmete na mesto kazalca; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></span> ohrani njihove prvotne koordinate. Če so izbrane ploskve, kopiranje prevzame njihov material in nastavitve UV.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>: podvoji. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>: povezana kopija skupine.</li>
+<li><span class="keys"><kbd>Delete</kbd></span> ali <span class="keys"><kbd>Backspace</kbd></span>: izbriši izbor.</li>
+<li><span class="keys"><kbd>Esc</kbd></span>: prekliče trenutno vlečenje, naredi korak nazaj v aktivnem orodju, se vrne na Izberi in na koncu počisti izbor. <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Esc</kbd></span> se neposredno vrne na Izberi.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>: ponovi zadnje ponovljive ukaze. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span>: pozabi jih.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> ali <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>: postavi kamero za upodabljanje na mesto 3D-pogleda.</li>
+<li><span class="keys"><kbd>F5</kbd></span>: znova naloži materiale. <span class="keys"><kbd>F6</kbd></span>: znova naloži definicije entitet.</li>
+</ul>
+<h3 id="s3-5"><a class="anchor" href="#s3-5" aria-hidden="true" tabindex="-1">#</a>Bližnjice za izbiranje</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>: izberi vse ali, ko je aktivno orodje za oglišča, robove ali ploskve, vse ročice. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd></span>: ne izberi ničesar. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span>: obrni izbor.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B</kbd></span>: izberi druge predmete v isti entiteti ali skupini.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>T</kbd></span>: izberi vse, česar se izbrani brushi dotikajo. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd></span>: izberi vse, kar je v njih. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>E</kbd></span>: izberi vse v njihovem stolpcu vzdolž osi pogleda. Pri tem se izbirni brushi porabijo.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>I</kbd></span>: osami izbor. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>I</kbd></span>: skrij ga. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span>: znova prikaži vse.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span>: združi v skupino. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span>: razdruži.</li>
+</ul>
+<h3 id="s3-6"><a class="anchor" href="#s3-6" aria-hidden="true" tabindex="-1">#</a>Bližnjice za preoblikovanje</h3>
+<ul>
+<li>Puščične tipke ter <span class="keys"><kbd>Page Up</kbd></span> / <span class="keys"><kbd>Page Down</kbd></span> premaknejo izbor za en korak mreže v smeri, v katero kažejo v aktivnem pogledu. S <span class="keys"><kbd>Ctrl</kbd></span> med premikanjem podvajajo, z <span class="keys"><kbd>Alt</kbd></span> pa sukajo.</li>
+<li><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Y</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span>: zasuk za četrt obrata okoli te osi; z dodanim <span class="keys"><kbd>Shift</kbd></span> v nasprotno smer.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span>: zrcaljenje prek pogleda; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span>: zrcaljenje navzgor in navzdol. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>X</kbd></span> in <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Y</kbd></span> zrcalita vzdolž X ali Y.</li>
+<li><span class="keys"><kbd>Insert</kbd></span>: postavi točkovno entiteto v središče izbora.</li>
+<li><span class="keys"><kbd>Tab</kbd></span>: ko je izbran brush, kroži Izberi → Oglišče → Rob → Ploskev → Izberi.</li>
+</ul>
+<h3 id="s3-7"><a class="anchor" href="#s3-7" aria-hidden="true" tabindex="-1">#</a>Razpored bližnjic Blender</h3>
+<p>Nastavitve → Tipkovnica → Razpored bližnjic ponuja Heron Brush (privzeto, uporabljeno v vsem priročniku) in Blender. Pri Blenderju: <span class="keys"><kbd>G</kbd></span> izbere in premika, <span class="keys"><kbd>R</kbd></span> suka, <span class="keys"><kbd>S</kbd></span> spreminja merilo, <span class="keys"><kbd>E</kbd></span> izvleče, <span class="keys"><kbd>1</kbd></span>, <span class="keys"><kbd>2</kbd></span> in <span class="keys"><kbd>3</kbd></span> izberejo orodja za oglišča, robove in ploskve, <span class="keys"><kbd>K</kbd></span> reže, <span class="keys"><kbd>B</kbd></span> izbira, <span class="keys"><kbd>A</kbd></span> izbere vse in <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span> počisti izbor, <span class="keys"><kbd>X</kbd></span> briše, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> podvaja, <span class="keys"><kbd>H</kbd></span> skrije in <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>H</kbd></span> prikaže vse, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> pa uveljavi znova. Vse drugo je v obeh enako.</p>
+<h2 id="s4"><a class="anchor" href="#s4" aria-hidden="true" tabindex="-1">#</a>Brushi in orodja za modeliranje</h2>
+<p>Brushi so konveksna telesa, določena z ravninami. Zapletene predmete sestavite iz več preprostih brushev, namesto da bi poskušali en brush narediti konkaven. Kjer zadošča preprosta oblika, naj bo brushev čim manj.</p>
+<h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>Risanje brushev</h3>
+<p>Izberite orodje Brush (<span class="keys"><kbd>B</kbd></span>) in povlecite v pogledu. Vrstica orodij prikaže <strong>Oblika za risanje</strong>: Kvader, Stopnice, Obok, Valj, Stožec, Sferoid (UV), Sferoid (ikozaeder) in Vstavi 3D-besedilo. <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span> do <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>7</kbd></span> obliko izberejo neposredno. Glede na obliko vrstica prikaže <strong>Izvotli</strong> in <strong>Debelina:</strong>, za stopnice <strong>Višina stopnice:</strong> in <strong>Smer:</strong>, za okrogle oblike <strong>Os:</strong>, <strong>Stranic:</strong> in način kroga, za krogle <strong>Obročev:</strong> in za ikozaeder <strong>Natančnost:</strong>. Možnosti nastavite pred vlečenjem. Rezultat preverite v več kot enem pogledu.</p>
+<h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>Izbiranje</h3>
+<p>Brush izberete s klikom, s klikom ob <span class="keys"><kbd>Ctrl</kbd></span> ga dodate v izbor. Vlečenje iz praznega prostora nariše izbirni okvir. V 3D-pogledu klik ob <span class="keys"><kbd>Shift</kbd></span> izbere posamezno ploskev, klik ob <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span> pa doda več ploskev. Vlečenje izbranega brusha ga premakne; vlečenje neizbranega izbere in premakne samo tega.</p>
+<p>V 3D-pogledu z vlečenjem ploskve izbranega brusha ob <span class="keys"><kbd>Shift</kbd></span> ploskev izvlečete. Klik ob <span class="keys"><kbd>Alt</kbd></span> na drugo ploskev nanjo prenese material in poravnavo izbrane ploskve; <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> prenese le material, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> pa zasuk.</p>
+<h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>Orodja za oblikovanje</h3>
+<ul>
+<li><strong>Izberi</strong> (<span class="keys"><kbd>Esc</kbd></span>): izbiranje in premikanje.</li>
+<li><strong>Oglišče</strong> (<span class="keys"><kbd>V</kbd></span>), <strong>Rob</strong> (<span class="keys"><kbd>E</kbd></span>), <strong>Ploskev</strong> (<span class="keys"><kbd>F</kbd></span>): vlečenje oglišč, robov ali ploskev. Vlečenje ob <span class="keys"><kbd>Shift</kbd></span> s sredine roba ali ploskve tam doda oglišče. <span class="keys"><kbd>Delete</kbd></span> odstrani izbrana oglišča.</li>
+<li><strong>Zasukaj</strong> (<span class="keys"><kbd>R</kbd></span>), <strong>Merilo</strong> (<span class="keys"><kbd>T</kbd></span>), <strong>Striži</strong> (<span class="keys"><kbd>G</kbd></span>): preoblikovanje izbora z ročicami.</li>
+<li><strong>Rez</strong> (<span class="keys"><kbd>C</kbd></span>): s klikom na dve ali tri točke določite rezalno ravnino. <span class="keys"><kbd>Enter</kbd></span> prereže, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> izbere, katero stran ohraniti, <span class="keys"><kbd>Backspace</kbd></span> ali <span class="keys"><kbd>Esc</kbd></span> pa odstrani zadnjo točko.</li>
+<li><strong>Sestavi</strong> (<span class="keys"><kbd>N</kbd></span>): postavite točke okoli prostornine in pritisnite <span class="keys"><kbd>Enter</kbd></span>, da iz njih nastane konveksen brush. <span class="keys"><kbd>Backspace</kbd></span> odstrani zadnjo točko.</li>
+<li><strong>Izvlek</strong> (<span class="keys"><kbd>Y</kbd></span>): glejte razdelek o izvleku spodaj.</li>
+<li><strong>Kontrolna točka</strong> (<span class="keys"><kbd>P</kbd></span>): preoblikovanje kontrolne mreže patcha.</li>
+<li><strong>Zaobljanje</strong> (<span class="keys"><kbd>O</kbd></span>): kliknite rob, da ga zaoblite, ali izberite robove ali oglišča z njihovimi orodji in pritisnite <span class="keys"><kbd>Enter</kbd></span>. Več ploskev da bolj gladek rezultat in več geometrije.</li>
+<li><strong>Barvanje</strong> (<span class="keys"><kbd>K</kbd></span>): glejte Materiali in UV.</li>
+</ul>
+<h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>Združevanje brushev</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>: združi izbrane brushe v njihovo konveksno ovojnico.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>K</kbd></span>: odštej izbrane brushe od brushev, ki se jih dotikajo.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></span>: izvotli izbor s stenami debeline enega koraka mreže.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>L</kbd></span>: presek izbora.</li>
+</ul>
+<h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>Izvlek, zaobljanje, patch in posnetje</h3>
+<p><strong>Izvlek</strong> gradi geometrijo vzdolž poti iz izbranih ploskev. Izberite ploskve (v orodju Izvlek s klikom ob <span class="keys"><kbd>Alt</kbd></span>), nato v razdelku Izvlek na zavihku Ploskev nastavite <strong>Hod</strong>, <strong>Zasuk</strong> (os in kot), <strong>Merilo</strong>, <strong>Koraki</strong> in <strong>Pot</strong> (poravnava Celoštevilsko ali Prosto; Lok, Ravno ali Esasti zavoj) ter pritisnite <strong>Izvlek</strong>. Vrstica pod kontrolniki pove, koliko brushev bo nastalo.</p>
+<p>Razdelek <strong>Zaobljanje</strong> zaobli izbrane robove z nastavitvami <strong>Polmer</strong>, <strong>Ploskve</strong> in <strong>Koti</strong> (Jeralno ali Zaobljeno); ena ploskev naredi posneti rob.</p>
+<p><strong>Patch</strong> prikazuje <strong>Stolpci</strong> in <strong>Vrstice</strong> izbranega patcha z gumbi za dodajanje ali odvzem para. Geometrija → Pretvori ploskve v patche (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>) iz izbranih ploskev naredi patche.</p>
+<p><strong>Vgrez in posnetje</strong> deluje na izbranih ploskvah: <strong>Vgrez</strong> ploskev pomakne navznoter od njenih robov, <strong>Globina</strong> pa jo potisne navzven (ali navznoter, če je negativna). <strong>Posnemi ploskve</strong> uporabi oboje; tretji gumb doda ploščo ali izreže vdolbino, odvisno od predznaka globine. <strong>Spoji kot</strong> odpre pogovorno okno, ki dva brusha spoji v jeralni ali zaobljeni kot s predogledom.</p>
+<h3 id="s4-6"><a class="anchor" href="#s4-6" aria-hidden="true" tabindex="-1">#</a>3D-besedilo</h3>
+<p>Geometrija → Vstavi 3D-besedilo (tudi zadnji element seznama oblik orodja Brush) zgradi brushe iz besedila. Uporablja Heron Block, vgrajeno poligonsko pisavo s posnetimi vogali, sorazmernimi širinami in češkimi naglasi; male črke uporabljajo oblike velikih. Vpišite <strong>Besedilo</strong>, nastavite <strong>Višina</strong> (višina velikih črk; naglasi segajo nad njo) in <strong>Globina</strong>, spremljajte predogled v živo in pritisnite <strong>Vstavi</strong>.</p>
+<p>Če operacija ne more ustvariti veljavne geometrije, prilagodite njene mere ali razveljavite in poenostavite obliko.</p>
+<h2 id="s5"><a class="anchor" href="#s5" aria-hidden="true" tabindex="-1">#</a>Materiali in UV</h2>
+<h3 id="s5-1"><a class="anchor" href="#s5-1" aria-hidden="true" tabindex="-1">#</a>Nalaganje in uporaba materialov</h3>
+<p>Odprite razdelek <strong>Materiali</strong> na zavihku Ploskev. <strong>Naloži mapo</strong> doda mapo slik, <strong>Naloži .wad</strong> pa paket tekstur; oboje se prikaže pod <strong>Zbirke</strong>, kjer križec element odstrani. Za zožitev seznama tipkajte v <strong>Filtriraj materiale</strong>. S klikom material postane trenutni, <strong>Uporabi za izbor</strong> pa ga nanese na vse izbrane ploskve. <strong>Izberi</strong> ponuja Izberi brushe z njim in Izberi ploskve z njim. <strong>Zamenjaj</strong> zamenja en material z drugim v celotnem zemljevidu ali samo v izboru.</p>
+<p>Orodje <strong>Barvanje</strong> (<span class="keys"><kbd>K</kbd></span>) nanese trenutni material na ploskev pod kazalcem: klik pobarva eno ploskev, dvoklik ves brush, klik ob <span class="keys"><kbd>Shift</kbd></span> pa material ploskve prevzame kot trenutnega, kot kapalka.</p>
+<h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>Urejevalnik UV</h3>
+<p>Razdelek <strong>UV</strong> na zavihku Ploskev prikazuje material in obris izbrane ploskve. Upravljanje z miško na platnu:</p>
+<ul>
+<li>Kolesce povečuje okoli kazalca. Z vlečenjem z desnim ali srednjim gumbom pomikate pogled. Dvoklik z desnim gumbom ploskev znova uokviri; izbira druge ploskve jo uokviri samodejno.</li>
+<li>Vlečenje z levim gumbom premika material, obris ploskve pa ostane na mestu. Obroč suka preslikavo, ročice v vogalih spreminjajo merilo, središčna ročica pa določa izhodišče teh sprememb.</li>
+<li>Vlečenje z levim gumbom ob <span class="keys"><kbd>Alt</kbd></span> na robu ploščice striže, enako tudi vlečenje s srednjim gumbom ob <span class="keys"><kbd>Shift</kbd></span>.</li>
+<li>Vsako vlečenje je en korak razveljavitve, <span class="keys"><kbd>Esc</kbd></span> pa prekliče vlečenje, ki je v teku.</li>
+</ul>
+<p>Pod platnom so <strong>Odmik</strong>, <strong>Merilo</strong>, <strong>Kot</strong> in, kadar jih igra uporablja, <strong>Zastavice vsebine</strong>, <strong>Zastavice površine</strong> in <strong>Vrednost površine</strong>. Gumbi so <strong>Ponastavi</strong>, <strong>Poravnaj po svetu</strong>, <strong>Prilagodi</strong>, <strong>Zrcali vodoravno</strong>, <strong>Zrcali navpično</strong> in zasuka za 90°. <strong>Poravnaj</strong> obrne material vzdolž enega od robov ploskve (ponoven pritisk za naslednji rob, <span class="keys"><kbd>Shift</kbd></span> za prejšnjega). Štirje gumbi za poravnavo potisnejo material ob rob. <strong>Prilagodi U</strong> in <strong>Prilagodi V</strong> spremenita merilo tako, da ploskev pokrije celo število ponovitev; ponoven pritisk izbere naslednje število, z držanjem <span class="keys"><kbd>Ctrl</kbd></span> pa ohranite razdelitev trim sheeta.</p>
+<h3 id="s5-3"><a class="anchor" href="#s5-3" aria-hidden="true" tabindex="-1">#</a>Tipke za UV</h3>
+<p>Ko so izbrane ploskve, puščične tipke premikajo material, <span class="keys"><kbd>[</kbd></span> in <span class="keys"><kbd>]</kbd></span> ga zasukata za 15°, <span class="keys"><kbd>,</kbd></span> in <span class="keys"><kbd>.</kbd></span> mu razpolovita ali podvojita merilo, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> in <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span> ga zrcalita, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> ga ponastavi, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> ga ponastavi na osi sveta, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>F</kbd></span> pa ga prilagodi vsaki ploskvi.</p>
+<p><strong>Zakleni</strong> v vrstici orodij ohrani preslikavo ob premikanju brushev, <strong>UV</strong> (<span class="keys"><kbd>U</kbd></span>) pa ob njihovem sukanju.</p>
+<h3 id="s5-4"><a class="anchor" href="#s5-4" aria-hidden="true" tabindex="-1">#</a>Materiali orodij</h3>
+<ul>
+<li>skip: označeno ploskev odstrani iz izvozov za pogone.</li>
+<li>clip: ustvari trke brez vidne geometrije.</li>
+<li>origin: označi vrtišče brush entitete.</li>
+</ul>
+<p>Imena lahko spremenite na kartici <strong>Materiali orodij</strong> v oknu Izvoz. Skip uporabite za ploskve, za katere veste, da so skrite.</p>
+<h3 id="s5-5"><a class="anchor" href="#s5-5" aria-hidden="true" tabindex="-1">#</a>Izpuščanje ploskev iz izvoza</h3>
+<p>Izberite ploskev in v razdelku UV vklopite <strong>Izpusti ploskev iz izvoza</strong>. V predogledu UV jo označuje oranžno šrafiranje. Njen material in barva ostaneta shranjena, brush pa ostane zaprt in urejljiv. Izvožene mreže za upodabljanje to ploskev izpustijo, trki pa se ohranijo. Če kocki izpustite en štirikotnik, nastaneta dva trikotnika za upodabljanje. To ploskev ne naredi dvostranskih in ne združuje mrež.</p>
+<p><strong>Izpusti prekrite ploskve</strong> označi ploskve, ki jih statični brushi povsem prekrivajo, vključno z enakimi dotikajočimi se ploskvami in zaprtimi brushi. Deluje na izbranih brushih ali, če ni nič izbrano, na vsej vidni nezaklenjeni geometriji sveta. Brush entitete, prosojni materiali in brushi, ki že imajo izpuščene ploskve, se preskočijo. Delno prekrite ploskve se ne razdelijo. En korak razveljavitve obnovi vse. Pogled → Pokaži izpuščene ploskve take ploskve v pogledih urejevalnika skrije ali prikaže; izbiranje še vedno uporablja ves brush.</p>
+<h2 id="s6"><a class="anchor" href="#s6" aria-hidden="true" tabindex="-1">#</a>Barva in prelivi</h2>
+<p>Razdelek <strong>Barva</strong> na zavihku Ploskev barva ploskve z enotnimi barvami ali prelivi prek njihovih materialov. Uporaben je za grobo postavitev stopnje in za stilizirano grafiko. Pobarvane ploskve v pogledih ohranijo svoje prave barve; izbor je prikazan z obrobo.</p>
+<h3 id="s6-1"><a class="anchor" href="#s6-1" aria-hidden="true" tabindex="-1">#</a>Paleta in mešana barva</h3>
+<p>Kliknite enega od dvanajstih vzorcev palete, da z njim pobarvate izbrane ploskve ali cele izbrane brushe. <strong>Prekrivnost</strong> v odstotkih določa prekrivnost naslednjega barvanja. <strong>Mešaj</strong> ima barvni gumb, ki odpre izbirnik barv; vlecite v izbirniku in izbor sproti sledi, ali pritisnite <strong>Barvanje</strong>, da mešano barvo nanesete kot en korak. <strong>Nazaj na material</strong> odstrani barvo, tako da ploskev spet prikazuje svoj material. Vrstica na vrhu razdelka pove, kaj je izbrano in kaj nosi.</p>
+<h3 id="s6-2"><a class="anchor" href="#s6-2" aria-hidden="true" tabindex="-1">#</a>Izbirnik barv</h3>
+<p>Vsak barvni gumb v urejevalniku odpre isti izbirnik. Z vlečenjem v kvadratu izberete nasičenost in svetlost, v traku ob njem pa odtenek. Spodaj so vrednosti <strong>R</strong>, <strong>G</strong> in <strong>B</strong> ter drsnik <strong>Prekrivnost</strong>, kjer ga barva ima. Šestnajstiško polje sprejme <code>#RRGGBB</code> ali <code>#RRGGBBAA</code>; obarva se rdeče, dokler besedilo ni veljavna barva. <strong>Kopiraj</strong> šestnajstiško kodo kopira v odložišče. Izbirnik zaprete s klikom zunaj njega.</p>
+<h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>Prelivi</h3>
+<p><strong>Preliv</strong> izbere Linearni preliv ali Radialni preliv, gumb ob njem pa barve zamenja od konca do konca. Vsaka točka ima barvni gumb in <strong>Položaj (%)</strong>, točke med konci pa imajo gumb za odstranitev. <strong>Dodaj barvno točko</strong> doda točko v največjo vrzel; preliv ima lahko največ osem točk. <strong>Kot preliva</strong> določa smer linearnega preliva, z gumboma <strong>+45°</strong> in <strong>−45°</strong>.</p>
+<p>Pod predogledom je tračnica z oznako za vsako točko. Klik na tračnico doda točko, klik na oznako odpre njen izbirnik, vlečenje oznake jo premakne, desni klik na oznako pa jo odstrani. Trije vzorci pod tračnico so prednastavitve: Topel preliv, Hladen preliv in Sivinski preliv. Spremembe preliva se na izboru uveljavijo sproti.</p>
+<p>Smer preliva je pomembna: usmerite ga vzdolž naklona strehe ali vzdolž ukrivljenega predmeta, ne prek nepovezanih ploskev. Po barvanju model preverite z obeh strani.</p>
+<h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>Material površine</h3>
+<p><strong>Material površine</strong> nastavi <strong>Hrapavost</strong> (0 je sijajno, 100 je mat), <strong>Kovinskost</strong> (0 za les, kamen ali plastiko, 100 za kovino) in <strong>Emisija</strong> (0 do 8; površina sveti v lastni barvi, vključno s prelivi, vendar ne osvetljuje bližnjih predmetov). Spremembe se sproti uveljavijo na izbranih ploskvah ali brushih. <strong>Uporabi privzeto površino</strong> odstrani prilagoditev. Vse spremembe je mogoče razveljaviti.</p>
+<p>Učinki površine so vidni v osvetljenem 3D-pogledu in v upodobitvah kamere. Ploski prikaz in žični model namenoma izpustita odsevne poudarke. Bloom lahko okoli emisivnih površin doda sij. Godot in glTF/GLB prejmeta vrednosti materiala, uvoznik za Unity pa hrapavost pretvori v gladkost. Omejitve posameznih ciljev so opisane v <code>docs/surface-materials.md</code>.</p>
+<h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>Sredstva, plasti in skupine</h2>
+<h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>Knjižnica sredstev</h3>
+<p>Odprite zavihek <strong>Sredstva</strong>. Mapo z modeli <code>.map</code> dodate z <strong>Dodaj mapo</strong>; vgrajena knjižnica je vedno na voljo. Za iskanje tipkajte v <strong>Filtriraj sredstva</strong>. S klikom model izberete, nato ga z dvoklikom, s pritiskom <span class="keys"><kbd>Enter</kbd></span> ali s klikom <strong>Vstavi</strong> dodate tja, kjer je bil nazadnje kazalec. Model lahko tudi povlečete v pogled. Brushi sredstva se vstavijo kot ena skupina, tako da se model premika kot celota.</p>
+<p><strong>Shrani izbor kot sredstvo</strong> zapiše izbrane brushe v knjižnico kot <code>.map</code>. Sredstva iz knjižnice so običajni urejljivi brushi, ne uvožene mreže.</p>
+<h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>Plasti</h3>
+<p>Seznam <strong>Plasti</strong> na zavihku Zemljevid organizira velika območja. Vpišite ime in kliknite <strong>Dodaj</strong>, da ustvarite plast, ali pritisnite <span class="keys"><kbd>Enter</kbd></span>, da preimenujete trenutno. Vsako plast je mogoče skriti, zakleniti ali izpustiti iz izvozov. <strong>Premakni sem</strong> premakne izbor v trenutno plast. Priročni meni v pogledih ponuja tudi Premakni v plast, Nastavi kot aktivno plast, Skrij plasti in Osami plasti.</p>
+<h3 id="s7-3"><a class="anchor" href="#s7-3" aria-hidden="true" tabindex="-1">#</a>Skupine in povezane skupine</h3>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span> izbor združi v skupino, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span> pa ga razdruži. Razdelek <strong>Skupine</strong> na zavihku Zemljevid navaja skupine in ponuja <strong>Odpri</strong>, <strong>Preimenuj</strong>, <strong>Združi</strong>, <strong>Razdruži</strong>, <strong>Vzemi ven</strong> in <strong>Izloči</strong>. Povezana skupina je niz kopij, ki si delijo spremembe: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> naredi povezano kopijo, Geometrija → Sinhroniziraj povezane skupine posodobi kopije, <strong>Prekini povezavo</strong> pa kopijo osamosvoji. Na zavihku Entiteta lahko lastnost ostane lastna posamezni kopiji, ko se povezane skupine sinhronizirajo.</p>
+<h3 id="s7-4"><a class="anchor" href="#s7-4" aria-hidden="true" tabindex="-1">#</a>Skupno merilo</h3>
+<p>Privzeto merilo izvoza je 32 enot zemljevida na meter. Vgrajena oznaka začetka igralca je visoka 64 enot, kar je 2-metrska referenca. Z njo primerjajte vrata, vozila, pohištvo in rastline. Merilo izvoza spreminjajte le namerno in povezana sredstva ohranjajte usklajena.</p>
+<h2 id="s8"><a class="anchor" href="#s8" aria-hidden="true" tabindex="-1">#</a>Entitete in igranje</h2>
+<p>Pogoste definicije entitet so vgrajene in vedno na voljo: luči, začetki igralca, vrata, gumbi, ploščadi, sprožilci, statični rekviziti, zvoki in točke poti. Nalaganje FGD projekta z <strong>Definicije entitet</strong> na zavihku Entiteta zamenja razrede z enakim imenom, ostale vgrajene pa ohrani.</p>
+<h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>Postavljanje entitet</h3>
+<p>V brskalniku <strong>Entitete</strong> na zavihku Entiteta tipkajte v <strong>Filtriraj razrede</strong> in izberite razred. Pri točkovnem razredu, na primer luči, kliknite <strong>Postavi</strong> ali dvokliknite razred; <span class="keys"><kbd>Insert</kbd></span> ga postavi v središče izbora. Pri brush razredu, na primer vratih ali sprožilcu, izberite brushe in kliknite <strong>Ustvari</strong>. Razrede lahko tudi povlečete v pogled.</p>
+<h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>Lastnosti</h3>
+<p>Seznam lastnosti ureja izbrano entiteto. Entitete istega razreda se urejajo skupaj. <strong>Dodaj lastnost</strong> doda ključ, ki ga definicija morda ne pozna; <strong>Privzeto</strong> lahko obstoječe lastnosti vrne na privzete vrednosti ali doda manjkajoče. Lastnosti, ki jih razred definira, entiteta pa jih nima, so prikazane zatemnjeno; z vpisom vrednosti jih dodate. Za povezovanje entitet uporabite targetname in target.</p>
+<h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>Kaj zmore izvoz</h3>
+<p>Direktive za Godot ustvarijo izvorna vozlišča, telesa trkov in območja sprožilcev. Unity in Unreal podpirata izvorne pogoste luči, Unreal pa ustvari tudi akterje PlayerStart. Drugi podatki se ohranijo, kolikor to dopušča uvoznik cilja.</p>
+<p>Entiteta vrat sama ne doda vedenja v igri. Gibanje, odzivi sprožilcev, krmilniki igralca in skripti projekta še vedno zahtevajo delo v pogonu. Defold izvozi lastnosti entitet in objekte trkov; Flax postavi modele in splošne entitete. Rezultat preverite v svojem pogonu, preden nanj gradite igranje.</p>
+<h2 id="s9"><a class="anchor" href="#s9" aria-hidden="true" tabindex="-1">#</a>Animacija</h2>
+<p>Heron Brush omogoča predogled preprostega gibanja in urejanje animacij brush entitet s ključnimi sličicami ter njihov izvoz v več pogonov.</p>
+<h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>Predogled animacij</h3>
+<p>Vklopite <strong>Predogled animacij</strong> v meniju Pogled, meniju Animacija, meniju Nastavitve mreže ali v razdelku Pogled na zavihku Zemljevid. Predvaja vrtenje func_rotate in gibanje sem ter tja func_shuttle, kadar je omogočen start_on, pri čemer uporablja lastnosti entitete za os, hitrost, smer, hod in čakanje, ter predvaja posnetke s ključnimi sličicami, ki imajo nastavljeno Predvajaj ob zagonu. Sredstvi ventilator in mlin na veter že vsebujeta vrteče se dele.</p>
+<p>Izklop predogleda obnovi prvotno pozo. Klik v pogled ustavi predvajanje pred izbiranjem ali urejanjem; navigacija s kamero deluje naprej. Predogled ne spreminja zemljevida, zgodovine razveljavitev ali izvozov in ne izvaja fizike ali logike igre.</p>
+<h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>Urejevalnik ključnih sličic</h3>
+<p>Odprete ga z Animacija → Animacija s ključnimi sličicami ali iz menija Nastavitve mreže. Zasidra se pod pogledi ali v 3D-oknu, kadar je to ločeno. Ikona okna v njegovem naslovu ga premakne v samostojno okno; pri tem ohrani sličico in zgodovino razveljavitev. <strong>Uredi animacijo</strong> preklopi poglede na animirano pozo, <strong>Uredi zemljevid</strong> pa se vrne na geometrijo v mirovanju. V načinu animacije vsak pogled na dnu prikazuje <strong>Uredi animacijo</strong> in številko sličice.</p>
+<p>Za animiranje izberite brush entiteto ali brush ali skupino brushev. Ploska skupina brushev ima eno animacijo in vrtišče; skupine, ki vsebujejo več entitet, potrebujejo ločene animacije.</p>
+<h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>Posnetki</h3>
+<p>Izbirnik <strong>Animacija</strong> preklaplja med poimenovanimi posnetki. Vpišite ime v <strong>Ime animacije</strong> in kliknite <strong>Shrani kot</strong>, da trenutni posnetek kopirate pod tem imenom; <strong>Izbriši</strong> posnetek odstrani. <strong>Premik</strong> ustvari posnetek <code>translate</code> brez zasuka. <strong>Animacije vrat</strong> ustvari gladka posnetka <code>open</code> in <code>close</code> z zasukom za 90 stopinj okoli trenutnega vrtišča; vrtišče najprej premaknite na tečaj. <strong>Predvajaj ob zagonu</strong> poskrbi, da se posnetek predvaja ob začetku stopnje; prednastavitev za vrata to izklopi.</p>
+<h3 id="s9-4"><a class="anchor" href="#s9-4" aria-hidden="true" tabindex="-1">#</a>Upravljanje in predvajanje</h3>
+<p>Gumbi za upravljanje so <strong>Začetek</strong>, <strong>Prejšnji ključ</strong>, <strong>Predvajanje</strong>, <strong>Naslednji ključ</strong> in <strong>Konec</strong>. <strong>Sličica</strong> prikazuje in nastavlja trenutno sličico, <strong>Trajanje (s)</strong> pa dolžino posnetka. Način je <strong>Enkrat</strong>, <strong>Zanka</strong> ali <strong>Tja in nazaj</strong>.</p>
+<h3 id="s9-5"><a class="anchor" href="#s9-5" aria-hidden="true" tabindex="-1">#</a>Časovnica</h3>
+<p>Časovnica ima ravnilo s predvajalno glavo in pas za <strong>Položaj</strong> (X, Y in Z se zapisujejo skupaj) ter za vsak kot zasuka, RX, RY in RZ. S klikom ali vlečenjem v ravnilu premaknete predvajalno glavo in v vseh pogledih vidite predogled te poze. Z vlečenjem s srednjim gumbom pomikate časovnico. Ključe v času premikate z vlečenjem; <span class="keys"><kbd>Shift</kbd></span> dodaja v izbor; dvoklik na pas vstavi ključ; <span class="keys"><kbd>Ctrl</kbd></span>+kolesce povečuje. <strong>Krivulje</strong> namesto pasov prikaže krivulje vrednosti.</p>
+<p>Gumbi nad njo so <strong>Dodaj ključ</strong>, <strong>Odstrani</strong>, <strong>Kopiraj</strong>, <strong>Prilepi</strong> in <strong>Podvoji</strong>. <strong>Pripni na sličice</strong> ohranja ključe na celih sličicah, <strong>Prilagodi</strong> pa prikaže ves posnetek. <strong>Spremeni časovanje ključev</strong> odpre <strong>Časovno merilo</strong>, <strong>Odmik (sličice)</strong>, <strong>Merilo od predvajalne glave</strong>, <strong>Podaljšaj trajanje</strong> in <strong>Spremeni časovanje izbora</strong>.</p>
+<p>Inšpektor ključev ob časovnici ureja izbrani ključ: <strong>Sličica</strong>, <strong>Vrednost</strong> (ali tri koordinate ključa položaja), interpolacijo <strong>Linearno</strong>, <strong>Konstantno</strong> ali <strong>Bézierjeva</strong>, <strong>Vhodni naklon</strong> in <strong>Izhodni naklon</strong> ter <strong>Zgladi tangente</strong>.</p>
+<h3 id="s9-6"><a class="anchor" href="#s9-6" aria-hidden="true" tabindex="-1">#</a>Tipke v urejevalniku</h3>
+<p>Ko ima časovnica tipkovnico: <span class="keys"><kbd>Space</kbd></span> predvaja ali ustavi, leva in desna puščica se premakneta za eno sličico, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span> izbere vse ključe, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span> in <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span> kopirajo, izrežejo in prilepijo ključe, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span> jih podvoji, <span class="keys"><kbd>Delete</kbd></span> jih odstrani, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span> razveljavi, <span class="keys"><kbd>Esc</kbd></span> pa prekliče vlečenje. Zunaj časovnice <span class="keys"><kbd>Esc</kbd></span> zapusti način animacije. Razveljavitev pusti povečavo, izbor in predvajalno glavo tam, kjer so bili.</p>
+<h3 id="s9-7"><a class="anchor" href="#s9-7" aria-hidden="true" tabindex="-1">#</a>Poziranje v pogledih</h3>
+<p>Vrstica pod časovnico vsebuje <strong>Prikaz sosednjih sličic (onion skin)</strong> s številom in <strong>Razmik</strong>, ki bližnje poze prikaže kot duhove; koordinate <strong>Vrtišče</strong>; <strong>Samodejni ključi</strong>; ter orodja za poziranje <strong>Premik</strong>, <strong>Zasukaj</strong> in <strong>Vrtišče</strong>.</p>
+<ul>
+<li><strong>Dodaj ključ</strong> vklopi Samodejni ključi in ustavi predvajanje. Ko so Samodejni ključi vklopljeni in je izbran <strong>Premik</strong>, v 3D-pogledu povlecite obarvano os ročice izbrane entitete, da zapišete ključ njenega položaja na trenutni sličici.</li>
+<li>V 2D-pogledu povlecite izbrani brush ali člana njegove skupine, da zapišete ključ premika vzdolž obeh vidnih osi s pripenjanjem na mrežo. Samodejni ključi za to ne rabijo biti vklopljeni.</li>
+<li>Z <strong>Zasukaj</strong> povlecite brush v 2D-pogledu okoli njegove oranžne oznake vrtišča. Zgoraj zapiše RZ, Spredaj RY in Od strani RX, pripeto na kote mreže.</li>
+<li>Z <strong>Vrtišče</strong> povlecite rumeno središče vrtenja v katerem koli 2D-pogledu. Pripne se na mrežo in ohrani svojo globino. Ključi in geometrija v mirovanju ostanejo nespremenjeni.</li>
+</ul>
+<p>Cijan pot v 2D in 3D prikazuje gibanje vrtišča. Klik na točko poti izbere njen čas in ključe, vlečenje pa spremeni položaj; ko so Samodejni ključi vklopljeni, lahko točke poti vlečete tudi v 3D-pogledu. Oznake prikazujejo številke sličic, črtkani odseki pa označujejo skoke. <span class="keys"><kbd>Esc</kbd></span> prekliče katero koli od teh vlečenj, en korak razveljavitve pa povrne celotno vlečenje.</p>
+<p>Nove animacije se začnejo v mirovanju s ključi v času nič. Gibanje ustvarite tako, da na drugi sličici spremenite pozo. Za oster pot v obliki črke L zapišite ključe začetka, vogala in konca ter uporabite Linearno s Tja in nazaj.</p>
+<h3 id="s9-8"><a class="anchor" href="#s9-8" aria-hidden="true" tabindex="-1">#</a>Povezovanje gumbov z animacijami</h3>
+<p>Izberite func_button, trigger_multiple ali trigger_once. Zavihek Entiteta nad lastnostmi prikaže <strong>Sprožilec animacije</strong>. Izberite cilj s seznama ali kliknite <strong>Izberi cilj v pogledu</strong> in nato animiran predmet v katerem koli pogledu; <span class="keys"><kbd>Esc</kbd></span> prekliče izbiranje. Manjkajoči cilji ali posnetki so sporočeni pod kontrolniki. Povezave entitet prikazujejo puščice do svojih ciljev, kadar je prikaz povezav vklopljen.</p>
+<p><strong>Dejanje</strong> izbere, kaj naredi aktivacija: <strong>Predvajaj</strong> zažene poimenovani posnetek ali izbrano animacijo; <strong>Preklopi</strong> izmenjuje <code>open</code> in <code>close</code>, če obstajata, sicer znova zažene izbrano animacijo; <strong>Odpri</strong> in <strong>Zapri</strong> zaženeta ta posnetka; <strong>Premor</strong> zadrži pozo, <strong>Nadaljuj</strong> nadaljuje, <strong>Ustavi</strong> pa obnovi prvotno pozo. <strong>Samo enkrat</strong> preglasi privzeto vrednost razreda. <strong>Zakasnitev ponavljanja (s)</strong> določa najkrajši čas med aktivacijami; prve ne zakasni.</p>
+<p><strong>Preizkusi sprožilec</strong> izvede dejanje v predogledu, ne da bi urejal zemljevid ali dodajal korake razveljavitve. <strong>Ponastavi predogled</strong> obnovi prvotne poze in počisti stanje enkratnosti in zakasnitve. To ne simulira trkov igralca ali skriptov igre.</p>
+<h3 id="s9-9"><a class="anchor" href="#s9-9" aria-hidden="true" tabindex="-1">#</a>Animacija v izvozih</h3>
+<p>Godot izvozi izvorna vira AnimationPlayer in AnimationLibrary, vključno s krivuljami in premikajočimi se trki. CharacterBody3D, ki vstopi v območje gumba, aktivira njegov cilj. Spremembe teh posnetkov v Godotu se ne vrnejo v zemljevid in jih naslednji izvoz zamenja.</p>
+<p>Izvoz za raylib doda <code>&lt;map&gt;_animation.h</code> s predvajalnikom v C in <code>&lt;map&gt;_preview.c</code> s predogledom s prosto kamero; za gradnjo sledite <code>&lt;map&gt;_raylib.md</code>. V predogledu <code>SPACE</code> ustavi, <span class="keys"><kbd>R</kbd></span> znova zažene privzete posnetke, <span class="keys"><kbd>N</kbd></span> pa kroži med poimenovanimi posnetki. Defold vgradi predvajanje v skript entitete z dokumentiranimi sporočili <code>heron_*_animation</code>. Build Level v Unityju doda <code>HeronBrushAnimation</code> in kinematično telo. Izvoz za Bevy vključuje <code>heron_animation.rs</code> in navodila. Godot, Unity, Defold, Bevy in raylib ohranijo povezave sprožilcev, zastavico enkratnosti in zakasnitev ponavljanja. Vaša igra mora še vedno registrirati predvajalnik in povezati lastne gumbe z API-jem posameznega izvajalnega okolja.</p>
+<h3 id="s9-10"><a class="anchor" href="#s9-10" aria-hidden="true" tabindex="-1">#</a>Primer Motion lab</h3>
+<p>Med Primeri na pozdravnem zaslonu odprite <code>motion_lab</code>. Vsebuje ploščad s potjo v obliki črke L, dvigalo, vrtečo se ploščad in vrata na tečajih z gumbi. V Godotu odprite <code>godot/project.godot</code>, ki je poleg njega, in pritisnite <span class="keys"><kbd>F5</kbd></span>. WASD in miška premikata igralca, preslednica skoči, 1 do 4 obiščejo postaje, R pa znova zažene trenutno postajo. Stopite na obarvano ploščico, da aktivirate njen cilj. Priložena datoteka README razloži ponovni izvoz.</p>
+<h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>Izvoz v pogon</h2>
+<p>Datoteka → Izvoz odpre okno Izvoz. Pogoni so navedeni na levi z logotipi: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb in na koncu <code>.map</code>. Stran na desni pove, kaj bo cilj prejel. <strong>Zapiši</strong> ga zapiše, <strong>Preveri</strong> zgradi stopnjo, ne da bi jo zapisal, in navede težave, <strong>Zapri</strong> pa zapre okno.</p>
+<p>Izvoz je ločen od shranjevanja: <code>.map</code> ostane vaš urejljivi izvor. Vsak kontrolnik shrani nastavitve svojega pogona takoj, ko se spremeni, zato vsak pogon ohrani svoje odgovore in okno se odpre tako, kot ste ga pustili.</p>
+<h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>Skupne možnosti</h3>
+<ul>
+<li><strong>Merilo</strong>: <strong>Enot na meter</strong>, privzeto 32.</li>
+<li><strong>Kaj zapisati</strong>: <strong>Geometrija trkov</strong>.</li>
+<li><strong>Optimizacije</strong>: <strong>Združi statične mreže v celice po 1024 enot</strong>, <strong>Odstrani ploskve, zakopane v geometrijo</strong>, <strong>Združi ploskve v isti ravnini</strong> in <strong>Združi oblike trkov</strong>.</li>
+<li><strong>Poti projekta</strong>: kam znotraj projekta gredo stopnja in njeni viri.</li>
+<li><strong>Materiali orodij</strong>: imena materialov clip, skip in origin.</li>
+<li><strong>Več</strong>: stikala, specifična za pogon, kot so <strong>Poimenuj vozlišča po</strong>, <strong>Obnovi plasti in skupine kot nadrejena vozlišča</strong>, <strong>Obrni vrstni red oglišč trikotnikov</strong>, zrcaljenje teksturnih koordinat in drugi nabor UV za zapečeno svetlobo s <strong>Teksel svetlobne karte</strong>.</li>
+<li><strong>Sprotno sledi zemljevidu</strong>: <strong>Znova zapiši ob vsakem shranjevanju zemljevida</strong>. Na voljo je, ko je bil pogon enkrat izvožen, saj ta izvoz pove, kam pisati.</li>
+</ul>
+<p>Statične celice brushe sveta razporedijo po njihovih središčih in jih znotraj vsake celice velikosti 1024 enot združijo po materialu, tako da lahko pogoni izločajo manjše dele zemljevida. Trki se ohranijo, entitete igranja pa ostanejo ločene. To lahko pomeni več klicev risanja kot ena mreža sveta, zato je privzeto izklopljeno. Samostojni izvozi OBJ, glTF in GLB celic ne uporabljajo.</p>
+<h3 id="s10-2"><a class="anchor" href="#s10-2" aria-hidden="true" tabindex="-1">#</a>Opombe o ciljih</h3>
+<ul>
+<li>Godot: poti <code>res://</code> za teksture in materiale, fizikalna plast sprožilcev in UV2 za svetlobne karte. Izberite mapo za izvoz znotraj projekta Godot.</li>
+<li>Defold: mapa virov sredstev, material modela in vzorčevalnik tekstur, ki mora obstajati v izbranem materialu.</li>
+<li>Unity: mreže OBJ in uvoznik za urejevalnik; izvozite v mapo Assets projekta.</li>
+<li>Unreal Engine: ustvarjen uvozni skript in pot vsebine, običajno /Game/<level>.</li>
+<li>Flax Engine: pot vsebine modela glede na mapo Content projekta.</li>
+<li>three.js, Bevy, raylib in Cocos Creator: scene ali koda za ta izvajalna okolja z navodili poleg izvoza.</li>
+<li>glTF / GLB: prenosljiva geometrija za združljiva orodja; GLB je binarna oblika. OBJ: geometrija in materiali za orodja za modeliranje.</li>
+<li><code>.map</code>: <strong>Zapiši kot</strong> izbere Valve 220, Standardno, Quake 2 ali Quake 2 (Valve). Okno pove, kaj bi izbrana različica izgubila.</li>
+</ul>
+<p>Po zapisu preberite opozorila, na primer o manjkajočih teksturah. <strong>Kaj je preverjanje odkrilo</strong> jih navede v oknu.</p>
+<h2 id="s11"><a class="anchor" href="#s11" aria-hidden="true" tabindex="-1">#</a>Povezave v živo: Godot, Unity, Defold in Flax</h2>
+<p>Povezava v živo med delom pošilja neshranjene spremembe iz Heron Brusha v urejevalnik pogona. Je enosmerna: spremembe v pogonu se ne vrnejo. Na okno zemljevida lahko teče ena povezava v živo. Pred menjavo pogona jo ustavite, za uveljavitev spremenjenih možnosti izvoza pa jo znova zaženite. Kontrolniki so v oknu Izvoz, na strani pogona, na kartici <strong>Povezava v živo z</strong>.</p>
+<p>Kazalnik v naslovni vrstici prikazuje stanje povezave; s klikom nanj povezavo ustavite. Zaprtje ali zamenjava zemljevida ustavi objavljanje. Po neuspelem uvozu odpravite težavo in povezavo znova zaženite.</p>
+<h3 id="s11-1"><a class="anchor" href="#s11-1" aria-hidden="true" tabindex="-1">#</a>Godot</h3>
+<ol>
+<li>Enkrat izvozite v projekt Godot.</li>
+<li>Kliknite <strong>Namesti dodatek za Godot</strong>.</li>
+<li>V Godotu omogočite Heron Brush Live v Project Settings → Plugins.</li>
+<li>Kliknite <strong>Zaženi povezavo v živo</strong> in iz sidrišča Godot zemljevid pripnite odprti 3D-sceni.</li>
+</ol>
+<p>Dodatek zamenja le svojo ustvarjeno vejo ter ohrani postavitev pripetka in druga vozlišča. Sceno Godot shranite sami, lastne skripte in vozlišča pa hranite zunaj ustvarjene veje.</p>
+<h3 id="s11-2"><a class="anchor" href="#s11-2" aria-hidden="true" tabindex="-1">#</a>Unity</h3>
+<ol>
+<li>Enkrat izvozite v mapo Assets projekta Unity.</li>
+<li>Kliknite <strong>Namesti dodatek za Unity</strong> in pustite, da ga Unity prevede.</li>
+<li>V Unityju odprite Window → Heron Brush → Live Link.</li>
+<li>Zaženite povezavo in zemljevid pripnite aktivni sceni Unity.</li>
+</ol>
+<p>Okno povezave v živo v Unityju naj ostane odprto. Posodobitve se v Play Mode in Prefab Mode ustavijo. Zamenja se le podrejeni objekt Generated objekta zemljevida. Ustvarjenih datotek ne urejajte.</p>
+<h3 id="s11-3"><a class="anchor" href="#s11-3" aria-hidden="true" tabindex="-1">#</a>Defold</h3>
+<ol>
+<li>Enkrat izvozite v svoj projekt Defold in projekt pustite odprt v Defoldu.</li>
+<li>Kliknite <strong>Zaženi povezavo v živo</strong>. Dodatek ni potreben.</li>
+<li>V Defoldu odprite heron_brush_live/preview.collection ali se nanj sklicujte iz lastne scene.</li>
+</ol>
+<p>Povezava piše v ločeno ustvarjeno mapo, končnega izvoza in game.project pa se ne dotika. <strong>Sprotno osveži zagnano igro</strong> posodobi tudi igro, zagnano iz Defolda; dodajanje objektov ali spreminjanje trkov lahko zahteva ponoven zagon stopnje. Neuspele povezave se samodejno ponovijo.</p>
+<h3 id="s11-4"><a class="anchor" href="#s11-4" aria-hidden="true" tabindex="-1">#</a>Flax</h3>
+<p>Izvozite v mapo Content projekta in kliknite <strong>Namesti dodatek za Flax</strong>. Pustite, da ga Flax prevede, zaženite povezavo in nato v odprti sceni Flax izberite Tools → Heron Brush: attach live map. Ustvarjeni koren ohrani svojo postavitev, drugi objekti ostanejo nedotaknjeni. Sceno shranite sami. Posodobitve se v Play Mode ustavijo. Tools → Heron Brush: stop live map ustavi sprejemanje.</p>
+<h2 id="s12"><a class="anchor" href="#s12" aria-hidden="true" tabindex="-1">#</a>Skupne seje v živo</h2>
+<p>Sodelovanje → Seja v živo odpre okno za gostovanje ali pridružitev drugemu uporabniku Heron Brusha. Tako si urejanje zemljevida deli več ljudi; to je ločeno od povezave v živo s pogonom.</p>
+<h3 id="s12-1"><a class="anchor" href="#s12-1" aria-hidden="true" tabindex="-1">#</a>Gostovanje in pridružitev</h3>
+<p>Vpišite <strong>Vaše ime</strong>. Za gostovanje izberite <strong>Gosti sejo</strong>, kliknite <strong>Začni sejo</strong> in gostom pošljite podatke iz <strong>Kopiraj podatke za povezavo</strong>. Za pridružitev izberite <strong>Pridruži se seji</strong>, prilepite podatke in kliknite <strong>Pridruži se</strong>. Pridružitev zamenja odprti zemljevid z gostiteljevim, zato najprej shranite svoje delo.</p>
+<p>Standardna različica deluje v lokalnem omrežju, <strong>Vrata lokalnega omrežja</strong> pa določajo vrata. Seje prek interneta (<strong>Poveži prek interneta</strong>) zahtevajo različico z izbirno omrežno funkcijo. Udeleženci v 3D-pogledu vidijo oznake kamer in imena drug drugega.</p>
+<p>Zaprtje okna sejo pusti teči; kazalnik v naslovni vrstici prikazuje njeno stanje. <strong>Ustavi sejo</strong> ali <strong>Zapusti sejo</strong> jo konča. Ko dva človeka urejata isti predmet, o končni različici odloča gostiteljev vrstni red, tudi razveljavitev pa je skupna sprememba. Kjer je mogoče, delajte na ločenih območjih in shranjujte kontrolne točke.</p>
+<h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D-prikaz in drugi zaslon</h2>
+<h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>Načini prikaza</h3>
+<p>Razdelek <strong>Pogled</strong> na zavihku Zemljevid preklaplja, kaj pogledi rišejo: Brushi, Točkovne entitete, Modeli entitet, Imena razredov entitet, Obrobe skupin, Patchi, Materiali, Pokaži izpuščene ploskve, Predogled animacij, Žični model, Robovi in Obrobe brush entitet. Žični model riše robove trikotnikov, vključno z diagonalami in robovi za površinami, brez materialov. To je začasen pogled za odpravljanje napak in ne vpliva na izvoze ali upodobitve.</p>
+<p>Osvetlitev, sence, ambientna zastrtost, odsevi, bloom in glajenje za 3D-pogled so v Nastavitve → Upodabljalnik. To so nastavitve predogleda; končne slike uporabljajo lastne nastavitve kamere za upodabljanje.</p>
+<h3 id="s13-2"><a class="anchor" href="#s13-2" aria-hidden="true" tabindex="-1">#</a>Ločeno 3D-okno</h3>
+<p>Pogled → 3D-pogled v ločenem oknu premakne 3D-pogled v samostojno okno, ki ga lahko postavite na drug zaslon. Deli si kamero, dokument in orodja, ravninski pogledi pa zasedejo prostor v glavnem oknu. Njegov meni ponuja Materiali, Polni prikaz in Žični model; podmeni Pogled s Pokaži izpuščene ploskve, Predogled animacij, Robovi, Obrobe skupin, Točkovne entitete, Modeli entitet in Obrobe brush entitet; Izostri na izbor; Spredaj, Od strani in Zgoraj, ki kamero obrnejo okoli izbora (ali točke pred kamero); Postavi kamero po 3D-pogledu; Celozaslonski način (<span class="keys"><kbd>F11</kbd></span>); Upodobi sliko; in Vrni v glavno okno. Zaprtje okna pogled znova zasidra.</p>
+<h3 id="s13-3"><a class="anchor" href="#s13-3" aria-hidden="true" tabindex="-1">#</a>Proceduralno nebo</h3>
+<p>Proceduralno nebo je v 3D-pogledu privzeto vklopljeno in ga je mogoče izklopiti v Nastavitve → Upodabljalnik → Luč. Kamere za upodabljanje imajo lastno stikalo <strong>Proceduralno nebo</strong>, ki se shrani z zemljevidom. Barve neba, obzorja in tal prihajajo iz nastavitev okolja, sonce pa sledi osvetlitvi scene. Nebo nima geometrije in se ne izvaža.</p>
+<h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>Kamere za upodabljanje in slike PNG</h2>
+<p>Datoteka → Upodobi sliko odpre okno za upodabljanje: kamera in njene nastavitve so na levi, na desni pa predogled v živo, ki se ob spremembah znova izriše. Kamere se shranijo v <code>.map</code> v plasti kamer za upodabljanje, ki je namenjena samo urejevalniku in se izpusti iz izvozov za pogone.</p>
+<h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>Postavljanje kamere</h3>
+<p>Kader uokvirite v 3D-pogledu in pritisnite <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> (ali <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>) ali kliknite <strong>Postavi kamero po 3D-pogledu</strong>. Če ni izbrana nobena kamera, se posodobi prva shranjena; če ne obstaja nobena, se ustvari nova. To je mogoče razveljaviti in ohrani nastavitve izhoda in osvetlitve. <strong>Izberi kamero v zemljevidu</strong>, <strong>Naloži kamero iz zemljevida</strong> in <strong>Premakni 3D-pogled h kameri</strong> delujejo v nasprotni smeri. <strong>Okvir kamere v 3D-pogledu</strong> prikaže meje izhoda, <strong>Upravljaj kamero iz 3D-pogleda</strong> pa omogoči, da običajna navigacija premika shranjeno kamero.</p>
+<h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>Nastavitve</h3>
+<ul>
+<li><strong>Položaj kamere</strong>: X, Y, Z, odklon in naklon.</li>
+<li><strong>Izhod in objektiv</strong>: <strong>Prednastavitve</strong> (Full HD, Kvadrat, Pokončno), širina, višina, vzorci, <strong>Navpično vidno polje</strong> in <strong>Daljna rezalna ravnina</strong>.</li>
+<li><strong>Osvetlitev</strong>: Dnevna svetloba, Sončni zahod ali Oblačno, ali pa nastavite osvetlitev, sonce, barve neba, obzorja in tal, <strong>Proceduralno nebo</strong>, <strong>Sence</strong>, <strong>Ambientna zastrtost</strong> in <strong>Bloom</strong>.</li>
+<li><strong>Globinska ostrina</strong>: <strong>Vklopi globinsko ostrino</strong>, razdalja izostritve, ostro območje in polmer zamegljenosti. <strong>Izostri na izbor</strong> izostri na središče izbranega predmeta pred kamero.</li>
+</ul>
+<p><strong>Shrani kamero in nastavitve</strong> shrani obrazec v zemljevid; za trajno shranitev na disk shranite zemljevid.</p>
+<h3 id="s14-3"><a class="anchor" href="#s14-3" aria-hidden="true" tabindex="-1">#</a>Upodabljanje</h3>
+<p><strong>Upodobi PNG</strong> vpraša, kam shraniti, in zažene postopno upodabljanje, ki se v predogledu dopolnjuje vzorec za vzorcem. Več vzorcev da lepši rezultat, a traja dlje. <strong>Prekliči upodabljanje</strong> ustavi brez zapisa datoteke. Upodabljalnik uporablja rastrski cevovod urejevalnika, ne sledenja poti. PNG ima neprosojno ozadje, animacije pa se ne upodabljajo. Zelo velike slike lahko urejevalnik za trenutek zaustavijo.</p>
+<h2 id="s15"><a class="anchor" href="#s15" aria-hidden="true" tabindex="-1">#</a>Nastavitve</h2>
+<p>Datoteka → Nastavitve (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>) odpre nastavitve. Spremembe se uveljavijo takoj in se shranijo. Stranska vrstica navaja Pregled, Igre, Pogled, Barve, Miška, Tipkovnica in Upodabljalnik. Iskalno polje na vrhu najde nastavitev po imenu ali opisu na kateri koli strani. Vsaka spremenjena nastavitev ima lasten gumb za obnovitev privzete vrednosti, <strong>Obnovi privzeto</strong> pa ponastavi trenutno stran.</p>
+<h3 id="s15-1"><a class="anchor" href="#s15-1" aria-hidden="true" tabindex="-1">#</a>Strani</h3>
+<ul>
+<li><strong>Pregled</strong>: skupne nastavitve na enem mestu: Videz (Prekrivnost plošč (%), Barvna shema, Postavitev, Jezik), Urejanje, Pogled in Priročnik.</li>
+<li><strong>Igre</strong>: igra, kje so njene datoteke, in vaše ime za sodelovanje. Igra določa, katero obliko zemljevida zapisati, katere definicije entitet naložiti in kje so njeni materiali. Konfiguracije iger se berejo iz mape <code>games</code> v mapi s konfiguracijo (<code>~/.config/heron-brush/games</code> v Linuxu in macOS, <code>%LOCALAPPDATA%\heron-brush\games</code> v sistemu Windows) in iz mape <code>games</code> poleg aplikacije, kamor paketi shranijo priloženo konfiguracijo.</li>
+<li><strong>Pogled</strong>: Postavitev, Barvna shema, Jezik, osi sveta, prekrivnost mreže, velikost celice za preverjanje puščanj in zaklepi preslikave.</li>
+<li><strong>Barve</strong>: barve pogledov, geometrije in ročic.</li>
+<li><strong>Miška</strong>: hitrosti in obračanje smeri razgledovanja, pomikanja in premikanja, hitrost letenja, vidno polje, Poveži 2D-poglede in velikosti ročic.</li>
+<li><strong>Tipkovnica</strong>: razpored bližnjic, Heron Brush ali Blender.</li>
+<li><strong>Upodabljalnik</strong>: realistično senčenje, obroba izbora, luč, sence, ambientna zastrtost, odsevi, bloom in površine.</li>
+</ul>
+<h3 id="s15-2"><a class="anchor" href="#s15-2" aria-hidden="true" tabindex="-1">#</a>Jezik</h3>
+<p><strong>Jezik</strong> ponuja Kot v sistemu in vse prevedene jezike. Vmesnik se spremeni takoj. Priročnik se odpre v jeziku vmesnika, če zanj obstaja prevod, sicer v angleščini.</p>
+<h2 id="s16"><a class="anchor" href="#s16" aria-hidden="true" tabindex="-1">#</a>Vtičniki in MCP</h2>
+<h3 id="s16-1"><a class="anchor" href="#s16-1" aria-hidden="true" tabindex="-1">#</a>Vtičniki</h3>
+<p>Vtičniki razširjajo urejevalnik s skripti Rhai. Datoteka → Vtičniki odpre okno Vtičniki. <strong>Namesti vtičnik</strong> namesti datoteko <code>.rhai</code>, <strong>Namesti mapo vtičnika</strong> pa mapo, ki vsebuje <code>main.rhai</code>; izbirni metapodatki <code>plugin.toml</code> opisujejo vtičnik in njegove nastavitve. Vtičniki so razvrščeni pod <strong>Aktivni vtičniki</strong> in <strong>Neaktivni vtičniki</strong>, <strong>Vklopi vtičnik</strong> pa posameznega vklopi ali izklopi; to se ohrani tudi po ponovnem zagonu. <strong>Znova naloži vtičnike</strong> skripte znova prebere z diska in ponastavi vrednosti v njihovih ploščah.</p>
+<p>Aktivni vtičniki se prikažejo tudi v razdelku <strong>Vtičniki</strong> na zavihku Zemljevid z nastavitvami, gumbi za dejanja (<strong>Zaženi</strong>) in izpisom. Dejanje deluje na izboru ali, če ni nič izbrano, na vsem in je en korak razveljavitve. Priloženi inšpektor izbora prikazuje števila ter dejanja za premik navzgor in navzdol.</p>
+<h3 id="s16-2"><a class="anchor" href="#s16-2" aria-hidden="true" tabindex="-1">#</a>MCP</h3>
+<p>Sodelovanje → Ponudi agentu (MCP) omogoči agentu UI ali drugemu orodju, da prek protokola Model Context Protocol upravlja odprti urejevalnik. Okno prikazuje lokalni naslov z gumbom <strong>Kopiraj</strong>, <strong>Ustavi strežnik</strong> pa ga konča; dokler teče, naslovna vrstica prikazuje <strong>MCP je aktiven</strong>. Možnost ukazne vrstice <code>--mcp</code> zažene isti vmesnik brez okna. Odjemalci lahko odkrijejo orodja za geometrijo, sredstva, lastnosti, animacijo, izvoz in seje. MCP in vtičniki urejevalnika sta različna vmesnika.</p>
+<h2 id="s17"><a class="anchor" href="#s17" aria-hidden="true" tabindex="-1">#</a>Ukazna vrstica</h2>
+<p>Program je <code>heron-brush</code>. Brez možnosti odpre pozdravni zaslon.</p>
+<h3 id="s17-1"><a class="anchor" href="#s17-1" aria-hidden="true" tabindex="-1">#</a>Odpiranje datotek</h3>
+<p><code>heron-brush map.map [entities.fgd] [materials/]</code> odpre zemljevid, po želji z definicijami entitet in mapo materialov. Prazen argument enega preskoči, na primer <code>heron-brush map.map "" materials/</code>. Če urejevalnik že teče, se zemljevid odpre v njem; <code>--new-instance</code> namesto tega odpre ločeno okno.</p>
+<h3 id="s17-2"><a class="anchor" href="#s17-2" aria-hidden="true" tabindex="-1">#</a>Ukazi</h3>
+<ul>
+<li><code>--help</code> ali <code>-h</code>: izpiše navodila za uporabo. <code>--version</code> ali <code>-V</code>: izpiše različico.</li>
+<li><code>--mcp</code>: ponuja MCP prek standardnega vhoda in izhoda, brez okna.</li>
+<li><code>--merge-map &lt;base&gt; &lt;ours&gt; &lt;theirs&gt; [&lt;output&gt;]</code>: trismerno združevanje datotek <code>.map</code> za git. Izhod je privzeto ours. Spori se izpišejo in vrnejo izhodno kodo, različno od nič.</li>
+<li><code>--obj-to-map &lt;in.obj&gt; &lt;out.map&gt; [size] [thickness] [snap] [material]</code>: pretvori mrežo v brushe. Size je dolžina najdaljše stranice v enotah zemljevida (privzeto 256), snap je mreža za oglišča (0 pomeni brez), besedi <code>solid</code> ali <code>layered</code> pa namesto tankih klinov zgradita škatle na mreži ali konveksne plošče.</li>
+<li><code>--render-preview &lt;in.map&gt; &lt;out.png&gt; [size]</code>: zapiše sličico zemljevida PNG, privzeto velikosti 512 slikovnih pik.</li>
+<li><code>--run-script &lt;script.rhai&gt; &lt;in.map&gt; [out.map] [key=value ...]</code>: izvede skript vtičnika nad zemljevidom z vsem izbranim in zapiše rezultat (privzeto nazaj v vhodno datoteko). <code>key=value</code> odgovarja na nastavitve vtičnika.</li>
+</ul>
+<h2 id="s18"><a class="anchor" href="#s18" aria-hidden="true" tabindex="-1">#</a>Odpravljanje težav</h2>
+<h3 id="s18-1"><a class="anchor" href="#s18-1" aria-hidden="true" tabindex="-1">#</a>Ko je nekaj videti narobe</h3>
+<ul>
+<li>Manjkajoč material: preverite mapo ali paket materialov in poti projekta v izvozu.</li>
+<li>Napačna velikost modela: primerjajte z 64 enot visoko oznako igralca in merilom izvoza.</li>
+<li>Napačna smer preliva: preverite kot preliva in usmerjenost ploskve.</li>
+<li>Prazna scena v pogonu: preberite opozorila izvoza in sledite navodilom za uvoz za cilj.</li>
+<li>Povezava v živo čaka: preverite, ali je dodatek nameščen, scena pripeta in posodobitve niso ustavljene.</li>
+<li>Samo črte, brez ploskev: izklopite Žični model v razdelku Pogled na zavihku Zemljevid ali v meniju 3D-okna izberite Materiali ali Polni prikaz.</li>
+<li>Predmeti manjkajo v pogledih: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span> prikaže skrite predmete; preverite plasti in filtre pogleda.</li>
+<li>Tipka ne naredi ničesar: najprej kliknite v pogled, da dobi tipkovnico, in v Nastavitve → Tipkovnica preverite razpored bližnjic.</li>
+<li>Urejanje ni uspelo: razveljavite, poenostavite geometrijo in uporabite <strong>Preveri zemljevid</strong> in <strong>Preveri puščanja</strong> v razdelku <strong>Težave</strong> na zavihku Zemljevid.</li>
+<li>Zemljevid se iz upravitelja datotek ne odpre: morda je bil predan urejevalniku, ki že teče; poiščite to okno.</li>
+</ul>
+<h3 id="s18-2"><a class="anchor" href="#s18-2" aria-hidden="true" tabindex="-1">#</a>Nastavitve in varnostne kopije</h3>
+<p>Nastavitve, nedavni zemljevidi, zvezdice, nastavitve izvoza in vtičniki so v mapi s konfiguracijo: <code>~/.config/heron-brush</code> v Linuxu in macOS ter <code>%LOCALAPPDATA%\heron-brush</code> v sistemu Windows. Varnostne kopije samodejnega shranjevanja so v mapi <code>autosave</code> poleg vsakega zemljevida.</p>
+<h3 id="s18-3"><a class="anchor" href="#s18-3" aria-hidden="true" tabindex="-1">#</a>Prijava napake</h3>
+<p>Navedite različico urejevalnika (Pomoč → O programu), svoj operacijski sistem, majhen zemljevid, ki prikazuje težavo, in natančne korake. Podokno izpisa (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>) pogosto pove, kaj je šlo narobe. Pred preizkušanjem shranite kopijo.</p>
+<h3 id="s18-4"><a class="anchor" href="#s18-4" aria-hidden="true" tabindex="-1">#</a>Uporaba tega priročnika</h3>
+<p>Poglavje izberite v kazalu na levi. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> prikaže kazalo in se premakne v iskalno polje; <span class="keys"><kbd>Esc</kbd></span> počisti iskanje ali, če je iskanje prazno, zapre priročnik. <strong>Vsebina</strong> skrije ali prikaže seznam poglavij, <strong>Velikost besedila</strong> pa spremeni velikost pisave; oboje se zapomni. Seznam jezikov na vrhu preklaplja med razpoložljivimi prevodi.</p>
+  </article>
+</div>
+<script src="../../manual.js"></script>
+</body>
+</html>

@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="cs" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heron Brush manual · Čeština</title>
+<meta name="description" content="The Heron Brush manual: modelling, materials, entities, animation, export and live links.">
+<link rel="icon" type="image/svg+xml" href="../../images/logo.svg">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../manual.css">
+<link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
+</head>
+<body class="manual-page">
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../../#"><img src="../../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar-top" d="M4 7h16"/><path class="bar-mid" d="M4 12h16"/><path class="bar-bot" d="M4 17h16"/></svg>
+    </button>
+    <nav class="menu" id="site-menu" aria-label="Main">
+      <div class="nav-links">
+        <a href="../../#modelling">Modelling</a>
+        <a href="../../#materials">Materials</a>
+        <a href="../../#animation">Animation</a>
+        <a href="../../#export">Export</a>
+        <a href="#" aria-current="page">Manual</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <mask id="moon-mask"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="moon-cut" cx="17" cy="7" r="6.5" fill="#000"/></mask>
+            <circle class="sun-core" cx="12" cy="12" r="8" fill="currentColor" mask="url(#moon-mask)"/>
+            <g class="rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>
+            </g>
+          </svg>
+          <span class="theme-label">Dark theme</span>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/MojzisekJan/HeronBrush">GitHub</a>
+        <a class="btn btn-primary" href="../../editor/">Try in the browser</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<script>
+  // The menu folds behind the button on narrow windows; without this script the links stay in view.
+  (function () {
+    var root = document.documentElement, header = document.querySelector('.nav');
+    var toggle = header.querySelector('.menu-toggle'), menu = document.getElementById('site-menu');
+    root.classList.add('js');
+    function set(open) {
+      header.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () { set(!header.classList.contains('open')); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && header.classList.contains('open')) { set(false); toggle.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!header.contains(e.target)) set(false); });
+    matchMedia('(min-width: 961px)').addEventListener('change', function () { set(false); });
+
+    // The theme toggle: remembers the choice; without one the page follows the system.
+    var themeButton = header.querySelector('.theme-toggle'), label = themeButton.querySelector('.theme-label');
+    function show(theme) {
+      root.dataset.theme = theme;
+      themeButton.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = theme === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+    show(root.dataset.theme);
+    themeButton.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      show(next);
+      root.classList.add('theme-switched');
+      try { localStorage.setItem('heron-theme', next); } catch (e) {}
+    });
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+      var stored = null;
+      try { stored = localStorage.getItem('heron-theme'); } catch (err) {}
+      if (!stored) show(e.matches ? 'light' : 'dark');
+    });
+  })();
+</script>
+<div class="manual wrap">
+  <aside class="toc" id="toc" aria-label="Contents">
+    <div class="toc-tools">
+      <label class="sr-only" for="lang">Language</label>
+      <select id="lang" class="lang-select"><option value="../" lang="en">English</option><option value="../cs/" selected lang="cs">Čeština</option><option value="../de/" lang="de">Deutsch</option><option value="../zh/" lang="zh-Hans">中文</option><option value="../es/" lang="es">Español</option><option value="../uk/" lang="uk">Українська</option><option value="../pl/" lang="pl">Polski</option><option value="../it/" lang="it">Italiano</option><option value="../fr/" lang="fr">Français</option><option value="../pt-BR/" lang="pt-BR">Português (Brasil)</option><option value="../ja/" lang="ja">日本語</option><option value="../ko/" lang="ko">한국어</option><option value="../tr/" lang="tr">Türkçe</option><option value="../id/" lang="id">Bahasa Indonesia</option><option value="../ru/" lang="ru">Русский</option><option value="../nl/" lang="nl">Nederlands</option><option value="../sv/" lang="sv">Svenska</option><option value="../da/" lang="da">Dansk</option><option value="../nb/" lang="nb">Norsk bokmål</option><option value="../fi/" lang="fi">Suomi</option><option value="../hu/" lang="hu">Magyar</option><option value="../ro/" lang="ro">Română</option><option value="../sk/" lang="sk">Slovenčina</option><option value="../el/" lang="el">Ελληνικά</option><option value="../vi/" lang="vi">Tiếng Việt</option><option value="../zh-TW/" lang="zh-Hant">繁體中文</option><option value="../bg/" lang="bg">Български</option><option value="../hr/" lang="hr">Hrvatski</option><option value="../sl/" lang="sl">Slovenščina</option><option value="../lt/" lang="lt">Lietuvių</option></select>
+      <div class="search">
+        <input id="search" type="search" placeholder="Hledat v dokumentaci" autocomplete="off" aria-label="Hledat v dokumentaci">
+        <ol id="results" class="results" hidden data-nothing="Žádná odpovídající kapitola"></ol>
+      </div>
+    </div>
+    <nav class="toc-list"><ul><li class="chapter"><a href="#s1">Začínáme</a><ul><li><a href="#s1-1">Uvítací okno</a></li><li><a href="#s1-2">První mapa</a></li><li><a href="#s1-3">Soubory a ukládání</a></li></ul></li><li class="chapter"><a href="#s2">Rozhraní</a><ul><li><a href="#s2-1">Titulkový pruh a nabídky</a></li><li><a href="#s2-2">Lišta nástrojů</a></li><li><a href="#s2-3">Mapové pohledy</a></li><li><a href="#s2-4">Inspektor</a></li><li><a href="#s2-5">Stavový řádek a výstupní panel</a></li><li><a href="#s2-6">Dialogy a vzhled</a></li></ul></li><li class="chapter"><a href="#s3">Ovládání a klávesnice</a><ul><li><a href="#s3-1">Pohyb ve 3D pohledu</a></li><li><a href="#s3-2">Pohyb ve 2D pohledech</a></li><li><a href="#s3-3">Mřížka a přichytávání</a></li><li><a href="#s3-4">Běžné zkratky</a></li><li><a href="#s3-5">Zkratky pro výběr</a></li><li><a href="#s3-6">Zkratky pro transformace</a></li><li><a href="#s3-7">Sada zkratek Blender</a></li></ul></li><li class="chapter"><a href="#s4">Brushe a modelovací nástroje</a><ul><li><a href="#s4-1">Kreslení brushů</a></li><li><a href="#s4-2">Výběr</a></li><li><a href="#s4-3">Tvarovací nástroje</a></li><li><a href="#s4-4">Kombinace brushů</a></li><li><a href="#s4-5">Protažení, zaoblení, plát a zkosení</a></li><li><a href="#s4-6">3D text</a></li></ul></li><li class="chapter"><a href="#s5">Materiály a UV</a><ul><li><a href="#s5-1">Načtení a použití materiálů</a></li><li><a href="#s5-2">Editor UV</a></li><li><a href="#s5-3">Klávesy pro UV</a></li><li><a href="#s5-4">Materiály nástrojů</a></li><li><a href="#s5-5">Vynechání stěn z exportu</a></li></ul></li><li class="chapter"><a href="#s6">Barvy a přechody</a><ul><li><a href="#s6-1">Paleta a míchaná barva</a></li><li><a href="#s6-2">Výběr barvy</a></li><li><a href="#s6-3">Přechody</a></li><li><a href="#s6-4">Materiál povrchu</a></li></ul></li><li class="chapter"><a href="#s7">Assety, vrstvy a skupiny</a><ul><li><a href="#s7-1">Knihovna assetů</a></li><li><a href="#s7-2">Vrstvy</a></li><li><a href="#s7-3">Skupiny a provázané skupiny</a></li><li><a href="#s7-4">Společné měřítko</a></li></ul></li><li class="chapter"><a href="#s8">Entity a hratelnost</a><ul><li><a href="#s8-1">Umisťování entit</a></li><li><a href="#s8-2">Vlastnosti</a></li><li><a href="#s8-3">Co umí export</a></li></ul></li><li class="chapter"><a href="#s9">Animace</a><ul><li><a href="#s9-1">Náhled animací</a></li><li><a href="#s9-2">Editor klíčových snímků</a></li><li><a href="#s9-3">Klipy</a></li><li><a href="#s9-4">Ovládání přehrávání</a></li><li><a href="#s9-5">Časová osa</a></li><li><a href="#s9-6">Klávesy v editoru</a></li><li><a href="#s9-7">Pózování v pohledech</a></li><li><a href="#s9-8">Propojení tlačítek s animacemi</a></li><li><a href="#s9-9">Animace v exportech</a></li><li><a href="#s9-10">Příklad Motion lab</a></li></ul></li><li class="chapter"><a href="#s10">Export do enginu</a><ul><li><a href="#s10-1">Společné volby</a></li><li><a href="#s10-2">Poznámky k cílům</a></li></ul></li><li class="chapter"><a href="#s11">Živé propojení: Godot, Unity, Defold a Flax</a><ul><li><a href="#s11-1">Godot</a></li><li><a href="#s11-2">Unity</a></li><li><a href="#s11-3">Defold</a></li><li><a href="#s11-4">Flax</a></li></ul></li><li class="chapter"><a href="#s12">Společné úpravy v živé relaci</a><ul><li><a href="#s12-1">Hostování a připojení</a></li></ul></li><li class="chapter"><a href="#s13">3D zobrazení a druhý monitor</a><ul><li><a href="#s13-1">Režimy zobrazení</a></li><li><a href="#s13-2">Samostatné 3D okno</a></li><li><a href="#s13-3">Procedurální obloha</a></li></ul></li><li class="chapter"><a href="#s14">Renderovací kamery a obrázky PNG</a><ul><li><a href="#s14-1">Umístění kamery</a></li><li><a href="#s14-2">Nastavení</a></li><li><a href="#s14-3">Vykreslování</a></li></ul></li><li class="chapter"><a href="#s15">Nastavení</a><ul><li><a href="#s15-1">Stránky</a></li><li><a href="#s15-2">Jazyk</a></li></ul></li><li class="chapter"><a href="#s16">Pluginy a MCP</a><ul><li><a href="#s16-1">Pluginy</a></li><li><a href="#s16-2">MCP</a></li></ul></li><li class="chapter"><a href="#s17">Příkazová řádka</a><ul><li><a href="#s17-1">Otevírání souborů</a></li><li><a href="#s17-2">Příkazy</a></li></ul></li><li class="chapter"><a href="#s18">Řešení problémů</a><ul><li><a href="#s18-1">Když něco nevypadá dobře</a></li><li><a href="#s18-2">Nastavení a zálohy</a></li><li><a href="#s18-3">Hlášení chyb</a></li><li><a href="#s18-4">Jak používat tuto příručku</a></li></ul></li></ul></nav>
+  </aside>
+  <button class="toc-toggle" type="button" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+    <span class="toc-current">Začínáme</span>
+  </button>
+  <article class="manual-body">
+<h2 id="s1"><a class="anchor" href="#s1" aria-hidden="true" tabindex="-1">#</a>Začínáme</h2>
+<p>Heron Brush je editor úrovní založený na brushích. Úrovně skládáte z konvexních brushů, jejich stěny texturujete a barvíte, umisťujete entity, animujete dveře a plošiny a výsledek exportujete do herního enginu. K dispozici jsou také vestavěné assety, parametrické tvary, živé propojení s editory enginů, společné úpravy a vykreslování statických obrázků. Tato příručka je součástí aplikace a funguje bez připojení k internetu.</p>
+<p>Na macOS funguje <span class="keys"><kbd>Cmd</kbd></span> všude, kde příručka uvádí <span class="keys"><kbd>Ctrl</kbd></span>, a Option odpovídá klávese Alt.</p>
+<h3 id="s1-1"><a class="anchor" href="#s1-1" aria-hidden="true" tabindex="-1">#</a>Uvítací okno</h3>
+<p>Když Heron Brush spustíte bez mapy, otevře se uvítací okno. Vlevo jsou tlačítka <strong>Pokračovat v</strong> (naposledy otevřená mapa), <strong>Nová mapa</strong> a <strong>Procházet</strong> pro otevření existující <code>.map</code>, dále <strong>Hra</strong>, <strong>Příručka</strong> a <strong>Nastavení</strong>. Vpravo je seznam nedávných map s náhledy a pod ním <strong>Příklady</strong>. Hvězdička (<strong>Připnout nahoru</strong>) připne mapu na začátek seznamu, koš (<strong>Přesunout do koše</strong>) přesune soubor do systémového koše, odkud ho lze obnovit. Šipkami se pohybujete po okně, Enter otevře zvolenou položku. Kdykoli se k oknu vrátíte přes Soubor → Vítejte.</p>
+<h3 id="s1-2"><a class="anchor" href="#s1-2" aria-hidden="true" tabindex="-1">#</a>První mapa</h3>
+<ol>
+<li>Na uvítací obrazovce zvolte <strong>Nová mapa</strong>, nebo Soubor → Nová mapa (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>).</li>
+<li>Na liště nástrojů vyberte nástroj Brush (<span class="keys"><kbd>B</kbd></span>) a tažením ve 2D pohledu nakreslete zvolený tvar. Hloubku zkontrolujte v jiném 2D pohledu.</li>
+<li>Brush vyberte a tažením přesuňte. Na kartě <strong>Stěna</strong> mu přiřaďte materiál nebo barvu.</li>
+<li>Zdrojovou mapu uložte pomocí <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>. Až ji budete chtít použít ve hře, otevřete Soubor → Export a zapište scénu pro svůj engine.</li>
+</ol>
+<h3 id="s1-3"><a class="anchor" href="#s1-3" aria-hidden="true" tabindex="-1">#</a>Soubory a ukládání</h3>
+<p>Soubor <code>.map</code> je váš upravitelný zdroj. Ukládejte průběžně: export, živé propojení ani vykreslování mapu za vás neuloží. Soubor → Uložit jako (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>) doplní příponu <code>.map</code>, pokud ji vynecháte. Soubor → Vrátit se k uložené mapě zahodí neuložené změny a načte soubor znovu. Pokud zavíráte okno nebo otevíráte jinou mapu a máte neuložené změny, Heron Brush se zeptá, zda <strong>Uložit</strong>, <strong>Zahodit</strong> nebo <strong>Zrušit</strong>.</p>
+<p>Pokud má uložená mapa neuložené změny, zapisují se každých deset minut číslované zálohy do složky <code>autosave</code> vedle mapy. Uchovává se 50 nejnovějších záloh.</p>
+<p>Otevřete-li mapu, když už Heron Brush běží, předá se běžícímu oknu a to se přesune do popředí. Chcete-li samostatné okno, použijte na příkazové řádce <code>--new-instance</code> (viz Příkazová řádka).</p>
+<h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>Rozhraní</h2>
+<p>Hlavní okno má titulkový pruh s nabídkami, pod ním lištu nástrojů, mapové pohledy, inspektor vpravo a stavový řádek dole.</p>
+<h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>Titulkový pruh a nabídky</h3>
+<p>Titulkový pruh obsahuje logo, nabídky, uprostřed název mapy a tlačítka okna. Na macOS jsou obvyklá červená, žlutá a zelená tlačítka vlevo. Tažením za pruh okno přesunete, dvojklikem ho maximalizujete. Když něco běží na pozadí, objeví se u konce pruhu indikátor: živé propojení s enginem, živá relace nebo <strong>MCP aktivní</strong>. Kliknutím na indikátor živé propojení zastavíte nebo otevřete příslušné okno.</p>
+<ul>
+<li><strong>Soubor</strong>: Vítejte, Nová mapa (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>), Otevřít mapu (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span>), Uložit (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>), Uložit jako (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>), Vrátit se k uložené mapě, Export, Vykreslit obrázek, Pluginy a Nastavení (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>).</li>
+<li><strong>Úpravy</strong>: Zpět (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Znovu (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Vyjmout, Kopírovat, Vložit, Duplikovat (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>), Smazat, Vybrat vše (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>), Opakovat poslední příkazy (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>) a Zapomenout opakovatelné příkazy.</li>
+<li><strong>Zobrazení</strong>: 3D pohled v samostatném okně, Přejít na, Přichytávat k mřížce (<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>), Zobrazit mřížku (<span class="keys"><kbd>0</kbd></span>), Náhled animací a Zobrazit vynechané stěny.</li>
+<li><strong>Geometrie</strong>: Vložit 3D text, Spojit roh, Převést stěny na pláty, Vyjmout výběr z jeho entity a Sladit provázané skupiny.</li>
+<li><strong>Animace</strong>: Animace klíčovými snímky, Náhled animací a Umístit kameru podle 3D pohledu (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>).</li>
+<li><strong>Mapa</strong>: načtení, opětovné načtení a zavření bodového souboru a souboru portálů. Ukazují stopy netěsností a portály, které zapisují kompilátory map.</li>
+<li><strong>Spolupráce</strong>: Živá relace a Zpřístupnit agentovi (MCP).</li>
+<li><strong>Nápověda</strong>: Příručka a O programu.</li>
+</ul>
+<h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>Lišta nástrojů</h3>
+<p>V Nastavení → Zobrazení → Okno zapněte <strong>Zobrazit tlačítko náhledu simulací</strong>. Vedle Lock a UV v horní liště se objeví tlačítko pro spuštění a zastavení náhledu. Sdílí stav s příkazem Animace → Náhled animací. Volba se zachová po restartu; ve výchozím nastavení je vypnutá.
+Lišta nástrojů nese všechny nástroje. První skupinu používáte neustále: Vybrat, Brush, Řez, Vrchol, Hrana, Stěna, Otočit a Měřítko. Ve druhé skupině jsou Zkosit, Skládat, Protažení, Řídicí bod, Zaoblení a Plechovka. Po najetí myší na tlačítko se zobrazí název a zkratka. Opětovné kliknutí na aktivní nástroj vrátí nástroj Vybrat.</p>
+<p>Za nástroji následují <strong>Překlopit vodorovně</strong> a <strong>Překlopit svisle</strong> a dva přepínače: <strong>Zámek</strong> zachová mapování materiálu při posunu brushe a <strong>UV</strong> při jeho otočení (přepíná ho <span class="keys"><kbd>U</kbd></span>). Pak přijdou nastavení aktivního nástroje: nástroj Brush ukazuje tvar a jeho volby, nástroj Zaoblení poloměr, počet ploch, rohy a tlačítko <strong>Použít</strong>. Na pravém konci je název nástroje, velikost mřížky (<strong>Mřížka 16</strong> apod.; kliknutím zvolíte jinou) a nabídka <strong>Nastavení mřížky</strong> s položkami Přichytávat k mřížce, Zobrazit mřížku, Náhled animací, Zobrazit vynechané stěny a Animace klíčovými snímky.</p>
+<h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>Mapové pohledy</h3>
+<p>K dispozici jsou čtyři pohledy: 3D pohled a tři ploché pohledy Shora (XY), Zepředu (XZ) a Zboku (YZ). Nastavení → Zobrazení → Rozvržení nabízí Jeden panel, Dva panely, Tři panely nebo Čtyři panely. Tažením přepážek měníte velikost panelů. Kliknutím do pohledu mu předáte klávesnici. <span class="keys"><kbd>Space</kbd></span> přepne panel, který ukazuje jeden pohled po druhém, na další pohled, a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> maximalizuje pohled s klávesnicí a znovu obnoví rozvržení.</p>
+<p>Kliknutím pravým tlačítkem bez tažení v libovolném pohledu otevřete místní nabídku pro výběr a to, co je pod ukazatelem. Nabízí seskupování, vrstvy, provázané skupiny, vytváření entit, přesun brushů do entity a z ní, kopírování názvu materiálu a jeho ukázání v prohlížeči materiálů.</p>
+<h3 id="s2-4"><a class="anchor" href="#s2-4" aria-hidden="true" tabindex="-1">#</a>Inspektor</h3>
+<p>Inspektor vpravo má čtyři karty. Šířku změníte tažením jeho levého okraje.</p>
+<ul>
+<li><strong>Mapa</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>1</kbd></span>): Vrstvy, Skupiny, Pluginy, Problémy, filtry Zobrazení a Značky.</li>
+<li><strong>Entita</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>2</kbd></span>): prohlížeč entit, definice entit, vlastnosti vybrané entity a u tlačítek a spouštěčů Spouštění animace.</li>
+<li><strong>Stěna</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>3</kbd></span>): UV, Materiály, Barva, Protažení, Zaoblení, Plát a Zapuštění a zkosení. Každou sekci lze sbalit.</li>
+<li><strong>Assety</strong>: knihovna znovupoužitelných modelů z brushů.</li>
+</ul>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>5</kbd></span> skryje nebo zobrazí inspektor a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>T</kbd></span> skryje nebo zobrazí lištu nástrojů, takže pohledy získají více místa.</p>
+<h3 id="s2-5"><a class="anchor" href="#s2-5" aria-hidden="true" tabindex="-1">#</a>Stavový řádek a výstupní panel</h3>
+<p>Stavový řádek dole ukazuje poslední zprávu editoru. Chyby jsou červeně. Kliknutím na řádek nebo klávesami <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span> otevřete výstupní panel s celou historií zpráv. Většina příkazů sem hlásí, co udělala, například kolik brushů rozřízla.</p>
+<h3 id="s2-6"><a class="anchor" href="#s2-6" aria-hidden="true" tabindex="-1">#</a>Dialogy a vzhled</h3>
+<p>Dialogy jako Nastavení, Export a Vykreslit obrázek se otevírají ve vlastních oknech. Nastavení → Zobrazení → Barevné schéma nabízí Podle systému, Světlé nebo Tmavé. <strong>Krytí panelů (%)</strong> na stránce Přehled zprůhlední panely nad pohledy. Okno kreslí vlastní tlačítka ve stylu systému: nativní na macOS, ve stylu Windows 11 na Windows a ve stylu GNOME na Linuxu.</p>
+<h2 id="s3"><a class="anchor" href="#s3" aria-hidden="true" tabindex="-1">#</a>Ovládání a klávesnice</h2>
+<h3 id="s3-1"><a class="anchor" href="#s3-1" aria-hidden="true" tabindex="-1">#</a>Pohyb ve 3D pohledu</h3>
+<p>Držte pravé tlačítko myši a tažením se rozhlížejte. Tažením prostředním tlačítkem posouváte pohled. Kolečko pohybuje dopředu a dozadu. <span class="keys"><kbd>W</kbd></span>, <span class="keys"><kbd>A</kbd></span>, <span class="keys"><kbd>S</kbd></span> a <span class="keys"><kbd>D</kbd></span> letí dopředu, doleva, dozadu a doprava, <span class="keys"><kbd>Q</kbd></span> stoupá a <span class="keys"><kbd>X</kbd></span> klesá; se <span class="keys"><kbd>Shift</kbd></span> jsou kroky větší. Je-li v Nastavení → Myš zapnuto <strong>Alt + tažení prostředním tlačítkem hýbe kamerou</strong>, Alt s prostředním tlačítkem posouvá kameru ve směru pohledu. Rychlosti, převrácení os a zorný úhel najdete v Nastavení → Myš.</p>
+<h3 id="s3-2"><a class="anchor" href="#s3-2" aria-hidden="true" tabindex="-1">#</a>Pohyb ve 2D pohledech</h3>
+<p>Tažením prostředním tlačítkem posouváte pohled, kolečko přibližuje kolem ukazatele. Posun a přiblížení jednoho plochého pohledu udrží ostatní zarovnané; to řídí <strong>Provázat 2D pohledy</strong> v Nastavení → Myš. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span> obnoví přiblížení a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>U</kbd></span> vrátí ploché pohledy na počátek.</p>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>U</kbd></span> zarámuje výběr ve všech pohledech. Zobrazení → Přejít na (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>M</kbd></span>) přesune kameru na zadané souřadnice, vybere objekt na daném řádku souboru mapy nebo posune výběr o zadanou vzdálenost.</p>
+<h3 id="s3-3"><a class="anchor" href="#s3-3" aria-hidden="true" tabindex="-1">#</a>Mřížka a přichytávání</h3>
+<p><span class="keys"><kbd>+</kbd></span> a <span class="keys"><kbd>-</kbd></span> mění velikost mřížky a číselné klávesy <span class="keys"><kbd>1</kbd></span> až <span class="keys"><kbd>9</kbd></span> volí velikost přímo, od 1 do 256 jednotek. <span class="keys"><kbd>0</kbd></span> nebo <span class="keys"><kbd>#</kbd></span> zobrazí či skryje mřížku a <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> zapne nebo vypne přichytávání. <span class="keys"><kbd>S</kbd></span> přichytí vrcholy vybraných brushů k aktuální mřížce, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> k celým jednotkám a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> k mřížce.</p>
+<h3 id="s3-4"><a class="anchor" href="#s3-4" aria-hidden="true" tabindex="-1">#</a>Běžné zkratky</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>: uložit mapu. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>: uložit jako.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>: zpět. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> nebo <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>: znovu.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>: kopírovat, vyjmout a vložit. Vložení umístí objekty k ukazateli; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></span> zachová původní souřadnice. Jsou-li vybrané stěny, kopíruje se jejich materiál a nastavení UV.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>: duplikovat. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>: provázaná kopie skupiny.</li>
+<li><span class="keys"><kbd>Delete</kbd></span> nebo <span class="keys"><kbd>Backspace</kbd></span>: smazat výběr.</li>
+<li><span class="keys"><kbd>Esc</kbd></span>: zrušit probíhající tažení, vrátit krok v aktivním nástroji, přepnout na Vybrat a nakonec zrušit výběr. <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Esc</kbd></span> přepne rovnou na Vybrat.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>: zopakovat poslední opakovatelné příkazy. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span>: zapomenout je.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> nebo <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>: umístit renderovací kameru podle 3D pohledu.</li>
+<li><span class="keys"><kbd>F5</kbd></span>: znovu načíst materiály. <span class="keys"><kbd>F6</kbd></span>: znovu načíst definice entit.</li>
+</ul>
+<h3 id="s3-5"><a class="anchor" href="#s3-5" aria-hidden="true" tabindex="-1">#</a>Zkratky pro výběr</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>: vybrat vše, nebo všechny úchyty, je-li aktivní nástroj Vrchol, Hrana nebo Stěna. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd></span>: zrušit výběr. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span>: obrátit výběr.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B</kbd></span>: vybrat ostatní objekty ve stejné entitě nebo skupině.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>T</kbd></span>: vybrat vše, čeho se vybrané brushe dotýkají. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd></span>: vybrat vše uvnitř nich. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>E</kbd></span>: vybrat vše v jejich sloupci podél osy pohledu. Výběrové brushe se přitom spotřebují.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>I</kbd></span>: izolovat výběr. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>I</kbd></span>: skrýt ho. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span>: znovu zobrazit vše.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span>: seskupit. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span>: zrušit skupinu.</li>
+</ul>
+<h3 id="s3-6"><a class="anchor" href="#s3-6" aria-hidden="true" tabindex="-1">#</a>Zkratky pro transformace</h3>
+<ul>
+<li>Šipky a <span class="keys"><kbd>Page Up</kbd></span> / <span class="keys"><kbd>Page Down</kbd></span> posunou výběr o jeden krok mřížky ve směru, kterým ukazují v aktivním pohledu. S <span class="keys"><kbd>Ctrl</kbd></span> při posunu duplikují, s <span class="keys"><kbd>Alt</kbd></span> otáčejí.</li>
+<li><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Y</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span>: otočit o čtvrt otáčky kolem dané osy; se <span class="keys"><kbd>Shift</kbd></span> opačným směrem.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span>: překlopit napříč pohledem; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span>: překlopit nahoru a dolů. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>X</kbd></span> a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Y</kbd></span> zrcadlí podél X nebo Y.</li>
+<li><span class="keys"><kbd>Insert</kbd></span>: umístit bodovou entitu do středu výběru.</li>
+<li><span class="keys"><kbd>Tab</kbd></span>: s vybraným brushem přepíná Vybrat → Vrchol → Hrana → Stěna → Vybrat.</li>
+</ul>
+<h3 id="s3-7"><a class="anchor" href="#s3-7" aria-hidden="true" tabindex="-1">#</a>Sada zkratek Blender</h3>
+<p>Nastavení → Klávesnice → Sada zkratek nabízí Heron Brush (výchozí, používá ji celá příručka) a Blender. Se sadou Blender: <span class="keys"><kbd>G</kbd></span> vybírá a posouvá, <span class="keys"><kbd>R</kbd></span> otáčí, <span class="keys"><kbd>S</kbd></span> mění měřítko, <span class="keys"><kbd>E</kbd></span> protahuje, <span class="keys"><kbd>1</kbd></span>, <span class="keys"><kbd>2</kbd></span> a <span class="keys"><kbd>3</kbd></span> volí nástroje Vrchol, Hrana a Stěna, <span class="keys"><kbd>K</kbd></span> řeže, <span class="keys"><kbd>B</kbd></span> vybírá, <span class="keys"><kbd>A</kbd></span> vybere vše a <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span> výběr zruší, <span class="keys"><kbd>X</kbd></span> maže, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> duplikuje, <span class="keys"><kbd>H</kbd></span> skryje a <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>H</kbd></span> vše zobrazí a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> provede znovu. Vše ostatní je v obou sadách stejné.</p>
+<h2 id="s4"><a class="anchor" href="#s4" aria-hidden="true" tabindex="-1">#</a>Brushe a modelovací nástroje</h2>
+<p>Brushe jsou konvexní tělesa definovaná rovinami. Složité objekty skládejte z několika jednoduchých brushů, nesnažte se udělat jeden brush nekonvexní. Kde stačí jednoduchý tvar, držte počet brushů nízko.</p>
+<h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>Kreslení brushů</h3>
+<p>Zvolte nástroj Brush (<span class="keys"><kbd>B</kbd></span>) a táhněte v pohledu. Lišta nástrojů ukazuje <strong>Kreslený tvar</strong>: Kvádr, Schodiště, Oblouk (klenba), Válec, Kužel, Sféroid (UV), Sféroid (dvacetistěn), Dutá koule a Vložit 3D text. <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span> až <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>8</kbd></span> volí tvar přímo. V okně <strong>Nastavení tvaru</strong> najdete <strong>Dutý</strong> a <strong>Tloušťka:</strong>, u schodů <strong>Výška schodu:</strong> a <strong>Směr:</strong>, u kulatých tvarů <strong>Osa:</strong>, <strong>Stran:</strong> a režim kružnice, u UV koulí <strong>Prstenců:</strong>, u ikosaedru <strong>Přesnost:</strong> a u duté koule <strong>Brushe</strong>. Volby nastavte před tažením. Výsledek zkontrolujte ve více pohledech.</p>
+<h4 id="s4-1-1"><a class="anchor" href="#s4-1-1" aria-hidden="true" tabindex="-1">#</a>Dutá koule z brushů</h4>
+<p>Vyberte <strong>Dutá koule</strong>, případně stiskněte <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>8</kbd></span>. Nastavte <strong>Tloušťka:</strong> a
+<strong>Brushe</strong> v okně <strong>Nastavení tvaru</strong>, pak tvar nakreslete jako ostatní
+brushe. Počet lze volit od 20 do 320 po čtyřech, například 76, 80 či 84.
+Protilehlé hrany se zjemňují společně, aby koule zůstala středově souměrná.
+Ručně zadaný počet se zaokrouhlí na nejbližší podporovanou hodnotu. Hloubka kreslení
+vychází z referenčních rozměrů stejně jako u ostatních tvarů. Stejné rozměry
+ve všech třech osách vytvoří kouli, různé rozměry dutý elipsoid.</p>
+<p>Každý díl má trojúhelníkovou vnější a vnitřní stěnu a tři kontaktní stěny.
+Kontakty na sousedy přesně navazují a používají <code>skip</code>; střed zůstává prázdný.
+Tloušťka se měří radiálně ve vrcholech na nejkratší poloose, musí být kladná
+a menší než tato poloosa. U protaženého elipsoidu se v ostatních směrech
+zvětší úměrně rozměrům. Výsledkem jsou běžné vybrané brushe s jedním Undo,
+které lze samostatně upravovat, seskupit a exportovat do všech cílů.</p>
+<h4 id="s4-1-2"><a class="anchor" href="#s4-1-2" aria-hidden="true" tabindex="-1">#</a>Schody s podestou a zatočením</h4>
+<p>U schodů lze zvolit přímé rameno, zatáčení vlevo/vpravo do L nebo návrat do U.
+Přímé rameno má volitelnou <strong>Podestu</strong>, otočené varianty <strong>Šířku ramene</strong>.
+<strong>Tloušťka spodní desky</strong> nula vytváří plné schody; kladná hodnota souvislou
+šikmou desku s tloušťkou měřenou svisle. Podesta na desku navazuje. Rozšířené
+varianty mají rovnoměrnou výšku stupňů; celkem lze vytvořit nejvýše 512 stupňů.</p>
+<h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>Výběr</h3>
+<p>Kliknutím brush vyberete, <span class="keys"><kbd>Ctrl</kbd></span>-kliknutím přidáte do výběru. Tažení z prázdného místa kreslí výběrový obdélník. Ve 3D pohledu <span class="keys"><kbd>Shift</kbd></span>-kliknutí vybere jednu stěnu a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span>-kliknutí přidá další stěny. Tažením vybraného brushe ho přesunete; tažením nevybraného vyberete a přesunete jen ten.</p>
+<p>Ve 3D pohledu <span class="keys"><kbd>Shift</kbd></span>-tažením stěny vybraného brushe stěnu vytáhnete. <span class="keys"><kbd>Alt</kbd></span>-kliknutím na jinou stěnu na ni přenesete materiál a zarovnání vybrané stěny; <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> přenese jen materiál a <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> materiál s UV otočeným podle cílové stěny.</p>
+<p>Pokud správce oken používá <span class="keys"><kbd>Alt</kbd></span> pro přesouvání oken, použijte <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span> na zdrojové stěně, vyberte cílové stěny a stiskněte <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>. Kopírování a vložení funguje i pro úchyty nástroje Stěna. Přenos materiálu odstraní cílový barevný nátěr, aby byla textura viditelná.</p>
+<h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>Tvarovací nástroje</h3>
+<ul>
+<li><strong>Vybrat</strong> (<span class="keys"><kbd>Esc</kbd></span>): výběr a posun.</li>
+<li><strong>Vrchol</strong> (<span class="keys"><kbd>V</kbd></span>), <strong>Hrana</strong> (<span class="keys"><kbd>E</kbd></span>), <strong>Stěna</strong> (<span class="keys"><kbd>F</kbd></span>): tažení rohů, hran nebo stěn. <span class="keys"><kbd>Shift</kbd></span>-tažení ze středu hrany nebo stěny tam přidá roh. <span class="keys"><kbd>Delete</kbd></span> odebere vybrané rohy.</li>
+<li><strong>Otočit</strong> (<span class="keys"><kbd>R</kbd></span>), <strong>Měřítko</strong> (<span class="keys"><kbd>T</kbd></span>), <strong>Zkosit</strong> (<span class="keys"><kbd>G</kbd></span>): transformace výběru pomocí úchytů.</li>
+<li><strong>Řez</strong> (<span class="keys"><kbd>C</kbd></span>): dvěma nebo třemi kliknutími určete řeznou rovinu. <span class="keys"><kbd>Enter</kbd></span> řízne, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> volí, která strana zůstane, a <span class="keys"><kbd>Backspace</kbd></span> nebo <span class="keys"><kbd>Esc</kbd></span> odebere poslední bod.</li>
+<li><strong>Skládat</strong> (<span class="keys"><kbd>N</kbd></span>): rozmístěte body kolem objemu a <span class="keys"><kbd>Enter</kbd></span> z nich vytvoří konvexní brush. <span class="keys"><kbd>Backspace</kbd></span> odebere poslední bod.</li>
+<li><strong>Protažení</strong> (<span class="keys"><kbd>Y</kbd></span>): viz sekce o protažení níže.</li>
+<li><strong>Řídicí bod</strong> (<span class="keys"><kbd>P</kbd></span>): úprava řídicí mřížky plátu.</li>
+<li><strong>Zaoblení</strong> (<span class="keys"><kbd>O</kbd></span>): kliknutím vyberete hranu pro náhled. Upravte poloměr, počet ploch a rohy a potvrďte přes <strong>Použít</strong> nebo <span class="keys"><kbd>Enter</kbd></span>. Kliknutí na tělo brushe ho vybere i s aktivním nástrojem; <span class="keys"><kbd>Ctrl</kbd></span>-kliknutí na tělo přidá nebo odebere brush. Na hranách <span class="keys"><kbd>Ctrl</kbd></span> přidává nebo odebírá hrany. Kliknutí do prázdna zruší výběr brushů i náhledu. Platí ve 2D i 3D. Více ploch dá hladší výsledek a více geometrie.</li>
+<li><strong>Plechovka</strong> (<span class="keys"><kbd>K</kbd></span>): viz Materiály a UV.</li>
+</ul>
+<p>Nastavení všech kreslených tvarů otevřete tlačítkem <strong>Nastavení tvaru</strong> v liště. Výběr jiného tvaru tam okno otevře automaticky. Okno má svislé řádky a číselné volby s −/+, lze je přesunout a přitom pracovat v mapě. U rozpracovaného tvaru změny ihned upravují náhled; <strong>Potvrdit</strong> jej přijme, <strong>Zrušit</strong> odstraní vložení. <strong>Zavřít</strong> pouze skryje okno a ponechá tvar upravitelný, dokud nezměníte výběr.</p>
+<h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>Kombinace brushů</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>: sloučit vybrané brushe do jejich konvexního obalu.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>K</kbd></span>: odečíst vybrané brushe od brushů, kterých se dotýkají.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></span>: vyhloubit výběr se stěnami silnými jeden krok mřížky.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>L</kbd></span>: průnik výběru.</li>
+</ul>
+<h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>Protažení, zaoblení, plát a zkosení</h3>
+<p><strong>Protažení</strong> vytváří geometrii z vybraných stěn podél dráhy. Vyberte stěny pomocí <span class="keys"><kbd>Shift</kbd></span>-kliknutí v nástroji Výběr, v sekci Protažení na kartě Stěna nastavte <strong>Dráha</strong>, <strong>Otočení</strong> (osa a úhel), <strong>Měřítko</strong>, <strong>Kroky</strong> a <strong>Cesta</strong> (zarovnání Celočíselné nebo Volné; Oblouk, Přímá nebo Esovitý ohyb) a stiskněte <strong>Protažení</strong>. Řádek pod ovládáním říká, kolik brushů vznikne. Protažení zachovává materiál,
+barvu a PBR nastavení zdrojových stěn, navazuje UV přes společné boční hrany
+a skrývá vnitřní uzávěry. Zhroucení segmentu nebo objemový samoprůnik odmítne
+celý výsledek. Nové díly zůstávají ve stejných entitách/skupinách jako zdroj,
+mají jeden krok Undo a celkem je omezuje limit 1024 buněk.</p>
+<p>Sekce <strong>Zaoblení</strong> zaoblí vybrané hrany podle hodnot <strong>Poloměr</strong>, <strong>Stěny</strong> a <strong>Rohy</strong> (Zaříznuté nebo Zaoblené); jedna plocha znamená sražení hrany. Poloměr i počet segmentů mají tlačítka −/+.
+<strong>Vnitřní roh dvou ramen L</strong> přidává výplň mezi dva překrývající se obdélníkové
+brushe se stejnou hloubkou a rodičem, včetně různých šířek ramen. Vnější
+3D náhled zaoblení zobrazuje výsledné plochy a zvýrazněné hrany včetně
+vnitřní výplně. Změna poloměru nebo segmentů náhled aktualizuje před potvrzením
+přes Použít nebo Enter. Změna nástroje vrátí původní zobrazení bez úpravy mapy.
+Fillet odvíjí UV přes své segmenty; u stejného materiálu upraví i navazující
+rovnou stěnu. Kulové styky více hran mohou mít samostatné UV švy.</p>
+<p><strong>Plát</strong> ukazuje <strong>Sloupce</strong> a <strong>Řádky</strong> vybraného plátu s tlačítky pro přidání nebo odebrání dvojice. Geometrie → Převést stěny na pláty (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>) vytvoří pláty z vybraných stěn.</p>
+<p><strong>Zapuštění a zkosení</strong> pracuje s vybranými stěnami: <strong>Zapuštění</strong> stáhne stěnu od jejích hran dovnitř a <strong>Hloubka</strong> ji vysune ven (nebo dovnitř, je-li záporná). <strong>Zkosit stěny</strong> použije obojí; třetí tlačítko přidá panel nebo vyřízne výklenek podle znaménka hloubky. <strong>Spojit roh</strong> otevře dialog, který spojí dva brushe zaříznutým nebo zaobleným rohem s náhledem.</p>
+<p>V dialogu <strong>Spojit roh</strong> tlačítka −/+ odmítají kroky mimo skutečné geometrické
+meze. Neplatné ruční zadání ponechá poslední platný náhled. Režim
+<strong>Full-thickness wedges</strong> nabízí <strong>Zachovat tloušťku stěny</strong>: posune krajní
+kontakty tak, aby jednotlivé rovné segmenty měly správnou kolmou tloušťku.
+U různě širokých ramen se tloušťka interpoluje. Kolečko v náhledu přibližuje,
+tažení posouvá a dvojklik nebo <strong>Obnovit pohled</strong> vrátí celý roh do záběru.
+Oba náhledy sdílejí stejné přiblížení i posun.</p>
+<p><strong>Spojená oblast stěn</strong> upravuje společnou hranici vybraných stěn současně,
+bez dvojího stažení jejich společné hrany. Podporuje i celé sdílené hrany
+stěn ve stejné rovině na různých brushích. Selhání jedné části odmítne celou
+operaci; vypnutím volby lze upravovat stěny jednotlivě.</p>
+<p>Ve stejném panelu jsou nové volby pro <strong>Vytvořit dutinu</strong>: tloušťka <strong>Dovnitř</strong>,
+<strong>Ven</strong> nebo <strong>Na obě strany</strong>, otevření vybraných stěn a společný plášť dvou
+brushů tvořících konvexní objem pod stejným rodičem. Vybraná stěna se otevře
+bez ponechaného víka. Společný plášť odstraní i původní dělící stěnu.
+Zkratka Hollow nadále používá jeden krok mřížky směrem dovnitř.</p>
+<p>Po nakreslení zůstává tvar v dočasném <strong>Náhledu tvaru</strong>, zvýrazněný barvou
+úchytů změny velikosti. Volby nástroje Brush nadále mění právě vložený tvar,
+včetně duté koule, kužele, schodů a ostatních generátorů. <strong>Potvrdit</strong> nebo
+<span class="keys"><kbd>Enter</kbd></span> ukončí úpravu parametrů; <strong>Zrušit</strong> nebo <span class="keys"><kbd>Escape</kbd></span> vezme vložení zpět.
+Změna výběru, přepnutí nástroje či další geometrická úprava přijme aktuální
+výsledek jako běžné brushe. Celé vložení včetně úprav parametrů má jedno Undo.
+Neplatný parametr ponechá poslední platnou geometrii. Aktuální platná geometrie
+se běžně ukládá i exportuje; parametry generátoru se po potvrzení ani po novém
+otevření mapy neobnovují.</p>
+<h3 id="s4-6"><a class="anchor" href="#s4-6" aria-hidden="true" tabindex="-1">#</a>3D text</h3>
+<p>Geometrie → Vložit 3D text (také poslední položka seznamu tvarů nástroje Brush) vytvoří brushe z textu. Používá Heron Block, vestavěné polygonové písmo se sraženými rohy, proporcionálními šířkami a českou diakritikou; malá písmena mají tvar velkých. Napište <strong>Text</strong>, nastavte <strong>Výška</strong> (výška verzálek; diakritika sahá výš) a <strong>Hloubka</strong>, sledujte živý náhled a stiskněte <strong>Vložit</strong>.</p>
+<p>Pokud operace nemůže vytvořit platnou geometrii, upravte rozměry, nebo vraťte změnu a tvar zjednodušte.</p>
+<h2 id="s5"><a class="anchor" href="#s5" aria-hidden="true" tabindex="-1">#</a>Materiály a UV</h2>
+<h3 id="s5-1"><a class="anchor" href="#s5-1" aria-hidden="true" tabindex="-1">#</a>Načtení a použití materiálů</h3>
+<p>Otevřete sekci <strong>Materiály</strong> na kartě Stěna. <strong>Načíst složku</strong> přidá složku obrázků a <strong>Načíst .wad</strong> balík textur; oba se objeví v <strong>Sady</strong>, kde je křížek odebere. Psaním do <strong>Filtr materiálů</strong> zúžíte seznam. Kliknutí zvolí aktuální materiál a rovnou ho použije na vybrané stěny nebo brushe. Bez výběru pouze změní aktuální materiál. <strong>Použít na výběr</strong> jej znovu nanese. Použití textury odstraní barevný nátěr či přechod na těchto stěnách, jejich UV mapování zachová. <strong>Vybrat</strong> nabízí Vybrat brushe s ním a Vybrat stěny s ním. <strong>Nahradit</strong> zamění jeden materiál za jiný v celé mapě nebo jen ve výběru.</p>
+<p>Nástroj <strong>Plechovka</strong> (<span class="keys"><kbd>K</kbd></span>) dá aktuální materiál na stěnu pod ukazatelem. Držte levé tlačítko a táhněte přes stěny pro průběžné nanášení; celý tah vrátíte jedním Undo. Funguje ve 2D i 3D, zachovává UV a odstraní nátěr zakrývající texturu. Kliknutí obarví jednu stěnu, dvojklik celý brush a <span class="keys"><kbd>Shift</kbd></span>-kliknutí převezme materiál jako kapátko.</p>
+<p>Po <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span> na zdrojové stěně vložíte její materiál a UV <strong>prostředním kliknutím</strong> na cílovou stěnu ve 2D i 3D, bez změny výběru. Tažení prostředním tlačítkem dál posouvá pohled. Obsah schránky s celými objekty se tímto gestem nevkládá.</p>
+<h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>Editor UV</h3>
+<p>UV editor lze otevřít přes <strong>Zobrazení → UV editor v samostatném okně</strong> nebo
+ikonou šipky ven ze čtverce v sekci UV. Popisek se zobrazí po najetí myší.
+Okno má větší plátno a všechny původní
+ovládací prvky; výběr stěn i dokument sdílí s mapou. <strong>Vrátit do hlavního okna</strong>
+vrátí editor do karty Stěna a případně znovu zobrazí inspektor. Na desktopu jde
+o samostatné okno, ve webu o plovoucí dialog. Plátno se při změně velikosti
+znovu přizpůsobí stěně. Tlačítka <strong>Zpět/Znovu</strong> pracují se společnou historií;
+v nativním okně lze použít i <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>.</p>
+<p>Sekce <strong>UV</strong> na kartě Stěna ukazuje materiál a obrys vybrané stěny. Ovládání myší na plátně:</p>
+<ul>
+<li>Kolečko přibližuje kolem ukazatele. Tažením pravým nebo prostředním tlačítkem posouváte. Dvojklikem pravým tlačítkem stěnu znovu zarámujete; výběr jiné stěny ji zarámuje automaticky.</li>
+<li>Tažení levým tlačítkem posouvá materiál, obrys stěny zůstává na místě. Kruh otáčí mapováním, rohové úchyty mění měřítko a středový úchyt určuje počátek těchto změn.</li>
+<li><span class="keys"><kbd>Alt</kbd></span>-tažení levým tlačítkem za okraj dlaždice zkosí, stejně jako <span class="keys"><kbd>Shift</kbd></span>-tažení prostředním tlačítkem.</li>
+<li>Každé tažení je jeden krok zpět a <span class="keys"><kbd>Esc</kbd></span> probíhající tažení zruší.</li>
+</ul>
+<p>Pod plátnem jsou <strong>Posun</strong>, <strong>Měřítko</strong>, <strong>Úhel</strong> a, pokud je hra používá, <strong>Příznaky obsahu</strong>, <strong>Příznaky povrchu</strong> a <strong>Hodnota povrchu</strong>. Tlačítka jsou <strong>Vynulovat</strong>, <strong>Zarovnat podle světa</strong>, <strong>Přizpůsobit</strong>, <strong>Překlopit vodorovně</strong>, <strong>Překlopit svisle</strong> a dvě otočení o 90°. <strong>Zarovnat</strong> natočí materiál podél jedné z hran stěny (dalším stiskem další hrana, se <span class="keys"><kbd>Shift</kbd></span> předchozí). Čtyři tlačítka zarovnání přisunou materiál k hraně. <strong>Vyplnit U</strong> a <strong>Vyplnit V</strong> změní měřítko tak, aby stěnu pokryl celý počet opakování; dalším stiskem další počet, s <span class="keys"><kbd>Ctrl</kbd></span> se zachová dělení trim sheetu.</p>
+<h3 id="s5-3"><a class="anchor" href="#s5-3" aria-hidden="true" tabindex="-1">#</a>Klávesy pro UV</h3>
+<p>V hlavním okně s vybranými stěnami šipky posouvají materiál, <span class="keys"><kbd>[</kbd></span> a <span class="keys"><kbd>]</kbd></span> ho otáčejí o 15°, <span class="keys"><kbd>,</kbd></span> a <span class="keys"><kbd>.</kbd></span> jeho měřítko zmenší na polovinu nebo zdvojnásobí, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span> ho překlopí, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> ho vynuluje, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> ho vynuluje podle os světa a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>F</kbd></span> ho přizpůsobí každé stěně.</p>
+<p><strong>Zámek</strong> na liště nástrojů zachová mapování při posunu brushů a <strong>UV</strong> (<span class="keys"><kbd>U</kbd></span>) při jejich otáčení.</p>
+<h3 id="s5-4"><a class="anchor" href="#s5-4" aria-hidden="true" tabindex="-1">#</a>Materiály nástrojů</h3>
+<ul>
+<li>skip: vyřadí označenou stěnu z exportu do enginů.</li>
+<li>clip: vytvoří kolizi bez viditelné geometrie.</li>
+<li>origin: označí pivot brushové entity.</li>
+</ul>
+<p>Názvy lze změnit v kartě <strong>Materiály nástrojů</strong> v okně Export. Skip používejte pro stěny, o kterých víte, že jsou skryté.</p>
+<h3 id="s5-5"><a class="anchor" href="#s5-5" aria-hidden="true" tabindex="-1">#</a>Vynechání stěn z exportu</h3>
+<p>Vyberte stěnu a v sekci UV zapněte <strong>Vynechat stěnu při exportu</strong>. Oranžové šrafování ji označí v náhledu UV. Materiál i barva zůstanou uložené a brush zůstane uzavřený a upravitelný. Exportované vykreslovací meshe stěnu vynechají, kolize zůstane. Ponecháte-li z krychle jeden čtyřúhelník, vzniknou dva vykreslovací trojúhelníky. Volba nezapíná oboustranné vykreslování ani slučování meshů.</p>
+<p><strong>Vynechat zakryté stěny</strong> označí stěny zcela zakryté statickými brushi, včetně shodných dotýkajících se stěn a uzavřených brushů. Pracuje s vybranými brushi, nebo se vší viditelnou a nezamčenou geometrií světa, když není nic vybráno. Brushové entity, průhledné materiály a brushe, které už vynechané stěny mají, se přeskočí. Částečně zakryté stěny se nedělí. Jedno vrácení obnoví vše. Zobrazení → Zobrazit vynechané stěny takové stěny v pohledech editoru skryje nebo ukáže; výběr stále pracuje s celým brushem.</p>
+<h2 id="s6"><a class="anchor" href="#s6" aria-hidden="true" tabindex="-1">#</a>Barvy a přechody</h2>
+<p>Sekce <strong>Barva</strong> na kartě Stěna barví stěny jednolitými barvami nebo přechody přes jejich materiály. Hodí se pro hrubý návrh úrovně i pro stylizovanou grafiku. Obarvené stěny si v pohledech ponechají skutečné barvy; výběr je vyznačen obrysem.</p>
+<h3 id="s6-1"><a class="anchor" href="#s6-1" aria-hidden="true" tabindex="-1">#</a>Paleta a míchaná barva</h3>
+<p>Kliknutím na jeden z dvanácti vzorků palety obarvíte vybrané stěny nebo celé vybrané brushe. <strong>Krytí</strong> nastavuje v procentech, jak krycí bude další barva. <strong>Míchat</strong> má barevné tlačítko, které otevře výběr barvy; při tažení ve výběru se výběr mění živě, nebo tlačítkem <strong>Plechovka</strong> míchanou barvu použijete jako jeden krok. <strong>Zpět na materiál</strong> barvu odstraní a stěna znovu ukáže materiál. Řádek nahoře v sekci říká, co je vybráno a čím je to obarveno.</p>
+<h3 id="s6-2"><a class="anchor" href="#s6-2" aria-hidden="true" tabindex="-1">#</a>Výběr barvy</h3>
+<p>Každé barevné tlačítko v editoru otevírá stejný výběr barvy. Tažením ve čtverci volíte sytost a jas, v pruhu vedle něj odstín. Pod nimi jsou hodnoty <strong>R</strong>, <strong>G</strong> a <strong>B</strong> a posuvník <strong>Krytí</strong>, pokud barva krytí má. Pole s hexadecimálním kódem přijímá <code>#RRGGBB</code> nebo <code>#RRGGBBAA</code>; dokud text není platná barva, je červené. <strong>Kopírovat</strong> vloží kód do schránky. Kliknutím mimo výběr ho zavřete.</p>
+<h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>Přechody</h3>
+<p><strong>Přechod</strong> volí Lineární gradient nebo Radiální gradient a tlačítko vedle prohodí barvy konců. Každý bod má barevné tlačítko a <strong>Poloha (%)</strong>, body mezi konci mají i tlačítko pro odebrání. <strong>Přidat barevný bod</strong> přidá bod do největší mezery; přechod může mít až osm bodů. <strong>Úhel přechodu</strong> určuje směr lineárního přechodu, s tlačítky <strong>+45°</strong> a <strong>−45°</strong>.</p>
+<p>Pod náhledem je lišta se značkou pro každý bod. Kliknutím na lištu přidáte bod, kliknutím na značku otevřete její výběr barvy, tažením značku posunete a kliknutím pravým tlačítkem ji odeberete. Tři vzorky pod lištou jsou předvolby: Teplý přechod, Studený přechod a Přechod ve stupních šedi. Změny přechodu se na výběr projeví živě.</p>
+<p>Na směru přechodu záleží: veďte ho podél sklonu střechy nebo zakřiveného objektu, ne napříč nesouvisejícími stěnami. Po obarvení model zkontrolujte z obou stran.</p>
+<h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>Materiál povrchu</h3>
+<p><strong>Materiál povrchu</strong> nastavuje <strong>Drsnost</strong> (0 je lesklý, 100 matný), <strong>Kovovost</strong> (0 pro dřevo, kámen nebo plast, 100 pro kov) a <strong>Emise</strong> (0 až 8; povrch září vlastní barvou, včetně přechodů, ale okolní objekty neosvětluje). Změny se na vybrané stěny nebo brushe použijí živě. <strong>Výchozí povrch</strong> přepsání odstraní. Všechny změny lze vrátit.</p>
+<p>Efekty povrchu jsou vidět v osvětleném 3D pohledu a ve vykreslení kamerou. Plné a drátové zobrazení odlesky záměrně vynechává. Bloom může kolem zářících povrchů přidat záři. Godot a glTF/GLB dostanou hodnoty materiálu, importér pro Unity převede drsnost na hladkost. Omezení jednotlivých cílů popisuje <code>docs/surface-materials.md</code>.</p>
+<h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>Assety, vrstvy a skupiny</h2>
+<h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>Knihovna assetů</h3>
+<p>Otevřete kartu <strong>Assety</strong>. Složku modelů <code>.map</code> přidáte tlačítkem <strong>Přidat složku</strong>; vestavěná knihovna je k dispozici vždy. Psaním do <strong>Filtrovat assety</strong> hledáte. Kliknutím model vyberete, dvojklikem, klávesou <span class="keys"><kbd>Enter</kbd></span> nebo tlačítkem <strong>Vložit</strong> ho přidáte tam, kde byl naposledy ukazatel. Model můžete také přetáhnout do pohledu. Brushe assetu se vkládají jako jedna skupina, takže se model pohybuje jako celek.</p>
+<p><strong>Uložit výběr jako asset</strong> zapíše vybrané brushe do knihovny jako <code>.map</code>. Assety v knihovně jsou běžné upravitelné brushe, ne importované meshe.</p>
+<h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>Vrstvy</h3>
+<p>Seznam <strong>Vrstvy</strong> na kartě Mapa organizuje velké oblasti. Napište název a kliknutím na <strong>Přidat</strong> vytvořte vrstvu, nebo klávesou <span class="keys"><kbd>Enter</kbd></span> přejmenujte aktuální. Každou vrstvu lze skrýt, zamknout nebo vynechat z exportu. <strong>Přesunout sem</strong> přesune výběr do aktuální vrstvy. Místní nabídka v pohledech nabízí také Přesunout do vrstvy, Nastavit jako aktivní vrstvu, Skrýt vrstvy a Izolovat vrstvy.</p>
+<h3 id="s7-3"><a class="anchor" href="#s7-3" aria-hidden="true" tabindex="-1">#</a>Skupiny a provázané skupiny</h3>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span> výběr seskupí a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span> skupinu zruší. Sekce <strong>Skupiny</strong> na kartě Mapa skupiny vypisuje a nabízí <strong>Otevřít</strong>, <strong>Přejmenovat</strong>, <strong>Sloučit</strong>, <strong>Zrušit skupinu</strong>, <strong>Vyjmout</strong> a <strong>Vyčlenit</strong>. Provázaná skupina je sada kopií, které sdílejí úpravy: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> vytvoří provázanou kopii, Geometrie → Sladit provázané skupiny kopie aktualizuje a <strong>Zrušit provázání</strong> udělá z kopie samostatnou skupinu. Na kartě Entita lze vlastnost ponechat jako vlastní jedné kopii, když se provázané skupiny slaďují.</p>
+<h3 id="s7-4"><a class="anchor" href="#s7-4" aria-hidden="true" tabindex="-1">#</a>Společné měřítko</h3>
+<p>Výchozí měřítko exportu je 32 jednotek mapy na metr. Vestavěná značka startu hráče je vysoká 64 jednotek, tedy 2 metry. Porovnávejte s ní dveře, vozidla, nábytek i rostliny. Měřítko exportu měňte jen záměrně a související assety držte konzistentní.</p>
+<h2 id="s8"><a class="anchor" href="#s8" aria-hidden="true" tabindex="-1">#</a>Entity a hratelnost</h2>
+<p>Běžné definice entit jsou vestavěné a vždy k dispozici: světla, starty hráče, dveře, tlačítka, plošiny, spouštěče, statické rekvizity, zvuky a body trasy. Načtení FGD projektu přes <strong>Definice entit</strong> na kartě Entita nahradí třídy se stejným názvem a ostatní vestavěné ponechá.</p>
+<h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>Umisťování entit</h3>
+<p>V prohlížeči <strong>Entity</strong> na kartě Entita napište do <strong>Filtr tříd</strong> a zvolte třídu. Bodovou třídu, například světlo, umístíte tlačítkem <strong>Umístit</strong> nebo dvojklikem na třídu; <span class="keys"><kbd>Insert</kbd></span> jednu umístí do středu výběru. U brushové třídy, například dveří nebo spouštěče, vyberte brushe a klikněte na <strong>Vytvořit</strong>. Třídy lze také přetáhnout do pohledu.</p>
+<h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>Vlastnosti</h3>
+<p>Seznam vlastností upravuje vybranou entitu. Entity stejné třídy se upravují společně. <strong>Přidat vlastnost</strong> přidá klíč, který definice nemusí znát; <strong>Výchozí</strong> umí vrátit existující vlastnosti na výchozí hodnoty nebo doplnit chybějící. Vlastnosti, které třída definuje, ale entita je nemá, jsou zobrazeny tlumeně; zadáním hodnoty se přidají. Pro propojení entit použijte targetname a target.</p>
+<h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>Co umí export</h3>
+<p>Direktivy pro Godot vytvoří nativní uzly, kolizní tělesa a oblasti spouštěčů. Unity a Unreal podporují nativní běžná světla, Unreal navíc vytváří aktéry PlayerStart. Ostatní data se zachovají, nakolik to importér cíle dovolí.</p>
+<p>Samotná entita dveří nepřidá herní chování. Pohyb, reakce spouštěčů, ovládání hráče a skripty projektu je stále potřeba udělat v enginu. Defold exportuje vlastnosti entit a kolizní objekty; Flax umisťuje modely a obecné entity. Než na výsledku postavíte hratelnost, zkontrolujte ho v enginu.</p>
+<h2 id="s9"><a class="anchor" href="#s9" aria-hidden="true" tabindex="-1">#</a>Animace</h2>
+<p>Heron Brush umí zobrazit náhled jednoduchého pohybu, upravovat animace brushových entit klíčovými snímky a exportovat je do několika enginů.</p>
+<h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>Náhled animací</h3>
+<p>Zapněte <strong>Náhled animací</strong> v nabídce Zobrazení, v nabídce Animace, v nabídce Nastavení mřížky nebo v sekci Zobrazení na kartě Mapa. Přehrává rotaci func_rotate a pohyb tam a zpět func_shuttle, je-li zapnuté start_on, podle vlastností osy, rychlosti, směru, dráhy a čekání, a přehrává klipy klíčových snímků nastavené na Přehrát při startu. Assety větráku a větrného mlýna už otáčející se části obsahují.</p>
+<p>Vypnutí náhledu obnoví původní pózu. Kliknutí do pohledu zastaví přehrávání ještě před výběrem nebo úpravou; ovládání kamery funguje dál. Náhled nemění mapu, historii úprav ani exporty a nespouští fyziku ani herní logiku.</p>
+<h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>Editor klíčových snímků</h3>
+<p>Otevřete ho přes Animace → Animace klíčovými snímky nebo z nabídky Nastavení mřížky. Ukotví se pod pohledy, nebo do 3D okna, pokud je samostatné. Ikona okna v jeho záhlaví ho přesune do vlastního okna (<strong>Editor animací v samostatném okně</strong>); snímek i historie úprav zůstanou. <strong>Upravovat animaci</strong> přepne pohledy na animovanou pózu a <strong>Upravovat mapu</strong> se vrátí ke klidové geometrii. V režimu animace každý pohled dole ukazuje <strong>Upravovat animaci</strong> a číslo snímku.</p>
+<p>Animovat můžete vybranou brushovou entitu, brush nebo skupinu brushů. Plochá skupina brushů sdílí jednu animaci a pivot; skupiny s více entitami potřebují samostatné animace.</p>
+<h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>Klipy</h3>
+<p>Výběr <strong>Animace</strong> přepíná mezi pojmenovanými klipy. Napište název do <strong>Název animace</strong> a tlačítkem <strong>Uložit jako</strong> aktuální klip pod tímto názvem zkopírujete; <strong>Smazat</strong> klip odstraní. <strong>Posun</strong> vytvoří klip <code>translate</code> bez rotace. <strong>Animace dveří</strong> vytvoří plynulé klipy <code>open</code> a <code>close</code> s otočením o 90 stupňů kolem aktuálního pivotu; pivot nejprve přesuňte do závěsu. <strong>Přehrát při startu</strong> spustí klip při startu úrovně; předvolba dveří tuto volbu vypíná.</p>
+<h3 id="s9-4"><a class="anchor" href="#s9-4" aria-hidden="true" tabindex="-1">#</a>Ovládání přehrávání</h3>
+<p>Tlačítka přehrávání jsou <strong>Začátek</strong>, <strong>Předchozí klíč</strong>, <strong>Přehrávání</strong>, <strong>Další klíč</strong> a <strong>Konec</strong>. <strong>Snímek</strong> ukazuje a nastavuje aktuální snímek a <strong>Délka (s)</strong> délku klipu. Režim je <strong>Jednou</strong>, <strong>Smyčka</strong> nebo <strong>Tam a zpět</strong>.</p>
+<h3 id="s9-5"><a class="anchor" href="#s9-5" aria-hidden="true" tabindex="-1">#</a>Časová osa</h3>
+<p>Časová osa má pravítko s přehrávací hlavou a stopu pro <strong>Poloha</strong> (X, Y a Z s klíči dohromady) a pro každý úhel rotace, RX, RY a RZ. Kliknutím nebo tažením v pravítku posunete přehrávací hlavu a ve všech pohledech uvidíte pózu v daném čase. Tažením prostředním tlačítkem časovou osu posouváte. Klíče v čase přesouváte tažením; <span class="keys"><kbd>Shift</kbd></span> přidává do výběru; dvojklik do stopy vloží klíč; <span class="keys"><kbd>Ctrl</kbd></span>+kolečko přibližuje. <strong>Křivky</strong> místo stop ukáže křivky hodnot.</p>
+<p>Nad ní jsou tlačítka <strong>Přidat klíč</strong>, <strong>Odebrat</strong>, <strong>Kopírovat</strong>, <strong>Vložit</strong> a <strong>Duplikovat</strong>. <strong>Zarovnat na snímky</strong> drží klíče na celých snímcích a <strong>Přizpůsobit</strong> ukáže celý klip. <strong>Upravit časování</strong> otevře <strong>Časové měřítko</strong>, <strong>Posun (snímky)</strong>, <strong>Měřítko od přehrávací hlavy</strong>, <strong>Prodloužit animaci</strong> a <strong>Upravit časování výběru</strong>.</p>
+<p>Inspektor klíčů vedle časové osy upravuje vybraný klíč: <strong>Snímek</strong>, <strong>Hodnota</strong> (nebo tři souřadnice klíče polohy), interpolaci <strong>Lineární</strong>, <strong>Skoková</strong> nebo <strong>Bézierova</strong>, <strong>Vstupní sklon</strong> a <strong>Výstupní sklon</strong> a <strong>Vyhladit tečny</strong>.</p>
+<h3 id="s9-6"><a class="anchor" href="#s9-6" aria-hidden="true" tabindex="-1">#</a>Klávesy v editoru</h3>
+<p>Když má klávesnici časová osa: <span class="keys"><kbd>Space</kbd></span> spustí nebo pozastaví přehrávání, šipky vlevo a vpravo posunou o snímek, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span> vybere všechny klíče, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span> a <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span> klíče kopírují, vyjímají a vkládají, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span> je duplikuje, <span class="keys"><kbd>Delete</kbd></span> je odebere, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span> vrací a <span class="keys"><kbd>Esc</kbd></span> zruší tažení. Mimo časovou osu <span class="keys"><kbd>Esc</kbd></span> opustí režim animace. Vrácení změny zachová přiblížení, výběr i polohu přehrávací hlavy.</p>
+<h3 id="s9-7"><a class="anchor" href="#s9-7" aria-hidden="true" tabindex="-1">#</a>Pózování v pohledech</h3>
+<p>Řádek pod časovou osou obsahuje <strong>Onion skinning</strong> s počtem a <strong>Rozestup</strong>, které ukazují sousední pózy jako průsvitné obrysy; souřadnice <strong>Pivot</strong>; <strong>Automatické klíče</strong>; a nástroje pózy <strong>Posun</strong>, <strong>Otočit</strong> a <strong>Pivot</strong>.</p>
+<ul>
+<li><strong>Přidat klíč</strong> zapne Automatické klíče a pozastaví přehrávání. Se zapnutými Automatickými klíči a zvoleným <strong>Posun</strong> táhněte ve 3D pohledu barevnou osu úchytu vybrané entity a v aktuálním snímku tím zaznamenáte polohu.</li>
+<li>Ve 2D pohledu táhněte vybraný brush nebo člena jeho skupiny a zaznamenáte posun podél dvou viditelných os s přichytáváním k mřížce. Automatické klíče k tomu zapnuté být nemusí.</li>
+<li>S <strong>Otočit</strong> táhněte brush ve 2D pohledu kolem jeho oranžové značky pivotu. Pohled Shora zaznamenává RZ, Zepředu RY a Zboku RX, s přichytáváním úhlu podle mřížky.</li>
+<li>S <strong>Pivot</strong> táhněte žlutý střed otáčení v libovolném 2D pohledu. Přichytává se k mřížce a zachovává hloubku. Klíče ani klidová geometrie se nemění.</li>
+</ul>
+<p>Azurová dráha ve 2D i 3D ukazuje pohyb pivotu. Kliknutím na bod dráhy vyberete jeho čas a klíče, tažením změníte polohu; se zapnutými Automatickými klíči lze body dráhy táhnout i ve 3D pohledu. Popisky ukazují čísla snímků a čárkované úseky značí skoky. <span class="keys"><kbd>Esc</kbd></span> kterékoli z těchto tažení zruší a jedno vrácení vrátí celé tažení.</p>
+<p>Nové animace začínají v klidu s klíči v čase nula. Pohyb vytvoříte změnou pózy v jiném snímku. Pro ostrou dráhu ve tvaru L zaznamenejte začátek, roh a konec a použijte Lineární s Tam a zpět.</p>
+<h3 id="s9-8"><a class="anchor" href="#s9-8" aria-hidden="true" tabindex="-1">#</a>Propojení tlačítek s animacemi</h3>
+<p>Vyberte func_button, trigger_multiple nebo trigger_once. Karta Entita ukáže nad vlastnostmi <strong>Spouštění animace</strong>. Vyberte cíl ze seznamu, nebo klikněte na <strong>Vybrat cíl v pohledu</strong> a pak na animovaný objekt v libovolném pohledu; <span class="keys"><kbd>Esc</kbd></span> výběr zruší. Chybějící cíle nebo klipy se vypíší pod ovládáním. Je-li zapnuté zobrazení propojení, entity ukazují šipky ke svým cílům.</p>
+<p><strong>Akce</strong> volí, co spuštění udělá: <strong>Přehrát</strong> spustí pojmenovaný klip nebo vybranou animaci; <strong>Přepnout</strong> střídá <code>open</code> a <code>close</code>, pokud existují, jinak znovu spustí vybranou animaci; <strong>Otevřít</strong> a <strong>Zavřít</strong> spustí tyto klipy; <strong>Pozastavit</strong> podrží pózu, <strong>Pokračovat</strong> pokračuje a <strong>Zastavit</strong> obnoví původní pózu. <strong>Pouze jednou</strong> přepíše výchozí chování třídy. <strong>Interval opakování (s)</strong> nastaví nejkratší dobu mezi spuštěními; první spuštění nezdržuje.</p>
+<p><strong>Vyzkoušet spuštění</strong> provede akci v náhledu bez úprav mapy a bez kroků zpět. <strong>Obnovit náhled</strong> obnoví původní pózy a vynuluje stav jednorázového spuštění a prodlevy. Kolize hráče ani herní skripty se nesimulují.</p>
+<h3 id="s9-9"><a class="anchor" href="#s9-9" aria-hidden="true" tabindex="-1">#</a>Animace v exportech</h3>
+<p>Godot exportuje nativní zdroje AnimationPlayer a AnimationLibrary, včetně křivek a pohyblivé kolize. CharacterBody3D, který vstoupí do oblasti tlačítka, spustí jeho cíl. Úpravy těchto klipů v Godotu se do mapy nevrátí a další export je nahradí.</p>
+<p>Export pro raylib přidá <code>&lt;map&gt;_animation.h</code> s přehrávačem v C a <code>&lt;map&gt;_preview.c</code> s náhledem s volnou kamerou; sestavení popisuje <code>&lt;map&gt;_raylib.md</code>. V náhledu <code>SPACE</code> pozastaví, <span class="keys"><kbd>R</kbd></span> znovu spustí výchozí klipy a <span class="keys"><kbd>N</kbd></span> přepíná pojmenované klipy. Defold vkládá přehrávání do skriptu entity se zdokumentovanými zprávami <code>heron_*_animation</code>. Build Level v Unity přidá <code>HeronBrushAnimation</code> a kinematické těleso. Export pro Bevy obsahuje <code>heron_animation.rs</code> a návod. Godot, Unity, Defold, Bevy a raylib zachovávají propojení spouštěčů, jednorázovost i interval opakování. Vaše hra ale stále musí zaregistrovat hráče a připojit vlastní tlačítka k API každého běhového prostředí.</p>
+<h3 id="s9-10"><a class="anchor" href="#s9-10" aria-hidden="true" tabindex="-1">#</a>Příklad Motion lab</h3>
+<p>Otevřete <code>motion_lab</code> v sekci Příklady na uvítací obrazovce. Obsahuje plošinu s dráhou ve tvaru L, výtah, otáčivou plošinu a dveře na pantech s tlačítky. Otevřete vedlejší <code>godot/project.godot</code> v Godotu a stiskněte <span class="keys"><kbd>F5</kbd></span>. WASD a myš ovládají hráče, mezerník skáče, 1 až 4 přenesou na stanoviště a R restartuje aktuální stanoviště. Šlápnutím na barevnou plošku spustíte její cíl. Přiložené README popisuje opakovaný export.</p>
+<h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>Export do enginu</h2>
+<p>Soubor → Export otevře okno Export. Vlevo jsou enginy s logy: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb a nakonec <code>.map</code>. Stránka vpravo říká, co cíl dostane. <strong>Zapsat</strong> ho zapíše, <strong>Zkontrolovat</strong> úroveň sestaví bez zápisu a vypíše problémy a <strong>Zavřít</strong> okno zavře.</p>
+<p>Export je oddělený od ukládání: <code>.map</code> zůstává vaším upravitelným zdrojem. Každý ovládací prvek ukládá nastavení svého enginu hned při změně, takže si každý engine pamatuje vlastní volby a okno se otevře tak, jak jste ho opustili.</p>
+<h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>Společné volby</h3>
+<ul>
+<li><strong>Měřítko</strong>: <strong>Jednotek na metr</strong>, výchozí 32.</li>
+<li><strong>Co zapsat</strong>: <strong>Kolizní geometrie</strong>.</li>
+<li><strong>Optimalizace</strong>: <strong>Seskupit statické meshe do buněk o 1024 jednotkách</strong>, <strong>Zahodit stěny pohřbené uvnitř geometrie</strong>, <strong>Spojit stěny ve stejné rovině</strong> a <strong>Spojit kolizní tvary</strong>.</li>
+<li><strong>Cesty projektu</strong>: kam se v projektu zapíše úroveň a její zdroje.</li>
+<li><strong>Materiály nástrojů</strong>: názvy materiálů clip, skip a origin.</li>
+<li><strong>Další</strong>: přepínače podle enginu, například <strong>Pojmenovat uzly podle</strong>, <strong>Obnovit vrstvy a skupiny jako nadřazené uzly</strong>, <strong>Obrátit pořadí vrcholů trojúhelníků</strong>, převrácení texturových souřadnic a druhá sada UV pro zapečené světlo s <strong>Texel světelné mapy</strong>.</li>
+<li><strong>Průběžně podle mapy</strong>: <strong>Znovu zapsat při každém uložení mapy</strong>. Je dostupné, až engine jednou exportujete, protože teprve tento export určí, kam zapisovat.</li>
+</ul>
+<p>Statické buňky přiřadí brushe světa podle jejich středů a v každé buňce o 1024 jednotkách je spojí podle materiálu, takže enginy mohou vyřazovat menší části mapy. Kolize zůstane a herní entity zůstanou oddělené. Může to znamenat více vykreslovacích volání než jeden mesh světa, proto je volba ve výchozím stavu vypnutá. Samostatné exporty OBJ, glTF a GLB buňky nepoužívají.</p>
+<h3 id="s10-2"><a class="anchor" href="#s10-2" aria-hidden="true" tabindex="-1">#</a>Poznámky k cílům</h3>
+<ul>
+<li>Godot: cesty <code>res://</code> k texturám a materiálům, fyzikální vrstva spouštěčů a lightmap UV2. Zvolte složku exportu uvnitř projektu Godot.</li>
+<li>Defold: adresář zdrojů assetů, materiál modelu a sampler textury, který musí ve zvoleném materiálu existovat.</li>
+<li>Unity: meshe OBJ a importér pro editor; exportujte do složky Assets projektu.</li>
+<li>Unreal Engine: vygenerovaný importní skript a cesta k obsahu, obvykle /Game/<level>.</li>
+<li>Flax Engine: cesta k modelům relativní ke složce Content projektu.</li>
+<li>three.js, Bevy, raylib a Cocos Creator: scény nebo kód pro tato prostředí s návodem vedle exportu.</li>
+<li>glTF / GLB: přenositelná geometrie pro kompatibilní nástroje; GLB je binární podoba. OBJ: geometrie a materiály pro modelovací nástroje.</li>
+<li><code>.map</code>: <strong>Zapsat jako</strong> volí Valve 220, Standardní, Quake 2 nebo Quake 2 (Valve). Okno řekne, co by zvolená varianta formátu ztratila.</li>
+</ul>
+<p>Po zápisu si přečtěte varování, například o chybějících texturách. <strong>Výsledky kontroly</strong> je vypíše přímo v okně.</p>
+<h2 id="s11"><a class="anchor" href="#s11" aria-hidden="true" tabindex="-1">#</a>Živé propojení: Godot, Unity, Defold a Flax</h2>
+<p>Živé propojení posílá neuložené úpravy z Heron Brush do editoru enginu během práce. Je jednosměrné: úpravy provedené v enginu se nevracejí. V jednom okně mapy může běžet jedno živé propojení. Před přepnutím enginu ho zastavte a po změně voleb exportu ho spusťte znovu. Ovládání najdete v okně Export na stránce enginu, v kartě <strong>Živé propojení s</strong>.</p>
+<p>Indikátor v titulkovém pruhu ukazuje stav propojení; kliknutím ho zastavíte. Zavření nebo nahrazení mapy publikování ukončí. Po chybě importu problém opravte a propojení spusťte znovu.</p>
+<h3 id="s11-1"><a class="anchor" href="#s11-1" aria-hidden="true" tabindex="-1">#</a>Godot</h3>
+<ol>
+<li>Jednou exportujte do projektu Godot.</li>
+<li>Klikněte na <strong>Nainstalovat doplněk Godotu</strong>.</li>
+<li>V Godotu zapněte Heron Brush Live v Project Settings → Plugins.</li>
+<li>Klikněte na <strong>Spustit živé propojení</strong> a v doku Godotu připojte mapu k otevřené 3D scéně.</li>
+</ol>
+<p>Doplněk nahrazuje jen svou vygenerovanou větev a zachová umístění připojení i ostatní uzly. Scénu v Godotu ukládejte sami a vlastní skripty a uzly držte mimo vygenerovanou větev.</p>
+<h3 id="s11-2"><a class="anchor" href="#s11-2" aria-hidden="true" tabindex="-1">#</a>Unity</h3>
+<ol>
+<li>Jednou exportujte do složky Assets projektu Unity.</li>
+<li>Klikněte na <strong>Nainstalovat doplněk Unity</strong> a nechte Unity doplněk zkompilovat.</li>
+<li>V Unity otevřete Window → Heron Brush → Live Link.</li>
+<li>Spusťte propojení a připojte mapu k aktivní scéně Unity.</li>
+</ol>
+<p>Okno živého propojení v Unity nechte otevřené. Aktualizace se pozastaví v režimech Play Mode a Prefab Mode. Nahrazuje se jen potomek Generated objektu mapy. Vygenerované soubory neupravujte.</p>
+<h3 id="s11-3"><a class="anchor" href="#s11-3" aria-hidden="true" tabindex="-1">#</a>Defold</h3>
+<ol>
+<li>Jednou exportujte do projektu Defold a projekt nechte v Defoldu otevřený.</li>
+<li>Klikněte na <strong>Spustit živé propojení</strong>. Žádný doplněk není potřeba.</li>
+<li>V Defoldu otevřete heron_brush_live/preview.collection, nebo ji použijte ve vlastní scéně.</li>
+</ol>
+<p>Propojení zapisuje do samostatné vygenerované složky a finální export ani game.project nemění. <strong>Průběžně obnovovat běžící hru</strong> aktualizuje i hru spuštěnou z Defoldu; přidání objektů nebo změna kolizí může vyžadovat restart úrovně. Neúspěšná připojení se automaticky opakují.</p>
+<h3 id="s11-4"><a class="anchor" href="#s11-4" aria-hidden="true" tabindex="-1">#</a>Flax</h3>
+<p>Exportujte do složky Content projektu a klikněte na <strong>Nainstalovat doplněk pro Flax</strong>. Nechte Flax doplněk zkompilovat, spusťte propojení a v otevřené scéně Flaxu zvolte Tools → Heron Brush: attach live map. Vygenerovaný kořen si zachová umístění a ostatní objekty zůstanou nedotčené. Scénu ukládejte sami. Aktualizace se v režimu Play Mode pozastaví. Tools → Heron Brush: stop live map příjem pozastaví.</p>
+<h2 id="s12"><a class="anchor" href="#s12" aria-hidden="true" tabindex="-1">#</a>Společné úpravy v živé relaci</h2>
+<p>Spolupráce → Živá relace otevře okno pro hostování relace nebo připojení k jinému uživateli Heron Brush. Takto lidé sdílejí úpravy mapy; je to něco jiného než živé propojení s enginem.</p>
+<h3 id="s12-1"><a class="anchor" href="#s12-1" aria-hidden="true" tabindex="-1">#</a>Hostování a připojení</h3>
+<p>Vyplňte <strong>Vaše jméno</strong>. Chcete-li hostovat, zvolte <strong>Hostovat relaci</strong>, klikněte na <strong>Spustit relaci</strong> a údaje z <strong>Kopírovat údaje pro připojení</strong> pošlete hostům. Chcete-li se připojit, zvolte <strong>Připojit se k relaci</strong>, vložte údaje a klikněte na <strong>Připojit se</strong>. Připojení nahradí otevřenou mapu mapou hostitele, proto nejprve uložte svou práci.</p>
+<p>Standardní sestavení funguje v místní síti a <strong>Port místní sítě</strong> nastavuje port. Relace přes internet (<strong>Připojit přes internet</strong>) vyžadují sestavení s volitelnou síťovou funkcí. Účastníci ve 3D pohledu vidí značky kamer a jména ostatních.</p>
+<p>Zavřením okna relace běží dál; její stav ukazuje indikátor v titulkovém pruhu. <strong>Zastavit relaci</strong> nebo <strong>Opustit relaci</strong> ji ukončí. Když dva lidé upravují stejný objekt, o konečné verzi rozhodne pořadí u hostitele, a i vrácení změny je sdílená úprava. Kde to jde, pracujte na oddělených oblastech a ukládejte si kontrolní body.</p>
+<h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D zobrazení a druhý monitor</h2>
+<h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>Režimy zobrazení</h3>
+<p>Sekce <strong>Zobrazení</strong> na kartě Mapa přepíná, co pohledy kreslí: Brushe, Bodové entity, Modely entit, Názvy tříd entit, Obrysy skupin, Patche, Materiály, Zobrazit vynechané stěny, Náhled animací, Drátový model, Hrany a Obrysy brushových entit. Drátový model kreslí hrany trojúhelníků včetně úhlopříček a hran za povrchy, bez materiálů. Je to dočasné ladicí zobrazení a nemá vliv na exporty ani vykreslení.</p>
+<p>Osvětlení, stíny, ambient occlusion, odrazy, bloom a vyhlazování 3D pohledu najdete v Nastavení → Vykreslování. Jsou to nastavení náhledu; výsledné obrázky používají vlastní nastavení renderovací kamery.</p>
+<h3 id="s13-2"><a class="anchor" href="#s13-2" aria-hidden="true" tabindex="-1">#</a>Samostatné 3D okno</h3>
+<p>Zobrazení → 3D pohled v samostatném okně přesune 3D pohled do vlastního okna, které můžete dát na jiný monitor. Sdílí kameru, dokument i nástroje a ploché pohledy zaberou místo v hlavním okně. Jeho nabídka obsahuje Materiály, Plné plochy a Drátový model; podnabídku Zobrazení s položkami Zobrazit vynechané stěny, Náhled animací, Hrany, Obrysy skupin, Bodové entity, Modely entit a Obrysy brushových entit; Zaostřit na výběr; Zepředu, Zboku a Shora, které natočí kameru kolem výběru (nebo kolem bodu před kamerou); Umístit kameru podle 3D pohledu; Celá obrazovka (<span class="keys"><kbd>F11</kbd></span>); Vykreslit obrázek; a Vrátit do hlavního okna. Zavřením okna se pohled vrátí zpět.</p>
+<h3 id="s13-3"><a class="anchor" href="#s13-3" aria-hidden="true" tabindex="-1">#</a>Procedurální obloha</h3>
+<p>Procedurální obloha je ve 3D pohledu ve výchozím stavu zapnutá a lze ji vypnout v Nastavení → Vykreslování → Světlo. Renderovací kamery mají vlastní přepínač <strong>Procedurální obloha</strong> uložený v mapě. Barvy oblohy, horizontu a země pocházejí z nastavení prostředí a slunce sleduje osvětlení scény. Obloha nemá geometrii a neexportuje se.</p>
+<h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>Renderovací kamery a obrázky PNG</h2>
+<p>Soubor → Vykreslit obrázek otevře okno vykreslování: vlevo kamera a její nastavení, vpravo živý náhled, který se překreslí při každé změně. Kamery se ukládají do <code>.map</code> ve vrstvě Render cameras, která slouží jen editoru a do exportů pro enginy se nedostane.</p>
+<h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>Umístění kamery</h3>
+<p>Nastavte záběr ve 3D pohledu a stiskněte <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> (nebo <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>), případně klikněte na <strong>Umístit kameru podle 3D pohledu</strong>. Není-li vybraná žádná kamera, aktualizuje se první uložená; neexistuje-li žádná, vytvoří se. Akci lze vrátit a zachová nastavení výstupu i osvětlení. <strong>Vybrat kameru v mapě</strong>, <strong>Načíst kameru z mapy</strong> a <strong>Přesunout 3D pohled ke kameře</strong> fungují opačným směrem. <strong>Rámeček kamery ve 3D pohledu</strong> ukáže hranici výstupu a <strong>Ovládat kameru ze 3D pohledu</strong> nechá běžnou navigaci hýbat uloženou kamerou.</p>
+<h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>Nastavení</h3>
+<ul>
+<li><strong>Poloha kamery</strong>: X, Y, Z, natočení a sklon.</li>
+<li><strong>Výstup a objektiv</strong>: <strong>Předvolby</strong> (Full HD, Čtverec, Na výšku), šířka, výška, vzorky, <strong>Svislé zorné pole</strong> a <strong>Vzdálená ořezová rovina</strong>.</li>
+<li><strong>Osvětlení</strong>: Denní světlo, Západ slunce nebo Zataženo, případně expozice, slunce, barvy oblohy, horizontu a země, <strong>Procedurální obloha</strong>, <strong>Stíny</strong>, <strong>Ambient occlusion</strong> a <strong>Bloom</strong>.</li>
+<li><strong>Hloubka ostrosti</strong>: <strong>Zapnout hloubku ostrosti</strong>, vzdálenost zaostření, šířka ostrého pásma a poloměr rozostření. <strong>Zaostřit na výběr</strong> zaostří na střed vybraného objektu před kamerou.</li>
+</ul>
+<p><strong>Uložit kameru a nastavení</strong> zapíše formulář do mapy; aby zůstal na disku, uložte mapu.</p>
+<h3 id="s14-3"><a class="anchor" href="#s14-3" aria-hidden="true" tabindex="-1">#</a>Vykreslování</h3>
+<p><strong>Vykreslit PNG</strong> se zeptá, kam uložit, a spustí postupné vykreslování, které se v náhledu doplňuje vzorek po vzorku. Více vzorků vypadá lépe, ale trvá déle. <strong>Zrušit vykreslování</strong> skončí bez zápisu souboru. Vykreslování používá rastrový postup editoru, ne sledování paprsků. PNG má neprůhledné pozadí a animace se nevykreslují. Velmi velké obrázky mohou editor na chvíli pozastavit.</p>
+<h2 id="s15"><a class="anchor" href="#s15" aria-hidden="true" tabindex="-1">#</a>Nastavení</h2>
+<p>Soubor → Nastavení (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>) otevře nastavení. Změny platí okamžitě a ukládají se. Postranní panel obsahuje Přehled, Hry, Zobrazení, Barvy, Myš, Klávesnice a Vykreslování. Pole pro hledání nahoře najde nastavení podle názvu nebo popisu na kterékoli stránce. Každé změněné nastavení má vlastní tlačítko pro návrat k výchozí hodnotě a <strong>Obnovit výchozí</strong> vrátí celou aktuální stránku.</p>
+<h3 id="s15-1"><a class="anchor" href="#s15-1" aria-hidden="true" tabindex="-1">#</a>Stránky</h3>
+<ul>
+<li><strong>Přehled</strong>: běžná nastavení pohromadě: Vzhled (Krytí panelů (%), Barevné schéma, Rozvržení, Jazyk), Úpravy, Zobrazení a Příručka.</li>
+<li><strong>Hry</strong>: hra, kde jsou její soubory a vaše jméno pro spolupráci. Hra určuje, jaký formát mapy zapisovat, které definice entit načíst a kde jsou její materiály. Konfigurace her se čtou ze složky <code>games</code> ve složce konfigurace (<code>~/.config/heron-brush/games</code> na Linuxu a macOS, <code>%LOCALAPPDATA%\heron-brush\games</code> na Windows) a ze složky <code>games</code> vedle aplikace, kam balíčky ukládají přibalenou konfiguraci.</li>
+<li><strong>Zobrazení</strong>: Rozvržení, Barevné schéma, Jazyk, osy světa, krytí mřížky, velikost buňky kontroly netěsností a zámky mapování.</li>
+<li><strong>Barvy</strong>: barvy pohledů, geometrie a úchytů.</li>
+<li><strong>Myš</strong>: rychlosti a převrácení rozhlížení, posunu a pohybu, rychlost letu, zorný úhel, Provázat 2D pohledy a velikosti úchytů.</li>
+<li><strong>Klávesnice</strong>: sada zkratek, Heron Brush nebo Blender.</li>
+<li><strong>Vykreslování</strong>: realistické stínování, obrys výběru, světlo, stíny, ambient occlusion, odrazy, bloom a povrchy.</li>
+</ul>
+<h3 id="s15-2"><a class="anchor" href="#s15-2" aria-hidden="true" tabindex="-1">#</a>Jazyk</h3>
+<p><strong>Jazyk</strong> nabízí Podle systému a všechny přeložené jazyky. Rozhraní se změní okamžitě. Příručka se otevře v jazyce rozhraní, pokud pro něj existuje překlad, jinak anglicky.</p>
+<h2 id="s16"><a class="anchor" href="#s16" aria-hidden="true" tabindex="-1">#</a>Pluginy a MCP</h2>
+<h3 id="s16-1"><a class="anchor" href="#s16-1" aria-hidden="true" tabindex="-1">#</a>Pluginy</h3>
+<p>Pluginy rozšiřují editor o skripty v jazyce Rhai. Soubor → Pluginy otevře okno Pluginy. <strong>Nainstalovat plugin</strong> nainstaluje soubor <code>.rhai</code> a <strong>Nainstalovat složku pluginu</strong> složku, která obsahuje <code>main.rhai</code>; volitelná metadata <code>plugin.toml</code> popisují plugin a jeho nastavení. Pluginy jsou rozdělené na <strong>Aktivní pluginy</strong> a <strong>Neaktivní pluginy</strong> a <strong>Zapnout plugin</strong> plugin zapne nebo vypne; volba přežije restart. <strong>Znovu načíst pluginy</strong> znovu přečte skripty z disku a vynuluje hodnoty v jejich panelech.</p>
+<p>Aktivní pluginy se zobrazují také v sekci <strong>Pluginy</strong> na kartě Mapa s nastavením, tlačítky akcí (<strong>Spustit</strong>) a výstupem. Akce pracuje s výběrem, nebo se vším, když není nic vybráno, a je jedním krokem zpět. Přibalený plugin Selection inspector ukazuje počty a akce pro posun nahoru a dolů.</p>
+<h3 id="s16-2"><a class="anchor" href="#s16-2" aria-hidden="true" tabindex="-1">#</a>MCP</h3>
+<p>Spolupráce → Zpřístupnit agentovi (MCP) umožní AI agentovi nebo jinému nástroji ovládat otevřený editor přes Model Context Protocol. Okno ukazuje místní adresu s tlačítkem <strong>Kopírovat</strong> a <strong>Zastavit server</strong> ho ukončí; dokud běží, titulkový pruh ukazuje <strong>MCP aktivní</strong>. Volba příkazové řádky <code>--mcp</code> spustí stejné rozhraní bez okna. Klienti mohou zjistit dostupné nástroje pro geometrii, assety, vlastnosti, animace, export a relace. MCP a pluginy editoru jsou dvě různá rozhraní.</p>
+<h2 id="s17"><a class="anchor" href="#s17" aria-hidden="true" tabindex="-1">#</a>Příkazová řádka</h2>
+<p>Program se jmenuje <code>heron-brush</code>. Bez voleb otevře uvítací okno.</p>
+<h3 id="s17-1"><a class="anchor" href="#s17-1" aria-hidden="true" tabindex="-1">#</a>Otevírání souborů</h3>
+<p><code>heron-brush map.map [entities.fgd] [materials/]</code> otevře mapu, volitelně s definicemi entit a složkou materiálů. Prázdný argument jeden vynechá, například <code>heron-brush map.map "" materials/</code>. Pokud editor už běží, mapa se otevře v něm; <code>--new-instance</code> místo toho otevře samostatné okno.</p>
+<h3 id="s17-2"><a class="anchor" href="#s17-2" aria-hidden="true" tabindex="-1">#</a>Příkazy</h3>
+<ul>
+<li><code>--help</code> nebo <code>-h</code>: vypíše použití. <code>--version</code> nebo <code>-V</code>: vypíše verzi.</li>
+<li><code>--mcp</code>: obsluhuje MCP přes standardní vstup a výstup, bez okna.</li>
+<li><code>--merge-map &lt;base&gt; &lt;ours&gt; &lt;theirs&gt; [&lt;output&gt;]</code>: třícestné slučování souborů <code>.map</code> pro git. Výstup je ve výchozím stavu ours. Konflikty se vypíší a vrátí nenulový návratový kód.</li>
+<li><code>--obj-to-map &lt;in.obj&gt; &lt;out.map&gt; [size] [thickness] [snap] [material]</code>: převede mesh na brushe. Size je délka nejdelší strany v jednotkách mapy (výchozí 256), snap je mřížka pro rohy (0 pro žádnou) a slova <code>solid</code> nebo <code>layered</code> místo tenkých klínů vytvoří kvádry v mřížce nebo konvexní vrstvy.</li>
+<li><code>--render-preview &lt;in.map&gt; &lt;out.png&gt; [size]</code>: zapíše náhled mapy jako PNG, ve výchozím stavu 512 pixelů.</li>
+<li><code>--run-script &lt;script.rhai&gt; &lt;in.map&gt; [out.map] [key=value ...]</code>: spustí skript pluginu nad mapou se vším vybraným a zapíše výsledek (ve výchozím stavu zpět do vstupu). <code>key=value</code> odpovídá na nastavení pluginu.</li>
+</ul>
+<h2 id="s18"><a class="anchor" href="#s18" aria-hidden="true" tabindex="-1">#</a>Řešení problémů</h2>
+<h3 id="s18-1"><a class="anchor" href="#s18-1" aria-hidden="true" tabindex="-1">#</a>Když něco nevypadá dobře</h3>
+<ul>
+<li>Chybí materiál: zkontrolujte složku nebo balík materiálů a cesty projektu v exportu.</li>
+<li>Špatná velikost modelu: porovnejte se 64jednotkovou značkou hráče a měřítkem exportu.</li>
+<li>Špatný směr přechodu: zkontrolujte úhel přechodu a orientaci stěny.</li>
+<li>Prázdná scéna v enginu: přečtěte varování exportu a postupujte podle pokynů k importu pro daný cíl.</li>
+<li>Živé propojení čeká: ověřte, že je doplněk nainstalovaný, scéna připojená a aktualizace nejsou pozastavené.</li>
+<li>Jen čáry bez stěn: vypněte Drátový model v sekci Zobrazení na kartě Mapa, nebo v nabídce 3D okna zvolte Materiály či Plné plochy.</li>
+<li>V pohledech chybí objekty: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span> zobrazí skryté objekty; zkontrolujte vrstvy a filtry Zobrazení.</li>
+<li>Klávesa nic nedělá: nejprve klikněte do pohledu, aby měl klávesnici, a v Nastavení → Klávesnice zkontrolujte sadu zkratek.</li>
+<li>Úprava selhala: vraťte ji, zjednodušte geometrii a použijte <strong>Zkontrolovat mapu</strong> a <strong>Zkontrolovat netěsnosti</strong> v sekci <strong>Problémy</strong> na kartě Mapa.</li>
+<li>Mapa se neotevře ze správce souborů: mohla být předána už běžícímu editoru; hledejte jeho okno.</li>
+</ul>
+<h3 id="s18-2"><a class="anchor" href="#s18-2" aria-hidden="true" tabindex="-1">#</a>Nastavení a zálohy</h3>
+<p>Nastavení, nedávné mapy, hvězdičky, nastavení exportu a pluginy jsou ve složce konfigurace: <code>~/.config/heron-brush</code> na Linuxu a macOS a <code>%LOCALAPPDATA%\heron-brush</code> na Windows. Zálohy automatického ukládání jsou ve složce <code>autosave</code> vedle každé mapy.</p>
+<h3 id="s18-3"><a class="anchor" href="#s18-3" aria-hidden="true" tabindex="-1">#</a>Hlášení chyb</h3>
+<p>Uveďte verzi editoru (Nápověda → O programu), operační systém, malou mapu, na které je problém vidět, a přesný postup. Výstupní panel (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>) často řekne, co se pokazilo. Před experimentováním si uložte kopii.</p>
+<h3 id="s18-4"><a class="anchor" href="#s18-4" aria-hidden="true" tabindex="-1">#</a>Jak používat tuto příručku</h3>
+<p>Kapitolu zvolte v obsahu vlevo. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> zobrazí obsah a přesune vás do pole hledání; <span class="keys"><kbd>Esc</kbd></span> hledání vymaže, nebo příručku zavře, když je pole prázdné. <strong>Obsah</strong> skryje nebo zobrazí seznam kapitol a <strong>Velikost písma</strong> mění velikost textu; obě volby se pamatují. Seznam jazyků nahoře přepíná mezi dostupnými překlady.</p>
+<p>Na desktopu Soubor → Sestavit a spustit ukládá pojmenované kroky export/kopie/spuštění vedle exportních nastavení projektu. Nastavení → Klávesnice → Upravit klávesové zkratky nabízí 30 příkazů a kontrolu konfliktů. Diagnostiky lze skrýt a neplatné UV nebo prázdný název vlastnosti opravit s Undo. Nápověda → Aktualizace aplikace kontroluje plánovaný repozitář MojzisekJan/HeronBrush; kontrola při spuštění je výchozí vypnutá. Podrobnosti proměnných, argumentů a omezení jsou v <a href="../build-and-updates.md">dokumentaci build profilů a aktualizací</a>.</p>
+<p>Na desktopu Geometrie → Importovat model, nebo přetažení OBJ/GLB, vloží statickou modelovou entitu. Uložené mapy dostanou kopii assetů vedle mapy a Uložit jako je přenese do nové složky. V inspectoru entity upravte origin, angles a modelscale. Podporované formáty, exporty a omezení popisuje <a href="../model-import.md">Import statických modelů</a>.</p>
+  </article>
+</div>
+<script src="../../manual.js"></script>
+</body>
+</html>

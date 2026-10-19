@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="sv" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heron Brush manual · Svenska</title>
+<meta name="description" content="The Heron Brush manual: modelling, materials, entities, animation, export and live links.">
+<link rel="icon" type="image/svg+xml" href="../../images/logo.svg">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../manual.css">
+<link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
+</head>
+<body class="manual-page">
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../../#"><img src="../../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar-top" d="M4 7h16"/><path class="bar-mid" d="M4 12h16"/><path class="bar-bot" d="M4 17h16"/></svg>
+    </button>
+    <nav class="menu" id="site-menu" aria-label="Main">
+      <div class="nav-links">
+        <a href="../../#modelling">Modelling</a>
+        <a href="../../#materials">Materials</a>
+        <a href="../../#animation">Animation</a>
+        <a href="../../#export">Export</a>
+        <a href="#" aria-current="page">Manual</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <mask id="moon-mask"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="moon-cut" cx="17" cy="7" r="6.5" fill="#000"/></mask>
+            <circle class="sun-core" cx="12" cy="12" r="8" fill="currentColor" mask="url(#moon-mask)"/>
+            <g class="rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>
+            </g>
+          </svg>
+          <span class="theme-label">Dark theme</span>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/MojzisekJan/HeronBrush">GitHub</a>
+        <a class="btn btn-primary" href="../../editor/">Try in the browser</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<script>
+  // The menu folds behind the button on narrow windows; without this script the links stay in view.
+  (function () {
+    var root = document.documentElement, header = document.querySelector('.nav');
+    var toggle = header.querySelector('.menu-toggle'), menu = document.getElementById('site-menu');
+    root.classList.add('js');
+    function set(open) {
+      header.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () { set(!header.classList.contains('open')); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && header.classList.contains('open')) { set(false); toggle.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!header.contains(e.target)) set(false); });
+    matchMedia('(min-width: 961px)').addEventListener('change', function () { set(false); });
+
+    // The theme toggle: remembers the choice; without one the page follows the system.
+    var themeButton = header.querySelector('.theme-toggle'), label = themeButton.querySelector('.theme-label');
+    function show(theme) {
+      root.dataset.theme = theme;
+      themeButton.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = theme === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+    show(root.dataset.theme);
+    themeButton.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      show(next);
+      root.classList.add('theme-switched');
+      try { localStorage.setItem('heron-theme', next); } catch (e) {}
+    });
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+      var stored = null;
+      try { stored = localStorage.getItem('heron-theme'); } catch (err) {}
+      if (!stored) show(e.matches ? 'light' : 'dark');
+    });
+  })();
+</script>
+<div class="manual wrap">
+  <aside class="toc" id="toc" aria-label="Contents">
+    <div class="toc-tools">
+      <label class="sr-only" for="lang">Language</label>
+      <select id="lang" class="lang-select"><option value="../" lang="en">English</option><option value="../cs/" lang="cs">Čeština</option><option value="../de/" lang="de">Deutsch</option><option value="../zh/" lang="zh-Hans">中文</option><option value="../es/" lang="es">Español</option><option value="../uk/" lang="uk">Українська</option><option value="../pl/" lang="pl">Polski</option><option value="../it/" lang="it">Italiano</option><option value="../fr/" lang="fr">Français</option><option value="../pt-BR/" lang="pt-BR">Português (Brasil)</option><option value="../ja/" lang="ja">日本語</option><option value="../ko/" lang="ko">한국어</option><option value="../tr/" lang="tr">Türkçe</option><option value="../id/" lang="id">Bahasa Indonesia</option><option value="../ru/" lang="ru">Русский</option><option value="../nl/" lang="nl">Nederlands</option><option value="../sv/" selected lang="sv">Svenska</option><option value="../da/" lang="da">Dansk</option><option value="../nb/" lang="nb">Norsk bokmål</option><option value="../fi/" lang="fi">Suomi</option><option value="../hu/" lang="hu">Magyar</option><option value="../ro/" lang="ro">Română</option><option value="../sk/" lang="sk">Slovenčina</option><option value="../el/" lang="el">Ελληνικά</option><option value="../vi/" lang="vi">Tiếng Việt</option><option value="../zh-TW/" lang="zh-Hant">繁體中文</option><option value="../bg/" lang="bg">Български</option><option value="../hr/" lang="hr">Hrvatski</option><option value="../sl/" lang="sl">Slovenščina</option><option value="../lt/" lang="lt">Lietuvių</option></select>
+      <div class="search">
+        <input id="search" type="search" placeholder="Sök i dokumentationen" autocomplete="off" aria-label="Sök i dokumentationen">
+        <ol id="results" class="results" hidden data-nothing="Inga matchande kapitel"></ol>
+      </div>
+    </div>
+    <nav class="toc-list"><ul><li class="chapter"><a href="#s1">Kom igång</a><ul><li><a href="#s1-1">Välkomstskärmen</a></li><li><a href="#s1-2">Din första karta</a></li><li><a href="#s1-3">Filer och sparande</a></li></ul></li><li class="chapter"><a href="#s2">Gränssnittet</a><ul><li><a href="#s2-1">Namnlist och menyer</a></li><li><a href="#s2-2">Verktygsfältet</a></li><li><a href="#s2-3">Kartvyer</a></li><li><a href="#s2-4">Inspektören</a></li><li><a href="#s2-5">Statusfältet och utdatarutan</a></li><li><a href="#s2-6">Dialogrutor och utseende</a></li></ul></li><li class="chapter"><a href="#s3">Navigering och tangentbord</a><ul><li><a href="#s3-1">Förflyttning i 3D-vyn</a></li><li><a href="#s3-2">Förflyttning i 2D-vyer</a></li><li><a href="#s3-3">Rutnät och fästning</a></li><li><a href="#s3-4">Vanliga kortkommandon</a></li><li><a href="#s3-5">Kortkommandon för markering</a></li><li><a href="#s3-6">Kortkommandon för transformering</a></li><li><a href="#s3-7">Blender-tangentbordsmappningen</a></li></ul></li><li class="chapter"><a href="#s4">Brushar och modelleringsverktyg</a><ul><li><a href="#s4-1">Rita brushar</a></li><li><a href="#s4-2">Markera</a></li><li><a href="#s4-3">Formverktyg</a></li><li><a href="#s4-4">Kombinera brushar</a></li><li><a href="#s4-5">Svep, avrundning, patch och fasning</a></li><li><a href="#s4-6">3D-text</a></li></ul></li><li class="chapter"><a href="#s5">Material och UV</a><ul><li><a href="#s5-1">Läsa in och tillämpa material</a></li><li><a href="#s5-2">UV-redigeraren</a></li><li><a href="#s5-3">UV-tangenter</a></li><li><a href="#s5-4">Verktygsmaterial</a></li><li><a href="#s5-5">Utelämna ytor vid export</a></li></ul></li><li class="chapter"><a href="#s6">Färg och gradienter</a><ul><li><a href="#s6-1">Palett och blandfärg</a></li><li><a href="#s6-2">Färgväljaren</a></li><li><a href="#s6-3">Gradienter</a></li><li><a href="#s6-4">Ytmaterial</a></li></ul></li><li class="chapter"><a href="#s7">Tillgångar, lager och grupper</a><ul><li><a href="#s7-1">Tillgångsbiblioteket</a></li><li><a href="#s7-2">Lager</a></li><li><a href="#s7-3">Grupper och länkade grupper</a></li><li><a href="#s7-4">En gemensam skala</a></li></ul></li><li class="chapter"><a href="#s8">Entiteter och spellogik</a><ul><li><a href="#s8-1">Placera entiteter</a></li><li><a href="#s8-2">Egenskaper</a></li><li><a href="#s8-3">Vad en export kan göra</a></li></ul></li><li class="chapter"><a href="#s9">Animering</a><ul><li><a href="#s9-1">Förhandsgranska animeringar</a></li><li><a href="#s9-2">Nyckelbildsredigeraren</a></li><li><a href="#s9-3">Klipp</a></li><li><a href="#s9-4">Transport och uppspelning</a></li><li><a href="#s9-5">Tidslinjen</a></li><li><a href="#s9-6">Tangenter i redigeraren</a></li><li><a href="#s9-7">Ställningar i vyerna</a></li><li><a href="#s9-8">Koppla knappar till animeringar</a></li><li><a href="#s9-9">Animering i exporter</a></li><li><a href="#s9-10">Exemplet Motion lab</a></li></ul></li><li class="chapter"><a href="#s10">Exportera till en motor</a><ul><li><a href="#s10-1">Gemensamma alternativ</a></li><li><a href="#s10-2">Anteckningar om målen</a></li></ul></li><li class="chapter"><a href="#s11">Livelänkar: Godot, Unity, Defold och Flax</a><ul><li><a href="#s11-1">Godot</a></li><li><a href="#s11-2">Unity</a></li><li><a href="#s11-3">Defold</a></li><li><a href="#s11-4">Flax</a></li></ul></li><li class="chapter"><a href="#s12">Gemensamma livesessioner</a><ul><li><a href="#s12-1">Vara värd och gå med</a></li></ul></li><li class="chapter"><a href="#s13">3D-visning och en andra skärm</a><ul><li><a href="#s13-1">Visningslägen</a></li><li><a href="#s13-2">Ett separat 3D-fönster</a></li><li><a href="#s13-3">Procedurell himmel</a></li></ul></li><li class="chapter"><a href="#s14">Renderingskameror och PNG-bilder</a><ul><li><a href="#s14-1">Placera kameran</a></li><li><a href="#s14-2">Inställningar</a></li><li><a href="#s14-3">Rendering</a></li></ul></li><li class="chapter"><a href="#s15">Inställningar</a><ul><li><a href="#s15-1">Sidorna</a></li><li><a href="#s15-2">Språk</a></li></ul></li><li class="chapter"><a href="#s16">Tillägg och MCP</a><ul><li><a href="#s16-1">Tillägg</a></li><li><a href="#s16-2">MCP</a></li></ul></li><li class="chapter"><a href="#s17">Kommandoraden</a><ul><li><a href="#s17-1">Öppna filer</a></li><li><a href="#s17-2">Kommandon</a></li></ul></li><li class="chapter"><a href="#s18">Felsökning</a><ul><li><a href="#s18-1">När något ser fel ut</a></li><li><a href="#s18-2">Inställningar och säkerhetskopior</a></li><li><a href="#s18-3">Rapportera ett fel</a></li><li><a href="#s18-4">Använda den här handboken</a></li></ul></li></ul></nav>
+  </aside>
+  <button class="toc-toggle" type="button" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+    <span class="toc-current">Kom igång</span>
+  </button>
+  <article class="manual-body">
+<h2 id="s1"><a class="anchor" href="#s1" aria-hidden="true" tabindex="-1">#</a>Kom igång</h2>
+<p>Heron Brush är en brush-baserad baneditor. Du bygger banor av konvexa brushar, målar och texturerar deras ytor, placerar entiteter, animerar dörrar och plattformar och exporterar resultatet till en spelmotor. Den har också inbyggda tillgångar, parametriska former, livelänkar till motorernas editorer, delade redigeringssessioner och rendering av stillbilder. Den här handboken följer med programmet och fungerar utan internetanslutning.</p>
+<p>På macOS fungerar <span class="keys"><kbd>Cmd</kbd></span> överallt där handboken skriver <span class="keys"><kbd>Ctrl</kbd></span>, och Option motsvarar Alt.</p>
+<h3 id="s1-1"><a class="anchor" href="#s1-1" aria-hidden="true" tabindex="-1">#</a>Välkomstskärmen</h3>
+<p>När Heron Brush startar utan karta öppnas välkomstskärmen. Till vänster finns <strong>Fortsätt</strong> (den senaste kartan du hade öppen), <strong>Ny karta</strong> och <strong>Bläddra</strong> för att öppna en befintlig <code>.map</code>, samt <strong>Spel</strong>, <strong>Handbok</strong> och <strong>Inställningar</strong>. Till höger finns en lista över senaste kartor med miniatyrer, följd av <strong>Exempel</strong>. Stjärnan (<strong>Håll överst</strong>) fäster en karta överst i listan; papperskorgen (<strong>Flytta till papperskorgen</strong>) flyttar filen till systemets papperskorg, så att den kan återställas. Piltangenterna flyttar runt på skärmen och Enter öppnar det markerade objektet. Arkiv → Välkommen tar fram skärmen igen när som helst.</p>
+<h3 id="s1-2"><a class="anchor" href="#s1-2" aria-hidden="true" tabindex="-1">#</a>Din första karta</h3>
+<ol>
+<li>Välj <strong>Ny karta</strong> på välkomstskärmen, eller Arkiv → Ny karta (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>).</li>
+<li>Välj brushverktyget (<span class="keys"><kbd>B</kbd></span>) i verktygsfältet och dra i en 2D-vy för att rita den valda formen. Kontrollera djupet i en annan 2D-vy.</li>
+<li>Markera brushen och flytta den genom att dra. Använd fliken <strong>Yta</strong> för att ge den ett material eller en färg.</li>
+<li>Spara källkartan med <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>. När du är redo att använda den i ett spel öppnar du Arkiv → Exportera och skriver en scen för din motor.</li>
+</ol>
+<h3 id="s1-3"><a class="anchor" href="#s1-3" aria-hidden="true" tabindex="-1">#</a>Filer och sparande</h3>
+<p><code>.map</code>-filen är din redigerbara källa. Spara ofta: export, livelänkar och rendering sparar aldrig kartan åt dig. Arkiv → Spara som (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>) lägger till filändelsen <code>.map</code> om du utelämnar den. Arkiv → Återgå till sparad karta kastar osparade ändringar och läser in filen igen. Om du stänger ett fönster eller öppnar en annan karta med osparade ändringar frågar Heron Brush om du vill <strong>Spara</strong>, <strong>Förkasta</strong> eller <strong>Avbryt</strong>.</p>
+<p>Medan en sparad karta har osparade ändringar skrivs numrerade säkerhetskopior var tionde minut till mappen <code>autosave</code> bredvid kartan. De 50 nyaste säkerhetskopiorna behålls.</p>
+<p>Om du öppnar en karta medan Heron Brush redan körs lämnas den över till det fönster som körs, och det fönstret hamnar överst. Använd <code>--new-instance</code> på kommandoraden när du vill ha ett separat fönster (se Kommandoraden).</p>
+<h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>Gränssnittet</h2>
+<p>Huvudfönstret har en namnlist med menyerna, ett verktygsfält under den, kartvyerna, inspektören till höger och ett statusfält längst ned.</p>
+<h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>Namnlist och menyer</h3>
+<p>Namnlisten visar logotypen, menyerna, kartans namn i mitten och fönsterknapparna. På macOS sitter de vanliga röda, gula och gröna knapparna till vänster. Dra i namnlisten för att flytta fönstret och dubbelklicka på den för att maximera. Medan något körs i bakgrunden visas en indikator nära slutet av listen: en livelänk till en motor, en livesession eller <strong>MCP aktivt</strong>. Klicka på en indikator för att stoppa livelänken eller öppna dess fönster.</p>
+<ul>
+<li><strong>Arkiv</strong>: Välkommen, Ny karta (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>), Öppna karta (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span>), Spara (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>), Spara som (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>), Återgå till sparad karta, Exportera, Rendera bild, Tillägg och Inställningar (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>).</li>
+<li><strong>Redigera</strong>: Ångra (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Gör om (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Klipp ut, Kopiera, Klistra in, Duplicera (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>), Ta bort, Markera allt (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>), Upprepa senaste kommandon (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>) och Glöm upprepningsbara kommandon.</li>
+<li><strong>Visa</strong>: 3D-vy i separat fönster, Gå till, Fäst mot rutnät (<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>), Visa rutnät (<span class="keys"><kbd>0</kbd></span>), Förhandsgranska animeringar och Visa utelämnade ytor.</li>
+<li><strong>Geometri</strong>: Infoga 3D-text, Sammanfoga hörn, Konvertera ytor till patchar, Flytta markeringen ut ur sin entitet och Synka länkade grupper.</li>
+<li><strong>Animering</strong>: Nyckelbildsanimering, Förhandsgranska animeringar och Placera kamera från 3D-vyn (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>).</li>
+<li><strong>Karta</strong>: Läs in, Läs in igen och Ta bort punktfil; Läs in, Läs in igen och Ta bort portalfil. De visar läckspår och portaler som kartkompilatorer har skrivit.</li>
+<li><strong>Samarbete</strong>: Livesession och Tillhandahåll för en agent (MCP).</li>
+<li><strong>Hjälp</strong>: Handbok och Om.</li>
+</ul>
+<h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>Verktygsfältet</h3>
+<p>Verktygsfältet innehåller alla verktyg. Den första gruppen används hela tiden: Markera, Brush, Klipp, Hörnpunkt, Kant, Yta, Rotera och Skala. Den andra gruppen innehåller Skjuva, Montera, Svep, Kontrollpunkt, Avrundning och Måla. Håll pekaren över en knapp för att se dess namn och kortkommando. Om du klickar på det aktiva verktyget igen återgår du till Markera.</p>
+<p>Efter verktygen kommer <strong>Vänd horisontellt</strong> och <strong>Vänd vertikalt</strong>, sedan två växlar: <strong>Lås</strong> behåller materialmappningen när en brush flyttas, och <strong>UV</strong> behåller den när en brush vrids (<span class="keys"><kbd>U</kbd></span> växlar den). Därefter följer det aktiva verktygets egna inställningar: brushverktyget visar formen och dess alternativ, och avrundningsverktyget visar radie, ytor och hörn med <strong>Verkställ</strong>. Längst till höger finns verktygets namn, rutnätsstorleken (<strong>Rutnät 16</strong> och så vidare; klicka för att välja en annan) och menyn <strong>Rutnätsinställningar</strong> med Fäst mot rutnät, Visa rutnät, Förhandsgranska animeringar, Visa utelämnade ytor och Nyckelbildsanimering.</p>
+<h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>Kartvyer</h3>
+<p>Det finns fyra vyer: 3D-vyn och tre platta vyer, Ovanifrån (XY), Framifrån (XZ) och Sida (YZ). Inställningar → Visa → Layout väljer En ruta, Två rutor, Tre rutor eller Fyra rutor. Dra i avdelarna för att ändra rutornas storlek. Ett klick i en vy ger den tangentbordet. <span class="keys"><kbd>Space</kbd></span> växlar en ruta som visar en vy i taget till nästa vy, och <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> maximerar vyn som har tangentbordet och återställer layouten igen.</p>
+<p>Högerklicka utan att dra i valfri vy för att öppna en snabbmeny för markeringen och det som finns under pekaren. Den erbjuder gruppering, lager, länkade grupper, skapande av entiteter, flytt av brushar in i eller ut ur en entitet, kopiering av ett materialnamn och visning av det i materialbläddraren.</p>
+<h3 id="s2-4"><a class="anchor" href="#s2-4" aria-hidden="true" tabindex="-1">#</a>Inspektören</h3>
+<p>Inspektören till höger har fyra flikar. Dra i dess vänstra kant för att ändra bredden.</p>
+<ul>
+<li><strong>Karta</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>1</kbd></span>): Lager, Grupper, Tillägg, Problem, View filters och Taggar.</li>
+<li><strong>Entitet</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>2</kbd></span>): entitetsbläddraren, entitetsdefinitionerna, egenskaperna för den markerade entiteten och, för knappar och utlösare, Animeringsutlösare.</li>
+<li><strong>Yta</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>3</kbd></span>): UV, Material, Färg, Svep, Avrundning, Patch samt Infällning &amp; fasning. Varje avsnitt kan fällas ihop.</li>
+<li><strong>Tillgångar</strong>: biblioteket med återanvändbara brushmodeller.</li>
+</ul>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>5</kbd></span> döljer eller visar inspektören och <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>T</kbd></span> döljer eller visar verktygsfältet, vilket ger vyerna mer utrymme.</p>
+<h3 id="s2-5"><a class="anchor" href="#s2-5" aria-hidden="true" tabindex="-1">#</a>Statusfältet och utdatarutan</h3>
+<p>Statusfältet längst ned visar editorns senaste meddelande. Fel visas i rött. Klicka på fältet, eller tryck på <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>, för att öppna utdatarutan med hela meddelandehistoriken. De flesta kommandon rapporterar här vad de gjorde, till exempel hur många brushar som klipptes.</p>
+<h3 id="s2-6"><a class="anchor" href="#s2-6" aria-hidden="true" tabindex="-1">#</a>Dialogrutor och utseende</h3>
+<p>Dialogrutor som Inställningar, Exportera och Rendera bild öppnas i egna fönster. Inställningar → Visa → Färgschema väljer Följ skrivbordet, Ljust eller Mörkt. <strong>Panelopacitet (%)</strong> på sidan Översikt gör panelerna genomskinliga över vyerna. Fönstret ritar sina egna knappar i systemets stil: inbyggd stil på macOS, Windows 11-stil på Windows och GNOME-stil på Linux.</p>
+<h2 id="s3"><a class="anchor" href="#s3" aria-hidden="true" tabindex="-1">#</a>Navigering och tangentbord</h2>
+<h3 id="s3-1"><a class="anchor" href="#s3-1" aria-hidden="true" tabindex="-1">#</a>Förflyttning i 3D-vyn</h3>
+<p>Håll ned höger musknapp och dra för att se dig omkring. Dra med mittknappen för att panorera. Hjulet flyttar framåt och bakåt. <span class="keys"><kbd>W</kbd></span>, <span class="keys"><kbd>A</kbd></span>, <span class="keys"><kbd>S</kbd></span> och <span class="keys"><kbd>D</kbd></span> flyger framåt, åt vänster, bakåt och åt höger, <span class="keys"><kbd>Q</kbd></span> stiger och <span class="keys"><kbd>X</kbd></span> sjunker; håll ned <span class="keys"><kbd>Shift</kbd></span> för större steg. När <strong>Alt + dra med mittknappen flyttar kameran</strong> är påslaget i Inställningar → Mus flyttar Alt med mittknappen längs blickriktningen. Hastigheter, inverteringar och synfältet finns i Inställningar → Mus.</p>
+<h3 id="s3-2"><a class="anchor" href="#s3-2" aria-hidden="true" tabindex="-1">#</a>Förflyttning i 2D-vyer</h3>
+<p>Dra med mittknappen för att panorera och använd hjulet för att zooma runt pekaren. När du panorerar och zoomar en platt vy hålls de andra i linje; <strong>Länka 2D-vyer</strong> i Inställningar → Mus styr detta. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span> återställer zoomen och <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>U</kbd></span> återställer de platta vyerna till origo.</p>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>U</kbd></span> ramar in markeringen i alla vyer. Visa → Gå till (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>M</kbd></span>) flyttar kameran till inskrivna koordinater, markerar det som finns på en rad i kartfilen eller flyttar markeringen en inskriven sträcka.</p>
+<h3 id="s3-3"><a class="anchor" href="#s3-3" aria-hidden="true" tabindex="-1">#</a>Rutnät och fästning</h3>
+<p><span class="keys"><kbd>+</kbd></span> och <span class="keys"><kbd>-</kbd></span> ändrar rutnätsstorleken, och sifferknapparna <span class="keys"><kbd>1</kbd></span> till <span class="keys"><kbd>9</kbd></span> väljer en storlek direkt, från 1 till 256 enheter. <span class="keys"><kbd>0</kbd></span> eller <span class="keys"><kbd>#</kbd></span> visar eller döljer rutnätet, och <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> slår på eller av fästning. <span class="keys"><kbd>S</kbd></span> fäster de markerade brusharnas hörnpunkter mot det aktuella rutnätet, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> fäster dem mot hela enheter och <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> mot rutnätet.</p>
+<h3 id="s3-4"><a class="anchor" href="#s3-4" aria-hidden="true" tabindex="-1">#</a>Vanliga kortkommandon</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>: spara kartan. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>: spara som.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>: ångra. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> eller <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>: gör om.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>: kopiera, klipp ut och klistra in. Inklistring placerar objekten vid pekaren; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></span> behåller deras ursprungliga koordinater. När ytor är markerade kopieras deras material och UV-inställningar.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>: duplicera. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>: länkad dubblett av en grupp.</li>
+<li><span class="keys"><kbd>Delete</kbd></span> eller <span class="keys"><kbd>Backspace</kbd></span>: ta bort markeringen.</li>
+<li><span class="keys"><kbd>Esc</kbd></span>: avbryt den pågående dragningen, gå ett steg tillbaka i det aktiva verktyget, återgå till Markera och till sist rensa markeringen. <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Esc</kbd></span> återgår direkt till Markera.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>: upprepa de senaste upprepningsbara kommandona. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span>: glöm dem.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> eller <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>: placera renderingskameran vid 3D-vyn.</li>
+<li><span class="keys"><kbd>F5</kbd></span>: läs in materialen igen. <span class="keys"><kbd>F6</kbd></span>: läs in entitetsdefinitionerna igen.</li>
+</ul>
+<h3 id="s3-5"><a class="anchor" href="#s3-5" aria-hidden="true" tabindex="-1">#</a>Kortkommandon för markering</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>: markera allt, eller alla handtag medan ett hörnpunkts-, kant- eller ytverktyg är aktivt. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd></span>: markera ingenting. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span>: invertera markeringen.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B</kbd></span>: markera de andra objekten i samma entitet eller grupp.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>T</kbd></span>: markera allt som de markerade brusharna rör vid. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd></span>: markera allt inuti dem. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>E</kbd></span>: markera allt i deras kolumn längs vyaxeln. De markerande brusharna förbrukas.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>I</kbd></span>: isolera markeringen. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>I</kbd></span>: dölj den. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span>: visa allt igen.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span>: gruppera. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span>: dela upp grupp.</li>
+</ul>
+<h3 id="s3-6"><a class="anchor" href="#s3-6" aria-hidden="true" tabindex="-1">#</a>Kortkommandon för transformering</h3>
+<ul>
+<li>Piltangenterna och <span class="keys"><kbd>Page Up</kbd></span> / <span class="keys"><kbd>Page Down</kbd></span> flyttar markeringen ett rutnätssteg i den riktning de pekar i den aktiva vyn. Med <span class="keys"><kbd>Ctrl</kbd></span> dupliceras den medan den flyttas, och med <span class="keys"><kbd>Alt</kbd></span> roteras den.</li>
+<li><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Y</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span>: rotera ett kvarts varv kring den axeln; lägg till <span class="keys"><kbd>Shift</kbd></span> för motsatt riktning.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span>: vänd tvärs över vyn; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span>: vänd upp och ned. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>X</kbd></span> och <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Y</kbd></span> speglar längs X eller Y.</li>
+<li><span class="keys"><kbd>Insert</kbd></span>: placera en punktentitet i markeringens mitt.</li>
+<li><span class="keys"><kbd>Tab</kbd></span>: med en brush markerad växlar du Markera → Hörnpunkt → Kant → Yta → Markera.</li>
+</ul>
+<h3 id="s3-7"><a class="anchor" href="#s3-7" aria-hidden="true" tabindex="-1">#</a>Blender-tangentbordsmappningen</h3>
+<p>Inställningar → Tangentbord → Tangentbordsmappning erbjuder Heron Brush (standard, som används i hela handboken) och Blender. Med Blender: <span class="keys"><kbd>G</kbd></span> markerar och flyttar, <span class="keys"><kbd>R</kbd></span> roterar, <span class="keys"><kbd>S</kbd></span> skalar, <span class="keys"><kbd>E</kbd></span> sveper, <span class="keys"><kbd>1</kbd></span>, <span class="keys"><kbd>2</kbd></span> och <span class="keys"><kbd>3</kbd></span> väljer hörnpunkts-, kant- och ytverktyget, <span class="keys"><kbd>K</kbd></span> klipper, <span class="keys"><kbd>B</kbd></span> markerar, <span class="keys"><kbd>A</kbd></span> markerar allt och <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span> släpper markeringen, <span class="keys"><kbd>X</kbd></span> tar bort, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> duplicerar, <span class="keys"><kbd>H</kbd></span> döljer och <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>H</kbd></span> visar allt, och <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> gör om. Allt annat är likadant i båda.</p>
+<h2 id="s4"><a class="anchor" href="#s4" aria-hidden="true" tabindex="-1">#</a>Brushar och modelleringsverktyg</h2>
+<p>Brushar är konvexa solider som definieras av plan. Bygg sammansatta objekt av flera enkla brushar i stället för att försöka göra en brush konkav. Håll nere antalet brushar där en enkel form räcker.</p>
+<h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>Rita brushar</h3>
+<p>Välj brushverktyget (<span class="keys"><kbd>B</kbd></span>) och dra i en vy. Verktygsfältet visar <strong>Form att rita</strong>: Rätblock, Trappa, Valvbåge, Cylinder, Kon, Sfäroid (UV), Sfäroid (ikosaeder) och Infoga 3D-text. <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span> till <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>7</kbd></span> väljer en form direkt. Beroende på formen visar fältet <strong>Gör ihålig</strong> och <strong>Tjocklek:</strong>, <strong>Steghöjd:</strong> och <strong>Riktning:</strong> för trappor, <strong>Axel:</strong>, <strong>Sidor:</strong> och cirkelläget för runda former, <strong>Ringar:</strong> för sfärer och <strong>Noggrannhet:</strong> för ikosaedern. Ställ in alternativen innan du drar. Kontrollera resultatet i mer än en vy.</p>
+<h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>Markera</h3>
+<p>Klicka på en brush för att markera den och <span class="keys"><kbd>Ctrl</kbd></span>-klicka för att lägga till i markeringen. En dragning från tom yta ritar en markeringsruta. I 3D-vyn markerar <span class="keys"><kbd>Shift</kbd></span>-klick en enskild yta och <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span>-klick lägger till fler ytor. Om du drar en markerad brush flyttas den; om du drar en omarkerad brush markeras och flyttas bara den.</p>
+<p>I 3D-vyn <span class="keys"><kbd>Shift</kbd></span>-drar du en yta på en markerad brush för att extrudera den. <span class="keys"><kbd>Alt</kbd></span>-klicka på en annan yta för att kopiera den markerade ytans material och justering till den; <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> kopierar bara materialet och <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> kopierar rotationen.</p>
+<h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>Formverktyg</h3>
+<ul>
+<li><strong>Markera</strong> (<span class="keys"><kbd>Esc</kbd></span>): markera och flytta.</li>
+<li><strong>Hörnpunkt</strong> (<span class="keys"><kbd>V</kbd></span>), <strong>Kant</strong> (<span class="keys"><kbd>E</kbd></span>), <strong>Yta</strong> (<span class="keys"><kbd>F</kbd></span>): dra hörn, kanter eller ytor. <span class="keys"><kbd>Shift</kbd></span>-dragning från mitten av en kant eller yta lägger till ett hörn där. <span class="keys"><kbd>Delete</kbd></span> tar bort de valda hörnen.</li>
+<li><strong>Rotera</strong> (<span class="keys"><kbd>R</kbd></span>), <strong>Skala</strong> (<span class="keys"><kbd>T</kbd></span>), <strong>Skjuva</strong> (<span class="keys"><kbd>G</kbd></span>): transformera markeringen med handtag.</li>
+<li><strong>Klipp</strong> (<span class="keys"><kbd>C</kbd></span>): klicka på två eller tre punkter för att definiera ett klipplan. <span class="keys"><kbd>Enter</kbd></span> klipper, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> väljer vilken sida som behålls, och <span class="keys"><kbd>Backspace</kbd></span> eller <span class="keys"><kbd>Esc</kbd></span> tar bort den senaste punkten.</li>
+<li><strong>Montera</strong> (<span class="keys"><kbd>N</kbd></span>): placera punkter runt en volym och tryck på <span class="keys"><kbd>Enter</kbd></span> för att skapa en konvex brush av dem. <span class="keys"><kbd>Backspace</kbd></span> tar bort den senaste punkten.</li>
+<li><strong>Svep</strong> (<span class="keys"><kbd>Y</kbd></span>): se avsnittet om svep nedan.</li>
+<li><strong>Kontrollpunkt</strong> (<span class="keys"><kbd>P</kbd></span>): forma om en patchs kontrollrutnät.</li>
+<li><strong>Avrundning</strong> (<span class="keys"><kbd>O</kbd></span>): klicka på en kant för att runda av den, eller välj kanter eller hörnpunkter med deras verktyg och tryck på <span class="keys"><kbd>Enter</kbd></span>. Fler ytor ger ett mjukare resultat och mer geometri.</li>
+<li><strong>Måla</strong> (<span class="keys"><kbd>K</kbd></span>): se Material och UV.</li>
+</ul>
+<h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>Kombinera brushar</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>: slå ihop de markerade brusharna till deras konvexa hölje.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>K</kbd></span>: subtrahera de markerade brusharna från de brushar de rör vid.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></span>: gör markeringen ihålig, med väggar som är ett rutnätssteg tjocka.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>L</kbd></span>: bilda skärningen av markeringen.</li>
+</ul>
+<h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>Svep, avrundning, patch och fasning</h3>
+<p><strong>Svep</strong> bygger geometri längs en bana utifrån markerade ytor. Markera ytorna (i svepverktyget med <span class="keys"><kbd>Alt</kbd></span>-klick), ställ sedan in <strong>Sträcka</strong>, <strong>Vridning</strong> (axel och vinkel), <strong>Skala</strong>, <strong>Steg</strong> och <strong>Sökväg</strong> (justering Heltal eller Fri; Båge, Rak eller S-kurva) i avsnittet Svep på fliken Yta, och tryck på <strong>Svep</strong>. Raden under kontrollerna anger hur många brushar det blir.</p>
+<p>Avsnittet <strong>Avrundning</strong> rundar av de valda kanterna med <strong>Radie</strong>, <strong>Ytor</strong> och <strong>Hörn</strong> (Geringad eller Rundad); en yta ger en fas.</p>
+<p><strong>Patch</strong> visar den markerade patchens <strong>Kolumner</strong> och <strong>Rader</strong> med knappar för att lägga till eller ta bort ett par. Geometri → Konvertera ytor till patchar (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>) skapar patchar av markerade ytor.</p>
+<p><strong>Infällning &amp; fasning</strong> arbetar på markerade ytor: <strong>Infällning</strong> drar in ytan från dess kanter och <strong>Djup</strong> skjuter ut den (eller in, när värdet är negativt). <strong>Fasa ytor</strong> tillämpar båda; den tredje knappen lägger till en panel eller skär ut en fördjupning, beroende på tecknet för Djup. <strong>Sammanfoga hörn</strong> öppnar en dialogruta som sammanfogar två brushar i ett geringat eller rundat hörn, med förhandsvisning.</p>
+<h3 id="s4-6"><a class="anchor" href="#s4-6" aria-hidden="true" tabindex="-1">#</a>3D-text</h3>
+<p>Geometri → Infoga 3D-text (även sista posten i brushverktygets formlista) bygger brushar av text. Den använder Heron Block, ett inbyggt polygontypsnitt med avfasade hörn, proportionella bredder och tjeckiska diakritiska tecken; gemener använder versalformer. Skriv <strong>Text</strong>, ställ in <strong>Höjd</strong> (versalhöjden; diakritiska tecken sticker upp ovanför) och <strong>Djup</strong>, följ förhandsvisningen och tryck på <strong>Infoga</strong>.</p>
+<p>Om en åtgärd inte kan skapa giltig geometri justerar du dess mått, eller ångrar och förenklar formen.</p>
+<h2 id="s5"><a class="anchor" href="#s5" aria-hidden="true" tabindex="-1">#</a>Material och UV</h2>
+<h3 id="s5-1"><a class="anchor" href="#s5-1" aria-hidden="true" tabindex="-1">#</a>Läsa in och tillämpa material</h3>
+<p>Öppna avsnittet <strong>Material</strong> på fliken Yta. <strong>Läs in mapp</strong> lägger till en mapp med bilder och <strong>Läs in .wad</strong> lägger till ett texturpaket; båda visas under <strong>Samlingar</strong>, där krysset tar bort en. Skriv i <strong>Filtrera material</strong> för att begränsa listan. Klicka på ett material för att göra det aktuellt, och <strong>Applicera på markering</strong> lägger det sedan på varje markerad yta. <strong>Markera</strong> erbjuder Markera brushar med det och Markera ytor med det. <strong>Ersätt</strong> byter ett material mot ett annat i hela kartan eller bara i markeringen.</p>
+<p>Verktyget <strong>Måla</strong> (<span class="keys"><kbd>K</kbd></span>) lägger det aktuella materialet på ytan under pekaren: ett klick målar en yta, ett dubbelklick målar hela brushen, och <span class="keys"><kbd>Shift</kbd></span>-klick hämtar ytans material som aktuellt material, som en pipett.</p>
+<h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>UV-redigeraren</h3>
+<p>Avsnittet <strong>UV</strong> på fliken Yta visar den markerade ytans material och kontur. Muskontroller på arbetsytan:</p>
+<ul>
+<li>Hjulet zoomar runt pekaren. Dra med höger knapp eller mittknappen för att panorera. Dubbelklicka med höger knapp för att rama in ytan igen; när du markerar en annan yta ramas den in automatiskt.</li>
+<li>Dragning med vänster knapp flyttar materialet medan ytans kontur ligger kvar. Ringen roterar mappningen, hörnhandtagen skalar den och mitthandtaget anger origo för dessa ändringar.</li>
+<li><span class="keys"><kbd>Alt</kbd></span>-dragning med vänster knapp på en plattkant skjuvar, liksom <span class="keys"><kbd>Shift</kbd></span>-dragning med mittknappen.</li>
+<li>Varje dragning är ett ångringssteg, och <span class="keys"><kbd>Esc</kbd></span> avbryter en pågående dragning.</li>
+</ul>
+<p>Under arbetsytan finns <strong>Förskjutning</strong>, <strong>Skala</strong>, <strong>Vinkel</strong> och, när spelet använder dem, <strong>Innehållsflaggor</strong>, <strong>Ytflaggor</strong> och <strong>Ytvärde</strong>. Knapparna är <strong>Återställ</strong>, <strong>Återställ till världen</strong>, <strong>Anpassa</strong>, <strong>Vänd H</strong>, <strong>Vänd V</strong> och de två 90°-vridningarna. <strong>Justera</strong> vrider materialet längs en av ytans kanter (tryck igen för nästa kant, <span class="keys"><kbd>Shift</kbd></span> för föregående). De fyra justeringsknapparna skjuter materialet mot en kant. <strong>Anpassa U</strong> och <strong>Anpassa V</strong> skalar så att ett helt antal kopior täcker ytan; tryck igen för nästa antal, och håll ned <span class="keys"><kbd>Ctrl</kbd></span> för att behålla ett trimark indelning.</p>
+<h3 id="s5-3"><a class="anchor" href="#s5-3" aria-hidden="true" tabindex="-1">#</a>UV-tangenter</h3>
+<p>När ytor är markerade flyttar piltangenterna materialet, <span class="keys"><kbd>[</kbd></span> och <span class="keys"><kbd>]</kbd></span> vrider det 15°, <span class="keys"><kbd>,</kbd></span> och <span class="keys"><kbd>.</kbd></span> halverar eller fördubblar dess skala, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> och <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span> vänder det, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> återställer det, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> återställer det till världsaxlarna och <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>F</kbd></span> anpassar det till varje yta.</p>
+<p><strong>Lås</strong> i verktygsfältet behåller mappningen medan brushar flyttas, och <strong>UV</strong> (<span class="keys"><kbd>U</kbd></span>) behåller den medan brushar vrids.</p>
+<h3 id="s5-4"><a class="anchor" href="#s5-4" aria-hidden="true" tabindex="-1">#</a>Verktygsmaterial</h3>
+<ul>
+<li>skip: tar bort den markerade ytan från motorexporter.</li>
+<li>clip: skapar kollision utan synlig geometri.</li>
+<li>origin: markerar pivotpunkten för en brush-entitet.</li>
+</ul>
+<p>Namnen kan ändras på kortet <strong>Verktygsmaterial</strong> i exportfönstret. Använd skip för ytor som du vet är dolda.</p>
+<h3 id="s5-5"><a class="anchor" href="#s5-5" aria-hidden="true" tabindex="-1">#</a>Utelämna ytor vid export</h3>
+<p>Markera en yta och slå på <strong>Utelämna ytan vid export</strong> i avsnittet UV. Orange skraffering markerar den i UV-förhandsvisningen. Dess material och färg förblir sparade, och brushen förblir sluten och redigerbar. Exporterade renderingsmesher utelämnar ytan medan kollisionen behålls. Om en fyrhörning av en kub utelämnas blir det två renderingstrianglar. Detta gör inte ytor dubbelsidiga och slår inte ihop mesher.</p>
+<p><strong>Utelämna täckta ytor</strong> markerar ytor som helt täcks av statiska brushar, inklusive identiska ytor som rör vid varandra och inneslutna brushar. Det fungerar på de markerade brusharna, eller på all synlig olåst världsgeometri när ingenting är markerat. Brush-entiteter, genomskinliga material och brushar som redan har utelämnade ytor hoppas över. Delvis täckta ytor delas inte. En enda ångring återställer allt. Visa → Visa utelämnade ytor döljer eller visar sådana ytor i editorns vyer; markering använder fortfarande hela brushen.</p>
+<h2 id="s6"><a class="anchor" href="#s6" aria-hidden="true" tabindex="-1">#</a>Färg och gradienter</h2>
+<p>Avsnittet <strong>Färg</strong> på fliken Yta målar ytor med enfärgade fält eller gradienter ovanpå deras material. Det är användbart för att skissa upp en bana och för stiliserad grafik. Målade ytor behåller sina riktiga färger i vyerna; markeringen visas med sin kontur.</p>
+<h3 id="s6-1"><a class="anchor" href="#s6-1" aria-hidden="true" tabindex="-1">#</a>Palett och blandfärg</h3>
+<p>Klicka på en av de tolv färgrutorna i paletten för att måla de markerade ytorna, eller hela markerade brushar, med den. <strong>Opacitet</strong> anger hur täckande nästa målning blir, i procent. <strong>Blanda</strong> har en färgknapp som öppnar färgväljaren; dra i väljaren så följer markeringen med direkt, eller tryck på <strong>Måla</strong> för att tillämpa blandfärgen som ett steg. <strong>Tillbaka till material</strong> tar bort färgen så att ytan visar sitt material igen. Raden överst i avsnittet anger vad som är markerat och vad det har på sig.</p>
+<h3 id="s6-2"><a class="anchor" href="#s6-2" aria-hidden="true" tabindex="-1">#</a>Färgväljaren</h3>
+<p>Alla färgknappar i editorn öppnar samma väljare. Dra i kvadraten för att välja mättnad och ljusstyrka, och i remsan bredvid för att välja nyans. Nedanför finns värdena <strong>R</strong>, <strong>G</strong> och <strong>B</strong> och ett skjutreglage för <strong>Opacitet</strong> där färgen har en sådan. Hexfältet tar emot <code>#RRGGBB</code> eller <code>#RRGGBBAA</code>; det blir rött så länge texten inte är en giltig färg. <strong>Kopiera</strong> lägger hexkoden i urklipp. Klicka utanför väljaren för att stänga den.</p>
+<h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>Gradienter</h3>
+<p><strong>Gradient</strong> väljer Linjär gradient eller Radiell gradient, och knappen bredvid vänder på färgernas ordning. Varje stopp har en färgknapp och <strong>Position (%)</strong>, och stopp mellan ändarna har en knapp för borttagning. <strong>Lägg till färgstopp</strong> lägger till ett stopp i den största luckan; en gradient kan ha upp till åtta stopp. <strong>Gradientvinkel</strong> anger riktningen för en linjär gradient, med knapparna <strong>+45°</strong> och <strong>−45°</strong>.</p>
+<p>Under förhandsvisningen finns en skena med en markör för varje stopp. Klicka på skenan för att lägga till ett stopp, klicka på en markör för att öppna dess väljare, dra en markör för att flytta den och högerklicka på en markör för att ta bort den. De tre färgrutorna under skenan är förinställningar: Varm gradient, Kall gradient och Gråskalegradient. Ändringar i en gradient tillämpas direkt på markeringen.</p>
+<p>En gradients riktning spelar roll: orientera den längs en taklutning eller längs ett böjt objekt, inte tvärs över ytor som inte hör ihop. Kontrollera modellen från båda håll efter målningen.</p>
+<h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>Ytmaterial</h3>
+<p><strong>Ytmaterial</strong> ställer in <strong>Grovhet</strong> (0 är blankt, 100 är matt), <strong>Metallisk</strong> (0 för trä, sten eller plast, 100 för metall) och <strong>Emission</strong> (0 till 8; ytan lyser i sin egen färg, även gradienter, men lyser inte upp objekt i närheten). Ändringar tillämpas direkt på de markerade ytorna eller brusharna. <strong>Använd standardyta</strong> tar bort åsidosättningen. Alla ändringar kan ångras.</p>
+<p>Yteffekter syns i den belysta 3D-vyn och i kamerarenderingar. Platt visning och trådramsvisning utelämnar högdagrarna avsiktligt. Bloom kan lägga till ett sken runt självlysande ytor. Godot och glTF/GLB tar emot materialvärdena, och Unity-importören gör om grovhet till släthet. Se <code>docs/surface-materials.md</code> för begränsningarna i varje mål.</p>
+<h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>Tillgångar, lager och grupper</h2>
+<h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>Tillgångsbiblioteket</h3>
+<p>Öppna fliken <strong>Tillgångar</strong>. Lägg till en mapp med <code>.map</code>-modeller med <strong>Lägg till mapp</strong>; det inbyggda biblioteket finns alltid där. Skriv i <strong>Filtrera tillgångar</strong> för att söka. Klicka på en modell för att markera den, och dubbelklicka sedan på den, tryck på <span class="keys"><kbd>Enter</kbd></span> eller klicka på <strong>Infoga</strong> för att lägga till den där pekaren senast var. Du kan också dra en modell till en vy. En tillgångs brushar infogas som en grupp så att modellen flyttas som en helhet.</p>
+<p><strong>Spara markering som tillgång</strong> skriver de markerade brusharna till biblioteket som en <code>.map</code>. Bibliotekets tillgångar är vanliga redigerbara brushar, inte importerade mesher.</p>
+<h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>Lager</h3>
+<p>Listan <strong>Lager</strong> på fliken Karta organiserar stora områden. Skriv ett namn och klicka på <strong>Lägg till</strong> för att skapa ett lager, eller tryck på <span class="keys"><kbd>Enter</kbd></span> för att byta namn på det aktuella. Varje lager kan döljas, låsas eller utelämnas från exporter. <strong>Flytta hit</strong> flyttar markeringen till det aktuella lagret. Snabbmenyn i vyerna erbjuder också Flytta till lager, Gör till aktivt lager, Dölj lager och Isolera lager.</p>
+<h3 id="s7-3"><a class="anchor" href="#s7-3" aria-hidden="true" tabindex="-1">#</a>Grupper och länkade grupper</h3>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span> grupperar markeringen och <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span> delar upp den. Avsnittet <strong>Grupper</strong> på fliken Karta listar grupper och erbjuder <strong>Öppna</strong>, <strong>Byt namn</strong>, <strong>Slå ihop</strong>, <strong>Dela upp grupp</strong>, <strong>Ta ut</strong> och <strong>Extrahera</strong>. En länkad grupp är en uppsättning kopior som delar redigeringar: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> skapar en länkad dubblett, Geometri → Synka länkade grupper uppdaterar kopiorna och <strong>Avlänka</strong> gör en kopia fristående. På fliken Entitet kan en egenskap behållas som en kopias egen när länkade grupper synkas.</p>
+<h3 id="s7-4"><a class="anchor" href="#s7-4" aria-hidden="true" tabindex="-1">#</a>En gemensam skala</h3>
+<p>Standardskalan för export är 32 kartenheter per meter. Den inbyggda startmarkören för spelaren är 64 enheter hög, en referens på 2 meter. Jämför dörröppningar, fordon, möbler och växter med den. Ändra exportskalan bara avsiktligt och håll relaterade tillgångar konsekventa.</p>
+<h2 id="s8"><a class="anchor" href="#s8" aria-hidden="true" tabindex="-1">#</a>Entiteter och spellogik</h2>
+<p>Vanliga entitetsdefinitioner är inbyggda och alltid tillgängliga: ljus, startpunkter för spelare, dörrar, knappar, plattformar, utlösare, statiska rekvisita, ljud och vägpunkter. Om du läser in ett projekts FGD med <strong>Entitetsdefinitioner</strong> på fliken Entitet ersätts klasser med samma namn medan övriga inbyggda behålls.</p>
+<h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>Placera entiteter</h3>
+<p>I bläddraren <strong>Entiteter</strong> på fliken Entitet skriver du i <strong>Filtrera klasser</strong> och väljer en klass. För en punktklass, till exempel ett ljus, klickar du på <strong>Placera</strong> eller dubbelklickar på klassen; <span class="keys"><kbd>Insert</kbd></span> placerar en i markeringens mitt. För en brushklass, till exempel en dörr eller en utlösare, markerar du brusharna och klickar på <strong>Skapa</strong>. Klasser kan också dras till en vy.</p>
+<h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>Egenskaper</h3>
+<p>Egenskapslistan redigerar den markerade entiteten. Entiteter av samma klass redigeras tillsammans. <strong>Lägg till egenskap</strong> lägger till en nyckel som definitionen kanske inte känner till; <strong>Standardvärden</strong> kan återställa befintliga egenskaper till deras standardvärden eller lägga till de saknade. Egenskaper som klassen definierar men som entiteten saknar visas nedtonade; när du skriver ett värde läggs de till. Använd targetname och target för att länka entiteter.</p>
+<h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>Vad en export kan göra</h3>
+<p>Godots direktiv skapar inbyggda noder, kollisionskroppar och utlösarområden. Unity och Unreal stöder inbyggda vanliga ljus, och Unreal skapar även PlayerStart-aktörer. Övriga data bevaras så långt målets importör tillåter.</p>
+<p>En dörrentitet ger inte i sig något spelbeteende. Rörelse, reaktioner på utlösare, spelarkontroller och projektskript kräver fortfarande arbete i motorn. Defold exporterar entitetsegenskaper och kollisionsobjekt; Flax placerar modeller och generiska entiteter. Kontrollera resultatet i din motor innan du bygger spellogik ovanpå det.</p>
+<h2 id="s9"><a class="anchor" href="#s9" aria-hidden="true" tabindex="-1">#</a>Animering</h2>
+<p>Heron Brush kan förhandsgranska enkla rörelser och redigera nyckelbildsanimeringar av brush-entiteter, och sedan exportera dem till flera motorer.</p>
+<h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>Förhandsgranska animeringar</h3>
+<p>Slå på <strong>Förhandsgranska animeringar</strong> i menyn Visa, menyn Animering, menyn Rutnätsinställningar eller avsnittet Visa på fliken Karta. Den spelar upp rotationen i func_rotate och fram-och-tillbaka-rörelsen i func_shuttle när start_on är aktiverat, med entitetens egenskaper för axel, hastighet, riktning, sträcka och väntetid, och den spelar upp nyckelbildsklipp som är inställda på Spela upp vid start. Tillgångarna fläkt och väderkvarn innehåller redan roterande delar.</p>
+<p>När förhandsvisningen stängs av återställs den ursprungliga ställningen. Ett klick i en vy stoppar uppspelningen innan något markeras eller redigeras; kameranavigeringen fungerar fortfarande. Förhandsvisningen ändrar inte kartan, ångringshistoriken eller exporterna, och den kör ingen fysik eller spellogik.</p>
+<h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>Nyckelbildsredigeraren</h3>
+<p>Öppna den med Animering → Nyckelbildsanimering eller från menyn Rutnätsinställningar. Den dockas under vyerna, eller i 3D-fönstret medan det är separat. Fönsterikonen i dess rubrik flyttar den till ett eget fönster; den behåller bildrutan och ångringshistoriken. <strong>Redigera animering</strong> växlar vyerna till den animerade ställningen och <strong>Redigera karta</strong> går tillbaka till vilogeometrin. I animeringsläget visar varje vy <strong>Redigera animering</strong> och bildrutans nummer längst ned.</p>
+<p>Markera en brush-entitet, eller en brush eller brushgrupp, för att animera den. En platt brushgrupp delar en animering och en pivotpunkt; grupper som innehåller flera entiteter behöver separata animeringar.</p>
+<h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>Klipp</h3>
+<p>Väljaren <strong>Animering</strong> växlar mellan namngivna klipp. Skriv ett namn i <strong>Animeringsnamn</strong> och klicka på <strong>Spara som</strong> för att kopiera det aktuella klippet under det namnet; <strong>Ta bort</strong> tar bort ett klipp. <strong>Förflytta</strong> skapar ett <code>translate</code>-klipp utan rotation. <strong>Dörranimationer</strong> skapar mjuka klipp <code>open</code> och <code>close</code> med en vridning på 90 grader kring den aktuella pivotpunkten; flytta först pivotpunkten till gångjärnet. <strong>Spela upp vid start</strong> gör att klippet spelas upp när banan startar; dörrförinställningen stänger av det.</p>
+<h3 id="s9-4"><a class="anchor" href="#s9-4" aria-hidden="true" tabindex="-1">#</a>Transport och uppspelning</h3>
+<p>Transportknapparna är <strong>Start</strong>, <strong>Föregående nyckel</strong>, <strong>Uppspelning</strong>, <strong>Nästa nyckel</strong> och <strong>Slut</strong>. <strong>Bildruta</strong> visar och ställer in den aktuella bildrutan, och <strong>Varaktighet (s)</strong> anger klippets längd. Läget är <strong>En gång</strong>, <strong>Slinga</strong> eller <strong>Pingpong</strong>.</p>
+<h3 id="s9-5"><a class="anchor" href="#s9-5" aria-hidden="true" tabindex="-1">#</a>Tidslinjen</h3>
+<p>Tidslinjen har en linjal med spelhuvudet och ett spår för <strong>Position</strong> (X, Y och Z får nycklar tillsammans) och för varje rotationsvinkel, RX, RY och RZ. Klicka eller dra i linjalen för att flytta spelhuvudet och förhandsgranska den ställningen i alla vyer. Dra med mittknappen för att panorera tidslinjen. Dra nycklar för att flytta dem i tiden; <span class="keys"><kbd>Shift</kbd></span> lägger till i markeringen; dubbelklicka på ett spår för att infoga en nyckel; <span class="keys"><kbd>Ctrl</kbd></span>+hjulet zoomar. <strong>Kurvor</strong> visar värdekurvorna i stället för spåren.</p>
+<p>Knapparna ovanför är <strong>Lägg till nyckel</strong>, <strong>Ta bort</strong>, <strong>Kopiera</strong>, <strong>Klistra in</strong> och <strong>Duplicera</strong>. <strong>Fäst mot bildrutor</strong> håller nycklar på hela bildrutor och <strong>Anpassa</strong> visar hela klippet. <strong>Tajma om nycklar</strong> öppnar <strong>Tidsskala</strong>, <strong>Förskjutning (bildrutor)</strong>, <strong>Skala från spelhuvudet</strong>, <strong>Förläng varaktighet</strong> och <strong>Tajma om markering</strong>.</p>
+<p>Nyckelinspektören bredvid tidslinjen redigerar den markerade nyckeln: <strong>Bildruta</strong>, <strong>Värde</strong> (eller de tre koordinaterna för en positionsnyckel), interpolationen <strong>Linjär</strong>, <strong>Konstant</strong> eller <strong>Bézier</strong>, <strong>Ingående lutning</strong> och <strong>Utgående lutning</strong>, samt <strong>Jämna tangenter</strong>.</p>
+<h3 id="s9-6"><a class="anchor" href="#s9-6" aria-hidden="true" tabindex="-1">#</a>Tangenter i redigeraren</h3>
+<p>Medan tidslinjen har tangentbordet: <span class="keys"><kbd>Space</kbd></span> spelar upp eller pausar, vänster- och högerpilen stegar en bildruta, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span> markerar alla nycklar, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span> och <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span> kopierar, klipper ut och klistrar in nycklar, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span> duplicerar dem, <span class="keys"><kbd>Delete</kbd></span> tar bort dem, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span> ångrar och <span class="keys"><kbd>Esc</kbd></span> avbryter en dragning. Utanför tidslinjen lämnar <span class="keys"><kbd>Esc</kbd></span> animeringsläget. Ångra lämnar zoomen, markeringen och spelhuvudet där de var.</p>
+<h3 id="s9-7"><a class="anchor" href="#s9-7" aria-hidden="true" tabindex="-1">#</a>Ställningar i vyerna</h3>
+<p>Raden under tidslinjen har <strong>Lökskalsvisning</strong> med ett antal och <strong>Avstånd</strong>, som visar närliggande ställningar som spöken; koordinaterna för <strong>Pivotpunkt</strong>; <strong>Automatisk nyckel</strong>; och ställningsverktygen <strong>Förflytta</strong>, <strong>Rotera</strong> och <strong>Pivotpunkt</strong>.</p>
+<ul>
+<li><strong>Lägg till nyckel</strong> slår på Automatisk nyckel och pausar uppspelningen. Med Automatisk nyckel påslaget och <strong>Förflytta</strong> valt drar du en färgad axel på den markerade entitetens handtag i 3D-vyn för att sätta en nyckel för dess position vid den aktuella bildrutan.</li>
+<li>I en 2D-vy drar du den markerade brushen eller en medlem i dess grupp för att sätta nycklar för förflyttning längs de två synliga axlarna, med fästning mot rutnätet. Automatisk nyckel behöver inte vara påslaget för detta.</li>
+<li>Med <strong>Rotera</strong> drar du brushen i en 2D-vy runt dess orange pivotmarkör. Ovanifrån sätter nycklar för RZ, Framifrån för RY och Sida för RX, fästa mot rutnätets vinklar.</li>
+<li>Med <strong>Pivotpunkt</strong> drar du det gula rotationscentrumet i valfri 2D-vy. Det fästs mot rutnätet och behåller sitt djup. Nycklar och vilogeometri förblir oförändrade.</li>
+</ul>
+<p>Den cyanfärgade banan i 2D och 3D visar pivotpunktens rörelse. Klicka på en punkt på banan för att markera dess tid och nycklar, eller dra den för att ändra positionen; med Automatisk nyckel påslaget kan du också dra banpunkter i 3D-vyn. Etiketter visar bildrutenummer och streckade segment markerar hopp. <span class="keys"><kbd>Esc</kbd></span> avbryter alla dessa dragningar, och en enda ångring återställer en hel dragning.</p>
+<p>Nya animeringar börjar i viloläge med nycklar vid tiden noll. Skapa rörelse genom att ändra ställningen vid en annan bildruta. För en skarp L-formad bana sätter du nycklar för start, hörn och slut, och använder Linjär med Pingpong.</p>
+<h3 id="s9-8"><a class="anchor" href="#s9-8" aria-hidden="true" tabindex="-1">#</a>Koppla knappar till animeringar</h3>
+<p>Markera en func_button, trigger_multiple eller trigger_once. Fliken Entitet visar <strong>Animeringsutlösare</strong> ovanför egenskaperna. Välj ett mål i listan, eller klicka på <strong>Välj mål</strong> och sedan på ett animerat objekt i valfri vy; <span class="keys"><kbd>Esc</kbd></span> avbryter valet. Saknade mål eller klipp rapporteras under kontrollerna. Entitetslänkar visar pilar till sina mål när länkvisning är påslagen.</p>
+<p><strong>Åtgärd</strong> väljer vad aktiveringen gör: <strong>Spela upp</strong> startar ett namngivet klipp eller den markerade animeringen; <strong>Växla</strong> alternerar mellan <code>open</code> och <code>close</code> när de finns, annars startar den om den markerade animeringen; <strong>Öppna</strong> och <strong>Stäng</strong> startar de klippen; <strong>Pausa</strong> håller ställningen, <strong>Återuppta</strong> fortsätter och <strong>Stoppa</strong> återställer den ursprungliga ställningen. <strong>Bara en gång</strong> åsidosätter klassens standardvärde. <strong>Upprepningsfördröjning (s)</strong> anger kortaste tid mellan aktiveringar; den fördröjer inte den första.</p>
+<p><strong>Testa utlösare</strong> kör åtgärden i förhandsvisningen utan att redigera kartan eller lägga till ångringssteg. <strong>Återställ förhandsvisning</strong> återställer de ursprungliga ställningarna och rensar engångs- och nedkylningstillstånd. Detta simulerar inte spelarkollisioner eller spelskript.</p>
+<h3 id="s9-9"><a class="anchor" href="#s9-9" aria-hidden="true" tabindex="-1">#</a>Animering i exporter</h3>
+<p>Godot exporterar inbyggda AnimationPlayer- och AnimationLibrary-resurser, inklusive kurvor och rörlig kollision. En CharacterBody3D som går in i en knapps område aktiverar dess mål. Ändringar som görs i dessa klipp i Godot kommer inte tillbaka till kartan och ersätts vid nästa export.</p>
+<p>Raylib-exporten lägger till <code>&lt;map&gt;_animation.h</code> med en C-spelare och <code>&lt;map&gt;_preview.c</code> med en förhandsvisning med fri kamera; följ <code>&lt;map&gt;_raylib.md</code> för att bygga den. I förhandsvisningen pausar <code>SPACE</code>, <span class="keys"><kbd>R</kbd></span> startar om standardklippen och <span class="keys"><kbd>N</kbd></span> växlar mellan namngivna klipp. Defold bäddar in uppspelningen i entitetens skript med dokumenterade <code>heron_*_animation</code>-meddelanden. Unitys Build Level lägger till <code>HeronBrushAnimation</code> och en kinematisk kropp. Bevy-exporten innehåller <code>heron_animation.rs</code> och instruktioner. Godot, Unity, Defold, Bevy och raylib behåller utlösarlänkarna, engångsflaggan och upprepningsfördröjningen. Ditt spel måste fortfarande registrera spelaren och koppla sina egna knappar till varje körmiljös API.</p>
+<h3 id="s9-10"><a class="anchor" href="#s9-10" aria-hidden="true" tabindex="-1">#</a>Exemplet Motion lab</h3>
+<p>Öppna <code>motion_lab</code> bland Exempel på välkomstskärmen. Det har en plattform med L-bana, en hiss, en roterande plattform och en dörr på gångjärn med knappar. Öppna <code>godot/project.godot</code> som ligger bredvid i Godot och tryck på <span class="keys"><kbd>F5</kbd></span>. WASD och musen flyttar spelaren, Space hoppar, 1 till 4 besöker stationerna och R startar om den aktuella stationen. Kliv på en färgad platta för att aktivera dess mål. Den medföljande README-filen förklarar hur man exporterar på nytt.</p>
+<h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>Exportera till en motor</h2>
+<p>Arkiv → Exportera öppnar exportfönstret. Motorerna listas längs vänsterkanten med sina logotyper: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb och sist <code>.map</code>. Sidan till höger beskriver vad målet får. <strong>Skriv</strong> skriver det, <strong>Kontrollera</strong> bygger banan utan att skriva den och listar problemen, och <strong>Stäng</strong> stänger fönstret.</p>
+<p>Export är skild från sparande: <code>.map</code> förblir din redigerbara källa. Varje kontroll sparar motorns inställningar så snart den ändras, så varje motor behåller sina egna svar och fönstret öppnas som du lämnade det.</p>
+<h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>Gemensamma alternativ</h3>
+<ul>
+<li><strong>Skala</strong>: <strong>Enheter per meter</strong>, 32 som standard.</li>
+<li><strong>Vad som ska skrivas</strong>: <strong>Kollisionsgeometri</strong>.</li>
+<li><strong>Optimeringar</strong>: <strong>Gruppera statiska mesher i celler om 1024 enheter</strong>, <strong>Släpp ytor begravda inuti geometrin</strong>, <strong>Slå ihop ytor som delar plan</strong> och <strong>Slå ihop kollisionsformer</strong>.</li>
+<li><strong>Projektsökvägar</strong>: var banan och dess resurser hamnar i projektet.</li>
+<li><strong>Verktygsmaterial</strong>: namnen på materialen clip, skip och origin.</li>
+<li><strong>Mer</strong>: motorspecifika växlar som <strong>Namnge noder efter</strong>, <strong>Återskapa lager och grupper som föräldranoder</strong>, <strong>Vänd triangelns varvriktning</strong>, vändning av texturkoordinater och en andra UV-uppsättning för bakat ljus med <strong>Ljuskarte-texel</strong>.</li>
+<li><strong>Hålla jämna steg med kartan</strong>: <strong>Skriv igen varje gång kartan sparas</strong>. Det blir tillgängligt efter att motorn har exporterats en gång, eftersom den exporten anger var det ska skrivas.</li>
+</ul>
+<p>Statiska celler tilldelar världsbrushar efter deras mittpunkter och kombinerar dem per material inom varje cell om 1024 enheter, så att motorer kan gallra bort mindre delar av kartan. Kollisionen behålls och spelentiteter hålls separata. Det kan ge fler ritanrop än en enda världsmesh, så det är avstängt som standard. Fristående OBJ-, glTF- och GLB-exporter använder inte celler.</p>
+<h3 id="s10-2"><a class="anchor" href="#s10-2" aria-hidden="true" tabindex="-1">#</a>Anteckningar om målen</h3>
+<ul>
+<li>Godot: <code>res://</code>-sökvägar för texturer och material, utlösarnas fysiklager och lightmap-UV2. Välj en exportmapp inuti Godot-projektet.</li>
+<li>Defold: tillgångarnas resurskatalog, modellmaterialet och textursamplern, som måste finnas i det valda materialet.</li>
+<li>Unity: OBJ-mesher och en importör för editorn; exportera under projektets Assets-mapp.</li>
+<li>Unreal Engine: ett genererat importskript och en innehållssökväg, normalt /Game/<level>.</li>
+<li>Flax Engine: en innehållssökväg för modeller, relativ till projektets Content-mapp.</li>
+<li>three.js, Bevy, raylib och Cocos Creator: scener eller kod för dessa körmiljöer, med instruktioner bredvid exporten.</li>
+<li>glTF / GLB: portabel geometri för kompatibla verktyg; GLB är den binära formen. OBJ: geometri och material för modelleringsverktyg.</li>
+<li><code>.map</code>: <strong>Skriv som</strong> väljer Valve 220, Standard, Quake 2 eller Quake 2 (Valve). Fönstret anger vad den valda dialekten skulle förlora.</li>
+</ul>
+<p>Läs varningarna efter skrivningen, till exempel om saknade texturer. <strong>Vad kontrollen hittade</strong> listar dem i fönstret.</p>
+<h2 id="s11"><a class="anchor" href="#s11" aria-hidden="true" tabindex="-1">#</a>Livelänkar: Godot, Unity, Defold och Flax</h2>
+<p>En livelänk skickar osparade ändringar från Heron Brush till en motors editor medan du arbetar. Den är enkelriktad: ändringar som görs i motorn kommer inte tillbaka. En livelänk kan köras per kartfönster. Stoppa den innan du byter motor, och starta om den för att tillämpa ändrade exportalternativ. Kontrollerna finns i exportfönstret, på motorns sida, på kortet <strong>Livelänk med</strong>.</p>
+<p>Indikatorn i namnlisten visar länkens tillstånd; klicka på den för att stoppa länken. Om kartan stängs eller ersätts upphör publiceringen. Efter en misslyckad import åtgärdar du problemet och startar länken igen.</p>
+<h3 id="s11-1"><a class="anchor" href="#s11-1" aria-hidden="true" tabindex="-1">#</a>Godot</h3>
+<ol>
+<li>Exportera en gång till ett Godot-projekt.</li>
+<li>Klicka på <strong>Installera Godot-tillägg</strong>.</li>
+<li>Aktivera Heron Brush Live i Godots Project Settings → Plugins.</li>
+<li>Klicka på <strong>Starta livelänk</strong> och koppla kartan från Godot-dockan till en öppen 3D-scen.</li>
+</ol>
+<p>Tillägget ersätter bara sin genererade gren och behåller bilagans placering och övriga noder. Spara Godot-scenen själv, och håll dina egna skript och noder utanför den genererade grenen.</p>
+<h3 id="s11-2"><a class="anchor" href="#s11-2" aria-hidden="true" tabindex="-1">#</a>Unity</h3>
+<ol>
+<li>Exportera en gång under Unity-projektets Assets-mapp.</li>
+<li>Klicka på <strong>Installera Unity-tillägg</strong> och låt Unity kompilera det.</li>
+<li>Öppna Window → Heron Brush → Live Link i Unity.</li>
+<li>Starta länken och koppla kartan till den aktiva Unity-scenen.</li>
+</ol>
+<p>Håll Unitys livefönster öppet. Uppdateringar pausas i Play Mode och Prefab Mode. Bara barnobjektet Generated under kartobjektet ersätts. Redigera inte de genererade filerna.</p>
+<h3 id="s11-3"><a class="anchor" href="#s11-3" aria-hidden="true" tabindex="-1">#</a>Defold</h3>
+<ol>
+<li>Exportera en gång till ditt Defold-projekt och håll projektet öppet i Defold.</li>
+<li>Klicka på <strong>Starta livelänk</strong>. Inget tillägg behövs.</li>
+<li>Öppna heron_brush_live/preview.collection i Defold, eller referera till den från din egen scen.</li>
+</ol>
+<p>Länken skriver till en separat genererad mapp och lämnar den slutliga exporten och game.project orörda. <strong>Ladda om spelet som körs</strong> uppdaterar också ett spel som startats från Defold; att lägga till objekt eller ändra kollision kan kräva att banan startas om. Misslyckade anslutningar försöks igen automatiskt.</p>
+<h3 id="s11-4"><a class="anchor" href="#s11-4" aria-hidden="true" tabindex="-1">#</a>Flax</h3>
+<p>Exportera till projektets Content-mapp och klicka på <strong>Installera Flax-tillägg</strong>. Låt Flax kompilera det, starta länken och välj sedan Tools → Heron Brush: attach live map i den öppna Flax-scenen. Den genererade roten behåller sin placering och andra objekt lämnas orörda. Spara scenen själv. Uppdateringar pausas i Play Mode. Tools → Heron Brush: stop live map pausar mottagningen.</p>
+<h2 id="s12"><a class="anchor" href="#s12" aria-hidden="true" tabindex="-1">#</a>Gemensamma livesessioner</h2>
+<p>Samarbete → Livesession öppnar ett fönster för att vara värd för eller ansluta till en annan Heron Brush-användare. Det delar kartredigeringen mellan personer; det är skilt från en livelänk till en motor.</p>
+<h3 id="s12-1"><a class="anchor" href="#s12-1" aria-hidden="true" tabindex="-1">#</a>Vara värd och gå med</h3>
+<p>Ange <strong>Ditt namn</strong>. För att vara värd väljer du <strong>Var värd för en session</strong>, klickar på <strong>Starta session</strong> och skickar uppgifterna från <strong>Kopiera anslutningsuppgifter</strong> till dina gäster. För att gå med väljer du <strong>Gå med i en session</strong>, klistrar in uppgifterna och klickar på <strong>Gå med</strong>. När du går med ersätts den öppna kartan med värdens karta, så spara ditt arbete först.</p>
+<p>Standardversionen fungerar i det lokala nätverket, och <strong>Port i lokalt nätverk</strong> anger porten. Sessioner via internet (<strong>Anslut via internet</strong>) kräver en version med den valfria nätverksfunktionen. Deltagarna ser varandras kameramarkörer och namn i 3D-vyn.</p>
+<p>Om du stänger fönstret fortsätter sessionen; indikatorn i namnlisten visar dess tillstånd. <strong>Stoppa session</strong> eller <strong>Lämna session</strong> avslutar den. När två personer redigerar samma objekt avgör värdens ordning den slutliga versionen, och även ångra är en delad redigering. Arbeta i separata områden där det går, och spara kontrollpunkter.</p>
+<h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D-visning och en andra skärm</h2>
+<h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>Visningslägen</h3>
+<p>Avsnittet <strong>Visa</strong> på fliken Karta växlar vad vyerna ritar: Brushar, Punktentiteter, Entitetsmodeller, Klassnamn för entiteter, Gruppkonturer, Patchar, Material, Visa utelämnade ytor, Förhandsgranska animeringar, Trådram, Kanter och Konturer för brush-entiteter. Trådram ritar triangelkanter, inklusive diagonaler och kanter bakom ytor, utan material. Det är en tillfällig felsökningsvy som inte påverkar exporter eller renderingar.</p>
+<p>Belysning, skuggor, ambient ocklusion, reflektioner, bloom och kantutjämning för 3D-vyn finns i Inställningar → Renderare. Det är förhandsvisningsinställningar; färdiga bilder använder renderingskamerans egna inställningar.</p>
+<h3 id="s13-2"><a class="anchor" href="#s13-2" aria-hidden="true" tabindex="-1">#</a>Ett separat 3D-fönster</h3>
+<p>Visa → 3D-vy i separat fönster flyttar 3D-vyn till ett eget fönster, som du kan placera på en annan skärm. Det delar kamera, dokument och verktyg, och de platta vyerna tar platsen i huvudfönstret. Dess meny erbjuder Material, Solid vy och Trådram; en undermeny Visa med Visa utelämnade ytor, Förhandsgranska animeringar, Kanter, Gruppkonturer, Punktentiteter, Entitetsmodeller och Konturer för brush-entiteter; Fokusera på markering; Framifrån, Sida och Ovanifrån, som vrider kameran runt markeringen (eller en punkt framför kameran); Placera kamera från 3D-vyn; Helskärm (<span class="keys"><kbd>F11</kbd></span>); Rendera bild; och Återgå till huvudfönstret. När fönstret stängs dockas vyn igen.</p>
+<h3 id="s13-3"><a class="anchor" href="#s13-3" aria-hidden="true" tabindex="-1">#</a>Procedurell himmel</h3>
+<p>Den procedurella himlen är påslagen som standard i 3D-vyn och kan stängas av i Inställningar → Renderare → Ljus. Renderingskameror har en egen växel <strong>Procedurell himmel</strong>, som sparas med kartan. Färgerna för himmel, horisont och mark kommer från miljöinställningarna, och solen följer scenens belysning. Himlen har ingen geometri och exporteras inte.</p>
+<h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>Renderingskameror och PNG-bilder</h2>
+<p>Arkiv → Rendera bild öppnar renderingsfönstret: kameran och dess inställningar till vänster och en direktförhandsvisning till höger som ritas om när du ändrar dem. Kameror sparas i <code>.map</code> i lagret Render cameras, som bara finns i editorn och utelämnas från motorexporter.</p>
+<h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>Placera kameran</h3>
+<p>Komponera bilden i 3D-vyn och tryck på <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> (eller <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>), eller klicka på <strong>Placera kamera från 3D-vyn</strong>. Om ingen kamera är markerad uppdateras den första sparade; om ingen finns skapas en. Detta kan ångras och behåller inställningarna för utdata och belysning. <strong>Markera kameran i kartan</strong>, <strong>Läs in kamera från kartan</strong> och <strong>Flytta 3D-vyn till kameran</strong> fungerar åt andra hållet. <strong>Kameraram i 3D-vyn</strong> visar utdatans gräns, och <strong>Styr kameran från 3D-vyn</strong> låter vanlig navigering flytta den sparade kameran.</p>
+<h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>Inställningar</h3>
+<ul>
+<li><strong>Kameraposition</strong>: X, Y, Z, gir och tipp.</li>
+<li><strong>Utdata och objektiv</strong>: <strong>Förinställningar</strong> (Full HD, Kvadrat, Stående), bredd, höjd, sampel, <strong>Vertikalt synfält</strong> och <strong>Bortre klipplan</strong>.</li>
+<li><strong>Belysning</strong>: Dagsljus, Solnedgång eller Mulet, eller ställ in exponering, solen, färgerna för himmel, horisont och mark, <strong>Procedurell himmel</strong>, <strong>Skuggor</strong>, <strong>Ambient ocklusion</strong> och <strong>Bloom</strong>.</li>
+<li><strong>Skärpedjup</strong>: <strong>Aktivera skärpedjup</strong>, fokusavstånd, skärpeområde och oskärperadie. <strong>Fokusera på markering</strong> fokuserar på mitten av ett markerat objekt framför kameran.</li>
+</ul>
+<p><strong>Spara kamera och inställningar</strong> lagrar formuläret i kartan; spara kartan för att behålla det på disk.</p>
+<h3 id="s14-3"><a class="anchor" href="#s14-3" aria-hidden="true" tabindex="-1">#</a>Rendering</h3>
+<p><strong>Rendera PNG</strong> frågar var filen ska sparas och startar en progressiv rendering, som fylls i sampel för sampel i förhandsvisningen. Fler sampel ser bättre ut men tar längre tid. <strong>Avbryt rendering</strong> stoppar utan att skriva någon fil. Renderaren använder editorns rasterpipeline, inte strålspårning. PNG-filen har en ogenomskinlig bakgrund, och animeringar renderas inte. Mycket stora bilder kan kortvarigt få editorn att stanna upp.</p>
+<h2 id="s15"><a class="anchor" href="#s15" aria-hidden="true" tabindex="-1">#</a>Inställningar</h2>
+<p>Arkiv → Inställningar (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>) öppnar inställningarna. Ändringar gäller direkt och sparas. Sidofältet listar Översikt, Spel, Visa, Färger, Mus, Tangentbord och Renderare. Sökfältet överst hittar en inställning efter namn eller beskrivning på valfri sida. Varje ändrad inställning har en egen knapp som återställer dess standardvärde, och <strong>Återställ standardvärden</strong> återställer den aktuella sidan.</p>
+<h3 id="s15-1"><a class="anchor" href="#s15-1" aria-hidden="true" tabindex="-1">#</a>Sidorna</h3>
+<ul>
+<li><strong>Översikt</strong>: de vanliga inställningarna samlade: Utseende (Panelopacitet (%), Färgschema, Layout, Språk), Redigering, Visa och Handbok.</li>
+<li><strong>Spel</strong>: spelet, var dess filer finns och ditt namn för samarbete. Ett spel anger vilket kartformat som ska skrivas, vilka entitetsdefinitioner som ska läsas in och var dess material finns. Spelkonfigurationer läses från mappen <code>games</code> i konfigurationsmappen (<code>~/.config/heron-brush/games</code> på Linux och macOS, <code>%LOCALAPPDATA%\heron-brush\games</code> på Windows) och från mappen <code>games</code> bredvid programmet, där paketen lägger den medföljande konfigurationen.</li>
+<li><strong>Visa</strong>: Layout, Färgschema, Språk, världsaxlar, rutnätets opacitet, cellstorlek för läckkontroll och mappningslåsen.</li>
+<li><strong>Färger</strong>: färgerna för vyer, geometri och handtag.</li>
+<li><strong>Mus</strong>: hastigheter och inverteringar för att se, panorera och flytta, flyghastighet, synfält, Länka 2D-vyer och handtagens storlek.</li>
+<li><strong>Tangentbord</strong>: tangentbordsmappningen, Heron Brush eller Blender.</li>
+<li><strong>Renderare</strong>: realistisk skuggning, markeringskontur, ljus, skuggor, ambient ocklusion, reflektioner, bloom och ytor.</li>
+</ul>
+<h3 id="s15-2"><a class="anchor" href="#s15-2" aria-hidden="true" tabindex="-1">#</a>Språk</h3>
+<p><strong>Språk</strong> erbjuder Följ skrivbordet och alla översatta språk. Gränssnittet ändras direkt. Handboken öppnas på gränssnittets språk när det finns en översättning av den, och annars på engelska.</p>
+<h2 id="s16"><a class="anchor" href="#s16" aria-hidden="true" tabindex="-1">#</a>Tillägg och MCP</h2>
+<h3 id="s16-1"><a class="anchor" href="#s16-1" aria-hidden="true" tabindex="-1">#</a>Tillägg</h3>
+<p>Tillägg utökar editorn med Rhai-skript. Arkiv → Tillägg öppnar fönstret Tillägg. <strong>Installera ett tillägg</strong> installerar en <code>.rhai</code>-fil och <strong>Installera en tilläggsmapp</strong> installerar en mapp som innehåller <code>main.rhai</code>; valfri metadata i <code>plugin.toml</code> beskriver tillägget och dess inställningar. Tilläggen grupperas under <strong>Aktiva tillägg</strong> och <strong>Inaktiva tillägg</strong>, och <strong>Aktivera tillägg</strong> slår på eller av ett tillägg; detta består efter en omstart. <strong>Läs in tillägg igen</strong> läser skripten från disk på nytt och återställer deras panelvärden.</p>
+<p>Aktiva tillägg visas också i avsnittet <strong>Tillägg</strong> på fliken Karta med sina inställningar, åtgärdsknappar (<strong>Kör</strong>) och utdata. En åtgärd verkar på markeringen, eller på allt när ingenting är markerat, och är ett ångringssteg. Den medföljande markeringsinspektören visar antal samt åtgärder för att flytta upp och ned.</p>
+<h3 id="s16-2"><a class="anchor" href="#s16-2" aria-hidden="true" tabindex="-1">#</a>MCP</h3>
+<p>Samarbete → Tillhandahåll för en agent (MCP) låter en AI-agent eller ett annat verktyg styra den öppna editorn via Model Context Protocol. Fönstret visar den lokala adressen med <strong>Kopiera</strong>, och <strong>Stoppa server</strong> avslutar den; medan den körs visar namnlisten <strong>MCP aktivt</strong>. Kommandoradsalternativet <code>--mcp</code> kör samma gränssnitt utan fönster. Klienter kan upptäcka verktyg för geometri, tillgångar, egenskaper, animering, export och sessioner. MCP och editorns tillägg är olika gränssnitt.</p>
+<h2 id="s17"><a class="anchor" href="#s17" aria-hidden="true" tabindex="-1">#</a>Kommandoraden</h2>
+<p>Programmet heter <code>heron-brush</code>. Utan alternativ öppnar det välkomstskärmen.</p>
+<h3 id="s17-1"><a class="anchor" href="#s17-1" aria-hidden="true" tabindex="-1">#</a>Öppna filer</h3>
+<p><code>heron-brush map.map [entities.fgd] [materials/]</code> öppnar en karta, valfritt med entitetsdefinitioner och en materialmapp. Ett tomt argument hoppar över ett av dem, till exempel <code>heron-brush map.map "" materials/</code>. Om en editor redan körs öppnas kartan i den; <code>--new-instance</code> öppnar i stället ett separat fönster.</p>
+<h3 id="s17-2"><a class="anchor" href="#s17-2" aria-hidden="true" tabindex="-1">#</a>Kommandon</h3>
+<ul>
+<li><code>--help</code> eller <code>-h</code>: skriv ut användningen. <code>--version</code> eller <code>-V</code>: skriv ut versionen.</li>
+<li><code>--mcp</code>: tillhandahåll MCP via standard in och standard ut, utan fönster.</li>
+<li><code>--merge-map &lt;base&gt; &lt;ours&gt; &lt;theirs&gt; [&lt;output&gt;]</code>: en trevägssammanslagning av <code>.map</code>-filer för git. Utdata hamnar som standard i ours. Konflikter skrivs ut och ger en slutkod skild från noll.</li>
+<li><code>--obj-to-map &lt;in.obj&gt; &lt;out.map&gt; [size] [thickness] [snap] [material]</code>: gör om en mesh till brushar. Size är längden på den längsta sidan i kartenheter (standard 256), snap är ett rutnät för hörnen (0 för inget), och orden <code>solid</code> eller <code>layered</code> bygger rutnätslådor eller konvexa skivor i stället för tunna kilar.</li>
+<li><code>--render-preview &lt;in.map&gt; &lt;out.png&gt; [size]</code>: skriv en PNG-miniatyr av en karta, 512 pixlar som standard.</li>
+<li><code>--run-script &lt;script.rhai&gt; &lt;in.map&gt; [out.map] [key=value ...]</code>: kör ett tilläggsskript på en karta med allt markerat och skriv resultatet (som standard tillbaka till indatafilen). <code>key=value</code> besvarar tilläggets inställningar.</li>
+</ul>
+<h2 id="s18"><a class="anchor" href="#s18" aria-hidden="true" tabindex="-1">#</a>Felsökning</h2>
+<h3 id="s18-1"><a class="anchor" href="#s18-1" aria-hidden="true" tabindex="-1">#</a>När något ser fel ut</h3>
+<ul>
+<li>Saknat material: kontrollera materialmappen eller paketet och exportens projektsökvägar.</li>
+<li>Fel modellstorlek: jämför med spelarmarkören på 64 enheter och exportskalan.</li>
+<li>Fel gradientriktning: kontrollera gradientvinkeln och ytans orientering.</li>
+<li>Tom motorscen: läs exportvarningarna och följ målets importinstruktioner.</li>
+<li>Livelänken väntar: kontrollera att tillägget är installerat, att scenen är kopplad och att uppdateringarna inte är pausade.</li>
+<li>Bara linjer, inga ytor: stäng av Trådram i avsnittet Visa på fliken Karta, eller välj Material eller Solid vy i 3D-fönstrets meny.</li>
+<li>Objekt saknas i vyerna: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span> visar dolda objekt; kontrollera lagren och View filters.</li>
+<li>En tangent gör ingenting: klicka först i vyn så att den har tangentbordet, och kontrollera tangentbordsmappningen i Inställningar → Tangentbord.</li>
+<li>En redigering misslyckades: ångra, förenkla geometrin och använd <strong>Kontrollera karta</strong> och <strong>Sök efter läckor</strong> i avsnittet <strong>Problem</strong> på fliken Karta.</li>
+<li>En karta går inte att öppna från filhanteraren: den kan ha lämnats över till en editor som redan körs; leta efter det fönstret.</li>
+</ul>
+<h3 id="s18-2"><a class="anchor" href="#s18-2" aria-hidden="true" tabindex="-1">#</a>Inställningar och säkerhetskopior</h3>
+<p>Inställningar, senaste kartor, stjärnor, exportinställningar och tillägg finns i konfigurationsmappen: <code>~/.config/heron-brush</code> på Linux och macOS, och <code>%LOCALAPPDATA%\heron-brush</code> på Windows. Säkerhetskopior från automatisk sparning finns i mappen <code>autosave</code> bredvid varje karta.</p>
+<h3 id="s18-3"><a class="anchor" href="#s18-3" aria-hidden="true" tabindex="-1">#</a>Rapportera ett fel</h3>
+<p>Ange editorns version (Hjälp → Om), ditt operativsystem, en liten karta som visar problemet och de exakta stegen. Utdatarutan (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>) visar ofta vad som gick fel. Spara en kopia innan du experimenterar.</p>
+<h3 id="s18-4"><a class="anchor" href="#s18-4" aria-hidden="true" tabindex="-1">#</a>Använda den här handboken</h3>
+<p>Välj ett kapitel i innehållsförteckningen till vänster. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> visar innehållsförteckningen och flyttar till sökfältet; <span class="keys"><kbd>Esc</kbd></span> rensar sökningen, eller stänger handboken när sökningen är tom. <strong>Innehåll</strong> döljer eller visar kapitellistan och <strong>Textstorlek</strong> ändrar teckenstorleken; båda sparas till nästa gång. Språklistan överst växlar mellan de tillgängliga översättningarna.</p>
+  </article>
+</div>
+<script src="../../manual.js"></script>
+</body>
+</html>

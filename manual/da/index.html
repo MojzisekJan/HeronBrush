@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="da" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heron Brush manual · Dansk</title>
+<meta name="description" content="The Heron Brush manual: modelling, materials, entities, animation, export and live links.">
+<link rel="icon" type="image/svg+xml" href="../../images/logo.svg">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../manual.css">
+<link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
+</head>
+<body class="manual-page">
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../../#"><img src="../../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar-top" d="M4 7h16"/><path class="bar-mid" d="M4 12h16"/><path class="bar-bot" d="M4 17h16"/></svg>
+    </button>
+    <nav class="menu" id="site-menu" aria-label="Main">
+      <div class="nav-links">
+        <a href="../../#modelling">Modelling</a>
+        <a href="../../#materials">Materials</a>
+        <a href="../../#animation">Animation</a>
+        <a href="../../#export">Export</a>
+        <a href="#" aria-current="page">Manual</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <mask id="moon-mask"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="moon-cut" cx="17" cy="7" r="6.5" fill="#000"/></mask>
+            <circle class="sun-core" cx="12" cy="12" r="8" fill="currentColor" mask="url(#moon-mask)"/>
+            <g class="rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>
+            </g>
+          </svg>
+          <span class="theme-label">Dark theme</span>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/MojzisekJan/HeronBrush">GitHub</a>
+        <a class="btn btn-primary" href="../../editor/">Try in the browser</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<script>
+  // The menu folds behind the button on narrow windows; without this script the links stay in view.
+  (function () {
+    var root = document.documentElement, header = document.querySelector('.nav');
+    var toggle = header.querySelector('.menu-toggle'), menu = document.getElementById('site-menu');
+    root.classList.add('js');
+    function set(open) {
+      header.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () { set(!header.classList.contains('open')); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && header.classList.contains('open')) { set(false); toggle.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!header.contains(e.target)) set(false); });
+    matchMedia('(min-width: 961px)').addEventListener('change', function () { set(false); });
+
+    // The theme toggle: remembers the choice; without one the page follows the system.
+    var themeButton = header.querySelector('.theme-toggle'), label = themeButton.querySelector('.theme-label');
+    function show(theme) {
+      root.dataset.theme = theme;
+      themeButton.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = theme === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+    show(root.dataset.theme);
+    themeButton.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      show(next);
+      root.classList.add('theme-switched');
+      try { localStorage.setItem('heron-theme', next); } catch (e) {}
+    });
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+      var stored = null;
+      try { stored = localStorage.getItem('heron-theme'); } catch (err) {}
+      if (!stored) show(e.matches ? 'light' : 'dark');
+    });
+  })();
+</script>
+<div class="manual wrap">
+  <aside class="toc" id="toc" aria-label="Contents">
+    <div class="toc-tools">
+      <label class="sr-only" for="lang">Language</label>
+      <select id="lang" class="lang-select"><option value="../" lang="en">English</option><option value="../cs/" lang="cs">Čeština</option><option value="../de/" lang="de">Deutsch</option><option value="../zh/" lang="zh-Hans">中文</option><option value="../es/" lang="es">Español</option><option value="../uk/" lang="uk">Українська</option><option value="../pl/" lang="pl">Polski</option><option value="../it/" lang="it">Italiano</option><option value="../fr/" lang="fr">Français</option><option value="../pt-BR/" lang="pt-BR">Português (Brasil)</option><option value="../ja/" lang="ja">日本語</option><option value="../ko/" lang="ko">한국어</option><option value="../tr/" lang="tr">Türkçe</option><option value="../id/" lang="id">Bahasa Indonesia</option><option value="../ru/" lang="ru">Русский</option><option value="../nl/" lang="nl">Nederlands</option><option value="../sv/" lang="sv">Svenska</option><option value="../da/" selected lang="da">Dansk</option><option value="../nb/" lang="nb">Norsk bokmål</option><option value="../fi/" lang="fi">Suomi</option><option value="../hu/" lang="hu">Magyar</option><option value="../ro/" lang="ro">Română</option><option value="../sk/" lang="sk">Slovenčina</option><option value="../el/" lang="el">Ελληνικά</option><option value="../vi/" lang="vi">Tiếng Việt</option><option value="../zh-TW/" lang="zh-Hant">繁體中文</option><option value="../bg/" lang="bg">Български</option><option value="../hr/" lang="hr">Hrvatski</option><option value="../sl/" lang="sl">Slovenščina</option><option value="../lt/" lang="lt">Lietuvių</option></select>
+      <div class="search">
+        <input id="search" type="search" placeholder="Søg i dokumentationen" autocomplete="off" aria-label="Søg i dokumentationen">
+        <ol id="results" class="results" hidden data-nothing="Ingen matchende kapitler"></ol>
+      </div>
+    </div>
+    <nav class="toc-list"><ul><li class="chapter"><a href="#s1">Kom godt i gang</a><ul><li><a href="#s1-1">Velkomstskærmen</a></li><li><a href="#s1-2">Dit første kort</a></li><li><a href="#s1-3">Filer og gemning</a></li></ul></li><li class="chapter"><a href="#s2">Brugerfladen</a><ul><li><a href="#s2-1">Titellinje og menuer</a></li><li><a href="#s2-2">Værktøjslinjen</a></li><li><a href="#s2-3">Kortvisninger</a></li><li><a href="#s2-4">Inspektøren</a></li><li><a href="#s2-5">Statuslinjen og outputruden</a></li><li><a href="#s2-6">Dialoger og udseende</a></li></ul></li><li class="chapter"><a href="#s3">Navigation og tastatur</a><ul><li><a href="#s3-1">Bevægelse i 3D-visningen</a></li><li><a href="#s3-2">Bevægelse i 2D-visninger</a></li><li><a href="#s3-3">Gitter og fastgørelse</a></li><li><a href="#s3-4">Almindelige genveje</a></li><li><a href="#s3-5">Genveje til markering</a></li><li><a href="#s3-6">Genveje til transformation</a></li><li><a href="#s3-7">Blender-tastaturgenvejene</a></li></ul></li><li class="chapter"><a href="#s4">Brushes og modelleringsværktøjer</a><ul><li><a href="#s4-1">Tegning af brushes</a></li><li><a href="#s4-2">Markering</a></li><li><a href="#s4-3">Formningsværktøjer</a></li><li><a href="#s4-4">Kombinering af brushes</a></li><li><a href="#s4-5">Fejning, afrunding, patch og affasning</a></li><li><a href="#s4-6">3D-tekst</a></li></ul></li><li class="chapter"><a href="#s5">Materialer og UV&#x27;er</a><ul><li><a href="#s5-1">Indlæsning og anvendelse af materialer</a></li><li><a href="#s5-2">UV-editoren</a></li><li><a href="#s5-3">UV-taster</a></li><li><a href="#s5-4">Værktøjsmaterialer</a></li><li><a href="#s5-5">Udeladelse af flader fra eksport</a></li></ul></li><li class="chapter"><a href="#s6">Farve og gradienter</a><ul><li><a href="#s6-1">Palet og blandingsfarve</a></li><li><a href="#s6-2">Farvevælgeren</a></li><li><a href="#s6-3">Gradienter</a></li><li><a href="#s6-4">Overflademateriale</a></li></ul></li><li class="chapter"><a href="#s7">Assets, lag og grupper</a><ul><li><a href="#s7-1">Asset-biblioteket</a></li><li><a href="#s7-2">Lag</a></li><li><a href="#s7-3">Grupper og sammenkædede grupper</a></li><li><a href="#s7-4">En fælles skala</a></li></ul></li><li class="chapter"><a href="#s8">Entiteter og gameplay</a><ul><li><a href="#s8-1">Placering af entiteter</a></li><li><a href="#s8-2">Egenskaber</a></li><li><a href="#s8-3">Hvad en eksport kan</a></li></ul></li><li class="chapter"><a href="#s9">Animation</a><ul><li><a href="#s9-1">Forhåndsvis animationer</a></li><li><a href="#s9-2">Keyframe-editoren</a></li><li><a href="#s9-3">Klip</a></li><li><a href="#s9-4">Transport og afspilning</a></li><li><a href="#s9-5">Tidslinjen</a></li><li><a href="#s9-6">Taster i editoren</a></li><li><a href="#s9-7">Stillinger i visningerne</a></li><li><a href="#s9-8">Forbindelse af knapper til animationer</a></li><li><a href="#s9-9">Animation i eksporter</a></li><li><a href="#s9-10">Eksemplet Motion lab</a></li></ul></li><li class="chapter"><a href="#s10">Eksport til en motor</a><ul><li><a href="#s10-1">Fælles valgmuligheder</a></li><li><a href="#s10-2">Noter om målene</a></li></ul></li><li class="chapter"><a href="#s11">Live-forbindelser: Godot, Unity, Defold og Flax</a><ul><li><a href="#s11-1">Godot</a></li><li><a href="#s11-2">Unity</a></li><li><a href="#s11-3">Defold</a></li><li><a href="#s11-4">Flax</a></li></ul></li><li class="chapter"><a href="#s12">Fælles live-sessioner</a><ul><li><a href="#s12-1">Vær vært og deltag</a></li></ul></li><li class="chapter"><a href="#s13">3D-visning og en ekstra skærm</a><ul><li><a href="#s13-1">Visningstilstande</a></li><li><a href="#s13-2">Et separat 3D-vindue</a></li><li><a href="#s13-3">Procedurel himmel</a></li></ul></li><li class="chapter"><a href="#s14">Renderkameraer og PNG-billeder</a><ul><li><a href="#s14-1">Placering af kameraet</a></li><li><a href="#s14-2">Indstillinger</a></li><li><a href="#s14-3">Rendering</a></li></ul></li><li class="chapter"><a href="#s15">Indstillinger</a><ul><li><a href="#s15-1">Siderne</a></li><li><a href="#s15-2">Sprog</a></li></ul></li><li class="chapter"><a href="#s16">Plugins og MCP</a><ul><li><a href="#s16-1">Plugins</a></li><li><a href="#s16-2">MCP</a></li></ul></li><li class="chapter"><a href="#s17">Kommandolinje</a><ul><li><a href="#s17-1">Åbning af filer</a></li><li><a href="#s17-2">Kommandoer</a></li></ul></li><li class="chapter"><a href="#s18">Fejlfinding</a><ul><li><a href="#s18-1">Når noget ser forkert ud</a></li><li><a href="#s18-2">Indstillinger og sikkerhedskopier</a></li><li><a href="#s18-3">Rapportering af en fejl</a></li><li><a href="#s18-4">Brug af denne manual</a></li></ul></li></ul></nav>
+  </aside>
+  <button class="toc-toggle" type="button" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+    <span class="toc-current">Kom godt i gang</span>
+  </button>
+  <article class="manual-body">
+<h2 id="s1"><a class="anchor" href="#s1" aria-hidden="true" tabindex="-1">#</a>Kom godt i gang</h2>
+<p>Heron Brush er en brush-baseret baneeditor. Du bygger baner af konvekse brushes, maler og teksturerer deres flader, placerer entiteter, animerer døre og platforme og eksporterer resultatet til en spilmotor. Den har også indbyggede assets, parametriske former, live-forbindelser til motorernes editorer, fælles redigeringssessioner og rendering af stillbilleder. Denne manual følger med programmet og virker uden internet.</p>
+<p>På macOS virker <span class="keys"><kbd>Cmd</kbd></span> overalt, hvor denne manual skriver <span class="keys"><kbd>Ctrl</kbd></span>, og Option er Alt.</p>
+<h3 id="s1-1"><a class="anchor" href="#s1-1" aria-hidden="true" tabindex="-1">#</a>Velkomstskærmen</h3>
+<p>Når Heron Brush starter uden et kort, åbner velkomstskærmen. Til venstre er <strong>Fortsæt</strong> (det sidste kort, du havde åbent), <strong>Nyt kort</strong> og <strong>Gennemse</strong> til at åbne en eksisterende <code>.map</code>, samt <strong>Spil</strong>, <strong>Manual</strong> og <strong>Indstillinger</strong>. Til højre er en liste over seneste kort med miniaturer, efterfulgt af <strong>Eksempler</strong>. Stjernen (<strong>Hold øverst</strong>) fastgør et kort øverst på listen; skraldespanden (<strong>Flyt til papirkurven</strong>) flytter filen til systemets papirkurv, så den kan gendannes. Piletasterne flytter rundt på skærmen, og Enter åbner det element, der har fokus. Fil → Velkommen henter skærmen frem igen når som helst.</p>
+<h3 id="s1-2"><a class="anchor" href="#s1-2" aria-hidden="true" tabindex="-1">#</a>Dit første kort</h3>
+<ol>
+<li>Vælg <strong>Nyt kort</strong> på velkomstskærmen, eller Fil → Nyt kort (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>).</li>
+<li>Vælg Brush-værktøjet (<span class="keys"><kbd>B</kbd></span>) i værktøjslinjen, og træk i en 2D-visning for at tegne den valgte form. Kontrollér dens dybde i en anden 2D-visning.</li>
+<li>Markér brushen, og flyt den ved at trække. Brug fanen <strong>Flade</strong> til at give den et materiale eller en farve.</li>
+<li>Gem kildekortet med <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>. Når du er klar til at bruge det i et spil, så åbn Fil → Eksportér, og skriv en scene til din motor.</li>
+</ol>
+<h3 id="s1-3"><a class="anchor" href="#s1-3" aria-hidden="true" tabindex="-1">#</a>Filer og gemning</h3>
+<p><code>.map</code>-filen er din redigerbare kilde. Gem jævnligt: eksport, live-forbindelser og rendering gemmer aldrig kortet for dig. Fil → Gem som (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>) tilføjer endelsen <code>.map</code>, hvis du udelader den. Fil → Vend tilbage til gemt kort kasserer ikke-gemte ændringer og indlæser filen igen. Hvis du lukker et vindue eller åbner et andet kort med ikke-gemte ændringer, spørger Heron Brush, om du vil <strong>Gem</strong>, <strong>Kassér</strong> eller <strong>Annuller</strong>.</p>
+<p>Mens et gemt kort har ikke-gemte ændringer, skrives nummererede sikkerhedskopier hvert tiende minut til en <code>autosave</code>-mappe ved siden af kortet. De 50 nyeste sikkerhedskopier beholdes.</p>
+<p>Hvis du åbner et kort, mens Heron Brush allerede kører, overdrages det til det kørende vindue, som kommer i forgrunden. Brug <code>--new-instance</code> på kommandolinjen, når du vil have et separat vindue (se Kommandolinje).</p>
+<h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>Brugerfladen</h2>
+<p>Hovedvinduet har en titellinje med menuerne, en værktøjslinje under den, kortvisningerne, inspektøren til højre og en statuslinje langs bunden.</p>
+<h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>Titellinje og menuer</h3>
+<p>Titellinjen viser logoet, menuerne, kortets navn i midten og vinduesknapperne. På macOS sidder de sædvanlige røde, gule og grønne knapper til venstre. Træk i titellinjen for at flytte vinduet, og dobbeltklik på den for at maksimere. Mens noget kører i baggrunden, vises en indikator nær enden af linjen: en live-forbindelse til en motor, en live-session eller <strong>MCP aktiv</strong>. Klik på en indikator for at stoppe live-forbindelsen eller åbne dens vindue.</p>
+<ul>
+<li><strong>Fil</strong>: Velkommen, Nyt kort (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>), Åbn kort (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span>), Gem (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>), Gem som (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>), Vend tilbage til gemt kort, Eksportér, Render billede, Plugins og Indstillinger (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>).</li>
+<li><strong>Rediger</strong>: Fortryd (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Annuller fortryd (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Klip ud, Kopiér, Indsæt, Duplikér (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>), Slet, Markér alt (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>), Gentag seneste kommandoer (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>) og Glem gentagelige kommandoer.</li>
+<li><strong>Visning</strong>: 3D-visning i separat vindue, Gå til, Fastgør til gitter (<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>), Vis gitter (<span class="keys"><kbd>0</kbd></span>), Forhåndsvis animationer og Vis udeladte flader.</li>
+<li><strong>Geometri</strong>: Indsæt 3D-tekst, Sammenføj hjørne, Konvertér flader til patches, Flyt markeringen ud af dens entitet og Synkronisér sammenkædede grupper.</li>
+<li><strong>Animation</strong>: Keyframe-animation, Forhåndsvis animationer og Placér kamera fra 3D-visning (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>).</li>
+<li><strong>Kort</strong>: Indlæs, Genindlæs og Fjern punktfil; Indlæs, Genindlæs og Fjern portalfil. De viser lækagespor og portaler, som kortkompilere har skrevet.</li>
+<li><strong>Samarbejde</strong>: Live-session og Server for en agent (MCP).</li>
+<li><strong>Hjælp</strong>: Brugervejledning og Om.</li>
+</ul>
+<h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>Værktøjslinjen</h3>
+<p>Værktøjslinjen rummer alle værktøjer. Den første gruppe bruges hele tiden: Markér, Brush, Klip, Hjørnepunkt, Kant, Flade, Rotér og Skalér. Den anden gruppe rummer Forskyd, Saml, Fej, Kontrolpunkt, Afrunding og Mal. Hold markøren over en knap for at se dens navn og genvej. Klikker du på det aktive værktøj igen, vender du tilbage til Markér.</p>
+<p>Efter værktøjerne kommer <strong>Spejl vandret</strong> og <strong>Spejl lodret</strong> og derefter to kontakter: <strong>Lås</strong> bevarer materialeplaceringen, når en brush flyttes, og <strong>UV</strong> bevarer den, når en brush drejes (<span class="keys"><kbd>U</kbd></span> slår den til og fra). Derefter følger det aktive værktøjs egne indstillinger: Brush-værktøjet viser formen og dens valgmuligheder, og Afrunding-værktøjet viser radius, flader og hjørner med <strong>Anvend</strong>. Yderst til højre er værktøjets navn, gitterstørrelsen (<strong>Gitter 16</strong> osv.; klik for at vælge en anden) og menuen <strong>Gitterindstillinger</strong> med Fastgør til gitter, Vis gitter, Forhåndsvis animationer, Vis udeladte flader og Keyframe-animation.</p>
+<h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>Kortvisninger</h3>
+<p>Der er fire visninger: 3D-visningen og tre flade visninger, Top (XY), Front (XZ) og Side (YZ). Indstillinger → Visning → Layout vælger mellem Én rude, To ruder, Tre ruder og Fire ruder. Træk i skillelinjerne for at ændre rudernes størrelse. Et klik i en visning giver den tastaturet. <span class="keys"><kbd>Space</kbd></span> skifter en rude, der viser én visning ad gangen, til dens næste visning, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> maksimerer visningen med tastaturet og gendanner layoutet igen.</p>
+<p>Højreklik uden at trække i en vilkårlig visning for at åbne en genvejsmenu for markeringen og det, der er under markøren. Den tilbyder gruppering, lag, sammenkædede grupper, oprettelse af entiteter, flytning af brushes ind i eller ud af en entitet, kopiering af et materialenavn og visning af det i materialebrowseren.</p>
+<h3 id="s2-4"><a class="anchor" href="#s2-4" aria-hidden="true" tabindex="-1">#</a>Inspektøren</h3>
+<p>Inspektøren til højre har fire faner. Træk i dens venstre kant for at ændre bredden.</p>
+<ul>
+<li><strong>Kort</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>1</kbd></span>): Lag, Grupper, Plugins, Problemer, View filters og Tags.</li>
+<li><strong>Entitet</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>2</kbd></span>): entitetsbrowseren, entitetsdefinitionerne, egenskaberne for den markerede entitet og, for knapper og triggere, Animationsudløser.</li>
+<li><strong>Flade</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>3</kbd></span>): UV, Materialer, Farve, Fej, Afrunding, Patch samt Indfældning og affasning. Hver sektion kan foldes sammen.</li>
+<li><strong>Assets</strong>: biblioteket med genanvendelige brush-modeller.</li>
+</ul>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>5</kbd></span> skjuler eller viser inspektøren, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>T</kbd></span> skjuler eller viser værktøjslinjen, hvilket giver visningerne mere plads.</p>
+<h3 id="s2-5"><a class="anchor" href="#s2-5" aria-hidden="true" tabindex="-1">#</a>Statuslinjen og outputruden</h3>
+<p>Statuslinjen langs bunden viser editorens seneste meddelelse. Fejl vises med rødt. Klik på linjen, eller tryk på <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>, for at åbne outputruden med den fulde historik over meddelelser. De fleste kommandoer rapporterer her, hvad de gjorde, for eksempel hvor mange brushes der blev klippet.</p>
+<h3 id="s2-6"><a class="anchor" href="#s2-6" aria-hidden="true" tabindex="-1">#</a>Dialoger og udseende</h3>
+<p>Dialoger som Indstillinger, Eksportér og Render billede åbner i deres egne vinduer. Indstillinger → Visning → Farveskema vælger mellem Følg skrivebordet, Lys og Mørk. <strong>Panelernes uigennemsigtighed (%)</strong> på siden Oversigt gør panelerne gennemsigtige over visningerne. Vinduet tegner sine egne knapper i dit systems stil: native på macOS, Windows 11-stil på Windows og GNOME-stil på Linux.</p>
+<h2 id="s3"><a class="anchor" href="#s3" aria-hidden="true" tabindex="-1">#</a>Navigation og tastatur</h2>
+<h3 id="s3-1"><a class="anchor" href="#s3-1" aria-hidden="true" tabindex="-1">#</a>Bevægelse i 3D-visningen</h3>
+<p>Hold højre museknap nede, og træk for at se dig omkring. Træk med midterste knap for at panorere. Hjulet flytter frem og tilbage. <span class="keys"><kbd>W</kbd></span>, <span class="keys"><kbd>A</kbd></span>, <span class="keys"><kbd>S</kbd></span> og <span class="keys"><kbd>D</kbd></span> flyver frem, til venstre, tilbage og til højre, <span class="keys"><kbd>Q</kbd></span> stiger og <span class="keys"><kbd>X</kbd></span> daler; hold <span class="keys"><kbd>Shift</kbd></span> nede for større skridt. Med <strong>Alt + træk med midterste knap flytter kameraet</strong> slået til under Indstillinger → Mus flytter Alt med midterste knap langs synsretningen. Hastigheder, invertering og synsfeltet findes under Indstillinger → Mus.</p>
+<h3 id="s3-2"><a class="anchor" href="#s3-2" aria-hidden="true" tabindex="-1">#</a>Bevægelse i 2D-visninger</h3>
+<p>Træk med midterste knap for at panorere, og brug hjulet til at zoome omkring markøren. Når du panorerer og zoomer i én flad visning, holdes de andre på linje; <strong>Sammenkæd 2D-visninger</strong> under Indstillinger → Mus styrer dette. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span> nulstiller zoomen, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>U</kbd></span> sætter de flade visninger tilbage til origo.</p>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>U</kbd></span> indrammer markeringen i alle visninger. Visning → Gå til (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>M</kbd></span>) flytter kameraet til indtastede koordinater, markerer det, der står på en linje i kortfilen, eller flytter markeringen med en indtastet afstand.</p>
+<h3 id="s3-3"><a class="anchor" href="#s3-3" aria-hidden="true" tabindex="-1">#</a>Gitter og fastgørelse</h3>
+<p><span class="keys"><kbd>+</kbd></span> og <span class="keys"><kbd>-</kbd></span> ændrer gitterstørrelsen, og taltasterne <span class="keys"><kbd>1</kbd></span> til <span class="keys"><kbd>9</kbd></span> vælger en størrelse direkte, fra 1 til 256 enheder. <span class="keys"><kbd>0</kbd></span> eller <span class="keys"><kbd>#</kbd></span> viser eller skjuler gitteret, og <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> slår fastgørelse til eller fra. <span class="keys"><kbd>S</kbd></span> fastgør de markerede brushes' hjørnepunkter til det aktuelle gitter, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> fastgør dem til hele enheder og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> til gitteret.</p>
+<h3 id="s3-4"><a class="anchor" href="#s3-4" aria-hidden="true" tabindex="-1">#</a>Almindelige genveje</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>: gem kortet. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>: gem som.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>: fortryd. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> eller <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>: annuller fortryd.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>: kopiér, klip ud og indsæt. Indsæt placerer objekterne ved markøren; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></span> bevarer deres oprindelige koordinater. Med flader markeret tager kopiering deres materiale og UV-indstillinger.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>: duplikér. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>: sammenkædet dublet af en gruppe.</li>
+<li><span class="keys"><kbd>Delete</kbd></span> eller <span class="keys"><kbd>Backspace</kbd></span>: slet markeringen.</li>
+<li><span class="keys"><kbd>Esc</kbd></span>: annuller det aktuelle træk, gå et skridt tilbage i det aktive værktøj, vend tilbage til Markér og ryd til sidst markeringen. <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Esc</kbd></span> vender direkte tilbage til Markér.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>: gentag de seneste gentagelige kommandoer. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span>: glem dem.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> eller <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>: placér renderkameraet ved 3D-visningen.</li>
+<li><span class="keys"><kbd>F5</kbd></span>: genindlæs materialerne. <span class="keys"><kbd>F6</kbd></span>: genindlæs entitetsdefinitionerne.</li>
+</ul>
+<h3 id="s3-5"><a class="anchor" href="#s3-5" aria-hidden="true" tabindex="-1">#</a>Genveje til markering</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>: markér alt, eller alle håndtag, mens et værktøj til hjørnepunkter, kanter eller flader er aktivt. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd></span>: markér intet. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span>: invertér markeringen.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B</kbd></span>: markér de andre objekter i samme entitet eller gruppe.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>T</kbd></span>: markér alt, som de markerede brushes rører. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd></span>: markér alt inden i dem. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>E</kbd></span>: markér alt i deres søjle langs visningens akse. Disse bruger de markerende brushes op.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>I</kbd></span>: isolér markeringen. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>I</kbd></span>: skjul den. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span>: vis alt igen.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span>: gruppér. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span>: opløs gruppe.</li>
+</ul>
+<h3 id="s3-6"><a class="anchor" href="#s3-6" aria-hidden="true" tabindex="-1">#</a>Genveje til transformation</h3>
+<ul>
+<li>Piletasterne og <span class="keys"><kbd>Page Up</kbd></span> / <span class="keys"><kbd>Page Down</kbd></span> flytter markeringen ét gittertrin i den retning, de peger i den aktive visning. Med <span class="keys"><kbd>Ctrl</kbd></span> duplikerer de under flytningen, og med <span class="keys"><kbd>Alt</kbd></span> roterer de.</li>
+<li><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Y</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span>: rotér en kvart omgang om den akse; tilføj <span class="keys"><kbd>Shift</kbd></span> for den modsatte retning.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span>: spejl på tværs af visningen; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span>: spejl op og ned. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>X</kbd></span> og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Y</kbd></span> spejler langs X eller Y.</li>
+<li><span class="keys"><kbd>Insert</kbd></span>: placér en punktentitet i markeringens centrum.</li>
+<li><span class="keys"><kbd>Tab</kbd></span>: med en brush markeret skiftes Markér → Hjørnepunkt → Kant → Flade → Markér.</li>
+</ul>
+<h3 id="s3-7"><a class="anchor" href="#s3-7" aria-hidden="true" tabindex="-1">#</a>Blender-tastaturgenvejene</h3>
+<p>Indstillinger → Tastatur → Tastaturgenveje tilbyder Heron Brush (standarden, som bruges i hele denne manual) og Blender. Med Blender: <span class="keys"><kbd>G</kbd></span> markerer og flytter, <span class="keys"><kbd>R</kbd></span> roterer, <span class="keys"><kbd>S</kbd></span> skalerer, <span class="keys"><kbd>E</kbd></span> fejer, <span class="keys"><kbd>1</kbd></span>, <span class="keys"><kbd>2</kbd></span> og <span class="keys"><kbd>3</kbd></span> vælger værktøjerne til hjørnepunkter, kanter og flader, <span class="keys"><kbd>K</kbd></span> klipper, <span class="keys"><kbd>B</kbd></span> markerer, <span class="keys"><kbd>A</kbd></span> markerer alt og <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span> fjerner markeringen, <span class="keys"><kbd>X</kbd></span> sletter, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> duplikerer, <span class="keys"><kbd>H</kbd></span> skjuler og <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>H</kbd></span> viser alt, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> annullerer fortryd. Alt andet er ens i begge.</p>
+<h2 id="s4"><a class="anchor" href="#s4" aria-hidden="true" tabindex="-1">#</a>Brushes og modelleringsværktøjer</h2>
+<p>Brushes er konvekse legemer defineret af planer. Byg komplekse objekter af flere simple brushes i stedet for at forsøge at gøre én brush konkav. Hold antallet af brushes lavt, hvor en simpel form er nok.</p>
+<h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>Tegning af brushes</h3>
+<p>Vælg Brush-værktøjet (<span class="keys"><kbd>B</kbd></span>), og træk i en visning. Værktøjslinjen viser <strong>Form, der skal tegnes</strong>: Kasse, Trappe, Buegang, Cylinder, Kegle, Sfæroide (UV), Sfæroide (ikosaeder) og Indsæt 3D-tekst. <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span> til <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>7</kbd></span> vælger en form direkte. Afhængigt af formen viser linjen <strong>Udhul</strong> og <strong>Tykkelse:</strong>, <strong>Trinhøjde:</strong> og <strong>Retning:</strong> for trapper, <strong>Akse:</strong>, <strong>Sider:</strong> og cirkeltilstanden for runde former, <strong>Ringe:</strong> for kugler og <strong>Nøjagtighed:</strong> for ikosaederet. Indstil valgmulighederne, før du trækker. Kontrollér resultatet i mere end én visning.</p>
+<h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>Markering</h3>
+<p>Klik på en brush for at markere den, og <span class="keys"><kbd>Ctrl</kbd></span>-klik for at føje til markeringen. Et træk fra et tomt område tegner en markeringsramme. I 3D-visningen markerer <span class="keys"><kbd>Shift</kbd></span>-klik en enkelt flade, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span>-klik tilføjer flere flader. Når du trækker i en markeret brush, flyttes den; når du trækker i en umarkeret, markeres og flyttes kun den.</p>
+<p>I 3D-visningen kan du <span class="keys"><kbd>Shift</kbd></span>-trække i en flade på en markeret brush for at ekstrudere den. <span class="keys"><kbd>Alt</kbd></span>-klik på en anden flade for at kopiere den markerede flades materiale og justering over på den; <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> kopierer kun materialet, og <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> kopierer rotationen.</p>
+<h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>Formningsværktøjer</h3>
+<ul>
+<li><strong>Markér</strong> (<span class="keys"><kbd>Esc</kbd></span>): markér og flyt.</li>
+<li><strong>Hjørnepunkt</strong> (<span class="keys"><kbd>V</kbd></span>), <strong>Kant</strong> (<span class="keys"><kbd>E</kbd></span>), <strong>Flade</strong> (<span class="keys"><kbd>F</kbd></span>): træk i hjørner, kanter eller flader. <span class="keys"><kbd>Shift</kbd></span>-træk fra midten af en kant eller flade tilføjer et hjørne der. <span class="keys"><kbd>Delete</kbd></span> fjerner de valgte hjørner.</li>
+<li><strong>Rotér</strong> (<span class="keys"><kbd>R</kbd></span>), <strong>Skalér</strong> (<span class="keys"><kbd>T</kbd></span>), <strong>Forskyd</strong> (<span class="keys"><kbd>G</kbd></span>): transformér markeringen med håndtag.</li>
+<li><strong>Klip</strong> (<span class="keys"><kbd>C</kbd></span>): klik på to eller tre punkter for at definere et snitplan. <span class="keys"><kbd>Enter</kbd></span> skærer, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> vælger, hvilken side der beholdes, og <span class="keys"><kbd>Backspace</kbd></span> eller <span class="keys"><kbd>Esc</kbd></span> fjerner det sidste punkt.</li>
+<li><strong>Saml</strong> (<span class="keys"><kbd>N</kbd></span>): placér punkter rundt om et volumen, og tryk på <span class="keys"><kbd>Enter</kbd></span> for at lave en konveks brush af dem. <span class="keys"><kbd>Backspace</kbd></span> fjerner det sidste punkt.</li>
+<li><strong>Fej</strong> (<span class="keys"><kbd>Y</kbd></span>): se afsnittet om fejning nedenfor.</li>
+<li><strong>Kontrolpunkt</strong> (<span class="keys"><kbd>P</kbd></span>): omform en patchs kontrolgitter.</li>
+<li><strong>Afrunding</strong> (<span class="keys"><kbd>O</kbd></span>): klik på en kant for at runde den af, eller vælg kanter eller hjørnepunkter med deres værktøjer, og tryk på <span class="keys"><kbd>Enter</kbd></span>. Flere flader giver et blødere resultat og mere geometri.</li>
+<li><strong>Mal</strong> (<span class="keys"><kbd>K</kbd></span>): se Materialer og UV'er.</li>
+</ul>
+<h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>Kombinering af brushes</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>: flet de markerede brushes til deres konvekse hylster.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>K</kbd></span>: træk de markerede brushes fra de brushes, de rører.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></span>: udhul markeringen med vægge, der er ét gittertrin tykke.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>L</kbd></span>: dan fællesmængden af markeringen.</li>
+</ul>
+<h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>Fejning, afrunding, patch og affasning</h3>
+<p><strong>Fej</strong> bygger geometri langs en sti ud fra markerede flader. Markér fladerne (i Fej-værktøjet med <span class="keys"><kbd>Alt</kbd></span>-klik), indstil derefter <strong>Strækning</strong>, <strong>Drejning</strong> (akse og vinkel), <strong>Skalér</strong>, <strong>Trin</strong> og <strong>Sti</strong> (justering Heltal eller Fri; Bue, Lige eller S-kurve) i sektionen Fej under fanen Flade, og tryk på <strong>Fej</strong>. Linjen under kontrollerne fortæller, hvor mange brushes der bliver lavet.</p>
+<p>Sektionen <strong>Afrunding</strong> runder de valgte kanter af med <strong>Radius</strong>, <strong>Flader</strong> og <strong>Hjørner</strong> (Geret eller Afrundet); én flade giver en affasning.</p>
+<p><strong>Patch</strong> viser den markerede patchs <strong>Kolonner</strong> og <strong>Rækker</strong> med knapper til at tilføje eller fjerne et par. Geometri → Konvertér flader til patches (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>) laver patches af markerede flader.</p>
+<p><strong>Indfældning og affasning</strong> virker på markerede flader: <strong>Indfældning</strong> trækker fladen ind fra dens kanter, og <strong>Dybde</strong> skubber den ud (eller ind, når værdien er negativ). <strong>Affas flader</strong> anvender begge; den tredje knap tilføjer et panel eller skærer en fordybning, afhængigt af fortegnet på Dybde. <strong>Sammenføj hjørne</strong> åbner en dialog, der sammenføjer to brushes i et geret eller afrundet hjørne med en forhåndsvisning.</p>
+<h3 id="s4-6"><a class="anchor" href="#s4-6" aria-hidden="true" tabindex="-1">#</a>3D-tekst</h3>
+<p>Geometri → Indsæt 3D-tekst (også det sidste punkt i Brush-værktøjets liste over former) bygger brushes af tekst. Den bruger Heron Block, en indbygget polygonskrifttype med afskårne hjørner, proportionale bredder og tjekkiske accenter; små bogstaver bruger versalformer. Skriv <strong>Tekst</strong>, indstil <strong>Højde</strong> (versalhøjden; accenter rager op over den) og <strong>Dybde</strong>, følg den levende forhåndsvisning, og tryk på <strong>Indsæt</strong>.</p>
+<p>Hvis en handling ikke kan lave gyldig geometri, så justér dens mål, eller fortryd og forenkl formen.</p>
+<h2 id="s5"><a class="anchor" href="#s5" aria-hidden="true" tabindex="-1">#</a>Materialer og UV'er</h2>
+<h3 id="s5-1"><a class="anchor" href="#s5-1" aria-hidden="true" tabindex="-1">#</a>Indlæsning og anvendelse af materialer</h3>
+<p>Åbn sektionen <strong>Materialer</strong> under fanen Flade. <strong>Indlæs mappe</strong> tilføjer en mappe med billeder, og <strong>Indlæs .wad</strong> tilføjer en teksturpakke; begge vises under <strong>Samlinger</strong>, hvor krydset fjerner en. Skriv i <strong>Filtrer materialer</strong> for at indsnævre listen. Klik på et materiale for at gøre det aktuelt, hvorefter <strong>Anvend på markering</strong> lægger det på alle markerede flader. <strong>Markér</strong> tilbyder Markér brushes med det og Markér flader med det. <strong>Erstat</strong> udskifter ét materiale med et andet i hele kortet eller kun i markeringen.</p>
+<p>Værktøjet <strong>Mal</strong> (<span class="keys"><kbd>K</kbd></span>) lægger det aktuelle materiale på fladen under markøren: et klik maler én flade, et dobbeltklik maler hele brushen, og <span class="keys"><kbd>Shift</kbd></span>-klik opsamler fladens materiale som det aktuelle, ligesom en pipette.</p>
+<h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>UV-editoren</h3>
+<p>Sektionen <strong>UV</strong> under fanen Flade viser den markerede flades materiale og omrids. Musestyring på lærredet:</p>
+<ul>
+<li>Hjulet zoomer omkring markøren. Træk med højre eller midterste knap for at panorere. Dobbeltklik med højre knap for at indramme fladen igen; når du markerer en anden flade, indrammes den automatisk.</li>
+<li>Træk med venstre knap flytter materialet, mens fladens omrids bliver på plads. Ringen roterer placeringen, hjørnehåndtagene skalerer den, og midterhåndtaget angiver udgangspunktet for disse ændringer.</li>
+<li><span class="keys"><kbd>Alt</kbd></span>-træk med venstre knap på en flisekant forskyder, ligesom <span class="keys"><kbd>Shift</kbd></span>-træk med midterste knap.</li>
+<li>Hvert træk er ét fortrydelsestrin, og <span class="keys"><kbd>Esc</kbd></span> annullerer et igangværende træk.</li>
+</ul>
+<p>Under lærredet er <strong>Forskydning</strong>, <strong>Skalér</strong>, <strong>Vinkel</strong> og, når spillet bruger dem, <strong>Indholdsflag</strong>, <strong>Overfladeflag</strong> og <strong>Overfladeværdi</strong>. Knapperne er <strong>Nulstil</strong>, <strong>Nulstil til verden</strong>, <strong>Tilpas</strong>, <strong>Spejl H</strong>, <strong>Spejl V</strong> og de to drejninger på 90°. <strong>Juster</strong> drejer materialet langs en af fladens kanter (tryk igen for den næste kant, <span class="keys"><kbd>Shift</kbd></span> for den forrige). De fire justeringsknapper skubber materialet op mod en kant. <strong>Tilpas U</strong> og <strong>Tilpas V</strong> skalerer, så et helt antal kopier dækker fladen; tryk igen for det næste antal, og hold <span class="keys"><kbd>Ctrl</kbd></span> nede for at bevare et trim sheets inddeling.</p>
+<h3 id="s5-3"><a class="anchor" href="#s5-3" aria-hidden="true" tabindex="-1">#</a>UV-taster</h3>
+<p>Med flader markeret flytter piletasterne materialet, <span class="keys"><kbd>[</kbd></span> og <span class="keys"><kbd>]</kbd></span> drejer det 15°, <span class="keys"><kbd>,</kbd></span> og <span class="keys"><kbd>.</kbd></span> halverer eller fordobler dets skala, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span> spejler det, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> nulstiller det, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> nulstiller det til verdensakserne, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>F</kbd></span> tilpasser det til hver flade.</p>
+<p><strong>Lås</strong> i værktøjslinjen bevarer placeringen, mens brushes flyttes, og <strong>UV</strong> (<span class="keys"><kbd>U</kbd></span>) bevarer den, mens brushes drejes.</p>
+<h3 id="s5-4"><a class="anchor" href="#s5-4" aria-hidden="true" tabindex="-1">#</a>Værktøjsmaterialer</h3>
+<ul>
+<li>skip: fjerner den markerede flade fra motoreksporter.</li>
+<li>clip: skaber kollision uden synlig geometri.</li>
+<li>origin: markerer omdrejningspunktet for en brush-entitet.</li>
+</ul>
+<p>Navnene kan ændres i Eksportér-vinduets kort <strong>Værktøjsmaterialer</strong>. Brug skip til flader, som du ved er skjulte.</p>
+<h3 id="s5-5"><a class="anchor" href="#s5-5" aria-hidden="true" tabindex="-1">#</a>Udeladelse af flader fra eksport</h3>
+<p>Markér en flade, og slå <strong>Udelad flade fra eksport</strong> til i sektionen UV. Orange skravering markerer den i UV-forhåndsvisningen. Dens materiale og maling forbliver gemt, og brushen forbliver lukket og redigerbar. Eksporterede render-meshes udelader fladen, mens kollisionen bevares. Udelader du én firkant af en terning, giver det to render-trekanter. Det gør ikke flader dobbeltsidede og fletter ikke meshes.</p>
+<p><strong>Udelad tildækkede flader</strong> markerer flader, der er fuldstændig dækket af statiske brushes, herunder identiske flader, der rører hinanden, og indesluttede brushes. Det virker på de markerede brushes eller på al synlig, ulåst verdensgeometri, når intet er markeret. Brush-entiteter, gennemsigtige materialer og brushes, der allerede har udeladte flader, springes over. Delvist tildækkede flader deles ikke. Én fortrydelse gendanner det hele. Visning → Vis udeladte flader skjuler eller viser sådanne flader i editorens visninger; udpegning bruger stadig hele brushen.</p>
+<h2 id="s6"><a class="anchor" href="#s6" aria-hidden="true" tabindex="-1">#</a>Farve og gradienter</h2>
+<p>Sektionen <strong>Farve</strong> under fanen Flade maler flader med ensfarvede farver eller gradienter oven på deres materialer. Den er nyttig til at skitsere en bane og til stiliseret grafik. Malede flader beholder deres egentlige farver i visningerne; markeringen vises med sit omrids.</p>
+<h3 id="s6-1"><a class="anchor" href="#s6-1" aria-hidden="true" tabindex="-1">#</a>Palet og blandingsfarve</h3>
+<p>Klik på en af de tolv farveprøver i paletten for at male de markerede flader eller hele markerede brushes med den. <strong>Uigennemsigtighed</strong> angiver i procent, hvor dækkende den næste maling er. <strong>Bland</strong> har en farveknap, der åbner farvevælgeren; træk i vælgeren, og markeringen følger med live, eller tryk på <strong>Mal</strong> for at anvende blandingsfarven som ét trin. <strong>Tilbage til materiale</strong> fjerner malingen, så fladen igen viser sit materiale. Linjen øverst i sektionen fortæller, hvad der er markeret, og hvad det har på.</p>
+<h3 id="s6-2"><a class="anchor" href="#s6-2" aria-hidden="true" tabindex="-1">#</a>Farvevælgeren</h3>
+<p>Alle farveknapper i editoren åbner den samme vælger. Træk i kvadratet for at vælge mætning og lysstyrke, og i strimlen ved siden af for at vælge farvetone. Nedenunder er værdierne <strong>R</strong>, <strong>G</strong> og <strong>B</strong> og en skyder til <strong>Uigennemsigtighed</strong>, hvor farven har en. Hex-feltet tager <code>#RRGGBB</code> eller <code>#RRGGBBAA</code>; det bliver rødt, så længe teksten ikke er en gyldig farve. <strong>Kopiér</strong> lægger hex-koden i udklipsholderen. Klik uden for vælgeren for at lukke den.</p>
+<h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>Gradienter</h3>
+<p><strong>Gradient</strong> vælger Lineær gradient eller Radial gradient, og knappen ved siden af vender farverne om. Hvert stop har en farveknap og <strong>Position (%)</strong>, og stop mellem enderne har en fjern-knap. <strong>Tilføj farvestop</strong> tilføjer et stop i det største mellemrum; en gradient kan have op til otte stop. <strong>Gradientvinkel</strong> angiver retningen for en lineær gradient med knapperne <strong>+45°</strong> og <strong>−45°</strong>.</p>
+<p>Under forhåndsvisningen er en skinne med en markør for hvert stop. Klik på skinnen for at tilføje et stop, klik på en markør for at åbne dens vælger, træk i en markør for at flytte den, og højreklik på en markør for at fjerne den. De tre farveprøver under skinnen er forudindstillinger: Varm gradient, Kølig gradient og Gråtonegradient. Ændringer af en gradient anvendes live på markeringen.</p>
+<p>En gradients retning har betydning: læg den langs en tagflade eller et buet objekt, ikke på tværs af flader, der ikke hører sammen. Kontrollér modellen fra begge sider efter malingen.</p>
+<h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>Overflademateriale</h3>
+<p><strong>Overflademateriale</strong> indstiller <strong>Ruhed</strong> (0 er blank, 100 er mat), <strong>Metallisk</strong> (0 for træ, sten eller plast, 100 for metal) og <strong>Emission</strong> (0 til 8; overfladen gløder i sin egen farve, også gradienter, men oplyser ikke objekter i nærheden). Ændringer anvendes live på de markerede flader eller brushes. <strong>Brug standardoverflade</strong> fjerner tilsidesættelsen. Alle ændringer kan fortrydes.</p>
+<p>Overfladeeffekter vises i den oplyste 3D-visning og i kamerarenderinger. Flad visning og trådmodel udelader bevidst højlysene. Bloom kan tilføje en glød omkring selvlysende overflader. Godot og glTF/GLB modtager materialeværdierne, og Unity-importøren omsætter ruhed til glathed. Se <code>docs/surface-materials.md</code> for begrænsningerne ved hvert mål.</p>
+<h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>Assets, lag og grupper</h2>
+<h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>Asset-biblioteket</h3>
+<p>Åbn fanen <strong>Assets</strong>. Tilføj en mappe med <code>.map</code>-modeller med <strong>Tilføj mappe</strong>; det indbyggede bibliotek er der altid. Skriv i <strong>Filtrer assets</strong> for at søge. Klik på en model for at markere den, og dobbeltklik derefter på den, tryk på <span class="keys"><kbd>Enter</kbd></span>, eller klik på <strong>Indsæt</strong> for at tilføje den, hvor markøren sidst var. Du kan også trække en model ind i en visning. Asset-brushes indsættes som én gruppe, så modellen flyttes samlet.</p>
+<p><strong>Gem markering som asset</strong> skriver de markerede brushes til biblioteket som en <code>.map</code>. Biblioteksassets er almindelige redigerbare brushes, ikke importerede meshes.</p>
+<h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>Lag</h3>
+<p>Listen <strong>Lag</strong> under fanen Kort organiserer store områder. Skriv et navn, og klik på <strong>Tilføj</strong> for at lave et lag, eller tryk på <span class="keys"><kbd>Enter</kbd></span> for at omdøbe det aktuelle. Hvert lag kan skjules, låses eller udelades fra eksporter. <strong>Flyt hertil</strong> flytter markeringen ind i det aktuelle lag. Genvejsmenuen i visningerne tilbyder også Flyt til lag, Gør til aktivt lag, Skjul lag og Isolér lag.</p>
+<h3 id="s7-3"><a class="anchor" href="#s7-3" aria-hidden="true" tabindex="-1">#</a>Grupper og sammenkædede grupper</h3>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span> grupperer markeringen, og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span> opløser gruppen. Sektionen <strong>Grupper</strong> under fanen Kort viser grupper og tilbyder <strong>Åbn</strong>, <strong>Omdøb</strong>, <strong>Flet</strong>, <strong>Opløs gruppe</strong>, <strong>Tag ud</strong> og <strong>Udtræk</strong>. En sammenkædet gruppe er et sæt kopier, der deler redigeringer: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> laver en sammenkædet dublet, Geometri → Synkronisér sammenkædede grupper opdaterer kopierne, og <strong>Fjern sammenkædning</strong> gør en kopi uafhængig. I fanen Entitet kan en egenskab beholdes som en kopis egen, når sammenkædede grupper synkroniseres.</p>
+<h3 id="s7-4"><a class="anchor" href="#s7-4" aria-hidden="true" tabindex="-1">#</a>En fælles skala</h3>
+<p>Standardskalaen for eksport er 32 kortenheder pr. meter. Den indbyggede markør for spillerstart er 64 enheder høj, en reference på 2 meter. Sammenlign døråbninger, køretøjer, møbler og planter med den. Ændr kun eksportskalaen med vilje, og hold relaterede assets ensartede.</p>
+<h2 id="s8"><a class="anchor" href="#s8" aria-hidden="true" tabindex="-1">#</a>Entiteter og gameplay</h2>
+<p>Almindelige entitetsdefinitioner er indbygget og altid tilgængelige: lys, spillerstarter, døre, knapper, platforme, triggere, statiske rekvisitter, lyde og waypoints. Indlæser du en projekt-FGD med <strong>Entitetsdefinitioner</strong> i fanen Entitet, erstattes klasser med samme navn, mens de øvrige indbyggede bevares.</p>
+<h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>Placering af entiteter</h3>
+<p>I browseren <strong>Entiteter</strong> under fanen Entitet skriver du i <strong>Filtrer klasser</strong> og vælger en klasse. For en punktklasse som et lys klikker du på <strong>Placér</strong> eller dobbeltklikker på klassen; <span class="keys"><kbd>Insert</kbd></span> placerer en i markeringens centrum. For en brush-klasse som en dør eller en trigger markerer du brushes og klikker på <strong>Opret</strong>. Klasser kan også trækkes ind i en visning.</p>
+<h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>Egenskaber</h3>
+<p>Egenskabslisten redigerer den markerede entitet. Entiteter af samme klasse redigeres samlet. <strong>Tilføj egenskab</strong> tilføjer en nøgle, som definitionen måske ikke kender; <strong>Standarder</strong> kan sætte eksisterende egenskaber tilbage til deres standardværdier eller tilføje de manglende. Egenskaber, som klassen definerer, men som entiteten ikke har, vises nedtonet; når du skriver en værdi, tilføjes de. Brug targetname og target til at forbinde entiteter.</p>
+<h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>Hvad en eksport kan</h3>
+<p>Godots direktiver opretter native knuder, kollisionslegemer og triggerområder. Unity og Unreal understøtter native almindelige lys, og Unreal opretter også PlayerStart-aktører. Andre data bevares, så vidt målets importør tillader det.</p>
+<p>En dørentitet alene tilføjer ingen spilopførsel. Bevægelse, reaktioner på triggere, spillerstyring og projektscripts kræver stadig arbejde i motoren. Defold eksporterer entitetsegenskaber og kollisionsobjekter; Flax placerer modeller og generiske entiteter. Kontrollér resultatet i din motor, før du bygger gameplay oven på det.</p>
+<h2 id="s9"><a class="anchor" href="#s9" aria-hidden="true" tabindex="-1">#</a>Animation</h2>
+<p>Heron Brush kan forhåndsvise simpel bevægelse og redigere keyframe-animationer af brush-entiteter og derefter eksportere dem til flere motorer.</p>
+<h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>Forhåndsvis animationer</h3>
+<p>Slå <strong>Forhåndsvis animationer</strong> til i menuen Visning, menuen Animation, menuen Gitterindstillinger eller sektionen Visning under fanen Kort. Den afspiller func_rotate-rotation og func_shuttle-frem-og-tilbage-bevægelse, når start_on er slået til, ud fra entitetens egenskaber for akse, hastighed, retning, strækning og ventetid, og den afspiller keyframe-klip, der er sat til Afspil ved start. Ventilator- og vindmølle-assets indeholder allerede roterende dele.</p>
+<p>Når forhåndsvisningen slås fra, gendannes den oprindelige stilling. Et klik i en visning stopper afspilningen, før der markeres eller redigeres; kameranavigation virker fortsat. Forhåndsvisningen ændrer ikke kortet, fortrydelseshistorikken eller eksporter, og den kører hverken fysik eller spillogik.</p>
+<h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>Keyframe-editoren</h3>
+<p>Åbn den med Animation → Keyframe-animation eller fra menuen Gitterindstillinger. Den dokkes under visningerne eller i 3D-vinduet, mens det er separat. Vinduesikonet i dens overskrift flytter den ud i sit eget vindue; den beholder billedet og fortrydelseshistorikken. <strong>Rediger animation</strong> skifter visningerne til den animerede stilling, og <strong>Rediger kort</strong> går tilbage til hvilegeometrien. I animationstilstand viser hver visning <strong>Rediger animation</strong> og billednummeret nederst.</p>
+<p>Markér en brush-entitet eller en brush eller brush-gruppe for at animere den. En flad brush-gruppe deler én animation og ét omdrejningspunkt; grupper, der indeholder flere entiteter, kræver separate animationer.</p>
+<h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>Klip</h3>
+<p>Vælgeren <strong>Animation</strong> skifter mellem navngivne klip. Skriv et navn i <strong>Animationsnavn</strong>, og klik på <strong>Gem som</strong> for at kopiere det aktuelle klip under det navn; <strong>Slet</strong> fjerner et klip. <strong>Flyt</strong> opretter et <code>translate</code>-klip uden rotation. <strong>Døranimationer</strong> opretter bløde <code>open</code>- og <code>close</code>-klip med en drejning på 90 grader om det aktuelle omdrejningspunkt; flyt først omdrejningspunktet til hængslet. <strong>Afspil ved start</strong> får klippet til at spille, når banen starter; dørforudindstillingen slår det fra.</p>
+<h3 id="s9-4"><a class="anchor" href="#s9-4" aria-hidden="true" tabindex="-1">#</a>Transport og afspilning</h3>
+<p>Transportknapperne er <strong>Start</strong>, <strong>Forrige nøgle</strong>, <strong>Afspilning</strong>, <strong>Næste nøgle</strong> og <strong>Slut</strong>. <strong>Billede</strong> viser og indstiller det aktuelle billede, og <strong>Varighed (s)</strong> angiver klippets længde. Tilstanden er <strong>Én gang</strong>, <strong>Løkke</strong> eller <strong>Frem og tilbage</strong>.</p>
+<h3 id="s9-5"><a class="anchor" href="#s9-5" aria-hidden="true" tabindex="-1">#</a>Tidslinjen</h3>
+<p>Tidslinjen har en lineal med afspilningshovedet og et spor for <strong>Position</strong> (X, Y og Z sat som nøgle sammen) og for hver rotationsvinkel, RX, RY og RZ. Klik eller træk i linealen for at flytte afspilningshovedet og forhåndsvise den stilling i alle visninger. Træk med midterste knap for at panorere tidslinjen. Træk i nøgler for at flytte dem i tid; <span class="keys"><kbd>Shift</kbd></span> føjer til markeringen; dobbeltklik på et spor for at indsætte en nøgle; <span class="keys"><kbd>Ctrl</kbd></span>+hjul zoomer. <strong>Kurver</strong> viser værdikurverne i stedet for sporene.</p>
+<p>Knapperne over den er <strong>Tilføj nøgle</strong>, <strong>Fjern</strong>, <strong>Kopiér</strong>, <strong>Indsæt</strong> og <strong>Duplikér</strong>. <strong>Fastgør til billeder</strong> holder nøgler på hele billeder, og <strong>Tilpas</strong> viser hele klippet. <strong>Omtime nøgler</strong> åbner <strong>Tidsskala</strong>, <strong>Forskydning (billeder)</strong>, <strong>Skalér fra afspilningshovedet</strong>, <strong>Forlæng varighed</strong> og <strong>Omtime markering</strong>.</p>
+<p>Nøgleinspektøren ved siden af tidslinjen redigerer den markerede nøgle: <strong>Billede</strong>, <strong>Værdi</strong> (eller de tre koordinater for en Position-nøgle), interpolationen <strong>Lineær</strong>, <strong>Hold</strong> eller <strong>Bézier</strong>, <strong>Indgående stigning</strong> og <strong>Udgående stigning</strong> samt <strong>Udglat tangenter</strong>.</p>
+<h3 id="s9-6"><a class="anchor" href="#s9-6" aria-hidden="true" tabindex="-1">#</a>Taster i editoren</h3>
+<p>Mens tidslinjen har tastaturet: <span class="keys"><kbd>Space</kbd></span> afspiller eller sætter på pause, venstre og højre piletast går ét billede, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span> markerer alle nøgler, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span> og <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span> kopierer, klipper ud og indsætter nøgler, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span> duplikerer dem, <span class="keys"><kbd>Delete</kbd></span> fjerner dem, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span> fortryder, og <span class="keys"><kbd>Esc</kbd></span> annullerer et træk. Uden for tidslinjen forlader <span class="keys"><kbd>Esc</kbd></span> animationstilstanden. Fortryd lader zoom, markering og afspilningshoved blive, hvor de var.</p>
+<h3 id="s9-7"><a class="anchor" href="#s9-7" aria-hidden="true" tabindex="-1">#</a>Stillinger i visningerne</h3>
+<p>Rækken under tidslinjen har <strong>Løgskind</strong> med et antal og <strong>Afstand</strong>, som viser nærliggende stillinger som spøgelser; koordinaterne for <strong>Omdrejningspunkt</strong>; <strong>Automatisk nøgle</strong>; og stillingsværktøjerne <strong>Flyt</strong>, <strong>Rotér</strong> og <strong>Omdrejningspunkt</strong>.</p>
+<ul>
+<li><strong>Tilføj nøgle</strong> slår Automatisk nøgle til og sætter afspilningen på pause. Med Automatisk nøgle slået til og <strong>Flyt</strong> valgt trækker du i en farvet akse på den markerede entitets håndtag i 3D-visningen for at sætte nøgle på dens position i det aktuelle billede.</li>
+<li>I en 2D-visning trækker du i den markerede brush eller et medlem af dens gruppe for at sætte nøgle på flytning langs de to synlige akser, med fastgørelse til gitteret. Automatisk nøgle behøver ikke at være slået til for dette.</li>
+<li>Med <strong>Rotér</strong> trækker du brushen i en 2D-visning rundt om dens orange markør for omdrejningspunktet. Top sætter nøgle på RZ, Front på RY og Side på RX, fastgjort til gittervinkler.</li>
+<li>Med <strong>Omdrejningspunkt</strong> trækker du det gule rotationscentrum i en vilkårlig 2D-visning. Det fastgøres til gitteret og beholder sin dybde. Nøgler og hvilegeometri forbliver uændrede.</li>
+</ul>
+<p>Den cyanfarvede sti i 2D og 3D viser omdrejningspunktets bane. Klik på et punkt på stien for at markere dets tid og nøgler, eller træk i det for at ændre positionen; med Automatisk nøgle slået til kan du også trække i stipunkter i 3D-visningen. Etiketter viser billednumre, og stiplede segmenter markerer spring. <span class="keys"><kbd>Esc</kbd></span> annullerer ethvert af disse træk, og én fortrydelse omgør et helt træk.</p>
+<p>Nye animationer starter i hvilestilling med nøgler på tidspunkt nul. Skab bevægelse ved at ændre stillingen i et andet billede. For en skarp L-formet sti sætter du nøgle på starten, hjørnet og slutningen og bruger Lineær med Frem og tilbage.</p>
+<h3 id="s9-8"><a class="anchor" href="#s9-8" aria-hidden="true" tabindex="-1">#</a>Forbindelse af knapper til animationer</h3>
+<p>Markér en func_button, trigger_multiple eller trigger_once. Fanen Entitet viser <strong>Animationsudløser</strong> over egenskaberne. Vælg et mål på listen, eller klik på <strong>Udpeg mål</strong> og derefter på et animeret objekt i en vilkårlig visning; <span class="keys"><kbd>Esc</kbd></span> annullerer udpegningen. Manglende mål eller klip rapporteres under kontrollerne. Entitetsforbindelser viser pile til deres mål, når visning af forbindelser er slået til.</p>
+<p><strong>Handling</strong> vælger, hvad aktivering gør: <strong>Afspil</strong> starter et navngivet klip eller den markerede animation; <strong>Slå til/fra</strong> skifter mellem <code>open</code> og <code>close</code>, når de findes, og ellers genstarter den den markerede animation; <strong>Åbn</strong> og <strong>Luk</strong> starter disse klip; <strong>Pause</strong> fastholder stillingen, <strong>Genoptag</strong> fortsætter, og <strong>Stop</strong> gendanner den oprindelige stilling. <strong>Kun én gang</strong> tilsidesætter klassens standard. <strong>Gentagelsesforsinkelse (s)</strong> angiver den korteste tid mellem aktiveringer; den forsinker ikke den første.</p>
+<p><strong>Afprøv udløser</strong> kører handlingen i forhåndsvisningen uden at redigere kortet eller tilføje fortrydelsestrin. <strong>Nulstil forhåndsvisning</strong> gendanner de oprindelige stillinger og rydder tilstanden for én gang og nedkøling. Dette simulerer hverken spillerkollisioner eller spilscripts.</p>
+<h3 id="s9-9"><a class="anchor" href="#s9-9" aria-hidden="true" tabindex="-1">#</a>Animation i eksporter</h3>
+<p>Godot eksporterer native AnimationPlayer- og AnimationLibrary-ressourcer, inklusive kurver og bevægelig kollision. En CharacterBody3D, der træder ind i en knaps område, aktiverer dens mål. Ændringer af disse klip i Godot kommer ikke tilbage til kortet og erstattes ved næste eksport.</p>
+<p>Raylib-eksporten tilføjer <code>&lt;map&gt;_animation.h</code> med en afspiller i C og <code>&lt;map&gt;_preview.c</code> med en forhåndsvisning med frit kamera; følg <code>&lt;map&gt;_raylib.md</code> for at bygge den. I forhåndsvisningen sætter <code>SPACE</code> på pause, <span class="keys"><kbd>R</kbd></span> genstarter standardklippene, og <span class="keys"><kbd>N</kbd></span> skifter mellem navngivne klip. Defold indlejrer afspilning i entitetsscriptet med dokumenterede <code>heron_*_animation</code>-meddelelser. Unitys Build Level tilføjer <code>HeronBrushAnimation</code> og et kinematisk legeme. Bevy-eksporten indeholder <code>heron_animation.rs</code> og en vejledning. Godot, Unity, Defold, Bevy og raylib bevarer triggerforbindelserne, én gang-flaget og gentagelsesforsinkelsen. Dit spil skal stadig registrere spilleren og forbinde sine egne knapper til hver runtimes API.</p>
+<h3 id="s9-10"><a class="anchor" href="#s9-10" aria-hidden="true" tabindex="-1">#</a>Eksemplet Motion lab</h3>
+<p>Åbn <code>motion_lab</code> fra velkomstskærmens Eksempler. Det har en platform med L-formet sti, en elevator, en roterende platform og en hængslet dør med knapper. Åbn <code>godot/project.godot</code> ved siden af i Godot, og tryk på <span class="keys"><kbd>F5</kbd></span>. WASD og musen flytter spilleren, Mellemrum hopper, 1 til 4 besøger stationerne, og R genstarter den aktuelle station. Træd på en farvet plade for at aktivere dens mål. Den medfølgende README forklarer, hvordan man eksporterer igen.</p>
+<h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>Eksport til en motor</h2>
+<p>Fil → Eksportér åbner vinduet Eksportér. Motorerne står i en liste i venstre side med deres logoer: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb og sidst <code>.map</code>. Siden til højre fortæller, hvad målet får. <strong>Skriv</strong> skriver det, <strong>Kontrollér</strong> bygger banen uden at skrive den og viser problemerne, og <strong>Luk</strong> lukker vinduet.</p>
+<p>Eksport er adskilt fra gemning: <code>.map</code> forbliver din redigerbare kilde. Hver kontrol gemmer sin motors indstillinger, så snart den ændres, så hver motor beholder sine egne svar, og vinduet åbner, som du forlod det.</p>
+<h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>Fælles valgmuligheder</h3>
+<ul>
+<li><strong>Skalér</strong>: <strong>Enheder pr. meter</strong>, 32 som standard.</li>
+<li><strong>Hvad der skal skrives</strong>: <strong>Kollisionsgeometri</strong>.</li>
+<li><strong>Optimeringer</strong>: <strong>Gruppér statiske meshes i celler på 1024 enheder</strong>, <strong>Fjern flader, der er begravet i geometrien</strong>, <strong>Saml flader, der deler et plan</strong> og <strong>Saml kollisionsformer</strong>.</li>
+<li><strong>Projektstier</strong>: hvor banen og dens ressourcer placeres i projektet.</li>
+<li><strong>Værktøjsmaterialer</strong>: navnene på materialerne clip, skip og origin.</li>
+<li><strong>Mere</strong>: motorspecifikke kontakter som <strong>Navngiv knuder efter</strong>, <strong>Genopbyg lag og grupper som overordnede knuder</strong>, <strong>Vend trekanternes omløbsretning</strong>, spejling af teksturkoordinater og et andet UV-sæt til bagt lys med <strong>Lightmap-texel</strong>.</li>
+<li><strong>Holder trit med kortet</strong>: <strong>Skriv igen, hver gang kortet gemmes</strong>. Det bliver tilgængeligt, når motoren er blevet eksporteret én gang, fordi den eksport fortæller, hvor der skal skrives.</li>
+</ul>
+<p>Statiske celler fordeler verdens-brushes efter deres centrum og kombinerer dem efter materiale inden for hver celle på 1024 enheder, så motorer kan frasortere mindre dele af kortet. Kollisionen bevares, og gameplay-entiteter forbliver adskilte. Det kan betyde flere draw calls end ét samlet verdens-mesh, så det er slået fra som standard. Selvstændige OBJ-, glTF- og GLB-eksporter bruger ikke celler.</p>
+<h3 id="s10-2"><a class="anchor" href="#s10-2" aria-hidden="true" tabindex="-1">#</a>Noter om målene</h3>
+<ul>
+<li>Godot: <code>res://</code>-stier til teksturer og materialer, fysiklaget for triggere og lightmap-UV2. Vælg en eksportmappe inde i Godot-projektet.</li>
+<li>Defold: assetmappen til ressourcer, modellens materiale og tekstur-sampleren, som skal findes i det valgte materiale.</li>
+<li>Unity: OBJ-meshes og en editorimportør; eksportér under projektets Assets-mappe.</li>
+<li>Unreal Engine: et genereret importscript og en indholdssti, normalt /Game/<level>.</li>
+<li>Flax Engine: en indholdssti til modellen i forhold til projektets Content-mappe.</li>
+<li>three.js, Bevy, raylib og Cocos Creator: scener eller kode til disse runtimes med en vejledning ved siden af eksporten.</li>
+<li>glTF / GLB: portabel geometri til kompatible værktøjer; GLB er den binære form. OBJ: geometri og materialer til modelleringsværktøjer.</li>
+<li><code>.map</code>: <strong>Skriv som</strong> vælger Valve 220, Standard, Quake 2 eller Quake 2 (Valve). Vinduet fortæller, hvad den valgte dialekt ville miste.</li>
+</ul>
+<p>Læs advarslerne efter skrivningen, for eksempel om manglende teksturer. <strong>Hvad kontrollen fandt</strong> viser dem i vinduet.</p>
+<h2 id="s11"><a class="anchor" href="#s11" aria-hidden="true" tabindex="-1">#</a>Live-forbindelser: Godot, Unity, Defold og Flax</h2>
+<p>En live-forbindelse sender ikke-gemte ændringer fra Heron Brush til en motors editor, mens du arbejder. Den er envejs: ændringer foretaget i motoren kommer ikke tilbage. Der kan køre én live-forbindelse pr. kortvindue. Stop den, før du skifter motor, og genstart den for at anvende ændrede eksportindstillinger. Kontrollerne findes i vinduet Eksportér, på motorens side, i kortet <strong>Live-forbindelse med</strong>.</p>
+<p>Indikatoren i titellinjen viser forbindelsens tilstand; klik på den for at stoppe forbindelsen. Når kortet lukkes eller udskiftes, stopper udgivelsen. Efter en mislykket import retter du problemet og starter forbindelsen igen.</p>
+<h3 id="s11-1"><a class="anchor" href="#s11-1" aria-hidden="true" tabindex="-1">#</a>Godot</h3>
+<ol>
+<li>Eksportér én gang ind i et Godot-projekt.</li>
+<li>Klik på <strong>Installer Godot-tilføjelse</strong>.</li>
+<li>Slå Heron Brush Live til i Godots Project Settings → Plugins.</li>
+<li>Klik på <strong>Start live-forbindelse</strong>, og tilknyt kortet fra Godot-dokken til en åben 3D-scene.</li>
+</ol>
+<p>Tilføjelsen erstatter kun sin genererede gren og bevarer tilknytningens placering og andre knuder. Gem selv Godot-scenen, og hold dine egne scripts og knuder uden for den genererede gren.</p>
+<h3 id="s11-2"><a class="anchor" href="#s11-2" aria-hidden="true" tabindex="-1">#</a>Unity</h3>
+<ol>
+<li>Eksportér én gang under Unity-projektets Assets-mappe.</li>
+<li>Klik på <strong>Installer Unity-tilføjelse</strong>, og lad Unity kompilere den.</li>
+<li>Åbn Window → Heron Brush → Live Link i Unity.</li>
+<li>Start forbindelsen, og tilknyt kortet til den aktive Unity-scene.</li>
+</ol>
+<p>Hold Unitys live-vindue åbent. Opdateringer holder pause i Play Mode og Prefab Mode. Kun kortobjektets underobjekt Generated erstattes. Rediger ikke de genererede filer.</p>
+<h3 id="s11-3"><a class="anchor" href="#s11-3" aria-hidden="true" tabindex="-1">#</a>Defold</h3>
+<ol>
+<li>Eksportér én gang ind i dit Defold-projekt, og hold projektet åbent i Defold.</li>
+<li>Klik på <strong>Start live-forbindelse</strong>. Der kræves ingen tilføjelse.</li>
+<li>Åbn heron_brush_live/preview.collection i Defold, eller henvis til den fra din egen scene.</li>
+</ol>
+<p>Forbindelsen skriver til en separat genereret mappe og lader den endelige eksport og game.project være i fred. <strong>Genindlæs kørende spil</strong> opdaterer også et spil, der er startet fra Defold; tilføjelse af objekter eller ændring af kollision kan kræve, at banen genstartes. Mislykkede forbindelser forsøges igen automatisk.</p>
+<h3 id="s11-4"><a class="anchor" href="#s11-4" aria-hidden="true" tabindex="-1">#</a>Flax</h3>
+<p>Eksportér ind i projektets Content-mappe, og klik på <strong>Installer Flax-tilføjelse</strong>. Lad Flax kompilere den, start forbindelsen, og vælg derefter Tools → Heron Brush: attach live map i den åbne Flax-scene. Den genererede rod beholder sin placering, og andre objekter røres ikke. Gem selv scenen. Opdateringer holder pause i Play Mode. Tools → Heron Brush: stop live map sætter modtagelsen på pause.</p>
+<h2 id="s12"><a class="anchor" href="#s12" aria-hidden="true" tabindex="-1">#</a>Fælles live-sessioner</h2>
+<p>Samarbejde → Live-session åbner et vindue, hvor du kan være vært for eller deltage hos en anden Heron Brush-bruger. Dette deler kortredigering mellem personer; det er adskilt fra en live-forbindelse til en motor.</p>
+<h3 id="s12-1"><a class="anchor" href="#s12-1" aria-hidden="true" tabindex="-1">#</a>Vær vært og deltag</h3>
+<p>Indtast <strong>Dit navn</strong>. For at være vært vælger du <strong>Vær vært for en session</strong>, klikker på <strong>Start session</strong> og sender oplysningerne fra <strong>Kopiér forbindelsesoplysninger</strong> til dine gæster. For at deltage vælger du <strong>Deltag i en session</strong>, indsætter oplysningerne og klikker på <strong>Deltag</strong>. Når du deltager, erstattes det åbne kort med værtens kort, så gem dit arbejde først.</p>
+<p>Standardudgaven virker på lokalnetværket, og <strong>Port på lokalnetværk</strong> angiver porten. Sessioner over internettet (<strong>Forbind over internettet</strong>) kræver en udgave med den valgfri netværksfunktion. Deltagerne ser hinandens kameramarkører og navne i 3D-visningen.</p>
+<p>Når vinduet lukkes, fortsætter sessionen; indikatoren i titellinjen viser dens tilstand. <strong>Stop session</strong> eller <strong>Forlad session</strong> afslutter den. Når to personer redigerer det samme objekt, afgør værtens rækkefølge den endelige version, og fortryd er også en fælles redigering. Arbejd så vidt muligt i hver sit område, og gem kontrolpunkter.</p>
+<h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D-visning og en ekstra skærm</h2>
+<h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>Visningstilstande</h3>
+<p>Sektionen <strong>Visning</strong> under fanen Kort skifter, hvad visningerne tegner: Brushes, Punktentiteter, Entitetsmodeller, Klassenavne for entiteter, Gruppeomrids, Patches, Materialer, Vis udeladte flader, Forhåndsvis animationer, Trådmodel, Kanter og Omrids af brush-entiteter. Trådmodel tegner trekanternes kanter, inklusive diagonaler og kanter bag overflader, uden materialer. Det er en midlertidig fejlfindingsvisning og påvirker hverken eksporter eller renderinger.</p>
+<p>Belysning, skygger, ambient occlusion, refleksioner, bloom og udglatning for 3D-visningen findes under Indstillinger → Renderer. Det er indstillinger for forhåndsvisningen; endelige billeder bruger renderkameraets egne indstillinger.</p>
+<h3 id="s13-2"><a class="anchor" href="#s13-2" aria-hidden="true" tabindex="-1">#</a>Et separat 3D-vindue</h3>
+<p>Visning → 3D-visning i separat vindue flytter 3D-visningen ud i sit eget vindue, som du kan placere på en anden skærm. Det deler kamera, dokument og værktøjer, og de flade visninger overtager pladsen i hovedvinduet. Dets menu tilbyder Materialer, Massiv visning og Trådmodel; en undermenu Visning med Vis udeladte flader, Forhåndsvis animationer, Kanter, Gruppeomrids, Punktentiteter, Entitetsmodeller og Omrids af brush-entiteter; Fokusér på markering; Forfra, Side og Top, som drejer kameraet rundt om markeringen (eller et punkt foran kameraet); Placér kamera fra 3D-visning; Fuld skærm (<span class="keys"><kbd>F11</kbd></span>); Render billede; og Tilbage til hovedvinduet. Når vinduet lukkes, dokkes visningen igen.</p>
+<h3 id="s13-3"><a class="anchor" href="#s13-3" aria-hidden="true" tabindex="-1">#</a>Procedurel himmel</h3>
+<p>Den procedurelle himmel er slået til som standard i 3D-visningen og kan slås fra under Indstillinger → Renderer → Lys. Renderkameraer har deres egen kontakt <strong>Procedurel himmel</strong>, som gemmes med kortet. Farverne for himmel, horisont og jord kommer fra miljøindstillingerne, og solen følger scenens belysning. Himlen har ingen geometri og eksporteres ikke.</p>
+<h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>Renderkameraer og PNG-billeder</h2>
+<p>Fil → Render billede åbner render-vinduet: kameraet og dets indstillinger til venstre og en levende forhåndsvisning til højre, der tegnes igen, når du ændrer dem. Kameraer gemmes i <code>.map</code> i et laget Render cameras, der kun findes i editoren og udelades fra motoreksporter.</p>
+<h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>Placering af kameraet</h3>
+<p>Indram billedet i 3D-visningen, og tryk på <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> (eller <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>), eller klik på <strong>Placér kamera fra 3D-visning</strong>. Hvis intet kamera er markeret, opdateres det første gemte; hvis der ikke findes noget, oprettes et. Det kan fortrydes og bevarer indstillingerne for output og belysning. <strong>Markér kamera i kortet</strong>, <strong>Indlæs kamera fra kort</strong> og <strong>Flyt 3D-visning til kamera</strong> virker den anden vej. <strong>Kameraramme i 3D-visning</strong> viser outputtets afgrænsning, og <strong>Styr kameraet fra 3D-visningen</strong> lader almindelig navigation flytte det gemte kamera.</p>
+<h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>Indstillinger</h3>
+<ul>
+<li><strong>Kameraposition</strong>: X, Y, Z, kurs og hældning.</li>
+<li><strong>Output og objektiv</strong>: <strong>Forudindstillinger</strong> (Full HD, Kvadrat, Portræt), bredde, højde, samples, <strong>Lodret synsfelt</strong> og <strong>Fjern klippeplan</strong>.</li>
+<li><strong>Belysning</strong>: Dagslys, Solnedgang eller Overskyet, eller indstil eksponering, solen, farverne for himmel, horisont og jord, <strong>Procedurel himmel</strong>, <strong>Skygger</strong>, <strong>Ambient occlusion</strong> og <strong>Bloom</strong>.</li>
+<li><strong>Dybdeskarphed</strong>: <strong>Slå dybdeskarphed til</strong>, fokusafstand, skarphedsområde og sløringsradius. <strong>Fokusér på markering</strong> fokuserer på centrum af et markeret objekt foran kameraet.</li>
+</ul>
+<p><strong>Gem kamera og indstillinger</strong> gemmer formularen i kortet; gem kortet for at bevare det på disken.</p>
+<h3 id="s14-3"><a class="anchor" href="#s14-3" aria-hidden="true" tabindex="-1">#</a>Rendering</h3>
+<p><strong>Render PNG</strong> spørger, hvor der skal gemmes, og starter en progressiv rendering, der udfyldes sample for sample i forhåndsvisningen. Flere samples ser bedre ud, men tager længere tid. <strong>Annuller rendering</strong> stopper uden at skrive en fil. Rendereren bruger editorens rasterpipeline, ikke path tracing. PNG-filen har en uigennemsigtig baggrund, og animationer renderes ikke. Meget store billeder kan kortvarigt sætte editoren på pause.</p>
+<h2 id="s15"><a class="anchor" href="#s15" aria-hidden="true" tabindex="-1">#</a>Indstillinger</h2>
+<p>Fil → Indstillinger (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>) åbner indstillingerne. Ændringer træder i kraft med det samme og gemmes. Sidepanelet viser Oversigt, Spil, Visning, Farver, Mus, Tastatur og Renderer. Søgefeltet øverst finder en indstilling ud fra navn eller beskrivelse på alle sider. Hver ændret indstilling har sin egen knap til at gendanne standardværdien, og <strong>Gendan standarder</strong> nulstiller den aktuelle side.</p>
+<h3 id="s15-1"><a class="anchor" href="#s15-1" aria-hidden="true" tabindex="-1">#</a>Siderne</h3>
+<ul>
+<li><strong>Oversigt</strong>: de almindelige indstillinger samlet: Udseende (Panelernes uigennemsigtighed (%), Farveskema, Layout, Sprog), Redigering, Visning og Brugervejledning.</li>
+<li><strong>Spil</strong>: spillet, hvor dets filer ligger, og dit navn til samarbejde. Et spil angiver, hvilket kortformat der skal skrives, hvilke entitetsdefinitioner der skal indlæses, og hvor dets materialer ligger. Spilkonfigurationer læses fra mappen <code>games</code> i konfigurationsmappen (<code>~/.config/heron-brush/games</code> på Linux og macOS, <code>%LOCALAPPDATA%\heron-brush\games</code> på Windows) og fra mappen <code>games</code> ved siden af programmet, hvor pakkerne lægger den medfølgende konfiguration.</li>
+<li><strong>Visning</strong>: Layout, Farveskema, Sprog, verdensakser, gitterets uigennemsigtighed, cellestørrelse for lækagesøgning og placeringslåsene.</li>
+<li><strong>Farver</strong>: farverne for visninger, geometri og håndtag.</li>
+<li><strong>Mus</strong>: hastighed og invertering for at se, panorere og flytte, flyvehastighed, synsfelt, Sammenkæd 2D-visninger og håndtagsstørrelser.</li>
+<li><strong>Tastatur</strong>: tastaturgenvejene, Heron Brush eller Blender.</li>
+<li><strong>Renderer</strong>: realistisk skygning, markeringsomrids, lys, skygger, ambient occlusion, refleksioner, bloom og overflader.</li>
+</ul>
+<h3 id="s15-2"><a class="anchor" href="#s15-2" aria-hidden="true" tabindex="-1">#</a>Sprog</h3>
+<p><strong>Sprog</strong> tilbyder Følg skrivebordet og alle oversatte sprog. Brugerfladen skifter med det samme. Manualen åbner på brugerfladens sprog, når der findes en oversættelse af den, og ellers på engelsk.</p>
+<h2 id="s16"><a class="anchor" href="#s16" aria-hidden="true" tabindex="-1">#</a>Plugins og MCP</h2>
+<h3 id="s16-1"><a class="anchor" href="#s16-1" aria-hidden="true" tabindex="-1">#</a>Plugins</h3>
+<p>Plugins udvider editoren med Rhai-scripts. Fil → Plugins åbner vinduet Plugins. <strong>Installer et plugin</strong> installerer en <code>.rhai</code>-fil, og <strong>Installer en plugin-mappe</strong> installerer en mappe, der indeholder <code>main.rhai</code>; valgfri <code>plugin.toml</code>-metadata beskriver pluginet og dets indstillinger. Plugins er grupperet under <strong>Aktive plugins</strong> og <strong>Inaktive plugins</strong>, og <strong>Slå plugin til</strong> slår et til eller fra; det bevares efter en genstart. <strong>Genindlæs plugins</strong> læser scriptsene fra disken igen og nulstiller deres panelværdier.</p>
+<p>Aktive plugins vises også i sektionen <strong>Plugins</strong> under fanen Kort med deres indstillinger, handlingsknapper (<strong>Kør</strong>) og output. En handling virker på markeringen, eller på alt, når intet er markeret, og er ét fortrydelsestrin. Den medfølgende Selection inspector viser antal og handlinger til at flytte op og ned.</p>
+<h3 id="s16-2"><a class="anchor" href="#s16-2" aria-hidden="true" tabindex="-1">#</a>MCP</h3>
+<p>Samarbejde → Server for en agent (MCP) lader en AI-agent eller et andet værktøj styre den åbne editor via Model Context Protocol. Vinduet viser den lokale adresse med <strong>Kopiér</strong>, og <strong>Stop server</strong> afslutter den; mens den kører, viser titellinjen <strong>MCP aktiv</strong>. Kommandolinjeindstillingen <code>--mcp</code> kører den samme grænseflade uden vindue. Klienter kan finde værktøjer til geometri, assets, egenskaber, animation, eksport og sessioner. MCP og editor-plugins er forskellige grænseflader.</p>
+<h2 id="s17"><a class="anchor" href="#s17" aria-hidden="true" tabindex="-1">#</a>Kommandolinje</h2>
+<p>Programmet hedder <code>heron-brush</code>. Uden indstillinger åbner det velkomstskærmen.</p>
+<h3 id="s17-1"><a class="anchor" href="#s17-1" aria-hidden="true" tabindex="-1">#</a>Åbning af filer</h3>
+<p><code>heron-brush map.map [entities.fgd] [materials/]</code> åbner et kort, eventuelt med entitetsdefinitioner og en materialemappe. Et tomt argument springer et over, for eksempel <code>heron-brush map.map "" materials/</code>. Hvis en editor allerede kører, åbner kortet i den; <code>--new-instance</code> åbner i stedet et separat vindue.</p>
+<h3 id="s17-2"><a class="anchor" href="#s17-2" aria-hidden="true" tabindex="-1">#</a>Kommandoer</h3>
+<ul>
+<li><code>--help</code> eller <code>-h</code>: udskriv brugsanvisningen. <code>--version</code> eller <code>-V</code>: udskriv versionen.</li>
+<li><code>--mcp</code>: server MCP over standardinput og -output, uden vindue.</li>
+<li><code>--merge-map &lt;base&gt; &lt;ours&gt; &lt;theirs&gt; [&lt;output&gt;]</code>: en trevejsfletning af <code>.map</code>-filer til git. Outputtet er som standard ours. Konflikter udskrives og giver en afslutningskode, der ikke er nul.</li>
+<li><code>--obj-to-map &lt;in.obj&gt; &lt;out.map&gt; [size] [thickness] [snap] [material]</code>: lav et mesh om til brushes. Size er længden af den længste side i kortenheder (standard 256), snap er et gitter for hjørnerne (0 for intet), og ordene <code>solid</code> eller <code>layered</code> bygger gitterkasser eller konvekse plader i stedet for tynde kiler.</li>
+<li><code>--render-preview &lt;in.map&gt; &lt;out.png&gt; [size]</code>: skriv en PNG-miniature af et kort, 512 pixel som standard.</li>
+<li><code>--run-script &lt;script.rhai&gt; &lt;in.map&gt; [out.map] [key=value ...]</code>: kør et plugin-script på et kort med alt markeret, og skriv resultatet (som standard tilbage til inputtet). <code>key=value</code> besvarer pluginets indstillinger.</li>
+</ul>
+<h2 id="s18"><a class="anchor" href="#s18" aria-hidden="true" tabindex="-1">#</a>Fejlfinding</h2>
+<h3 id="s18-1"><a class="anchor" href="#s18-1" aria-hidden="true" tabindex="-1">#</a>Når noget ser forkert ud</h3>
+<ul>
+<li>Manglende materiale: kontrollér materialemappen eller -pakken og eksportens projektstier.</li>
+<li>Forkert modelstørrelse: sammenlign med spillermarkøren på 64 enheder og eksportskalaen.</li>
+<li>Forkert gradientretning: kontrollér gradientvinklen og fladens orientering.</li>
+<li>Tom motorscene: læs eksportadvarslerne, og følg målets importvejledning.</li>
+<li>Live-forbindelsen venter: kontrollér, at tilføjelsen er installeret, at scenen er tilknyttet, og at opdateringer ikke er sat på pause.</li>
+<li>Kun linjer, ingen flader: slå Trådmodel fra i sektionen Visning under fanen Kort, eller vælg Materialer eller Massiv visning i 3D-vinduets menu.</li>
+<li>Objekter mangler i visningerne: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span> viser skjulte objekter; kontrollér lagene og View filters.</li>
+<li>En tast gør ingenting: klik først i visningen, så den har tastaturet, og kontrollér tastaturgenvejene under Indstillinger → Tastatur.</li>
+<li>En redigering mislykkedes: fortryd, forenkl geometrien, og brug <strong>Kontrollér kort</strong> og <strong>Søg efter huller</strong> i sektionen <strong>Problemer</strong> under fanen Kort.</li>
+<li>Et kort vil ikke åbne fra filhåndteringen: det kan være blevet overdraget til en editor, der allerede kører; kig efter det vindue.</li>
+</ul>
+<h3 id="s18-2"><a class="anchor" href="#s18-2" aria-hidden="true" tabindex="-1">#</a>Indstillinger og sikkerhedskopier</h3>
+<p>Indstillinger, seneste kort, stjerner, eksportindstillinger og plugins ligger i konfigurationsmappen: <code>~/.config/heron-brush</code> på Linux og macOS og <code>%LOCALAPPDATA%\heron-brush</code> på Windows. Autosave-sikkerhedskopier ligger i mappen <code>autosave</code> ved siden af hvert kort.</p>
+<h3 id="s18-3"><a class="anchor" href="#s18-3" aria-hidden="true" tabindex="-1">#</a>Rapportering af en fejl</h3>
+<p>Angiv editorens version (Hjælp → Om), dit styresystem, et lille kort, der viser problemet, og de præcise trin. Outputruden (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>) fortæller ofte, hvad der gik galt. Gem en kopi, før du eksperimenterer.</p>
+<h3 id="s18-4"><a class="anchor" href="#s18-4" aria-hidden="true" tabindex="-1">#</a>Brug af denne manual</h3>
+<p>Vælg et kapitel i indholdsfortegnelsen til venstre. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> viser indholdsfortegnelsen og går til søgefeltet; <span class="keys"><kbd>Esc</kbd></span> rydder søgningen eller lukker manualen, når søgningen er tom. <strong>Indhold</strong> skjuler eller viser kapitellisten, og <strong>Tekststørrelse</strong> ændrer skriftstørrelsen; begge huskes. Sproglisten øverst skifter mellem de tilgængelige oversættelser.</p>
+  </article>
+</div>
+<script src="../../manual.js"></script>
+</body>
+</html>

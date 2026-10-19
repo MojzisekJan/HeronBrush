@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heron Brush manual · English</title>
+<meta name="description" content="The Heron Brush manual: modelling, materials, entities, animation, export and live links.">
+<link rel="icon" type="image/svg+xml" href="../images/logo.svg">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="../manual.css">
+<link rel="alternate" hreflang="en" href=""><link rel="alternate" hreflang="cs" href="cs/"><link rel="alternate" hreflang="de" href="de/"><link rel="alternate" hreflang="zh-Hans" href="zh/"><link rel="alternate" hreflang="es" href="es/"><link rel="alternate" hreflang="uk" href="uk/"><link rel="alternate" hreflang="pl" href="pl/"><link rel="alternate" hreflang="it" href="it/"><link rel="alternate" hreflang="fr" href="fr/"><link rel="alternate" hreflang="pt-BR" href="pt-BR/"><link rel="alternate" hreflang="ja" href="ja/"><link rel="alternate" hreflang="ko" href="ko/"><link rel="alternate" hreflang="tr" href="tr/"><link rel="alternate" hreflang="id" href="id/"><link rel="alternate" hreflang="ru" href="ru/"><link rel="alternate" hreflang="nl" href="nl/"><link rel="alternate" hreflang="sv" href="sv/"><link rel="alternate" hreflang="da" href="da/"><link rel="alternate" hreflang="nb" href="nb/"><link rel="alternate" hreflang="fi" href="fi/"><link rel="alternate" hreflang="hu" href="hu/"><link rel="alternate" hreflang="ro" href="ro/"><link rel="alternate" hreflang="sk" href="sk/"><link rel="alternate" hreflang="el" href="el/"><link rel="alternate" hreflang="vi" href="vi/"><link rel="alternate" hreflang="zh-Hant" href="zh-TW/"><link rel="alternate" hreflang="bg" href="bg/"><link rel="alternate" hreflang="hr" href="hr/"><link rel="alternate" hreflang="sl" href="sl/"><link rel="alternate" hreflang="lt" href="lt/">
+</head>
+<body class="manual-page">
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../#"><img src="../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar-top" d="M4 7h16"/><path class="bar-mid" d="M4 12h16"/><path class="bar-bot" d="M4 17h16"/></svg>
+    </button>
+    <nav class="menu" id="site-menu" aria-label="Main">
+      <div class="nav-links">
+        <a href="../#modelling">Modelling</a>
+        <a href="../#materials">Materials</a>
+        <a href="../#animation">Animation</a>
+        <a href="../#export">Export</a>
+        <a href="#" aria-current="page">Manual</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <mask id="moon-mask"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="moon-cut" cx="17" cy="7" r="6.5" fill="#000"/></mask>
+            <circle class="sun-core" cx="12" cy="12" r="8" fill="currentColor" mask="url(#moon-mask)"/>
+            <g class="rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>
+            </g>
+          </svg>
+          <span class="theme-label">Dark theme</span>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/MojzisekJan/HeronBrush">GitHub</a>
+        <a class="btn btn-primary" href="../editor/">Try in the browser</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<script>
+  // The menu folds behind the button on narrow windows; without this script the links stay in view.
+  (function () {
+    var root = document.documentElement, header = document.querySelector('.nav');
+    var toggle = header.querySelector('.menu-toggle'), menu = document.getElementById('site-menu');
+    root.classList.add('js');
+    function set(open) {
+      header.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () { set(!header.classList.contains('open')); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && header.classList.contains('open')) { set(false); toggle.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!header.contains(e.target)) set(false); });
+    matchMedia('(min-width: 961px)').addEventListener('change', function () { set(false); });
+
+    // The theme toggle: remembers the choice; without one the page follows the system.
+    var themeButton = header.querySelector('.theme-toggle'), label = themeButton.querySelector('.theme-label');
+    function show(theme) {
+      root.dataset.theme = theme;
+      themeButton.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = theme === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+    show(root.dataset.theme);
+    themeButton.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      show(next);
+      root.classList.add('theme-switched');
+      try { localStorage.setItem('heron-theme', next); } catch (e) {}
+    });
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+      var stored = null;
+      try { stored = localStorage.getItem('heron-theme'); } catch (err) {}
+      if (!stored) show(e.matches ? 'light' : 'dark');
+    });
+  })();
+</script>
+<div class="manual wrap">
+  <aside class="toc" id="toc" aria-label="Contents">
+    <div class="toc-tools">
+      <label class="sr-only" for="lang">Language</label>
+      <select id="lang" class="lang-select"><option value="" selected lang="en">English</option><option value="cs/" lang="cs">Čeština</option><option value="de/" lang="de">Deutsch</option><option value="zh/" lang="zh-Hans">中文</option><option value="es/" lang="es">Español</option><option value="uk/" lang="uk">Українська</option><option value="pl/" lang="pl">Polski</option><option value="it/" lang="it">Italiano</option><option value="fr/" lang="fr">Français</option><option value="pt-BR/" lang="pt-BR">Português (Brasil)</option><option value="ja/" lang="ja">日本語</option><option value="ko/" lang="ko">한국어</option><option value="tr/" lang="tr">Türkçe</option><option value="id/" lang="id">Bahasa Indonesia</option><option value="ru/" lang="ru">Русский</option><option value="nl/" lang="nl">Nederlands</option><option value="sv/" lang="sv">Svenska</option><option value="da/" lang="da">Dansk</option><option value="nb/" lang="nb">Norsk bokmål</option><option value="fi/" lang="fi">Suomi</option><option value="hu/" lang="hu">Magyar</option><option value="ro/" lang="ro">Română</option><option value="sk/" lang="sk">Slovenčina</option><option value="el/" lang="el">Ελληνικά</option><option value="vi/" lang="vi">Tiếng Việt</option><option value="zh-TW/" lang="zh-Hant">繁體中文</option><option value="bg/" lang="bg">Български</option><option value="hr/" lang="hr">Hrvatski</option><option value="sl/" lang="sl">Slovenščina</option><option value="lt/" lang="lt">Lietuvių</option></select>
+      <div class="search">
+        <input id="search" type="search" placeholder="Search documentation" autocomplete="off" aria-label="Search documentation">
+        <ol id="results" class="results" hidden data-nothing="No matching chapters"></ol>
+      </div>
+    </div>
+    <nav class="toc-list"><ul><li class="chapter"><a href="#s1">Getting started</a><ul><li><a href="#s1-1">The welcome screen</a></li><li><a href="#s1-2">Your first map</a></li><li><a href="#s1-3">Files and saving</a></li></ul></li><li class="chapter"><a href="#s2">The interface</a><ul><li><a href="#s2-1">Title bar and menus</a></li><li><a href="#s2-2">The tool strip</a></li><li><a href="#s2-3">Map views</a></li><li><a href="#s2-4">The inspector</a></li><li><a href="#s2-5">The status bar and the output pane</a></li><li><a href="#s2-6">Dialogs and appearance</a></li></ul></li><li class="chapter"><a href="#s3">Navigation and keyboard</a><ul><li><a href="#s3-1">Moving in the 3D view</a></li><li><a href="#s3-2">Moving in 2D views</a></li><li><a href="#s3-3">Grid and snapping</a></li><li><a href="#s3-4">Common shortcuts</a></li><li><a href="#s3-5">Selection shortcuts</a></li><li><a href="#s3-6">Transform shortcuts</a></li><li><a href="#s3-7">The Blender keymap</a></li></ul></li><li class="chapter"><a href="#s4">Brushes and modelling tools</a><ul><li><a href="#s4-1">Drawing brushes</a></li><li><a href="#s4-2">Selecting</a></li><li><a href="#s4-3">Shaping tools</a></li><li><a href="#s4-4">Combining brushes</a></li><li><a href="#s4-5">Sweep, fillet, patch and bevel</a></li><li><a href="#s4-6">3D text</a></li></ul></li><li class="chapter"><a href="#s5">Materials and UVs</a><ul><li><a href="#s5-1">Loading and applying materials</a></li><li><a href="#s5-2">The UV editor</a></li><li><a href="#s5-3">UV keys</a></li><li><a href="#s5-4">Tool materials</a></li><li><a href="#s5-5">Omitting faces from export</a></li></ul></li><li class="chapter"><a href="#s6">Colour and gradients</a><ul><li><a href="#s6-1">Palette and mix colour</a></li><li><a href="#s6-2">The colour picker</a></li><li><a href="#s6-3">Gradients</a></li><li><a href="#s6-4">Surface material</a></li></ul></li><li class="chapter"><a href="#s7">Assets, layers and groups</a><ul><li><a href="#s7-1">The asset library</a></li><li><a href="#s7-2">Layers</a></li><li><a href="#s7-3">Groups and linked groups</a></li><li><a href="#s7-4">A shared scale</a></li></ul></li><li class="chapter"><a href="#s8">Entities and gameplay</a><ul><li><a href="#s8-1">Placing entities</a></li><li><a href="#s8-2">Properties</a></li><li><a href="#s8-3">What an export can do</a></li></ul></li><li class="chapter"><a href="#s9">Animation</a><ul><li><a href="#s9-1">Preview animations</a></li><li><a href="#s9-2">The keyframe editor</a></li><li><a href="#s9-3">Clips</a></li><li><a href="#s9-4">Transport and playback</a></li><li><a href="#s9-5">The timeline</a></li><li><a href="#s9-6">Keys in the editor</a></li><li><a href="#s9-7">Posing in the views</a></li><li><a href="#s9-8">Connecting buttons to animations</a></li><li><a href="#s9-9">Animation in exports</a></li><li><a href="#s9-10">The Motion lab example</a></li></ul></li><li class="chapter"><a href="#s10">Exporting to an engine</a><ul><li><a href="#s10-1">Common options</a></li><li><a href="#s10-2">Target notes</a></li></ul></li><li class="chapter"><a href="#s11">Live links: Godot, Unity, Defold and Flax</a><ul><li><a href="#s11-1">Godot</a></li><li><a href="#s11-2">Unity</a></li><li><a href="#s11-3">Defold</a></li><li><a href="#s11-4">Flax</a></li></ul></li><li class="chapter"><a href="#s12">Collaborative live sessions</a><ul><li><a href="#s12-1">Host and join</a></li></ul></li><li class="chapter"><a href="#s13">3D display and a second monitor</a><ul><li><a href="#s13-1">Display modes</a></li><li><a href="#s13-2">A separate 3D window</a></li><li><a href="#s13-3">Procedural sky</a></li></ul></li><li class="chapter"><a href="#s14">Render cameras and PNG images</a><ul><li><a href="#s14-1">Placing the camera</a></li><li><a href="#s14-2">Settings</a></li><li><a href="#s14-3">Rendering</a></li></ul></li><li class="chapter"><a href="#s15">Preferences</a><ul><li><a href="#s15-1">The pages</a></li><li><a href="#s15-2">Language</a></li></ul></li><li class="chapter"><a href="#s16">Plugins and MCP</a><ul><li><a href="#s16-1">Plugins</a></li><li><a href="#s16-2">MCP</a></li></ul></li><li class="chapter"><a href="#s17">Command line</a><ul><li><a href="#s17-1">Opening files</a></li><li><a href="#s17-2">Commands</a></li></ul></li><li class="chapter"><a href="#s18">Troubleshooting</a><ul><li><a href="#s18-1">When something looks wrong</a></li><li><a href="#s18-2">Settings and backups</a></li><li><a href="#s18-3">Reporting a bug</a></li><li><a href="#s18-4">Using this manual</a></li></ul></li></ul></nav>
+  </aside>
+  <button class="toc-toggle" type="button" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+    <span class="toc-current">Getting started</span>
+  </button>
+  <article class="manual-body">
+<h2 id="s1"><a class="anchor" href="#s1" aria-hidden="true" tabindex="-1">#</a>Getting started</h2>
+<p>Heron Brush is a brush-based level editor. You build levels from convex brushes, paint and texture their faces, place entities, animate doors and platforms, and export the result to a game engine. It also has built-in assets, parametric shapes, live links to engine editors, shared editing sessions and still-image rendering. This manual is bundled with the application and works offline.</p>
+<p>On macOS, <span class="keys"><kbd>Cmd</kbd></span> works wherever this manual says <span class="keys"><kbd>Ctrl</kbd></span>, and Option is Alt.</p>
+<h3 id="s1-1"><a class="anchor" href="#s1-1" aria-hidden="true" tabindex="-1">#</a>The welcome screen</h3>
+<p>When Heron Brush starts without a map, the welcome screen opens. On the left are <strong>Continue</strong> (the last map you had open), <strong>New map</strong> and <strong>Browse</strong> for opening an existing <code>.map</code>, plus <strong>Game</strong>, <strong>Manual</strong> and <strong>Preferences</strong>. On the right is a list of recent maps with thumbnails, followed by <strong>Examples</strong>. The star (<strong>Keep at the top</strong>) pins a map to the top of the list; the bin (<strong>Move to the trash</strong>) moves the file to the system wastebasket, so it can be restored. The arrow keys move through the screen and Enter opens the focused item. File → Welcome brings the screen back at any time.</p>
+<h3 id="s1-2"><a class="anchor" href="#s1-2" aria-hidden="true" tabindex="-1">#</a>Your first map</h3>
+<ol>
+<li>Choose <strong>New map</strong> on the welcome screen, or File → New map (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>).</li>
+<li>Pick the Brush tool (<span class="keys"><kbd>B</kbd></span>) in the tool strip and drag in a 2D view to draw the selected shape. Check its depth in another 2D view.</li>
+<li>Select the brush and move it by dragging. Use the <strong>Face</strong> tab to give it a material or a colour.</li>
+<li>Save the source map with <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>. When you are ready to use it in a game, open File → Export and write a scene for your engine.</li>
+</ol>
+<h3 id="s1-3"><a class="anchor" href="#s1-3" aria-hidden="true" tabindex="-1">#</a>Files and saving</h3>
+<p>The <code>.map</code> file is your editable source. Save regularly: exporting, live links and rendering never save the map for you. File → Save As (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>) adds the <code>.map</code> extension if you leave it out. File → Revert to saved map throws away unsaved changes and reloads the file. If you close a window or open another map with unsaved changes, Heron Brush asks whether to <strong>Save</strong>, <strong>Discard</strong> or <strong>Cancel</strong>.</p>
+<p>While a saved map has unsaved changes, numbered backups are written every ten minutes to an <code>autosave</code> folder next to the map. The 50 newest backups are kept.</p>
+<p>Opening a map while Heron Brush is already running hands it to the running window, which comes to the front. Use <code>--new-instance</code> on the command line when you want a separate window (see Command line).</p>
+<h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>The interface</h2>
+<p>The main window has a title bar with the menus, a tool strip under it, the map views, the inspector on the right and a status bar along the bottom.</p>
+<h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>Title bar and menus</h3>
+<p>The title bar shows the logo, the menus, the map name in the middle and the window buttons. On macOS the usual red, yellow and green buttons sit at the left. Drag the title bar to move the window and double-click it to maximise. While something runs in the background, an indicator appears near the end of the bar: an engine live link, a live session or <strong>MCP active</strong>. Click an indicator to stop the live link or to open its window.</p>
+<ul>
+<li><strong>File</strong>: Welcome, New map (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>), Open Map (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span>), Save (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>), Save As (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>), Revert to saved map, Export, Render image, Plugins and Preferences (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>).</li>
+<li><strong>Edit</strong>: Undo (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Redo (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Cut, Copy, Paste, Duplicate (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>), Delete, Select all (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>), Repeat last commands (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>) and Forget repeatable commands.</li>
+<li><strong>View</strong>: 3D view in separate window, Go to, Snap to grid (<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>), Show grid (<span class="keys"><kbd>0</kbd></span>), Preview animations and Show omitted faces.</li>
+<li><strong>Geometry</strong>: Insert 3D text, Join corner, Convert faces to patches, Move selection out of its entity and Sync linked groups.</li>
+<li><strong>Animation</strong>: Keyframe animation, Preview animations and Place camera from 3D view (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>).</li>
+<li><strong>Map</strong>: Load, Reload and Unload point file; Load, Reload and Unload portal file. These show leak traces and portals written by map compilers.</li>
+<li><strong>Collaboration</strong>: Live session and Serve for an agent (MCP).</li>
+<li><strong>Help</strong>: Manual and About.</li>
+</ul>
+<h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>The tool strip</h3>
+<p>The tool strip carries every tool. The first group is used all the time: Select, Brush, Clip, Vertex, Edge, Face, Rotate and Scale. The second group holds Shear, Assemble, Sweep, Control point, Fillet and Paint. Hover over a button to see its name and shortcut. Clicking the active tool again returns to Select.</p>
+<p>Enable <strong>Show simulation preview button</strong> in Preferences → View → Window to put a start/stop preview control beside Lock and UV in the tool strip. It uses the same preview state as Animation → Preview animations. The preference survives restart; it is off by default.</p>
+<p>After the tools come <strong>Flip horizontally</strong> and <strong>Flip vertically</strong>, then two switches: <strong>Lock</strong> keeps the material mapping when a brush moves, and <strong>UV</strong> keeps it when a brush turns (<span class="keys"><kbd>U</kbd></span> toggles it). The active tool's own settings follow: the Brush tool shows the shape and its options, and the Fillet tool shows its radius, faces and corners with <strong>Apply</strong>. At the right end are the tool name, the grid size (<strong>Grid 16</strong> and so on; click to choose another) and the <strong>Grid settings</strong> menu with Snap to grid, Show grid, Preview animations, Show omitted faces and Keyframe animation.</p>
+<h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>Map views</h3>
+<p>There are four views: the 3D view and three flat views, Top (XY), Front (XZ) and Side (YZ). Preferences → View → Layout chooses One pane, Two panes, Three panes or Four panes. Drag the dividers to resize the panes. Clicking in a view gives it the keyboard. <span class="keys"><kbd>Space</kbd></span> moves a pane that shows one view at a time to its next view, and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> maximises the view under the keyboard and restores the layout again.</p>
+<p>Right-click without dragging in any view to open a context menu for the selection and what is under the pointer. It offers grouping, layers, linked groups, creating entities, moving brushes into or out of an entity, copying a material name and revealing it in the material browser.</p>
+<h3 id="s2-4"><a class="anchor" href="#s2-4" aria-hidden="true" tabindex="-1">#</a>The inspector</h3>
+<p>The inspector on the right has four tabs. Drag its left edge to change its width.</p>
+<ul>
+<li><strong>Map</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>1</kbd></span>): Layers, Groups, Plugins, Issues, View filters and Tags.</li>
+<li><strong>Entity</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>2</kbd></span>): the entity browser, the entity definitions, the properties of the selected entity and, for buttons and triggers, Animation trigger.</li>
+<li><strong>Face</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>3</kbd></span>): UV, Materials, Colour, Sweep, Fillet, Patch, and Inset &amp; bevel. Each section can be folded.</li>
+<li><strong>Assets</strong>: the library of reusable brush models.</li>
+</ul>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>5</kbd></span> hides or shows the inspector and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>T</kbd></span> hides or shows the tool strip, which gives the views more room.</p>
+<h3 id="s2-5"><a class="anchor" href="#s2-5" aria-hidden="true" tabindex="-1">#</a>The status bar and the output pane</h3>
+<p>The status bar along the bottom shows the editor's latest message. Errors are drawn in red. Click the bar, or press <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>, to open the output pane with the full history of messages. Most commands report what they did here, for example how many brushes were clipped.</p>
+<h3 id="s2-6"><a class="anchor" href="#s2-6" aria-hidden="true" tabindex="-1">#</a>Dialogs and appearance</h3>
+<p>Dialogs such as Preferences, Export and Render image open as windows of their own. Preferences → View → Colour scheme chooses Follow the desktop, Light or Dark. <strong>Panel opacity (%)</strong> on the Overview page makes the panels see-through over the views. The window draws its own buttons in the style of your system: native on macOS, Windows 11 style on Windows and GNOME style on Linux.</p>
+<h2 id="s3"><a class="anchor" href="#s3" aria-hidden="true" tabindex="-1">#</a>Navigation and keyboard</h2>
+<h3 id="s3-1"><a class="anchor" href="#s3-1" aria-hidden="true" tabindex="-1">#</a>Moving in the 3D view</h3>
+<p>Hold the right mouse button and drag to look around. Drag with the middle button to pan. The wheel moves forward and back. <span class="keys"><kbd>W</kbd></span>, <span class="keys"><kbd>A</kbd></span>, <span class="keys"><kbd>S</kbd></span> and <span class="keys"><kbd>D</kbd></span> fly forward, left, back and right, <span class="keys"><kbd>Q</kbd></span> rises and <span class="keys"><kbd>X</kbd></span> descends; hold <span class="keys"><kbd>Shift</kbd></span> for larger steps. With <strong>Alt + middle-drag moves the camera</strong> switched on in Preferences → Mouse, Alt with the middle button moves along the view direction. Speeds, inversions and the field of view are in Preferences → Mouse.</p>
+<h3 id="s3-2"><a class="anchor" href="#s3-2" aria-hidden="true" tabindex="-1">#</a>Moving in 2D views</h3>
+<p>Drag with the middle button to pan and use the wheel to zoom around the pointer. Panning and zooming one flat view keeps the others aligned; <strong>Link 2D views</strong> in Preferences → Mouse controls this. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span> resets the zoom and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>U</kbd></span> resets the flat views to the origin.</p>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>U</kbd></span> frames the selection in every view. View → Go to (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>M</kbd></span>) moves the camera to typed coordinates, selects what is at a line of the map file, or moves the selection by a typed amount.</p>
+<h3 id="s3-3"><a class="anchor" href="#s3-3" aria-hidden="true" tabindex="-1">#</a>Grid and snapping</h3>
+<p><span class="keys"><kbd>+</kbd></span> and <span class="keys"><kbd>-</kbd></span> change the grid size, and the number keys <span class="keys"><kbd>1</kbd></span> to <span class="keys"><kbd>9</kbd></span> choose a size directly, from 1 to 256 units. <span class="keys"><kbd>0</kbd></span> or <span class="keys"><kbd>#</kbd></span> shows or hides the grid, and <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> turns snapping on or off. <span class="keys"><kbd>S</kbd></span> snaps the selected brushes' vertices to the current grid, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> snaps them to whole units and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> to the grid.</p>
+<h3 id="s3-4"><a class="anchor" href="#s3-4" aria-hidden="true" tabindex="-1">#</a>Common shortcuts</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>: save the map. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>: save as.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>: undo. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> or <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>: redo.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>: copy, cut and paste. Paste puts the objects at the pointer; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></span> keeps their original coordinates. With faces selected, copy takes their material and UV settings.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>: duplicate. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>: linked duplicate of a group.</li>
+<li><span class="keys"><kbd>Delete</kbd></span> or <span class="keys"><kbd>Backspace</kbd></span>: delete the selection.</li>
+<li><span class="keys"><kbd>Esc</kbd></span>: cancel the current drag, step back in the active tool, return to Select, and finally clear the selection. <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Esc</kbd></span> returns to Select directly.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>: repeat the last repeatable commands. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span>: forget them.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> or <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>: place the render camera at the 3D view.</li>
+<li><span class="keys"><kbd>F5</kbd></span>: reload the materials. <span class="keys"><kbd>F6</kbd></span>: reload the entity definitions.</li>
+</ul>
+<h3 id="s3-5"><a class="anchor" href="#s3-5" aria-hidden="true" tabindex="-1">#</a>Selection shortcuts</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>: select all, or all handles while a vertex, edge or face tool is active. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd></span>: select nothing. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span>: invert the selection.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B</kbd></span>: select the other objects in the same entity or group.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>T</kbd></span>: select everything the selected brushes touch. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd></span>: select everything inside them. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>E</kbd></span>: select everything in their column along the view axis. These use up the selecting brushes.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>I</kbd></span>: isolate the selection. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>I</kbd></span>: hide it. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span>: show everything again.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span>: group. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span>: ungroup.</li>
+</ul>
+<h3 id="s3-6"><a class="anchor" href="#s3-6" aria-hidden="true" tabindex="-1">#</a>Transform shortcuts</h3>
+<ul>
+<li>Arrow keys and <span class="keys"><kbd>Page Up</kbd></span> / <span class="keys"><kbd>Page Down</kbd></span> move the selection by one grid step in the direction they point in the active view. With <span class="keys"><kbd>Ctrl</kbd></span> they duplicate while moving, and with <span class="keys"><kbd>Alt</kbd></span> they rotate.</li>
+<li><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Y</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span>: rotate a quarter turn about that axis; add <span class="keys"><kbd>Shift</kbd></span> for the other direction.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span>: flip across the view; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span>: flip up and down. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>X</kbd></span> and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Y</kbd></span> mirror along X or Y.</li>
+<li><span class="keys"><kbd>Insert</kbd></span>: place a point entity at the selection centre.</li>
+<li><span class="keys"><kbd>Tab</kbd></span>: with a brush selected, cycle Select → Vertex → Edge → Face → Select.</li>
+</ul>
+<h3 id="s3-7"><a class="anchor" href="#s3-7" aria-hidden="true" tabindex="-1">#</a>The Blender keymap</h3>
+<p>Preferences → Keyboard → Keymap offers Heron Brush (the default, used throughout this manual) and Blender. With Blender: <span class="keys"><kbd>G</kbd></span> selects and moves, <span class="keys"><kbd>R</kbd></span> rotates, <span class="keys"><kbd>S</kbd></span> scales, <span class="keys"><kbd>E</kbd></span> sweeps, <span class="keys"><kbd>1</kbd></span>, <span class="keys"><kbd>2</kbd></span> and <span class="keys"><kbd>3</kbd></span> choose the vertex, edge and face tools, <span class="keys"><kbd>K</kbd></span> clips, <span class="keys"><kbd>B</kbd></span> selects, <span class="keys"><kbd>A</kbd></span> selects everything and <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span> drops the selection, <span class="keys"><kbd>X</kbd></span> deletes, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> duplicates, <span class="keys"><kbd>H</kbd></span> hides and <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>H</kbd></span> shows everything, and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> redoes. Everything else is the same in both.</p>
+<h2 id="s4"><a class="anchor" href="#s4" aria-hidden="true" tabindex="-1">#</a>Brushes and modelling tools</h2>
+<p>Brushes are convex solids defined by planes. Build complex objects from several simple brushes rather than trying to make one brush concave. Keep the brush count low where a simple shape is enough.</p>
+<h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>Drawing brushes</h3>
+<p>Choose the Brush tool (<span class="keys"><kbd>B</kbd></span>) and drag in a view. The tool strip shows <strong>Shape to draw</strong>: Cuboid, Stairs, Arch, Cylinder, Cone, Spheroid (UV), Spheroid (Icosahedron), Hollow sphere and Insert 3D text. <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span> to <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>8</kbd></span> choose a shape directly. Open <strong>Shape settings</strong> to change <strong>Hollow</strong> and <strong>Thickness:</strong>, <strong>Step height:</strong> and <strong>Direction:</strong> for stairs, <strong>Axis:</strong>, <strong>Sides:</strong> and the circle mode for round shapes, <strong>Rings:</strong> for UV spheres, <strong>Accuracy:</strong> for the icosahedron and <strong>Brushes</strong> for the hollow sphere. Set the options before you drag. Check the result in more than one view.</p>
+<h4 id="s4-1-1"><a class="anchor" href="#s4-1-1" aria-hidden="true" tabindex="-1">#</a>Hollow sphere made of brushes</h4>
+<p>Select <strong>Hollow sphere</strong> or press <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>8</kbd></span>, open <strong>Shape settings</strong> and set
+<strong>Thickness:</strong> and <strong>Brushes</strong>. Choose 20 to 320 convex cells in steps of four,
+for example 76, 80 or 84. Opposite edges are refined together so the shell
+stays centrally symmetric. Typed counts round to the nearest supported value.
+Draw it like any other shape. Drawing depth follows the
+reference bounds. Equal dimensions on all three axes make a sphere; stretching
+the bounds makes an ellipsoid.</p>
+<p>Each cell has an outer and inner triangular surface and three contact faces.
+Adjacent contacts match exactly and use <code>skip</code>; the centre stays empty.
+Thickness is radial at the vertices on the shortest semi-axis and must be
+positive and smaller than that radius. It scales proportionally along the
+other axes of an ellipsoid. The result is ordinary selected brushes with one
+Undo step, editable and exportable through the existing targets.</p>
+<h4 id="s4-1-2"><a class="anchor" href="#s4-1-2" aria-hidden="true" tabindex="-1">#</a>Stairs with landings and turns</h4>
+<p>Choose a straight flight, left/right L turn or U return. Straight flights accept
+an optional <strong>Landing</strong>; turned layouts use <strong>Flight width</strong>. <strong>Slab thickness</strong>
+zero makes solid stairs; a positive value makes a continuous sloped underside
+with vertically measured thickness. The landing connects to both flights.
+Advanced layouts use equal riser heights and at most 512 steps.</p>
+<h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>Selecting</h3>
+<p>Click a brush to select it, and <span class="keys"><kbd>Ctrl</kbd></span>-click to add to the selection. A drag from empty space draws a selection box. In the 3D view, <span class="keys"><kbd>Shift</kbd></span>-click selects a single face and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span>-click adds more faces. Dragging a selected brush moves it; dragging an unselected one selects and moves just that one.</p>
+<p>In the 3D view, <span class="keys"><kbd>Shift</kbd></span>-drag a face of a selected brush to extrude it. <span class="keys"><kbd>Alt</kbd></span>-click another face to copy the selected face's material and alignment onto it; <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> copies only the material and <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> copies the material with UV rotated to follow the target face.</p>
+<p>If the window manager uses <span class="keys"><kbd>Alt</kbd></span> to move windows, press <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span> on the source face, select the target faces and press <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>. Copy/paste also accepts Face-tool handles. The transfer carries the source face's paint as well: a flat colour, or a gradient whose placed ends are fitted to the target face. When the source has no paint, the target's paint is removed so its material shows.</p>
+<h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>Shaping tools</h3>
+<ul>
+<li><strong>Select</strong> (<span class="keys"><kbd>Esc</kbd></span>): select and move.</li>
+<li><strong>Vertex</strong> (<span class="keys"><kbd>V</kbd></span>), <strong>Edge</strong> (<span class="keys"><kbd>E</kbd></span>), <strong>Face</strong> (<span class="keys"><kbd>F</kbd></span>): drag corners, edges or faces. <span class="keys"><kbd>Shift</kbd></span>-drag from the middle of an edge or face adds a corner there. <span class="keys"><kbd>Delete</kbd></span> removes the picked corners.</li>
+<li><strong>Rotate</strong> (<span class="keys"><kbd>R</kbd></span>), <strong>Scale</strong> (<span class="keys"><kbd>T</kbd></span>), <strong>Shear</strong> (<span class="keys"><kbd>G</kbd></span>): transform the selection with handles.</li>
+<li><strong>Clip</strong> (<span class="keys"><kbd>C</kbd></span>): click two or three points to define a cutting plane. <span class="keys"><kbd>Enter</kbd></span> cuts, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> chooses which side to keep, and <span class="keys"><kbd>Backspace</kbd></span> or <span class="keys"><kbd>Esc</kbd></span> removes the last point.</li>
+<li><strong>Assemble</strong> (<span class="keys"><kbd>N</kbd></span>): place points around a volume and press <span class="keys"><kbd>Enter</kbd></span> to make a convex brush from them. <span class="keys"><kbd>Backspace</kbd></span> removes the last point.</li>
+<li><strong>Sweep</strong> (<span class="keys"><kbd>Y</kbd></span>): see the Sweep section below.</li>
+<li><strong>Control point</strong> (<span class="keys"><kbd>P</kbd></span>): reshape a patch's control grid.</li>
+<li><strong>Fillet</strong> (<span class="keys"><kbd>O</kbd></span>): click an edge to pin its preview, adjust radius, faces and corners, then confirm with <strong>Apply</strong> or <span class="keys"><kbd>Enter</kbd></span>. With edges picked in the Edge or Fillet tool, the right-click menu offers <strong>Fillet</strong>, which switches to the Fillet tool with those edges and opens its settings. Click a brush body to select it while the tool stays active; <span class="keys"><kbd>Ctrl</kbd></span>-click a body to add or remove a brush. On edge handles, <span class="keys"><kbd>Ctrl</kbd></span> adds or removes edges. Clicking empty space clears brushes and preview edges. This works in both 2D and 3D. More faces make a smoother result and more geometry.</li>
+<li><strong>Paint</strong> (<span class="keys"><kbd>K</kbd></span>): see Materials and UVs.</li>
+</ul>
+<p>Open <strong>Shape settings</strong> from the toolbar to configure any drawn shape. Selecting another shape there opens the window automatically. Its vertical rows include numeric −/+ buttons. The window stays open while you work in the map. Changes update a provisional shape immediately; <strong>Confirm</strong> accepts it, <strong>Cancel</strong> removes the insertion. <strong>Close</strong> only hides the window and keeps the shape editable until the selection changes.</p>
+<h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>Combining brushes</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>: merge the selected brushes into their convex hull.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>K</kbd></span>: subtract the selected brushes from the brushes they touch.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></span>: hollow the selection, with walls one grid step thick.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>L</kbd></span>: intersect the selection.</li>
+</ul>
+<h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>Sweep, fillet, patch and bevel</h3>
+<p><strong>Sweep</strong> builds geometry along a path from selected faces. Select faces with <span class="keys"><kbd>Shift</kbd></span>-click using Select, then set <strong>Travel</strong>, <strong>Turn</strong> (axis and angle), <strong>Scale</strong>, <strong>Steps</strong> and <strong>Path</strong> (Integer or Free alignment; Arc, Straight or S-bend) in the Face tab's Sweep section, and press <strong>Sweep</strong>. The line under the controls says how many brushes it will make. Source materials,
+paint and PBR settings are retained, UVs carry across shared lateral edges, and
+interior caps are hidden. A collapsed cell or solid self-intersection refuses
+the whole operation. New cells retain their source parent, use one Undo step
+and are limited to 1024 in total.</p>
+<p>The <strong>Fillet</strong> section rounds the picked edges with <strong>Radius</strong>, <strong>Faces</strong> and <strong>Corners</strong> (Mitred, Chamfered, Rounded or Setback); one face makes a chamfer. Radius and segment count have −/+ buttons.
+<strong>Inner L corner</strong> fills the inside of two overlapping rectangular members
+with equal depth and the same parent, including unequal member widths.
+The 3D Fillet preview displays the resulting solid surfaces and highlighted edges,
+including inner fills. Radius and segment changes update the preview before Apply
+or Enter; changing tools restores the original surfaces without editing the map.
+Outer Fillet UVs unfold across their strips and continue onto the second
+straight wall when materials match. Spherical multi-edge junctions can retain
+separate UV seams.</p>
+<p><strong>Patch</strong> shows the selected patch's <strong>Columns</strong> and <strong>Rows</strong> with buttons to add or drop a pair. Geometry → Convert faces to patches (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>) makes patches from selected faces.</p>
+<p><strong>Inset &amp; bevel</strong> works on selected faces: <strong>Inset</strong> draws the face in from its edges and <strong>Depth</strong> pushes it out (or in, when negative). <strong>Bevel faces</strong> applies both; the third button adds a panel or cuts a recess, depending on the sign of Depth. <strong>Join corner</strong> opens a dialog that joins two brushes at a mitred or rounded corner with a preview.</p>
+<p>In <strong>Join corner</strong>, the −/+ buttons disable steps beyond the actual geometry
+limits. Invalid typed values retain the last valid preview. <strong>Full-thickness
+wedges</strong> offers <strong>Preserve wall thickness</strong>, which moves the terminal contacts
+so each straight facet has the intended perpendicular thickness. Unequal arm
+widths are interpolated across the segments. Scroll over a preview to zoom,
+drag to pan, and double-click or use <strong>Reset view</strong> to fit the whole corner.
+Both previews share their zoom and pan.</p>
+<p><strong>Connected face region</strong> adjusts the shared boundary simultaneously, without
+insetting a shared selected edge twice. Entire coplanar edges shared by separate
+brushes are supported too. A failure refuses the whole operation; disabling the
+option treats faces individually.</p>
+<p>The same panel offers <strong>Hollow selection</strong> with <strong>Inward</strong>, <strong>Outward</strong> or
+<strong>Centered</strong> thickness, <strong>Open selected faces</strong>, and <strong>Join convex pair</strong>.
+Joining requires two brushes enclosing a convex solid under the same parent
+and removes their original dividing wall. Openings leave no lid over the
+selected faces. The Hollow shortcut retains its one-grid-step inward behaviour.</p>
+<p>After drawing, the shape remains in <strong>Shape preview</strong>, outlined with the resize
+handle colour. Brush settings keep editing that insertion, including hollow
+spheres, cones, stairs and the other generators. <strong>Confirm</strong> or <span class="keys"><kbd>Enter</kbd></span> finishes
+parameter editing; <strong>Cancel</strong> or <span class="keys"><kbd>Escape</kbd></span> undoes the insertion. Changing selection,
+switching tools or editing geometry accepts the current result as ordinary
+brushes. Insertion and all parameter changes form one Undo step. Invalid settings
+retain the last valid geometry. Current valid geometry is saved and exported
+normally; generator parameters are temporary and are not restored after
+confirmation or reopening the map.</p>
+<h3 id="s4-6"><a class="anchor" href="#s4-6" aria-hidden="true" tabindex="-1">#</a>3D text</h3>
+<p>Geometry → Insert 3D text (also the last entry of the Brush tool's shape list) builds brushes from text. It uses Heron Block, a built-in polygon font with clipped corners, proportional widths and Czech accents; lowercase letters use capital forms. Type the <strong>Text</strong>, set <strong>Height</strong> (the cap height; accents rise above it) and <strong>Depth</strong>, watch the live preview and press <strong>Insert</strong>.</p>
+<p>If an operation cannot produce valid geometry, adjust its dimensions, or undo and simplify the shape.</p>
+<h2 id="s5"><a class="anchor" href="#s5" aria-hidden="true" tabindex="-1">#</a>Materials and UVs</h2>
+<h3 id="s5-1"><a class="anchor" href="#s5-1" aria-hidden="true" tabindex="-1">#</a>Loading and applying materials</h3>
+<p>Open the Face tab's <strong>Materials</strong> section. <strong>Load folder</strong> adds a folder of images and <strong>Load .wad</strong> adds a texture package; both appear under <strong>Collections</strong>, where the cross removes one. Type in <strong>Filter materials</strong> to narrow the list. Click a material to make it current and apply it immediately to the selected faces or brushes. Without a selection it only changes the current material. <strong>Apply to selection</strong> reapplies it. Assigning a texture removes solid or gradient paint on those faces while preserving their UV mapping. <strong>Select</strong> offers Select brushes with it and Select faces with it. <strong>Replace</strong> swaps one material for another across the map or only in the selection.</p>
+<p>The <strong>Paint</strong> tool (<span class="keys"><kbd>K</kbd></span>) applies the current material to the face under the pointer. Hold the left button and drag across faces to paint continuously; one Undo restores the whole stroke. This works in 2D and 3D, preserves UVs and clears paint hiding the texture. A click paints one face, a double click paints the whole brush, and <span class="keys"><kbd>Shift</kbd></span>-click picks the material like an eyedropper.</p>
+<p>After <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span> on a source face, <strong>middle-click</strong> a target face to paste its material and UVs in 2D or 3D without changing selection. Middle-drag still pans the view. This gesture never inserts whole objects from the clipboard.</p>
+<h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>The UV editor</h3>
+<p>Open <strong>View → UV editor in separate window</strong>, or use the icon with an arrow leaving a square in
+the inspector's UV section. Its tooltip names the action. The window provides a larger canvas and the same
+controls, sharing the map's face selection and document. <strong>Return to main window</strong>
+restores the Face tab and shows the inspector if it was hidden. Desktop builds
+use a native window; web builds use a floating dialog. Resizing reframes the face.
+<strong>Undo/Redo</strong> use the shared history; the native window also accepts <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>,
+<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>.</p>
+<p>The Face tab's <strong>UV</strong> section shows the selected face's material and outline. Mouse controls on the canvas:</p>
+<ul>
+<li>The wheel zooms around the pointer. Drag with the right or middle button to pan. Double-click the right button to frame the face again; selecting another face frames it automatically.</li>
+<li>Left-drag moves the material while the face outline stays in place. The ring rotates the mapping, the corner handles scale it and the centre handle sets the origin of these changes.</li>
+<li><span class="keys"><kbd>Alt</kbd></span>-left-drag on a tile edge shears, as does <span class="keys"><kbd>Shift</kbd></span>-middle-drag.</li>
+<li>Each drag is one undo step, and <span class="keys"><kbd>Esc</kbd></span> cancels a drag in progress.</li>
+</ul>
+<p>Below the canvas are <strong>Offset</strong>, <strong>Scale</strong>, <strong>Angle</strong> and, when the game uses them, <strong>Content flags</strong>, <strong>Surface flags</strong> and <strong>Surface value</strong>. The buttons are <strong>Reset</strong>, <strong>Reset to world</strong>, <strong>Fit</strong>, <strong>Flip H</strong>, <strong>Flip V</strong> and the two 90° turns. <strong>Align</strong> turns the material along one of the face's edges (press again for the next edge, <span class="keys"><kbd>Shift</kbd></span> for the previous one). The four justify buttons push the material against an edge. <strong>Fit U</strong> and <strong>Fit V</strong> scale so that a whole number of copies covers the face; press again for the next count, and hold <span class="keys"><kbd>Ctrl</kbd></span> to keep a trim sheet's subdivision.</p>
+<h3 id="s5-3"><a class="anchor" href="#s5-3" aria-hidden="true" tabindex="-1">#</a>UV keys</h3>
+<p>With faces selected, the arrow keys move the material, <span class="keys"><kbd>[</kbd></span> and <span class="keys"><kbd>]</kbd></span> turn it by 15°, <span class="keys"><kbd>,</kbd></span> and <span class="keys"><kbd>.</kbd></span> halve or double its scale, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span> flip it, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> resets it, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> resets it to world axes and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>F</kbd></span> fits it to each face.</p>
+<p><strong>Lock</strong> in the tool strip keeps the mapping while brushes move, and <strong>UV</strong> (<span class="keys"><kbd>U</kbd></span>) keeps it while brushes turn.</p>
+<h4 id="s5-3-1"><a class="anchor" href="#s5-3-1" aria-hidden="true" tabindex="-1">#</a>Texture handles in the 3D view</h4>
+<p>With the Select, Face or Paint tool, a selected face that shows its material (not a paint) gets handles in the 3D view. A white outline marks one tile of the material, or a block of tiles or part of one, so that it stays a usable size on the screen.</p>
+<ul>
+<li>The blue square at the outline's corner moves the material. It snaps to the face's corners, the middles of its edges, its edges and its centre, so one drag puts a corner of the texture into a corner of the wall.</li>
+<li>The round handle at the next corner turns the material about the blue corner. Near a face edge it snaps into line with it.</li>
+<li>The far corner scales the material on both axes; the middles of the two far edges scale it along U or V only.</li>
+<li><span class="keys"><kbd>Shift</kbd></span> keeps a move to one axis, a turn to 15° steps and a corner scale even. <span class="keys"><kbd>Alt</kbd></span> drags without snapping, and <span class="keys"><kbd>Esc</kbd></span> cancels the drag.</li>
+</ul>
+<p>A note beside the pointer shows the offset, angle or scale. Every selected face changes, as in the UV editor, and each drag is one undo step. After a drag the outline stays on the tile that was moved until another face is selected.</p>
+<h3 id="s5-4"><a class="anchor" href="#s5-4" aria-hidden="true" tabindex="-1">#</a>Tool materials</h3>
+<ul>
+<li>skip: removes the marked face from engine exports.</li>
+<li>clip: creates collision without visible geometry.</li>
+<li>origin: marks the pivot of a brush entity.</li>
+</ul>
+<p>The names can be changed in the Export window's <strong>Tool materials</strong> card. Use skip for faces you know are hidden.</p>
+<h3 id="s5-5"><a class="anchor" href="#s5-5" aria-hidden="true" tabindex="-1">#</a>Omitting faces from export</h3>
+<p>Select a face and switch on <strong>Omit face from export</strong> in the UV section. Orange hatching marks it in the UV preview. Its material and paint stay saved, and the brush stays closed and editable. Exported render meshes leave that face out while collision is kept. Leaving one quad of a cube produces two render triangles. This does not make faces double-sided or merge meshes.</p>
+<p><strong>Omit covered faces</strong> marks faces fully covered by static brushes, including identical touching faces and enclosed brushes. It works on the selected brushes, or on all visible unlocked world geometry when nothing is selected. Brush entities, transparent materials and brushes that already have omitted faces are skipped. Partly covered faces are not split. One undo restores everything. View → Show omitted faces hides or shows such faces in the editor views; picking still uses the whole brush.</p>
+<h2 id="s6"><a class="anchor" href="#s6" aria-hidden="true" tabindex="-1">#</a>Colour and gradients</h2>
+<p>The Face tab's <strong>Colour</strong> section paints faces with flat colours or gradients on top of their materials. It is useful for blocking out a level and for stylised art. Painted faces keep their real colours in the views; the selection is shown by its outline.</p>
+<h3 id="s6-1"><a class="anchor" href="#s6-1" aria-hidden="true" tabindex="-1">#</a>Palette and mix colour</h3>
+<p>Click one of the twelve palette swatches to paint the selected faces, or whole selected brushes, with it. <strong>Opacity</strong> sets how opaque the next paint is, in percent. <strong>Mix</strong> has a colour button that opens the colour picker; drag in the picker and the selection follows live, or press <strong>Paint</strong> to apply the mix colour as one step. <strong>Back to material</strong> removes the paint so the face shows its material again. The line at the top of the section says what is selected and what it wears.</p>
+<h3 id="s6-2"><a class="anchor" href="#s6-2" aria-hidden="true" tabindex="-1">#</a>The colour picker</h3>
+<p>Every colour button in the editor opens the same picker. Drag in the square to choose saturation and brightness, and in the strip beside it to choose the hue. Below are <strong>R</strong>, <strong>G</strong> and <strong>B</strong> values and an <strong>Opacity</strong> slider where the colour has one. The hex field takes <code>#RRGGBB</code> or <code>#RRGGBBAA</code>; it turns red while the text is not a valid colour. <strong>Copy</strong> puts the hex code on the clipboard. Click outside the picker to close it.</p>
+<h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>Gradients</h3>
+<p><strong>Gradient</strong> chooses Linear gradient or Radial gradient, and the button beside it swaps the colours end for end. Each stop has a colour button and <strong>Position (%)</strong>, and stops between the ends have a remove button. <strong>Add colour stop</strong> adds a stop in the widest gap; a gradient can have up to eight stops. <strong>Gradient angle</strong> sets the direction of a linear gradient, with <strong>+45°</strong> and <strong>−45°</strong> buttons.</p>
+<p>Under the preview is a rail with a marker for each stop. Click the rail to add a stop, click a marker to open its picker, drag a marker to move it, and right-click a marker to remove it. The three swatches under the rail are presets: Warm gradient, Cool gradient and Greyscale gradient. Changes to a gradient apply to the selection live.</p>
+<p>A gradient's direction matters: orient it along a roof slope or along a curved object, not across unrelated faces. Check the model from both sides after painting.</p>
+<h4 id="s6-3-1"><a class="anchor" href="#s6-3-1" aria-hidden="true" tabindex="-1">#</a>Handles on the face</h4>
+<p>With the Select, Face or Paint tool, painted faces that are selected show their paint as handles in the 3D view.</p>
+<ul>
+<li>A face in one colour has a dot at its centre. Click it to open the colour picker; the face follows the picker live.</li>
+<li>A gradient shows a line between its start and end. Drag the square ends to place the gradient anywhere on the face, even beyond it. They snap to the face's corners, the middles of its edges, its edges and its centre. <span class="keys"><kbd>Shift</kbd></span> keeps the direction to 15° steps or along an edge, and <span class="keys"><kbd>Alt</kbd></span> drags without snapping.</li>
+<li>The round handles on the line are the colour stops between the ends. Drag one along the line to move it. Click any handle, an end too, to change its colour.</li>
+<li><span class="keys"><kbd>Alt</kbd></span>-click the line to add a stop in the colour the gradient has there, and <span class="keys"><kbd>Alt</kbd></span>-click a stop to remove it.</li>
+</ul>
+<p>Faces painted alike change together, and each drag or picker session is one undo step. Placed ends set the gradient's direction in place of its angle. <strong>Fit to face</strong> in the Colour section, shown for such a gradient, returns it to the whole face, and so does changing <strong>Gradient angle</strong>.</p>
+<h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>Surface material</h3>
+<p><strong>Surface material</strong> sets <strong>Roughness</strong> (0 is glossy, 100 is matte), <strong>Metallic</strong> (0 for wood, stone or plastic, 100 for metal) and <strong>Emission</strong> (0 to 8; the surface glows in its own colour, including gradients, but does not light nearby objects). Changes apply live to the selected faces or brushes. <strong>Use default surface</strong> removes the override. All changes can be undone.</p>
+<p>Surface effects show in the lit 3D view and in camera renders. Flat and wireframe display leave out the highlights on purpose. Bloom can add a glow around emissive surfaces. Godot and glTF/GLB receive the material values, and the Unity importer turns roughness into smoothness. See <code>docs/surface-materials.md</code> for the limits of each target.</p>
+<h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>Assets, layers and groups</h2>
+<h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>The asset library</h3>
+<p>Open the <strong>Assets</strong> tab. Add a folder of <code>.map</code> models with <strong>Add folder</strong>; the built-in library is always there. Type in <strong>Filter assets</strong> to search. Click a model to select it, then double-click it, press <span class="keys"><kbd>Enter</kbd></span> or click <strong>Insert</strong> to add it where the pointer last was. You can also drag a model into a view. Asset brushes are inserted as one group so the model moves as a whole.</p>
+<p><strong>Save selection as asset</strong> writes the selected brushes to the library as a <code>.map</code>. Library assets are ordinary editable brushes, not imported meshes.</p>
+<h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>Layers</h3>
+<p>The Map tab's <strong>Layers</strong> list organises large areas. Type a name and click <strong>Add</strong> to make a layer, or press <span class="keys"><kbd>Enter</kbd></span> to rename the current one. Each layer can be hidden, locked or left out of exports. <strong>Move here</strong> moves the selection into the current layer. The context menu in the views also offers Move to layer, Make active layer, Hide layers and Isolate layers.</p>
+<h3 id="s7-3"><a class="anchor" href="#s7-3" aria-hidden="true" tabindex="-1">#</a>Groups and linked groups</h3>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span> groups the selection and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span> ungroups it. The Map tab's <strong>Groups</strong> section lists groups and offers <strong>Open</strong>, <strong>Rename</strong>, <strong>Merge</strong>, <strong>Ungroup</strong>, <strong>Take out</strong> and <strong>Extract</strong>. A linked group is a set of copies that share edits: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> makes a linked duplicate, Geometry → Sync linked groups updates the copies, and <strong>Unlink</strong> makes a copy independent. In the Entity tab, a property can be kept as one copy's own when linked groups sync.</p>
+<h3 id="s7-4"><a class="anchor" href="#s7-4" aria-hidden="true" tabindex="-1">#</a>A shared scale</h3>
+<p>The default export scale is 32 map units per metre. The built-in player-start marker is 64 units tall, a 2-metre reference. Compare doorways, vehicles, furniture and plants against it. Change the export scale only on purpose and keep related assets consistent.</p>
+<h2 id="s8"><a class="anchor" href="#s8" aria-hidden="true" tabindex="-1">#</a>Entities and gameplay</h2>
+<p>Common entity definitions are built in and always available: lights, player starts, doors, buttons, platforms, triggers, static props, sounds and waypoints. Loading a project FGD with <strong>Entity definitions</strong> in the Entity tab replaces classes with the same name and keeps the other built-ins.</p>
+<h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>Placing entities</h3>
+<p>In the Entity tab's <strong>Entities</strong> browser, type in <strong>Filter classes</strong> and choose a class. For a point class such as a light, click <strong>Place</strong> or double-click the class; <span class="keys"><kbd>Insert</kbd></span> places one at the selection centre. For a brush class such as a door or trigger, select the brushes and click <strong>Make</strong>. Classes can also be dragged into a view.</p>
+<h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>Properties</h3>
+<p>The property list edits the selected entity. Entities of the same class are edited together. <strong>Add property</strong> adds a key the definition may not know; <strong>Defaults</strong> can put existing properties back to their defaults or add the missing ones. Properties the class defines but the entity does not have are shown dimmed; typing a value adds them. Use targetname and target to link entities.</p>
+<h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>What an export can do</h3>
+<p>Godot's directives create native nodes, collision bodies and trigger areas. Unity and Unreal support native common lights, and Unreal also creates PlayerStart actors. Other data is kept as far as the target's importer allows.</p>
+<p>A door entity alone does not add game behaviour. Movement, trigger responses, player controllers and project scripts still need work in the engine. Defold exports entity properties and collision objects; Flax places models and generic entities. Check the result in your engine before building gameplay on it.</p>
+<h2 id="s9"><a class="anchor" href="#s9" aria-hidden="true" tabindex="-1">#</a>Animation</h2>
+<p>Heron Brush can preview simple motion and edit keyframe animations of brush entities, then export them to several engines.</p>
+<h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>Preview animations</h3>
+<p>Switch on <strong>Preview animations</strong> in the View menu, the Animation menu, the Grid settings menu or the Map tab's View section. It plays func_rotate rotation and func_shuttle back-and-forth motion when start_on is enabled, using the entity's axis, speed, direction, travel and wait properties, and it plays keyframe clips set to Play on start. The fan and windmill assets already contain rotating parts.</p>
+<p>Turning the preview off restores the original pose. A click in a view stops playback before selecting or editing; camera navigation keeps working. The preview does not change the map, the undo history or exports, and it does not run physics or game logic.</p>
+<h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>The keyframe editor</h3>
+<p>Open it with Animation → Keyframe animation or from the Grid settings menu. It docks under the views, or in the 3D window while that is separate. The window icon in its heading moves it into a window of its own; it keeps the frame and the undo history. <strong>Edit animation</strong> switches the views to the animated pose and <strong>Edit map</strong> goes back to the rest geometry. In animation mode each view shows <strong>Edit animation</strong> and the frame number at the bottom.</p>
+<p>Select a brush entity, or a brush or brush group, to animate it. A flat brush group shares one animation and pivot; groups that contain several entities need separate animations.</p>
+<h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>Clips</h3>
+<p>The <strong>Animation</strong> selector switches between named clips. Type a name in <strong>Animation name</strong> and click <strong>Save as</strong> to copy the current clip under that name; <strong>Delete</strong> removes a clip. <strong>Translate</strong> creates a <code>translate</code> clip without rotation. <strong>Door animations</strong> creates smooth <code>open</code> and <code>close</code> clips with a 90-degree turn around the current pivot; move the pivot to the hinge first. <strong>Play on start</strong> makes the clip play when the level starts; the door preset switches it off.</p>
+<h3 id="s9-4"><a class="anchor" href="#s9-4" aria-hidden="true" tabindex="-1">#</a>Transport and playback</h3>
+<p>The transport buttons are <strong>Start</strong>, <strong>Previous key</strong>, <strong>Playback</strong>, <strong>Next key</strong> and <strong>End</strong>. <strong>Frame</strong> shows and sets the current frame, and <strong>Duration (s)</strong> sets the clip length. The mode is <strong>Once</strong>, <strong>Loop</strong> or <strong>Ping-pong</strong>.</p>
+<h3 id="s9-5"><a class="anchor" href="#s9-5" aria-hidden="true" tabindex="-1">#</a>The timeline</h3>
+<p>The timeline has a ruler with the playhead and a lane for <strong>Position</strong> (X, Y and Z keyed together) and for each rotation angle, RX, RY and RZ. Click or drag in the ruler to move the playhead and preview that pose in every view. Drag with the middle button to pan the timeline. Drag keys to move them in time; <span class="keys"><kbd>Shift</kbd></span> adds to the selection; double-click a lane to insert a key; <span class="keys"><kbd>Ctrl</kbd></span>+wheel zooms. <strong>Curves</strong> shows the value curves instead of the lanes.</p>
+<p>The buttons above it are <strong>Add key</strong>, <strong>Remove</strong>, <strong>Copy</strong>, <strong>Paste</strong> and <strong>Duplicate</strong>. <strong>Snap to frames</strong> keeps keys on whole frames and <strong>Fit</strong> shows the whole clip. <strong>Retime keys</strong> opens <strong>Time scale</strong>, <strong>Offset (frames)</strong>, <strong>Scale from playhead</strong>, <strong>Extend duration</strong> and <strong>Retime selection</strong>.</p>
+<p>The key inspector beside the timeline edits the selected key: <strong>Frame</strong>, <strong>Value</strong> (or the three coordinates of a Position key), the interpolation <strong>Linear</strong>, <strong>Hold</strong> or <strong>Bezier</strong>, <strong>Incoming slope</strong> and <strong>Outgoing slope</strong>, and <strong>Smooth tangents</strong>.</p>
+<h3 id="s9-6"><a class="anchor" href="#s9-6" aria-hidden="true" tabindex="-1">#</a>Keys in the editor</h3>
+<p>While the timeline has the keyboard: <span class="keys"><kbd>Space</kbd></span> plays or pauses, the left and right arrows step one frame, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span> selects all keys, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span> and <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span> copy, cut and paste keys, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span> duplicates them, <span class="keys"><kbd>Delete</kbd></span> removes them, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span> undoes and <span class="keys"><kbd>Esc</kbd></span> cancels a drag. Outside the timeline, <span class="keys"><kbd>Esc</kbd></span> leaves animation mode. Undo keeps the zoom, the selection and the playhead where they were.</p>
+<h3 id="s9-7"><a class="anchor" href="#s9-7" aria-hidden="true" tabindex="-1">#</a>Posing in the views</h3>
+<p>The row under the timeline has <strong>Onion skinning</strong> with a count and <strong>Spacing</strong>, which shows nearby poses as ghosts; the <strong>Pivot</strong> coordinates; <strong>Auto key</strong>; and the pose tools <strong>Translate</strong>, <strong>Rotate</strong> and <strong>Pivot</strong>.</p>
+<ul>
+<li><strong>Add key</strong> turns on Auto key and pauses playback. With Auto key on and <strong>Translate</strong> chosen, drag a coloured axis of the selected entity's handle in the 3D view to key its position at the current frame.</li>
+<li>In a 2D view, drag the selected brush or a member of its group to key translation along the two visible axes, with grid snapping. Auto key does not need to be on for this.</li>
+<li>With <strong>Rotate</strong>, drag the brush in a 2D view around its orange pivot marker. Top keys RZ, Front keys RY and Side keys RX, snapped to grid angles.</li>
+<li>With <strong>Pivot</strong>, drag the yellow rotation centre in any 2D view. It snaps to the grid and keeps its depth. Keys and rest geometry stay unchanged.</li>
+</ul>
+<p>The cyan path in 2D and 3D shows the pivot's travel. Click a path point to select its time and keys, or drag it to change the position; with Auto key on you can also drag path points in the 3D view. Labels show frame numbers and dashed segments mark jumps. <span class="keys"><kbd>Esc</kbd></span> cancels any of these drags, and one undo reverses a whole drag.</p>
+<p>New animations start at rest with keys at time zero. Make motion by changing the pose at another frame. For a sharp L-shaped path, key the start, the corner and the end, and use Linear with Ping-pong.</p>
+<h3 id="s9-8"><a class="anchor" href="#s9-8" aria-hidden="true" tabindex="-1">#</a>Connecting buttons to animations</h3>
+<p>Select a func_button, trigger_multiple or trigger_once. The Entity tab shows <strong>Animation trigger</strong> above the properties. Choose a target from the list, or click <strong>Pick target</strong> and then an animated object in any view; <span class="keys"><kbd>Esc</kbd></span> cancels picking. Missing targets or clips are reported under the controls. Entity links show arrows to their targets when link display is on.</p>
+<p><strong>Action</strong> chooses what activation does: <strong>Play</strong> starts a named clip or the selected animation; <strong>Toggle</strong> alternates <code>open</code> and <code>close</code> when they exist, otherwise it restarts the selected animation; <strong>Open</strong> and <strong>Close</strong> start those clips; <strong>Pause</strong> holds the pose, <strong>Resume</strong> continues and <strong>Stop</strong> restores the original pose. <strong>Only once</strong> overrides the class default. <strong>Repeat delay (s)</strong> sets the shortest time between activations; it does not delay the first one.</p>
+<p><strong>Try trigger</strong> runs the action in the preview without editing the map or adding undo steps. <strong>Reset preview</strong> restores the original poses and clears once and cooldown state. This does not simulate player collisions or game scripts.</p>
+<h3 id="s9-9"><a class="anchor" href="#s9-9" aria-hidden="true" tabindex="-1">#</a>Animation in exports</h3>
+<p>Godot exports native AnimationPlayer and AnimationLibrary resources, including curves and moving collision. A CharacterBody3D entering a button's area activates its target. Edits made to these clips in Godot do not come back to the map and are replaced by the next export.</p>
+<p>Raylib export adds <code>&lt;map&gt;_animation.h</code> with a C player and <code>&lt;map&gt;_preview.c</code> with a free-camera preview; follow <code>&lt;map&gt;_raylib.md</code> to build it. In the preview <code>SPACE</code> pauses, <span class="keys"><kbd>R</kbd></span> restarts the default clips and <span class="keys"><kbd>N</kbd></span> cycles through named clips. Defold embeds playback in the entity script with documented <code>heron_*_animation</code> messages. Unity's Build Level adds <code>HeronBrushAnimation</code> and a kinematic body. Bevy export includes <code>heron_animation.rs</code> and instructions. Godot, Unity, Defold, Bevy and raylib keep the trigger links, the once flag and the repeat delay. Your game still has to register the player and connect its own buttons to each runtime's API.</p>
+<h3 id="s9-10"><a class="anchor" href="#s9-10" aria-hidden="true" tabindex="-1">#</a>The Motion lab example</h3>
+<p>Open <code>motion_lab</code> from the welcome screen's Examples. It has an L-path platform, a lift, a rotating platform and a hinged door with buttons. Open the <code>godot/project.godot</code> next to it in Godot and press <span class="keys"><kbd>F5</kbd></span>. WASD and the mouse move the player, Space jumps, 1 to 4 visit the stations and R restarts the current station. Step on a coloured pad to activate its target. The included README explains re-exporting.</p>
+<h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>Exporting to an engine</h2>
+<p>File → Export opens the Export window. The engines are listed down the left with their logos: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb, and last <code>.map</code>. The page on the right says what the target will get. <strong>Write</strong> writes it, <strong>Check</strong> builds the level without writing it and lists the problems, and <strong>Close</strong> closes the window.</p>
+<p>Exporting is separate from saving: the <code>.map</code> stays your editable source. Every control saves its engine's settings as soon as it changes, so each engine keeps its own answers and the window opens as you left it.</p>
+<h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>Common options</h3>
+<ul>
+<li><strong>Scale</strong>: <strong>Units per metre</strong>, 32 by default.</li>
+<li><strong>What to write</strong>: <strong>Collision geometry</strong>.</li>
+<li><strong>Optimisations</strong>: <strong>Group static meshes in 1024-unit cells</strong>, <strong>Drop faces buried inside the geometry</strong>, <strong>Join faces that share a plane</strong> and <strong>Join collision shapes</strong>.</li>
+<li><strong>Project paths</strong>: where the level and its resources go inside the project.</li>
+<li><strong>Tool materials</strong>: the names of the clip, skip and origin materials.</li>
+<li><strong>More</strong>: engine-specific switches such as <strong>Name nodes after</strong>, <strong>Rebuild layers and groups as parent nodes</strong>, <strong>Reverse the triangle winding</strong>, texture-coordinate flipping and a second UV set for baked light with <strong>Lightmap texel</strong>.</li>
+<li><strong>Keeping up with the map</strong>: <strong>Write again whenever the map is saved</strong>. It becomes available after the engine has been exported once, because that export says where to write.</li>
+</ul>
+<p>Static cells assign world brushes by their centres and combine them by material within each 1024-unit cell, so engines can cull smaller parts of the map. Collision is kept and gameplay entities stay separate. It can mean more draw calls than one world mesh, so it is off by default. Standalone OBJ, glTF and GLB exports do not use cells.</p>
+<h3 id="s10-2"><a class="anchor" href="#s10-2" aria-hidden="true" tabindex="-1">#</a>Target notes</h3>
+<ul>
+<li>Godot: texture and material <code>res://</code> paths, the trigger physics layer and lightmap UV2. Choose an export folder inside the Godot project.</li>
+<li>Defold: the asset resource directory, the model material and the texture sampler, which must exist in the chosen material.</li>
+<li>Unity: OBJ meshes and an editor importer; export under the project's Assets folder.</li>
+<li>Unreal Engine: a generated import script and a content path, normally /Game/<level>.</li>
+<li>Flax Engine: a model content path relative to the project's Content folder.</li>
+<li>three.js, Bevy, raylib and Cocos Creator: scenes or code for those runtimes, with instructions next to the export.</li>
+<li>glTF / GLB: portable geometry for compatible tools; GLB is the binary form. OBJ: geometry and materials for modelling tools.</li>
+<li><code>.map</code>: <strong>Write as</strong> chooses Valve 220, Standard, Quake 2 or Quake 2 (Valve). The window says what the chosen dialect would lose.</li>
+</ul>
+<p>Read the warnings after writing, such as missing textures. <strong>What the check found</strong> lists them in the window.</p>
+<h2 id="s11"><a class="anchor" href="#s11" aria-hidden="true" tabindex="-1">#</a>Live links: Godot, Unity, Defold and Flax</h2>
+<p>A live link sends unsaved edits from Heron Brush into an engine editor as you work. It is one-way: edits made in the engine do not come back. One live link can run per map window. Stop it before switching engines, and restart it to apply changed export options. The controls are in the Export window, on the engine's page, in the <strong>Live link with</strong> card.</p>
+<p>The indicator in the title bar shows the link's state; click it to stop the link. Closing or replacing the map stops publishing. After an import failure, fix the problem and start the link again.</p>
+<h3 id="s11-1"><a class="anchor" href="#s11-1" aria-hidden="true" tabindex="-1">#</a>Godot</h3>
+<ol>
+<li>Export once into a Godot project.</li>
+<li>Click <strong>Install Godot addon</strong>.</li>
+<li>Enable Heron Brush Live in Godot's Project Settings → Plugins.</li>
+<li>Click <strong>Start live link</strong> and attach the map from the Godot dock to an open 3D scene.</li>
+</ol>
+<p>The addon replaces only its generated branch and keeps the attachment's placement and other nodes. Save the Godot scene yourself, and keep your own scripts and nodes outside the generated branch.</p>
+<h3 id="s11-2"><a class="anchor" href="#s11-2" aria-hidden="true" tabindex="-1">#</a>Unity</h3>
+<ol>
+<li>Export once under the Unity project's Assets folder.</li>
+<li>Click <strong>Install Unity addon</strong> and let Unity compile it.</li>
+<li>Open Window → Heron Brush → Live Link in Unity.</li>
+<li>Start the link and attach the map to the active Unity scene.</li>
+</ol>
+<p>Keep the Unity live window open. Updates pause in Play Mode and Prefab Mode. Only the Generated child of the map object is replaced. Do not edit the generated files.</p>
+<h3 id="s11-3"><a class="anchor" href="#s11-3" aria-hidden="true" tabindex="-1">#</a>Defold</h3>
+<ol>
+<li>Export once into your Defold project and keep the project open in Defold.</li>
+<li>Click <strong>Start live link</strong>. No addon is needed.</li>
+<li>Open heron_brush_live/preview.collection in Defold, or reference it from your own scene.</li>
+</ol>
+<p>The link writes to a separate generated folder and leaves the final export and game.project alone. <strong>Hot reload running game</strong> also updates a game started from Defold; adding objects or changing collision may require restarting the level. Connection failures are retried automatically.</p>
+<h3 id="s11-4"><a class="anchor" href="#s11-4" aria-hidden="true" tabindex="-1">#</a>Flax</h3>
+<p>Export into the project's Content folder and click <strong>Install Flax addon</strong>. Let Flax compile it, start the link, then choose Tools → Heron Brush: attach live map in the open Flax scene. The generated root keeps its placement and other objects are untouched. Save the scene yourself. Updates pause in Play Mode. Tools → Heron Brush: stop live map pauses reception.</p>
+<h2 id="s12"><a class="anchor" href="#s12" aria-hidden="true" tabindex="-1">#</a>Collaborative live sessions</h2>
+<p>Collaboration → Live session opens a window for hosting or joining another Heron Brush user. This shares map editing between people; it is separate from an engine live link.</p>
+<h3 id="s12-1"><a class="anchor" href="#s12-1" aria-hidden="true" tabindex="-1">#</a>Host and join</h3>
+<p>Enter <strong>Your name</strong>. To host, choose <strong>Host a session</strong>, click <strong>Start session</strong> and send the details from <strong>Copy connection details</strong> to your guests. To join, choose <strong>Join a session</strong>, paste the details and click <strong>Join</strong>. Joining replaces the open map with the host's map, so save your work first.</p>
+<p>The standard build works on the local network, and <strong>Local network port</strong> sets the port. Sessions over the internet (<strong>Connect over the internet</strong>) need a build with the optional networking feature. Participants see each other's camera markers and names in the 3D view.</p>
+<p>Closing the window keeps the session running; the title bar indicator shows its state. <strong>Stop session</strong> or <strong>Leave session</strong> ends it. When two people edit the same object, the host's order decides the final version, and undo is a shared edit too. Work on separate areas where you can, and save checkpoints.</p>
+<h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D display and a second monitor</h2>
+<h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>Display modes</h3>
+<p>The Map tab's <strong>View</strong> section switches what the views draw: Brushes, Point entities, Entity models, Entity classnames, Group outlines, Patches, Materials, Show omitted faces, Preview animations, Wireframe, Edges and Brush entity outlines. Wireframe draws triangle edges, including diagonals and edges behind surfaces, without materials. It is a temporary debugging view and does not affect exports or renders.</p>
+<p>Lighting, shadows, ambient occlusion, reflections, bloom and smoothing for the 3D view are in Preferences → Renderer. These are preview settings; final images use the render camera's own settings.</p>
+<h3 id="s13-2"><a class="anchor" href="#s13-2" aria-hidden="true" tabindex="-1">#</a>A separate 3D window</h3>
+<p>View → 3D view in separate window moves the 3D view into a window of its own, which you can put on another monitor. It shares the camera, the document and the tools, and the flat views take the space in the main window. Its menu offers Materials, Solid view and Wireframe; a View submenu with Show omitted faces, Preview animations, Edges, Group outlines, Point entities, Entity models and Brush entity outlines; Focus on selection; Front, Side and Top, which turn the camera around the selection (or a point ahead of the camera); Place camera from 3D view; Full screen (<span class="keys"><kbd>F11</kbd></span>); Render image; and Return to main window. Closing the window docks the view again.</p>
+<h3 id="s13-3"><a class="anchor" href="#s13-3" aria-hidden="true" tabindex="-1">#</a>Procedural sky</h3>
+<p>The procedural sky is on by default in the 3D view and can be switched off in Preferences → Renderer → Light. Render cameras have their own <strong>Procedural sky</strong> switch, saved with the map. Sky, horizon and ground colours come from the environment settings, and the sun follows the scene lighting. The sky has no geometry and is not exported.</p>
+<h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>Render cameras and PNG images</h2>
+<p>File → Render image opens the render window: the camera and its settings on the left and a live preview on the right that redraws as you change them. Cameras are saved in the <code>.map</code> in an editor-only Render cameras layer that is left out of engine exports.</p>
+<h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>Placing the camera</h3>
+<p>Frame the shot in the 3D view and press <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> (or <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>), or click <strong>Place camera from 3D view</strong>. If no camera is selected, the first saved one is updated; if none exists, one is created. This can be undone and keeps the output and lighting settings. <strong>Select camera in map</strong>, <strong>Load camera from map</strong> and <strong>Move 3D view to camera</strong> work the other way round. <strong>Camera frame in 3D view</strong> shows the output boundary, and <strong>Control camera from 3D view</strong> lets normal navigation move the saved camera.</p>
+<h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>Settings</h3>
+<ul>
+<li><strong>Camera position</strong>: X, Y, Z, yaw and pitch.</li>
+<li><strong>Output and lens</strong>: <strong>Presets</strong> (Full HD, Square, Portrait), width, height, samples, <strong>Vertical field of view</strong> and <strong>Far clip</strong>.</li>
+<li><strong>Lighting</strong>: Daylight, Sunset or Overcast, or set exposure, the sun, sky, horizon and ground colours, <strong>Procedural sky</strong>, <strong>Shadows</strong>, <strong>Ambient occlusion</strong> and <strong>Bloom</strong>.</li>
+<li><strong>Depth of field</strong>: <strong>Enable depth of field</strong>, focus distance, sharp range and blur radius. <strong>Focus on selection</strong> focuses on the centre of a selected object in front of the camera.</li>
+</ul>
+<p><strong>Save camera and settings</strong> stores the form in the map; save the map to keep it on disk.</p>
+<h3 id="s14-3"><a class="anchor" href="#s14-3" aria-hidden="true" tabindex="-1">#</a>Rendering</h3>
+<p><strong>Render PNG</strong> asks where to save and starts a progressive render, which fills in sample by sample in the preview. More samples look better but take longer. <strong>Cancel render</strong> stops without writing a file. The renderer uses the editor's raster pipeline, not path tracing. The PNG has an opaque background, and animations are not rendered. Very large images can briefly pause the editor.</p>
+<h2 id="s15"><a class="anchor" href="#s15" aria-hidden="true" tabindex="-1">#</a>Preferences</h2>
+<p>File → Preferences (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>) opens the settings. Changes apply immediately and are saved. The sidebar lists Overview, Games, View, Colours, Mouse, Keyboard and Renderer. The search field at the top finds a setting by name or description on any page. Each changed setting has its own button to restore its default, and <strong>Restore defaults</strong> resets the current page.</p>
+<h3 id="s15-1"><a class="anchor" href="#s15-1" aria-hidden="true" tabindex="-1">#</a>The pages</h3>
+<ul>
+<li><strong>Overview</strong>: the common settings together: Appearance (Panel opacity (%), Colour scheme, Layout, Language), Editing, View and Manual.</li>
+<li><strong>Games</strong>: the game, where its files are, and your collaboration name. A game says which map format to write, which entity definitions to load and where its materials are. Game configurations are read from the <code>games</code> folder in the configuration folder (<code>~/.config/heron-brush/games</code> on Linux and macOS, <code>%LOCALAPPDATA%\heron-brush\games</code> on Windows) and from the <code>games</code> folder beside the application, where packages put the bundled one.</li>
+<li><strong>View</strong>: Layout, Colour scheme, Language, world axes, grid opacity, leak-check cell size and the mapping locks.</li>
+<li><strong>Colours</strong>: the colours of the views, geometry and handles.</li>
+<li><strong>Mouse</strong>: look, pan and move speeds and inversions, fly speed, field of view, Link 2D views and handle sizes.</li>
+<li><strong>Keyboard</strong>: the keymap, Heron Brush or Blender.</li>
+<li><strong>Renderer</strong>: realistic shading, selection outline, light, shadows, ambient occlusion, reflections, bloom and surfaces.</li>
+</ul>
+<h3 id="s15-2"><a class="anchor" href="#s15-2" aria-hidden="true" tabindex="-1">#</a>Language</h3>
+<p><strong>Language</strong> offers Follow the desktop and every translated language. The interface changes at once. The manual opens in the interface language when a translation of it exists, and in English otherwise.</p>
+<h2 id="s16"><a class="anchor" href="#s16" aria-hidden="true" tabindex="-1">#</a>Plugins and MCP</h2>
+<h3 id="s16-1"><a class="anchor" href="#s16-1" aria-hidden="true" tabindex="-1">#</a>Plugins</h3>
+<p>Plugins extend the editor with Rhai scripts. File → Plugins opens the Plugins window. <strong>Install a plugin</strong> installs a <code>.rhai</code> file and <strong>Install a plugin folder</strong> installs a folder containing <code>main.rhai</code>; optional <code>plugin.toml</code> metadata describes the plugin and its settings. Plugins are grouped under <strong>Active plugins</strong> and <strong>Inactive plugins</strong>, and <strong>Enable plugin</strong> switches one on or off; this survives a restart. <strong>Reload plugins</strong> reads the scripts from disk again and resets their panel values.</p>
+<p>Active plugins also appear in the Map tab's <strong>Plugins</strong> section with their settings, action buttons (<strong>Run</strong>) and output. An action works on the selection, or on everything when nothing is selected, and is one undo step. The bundled Selection inspector shows counts and move-up and move-down actions.</p>
+<h3 id="s16-2"><a class="anchor" href="#s16-2" aria-hidden="true" tabindex="-1">#</a>MCP</h3>
+<p>Collaboration → Serve for an agent (MCP) lets an AI agent or another tool drive the open editor over the Model Context Protocol. The window shows the local address with <strong>Copy</strong>, and <strong>Stop server</strong> ends it; while it runs, the title bar shows <strong>MCP active</strong>. The <code>--mcp</code> command line option runs the same interface without a window. Clients can discover tools for geometry, assets, properties, animation, export and sessions. MCP and editor plugins are different interfaces.</p>
+<h2 id="s17"><a class="anchor" href="#s17" aria-hidden="true" tabindex="-1">#</a>Command line</h2>
+<p>The program is <code>heron-brush</code>. Without options it opens the welcome screen.</p>
+<h3 id="s17-1"><a class="anchor" href="#s17-1" aria-hidden="true" tabindex="-1">#</a>Opening files</h3>
+<p><code>heron-brush map.map [entities.fgd] [materials/]</code> opens a map, optionally with entity definitions and a material folder. An empty argument skips one, for example <code>heron-brush map.map "" materials/</code>. If an editor is already running, the map opens in it; <code>--new-instance</code> opens a separate window instead.</p>
+<h3 id="s17-2"><a class="anchor" href="#s17-2" aria-hidden="true" tabindex="-1">#</a>Commands</h3>
+<ul>
+<li><code>--help</code> or <code>-h</code>: print the usage. <code>--version</code> or <code>-V</code>: print the version.</li>
+<li><code>--mcp</code>: serve MCP over standard input and output, without a window.</li>
+<li><code>--merge-map &lt;base&gt; &lt;ours&gt; &lt;theirs&gt; [&lt;output&gt;]</code>: a three-way merge of <code>.map</code> files for git. The output defaults to ours. Conflicts are printed and give a non-zero exit code.</li>
+<li><code>--obj-to-map &lt;in.obj&gt; &lt;out.map&gt; [size] [thickness] [snap] [material]</code>: turn a mesh into brushes. Size is the length of the longest side in map units (default 256), snap is a grid for the corners (0 for none), and the words <code>solid</code> or <code>layered</code> build grid boxes or convex slabs instead of thin wedges.</li>
+<li><code>--render-preview &lt;in.map&gt; &lt;out.png&gt; [size]</code>: write a PNG thumbnail of a map, 512 pixels by default.</li>
+<li><code>--run-script &lt;script.rhai&gt; &lt;in.map&gt; [out.map] [key=value ...]</code>: run a plugin script over a map with everything selected and write the result (by default back to the input). <code>key=value</code> answers the plugin's settings.</li>
+</ul>
+<h2 id="s18"><a class="anchor" href="#s18" aria-hidden="true" tabindex="-1">#</a>Troubleshooting</h2>
+<h3 id="s18-1"><a class="anchor" href="#s18-1" aria-hidden="true" tabindex="-1">#</a>When something looks wrong</h3>
+<ul>
+<li>Missing material: check the material folder or package and the export's project paths.</li>
+<li>Wrong model size: compare against the 64-unit player marker and the export scale.</li>
+<li>Wrong gradient direction: check the gradient angle and the face's orientation.</li>
+<li>Empty engine scene: read the export warnings and follow the target's import instructions.</li>
+<li>Live link waiting: check that the addon is installed, the scene is attached and updates are not paused.</li>
+<li>Only lines, no faces: switch Wireframe off in the Map tab's View section, or choose Materials or Solid view in the 3D window's menu.</li>
+<li>Objects missing from the views: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span> shows hidden objects; check the layers and the View filters.</li>
+<li>A key does nothing: click in the view first so it has the keyboard, and check Preferences → Keyboard for the keymap.</li>
+<li>An edit failed: undo, simplify the geometry, and use <strong>Check map</strong> and <strong>Check for leaks</strong> in the Map tab's <strong>Issues</strong> section.</li>
+<li>A map will not open from the file manager: it may have been handed to an editor that is already running; look for that window.</li>
+</ul>
+<h3 id="s18-2"><a class="anchor" href="#s18-2" aria-hidden="true" tabindex="-1">#</a>Settings and backups</h3>
+<p>Preferences, recent maps, stars, export settings and plugins live in the configuration folder: <code>~/.config/heron-brush</code> on Linux and macOS, and <code>%LOCALAPPDATA%\heron-brush</code> on Windows. Autosave backups are in the <code>autosave</code> folder next to each map.</p>
+<h3 id="s18-3"><a class="anchor" href="#s18-3" aria-hidden="true" tabindex="-1">#</a>Reporting a bug</h3>
+<p>Include the editor version (Help → About), your operating system, a small map that shows the problem and the exact steps. The output pane (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>) often says what went wrong. Save a copy before experimenting.</p>
+<h3 id="s18-4"><a class="anchor" href="#s18-4" aria-hidden="true" tabindex="-1">#</a>Using this manual</h3>
+<p>Choose a chapter in the contents on the left. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> shows the contents and moves to the search field; <span class="keys"><kbd>Esc</kbd></span> clears the search, or closes the manual when the search is empty. <strong>Contents</strong> hides or shows the chapter list and <strong>Text size</strong> changes the font size; both are remembered. The language list at the top switches between the available translations.</p>
+<p>Desktop File → Build and run stores ordered export/copy/run profiles beside project export settings. Preferences → Keyboard → Edit shortcuts edits 30 common commands with conflict checks. Issue rows offer Hide and deterministic UV/property fixes with Undo. Help → Application updates checks the planned MojzisekJan/HeronBrush repository; startup checks are off by default. See <a href="../build-and-updates.md">Build, launch, shortcuts and updates</a> for arguments, variables, limits and release packaging.</p>
+<p>Desktop Geometry → Import model, or dropping an OBJ/GLB, inserts a static model entity. Saved maps receive copied assets beside the map, and Save As carries them into the new folder. Edit origin, angles and modelscale in the entity inspector. See <a href="../model-import.md">Static model import</a> for formats, export behavior and current limitations.</p>
+  </article>
+</div>
+<script src="../manual.js"></script>
+</body>
+</html>

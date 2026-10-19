@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="zh-Hans" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heron Brush manual · 中文</title>
+<meta name="description" content="The Heron Brush manual: modelling, materials, entities, animation, export and live links.">
+<link rel="icon" type="image/svg+xml" href="../../images/logo.svg">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../manual.css">
+<link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
+</head>
+<body class="manual-page">
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../../#"><img src="../../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar-top" d="M4 7h16"/><path class="bar-mid" d="M4 12h16"/><path class="bar-bot" d="M4 17h16"/></svg>
+    </button>
+    <nav class="menu" id="site-menu" aria-label="Main">
+      <div class="nav-links">
+        <a href="../../#modelling">Modelling</a>
+        <a href="../../#materials">Materials</a>
+        <a href="../../#animation">Animation</a>
+        <a href="../../#export">Export</a>
+        <a href="#" aria-current="page">Manual</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <mask id="moon-mask"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="moon-cut" cx="17" cy="7" r="6.5" fill="#000"/></mask>
+            <circle class="sun-core" cx="12" cy="12" r="8" fill="currentColor" mask="url(#moon-mask)"/>
+            <g class="rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>
+            </g>
+          </svg>
+          <span class="theme-label">Dark theme</span>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/MojzisekJan/HeronBrush">GitHub</a>
+        <a class="btn btn-primary" href="../../editor/">Try in the browser</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<script>
+  // The menu folds behind the button on narrow windows; without this script the links stay in view.
+  (function () {
+    var root = document.documentElement, header = document.querySelector('.nav');
+    var toggle = header.querySelector('.menu-toggle'), menu = document.getElementById('site-menu');
+    root.classList.add('js');
+    function set(open) {
+      header.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () { set(!header.classList.contains('open')); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && header.classList.contains('open')) { set(false); toggle.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!header.contains(e.target)) set(false); });
+    matchMedia('(min-width: 961px)').addEventListener('change', function () { set(false); });
+
+    // The theme toggle: remembers the choice; without one the page follows the system.
+    var themeButton = header.querySelector('.theme-toggle'), label = themeButton.querySelector('.theme-label');
+    function show(theme) {
+      root.dataset.theme = theme;
+      themeButton.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = theme === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+    show(root.dataset.theme);
+    themeButton.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      show(next);
+      root.classList.add('theme-switched');
+      try { localStorage.setItem('heron-theme', next); } catch (e) {}
+    });
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+      var stored = null;
+      try { stored = localStorage.getItem('heron-theme'); } catch (err) {}
+      if (!stored) show(e.matches ? 'light' : 'dark');
+    });
+  })();
+</script>
+<div class="manual wrap">
+  <aside class="toc" id="toc" aria-label="Contents">
+    <div class="toc-tools">
+      <label class="sr-only" for="lang">Language</label>
+      <select id="lang" class="lang-select"><option value="../" lang="en">English</option><option value="../cs/" lang="cs">Čeština</option><option value="../de/" lang="de">Deutsch</option><option value="../zh/" selected lang="zh-Hans">中文</option><option value="../es/" lang="es">Español</option><option value="../uk/" lang="uk">Українська</option><option value="../pl/" lang="pl">Polski</option><option value="../it/" lang="it">Italiano</option><option value="../fr/" lang="fr">Français</option><option value="../pt-BR/" lang="pt-BR">Português (Brasil)</option><option value="../ja/" lang="ja">日本語</option><option value="../ko/" lang="ko">한국어</option><option value="../tr/" lang="tr">Türkçe</option><option value="../id/" lang="id">Bahasa Indonesia</option><option value="../ru/" lang="ru">Русский</option><option value="../nl/" lang="nl">Nederlands</option><option value="../sv/" lang="sv">Svenska</option><option value="../da/" lang="da">Dansk</option><option value="../nb/" lang="nb">Norsk bokmål</option><option value="../fi/" lang="fi">Suomi</option><option value="../hu/" lang="hu">Magyar</option><option value="../ro/" lang="ro">Română</option><option value="../sk/" lang="sk">Slovenčina</option><option value="../el/" lang="el">Ελληνικά</option><option value="../vi/" lang="vi">Tiếng Việt</option><option value="../zh-TW/" lang="zh-Hant">繁體中文</option><option value="../bg/" lang="bg">Български</option><option value="../hr/" lang="hr">Hrvatski</option><option value="../sl/" lang="sl">Slovenščina</option><option value="../lt/" lang="lt">Lietuvių</option></select>
+      <div class="search">
+        <input id="search" type="search" placeholder="搜索文档" autocomplete="off" aria-label="搜索文档">
+        <ol id="results" class="results" hidden data-nothing="没有匹配的章节"></ol>
+      </div>
+    </div>
+    <nav class="toc-list"><ul><li class="chapter"><a href="#s1">入门</a><ul><li><a href="#s1-1">欢迎界面</a></li><li><a href="#s1-2">你的第一张地图</a></li><li><a href="#s1-3">文件与保存</a></li></ul></li><li class="chapter"><a href="#s2">界面</a><ul><li><a href="#s2-1">标题栏和菜单</a></li><li><a href="#s2-2">工具栏</a></li><li><a href="#s2-3">地图视图</a></li><li><a href="#s2-4">检查器</a></li><li><a href="#s2-5">状态栏和输出面板</a></li><li><a href="#s2-6">对话框和外观</a></li></ul></li><li class="chapter"><a href="#s3">导航与键盘</a><ul><li><a href="#s3-1">在 3D 视图中移动</a></li><li><a href="#s3-2">在 2D 视图中移动</a></li><li><a href="#s3-3">网格与吸附</a></li><li><a href="#s3-4">常用快捷键</a></li><li><a href="#s3-5">选择快捷键</a></li><li><a href="#s3-6">变换快捷键</a></li><li><a href="#s3-7">Blender 键位方案</a></li></ul></li><li class="chapter"><a href="#s4">笔刷与建模工具</a><ul><li><a href="#s4-1">绘制笔刷</a></li><li><a href="#s4-2">选择</a></li><li><a href="#s4-3">造型工具</a></li><li><a href="#s4-4">组合笔刷</a></li><li><a href="#s4-5">扫掠、圆角、面片和倒角</a></li><li><a href="#s4-6">3D 文字</a></li></ul></li><li class="chapter"><a href="#s5">材质与 UV</a><ul><li><a href="#s5-1">加载和应用材质</a></li><li><a href="#s5-2">UV 编辑器</a></li><li><a href="#s5-3">UV 快捷键</a></li><li><a href="#s5-4">工具材质</a></li><li><a href="#s5-5">导出时忽略面</a></li></ul></li><li class="chapter"><a href="#s6">颜色与渐变</a><ul><li><a href="#s6-1">调色板和混合颜色</a></li><li><a href="#s6-2">取色器</a></li><li><a href="#s6-3">渐变</a></li><li><a href="#s6-4">表面材质</a></li></ul></li><li class="chapter"><a href="#s7">素材、图层和组</a><ul><li><a href="#s7-1">素材库</a></li><li><a href="#s7-2">图层</a></li><li><a href="#s7-3">组和关联组</a></li><li><a href="#s7-4">统一的比例</a></li></ul></li><li class="chapter"><a href="#s8">实体与玩法</a><ul><li><a href="#s8-1">放置实体</a></li><li><a href="#s8-2">属性</a></li><li><a href="#s8-3">导出能做什么</a></li></ul></li><li class="chapter"><a href="#s9">动画</a><ul><li><a href="#s9-1">预览动画</a></li><li><a href="#s9-2">关键帧编辑器</a></li><li><a href="#s9-3">片段</a></li><li><a href="#s9-4">播放控制</a></li><li><a href="#s9-5">时间轴</a></li><li><a href="#s9-6">编辑器中的按键</a></li><li><a href="#s9-7">在视图中摆姿态</a></li><li><a href="#s9-8">把按钮连接到动画</a></li><li><a href="#s9-9">导出中的动画</a></li><li><a href="#s9-10">Motion lab 示例</a></li></ul></li><li class="chapter"><a href="#s10">导出到引擎</a><ul><li><a href="#s10-1">通用选项</a></li><li><a href="#s10-2">各目标说明</a></li></ul></li><li class="chapter"><a href="#s11">实时连接：Godot、Unity、Defold 和 Flax</a><ul><li><a href="#s11-1">Godot</a></li><li><a href="#s11-2">Unity</a></li><li><a href="#s11-3">Defold</a></li><li><a href="#s11-4">Flax</a></li></ul></li><li class="chapter"><a href="#s12">协同实时会话</a><ul><li><a href="#s12-1">主持与加入</a></li></ul></li><li class="chapter"><a href="#s13">3D 显示与第二台显示器</a><ul><li><a href="#s13-1">显示模式</a></li><li><a href="#s13-2">独立的 3D 窗口</a></li><li><a href="#s13-3">程序化天空</a></li></ul></li><li class="chapter"><a href="#s14">渲染相机与 PNG 图像</a><ul><li><a href="#s14-1">放置相机</a></li><li><a href="#s14-2">设置</a></li><li><a href="#s14-3">渲染</a></li></ul></li><li class="chapter"><a href="#s15">首选项</a><ul><li><a href="#s15-1">各个页面</a></li><li><a href="#s15-2">语言</a></li></ul></li><li class="chapter"><a href="#s16">插件与 MCP</a><ul><li><a href="#s16-1">插件</a></li><li><a href="#s16-2">MCP</a></li></ul></li><li class="chapter"><a href="#s17">命令行</a><ul><li><a href="#s17-1">打开文件</a></li><li><a href="#s17-2">命令</a></li></ul></li><li class="chapter"><a href="#s18">故障排除</a><ul><li><a href="#s18-1">出现异常时</a></li><li><a href="#s18-2">设置和备份</a></li><li><a href="#s18-3">报告问题</a></li><li><a href="#s18-4">使用本手册</a></li></ul></li></ul></nav>
+  </aside>
+  <button class="toc-toggle" type="button" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+    <span class="toc-current">入门</span>
+  </button>
+  <article class="manual-body">
+<h2 id="s1"><a class="anchor" href="#s1" aria-hidden="true" tabindex="-1">#</a>入门</h2>
+<p>Heron Brush 是一款基于笔刷（brush）的关卡编辑器。你可以用凸笔刷搭建关卡，为它们的面上色和贴材质，放置实体，为门和平台制作动画，然后把结果导出到游戏引擎。它还提供内置素材、参数化形状、与引擎编辑器的实时连接、多人协同编辑会话以及静态图像渲染。本手册随程序一同提供，可离线使用。</p>
+<p>在 macOS 上，本手册中凡是写 <span class="keys"><kbd>Ctrl</kbd></span> 的地方都可以用 <span class="keys"><kbd>Cmd</kbd></span>，Option 即 Alt。</p>
+<h3 id="s1-1"><a class="anchor" href="#s1-1" aria-hidden="true" tabindex="-1">#</a>欢迎界面</h3>
+<p>Heron Brush 在没有打开地图的情况下启动时，会显示欢迎界面。左侧是 <strong>继续</strong>（上次打开的地图）、<strong>新建地图</strong> 和用于打开现有 <code>.map</code> 的 <strong>浏览</strong>，以及 <strong>游戏</strong>、<strong>手册</strong> 和 <strong>首选项</strong>。右侧是带缩略图的最近地图列表，下方是 <strong>示例</strong>。星标（<strong>置顶</strong>）把地图固定在列表顶部；垃圾桶（<strong>移到回收站</strong>）把文件移到系统回收站，之后仍可恢复。方向键可在界面中移动焦点，Enter 打开当前选中的项目。随时可以通过 文件 → 欢迎 回到这个界面。</p>
+<h3 id="s1-2"><a class="anchor" href="#s1-2" aria-hidden="true" tabindex="-1">#</a>你的第一张地图</h3>
+<ol>
+<li>在欢迎界面选择 <strong>新建地图</strong>，或使用 文件 → 新建地图（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>）。</li>
+<li>在工具栏中选择笔刷工具（<span class="keys"><kbd>B</kbd></span>），在 2D 视图中拖动，画出所选形状。在另一个 2D 视图中检查它的深度。</li>
+<li>选中笔刷并拖动来移动它。在 <strong>面</strong> 选项卡中为它指定材质或颜色。</li>
+<li>用 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span> 保存源地图。准备在游戏中使用时，打开 文件 → 导出，为你的引擎写出场景。</li>
+</ol>
+<h3 id="s1-3"><a class="anchor" href="#s1-3" aria-hidden="true" tabindex="-1">#</a>文件与保存</h3>
+<p><code>.map</code> 文件是你的可编辑源文件。请经常保存：导出、实时连接和渲染都不会替你保存地图。文件 → 另存为（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>）会在你省略扩展名时自动补上 <code>.map</code>。文件 → 还原到已保存的地图 会丢弃未保存的更改并重新加载文件。如果在有未保存更改时关闭窗口或打开另一张地图，Heron Brush 会询问是 <strong>保存</strong>、<strong>放弃</strong> 还是 <strong>取消</strong>。</p>
+<p>当已保存过的地图有未保存的更改时，每隔十分钟会在地图旁的 <code>autosave</code> 文件夹中写入带编号的备份，并保留最新的 50 份。</p>
+<p>如果在 Heron Brush 已经运行时打开地图，地图会交给正在运行的窗口，该窗口会被带到前台。需要单独的窗口时，请在命令行中使用 <code>--new-instance</code>（见“命令行”）。</p>
+<h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>界面</h2>
+<p>主窗口顶部是带菜单的标题栏，其下是工具栏，然后是地图视图、右侧的检查器和底部的状态栏。</p>
+<h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>标题栏和菜单</h3>
+<p>标题栏显示徽标、菜单、居中的地图名称和窗口按钮。在 macOS 上，常见的红、黄、绿按钮位于左侧。拖动标题栏可以移动窗口，双击可以最大化。当有任务在后台运行时，标题栏末端附近会出现指示器：引擎实时连接、实时会话或 <strong>MCP 已启用</strong>。点击指示器可以停止实时连接或打开对应的窗口。</p>
+<ul>
+<li><strong>文件</strong>：欢迎、新建地图（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>）、打开地图（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span>）、保存（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>）、另存为（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>）、还原到已保存的地图、导出、渲染图像、插件和首选项（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>）。</li>
+<li><strong>编辑</strong>：撤销（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>）、重做（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span>）、剪切、复制、粘贴、复制副本（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>）、删除、全选（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>）、重复上次命令（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>）和清除可重复的命令。</li>
+<li><strong>视图</strong>：在独立窗口中显示 3D 视图、转到、吸附到网格（<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>）、显示网格（<span class="keys"><kbd>0</kbd></span>）、预览动画和显示被忽略的面。</li>
+<li><strong>几何体</strong>：插入 3D 文字、连接转角、把面转换为面片、将所选移出其实体和同步关联组。</li>
+<li><strong>动画</strong>：关键帧动画、预览动画和按 3D 视图放置相机（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>）。</li>
+<li><strong>地图</strong>：加载点文件、重新加载点文件和关闭点文件；加载传送门文件、重新加载传送门文件和关闭传送门文件。它们显示地图编译器写出的漏洞轨迹和传送门。</li>
+<li><strong>协作</strong>：实时会话和向智能体提供服务（MCP）。</li>
+<li><strong>帮助</strong>：手册和关于。</li>
+</ul>
+<h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>工具栏</h3>
+<p>工具栏包含所有工具。第一组是最常用的：选择、笔刷、切割、顶点、边、面、旋转和缩放。第二组包括剪切、拼合、扫掠、控制点、圆角和上色。把鼠标悬停在按钮上可以看到名称和快捷键。再次点击当前工具会回到“选择”。</p>
+<p>工具之后是 <strong>水平翻转</strong> 和 <strong>垂直翻转</strong>，然后是两个开关：<strong>锁定</strong> 在笔刷移动时保持材质贴图，<strong>UV</strong> 在笔刷旋转时保持贴图（用 <span class="keys"><kbd>U</kbd></span> 切换）。接下来是当前工具自己的设置：笔刷工具显示形状及其选项，圆角工具显示半径、面数和转角，以及 <strong>应用</strong> 按钮。最右端是工具名称、网格大小（<strong>网格 16</strong> 等，点击可选择其他大小），以及 <strong>网格设置</strong> 菜单，其中包含吸附到网格、显示网格、预览动画、显示被忽略的面和关键帧动画。</p>
+<h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>地图视图</h3>
+<p>共有四个视图：3D 视图和三个平面视图，即俯视（XY）、前视（XZ）和侧视（YZ）。在 首选项 → 视图 → 布局 中可以选择单视图、双视图、三视图或四视图。拖动分隔条可以调整面板大小。点击某个视图会让它获得键盘焦点。<span class="keys"><kbd>Space</kbd></span> 把一次只显示一个视图的面板切换到下一个视图，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> 最大化拥有键盘焦点的视图，再按一次恢复布局。</p>
+<p>在任意视图中右键单击（不拖动）会打开上下文菜单，针对当前选择和指针下的对象。菜单提供编组、图层、关联组、创建实体、把笔刷移入或移出实体、复制材质名称以及在材质浏览器中定位该材质等功能。</p>
+<h3 id="s2-4"><a class="anchor" href="#s2-4" aria-hidden="true" tabindex="-1">#</a>检查器</h3>
+<p>右侧的检查器有四个选项卡。拖动它的左边缘可以调整宽度。</p>
+<ul>
+<li><strong>地图</strong>（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>1</kbd></span>）：图层、组、插件、问题、视图筛选和标签。</li>
+<li><strong>实体</strong>（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>2</kbd></span>）：实体浏览器、实体定义、所选实体的属性，以及按钮和触发器的动画触发器。</li>
+<li><strong>面</strong>（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>3</kbd></span>）：UV、材质、颜色、扫掠、圆角、面片以及内缩与倒角。每个区块都可以折叠。</li>
+<li><strong>素材</strong>：可复用的笔刷模型库。</li>
+</ul>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>5</kbd></span> 隐藏或显示检查器，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>T</kbd></span> 隐藏或显示工具栏，让视图获得更多空间。</p>
+<h3 id="s2-5"><a class="anchor" href="#s2-5" aria-hidden="true" tabindex="-1">#</a>状态栏和输出面板</h3>
+<p>底部的状态栏显示编辑器的最新消息，错误以红色显示。点击状态栏或按 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span> 可以打开输出面板，查看完整的消息历史。大多数命令都会在这里报告执行结果，例如切割了多少个笔刷。</p>
+<h3 id="s2-6"><a class="anchor" href="#s2-6" aria-hidden="true" tabindex="-1">#</a>对话框和外观</h3>
+<p>首选项、导出和渲染图像等对话框会以独立窗口打开。在 首选项 → 视图 → 配色方案 中可以选择跟随系统、浅色或深色。“概览”页面上的 <strong>面板不透明度 (%)</strong> 可以让面板半透明地叠加在视图上。窗口会按你的系统风格绘制自己的按钮：macOS 上为原生样式，Windows 上为 Windows 11 风格，Linux 上为 GNOME 风格。</p>
+<h2 id="s3"><a class="anchor" href="#s3" aria-hidden="true" tabindex="-1">#</a>导航与键盘</h2>
+<h3 id="s3-1"><a class="anchor" href="#s3-1" aria-hidden="true" tabindex="-1">#</a>在 3D 视图中移动</h3>
+<p>按住鼠标右键拖动可以环顾四周，按住中键拖动可以平移，滚轮前进和后退。<span class="keys"><kbd>W</kbd></span>、<span class="keys"><kbd>A</kbd></span>、<span class="keys"><kbd>S</kbd></span> 和 <span class="keys"><kbd>D</kbd></span> 分别向前、向左、向后和向右飞行，<span class="keys"><kbd>Q</kbd></span> 上升，<span class="keys"><kbd>X</kbd></span> 下降；按住 <span class="keys"><kbd>Shift</kbd></span> 可以加大步幅。在 首选项 → 鼠标 中开启 <strong>Alt + 中键拖动移动相机</strong> 后，按住 Alt 并用中键拖动会沿视线方向移动相机。速度、反转和视野都在 首选项 → 鼠标 中设置。</p>
+<h3 id="s3-2"><a class="anchor" href="#s3-2" aria-hidden="true" tabindex="-1">#</a>在 2D 视图中移动</h3>
+<p>按住中键拖动可以平移，用滚轮以指针为中心缩放。平移和缩放一个平面视图时，其他平面视图会保持对齐；这由 首选项 → 鼠标 中的 <strong>联动 2D 视图</strong> 控制。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span> 重置缩放，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>U</kbd></span> 把平面视图重置到原点。</p>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>U</kbd></span> 在所有视图中框显所选对象。视图 → 转到（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>M</kbd></span>）可以把相机移动到输入的坐标、选中地图文件某一行对应的对象，或按输入的数值移动所选对象。</p>
+<h3 id="s3-3"><a class="anchor" href="#s3-3" aria-hidden="true" tabindex="-1">#</a>网格与吸附</h3>
+<p><span class="keys"><kbd>+</kbd></span> 和 <span class="keys"><kbd>-</kbd></span> 改变网格大小，数字键 <span class="keys"><kbd>1</kbd></span> 到 <span class="keys"><kbd>9</kbd></span> 直接选择 1 到 256 单位的网格大小。<span class="keys"><kbd>0</kbd></span> 或 <span class="keys"><kbd>#</kbd></span> 显示或隐藏网格，<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> 开启或关闭吸附。<span class="keys"><kbd>S</kbd></span> 把所选笔刷的顶点吸附到当前网格，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> 吸附到整数单位，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> 吸附到网格。</p>
+<h3 id="s3-4"><a class="anchor" href="#s3-4" aria-hidden="true" tabindex="-1">#</a>常用快捷键</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>：保存地图。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>：另存为。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>：撤销。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> 或 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>：重做。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span>、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>：复制、剪切和粘贴。粘贴会把对象放在指针处；<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></span> 保留原始坐标。选中面时，复制会复制它们的材质和 UV 设置。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>：复制副本。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>：创建组的关联副本。</li>
+<li><span class="keys"><kbd>Delete</kbd></span> 或 <span class="keys"><kbd>Backspace</kbd></span>：删除所选内容。</li>
+<li><span class="keys"><kbd>Esc</kbd></span>：取消当前拖动，在当前工具中后退一步，回到“选择”，最后清除选择。<span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Esc</kbd></span> 直接回到“选择”。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>：重复上次的可重复命令。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span>：清除这些命令。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> 或 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>：把渲染相机放到 3D 视图的位置。</li>
+<li><span class="keys"><kbd>F5</kbd></span>：重新加载材质。<span class="keys"><kbd>F6</kbd></span>：重新加载实体定义。</li>
+</ul>
+<h3 id="s3-5"><a class="anchor" href="#s3-5" aria-hidden="true" tabindex="-1">#</a>选择快捷键</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>：全选；当顶点、边或面工具处于活动状态时，选择所有控制点。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd></span>：取消全部选择。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span>：反选。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B</kbd></span>：选择同一实体或组中的其他对象。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>T</kbd></span>：选择所选笔刷接触到的所有对象。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd></span>：选择它们内部的所有对象。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>E</kbd></span>：选择它们沿视图轴方向那一列中的所有对象。这些操作会消耗用来选择的笔刷。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>I</kbd></span>：隔离所选内容。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>I</kbd></span>：隐藏所选内容。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span>：重新显示全部。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span>：编组。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span>：取消编组。</li>
+</ul>
+<h3 id="s3-6"><a class="anchor" href="#s3-6" aria-hidden="true" tabindex="-1">#</a>变换快捷键</h3>
+<ul>
+<li>方向键和 <span class="keys"><kbd>Page Up</kbd></span> / <span class="keys"><kbd>Page Down</kbd></span> 会把所选内容沿它们在当前视图中指向的方向移动一个网格单位。配合 <span class="keys"><kbd>Ctrl</kbd></span> 会边移动边复制，配合 <span class="keys"><kbd>Alt</kbd></span> 则是旋转。</li>
+<li><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>X</kbd></span>、<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Y</kbd></span>、<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span>：绕对应轴旋转 90 度；加上 <span class="keys"><kbd>Shift</kbd></span> 则反向旋转。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span>：沿视图横向翻转；<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span>：上下翻转。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>X</kbd></span> 和 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Y</kbd></span> 沿 X 或 Y 镜像。</li>
+<li><span class="keys"><kbd>Insert</kbd></span>：在所选内容的中心放置一个点实体。</li>
+<li><span class="keys"><kbd>Tab</kbd></span>：选中笔刷时，按 选择 → 顶点 → 边 → 面 → 选择 的顺序循环切换。</li>
+</ul>
+<h3 id="s3-7"><a class="anchor" href="#s3-7" aria-hidden="true" tabindex="-1">#</a>Blender 键位方案</h3>
+<p>首选项 → 键盘 → 键位方案 提供 Heron Brush（默认，本手册通篇使用）和 Blender 两种。使用 Blender 方案时：<span class="keys"><kbd>G</kbd></span> 选择并移动，<span class="keys"><kbd>R</kbd></span> 旋转，<span class="keys"><kbd>S</kbd></span> 缩放，<span class="keys"><kbd>E</kbd></span> 扫掠，<span class="keys"><kbd>1</kbd></span>、<span class="keys"><kbd>2</kbd></span> 和 <span class="keys"><kbd>3</kbd></span> 选择顶点、边和面工具，<span class="keys"><kbd>K</kbd></span> 切割，<span class="keys"><kbd>B</kbd></span> 框选，<span class="keys"><kbd>A</kbd></span> 全选，<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span> 取消选择，<span class="keys"><kbd>X</kbd></span> 删除，<span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> 复制，<span class="keys"><kbd>H</kbd></span> 隐藏，<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>H</kbd></span> 显示全部，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> 重做。其余操作在两种方案中相同。</p>
+<h2 id="s4"><a class="anchor" href="#s4" aria-hidden="true" tabindex="-1">#</a>笔刷与建模工具</h2>
+<p>笔刷是由平面围成的凸体。复杂对象应由多个简单笔刷组合而成，而不要试图做出一个凹形笔刷。在简单形状就够用的地方，尽量减少笔刷数量。</p>
+<h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>绘制笔刷</h3>
+<p>选择笔刷工具（<span class="keys"><kbd>B</kbd></span>），在视图中拖动。工具栏会显示 <strong>要绘制的形状</strong>：长方体、楼梯、拱形、圆柱、圆锥、椭球（UV）、椭球（二十面体） 和插入 3D 文字。<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span> 到 <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>7</kbd></span> 可直接选择形状。根据形状的不同，工具栏会显示 <strong>掏空</strong> 和 <strong>厚度：</strong>，楼梯的 <strong>台阶高度：</strong> 和 <strong>方向：</strong>，圆形形状的 <strong>轴：</strong>、<strong>边数：</strong> 和圆形模式，球体的 <strong>环数：</strong>，以及二十面体的 <strong>精度：</strong>。请在拖动前设置好选项，并在多个视图中检查结果。</p>
+<h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>选择</h3>
+<p>点击笔刷即可选中，按住 <span class="keys"><kbd>Ctrl</kbd></span> 点击可加入选择。从空白处拖动会画出选择框。在 3D 视图中，按住 <span class="keys"><kbd>Shift</kbd></span> 点击可选中单个面，按住 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span> 点击可添加更多面。拖动已选中的笔刷会移动它；拖动未选中的笔刷则只选中并移动这一个。</p>
+<p>在 3D 视图中，按住 <span class="keys"><kbd>Shift</kbd></span> 拖动所选笔刷的某个面可以挤出它。按住 <span class="keys"><kbd>Alt</kbd></span> 点击另一个面，可以把所选面的材质和对齐方式复制过去；<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> 只复制材质，<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> 复制旋转。</p>
+<h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>造型工具</h3>
+<ul>
+<li><strong>选择</strong>（<span class="keys"><kbd>Esc</kbd></span>）：选择并移动。</li>
+<li><strong>顶点</strong>（<span class="keys"><kbd>V</kbd></span>）、<strong>边</strong>（<span class="keys"><kbd>E</kbd></span>）、<strong>面</strong>（<span class="keys"><kbd>F</kbd></span>）：拖动角点、边或面。按住 <span class="keys"><kbd>Shift</kbd></span> 从边或面的中点拖动会在那里添加一个角点。<span class="keys"><kbd>Delete</kbd></span> 删除所选的角点。</li>
+<li><strong>旋转</strong>（<span class="keys"><kbd>R</kbd></span>）、<strong>缩放</strong>（<span class="keys"><kbd>T</kbd></span>）、<strong>剪切</strong>（<span class="keys"><kbd>G</kbd></span>）：用控制柄变换所选内容。</li>
+<li><strong>切割</strong>（<span class="keys"><kbd>C</kbd></span>）：点击两个或三个点来定义切割平面。<span class="keys"><kbd>Enter</kbd></span> 执行切割，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> 选择保留哪一侧，<span class="keys"><kbd>Backspace</kbd></span> 或 <span class="keys"><kbd>Esc</kbd></span> 删除最后一个点。</li>
+<li><strong>拼合</strong>（<span class="keys"><kbd>N</kbd></span>）：在一个体积周围放置点，按 <span class="keys"><kbd>Enter</kbd></span> 用这些点生成凸笔刷。<span class="keys"><kbd>Backspace</kbd></span> 删除最后一个点。</li>
+<li><strong>扫掠</strong>（<span class="keys"><kbd>Y</kbd></span>）：见下文的扫掠部分。</li>
+<li><strong>控制点</strong>（<span class="keys"><kbd>P</kbd></span>）：调整面片的控制网格形状。</li>
+<li><strong>圆角</strong>（<span class="keys"><kbd>O</kbd></span>）：点击一条边将其倒圆，或用相应工具选取边或顶点后按 <span class="keys"><kbd>Enter</kbd></span>。面数越多结果越平滑，几何体也越多。</li>
+<li><strong>上色</strong>（<span class="keys"><kbd>K</kbd></span>）：见“材质与 UV”。</li>
+</ul>
+<h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>组合笔刷</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>：把所选笔刷合并为它们的凸包。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>K</kbd></span>：从所选笔刷接触到的笔刷中减去所选笔刷。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></span>：掏空所选内容，壁厚为一个网格单位。</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>L</kbd></span>：对所选内容求交集。</li>
+</ul>
+<h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>扫掠、圆角、面片和倒角</h3>
+<p><strong>扫掠</strong> 从所选面出发，沿路径生成几何体。先选择面（在扫掠工具中按住 <span class="keys"><kbd>Alt</kbd></span> 点击），然后在“面”选项卡的扫掠区块中设置 <strong>行程</strong>、<strong>旋转</strong>（轴和角度）、<strong>缩放</strong>、<strong>步数</strong> 和 <strong>路径</strong>（整数或自由对齐；圆弧、直线或 S 形弯），再按 <strong>扫掠</strong>。控件下方的一行文字会说明将生成多少个笔刷。</p>
+<p><strong>圆角</strong> 区块用 <strong>半径</strong>、<strong>面</strong> 和 <strong>角</strong>（斜接或圆角）对选取的边进行倒圆；面数为 1 时得到的是倒角。</p>
+<p><strong>面片</strong> 显示所选面片的 <strong>列</strong> 和 <strong>行</strong>，并提供按钮来增加或删除一对。几何体 → 把面转换为面片（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>）会用所选面生成面片。</p>
+<p><strong>内缩与倒角</strong> 作用于所选面：<strong>内缩</strong> 把面从边缘向内收缩，<strong>深度</strong> 把面向外推出（为负值时向内）。<strong>倒角面</strong> 同时应用两者；第三个按钮根据深度的正负添加凸起面板或切出凹槽。<strong>连接转角</strong> 会打开一个对话框，以斜接或圆角方式连接两个笔刷，并提供预览。</p>
+<h3 id="s4-6"><a class="anchor" href="#s4-6" aria-hidden="true" tabindex="-1">#</a>3D 文字</h3>
+<p>几何体 → 插入 3D 文字（也是 笔刷工具形状列表中的最后一项）可以用文字生成笔刷。它使用内置的多边形字体 Heron Block，该字体带切角、按比例设定字宽并支持捷克语重音符号；小写字母使用大写字形。输入 <strong>文字</strong>，设置 <strong>高度</strong>（大写字母高度，重音符号会超出它）和 <strong>深度</strong>，查看实时预览，然后按 <strong>插入</strong>。</p>
+<p>如果某项操作无法生成有效的几何体，请调整其尺寸，或撤销后简化形状。</p>
+<h2 id="s5"><a class="anchor" href="#s5" aria-hidden="true" tabindex="-1">#</a>材质与 UV</h2>
+<h3 id="s5-1"><a class="anchor" href="#s5-1" aria-hidden="true" tabindex="-1">#</a>加载和应用材质</h3>
+<p>打开“面”选项卡的 <strong>材质</strong> 区块。<strong>加载文件夹</strong> 添加一个图片文件夹，<strong>加载 .wad</strong> 添加一个纹理包；两者都会出现在 <strong>材质集</strong> 下，点击叉号即可移除。在 <strong>筛选材质</strong> 中输入文字可以缩小列表范围。点击某个材质将其设为当前材质，然后 <strong>应用到所选</strong> 会把它应用到所有选中的面。<strong>选择</strong> 提供“选择用到它的 brush”和“选择用到它的面”。<strong>替换</strong> 在整张地图或仅在所选范围内把一种材质替换为另一种。</p>
+<p><strong>上色</strong> 工具（<span class="keys"><kbd>K</kbd></span>）把当前材质应用到指针下的面：单击为一个面上材质，双击为整个笔刷上材质，按住 <span class="keys"><kbd>Shift</kbd></span> 点击则像吸管一样把该面的材质设为当前材质。</p>
+<h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>UV 编辑器</h3>
+<p>“面”选项卡的 <strong>UV</strong> 区块显示所选面的材质和轮廓。画布上的鼠标操作：</p>
+<ul>
+<li>滚轮以指针为中心缩放。用右键或中键拖动可以平移。双击右键重新框显该面；选择另一个面时会自动框显。</li>
+<li>左键拖动会移动材质，面的轮廓保持不动。圆环旋转贴图，角上的控制柄缩放贴图，中心控制柄设置这些变换的原点。</li>
+<li>按住 <span class="keys"><kbd>Alt</kbd></span> 用左键拖动图块边缘可以进行切变，按住 <span class="keys"><kbd>Shift</kbd></span> 用中键拖动也一样。</li>
+<li>每次拖动都是一个撤销步骤，<span class="keys"><kbd>Esc</kbd></span> 可以取消正在进行的拖动。</li>
+</ul>
+<p>画布下方是 <strong>偏移</strong>、<strong>缩放</strong>、<strong>角度</strong>，如果游戏用到，还有 <strong>内容标志</strong>、<strong>表面标志</strong> 和 <strong>表面值</strong>。按钮有 <strong>重置</strong>、<strong>按世界坐标重置</strong>、<strong>适配</strong>、<strong>水平翻转</strong>、<strong>垂直翻转</strong> 以及两个 90° 旋转按钮。<strong>对齐</strong> 让材质沿面的某条边对齐（再按一次换到下一条边，按住 <span class="keys"><kbd>Shift</kbd></span> 换到上一条边）。四个靠齐按钮把材质推到某条边上。<strong>适配 U</strong> 和 <strong>适配 V</strong> 缩放材质，使面上正好铺满整数个重复；再按一次切换到下一个数量，按住 <span class="keys"><kbd>Ctrl</kbd></span> 可保留修边贴图（trim sheet）的分区。</p>
+<h3 id="s5-3"><a class="anchor" href="#s5-3" aria-hidden="true" tabindex="-1">#</a>UV 快捷键</h3>
+<p>选中面时，方向键移动材质，<span class="keys"><kbd>[</kbd></span> 和 <span class="keys"><kbd>]</kbd></span> 将其旋转 15°，<span class="keys"><kbd>,</kbd></span> 和 <span class="keys"><kbd>.</kbd></span> 把缩放减半或加倍，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> 和 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span> 翻转材质，<span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> 重置，<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> 按世界坐标轴重置，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>F</kbd></span> 让材质适配每个面。</p>
+<p>工具栏上的 <strong>锁定</strong> 在移动笔刷时保持贴图，<strong>UV</strong>（<span class="keys"><kbd>U</kbd></span>）在旋转笔刷时保持贴图。</p>
+<h3 id="s5-4"><a class="anchor" href="#s5-4" aria-hidden="true" tabindex="-1">#</a>工具材质</h3>
+<ul>
+<li>skip：在引擎导出中移除标记的面。</li>
+<li>clip：生成不可见的碰撞体。</li>
+<li>origin：标记笔刷实体的轴心。</li>
+</ul>
+<p>可以在“导出”窗口的 <strong>工具材质</strong> 卡片中修改这些名称。对于你确定被遮挡的面，请使用 skip。</p>
+<h3 id="s5-5"><a class="anchor" href="#s5-5" aria-hidden="true" tabindex="-1">#</a>导出时忽略面</h3>
+<p>选择一个面，在 UV 区块中开启 <strong>导出时忽略面</strong>。UV 预览中会用橙色斜线标出它。它的材质和颜色仍会保存，笔刷依然封闭、可编辑。导出的渲染网格会省略这个面，但保留碰撞。立方体只保留一个四边形面时，会生成两个渲染三角形。此功能不会让面变成双面，也不会合并网格。</p>
+<p><strong>忽略被遮挡的面</strong> 会标记被静态笔刷完全遮挡的面，包括相互贴合的相同面和被包在内部的笔刷。它作用于所选笔刷；若未选择任何内容，则作用于所有可见且未锁定的世界几何体。笔刷实体、透明材质以及已有被忽略面的笔刷会被跳过。部分遮挡的面不会被分割。一次撤销即可恢复全部。视图 → 显示被忽略的面 可以在编辑器视图中隐藏或显示这些面；点选时仍以整个笔刷为准。</p>
+<h2 id="s6"><a class="anchor" href="#s6" aria-hidden="true" tabindex="-1">#</a>颜色与渐变</h2>
+<p>“面”选项卡的 <strong>颜色</strong> 区块可以在材质之上为面涂纯色或渐变。它适合关卡的白模搭建（blockout）和风格化美术。上色的面在视图中保持真实颜色；选中状态通过轮廓显示。</p>
+<h3 id="s6-1"><a class="anchor" href="#s6-1" aria-hidden="true" tabindex="-1">#</a>调色板和混合颜色</h3>
+<p>点击十二个调色板色块之一，即可用它为所选面或整个所选笔刷上色。<strong>不透明度</strong> 以百分比设置下一次上色的不透明度。<strong>混合</strong> 带有一个颜色按钮，可以打开取色器；在取色器中拖动时，所选内容会实时跟随变化，也可以按 <strong>上色</strong> 一次性应用混合颜色。<strong>回到材质</strong> 去除颜色，使面重新显示其材质。区块顶部的一行文字说明当前选择了什么，以及它当前的外观。</p>
+<h3 id="s6-2"><a class="anchor" href="#s6-2" aria-hidden="true" tabindex="-1">#</a>取色器</h3>
+<p>编辑器中的所有颜色按钮都会打开同一个取色器。在方块中拖动选择饱和度和亮度，在旁边的色条中拖动选择色相。下方是 <strong>R</strong>、<strong>G</strong> 和 <strong>B</strong> 数值，以及颜色带透明度时的 <strong>不透明度</strong> 滑块。十六进制字段接受 <code>#RRGGBB</code> 或 <code>#RRGGBBAA</code>；文本不是有效颜色时会变红。<strong>复制</strong> 把十六进制代码复制到剪贴板。点击取色器外部即可关闭。</p>
+<h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>渐变</h3>
+<p><strong>渐变</strong> 用于选择线性渐变或径向渐变，旁边的按钮可以把颜色首尾对调。每个色标都有一个颜色按钮和 <strong>位置 (%)</strong>，两端之间的色标还有删除按钮。<strong>添加色标</strong> 会在最大的间隙中添加一个色标；一个渐变最多可以有八个色标。<strong>渐变角度</strong> 设置线性渐变的方向，并带有 <strong>+45°</strong> 和 <strong>−45°</strong> 按钮。</p>
+<p>预览下方有一条滑轨，每个色标对应一个标记。点击滑轨添加色标，点击标记打开它的取色器，拖动标记移动它，右键点击标记将其删除。滑轨下方的三个色块是预设：暖色渐变、冷色渐变和灰度渐变。对渐变的更改会实时应用到所选内容。</p>
+<p>渐变的方向很重要：应沿屋顶坡度或曲面物体的走向设置，而不是横跨互不相关的面。上色后请从两侧检查模型。</p>
+<h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>表面材质</h3>
+<p><strong>表面材质</strong> 可设置 <strong>粗糙度</strong>（0 为光滑，100 为哑光）、<strong>金属度</strong>（木头、石头或塑料为 0，金属为 100）和 <strong>自发光</strong>（0 到 8；表面以自身颜色发光，包括渐变，但不会照亮附近物体）。更改会实时应用到所选面或笔刷。<strong>使用默认表面</strong> 移除覆盖设置。所有更改都可以撤销。</p>
+<p>表面效果会在有光照的 3D 视图和相机渲染中显示。平面显示和线框显示有意不显示高光。泛光（Bloom）可以在自发光表面周围加上光晕。Godot 和 glTF/GLB 会获得材质数值，Unity 导入器会把粗糙度转换为光滑度（smoothness）。各导出目标的限制见 <code>docs/surface-materials.md</code>。</p>
+<h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>素材、图层和组</h2>
+<h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>素材库</h3>
+<p>打开 <strong>素材</strong> 选项卡。用 <strong>添加文件夹</strong> 添加一个包含 <code>.map</code> 模型的文件夹；内置素材库始终可用。在 <strong>筛选素材</strong> 中输入文字进行搜索。点击模型将其选中，然后双击它、按 <span class="keys"><kbd>Enter</kbd></span> 或点击 <strong>插入</strong>，即可把它添加到指针最后所在的位置。也可以把模型拖到视图中。素材中的笔刷会作为一个组插入，因此模型会整体移动。</p>
+<p><strong>将所选保存为素材</strong> 会把所选笔刷以 <code>.map</code> 的形式写入素材库。素材库中的素材是普通的可编辑笔刷，而不是导入的网格。</p>
+<h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>图层</h3>
+<p>“地图”选项卡中的 <strong>图层</strong> 列表用于组织大型区域。输入名称并点击 <strong>添加</strong> 可以创建图层，按 <span class="keys"><kbd>Enter</kbd></span> 可以重命名当前图层。每个图层都可以隐藏、锁定或排除在导出之外。<strong>移到这里</strong> 把所选内容移到当前图层。视图中的上下文菜单也提供移动到图层、设为活动图层、隐藏图层和隔离图层。</p>
+<h3 id="s7-3"><a class="anchor" href="#s7-3" aria-hidden="true" tabindex="-1">#</a>组和关联组</h3>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span> 对所选内容编组，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span> 取消编组。“地图”选项卡的 <strong>组</strong> 区块列出所有组，并提供 <strong>打开</strong>、<strong>重命名</strong>、<strong>合并</strong>、<strong>取消编组</strong>、<strong>移出</strong> 和 <strong>提取</strong>。关联组是一组共享编辑的副本：<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> 创建关联副本，几何体 → 同步关联组 更新各个副本，<strong>取消关联</strong> 让某个副本独立出来。在“实体”选项卡中，可以让某个属性在关联组同步时保留为该副本自身的值。</p>
+<h3 id="s7-4"><a class="anchor" href="#s7-4" aria-hidden="true" tabindex="-1">#</a>统一的比例</h3>
+<p>默认导出比例为每米 32 个地图单位。内置的玩家起点标记高 64 个单位，即 2 米的参考高度。可以用它来对照门洞、载具、家具和植物的大小。只有在确有需要时才更改导出比例，并保持相关素材的比例一致。</p>
+<h2 id="s8"><a class="anchor" href="#s8" aria-hidden="true" tabindex="-1">#</a>实体与玩法</h2>
+<p>常用的实体定义已经内置并始终可用：灯光、玩家起点、门、按钮、平台、触发器、静态道具、声音和路径点。通过“实体”选项卡中的 <strong>实体定义</strong> 加载项目的 FGD 后，同名类别会被替换，其他内置类别则保留。</p>
+<h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>放置实体</h3>
+<p>在“实体”选项卡的 <strong>实体</strong> 浏览器中，在 <strong>筛选类别</strong> 中输入文字并选择一个类别。对于点类别（例如灯光），点击 <strong>放置</strong> 或双击该类别；<span class="keys"><kbd>Insert</kbd></span> 会在所选内容的中心放置一个。对于笔刷类别（例如门或触发器），先选择笔刷，然后点击 <strong>生成</strong>。也可以把类别拖到视图中。</p>
+<h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>属性</h3>
+<p>属性列表用于编辑所选实体。同一类别的实体会一起编辑。<strong>添加属性</strong> 可以添加定义中可能没有的键；<strong>默认值</strong> 可以把现有属性恢复为默认值，或补上缺少的属性。类别定义了但实体尚未设置的属性会以暗色显示，输入值后即被添加。用 targetname 和 target 来连接实体。</p>
+<h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>导出能做什么</h3>
+<p>Godot 的指令会创建原生节点、碰撞体和触发区域。Unity 和 Unreal 原生支持常见灯光，Unreal 还会创建 PlayerStart Actor。其他数据会在目标导入器允许的范围内保留。</p>
+<p>单独一个门实体并不会带来游戏行为。移动、触发响应、玩家控制器和项目脚本仍然需要在引擎中实现。Defold 会导出实体属性和碰撞对象；Flax 会放置模型和通用实体。在此基础上开发玩法之前，请先在引擎中检查结果。</p>
+<h2 id="s9"><a class="anchor" href="#s9" aria-hidden="true" tabindex="-1">#</a>动画</h2>
+<p>Heron Brush 可以预览简单的运动，为笔刷实体编辑关键帧动画，并将其导出到多种引擎。</p>
+<h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>预览动画</h3>
+<p>在“视图”菜单、“动画”菜单、“网格设置”菜单或“地图”选项卡的“视图”区块中开启 <strong>预览动画</strong>。当 start_on 启用时，它会根据实体的轴、速度、方向、行程和等待属性播放 func_rotate 的旋转和 func_shuttle 的往返运动，并播放设置为“启动时播放”的关键帧片段。风扇和风车素材已经包含会旋转的部件。</p>
+<p>关闭预览会恢复原始姿态。在视图中点击会先停止播放，再进行选择或编辑；相机导航不受影响。预览不会更改地图、撤销历史或导出结果，也不会运行物理或游戏逻辑。</p>
+<h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>关键帧编辑器</h3>
+<p>通过 动画 → 关键帧动画 或“网格设置”菜单打开它。它停靠在视图下方；当 3D 窗口独立时，则停靠在 3D 窗口中。标题中的窗口图标可以把它移到独立窗口中，当前帧和撤销历史都会保留。<strong>编辑动画</strong> 把视图切换到动画姿态，<strong>编辑地图</strong> 则回到静止几何体。在动画模式下，每个视图底部都会显示 <strong>编辑动画</strong> 和帧号。</p>
+<p>选择一个笔刷实体、一个笔刷或一个笔刷组即可为其制作动画。一个扁平的笔刷组共用一个动画和轴心；包含多个实体的组需要分别制作动画。</p>
+<h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>片段</h3>
+<p><strong>动画</strong> 选择器用于在命名片段之间切换。在 <strong>动画名称</strong> 中输入名称并点击 <strong>另存为</strong>，即可把当前片段复制为该名称；<strong>删除</strong> 删除片段。<strong>平移</strong> 创建一个不含旋转的 <code>translate</code> 片段。<strong>门动画</strong> 创建平滑的 <code>open</code> 和 <code>close</code> 片段，绕当前轴心旋转 90 度；请先把轴心移到门铰处。<strong>启动时播放</strong> 让片段在关卡开始时播放；门预设会关闭此选项。</p>
+<h3 id="s9-4"><a class="anchor" href="#s9-4" aria-hidden="true" tabindex="-1">#</a>播放控制</h3>
+<p>播放控制按钮有 <strong>开始</strong>、<strong>上一关键帧</strong>、<strong>播放</strong>、<strong>下一关键帧</strong> 和 <strong>结束</strong>。<strong>帧</strong> 显示并设置当前帧，<strong>时长（秒）</strong> 设置片段长度。模式可选 <strong>一次</strong>、<strong>循环</strong> 或 <strong>往返</strong>。</p>
+<h3 id="s9-5"><a class="anchor" href="#s9-5" aria-hidden="true" tabindex="-1">#</a>时间轴</h3>
+<p>时间轴有一条带播放头的标尺，以及 <strong>位置</strong>（X、Y、Z 一起设置关键帧）和每个旋转角度 RX、RY、RZ 各自的轨道。在标尺上点击或拖动可以移动播放头，并在所有视图中预览该姿态。用中键拖动可以平移时间轴。拖动关键帧可以在时间上移动它们；<span class="keys"><kbd>Shift</kbd></span> 加入选择；双击轨道插入关键帧；<span class="keys"><kbd>Ctrl</kbd></span>+滚轮缩放。<strong>曲线</strong> 会显示数值曲线而不是轨道。</p>
+<p>时间轴上方的按钮有 <strong>添加关键帧</strong>、<strong>移除</strong>、<strong>复制</strong>、<strong>粘贴</strong> 和 <strong>复制副本</strong>。<strong>吸附到帧</strong> 让关键帧保持在整数帧上，<strong>适配</strong> 显示整个片段。<strong>调整关键帧时间</strong> 会展开 <strong>时间缩放</strong>、<strong>偏移（帧）</strong>、<strong>从播放头缩放</strong>、<strong>延长时长</strong> 和 <strong>调整所选关键帧时间</strong>。</p>
+<p>时间轴旁的关键帧检查器用于编辑所选关键帧：<strong>帧</strong>、<strong>值</strong>（或位置关键帧的三个坐标）、插值方式 <strong>线性</strong>、<strong>保持</strong> 或 <strong>贝塞尔</strong>、<strong>入切线斜率</strong> 和 <strong>出切线斜率</strong>，以及 <strong>平滑切线</strong>。</p>
+<h3 id="s9-6"><a class="anchor" href="#s9-6" aria-hidden="true" tabindex="-1">#</a>编辑器中的按键</h3>
+<p>当时间轴拥有键盘焦点时：<span class="keys"><kbd>Space</kbd></span> 播放或暂停，左右方向键逐帧移动，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span> 选择所有关键帧，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span> 和 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span> 复制、剪切和粘贴关键帧，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span> 复制副本，<span class="keys"><kbd>Delete</kbd></span> 删除，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span> 撤销，<span class="keys"><kbd>Esc</kbd></span> 取消拖动。在时间轴之外，<span class="keys"><kbd>Esc</kbd></span> 退出动画模式。撤销时，缩放、选择和播放头都保持原样。</p>
+<h3 id="s9-7"><a class="anchor" href="#s9-7" aria-hidden="true" tabindex="-1">#</a>在视图中摆姿态</h3>
+<p>时间轴下方的一行包括带数量设置的 <strong>洋葱皮</strong> 和 <strong>间距</strong>（以虚影显示相邻姿态）、<strong>轴心</strong> 坐标、<strong>自动关键帧</strong>，以及姿态工具 <strong>平移</strong>、<strong>旋转</strong> 和 <strong>轴心</strong>。</p>
+<ul>
+<li><strong>添加关键帧</strong> 会开启自动关键帧并暂停播放。开启自动关键帧并选择 <strong>平移</strong> 后，在 3D 视图中拖动所选实体控制柄上的彩色轴，即可在当前帧记录位置关键帧。</li>
+<li>在 2D 视图中拖动所选笔刷或其所在组的成员，可以沿两个可见轴记录平移关键帧，并吸附到网格。此操作无需开启自动关键帧。</li>
+<li>使用 <strong>旋转</strong> 时，在 2D 视图中围绕橙色轴心标记拖动笔刷。俯视记录 RZ，前视记录 RY，侧视记录 RX，并吸附到网格角度。</li>
+<li>使用 <strong>轴心</strong> 时，在任意 2D 视图中拖动黄色的旋转中心。它会吸附到网格并保持深度不变。关键帧和静止几何体保持不变。</li>
+</ul>
+<p>2D 和 3D 中的青色路径显示轴心的运动轨迹。点击路径点可以选中其时间和关键帧，拖动路径点可以更改位置；开启自动关键帧时，也可以在 3D 视图中拖动路径点。标签显示帧号，虚线段表示跳变。<span class="keys"><kbd>Esc</kbd></span> 可取消上述任何拖动，一次撤销即可还原整个拖动。</p>
+<p>新动画从静止状态开始，关键帧位于时间零点。在其他帧改变姿态即可产生运动。若要制作有尖角的 L 形路径，请在起点、拐角和终点设置关键帧，并使用线性插值配合往返模式。</p>
+<h3 id="s9-8"><a class="anchor" href="#s9-8" aria-hidden="true" tabindex="-1">#</a>把按钮连接到动画</h3>
+<p>选择一个 func_button、trigger_multiple 或 trigger_once。“实体”选项卡会在属性上方显示 <strong>动画触发器</strong>。从列表中选择目标，或点击 <strong>在视图中选择目标</strong>，然后在任意视图中点击一个动画对象；<span class="keys"><kbd>Esc</kbd></span> 取消选取。缺失的目标或片段会在控件下方报告。开启连线显示时，实体连接会显示指向目标的箭头。</p>
+<p><strong>动作</strong> 决定激活时执行什么：<strong>播放</strong> 启动一个命名片段或所选动画；<strong>切换</strong> 在 <code>open</code> 和 <code>close</code> 存在时交替播放它们，否则重新开始所选动画；<strong>打开</strong> 和 <strong>关闭</strong> 启动对应片段；<strong>暂停</strong> 保持当前姿态，<strong>继续</strong> 继续播放，<strong>停止</strong> 恢复原始姿态。<strong>仅一次</strong> 覆盖类别的默认设置。<strong>重复间隔（秒）</strong> 设置两次激活之间的最短时间；它不会延迟第一次激活。</p>
+<p><strong>测试触发器</strong> 在预览中执行该动作，不会编辑地图，也不会添加撤销步骤。<strong>重置预览</strong> 恢复原始姿态，并清除“仅一次”和冷却状态。它不会模拟玩家碰撞或游戏脚本。</p>
+<h3 id="s9-9"><a class="anchor" href="#s9-9" aria-hidden="true" tabindex="-1">#</a>导出中的动画</h3>
+<p>Godot 会导出原生的 AnimationPlayer 和 AnimationLibrary 资源，包括曲线和随动的碰撞体。CharacterBody3D 进入按钮区域时会激活其目标。在 Godot 中对这些片段所做的修改不会回到地图，并会在下一次导出时被覆盖。</p>
+<p>raylib 导出会添加带 C 语言播放器的 <code>&lt;map&gt;_animation.h</code> 和带自由相机预览的 <code>&lt;map&gt;_preview.c</code>；按照 <code>&lt;map&gt;_raylib.md</code> 构建即可。在预览中，<code>SPACE</code> 暂停，<span class="keys"><kbd>R</kbd></span> 重新开始默认片段，<span class="keys"><kbd>N</kbd></span> 循环切换命名片段。Defold 会把播放功能嵌入实体脚本，并提供有文档说明的 <code>heron_*_animation</code> 消息。Unity 的 Build Level 会添加 <code>HeronBrushAnimation</code> 和一个运动学刚体。Bevy 导出包含 <code>heron_animation.rs</code> 及说明。Godot、Unity、Defold、Bevy 和 raylib 都会保留触发连接、“仅一次”标志和重复间隔。你的游戏仍需注册播放器，并把自己的按钮连接到各运行时的 API。</p>
+<h3 id="s9-10"><a class="anchor" href="#s9-10" aria-hidden="true" tabindex="-1">#</a>Motion lab 示例</h3>
+<p>从欢迎界面的“示例”中打开 <code>motion_lab</code>。其中有一个沿 L 形路径移动的平台、一部升降机、一个旋转平台和一扇带按钮的铰链门。在 Godot 中打开旁边的 <code>godot/project.godot</code> 并按 <span class="keys"><kbd>F5</kbd></span>。WASD 和鼠标控制玩家移动，空格键跳跃，1 到 4 前往各个展台，R 重新开始当前展台。踩上彩色踏板即可激活它的目标。附带的 README 说明了如何重新导出。</p>
+<h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>导出到引擎</h2>
+<p>文件 → 导出 会打开“导出”窗口。左侧列出各个引擎及其徽标：Godot、Defold、three.js、Bevy、raylib、Unity、Unreal Engine、Flax Engine、Cocos Creator、Wavefront .obj、glTF .gltf、GLB .glb，最后是 <code>.map</code>。右侧页面说明目标将得到什么。<strong>写入</strong> 执行写出，<strong>检查</strong> 构建关卡但不写出，并列出问题，<strong>关闭</strong> 关闭窗口。</p>
+<p>导出与保存相互独立：<code>.map</code> 始终是你的可编辑源文件。每个控件在更改后会立即保存对应引擎的设置，因此每个引擎都会记住自己的选项，窗口也会保持你上次离开时的状态。</p>
+<h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>通用选项</h3>
+<ul>
+<li><strong>缩放</strong>：<strong>每米多少单位</strong>，默认为 32。</li>
+<li><strong>写入什么</strong>：<strong>碰撞几何体</strong>。</li>
+<li><strong>优化</strong>：<strong>按 1024 单位单元分组静态网格</strong>、<strong>丢弃埋在几何体内部的面</strong>、<strong>合并共面的面</strong> 和 <strong>合并碰撞形体</strong>。</li>
+<li><strong>项目路径</strong>：关卡及其资源在项目中的存放位置。</li>
+<li><strong>工具材质</strong>：clip、skip 和 origin 材质的名称。</li>
+<li><strong>更多</strong>：各引擎特有的开关，例如 <strong>节点命名依据</strong>、<strong>将图层和组重建为父节点</strong>、<strong>反转三角形顶点绕序</strong>、纹理坐标翻转，以及带 <strong>光照贴图纹素</strong> 设置、用于烘焙光照的第二套 UV。</li>
+<li><strong>随地图保持更新</strong>：<strong>每次保存地图时重新写入</strong>。只有在对该引擎导出过一次之后才可用，因为那次导出确定了写入位置。</li>
+</ul>
+<p>静态单元按中心点分配世界笔刷，并在每个 1024 单位的单元内按材质合并，使引擎能够剔除地图中较小的部分。碰撞会保留，玩法实体保持独立。这可能比单个世界网格产生更多的绘制调用（draw call），因此默认关闭。独立的 OBJ、glTF 和 GLB 导出不使用单元。</p>
+<h3 id="s10-2"><a class="anchor" href="#s10-2" aria-hidden="true" tabindex="-1">#</a>各目标说明</h3>
+<ul>
+<li>Godot：纹理和材质的 <code>res://</code> 路径、触发器的物理层以及光照贴图 UV2。请选择 Godot 项目内的导出文件夹。</li>
+<li>Defold：素材资源目录、模型材质和纹理采样器，该采样器必须存在于所选材质中。</li>
+<li>Unity：OBJ 网格和一个编辑器导入器；请导出到项目的 Assets 文件夹下。</li>
+<li>Unreal Engine：生成的导入脚本和内容路径，通常为 /Game/<level>。</li>
+<li>Flax Engine：相对于项目 Content 文件夹的模型内容路径。</li>
+<li>three.js、Bevy、raylib 和 Cocos Creator：适用于这些运行时的场景或代码，导出文件旁附有说明。</li>
+<li>glTF / GLB：供兼容工具使用的可移植几何体；GLB 是二进制形式。OBJ：供建模工具使用的几何体和材质。</li>
+<li><code>.map</code>：<strong>写入为</strong> 可选择 Valve 220、Standard、Quake 2 或 Quake 2 (Valve)。窗口会说明所选格式会丢失哪些内容。</li>
+</ul>
+<p>写出后请阅读警告，例如缺失纹理。<strong>检查结果</strong> 会在窗口中列出这些警告。</p>
+<h2 id="s11"><a class="anchor" href="#s11" aria-hidden="true" tabindex="-1">#</a>实时连接：Godot、Unity、Defold 和 Flax</h2>
+<p>实时连接会在你工作时把 Heron Brush 中未保存的编辑发送到引擎编辑器。它是单向的：在引擎中所做的编辑不会传回。每个地图窗口同时只能运行一个实时连接。切换引擎前请先停止它，更改导出选项后请重新启动以使其生效。这些控件位于“导出”窗口中该引擎页面的实时连接卡片中（例如 <strong>与 Godot 实时连接</strong>）。</p>
+<p>标题栏中的指示器显示连接状态；点击它可以停止连接。关闭或替换地图会停止发布。导入失败后，请修复问题并重新启动连接。</p>
+<h3 id="s11-1"><a class="anchor" href="#s11-1" aria-hidden="true" tabindex="-1">#</a>Godot</h3>
+<ol>
+<li>先导出一次到 Godot 项目中。</li>
+<li>点击 <strong>安装 Godot 插件</strong>。</li>
+<li>在 Godot 的 Project Settings → Plugins 中启用 Heron Brush Live。</li>
+<li>点击 <strong>启动实时连接</strong>，然后在 Godot 的停靠面板中把地图附加到打开的 3D 场景。</li>
+</ol>
+<p>插件只替换它自己生成的分支，并保留附加点的位置和其他节点。请自行保存 Godot 场景，并把你自己的脚本和节点放在生成的分支之外。</p>
+<h3 id="s11-2"><a class="anchor" href="#s11-2" aria-hidden="true" tabindex="-1">#</a>Unity</h3>
+<ol>
+<li>先导出一次到 Unity 项目的 Assets 文件夹下。</li>
+<li>点击 <strong>安装 Unity 插件</strong>，等待 Unity 完成编译。</li>
+<li>在 Unity 中打开 Window → Heron Brush → Live Link。</li>
+<li>启动连接，并把地图附加到当前的 Unity 场景。</li>
+</ol>
+<p>请保持 Unity 的实时连接窗口打开。在 Play Mode 和 Prefab Mode 下更新会暂停。只有地图对象的 Generated 子对象会被替换。请勿编辑生成的文件。</p>
+<h3 id="s11-3"><a class="anchor" href="#s11-3" aria-hidden="true" tabindex="-1">#</a>Defold</h3>
+<ol>
+<li>先导出一次到你的 Defold 项目中，并在 Defold 中保持该项目打开。</li>
+<li>点击 <strong>启动实时连接</strong>。无需安装插件。</li>
+<li>在 Defold 中打开 heron_brush_live/preview.collection，或在你自己的场景中引用它。</li>
+</ol>
+<p>实时连接写入一个单独生成的文件夹，不会改动最终导出和 game.project。<strong>热重载运行中的游戏</strong> 也会更新从 Defold 启动的游戏；添加对象或更改碰撞可能需要重新启动关卡。连接失败时会自动重试。</p>
+<h3 id="s11-4"><a class="anchor" href="#s11-4" aria-hidden="true" tabindex="-1">#</a>Flax</h3>
+<p>导出到项目的 Content 文件夹中，然后点击 <strong>安装 Flax 插件</strong>。等待 Flax 编译完成，启动连接，再在打开的 Flax 场景中选择 Tools → Heron Brush: attach live map。生成的根节点会保留其位置，其他对象不受影响。请自行保存场景。在 Play Mode 下更新会暂停。Tools → Heron Brush: stop live map 会暂停接收。</p>
+<h2 id="s12"><a class="anchor" href="#s12" aria-hidden="true" tabindex="-1">#</a>协同实时会话</h2>
+<p>协作 → 实时会话 会打开一个窗口，用于主持会话或加入其他 Heron Brush 用户的会话。这是多人共享地图编辑，与引擎实时连接是两回事。</p>
+<h3 id="s12-1"><a class="anchor" href="#s12-1" aria-hidden="true" tabindex="-1">#</a>主持与加入</h3>
+<p>填写 <strong>你的名字</strong>。要主持会话，选择 <strong>主持会话</strong>，点击 <strong>启动会话</strong>，然后把 <strong>复制连接信息</strong> 得到的信息发给访客。要加入会话，选择 <strong>加入会话</strong>，粘贴连接信息并点击 <strong>加入</strong>。加入会用主持者的地图替换当前打开的地图，所以请先保存你的工作。</p>
+<p>标准版本可在局域网中使用，<strong>本地网络端口</strong> 用于设置端口。通过互联网进行的会话（<strong>通过互联网连接</strong>）需要启用了可选网络功能的版本。参与者可以在 3D 视图中看到彼此的相机标记和名字。</p>
+<p>关闭窗口不会结束会话；标题栏中的指示器会显示其状态。<strong>停止会话</strong> 或 <strong>离开会话</strong> 会结束会话。当两个人编辑同一个对象时，以主持者的顺序决定最终版本，而撤销也是一次共享编辑。尽可能分区域工作，并适时保存检查点。</p>
+<h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D 显示与第二台显示器</h2>
+<h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>显示模式</h3>
+<p>“地图”选项卡的 <strong>视图</strong> 区块用于切换视图中绘制的内容：笔刷、点实体、实体模型、实体类名、组轮廓、面片、材质、显示被忽略的面、预览动画、线框、边和笔刷实体轮廓。线框模式会绘制三角形的边，包括对角线和位于表面后方的边，不显示材质。这是一个临时的调试视图，不会影响导出或渲染。</p>
+<p>3D 视图的光照、阴影、环境光遮蔽、反射、泛光和平滑设置位于 首选项 → 渲染器。这些都是预览设置；最终图像使用渲染相机自己的设置。</p>
+<h3 id="s13-2"><a class="anchor" href="#s13-2" aria-hidden="true" tabindex="-1">#</a>独立的 3D 窗口</h3>
+<p>视图 → 在独立窗口中显示 3D 视图 会把 3D 视图移到单独的窗口中，你可以把它放到另一台显示器上。它与主窗口共享相机、文档和工具，平面视图则占据主窗口的空间。它的菜单提供材质、实体视图和线框；“视图”子菜单，其中有显示被忽略的面、预览动画、边、组轮廓、点实体、实体模型和笔刷实体轮廓；对焦到选中对象；前视、侧视和俯视，它们会让相机绕所选内容（或相机前方的一个点）转动；按 3D 视图放置相机；全屏（<span class="keys"><kbd>F11</kbd></span>）；渲染图像；以及返回主窗口。关闭该窗口会把视图重新停靠回去。</p>
+<h3 id="s13-3"><a class="anchor" href="#s13-3" aria-hidden="true" tabindex="-1">#</a>程序化天空</h3>
+<p>3D 视图默认开启程序化天空，可以在 首选项 → 渲染器 → 光照 中关闭。渲染相机有自己的 <strong>程序化天空</strong> 开关，随地图一起保存。天空、地平线和地面的颜色来自环境设置，太阳则跟随场景光照。天空没有几何体，也不会被导出。</p>
+<h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>渲染相机与 PNG 图像</h2>
+<p>文件 → 渲染图像 会打开渲染窗口：左侧是相机及其设置，右侧是实时预览，随着你修改设置而重绘。相机保存在 <code>.map</code> 中一个仅供编辑器使用的 Render cameras 图层里，该图层不会包含在引擎导出中。</p>
+<h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>放置相机</h3>
+<p>在 3D 视图中构好图，然后按 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>（或 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>），或点击 <strong>按 3D 视图放置相机</strong>。如果没有选中相机，会更新第一个已保存的相机；如果还没有相机，则新建一个。此操作可以撤销，并会保留输出和光照设置。<strong>在地图中选择相机</strong>、<strong>从地图加载相机</strong> 和 <strong>将 3D 视图移到相机</strong> 的作用方向正好相反。<strong>在 3D 视图中显示相机框</strong> 显示输出图像的边界，<strong>通过 3D 视图控制相机</strong> 让常规导航直接移动已保存的相机。</p>
+<h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>设置</h3>
+<ul>
+<li><strong>相机位置</strong>：X、Y、Z、偏航（yaw）和俯仰（pitch）。</li>
+<li><strong>输出和镜头</strong>：<strong>预设</strong>（全高清、正方形、竖向）、宽度、高度、采样数、<strong>垂直视野</strong> 和 <strong>远裁剪面</strong>。</li>
+<li><strong>照明</strong>：日光、日落或阴天，或自行设置曝光、太阳、天空、地平线和地面颜色、<strong>程序化天空</strong>、<strong>阴影</strong>、<strong>环境光遮蔽</strong> 和 <strong>泛光</strong>。</li>
+<li><strong>景深</strong>：<strong>启用景深</strong>、对焦距离、清晰范围和模糊半径。<strong>对焦到选中对象</strong> 会对焦到相机前方所选对象的中心。</li>
+</ul>
+<p><strong>保存相机和设置</strong> 把表单内容存入地图；保存地图后才会写入磁盘。</p>
+<h3 id="s14-3"><a class="anchor" href="#s14-3" aria-hidden="true" tabindex="-1">#</a>渲染</h3>
+<p><strong>渲染 PNG</strong> 会询问保存位置，然后开始渐进式渲染，预览中的画面会逐个采样地完善。采样越多效果越好，但耗时也越长。<strong>取消渲染</strong> 会停止渲染且不写入文件。渲染器使用编辑器的光栅化管线，而不是路径追踪。PNG 背景不透明，且不会渲染动画。渲染非常大的图像时，编辑器可能会短暂停顿。</p>
+<h2 id="s15"><a class="anchor" href="#s15" aria-hidden="true" tabindex="-1">#</a>首选项</h2>
+<p>文件 → 首选项（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>）打开设置。更改会立即生效并自动保存。侧栏列出概览、游戏、视图、颜色、鼠标、键盘和渲染器。顶部的搜索框可以按名称或描述在任意页面中查找设置。每项改动过的设置都有单独的按钮可恢复默认值，<strong>恢复默认值</strong> 会重置当前页面。</p>
+<h3 id="s15-1"><a class="anchor" href="#s15-1" aria-hidden="true" tabindex="-1">#</a>各个页面</h3>
+<ul>
+<li><strong>概览</strong>：汇集常用设置：外观（面板不透明度 (%)、配色方案、布局、语言）、编辑、视图和手册。</li>
+<li><strong>游戏</strong>：游戏、其文件位置以及你在协作中使用的名字。游戏决定写出哪种地图格式、加载哪些实体定义以及材质所在位置。游戏配置从配置文件夹中的 <code>games</code> 文件夹（Linux 和 macOS 上为 <code>~/.config/heron-brush/games</code>，Windows 上为 <code>%LOCALAPPDATA%\heron-brush\games</code>）以及应用程序旁边的 <code>games</code> 文件夹读取；安装包会把附带的配置放在后者中。</li>
+<li><strong>视图</strong>：布局、配色方案、语言、世界坐标轴、网格不透明度、漏洞检查的单元大小以及贴图锁定。</li>
+<li><strong>颜色</strong>：视图、几何体和控制柄的颜色。</li>
+<li><strong>鼠标</strong>：环视、平移和移动的速度与反转、飞行速度、视野、联动 2D 视图以及控制柄大小。</li>
+<li><strong>键盘</strong>：键位方案，Heron Brush 或 Blender。</li>
+<li><strong>渲染器</strong>：真实感着色、选择轮廓、光照、阴影、环境光遮蔽、反射、泛光和表面。</li>
+</ul>
+<h3 id="s15-2"><a class="anchor" href="#s15-2" aria-hidden="true" tabindex="-1">#</a>语言</h3>
+<p><strong>语言</strong> 提供跟随系统以及所有已翻译的语言。界面会立即切换。如果手册有对应界面语言的译本，就以该语言打开，否则以英文打开。</p>
+<h2 id="s16"><a class="anchor" href="#s16" aria-hidden="true" tabindex="-1">#</a>插件与 MCP</h2>
+<h3 id="s16-1"><a class="anchor" href="#s16-1" aria-hidden="true" tabindex="-1">#</a>插件</h3>
+<p>插件通过 Rhai 脚本扩展编辑器。文件 → 插件 打开“插件”窗口。<strong>安装插件</strong> 安装一个 <code>.rhai</code> 文件，<strong>安装插件文件夹</strong> 安装一个包含 <code>main.rhai</code> 的文件夹；可选的 <code>plugin.toml</code> 元数据用于描述插件及其设置。插件分为 <strong>已启用插件</strong> 和 <strong>已停用插件</strong> 两组，<strong>启用插件</strong> 可以开启或关闭某个插件，该设置在重启后依然有效。<strong>重新加载插件</strong> 会从磁盘重新读取脚本，并重置其面板中的数值。</p>
+<p>已启用的插件还会出现在“地图”选项卡的 <strong>插件</strong> 区块中，显示其设置、操作按钮（<strong>运行</strong>）和输出。操作作用于所选内容；若未选择任何内容，则作用于全部内容，并且只算一个撤销步骤。随附的 Selection inspector 插件会显示数量统计，并提供上移和下移操作。</p>
+<h3 id="s16-2"><a class="anchor" href="#s16-2" aria-hidden="true" tabindex="-1">#</a>MCP</h3>
+<p>协作 → 向智能体提供服务（MCP）可以让 AI 智能体或其他工具通过 Model Context Protocol 控制当前打开的编辑器。窗口会显示本地地址并提供 <strong>复制</strong> 按钮，<strong>停止服务器</strong> 用于关闭服务；服务运行期间，标题栏会显示 <strong>MCP 已启用</strong>。命令行选项 <code>--mcp</code> 会在无窗口的情况下运行同样的接口。客户端可以发现用于几何体、素材、属性、动画、导出和会话的工具。MCP 与编辑器插件是两种不同的接口。</p>
+<h2 id="s17"><a class="anchor" href="#s17" aria-hidden="true" tabindex="-1">#</a>命令行</h2>
+<p>程序名为 <code>heron-brush</code>。不带任何选项时，它会打开欢迎界面。</p>
+<h3 id="s17-1"><a class="anchor" href="#s17-1" aria-hidden="true" tabindex="-1">#</a>打开文件</h3>
+<p><code>heron-brush map.map [entities.fgd] [materials/]</code> 会打开一张地图，并可选地加载实体定义和材质文件夹。用空参数可以跳过其中一项，例如 <code>heron-brush map.map "" materials/</code>。如果编辑器已在运行，地图会在其中打开；<code>--new-instance</code> 则会改为打开一个单独的窗口。</p>
+<h3 id="s17-2"><a class="anchor" href="#s17-2" aria-hidden="true" tabindex="-1">#</a>命令</h3>
+<ul>
+<li><code>--help</code> 或 <code>-h</code>：打印用法。<code>--version</code> 或 <code>-V</code>：打印版本。</li>
+<li><code>--mcp</code>：通过标准输入输出提供 MCP 服务，不打开窗口。</li>
+<li><code>--merge-map &lt;base&gt; &lt;ours&gt; &lt;theirs&gt; [&lt;output&gt;]</code>：供 git 使用的 <code>.map</code> 文件三方合并。输出默认写入 ours。冲突会被打印出来，并返回非零退出码。</li>
+<li><code>--obj-to-map &lt;in.obj&gt; &lt;out.map&gt; [size] [thickness] [snap] [material]</code>：把网格转换为笔刷。size 是最长边的长度，以地图单位计（默认 256）；snap 是角点吸附的网格（0 表示不吸附）；使用 <code>solid</code> 或 <code>layered</code> 时，会生成网格方块或凸板，而不是薄楔形。</li>
+<li><code>--render-preview &lt;in.map&gt; &lt;out.png&gt; [size]</code>：写出地图的 PNG 缩略图，默认 512 像素。</li>
+<li><code>--run-script &lt;script.rhai&gt; &lt;in.map&gt; [out.map] [key=value ...]</code>：在全选状态下对地图运行插件脚本并写出结果（默认写回输入文件）。<code>key=value</code> 用于填写插件的设置。</li>
+</ul>
+<h2 id="s18"><a class="anchor" href="#s18" aria-hidden="true" tabindex="-1">#</a>故障排除</h2>
+<h3 id="s18-1"><a class="anchor" href="#s18-1" aria-hidden="true" tabindex="-1">#</a>出现异常时</h3>
+<ul>
+<li>材质缺失：检查材质文件夹或材质包，以及导出的项目路径。</li>
+<li>模型尺寸不对：与 64 单位高的玩家标记和导出比例进行对比。</li>
+<li>渐变方向不对：检查渐变角度和面的朝向。</li>
+<li>引擎场景为空：阅读导出警告，并按照目标的导入说明操作。</li>
+<li>实时连接处于等待状态：检查插件是否已安装、场景是否已附加、更新是否被暂停。</li>
+<li>只有线条、没有面：在“地图”选项卡的“视图”区块中关闭线框，或在 3D 窗口的菜单中选择材质或实体视图。</li>
+<li>视图中的对象不见了：<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span> 显示隐藏的对象；检查图层和视图筛选。</li>
+<li>按键没有反应：先点击视图让它获得键盘焦点，再到 首选项 → 键盘 中检查键位方案。</li>
+<li>编辑失败：撤销，简化几何体，并使用“地图”选项卡 <strong>问题</strong> 区块中的 <strong>检查地图</strong> 和 <strong>检查漏洞</strong>。</li>
+<li>无法从文件管理器打开地图：它可能已被交给正在运行的编辑器；请找找那个窗口。</li>
+</ul>
+<h3 id="s18-2"><a class="anchor" href="#s18-2" aria-hidden="true" tabindex="-1">#</a>设置和备份</h3>
+<p>首选项、最近地图、星标、导出设置和插件都存放在配置文件夹中：Linux 和 macOS 上为 <code>~/.config/heron-brush</code>，Windows 上为 <code>%LOCALAPPDATA%\heron-brush</code>。自动保存的备份位于每张地图旁边的 <code>autosave</code> 文件夹中。</p>
+<h3 id="s18-3"><a class="anchor" href="#s18-3" aria-hidden="true" tabindex="-1">#</a>报告问题</h3>
+<p>请附上编辑器版本（帮助 → 关于）、操作系统、一张能重现问题的小地图以及准确的操作步骤。输出面板（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>）通常会说明出了什么问题。在尝试之前请先保存一份副本。</p>
+<h3 id="s18-4"><a class="anchor" href="#s18-4" aria-hidden="true" tabindex="-1">#</a>使用本手册</h3>
+<p>在左侧目录中选择章节。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> 显示目录并跳到搜索框；<span class="keys"><kbd>Esc</kbd></span> 清空搜索，搜索框为空时则关闭手册。<strong>目录</strong> 隐藏或显示章节列表，<strong>字号</strong> 调整文字大小；这两项都会被记住。顶部的语言列表可以在现有译本之间切换。</p>
+  </article>
+</div>
+<script src="../../manual.js"></script>
+</body>
+</html>

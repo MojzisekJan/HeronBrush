@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="vi" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heron Brush manual · Tiếng Việt</title>
+<meta name="description" content="The Heron Brush manual: modelling, materials, entities, animation, export and live links.">
+<link rel="icon" type="image/svg+xml" href="../../images/logo.svg">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../manual.css">
+<link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
+</head>
+<body class="manual-page">
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../../#"><img src="../../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar-top" d="M4 7h16"/><path class="bar-mid" d="M4 12h16"/><path class="bar-bot" d="M4 17h16"/></svg>
+    </button>
+    <nav class="menu" id="site-menu" aria-label="Main">
+      <div class="nav-links">
+        <a href="../../#modelling">Modelling</a>
+        <a href="../../#materials">Materials</a>
+        <a href="../../#animation">Animation</a>
+        <a href="../../#export">Export</a>
+        <a href="#" aria-current="page">Manual</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <mask id="moon-mask"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="moon-cut" cx="17" cy="7" r="6.5" fill="#000"/></mask>
+            <circle class="sun-core" cx="12" cy="12" r="8" fill="currentColor" mask="url(#moon-mask)"/>
+            <g class="rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>
+            </g>
+          </svg>
+          <span class="theme-label">Dark theme</span>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/MojzisekJan/HeronBrush">GitHub</a>
+        <a class="btn btn-primary" href="../../editor/">Try in the browser</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<script>
+  // The menu folds behind the button on narrow windows; without this script the links stay in view.
+  (function () {
+    var root = document.documentElement, header = document.querySelector('.nav');
+    var toggle = header.querySelector('.menu-toggle'), menu = document.getElementById('site-menu');
+    root.classList.add('js');
+    function set(open) {
+      header.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () { set(!header.classList.contains('open')); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && header.classList.contains('open')) { set(false); toggle.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!header.contains(e.target)) set(false); });
+    matchMedia('(min-width: 961px)').addEventListener('change', function () { set(false); });
+
+    // The theme toggle: remembers the choice; without one the page follows the system.
+    var themeButton = header.querySelector('.theme-toggle'), label = themeButton.querySelector('.theme-label');
+    function show(theme) {
+      root.dataset.theme = theme;
+      themeButton.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = theme === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+    show(root.dataset.theme);
+    themeButton.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      show(next);
+      root.classList.add('theme-switched');
+      try { localStorage.setItem('heron-theme', next); } catch (e) {}
+    });
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+      var stored = null;
+      try { stored = localStorage.getItem('heron-theme'); } catch (err) {}
+      if (!stored) show(e.matches ? 'light' : 'dark');
+    });
+  })();
+</script>
+<div class="manual wrap">
+  <aside class="toc" id="toc" aria-label="Contents">
+    <div class="toc-tools">
+      <label class="sr-only" for="lang">Language</label>
+      <select id="lang" class="lang-select"><option value="../" lang="en">English</option><option value="../cs/" lang="cs">Čeština</option><option value="../de/" lang="de">Deutsch</option><option value="../zh/" lang="zh-Hans">中文</option><option value="../es/" lang="es">Español</option><option value="../uk/" lang="uk">Українська</option><option value="../pl/" lang="pl">Polski</option><option value="../it/" lang="it">Italiano</option><option value="../fr/" lang="fr">Français</option><option value="../pt-BR/" lang="pt-BR">Português (Brasil)</option><option value="../ja/" lang="ja">日本語</option><option value="../ko/" lang="ko">한국어</option><option value="../tr/" lang="tr">Türkçe</option><option value="../id/" lang="id">Bahasa Indonesia</option><option value="../ru/" lang="ru">Русский</option><option value="../nl/" lang="nl">Nederlands</option><option value="../sv/" lang="sv">Svenska</option><option value="../da/" lang="da">Dansk</option><option value="../nb/" lang="nb">Norsk bokmål</option><option value="../fi/" lang="fi">Suomi</option><option value="../hu/" lang="hu">Magyar</option><option value="../ro/" lang="ro">Română</option><option value="../sk/" lang="sk">Slovenčina</option><option value="../el/" lang="el">Ελληνικά</option><option value="../vi/" selected lang="vi">Tiếng Việt</option><option value="../zh-TW/" lang="zh-Hant">繁體中文</option><option value="../bg/" lang="bg">Български</option><option value="../hr/" lang="hr">Hrvatski</option><option value="../sl/" lang="sl">Slovenščina</option><option value="../lt/" lang="lt">Lietuvių</option></select>
+      <div class="search">
+        <input id="search" type="search" placeholder="Tìm trong tài liệu" autocomplete="off" aria-label="Tìm trong tài liệu">
+        <ol id="results" class="results" hidden data-nothing="Không có chương phù hợp"></ol>
+      </div>
+    </div>
+    <nav class="toc-list"><ul><li class="chapter"><a href="#s1">Bắt đầu</a><ul><li><a href="#s1-1">Màn hình chào mừng</a></li><li><a href="#s1-2">Bản đồ đầu tiên của bạn</a></li><li><a href="#s1-3">Tệp và lưu</a></li></ul></li><li class="chapter"><a href="#s2">Giao diện</a><ul><li><a href="#s2-1">Thanh tiêu đề và menu</a></li><li><a href="#s2-2">Dải công cụ</a></li><li><a href="#s2-3">Khung nhìn bản đồ</a></li><li><a href="#s2-4">Bảng thuộc tính</a></li><li><a href="#s2-5">Thanh trạng thái và khung đầu ra</a></li><li><a href="#s2-6">Hộp thoại và giao diện</a></li></ul></li><li class="chapter"><a href="#s3">Điều hướng và bàn phím</a><ul><li><a href="#s3-1">Di chuyển trong khung nhìn 3D</a></li><li><a href="#s3-2">Di chuyển trong khung nhìn 2D</a></li><li><a href="#s3-3">Lưới và bám lưới</a></li><li><a href="#s3-4">Phím tắt thông dụng</a></li><li><a href="#s3-5">Phím tắt chọn</a></li><li><a href="#s3-6">Phím tắt biến đổi</a></li><li><a href="#s3-7">Sơ đồ phím Blender</a></li></ul></li><li class="chapter"><a href="#s4">Brush và công cụ dựng hình</a><ul><li><a href="#s4-1">Vẽ brush</a></li><li><a href="#s4-2">Chọn</a></li><li><a href="#s4-3">Công cụ tạo hình</a></li><li><a href="#s4-4">Kết hợp brush</a></li><li><a href="#s4-5">Quét, bo tròn, patch và vát</a></li><li><a href="#s4-6">Chữ 3D</a></li></ul></li><li class="chapter"><a href="#s5">Vật liệu và UV</a><ul><li><a href="#s5-1">Tải và áp dụng vật liệu</a></li><li><a href="#s5-2">Trình chỉnh sửa UV</a></li><li><a href="#s5-3">Phím UV</a></li><li><a href="#s5-4">Vật liệu công cụ</a></li><li><a href="#s5-5">Loại mặt khỏi bản xuất</a></li></ul></li><li class="chapter"><a href="#s6">Màu và dải chuyển màu</a><ul><li><a href="#s6-1">Bảng màu và màu trộn</a></li><li><a href="#s6-2">Bộ chọn màu</a></li><li><a href="#s6-3">Dải chuyển màu</a></li><li><a href="#s6-4">Vật liệu bề mặt</a></li></ul></li><li class="chapter"><a href="#s7">Tài nguyên, lớp và nhóm</a><ul><li><a href="#s7-1">Thư viện tài nguyên</a></li><li><a href="#s7-2">Lớp</a></li><li><a href="#s7-3">Nhóm và nhóm liên kết</a></li><li><a href="#s7-4">Tỷ lệ chung</a></li></ul></li><li class="chapter"><a href="#s8">Thực thể và lối chơi</a><ul><li><a href="#s8-1">Đặt thực thể</a></li><li><a href="#s8-2">Thuộc tính</a></li><li><a href="#s8-3">Bản xuất làm được gì</a></li></ul></li><li class="chapter"><a href="#s9">Hoạt ảnh</a><ul><li><a href="#s9-1">Xem trước hoạt ảnh</a></li><li><a href="#s9-2">Trình chỉnh sửa khung khóa</a></li><li><a href="#s9-3">Clip</a></li><li><a href="#s9-4">Điều khiển phát</a></li><li><a href="#s9-5">Dòng thời gian</a></li><li><a href="#s9-6">Phím trong trình chỉnh sửa</a></li><li><a href="#s9-7">Tạo tư thế trong khung nhìn</a></li><li><a href="#s9-8">Kết nối nút bấm với hoạt ảnh</a></li><li><a href="#s9-9">Hoạt ảnh trong bản xuất</a></li><li><a href="#s9-10">Ví dụ Motion lab</a></li></ul></li><li class="chapter"><a href="#s10">Xuất sang engine</a><ul><li><a href="#s10-1">Tùy chọn chung</a></li><li><a href="#s10-2">Ghi chú về đích xuất</a></li></ul></li><li class="chapter"><a href="#s11">Liên kết trực tiếp: Godot, Unity, Defold và Flax</a><ul><li><a href="#s11-1">Godot</a></li><li><a href="#s11-2">Unity</a></li><li><a href="#s11-3">Defold</a></li><li><a href="#s11-4">Flax</a></li></ul></li><li class="chapter"><a href="#s12">Phiên cộng tác trực tiếp</a><ul><li><a href="#s12-1">Mở phiên và tham gia</a></li></ul></li><li class="chapter"><a href="#s13">Hiển thị 3D và màn hình thứ hai</a><ul><li><a href="#s13-1">Chế độ hiển thị</a></li><li><a href="#s13-2">Cửa sổ 3D riêng</a></li><li><a href="#s13-3">Bầu trời thủ tục</a></li></ul></li><li class="chapter"><a href="#s14">Camera kết xuất và ảnh PNG</a><ul><li><a href="#s14-1">Đặt camera</a></li><li><a href="#s14-2">Cài đặt</a></li><li><a href="#s14-3">Kết xuất</a></li></ul></li><li class="chapter"><a href="#s15">Tùy chọn</a><ul><li><a href="#s15-1">Các trang</a></li><li><a href="#s15-2">Ngôn ngữ</a></li></ul></li><li class="chapter"><a href="#s16">Plugin và MCP</a><ul><li><a href="#s16-1">Plugin</a></li><li><a href="#s16-2">MCP</a></li></ul></li><li class="chapter"><a href="#s17">Dòng lệnh</a><ul><li><a href="#s17-1">Mở tệp</a></li><li><a href="#s17-2">Lệnh</a></li></ul></li><li class="chapter"><a href="#s18">Khắc phục sự cố</a><ul><li><a href="#s18-1">Khi có gì đó trông không đúng</a></li><li><a href="#s18-2">Cài đặt và bản sao lưu</a></li><li><a href="#s18-3">Báo lỗi</a></li><li><a href="#s18-4">Sử dụng hướng dẫn này</a></li></ul></li></ul></nav>
+  </aside>
+  <button class="toc-toggle" type="button" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+    <span class="toc-current">Bắt đầu</span>
+  </button>
+  <article class="manual-body">
+<h2 id="s1"><a class="anchor" href="#s1" aria-hidden="true" tabindex="-1">#</a>Bắt đầu</h2>
+<p>Heron Brush là trình chỉnh sửa màn chơi dựa trên brush. Bạn dựng màn chơi từ các brush lồi, tô màu và gán vật liệu cho các mặt của chúng, đặt thực thể, tạo hoạt ảnh cho cửa và bệ di chuyển, rồi xuất kết quả sang engine trò chơi. Trình chỉnh sửa còn có tài nguyên dựng sẵn, hình tham số, liên kết trực tiếp với trình chỉnh sửa của engine, phiên chỉnh sửa chung và kết xuất ảnh tĩnh. Hướng dẫn này đi kèm ứng dụng và dùng được khi không có mạng.</p>
+<p>Trên macOS, <span class="keys"><kbd>Cmd</kbd></span> dùng được ở mọi chỗ hướng dẫn này ghi <span class="keys"><kbd>Ctrl</kbd></span>, và Option là Alt.</p>
+<h3 id="s1-1"><a class="anchor" href="#s1-1" aria-hidden="true" tabindex="-1">#</a>Màn hình chào mừng</h3>
+<p>Khi Heron Brush khởi động mà không có bản đồ, màn hình chào mừng sẽ mở ra. Bên trái là <strong>Tiếp tục</strong> (bản đồ bạn mở gần nhất), <strong>Bản đồ mới</strong> và <strong>Duyệt</strong> để mở một tệp <code>.map</code> có sẵn, cùng với <strong>Trò chơi</strong>, <strong>Hướng dẫn sử dụng</strong> và <strong>Tùy chọn</strong>. Bên phải là danh sách bản đồ gần đây kèm ảnh thu nhỏ, tiếp theo là <strong>Ví dụ</strong>. Ngôi sao (<strong>Luôn ở trên cùng</strong>) ghim bản đồ lên đầu danh sách; thùng rác (<strong>Chuyển vào thùng rác</strong>) chuyển tệp vào thùng rác của hệ thống, nên có thể khôi phục lại. Các phím mũi tên di chuyển trong màn hình và Enter mở mục đang được chọn. Tệp → Chào mừng đưa màn hình này trở lại bất cứ lúc nào.</p>
+<h3 id="s1-2"><a class="anchor" href="#s1-2" aria-hidden="true" tabindex="-1">#</a>Bản đồ đầu tiên của bạn</h3>
+<ol>
+<li>Chọn <strong>Bản đồ mới</strong> trên màn hình chào mừng, hoặc Tệp → Bản đồ mới (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>).</li>
+<li>Chọn công cụ Brush (<span class="keys"><kbd>B</kbd></span>) trên dải công cụ và kéo trong một khung nhìn 2D để vẽ hình đã chọn. Kiểm tra chiều sâu của nó trong một khung nhìn 2D khác.</li>
+<li>Chọn brush và kéo để di chuyển nó. Dùng thẻ <strong>Mặt</strong> để gán cho nó một vật liệu hoặc một màu.</li>
+<li>Lưu bản đồ nguồn bằng <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>. Khi sẵn sàng dùng nó trong trò chơi, mở Tệp → Xuất và ghi một cảnh cho engine của bạn.</li>
+</ol>
+<h3 id="s1-3"><a class="anchor" href="#s1-3" aria-hidden="true" tabindex="-1">#</a>Tệp và lưu</h3>
+<p>Tệp <code>.map</code> là bản nguồn có thể chỉnh sửa của bạn. Hãy lưu thường xuyên: xuất, liên kết trực tiếp và kết xuất không bao giờ tự lưu bản đồ thay bạn. Tệp → Lưu thành (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>) tự thêm phần mở rộng <code>.map</code> nếu bạn bỏ qua. Tệp → Hoàn nguyên về bản đồ đã lưu bỏ các thay đổi chưa lưu và tải lại tệp. Nếu bạn đóng cửa sổ hoặc mở bản đồ khác khi còn thay đổi chưa lưu, Heron Brush sẽ hỏi bạn muốn <strong>Lưu</strong>, <strong>Bỏ</strong> hay <strong>Hủy</strong>.</p>
+<p>Khi một bản đồ đã lưu có thay đổi chưa lưu, các bản sao lưu đánh số được ghi mỗi mười phút vào thư mục <code>autosave</code> cạnh bản đồ. 50 bản sao lưu mới nhất được giữ lại.</p>
+<p>Mở một bản đồ khi Heron Brush đang chạy sẽ chuyển nó cho cửa sổ đang chạy, cửa sổ đó sẽ được đưa lên trước. Dùng <code>--new-instance</code> trên dòng lệnh khi bạn muốn một cửa sổ riêng (xem Dòng lệnh).</p>
+<h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>Giao diện</h2>
+<p>Cửa sổ chính có thanh tiêu đề chứa các menu, dải công cụ bên dưới, các khung nhìn bản đồ, bảng thuộc tính ở bên phải và thanh trạng thái dọc theo cạnh dưới.</p>
+<h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>Thanh tiêu đề và menu</h3>
+<p>Thanh tiêu đề hiển thị logo, các menu, tên bản đồ ở giữa và các nút cửa sổ. Trên macOS, các nút đỏ, vàng và xanh quen thuộc nằm ở bên trái. Kéo thanh tiêu đề để di chuyển cửa sổ và nhấp đúp để phóng to. Khi có tác vụ chạy nền, một chỉ báo xuất hiện gần cuối thanh: liên kết trực tiếp với engine, phiên trực tiếp hoặc <strong>MCP đang hoạt động</strong>. Nhấp vào chỉ báo để dừng liên kết trực tiếp hoặc mở cửa sổ của nó.</p>
+<ul>
+<li><strong>Tệp</strong>: Chào mừng, Bản đồ mới (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span>), Mở bản đồ (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span>), Lưu (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>), Lưu thành (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>), Hoàn nguyên về bản đồ đã lưu, Xuất, Kết xuất ảnh, Plugin và Tùy chọn (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>).</li>
+<li><strong>Chỉnh sửa</strong>: Hoàn tác (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Làm lại (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span>), Cắt, Sao chép, Dán, Nhân bản (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>), Xóa, Chọn tất cả (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>), Lặp lại các lệnh gần nhất (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>) và Quên các lệnh có thể lặp lại.</li>
+<li><strong>Hiển thị</strong>: Khung nhìn 3D trong cửa sổ riêng, Đi đến, Bám theo lưới (<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>), Hiện lưới (<span class="keys"><kbd>0</kbd></span>), Xem trước hoạt ảnh và Hiện các mặt bị loại.</li>
+<li><strong>Hình học</strong>: Chèn chữ 3D, Nối góc, Chuyển mặt thành patch, Đưa vùng chọn ra khỏi thực thể của nó và Đồng bộ nhóm liên kết.</li>
+<li><strong>Hoạt ảnh</strong>: Hoạt ảnh khung khóa, Xem trước hoạt ảnh và Đặt camera từ khung nhìn 3D (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>).</li>
+<li><strong>Bản đồ</strong>: Tải, Tải lại và Gỡ tệp điểm; Tải, Tải lại và Gỡ tệp portal. Chúng hiển thị vết rò rỉ và portal do trình biên dịch bản đồ ghi ra.</li>
+<li><strong>Cộng tác</strong>: Phiên trực tiếp và Phục vụ cho agent (MCP).</li>
+<li><strong>Trợ giúp</strong>: Hướng dẫn sử dụng và Giới thiệu.</li>
+</ul>
+<h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>Dải công cụ</h3>
+<p>Dải công cụ chứa mọi công cụ. Nhóm đầu tiên được dùng thường xuyên: Chọn, Brush, Xén, Đỉnh, Cạnh, Mặt, Xoay và Tỷ lệ. Nhóm thứ hai gồm Xô nghiêng, Lắp ghép, Quét, Điểm điều khiển, Bo tròn và Sơn. Rê chuột lên một nút để xem tên và phím tắt. Nhấp lại vào công cụ đang dùng sẽ quay về Chọn.</p>
+<p>Sau các công cụ là <strong>Lật theo chiều ngang</strong> và <strong>Lật theo chiều dọc</strong>, rồi đến hai công tắc: <strong>Khóa</strong> giữ nguyên ánh xạ vật liệu khi brush di chuyển, và <strong>UV</strong> giữ nguyên nó khi brush xoay (<span class="keys"><kbd>U</kbd></span> bật/tắt nó). Tiếp theo là cài đặt riêng của công cụ đang dùng: công cụ Brush hiển thị hình và các tùy chọn của nó, còn công cụ Bo tròn hiển thị bán kính, số mặt và góc cùng nút <strong>Áp dụng</strong>. Ở đầu bên phải là tên công cụ, kích thước lưới (<strong>Lưới 16</strong> và tương tự; nhấp để chọn kích thước khác) và menu <strong>Cài đặt lưới</strong> với Bám theo lưới, Hiện lưới, Xem trước hoạt ảnh, Hiện các mặt bị loại và Hoạt ảnh khung khóa.</p>
+<h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>Khung nhìn bản đồ</h3>
+<p>Có bốn khung nhìn: khung nhìn 3D và ba khung nhìn phẳng, Phía trên (XY), Phía trước (XZ) và Bên cạnh (YZ). Tùy chọn → Hiển thị → Bố cục chọn Một khung, Hai khung, Ba khung hoặc Bốn khung. Kéo các đường phân cách để đổi kích thước các khung. Nhấp vào một khung nhìn sẽ trao bàn phím cho nó. <span class="keys"><kbd>Space</kbd></span> chuyển một khung hiển thị từng khung nhìn một sang khung nhìn tiếp theo, còn <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> phóng to khung nhìn đang nhận bàn phím và khôi phục lại bố cục.</p>
+<p>Nhấp chuột phải không kéo trong bất kỳ khung nhìn nào để mở menu ngữ cảnh cho vùng chọn và thứ nằm dưới con trỏ. Menu này có gom nhóm, lớp, nhóm liên kết, tạo thực thể, đưa brush vào hoặc ra khỏi thực thể, sao chép tên vật liệu và hiện vật liệu đó trong trình duyệt vật liệu.</p>
+<h3 id="s2-4"><a class="anchor" href="#s2-4" aria-hidden="true" tabindex="-1">#</a>Bảng thuộc tính</h3>
+<p>Bảng thuộc tính bên phải có bốn thẻ. Kéo cạnh trái của nó để đổi độ rộng.</p>
+<ul>
+<li><strong>Bản đồ</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>1</kbd></span>): Lớp, Nhóm, Plugin, Vấn đề, bộ lọc hiển thị và Thẻ.</li>
+<li><strong>Thực thể</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>2</kbd></span>): trình duyệt thực thể, định nghĩa thực thể, thuộc tính của thực thể đang chọn và, với nút bấm và trigger, Kích hoạt hoạt ảnh.</li>
+<li><strong>Mặt</strong> (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>3</kbd></span>): UV, Vật liệu, Màu, Quét, Bo tròn, Patch, và Thu vào &amp; vát. Mỗi phần đều có thể thu gọn.</li>
+<li><strong>Tài nguyên</strong>: thư viện các mô hình brush dùng lại được.</li>
+</ul>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>5</kbd></span> ẩn hoặc hiện bảng thuộc tính và <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>T</kbd></span> ẩn hoặc hiện dải công cụ, giúp các khung nhìn có thêm chỗ.</p>
+<h3 id="s2-5"><a class="anchor" href="#s2-5" aria-hidden="true" tabindex="-1">#</a>Thanh trạng thái và khung đầu ra</h3>
+<p>Thanh trạng thái dọc cạnh dưới hiển thị thông báo mới nhất của trình chỉnh sửa. Lỗi được hiển thị màu đỏ. Nhấp vào thanh, hoặc nhấn <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>, để mở khung đầu ra với toàn bộ lịch sử thông báo. Phần lớn lệnh báo cáo việc chúng đã làm ở đây, ví dụ đã xén bao nhiêu brush.</p>
+<h3 id="s2-6"><a class="anchor" href="#s2-6" aria-hidden="true" tabindex="-1">#</a>Hộp thoại và giao diện</h3>
+<p>Các hộp thoại như Tùy chọn, Xuất và Kết xuất ảnh mở thành cửa sổ riêng. Tùy chọn → Hiển thị → Bảng màu giao diện chọn Theo hệ thống, Sáng hoặc Tối. <strong>Độ đục bảng (%)</strong> trên trang Tổng quan làm các bảng trong suốt phía trên khung nhìn. Cửa sổ tự vẽ các nút của mình theo phong cách hệ thống: kiểu gốc trên macOS, kiểu Windows 11 trên Windows và kiểu GNOME trên Linux.</p>
+<h2 id="s3"><a class="anchor" href="#s3" aria-hidden="true" tabindex="-1">#</a>Điều hướng và bàn phím</h2>
+<h3 id="s3-1"><a class="anchor" href="#s3-1" aria-hidden="true" tabindex="-1">#</a>Di chuyển trong khung nhìn 3D</h3>
+<p>Giữ nút chuột phải và kéo để nhìn quanh. Kéo bằng nút giữa để lia. Con lăn di chuyển tới và lui. <span class="keys"><kbd>W</kbd></span>, <span class="keys"><kbd>A</kbd></span>, <span class="keys"><kbd>S</kbd></span> và <span class="keys"><kbd>D</kbd></span> bay tới, sang trái, lùi và sang phải, <span class="keys"><kbd>Q</kbd></span> bay lên và <span class="keys"><kbd>X</kbd></span> hạ xuống; giữ <span class="keys"><kbd>Shift</kbd></span> để bước dài hơn. Khi bật <strong>Alt + kéo chuột giữa để di chuyển camera</strong> trong Tùy chọn → Chuột, Alt cùng nút giữa di chuyển theo hướng nhìn. Tốc độ, đảo chiều và góc nhìn nằm trong Tùy chọn → Chuột.</p>
+<h3 id="s3-2"><a class="anchor" href="#s3-2" aria-hidden="true" tabindex="-1">#</a>Di chuyển trong khung nhìn 2D</h3>
+<p>Kéo bằng nút giữa để lia và dùng con lăn để thu phóng quanh con trỏ. Lia và thu phóng một khung nhìn phẳng sẽ giữ các khung nhìn khác thẳng hàng; <strong>Liên kết các khung nhìn 2D</strong> trong Tùy chọn → Chuột điều khiển việc này. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span> đặt lại mức thu phóng và <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>U</kbd></span> đưa các khung nhìn phẳng về gốc tọa độ.</p>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>U</kbd></span> đưa vùng chọn vào khung hình trong mọi khung nhìn. Hiển thị → Đi đến (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>M</kbd></span>) đưa camera đến tọa độ nhập vào, chọn thứ nằm ở một dòng của tệp bản đồ, hoặc di chuyển vùng chọn một khoảng nhập vào.</p>
+<h3 id="s3-3"><a class="anchor" href="#s3-3" aria-hidden="true" tabindex="-1">#</a>Lưới và bám lưới</h3>
+<p><span class="keys"><kbd>+</kbd></span> và <span class="keys"><kbd>-</kbd></span> thay đổi kích thước lưới, còn các phím số <span class="keys"><kbd>1</kbd></span> đến <span class="keys"><kbd>9</kbd></span> chọn trực tiếp một kích thước, từ 1 đến 256 đơn vị. <span class="keys"><kbd>0</kbd></span> hoặc <span class="keys"><kbd>#</kbd></span> hiện hoặc ẩn lưới, và <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> bật hoặc tắt bám lưới. <span class="keys"><kbd>S</kbd></span> bám các đỉnh của brush đang chọn vào lưới hiện tại, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> bám chúng vào đơn vị nguyên và <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>V</kbd></span> vào lưới.</p>
+<h3 id="s3-4"><a class="anchor" href="#s3-4" aria-hidden="true" tabindex="-1">#</a>Phím tắt thông dụng</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span>: lưu bản đồ. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>: lưu thành.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>: hoàn tác. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> hoặc <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span>: làm lại.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span>: sao chép, cắt và dán. Dán đặt đối tượng tại con trỏ; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></span> giữ nguyên tọa độ gốc của chúng. Khi đang chọn mặt, sao chép sẽ lấy vật liệu và cài đặt UV của chúng.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>: nhân bản. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>: bản sao liên kết của một nhóm.</li>
+<li><span class="keys"><kbd>Delete</kbd></span> hoặc <span class="keys"><kbd>Backspace</kbd></span>: xóa vùng chọn.</li>
+<li><span class="keys"><kbd>Esc</kbd></span>: hủy thao tác kéo hiện tại, lùi một bước trong công cụ đang dùng, quay về Chọn, và cuối cùng bỏ vùng chọn. <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Esc</kbd></span> quay thẳng về Chọn.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span>: lặp lại các lệnh có thể lặp lại gần nhất. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span>: quên chúng.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> hoặc <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>: đặt camera kết xuất tại khung nhìn 3D.</li>
+<li><span class="keys"><kbd>F5</kbd></span>: tải lại vật liệu. <span class="keys"><kbd>F6</kbd></span>: tải lại định nghĩa thực thể.</li>
+</ul>
+<h3 id="s3-5"><a class="anchor" href="#s3-5" aria-hidden="true" tabindex="-1">#</a>Phím tắt chọn</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span>: chọn tất cả, hoặc mọi tay nắm khi đang dùng công cụ đỉnh, cạnh hoặc mặt. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>A</kbd></span>: bỏ chọn tất cả. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span>: đảo vùng chọn.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B</kbd></span>: chọn các đối tượng khác trong cùng thực thể hoặc nhóm.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>T</kbd></span>: chọn mọi thứ mà các brush đang chọn chạm vào. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd></span>: chọn mọi thứ nằm bên trong chúng. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>E</kbd></span>: chọn mọi thứ trong cột của chúng theo trục nhìn. Các lệnh này tiêu thụ các brush dùng để chọn.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>I</kbd></span>: cô lập vùng chọn. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>I</kbd></span>: ẩn nó. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span>: hiện lại mọi thứ.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span>: gom nhóm. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span>: rã nhóm.</li>
+</ul>
+<h3 id="s3-6"><a class="anchor" href="#s3-6" aria-hidden="true" tabindex="-1">#</a>Phím tắt biến đổi</h3>
+<ul>
+<li>Các phím mũi tên và <span class="keys"><kbd>Page Up</kbd></span> / <span class="keys"><kbd>Page Down</kbd></span> di chuyển vùng chọn một bước lưới theo hướng chúng chỉ trong khung nhìn đang dùng. Với <span class="keys"><kbd>Ctrl</kbd></span> chúng nhân bản khi di chuyển, và với <span class="keys"><kbd>Alt</kbd></span> chúng xoay.</li>
+<li><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>X</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Y</kbd></span>, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></span>: xoay một phần tư vòng quanh trục đó; thêm <span class="keys"><kbd>Shift</kbd></span> để xoay chiều ngược lại.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span>: lật ngang theo khung nhìn; <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span>: lật trên dưới. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>X</kbd></span> và <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Y</kbd></span> phản chiếu theo X hoặc Y.</li>
+<li><span class="keys"><kbd>Insert</kbd></span>: đặt một thực thể điểm tại tâm vùng chọn.</li>
+<li><span class="keys"><kbd>Tab</kbd></span>: khi đang chọn một brush, xoay vòng Chọn → Đỉnh → Cạnh → Mặt → Chọn.</li>
+</ul>
+<h3 id="s3-7"><a class="anchor" href="#s3-7" aria-hidden="true" tabindex="-1">#</a>Sơ đồ phím Blender</h3>
+<p>Tùy chọn → Bàn phím → Sơ đồ phím có Heron Brush (mặc định, được dùng xuyên suốt hướng dẫn này) và Blender. Với Blender: <span class="keys"><kbd>G</kbd></span> chọn và di chuyển, <span class="keys"><kbd>R</kbd></span> xoay, <span class="keys"><kbd>S</kbd></span> co giãn, <span class="keys"><kbd>E</kbd></span> quét, <span class="keys"><kbd>1</kbd></span>, <span class="keys"><kbd>2</kbd></span> và <span class="keys"><kbd>3</kbd></span> chọn công cụ đỉnh, cạnh và mặt, <span class="keys"><kbd>K</kbd></span> xén, <span class="keys"><kbd>B</kbd></span> chọn, <span class="keys"><kbd>A</kbd></span> chọn mọi thứ và <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>A</kbd></span> bỏ vùng chọn, <span class="keys"><kbd>X</kbd></span> xóa, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> nhân bản, <span class="keys"><kbd>H</kbd></span> ẩn và <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>H</kbd></span> hiện mọi thứ, còn <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Z</kbd></span> làm lại. Mọi thứ khác giống nhau ở cả hai.</p>
+<h2 id="s4"><a class="anchor" href="#s4" aria-hidden="true" tabindex="-1">#</a>Brush và công cụ dựng hình</h2>
+<p>Brush là khối đặc lồi được xác định bởi các mặt phẳng. Hãy dựng các vật thể phức tạp từ nhiều brush đơn giản thay vì cố làm một brush lõm. Giữ số lượng brush thấp ở những chỗ chỉ cần một hình đơn giản.</p>
+<h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>Vẽ brush</h3>
+<p>Chọn công cụ Brush (<span class="keys"><kbd>B</kbd></span>) và kéo trong một khung nhìn. Dải công cụ hiển thị <strong>Hình để vẽ</strong>: Hình hộp, Cầu thang, Vòm, Hình trụ, Hình nón, Khối cầu (UV), Khối cầu (Khối hai mươi mặt) và Chèn chữ 3D. <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span> đến <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>7</kbd></span> chọn trực tiếp một hình. Tùy theo hình, dải công cụ hiển thị <strong>Làm rỗng</strong> và <strong>Độ dày:</strong>, <strong>Chiều cao bậc:</strong> và <strong>Hướng:</strong> cho cầu thang, <strong>Trục:</strong>, <strong>Số cạnh bên:</strong> và chế độ hình tròn cho các hình tròn, <strong>Số vòng:</strong> cho khối cầu và <strong>Độ chính xác:</strong> cho khối hai mươi mặt. Đặt các tùy chọn trước khi kéo. Kiểm tra kết quả trong nhiều khung nhìn.</p>
+<h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>Chọn</h3>
+<p>Nhấp vào một brush để chọn nó, và nhấp kèm <span class="keys"><kbd>Ctrl</kbd></span> để thêm vào vùng chọn. Kéo từ chỗ trống sẽ vẽ một hộp chọn. Trong khung nhìn 3D, nhấp kèm <span class="keys"><kbd>Shift</kbd></span> chọn một mặt riêng lẻ và nhấp kèm <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span> thêm nhiều mặt hơn. Kéo một brush đang chọn sẽ di chuyển nó; kéo một brush chưa chọn sẽ chọn và chỉ di chuyển brush đó.</p>
+<p>Trong khung nhìn 3D, kéo kèm <span class="keys"><kbd>Shift</kbd></span> một mặt của brush đang chọn để đùn nó ra. Nhấp kèm <span class="keys"><kbd>Alt</kbd></span> vào một mặt khác để sao chép vật liệu và căn chỉnh của mặt đang chọn sang mặt đó; <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> chỉ sao chép vật liệu và <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> sao chép góc xoay.</p>
+<h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>Công cụ tạo hình</h3>
+<ul>
+<li><strong>Chọn</strong> (<span class="keys"><kbd>Esc</kbd></span>): chọn và di chuyển.</li>
+<li><strong>Đỉnh</strong> (<span class="keys"><kbd>V</kbd></span>), <strong>Cạnh</strong> (<span class="keys"><kbd>E</kbd></span>), <strong>Mặt</strong> (<span class="keys"><kbd>F</kbd></span>): kéo các góc, cạnh hoặc mặt. Kéo kèm <span class="keys"><kbd>Shift</kbd></span> từ giữa một cạnh hoặc mặt sẽ thêm một góc ở đó. <span class="keys"><kbd>Delete</kbd></span> xóa các góc đã chọn.</li>
+<li><strong>Xoay</strong> (<span class="keys"><kbd>R</kbd></span>), <strong>Tỷ lệ</strong> (<span class="keys"><kbd>T</kbd></span>), <strong>Xô nghiêng</strong> (<span class="keys"><kbd>G</kbd></span>): biến đổi vùng chọn bằng tay nắm.</li>
+<li><strong>Xén</strong> (<span class="keys"><kbd>C</kbd></span>): nhấp hai hoặc ba điểm để xác định mặt phẳng cắt. <span class="keys"><kbd>Enter</kbd></span> cắt, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> chọn phía cần giữ, và <span class="keys"><kbd>Backspace</kbd></span> hoặc <span class="keys"><kbd>Esc</kbd></span> xóa điểm cuối cùng.</li>
+<li><strong>Lắp ghép</strong> (<span class="keys"><kbd>N</kbd></span>): đặt các điểm quanh một khối và nhấn <span class="keys"><kbd>Enter</kbd></span> để tạo một brush lồi từ chúng. <span class="keys"><kbd>Backspace</kbd></span> xóa điểm cuối cùng.</li>
+<li><strong>Quét</strong> (<span class="keys"><kbd>Y</kbd></span>): xem phần Quét bên dưới.</li>
+<li><strong>Điểm điều khiển</strong> (<span class="keys"><kbd>P</kbd></span>): tạo lại hình cho lưới điểm điều khiển của patch.</li>
+<li><strong>Bo tròn</strong> (<span class="keys"><kbd>O</kbd></span>): nhấp vào một cạnh để bo tròn nó, hoặc chọn các cạnh hoặc đỉnh bằng công cụ của chúng rồi nhấn <span class="keys"><kbd>Enter</kbd></span>. Nhiều mặt hơn cho kết quả mượt hơn và nhiều hình học hơn.</li>
+<li><strong>Sơn</strong> (<span class="keys"><kbd>K</kbd></span>): xem Vật liệu và UV.</li>
+</ul>
+<h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>Kết hợp brush</h3>
+<ul>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>: gộp các brush đang chọn thành bao lồi của chúng.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>K</kbd></span>: trừ các brush đang chọn khỏi các brush mà chúng chạm vào.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></span>: làm rỗng vùng chọn, với thành dày một bước lưới.</li>
+<li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>L</kbd></span>: lấy giao của vùng chọn.</li>
+</ul>
+<h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>Quét, bo tròn, patch và vát</h3>
+<p><strong>Quét</strong> tạo hình học dọc theo một đường từ các mặt đang chọn. Chọn các mặt (trong công cụ Quét, nhấp kèm <span class="keys"><kbd>Alt</kbd></span>), rồi đặt <strong>Hành trình</strong>, <strong>Xoay</strong> (trục và góc), <strong>Tỷ lệ</strong>, <strong>Số bậc</strong> và <strong>Đường dẫn</strong> (căn chỉnh Số nguyên hoặc Tự do; Cung, Thẳng hoặc Uốn chữ S) trong phần Quét của thẻ Mặt, và nhấn <strong>Quét</strong>. Dòng bên dưới các điều khiển cho biết sẽ tạo bao nhiêu brush.</p>
+<p>Phần <strong>Bo tròn</strong> bo tròn các cạnh đã chọn với <strong>Bán kính</strong>, <strong>Mặt</strong> và <strong>Góc</strong> (Cắt vát hoặc Bo tròn); một mặt sẽ tạo thành cạnh vát.</p>
+<p><strong>Patch</strong> hiển thị <strong>Cột</strong> và <strong>Hàng</strong> của patch đang chọn với các nút để thêm hoặc bớt một cặp. Hình học → Chuyển mặt thành patch (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>) tạo patch từ các mặt đang chọn.</p>
+<p><strong>Thu vào &amp; vát</strong> làm việc trên các mặt đang chọn: <strong>Thu vào</strong> kéo mặt vào trong từ các cạnh của nó và <strong>Độ sâu</strong> đẩy nó ra (hoặc vào, khi giá trị âm). <strong>Vát mặt</strong> áp dụng cả hai; nút thứ ba thêm một tấm ốp hoặc khoét một hốc, tùy theo dấu của Độ sâu. <strong>Nối góc</strong> mở hộp thoại nối hai brush tại một góc cắt vát hoặc bo tròn, có xem trước.</p>
+<h3 id="s4-6"><a class="anchor" href="#s4-6" aria-hidden="true" tabindex="-1">#</a>Chữ 3D</h3>
+<p>Hình học → Chèn chữ 3D (cũng là mục cuối trong danh sách hình của công cụ Brush) tạo brush từ văn bản. Nó dùng Heron Block, một phông chữ đa giác dựng sẵn với góc vạt, độ rộng tỷ lệ và dấu tiếng Séc; chữ thường dùng dạng chữ hoa. Nhập <strong>Chữ</strong>, đặt <strong>Chiều cao</strong> (chiều cao chữ hoa; dấu nằm cao hơn) và <strong>Độ sâu</strong>, xem bản xem trước trực tiếp rồi nhấn <strong>Chèn</strong>.</p>
+<p>Nếu một thao tác không thể tạo ra hình học hợp lệ, hãy điều chỉnh kích thước của nó, hoặc hoàn tác và đơn giản hóa hình.</p>
+<h2 id="s5"><a class="anchor" href="#s5" aria-hidden="true" tabindex="-1">#</a>Vật liệu và UV</h2>
+<h3 id="s5-1"><a class="anchor" href="#s5-1" aria-hidden="true" tabindex="-1">#</a>Tải và áp dụng vật liệu</h3>
+<p>Mở phần <strong>Vật liệu</strong> của thẻ Mặt. <strong>Tải thư mục</strong> thêm một thư mục ảnh và <strong>Tải .wad</strong> thêm một gói texture; cả hai xuất hiện trong <strong>Bộ sưu tập</strong>, nơi dấu chéo dùng để gỡ bỏ. Nhập vào <strong>Lọc vật liệu</strong> để thu hẹp danh sách. Nhấp vào một vật liệu để đặt nó làm vật liệu hiện hành, rồi <strong>Áp dụng cho vùng chọn</strong> gán nó cho mọi mặt đang chọn. <strong>Chọn</strong> có Chọn brush dùng vật liệu này và Chọn mặt dùng vật liệu này. <strong>Thay thế</strong> đổi một vật liệu thành vật liệu khác trên toàn bản đồ hoặc chỉ trong vùng chọn.</p>
+<p>Công cụ <strong>Sơn</strong> (<span class="keys"><kbd>K</kbd></span>) gán vật liệu hiện hành cho mặt dưới con trỏ: một cú nhấp sơn một mặt, nhấp đúp sơn cả brush, và nhấp kèm <span class="keys"><kbd>Shift</kbd></span> lấy vật liệu của mặt làm vật liệu hiện hành, giống như ống hút màu.</p>
+<h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>Trình chỉnh sửa UV</h3>
+<p>Phần <strong>UV</strong> của thẻ Mặt hiển thị vật liệu và đường viền của mặt đang chọn. Điều khiển chuột trên vùng vẽ:</p>
+<ul>
+<li>Con lăn thu phóng quanh con trỏ. Kéo bằng nút phải hoặc nút giữa để lia. Nhấp đúp nút phải để đưa mặt vào khung hình lại; chọn một mặt khác sẽ tự động đưa mặt đó vào khung hình.</li>
+<li>Kéo chuột trái di chuyển vật liệu trong khi đường viền mặt giữ nguyên. Vòng tròn xoay ánh xạ, các tay nắm góc co giãn nó và tay nắm ở giữa đặt gốc cho các thay đổi này.</li>
+<li>Kéo chuột trái kèm <span class="keys"><kbd>Alt</kbd></span> trên cạnh ô sẽ xô nghiêng, kéo chuột giữa kèm <span class="keys"><kbd>Shift</kbd></span> cũng vậy.</li>
+<li>Mỗi lần kéo là một bước hoàn tác, và <span class="keys"><kbd>Esc</kbd></span> hủy thao tác kéo đang diễn ra.</li>
+</ul>
+<p>Bên dưới vùng vẽ là <strong>Độ lệch</strong>, <strong>Tỷ lệ</strong>, <strong>Góc</strong> và, khi trò chơi dùng đến, <strong>Cờ nội dung</strong>, <strong>Cờ bề mặt</strong> và <strong>Giá trị bề mặt</strong>. Các nút gồm <strong>Đặt lại</strong>, <strong>Đặt lại theo thế giới</strong>, <strong>Khớp</strong>, <strong>Lật ngang</strong>, <strong>Lật dọc</strong> và hai nút xoay 90°. <strong>Căn chỉnh</strong> xoay vật liệu theo một cạnh của mặt (nhấn lại để chọn cạnh tiếp theo, <span class="keys"><kbd>Shift</kbd></span> cho cạnh trước). Bốn nút canh lề đẩy vật liệu sát vào một cạnh. <strong>Khớp U</strong> và <strong>Khớp V</strong> co giãn sao cho một số nguyên bản sao phủ kín mặt; nhấn lại để chuyển sang số tiếp theo, và giữ <span class="keys"><kbd>Ctrl</kbd></span> để giữ phân chia của trim sheet.</p>
+<h3 id="s5-3"><a class="anchor" href="#s5-3" aria-hidden="true" tabindex="-1">#</a>Phím UV</h3>
+<p>Khi đang chọn mặt, các phím mũi tên di chuyển vật liệu, <span class="keys"><kbd>[</kbd></span> và <span class="keys"><kbd>]</kbd></span> xoay nó 15°, <span class="keys"><kbd>,</kbd></span> và <span class="keys"><kbd>.</kbd></span> giảm một nửa hoặc tăng gấp đôi tỷ lệ của nó, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> và <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>F</kbd></span> lật nó, <span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> đặt lại nó, <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>R</kbd></span> đặt lại theo trục thế giới và <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>F</kbd></span> khớp nó với từng mặt.</p>
+<p><strong>Khóa</strong> trên dải công cụ giữ nguyên ánh xạ khi brush di chuyển, và <strong>UV</strong> (<span class="keys"><kbd>U</kbd></span>) giữ nguyên nó khi brush xoay.</p>
+<h3 id="s5-4"><a class="anchor" href="#s5-4" aria-hidden="true" tabindex="-1">#</a>Vật liệu công cụ</h3>
+<ul>
+<li>skip: loại mặt được đánh dấu khỏi bản xuất sang engine.</li>
+<li>clip: tạo va chạm mà không có hình học hiển thị.</li>
+<li>origin: đánh dấu tâm xoay của một thực thể brush.</li>
+</ul>
+<p>Có thể đổi các tên này trong thẻ <strong>Vật liệu công cụ</strong> của cửa sổ Xuất. Dùng skip cho những mặt bạn biết là bị che khuất.</p>
+<h3 id="s5-5"><a class="anchor" href="#s5-5" aria-hidden="true" tabindex="-1">#</a>Loại mặt khỏi bản xuất</h3>
+<p>Chọn một mặt và bật <strong>Loại mặt khỏi bản xuất</strong> trong phần UV. Sọc chéo màu cam đánh dấu nó trong bản xem trước UV. Vật liệu và màu sơn của nó vẫn được lưu, và brush vẫn kín và chỉnh sửa được. Lưới kết xuất được xuất ra sẽ bỏ mặt đó trong khi vẫn giữ va chạm. Bỏ một mặt tứ giác của hình lập phương sẽ bớt hai tam giác kết xuất. Điều này không làm mặt thành hai mặt và không gộp các lưới.</p>
+<p><strong>Bỏ các mặt bị che</strong> đánh dấu các mặt bị brush tĩnh che phủ hoàn toàn, bao gồm các mặt giống hệt nhau chạm nhau và các brush bị bao kín. Nó làm việc trên các brush đang chọn, hoặc trên toàn bộ hình học thế giới đang hiện và không bị khóa khi không chọn gì. Thực thể brush, vật liệu trong suốt và brush đã có mặt bị loại sẽ được bỏ qua. Mặt bị che một phần không bị tách ra. Một lần hoàn tác khôi phục mọi thứ. Hiển thị → Hiện các mặt bị loại ẩn hoặc hiện các mặt đó trong khung nhìn của trình chỉnh sửa; việc chọn vẫn dùng toàn bộ brush.</p>
+<h2 id="s6"><a class="anchor" href="#s6" aria-hidden="true" tabindex="-1">#</a>Màu và dải chuyển màu</h2>
+<p>Phần <strong>Màu</strong> của thẻ Mặt sơn các mặt bằng màu phẳng hoặc dải chuyển màu phủ lên vật liệu của chúng. Nó hữu ích để phác thảo màn chơi và cho phong cách đồ họa cách điệu. Các mặt đã sơn giữ màu thật trong khung nhìn; vùng chọn được thể hiện bằng đường viền.</p>
+<h3 id="s6-1"><a class="anchor" href="#s6-1" aria-hidden="true" tabindex="-1">#</a>Bảng màu và màu trộn</h3>
+<p>Nhấp vào một trong mười hai ô màu để sơn các mặt đang chọn, hoặc toàn bộ brush đang chọn, bằng màu đó. <strong>Độ đục</strong> đặt độ đục của lần sơn tiếp theo, tính bằng phần trăm. <strong>Trộn</strong> có một nút màu mở bộ chọn màu; kéo trong bộ chọn và vùng chọn thay đổi theo trực tiếp, hoặc nhấn <strong>Sơn</strong> để áp dụng màu trộn thành một bước. <strong>Quay lại vật liệu</strong> gỡ màu sơn để mặt hiển thị lại vật liệu của nó. Dòng ở đầu phần cho biết đang chọn gì và nó đang mang gì.</p>
+<h3 id="s6-2"><a class="anchor" href="#s6-2" aria-hidden="true" tabindex="-1">#</a>Bộ chọn màu</h3>
+<p>Mọi nút màu trong trình chỉnh sửa đều mở cùng một bộ chọn. Kéo trong ô vuông để chọn độ bão hòa và độ sáng, và trong dải bên cạnh để chọn sắc độ. Bên dưới là các giá trị <strong>R</strong>, <strong>G</strong> và <strong>B</strong> và thanh trượt <strong>Độ đục</strong> khi màu có độ đục. Ô hex nhận <code>#RRGGBB</code> hoặc <code>#RRGGBBAA</code>; nó chuyển sang màu đỏ khi văn bản không phải là màu hợp lệ. <strong>Sao chép</strong> đưa mã hex vào bộ nhớ tạm. Nhấp ra ngoài bộ chọn để đóng nó.</p>
+<h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>Dải chuyển màu</h3>
+<p><strong>Dải chuyển màu</strong> chọn Dải màu tuyến tính hoặc Dải màu tỏa tròn, và nút bên cạnh đảo ngược thứ tự màu. Mỗi điểm màu có một nút màu và <strong>Vị trí (%)</strong>, còn các điểm nằm giữa hai đầu có nút xóa. <strong>Thêm điểm màu</strong> thêm một điểm vào khoảng trống rộng nhất; một dải chuyển màu có thể có tối đa tám điểm. <strong>Góc chuyển màu</strong> đặt hướng của dải tuyến tính, với các nút <strong>+45°</strong> và <strong>−45°</strong>.</p>
+<p>Dưới bản xem trước là một thanh ray có một dấu cho mỗi điểm màu. Nhấp vào thanh ray để thêm điểm, nhấp vào một dấu để mở bộ chọn màu của nó, kéo dấu để di chuyển nó, và nhấp chuột phải vào dấu để xóa nó. Ba ô màu dưới thanh ray là thiết lập sẵn: Dải màu ấm, Dải màu lạnh và Dải màu xám. Thay đổi dải chuyển màu được áp dụng trực tiếp cho vùng chọn.</p>
+<p>Hướng của dải chuyển màu rất quan trọng: hãy đặt nó dọc theo độ dốc mái nhà hoặc dọc theo một vật thể cong, không phải ngang qua các mặt không liên quan. Kiểm tra mô hình từ cả hai phía sau khi sơn.</p>
+<h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>Vật liệu bề mặt</h3>
+<p><strong>Vật liệu bề mặt</strong> đặt <strong>Độ nhám</strong> (0 là bóng, 100 là mờ), <strong>Độ kim loại</strong> (0 cho gỗ, đá hoặc nhựa, 100 cho kim loại) và <strong>Phát sáng</strong> (0 đến 8; bề mặt tự phát sáng bằng màu của nó, kể cả dải chuyển màu, nhưng không chiếu sáng các vật thể xung quanh). Thay đổi được áp dụng trực tiếp cho các mặt hoặc brush đang chọn. <strong>Dùng bề mặt mặc định</strong> gỡ thiết lập ghi đè. Mọi thay đổi đều có thể hoàn tác.</p>
+<p>Hiệu ứng bề mặt hiển thị trong khung nhìn 3D có chiếu sáng và trong ảnh kết xuất từ camera. Chế độ hiển thị phẳng và khung dây cố ý bỏ qua phần phản sáng. Bloom có thể thêm quầng sáng quanh các bề mặt phát sáng. Godot và glTF/GLB nhận các giá trị vật liệu, còn trình nhập của Unity chuyển độ nhám thành độ mịn. Xem <code>docs/surface-materials.md</code> để biết giới hạn của từng đích xuất.</p>
+<h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>Tài nguyên, lớp và nhóm</h2>
+<h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>Thư viện tài nguyên</h3>
+<p>Mở thẻ <strong>Tài nguyên</strong>. Thêm một thư mục mô hình <code>.map</code> bằng <strong>Thêm thư mục</strong>; thư viện dựng sẵn luôn có mặt. Nhập vào <strong>Lọc tài nguyên</strong> để tìm kiếm. Nhấp vào một mô hình để chọn nó, rồi nhấp đúp, nhấn <span class="keys"><kbd>Enter</kbd></span> hoặc nhấp <strong>Chèn</strong> để thêm nó vào vị trí con trỏ vừa đứng. Bạn cũng có thể kéo mô hình vào một khung nhìn. Brush của tài nguyên được chèn thành một nhóm để mô hình di chuyển như một khối.</p>
+<p><strong>Lưu vùng chọn thành tài nguyên</strong> ghi các brush đang chọn vào thư viện dưới dạng <code>.map</code>. Tài nguyên trong thư viện là brush thông thường có thể chỉnh sửa, không phải lưới được nhập vào.</p>
+<h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>Lớp</h3>
+<p>Danh sách <strong>Lớp</strong> của thẻ Bản đồ dùng để sắp xếp các khu vực lớn. Nhập tên và nhấp <strong>Thêm</strong> để tạo lớp, hoặc nhấn <span class="keys"><kbd>Enter</kbd></span> để đổi tên lớp hiện hành. Mỗi lớp có thể được ẩn, khóa hoặc loại khỏi bản xuất. <strong>Di chuyển đến đây</strong> đưa vùng chọn vào lớp hiện hành. Menu ngữ cảnh trong khung nhìn cũng có Chuyển sang lớp, Đặt làm lớp hiện hành, Ẩn lớp và Cô lập lớp.</p>
+<h3 id="s7-3"><a class="anchor" href="#s7-3" aria-hidden="true" tabindex="-1">#</a>Nhóm và nhóm liên kết</h3>
+<p><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span> gom vùng chọn thành nhóm và <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>G</kbd></span> rã nhóm. Phần <strong>Nhóm</strong> của thẻ Bản đồ liệt kê các nhóm và có <strong>Mở</strong>, <strong>Đổi tên</strong>, <strong>Hợp nhất</strong>, <strong>Rã nhóm</strong>, <strong>Lấy ra</strong> và <strong>Tách ra</strong>. Nhóm liên kết là một tập bản sao dùng chung các chỉnh sửa: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span> tạo bản sao liên kết, Hình học → Đồng bộ nhóm liên kết cập nhật các bản sao, và <strong>Hủy liên kết</strong> làm một bản sao trở nên độc lập. Trong thẻ Thực thể, một thuộc tính có thể được giữ riêng cho một bản sao khi các nhóm liên kết đồng bộ.</p>
+<h3 id="s7-4"><a class="anchor" href="#s7-4" aria-hidden="true" tabindex="-1">#</a>Tỷ lệ chung</h3>
+<p>Tỷ lệ xuất mặc định là 32 đơn vị bản đồ mỗi mét. Điểm đánh dấu vị trí xuất phát của người chơi dựng sẵn cao 64 đơn vị, làm mốc tham chiếu 2 mét. Hãy so sánh cửa ra vào, xe cộ, đồ đạc và cây cối với nó. Chỉ đổi tỷ lệ xuất khi có chủ đích và giữ các tài nguyên liên quan nhất quán.</p>
+<h2 id="s8"><a class="anchor" href="#s8" aria-hidden="true" tabindex="-1">#</a>Thực thể và lối chơi</h2>
+<p>Các định nghĩa thực thể thông dụng được dựng sẵn và luôn có sẵn: đèn, vị trí xuất phát của người chơi, cửa, nút bấm, bệ di chuyển, trigger, đạo cụ tĩnh, âm thanh và điểm đường đi. Tải một tệp FGD của dự án bằng <strong>Định nghĩa thực thể</strong> trong thẻ Thực thể sẽ thay thế các lớp cùng tên và giữ các lớp dựng sẵn còn lại.</p>
+<h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>Đặt thực thể</h3>
+<p>Trong trình duyệt <strong>Thực thể</strong> của thẻ Thực thể, nhập vào <strong>Lọc lớp</strong> và chọn một lớp. Với lớp điểm như đèn, nhấp <strong>Đặt</strong> hoặc nhấp đúp vào lớp; <span class="keys"><kbd>Insert</kbd></span> đặt một thực thể tại tâm vùng chọn. Với lớp brush như cửa hoặc trigger, chọn các brush rồi nhấp <strong>Tạo</strong>. Cũng có thể kéo các lớp vào một khung nhìn.</p>
+<h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>Thuộc tính</h3>
+<p>Danh sách thuộc tính chỉnh sửa thực thể đang chọn. Các thực thể cùng lớp được chỉnh sửa cùng lúc. <strong>Thêm thuộc tính</strong> thêm một khóa mà định nghĩa có thể không biết; <strong>Mặc định</strong> có thể đưa các thuộc tính hiện có về giá trị mặc định hoặc thêm những thuộc tính còn thiếu. Các thuộc tính mà lớp định nghĩa nhưng thực thể chưa có được hiển thị mờ; nhập một giá trị sẽ thêm chúng. Dùng targetname và target để liên kết các thực thể.</p>
+<h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>Bản xuất làm được gì</h3>
+<p>Các chỉ thị của Godot tạo nút gốc, thân va chạm và vùng trigger. Unity và Unreal hỗ trợ các loại đèn thông dụng dưới dạng gốc, và Unreal còn tạo actor PlayerStart. Dữ liệu khác được giữ lại trong phạm vi trình nhập của đích xuất cho phép.</p>
+<p>Riêng một thực thể cửa không tự thêm hành vi trò chơi. Chuyển động, phản ứng với trigger, bộ điều khiển người chơi và script của dự án vẫn cần được làm trong engine. Defold xuất thuộc tính thực thể và đối tượng va chạm; Flax đặt mô hình và thực thể chung. Hãy kiểm tra kết quả trong engine trước khi xây dựng lối chơi dựa trên nó.</p>
+<h2 id="s9"><a class="anchor" href="#s9" aria-hidden="true" tabindex="-1">#</a>Hoạt ảnh</h2>
+<p>Heron Brush có thể xem trước chuyển động đơn giản và chỉnh sửa hoạt ảnh khung khóa của thực thể brush, rồi xuất chúng sang nhiều engine.</p>
+<h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>Xem trước hoạt ảnh</h3>
+<p>Bật <strong>Xem trước hoạt ảnh</strong> trong menu Hiển thị, menu Hoạt ảnh, menu Cài đặt lưới hoặc phần Hiển thị của thẻ Bản đồ. Nó phát chuyển động xoay của func_rotate và chuyển động qua lại của func_shuttle khi start_on được bật, dùng các thuộc tính trục, tốc độ, hướng, hành trình và thời gian chờ của thực thể, và nó phát các clip khung khóa được đặt Phát khi bắt đầu. Các tài nguyên quạt và cối xay gió đã có sẵn bộ phận quay.</p>
+<p>Tắt bản xem trước sẽ khôi phục tư thế ban đầu. Một cú nhấp trong khung nhìn sẽ dừng phát trước khi chọn hoặc chỉnh sửa; điều hướng camera vẫn hoạt động. Bản xem trước không thay đổi bản đồ, lịch sử hoàn tác hay bản xuất, và không chạy vật lý hay logic trò chơi.</p>
+<h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>Trình chỉnh sửa khung khóa</h3>
+<p>Mở nó bằng Hoạt ảnh → Hoạt ảnh khung khóa hoặc từ menu Cài đặt lưới. Nó được gắn bên dưới các khung nhìn, hoặc trong cửa sổ 3D khi cửa sổ đó đang tách riêng. Biểu tượng cửa sổ ở tiêu đề của nó đưa nó vào một cửa sổ riêng; khung hình hiện tại và lịch sử hoàn tác được giữ nguyên. <strong>Chỉnh sửa hoạt ảnh</strong> chuyển các khung nhìn sang tư thế hoạt ảnh và <strong>Chỉnh sửa bản đồ</strong> quay về hình học ở trạng thái nghỉ. Ở chế độ hoạt ảnh, mỗi khung nhìn hiển thị <strong>Chỉnh sửa hoạt ảnh</strong> và số khung hình ở phía dưới.</p>
+<p>Chọn một thực thể brush, hoặc một brush hay nhóm brush, để tạo hoạt ảnh cho nó. Một nhóm brush phẳng dùng chung một hoạt ảnh và một tâm xoay; các nhóm chứa nhiều thực thể cần các hoạt ảnh riêng.</p>
+<h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>Clip</h3>
+<p>Bộ chọn <strong>Hoạt ảnh</strong> chuyển giữa các clip có tên. Nhập tên vào <strong>Tên hoạt ảnh</strong> và nhấp <strong>Lưu thành</strong> để sao chép clip hiện tại dưới tên đó; <strong>Xóa</strong> xóa một clip. <strong>Tịnh tiến</strong> tạo clip <code>translate</code> không có xoay. <strong>Hoạt ảnh cửa</strong> tạo các clip <code>open</code> và <code>close</code> mượt với một vòng xoay 90 độ quanh tâm xoay hiện tại; hãy di chuyển tâm xoay đến bản lề trước. <strong>Phát khi bắt đầu</strong> làm clip phát khi màn chơi bắt đầu; thiết lập sẵn cho cửa tắt tùy chọn này.</p>
+<h3 id="s9-4"><a class="anchor" href="#s9-4" aria-hidden="true" tabindex="-1">#</a>Điều khiển phát</h3>
+<p>Các nút điều khiển phát là <strong>Bắt đầu</strong>, <strong>Khóa trước</strong>, <strong>Phát lại</strong>, <strong>Khóa tiếp theo</strong> và <strong>Kết thúc</strong>. <strong>Khung hình</strong> hiển thị và đặt khung hình hiện tại, còn <strong>Thời lượng (s)</strong> đặt độ dài clip. Chế độ là <strong>Một lần</strong>, <strong>Lặp</strong> hoặc <strong>Qua lại</strong>.</p>
+<h3 id="s9-5"><a class="anchor" href="#s9-5" aria-hidden="true" tabindex="-1">#</a>Dòng thời gian</h3>
+<p>Dòng thời gian có một thước với đầu phát và một làn cho <strong>Vị trí</strong> (X, Y và Z được đặt khóa cùng nhau) và cho từng góc xoay, RX, RY và RZ. Nhấp hoặc kéo trên thước để di chuyển đầu phát và xem trước tư thế đó trong mọi khung nhìn. Kéo bằng nút giữa để lia dòng thời gian. Kéo các khóa để dời chúng theo thời gian; <span class="keys"><kbd>Shift</kbd></span> thêm vào vùng chọn; nhấp đúp vào một làn để chèn khóa; <span class="keys"><kbd>Ctrl</kbd></span>+con lăn để thu phóng. <strong>Đường cong</strong> hiển thị các đường cong giá trị thay cho các làn.</p>
+<p>Các nút phía trên là <strong>Thêm khóa</strong>, <strong>Gỡ bỏ</strong>, <strong>Sao chép</strong>, <strong>Dán</strong> và <strong>Nhân bản</strong>. <strong>Bám theo khung hình</strong> giữ khóa ở khung hình nguyên và <strong>Khớp</strong> hiển thị toàn bộ clip. <strong>Định thời lại khóa</strong> mở <strong>Tỷ lệ thời gian</strong>, <strong>Độ lệch (khung hình)</strong>, <strong>Co giãn từ đầu phát</strong>, <strong>Kéo dài thời lượng</strong> và <strong>Định thời lại vùng chọn</strong>.</p>
+<p>Bảng khóa bên cạnh dòng thời gian chỉnh sửa khóa đang chọn: <strong>Khung hình</strong>, <strong>Giá trị</strong> (hoặc ba tọa độ của khóa Vị trí), kiểu nội suy <strong>Tuyến tính</strong>, <strong>Giữ nguyên</strong> hoặc <strong>Bezier</strong>, <strong>Độ dốc vào</strong> và <strong>Độ dốc ra</strong>, và <strong>Tiếp tuyến mượt</strong>.</p>
+<h3 id="s9-6"><a class="anchor" href="#s9-6" aria-hidden="true" tabindex="-1">#</a>Phím trong trình chỉnh sửa</h3>
+<p>Khi dòng thời gian nhận bàn phím: <span class="keys"><kbd>Space</kbd></span> phát hoặc tạm dừng, mũi tên trái và phải bước một khung hình, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span> chọn mọi khóa, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>X</kbd></span> và <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>V</kbd></span> sao chép, cắt và dán khóa, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span> nhân bản chúng, <span class="keys"><kbd>Delete</kbd></span> xóa chúng, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span> hoàn tác và <span class="keys"><kbd>Esc</kbd></span> hủy thao tác kéo. Bên ngoài dòng thời gian, <span class="keys"><kbd>Esc</kbd></span> thoát chế độ hoạt ảnh. Hoàn tác giữ nguyên mức thu phóng, vùng chọn và đầu phát như cũ.</p>
+<h3 id="s9-7"><a class="anchor" href="#s9-7" aria-hidden="true" tabindex="-1">#</a>Tạo tư thế trong khung nhìn</h3>
+<p>Hàng bên dưới dòng thời gian có <strong>Vỏ hành</strong> với số lượng và <strong>Khoảng cách</strong>, hiển thị các tư thế lân cận dưới dạng bóng mờ; tọa độ <strong>Tâm xoay</strong>; <strong>Tự động tạo khóa</strong>; và các công cụ tạo tư thế <strong>Tịnh tiến</strong>, <strong>Xoay</strong> và <strong>Tâm xoay</strong>.</p>
+<ul>
+<li><strong>Thêm khóa</strong> bật Tự động tạo khóa và tạm dừng phát. Khi bật Tự động tạo khóa và chọn <strong>Tịnh tiến</strong>, kéo một trục màu của tay nắm thực thể đang chọn trong khung nhìn 3D để đặt khóa vị trí của nó tại khung hình hiện tại.</li>
+<li>Trong khung nhìn 2D, kéo brush đang chọn hoặc một thành viên trong nhóm của nó để đặt khóa tịnh tiến theo hai trục đang thấy, có bám lưới. Không cần bật Tự động tạo khóa cho việc này.</li>
+<li>Với <strong>Xoay</strong>, kéo brush trong khung nhìn 2D quanh dấu tâm xoay màu cam của nó. Phía trên đặt khóa RZ, Phía trước đặt khóa RY và Bên cạnh đặt khóa RX, bám theo các góc lưới.</li>
+<li>Với <strong>Tâm xoay</strong>, kéo tâm xoay màu vàng trong bất kỳ khung nhìn 2D nào. Nó bám theo lưới và giữ nguyên chiều sâu. Khóa và hình học ở trạng thái nghỉ không thay đổi.</li>
+</ul>
+<p>Đường màu lục lam trong 2D và 3D thể hiện hành trình của tâm xoay. Nhấp vào một điểm trên đường để chọn thời điểm và khóa của nó, hoặc kéo nó để đổi vị trí; khi bật Tự động tạo khóa, bạn cũng có thể kéo các điểm trên đường trong khung nhìn 3D. Nhãn hiển thị số khung hình và các đoạn nét đứt đánh dấu bước nhảy. <span class="keys"><kbd>Esc</kbd></span> hủy bất kỳ thao tác kéo nào trong số này, và một lần hoàn tác đảo ngược cả một lần kéo.</p>
+<p>Hoạt ảnh mới bắt đầu ở trạng thái nghỉ với các khóa tại thời điểm 0. Tạo chuyển động bằng cách thay đổi tư thế ở một khung hình khác. Với đường hình chữ L sắc cạnh, hãy đặt khóa ở điểm đầu, góc và điểm cuối, và dùng Tuyến tính với Qua lại.</p>
+<h3 id="s9-8"><a class="anchor" href="#s9-8" aria-hidden="true" tabindex="-1">#</a>Kết nối nút bấm với hoạt ảnh</h3>
+<p>Chọn một func_button, trigger_multiple hoặc trigger_once. Thẻ Thực thể hiển thị <strong>Kích hoạt hoạt ảnh</strong> phía trên các thuộc tính. Chọn một đích trong danh sách, hoặc nhấp <strong>Chọn đích</strong> rồi nhấp vào một đối tượng có hoạt ảnh trong bất kỳ khung nhìn nào; <span class="keys"><kbd>Esc</kbd></span> hủy việc chọn. Đích hoặc clip bị thiếu được báo bên dưới các điều khiển. Liên kết thực thể hiển thị mũi tên tới đích của chúng khi bật hiển thị liên kết.</p>
+<p><strong>Hành động</strong> chọn việc mà lần kích hoạt thực hiện: <strong>Phát</strong> bắt đầu một clip có tên hoặc hoạt ảnh đang chọn; <strong>Bật/tắt</strong> luân phiên <code>open</code> và <code>close</code> khi chúng tồn tại, nếu không thì khởi động lại hoạt ảnh đang chọn; <strong>Mở</strong> và <strong>Đóng</strong> bắt đầu các clip đó; <strong>Tạm dừng</strong> giữ nguyên tư thế, <strong>Tiếp tục</strong> chạy tiếp và <strong>Dừng</strong> khôi phục tư thế ban đầu. <strong>Chỉ một lần</strong> ghi đè giá trị mặc định của lớp. <strong>Độ trễ lặp lại (s)</strong> đặt thời gian ngắn nhất giữa các lần kích hoạt; nó không làm trễ lần đầu tiên.</p>
+<p><strong>Thử trigger</strong> chạy hành động trong bản xem trước mà không chỉnh sửa bản đồ hay thêm bước hoàn tác. <strong>Đặt lại xem trước</strong> khôi phục các tư thế ban đầu và xóa trạng thái một lần và thời gian chờ. Việc này không mô phỏng va chạm của người chơi hay script trò chơi.</p>
+<h3 id="s9-9"><a class="anchor" href="#s9-9" aria-hidden="true" tabindex="-1">#</a>Hoạt ảnh trong bản xuất</h3>
+<p>Godot xuất các tài nguyên AnimationPlayer và AnimationLibrary gốc, bao gồm đường cong và va chạm chuyển động. Một CharacterBody3D đi vào vùng của nút bấm sẽ kích hoạt đích của nút đó. Các chỉnh sửa trên những clip này trong Godot không quay về bản đồ và sẽ bị thay thế ở lần xuất tiếp theo.</p>
+<p>Bản xuất raylib thêm <code>&lt;map&gt;_animation.h</code> với trình phát viết bằng C và <code>&lt;map&gt;_preview.c</code> với bản xem trước camera tự do; làm theo <code>&lt;map&gt;_raylib.md</code> để biên dịch nó. Trong bản xem trước, <code>SPACE</code> tạm dừng, <span class="keys"><kbd>R</kbd></span> khởi động lại các clip mặc định và <span class="keys"><kbd>N</kbd></span> xoay vòng qua các clip có tên. Defold nhúng việc phát vào script của thực thể với các thông điệp <code>heron_*_animation</code> có tài liệu. Build Level của Unity thêm <code>HeronBrushAnimation</code> và một thân động học. Bản xuất Bevy bao gồm <code>heron_animation.rs</code> và hướng dẫn. Godot, Unity, Defold, Bevy và raylib giữ liên kết trigger, cờ một lần và độ trễ lặp lại. Trò chơi của bạn vẫn phải đăng ký trình phát và kết nối các nút bấm của riêng nó với API của từng runtime.</p>
+<h3 id="s9-10"><a class="anchor" href="#s9-10" aria-hidden="true" tabindex="-1">#</a>Ví dụ Motion lab</h3>
+<p>Mở <code>motion_lab</code> từ mục Ví dụ trên màn hình chào mừng. Nó có một bệ di chuyển theo đường chữ L, một thang nâng, một bệ xoay và một cửa có bản lề cùng các nút bấm. Mở <code>godot/project.godot</code> nằm cạnh nó trong Godot và nhấn <span class="keys"><kbd>F5</kbd></span>. WASD và chuột di chuyển người chơi, Space để nhảy, 1 đến 4 đến các trạm và R khởi động lại trạm hiện tại. Bước lên một tấm đệm màu để kích hoạt đích của nó. README đi kèm giải thích cách xuất lại.</p>
+<h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>Xuất sang engine</h2>
+<p>Tệp → Xuất mở cửa sổ Xuất. Các engine được liệt kê dọc bên trái kèm logo: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb, và cuối cùng là <code>.map</code>. Trang bên phải cho biết đích xuất sẽ nhận được gì. <strong>Ghi</strong> ghi nó ra, <strong>Kiểm tra</strong> dựng màn chơi mà không ghi và liệt kê các vấn đề, còn <strong>Đóng</strong> đóng cửa sổ.</p>
+<p>Xuất tách biệt với lưu: tệp <code>.map</code> vẫn là bản nguồn có thể chỉnh sửa của bạn. Mỗi điều khiển lưu cài đặt của engine ngay khi thay đổi, nên mỗi engine giữ lựa chọn riêng và cửa sổ mở lại đúng như khi bạn rời đi.</p>
+<h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>Tùy chọn chung</h3>
+<ul>
+<li><strong>Tỷ lệ</strong>: <strong>Đơn vị trên mỗi mét</strong>, mặc định là 32.</li>
+<li><strong>Nội dung cần ghi</strong>: <strong>Hình học va chạm</strong>.</li>
+<li><strong>Tối ưu hóa</strong>: <strong>Gom lưới tĩnh theo ô 1024 đơn vị</strong>, <strong>Bỏ các mặt bị vùi bên trong hình học</strong>, <strong>Gộp các mặt cùng mặt phẳng</strong> và <strong>Gộp hình va chạm</strong>.</li>
+<li><strong>Đường dẫn dự án</strong>: nơi màn chơi và tài nguyên của nó được đặt trong dự án.</li>
+<li><strong>Vật liệu công cụ</strong>: tên của các vật liệu clip, skip và origin.</li>
+<li><strong>Thêm</strong>: các công tắc riêng cho engine như <strong>Đặt tên nút theo</strong>, <strong>Dựng lại lớp và nhóm thành nút cha</strong>, <strong>Đảo chiều cuốn tam giác</strong>, lật tọa độ texture và bộ UV thứ hai cho ánh sáng nướng sẵn với <strong>Texel lightmap</strong>.</li>
+<li><strong>Theo kịp bản đồ</strong>: <strong>Ghi lại mỗi khi lưu bản đồ</strong>. Tùy chọn này dùng được sau khi engine đã được xuất một lần, vì lần xuất đó cho biết nơi cần ghi.</li>
+</ul>
+<p>Ô tĩnh gán brush thế giới theo tâm của chúng và kết hợp chúng theo vật liệu trong mỗi ô 1024 đơn vị, để engine có thể loại bỏ những phần nhỏ hơn của bản đồ. Va chạm được giữ nguyên và các thực thể lối chơi vẫn tách riêng. Cách này có thể tạo nhiều lệnh vẽ hơn so với một lưới thế giới duy nhất, nên mặc định nó bị tắt. Các bản xuất OBJ, glTF và GLB độc lập không dùng ô.</p>
+<h3 id="s10-2"><a class="anchor" href="#s10-2" aria-hidden="true" tabindex="-1">#</a>Ghi chú về đích xuất</h3>
+<ul>
+<li>Godot: đường dẫn <code>res://</code> của texture và vật liệu, lớp vật lý của trigger và UV2 cho lightmap. Hãy chọn thư mục xuất nằm trong dự án Godot.</li>
+<li>Defold: thư mục tài nguyên của asset, vật liệu của mô hình và texture sampler, vốn phải tồn tại trong vật liệu đã chọn.</li>
+<li>Unity: lưới OBJ và một trình nhập cho editor; hãy xuất vào thư mục Assets của dự án.</li>
+<li>Unreal Engine: một script nhập được tạo sẵn và đường dẫn nội dung, thường là /Game/<level>.</li>
+<li>Flax Engine: đường dẫn nội dung của mô hình, tương đối với thư mục Content của dự án.</li>
+<li>three.js, Bevy, raylib và Cocos Creator: cảnh hoặc mã cho các runtime đó, kèm hướng dẫn nằm cạnh bản xuất.</li>
+<li>glTF / GLB: hình học di động cho các công cụ tương thích; GLB là dạng nhị phân. OBJ: hình học và vật liệu cho các công cụ dựng hình.</li>
+<li><code>.map</code>: <strong>Ghi dạng</strong> chọn Valve 220, Tiêu chuẩn, Quake 2 hoặc Quake 2 (Valve). Cửa sổ cho biết phương ngữ được chọn sẽ mất gì.</li>
+</ul>
+<p>Đọc các cảnh báo sau khi ghi, chẳng hạn texture bị thiếu. <strong>Kết quả kiểm tra</strong> liệt kê chúng trong cửa sổ.</p>
+<h2 id="s11"><a class="anchor" href="#s11" aria-hidden="true" tabindex="-1">#</a>Liên kết trực tiếp: Godot, Unity, Defold và Flax</h2>
+<p>Liên kết trực tiếp gửi các chỉnh sửa chưa lưu từ Heron Brush sang trình chỉnh sửa của engine trong khi bạn làm việc. Liên kết chỉ có một chiều: chỉnh sửa trong engine không quay lại. Mỗi cửa sổ bản đồ chạy được một liên kết trực tiếp. Hãy dừng nó trước khi đổi engine, và khởi động lại để áp dụng tùy chọn xuất đã thay đổi. Các điều khiển nằm trong cửa sổ Xuất, trên trang của engine, trong thẻ <strong>Liên kết trực tiếp với</strong>.</p>
+<p>Chỉ báo trên thanh tiêu đề hiển thị trạng thái của liên kết; nhấp vào nó để dừng liên kết. Đóng hoặc thay bản đồ sẽ dừng việc gửi dữ liệu. Sau khi nhập thất bại, hãy sửa lỗi và khởi động lại liên kết.</p>
+<h3 id="s11-1"><a class="anchor" href="#s11-1" aria-hidden="true" tabindex="-1">#</a>Godot</h3>
+<ol>
+<li>Xuất một lần vào một dự án Godot.</li>
+<li>Nhấp <strong>Cài addon Godot</strong>.</li>
+<li>Bật Heron Brush Live trong Project Settings → Plugins của Godot.</li>
+<li>Nhấp <strong>Bắt đầu liên kết trực tiếp</strong> và gắn bản đồ từ dock của Godot vào một cảnh 3D đang mở.</li>
+</ol>
+<p>Addon chỉ thay thế nhánh được tạo ra của nó và giữ nguyên vị trí gắn cùng các nút khác. Hãy tự lưu cảnh Godot, và giữ script và nút của riêng bạn bên ngoài nhánh được tạo ra.</p>
+<h3 id="s11-2"><a class="anchor" href="#s11-2" aria-hidden="true" tabindex="-1">#</a>Unity</h3>
+<ol>
+<li>Xuất một lần vào thư mục Assets của dự án Unity.</li>
+<li>Nhấp <strong>Cài addon Unity</strong> và để Unity biên dịch nó.</li>
+<li>Mở Window → Heron Brush → Live Link trong Unity.</li>
+<li>Bắt đầu liên kết và gắn bản đồ vào cảnh Unity đang hoạt động.</li>
+</ol>
+<p>Hãy để cửa sổ live của Unity luôn mở. Cập nhật tạm dừng trong Play Mode và Prefab Mode. Chỉ phần con Generated của đối tượng bản đồ bị thay thế. Không chỉnh sửa các tệp được tạo ra.</p>
+<h3 id="s11-3"><a class="anchor" href="#s11-3" aria-hidden="true" tabindex="-1">#</a>Defold</h3>
+<ol>
+<li>Xuất một lần vào dự án Defold của bạn và giữ dự án mở trong Defold.</li>
+<li>Nhấp <strong>Bắt đầu liên kết trực tiếp</strong>. Không cần addon.</li>
+<li>Mở heron_brush_live/preview.collection trong Defold, hoặc tham chiếu nó từ cảnh của riêng bạn.</li>
+</ol>
+<p>Liên kết ghi vào một thư mục được tạo riêng và không đụng đến bản xuất cuối cùng cũng như game.project. <strong>Nạp lại nóng trò chơi đang chạy</strong> cũng cập nhật trò chơi được khởi chạy từ Defold; thêm đối tượng hoặc thay đổi va chạm có thể cần khởi động lại màn chơi. Kết nối thất bại sẽ được tự động thử lại.</p>
+<h3 id="s11-4"><a class="anchor" href="#s11-4" aria-hidden="true" tabindex="-1">#</a>Flax</h3>
+<p>Xuất vào thư mục Content của dự án và nhấp <strong>Cài addon Flax</strong>. Để Flax biên dịch nó, bắt đầu liên kết, rồi chọn Tools → Heron Brush: attach live map trong cảnh Flax đang mở. Gốc được tạo ra giữ nguyên vị trí và các đối tượng khác không bị đụng đến. Hãy tự lưu cảnh. Cập nhật tạm dừng trong Play Mode. Tools → Heron Brush: stop live map tạm dừng việc nhận dữ liệu.</p>
+<h2 id="s12"><a class="anchor" href="#s12" aria-hidden="true" tabindex="-1">#</a>Phiên cộng tác trực tiếp</h2>
+<p>Cộng tác → Phiên trực tiếp mở cửa sổ để mở phiên hoặc tham gia cùng một người dùng Heron Brush khác. Tính năng này chia sẻ việc chỉnh sửa bản đồ giữa nhiều người; nó tách biệt với liên kết trực tiếp tới engine.</p>
+<h3 id="s12-1"><a class="anchor" href="#s12-1" aria-hidden="true" tabindex="-1">#</a>Mở phiên và tham gia</h3>
+<p>Nhập <strong>Tên của bạn</strong>. Để mở phiên, chọn <strong>Mở một phiên</strong>, nhấp <strong>Bắt đầu phiên</strong> và gửi thông tin từ <strong>Sao chép thông tin kết nối</strong> cho khách của bạn. Để tham gia, chọn <strong>Tham gia phiên</strong>, dán thông tin và nhấp <strong>Nối</strong>. Việc tham gia sẽ thay bản đồ đang mở bằng bản đồ của chủ phiên, nên hãy lưu công việc của bạn trước.</p>
+<p>Bản dựng tiêu chuẩn hoạt động trong mạng cục bộ, và <strong>Cổng mạng cục bộ</strong> đặt cổng. Phiên qua internet (<strong>Kết nối qua internet</strong>) cần bản dựng có tính năng mạng tùy chọn. Người tham gia thấy dấu camera và tên của nhau trong khung nhìn 3D.</p>
+<p>Đóng cửa sổ thì phiên vẫn tiếp tục chạy; chỉ báo trên thanh tiêu đề hiển thị trạng thái của nó. <strong>Dừng phiên</strong> hoặc <strong>Rời phiên</strong> kết thúc phiên. Khi hai người cùng sửa một đối tượng, thứ tự của chủ phiên quyết định phiên bản cuối cùng, và hoàn tác cũng là một chỉnh sửa chung. Hãy làm việc ở các khu vực riêng khi có thể, và lưu các điểm mốc.</p>
+<h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>Hiển thị 3D và màn hình thứ hai</h2>
+<h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>Chế độ hiển thị</h3>
+<p>Phần <strong>Hiển thị</strong> của thẻ Bản đồ chuyển đổi những gì khung nhìn vẽ: Brush, Thực thể điểm, Mô hình thực thể, Tên lớp thực thể, Đường viền nhóm, Patch, Vật liệu, Hiện các mặt bị loại, Xem trước hoạt ảnh, Khung dây, Cạnh và Đường viền thực thể brush. Khung dây vẽ các cạnh tam giác, bao gồm đường chéo và cạnh phía sau bề mặt, không có vật liệu. Đây là chế độ gỡ lỗi tạm thời và không ảnh hưởng đến bản xuất hay ảnh kết xuất.</p>
+<p>Chiếu sáng, bóng đổ, che khuất môi trường, phản chiếu, bloom và làm mịn cho khung nhìn 3D nằm trong Tùy chọn → Bộ kết xuất. Đây là các cài đặt xem trước; ảnh cuối cùng dùng cài đặt riêng của camera kết xuất.</p>
+<h3 id="s13-2"><a class="anchor" href="#s13-2" aria-hidden="true" tabindex="-1">#</a>Cửa sổ 3D riêng</h3>
+<p>Hiển thị → Khung nhìn 3D trong cửa sổ riêng đưa khung nhìn 3D vào một cửa sổ riêng, mà bạn có thể đặt trên màn hình khác. Nó dùng chung camera, tài liệu và công cụ, còn các khung nhìn phẳng chiếm chỗ trong cửa sổ chính. Menu của nó có Vật liệu, Hiển thị khối đặc và Khung dây; menu con Hiển thị với Hiện các mặt bị loại, Xem trước hoạt ảnh, Cạnh, Đường viền nhóm, Thực thể điểm, Mô hình thực thể và Đường viền thực thể brush; Lấy nét vào vùng chọn; Phía trước, Bên cạnh và Phía trên, xoay camera quanh vùng chọn (hoặc một điểm phía trước camera); Đặt camera từ khung nhìn 3D; Toàn màn hình (<span class="keys"><kbd>F11</kbd></span>); Kết xuất ảnh; và Quay lại cửa sổ chính. Đóng cửa sổ sẽ gắn khung nhìn trở lại.</p>
+<h3 id="s13-3"><a class="anchor" href="#s13-3" aria-hidden="true" tabindex="-1">#</a>Bầu trời thủ tục</h3>
+<p>Bầu trời thủ tục được bật mặc định trong khung nhìn 3D và có thể tắt trong Tùy chọn → Bộ kết xuất → Ánh sáng. Camera kết xuất có công tắc <strong>Bầu trời thủ tục</strong> riêng, được lưu cùng bản đồ. Màu bầu trời, đường chân trời và mặt đất lấy từ cài đặt môi trường, và mặt trời theo ánh sáng của cảnh. Bầu trời không có hình học và không được xuất.</p>
+<h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>Camera kết xuất và ảnh PNG</h2>
+<p>Tệp → Kết xuất ảnh mở cửa sổ kết xuất: camera và cài đặt của nó ở bên trái và bản xem trước trực tiếp ở bên phải, được vẽ lại khi bạn thay đổi chúng. Camera được lưu trong tệp <code>.map</code> ở một lớp Render cameras chỉ dành cho trình chỉnh sửa, lớp này bị loại khỏi bản xuất sang engine.</p>
+<h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>Đặt camera</h3>
+<p>Căn khung hình trong khung nhìn 3D và nhấn <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span> (hoặc <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>), hoặc nhấp <strong>Đặt camera từ khung nhìn 3D</strong>. Nếu chưa chọn camera nào, camera đã lưu đầu tiên được cập nhật; nếu chưa có camera nào, một camera mới được tạo. Thao tác này có thể hoàn tác và giữ nguyên cài đặt đầu ra và chiếu sáng. <strong>Chọn camera trong bản đồ</strong>, <strong>Tải camera từ bản đồ</strong> và <strong>Đưa khung nhìn 3D đến camera</strong> làm theo chiều ngược lại. <strong>Khung camera trong khung nhìn 3D</strong> hiển thị ranh giới đầu ra, và <strong>Điều khiển camera từ khung nhìn 3D</strong> cho phép điều hướng thông thường di chuyển camera đã lưu.</p>
+<h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>Cài đặt</h3>
+<ul>
+<li><strong>Vị trí camera</strong>: X, Y, Z, góc ngang và góc ngẩng.</li>
+<li><strong>Đầu ra và ống kính</strong>: <strong>Thiết lập sẵn</strong> (Full HD, Vuông, Dọc), chiều rộng, chiều cao, số mẫu, <strong>Góc nhìn dọc</strong> và <strong>Mặt phẳng cắt xa</strong>.</li>
+<li><strong>Chiếu sáng</strong>: Ánh sáng ban ngày, Hoàng hôn hoặc Trời u ám, hoặc tự đặt độ phơi sáng, mặt trời, màu bầu trời, đường chân trời và mặt đất, <strong>Bầu trời thủ tục</strong>, <strong>Bóng đổ</strong>, <strong>Che khuất môi trường</strong> và <strong>Bloom</strong>.</li>
+<li><strong>Độ sâu trường ảnh</strong>: <strong>Bật độ sâu trường ảnh</strong>, khoảng cách lấy nét, vùng nét và bán kính làm mờ. <strong>Lấy nét vào vùng chọn</strong> lấy nét vào tâm của đối tượng đang chọn ở phía trước camera.</li>
+</ul>
+<p><strong>Lưu camera và cài đặt</strong> lưu biểu mẫu vào bản đồ; hãy lưu bản đồ để giữ nó trên đĩa.</p>
+<h3 id="s14-3"><a class="anchor" href="#s14-3" aria-hidden="true" tabindex="-1">#</a>Kết xuất</h3>
+<p><strong>Kết xuất PNG</strong> hỏi nơi lưu và bắt đầu kết xuất lũy tiến, hình ảnh được bổ sung dần từng mẫu trong bản xem trước. Nhiều mẫu hơn cho kết quả đẹp hơn nhưng mất nhiều thời gian hơn. <strong>Hủy kết xuất</strong> dừng lại mà không ghi tệp. Bộ kết xuất dùng quy trình raster của trình chỉnh sửa, không dùng path tracing. Ảnh PNG có nền đục, và hoạt ảnh không được kết xuất. Ảnh rất lớn có thể làm trình chỉnh sửa khựng lại trong chốc lát.</p>
+<h2 id="s15"><a class="anchor" href="#s15" aria-hidden="true" tabindex="-1">#</a>Tùy chọn</h2>
+<p>Tệp → Tùy chọn (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>,</kbd></span>) mở phần cài đặt. Thay đổi có hiệu lực ngay và được lưu lại. Thanh bên liệt kê Tổng quan, Trò chơi, Hiển thị, Màu sắc, Chuột, Bàn phím và Bộ kết xuất. Ô tìm kiếm ở trên cùng tìm một cài đặt theo tên hoặc mô tả trên bất kỳ trang nào. Mỗi cài đặt đã thay đổi có nút riêng để khôi phục giá trị mặc định, và <strong>Khôi phục mặc định</strong> đặt lại trang hiện tại.</p>
+<h3 id="s15-1"><a class="anchor" href="#s15-1" aria-hidden="true" tabindex="-1">#</a>Các trang</h3>
+<ul>
+<li><strong>Tổng quan</strong>: các cài đặt thông dụng gom lại: Giao diện (Độ đục bảng (%), Bảng màu giao diện, Bố cục, Ngôn ngữ), Chỉnh sửa, Hiển thị và Hướng dẫn sử dụng.</li>
+<li><strong>Trò chơi</strong>: trò chơi, vị trí các tệp của nó, và tên cộng tác của bạn. Trò chơi quyết định định dạng bản đồ để ghi, định nghĩa thực thể để tải và vị trí vật liệu. Cấu hình trò chơi được đọc từ thư mục <code>games</code> trong thư mục cấu hình (<code>~/.config/heron-brush/games</code> trên Linux và macOS, <code>%LOCALAPPDATA%\heron-brush\games</code> trên Windows) và từ thư mục <code>games</code> cạnh ứng dụng, nơi các gói cài đặt đặt cấu hình đi kèm.</li>
+<li><strong>Hiển thị</strong>: Bố cục, Bảng màu giao diện, Ngôn ngữ, trục thế giới, độ đục lưới, kích thước ô kiểm tra rò rỉ và các khóa ánh xạ.</li>
+<li><strong>Màu sắc</strong>: màu của khung nhìn, hình học và tay nắm.</li>
+<li><strong>Chuột</strong>: tốc độ và đảo chiều khi nhìn, lia và di chuyển, tốc độ bay, góc nhìn, Liên kết các khung nhìn 2D và kích thước tay nắm.</li>
+<li><strong>Bàn phím</strong>: sơ đồ phím, Heron Brush hoặc Blender.</li>
+<li><strong>Bộ kết xuất</strong>: tô bóng chân thực, đường viền vùng chọn, ánh sáng, bóng đổ, che khuất môi trường, phản chiếu, bloom và bề mặt.</li>
+</ul>
+<h3 id="s15-2"><a class="anchor" href="#s15-2" aria-hidden="true" tabindex="-1">#</a>Ngôn ngữ</h3>
+<p><strong>Ngôn ngữ</strong> có Theo hệ thống và mọi ngôn ngữ đã được dịch. Giao diện thay đổi ngay. Hướng dẫn mở bằng ngôn ngữ giao diện nếu có bản dịch, nếu không thì bằng tiếng Anh.</p>
+<h2 id="s16"><a class="anchor" href="#s16" aria-hidden="true" tabindex="-1">#</a>Plugin và MCP</h2>
+<h3 id="s16-1"><a class="anchor" href="#s16-1" aria-hidden="true" tabindex="-1">#</a>Plugin</h3>
+<p>Plugin mở rộng trình chỉnh sửa bằng script Rhai. Tệp → Plugin mở cửa sổ Plugin. <strong>Cài plugin</strong> cài một tệp <code>.rhai</code> và <strong>Cài thư mục plugin</strong> cài một thư mục chứa <code>main.rhai</code>; siêu dữ liệu <code>plugin.toml</code> tùy chọn mô tả plugin và cài đặt của nó. Plugin được nhóm trong <strong>Plugin đang hoạt động</strong> và <strong>Plugin không hoạt động</strong>, và <strong>Bật plugin</strong> bật hoặc tắt một plugin; trạng thái này được giữ sau khi khởi động lại. <strong>Tải lại plugin</strong> đọc lại script từ đĩa và đặt lại giá trị trong bảng của chúng.</p>
+<p>Plugin đang hoạt động cũng xuất hiện trong phần <strong>Plugin</strong> của thẻ Bản đồ cùng cài đặt, nút hành động (<strong>Chạy</strong>) và đầu ra của chúng. Một hành động làm việc trên vùng chọn, hoặc trên mọi thứ khi không chọn gì, và là một bước hoàn tác. Plugin Selection inspector đi kèm hiển thị số lượng và các hành động đưa lên và đưa xuống.</p>
+<h3 id="s16-2"><a class="anchor" href="#s16-2" aria-hidden="true" tabindex="-1">#</a>MCP</h3>
+<p>Cộng tác → Phục vụ cho agent (MCP) cho phép một agent AI hoặc công cụ khác điều khiển trình chỉnh sửa đang mở qua Model Context Protocol. Cửa sổ hiển thị địa chỉ cục bộ cùng nút <strong>Sao chép</strong>, và <strong>Dừng máy chủ</strong> kết thúc nó; trong khi chạy, thanh tiêu đề hiển thị <strong>MCP đang hoạt động</strong>. Tùy chọn dòng lệnh <code>--mcp</code> chạy cùng giao diện đó mà không có cửa sổ. Ứng dụng khách có thể khám phá các công cụ cho hình học, tài nguyên, thuộc tính, hoạt ảnh, xuất và phiên. MCP và plugin của trình chỉnh sửa là hai giao diện khác nhau.</p>
+<h2 id="s17"><a class="anchor" href="#s17" aria-hidden="true" tabindex="-1">#</a>Dòng lệnh</h2>
+<p>Chương trình là <code>heron-brush</code>. Khi không có tùy chọn, nó mở màn hình chào mừng.</p>
+<h3 id="s17-1"><a class="anchor" href="#s17-1" aria-hidden="true" tabindex="-1">#</a>Mở tệp</h3>
+<p><code>heron-brush map.map [entities.fgd] [materials/]</code> mở một bản đồ, tùy chọn kèm định nghĩa thực thể và thư mục vật liệu. Một đối số rỗng sẽ bỏ qua mục tương ứng, ví dụ <code>heron-brush map.map "" materials/</code>. Nếu một trình chỉnh sửa đang chạy, bản đồ sẽ mở trong đó; <code>--new-instance</code> thay vào đó mở một cửa sổ riêng.</p>
+<h3 id="s17-2"><a class="anchor" href="#s17-2" aria-hidden="true" tabindex="-1">#</a>Lệnh</h3>
+<ul>
+<li><code>--help</code> hoặc <code>-h</code>: in cách dùng. <code>--version</code> hoặc <code>-V</code>: in phiên bản.</li>
+<li><code>--mcp</code>: phục vụ MCP qua đầu vào và đầu ra chuẩn, không có cửa sổ.</li>
+<li><code>--merge-map &lt;base&gt; &lt;ours&gt; &lt;theirs&gt; [&lt;output&gt;]</code>: hợp nhất ba chiều các tệp <code>.map</code> cho git. Đầu ra mặc định là ours. Xung đột được in ra và cho mã thoát khác không.</li>
+<li><code>--obj-to-map &lt;in.obj&gt; &lt;out.map&gt; [size] [thickness] [snap] [material]</code>: chuyển một lưới thành brush. Size là độ dài cạnh dài nhất tính bằng đơn vị bản đồ (mặc định 256), snap là lưới cho các góc (0 là không có), và các từ <code>solid</code> hoặc <code>layered</code> tạo hộp lưới hoặc tấm lồi thay cho nêm mỏng.</li>
+<li><code>--render-preview &lt;in.map&gt; &lt;out.png&gt; [size]</code>: ghi ảnh thu nhỏ PNG của bản đồ, mặc định 512 điểm ảnh.</li>
+<li><code>--run-script &lt;script.rhai&gt; &lt;in.map&gt; [out.map] [key=value ...]</code>: chạy script plugin trên bản đồ với mọi thứ được chọn và ghi kết quả (mặc định ghi đè lên tệp đầu vào). <code>key=value</code> trả lời các cài đặt của plugin.</li>
+</ul>
+<h2 id="s18"><a class="anchor" href="#s18" aria-hidden="true" tabindex="-1">#</a>Khắc phục sự cố</h2>
+<h3 id="s18-1"><a class="anchor" href="#s18-1" aria-hidden="true" tabindex="-1">#</a>Khi có gì đó trông không đúng</h3>
+<ul>
+<li>Thiếu vật liệu: kiểm tra thư mục hoặc gói vật liệu và đường dẫn dự án của bản xuất.</li>
+<li>Kích thước mô hình sai: so sánh với điểm đánh dấu người chơi 64 đơn vị và tỷ lệ xuất.</li>
+<li>Hướng dải chuyển màu sai: kiểm tra góc chuyển màu và hướng của mặt.</li>
+<li>Cảnh trong engine trống: đọc các cảnh báo khi xuất và làm theo hướng dẫn nhập của đích xuất.</li>
+<li>Liên kết trực tiếp đang chờ: kiểm tra addon đã được cài, cảnh đã được gắn và cập nhật không bị tạm dừng.</li>
+<li>Chỉ có đường, không có mặt: tắt Khung dây trong phần Hiển thị của thẻ Bản đồ, hoặc chọn Vật liệu hoặc Hiển thị khối đặc trong menu của cửa sổ 3D.</li>
+<li>Đối tượng biến mất khỏi khung nhìn: <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>I</kbd></span> hiện các đối tượng bị ẩn; kiểm tra các lớp và bộ lọc hiển thị.</li>
+<li>Phím không có tác dụng: nhấp vào khung nhìn trước để nó nhận bàn phím, và kiểm tra sơ đồ phím trong Tùy chọn → Bàn phím.</li>
+<li>Một chỉnh sửa thất bại: hoàn tác, đơn giản hóa hình học, và dùng <strong>Kiểm tra bản đồ</strong> và <strong>Kiểm tra rò rỉ</strong> trong phần <strong>Vấn đề</strong> của thẻ Bản đồ.</li>
+<li>Bản đồ không mở được từ trình quản lý tệp: có thể nó đã được chuyển cho một trình chỉnh sửa đang chạy; hãy tìm cửa sổ đó.</li>
+</ul>
+<h3 id="s18-2"><a class="anchor" href="#s18-2" aria-hidden="true" tabindex="-1">#</a>Cài đặt và bản sao lưu</h3>
+<p>Tùy chọn, bản đồ gần đây, ngôi sao, cài đặt xuất và plugin nằm trong thư mục cấu hình: <code>~/.config/heron-brush</code> trên Linux và macOS, và <code>%LOCALAPPDATA%\heron-brush</code> trên Windows. Bản sao lưu tự động nằm trong thư mục <code>autosave</code> cạnh mỗi bản đồ.</p>
+<h3 id="s18-3"><a class="anchor" href="#s18-3" aria-hidden="true" tabindex="-1">#</a>Báo lỗi</h3>
+<p>Hãy kèm phiên bản trình chỉnh sửa (Trợ giúp → Giới thiệu), hệ điều hành của bạn, một bản đồ nhỏ thể hiện vấn đề và các bước chính xác. Khung đầu ra (<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>4</kbd></span>) thường cho biết điều gì đã sai. Hãy lưu một bản sao trước khi thử nghiệm.</p>
+<h3 id="s18-4"><a class="anchor" href="#s18-4" aria-hidden="true" tabindex="-1">#</a>Sử dụng hướng dẫn này</h3>
+<p>Chọn một chương trong mục lục bên trái. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> hiển thị mục lục và chuyển đến ô tìm kiếm; <span class="keys"><kbd>Esc</kbd></span> xóa nội dung tìm kiếm, hoặc đóng hướng dẫn khi ô tìm kiếm trống. <strong>Nội dung</strong> ẩn hoặc hiện danh sách chương và <strong>Cỡ chữ</strong> thay đổi kích thước phông chữ; cả hai đều được ghi nhớ. Danh sách ngôn ngữ ở trên cùng chuyển đổi giữa các bản dịch có sẵn.</p>
+  </article>
+</div>
+<script src="../../manual.js"></script>
+</body>
+</html>
