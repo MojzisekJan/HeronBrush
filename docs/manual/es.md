@@ -142,6 +142,27 @@ Geometría → Insertar texto 3D (también la última entrada de la lista de for
 
 Si una operación no puede producir geometría válida, ajusta sus dimensiones, o deshazla y simplifica la forma.
 
+## Matrices
+Geometría → Matriz copia la selección y muestra las copias en el mapa mientras cambias los valores. Las cantidades incluyen el original y una matriz crea como máximo 1024 copias.
+
+- **Fila** desplaza cada copia respecto a la anterior en **Paso X**, **Paso Y** y **Paso Z** y la gira **Giro por copia (grados)** alrededor del eje elegido.
+- **Cuadrícula** llena **Cantidad X**, **Cantidad Y** y **Cantidad Z** elementos separados por **Paso X**, **Paso Y** y **Paso Z**.
+- **Anillo** reparte los elementos sobre **Ángulo (grados)** alrededor de un centro a **Radio (unidades)** de la selección. Con **Orientar hacia el centro** cada copia gira con el anillo.
+- **Dispersión** coloca las copias en lugares aleatorios dentro del radio, a través del eje elegido. La misma **Semilla** da la misma disposición, y **Giro aleatorio** gira cada copia.
+
+Cuando la selección es un grupo entero, **Copias vinculadas** convierte cada copia en un duplicado vinculado, así que un cambio en una llega a todas. **Aplicar** conserva las copias y las selecciona junto con el original; **Cancelar** las elimina. Toda la matriz se deshace en un solo paso.
+
+## Esculpir terreno
+El terreno se compone de muchos brushes pequeños cuya parte superior el pincel de esculpir sube y baja. Selecciona una caja plana y elige Geometría → Dividir en columnas: la caja se corta en columnas triangulares de un paso de cuadrícula de ancho, que van a un grupo llamado Terrain. La parte superior de un triángulo siempre es plana, así que las columnas pueden formar crestas y valles.
+
+Elige la herramienta **Esculpir** (`J`) y arrastra sobre el terreno en la vista 3D. El anillo naranja muestra el pincel. Sin selección, el pincel cambia todos los brushes que tiene debajo; con selección, solo los seleccionados. La barra de la parte superior de la ventana elige qué hace un trazo:
+
+- **Subir** y **Bajar** mueven la superficie hacia arriba o hacia abajo, más en el centro del anillo y nada en el borde. Mantén `Shift` para intercambiarlos.
+- **Suavizar** iguala los bultos.
+- **Aplanar** nivela la superficie a la altura donde empezó el trazo.
+
+Los dos números junto a los modos son **Radio (unidades)** y **Fuerza (%)**. Solo se mueven las esquinas superiores, en vertical; la base se queda donde está y una columna mantiene al menos una unidad de grosor. Un trazo se deshace en un solo paso. En las vistas 2D la herramienta selecciona como la herramienta Seleccionar.
+
 # Materiales y UV
 ## Cargar y aplicar materiales
 Abre la sección **Materiales** de la pestaña Cara. **Cargar carpeta** añade una carpeta de imágenes y **Cargar .wad** añade un paquete de texturas; ambos aparecen en **Colecciones**, donde la cruz quita uno. Escribe en **Filtrar materiales** para acotar la lista. Haz clic en un material para que sea el actual y, después, **Aplicar a la selección** lo pone en todas las caras seleccionadas. **Seleccionar** ofrece Seleccionar los brushes que lo usan y Seleccionar las caras que lo usan. **Reemplazar** cambia un material por otro en todo el mapa o solo en la selección.

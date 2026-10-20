@@ -389,8 +389,10 @@ const FALLBACK_FONTS: &[(Language, &[(&str, u32)])] = &[
         ("/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", 0),
         ("/usr/share/fonts/wenquanyi/wqy-microhei/wqy-microhei.ttc", 0),
         ("/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf", 0),
-        // The web build, which carries them (scripts/pack_web_bundle.py).
+        // The web build, which fetches them for these languages, and otherwise has only
+        // the face for the language's own name (scripts/pack_web_bundle.py).
         ("/heron-brush/install/fonts/NotoSansSC-Regular.otf", 0),
+        ("/heron-brush/install/fonts/picker/NotoSansSC-Regular.otf", 0),
     ]),
     (Language::Japanese, &[
         ("/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc", 0),
@@ -403,6 +405,7 @@ const FALLBACK_FONTS: &[(Language, &[(&str, u32)])] = &[
         ("/system/fonts/NotoSansCJK-Regular.ttc", 0),
         // The web build.
         ("/heron-brush/install/fonts/NotoSansJP-Regular.otf", 0),
+        ("/heron-brush/install/fonts/picker/NotoSansJP-Regular.otf", 0),
     ]),
     (Language::Korean, &[
         ("/System/Library/Fonts/AppleSDGothicNeo.ttc", 0),
@@ -415,6 +418,7 @@ const FALLBACK_FONTS: &[(Language, &[(&str, u32)])] = &[
         ("/usr/share/fonts/truetype/nanum/NanumGothic.ttf", 0),
         // The web build.
         ("/heron-brush/install/fonts/NotoSansKR-Regular.otf", 0),
+        ("/heron-brush/install/fonts/picker/NotoSansKR-Regular.otf", 0),
     ]),
     // Traditional Chinese, with the characters Simplified has no use for.
     (Language::ChineseTraditional, &[
@@ -433,6 +437,7 @@ const FALLBACK_FONTS: &[(Language, &[(&str, u32)])] = &[
         ("/usr/share/fonts/google-noto-cjk/NotoSansCJKtc-Regular.otf", 0),
         // The web build.
         ("/heron-brush/install/fonts/NotoSansTC-Regular.otf", 0),
+        ("/heron-brush/install/fonts/picker/NotoSansTC-Regular.otf", 0),
     ]),
 ];
 

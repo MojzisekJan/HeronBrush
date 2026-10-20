@@ -30,6 +30,7 @@ mod menu;
 mod plugin_page;
 mod preferences_page;
 mod shape_dialogs;
+mod array_dialog;
 // The web build has one page per tab and no command line to hand over.
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 mod single_instance;
@@ -368,6 +369,7 @@ struct App {
     plugins: plugin_page::PluginPage,
     preferences: preferences_page::PreferencesPage,
     shapes: shape_dialogs::ShapeDialogs,
+    arrays: array_dialog::ArrayDialog,
     animation: animation_page::AnimationPage,
     manual: manual_page::ManualPage,
     welcome: welcome_page::WelcomePage,
@@ -490,6 +492,7 @@ impl App {
             plugins: plugin_page::PluginPage::default(),
             preferences: preferences_page::PreferencesPage::default(),
             shapes: shape_dialogs::ShapeDialogs::default(),
+            arrays: array_dialog::ArrayDialog::default(),
             animation: animation_page::AnimationPage::default(),
             manual: manual_page::ManualPage::default(),
             welcome: {
@@ -785,6 +788,9 @@ fn resize_edges(ui: &egui::Ui, window: egui::Rect) {
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         self.updates.show(ui.ctx());
+        // Before the welcome window too, where the language is first chosen.
+        #[cfg(target_arch = "wasm32")]
+        web::follow_cjk_fonts(ui.ctx());
         if self.profiler.is_none() {
             return self.frame(ui);
         }
@@ -1098,6 +1104,7 @@ impl App {
             self.plugins.open();
         }
         self.shapes.show(&ctx, &self.editor);
+        self.arrays.show(&ctx, &self.editor);
         if self.animation.detached {
             self.animation.show(&ctx, &self.editor);
         }

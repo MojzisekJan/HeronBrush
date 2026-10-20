@@ -142,6 +142,27 @@ Hình học → Chèn chữ 3D (cũng là mục cuối trong danh sách hình c�
 
 Nếu một thao tác không thể tạo ra hình học hợp lệ, hãy điều chỉnh kích thước của nó, hoặc hoàn tác và đơn giản hóa hình.
 
+## Mảng
+Hình học → Mảng sao chép vùng chọn và hiển thị các bản sao trong bản đồ khi bạn thay đổi giá trị. Số lượng tính cả bản gốc, và một mảng tạo tối đa 1024 bản sao.
+
+- **Hàng** dịch mỗi bản sao so với bản trước một khoảng **Bước X**, **Bước Y** và **Bước Z** và xoay nó **Xoay mỗi bản sao (độ)** quanh trục đã chọn.
+- **Lưới** lấp đầy **Số lượng X**, **Số lượng Y** và **Số lượng Z** mục, cách nhau **Bước X**, **Bước Y** và **Bước Z**.
+- **Vòng** rải các mục theo **Góc (độ)** quanh một tâm cách vùng chọn **Bán kính (đơn vị)**. Khi bật **Hướng về tâm**, mỗi bản sao xoay theo vòng.
+- **Rải** đặt các bản sao ở vị trí ngẫu nhiên trong bán kính, ngang qua trục đã chọn. Cùng **Seed** cho cùng bố cục, và **Xoay ngẫu nhiên** xoay từng bản sao.
+
+Khi vùng chọn là trọn một nhóm, **Bản sao liên kết** biến mỗi bản sao thành một bản nhân đôi liên kết, nên sửa một bản sẽ áp dụng cho tất cả. **Áp dụng** giữ các bản sao và chọn chúng cùng bản gốc; **Hủy** xóa chúng. Toàn bộ mảng được hoàn tác trong một bước.
+
+## Điêu khắc địa hình
+Địa hình gồm nhiều brush nhỏ mà cọ điêu khắc nâng và hạ mặt trên. Chọn một khối hộp dẹt rồi chọn Hình học → Chia thành cột: khối hộp được cắt thành các cột tam giác rộng một bước lưới và đưa vào một nhóm tên Terrain. Mặt trên của tam giác luôn phẳng, nên các cột có thể tạo thành sống núi và thung lũng.
+
+Chọn công cụ **Điêu khắc** (`J`) và kéo trên địa hình trong khung nhìn 3D. Vòng màu cam hiển thị cọ. Khi không chọn gì, cọ thay đổi mọi brush bên dưới; khi có vùng chọn, chỉ các brush đã chọn. Thanh ở đầu cửa sổ chọn tác dụng của một nét:
+
+- **Nâng** và **Hạ** đưa bề mặt lên hoặc xuống, nhiều nhất ở tâm vòng và không chút nào ở mép. Giữ `Shift` để đổi chúng cho nhau.
+- **Làm mượt** làm phẳng các chỗ gồ.
+- **Làm phẳng** san bề mặt về độ cao nơi nét bắt đầu.
+
+Hai số bên cạnh các chế độ là **Bán kính (đơn vị)** và **Cường độ (%)**. Chỉ các góc trên di chuyển, thẳng đứng; đáy giữ nguyên và mỗi cột dày ít nhất một đơn vị. Một nét được hoàn tác trong một bước. Trong các khung nhìn 2D, công cụ chọn như công cụ Chọn.
+
 # Vật liệu và UV
 ## Tải và áp dụng vật liệu
 Mở phần **Vật liệu** của thẻ Mặt. **Tải thư mục** thêm một thư mục ảnh và **Tải .wad** thêm một gói texture; cả hai xuất hiện trong **Bộ sưu tập**, nơi dấu chéo dùng để gỡ bỏ. Nhập vào **Lọc vật liệu** để thu hẹp danh sách. Nhấp vào một vật liệu để đặt nó làm vật liệu hiện hành, rồi **Áp dụng cho vùng chọn** gán nó cho mọi mặt đang chọn. **Chọn** có Chọn brush dùng vật liệu này và Chọn mặt dùng vật liệu này. **Thay thế** đổi một vật liệu thành vật liệu khác trên toàn bản đồ hoặc chỉ trong vùng chọn.

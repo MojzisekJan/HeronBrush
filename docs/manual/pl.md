@@ -142,6 +142,27 @@ Geometria → Wstaw tekst 3D (także ostatnia pozycja listy kształtów narzędz
 
 Jeśli operacja nie może utworzyć poprawnej geometrii, zmień jej wymiary albo cofnij ją i uprość kształt.
 
+## Szyki
+Geometria → Szyk kopiuje zaznaczenie i pokazuje kopie na mapie, gdy zmieniasz wartości. Liczby obejmują oryginał, a szyk tworzy najwyżej 1024 kopie.
+
+- **Rząd** przesuwa każdą kopię względem poprzedniej o **Krok X**, **Krok Y** i **Krok Z** i obraca ją o **Obrót na kopię (stopnie)** wokół wybranej osi.
+- **Siatka** wypełnia **Liczba X**, **Liczba Y** i **Liczba Z** elementów w odstępach **Krok X**, **Krok Y** i **Krok Z**.
+- **Pierścień** rozkłada elementy w zakresie **Kąt (stopnie)** wokół środka oddalonego o **Promień (jednostki)** od zaznaczenia. Z **Zwróć ku środkowi** każda kopia obraca się razem z pierścieniem.
+- **Rozrzut** umieszcza kopie w losowych miejscach w promieniu, w poprzek wybranej osi. To samo **Ziarno** daje ten sam układ, a **Losowy obrót** obraca każdą kopię.
+
+Gdy zaznaczona jest jedna cała grupa, **Połączone kopie** robi z każdej kopii połączony duplikat, więc zmiana jednej dociera do wszystkich. **Zastosuj** zostawia kopie i zaznacza je razem z oryginałem; **Anuluj** je usuwa. Cały szyk cofa się jednym krokiem.
+
+## Rzeźbienie terenu
+Teren składa się z wielu małych brushy, których wierzchy pędzel rzeźbiarski podnosi i opuszcza. Zaznacz płaski prostopadłościan i wybierz Geometria → Podziel na słupy: zostanie pocięty na trójkątne słupy szerokie na jeden krok siatki, umieszczone w grupie o nazwie Terrain. Wierzch trójkąta jest zawsze płaski, więc słupy mogą tworzyć grzbiety i doliny.
+
+Wybierz narzędzie **Rzeźbienie** (`J`) i przeciągaj po terenie w widoku 3D. Pomarańczowy pierścień pokazuje pędzel. Bez zaznaczenia pędzel zmienia każdy brush pod sobą, z zaznaczeniem tylko zaznaczone. Pasek u góry okna wybiera, co robi pociągnięcie:
+
+- **Podnieś** i **Obniż** przesuwają powierzchnię w górę lub w dół, najmocniej w środku pierścienia, a na krawędzi wcale. Przytrzymaj `Shift`, aby je zamienić.
+- **Wygładź** wyrównuje nierówności.
+- **Wyrównaj** wyrównuje powierzchnię do wysokości, na której zaczęło się pociągnięcie.
+
+Dwie liczby obok trybów to **Promień (jednostki)** i **Siła (%)**. Przesuwają się tylko górne narożniki, pionowo; spód zostaje na miejscu, a słup ma co najmniej jedną jednostkę grubości. Pociągnięcie cofa się jednym krokiem. W widokach 2D narzędzie zaznacza tak jak narzędzie Zaznaczanie.
+
 # Materiały i UV
 ## Wczytywanie i nakładanie materiałów
 Otwórz sekcję **Materiały** na karcie Ściana. **Wczytaj folder** dodaje folder obrazów, a **Wczytaj .wad** dodaje pakiet tekstur; oba pojawiają się w **Kolekcje**, gdzie krzyżyk usuwa wybraną pozycję. Wpisz tekst w **Filtruj materiały**, aby zawęzić listę. Kliknij materiał, aby uczynić go bieżącym, a **Zastosuj do zaznaczenia** nałoży go na wszystkie zaznaczone ściany. **Zaznacz** oferuje Zaznacz brushe z tym materiałem i Zaznacz ściany z tym materiałem. **Zastąp** zamienia jeden materiał na inny w całej mapie lub tylko w zaznaczeniu.

@@ -214,6 +214,27 @@ Geometry → Insert 3D text (also the last entry of the Brush tool's shape list)
 
 If an operation cannot produce valid geometry, adjust its dimensions, or undo and simplify the shape.
 
+## Arrays
+Geometry → Array copies the selection and shows the copies in the map while you change the values. Counts include the original, and an array makes at most 1024 copies.
+
+- **Row** moves each copy by **Step X**, **Step Y** and **Step Z** from the one before and turns it by **Turn per copy (degrees)** about the chosen axis.
+- **Grid** fills **Count X**, **Count Y** and **Count Z** items, **Step X**, **Step Y** and **Step Z** apart.
+- **Ring** spreads the items over **Angle (degrees)** round a centre **Radius (units)** from the selection. With **Face the centre** each copy turns with the ring.
+- **Scatter** puts the copies at random places within the radius, across the chosen axis. The same **Seed** gives the same layout, and **Random turn** turns each copy.
+
+When the selection is one whole group, **Linked copies** makes each copy a linked duplicate, so an edit to one reaches them all. **Apply** keeps the copies and selects them with the original; **Cancel** removes them. The whole array undoes in one step.
+
+## Sculpting terrain
+Terrain is made of many small brushes whose tops the sculpt brush moves up and down. Select a flat box and choose Geometry → Split into columns: it cuts the box into triangular columns one grid step across and puts them in a group named Terrain. The top of a triangle is always flat, so the columns can form ridges and valleys.
+
+Choose the **Sculpt** tool (`J`) and drag over the terrain in the 3D view. The orange ring shows the brush. With nothing selected the brush changes every brush under it; with a selection, only the selected ones. The strip at the top of the window chooses what a stroke does:
+
+- **Raise** and **Lower** move the surface up or down, most at the centre of the ring and nothing at its edge. Hold `Shift` to swap them.
+- **Smooth** evens out bumps.
+- **Flatten** levels the surface to the height where the stroke began.
+
+The two numbers beside the modes are **Radius (units)** and **Strength (%)**. Only the top corners move, straight up or down; the bottom stays where it is, and a column stays at least one unit thick. A stroke undoes in one step. In the 2D views the tool selects as the Select tool does.
+
 # Materials and UVs
 ## Loading and applying materials
 Open the Face tab's **Materials** section. **Load folder** adds a folder of images and **Load .wad** adds a texture package; both appear under **Collections**, where the cross removes one. Type in **Filter materials** to narrow the list. Click a material to make it current and apply it immediately to the selected faces or brushes. Without a selection it only changes the current material. **Apply to selection** reapplies it. Assigning a texture removes solid or gradient paint on those faces while preserving their UV mapping. **Select** offers Select brushes with it and Select faces with it. **Replace** swaps one material for another across the map or only in the selection.

@@ -41,6 +41,18 @@ Choose **Render PNG…** and a destination file. PNG dimensions are independent 
 the preview/window size and desktop scaling. Supported dimensions are 16–4096
 pixels per axis, subject to the GPU's framebuffer limits; samples range from 1–64.
 
+Choose **Render GIF…** under the preview to render the map's animations
+as a looping GIF. The render starts at time zero and plays everything that starts on
+its own: keyframe animations with **start_on** set, `func_rotate` and
+`func_shuttle`. Brushes waiting for a trigger stay still, and entity models do not
+move. **Length (seconds)** and **Frames per second** set how many frames are rendered;
+Both are in the **Animation** section. **Length from animation** sets the length to one cycle of the longest animation.
+Each frame is a full render with the chosen number of samples, so a 4 second clip at
+25 frames per second takes 100 times as long as one PNG. GIF frame delays are whole
+hundredths of a second, so the rate is capped at 50 frames per second, and each frame
+is reduced to 256 colours. A Full HD clip of a few seconds can take tens of megabytes;
+use a smaller output size for sharing.
+
 Expand **Depth of field** and enable it to blur objects outside the focus region.
 **Focus distance** is measured along the camera's forward axis in map units.
 **Sharp range** is the full interval around that distance kept sharp; set it to

@@ -142,6 +142,27 @@ Geometrie → 3D-Text einfügen (auch der letzte Eintrag in der Formenliste des 
 
 Wenn eine Operation keine gültige Geometrie erzeugen kann, passen Sie ihre Abmessungen an oder machen Sie den Schritt rückgängig und vereinfachen Sie die Form.
 
+## Arrays
+Geometrie → Array kopiert die Auswahl und zeigt die Kopien in der Karte, während du die Werte änderst. Die Anzahlen schließen das Original ein, und ein Array erzeugt höchstens 1024 Kopien.
+
+- **Reihe** verschiebt jede Kopie gegenüber der vorigen um **Schritt X**, **Schritt Y** und **Schritt Z** und dreht sie um **Drehung pro Kopie (Grad)** um die gewählte Achse.
+- **Raster** füllt **Anzahl X**, **Anzahl Y** und **Anzahl Z** Elemente im Abstand **Schritt X**, **Schritt Y** und **Schritt Z**.
+- **Ring** verteilt die Elemente über **Winkel (Grad)** um einen Mittelpunkt im Abstand **Radius (Einheiten)** von der Auswahl. Mit **Zur Mitte ausrichten** dreht sich jede Kopie mit dem Ring.
+- **Streuung** setzt die Kopien an zufällige Stellen innerhalb des Radius, quer zur gewählten Achse. Derselbe **Seed** ergibt dieselbe Anordnung, und **Zufällige Drehung** dreht jede Kopie.
+
+Ist eine ganze Gruppe ausgewählt, macht **Verknüpfte Kopien** jede Kopie zu einem verknüpften Duplikat, sodass eine Änderung an einer alle erreicht. **Anwenden** behält die Kopien und wählt sie mit dem Original aus; **Abbrechen** entfernt sie. Das ganze Array wird in einem Schritt rückgängig gemacht.
+
+## Gelände modellieren
+Gelände besteht aus vielen kleinen Brushes, deren Oberseiten der Modellierpinsel hebt und senkt. Wähle einen flachen Quader und dann Geometrie → In Säulen teilen: Der Quader wird in dreieckige Säulen von einem Rasterschritt Breite zerteilt, die in eine Gruppe namens Terrain kommen. Die Oberseite eines Dreiecks ist immer eben, daher können die Säulen Grate und Täler bilden.
+
+Wähle das Werkzeug **Modellieren** (`J`) und ziehe in der 3D-Ansicht über das Gelände. Der orange Ring zeigt den Pinsel. Ohne Auswahl ändert der Pinsel jeden Brush darunter, mit Auswahl nur die ausgewählten. Die Leiste oben im Fenster legt fest, was ein Strich tut:
+
+- **Anheben** und **Senken** bewegen die Oberfläche nach oben oder unten, am stärksten in der Mitte des Rings und am Rand gar nicht. Halte `Shift`, um sie zu tauschen.
+- **Glätten** gleicht Unebenheiten aus.
+- **Ebnen** ebnet die Oberfläche auf die Höhe, an der der Strich begann.
+
+Die zwei Zahlen neben den Modi sind **Radius (Einheiten)** und **Stärke (%)**. Nur die oberen Ecken bewegen sich, senkrecht nach oben oder unten; der Boden bleibt, wo er ist, und eine Säule bleibt mindestens eine Einheit dick. Ein Strich wird in einem Schritt rückgängig gemacht. In den 2D-Ansichten wählt das Werkzeug aus wie das Auswahlwerkzeug.
+
 # Materialien und UVs
 ## Materialien laden und zuweisen
 Öffnen Sie im Tab Fläche den Abschnitt **Materialien**. **Einen Ordner laden** fügt einen Ordner mit Bildern hinzu und **Eine .wad laden** ein Texturpaket; beide erscheinen unter **Sammlungen**, wo das Kreuz einen Eintrag entfernt. Tippen Sie in **Materialien filtern**, um die Liste einzugrenzen. Klicken Sie auf ein Material, um es zum aktuellen zu machen; **Auf die Auswahl anwenden** legt es dann auf jede ausgewählte Fläche. **Auswählen** bietet Brushes damit auswählen und Flächen damit auswählen. **Ersetzen** tauscht ein Material gegen ein anderes aus, in der ganzen Map oder nur in der Auswahl.

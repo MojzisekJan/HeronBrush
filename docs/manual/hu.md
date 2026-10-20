@@ -142,6 +142,27 @@ A Geometria → 3D szöveg beszúrása (a Brush eszköz alakzatlistájának utol
 
 Ha egy művelet nem tud érvényes geometriát létrehozni, módosítsa a méreteit, vagy vonja vissza, és egyszerűsítse az alakzatot.
 
+## Tömbök
+A Geometria → Tömb lemásolja a kijelölést, és a másolatokat a térképen mutatja, amíg az értékeket módosítod. A darabszámok az eredetit is tartalmazzák, és egy tömb legfeljebb 1024 másolatot készít.
+
+- A **Sor** minden másolatot az előzőhöz képest **X lépés**, **Y lépés** és **Z lépés** értékkel tol el, és **Forgatás másolatonként (fok)** értékkel forgat a választott tengely körül.
+- A **Rács** **Darabszám X**, **Darabszám Y** és **Darabszám Z** elemet tölt ki **X lépés**, **Y lépés** és **Z lépés** távolságra.
+- A **Gyűrű** az elemeket **Szög (fok)** szögben osztja el egy középpont körül, amely **Sugár (egység)** távolságra van a kijelöléstől. A **Fordítás a középpont felé** bekapcsolásával minden másolat a gyűrűvel együtt fordul.
+- A **Szórás** a másolatokat véletlen helyekre teszi a sugáron belül, a választott tengelyre merőlegesen. Ugyanaz a **Mag** ugyanazt az elrendezést adja, a **Véletlen forgatás** pedig minden másolatot elforgat.
+
+Ha egy teljes csoport van kijelölve, az **Összekapcsolt másolatok** minden másolatot összekapcsolt duplikátummá tesz, így az egyiken végzett módosítás mindegyikre kihat. Az **Alkalmaz** megtartja a másolatokat, és az eredetivel együtt kijelöli őket; a **Mégse** eltávolítja őket. Az egész tömb egy lépésben visszavonható.
+
+## Terep formázása
+A terep sok kis brushból áll, amelyek tetejét a formázó ecset emeli és süllyeszti. Jelölj ki egy lapos téglatestet, és válaszd a Geometria → Oszlopokra bontás parancsot: a téglatest egy rácslépésnyi széles háromszög alapú oszlopokra bomlik, amelyek egy Terrain nevű csoportba kerülnek. A háromszög teteje mindig sík, így az oszlopok gerinceket és völgyeket is alkothatnak.
+
+Válaszd a **Formázás** eszközt (`J`), és húzd végig a terepen a 3D nézetben. A narancssárga gyűrű mutatja az ecsetet. Kijelölés nélkül az ecset minden alatta lévő brusht módosít, kijelöléssel csak a kijelölteket. Az ablak tetején lévő sáv adja meg, mit tesz egy húzás:
+
+- A **Emelés** és a **Süllyesztés** fel vagy le mozgatja a felületet, a gyűrű közepén a legjobban, a szélén egyáltalán nem. A `Shift` lenyomva tartásával felcserélheted őket.
+- A **Simítás** elsimítja a dudorokat.
+- A **Simítás síkba** arra a magasságra simítja a felületet, ahol a húzás kezdődött.
+
+A módok melletti két szám a **Sugár (egység)** és az **Erősség (%)**. Csak a felső sarkok mozognak, függőlegesen; az alj a helyén marad, és egy oszlop legalább egy egység vastag marad. Egy húzás egy lépésben visszavonható. A 2D nézetekben az eszköz úgy jelöl ki, mint a Kijelölés eszköz.
+
 # Anyagok és UV-k
 ## Anyagok betöltése és alkalmazása
 Nyissa meg a Lap lap **Anyagok** szakaszát. A **Mappa betöltése** egy képeket tartalmazó mappát, a **.wad betöltése** egy textúracsomagot ad hozzá; mindkettő a **Gyűjtemények** alatt jelenik meg, ahol a kereszt eltávolítja őket. A lista szűkítéséhez írjon az **Anyagok szűrése** mezőbe. Egy anyagra kattintva az lesz az aktuális, majd az **Alkalmazás a kijelölésre** minden kijelölt lapra felteszi. A **Kijelölés** menü a Brush-ok kijelölése, amelyek ezt használják és a Lapok kijelölése, amelyek ezt használják lehetőséget kínálja. A **Csere** egy anyagot egy másikra cserél az egész térképen vagy csak a kijelölésben.

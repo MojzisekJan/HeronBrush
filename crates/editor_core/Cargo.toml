@@ -18,6 +18,7 @@ file_store = { path = "../file_store" }
 # std::time, with an Instant and a SystemTime that work in the browser too.
 web-time = "1"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
+gif = "0.14"
 text_utils = { path = "../text_utils" }
 map_model = { path = "../map_model", features = ["serde"] }
 render = { path = "../render" }

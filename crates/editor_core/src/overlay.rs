@@ -203,7 +203,7 @@ pub fn build(
         // These draw nothing of their own: the paint tool acts on the face under the
         // pointer, the brush tool's own preview is the shape being dragged out, and
         // selecting draws the selection itself.
-        Tool::Select | Tool::Brush | Tool::Paint => {}
+        Tool::Select | Tool::Brush | Tool::Paint | Tool::Sculpt => {}
     }
 
     // The leak trace is drawn whatever the tool is: it is about the level rather than

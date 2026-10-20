@@ -26,6 +26,14 @@ codegen-units = 256
 incremental = true
 strip = false
 
+# The published web build: optimised for size, since the browser downloads the module
+# before anything shows. opt-level "z" with full LTO took the code from 17.2 to 10.0 MB
+# and the gzipped module from 9.7 to 7.7 MB. The desktop keeps the faster release.
+[profile.web-release]
+inherits = "release"
+opt-level = "z"
+lto = "fat"
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

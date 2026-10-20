@@ -509,6 +509,7 @@ impl Commands {
                 Key::Letter('t') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Scale),
                 Key::Letter('g') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Shear),
                 Key::Letter('k') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Paint),
+                Key::Letter('j') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Sculpt),
                 Key::Letter('o') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Fillet),
                 Key::Letter('z') if ctrl && shift => report(document.borrow_mut().redo(), "redo"),
                 Key::Letter('z') if ctrl => report(document.borrow_mut().undo(), "undo"),

@@ -24,6 +24,22 @@ pub enum Motion {
     },
 }
 impl Motion {
+    /// How long one cycle of the motion takes in seconds, or `None` when it does not play
+    /// on its own.
+    pub fn cycle(&self) -> Option<f64> {
+        let length = |track: &crate::keyframe_animation::Track| {
+            let duration = track.keys.last()?.time;
+            Some(if track.mode == "pingpong" { duration * 2.0 } else { duration })
+        };
+        let seconds = match self {
+            Self::Playback { track, playing: true, posed: true, .. } => length(track)?,
+            Self::Keyframes { autoplay: true, track, .. } => length(track)?,
+            Self::Rotate { speed, .. } => 360.0 / speed.abs(),
+            Self::Shuttle { travel, speed, wait, .. } if *speed != 0.0 => 2.0 * (travel.abs() / speed.abs() + wait),
+            _ => return None,
+        };
+        (seconds.is_finite() && seconds > 0.0).then_some(seconds)
+    }
     pub fn transform(&self, point: Vec3d, time: f64, normal: bool) -> Vec3d {
         match self.clone() {
             Self::Playback{pivot,track,offset,epoch,playing,posed,..}=>if posed{track.transform(point,pivot,offset+if playing{(time-epoch).max(0.0)}else{0.0},normal)}else{point},

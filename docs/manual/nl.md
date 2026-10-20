@@ -142,6 +142,27 @@ Geometrie → 3D-tekst invoegen (ook het laatste item in de vormenlijst van het 
 
 Kan een bewerking geen geldige geometrie opleveren, pas dan de afmetingen aan, of maak de bewerking ongedaan en vereenvoudig de vorm.
 
+## Arrays
+Geometrie → Array kopieert de selectie en toont de kopieën in de kaart terwijl je de waarden wijzigt. De aantallen tellen het origineel mee, en een array maakt hoogstens 1024 kopieën.
+
+- **Rij** verschuift elke kopie ten opzichte van de vorige met **Stap X**, **Stap Y** en **Stap Z** en draait haar **Draaiing per kopie (graden)** om de gekozen as.
+- **Raster** vult **Aantal X**, **Aantal Y** en **Aantal Z** items, **Stap X**, **Stap Y** en **Stap Z** uit elkaar.
+- **Ring** verdeelt de items over **Hoek (graden)** rond een middelpunt op **Straal (eenheden)** van de selectie. Met **Naar het midden draaien** draait elke kopie mee met de ring.
+- **Verspreiding** zet de kopieën op willekeurige plekken binnen de straal, dwars op de gekozen as. Dezelfde **Seed** geeft dezelfde indeling, en **Willekeurige draaiing** draait elke kopie.
+
+Als de selectie één hele groep is, maakt **Gekoppelde kopieën** van elke kopie een gekoppeld duplicaat, zodat een wijziging aan één ze allemaal bereikt. **Toepassen** houdt de kopieën en selecteert ze samen met het origineel; **Annuleren** verwijdert ze. De hele array wordt in één stap ongedaan gemaakt.
+
+## Terrein boetseren
+Terrein bestaat uit veel kleine brushes waarvan het boetseerpenseel de bovenkant omhoog en omlaag beweegt. Selecteer een plat blok en kies Geometrie → In kolommen verdelen: het blok wordt in driehoekige kolommen van één rasterstap breed gesneden, die in een groep met de naam Terrain komen. De bovenkant van een driehoek is altijd vlak, dus de kolommen kunnen ruggen en dalen vormen.
+
+Kies het gereedschap **Boetseren** (`J`) en sleep in de 3D-weergave over het terrein. De oranje ring toont het penseel. Zonder selectie verandert het penseel elke brush eronder; met een selectie alleen de geselecteerde. De balk bovenaan het venster kiest wat een streek doet:
+
+- **Verhogen** en **Verlagen** bewegen het oppervlak omhoog of omlaag, het meest in het midden van de ring en niet aan de rand. Houd `Shift` ingedrukt om ze te wisselen.
+- **Gladmaken** strijkt bulten glad.
+- **Egaliseren** brengt het oppervlak op de hoogte waar de streek begon.
+
+De twee getallen naast de modi zijn **Straal (eenheden)** en **Sterkte (%)**. Alleen de bovenste hoeken bewegen, recht omhoog of omlaag; de onderkant blijft waar hij is en een kolom blijft minstens één eenheid dik. Een streek wordt in één stap ongedaan gemaakt. In de 2D-weergaven selecteert het gereedschap zoals het Selectiegereedschap.
+
 # Materialen en UV's
 ## Materialen laden en toepassen
 Open de sectie **Materialen** in het tabblad Vlak. **Map laden** voegt een map met afbeeldingen toe en **.wad laden** voegt een texturepakket toe; beide verschijnen onder **Collecties**, waar het kruisje er een verwijdert. Typ in **Materialen filteren** om de lijst te beperken. Klik op een materiaal om het actueel te maken; **Op selectie toepassen** zet het dan op elk geselecteerd vlak. **Selecteren** biedt Brushes ermee selecteren en Vlakken ermee selecteren. **Vervangen** wisselt een materiaal in de hele map of alleen in de selectie om voor een ander.

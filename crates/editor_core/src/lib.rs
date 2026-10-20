@@ -59,6 +59,7 @@ pub mod godot_animation;
 pub mod godot_live;
 pub mod i18n;
 pub mod motion_preview;
+pub mod sculpt;
 pub mod obj_export;
 pub mod portable_animation;
 pub mod preferences;

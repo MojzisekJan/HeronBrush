@@ -142,6 +142,27 @@ Geometrija → Vstavi 3D-besedilo (tudi zadnji element seznama oblik orodja Brus
 
 Če operacija ne more ustvariti veljavne geometrije, prilagodite njene mere ali razveljavite in poenostavite obliko.
 
+## Nizi
+Geometrija → Niz kopira izbor in prikazuje kopije v zemljevidu, medtem ko spreminjate vrednosti. Števila vključujejo izvirnik, niz pa ustvari največ 1024 kopij.
+
+- **Vrsta** premakne vsako kopijo glede na prejšnjo za **Korak X**, **Korak Y** in **Korak Z** in jo zasuka za **Zasuk na kopijo (stopinje)** okoli izbrane osi.
+- **Mreža** zapolni **Število X**, **Število Y** in **Število Z** elementov z razmiki **Korak X**, **Korak Y** in **Korak Z**.
+- **Obroč** razporedi elemente znotraj **Kot (stopinje)** okoli središča, oddaljenega **Polmer (enote)** od izbora. Z **Obrni proti središču** se vsaka kopija zasuka z obročem.
+- **Razpršitev** postavi kopije na naključna mesta znotraj polmera, prečno na izbrano os. Isto **Seme** da isto razporeditev, **Naključen zasuk** pa zasuka vsako kopijo.
+
+Ko je izbrana ena cela skupina, **Povezane kopije** iz vsake kopije naredi povezan dvojnik, zato sprememba ene doseže vse. **Uporabi** obdrži kopije in jih izbere skupaj z izvirnikom; **Prekliči** jih odstrani. Celoten niz se razveljavi v enem koraku.
+
+## Oblikovanje terena
+Teren sestavlja veliko majhnih brushev, katerih vrhove čopič za oblikovanje dviga in spušča. Izberite ploščat kvader in Geometrija → Razdeli na stebre: kvader se razreže na trikotne stebre, široke en korak mreže, in jih postavi v skupino Terrain. Vrh trikotnika je vedno raven, zato lahko stebri tvorijo grebene in doline.
+
+Izberite orodje **Oblikovanje** (`J`) in vlecite po terenu v 3D-pogledu. Oranžen obroč prikazuje čopič. Brez izbora čopič spremeni vsak brush pod seboj, z izborom le izbrane. Trak na vrhu okna določa, kaj naredi poteza:
+
+- **Dvigni** in **Spusti** premakneta površino gor ali dol, najbolj v središču obroča in na robu nič. Držite `Shift`, da ju zamenjate.
+- **Zgladi** zgladi neravnine.
+- **Poravnaj** poravna površino na višino, kjer se je poteza začela.
+
+Števili ob načinih sta **Polmer (enote)** in **Moč (%)**. Premikajo se le zgornji koti, navpično; dno ostane na mestu, steber pa ostane debel vsaj eno enoto. Poteza se razveljavi v enem koraku. V 2D-pogledih orodje izbira kot orodje Izbira.
+
 # Materiali in UV
 ## Nalaganje in uporaba materialov
 Odprite razdelek **Materiali** na zavihku Ploskev. **Naloži mapo** doda mapo slik, **Naloži .wad** pa paket tekstur; oboje se prikaže pod **Zbirke**, kjer križec element odstrani. Za zožitev seznama tipkajte v **Filtriraj materiale**. S klikom material postane trenutni, **Uporabi za izbor** pa ga nanese na vse izbrane ploskve. **Izberi** ponuja Izberi brushe z njim in Izberi ploskve z njim. **Zamenjaj** zamenja en material z drugim v celotnem zemljevidu ali samo v izboru.

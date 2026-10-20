@@ -31,6 +31,10 @@ pub struct Settings {
     pub focus_distance: f32,
     pub focus_range: f32,
     pub blur_radius: f32,
+    /// How long an animation render runs, in seconds.
+    pub video_seconds: f64,
+    /// An animation render's frames per second.
+    pub video_fps: u32,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -52,6 +56,8 @@ impl Default for Settings {
             focus_distance: 512.,
             focus_range: 128.,
             blur_radius: 10.,
+            video_seconds: 4.,
+            video_fps: 25,
         }
     }
 }
@@ -69,6 +75,8 @@ impl Settings {
         self.exposure = self.exposure.clamp(0.1, 5.);
         self.sun_elevation = self.sun_elevation.clamp(0., 90.);
         self.sun_azimuth = self.sun_azimuth.rem_euclid(360.);
+        self.video_seconds = if self.video_seconds.is_finite() { self.video_seconds.clamp(0.1, 120.) } else { 4. };
+        self.video_fps = self.video_fps.clamp(1, MAX_VIDEO_FPS);
         self
     }
     pub fn render(&self) -> render::RenderSettings {
@@ -255,12 +263,13 @@ pub fn draw_frame(cr: &mut dyn crate::canvas::Canvas, aspect: f64, width: f64, h
     let _ = cr.stroke();
     let _ = cr.restore();
 }
-#[derive(Clone)]
 pub struct Job {
     pub path: PathBuf,
     pub camera: Camera3d,
     pub settings: Settings,
     pub completed: u32,
+    /// The animation being rendered, a whole job's samples per frame; `None` for a still.
+    pub video: Option<Video>,
 }
 impl Job {
     pub fn advance(&mut self) -> bool {
@@ -455,4 +464,129 @@ pub fn write_png(path: &std::path::Path, width: i32, height: i32, pixels: &[u8])
     let mut png = Vec::new();
     image::write_buffer_with_format(&mut std::io::Cursor::new(&mut png), &rgb, width as u32, height as u32, image::ColorType::Rgb8, image::ImageFormat::Png).map_err(|e| e.to_string())?;
     crate::files::write(path, png).map_err(|e| e.to_string())
+}
+
+/// The highest animation frame rate: GIF frame delays are whole hundredths of a second,
+/// and most viewers slow anything under two hundredths down.
+pub const MAX_VIDEO_FPS: u32 = 50;
+
+/// How long one cycle of the map's longest animation takes, in seconds: what an
+/// animation render needs to show it all. `None` when nothing plays on its own.
+pub fn animation_length(doc: &Document) -> Option<f64> {
+    doc.preview_motions().values().filter_map(crate::motion_preview::Motion::cycle).reduce(f64::max)
+}
+
+/// An animated GIF filled in a frame at a time, as an animation render finishes them.
+pub struct Video {
+    /// How many frames the animation has.
+    pub frames: u32,
+    /// How many of them are encoded.
+    pub frame: u32,
+    fps: u32,
+    size: (u16, u16),
+    encoder: gif::Encoder<Vec<u8>>,
+}
+impl Video {
+    /// An empty GIF for `settings`' output size, length and frame rate, looping forever.
+    pub fn new(settings: &Settings) -> Result<Self, String> {
+        let size = (settings.width as u16, settings.height as u16);
+        let mut encoder = gif::Encoder::new(Vec::new(), size.0, size.1, &[]).map_err(|e| e.to_string())?;
+        encoder.set_repeat(gif::Repeat::Infinite).map_err(|e| e.to_string())?;
+        let frames = (settings.video_seconds * f64::from(settings.video_fps)).round().max(1.0) as u32;
+        Ok(Self { frames, frame: 0, fps: settings.video_fps, size, encoder })
+    }
+
+    /// The animation time of the next frame, in seconds.
+    pub fn time(&self) -> f64 {
+        f64::from(self.frame) / f64::from(self.fps)
+    }
+
+    /// Encodes the next frame from `pixels`, RGBA with the bottom row first as OpenGL reads
+    /// them, and says whether that was the last.
+    pub fn push(&mut self, pixels: &[u8]) -> Result<bool, String> {
+        let (width, height) = (usize::from(self.size.0), usize::from(self.size.1));
+        if pixels.len() != width * height * 4 {
+            return Err(format!("frame is {} bytes, not {width} × {height}", pixels.len()));
+        }
+        let rgb: Vec<u8> = pixels.chunks_exact(width * 4).rev().flat_map(|row| row.chunks_exact(4).flat_map(|p| [p[0], p[1], p[2]])).collect();
+        // The palette is chosen per frame; speed 10 is the quantiser's usual trade-off.
+        let mut frame = gif::Frame::from_rgb_speed(self.size.0, self.size.1, &rgb, 10);
+        // Each frame ends where the frame rate says, so rounding errors do not add up.
+        let at = |frame: u32| (f64::from(frame) * 100.0 / f64::from(self.fps)).round() as u16;
+        frame.delay = at(self.frame + 1) - at(self.frame);
+        self.encoder.write_frame(&frame).map_err(|e| e.to_string())?;
+        self.frame += 1;
+        Ok(self.frame >= self.frames)
+    }
+
+    /// Writes the GIF to `path`, through `files` as [`write_png`] does.
+    pub fn finish(self, path: &std::path::Path) -> Result<(), String> {
+        let gif = self.encoder.into_inner().map_err(|e| e.to_string())?;
+        crate::files::write(path, gif).map_err(|e| e.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An animation render has as many frames as its length and rate say, each shown for
+    /// its share of the length, and loops.
+    #[test]
+    fn a_video_holds_every_frame_at_its_rate() {
+        let settings = Settings { width: 32, height: 16, video_seconds: 1.0, video_fps: 30, ..Settings::default() }.validated();
+        let mut video = Video::new(&settings).unwrap();
+        assert_eq!(video.frames, 30);
+        let mut last = false;
+        while !last {
+            assert_eq!(video.time(), f64::from(video.frame) / 30.0);
+            let shade = (video.frame * 8) as u8;
+            last = video.push(&[shade, 0, 255 - shade, 255].repeat(32 * 16)).unwrap();
+        }
+        assert!(video.push(&[0; 4]).is_err(), "a frame of the wrong size is refused");
+        let path = std::env::temp_dir().join("heron-render-video-test.gif");
+        video.finish(&path).unwrap();
+        let mut options = gif::DecodeOptions::new();
+        options.set_color_output(gif::ColorOutput::RGBA);
+        let mut decoder = options.read_info(std::fs::File::open(&path).unwrap()).unwrap();
+        assert_eq!((decoder.width(), decoder.height()), (32, 16));
+        assert_eq!(decoder.repeat(), gif::Repeat::Infinite);
+        let mut delays = Vec::new();
+        while let Some(frame) = decoder.read_next_frame().unwrap() {
+            delays.push(frame.delay);
+        }
+        assert_eq!(delays.len(), 30);
+        assert_eq!(delays.iter().map(|d| u32::from(*d)).sum::<u32>(), 100);
+        let _ = std::fs::remove_file(path);
+    }
+
+    /// The motion lab demo plays a 16 s ping-pong and a 12 s loop on its own: an animation
+    /// render is 16 s long, and its frames move those brushes.
+    #[test]
+    fn an_animation_render_poses_the_map() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../demos/motion_lab/motion_lab.map");
+        let doc = Document::open(&path, crate::world::WorldBounds::default()).unwrap();
+        assert_eq!(animation_length(&doc), Some(16.0));
+        let corners = |triangles: Vec<render::Triangle>| triangles.iter().map(|t| format!("{:?}", t.positions)).collect::<Vec<_>>();
+        let rest = corners(doc.render_triangles());
+        assert_eq!(corners(doc.render_triangles_at(Some(0.0))), rest);
+        let moved = corners(doc.render_triangles_at(Some(4.0)));
+        assert_eq!(moved.len(), rest.len());
+        assert_ne!(moved, rest);
+    }
+
+    /// One cycle of each kind of motion, and none for one that waits for a trigger.
+    #[test]
+    fn motions_report_their_cycle() {
+        use crate::motion_preview::Motion;
+        use geometry_math::vec::Vec3d;
+        let rotate = Motion::Rotate { pivot: Vec3d::new(0., 0., 0.), axis: Vec3d::new(0., 0., 1.), speed: -90. };
+        assert_eq!(rotate.cycle(), Some(4.0));
+        let shuttle = Motion::Shuttle { direction: Vec3d::new(1., 0., 0.), travel: 128., speed: 64., wait: 0.5 };
+        assert_eq!(shuttle.cycle(), Some(5.0));
+        let track = std::sync::Arc::new(crate::keyframe_animation::Track::parse("0 0 0 0 0 0 0; 1.5 0 0 64 0 0 0", "pingpong").unwrap());
+        let pivot = Vec3d::new(0., 0., 0.);
+        assert_eq!(Motion::Keyframes { autoplay: true, pivot, track: track.clone() }.cycle(), Some(3.0));
+        assert_eq!(Motion::Keyframes { autoplay: false, pivot, track }.cycle(), None);
+    }
 }

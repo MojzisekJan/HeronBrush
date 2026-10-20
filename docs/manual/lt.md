@@ -142,6 +142,27 @@ Geometrija → Įterpti 3D tekstą (taip pat paskutinis brašo įrankio formų s
 
 Jei operacija negali sukurti tinkamos geometrijos, pakeiskite jos matmenis arba atšaukite ir supaprastinkite formą.
 
+## Masyvai
+Geometrija → Masyvas nukopijuoja pasirinkimą ir rodo kopijas žemėlapyje, kol keičiate reikšmes. Kiekiai apima originalą, o masyvas sukuria ne daugiau kaip 1024 kopijas.
+
+- **Eilė** kiekvieną kopiją, palyginti su ankstesne, pastumia per **Žingsnis X**, **Žingsnis Y** ir **Žingsnis Z** ir pasuka per **Pasukimas kopijai (laipsniai)** apie pasirinktą ašį.
+- **Tinklelis** užpildo **Kiekis X**, **Kiekis Y** ir **Kiekis Z** elementų **Žingsnis X**, **Žingsnis Y** ir **Žingsnis Z** atstumais.
+- **Žiedas** paskirsto elementus per **Kampas (laipsniai)** aplink centrą, nutolusį **Spindulys (vienetai)** nuo pasirinkimo. Su **Atsukti į centrą** kiekviena kopija pasisuka kartu su žiedu.
+- **Išbarstymas** padeda kopijas atsitiktinėse vietose spindulio ribose, skersai pasirinktos ašies. Ta pati **Sėkla** duoda tą patį išdėstymą, o **Atsitiktinis pasukimas** pasuka kiekvieną kopiją.
+
+Kai pasirinkta viena visa grupė, **Susietos kopijos** kiekvieną kopiją paverčia susietu dublikatu, todėl vienos pakeitimas pasiekia visas. **Taikyti** palieka kopijas ir pažymi jas kartu su originalu; **Atšaukti** jas pašalina. Visas masyvas atšaukiamas vienu žingsniu.
+
+## Reljefo lipdymas
+Reljefą sudaro daug mažų brush'ų, kurių viršus lipdymo teptukas kelia ir leidžia. Pasirinkite plokščią gretasienį ir Geometrija → Padalyti į stulpus: jis supjaustomas į trikampius stulpus, vieno tinklelio žingsnio pločio, ir sudedamas į grupę Terrain. Trikampio viršus visada plokščias, todėl stulpai gali sudaryti keteras ir slėnius.
+
+Pasirinkite įrankį **Lipdymas** (`J`) ir vilkite per reljefą 3D vaizde. Oranžinis žiedas rodo teptuką. Kai niekas nepasirinkta, teptukas keičia visus po juo esančius brush'us, o esant pasirinkimui – tik pasirinktus. Juosta lango viršuje nustato, ką daro brūkšnys:
+
+- **Pakelti** ir **Nuleisti** kelia arba leidžia paviršių – labiausiai žiedo centre, o krašte visai ne. Laikykite `Shift`, kad juos sukeistumėte.
+- **Išlyginti nelygumus** išlygina nelygumus.
+- **Išlyginti** išlygina paviršių iki aukščio, kuriame brūkšnys prasidėjo.
+
+Du skaičiai šalia režimų yra **Spindulys (vienetai)** ir **Stiprumas (%)**. Juda tik viršutiniai kampai, statmenai aukštyn arba žemyn; apačia lieka vietoje, o stulpas lieka bent vieno vieneto storio. Brūkšnys atšaukiamas vienu žingsniu. 2D vaizduose įrankis žymi kaip žymėjimo įrankis.
+
 # Medžiagos ir UV
 ## Medžiagų įkėlimas ir taikymas
 Atverkite kortelės Sienelė skyrių **Medžiagos**. **Įkelti aplanką** prideda paveikslėlių aplanką, o **Įkelti .wad** – tekstūrų paketą; abu atsiranda po **Kolekcijos**, kur kryželis vieną pašalina. Rašykite į **Filtruoti medžiagas**, kad susiaurintumėte sąrašą. Spustelėkite medžiagą, kad ji taptų dabartine, tada **Taikyti pažymėtiems** uždeda ją ant kiekvienos pažymėtos sienelės. **Pažymėti** siūlo Pažymėti brašus su ja ir Pažymėti sieneles su ja. **Pakeisti** sukeičia vieną medžiagą kita visame žemėlapyje arba tik pažymėtuose objektuose.

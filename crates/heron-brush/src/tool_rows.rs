@@ -197,3 +197,23 @@ pub fn fillet_controls(ui: &mut egui::Ui, parameters: &Rc<RefCell<FilletParamete
         crate::widgets::checkbox(ui, &mut settings.inner, tr("Inner L corner"));
     });
 }
+
+/// The sculpt brush's strip in the tool bar: what a dab does, its radius and strength.
+pub fn sculpt_row(ui: &mut egui::Ui) {
+    use editor_core::sculpt::{self, SculptMode, SculptParameters};
+    use egui_phosphor::regular as icon;
+    let mut parameters = sculpt::parameters();
+    let modes: Vec<(&str, &str)> = SculptMode::ALL.iter().map(|mode| (tr(mode.name()), "")).collect();
+    let mut mode = SculptMode::ALL.iter().position(|m| *m == parameters.mode).unwrap_or(0);
+    if widgets::segmented_choice(ui, "sculpt-mode", &modes, &mut mode, 240.0) {
+        parameters.mode = SculptMode::ALL[mode];
+    }
+    ui.label(egui::RichText::new(icon::CIRCLE_DASHED).font(theme::icon()).color(theme::dim())).on_hover_text(tr("Radius (units)"));
+    widgets::spin_width(ui, &mut parameters.radius, SculptParameters::RADIUS, 8.0, 0, 60.0).on_hover_text(tr("Radius (units)"));
+    ui.label(egui::RichText::new(icon::GAUGE).font(theme::icon()).color(theme::dim())).on_hover_text(tr("Strength (%)"));
+    let mut percent = parameters.strength * 100.0;
+    if widgets::spin_width(ui, &mut percent, 1.0..=100.0, 5.0, 0, 52.0).on_hover_text(tr("Strength (%)")).changed() {
+        parameters.strength = percent / 100.0;
+    }
+    sculpt::set_parameters(parameters);
+}

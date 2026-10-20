@@ -142,6 +142,27 @@ Géométrie → Insérer du texte 3D (aussi la dernière entrée de la liste des
 
 Si une opération ne peut pas produire de géométrie valide, ajustez ses dimensions, ou annulez et simplifiez la forme.
 
+## Réseaux
+Géométrie → Réseau copie la sélection et montre les copies dans la carte pendant que vous modifiez les valeurs. Les nombres incluent l'original, et un réseau crée au plus 1024 copies.
+
+- **Rangée** décale chaque copie de **Pas X**, **Pas Y** et **Pas Z** par rapport à la précédente et la tourne de **Rotation par copie (degrés)** autour de l'axe choisi.
+- **Grille** remplit **Nombre X**, **Nombre Y** et **Nombre Z** éléments, espacés de **Pas X**, **Pas Y** et **Pas Z**.
+- **Anneau** répartit les éléments sur **Angle (degrés)** autour d'un centre situé à **Rayon (unités)** de la sélection. Avec **Orienter vers le centre**, chaque copie tourne avec l'anneau.
+- **Dispersion** place les copies à des endroits aléatoires dans le rayon, en travers de l'axe choisi. La même **Graine** donne la même disposition, et **Rotation aléatoire** tourne chaque copie.
+
+Quand la sélection est un groupe entier, **Copies liées** fait de chaque copie un duplicata lié : une modification de l'une atteint toutes les autres. **Appliquer** garde les copies et les sélectionne avec l'original ; **Annuler** les supprime. Le réseau entier s'annule en une seule étape.
+
+## Sculpter le terrain
+Le terrain est fait de nombreux petits brushes dont le pinceau de sculpture monte et descend le dessus. Sélectionnez une boîte plate et choisissez Géométrie → Découper en colonnes : la boîte est découpée en colonnes triangulaires larges d'un pas de grille, placées dans un groupe nommé Terrain. Le dessus d'un triangle est toujours plan, les colonnes peuvent donc former des crêtes et des vallées.
+
+Choisissez l'outil **Sculpter** (`J`) et faites glisser sur le terrain dans la vue 3D. L'anneau orange montre le pinceau. Sans sélection, le pinceau modifie tous les brushes situés dessous ; avec une sélection, seulement ceux sélectionnés. La barre en haut de la fenêtre choisit l'effet d'un trait :
+
+- **Élever** et **Abaisser** montent ou descendent la surface, surtout au centre de l'anneau et pas du tout au bord. Maintenez `Shift` pour les inverser.
+- **Lisser** atténue les bosses.
+- **Aplanir** ramène la surface à la hauteur où le trait a commencé.
+
+Les deux nombres à côté des modes sont **Rayon (unités)** et **Force (%)**. Seuls les coins du dessus bougent, à la verticale ; le dessous reste en place et une colonne garde au moins une unité d'épaisseur. Un trait s'annule en une seule étape. Dans les vues 2D, l'outil sélectionne comme l'outil Sélection.
+
 # Matériaux et UV
 ## Charger et appliquer des matériaux
 Ouvrez la section **Matériaux** de l’onglet Face. **Charger un dossier** ajoute un dossier d’images et **Charger un .wad** ajoute un paquet de textures ; tous deux apparaissent sous **Collections**, où la croix en retire un. Tapez dans **Filtrer les matériaux** pour restreindre la liste. Cliquez sur un matériau pour le rendre courant, puis **Appliquer à la sélection** le pose sur toutes les faces sélectionnées. **Sélectionner** propose Sélectionner les brushes l'utilisant et Sélectionner les faces l'utilisant. **Remplacer** substitue un matériau à un autre dans toute la carte ou seulement dans la sélection.

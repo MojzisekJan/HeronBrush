@@ -142,6 +142,27 @@ Geometria → Vložiť 3D text (aj posledná položka zoznamu tvarov nástroja B
 
 Ak operácia nemôže vytvoriť platnú geometriu, upravte rozmery, alebo zmenu vráťte a tvar zjednodušte.
 
+## Pole
+Geometria → Pole skopíruje výber a kópie zobrazuje v mape, kým meníte hodnoty. Počty zahŕňajú originál a pole vytvorí najviac 1024 kópií.
+
+- **Rad** posunie každú kópiu oproti predchádzajúcej o **Krok X**, **Krok Y** a **Krok Z** a otočí ju o **Otočenie na kópiu (stupne)** okolo zvolenej osi.
+- **Mriežka** vyplní **Počet X**, **Počet Y** a **Počet Z** položiek s rozstupmi **Krok X**, **Krok Y** a **Krok Z**.
+- **Kruh** rozmiestni položky v rozsahu **Uhol (stupne)** okolo stredu vzdialeného **Polomer (jednotky)** od výberu. So zapnutým **Natočiť k stredu** sa každá kópia otáča s kruhom.
+- **Rozptyl** umiestni kópie na náhodné miesta v danom polomere naprieč zvolenou osou. Rovnaký **Seed** dá rovnaké rozmiestnenie a **Náhodné otočenie** každú kópiu otočí.
+
+Keď je vybraná jedna celá skupina, **Prepojené kópie** urobí z každej kópie prepojený duplikát, takže úprava jednej sa prejaví vo všetkých. **Použiť** kópie ponechá a vyberie ich spolu s originálom; **Zrušiť** ich odstráni. Celé pole sa vracia jedným krokom späť.
+
+## Sochanie terénu
+Terén tvorí veľa malých brushov, ktorých vrchy sochársky štetec posúva nahor a nadol. Vyberte plochý kváder a zvoľte Geometria → Rozdeliť na stĺpce: kváder sa rozreže na trojboké stĺpce široké jeden krok mriežky a vloží ich do skupiny Terrain. Vrch trojuholníka je vždy rovný, takže stĺpce môžu tvoriť hrebene aj údolia.
+
+Zvoľte nástroj **Sochať** (`J`) a ťahajte po teréne v 3D pohľade. Oranžový kruh ukazuje štetec. Bez výberu štetec mení všetky brushe pod sebou, s výberom len tie vybrané. Lišta hore v okne určuje, čo ťah urobí:
+
+- **Zdvihnúť** a **Znížiť** posunú povrch nahor alebo nadol, najviac v strede kruhu a na okraji vôbec. Podržaním `Shift` ich prehodíte.
+- **Vyhladiť** zarovná hrbolčeky.
+- **Zarovnať** zarovná povrch na výšku, kde ťah začal.
+
+Dve čísla vedľa režimov sú **Polomer (jednotky)** a **Sila (%)**. Posúvajú sa len horné rohy, a to zvislo; spodok zostáva na mieste a stĺpec zostane aspoň jednu jednotku hrubý. Ťah sa vracia jedným krokom späť. V 2D pohľadoch nástroj vyberá rovnako ako nástroj Výber.
+
 # Materiály a UV
 ## Načítanie a použitie materiálov
 Otvorte sekciu **Materiály** na karte Stena. **Načítať priečinok** pridá priečinok obrázkov a **Načítať .wad** balík textúr; oba sa objavia v **Kolekcie**, kde ich krížik odoberie. Písaním do **Filtrovať materiály** zúžite zoznam. Kliknutím zvolíte aktuálny materiál a **Použiť na výber** ho dá na všetky vybrané steny. **Vybrať** ponúka Vybrať brushe s ním a Vybrať steny s ním. **Nahradiť** zamení jeden materiál za iný v celej mape alebo len vo výbere.

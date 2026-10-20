@@ -35,6 +35,7 @@ extern "C" {
     async fn clipboard_text() -> wasm_bindgen::JsValue;
     async fn load_files() -> wasm_bindgen::JsValue;
     async fn load_bundle() -> wasm_bindgen::JsValue;
+    async fn load_cjk_fonts() -> wasm_bindgen::JsValue;
     fn store_file(path: &str, bytes: &[u8]);
     fn delete_file(path: &str);
     fn set_unsaved_changes(unsaved: bool);
@@ -65,6 +66,55 @@ thread_local! {
     static CLIPBOARD: RefCell<Option<String>> = const { RefCell::new(None) };
     /// What the page was last told about unsaved changes.
     static UNSAVED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// Where the Chinese, Japanese and Korean fonts are: not asked for, on the way, or
+    /// arrived and not yet given to egui, or in use.
+    static CJK_FONTS: std::cell::Cell<CjkFonts> = const { std::cell::Cell::new(CjkFonts::Absent) };
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CjkFonts {
+    Absent,
+    Loading,
+    Arrived,
+    Installed,
+}
+
+/// Whether the interface language needs the Chinese, Japanese and Korean fonts, which the
+/// web build fetches only then (`scripts/pack_web_bundle.py`).
+fn speaks_cjk() -> bool {
+    use editor_core::i18n::Language;
+    let speaking = editor_core::preferences::pref(|p| p.language).resolved();
+    matches!(speaking, Language::Chinese | Language::ChineseTraditional | Language::Japanese | Language::Korean)
+}
+
+/// Puts the fonts the archive holds where `theme` looks for them.
+fn preload_cjk_fonts(files: wasm_bindgen::JsValue) {
+    let fonts = pairs(files);
+    if !fonts.is_empty() {
+        editor_core::files::preload(fonts.into_iter().map(|(path, contents)| (Path::new(INSTALL_DIR).join(path), contents)));
+    }
+}
+
+/// Called every frame: when the interface switches to Chinese, Japanese or Korean, fetches
+/// their fonts and gives them to egui once they arrive. Until then the text is drawn with
+/// what the startup archive has, which covers only the language list.
+pub fn follow_cjk_fonts(ctx: &egui::Context) {
+    match CJK_FONTS.with(std::cell::Cell::get) {
+        CjkFonts::Absent if speaks_cjk() => {
+            CJK_FONTS.with(|state| state.set(CjkFonts::Loading));
+            let ctx = ctx.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                preload_cjk_fonts(load_cjk_fonts().await);
+                CJK_FONTS.with(|state| state.set(CjkFonts::Arrived));
+                ctx.request_repaint();
+            });
+        }
+        CjkFonts::Arrived => {
+            CJK_FONTS.with(|state| state.set(CjkFonts::Installed));
+            crate::theme::install(ctx);
+        }
+        _ => {}
+    }
 }
 
 /// Whether the open map has unsaved changes, so closing or reloading the tab asks first.
@@ -84,6 +134,12 @@ pub async fn run() -> Result<(), String> {
     editor_core::preferences::set_platform_directories("/heron-brush/config".into(), INSTALL_DIR.into());
     editor_core::files::preload(pairs(load_bundle().await).into_iter().map(|(path, contents)| (Path::new(INSTALL_DIR).join(path), contents)));
     editor_core::files::preload(pairs(load_files().await));
+    // A Chinese, Japanese or Korean interface waits for its fonts, so it never shows
+    // empty boxes; every other language starts without them.
+    if speaks_cjk() {
+        preload_cjk_fonts(load_cjk_fonts().await);
+        CJK_FONTS.with(|state| state.set(CjkFonts::Installed));
+    }
     editor_core::files::set_fallback(|path| editor_core::samples::bundled(path).map(str::as_bytes));
     editor_core::files::set_write_hook(written);
     let canvas = web_sys::window()

@@ -200,6 +200,8 @@ pub fn menus(status: &Status, detached: bool, grid: &editor_core::grid::Grid, fi
             item(tr("Import model"), Action::ImportModel).enabled(!cfg!(target_arch="wasm32")),
             item(tr("Insert 3D text"), Action::Text).icon(icon::TEXT_T),
             item(tr("Join corner"), Action::Corner).icon(icon::ANGLE),
+            item(tr("Array"), Action::Array).icon(icon::DOTS_NINE),
+            item(tr("Split into columns"), Action::SplitColumns).icon(icon::MOUNTAINS),
             Entry::Separator,
             item(tr("Convert faces to patches"), Action::Patches).icon(icon::BEZIER_CURVE),
             item(tr("Move selection out of its entity"), Action::Structural).icon(icon::ARROW_SQUARE_OUT),
@@ -535,6 +537,9 @@ impl Chrome {
                 });
             } else {
                 self.fillet_window = false;
+            }
+            if tool == Tool::Sculpt {
+                row.horizontal(crate::tool_rows::sculpt_row);
             }
             // The fillet's settings in a window of their own, beside the views it works in.
             if self.fillet_window {

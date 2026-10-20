@@ -1272,6 +1272,18 @@ impl Brush {
         Ok(self.rebuilt_with(geometry))
     }
 
+    /// Returns this brush with each vertex moved where `place` puts it, and the faces
+    /// rebuilt around them with their materials, as [`Brush::snap_vertices`] does.
+    ///
+    /// The result is the convex hull of the moved vertices: one moved inside the others
+    /// is dropped. Returns an error and leaves this brush untouched if they no longer
+    /// enclose a volume.
+    pub fn map_vertices(&self, place: impl Fn(Vec3d) -> Vec3d) -> Result<Self, HullError> {
+        let moved: Vec<Vec3d> = self.geometry.vertices().iter().map(|vertex| place(vertex.position)).collect();
+        let geometry = Polyhedron::from_points(&moved, 1e-7)?;
+        Ok(self.rebuilt_with(geometry))
+    }
+
     /// Returns whether every vertex of this brush already sits on the given grid.
     pub fn vertices_are_on_grid(&self, grid_size: f64) -> bool {
         if grid_size <= 0.0 {

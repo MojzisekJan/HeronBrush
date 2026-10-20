@@ -142,6 +142,27 @@ Geometri → Indsæt 3D-tekst (også det sidste punkt i Brush-værktøjets liste
 
 Hvis en handling ikke kan lave gyldig geometri, så justér dens mål, eller fortryd og forenkl formen.
 
+## Arrays
+Geometri → Array kopierer markeringen og viser kopierne i kortet, mens du ændrer værdierne. Antallene medregner originalen, og et array laver højst 1024 kopier.
+
+- **Række** flytter hver kopi i forhold til den forrige med **Trin X**, **Trin Y** og **Trin Z** og drejer den **Drejning pr. kopi (grader)** om den valgte akse.
+- **Gitter** fylder **Antal X**, **Antal Y** og **Antal Z** elementer med afstanden **Trin X**, **Trin Y** og **Trin Z**.
+- **Ring** fordeler elementerne over **Vinkel (grader)** rundt om et centrum **Radius (enheder)** fra markeringen. Med **Vend mod centrum** drejer hver kopi med ringen.
+- **Spredning** placerer kopierne tilfældige steder inden for radius, på tværs af den valgte akse. Samme **Seed** giver samme placering, og **Tilfældig drejning** drejer hver kopi.
+
+Når markeringen er én hel gruppe, gør **Sammenkædede kopier** hver kopi til en sammenkædet kopi, så en ændring af én når dem alle. **Anvend** beholder kopierne og markerer dem sammen med originalen; **Annuller** fjerner dem. Hele arrayet fortrydes i ét trin.
+
+## Modellér terræn
+Terræn består af mange små brushes, hvis overside modelleringspenslen hæver og sænker. Vælg en flad kasse og Geometri → Del i søjler: kassen skæres i trekantede søjler, ét gittertrin brede, og lægges i en gruppe ved navn Terrain. Oversiden af en trekant er altid plan, så søjlerne kan danne kamme og dale.
+
+Vælg værktøjet **Modellér** (`J`), og træk hen over terrænet i 3D-visningen. Den orange ring viser penslen. Uden markering ændrer penslen alle brushes under den; med en markering kun de markerede. Linjen øverst i vinduet vælger, hvad et strøg gør:
+
+- **Hæv** og **Sænk** flytter overfladen op eller ned, mest i midten af ringen og slet ikke ved kanten. Hold `Shift` nede for at bytte dem.
+- **Glat** udglatter buler.
+- **Udjævn** jævner overfladen til den højde, hvor strøget begyndte.
+
+De to tal ved siden af tilstandene er **Radius (enheder)** og **Styrke (%)**. Kun de øverste hjørner flytter sig, lodret; bunden bliver, hvor den er, og en søjle forbliver mindst én enhed tyk. Et strøg fortrydes i ét trin. I 2D-visningerne markerer værktøjet som markeringsværktøjet.
+
 # Materialer og UV'er
 ## Indlæsning og anvendelse af materialer
 Åbn sektionen **Materialer** under fanen Flade. **Indlæs mappe** tilføjer en mappe med billeder, og **Indlæs .wad** tilføjer en teksturpakke; begge vises under **Samlinger**, hvor krydset fjerner en. Skriv i **Filtrer materialer** for at indsnævre listen. Klik på et materiale for at gøre det aktuelt, hvorefter **Anvend på markering** lægger det på alle markerede flader. **Markér** tilbyder Markér brushes med det og Markér flader med det. **Erstat** udskifter ét materiale med et andet i hele kortet eller kun i markeringen.

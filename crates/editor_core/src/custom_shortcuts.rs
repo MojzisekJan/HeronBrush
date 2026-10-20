@@ -194,6 +194,12 @@ pub const COMMANDS: &[Command] = &[
         default: "K",
         global: false,
     },
+    Command {
+        id: "tool_sculpt",
+        label: "Sculpt",
+        default: "J",
+        global: false,
+    },
 ];
 pub type Bindings = BTreeMap<String, String>;
 pub fn load(text: &str) -> Result<Bindings, String> {
@@ -207,7 +213,7 @@ pub fn default_chord(command: &Command, preset: crate::preferences::Keymap) -> &
     if preset == crate::preferences::Keymap::Blender {
         match command.id {
             "tool_select" => "G",
-            "tool_brush" | "tool_shear" | "tool_paint" => "",
+            "tool_brush" | "tool_shear" | "tool_paint" | "tool_sculpt" => "",
             "tool_vertex" => "1",
             "tool_edge" => "2",
             "tool_face" => "3",

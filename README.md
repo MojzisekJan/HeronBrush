@@ -27,6 +27,10 @@ for tablets. The interface and the offline manual are translated into 30 languag
 - Join corner: joins two members at a mitred or rounded corner of the same thickness.
 - Sweep faces along arcs, straight paths and S-bends; inset, bevel, hollow, merge,
   subtract and intersect.
+- Arrays: copies in a row, a grid, a ring or a random scatter, optionally as linked
+  duplicates of a group.
+- Terrain: a box split into triangular columns, then shaped with a sculpt brush that
+  raises, lowers, smooths and flattens.
 - Patches, layers, groups and linked groups.
 - A Blender-style keymap as an option.
 

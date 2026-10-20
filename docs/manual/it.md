@@ -142,6 +142,27 @@ Geometria → Inserisci testo 3D (anche l'ultima voce dell'elenco delle forme de
 
 Se un'operazione non riesce a produrre una geometria valida, regola le sue dimensioni oppure annulla e semplifica la forma.
 
+## Serie
+Geometria → Serie copia la selezione e mostra le copie nella mappa mentre cambi i valori. I numeri includono l'originale e una serie crea al massimo 1024 copie.
+
+- **Fila** sposta ogni copia rispetto alla precedente di **Passo X**, **Passo Y** e **Passo Z** e la ruota di **Rotazione per copia (gradi)** attorno all'asse scelto.
+- **Griglia** riempie **Numero X**, **Numero Y** e **Numero Z** elementi distanziati di **Passo X**, **Passo Y** e **Passo Z**.
+- **Anello** distribuisce gli elementi su **Angolo (gradi)** attorno a un centro a **Raggio (unità)** dalla selezione. Con **Rivolgi al centro** ogni copia ruota insieme all'anello.
+- **Dispersione** mette le copie in punti casuali entro il raggio, trasversalmente all'asse scelto. Lo stesso **Seme** dà la stessa disposizione e **Rotazione casuale** ruota ogni copia.
+
+Quando la selezione è un gruppo intero, **Copie collegate** rende ogni copia un duplicato collegato, quindi una modifica a una raggiunge tutte. **Applica** mantiene le copie e le seleziona insieme all'originale; **Annulla** le rimuove. L'intera serie si annulla in un solo passaggio.
+
+## Scolpire il terreno
+Il terreno è fatto di molti piccoli brush la cui parte superiore il pennello di scultura alza e abbassa. Seleziona un parallelepipedo piatto e scegli Geometria → Dividi in colonne: viene tagliato in colonne triangolari larghe un passo di griglia, messe in un gruppo chiamato Terrain. La parte superiore di un triangolo è sempre piana, quindi le colonne possono formare creste e valli.
+
+Scegli lo strumento **Scolpisci** (`J`) e trascina sul terreno nella vista 3D. L'anello arancione mostra il pennello. Senza selezione il pennello cambia ogni brush sotto di sé; con una selezione, solo quelli selezionati. La barra in cima alla finestra sceglie cosa fa un tratto:
+
+- **Alza** e **Abbassa** spostano la superficie in su o in giù, di più al centro dell'anello e per niente sul bordo. Tieni premuto `Shift` per scambiarli.
+- **Leviga** spiana le gobbe.
+- **Appiattisci** porta la superficie all'altezza dove è iniziato il tratto.
+
+I due numeri accanto alle modalità sono **Raggio (unità)** e **Forza (%)**. Si muovono solo gli angoli superiori, in verticale; la base resta dov'è e una colonna resta spessa almeno un'unità. Un tratto si annulla in un solo passaggio. Nelle viste 2D lo strumento seleziona come lo strumento Seleziona.
+
 # Materiali e UV
 ## Caricare e applicare i materiali
 Apri la sezione **Materiali** della scheda Faccia. **Carica cartella** aggiunge una cartella di immagini e **Carica .wad** aggiunge un pacchetto di texture; entrambi compaiono sotto **Collezioni**, dove la croce ne rimuove uno. Digita in **Filtra i materiali** per restringere l'elenco. Fai clic su un materiale per renderlo corrente, poi **Applica alla selezione** lo assegna a tutte le facce selezionate. **Seleziona** offre Seleziona i brush che lo usano e Seleziona le facce che lo usano. **Sostituisci** scambia un materiale con un altro in tutta la mappa o solo nella selezione.

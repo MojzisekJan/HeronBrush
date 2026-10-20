@@ -48,6 +48,10 @@ pub enum Action {
     Text,
     ImportModel,
     Corner,
+    /// The Array window (array_dialog.rs).
+    Array,
+    /// Cut the selected box into columns one grid step across, to sculpt.
+    SplitColumns,
     Preferences,
     Plugins,
     Export,
@@ -350,6 +354,15 @@ impl App {
             Action::Text => self.shapes.text_open = true,
             Action::ImportModel => {if let Some(path)=model_chooser().pick_file(true){self.import_model_file(&path);}},
             Action::Corner => self.shapes.corner(&self.editor),
+            Action::Array => self.arrays.open(&self.editor),
+            Action::SplitColumns => {
+                let cell = self.editor.grid.borrow().actual_size();
+                let result = self.editor.document.borrow_mut().split_into_columns(cell);
+                match result {
+                    Ok(count) => editor_core::say!("{}", editor_core::i18n::fill("Columns: {}", &[&count.to_string()])),
+                    Err(why) => editor_core::say!("{}", tr(why)),
+                }
+            }
             Action::Preferences => self.preferences.open = true,
             Action::Plugins => self.plugins.open(),
             Action::Export => self.exports.open = true,

@@ -142,6 +142,27 @@ Geometri → Sett inn 3D-tekst (også det siste elementet i formlisten til Brush
 
 Hvis en operasjon ikke kan lage gyldig geometri, juster målene, eller angre og forenkle formen.
 
+## Arrayer
+Geometri → Array kopierer utvalget og viser kopiene i kartet mens du endrer verdiene. Antallene inkluderer originalen, og et array lager høyst 1024 kopier.
+
+- **Rekke** flytter hver kopi i forhold til den forrige med **Steg X**, **Steg Y** og **Steg Z** og dreier den **Dreiing per kopi (grader)** om den valgte aksen.
+- **Rutenett** fyller **Antall X**, **Antall Y** og **Antall Z** elementer med avstanden **Steg X**, **Steg Y** og **Steg Z**.
+- **Ring** fordeler elementene over **Vinkel (grader)** rundt et sentrum **Radius (enheter)** fra utvalget. Med **Vend mot sentrum** dreier hver kopi med ringen.
+- **Spredning** plasserer kopiene på tilfeldige steder innenfor radien, på tvers av den valgte aksen. Samme **Seed** gir samme plassering, og **Tilfeldig dreiing** dreier hver kopi.
+
+Når utvalget er én hel gruppe, gjør **Koblede kopier** hver kopi til et koblet duplikat, så en endring i én når alle. **Bruk** beholder kopiene og velger dem sammen med originalen; **Avbryt** fjerner dem. Hele arrayet angres i ett steg.
+
+## Modellere terreng
+Terreng består av mange små brushes som modelleringspenselen hever og senker toppen av. Velg en flat boks og Geometri → Del i søyler: boksen deles i trekantede søyler, ett rutenettsteg brede, som legges i en gruppe kalt Terrain. Toppen av en trekant er alltid plan, så søylene kan danne rygger og daler.
+
+Velg verktøyet **Modeller** (`J`) og dra over terrenget i 3D-visningen. Den oransje ringen viser penselen. Uten utvalg endrer penselen alle brushes under den; med et utvalg bare de valgte. Linjen øverst i vinduet velger hva et strøk gjør:
+
+- **Hev** og **Senk** flytter overflaten opp eller ned, mest midt i ringen og ikke i det hele tatt ved kanten. Hold `Shift` for å bytte dem.
+- **Glatt** jevner ut kuler.
+- **Jevn ut** jevner overflaten til høyden der strøket begynte.
+
+De to tallene ved siden av modusene er **Radius (enheter)** og **Styrke (%)**. Bare de øverste hjørnene flyttes, loddrett; bunnen blir der den er, og en søyle blir minst én enhet tykk. Et strøk angres i ett steg. I 2D-visningene velger verktøyet som valgverktøyet.
+
 # Materialer og UV-er
 ## Laste inn og bruke materialer
 Åpne seksjonen **Materialer** på fanen Flate. **Last inn mappe** legger til en mappe med bilder, og **Last inn .wad** legger til en teksturpakke; begge vises under **Samlinger**, der krysset fjerner en av dem. Skriv i **Filtrer materialer** for å snevre inn listen. Klikk på et materiale for å gjøre det gjeldende, og **Bruk på utvalget** legger det deretter på alle valgte flater. **Velg** tilbyr Velg brusher med det og Velg flater med det. **Erstatt** bytter ut ett materiale med et annet i hele kartet eller bare i utvalget.

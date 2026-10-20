@@ -15,7 +15,11 @@ iroh = ["editor_core/iroh"]
 # The window and the 3D view on wgpu (Metal/Vulkan/DX12) with render_wgpu; see
 # docs/renderer-wgpu.md. On by default; `--no-default-features` builds the old GL view,
 # kept as a fallback until wgpu has been tested on every platform.
-wgpu = ["eframe/wgpu", "dep:render_wgpu"]
+# eframe's own `wgpu` feature turns on egui-wgpu's defaults, and with them wgpu's WebGL
+# backend, which brings wgpu-core and naga into the web module (about 2 MB of code). The
+# browser draws WebGL with the GL view instead, so the backends are chosen per target
+# below: the desktop keeps egui-wgpu's defaults, the web gets WebGPU alone.
+wgpu = ["eframe/wgpu_no_default_features", "dep:egui-wgpu", "dep:wgpu", "dep:render_wgpu"]
 
 [dependencies]
 # std::time, with an Instant and a SystemTime that work in the browser too.
@@ -62,7 +66,13 @@ android_logger = "0.15"
 
 # The web build: eframe's WebRunner on a <canvas>, entered from crates/heron-brush-web.
 # See docs/web.md.
+# The desktop and Android keep egui-wgpu's defaults, as eframe's `wgpu` feature gave them.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+egui-wgpu = { version = "0.36.2", optional = true }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+egui-wgpu = { version = "0.36.2", optional = true, default-features = false, features = ["fragile-send-sync-non-atomic-wasm"] }
+wgpu = { version = "30.0", optional = true, default-features = false, features = ["std", "wgsl", "webgpu", "fragile-send-sync-non-atomic-wasm"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"

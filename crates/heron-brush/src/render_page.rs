@@ -1,7 +1,8 @@
 //! The render window: the camera and its
 //! settings down the left, a live preview at the output's aspect ratio on the right that
 //! redraws as they change and shows a render filling in sample by sample, and Render PNG
-//! under it. The camera and its settings live in the map, as a render camera entity, and
+//! and Render GIF under it. A GIF is the map's animations played from the start, each
+//! frame a whole render. The camera and its settings live in the map, as a render camera entity, and
 //! the window follows edits made to it elsewhere (the gizmo, undo, the Entity tab).
 //!
 //! The preview is drawn in [`tick`] by the renderer eframe runs on: on GL by the shared
@@ -32,8 +33,8 @@ const LIGHTING_PRESETS: [&str; 3] = [translation_key("Daylight"), translation_ke
 
 /// The window's numbers, in the order they are shown: a label, the lowest and highest value, and the
 /// step. 0–5 are the camera, 6–9 the output and lens, 10–16 the lighting, 17–19 the depth
-/// of field.
-pub const NUMBERS: [(&str, f64, f64, f64); 20] = [
+/// of field, 20–21 the animation.
+pub const NUMBERS: [(&str, f64, f64, f64); 22] = [
     (translation_key("X (map units)"), -1e6, 1e6, 1.),
     (translation_key("Y (map units)"), -1e6, 1e6, 1.),
     (translation_key("Z (map units)"), -1e6, 1e6, 1.),
@@ -54,6 +55,8 @@ pub const NUMBERS: [(&str, f64, f64, f64); 20] = [
     (translation_key("Focus distance (units)"), 1., 1_000_000., 16.),
     (translation_key("Sharp range (units)"), 0., 1_000_000., 16.),
     (translation_key("Blur radius (1080p px)"), 0., 24., 0.5),
+    (translation_key("Length (seconds)"), 0.1, 120., 0.5),
+    (translation_key("Frames per second"), 1., render_camera::MAX_VIDEO_FPS as f64, 1.),
 ];
 
 /// The colour rows of the Lighting section.
@@ -141,13 +144,14 @@ impl WgpuPreview {
         }
     }
 
-    /// Replaces the scene with the document's clean render triangles, as one object.
-    fn upload(&mut self, document: &editor_core::document::Document) {
+    /// Replaces the scene with the document's clean render triangles, as one object, posed
+    /// `time` seconds into the animation when given.
+    fn upload(&mut self, document: &editor_core::document::Document, time: Option<f64>) {
         use editor_core::render_scene::SceneSink;
         let scene = &mut self.renderer.scene;
         scene.set_materials(document.materials().materials());
         scene.clear();
-        scene.upsert(0, &document.render_triangles(), Default::default());
+        scene.upsert(0, &document.render_triangles_at(time), Default::default());
         scene.set_lights(&document.scene_lights());
         scene.finish();
         // An offline render wants every texture from its first sample, not placeholders.
@@ -366,36 +370,38 @@ impl RenderPage {
         };
         if let Some(job) = &mut self.job {
             if job.completed == 0 {
-                preview.upload(&document);
-                self.uploaded = Some(content);
+                preview.upload(&document, job.video.as_ref().map(render_camera::Video::time));
+                // A posed scene is not the one the preview shows.
+                self.uploaded = job.video.is_none().then_some(content);
             }
             let size = (job.settings.width.max(16) as u32, job.settings.height.max(16) as u32);
             let render_settings = job.settings.render();
             preview.renderer.accumulate(&view(&job.camera, size, &render_settings, Some(job.completed)));
             preview.track_output();
             let finished = job.advance();
-            self.progress = (job.completed as f32 / job.settings.samples as f32, format!("{} / {}", job.completed, job.settings.samples));
+            self.progress = progress(job);
             if finished {
-                self.status = match preview.renderer.read_output() {
-                    Some((width, height, pixels)) => {
-                        // `write_png` takes rows bottom first, as GL reads them.
-                        let row = width as usize * 4;
-                        let flipped: Vec<u8> = pixels.chunks_exact(row).rev().flatten().copied().collect();
-                        match render_camera::write_png(&job.path, width as i32, height as i32, &flipped) {
-                            Ok(()) => format!("{}: {} ({} × {})", tr("Saved"), job.path.display(), width, height),
-                            Err(error) => format!("{}: {error}", tr("Render failed")),
-                        }
-                    }
-                    None => tr("Render failed").to_string(),
+                // `write_png` and `Video::push` take rows bottom first, as GL reads them.
+                let pixels = preview.renderer.read_output().map(|(width, _, pixels)| {
+                    let row = width as usize * 4;
+                    pixels.chunks_exact(row).rev().flatten().copied().collect::<Vec<u8>>()
+                });
+                let done = match pixels {
+                    Some(pixels) => finish_frame(job, &pixels),
+                    None => Some(tr("Render failed").to_string()),
                 };
-                // The finished render stays in the preview until the form changes.
-                self.drawn = Some(key);
-                self.job = None;
+                if let Some(status) = done {
+                    self.status = status;
+                    // The finished render stays in the preview until the form changes.
+                    self.drawn = Some(key);
+                    self.job = None;
+                    self.uploaded = None;
+                }
             }
             ctx.request_repaint();
         } else if self.drawn.as_ref() != Some(&key) {
             if self.uploaded != Some(content) {
-                preview.upload(&document);
+                preview.upload(&document, None);
                 self.uploaded = Some(content);
             }
             let mut render_settings = settings.render();
@@ -445,24 +451,26 @@ impl RenderPage {
         if let Some(job) = &mut self.job {
             if job.completed == 0 {
                 renderer.upload_materials(document.materials().materials());
-                renderer.upload(&document.render_triangles());
+                renderer.upload(&document.render_triangles_at(job.video.as_ref().map(render_camera::Video::time)));
                 renderer.set_settings(job.settings.render());
-                self.uploaded = Some(content);
+                // A posed scene is not the one the preview shows.
+                self.uploaded = job.video.is_none().then_some(content);
             }
             let result = renderer.capture_step(&job.camera, job.settings.width, job.settings.height, job.completed == 0, target.size);
             let done = match result {
                 Ok(pixels) => {
                     let finished = job.advance();
-                    self.progress = (job.completed as f32 / job.settings.samples as f32, format!("{} / {}", job.completed, job.settings.samples));
-                    if finished {
-                        self.status = match render_camera::write_png(&job.path, job.settings.width, job.settings.height, &pixels) {
-                            Ok(()) => format!("{}: {} ({} × {})", tr("Saved"), job.path.display(), job.settings.width, job.settings.height),
-                            Err(error) => format!("{}: {error}", tr("Render failed")),
-                        };
-                        // The finished render stays in the preview until the form changes.
-                        self.drawn = Some(key);
+                    self.progress = progress(job);
+                    match finished.then(|| finish_frame(job, &pixels)).flatten() {
+                        Some(status) => {
+                            self.status = status;
+                            // The finished render stays in the preview until the form changes.
+                            self.drawn = Some(key);
+                            self.uploaded = None;
+                            true
+                        }
+                        None => false,
                     }
-                    finished
                 }
                 Err(error) => {
                     self.status = format!("{}: {error}", tr("Render failed"));
@@ -714,7 +722,7 @@ impl RenderPage {
             }
         });
         ui.add_space(8.0);
-        let sections = [translation_key("Camera position"), translation_key("Output and lens"), translation_key("Lighting"), translation_key("Depth of field")];
+        let sections = [translation_key("Camera position"), translation_key("Output and lens"), translation_key("Lighting"), translation_key("Depth of field"), translation_key("Animation")];
         for (index, title) in sections.into_iter().enumerate() {
             widgets::card(ui, "", None, |ui| {
                 ui.spacing_mut().item_spacing.y = 3.0;
@@ -730,7 +738,7 @@ impl RenderPage {
         }
     }
 
-    /// One of the four folding sections.
+    /// One of the five folding sections.
     fn section(&mut self, ui: &mut egui::Ui, index: usize, editor: &Editor) {
         let numbers = |page: &mut Self, ui: &mut egui::Ui, range: std::ops::Range<usize>| {
             for number in range {
@@ -758,12 +766,25 @@ impl RenderPage {
                 form::switch_row(ui, tr("Ambient occlusion"), None, &mut self.settings.ao);
                 form::switch_row(ui, tr("Bloom"), None, &mut self.settings.bloom);
             }
-            _ => {
+            3 => {
                 form::switch_row(ui, tr("Enable depth of field"), None, &mut self.settings.depth_of_field);
                 numbers(self, ui, 17..20);
                 let width = ui.available_width();
                 if theme::button(ui, tr("Focus on selection"), width, true).clicked() {
                     self.focus_on_selection(editor);
+                }
+            }
+            _ => {
+                numbers(self, ui, 20..22);
+                let width = ui.available_width();
+                if theme::button(ui, tr("Length from animation"), width, true).clicked() {
+                    match render_camera::animation_length(&editor.document.borrow()) {
+                        Some(seconds) => {
+                            self.settings.video_seconds = seconds.clamp(0.1, 120.);
+                            self.status = tr("Length set to the longest animation in the map.").to_string();
+                        }
+                        None => self.status = tr("Nothing in the map plays on its own.").to_string(),
+                    }
                 }
             }
         }
@@ -805,7 +826,9 @@ impl RenderPage {
             16 => f64::from(lighting.ao_strength),
             17 => f64::from(s.focus_distance),
             18 => f64::from(s.focus_range),
-            _ => f64::from(s.blur_radius),
+            19 => f64::from(s.blur_radius),
+            20 => s.video_seconds,
+            _ => f64::from(s.video_fps),
         }
     }
 
@@ -839,7 +862,9 @@ impl RenderPage {
             }
             17 => s.focus_distance = value as f32,
             18 => s.focus_range = value as f32,
-            _ => s.blur_radius = value as f32,
+            19 => s.blur_radius = value as f32,
+            20 => s.video_seconds = value,
+            _ => s.video_fps = value.round() as u32,
         }
     }
 
@@ -864,7 +889,7 @@ impl RenderPage {
     fn output(&mut self, ui: &mut egui::Ui, editor: &Editor) {
         let stale = self.stale(editor);
         let area = ui.max_rect();
-        let below = 3.0 * theme::CONTROL_HEIGHT + 22.0 + 4.0 * 8.0 + 36.0;
+        let below = 4.0 * theme::CONTROL_HEIGHT + 22.0 + 5.0 * 8.0 + 36.0;
         let space = egui::Rect::from_min_size(area.min, egui::vec2(area.width(), (area.height() - below).max(120.0)));
         let aspect = (f64::from(self.settings.width.max(1)) / f64::from(self.settings.height.max(1))) as f32;
         let size = if space.width() / space.height() > aspect { egui::vec2(space.height() * aspect, space.height()) } else { egui::vec2(space.width(), space.width() / aspect) };
@@ -928,8 +953,10 @@ impl RenderPage {
         form::text(ui, status);
         ui.add_space(8.0);
         let width = ui.available_width();
-        let render = form::accent_button_width(ui, tr("Render PNG"), width, self.job.is_none() && !stale).clicked();
-        self.render(editor, render);
+        let png = form::accent_button_width(ui, tr("Render PNG"), width, self.job.is_none() && !stale).clicked();
+        ui.add_space(4.0);
+        let gif = theme::button(ui, tr("Render GIF"), width, self.job.is_none() && !stale).on_hover_text(tr("Plays the map's animations from the start, as the 3D view's preview does.")).clicked();
+        self.render(editor, png, gif);
         ui.add_space(4.0);
         form::progress(ui, self.progress.0, &self.progress.1);
         ui.add_space(4.0);
@@ -937,27 +964,83 @@ impl RenderPage {
             self.job = None;
             self.drawn = None;
             self.status = tr("Render cancelled. No image was written.").to_string();
+            self.uploaded = None;
             self.progress.1 = tr("Cancelled").to_string();
         }
     }
 
-    /// Asks where to write the PNG, saves the camera and its settings in the map, and
-    /// starts the render; [`tick`](Self::tick) draws it a sample at a time.
-    /// `open` asks where; the render starts on the frame the answer comes, so this is
-    /// called every frame the window shows.
-    fn render(&mut self, editor: &Editor, open: bool) {
-        let Some(path) = FileDialog::new().id("render-png").set_title(tr("Render PNG")).add_filter("PNG image", &["png"]).set_file_name("render.png").save_file(open) else {
-            return;
+    /// Asks where to write the PNG or the GIF, saves the camera and its settings in the
+    /// map, and starts the render; [`tick`](Self::tick) draws it a sample at a time.
+    /// `png` and `gif` ask where; the render starts on the frame the answer comes, so this
+    /// is called every frame the window shows.
+    fn render(&mut self, editor: &Editor, png: bool, gif: bool) {
+        let still = FileDialog::new().id("render-png").set_title(tr("Render PNG")).add_filter("PNG image", &["png"]).set_file_name("render.png").save_file(png);
+        let animated = FileDialog::new().id("render-gif").set_title(tr("Render GIF")).add_filter("GIF image", &["gif"]).set_file_name("render.gif").save_file(gif);
+        let (path, animated) = match (still, animated) {
+            (Some(path), _) => (path, false),
+            (None, Some(path)) => (path, true),
+            (None, None) => return,
         };
         if self.stale(editor) {
             return;
         }
         self.finish_navigation(editor);
         let (camera, settings) = self.read();
+        let video = if animated {
+            match render_camera::Video::new(&settings) {
+                Ok(video) => Some(video),
+                Err(error) => {
+                    self.status = format!("{}: {error}", tr("Render failed"));
+                    return;
+                }
+            }
+        } else {
+            None
+        };
         self.save(editor);
         self.status = tr("Rendering").to_string();
         self.progress = (0.0, tr("Rendering").to_string());
-        self.job = Some(Job { path, camera, settings, completed: 0 });
+        self.job = Some(Job { path, camera, settings, completed: 0, video });
+    }
+}
+
+/// How far `job` has got: samples for a still, frames for an animation.
+fn progress(job: &Job) -> (f32, String) {
+    match &job.video {
+        Some(video) => {
+            let samples = video.frames * job.settings.samples;
+            let done = video.frame * job.settings.samples + job.completed;
+            (done as f32 / samples as f32, format!("{} {} / {}", tr("Frame"), (video.frame + 1).min(video.frames), video.frames))
+        }
+        None => (job.completed as f32 / job.settings.samples as f32, format!("{} / {}", job.completed, job.settings.samples)),
+    }
+}
+
+/// Takes a finished frame's `pixels`, bottom row first: writes a still out, or adds the
+/// frame to the animation and starts the next. Returns the status line once the job is
+/// over, `None` while more frames are to come.
+fn finish_frame(job: &mut Job, pixels: &[u8]) -> Option<String> {
+    let (width, height) = (job.settings.width, job.settings.height);
+    let saved = |path: &std::path::Path| format!("{}: {} ({} × {})", tr("Saved"), path.display(), width, height);
+    let Some(video) = &mut job.video else {
+        return Some(match render_camera::write_png(&job.path, width, height, pixels) {
+            Ok(()) => saved(&job.path),
+            Err(error) => format!("{}: {error}", tr("Render failed")),
+        });
+    };
+    match video.push(pixels) {
+        Ok(false) => {
+            job.completed = 0;
+            None
+        }
+        Ok(true) => {
+            let video = job.video.take().expect("checked");
+            Some(match video.finish(&job.path) {
+                Ok(()) => saved(&job.path),
+                Err(error) => format!("{}: {error}", tr("Render failed")),
+            })
+        }
+        Err(error) => Some(format!("{}: {error}", tr("Render failed"))),
     }
 }
 

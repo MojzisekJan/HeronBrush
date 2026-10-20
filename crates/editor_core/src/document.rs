@@ -24,6 +24,10 @@ mod materials;
 mod scene_lights;
 mod selection;
 mod shape_preview;
+mod array;
+mod sculpt;
+pub use sculpt::{SculptStroke, MAX_COLUMNS};
+pub use array::{array_transforms, ArrayKind, ArrayParameters, MAX_COPIES as MAX_ARRAY_COPIES};
 mod surfaces;
 pub use surfaces::{NodeSurface, SurfaceCache};
 mod tags;
@@ -356,6 +360,7 @@ pub struct Document {
     /// gesture as one undo step.
     transaction: Option<Vec<Node>>,
     shape_preview: Option<shape_preview::ShapePreview>,
+    array_preview: Option<array::ArrayPreview>,
     /// Called whenever anything the views draw has changed.
     ///
     /// The document announces its own changes rather than every edit remembering to ask
@@ -1278,6 +1283,7 @@ impl Document {
             materials_revision: 0,
             transaction: None,
             shape_preview: None,
+            array_preview: None,
             on_changed: None,
             on_edit: None,
             revision: 0,
@@ -2321,8 +2327,19 @@ impl Document {
     /// Clean scene surfaces for image output: visible brushes, patches and loaded models.
     /// Editor entity boxes, axes, selection colours and locked-layer tint are omitted.
     pub fn render_triangles(&self) -> Vec<Triangle> {
+        self.render_triangles_at(None)
+    }
+
+    /// [`Document::render_triangles`] with the animated brushes where playback has them
+    /// `time` seconds in, as the 3D view's animation preview draws them. Entity models stay
+    /// at rest.
+    pub fn render_triangles_at(&self, time: Option<f64>) -> Vec<Triangle> {
         let filters = crate::view_filters::ViewFilters { show_point_entities: false, show_edges: false, ..Default::default() };
-        let mut triangles = self.triangles(&filters);
+        let mesh = self.preview_mesh(&filters);
+        let mut triangles = match time {
+            Some(time) => mesh.at(time),
+            None => mesh.triangles,
+        };
         for entity in self.entity_boxes() {
             if let Some((model, material, scale)) = self.model_of(entity.node) {
                 triangles.extend(model_triangles(&model, material, self.entity_placement(entity.node), scale, false, false));

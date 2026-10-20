@@ -12,7 +12,7 @@ rustup target add wasm32-unknown-unknown
 cargo install trunk --locked
 cd crates/heron-brush-web
 trunk serve --cargo-profile web-dev  # http://127.0.0.1:8080, rebuilt on every change
-trunk build --release --cargo-profile release  # into crates/heron-brush-web/dist; measure this fresh artifact
+trunk build --release --cargo-profile web-release --public-url ./  # into crates/heron-brush-web/dist; measure this fresh artifact
 ```
 
 ## Hosting
@@ -39,7 +39,7 @@ Where the browser hands out a WebGPU adapter, the window and the 3D view run on 
 render_wgpu draws the 3D view. Elsewhere (Firefox, Linux Chromium without the flag,
 older Safari) the page runs eframe on WebGL 2 and the 3D view on the GL renderer
 (`crates/render`), whose shaders are rewritten as GLSL ES for GLES 3.0 and WebGL 2
-(`for_context`). `?renderer=gl` or `?renderer=wgpu` in the address forces one.
+(`for_context`). `?renderer=gl` or `?renderer=wgpu` in the address forces one. The web build carries no wgpu WebGL backend, so `?renderer=wgpu` in a browser without WebGPU stops with "No suitable graphics adapter found".
 Safari 26's WebGPU loses the prepass depth in a pass that attaches it read-only: the
 forward pass then tests the sky and the surfaces against nothing and the 3D view stays
 black, with no validation error. In the browser render_wgpu therefore attaches the depth
@@ -63,7 +63,12 @@ So far:
   Chinese, Japanese and Korean in `crates/heron-brush-web/fonts`, cut down to the
   characters of the translations and the manual (`scripts/subset_web_cjk_fonts.py`,
   which needs fonttools; run it again after those change). Characters outside that set,
-  typed into names for instance, show as boxes.
+  typed into names for instance, show as boxes. Those fonts (1.9 MB) are a second
+  archive, `bundle/cjk-<sha256>.bin`, which the page fetches before starting only when
+  the interface speaks one of those languages, and otherwise when it switches to one
+  (`web::follow_cjk_fonts`). The startup archive keeps a few-kilobyte face per
+  language in `fonts/picker`, holding just the language's own name for the language
+  list.
 - `std::time::Instant` and `SystemTime::now` panic in the browser, so the crates use
   `web_time` instead. File times (`Metadata::modified`) stay `std::time::SystemTime`.
 - There are no threads. The thumbnails of maps, prefabs and materials go through
@@ -127,9 +132,9 @@ So far:
    Safari, saving in place through File System Access, Edit > Paste (headless refused the
    clipboard), render_wgpu's texture decoding on WebGPU, touch on a tablet, and the
    autosave (every ten minutes).
-3. All startup data is still fetched before the editor starts. Measure a fresh
-   release module and cold/warm startup; archive packing reduces request count,
-   but does not implement lazy loading or prove a startup-time improvement.
+3. All startup data except the CJK fonts is still fetched before the editor starts.
+   Measure a fresh release module and cold/warm startup; archive packing reduces
+   request count, but does not prove a startup-time improvement.
 4. The GL renderer on Android GLES GPUs, which the shader rewrite now allows.
 5. Move expensive full export work off the web UI thread. Measured maps and the
    implemented asset deltas/cache are documented in `performance.md`.

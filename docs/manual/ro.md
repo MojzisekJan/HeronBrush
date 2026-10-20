@@ -142,6 +142,27 @@ Geometrie → Inserează text 3D (și ultima intrare din lista de forme a unelte
 
 Dacă o operație nu poate produce o geometrie validă, ajustează-i dimensiunile sau anulează și simplifică forma.
 
+## Matrice
+Geometrie → Matrice copiază selecția și arată copiile în hartă cât timp schimbați valorile. Numerele includ originalul, iar o matrice face cel mult 1024 de copii.
+
+- **Șir** mută fiecare copie față de cea dinainte cu **Pas X**, **Pas Y** și **Pas Z** și o rotește cu **Rotire per copie (grade)** în jurul axei alese.
+- **Grilă** umple **Număr X**, **Număr Y** și **Număr Z** elemente, la distanțe **Pas X**, **Pas Y** și **Pas Z**.
+- **Inel** întinde elementele pe **Unghi (grade)** în jurul unui centru aflat la **Rază (unități)** de selecție. Cu **Orientare spre centru** fiecare copie se rotește odată cu inelul.
+- **Împrăștiere** pune copiile în locuri aleatorii în interiorul razei, de-a curmezișul axei alese. Același **Seed** dă aceeași așezare, iar **Rotire aleatorie** rotește fiecare copie.
+
+Când selecția este un grup întreg, **Copii legate** face din fiecare copie un duplicat legat, deci o modificare la una ajunge la toate. **Aplică** păstrează copiile și le selectează împreună cu originalul; **Renunță** le elimină. Întreaga matrice se anulează într-un singur pas.
+
+## Sculptarea terenului
+Terenul este alcătuit din multe brush-uri mici, ale căror vârfuri pensula de sculptat le ridică și le coboară. Selectați o cutie plată și alegeți Geometrie → Împarte în coloane: cutia este tăiată în coloane triunghiulare late de un pas al grilei, puse într-un grup numit Terrain. Vârful unui triunghi este mereu plan, așa că coloanele pot forma creste și văi.
+
+Alegeți unealta **Sculptare** (`J`) și trageți peste teren în vizualizarea 3D. Inelul portocaliu arată pensula. Fără selecție, pensula schimbă fiecare brush de sub ea; cu o selecție, doar pe cele selectate. Bara din partea de sus a ferestrei alege ce face o trăsătură:
+
+- **Ridică** și **Coboară** mută suprafața în sus sau în jos, cel mai mult în centrul inelului și deloc la margine. Țineți `Shift` pentru a le inversa.
+- **Netezește** netezește denivelările.
+- **Aplatizează** aduce suprafața la înălțimea unde a început trăsătura.
+
+Cele două numere de lângă moduri sunt **Rază (unități)** și **Putere (%)**. Se mișcă doar colțurile de sus, vertical; baza rămâne pe loc, iar o coloană rămâne groasă de cel puțin o unitate. O trăsătură se anulează într-un pas. În vizualizările 2D unealta selectează la fel ca unealta Selectare.
+
 # Materiale și UV-uri
 ## Încărcarea și aplicarea materialelor
 Deschide secțiunea **Materiale** din fila Față. **Încarcă dosar** adaugă un dosar cu imagini, iar **Încarcă .wad** adaugă un pachet de texturi; amândouă apar sub **Colecții**, unde crucea elimină una dintre ele. Scrie în **Filtrează materialele** pentru a restrânge lista. Fă clic pe un material pentru a-l face curent, apoi **Aplică selecției** îl pune pe fiecare față selectată. **Selectează** oferă Selectează brush-urile cu acesta și Selectează fețele cu acesta. **Înlocuiește** schimbă un material cu altul în toată harta sau doar în selecție.

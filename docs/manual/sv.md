@@ -142,6 +142,27 @@ Geometri → Infoga 3D-text (även sista posten i brushverktygets formlista) byg
 
 Om en åtgärd inte kan skapa giltig geometri justerar du dess mått, eller ångrar och förenklar formen.
 
+## Arrayer
+Geometri → Array kopierar markeringen och visar kopiorna i kartan medan du ändrar värdena. Antalen räknar med originalet, och en array gör högst 1024 kopior.
+
+- **Rad** flyttar varje kopia i förhållande till den förra med **Steg X**, **Steg Y** och **Steg Z** och vrider den **Vridning per kopia (grader)** kring den valda axeln.
+- **Rutnät** fyller **Antal X**, **Antal Y** och **Antal Z** element med avståndet **Steg X**, **Steg Y** och **Steg Z**.
+- **Ring** fördelar elementen över **Vinkel (grader)** runt ett centrum **Radie (enheter)** från markeringen. Med **Vänd mot centrum** vrids varje kopia med ringen.
+- **Spridning** placerar kopiorna på slumpmässiga platser inom radien, tvärs över den valda axeln. Samma **Seed** ger samma placering, och **Slumpmässig vridning** vrider varje kopia.
+
+När markeringen är en hel grupp gör **Länkade kopior** varje kopia till en länkad dubblett, så en ändring av en når alla. **Verkställ** behåller kopiorna och markerar dem tillsammans med originalet; **Avbryt** tar bort dem. Hela arrayen ångras i ett steg.
+
+## Skulptera terräng
+Terräng består av många små brushes vars ovansida skulpteringspenseln höjer och sänker. Markera en platt låda och välj Geometri → Dela i pelare: lådan delas i triangulära pelare, ett rutnätssteg breda, som läggs i en grupp med namnet Terrain. Ovansidan av en triangel är alltid plan, så pelarna kan bilda åsar och dalar.
+
+Välj verktyget **Skulptera** (`J`) och dra över terrängen i 3D-vyn. Den orange ringen visar penseln. Utan markering ändrar penseln alla brushes under den; med en markering bara de markerade. Listen överst i fönstret väljer vad ett drag gör:
+
+- **Höj** och **Sänk** flyttar ytan uppåt eller nedåt, mest i ringens mitt och inte alls vid kanten. Håll ned `Shift` för att byta dem.
+- **Jämna ut** jämnar ut bulor.
+- **Plana ut** planar ut ytan till höjden där draget började.
+
+De två talen bredvid lägena är **Radie (enheter)** och **Styrka (%)**. Bara de övre hörnen flyttas, lodrätt; botten stannar där den är och en pelare förblir minst en enhet tjock. Ett drag ångras i ett steg. I 2D-vyerna markerar verktyget som markeringsverktyget.
+
 # Material och UV
 ## Läsa in och tillämpa material
 Öppna avsnittet **Material** på fliken Yta. **Läs in mapp** lägger till en mapp med bilder och **Läs in .wad** lägger till ett texturpaket; båda visas under **Samlingar**, där krysset tar bort en. Skriv i **Filtrera material** för att begränsa listan. Klicka på ett material för att göra det aktuellt, och **Applicera på markering** lägger det sedan på varje markerad yta. **Markera** erbjuder Markera brushar med det och Markera ytor med det. **Ersätt** byter ett material mot ett annat i hela kartan eller bara i markeringen.

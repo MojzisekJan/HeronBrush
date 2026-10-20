@@ -620,7 +620,7 @@ pub fn begin_drag(
             })
         }
 
-        Tool::Select | Tool::Brush | Tool::Clip | Tool::Assemble | Tool::Paint => None,
+        Tool::Select | Tool::Brush | Tool::Clip | Tool::Assemble | Tool::Paint | Tool::Sculpt => None,
     }
 }
 
@@ -646,6 +646,18 @@ pub fn transfer_mode(modifiers: Modifiers) -> Option<FaceAttributeTransfer> {
 pub enum AttrStroke {
     Transfer { source:FaceRef, mode:FaceAttributeTransfer, touched:Vec<FaceRef> },
     Paint { state:crate::document::MaterialStroke, last:(f64,f64) },
+    /// A drag of the sculpt brush: where the last dab fell, and whether Shift swapped
+    /// raise and lower when it began.
+    Sculpt { state:crate::document::SculptStroke, last:Vec3d, inverted:bool },
+}
+
+/// The sculpt brush for a stroke begun with Shift held or not.
+fn sculpt_brush(inverted: bool) -> crate::sculpt::SculptParameters {
+    let mut parameters = crate::sculpt::parameters();
+    if inverted {
+        parameters.mode = parameters.mode.inverted();
+    }
+    parameters
 }
 
 /// The brush face the pointer is over, if any.
@@ -1203,7 +1215,7 @@ impl Scene3d {
     pub fn pointer_over(&self) {
         self.pointer_inside.set(true);
         let active = *self.tool.borrow();
-        if matches!(active, Tool::Rotate | Tool::Scale | Tool::Shear | Tool::Clip) || HandleKind::of(active).is_some() {
+        if matches!(active, Tool::Rotate | Tool::Scale | Tool::Shear | Tool::Clip | Tool::Sculpt) || HandleKind::of(active).is_some() {
             (self.render)();
         }
     }
@@ -1563,6 +1575,20 @@ impl Scene3d {
                     if !clip.borrow().is_dragging() && clip.borrow().can_add_point(at) {
                         points.push((at, pref(|p| p.clip_handle_color).rgba_f32()));
                     }
+                }
+            }
+            // The sculpt brush's outline, lying on the terrain under the pointer.
+            if active == Tool::Sculpt && pointer_inside.get() {
+                let (x, y) = *pointer.borrow();
+                let ray = camera.borrow().ray_through(x, y, width, height);
+                if let Some(at) = document.sculpt_target(&ray) {
+                    let colour = [0.9, 0.38, 0.0, 1.0];
+                    let ring = document.sculpt_ring(at, crate::sculpt::parameters().radius);
+                    for pair in ring.windows(2) {
+                        guides.push((pair[0], colour));
+                        guides.push((pair[1], colour));
+                    }
+                    points.push((at, colour));
                 }
             }
 
@@ -1983,7 +2009,7 @@ impl Scene3d {
     /// The primary press, at `(x, y)`.
     pub fn drag_begin(&self, x: f64, y: f64, modifiers: Modifiers, (width, height): (f64, f64)) {
         self.press.set((x, y));
-        if *self.tool.borrow()==Tool::Paint {
+        if matches!(*self.tool.borrow(), Tool::Paint | Tool::Sculpt) {
             self.drag.borrow_mut().take();self.lasso.borrow_mut().take();return;
         }
         // Attribute transfer keeps the source handle selected while pointing at targets.
@@ -2491,6 +2517,11 @@ impl Scene3d {
                 return;
             }
 
+            // A press that began a sculpt stroke is the stroke's; anywhere else it selects.
+            if *tool.borrow() == Tool::Sculpt && matches!(*stroke.borrow(), Some(AttrStroke::Sculpt { .. })) {
+                return;
+            }
+
             // The paint tool puts the current material on the face under the pointer: a
             // click paints one face, a double click the whole brush, and Shift takes the
             // face's material as the current one instead, the way an eyedropper does.
@@ -2600,6 +2631,14 @@ impl Scene3d {
         let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
 
                 *stroke.borrow_mut() = None;
+                if *tool.borrow()==Tool::Sculpt && !modifiers.alt && filters.borrow().animation_frame.is_none() {
+                    let ray = camera.borrow().ray_through(x, y, width, height);
+                    let Some(at) = document.borrow().sculpt_target(&ray) else { return; };
+                    let mut state = document.borrow().begin_sculpt_stroke();
+                    if document.borrow_mut().sculpt_dab(at, &sculpt_brush(modifiers.shift), &mut state) { render(); }
+                    *stroke.borrow_mut()=Some(AttrStroke::Sculpt { state, last:at, inverted:modifiers.shift });
+                    return;
+                }
                 if *tool.borrow()==Tool::Paint && !modifiers.shift && !modifiers.alt {
                     *stroke.borrow_mut()=Some(AttrStroke::Paint { state:document.borrow().begin_material_stroke(), last:(x,y) });
                     return;
@@ -2655,6 +2694,22 @@ impl Scene3d {
                         *last=point;
                         if document.borrow_mut().paint_material_stroke(&faces,state)>0 { render(); }
                     }
+                    AttrStroke::Sculpt { state, last, inverted } => {
+                        if *tool.borrow()!=Tool::Sculpt { return; }
+                        let ray = camera.borrow().ray_through(point.0, point.1, width, height);
+                        let Some(at) = document.borrow().sculpt_target(&ray) else { return; };
+                        let brush = sculpt_brush(*inverted);
+                        // Dabs a spacing apart along the way, so a quick drag leaves no gaps.
+                        let distance = (at.x()-last.x()).hypot(at.y()-last.y());
+                        let steps = (distance/brush.spacing()).floor() as usize;
+                        let mut changed = false;
+                        for i in 1..=steps.min(64) {
+                            let t = i as f64/steps as f64;
+                            changed |= document.borrow_mut().sculpt_dab(*last+(at-*last)*t, &brush, state);
+                        }
+                        if steps > 0 { *last = at; }
+                        if changed { render(); }
+                    }
                 }
 
             
@@ -2681,6 +2736,10 @@ impl Scene3d {
         let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
 
             *pointer.borrow_mut() = (x, y);
+            // The brush outline follows the pointer.
+            if *tool.borrow() == Tool::Sculpt {
+                render();
+            }
             let ray = camera.borrow().ray_through(
                 x,
                 y,

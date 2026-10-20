@@ -142,6 +142,27 @@ Geometrija → Umetni 3D tekst (ujedno posljednja stavka popisa oblika alata Bru
 
 Ako operacija ne može proizvesti valjanu geometriju, prilagodite njezine dimenzije ili poništite i pojednostavnite oblik.
 
+## Nizovi
+Geometrija → Niz kopira odabir i prikazuje kopije na karti dok mijenjate vrijednosti. Brojevi uključuju original, a niz stvara najviše 1024 kopije.
+
+- **Red** pomiče svaku kopiju u odnosu na prethodnu za **Korak X**, **Korak Y** i **Korak Z** i zakreće je za **Zakretanje po kopiji (stupnjevi)** oko odabrane osi.
+- **Mreža** popunjava **Broj X**, **Broj Y** i **Broj Z** elemenata s razmacima **Korak X**, **Korak Y** i **Korak Z**.
+- **Prsten** raspoređuje elemente unutar **Kut (stupnjevi)** oko središta udaljenog **Polumjer (jedinice)** od odabira. Uz **Okreni prema središtu** svaka se kopija zakreće s prstenom.
+- **Raspršenje** postavlja kopije na nasumična mjesta unutar polumjera, poprijeko odabrane osi. Isto **Sjeme** daje isti raspored, a **Nasumično zakretanje** zakreće svaku kopiju.
+
+Kad je odabrana jedna cijela grupa, **Povezane kopije** od svake kopije radi povezani duplikat, pa izmjena jedne stiže do svih. **Primijeni** zadržava kopije i odabire ih zajedno s originalom; **Odustani** ih uklanja. Cijeli niz poništava se jednim korakom.
+
+## Oblikovanje terena
+Teren se sastoji od mnogo malih brusheva čije vrhove kist za oblikovanje podiže i spušta. Odaberite plosnati kvadar i Geometrija → Podijeli na stupce: kvadar se reže na trokutaste stupce široke jedan korak mreže i stavlja u grupu Terrain. Vrh trokuta uvijek je ravan, pa stupci mogu tvoriti grebene i doline.
+
+Odaberite alat **Oblikovanje** (`J`) i povlačite po terenu u 3D prikazu. Narančasti prsten prikazuje kist. Bez odabira kist mijenja svaki brush ispod sebe, s odabirom samo odabrane. Traka na vrhu prozora određuje što potez radi:
+
+- **Podigni** i **Spusti** pomiču površinu gore ili dolje, najviše u središtu prstena, a na rubu nimalo. Držite `Shift` da ih zamijenite.
+- **Izgladi** izravnava neravnine.
+- **Poravnaj** poravnava površinu na visinu na kojoj je potez počeo.
+
+Dva broja pokraj načina su **Polumjer (jedinice)** i **Jačina (%)**. Pomiču se samo gornji kutovi, okomito; dno ostaje na mjestu, a stupac ostaje debeo barem jednu jedinicu. Potez se poništava jednim korakom. U 2D prikazima alat odabire kao alat Odabir.
+
 # Materijali i UV
 ## Učitavanje i primjena materijala
 Otvorite odjeljak **Materijali** na kartici Ploha. **Učitaj direktorij** dodaje direktorij sa slikama, a **Učitaj .wad** dodaje paket tekstura; oboje se pojavljuje pod **Zbirke**, gdje ih križić uklanja. Upisivanjem u **Filtriraj materijale** sužavate popis. Kliknite materijal da postane trenutačni, a zatim ga **Primijeni na odabir** stavlja na svaku odabranu plohu. **Odaberi** nudi Odaberi brusheve s njim i Odaberi plohe s njim. **Zamijeni** zamjenjuje jedan materijal drugim u cijeloj mapi ili samo u odabiru.

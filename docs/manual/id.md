@@ -142,6 +142,27 @@ Geometri → Sisipkan teks 3D (juga entri terakhir di daftar bentuk alat Brush) 
 
 Jika suatu operasi tidak dapat menghasilkan geometri yang valid, sesuaikan dimensinya, atau batalkan lalu sederhanakan bentuknya.
 
+## Larik
+Geometri → Larik menyalin pilihan dan menampilkan salinan di peta selagi Anda mengubah nilai. Jumlah sudah termasuk aslinya, dan larik membuat paling banyak 1024 salinan.
+
+- **Deret** menggeser setiap salinan dari salinan sebelumnya sebesar **Langkah X**, **Langkah Y**, dan **Langkah Z** dan memutarnya **Putaran per salinan (derajat)** pada sumbu yang dipilih.
+- **Kisi** mengisi **Jumlah X**, **Jumlah Y**, dan **Jumlah Z** item dengan jarak **Langkah X**, **Langkah Y**, dan **Langkah Z**.
+- **Cincin** menyebar item sepanjang **Sudut (derajat)** mengelilingi pusat yang berjarak **Radius (unit)** dari pilihan. Dengan **Hadap ke pusat**, setiap salinan ikut berputar bersama cincin.
+- **Sebaran** menaruh salinan di tempat acak dalam radius, melintang terhadap sumbu yang dipilih. **Seed** yang sama memberi tata letak yang sama, dan **Putaran acak** memutar setiap salinan.
+
+Bila pilihan adalah satu grup utuh, **Salinan tertaut** menjadikan setiap salinan duplikat tertaut, sehingga perubahan pada satu salinan sampai ke semuanya. **Terapkan** mempertahankan salinan dan memilihnya bersama aslinya; **Batal** menghapusnya. Seluruh larik dibatalkan dalam satu langkah.
+
+## Memahat medan
+Medan terdiri dari banyak brush kecil yang bagian atasnya dinaikkan dan diturunkan oleh kuas pahat. Pilih kotak datar lalu Geometri → Bagi menjadi kolom: kotak dipotong menjadi kolom segitiga selebar satu langkah kisi dan dimasukkan ke grup bernama Terrain. Bagian atas segitiga selalu datar, jadi kolom dapat membentuk punggung bukit dan lembah.
+
+Pilih alat **Pahat** (`J`) dan seret di atas medan pada tampilan 3D. Cincin oranye menunjukkan kuas. Tanpa pilihan, kuas mengubah setiap brush di bawahnya; dengan pilihan, hanya yang dipilih. Bilah di bagian atas jendela memilih apa yang dilakukan sapuan:
+
+- **Naikkan** dan **Turunkan** menggerakkan permukaan ke atas atau ke bawah, paling banyak di tengah cincin dan sama sekali tidak di tepinya. Tahan `Shift` untuk menukarnya.
+- **Haluskan** meratakan tonjolan.
+- **Ratakan** meratakan permukaan ke ketinggian tempat sapuan dimulai.
+
+Dua angka di samping mode adalah **Radius (unit)** dan **Kekuatan (%)**. Hanya sudut atas yang bergerak, tegak lurus; bagian bawah tetap di tempat dan kolom tetap setebal paling sedikit satu unit. Satu sapuan dibatalkan dalam satu langkah. Pada tampilan 2D alat ini memilih seperti alat Pilih.
+
 # Material dan UV
 ## Memuat dan menerapkan material
 Buka bagian **Material** di tab Permukaan. **Muat folder** menambahkan folder gambar dan **Muat .wad** menambahkan paket tekstur; keduanya muncul di bawah **Koleksi**, dan tanda silang menghapusnya. Ketik di **Filter material** untuk mempersempit daftar. Klik sebuah material untuk menjadikannya material aktif, lalu **Terapkan pada pilihan** memasangnya di setiap permukaan yang dipilih. **Pilih** menyediakan Pilih brush dengan material ini dan Pilih permukaan dengan material ini. **Ganti** menukar satu material dengan material lain di seluruh peta atau hanya di dalam pilihan.

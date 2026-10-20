@@ -142,6 +142,27 @@ Geometria → Lisää 3D-teksti (myös Brush-työkalun muotoluettelon viimeinen 
 
 Jos toiminto ei pysty tuottamaan kelvollista geometriaa, säädä sen mittoja tai kumoa ja yksinkertaista muotoa.
 
+## Taulukot
+Geometria → Taulukko kopioi valinnan ja näyttää kopiot kartassa, kun muutat arvoja. Määrät sisältävät alkuperäisen, ja taulukko tekee enintään 1024 kopiota.
+
+- **Rivi** siirtää jokaista kopiota edelliseen nähden **Askel X**, **Askel Y** ja **Askel Z** ja kääntää sitä **Kääntö kopiota kohden (astetta)** valitun akselin ympäri.
+- **Ruudukko** täyttää **Määrä X**, **Määrä Y** ja **Määrä Z** kohdetta välein **Askel X**, **Askel Y** ja **Askel Z**.
+- **Rengas** jakaa kohteet **Kulma (astetta)** alueelle keskipisteen ympärille, joka on **Säde (yksikköä)** päässä valinnasta. Kun **Käännä keskustaa kohti** on päällä, jokainen kopio kääntyy renkaan mukana.
+- **Hajautus** sijoittaa kopiot satunnaisiin kohtiin säteen sisälle valitun akselin poikki. Sama **Siemen** antaa saman asettelun, ja **Satunnainen kääntö** kääntää jokaista kopiota.
+
+Kun valintana on yksi kokonainen ryhmä, **Linkitetyt kopiot** tekee jokaisesta kopiosta linkitetyn kaksoiskappaleen, joten muutos yhteen ulottuu kaikkiin. **Käytä** säilyttää kopiot ja valitsee ne alkuperäisen kanssa; **Peruuta** poistaa ne. Koko taulukko perutaan yhdellä askeleella.
+
+## Maaston muotoilu
+Maasto koostuu monista pienistä brusheista, joiden yläpintaa muotoilusivellin nostaa ja laskee. Valitse litteä laatikko ja Geometria → Jaa pylväiksi: laatikko leikataan ruudukon askeleen levyisiksi kolmiopylväiksi, jotka siirretään Terrain-nimiseen ryhmään. Kolmion yläpinta on aina tasainen, joten pylväät voivat muodostaa harjanteita ja laaksoja.
+
+Valitse **Muotoile**-työkalu (`J`) ja vedä maaston yli 3D-näkymässä. Oranssi rengas näyttää siveltimen. Ilman valintaa sivellin muuttaa kaikkia alleen jääviä brusheja, valinnan kanssa vain valittuja. Ikkunan yläreunan palkki valitsee, mitä veto tekee:
+
+- **Nosta** ja **Laske** siirtävät pintaa ylös tai alas, eniten renkaan keskellä eikä lainkaan reunalla. Pidä `Shift` pohjassa vaihtaaksesi ne.
+- **Pehmennä** tasoittaa kuhmut.
+- **Tasoita** tasoittaa pinnan siihen korkeuteen, josta veto alkoi.
+
+Tilojen vieressä olevat kaksi lukua ovat **Säde (yksikköä)** ja **Voimakkuus (%)**. Vain yläkulmat liikkuvat, pystysuoraan; pohja pysyy paikallaan ja pylväs pysyy vähintään yhden yksikön paksuisena. Veto perutaan yhdellä askeleella. 2D-näkymissä työkalu valitsee kuten valintatyökalu.
+
 # Materiaalit ja UV:t
 ## Materiaalien lataaminen ja käyttäminen
 Avaa Tahko-välilehden **Materiaalit**-osio. **Lataa kansio** lisää kuvakansion ja **Lataa .wad** lisää tekstuuripaketin; molemmat näkyvät kohdassa **Kokoelmat**, jossa risti poistaa sellaisen. Kirjoita kenttään **Suodata materiaaleja** rajataksesi luetteloa. Napsauta materiaalia tehdäksesi siitä nykyisen, ja **Käytä valintaan** asettaa sen jokaiselle valitulle tahkolle. **Valitse** tarjoaa vaihtoehdot Valitse brushit, joissa se on ja Valitse tahkot, joissa se on. **Korvaa** vaihtaa materiaalin toiseen koko kartassa tai vain valinnassa.

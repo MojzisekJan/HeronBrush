@@ -42,6 +42,8 @@ pub enum Tool {
     ///
     /// Assigns materials without changing geometry.
     Paint,
+    /// Raise, lower, smooth or flatten the selected terrain under a round brush.
+    Sculpt,
 }
 
 impl Tool {
@@ -64,7 +66,7 @@ impl Tool {
     ];
 
     /// Every tool, in the order the toolbar shows them.
-    pub const ALL: [Tool; 14] = [
+    pub const ALL: [Tool; 15] = [
         Tool::Select,
         Tool::Brush,
         Tool::Clip,
@@ -79,6 +81,7 @@ impl Tool {
         Tool::ControlPoint,
         Tool::Fillet,
         Tool::Paint,
+        Tool::Sculpt,
     ];
 
     /// The name shown on the toolbar button.
@@ -98,6 +101,7 @@ impl Tool {
             Tool::ControlPoint => translation_key("Control point"),
             Tool::Fillet => translation_key("Fillet"),
             Tool::Paint => translation_key("Paint"),
+            Tool::Sculpt => translation_key("Sculpt"),
         }
     }
 
@@ -118,6 +122,7 @@ impl Tool {
             Tool::ControlPoint => translation_key("Control point tool (P)"),
             Tool::Fillet => translation_key("Fillet tool: select preview edges, then Apply or Enter (O)"),
             Tool::Paint => translation_key("Paint material (K)"),
+            Tool::Sculpt => translation_key("Sculpt terrain: drag over it, Shift swaps raise and lower (J)"),
         }
     }
 
@@ -142,6 +147,7 @@ impl Tool {
             Tool::ControlPoint => include_str!("../../heron-brush/assets/tools/controlpoint.svg"),
             Tool::Fillet => include_str!("../../heron-brush/assets/tools/fillet.svg"),
             Tool::Paint => include_str!("../../heron-brush/assets/tools/paint.svg"),
+            Tool::Sculpt => include_str!("../../heron-brush/assets/tools/sculpt.svg"),
         }
     }
 

@@ -142,6 +142,27 @@ Geometri → 3B metin ekle (Fırça aracının şekil listesindeki son öğe de 
 
 Bir işlem geçerli bir geometri üretemezse boyutlarını değiştirin ya da işlemi geri alıp şekli sadeleştirin.
 
+## Diziler
+Geometri → Dizi seçimi kopyalar ve değerleri değiştirirken kopyaları haritada gösterir. Sayılara asıl nesne de dahildir ve bir dizi en fazla 1024 kopya oluşturur.
+
+- **Sıra** her kopyayı bir öncekine göre **X adımı**, **Y adımı** ve **Z adımı** kadar kaydırır ve seçilen eksen çevresinde **Kopya başına dönüş (derece)** kadar döndürür.
+- **Izgara**, **X adımı**, **Y adımı** ve **Z adımı** aralıklarla **Sayı X**, **Sayı Y** ve **Sayı Z** öğe yerleştirir.
+- **Halka** öğeleri seçimden **Yarıçap (birim)** uzaklıktaki bir merkezin çevresine **Açı (derece)** boyunca dağıtır. **Merkeze döndür** açıkken her kopya halkayla birlikte döner.
+- **Dağılım** kopyaları yarıçap içinde, seçilen eksene dik rastgele yerlere koyar. Aynı **Tohum** aynı yerleşimi verir; **Rastgele dönüş** her kopyayı döndürür.
+
+Seçim tek bir grubun tamamıysa **Bağlı kopyalar** her kopyayı bağlı bir kopya yapar, böylece birinde yapılan değişiklik hepsine ulaşır. **Uygula** kopyaları tutar ve onları asıl nesneyle birlikte seçer; **İptal** onları kaldırır. Dizinin tamamı tek adımda geri alınır.
+
+## Arazi şekillendirme
+Arazi, şekillendirme fırçasının üst yüzlerini yükseltip alçalttığı çok sayıda küçük brush'tan oluşur. Düz bir kutu seçip Geometri → Sütunlara böl komutunu seçin: kutu bir ızgara adımı genişliğinde üçgen sütunlara bölünür ve Terrain adlı bir gruba konur. Üçgenin üstü her zaman düzdür, bu yüzden sütunlar sırt ve vadi oluşturabilir.
+
+**Şekillendir** aracını (`J`) seçin ve 3D görünümde arazinin üzerinde sürükleyin. Turuncu halka fırçayı gösterir. Seçim yokken fırça altındaki her brush'ı değiştirir; seçim varken yalnızca seçilenleri. Pencerenin üstündeki şerit bir darbenin ne yapacağını seçer:
+
+- **Yükselt** ve **Alçalt** yüzeyi yukarı veya aşağı taşır; halkanın ortasında en çok, kenarında hiç. Yer değiştirmek için `Shift` tuşunu basılı tutun.
+- **Yumuşat** tümsekleri düzeltir.
+- **Düzleştir** yüzeyi darbenin başladığı yüksekliğe düzler.
+
+Modların yanındaki iki sayı **Yarıçap (birim)** ve **Güç (%)** değerleridir. Yalnızca üst köşeler, dikey olarak hareket eder; alt kısım yerinde kalır ve bir sütun en az bir birim kalınlıkta kalır. Bir darbe tek adımda geri alınır. 2D görünümlerde araç, Seçim aracı gibi seçer.
+
 # Malzemeler ve UV'ler
 ## Malzemeleri yükleme ve uygulama
 Yüzey sekmesinin **Malzemeler** bölümünü açın. **Klasör yükle** bir görüntü klasörü, **.wad yükle** ise bir doku paketi ekler; ikisi de **Koleksiyonlar** altında görünür ve çarpı işaretiyle kaldırılabilir. Listeyi daraltmak için **Malzemeleri süz** alanına yazın. Bir malzemeyi geçerli malzeme yapmak için üzerine tıklayın; ardından **Seçime uygula** onu tüm seçili yüzeylere uygular. **Seç** menüsü, Bu malzemeyi taşıyan fırçaları seç ve Bu malzemeyi taşıyan yüzeyleri seç seçeneklerini sunar. **Değiştir** bir malzemeyi tüm haritada ya da yalnızca seçimde başka bir malzemeyle değiştirir.

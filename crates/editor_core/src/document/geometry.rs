@@ -836,7 +836,7 @@ impl Document {
     }
 
     /// The selected brushes with the ids they are stored under.
-    fn selected_brushes_with_ids(&self) -> Vec<(NodeId, Brush)> {
+    pub(super) fn selected_brushes_with_ids(&self) -> Vec<(NodeId, Brush)> {
         node::brushes_with_ids(&self.tree.world)
             .into_iter()
             .filter(|(id, _)| self.selection.contains(id))
