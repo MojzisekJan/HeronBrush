@@ -117,37 +117,65 @@ export function unpack_bundle(buffer) {
   }
   return entries.map(([path, offset, size]) => [path, bytes.slice(start + offset, start + offset + size)]);
 }
+// The manifest that names the archives, fetched once per visit. Only it needs
+// revalidation: content-addressed archives can remain cached indefinitely without using
+// yesterday's game definitions.
+let bundleIndex;
+function bundle_index() {
+  bundleIndex ??= fetch("bundle/index.json", {cache: "no-cache"}).then(async index => {
+    if (!index.ok) throw new Error(`Startup index: HTTP ${index.status}`);
+    return index.json();
+  });
+  return bundleIndex;
+}
+
+function valid_archive(entry, stem) {
+  return typeof entry?.sha256 === "string" && /^[a-f0-9]{64}$/.test(entry.sha256)
+    && entry.file === `${stem}-${entry.sha256}.bin` && Number.isSafeInteger(entry.bytes)
+    && entry.bytes >= 8 && entry.bytes <= 134217728;
+}
+
+// Fetches one archive the index names and checks its length and checksum.
+async function fetch_archive(entry, label) {
+  for (const cache of ["force-cache", "reload"]) {
+    try {
+      const response = await fetch(`bundle/${entry.file}`, {cache});
+      if (!response.ok) throw new Error(`${label}: HTTP ${response.status}`);
+      const buffer = await response.arrayBuffer();
+      if (buffer.byteLength !== entry.bytes) throw new Error(`Truncated ${label}`);
+      const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", buffer)), b => b.toString(16).padStart(2, "0")).join("");
+      if (digest !== entry.sha256) throw new Error(`${label} checksum mismatch`);
+      return unpack_bundle(buffer);
+    } catch (error) {
+      if (cache === "reload") throw error;
+    }
+  }
+}
+
 export async function load_bundle() {
   try {
-    // Only this tiny manifest needs revalidation. Content-addressed archives can
-    // remain cached indefinitely without using yesterday's game definitions.
-    const index = await fetch("bundle/index.json", {cache: "no-cache"});
-    if (!index.ok) throw new Error(`Startup index: HTTP ${index.status}`);
-    const manifest = await index.json();
-    if (manifest?.format !== 1 || typeof manifest.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(manifest.sha256)
-        || manifest.file !== `startup-${manifest.sha256}.bin` || !Number.isSafeInteger(manifest.bytes)
-        || manifest.bytes < 8 || manifest.bytes > 134217728) throw new Error("Invalid startup manifest");
-    let files;
-    for (const cache of ["force-cache", "reload"]) {
-      try {
-        const response = await fetch(`bundle/${manifest.file}`, {cache});
-        if (!response.ok) throw new Error(`Startup archive: HTTP ${response.status}`);
-        const buffer = await response.arrayBuffer();
-        if (buffer.byteLength !== manifest.bytes) throw new Error("Truncated startup archive");
-        const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", buffer)), b => b.toString(16).padStart(2, "0")).join("");
-        if (digest !== manifest.sha256) throw new Error("Startup archive checksum mismatch");
-        files = unpack_bundle(buffer);
-        break;
-      } catch (error) {
-        if (cache === "reload") throw error;
-      }
-    }
+    const manifest = await bundle_index();
+    if (manifest?.format !== 1 || !valid_archive(manifest, "startup")) throw new Error("Invalid startup manifest");
+    const files = await fetch_archive(manifest, "Startup archive");
     window.heronLoading?.("Starting the editor", 0.97);
     return files;
   } catch (error) {
     storageProblem = "Bundled editor data could not be loaded. Reload when the connection is available.";
     showStorageStatus();
     console.warn("Heron Brush: the bundled data could not be loaded", error);
+    return [];
+  }
+}
+
+// The Chinese, Japanese and Korean fonts, which only those interface languages fetch.
+// Without them the interface falls back to the picker faces, so a failure is not fatal.
+export async function load_cjk_fonts() {
+  try {
+    const manifest = await bundle_index();
+    if (!valid_archive(manifest?.cjk, "cjk")) throw new Error("Invalid CJK font manifest");
+    return await fetch_archive(manifest.cjk, "CJK font archive");
+  } catch (error) {
+    console.warn("Heron Brush: the Chinese, Japanese and Korean fonts could not be loaded", error);
     return [];
   }
 }

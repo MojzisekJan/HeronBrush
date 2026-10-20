@@ -198,6 +198,10 @@ games/heron_brush/Icon.png
 games/heron_brush/heron_brush.fgd
 games/heron_brush/initial_valve.map
 fonts/NotoSansCJK-LICENSE.txt
+fonts/picker/NotoSansJP-Regular.otf
+fonts/picker/NotoSansKR-Regular.otf
+fonts/picker/NotoSansSC-Regular.otf
+fonts/picker/NotoSansTC-Regular.otf
 fonts/NotoSansJP-Regular.otf
 fonts/NotoSansKR-Regular.otf
 fonts/NotoSansSC-Regular.otf
