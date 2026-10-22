@@ -18,7 +18,7 @@ use crate::uv::UvCoordSystem;
 
 #[path = "primitive_writer.rs"]
 mod primitive;
-pub use primitive::{write_quake3_map, write_doom3_map};
+pub use primitive::{write_doom3_map, write_quake3_map};
 
 /// Writes a `.map` file.
 pub fn write_map(map: &MapFile) -> String {
@@ -31,12 +31,30 @@ pub fn write_map(map: &MapFile) -> String {
     // What version of the editor's own notes -- the ids and the colours -- are written
     // beside the dialect. A reader that meets a higher number knows the file holds
     // something it does not understand.
-    let has_multicolor = map.entities.iter().flat_map(|e| &e.brushes).flat_map(|b| &b.faces)
+    let has_multicolor = map
+        .entities
+        .iter()
+        .flat_map(|e| &e.brushes)
+        .flat_map(|b| &b.faces)
         .any(|face| matches!(face.paint(), Some(FaceColor::MultiGradient { .. })));
-    let has_pending_uv = map.entities.iter().flat_map(|e| &e.brushes).flat_map(|b| &b.faces)
+    let has_pending_uv = map
+        .entities
+        .iter()
+        .flat_map(|e| &e.brushes)
+        .flat_map(|b| &b.faces)
         .any(|face| face.primitive_uv.is_some());
-    let required_version = if has_pending_uv { 3 } else if has_multicolor { 2 } else { 0 };
-    let version = if required_version != 0 { Some(map.notes_version.unwrap_or(0).max(required_version)) } else { map.notes_version };
+    let required_version = if has_pending_uv {
+        3
+    } else if has_multicolor {
+        2
+    } else {
+        0
+    };
+    let version = if required_version != 0 {
+        Some(map.notes_version.unwrap_or(0).max(required_version))
+    } else {
+        map.notes_version
+    };
     if let Some(version) = version {
         let _ = writeln!(out, "// {METADATA_MARKER} format {version}");
     }
@@ -160,19 +178,34 @@ fn write_face_notes(out: &mut String, face: &BrushFace, with_color: bool, with_p
         write_face_color(out, face);
     }
     if let Some(surface) = face.surface_material {
-        if !with_color || face.color.is_none() { let _ = write!(out, " // {METADATA_MARKER}"); }
-        let _ = write!(out, " pbr {} {} {}", surface.roughness.min(100), surface.metallic.min(100), surface.emission.min(800));
+        if !with_color || face.color.is_none() {
+            let _ = write!(out, " // {METADATA_MARKER}");
+        }
+        let _ = write!(
+            out,
+            " pbr {} {} {}",
+            surface.roughness.min(100),
+            surface.metallic.min(100),
+            surface.emission.min(800)
+        );
     }
     if face.export_hidden {
-        if face.surface_material.is_none() && (!with_color || face.color.is_none()) {let _=write!(out," // {METADATA_MARKER}");}
-        let _=write!(out," export_hidden");
+        if face.surface_material.is_none() && (!with_color || face.color.is_none()) {
+            let _ = write!(out, " // {METADATA_MARKER}");
+        }
+        let _ = write!(out, " export_hidden");
     }
     if let Some(matrix) = face.primitive_uv.as_ref().filter(|_| with_pending_uv) {
-        if face.surface_material.is_none() && !face.export_hidden && (!with_color || face.color.is_none()) {
+        if face.surface_material.is_none()
+            && !face.export_hidden
+            && (!with_color || face.color.is_none())
+        {
             let _ = write!(out, " // {METADATA_MARKER}");
         }
         let _ = write!(out, " primitive_uv");
-        for value in matrix.iter().flatten() { let _ = write!(out, " {}", Scalar(*value)); }
+        for value in matrix.iter().flatten() {
+            let _ = write!(out, " {}", Scalar(*value));
+        }
     }
     let _ = writeln!(out);
 }
@@ -213,23 +246,38 @@ fn uniform_color(brush: &Brush) -> Option<FaceColor> {
 fn write_color(out: &mut String, color: FaceColor) {
     let marker = METADATA_MARKER;
     match color {
-        FaceColor::MultiGradient { stops, radial, angle, ends, .. } => {
+        FaceColor::MultiGradient {
+            stops,
+            radial,
+            angle,
+            ends,
+            ..
+        } => {
             let kind = if radial { "radial" } else { "linear" };
-            let _ = write!(out, "{marker} {kind} {} {}", Scalar(f64::from(angle)), stops.as_slice().len());
+            let _ = write!(
+                out,
+                "{marker} {kind} {} {}",
+                Scalar(f64::from(angle)),
+                stops.as_slice().len()
+            );
             for stop in stops.as_slice() {
-                let _ = write!(out, " {} {} {} {}", Scalar(f64::from(stop.position)), stop.color.r, stop.color.g, stop.color.b);
+                let _ = write!(
+                    out,
+                    " {} {} {} {}",
+                    Scalar(f64::from(stop.position)),
+                    stop.color.r,
+                    stop.color.g,
+                    stop.color.b
+                );
             }
             if let Some(ends) = ends {
-                let [a, b, c, d] = [ends.start[0], ends.start[1], ends.end[0], ends.end[1]].map(|v| Scalar(f64::from(v)));
+                let [a, b, c, d] = [ends.start[0], ends.start[1], ends.end[0], ends.end[1]]
+                    .map(|v| Scalar(f64::from(v)));
                 let _ = write!(out, " ends {a} {b} {c} {d}");
             }
         }
         FaceColor::Solid { color, .. } => {
-            let _ = write!(
-                out,
-                "{marker} color {} {} {}",
-                color.r, color.g, color.b
-            );
+            let _ = write!(out, "{marker} color {} {} {}", color.r, color.g, color.b);
         }
         FaceColor::Gradient {
             from, to, angle, ..
@@ -327,7 +375,9 @@ impl std::fmt::Display for Coordinate {
         let nearest = (self.0 * 8.0).round() / 8.0;
         let value = if self.0.is_finite() && (self.0 - nearest).abs() <= 1e-9 {
             nearest
-        } else { self.0 };
+        } else {
+            self.0
+        };
         Scalar(value).fmt(out)
     }
 }
@@ -395,7 +445,12 @@ mod coordinate_tests {
     use super::*;
     #[test]
     fn geometry_noise_is_removed_without_rounding_uv_or_real_detail() {
-        for (value, expected) in [(7.9999999999990905,"8"),(-32.00000000000056,"-32"),(7.8749999999999,"7.875"),(-0.0,"0")] {
+        for (value, expected) in [
+            (7.9999999999990905, "8"),
+            (-32.00000000000056, "-32"),
+            (7.8749999999999, "7.875"),
+            (-0.0, "0"),
+        ] {
             assert_eq!(Coordinate(value).to_string(), expected);
         }
         for value in [7.999999, 0.123456789, 8.00000001] {

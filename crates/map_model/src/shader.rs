@@ -51,9 +51,9 @@ impl Shader {
             Some(self.name.as_str()),
             self.light_image.as_deref(),
         ]
-            .into_iter()
-            .flatten()
-            .chain(self.stage_maps.iter().map(String::as_str))
+        .into_iter()
+        .flatten()
+        .chain(self.stage_maps.iter().map(String::as_str))
         {
             if candidate.starts_with('$') || candidate.is_empty() {
                 continue;

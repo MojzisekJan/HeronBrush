@@ -25,7 +25,10 @@ use geometry_math::vec::Vec3d;
 use map_model::node::NodeId;
 
 fn runs() -> usize {
-    std::env::var("HERON_BENCH_RUNS").ok().and_then(|n| n.parse().ok()).unwrap_or(5)
+    std::env::var("HERON_BENCH_RUNS")
+        .ok()
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(5)
 }
 
 fn write(dir: &Path, name: &str, text: String) -> PathBuf {
@@ -91,91 +94,201 @@ fn perf_groups() {
     // A world four times as wide as the map, so turning the big group (a strip across
     // the whole map) keeps it inside.
     let mut document = Document::open(&path, WorldBounds::new(65_536.0)).unwrap();
-    eprintln!("groups map: {} brushes, {} groups, opened in {:.0} ms", document.brush_count(), document.groups().len(), bench::ms(start.elapsed()));
-    rows.push(bench::measure("5k groups: open the map", runs.min(3), || (), |_| open(&path)));
-    rows.push(bench::measure("5k groups: groups() (the Map tab's list)", runs, || (), |_| document.groups().len()));
-    rows.push(bench::measure_on("5k groups: select all", runs, &mut document, |d| d.clear_selection(), |d| d.select_all()));
+    eprintln!(
+        "groups map: {} brushes, {} groups, opened in {:.0} ms",
+        document.brush_count(),
+        document.groups().len(),
+        bench::ms(start.elapsed())
+    );
+    rows.push(bench::measure(
+        "5k groups: open the map",
+        runs.min(3),
+        || (),
+        |_| open(&path),
+    ));
+    rows.push(bench::measure(
+        "5k groups: groups() (the Map tab's list)",
+        runs,
+        || (),
+        |_| document.groups().len(),
+    ));
+    rows.push(bench::measure_on(
+        "5k groups: select all",
+        runs,
+        &mut document,
+        |d| d.clear_selection(),
+        |d| d.select_all(),
+    ));
 
     // A marquee over half the map: what each frame of the drag recomputes.
-    let half: Vec<NodeId> = document.selectable_brushes().into_iter().map(|(id, _)| id).step_by(2).collect();
-    rows.push(bench::measure_on(&format!("5k groups: marquee catching {} brushes (one frame)", half.len()), runs, &mut document, |d| d.clear_selection(), |d| {
-        let empty = d.selection_snapshot();
-        d.preview_marquee(&empty, &half, false);
-        d.selection_count()
-    }));
+    let half: Vec<NodeId> = document
+        .selectable_brushes()
+        .into_iter()
+        .map(|(id, _)| id)
+        .step_by(2)
+        .collect();
+    rows.push(bench::measure_on(
+        &format!(
+            "5k groups: marquee catching {} brushes (one frame)",
+            half.len()
+        ),
+        runs,
+        &mut document,
+        |d| d.clear_selection(),
+        |d| {
+            let empty = d.selection_snapshot();
+            d.preview_marquee(&empty, &half, false);
+            d.selection_count()
+        },
+    ));
     let small = member_of(&document, bench::FIRST_SMALL_GROUP_ID + 2_500);
-    rows.push(bench::measure_on("5k groups: click a small group (select_only)", runs, &mut document, |d| d.clear_selection(), |d| d.select_only(small)));
+    rows.push(bench::measure_on(
+        "5k groups: click a small group (select_only)",
+        runs,
+        &mut document,
+        |d| d.clear_selection(),
+        |d| d.select_only(small),
+    ));
     let big = member_of(&document, bench::BIG_GROUP_ID);
-    rows.push(bench::measure_on("5k groups: click the 5k-brush group (select_only)", runs, &mut document, |d| d.clear_selection(), |d| d.select_only(big)));
+    rows.push(bench::measure_on(
+        "5k groups: click the 5k-brush group (select_only)",
+        runs,
+        &mut document,
+        |d| d.clear_selection(),
+        |d| d.select_only(big),
+    ));
     let deep = deepest_member(&document, &spec);
-    rows.push(bench::measure_on("5k groups: click a brush 10 groups deep", runs, &mut document, |d| d.clear_selection(), |d| d.select_only(deep)));
-    rows.push(bench::measure_on("5k groups: open the outermost of 10 nested groups", runs, &mut document, |d| {
-        d.close_group();
-        d.select_only(deep);
-    }, |d| d.open_selected_group()));
-    rows.push(bench::measure_on("5k groups: close it", runs, &mut document, |d| {
-        d.select_only(deep);
-        d.open_selected_group();
-    }, |d| d.close_group()));
+    rows.push(bench::measure_on(
+        "5k groups: click a brush 10 groups deep",
+        runs,
+        &mut document,
+        |d| d.clear_selection(),
+        |d| d.select_only(deep),
+    ));
+    rows.push(bench::measure_on(
+        "5k groups: open the outermost of 10 nested groups",
+        runs,
+        &mut document,
+        |d| {
+            d.close_group();
+            d.select_only(deep);
+        },
+        |d| d.open_selected_group(),
+    ));
+    rows.push(bench::measure_on(
+        "5k groups: close it",
+        runs,
+        &mut document,
+        |d| {
+            d.select_only(deep);
+            d.open_selected_group();
+        },
+        |d| d.close_group(),
+    ));
     document.close_group();
 
     // The whole big group, moved and turned as one.
     document.select_only(big);
     assert_eq!(document.selection_count(), spec.big_group);
-    rows.push(bench::measure("5k groups: move the 5k-brush group, 60-step drag", runs.min(3), || (), |_| {
-        document.begin_transaction();
-        for _ in 0..60 {
-            assert!(document.translate_selection(Vec3d::new(8.0, 0.0, 0.0)));
-        }
-        document.commit_transaction();
-    }));
+    rows.push(bench::measure(
+        "5k groups: move the 5k-brush group, 60-step drag",
+        runs.min(3),
+        || (),
+        |_| {
+            document.begin_transaction();
+            for _ in 0..60 {
+                assert!(document.translate_selection(Vec3d::new(8.0, 0.0, 0.0)));
+            }
+            document.commit_transaction();
+        },
+    ));
     let centre = document.selection_bounds().unwrap().center();
-    rows.push(bench::measure("5k groups: rotate the 5k-brush group, 60-step drag", runs.min(3), || (), |_| {
-        document.begin_transaction();
-        for step in 1..=60 {
-            document.rollback_transaction();
-            assert!(document.rotate_selection_about(centre, Vec3d::new(0.0, 0.0, 1.0), step as f64 * 1.7));
-        }
-        document.commit_transaction();
-    }));
-    rows.push(bench::measure_on("5k groups: undo that (redo between runs)", runs, &mut document, |d| { d.redo(); }, |d| d.undo()));
+    rows.push(bench::measure(
+        "5k groups: rotate the 5k-brush group, 60-step drag",
+        runs.min(3),
+        || (),
+        |_| {
+            document.begin_transaction();
+            for step in 1..=60 {
+                document.rollback_transaction();
+                assert!(document.rotate_selection_about(
+                    centre,
+                    Vec3d::new(0.0, 0.0, 1.0),
+                    step as f64 * 1.7
+                ));
+            }
+            document.commit_transaction();
+        },
+    ));
+    rows.push(bench::measure_on(
+        "5k groups: undo that (redo between runs)",
+        runs,
+        &mut document,
+        |d| {
+            d.redo();
+        },
+        |d| d.undo(),
+    ));
 
     // Grouping and ungrouping a big selection of loose brushes.
     let loose: Vec<NodeId> = document
         .selectable_brushes()
         .into_iter()
         .map(|(id, _)| id)
-        .filter(|id| map_model::node::outermost_group_of(document.tree_world(), *id, None).is_none())
+        .filter(|id| {
+            map_model::node::outermost_group_of(document.tree_world(), *id, None).is_none()
+        })
         .collect();
     eprintln!("{} loose brushes", loose.len());
-    rows.push(bench::measure_on(&format!("5k groups: group {} loose brushes", loose.len()), runs, &mut document, |d| {
-        d.clear_selection();
-        for id in &loose {
-            d.toggle_selected(*id);
-        }
-    }, |d| {
-        let g = d.group_selection("big new group");
-        d.undo();
-        g
-    }));
-    rows.push(bench::measure_on("5k groups: ungroup the 5k-brush group", runs, &mut document, |d| d.select_only(big), |d| {
-        let n = d.ungroup_selection();
-        d.undo();
-        n
-    }));
+    rows.push(bench::measure_on(
+        &format!("5k groups: group {} loose brushes", loose.len()),
+        runs,
+        &mut document,
+        |d| {
+            d.clear_selection();
+            for id in &loose {
+                d.toggle_selected(*id);
+            }
+        },
+        |d| {
+            let g = d.group_selection("big new group");
+            d.undo();
+            g
+        },
+    ));
+    rows.push(bench::measure_on(
+        "5k groups: ungroup the 5k-brush group",
+        runs,
+        &mut document,
+        |d| d.select_only(big),
+        |d| {
+            let n = d.ungroup_selection();
+            d.undo();
+            n
+        },
+    ));
     // Every small group selected and ungrouped at once.
-    rows.push(bench::measure_on("5k groups: ungroup 5,000 selected groups", runs.min(3), &mut document, |d| {
-        d.clear_selection();
-        for i in 0..spec.small_groups as u64 {
-            let id = member_of(d, bench::FIRST_SMALL_GROUP_ID + i);
-            d.toggle_selected(id);
-        }
-    }, |d| {
-        let n = d.ungroup_selection();
-        d.undo();
-        n
-    }));
-    bench::print_table("Groups (5k groups, 10-deep nesting, a 5k-brush group)", &rows);
+    rows.push(bench::measure_on(
+        "5k groups: ungroup 5,000 selected groups",
+        runs.min(3),
+        &mut document,
+        |d| {
+            d.clear_selection();
+            for i in 0..spec.small_groups as u64 {
+                let id = member_of(d, bench::FIRST_SMALL_GROUP_ID + i);
+                d.toggle_selected(id);
+            }
+        },
+        |d| {
+            let n = d.ungroup_selection();
+            d.undo();
+            n
+        },
+    ));
+    bench::print_table(
+        "Groups (5k groups, 10-deep nesting, a 5k-brush group)",
+        &rows,
+    );
 }
 
 #[test]
@@ -186,56 +299,109 @@ fn perf_linked_groups() {
     let runs = runs();
     let path = write(&scratch.0, "linked", bench::linked_map(500, 50, 1_000));
     let mut document = open(&path);
-    eprintln!("linked map: {} brushes, {} groups", document.brush_count(), document.groups().len());
+    eprintln!(
+        "linked map: {} brushes, {} groups",
+        document.brush_count(),
+        document.groups().len()
+    );
 
     // One copy opened, one brush in it moved: the edit carries the other 499 along.
     let copy = member_of(&document, 10_000 + 250);
     document.select_only(copy);
     assert!(document.open_selected_group());
-    let first = map_model::node::contents_of(document.tree_world(), group_node(&document, 10_250))[0];
+    let first =
+        map_model::node::contents_of(document.tree_world(), group_node(&document, 10_250))[0];
     document.select_only(first);
     assert_eq!(document.selection_count(), 1);
     let count = document.brush_count();
-    rows.push(bench::measure_on("500 linked x 50: move one brush in one copy (edit + sync)", runs, &mut document, |d| {
-        let first = map_model::node::contents_of(d.tree_world(), group_node(d, 10_250))[0];
-        d.select_only(first);
-    }, |d| d.translate_selection(Vec3d::new(8.0, 0.0, 0.0))));
-    assert_eq!(document.brush_count(), count, "the sync rebuilt the copies, it did not add to them");
-    rows.push(bench::measure_on("500 linked x 50: 30-step drag in one copy, then commit (sync)", runs.min(3), &mut document, |d| {
-        let first = map_model::node::contents_of(d.tree_world(), group_node(d, 10_250))[0];
-        d.select_only(first);
-    }, |d| {
-        d.begin_transaction();
-        for _ in 0..30 {
-            d.translate_selection(Vec3d::new(8.0, 0.0, 0.0));
-        }
-        d.commit_transaction()
-    }));
-    rows.push(bench::measure_on("500 linked x 50: undo the synced edit (redo between runs)", runs, &mut document, |d| { d.redo(); }, |d| d.undo()));
+    rows.push(bench::measure_on(
+        "500 linked x 50: move one brush in one copy (edit + sync)",
+        runs,
+        &mut document,
+        |d| {
+            let first = map_model::node::contents_of(d.tree_world(), group_node(d, 10_250))[0];
+            d.select_only(first);
+        },
+        |d| d.translate_selection(Vec3d::new(8.0, 0.0, 0.0)),
+    ));
+    assert_eq!(
+        document.brush_count(),
+        count,
+        "the sync rebuilt the copies, it did not add to them"
+    );
+    rows.push(bench::measure_on(
+        "500 linked x 50: 30-step drag in one copy, then commit (sync)",
+        runs.min(3),
+        &mut document,
+        |d| {
+            let first = map_model::node::contents_of(d.tree_world(), group_node(d, 10_250))[0];
+            d.select_only(first);
+        },
+        |d| {
+            d.begin_transaction();
+            for _ in 0..30 {
+                d.translate_selection(Vec3d::new(8.0, 0.0, 0.0));
+            }
+            d.commit_transaction()
+        },
+    ));
+    rows.push(bench::measure_on(
+        "500 linked x 50: undo the synced edit (redo between runs)",
+        runs,
+        &mut document,
+        |d| {
+            d.redo();
+        },
+        |d| d.undo(),
+    ));
     document.close_group();
-    rows.push(bench::measure_on("500 linked x 50: sync_linked_groups from one copy", runs, &mut document, |d| {
-        let m = member_of(d, 10_000 + 7);
-        d.select_only(m);
-    }, |d| d.sync_linked_groups()));
-    rows.push(bench::measure_on("500 linked x 50: create a linked duplicate", runs, &mut document, |d| {
-        let m = member_of(d, 10_000 + 3);
-        d.select_only(m);
-    }, |d| {
-        let r = d.create_linked_duplicate(64.0);
-        d.undo();
-        r
-    }));
-    rows.push(bench::measure_on("500 linked x 50: move a whole copy (60 steps)", runs.min(3), &mut document, |d| {
-        let m = member_of(d, 10_000 + 9);
-        d.select_only(m);
-    }, |d| {
-        d.begin_transaction();
-        for _ in 0..60 {
-            d.translate_selection(Vec3d::new(8.0, 0.0, 0.0));
-        }
-        d.commit_transaction()
-    }));
-    rows.push(bench::measure_on("500 linked x 50: select all", runs, &mut document, |d| d.clear_selection(), |d| d.select_all()));
+    rows.push(bench::measure_on(
+        "500 linked x 50: sync_linked_groups from one copy",
+        runs,
+        &mut document,
+        |d| {
+            let m = member_of(d, 10_000 + 7);
+            d.select_only(m);
+        },
+        |d| d.sync_linked_groups(),
+    ));
+    rows.push(bench::measure_on(
+        "500 linked x 50: create a linked duplicate",
+        runs,
+        &mut document,
+        |d| {
+            let m = member_of(d, 10_000 + 3);
+            d.select_only(m);
+        },
+        |d| {
+            let r = d.create_linked_duplicate(64.0);
+            d.undo();
+            r
+        },
+    ));
+    rows.push(bench::measure_on(
+        "500 linked x 50: move a whole copy (60 steps)",
+        runs.min(3),
+        &mut document,
+        |d| {
+            let m = member_of(d, 10_000 + 9);
+            d.select_only(m);
+        },
+        |d| {
+            d.begin_transaction();
+            for _ in 0..60 {
+                d.translate_selection(Vec3d::new(8.0, 0.0, 0.0));
+            }
+            d.commit_transaction()
+        },
+    ));
+    rows.push(bench::measure_on(
+        "500 linked x 50: select all",
+        runs,
+        &mut document,
+        |d| d.clear_selection(),
+        |d| d.select_all(),
+    ));
     bench::print_table("Linked groups (500 copies of a 50-brush group)", &rows);
 }
 
@@ -245,7 +411,11 @@ fn perf_big_transforms() {
     let scratch = Scratch::new("transforms");
     let mut rows: Vec<Stats> = Vec::new();
     let filters = ViewFilters::default();
-    let path = write(&scratch.0, "m50k", bench::synthetic_map(&MapSpec::brushes(50_000)));
+    let path = write(
+        &scratch.0,
+        "m50k",
+        bench::synthetic_map(&MapSpec::brushes(50_000)),
+    );
     // A world four times as wide as the map, so turning the whole map keeps it inside.
     let mut document = Document::open(&path, WorldBounds::new(65_536.0)).unwrap();
     for selected in [10_000usize, 50_000] {
@@ -260,53 +430,95 @@ fn perf_big_transforms() {
         for lock in [false, true] {
             set_alignment_lock(lock);
             let l = if lock { "lock on" } else { "lock off" };
-            rows.push(bench::measure(&format!("50k map, {selected} selected: rotate 37° once ({l})"), runs, || (), |_| {
-                assert!(document.rotate_selection_about(centre, Vec3d::new(0.0, 0.0, 1.0), 37.0));
-                document.undo();
-            }));
-            rows.push(bench::measure(&format!("50k map, {selected} selected: rotate drag, 30 steps of 1.7° ({l})"), runs.min(3), || (), |_| {
-                document.begin_transaction();
-                for step in 1..=30 {
-                    document.rollback_transaction();
-                    assert!(document.rotate_selection_about(centre, Vec3d::new(0.3, 0.2, 1.0), step as f64 * 1.7));
-                }
-                document.commit_transaction();
-                document.undo();
-            }));
+            rows.push(bench::measure(
+                &format!("50k map, {selected} selected: rotate 37° once ({l})"),
+                runs,
+                || (),
+                |_| {
+                    assert!(document.rotate_selection_about(
+                        centre,
+                        Vec3d::new(0.0, 0.0, 1.0),
+                        37.0
+                    ));
+                    document.undo();
+                },
+            ));
+            rows.push(bench::measure(
+                &format!("50k map, {selected} selected: rotate drag, 30 steps of 1.7° ({l})"),
+                runs.min(3),
+                || (),
+                |_| {
+                    document.begin_transaction();
+                    for step in 1..=30 {
+                        document.rollback_transaction();
+                        assert!(document.rotate_selection_about(
+                            centre,
+                            Vec3d::new(0.3, 0.2, 1.0),
+                            step as f64 * 1.7
+                        ));
+                    }
+                    document.commit_transaction();
+                    document.undo();
+                },
+            ));
         }
         set_alignment_lock(false);
         let start = document.selection_bounds().unwrap();
-        rows.push(bench::measure(&format!("50k map, {selected} selected: scale drag, 30 steps"), runs.min(3), || (), |_| {
-            document.begin_transaction();
-            for step in 1..=30 {
-                document.rollback_transaction();
-                let grown = Bbox3d::new(start.min, start.max + Vec3d::new(step as f64 * 40.0, step as f64 * 20.0, 0.0));
-                assert!(document.transform_selection(&geometry_math::mat_ext::scale_bbox_matrix(&start, &grown)));
-            }
-            document.commit_transaction();
-            document.undo();
-        }));
-        rows.push(bench::measure(&format!("50k map, {selected} selected: flip"), runs, || (), |_| {
-            assert!(document.flip_selection(Axis::X));
-            document.undo();
-        }));
-        // What a frame of the live drag pays on top of the model: the flat views' edge
-        // lists and the 3D surfaces.
-        for (what, mesh) in [("flat-view edges", false), ("edges + 3D surfaces", true)] {
-            rows.push(bench::measure(&format!("50k map, {selected} selected: rotate drag + {what}, 10 steps"), runs.min(3), || (), |_| {
+        rows.push(bench::measure(
+            &format!("50k map, {selected} selected: scale drag, 30 steps"),
+            runs.min(3),
+            || (),
+            |_| {
                 document.begin_transaction();
-                for step in 1..=10 {
+                for step in 1..=30 {
                     document.rollback_transaction();
-                    assert!(document.rotate_selection_about(centre, Vec3d::new(0.0, 0.0, 1.0), step as f64 * 1.7));
-                    std::hint::black_box(document.edges().len());
-                    std::hint::black_box(document.selected_edges().len());
-                    if mesh {
-                        std::hint::black_box(document.preview_mesh(&filters).triangles.len());
-                    }
+                    let grown = Bbox3d::new(
+                        start.min,
+                        start.max + Vec3d::new(step as f64 * 40.0, step as f64 * 20.0, 0.0),
+                    );
+                    assert!(document.transform_selection(
+                        &geometry_math::mat_ext::scale_bbox_matrix(&start, &grown)
+                    ));
                 }
                 document.commit_transaction();
                 document.undo();
-            }));
+            },
+        ));
+        rows.push(bench::measure(
+            &format!("50k map, {selected} selected: flip"),
+            runs,
+            || (),
+            |_| {
+                assert!(document.flip_selection(Axis::X));
+                document.undo();
+            },
+        ));
+        // What a frame of the live drag pays on top of the model: the flat views' edge
+        // lists and the 3D surfaces.
+        for (what, mesh) in [("flat-view edges", false), ("edges + 3D surfaces", true)] {
+            rows.push(bench::measure(
+                &format!("50k map, {selected} selected: rotate drag + {what}, 10 steps"),
+                runs.min(3),
+                || (),
+                |_| {
+                    document.begin_transaction();
+                    for step in 1..=10 {
+                        document.rollback_transaction();
+                        assert!(document.rotate_selection_about(
+                            centre,
+                            Vec3d::new(0.0, 0.0, 1.0),
+                            step as f64 * 1.7
+                        ));
+                        std::hint::black_box(document.edges().len());
+                        std::hint::black_box(document.selected_edges().len());
+                        if mesh {
+                            std::hint::black_box(document.preview_mesh(&filters).triangles.len());
+                        }
+                    }
+                    document.commit_transaction();
+                    document.undo();
+                },
+            ));
         }
     }
 
@@ -318,44 +530,75 @@ fn perf_big_transforms() {
         .iter()
         .map(|b| {
             let top = b.bounds().max.z();
-            let mut v: Vec<Vec3d> = b.vertex_positions().into_iter().filter(|v| (v.z() - top).abs() < 1e-6).collect();
+            let mut v: Vec<Vec3d> = b
+                .vertex_positions()
+                .into_iter()
+                .filter(|v| (v.z() - top).abs() < 1e-6)
+                .collect();
             v.sort_by(|a, b| a.x().total_cmp(&b.x()).then(a.y().total_cmp(&b.y())));
             v
         })
         .collect();
     for (what, take) in [("vertex", 1usize), ("edge", 2), ("face", usize::MAX)] {
-        let handles: Vec<Vec3d> = tops.iter().flat_map(|v| v.iter().take(take).copied()).collect();
-        rows.push(bench::measure(&format!("50k map, 1,000 selected: {what} drag ({} handles, 20 steps)", handles.len()), runs().min(3), || (), |_| {
-            document.begin_transaction();
-            let mut at = handles.clone();
-            for _ in 0..20 {
-                if document.move_handles(&at, Vec3d::new(0.0, 0.0, 1.0)) {
-                    for v in &mut at {
-                        *v = *v + Vec3d::new(0.0, 0.0, 1.0);
+        let handles: Vec<Vec3d> = tops
+            .iter()
+            .flat_map(|v| v.iter().take(take).copied())
+            .collect();
+        rows.push(bench::measure(
+            &format!(
+                "50k map, 1,000 selected: {what} drag ({} handles, 20 steps)",
+                handles.len()
+            ),
+            runs().min(3),
+            || (),
+            |_| {
+                document.begin_transaction();
+                let mut at = handles.clone();
+                for _ in 0..20 {
+                    if document.move_handles(&at, Vec3d::new(0.0, 0.0, 1.0)) {
+                        for v in &mut at {
+                            *v = *v + Vec3d::new(0.0, 0.0, 1.0);
+                        }
                     }
                 }
-            }
-            document.commit_transaction();
-            document.undo();
-        }));
+                document.commit_transaction();
+                document.undo();
+            },
+        ));
     }
 
     // Clip 5,000 brushes; subtract 5 and 50 from the rest.
     select_middle(&mut document, 5_000);
     let c = document.selection_bounds().unwrap().center();
     let mut clip = editor_core::clip_tool::ClipTool::new();
-    clip.set_face([c, c + Vec3d::new(0.0, 1.0, 0.0), c + Vec3d::new(0.3, 0.0, 1.0)]);
-    rows.push(bench::measure_on("50k map: clip 5,000 selected", runs().min(3), &mut document, |d| select_middle(d, 5_000), |d| {
-        let r = d.run_as_one_edit(|d| d.clip_selection(&clip));
-        d.undo();
-        r
-    }));
-    for tools in [5usize, 50] {
-        rows.push(bench::measure_on(&format!("50k map: subtract {tools} selected from the rest"), runs().min(3), &mut document, |d| select_middle(d, tools), |d| {
-            let r = d.run_as_one_edit(|d| d.subtract_selection());
+    clip.set_face([
+        c,
+        c + Vec3d::new(0.0, 1.0, 0.0),
+        c + Vec3d::new(0.3, 0.0, 1.0),
+    ]);
+    rows.push(bench::measure_on(
+        "50k map: clip 5,000 selected",
+        runs().min(3),
+        &mut document,
+        |d| select_middle(d, 5_000),
+        |d| {
+            let r = d.run_as_one_edit(|d| d.clip_selection(&clip));
             d.undo();
             r
-        }));
+        },
+    ));
+    for tools in [5usize, 50] {
+        rows.push(bench::measure_on(
+            &format!("50k map: subtract {tools} selected from the rest"),
+            runs().min(3),
+            &mut document,
+            |d| select_middle(d, tools),
+            |d| {
+                let r = d.run_as_one_edit(|d| d.subtract_selection());
+                d.undo();
+                r
+            },
+        ));
     }
     bench::print_table("Big transforms and tools on a 50k-brush map", &rows);
 }
@@ -369,39 +612,104 @@ fn perf_entities_layers_big_brush() {
     let filters = ViewFilters::default();
 
     // 20,000 point entities over 5,000 brushes.
-    let path = write(&scratch.0, "entities", bench::point_entity_map(20_000, 5_000));
-    rows.push(bench::measure("20k entities: open", runs.min(3), || (), |_| open(&path)));
+    let path = write(
+        &scratch.0,
+        "entities",
+        bench::point_entity_map(20_000, 5_000),
+    );
+    rows.push(bench::measure(
+        "20k entities: open",
+        runs.min(3),
+        || (),
+        |_| open(&path),
+    ));
     let mut document = open(&path);
-    rows.push(bench::measure_on("20k entities: mark_changed (any edit's bookkeeping)", runs, &mut document, |_| (), |d| d.mark_changed()));
-    rows.push(bench::measure_on("20k entities: select all", runs, &mut document, |d| d.clear_selection(), |d| d.select_all()));
-    let entities: Vec<NodeId> = map_model::node::point_entities(document.tree_world()).into_iter().map(|(id, _)| id).take(1_000).collect();
-    rows.push(bench::measure_on("20k entities: move 1,000 entities, 30-step drag", runs.min(3), &mut document, |d| {
-        d.clear_selection();
-        for id in &entities {
-            d.toggle_selected(*id);
-        }
-    }, |d| {
-        d.begin_transaction();
-        for _ in 0..30 {
-            d.translate_selection(Vec3d::new(8.0, 0.0, 0.0));
-        }
-        d.commit_transaction();
-    }));
-    rows.push(bench::measure_on("20k entities: 3D surfaces (preview_mesh, cold)", runs, &mut document, |d| d.mark_changed(), |d| d.preview_mesh(&filters).triangles.len()));
-    rows.push(bench::measure("20k entities: validation", runs.min(3), || (), |_| editor_core::validation::validate(&document).len()));
+    rows.push(bench::measure_on(
+        "20k entities: mark_changed (any edit's bookkeeping)",
+        runs,
+        &mut document,
+        |_| (),
+        |d| d.mark_changed(),
+    ));
+    rows.push(bench::measure_on(
+        "20k entities: select all",
+        runs,
+        &mut document,
+        |d| d.clear_selection(),
+        |d| d.select_all(),
+    ));
+    let entities: Vec<NodeId> = map_model::node::point_entities(document.tree_world())
+        .into_iter()
+        .map(|(id, _)| id)
+        .take(1_000)
+        .collect();
+    rows.push(bench::measure_on(
+        "20k entities: move 1,000 entities, 30-step drag",
+        runs.min(3),
+        &mut document,
+        |d| {
+            d.clear_selection();
+            for id in &entities {
+                d.toggle_selected(*id);
+            }
+        },
+        |d| {
+            d.begin_transaction();
+            for _ in 0..30 {
+                d.translate_selection(Vec3d::new(8.0, 0.0, 0.0));
+            }
+            d.commit_transaction();
+        },
+    ));
+    rows.push(bench::measure_on(
+        "20k entities: 3D surfaces (preview_mesh, cold)",
+        runs,
+        &mut document,
+        |d| d.mark_changed(),
+        |d| d.preview_mesh(&filters).triangles.len(),
+    ));
+    rows.push(bench::measure(
+        "20k entities: validation",
+        runs.min(3),
+        || (),
+        |_| editor_core::validation::validate(&document).len(),
+    ));
     drop(document);
 
     // 200 layers over 20,000 brushes.
     let path = write(&scratch.0, "layers", bench::layered_map(200, 20_000));
     let mut document = open(&path);
     eprintln!("{} layers", document.layers().len());
-    rows.push(bench::measure("200 layers: layers() (the Map tab's list)", runs, || (), |_| document.layers().len()));
-    rows.push(bench::measure_on("200 layers: hide and show a layer", runs, &mut document, |_| (), |d| {
-        d.set_layer_hidden(100, true);
-        d.set_layer_hidden(100, false);
-    }));
-    rows.push(bench::measure_on("200 layers: select a layer", runs, &mut document, |d| d.clear_selection(), |d| d.select_layer(150)));
-    rows.push(bench::measure_on("200 layers: flat view edges (cold)", runs, &mut document, |d| d.mark_changed(), |d| d.edges().len()));
+    rows.push(bench::measure(
+        "200 layers: layers() (the Map tab's list)",
+        runs,
+        || (),
+        |_| document.layers().len(),
+    ));
+    rows.push(bench::measure_on(
+        "200 layers: hide and show a layer",
+        runs,
+        &mut document,
+        |_| (),
+        |d| {
+            d.set_layer_hidden(100, true);
+            d.set_layer_hidden(100, false);
+        },
+    ));
+    rows.push(bench::measure_on(
+        "200 layers: select a layer",
+        runs,
+        &mut document,
+        |d| d.clear_selection(),
+        |d| d.select_layer(150),
+    ));
+    rows.push(bench::measure_on(
+        "200 layers: flat view edges (cold)",
+        runs,
+        &mut document,
+        |d| d.mark_changed(),
+        |d| d.edges().len(),
+    ));
     drop(document);
 
     // A 512-sided cylinder: its top ring dragged.
@@ -414,26 +722,41 @@ fn perf_entities_layers_big_brush() {
         "bench/m00001",
     )
     .unwrap();
-    let top: Vec<Vec3d> = big.vertex_positions().into_iter().filter(|v| v.z() > 500.0).collect();
+    let top: Vec<Vec3d> = big
+        .vertex_positions()
+        .into_iter()
+        .filter(|v| v.z() > 500.0)
+        .collect();
     let one: Vec<Vec3d> = top.iter().take(1).copied().collect();
     document.add_brushes(vec![big]);
     eprintln!("512-sided cylinder: {} top vertices", top.len());
     for (what, handles) in [("one vertex", one), ("the whole top ring", top)] {
-        rows.push(bench::measure(&format!("512-sided cylinder: drag {what}, 20 steps"), runs.min(3), || (), |_| {
-            document.begin_transaction();
-            let mut at = handles.clone();
-            for _ in 0..20 {
-                if document.move_handles(&at, Vec3d::new(0.0, 0.0, 1.0)) {
-                    for v in &mut at {
-                        *v = *v + Vec3d::new(0.0, 0.0, 1.0);
+        rows.push(bench::measure(
+            &format!("512-sided cylinder: drag {what}, 20 steps"),
+            runs.min(3),
+            || (),
+            |_| {
+                document.begin_transaction();
+                let mut at = handles.clone();
+                for _ in 0..20 {
+                    if document.move_handles(&at, Vec3d::new(0.0, 0.0, 1.0)) {
+                        for v in &mut at {
+                            *v = *v + Vec3d::new(0.0, 0.0, 1.0);
+                        }
                     }
                 }
-            }
-            document.commit_transaction();
-            document.undo();
-        }));
+                document.commit_transaction();
+                document.undo();
+            },
+        ));
     }
-    rows.push(bench::measure_on("512-sided cylinder: 3D surfaces (cold)", runs, &mut document, |d| d.mark_changed(), |d| d.preview_mesh(&filters).triangles.len()));
+    rows.push(bench::measure_on(
+        "512-sided cylinder: 3D surfaces (cold)",
+        runs,
+        &mut document,
+        |d| d.mark_changed(),
+        |d| d.preview_mesh(&filters).triangles.len(),
+    ));
     bench::print_table("Many entities, many layers, one huge brush", &rows);
 }
 
@@ -443,7 +766,11 @@ fn perf_entities_layers_big_brush() {
 #[ignore]
 fn perf_history_growth() {
     let scratch = Scratch::new("history");
-    let path = write(&scratch.0, "m50k", bench::synthetic_map(&MapSpec::brushes(50_000)));
+    let path = write(
+        &scratch.0,
+        "m50k",
+        bench::synthetic_map(&MapSpec::brushes(50_000)),
+    );
     let mut document = open(&path);
     select_middle(&mut document, 100);
     let before = bench::current_rss();
@@ -478,7 +805,10 @@ fn perf_history_growth() {
 #[test]
 #[ignore]
 fn perf_material_folders() {
-    let count: usize = std::env::var("HERON_BENCH_TEXTURES").ok().and_then(|s| s.split(',').next()?.trim().parse().ok()).unwrap_or(2_000);
+    let count: usize = std::env::var("HERON_BENCH_TEXTURES")
+        .ok()
+        .and_then(|s| s.split(',').next()?.trim().parse().ok())
+        .unwrap_or(2_000);
     let big = Scratch::new("folder-big");
     bench::write_textures(&big.0, count, 0, 3).unwrap();
     let small = Scratch::new("folder-small");
@@ -486,15 +816,32 @@ fn perf_material_folders() {
     // Names of their own, or they would replace ten of the big folder's.
     std::fs::rename(small.0.join("bench"), small.0.join("extra")).unwrap();
     let mut rows: Vec<Stats> = Vec::new();
-    rows.push(bench::measure(&format!("{count} textures: load the folder"), 1, || Document::new(WorldBounds::default()), |mut document| {
-        document.load_materials(&big.0).unwrap();
-        document
-    }));
+    rows.push(bench::measure(
+        &format!("{count} textures: load the folder"),
+        1,
+        || Document::new(WorldBounds::default()),
+        |mut document| {
+            document.load_materials(&big.0).unwrap();
+            document
+        },
+    ));
     let mut document = Document::new(WorldBounds::default());
     document.load_materials(&big.0).unwrap();
-    rows.push(bench::measure_on(&format!("{count} textures loaded: add a folder of 10"), 3, &mut document, |_| (), |d| d.load_materials(&small.0).unwrap()));
-    rows.push(bench::measure_on(&format!("{count} + 10 textures: take the small folder away"), 3, &mut document, |d| {
-        d.load_materials(&small.0).unwrap();
-    }, |d| d.remove_material_source(1)));
+    rows.push(bench::measure_on(
+        &format!("{count} textures loaded: add a folder of 10"),
+        3,
+        &mut document,
+        |_| (),
+        |d| d.load_materials(&small.0).unwrap(),
+    ));
+    rows.push(bench::measure_on(
+        &format!("{count} + 10 textures: take the small folder away"),
+        3,
+        &mut document,
+        |d| {
+            d.load_materials(&small.0).unwrap();
+        },
+        |d| d.remove_material_source(1),
+    ));
     bench::print_table("Material folders", &rows);
 }

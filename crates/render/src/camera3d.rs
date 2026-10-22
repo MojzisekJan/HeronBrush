@@ -5,8 +5,8 @@
 //! level editor, where the thing being judged is what a player will see.
 
 use geometry_math::mat::Mat4x4d;
-use geometry_math::ray::Ray3d;
 use geometry_math::mat_ext;
+use geometry_math::ray::Ray3d;
 use geometry_math::scalar;
 use geometry_math::vec::{self, Vec2d, Vec3d};
 
@@ -55,7 +55,9 @@ impl Camera3d {
     pub fn world_units_per_pixel(&self, point: Vec3d, viewport_height: f64) -> f64 {
         let depth = vec::dot(point - self.position, self.direction());
         let focal = (viewport_height / 2.0) / (self.fov().to_radians() / 2.0).tan();
-        if focal <= 0.0 { return 1.0; }
+        if focal <= 0.0 {
+            return 1.0;
+        }
         depth / focal
     }
 
@@ -139,8 +141,7 @@ impl Camera3d {
     /// Uses the same frustum as [`geometry_math::mat_ext::perspective_matrix`], including its three-quarter tangent
     /// factor, so picking rays match rendered screen positions.
     fn half_extents(&self, width: f64, height: f64) -> (f64, f64) {
-        let half_height =
-            scalar::to_radians(self.fov() / 2.0).tan() * mat_ext::FRUSTUM_SCALE;
+        let half_height = scalar::to_radians(self.fov() / 2.0).tan() * mat_ext::FRUSTUM_SCALE;
         (half_height * (width / height.max(1.0)), half_height)
     }
 
@@ -195,7 +196,12 @@ impl Camera3d {
     }
 
     /// Frames every box corner with a ten-percent border in the supplied viewport.
-    pub fn frame_in_viewport(&mut self, bounds: &geometry_math::bbox::Bbox3d, width: f64, height: f64) {
+    pub fn frame_in_viewport(
+        &mut self,
+        bounds: &geometry_math::bbox::Bbox3d,
+        width: f64,
+        height: f64,
+    ) {
         let center = bounds.center();
         let forward = self.direction();
         let right = self.right();
@@ -212,7 +218,6 @@ impl Camera3d {
         }
         self.position = center - forward * distance;
     }
-
 }
 
 #[cfg(test)]
@@ -229,7 +234,9 @@ mod tests {
         for (x, y) in [(400.0, 300.0), (100.0, 500.0), (760.0, 40.0)] {
             let ray = camera.ray_through(x, y, width, height);
             let point = ray.origin + ray.direction * 512.0;
-            let back = camera.project(point, width, height).expect("it is in front");
+            let back = camera
+                .project(point, width, height)
+                .expect("it is in front");
             assert!(
                 (back.x() - x).abs() < 1e-6 && (back.y() - y).abs() < 1e-6,
                 "{x},{y} came back as {back:?}"
@@ -368,7 +375,13 @@ mod tests {
     #[test]
     fn every_pick_ray_is_normalized_and_points_forwards() {
         let camera = Camera3d::default();
-        for (x, y) in [(0.0, 0.0), (799.0, 0.0), (0.0, 599.0), (799.0, 599.0), (400.0, 300.0)] {
+        for (x, y) in [
+            (0.0, 0.0),
+            (799.0, 0.0),
+            (0.0, 599.0),
+            (799.0, 599.0),
+            (400.0, 300.0),
+        ] {
             let ray = camera.ray_through(x, y, 800.0, 600.0);
             assert_approx_eq!(vec::length(ray.direction), 1.0, 1e-9);
             // Every corner of the viewport is still in front of the camera.
@@ -400,18 +413,36 @@ mod tests {
         for (width, height) in [(1600.0, 400.0), (300.0, 1200.0), (640.0, 480.0)] {
             for direction in [Vec3d::new(1.0, 0.0, 0.0), Vec3d::new(1.0, 2.0, -3.0)] {
                 for bounds in [
-                    Bbox3d::new(Vec3d::new(-900.0, -24.0, -32.0), Vec3d::new(1400.0, 64.0, 250.0)),
-                    Bbox3d::new(Vec3d::new(500.0, -600.0, 0.0), Vec3d::new(564.0, 600.0, 0.0)),
+                    Bbox3d::new(
+                        Vec3d::new(-900.0, -24.0, -32.0),
+                        Vec3d::new(1400.0, 64.0, 250.0),
+                    ),
+                    Bbox3d::new(
+                        Vec3d::new(500.0, -600.0, 0.0),
+                        Vec3d::new(564.0, 600.0, 0.0),
+                    ),
                     Bbox3d::from_point(Vec3d::new(32.0, 64.0, 128.0)),
                 ] {
                     for fov in [45.0, 90.0, 120.0] {
-                        let mut camera = Camera3d { fov_degrees: fov, near: 100.0, ..Camera3d::default() };
+                        let mut camera = Camera3d {
+                            fov_degrees: fov,
+                            near: 100.0,
+                            ..Camera3d::default()
+                        };
                         camera.look_along(direction);
                         camera.frame_in_viewport(&bounds, width, height);
                         for corner in bounds.vertices() {
-                            let p = camera.project(corner, width, height).expect("corner clears near plane");
-                            assert!(p.x() >= width * 0.1 - 1e-7 && p.x() <= width * 0.9 + 1e-7, "{p:?}");
-                            assert!(p.y() >= height * 0.1 - 1e-7 && p.y() <= height * 0.9 + 1e-7, "{p:?}");
+                            let p = camera
+                                .project(corner, width, height)
+                                .expect("corner clears near plane");
+                            assert!(
+                                p.x() >= width * 0.1 - 1e-7 && p.x() <= width * 0.9 + 1e-7,
+                                "{p:?}"
+                            );
+                            assert!(
+                                p.y() >= height * 0.1 - 1e-7 && p.y() <= height * 0.9 + 1e-7,
+                                "{p:?}"
+                            );
                         }
                     }
                 }

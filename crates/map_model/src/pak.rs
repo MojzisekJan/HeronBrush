@@ -480,11 +480,9 @@ mod tests {
         file.write_all(b"PACK").unwrap();
         file.write_all(&12i32.to_le_bytes()).unwrap();
         file.write_all(&((64i32 << 20) + 64).to_le_bytes()).unwrap();
-        assert!(
-            FilePak::open(&path)
-                .unwrap_err()
-                .contains("directory exceeds")
-        );
+        assert!(FilePak::open(&path)
+            .unwrap_err()
+            .contains("directory exceeds"));
         drop(file);
         std::fs::remove_file(path).unwrap();
     }

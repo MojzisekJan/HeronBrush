@@ -171,10 +171,7 @@ impl UvCoordSystem {
     pub fn sheared(&self, normal: Vec3d, factors: Vec2f) -> Self {
         self.skewed(
             normal,
-            [
-                [1.0, f64::from(factors.x())],
-                [f64::from(factors.y()), 1.0],
-            ],
+            [[1.0, f64::from(factors.x())], [f64::from(factors.y()), 1.0]],
         )
     }
 
@@ -190,9 +187,12 @@ impl UvCoordSystem {
         let UvCoordSystem::Parallel { u_axis, v_axis } = self else {
             return *self;
         };
-        let Some(to_uv) =
-            geometry_math::mat_ext::coordinate_system_matrix(*u_axis, *v_axis, normal, Vec3d::zero())
-        else {
+        let Some(to_uv) = geometry_math::mat_ext::coordinate_system_matrix(
+            *u_axis,
+            *v_axis,
+            normal,
+            Vec3d::zero(),
+        ) else {
             return *self;
         };
         let Some(from_uv) = geometry_math::mat::invert(to_uv) else {
@@ -254,19 +254,13 @@ impl UvCoordSystem {
     ///
     /// Divide by the material's dimensions to get the normalized coordinates a renderer
     /// wants.
-    pub fn uv_coords(
-        &self,
-        point: Vec3d,
-        normal: Vec3d,
-        attributes: &UvAttributes,
-    ) -> Vec2f {
+    pub fn uv_coords(&self, point: Vec3d, normal: Vec3d, attributes: &UvAttributes) -> Vec2f {
         let (u_axis, v_axis) = self.axes(normal, attributes);
         let u = vec::dot(point, u_axis) / f64::from(safe_scale(attributes.scale.x()));
         let v = vec::dot(point, v_axis) / f64::from(safe_scale(attributes.scale.y()));
         Vec2f::new(u as f32, v as f32) + attributes.offset
     }
 }
-
 
 /// The offset brought back into the material's own repeat.
 ///
@@ -383,7 +377,10 @@ impl UvCoordSystem {
     ///
     /// `old_invariant` is the point that must keep its UV coordinates -- the face's
     /// centre -- and `material_size` is what the offset is kept inside.
-    #[allow(clippy::too_many_arguments, reason = "UV transforms combine mapping, geometry, texture dimensions and an invariant point")]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "UV transforms combine mapping, geometry, texture dimensions and an invariant point"
+    )]
     pub fn transformed(
         &self,
         attributes: &UvAttributes,
@@ -465,10 +462,8 @@ impl UvCoordSystem {
         // The UV axes projected onto the face's own plane, along the face's normal.
         let scale = attributes.scale;
         let origin_on_plane = project_along(old_boundary, Vec3d::zero(), old_normal);
-        let u_on_plane =
-            project_along(old_boundary, u_axis * f64::from(scale.x()), old_normal);
-        let v_on_plane =
-            project_along(old_boundary, v_axis * f64::from(scale.y()), old_normal);
+        let u_on_plane = project_along(old_boundary, u_axis * f64::from(scale.x()), old_normal);
+        let v_on_plane = project_along(old_boundary, v_axis * f64::from(scale.y()), old_normal);
         let (Some(origin_on_plane), Some(u_on_plane), Some(v_on_plane)) =
             (origin_on_plane, u_on_plane, v_on_plane)
         else {
@@ -509,9 +504,11 @@ impl UvCoordSystem {
             radians = -radians;
         }
 
-        let new_rotation =
-            scalar::correct(scalar::normalize_degrees(scalar::to_degrees(radians)), 4, 0.0)
-                as f32;
+        let new_rotation = scalar::correct(
+            scalar::normalize_degrees(scalar::to_degrees(radians)),
+            4,
+            0.0,
+        ) as f32;
 
         let mut new_scale = Vec2f::new(
             scalar::correct(vec::length(projected_u), 4, 0.0) as f32,
@@ -536,9 +533,10 @@ impl UvCoordSystem {
         };
         let new_invariant = *transformation * old_invariant;
         let new_invariant_uv = self.uv_coords(new_invariant, new_normal, &turned);
-        let new_offset = correct_offset(
-            mod_offset(old_invariant_uv - new_invariant_uv, material_size),
-        );
+        let new_offset = correct_offset(mod_offset(
+            old_invariant_uv - new_invariant_uv,
+            material_size,
+        ));
 
         (
             *self,
@@ -551,7 +549,10 @@ impl UvCoordSystem {
     }
 
     /// `ParallelUvCoordSystem::transform`, the locked half.
-    #[allow(clippy::too_many_arguments, reason = "UV transforms combine mapping, geometry, texture dimensions and an invariant point")]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "UV transforms combine mapping, geometry, texture dimensions and an invariant point"
+    )]
     fn transformed_parallel(
         &self,
         u_axis: Vec3d,
@@ -570,8 +571,7 @@ impl UvCoordSystem {
             0.0,
         ) as f32;
 
-        let old_invariant_uv =
-            self.uv_coords(old_invariant, old_boundary.normal, attributes);
+        let old_invariant_uv = self.uv_coords(old_invariant, old_boundary.normal, attributes);
 
         // The mapping is `uv = world_to_uv * point`. After the transformation the same
         // point has to give the same coordinates, so the new matrix is the old one
@@ -611,11 +611,11 @@ impl UvCoordSystem {
         };
         let new_invariant = *transformation * old_invariant;
         // The axes are stored, so the normal passed here is not read.
-        let new_invariant_uv =
-            turned.uv_coords(new_invariant, old_boundary.normal, &with_rotation);
-        let new_offset = correct_offset(
-            mod_offset(old_invariant_uv - new_invariant_uv, material_size),
-        );
+        let new_invariant_uv = turned.uv_coords(new_invariant, old_boundary.normal, &with_rotation);
+        let new_offset = correct_offset(mod_offset(
+            old_invariant_uv - new_invariant_uv,
+            material_size,
+        ));
 
         (
             turned,
@@ -858,10 +858,8 @@ mod inverse_tests {
 
     /// Every combination worth checking: both systems, at an angle, scaled and offset.
     fn cases() -> Vec<(UvCoordSystem, Plane3d, UvAttributes)> {
-        let up = Plane3d::from_anchor_and_normal(
-            Vec3d::new(0.0, 0.0, 32.0),
-            Vec3d::new(0.0, 0.0, 1.0),
-        );
+        let up =
+            Plane3d::from_anchor_and_normal(Vec3d::new(0.0, 0.0, 32.0), Vec3d::new(0.0, 0.0, 1.0));
         let slanted = Plane3d::from_anchor_and_normal(
             Vec3d::new(8.0, 0.0, 16.0),
             vec::normalize(Vec3d::new(1.0, 2.0, 3.0)),
@@ -981,7 +979,14 @@ mod wrap_tests {
         let det = 1.0 - a * b;
         let sheared = system.sheared(normal, Vec2f::new(a as f32, b as f32));
         let back = sheared.skewed(normal, [[1.0 / det, -a / det], [-b / det, 1.0 / det]]);
-        let (UvCoordSystem::Parallel { u_axis, v_axis }, UvCoordSystem::Parallel { u_axis: u0, v_axis: v0 }) = (back, system) else {
+        let (
+            UvCoordSystem::Parallel { u_axis, v_axis },
+            UvCoordSystem::Parallel {
+                u_axis: u0,
+                v_axis: v0,
+            },
+        ) = (back, system)
+        else {
             panic!("parallel systems");
         };
         assert!(vec::is_equal(&u_axis, &u0, 1e-6));
@@ -1011,7 +1016,11 @@ mod wrap_tests {
         let up = Vec3d::new(0.0, 0.0, 1.0);
 
         for style in [WrapStyle::Projection, WrapStyle::Rotation] {
-            assert_eq!(system.updated_for_normal(up, up, style), system, "{style:?}");
+            assert_eq!(
+                system.updated_for_normal(up, up, style),
+                system,
+                "{style:?}"
+            );
         }
     }
 
@@ -1097,9 +1106,9 @@ mod wrap_tests {
     fn the_primitive_axis_base_matches_computeaxisbase_for_the_six_walls() {
         // `ComputeAxisBase` from the Quake 3 tool chain, tabulated for each axis normal.
         let cases = [
-            ((0.0, 0.0, 1.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0)),   // floor
+            ((0.0, 0.0, 1.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0)), // floor
             ((0.0, 0.0, -1.0), (0.0, 1.0, 0.0), (-1.0, 0.0, 0.0)), // ceiling
-            ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, -1.0)),  // +X wall
+            ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, -1.0)), // +X wall
             ((-1.0, 0.0, 0.0), (0.0, -1.0, 0.0), (0.0, 0.0, -1.0)),
             ((0.0, 1.0, 0.0), (-1.0, 0.0, 0.0), (0.0, 0.0, -1.0)), // +Y wall
             ((0.0, -1.0, 0.0), (1.0, 0.0, 0.0), (0.0, 0.0, -1.0)),
@@ -1126,8 +1135,12 @@ mod wrap_tests {
             normal,
             Vec2f::new(128.0, 128.0),
         );
-        let (UvCoordSystem::Parallel { u_axis: u1, .. }, _) = one else { panic!() };
-        let (UvCoordSystem::Parallel { u_axis: u2, .. }, _) = two else { panic!() };
+        let (UvCoordSystem::Parallel { u_axis: u1, .. }, _) = one else {
+            panic!()
+        };
+        let (UvCoordSystem::Parallel { u_axis: u2, .. }, _) = two else {
+            panic!()
+        };
         geometry_math::assert_approx_eq!(u2, u1 * 2.0, 1e-9);
     }
 }

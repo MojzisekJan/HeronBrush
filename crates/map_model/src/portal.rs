@@ -98,7 +98,9 @@ pub fn read(text: &str) -> Result<Portals, PortalError> {
         if numbers.len() < 3 {
             return Err(PortalError::ShortPortal(at));
         }
-        let points: usize = numbers[0].parse().map_err(|_| PortalError::ShortPortal(at))?;
+        let points: usize = numbers[0]
+            .parse()
+            .map_err(|_| PortalError::ShortPortal(at))?;
 
         let mut polygon = Vec::with_capacity(points);
         let mut cursor = first_point;
@@ -171,6 +173,9 @@ mod tests {
             read("BSP2\n"),
             Err(PortalError::UnknownFormat("BSP2".to_string()))
         );
-        assert!(matches!(read("PRT1\n4\n2\n"), Err(PortalError::ShortPortal(0))));
+        assert!(matches!(
+            read("PRT1\n4\n2\n"),
+            Err(PortalError::ShortPortal(0))
+        ));
     }
 }

@@ -41,26 +41,49 @@ impl Value {
             return Value::String(raw.to_string());
         };
         match def.ty.as_str() {
-            "boolean" | "bool" => match raw.trim() {"true"|"1"=>Value::Bool(true),"false"|"0"=>Value::Bool(false),_=>Value::String(raw.into())},
+            "boolean" | "bool" => match raw.trim() {
+                "true" | "1" => Value::Bool(true),
+                "false" | "0" => Value::Bool(false),
+                _ => Value::String(raw.into()),
+            },
             "json" => {
-                fn convert(value:serde_json::Value)->Option<Value>{Some(match value {
-                    serde_json::Value::Bool(v)=>Value::Bool(v),serde_json::Value::String(v)=>Value::String(v),
-                    serde_json::Value::Number(v)=>if let Some(i)=v.as_i64(){Value::Int(i)}else{Value::Float(v.as_f64()?)},
-                    serde_json::Value::Array(values)=>Value::Array(values.into_iter().map(convert).collect::<Option<Vec<_>>>()?),
-                    _=>return None,
-                })}
-                serde_json::from_str(raw).ok().and_then(convert).unwrap_or_else(||Value::String(raw.into()))
+                fn convert(value: serde_json::Value) -> Option<Value> {
+                    Some(match value {
+                        serde_json::Value::Bool(v) => Value::Bool(v),
+                        serde_json::Value::String(v) => Value::String(v),
+                        serde_json::Value::Number(v) => {
+                            if let Some(i) = v.as_i64() {
+                                Value::Int(i)
+                            } else {
+                                Value::Float(v.as_f64()?)
+                            }
+                        }
+                        serde_json::Value::Array(values) => Value::Array(
+                            values
+                                .into_iter()
+                                .map(convert)
+                                .collect::<Option<Vec<_>>>()?,
+                        ),
+                        _ => return None,
+                    })
+                }
+                serde_json::from_str(raw)
+                    .ok()
+                    .and_then(convert)
+                    .unwrap_or_else(|| Value::String(raw.into()))
             }
             "integer" => raw
                 .trim()
                 .parse::<f64>()
-                .ok().filter(|value|value.is_finite())
+                .ok()
+                .filter(|value| value.is_finite())
                 .map(|v| Value::Int(v as i64))
                 .unwrap_or_else(|| Value::String(raw.into())),
             "float" => raw
                 .trim()
                 .parse::<f64>()
-                .ok().filter(|value|value.is_finite())
+                .ok()
+                .filter(|value| value.is_finite())
                 .map(Value::Float)
                 .unwrap_or_else(|| Value::String(raw.into())),
             "flags" => raw
@@ -99,7 +122,9 @@ pub fn parse_color(raw: &str, scale: f64) -> Value {
     if n.len() < 3 {
         return Value::Color([1.0, 1.0, 1.0, 1.0]);
     }
-    if !scale.is_finite() || scale<=0. || n.iter().any(|value|!value.is_finite()){return Value::String(raw.into())}
+    if !scale.is_finite() || scale <= 0. || n.iter().any(|value| !value.is_finite()) {
+        return Value::String(raw.into());
+    }
     let a = if n.len() > 3 { n[3] / scale } else { 1.0 };
     Value::Color([n[0] / scale, n[1] / scale, n[2] / scale, a])
 }
@@ -278,10 +303,17 @@ mod tests {
     }
 
     #[test]
-    fn nonfinite_fgd_values_preserve_text_instead_of_generating_invalid_native_numbers(){
-        for ty in ["integer","float","color1","color255"] {
-            let raw=if ty.starts_with("color"){"NaN 1 0"}else{"NaN"};
-            assert_eq!(Value::from_fgd(Some(&property(ty)),raw),Value::String(raw.into()));
+    fn nonfinite_fgd_values_preserve_text_instead_of_generating_invalid_native_numbers() {
+        for ty in ["integer", "float", "color1", "color255"] {
+            let raw = if ty.starts_with("color") {
+                "NaN 1 0"
+            } else {
+                "NaN"
+            };
+            assert_eq!(
+                Value::from_fgd(Some(&property(ty)), raw),
+                Value::String(raw.into())
+            );
         }
     }
     #[test]

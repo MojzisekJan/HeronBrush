@@ -1,6 +1,10 @@
 //! Document operations for selection.
 
-use super::{Float, Document, Bbox3d, Brush, Edit, FaceAttributeTransfer, FaceRef, HashMap, HashSet, Node, NodeId, Picked, Polyhedron, Ray3d, SelectionSnapshot, Vec3d, apply_face_attributes, brush_node, node, pick};
+use super::{
+    apply_face_attributes, brush_node, node, pick, Bbox3d, Brush, Document, Edit,
+    FaceAttributeTransfer, FaceRef, Float, HashMap, HashSet, Node, NodeId, Picked, Polyhedron,
+    Ray3d, SelectionSnapshot, Vec3d,
+};
 
 impl Document {
     /// Returns whether the given node is selected.
@@ -57,10 +61,16 @@ impl Document {
     pub fn convert_selection_to_faces(&mut self) -> usize {
         let selected: Vec<NodeId> = self.selection.iter().copied().collect();
         self.selection.clear();
-        let mut faces=Vec::new();
+        let mut faces = Vec::new();
         for id in selected {
-            let Some(brush) = self.brush(id) else { continue };
-            faces.extend((0..brush.faces().len()).filter(|index|brush.geometry_face_of(*index).is_some()).map(|face|FaceRef{node:id,face}));
+            let Some(brush) = self.brush(id) else {
+                continue;
+            };
+            faces.extend(
+                (0..brush.faces().len())
+                    .filter(|index| brush.geometry_face_of(*index).is_some())
+                    .map(|face| FaceRef { node: id, face }),
+            );
         }
         self.face_selection.extend(faces);
         self.face_selection.len()
@@ -97,8 +107,14 @@ impl Document {
     }
 
     pub fn selected_edit_faces(&self) -> Vec<FaceRef> {
-        if !self.face_selection.is_empty() { return self.selected_faces(); }
-        self.face_edit_targets.iter().copied().filter(|face|self.selection.contains(&face.node) && self.face_at(*face).is_some()).collect()
+        if !self.face_selection.is_empty() {
+            return self.selected_faces();
+        }
+        self.face_edit_targets
+            .iter()
+            .copied()
+            .filter(|face| self.selection.contains(&face.node) && self.face_at(*face).is_some())
+            .collect()
     }
 
     /// Applies the given change to every selected face.
@@ -123,7 +139,10 @@ impl Document {
             let mut faces = brush.faces().to_vec();
             for index in 0..brush.geometry().face_count() {
                 let selected = whole_brush
-                    || targets.contains(&FaceRef { node: id, face: index });
+                    || targets.contains(&FaceRef {
+                        node: id,
+                        face: index,
+                    });
                 if !selected {
                     continue;
                 }
@@ -144,7 +163,9 @@ impl Document {
                 }
             }
 
-            if faces.as_slice() == brush.faces() { continue; }
+            if faces.as_slice() == brush.faces() {
+                continue;
+            }
             let Ok(edited) = Brush::from_faces(&self.world_bounds, faces) else {
                 continue;
             };
@@ -187,7 +208,10 @@ impl Document {
                     .iter()
                     .any(|wanted| geometry_math::vec::squared_distance(*wanted, centre) < 0.01)
                 {
-                    found.push(FaceRef { node: id, face: index });
+                    found.push(FaceRef {
+                        node: id,
+                        face: index,
+                    });
                 }
             }
         }
@@ -199,7 +223,9 @@ impl Document {
     /// Returns how many faces changed. [`Self::set_face_color`] is the same thing for
     /// what is selected; this is for the faces the face tool has hold of.
     pub fn set_face_color_on(
-        &mut self, faces: &[FaceRef], color: Option<map_model::brush_face::FaceColor>,
+        &mut self,
+        faces: &[FaceRef],
+        color: Option<map_model::brush_face::FaceColor>,
     ) -> usize {
         self.edit_faces_on(faces, |face| {
             let changed = face.paint() != color;
@@ -209,7 +235,9 @@ impl Document {
     }
 
     pub(super) fn edit_faces_on(
-        &mut self, faces: &[FaceRef], mut edit: impl FnMut(&mut map_model::brush_face::BrushFace) -> bool,
+        &mut self,
+        faces: &[FaceRef],
+        mut edit: impl FnMut(&mut map_model::brush_face::BrushFace) -> bool,
     ) -> usize {
         let mut before = Vec::new();
         let mut after = Vec::new();
@@ -277,8 +305,11 @@ impl Document {
         for (id, brush) in node::brushes_with_ids(&self.tree.world) {
             let whole_brush = self.selection.contains(&id);
             for index in 0..brush.geometry().face_count() {
-                let selected =
-                    whole_brush || self.is_face_selected(FaceRef { node: id, face: index });
+                let selected = whole_brush
+                    || self.is_face_selected(FaceRef {
+                        node: id,
+                        face: index,
+                    });
                 if !selected {
                     continue;
                 }
@@ -290,13 +321,19 @@ impl Document {
         None
     }
 
-    pub fn set_export_hidden_on(&mut self, faces:&[FaceRef], hidden:bool)->usize {
-        self.edit_faces_on(faces,|face| {let changed=face.export_hidden!=hidden;face.export_hidden=hidden;changed})
+    pub fn set_export_hidden_on(&mut self, faces: &[FaceRef], hidden: bool) -> usize {
+        self.edit_faces_on(faces, |face| {
+            let changed = face.export_hidden != hidden;
+            face.export_hidden = hidden;
+            changed
+        })
     }
 
     /// Sets PBR parameters on explicitly picked faces as one undoable edit.
     pub fn set_surface_material_on(
-        &mut self, faces: &[FaceRef], surface: Option<map_model::brush_face::SurfaceMaterial>,
+        &mut self,
+        faces: &[FaceRef],
+        surface: Option<map_model::brush_face::SurfaceMaterial>,
     ) -> usize {
         self.edit_faces_on(faces, |face| {
             let changed = face.surface_material != surface;
@@ -306,7 +343,10 @@ impl Document {
     }
 
     /// Sets PBR parameters on the current brush/face selection.
-    pub fn set_surface_material(&mut self, surface: Option<map_model::brush_face::SurfaceMaterial>) -> usize {
+    pub fn set_surface_material(
+        &mut self,
+        surface: Option<map_model::brush_face::SurfaceMaterial>,
+    ) -> usize {
         let mut changed = 0;
         self.edit_faces(|face| {
             if face.surface_material != surface {
@@ -318,12 +358,17 @@ impl Document {
     }
 
     /// Surface parameters on the first selected face, for the inspector.
-    pub fn first_selected_surface_material(&self) -> Option<map_model::brush_face::SurfaceMaterial> {
+    pub fn first_selected_surface_material(
+        &self,
+    ) -> Option<map_model::brush_face::SurfaceMaterial> {
         for (id, brush) in node::brushes_with_ids(&self.tree.world) {
             let whole_brush = self.selection.contains(&id);
             for index in 0..brush.geometry().face_count() {
-                let selected =
-                    whole_brush || self.is_face_selected(FaceRef { node: id, face: index });
+                let selected = whole_brush
+                    || self.is_face_selected(FaceRef {
+                        node: id,
+                        face: index,
+                    });
                 if !selected {
                     continue;
                 }
@@ -342,7 +387,12 @@ impl Document {
         for (id, brush) in node::brushes_with_ids(&self.tree.world) {
             let whole_brush = self.selection.contains(&id);
             for index in 0..brush.geometry().face_count() {
-                if whole_brush || self.is_face_selected(FaceRef { node: id, face: index }) {
+                if whole_brush
+                    || self.is_face_selected(FaceRef {
+                        node: id,
+                        face: index,
+                    })
+                {
                     count += 1;
                 }
             }
@@ -386,10 +436,14 @@ impl Document {
 
         let mut faces = brush.faces().to_vec();
         for index in targets {
-            if target.node == source.node && brush.source_face_index(source.face) == Some(index) { continue; }
+            if target.node == source.node && brush.source_face_index(source.face) == Some(index) {
+                continue;
+            }
             apply_face_attributes(&mut faces[index], &source_face, mode);
         }
-        if faces.as_slice() == brush.faces() { return false; }
+        if faces.as_slice() == brush.faces() {
+            return false;
+        }
 
         let Ok(edited) = Brush::from_faces(&world_bounds, faces) else {
             return false;
@@ -415,7 +469,11 @@ impl Document {
         let Some(source_face) = self.face_at(source).cloned() else {
             return 0;
         };
-        let targets: Vec<_> = targets.iter().copied().filter(|face| *face != source).collect();
+        let targets: Vec<_> = targets
+            .iter()
+            .copied()
+            .filter(|face| *face != source)
+            .collect();
         self.set_faces_from(&source_face, &targets, mode)
     }
 
@@ -432,7 +490,11 @@ impl Document {
     /// to copy and with several there is no saying which.
     pub fn single_selected_face(&self) -> Option<FaceRef> {
         let faces = self.selected_edit_faces();
-        if faces.len() == 1 { faces.into_iter().next() } else { None }
+        if faces.len() == 1 {
+            faces.into_iter().next()
+        } else {
+            None
+        }
     }
 
     /// Adds the given node to the selection, or removes it if it is already there.
@@ -449,7 +511,10 @@ impl Document {
     }
 
     pub fn selection_snapshot(&self) -> SelectionSnapshot {
-        SelectionSnapshot { nodes: self.selection.clone(), faces: self.face_selection.clone() }
+        SelectionSnapshot {
+            nodes: self.selection.clone(),
+            faces: self.face_selection.clone(),
+        }
     }
 
     pub fn restore_selection(&mut self, snapshot: &SelectionSnapshot) {
@@ -463,9 +528,16 @@ impl Document {
     /// Recompute from pointer-down, never from the previous preview. Group members
     /// are unioned once so multiple caught brushes cannot toggle their group off.
     pub fn preview_marquee(&mut self, initial: &SelectionSnapshot, caught: &[NodeId], add: bool) {
-        let mut nodes = if add { initial.nodes.clone() } else { HashSet::new() };
+        let mut nodes = if add {
+            initial.nodes.clone()
+        } else {
+            HashSet::new()
+        };
         nodes.extend(self.selection_for_many(caught));
-        self.restore_selection(&SelectionSnapshot { nodes, faces: HashSet::new() });
+        self.restore_selection(&SelectionSnapshot {
+            nodes,
+            faces: HashSet::new(),
+        });
     }
 
     /// Clears the selection, whether it holds nodes or faces.
@@ -504,7 +576,11 @@ impl Document {
         let entities = self
             .entity_boxes()
             .into_iter()
-            .filter(|entity| layers.get(&entity.node).is_some_and(|layer| self.is_editable_on(entity.node, *layer, &open)))
+            .filter(|entity| {
+                layers
+                    .get(&entity.node)
+                    .is_some_and(|layer| self.is_editable_on(entity.node, *layer, &open))
+            })
             .map(|entity| entity.node);
         brushes.chain(patches).chain(entities).collect()
     }
@@ -660,7 +736,10 @@ impl Document {
             let Ok(geometry) = Polyhedron::from_points(&points, f64::ALMOST_ZERO) else {
                 return false;
             };
-            tall.push(Brush::from_polyhedron(geometry, map_model::shapes::DEFAULT_MATERIAL));
+            tall.push(Brush::from_polyhedron(
+                geometry,
+                map_model::shapes::DEFAULT_MATERIAL,
+            ));
         }
 
         self.select_by_lasso(tall, Brush::contains_brush, Brush::contains_bbox)
@@ -681,8 +760,7 @@ impl Document {
             result.extend(node::siblings_of(&self.tree.world, seed));
         }
         result.retain(|id| {
-            node::layer_of(&self.tree.world, *id)
-                .is_some_and(|layer| self.layer_is_editable(layer))
+            node::layer_of(&self.tree.world, *id).is_some_and(|layer| self.layer_is_editable(layer))
         });
         self.selection = result;
         self.mark_selection_changed();
@@ -730,7 +808,10 @@ impl Document {
                     .and_then(|source| brush.faces().get(source))
                     .is_some_and(|face| face.material_name.eq_ignore_ascii_case(material));
                 if wears {
-                    self.face_selection.insert(FaceRef { node: id, face: index });
+                    self.face_selection.insert(FaceRef {
+                        node: id,
+                        face: index,
+                    });
                 }
             }
         }
@@ -796,13 +877,13 @@ impl Document {
             .entity_boxes()
             .into_iter()
             .filter_map(|entity| {
-                geometry_math::intersection::intersect_ray_bbox(ray, &entity.bounds).map(|distance| {
-                    Picked {
+                geometry_math::intersection::intersect_ray_bbox(ray, &entity.bounds).map(
+                    |distance| Picked {
                         node: entity.node,
                         face: None,
                         distance,
-                    }
-                })
+                    },
+                )
             })
             .filter(|hit| self.is_editable(hit.node) && accepts(hit.node))
             .min_by(|a, b| {
@@ -818,22 +899,25 @@ impl Document {
             .into_iter()
             .filter(|(id, _, layer)| self.is_editable_on(*id, *layer, &open) && accepts(*id))
             .filter_map(|(id, patch, _)| {
-                map_model::patch_mesh::tessellate(patch, map_model::patch_mesh::DEFAULT_SUBDIVISIONS)
-                    .into_iter()
-                    .filter_map(|triangle| {
-                        geometry_math::intersection::intersect_ray_triangle(
-                            ray,
-                            triangle.positions[0],
-                            triangle.positions[1],
-                            triangle.positions[2],
-                        )
-                    })
-                    .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-                    .map(|distance| Picked {
-                        node: id,
-                        face: None,
-                        distance,
-                    })
+                map_model::patch_mesh::tessellate(
+                    patch,
+                    map_model::patch_mesh::DEFAULT_SUBDIVISIONS,
+                )
+                .into_iter()
+                .filter_map(|triangle| {
+                    geometry_math::intersection::intersect_ray_triangle(
+                        ray,
+                        triangle.positions[0],
+                        triangle.positions[1],
+                        triangle.positions[2],
+                    )
+                })
+                .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|distance| Picked {
+                    node: id,
+                    face: None,
+                    distance,
+                })
             })
             .min_by(|a, b| {
                 a.distance
@@ -841,13 +925,10 @@ impl Document {
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
 
-        [brush, entity, patch]
-            .into_iter()
-            .flatten()
-            .min_by(|a, b| {
-                a.distance
-                    .partial_cmp(&b.distance)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
+        [brush, entity, patch].into_iter().flatten().min_by(|a, b| {
+            a.distance
+                .partial_cmp(&b.distance)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     }
 }

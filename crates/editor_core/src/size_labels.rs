@@ -17,7 +17,10 @@ pub enum Alignment {
     Top,
     Bottom,
     /// Used by optional minimum and maximum coordinate labels.
-    #[allow(dead_code, reason = "alignment variants describe all four anchor sides")]
+    #[allow(
+        dead_code,
+        reason = "alignment variants describe all four anchor sides"
+    )]
     Left,
     Right,
 }
@@ -51,7 +54,11 @@ pub fn labels_2d(bounds: &Bbox3d, direction: Vec3d) -> Vec<SizeLabel> {
             } else {
                 Alignment::Right
             };
-            SizeLabel { text: text(axis, size[axis]), base, alignment }
+            SizeLabel {
+                text: text(axis, size[axis]),
+                base,
+                alignment,
+            }
         })
         .collect()
 }
@@ -116,8 +123,16 @@ fn base_3d(bounds: &Bbox3d, axis: usize, position: Vec3d, direction: Vec3d) -> V
                 pos[1] = min.y();
             }
             (Within, Within) => {
-                pos[0] = if direction.x() <= 0.0 { min.x() } else { max.x() };
-                pos[1] = if direction.y() <= 0.0 { min.y() } else { max.y() };
+                pos[0] = if direction.x() <= 0.0 {
+                    min.x()
+                } else {
+                    max.x()
+                };
+                pos[1] = if direction.y() <= 0.0 {
+                    min.y()
+                } else {
+                    max.y()
+                };
             }
         }
         pos[2] = min.z() + half.z();
@@ -201,7 +216,10 @@ mod tests {
     fn a_handle_reads_as_its_three_coordinates() {
         assert_eq!(point_text(Vec3d::new(16.0, -8.0, 4.0)), "16 -8 4");
         // A drag leaves a coordinate a hair off a whole number; it still reads whole.
-        assert_eq!(point_text(Vec3d::new(64.00000000000006, 0.0, -0.5)), "64 0 -0.5");
+        assert_eq!(
+            point_text(Vec3d::new(64.00000000000006, 0.0, -0.5)),
+            "64 0 -0.5"
+        );
         // A coordinate a hair below zero is zero, not "-0".
         assert_eq!(point_text(Vec3d::new(-1e-9, 0.0, 0.0)), "0 0 0");
     }

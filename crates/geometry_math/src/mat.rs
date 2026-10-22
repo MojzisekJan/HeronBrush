@@ -10,7 +10,9 @@
 //! determinants and adjugates for square matrices up to 4x4.
 
 use std::cmp::Ordering;
-use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{
+    Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign,
+};
 
 use crate::scalar::Num;
 use crate::vec::{self, Vector};
@@ -137,11 +139,7 @@ impl<T: Num, const R: usize, const C: usize> Matrix<T, R, C> {
     /// # Panics
     ///
     /// Panics if the slice would extend past the edge of the matrix.
-    pub fn slice<const RR: usize, const CC: usize>(
-        &self,
-        r: usize,
-        c: usize,
-    ) -> Matrix<T, RR, CC> {
+    pub fn slice<const RR: usize, const CC: usize>(&self, r: usize, c: usize) -> Matrix<T, RR, CC> {
         assert!(RR <= R && CC <= C, "slice must not exceed matrix");
         assert!(r <= R - RR && c <= C - CC, "slice offset out of range");
         let mut result = Matrix::<T, RR, CC>::zero();
@@ -325,10 +323,7 @@ pub fn is_equal<T: Num, const R: usize, const C: usize>(
 
 /// Returns whether every element of the given matrix is within `epsilon` of 0.
 #[inline]
-pub fn is_zero<T: Num, const R: usize, const C: usize>(
-    m: &Matrix<T, R, C>,
-    epsilon: T,
-) -> bool {
+pub fn is_zero<T: Num, const R: usize, const C: usize>(m: &Matrix<T, R, C>, epsilon: T) -> bool {
     (0..C).all(|c| vec::is_zero(m.v[c], epsilon))
 }
 
@@ -535,19 +530,16 @@ impl<T: Num> Mul<Vector<T, 2>> for Matrix<T, 3, 3> {
 ///
 /// Panics if `row` or `col` is out of range, or if `RM` and `CM` are not one less than
 /// the input's dimensions.
-pub fn extract_minor<
-    T: Num,
-    const R: usize,
-    const C: usize,
-    const RM: usize,
-    const CM: usize,
->(
+pub fn extract_minor<T: Num, const R: usize, const C: usize, const RM: usize, const CM: usize>(
     m: &Matrix<T, R, C>,
     row: usize,
     col: usize,
 ) -> Matrix<T, RM, CM> {
     assert!(row < R && col < C, "index out of range");
-    assert!(RM + 1 == R && CM + 1 == C, "a minor is one smaller in each dimension");
+    assert!(
+        RM + 1 == R && CM + 1 == C,
+        "a minor is one smaller in each dimension"
+    );
 
     let mut result = Matrix::<T, RM, CM>::zero();
     let mut min_c = 0;

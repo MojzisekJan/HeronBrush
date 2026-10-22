@@ -307,10 +307,8 @@ fn plane_project_point_along_a_direction() {
 #[test]
 fn plane_at() {
     // The plane x + y + z = 3.
-    let p = Plane3d::from_anchor_and_normal(
-        Vec3d::new(1.0, 1.0, 1.0),
-        vec::normalize(Vec3d::one()),
-    );
+    let p =
+        Plane3d::from_anchor_and_normal(Vec3d::new(1.0, 1.0, 1.0), vec::normalize(Vec3d::one()));
     // Given y and z, solve for x.
     assert_approx_eq!(p.at(Vec2d::new(1.0, 1.0), Axis::X), 1.0);
     assert_approx_eq!(p.z_at(Vec2d::new(0.0, 0.0)), 3.0);
@@ -377,7 +375,10 @@ fn plane_transform() {
 #[test]
 fn abstract_line_operations() {
     let r = Ray3d::new(Vec3d::zero(), Vec3d::new(0.0, 0.0, 1.0));
-    assert_eq!(r.distance_to_projected_point(Vec3d::new(5.0, 5.0, 7.0)), 7.0);
+    assert_eq!(
+        r.distance_to_projected_point(Vec3d::new(5.0, 5.0, 7.0)),
+        7.0
+    );
     assert_eq!(r.point_at_distance(3.0), Vec3d::new(0.0, 0.0, 3.0));
     assert_eq!(
         r.project_point(Vec3d::new(5.0, 5.0, 7.0)),
@@ -416,7 +417,10 @@ fn ray_point_status() {
         r.point_status(Vec3f::new(0.0, 0.0, -1.0)),
         PlaneStatus::Below
     );
-    assert_eq!(r.point_status(Vec3f::new(5.0, 5.0, 0.0)), PlaneStatus::Inside);
+    assert_eq!(
+        r.point_status(Vec3f::new(5.0, 5.0, 0.0)),
+        PlaneStatus::Inside
+    );
 }
 
 #[test]

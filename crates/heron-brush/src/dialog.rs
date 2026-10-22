@@ -75,10 +75,23 @@ fn show_window(
     let open = if ctx.embed_viewports() {
         // Draw directly: show_viewport_immediate already embeds its own Window,
         // which would otherwise leave an extra window behind this dialog.
-        embedded(ctx, id, title, size, body_margin, opening, &mut pending, &mut contents)
+        embedded(
+            ctx,
+            id,
+            title,
+            size,
+            body_margin,
+            opening,
+            &mut pending,
+            &mut contents,
+        )
     } else {
         let viewport = egui::ViewportId::from_hash_of(id);
-        let level = if on_top { tool_level(ctx, viewport) } else { egui::WindowLevel::Normal };
+        let level = if on_top {
+            tool_level(ctx, viewport)
+        } else {
+            egui::WindowLevel::Normal
+        };
         let parent = ctx.input(|i| i.viewport().inner_rect.or(i.viewport().outer_rect));
         let mut builder = egui::ViewportBuilder::default()
             .with_title(title)
@@ -126,7 +139,11 @@ fn show_window(
                     });
                 });
             egui::CentralPanel::default()
-                .frame(egui::Frame::new().fill(theme::bg()).inner_margin(body_margin))
+                .frame(
+                    egui::Frame::new()
+                        .fill(theme::bg())
+                        .inner_margin(body_margin),
+                )
                 .show(ui, |ui| contents(ui, Part::Body));
             !ui.input(|i| i.viewport().close_requested())
         })
@@ -157,9 +174,16 @@ fn show_window(
 /// level changes.
 fn tool_level(ctx: &egui::Context, viewport: egui::ViewportId) -> egui::WindowLevel {
     const GRACE: f64 = 0.3;
-    let (now, focused) = ctx.input(|i| (i.time, i.raw.viewports.values().any(|v| v.focused == Some(true))));
+    let (now, focused) = ctx.input(|i| {
+        (
+            i.time,
+            i.raw.viewports.values().any(|v| v.focused == Some(true)),
+        )
+    });
     let id = egui::Id::new(("tool-window-level", viewport));
-    let (mut last_focused, was) = ctx.data(|d| d.get_temp::<(f64, bool)>(id)).unwrap_or((now, true));
+    let (mut last_focused, was) = ctx
+        .data(|d| d.get_temp::<(f64, bool)>(id))
+        .unwrap_or((now, true));
     if focused {
         last_focused = now;
     } else if was {
@@ -167,7 +191,11 @@ fn tool_level(ctx: &egui::Context, viewport: egui::ViewportId) -> egui::WindowLe
     }
     let on_top = focused || now - last_focused < GRACE;
     ctx.data_mut(|d| d.insert_temp(id, (last_focused, on_top)));
-    let level = if on_top { egui::WindowLevel::AlwaysOnTop } else { egui::WindowLevel::Normal };
+    let level = if on_top {
+        egui::WindowLevel::AlwaysOnTop
+    } else {
+        egui::WindowLevel::Normal
+    };
     if on_top != was {
         ctx.send_viewport_cmd_to(viewport, egui::ViewportCommand::WindowLevel(level));
     }
@@ -254,23 +282,57 @@ fn embedded(
 /// line under it, and a close button at its end. The bar is left to the window, so a
 /// drag on it moves the dialog. Returns whether the close button was clicked.
 fn header(ui: &mut egui::Ui, id: &str, title: &str) -> bool {
-    let (bar, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), theme::HEADER_HEIGHT + 4.0), egui::Sense::hover());
+    let (bar, _) = ui.allocate_exact_size(
+        egui::vec2(ui.available_width(), theme::HEADER_HEIGHT + 4.0),
+        egui::Sense::hover(),
+    );
     let painter = ui.painter();
     let corner = ui.visuals().window_corner_radius;
-    painter.rect_filled(bar, egui::CornerRadius { nw: corner.nw, ne: corner.ne, sw: 0, se: 0 }, theme::surface());
-    painter.hline(bar.x_range(), bar.bottom() - 0.5, egui::Stroke::new(1.0, theme::border()));
-    let close = egui::Rect::from_center_size(egui::pos2(bar.right() - 22.0, bar.center().y), egui::Vec2::splat(26.0));
+    painter.rect_filled(
+        bar,
+        egui::CornerRadius {
+            nw: corner.nw,
+            ne: corner.ne,
+            sw: 0,
+            se: 0,
+        },
+        theme::surface(),
+    );
+    painter.hline(
+        bar.x_range(),
+        bar.bottom() - 0.5,
+        egui::Stroke::new(1.0, theme::border()),
+    );
+    let close = egui::Rect::from_center_size(
+        egui::pos2(bar.right() - 22.0, bar.center().y),
+        egui::Vec2::splat(26.0),
+    );
     let title_room = (bar.width() - 2.0 * 52.0).max(0.0);
-    let (galley, _) = crate::widgets::truncated(ui, title, theme::body_bold(), theme::fg(), title_room);
+    let (galley, _) =
+        crate::widgets::truncated(ui, title, theme::body_bold(), theme::fg(), title_room);
     let top = theme::galley_top(ui.ctx(), &galley, bar.center().y);
-    painter.galley(egui::pos2(bar.center().x - galley.size().x / 2.0, top), galley, theme::fg());
-    let response = ui.interact(close, egui::Id::new((id, "close")), egui::Sense::click()).on_hover_text(editor_core::i18n::tr("Close"));
+    painter.galley(
+        egui::pos2(bar.center().x - galley.size().x / 2.0, top),
+        galley,
+        theme::fg(),
+    );
+    let response = ui
+        .interact(close, egui::Id::new((id, "close")), egui::Sense::click())
+        .on_hover_text(editor_core::i18n::tr("Close"));
     let painter = ui.painter();
     if response.hovered() {
-        let fill = if response.is_pointer_button_down_on() { theme::button_pressed() } else { theme::button_hover() };
+        let fill = if response.is_pointer_button_down_on() {
+            theme::button_pressed()
+        } else {
+            theme::button_hover()
+        };
         painter.rect_filled(close, egui::CornerRadius::same(theme::radius()), fill);
     }
-    let colour = if response.hovered() { theme::fg() } else { theme::dim() };
+    let colour = if response.hovered() {
+        theme::fg()
+    } else {
+        theme::dim()
+    };
     let x = close.shrink(8.5);
     let stroke = egui::Stroke::new(1.5, colour);
     painter.line_segment([x.left_top(), x.right_bottom()], stroke);

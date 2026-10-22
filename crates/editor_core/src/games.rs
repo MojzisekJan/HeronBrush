@@ -145,21 +145,37 @@ pub struct Format {
 impl Game {
     /// User-facing name for the bundled general-purpose profile.
     pub fn display_name(&self) -> &str {
-        if self.name == "heron_brush" { "Heron Brush" } else { &self.name }
+        if self.name == "heron_brush" {
+            "Heron Brush"
+        } else {
+            &self.name
+        }
     }
 
     /// Ordered roots: configured base game, installation root, then mods separated by `;`.
     /// Later roots override earlier roots, including their loose files.
     pub fn asset_roots(&self, game_path: &Path, mods: &str) -> Vec<PathBuf> {
-        if game_path.as_os_str().is_empty() { return Vec::new(); }
-        let mut roots=Vec::new();
-        if let Some(base)=self.search_path.as_deref().filter(|base|!base.is_empty() && *base!=".") {
-            if !game_path.ends_with(base) { roots.push(game_path.join(base)); }
+        if game_path.as_os_str().is_empty() {
+            return Vec::new();
+        }
+        let mut roots = Vec::new();
+        if let Some(base) = self
+            .search_path
+            .as_deref()
+            .filter(|base| !base.is_empty() && *base != ".")
+        {
+            if !game_path.ends_with(base) {
+                roots.push(game_path.join(base));
+            }
         }
         roots.push(game_path.to_path_buf());
-        for name in mods.split(';').map(str::trim).filter(|name|!name.is_empty()) {
-            let path=game_path.join(name);
-            roots.retain(|root|root!=&path);
+        for name in mods
+            .split(';')
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+        {
+            let path = game_path.join(name);
+            roots.retain(|root| root != &path);
             roots.push(path);
         }
         roots
@@ -167,7 +183,10 @@ impl Game {
 
     /// The FGD to load: the first the config names that is actually there.
     pub fn definition_file(&self) -> Option<PathBuf> {
-        self.definitions.iter().find(|path| crate::files::is_file(path)).cloned()
+        self.definitions
+            .iter()
+            .find(|path| crate::files::is_file(path))
+            .cloned()
     }
 
     /// Where this game's materials are, given where the user keeps the game itself.
@@ -220,14 +239,17 @@ pub fn all() -> Vec<Game> {
                 continue;
             };
             // Heron Brush is our general-purpose profile; do not offer the upstream duplicate.
-            if game.name == "Generic" { continue; }
+            if game.name == "Generic" {
+                continue;
+            }
             if !found.iter().any(|already| already.name == game.name) {
                 found.push(game);
             }
         }
     }
     found.sort_by(|one, other| {
-        (one.name != "heron_brush").cmp(&(other.name != "heron_brush"))
+        (one.name != "heron_brush")
+            .cmp(&(other.name != "heron_brush"))
             .then_with(|| one.display_name().cmp(other.display_name()))
     });
     found
@@ -412,7 +434,10 @@ mod tests {
             let game = read(&root.join(folder).join("GameConfig.cfg"))
                 .unwrap_or_else(|error| panic!("{folder}: {error}"));
             assert_eq!(game.name, name);
-            assert!(game.icon.as_ref().is_some_and(|path| path.is_file()), "{folder} icon");
+            assert!(
+                game.icon.as_ref().is_some_and(|path| path.is_file()),
+                "{folder} icon"
+            );
             assert!(!game.formats.is_empty(), "{folder}");
             assert!(game.definition_file().is_some(), "{folder}");
             for path in &game.definitions {
@@ -422,7 +447,11 @@ mod tests {
                     Some("ent") => map_model::ent::read_ent(&source).unwrap(),
                     _ => map_model::fgd::read_fgd_file(path).unwrap(),
                 };
-                assert!(definitions.placeable().next().is_some(), "{}", path.display());
+                assert!(
+                    definitions.placeable().next().is_some(),
+                    "{}",
+                    path.display()
+                );
             }
             if folder == "heron_brush" {
                 assert_eq!(game.display_name(), "Heron Brush");
@@ -432,12 +461,23 @@ mod tests {
 
     #[test]
     fn game_roots_follow_the_profile_then_explicit_mod_order() {
-        let root=Path::new(env!("CARGO_MANIFEST_DIR")).join("../../gamedata");
-        let quake=read(&root.join("Quake/GameConfig.cfg")).unwrap();
-        let install=std::env::temp_dir().join("heron-game-roots");
-        assert_eq!(quake.asset_roots(&install,"mod_a; mod_b;mod_a"),vec![install.join("id1"),install.clone(),install.join("mod_b"),install.join("mod_a")]);
-        assert_eq!(quake.asset_roots(&install.join("id1"),""),vec![install.join("id1")]);
-        assert!(quake.asset_roots(Path::new(""),"mod_a").is_empty());
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../gamedata");
+        let quake = read(&root.join("Quake/GameConfig.cfg")).unwrap();
+        let install = std::env::temp_dir().join("heron-game-roots");
+        assert_eq!(
+            quake.asset_roots(&install, "mod_a; mod_b;mod_a"),
+            vec![
+                install.join("id1"),
+                install.clone(),
+                install.join("mod_b"),
+                install.join("mod_a")
+            ]
+        );
+        assert_eq!(
+            quake.asset_roots(&install.join("id1"), ""),
+            vec![install.join("id1")]
+        );
+        assert!(quake.asset_roots(Path::new(""), "mod_a").is_empty());
     }
 
     #[test]

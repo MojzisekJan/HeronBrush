@@ -1,10 +1,10 @@
 //! Snap built-in asset vertices to eighth units and validate saved geometry.
+use geometry_math::{bbox::Bbox3d, vec};
 use map_model::{
     brush::Brush,
     io::{map_reader::read_map, map_writer::write_map},
 };
 use std::path::PathBuf;
-use geometry_math::{bbox::Bbox3d, vec};
 const GRID: f64 = 0.125;
 fn snapped_brush(
     brush: &Brush,

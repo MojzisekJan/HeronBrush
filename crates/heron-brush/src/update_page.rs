@@ -133,7 +133,9 @@ impl UpdatePage {
                                     true
                                 }
                             },
-                            egui::TextEdit::singleline(&mut repo).margin(crate::widgets::body_entry_margin(ui, 6, 6)).min_size(egui::vec2(0.0, crate::widgets::ROW_HEIGHT)),
+                            egui::TextEdit::singleline(&mut repo)
+                                .margin(crate::widgets::body_entry_margin(ui, 6, 6))
+                                .min_size(egui::vec2(0.0, crate::widgets::ROW_HEIGHT)),
                         )
                         .changed()
                     {

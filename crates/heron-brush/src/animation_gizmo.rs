@@ -34,13 +34,26 @@ pub struct Gizmo {
 }
 enum Kind {
     /// A 3D axis arrow: `vector` is the arrow on screen, `units` world units per pixel along it.
-    Axis { channel: usize, vector: egui::Vec2, units: f64 },
+    Axis {
+        channel: usize,
+        vector: egui::Vec2,
+        units: f64,
+    },
     /// A 3D rotation ring.
-    Ring { channel: usize, ring: render::rotation_gizmo::RingDrag, camera: Camera3d, rect: egui::Rect },
+    Ring {
+        channel: usize,
+        ring: render::rotation_gizmo::RingDrag,
+        camera: Camera3d,
+        rect: egui::Rect,
+    },
     /// A motion-path key in 3D, moved in the screen plane.
     Path { axes: [Vec3d; 2] },
     /// A flat view: the body translated, turned about the centre, the pivot, or a path key.
-    Flat { camera: Camera2d, turn: Option<Turn>, path_key: bool },
+    Flat {
+        camera: Camera2d,
+        turn: Option<Turn>,
+        path_key: bool,
+    },
 }
 struct Drag {
     document: Rc<RefCell<Document>>,
@@ -62,7 +75,10 @@ const PIVOT: egui::Color32 = egui::Color32::from_rgb(255, 204, 26);
 impl Gizmo {
     /// A gizmo that reports path-key clicks and seeks through `link`.
     pub fn linked(link: &Rc<RefCell<Link>>) -> Self {
-        Self { drag: None, link: Rc::clone(link) }
+        Self {
+            drag: None,
+            link: Rc::clone(link),
+        }
     }
     pub fn cancel(&mut self) {
         if let Some(drag) = self.drag.take() {
@@ -94,7 +110,15 @@ impl Gizmo {
             }
         }
     }
-    fn begin(&mut self, document: &Rc<RefCell<Document>>, pose: Pose, kind: Kind, pivot: bool, start: egui::Pos2, filters: &Rc<RefCell<ViewFilters>>) {
+    fn begin(
+        &mut self,
+        document: &Rc<RefCell<Document>>,
+        pose: Pose,
+        kind: Kind,
+        pivot: bool,
+        start: egui::Pos2,
+        filters: &Rc<RefCell<ViewFilters>>,
+    ) {
         let f = *filters.borrow();
         self.drag = Some(Drag {
             document: Rc::clone(document),
@@ -143,7 +167,12 @@ impl Gizmo {
         };
         let path = document.borrow().animation_path(&pose);
         if let Some(path) = path.as_ref() {
-            path.draw(&mut EguiCanvas::new(&painter, rect), time, f.animation_fps, project);
+            path.draw(
+                &mut EguiCanvas::new(&painter, rect),
+                time,
+                f.animation_fps,
+                project,
+            );
         }
         if !f.animation_auto_key {
             return;
@@ -165,44 +194,88 @@ impl Gizmo {
                 (0..=96)
                     .filter_map(|n| {
                         let a = n as f64 * std::f64::consts::TAU / 96.0;
-                        project(centre + (axis(u) * a.cos() + axis(v) * a.sin()) * radius).map(screen)
+                        project(centre + (axis(u) * a.cos() + axis(v) * a.sin()) * radius)
+                            .map(screen)
                     })
                     .collect()
             } else {
-                project(centre + axis(i) * radius).map(|end| vec![screen(start), screen(end)]).unwrap_or_default()
+                project(centre + axis(i) * radius)
+                    .map(|end| vec![screen(start), screen(end)])
+                    .unwrap_or_default()
             };
             if points.len() < 2 {
                 continue;
             }
-            painter.add(egui::Shape::line(points.clone(), egui::Stroke::new(6.0, egui::Color32::from_black_alpha(204))));
-            painter.add(egui::Shape::line(points.clone(), egui::Stroke::new(2.5, COLORS[i])));
+            painter.add(egui::Shape::line(
+                points.clone(),
+                egui::Stroke::new(6.0, egui::Color32::from_black_alpha(204)),
+            ));
+            painter.add(egui::Shape::line(
+                points.clone(),
+                egui::Stroke::new(2.5, COLORS[i]),
+            ));
             if !rotate {
                 painter.circle_filled(*points.last().unwrap(), 5.0, COLORS[i]);
             }
         }
         if f.animation_edit_pivot {
-            painter.rect_filled(egui::Rect::from_center_size(screen(start), egui::vec2(10.0, 10.0)), 0.0, PIVOT);
+            painter.rect_filled(
+                egui::Rect::from_center_size(screen(start), egui::vec2(10.0, 10.0)),
+                0.0,
+                PIVOT,
+            );
         }
         let pointer = ui.input(|i| i.pointer.interact_pos());
-        if self.drag.is_none() && ui.input(|i| i.pointer.primary_pressed()) && ui.rect_contains_pointer(rect) {
+        if self.drag.is_none()
+            && ui.input(|i| i.pointer.primary_pressed())
+            && ui.rect_contains_pointer(rect)
+        {
             if let Some(at) = ui.input(|i| i.pointer.press_origin()).or(pointer) {
                 let local = Vec2d::new((at.x - rect.left()) as f64, (at.y - rect.top()) as f64);
                 let path_time = if f.animation_edit_pivot {
                     None
                 } else {
-                    path.as_ref().as_ref().and_then(|path| path.pick(local, time, project))
+                    path.as_ref()
+                        .as_ref()
+                        .and_then(|path| path.pick(local, time, project))
                 };
                 if let Some(key_time) = path_time {
                     let mut pose = pose.clone();
                     pose.time = key_time;
                     let units = camera.world_units_per_pixel(pose.centre(), h);
                     self.path_key(filters, &pose, key_time);
-                    self.begin(document, pose, Kind::Path { axes: [camera.right() * units, camera.up() * -units] }, false, at, filters);
+                    self.begin(
+                        document,
+                        pose,
+                        Kind::Path {
+                            axes: [camera.right() * units, camera.up() * -units],
+                        },
+                        false,
+                        at,
+                        filters,
+                    );
                 } else if rotate {
                     let ray = camera.ray_through(local.x(), local.y(), w, h);
-                    if let Some(ring) = render::rotation_gizmo::RingDrag::pick(&camera, h, &ray, centre, radius, 8.0) {
-                        let channel = 3 + (0..3).max_by(|&a, &b| ring.axis[a].abs().total_cmp(&ring.axis[b].abs())).unwrap();
-                        self.begin(document, pose.clone(), Kind::Ring { channel, ring, camera, rect }, false, at, filters);
+                    if let Some(ring) = render::rotation_gizmo::RingDrag::pick(
+                        &camera, h, &ray, centre, radius, 8.0,
+                    ) {
+                        let channel = 3
+                            + (0..3)
+                                .max_by(|&a, &b| ring.axis[a].abs().total_cmp(&ring.axis[b].abs()))
+                                .unwrap();
+                        self.begin(
+                            document,
+                            pose.clone(),
+                            Kind::Ring {
+                                channel,
+                                ring,
+                                camera,
+                                rect,
+                            },
+                            false,
+                            at,
+                            filters,
+                        );
                     }
                 } else {
                     let picked = (0..3)
@@ -216,13 +289,25 @@ impl Gizmo {
                             let rel = local - start;
                             let t = ((rel.x() * v.x() + rel.y() * v.y()) / len2).clamp(0.15, 1.0);
                             let p = start + v * t;
-                            let distance = ((local - p).x().powi(2) + (local - p).y().powi(2)).sqrt();
+                            let distance =
+                                ((local - p).x().powi(2) + (local - p).y().powi(2)).sqrt();
                             (distance < 9.0).then_some((distance, i, v, radius / len2))
                         })
                         .min_by(|a, b| a.0.total_cmp(&b.0));
                     if let Some((_, channel, v, units)) = picked {
-                        let kind = Kind::Axis { channel, vector: egui::vec2(v.x() as f32, v.y() as f32), units };
-                        self.begin(document, pose.clone(), kind, f.animation_edit_pivot, at, filters);
+                        let kind = Kind::Axis {
+                            channel,
+                            vector: egui::vec2(v.x() as f32, v.y() as f32),
+                            units,
+                        };
+                        self.begin(
+                            document,
+                            pose.clone(),
+                            kind,
+                            f.animation_edit_pivot,
+                            at,
+                            filters,
+                        );
                     }
                 }
             }
@@ -252,7 +337,11 @@ impl Gizmo {
         let time = frame as f64 / f.animation_fps.max(1) as f64;
         let viewport = (rect.width() as f64, rect.height() as f64);
         let pointer = ui.input(|i| i.pointer.interact_pos());
-        if self.drag.is_none() && ui.input(|i| i.pointer.primary_pressed()) && ui.rect_contains_pointer(rect) && !document.borrow().in_transaction() {
+        if self.drag.is_none()
+            && ui.input(|i| i.pointer.primary_pressed())
+            && ui.rect_contains_pointer(rect)
+            && !document.borrow().in_transaction()
+        {
             if let Some(at) = ui.input(|i| i.pointer.press_origin()).or(pointer) {
                 let cursor = Vec2d::new((at.x - rect.left()) as f64, (at.y - rect.top()) as f64);
                 let d = document.borrow();
@@ -262,20 +351,29 @@ impl Gizmo {
                     let path_time = if edit_pivot {
                         None
                     } else {
-                        d.animation_path(&pose).as_ref().as_ref().and_then(|path| path.pick(cursor, time, |p| Some(camera.world_to_screen(p, viewport))))
+                        d.animation_path(&pose).as_ref().as_ref().and_then(|path| {
+                            path.pick(cursor, time, |p| Some(camera.world_to_screen(p, viewport)))
+                        })
                     };
                     let grabbed = if edit_pivot {
                         let c = camera.world_to_screen(pose.centre(), viewport);
-                        (c.x() - cursor.x()).powi(2) + (c.y() - cursor.y()).powi(2) <= drag2d::PIVOT_GRAB.powi(2)
+                        (c.x() - cursor.x()).powi(2) + (c.y() - cursor.y()).powi(2)
+                            <= drag2d::PIVOT_GRAB.powi(2)
                     } else if let Some(key_time) = path_time {
                         pose.time = key_time;
                         true
                     } else {
                         drag2d::hit(&d, &pose, camera, p)
                     };
-                    let turn = if grabbed && !edit_pivot && path_time.is_none() && (tool == Tool::Rotate || f.animation_rotate) {
+                    let turn = if grabbed
+                        && !edit_pivot
+                        && path_time.is_none()
+                        && (tool == Tool::Rotate || f.animation_rotate)
+                    {
                         let start = p - camera.plane.project(pose.centre());
-                        if start.x() * start.x() + start.y() * start.y() < (2.0 / camera.zoom).powi(2) {
+                        if start.x() * start.x() + start.y() * start.y()
+                            < (2.0 / camera.zoom).powi(2)
+                        {
                             None
                         } else {
                             Some(Some(Turn::new(start)))
@@ -290,7 +388,11 @@ impl Gizmo {
                         } else {
                             self.link.borrow_mut().seek = Some((frame, f.animation_fps));
                         }
-                        let kind = Kind::Flat { camera, turn, path_key: path_time.is_some() };
+                        let kind = Kind::Flat {
+                            camera,
+                            turn,
+                            path_key: path_time.is_some(),
+                        };
                         self.begin(document, pose, kind, edit_pivot, at, filters);
                     }
                 }
@@ -328,14 +430,20 @@ fn apply(drag: &mut Drag, delta: egui::Vec2, at: egui::Pos2, grid: &Grid) {
             for axis in 0..3 {
                 point[axis] = grid.snap_scalar(point[axis]);
             }
-            let values = std::array::from_fn(|axis| drag.pose.clip.sample(axis, drag.pose.time) + point[axis] - centre[axis]);
+            let values = std::array::from_fn(|axis| {
+                drag.pose.clip.sample(axis, drag.pose.time) + point[axis] - centre[axis]
+            });
             let mut clip = drag.pose.clip.clone();
             if clip.insert_position(drag.pose.time, values).is_err() {
                 return;
             }
             Edit::Clip(clip)
         }
-        Kind::Axis { channel, vector, units } => {
+        Kind::Axis {
+            channel,
+            vector,
+            units,
+        } => {
             let amount = grid.snap_scalar((dx * vector.x as f64 + dy * vector.y as f64) * *units);
             if !drag.changed && amount.abs() < 1e-6 {
                 return;
@@ -352,8 +460,18 @@ fn apply(drag: &mut Drag, delta: egui::Vec2, at: egui::Pos2, grid: &Grid) {
                 }
             }
         }
-        Kind::Ring { channel, ring, camera, rect } => {
-            let ray = camera.ray_through((at.x - rect.left()) as f64, (at.y - rect.top()) as f64, rect.width() as f64, rect.height() as f64);
+        Kind::Ring {
+            channel,
+            ring,
+            camera,
+            rect,
+        } => {
+            let ray = camera.ray_through(
+                (at.x - rect.left()) as f64,
+                (at.y - rect.top()) as f64,
+                rect.width() as f64,
+                rect.height() as f64,
+            );
             let Some(angle) = ring.angle(&ray) else {
                 return;
             };
@@ -366,12 +484,18 @@ fn apply(drag: &mut Drag, delta: egui::Vec2, at: egui::Pos2, grid: &Grid) {
                 Err(_) => return,
             }
         }
-        Kind::Flat { camera, turn, path_key } => {
+        Kind::Flat {
+            camera,
+            turn,
+            path_key,
+        } => {
             let screen_delta = Vec2d::new(dx / camera.zoom, -dy / camera.zoom);
             let plane = camera.plane;
             if drag.pivot {
                 let pivot = drag2d::snapped_pivot(&drag.pose, plane, screen_delta, grid);
-                if Pose::validate_pivot(pivot).is_err() || (!drag.changed && pivot == drag.pose.pivot) {
+                if Pose::validate_pivot(pivot).is_err()
+                    || (!drag.changed && pivot == drag.pose.pivot)
+                {
                     return;
                 }
                 Edit::Pivot(pivot)
@@ -389,10 +513,15 @@ fn apply(drag: &mut Drag, delta: egui::Vec2, at: egui::Pos2, grid: &Grid) {
                 }
             } else {
                 let delta = if *path_key {
-                    drag2d::snapped_position(drag.pose.centre(), plane, screen_delta, grid) - drag.pose.centre()
+                    drag2d::snapped_position(drag.pose.centre(), plane, screen_delta, grid)
+                        - drag.pose.centre()
                 } else {
                     let d = plane.unproject(screen_delta, 0.0);
-                    Vec3d::new(grid.snap_scalar(d.x()), grid.snap_scalar(d.y()), grid.snap_scalar(d.z()))
+                    Vec3d::new(
+                        grid.snap_scalar(d.x()),
+                        grid.snap_scalar(d.y()),
+                        grid.snap_scalar(d.z()),
+                    )
                 };
                 if !drag.changed && delta == Vec3d::zero() {
                     return;

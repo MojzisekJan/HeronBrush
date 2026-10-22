@@ -232,10 +232,7 @@ mod tests {
         };
 
         let text = write(&scene);
-        assert!(
-            text.starts_with("[gd_scene format=3]"),
-            "{text}"
-        );
+        assert!(text.starts_with("[gd_scene format=3]"), "{text}");
         assert!(text.contains(
             r#"[ext_resource type="ArrayMesh" path="res://maps/testmap/worldspawn.obj""#
         ));

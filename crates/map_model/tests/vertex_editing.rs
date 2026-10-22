@@ -1,10 +1,10 @@
 //! Tests for dragging a brush's vertices, edges and faces.
 
-use map_model::brush::{Brush, VertexError};
-use map_model::shapes;
 use geometry_math::bbox::Bbox3d;
 use geometry_math::scalar::Float;
 use geometry_math::vec::{self, Vec3d};
+use map_model::brush::{Brush, VertexError};
+use map_model::shapes;
 
 const EPS: f64 = f64::ALMOST_ZERO;
 
@@ -14,12 +14,8 @@ fn world_bounds() -> Bbox3d {
 
 /// A 64-unit cube at the origin.
 fn cube() -> Brush {
-    shapes::create_cuboid(
-        &world_bounds(),
-        &Bbox3d::from_scalars(-32.0, 32.0),
-        "stone",
-    )
-    .expect("a box")
+    shapes::create_cuboid(&world_bounds(), &Bbox3d::from_scalars(-32.0, 32.0), "stone")
+        .expect("a box")
 }
 
 #[test]
@@ -185,7 +181,11 @@ fn face_at_finds_each_face_of_a_box() {
         (Vec3d::new(0.0, 0.0, 32.0), Vec3d::new(0.0, 0.0, 1.0)),
     ] {
         let face = cube.face_at(point, EPS).expect("there is a face there");
-        geometry_math::assert_approx_eq!(cube.geometry().face_plane(face).normal, expected_normal, 1e-9);
+        geometry_math::assert_approx_eq!(
+            cube.geometry().face_plane(face).normal,
+            expected_normal,
+            1e-9
+        );
     }
 }
 
@@ -196,8 +196,7 @@ fn a_dragged_brush_can_be_dragged_again() {
     for _ in 0..4 {
         brush = brush
             .move_face(
-                brush.bounds().max - Vec3d::new(0.0, 0.0, 0.0) * 0.0
-                    + Vec3d::new(-1.0, -1.0, 0.0),
+                brush.bounds().max - Vec3d::new(0.0, 0.0, 0.0) * 0.0 + Vec3d::new(-1.0, -1.0, 0.0),
                 Vec3d::new(0.0, 0.0, 16.0),
                 EPS,
             )

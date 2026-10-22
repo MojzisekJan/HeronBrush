@@ -6,7 +6,7 @@
 //! of the engines that have one (`live_link_ui.rs`).
 use std::path::{Path, PathBuf};
 
-use crate::{file_dialog::FileDialog, dialog, editor::Editor, form, theme, widgets};
+use crate::{dialog, editor::Editor, file_dialog::FileDialog, form, theme, widgets};
 use editor_core::{
     export::{self, Options, Target},
     export_settings::Settings,
@@ -27,7 +27,11 @@ pub enum Tab {
 impl Tab {
     /// Every tab, in the order the window lists them: the engines, then the map.
     fn all() -> Vec<Tab> {
-        Target::ALL.iter().map(|target| Tab::Engine(*target)).chain(std::iter::once(Tab::Map)).collect()
+        Target::ALL
+            .iter()
+            .map(|target| Tab::Engine(*target))
+            .chain(std::iter::once(Tab::Map))
+            .collect()
     }
 
     /// The name beside the tab's logo.
@@ -71,9 +75,15 @@ enum MapDialect {
 /// the editor itself saves in and the one that can hold everything.
 const DIALECTS: [(MapDialect, &str); 6] = [
     (MapDialect::Classic(MapFormat::Valve), "Valve 220"),
-    (MapDialect::Classic(MapFormat::Standard), translation_key("Standard")),
+    (
+        MapDialect::Classic(MapFormat::Standard),
+        translation_key("Standard"),
+    ),
     (MapDialect::Classic(MapFormat::Quake2), "Quake 2"),
-    (MapDialect::Classic(MapFormat::Quake2Valve), "Quake 2 (Valve)"),
+    (
+        MapDialect::Classic(MapFormat::Quake2Valve),
+        "Quake 2 (Valve)",
+    ),
     (MapDialect::Quake3Primitive, "Quake 3 (brush primitives)"),
     (MapDialect::Doom3Primitive, "Doom 3 (brushDef3)"),
 ];
@@ -111,7 +121,10 @@ pub struct Shown {
 pub fn shown(target: Target) -> Shown {
     let portable = matches!(target, Target::Gltf | Target::Glb);
     Shown {
-        live: matches!(target, Target::Godot | Target::Unity | Target::Defold | Target::Flax),
+        live: matches!(
+            target,
+            Target::Godot | Target::Unity | Target::Defold | Target::Flax
+        ),
         collision: !portable,
         optimisations: !portable,
         static_cells: !portable && target != Target::Obj,
@@ -186,7 +199,7 @@ impl Text {
             Text::ModelMaterial => "/builtins/materials/model.material".into(),
             Text::ModelSampler => "tex0".into(),
             Text::ContentDir if target == Target::Unreal => "/Game/<level>".into(),
-            Text::ContentDir if target==Target::Stride => "Levels/<level>".into(),
+            Text::ContentDir if target == Target::Stride => "Levels/<level>".into(),
             Text::ContentDir => "<level>".into(),
             Text::Clip => "clip".into(),
             Text::Skip => "skip".into(),
@@ -247,7 +260,11 @@ fn live_hint(target: Target) -> &'static str {
 
 /// What the export wrote, in a line or a few: the counts, then the first warnings.
 pub fn describe(report: &export::Report) -> String {
-    let mut said = format!("{} · {}", counted(report.files.len(), "file"), counted(report.triangles, "triangle"));
+    let mut said = format!(
+        "{} · {}",
+        counted(report.files.len(), "file"),
+        counted(report.triangles, "triangle")
+    );
     if report.saved_faces > 0 {
         said.push_str(", ");
         said.push_str(&fill("{} saved", &[&counted(report.saved_faces, "face")]));
@@ -259,21 +276,31 @@ pub fn describe(report: &export::Report) -> String {
     }
     if report.warnings.len() > 3 {
         said.push('\n');
-        said.push_str(&fill("… and {} more", &[&(report.warnings.len() - 3).to_string()]));
+        said.push_str(&fill(
+            "… and {} more",
+            &[&(report.warnings.len() - 3).to_string()],
+        ));
     }
     said
 }
 
 /// What a dialect would cost the map, as the `.map` tab says it.
 fn loss_text(lost: &[String]) -> String {
-    format!("{} {}", tr("Written this way,"), lost.join(&format!(", {} ", tr("and"))))
+    format!(
+        "{} {}",
+        tr("Written this way,"),
+        lost.join(&format!(", {} ", tr("and")))
+    )
 }
 
 /// The `res://` path of `chosen` inside the Godot project at `root`, or `None` when it is
 /// outside the project.
 pub fn resource_path(chosen: &Path, root: Option<&Path>) -> Option<String> {
     let relative = chosen.strip_prefix(root?).ok()?;
-    Some(format!("res://{}", relative.to_string_lossy().replace('\\', "/")))
+    Some(format!(
+        "res://{}",
+        relative.to_string_lossy().replace('\\', "/")
+    ))
 }
 
 /// Everything a check found, for the window that lists it.
@@ -307,7 +334,10 @@ impl Default for ExportPage {
     fn default() -> Self {
         // Tests never write over the settings of whoever runs them.
         let store = if cfg!(test) {
-            std::env::temp_dir().join(format!("heron-brush-export-settings-{}", std::process::id()))
+            std::env::temp_dir().join(format!(
+                "heron-brush-export-settings-{}",
+                std::process::id()
+            ))
         } else {
             editor_core::export_settings::default_path()
         };
@@ -335,7 +365,13 @@ impl ExportPage {
     #[cfg(test)]
     fn with_store(store: PathBuf) -> Self {
         let settings = Settings::load_from(&store);
-        Self { options: settings.for_target(Target::Godot), tab: Tab::Engine(Target::Godot), settings, store, ..Self::default() }
+        Self {
+            options: settings.for_target(Target::Godot),
+            tab: Tab::Engine(Target::Godot),
+            settings,
+            store,
+            ..Self::default()
+        }
     }
 
     /// Brings `tab` to the front, remembering the engine for next time.
@@ -349,7 +385,10 @@ impl ExportPage {
             }
             Tab::Map => {
                 // The dialect the map was read as, so a Quake map offers to go back out as one.
-                self.dialect = DIALECTS.iter().position(|(format, _)| *format == MapDialect::Classic(document.format)).unwrap_or(0);
+                self.dialect = DIALECTS
+                    .iter()
+                    .position(|(format, _)| *format == MapDialect::Classic(document.format))
+                    .unwrap_or(0);
             }
         }
     }
@@ -357,26 +396,42 @@ impl ExportPage {
     /// Writes the front engine's settings, as every control does when it changes. The
     /// level name is never kept: it is the map's, filled in at export.
     fn commit(&mut self) {
-        if let Err(error)=self.settings.validate(){self.status=error;return}
-        let Tab::Engine(target) = self.tab else { return };
+        if let Err(error) = self.settings.validate() {
+            self.status = error;
+            return;
+        }
+        let Tab::Engine(target) = self.tab else {
+            return;
+        };
         let mut options = self.options.clone();
         options.name.clear();
         options.target = target;
         self.settings.set_in(target, options, &self.store);
     }
 
-    pub fn show(&mut self, ctx: &egui::Context, editor: &Editor, live: &std::rc::Rc<editor_core::godot_live::LiveLink>) {
+    pub fn show(
+        &mut self,
+        ctx: &egui::Context,
+        editor: &Editor,
+        live: &std::rc::Rc<editor_core::godot_live::LiveLink>,
+    ) {
         self.show_problems(ctx);
         if !self.open {
             self.was_open = false;
             return;
         }
         if !cfg!(test) {
-            let map=editor.document.borrow().path.clone();
-            if !self.was_open || self.profile_map!=map {
-                let store=map.as_deref().map(editor_core::export_settings::project_path).unwrap_or_else(editor_core::export_settings::default_path);
-                if store!=self.store {self.store=store;self.was_open=false;}
-                self.profile_map=map;
+            let map = editor.document.borrow().path.clone();
+            if !self.was_open || self.profile_map != map {
+                let store = map
+                    .as_deref()
+                    .map(editor_core::export_settings::project_path)
+                    .unwrap_or_else(editor_core::export_settings::default_path);
+                if store != self.store {
+                    self.store = store;
+                    self.was_open = false;
+                }
+                self.profile_map = map;
             }
         }
         if !self.was_open {
@@ -389,10 +444,13 @@ impl ExportPage {
                 self.options = self.settings.for_target(target);
             }
             self.entity_rules_json.clear();
-            self.status=self.settings.validate().err().unwrap_or_default();
+            self.status = self.settings.validate().err().unwrap_or_default();
         }
         if self.logos.is_empty() {
-            self.logos = Tab::all().into_iter().map(|tab| load_logo(ctx, tab)).collect();
+            self.logos = Tab::all()
+                .into_iter()
+                .map(|tab| load_logo(ctx, tab))
+                .collect();
         }
         let embedded = ctx.embed_viewports();
         let mut close = false;
@@ -417,14 +475,28 @@ impl ExportPage {
         }
     }
 
-    fn body(&mut self, ui: &mut egui::Ui, editor: &Editor, live: &std::rc::Rc<editor_core::godot_live::LiveLink>, embedded: bool) {
+    fn body(
+        &mut self,
+        ui: &mut egui::Ui,
+        editor: &Editor,
+        live: &std::rc::Rc<editor_core::godot_live::LiveLink>,
+        embedded: bool,
+    ) {
         let full = form::body_rect(ui, embedded);
-        let side = egui::Rect::from_min_size(full.min, egui::vec2(184.0_f32.min(full.width() * 0.35), full.height()));
-        let content = egui::Rect::from_min_max(egui::pos2(side.right() + 12.0, full.top()), full.max);
+        let side = egui::Rect::from_min_size(
+            full.min,
+            egui::vec2(184.0_f32.min(full.width() * 0.35), full.height()),
+        );
+        let content =
+            egui::Rect::from_min_max(egui::pos2(side.right() + 12.0, full.top()), full.max);
         let mut side_ui = form::region(ui, side);
         self.sidebar(&mut side_ui, editor);
         let mut content_ui = form::region(ui, content);
-        let status_height = if self.status.is_empty() { 0.0 } else { 8.0 + self.status.lines().count().max(1) as f32 * 18.0 };
+        let status_height = if self.status.is_empty() {
+            0.0
+        } else {
+            8.0 + self.status.lines().count().max(1) as f32 * 18.0
+        };
         egui::ScrollArea::vertical()
             .id_salt(("export-page", self.tab.name()))
             .auto_shrink([false, false])
@@ -446,28 +518,42 @@ impl ExportPage {
         form::sidebar_frame(ui, ui.max_rect());
         let inner = ui.max_rect().shrink(6.0);
         ui.scope_builder(egui::UiBuilder::new().max_rect(inner), |ui| {
-            egui::ScrollArea::vertical().id_salt("export-targets").auto_shrink([false, false]).show(ui, |ui| {
-                ui.spacing_mut().item_spacing.y = 2.0;
-                for (index, tab) in Tab::all().into_iter().enumerate() {
-                    let logo = self.logos.get(index).and_then(Option::as_ref);
-                    if form::sidebar_item(ui, tab.name(), self.tab == tab, logo, 44.0).clicked() && self.tab != tab {
-                        self.pick(tab, &editor.document.borrow());
-                        self.status.clear();
+            egui::ScrollArea::vertical()
+                .id_salt("export-targets")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.spacing_mut().item_spacing.y = 2.0;
+                    for (index, tab) in Tab::all().into_iter().enumerate() {
+                        let logo = self.logos.get(index).and_then(Option::as_ref);
+                        if form::sidebar_item(ui, tab.name(), self.tab == tab, logo, 44.0).clicked()
+                            && self.tab != tab
+                        {
+                            self.pick(tab, &editor.document.borrow());
+                            self.status.clear();
+                        }
                     }
-                }
-            });
+                });
         });
     }
 
-    fn engine_page(&mut self, ui: &mut egui::Ui, target: Target, live: &std::rc::Rc<editor_core::godot_live::LiveLink>) {
+    fn engine_page(
+        &mut self,
+        ui: &mut egui::Ui,
+        target: Target,
+        live: &std::rc::Rc<editor_core::godot_live::LiveLink>,
+    ) {
         let show = shown(target);
         let portable = matches!(target, Target::Gltf | Target::Glb);
         // Keep large class bindings out of the per-frame comparison/allocation.
-        let entities=std::mem::take(&mut self.options.entities);
-        let before=self.options.clone();
-        self.options.entities=entities;
-        let mut bindings_changed=false;
-        ui.label(egui::RichText::new(target.name()).font(egui::FontId::new(theme::text_size() + 4.0, theme::bold())).color(theme::fg()));
+        let entities = std::mem::take(&mut self.options.entities);
+        let before = self.options.clone();
+        self.options.entities = entities;
+        let mut bindings_changed = false;
+        ui.label(
+            egui::RichText::new(target.name())
+                .font(egui::FontId::new(theme::text_size() + 4.0, theme::bold()))
+                .color(theme::fg()),
+        );
         form::note(ui, tr(what_it_writes(target)));
         ui.add_space(8.0);
         if show.live {
@@ -475,16 +561,40 @@ impl ExportPage {
             ui.add_space(10.0);
         }
         widgets::card(ui, tr("Scale"), None, |ui| {
-            widgets::row(ui, tr("Units per metre"), Some(tr("Map units to one engine unit")), |ui| {
-                widgets::spin_width(ui, &mut self.options.scale, 1.0..=1024.0, 1.0, 0, ui.available_width().min(160.0));
-            });
+            widgets::row(
+                ui,
+                tr("Units per metre"),
+                Some(tr("Map units to one engine unit")),
+                |ui| {
+                    widgets::spin_width(
+                        ui,
+                        &mut self.options.scale,
+                        1.0..=1024.0,
+                        1.0,
+                        0,
+                        ui.available_width().min(160.0),
+                    );
+                },
+            );
         });
         ui.add_space(10.0);
         if show.collision {
             widgets::card(ui, tr("What to write"), None, |ui| {
-                form::switch_row(ui, tr("Collision geometry"), None, &mut self.options.collision);
+                form::switch_row(
+                    ui,
+                    tr("Collision geometry"),
+                    None,
+                    &mut self.options.collision,
+                );
                 if show.sky {
-                    form::switch_row(ui, tr("Sky and sun"), Some(tr("The 3D view's sky, sun and fog. Leave off when the game sets its own")), &mut self.options.sky);
+                    form::switch_row(
+                        ui,
+                        tr("Sky and sun"),
+                        Some(tr(
+                            "The 3D view's sky, sun and fog. Leave off when the game sets its own",
+                        )),
+                        &mut self.options.sky,
+                    );
                 }
             });
             ui.add_space(10.0);
@@ -492,11 +602,31 @@ impl ExportPage {
         if show.optimisations {
             widgets::card(ui, tr("Optimisations"), None, |ui| {
                 if show.static_cells {
-                    form::switch_row(ui, tr("Group static meshes in 1024-unit cells"), None, &mut self.options.static_cells);
+                    form::switch_row(
+                        ui,
+                        tr("Group static meshes in 1024-unit cells"),
+                        None,
+                        &mut self.options.static_cells,
+                    );
                 }
-                form::switch_row(ui, tr("Drop faces buried inside the geometry"), None, &mut self.options.cull_hidden);
-                form::switch_row(ui, tr("Join faces that share a plane"), None, &mut self.options.merge_faces);
-                form::switch_row(ui, tr("Join collision shapes"), None, &mut self.options.merge_collision);
+                form::switch_row(
+                    ui,
+                    tr("Drop faces buried inside the geometry"),
+                    None,
+                    &mut self.options.cull_hidden,
+                );
+                form::switch_row(
+                    ui,
+                    tr("Join faces that share a plane"),
+                    None,
+                    &mut self.options.merge_faces,
+                );
+                form::switch_row(
+                    ui,
+                    tr("Join collision shapes"),
+                    None,
+                    &mut self.options.merge_collision,
+                );
             });
             ui.add_space(10.0);
         }
@@ -527,12 +657,17 @@ impl ExportPage {
         }
         if show.more {
             widgets::card(ui, "", None, |ui| {
-                form::fold(ui, ("export-more", target.name()), tr("More"), false, |ui| {
-                    if show.project_folder {
-                        self.text_row(ui, target, Text::ProjectDir);
-                    }
-                    if show.godot_extras {
-                        widgets::row(
+                form::fold(
+                    ui,
+                    ("export-more", target.name()),
+                    tr("More"),
+                    false,
+                    |ui| {
+                        if show.project_folder {
+                            self.text_row(ui, target, Text::ProjectDir);
+                        }
+                        if show.godot_extras {
+                            widgets::row(
                             ui,
                             tr("Trigger layer"),
                             Some(tr(
@@ -547,20 +682,59 @@ impl ExportPage {
                                 }
                             },
                         );
-                    }
-                    form::switch_row(ui, tr("Rebuild layers and groups as parent nodes"), None, &mut self.options.group_hierarchy);
-                    form::switch_row(ui, tr("Reverse the triangle winding"), Some(tr("For an importer that does not flip it on the way in")), &mut self.options.flip_faces);
-                    let flip = tr(if portable { "Flip texture coordinates vertically" } else { "Write the V coordinate unflipped" });
-                    form::switch_row(ui, flip, Some(tr("For an importer that measures V from the same end the map does")), &mut self.options.flip_uv_v);
-                    if show.godot_extras {
-                        form::switch_row(ui, tr("Unwrap a second UV set for baked light"), None, &mut self.options.lightmap_uv2);
-                        widgets::row(ui, tr("Lightmap texel"), Some(tr("How big one lightmap texel is, in engine units")), |ui| {
-                            let width = ui.available_width().min(160.0);
-                            widgets::spin_width(ui, &mut self.options.lightmap_texel_size, 0.01..=10.0, 0.05, 2, width);
+                        }
+                        form::switch_row(
+                            ui,
+                            tr("Rebuild layers and groups as parent nodes"),
+                            None,
+                            &mut self.options.group_hierarchy,
+                        );
+                        form::switch_row(
+                            ui,
+                            tr("Reverse the triangle winding"),
+                            Some(tr("For an importer that does not flip it on the way in")),
+                            &mut self.options.flip_faces,
+                        );
+                        let flip = tr(if portable {
+                            "Flip texture coordinates vertically"
+                        } else {
+                            "Write the V coordinate unflipped"
                         });
-                    }
-                    self.text_row(ui, target, Text::NameProperty);
-                });
+                        form::switch_row(
+                            ui,
+                            flip,
+                            Some(tr(
+                                "For an importer that measures V from the same end the map does",
+                            )),
+                            &mut self.options.flip_uv_v,
+                        );
+                        if show.godot_extras {
+                            form::switch_row(
+                                ui,
+                                tr("Unwrap a second UV set for baked light"),
+                                None,
+                                &mut self.options.lightmap_uv2,
+                            );
+                            widgets::row(
+                                ui,
+                                tr("Lightmap texel"),
+                                Some(tr("How big one lightmap texel is, in engine units")),
+                                |ui| {
+                                    let width = ui.available_width().min(160.0);
+                                    widgets::spin_width(
+                                        ui,
+                                        &mut self.options.lightmap_texel_size,
+                                        0.01..=10.0,
+                                        0.05,
+                                        2,
+                                        width,
+                                    );
+                                },
+                            );
+                        }
+                        self.text_row(ui, target, Text::NameProperty);
+                    },
+                );
             });
             ui.add_space(10.0);
         }
@@ -575,27 +749,52 @@ impl ExportPage {
                     &mut self.options.export_on_save,
                 );
             });
-            let destination = if exported { self.options.directory.clone() } else { tr("Not exported yet").to_string() };
+            let destination = if exported {
+                self.options.directory.clone()
+            } else {
+                tr("Not exported yet").to_string()
+            };
             form::note(ui, &destination);
         });
-        if !matches!(target,Target::Obj|Target::Gltf|Target::Glb) {
+        if !matches!(target, Target::Obj | Target::Gltf | Target::Glb) {
             ui.add_space(10.0);
-            ui.collapsing(tr("Entity bindings"),|ui|{
-                form::note(ui,tr("Class build rules and typed defaults. Values in the map take precedence."));
-                if self.entity_rules_json.is_empty(){self.entity_rules_json=serde_json::to_string_pretty(&self.options.entities).unwrap_or_else(|_|"{}".into());}
-                ui.add(egui::TextEdit::multiline(&mut self.entity_rules_json).code_editor().desired_rows(8).desired_width(f32::INFINITY));
-                if ui.button(tr("Apply")).clicked(){
-                    match serde_json::from_str::<std::collections::BTreeMap<String,editor_core::export_bindings::Rule>>(&self.entity_rules_json) {
-                        Ok(rules)=>match editor_core::export_bindings::validate(&rules){Ok(())=>{self.options.entities=rules;bindings_changed=true;self.status.clear();},Err(error)=>self.status=error},
-                        Err(error)=>self.status=error.to_string(),
+            ui.collapsing(tr("Entity bindings"), |ui| {
+                form::note(
+                    ui,
+                    tr("Class build rules and typed defaults. Values in the map take precedence."),
+                );
+                if self.entity_rules_json.is_empty() {
+                    self.entity_rules_json = serde_json::to_string_pretty(&self.options.entities)
+                        .unwrap_or_else(|_| "{}".into());
+                }
+                ui.add(
+                    egui::TextEdit::multiline(&mut self.entity_rules_json)
+                        .code_editor()
+                        .desired_rows(8)
+                        .desired_width(f32::INFINITY),
+                );
+                if ui.button(tr("Apply")).clicked() {
+                    match serde_json::from_str::<
+                        std::collections::BTreeMap<String, editor_core::export_bindings::Rule>,
+                    >(&self.entity_rules_json)
+                    {
+                        Ok(rules) => match editor_core::export_bindings::validate(&rules) {
+                            Ok(()) => {
+                                self.options.entities = rules;
+                                bindings_changed = true;
+                                self.status.clear();
+                            }
+                            Err(error) => self.status = error,
+                        },
+                        Err(error) => self.status = error.to_string(),
                     }
                 }
-                form::note(ui,&self.store.display().to_string());
+                form::note(ui, &self.store.display().to_string());
             });
         }
-        let entities=std::mem::take(&mut self.options.entities);
-        let changed=self.options!=before;
-        self.options.entities=entities;
+        let entities = std::mem::take(&mut self.options.entities);
+        let changed = self.options != before;
+        self.options.entities = entities;
         if changed || bindings_changed {
             self.commit();
         }
@@ -604,13 +803,22 @@ impl ExportPage {
     /// A text setting's row, with a folder button for the folders.
     fn text_row(&mut self, ui: &mut egui::Ui, target: Target, field: Text) {
         let placeholder = field.placeholder(target);
-        let folder = matches!(field, Text::TextureDir | Text::MaterialDir | Text::ProjectDir);
+        let folder = matches!(
+            field,
+            Text::TextureDir | Text::MaterialDir | Text::ProjectDir
+        );
         ui.push_id(field.label(), |ui| {
             widgets::row(ui, tr(field.label()), field.tooltip(), |ui| {
-                let button = if folder { widgets::ROW_HEIGHT + ui.spacing().item_spacing.x } else { 0.0 };
+                let button = if folder {
+                    widgets::ROW_HEIGHT + ui.spacing().item_spacing.x
+                } else {
+                    0.0
+                };
                 let width = (ui.available_width() - button).max(60.0);
                 let current = field.value(&mut self.options).clone();
-                if let Some(text) = widgets::field(ui, ui.id().with("text"), &current, &placeholder, width) {
+                if let Some(text) =
+                    widgets::field(ui, ui.id().with("text"), &current, &placeholder, width)
+                {
                     *field.value(&mut self.options) = text.trim().to_string();
                 }
                 if folder {
@@ -633,7 +841,9 @@ impl ExportPage {
                 scene_export::materials::find_project_root(Path::new(&self.options.directory))
             }
         };
-        let mut chooser = FileDialog::new().id(&format!("export-folder-{field:?}")).set_title(tr("Choose"));
+        let mut chooser = FileDialog::new()
+            .id(&format!("export-folder-{field:?}"))
+            .set_title(tr("Choose"));
         if open {
             let root = root();
             let current = field.value(&mut self.options.clone()).clone();
@@ -648,13 +858,16 @@ impl ExportPage {
                 chooser = chooser.set_directory(path);
             }
         }
-        let Some(path) = chooser.pick_folder(open) else { return };
+        let Some(path) = chooser.pick_folder(open) else {
+            return;
+        };
         let value = if resource {
             let root = root().or_else(|| scene_export::materials::find_project_root(&path));
             match resource_path(&path, root.as_deref()) {
                 Some(value) => value,
                 None => {
-                    self.status = tr("Choose an export folder inside the Godot project.").to_string();
+                    self.status =
+                        tr("Choose an export folder inside the Godot project.").to_string();
                     return;
                 }
             }
@@ -666,12 +879,18 @@ impl ExportPage {
     }
 
     fn map_page(&mut self, ui: &mut egui::Ui, editor: &Editor) {
-        ui.label(egui::RichText::new(".map").font(egui::FontId::new(theme::text_size() + 4.0, theme::bold())).color(theme::fg()));
+        ui.label(
+            egui::RichText::new(".map")
+                .font(egui::FontId::new(theme::text_size() + 4.0, theme::bold()))
+                .color(theme::fg()),
+        );
         form::note(
             ui,
-            tr("The map as a plain .map file, the way a compiler or another editor reads \
+            tr(
+                "The map as a plain .map file, the way a compiler or another editor reads \
                 it. A layer marked to be left out of exports is written empty. \
-                The map open in the editor is not changed either way."),
+                The map open in the editor is not changed either way.",
+            ),
         );
         ui.add_space(8.0);
         widgets::card(ui, tr("Dialect"), None, |ui| {
@@ -686,11 +905,15 @@ impl ExportPage {
                 MapDialect::Classic(format) => document.what_a_dialect_would_drop(format),
                 MapDialect::Quake3Primitive => document.quake3_map_export_problems(),
                 MapDialect::Doom3Primitive => {
-                    let mut notes: Vec<_> = document.quake3_map_export_problems().into_iter().map(|s| s.replace("Quake III", "Doom 3")).collect();
+                    let mut notes: Vec<_> = document
+                        .quake3_map_export_problems()
+                        .into_iter()
+                        .map(|s| s.replace("Quake III", "Doom 3"))
+                        .collect();
                     notes.push("Doom 3 brush/patch rotation must be baked into geometry and rotation/angle properties reset before export.".into());
                     notes.push("Doom 3 material definitions determine surface/content behavior; numeric face flags are not applied by the engine.".into());
                     notes
-                },
+                }
             };
             if lost.is_empty() {
                 form::note(ui, tr("This map loses nothing in that dialect."));
@@ -704,10 +927,22 @@ impl ExportPage {
     /// remembered so the next export and writing again on save can go there. `open` asks
     /// where; called every frame the window shows, since an in-app chooser answers later.
     fn write(&mut self, editor: &Editor, open: bool) {
-        if let Err(error)=self.settings.validate(){if open{self.status=error;}return}
+        if let Err(error) = self.settings.validate() {
+            if open {
+                self.status = error;
+            }
+            return;
+        }
         let Tab::Engine(_) = self.tab else {
             let name = format!("{}.map", editor.document.borrow().level_name());
-            let Some(path) = FileDialog::new().id("export-map").set_title(tr("Export")).set_file_name(name).save_file(open) else { return };
+            let Some(path) = FileDialog::new()
+                .id("export-map")
+                .set_title(tr("Export"))
+                .set_file_name(name)
+                .save_file(open)
+            else {
+                return;
+            };
             let format = DIALECTS[self.dialect % DIALECTS.len()].0;
             let document = editor.document.borrow();
             let result = match format {
@@ -730,13 +965,17 @@ impl ExportPage {
             return;
         }
         #[cfg_attr(target_arch = "wasm32", allow(unreachable_code))]
-        let mut chooser = FileDialog::new().id("export-level").set_title(tr("Where to write the level"));
+        let mut chooser = FileDialog::new()
+            .id("export-level")
+            .set_title(tr("Where to write the level"));
         // Opening where this engine last wrote: a project is exported to the same folder
         // over and over, and the second export should not have to find it.
         if !self.options.directory.is_empty() {
             chooser = chooser.set_directory(&self.options.directory);
         }
-        let Some(path) = chooser.pick_folder(open) else { return };
+        let Some(path) = chooser.pick_folder(open) else {
+            return;
+        };
         let mut options = self.options.clone();
         options.name = editor.document.borrow().level_name();
         match export::export(&editor.document.borrow(), &path, &options) {
@@ -753,33 +992,58 @@ impl ExportPage {
     /// download, a zip of the folder the desktop would write when it is more than one file.
     #[cfg(target_arch = "wasm32")]
     fn download(&mut self, editor: &Editor) -> String {
-        let Tab::Engine(target) = self.tab else { return String::new() };
+        let Tab::Engine(target) = self.tab else {
+            return String::new();
+        };
         let mut options = self.options.clone();
         options.name = editor.document.borrow().level_name();
         let directory = Path::new("/heron-brush/export");
-        let (mut report, files) = match export::export_files(&editor.document.borrow(), directory, &options) {
-            Ok(built) => built,
-            Err(why) => return why.to_string(),
-        };
+        let (mut report, files) =
+            match export::export_files(&editor.document.borrow(), directory, &options) {
+                Ok(built) => built,
+                Err(why) => return why.to_string(),
+            };
         let entries: Vec<crate::zip::Entry> = files
             .into_iter()
             .map(|(path, contents)| crate::zip::Entry {
-                path: path.strip_prefix(directory).unwrap_or(&path).to_string_lossy().replace('\\', "/"),
+                path: path
+                    .strip_prefix(directory)
+                    .unwrap_or(&path)
+                    .to_string_lossy()
+                    .replace('\\', "/"),
                 contents: match contents {
                     export::Contents::Text(text) => text.into_bytes(),
                     export::Contents::Bytes(bytes) => bytes,
                 },
             })
             .collect();
-        report.files = entries.iter().map(|entry| PathBuf::from(&entry.path)).collect();
+        report.files = entries
+            .iter()
+            .map(|entry| PathBuf::from(&entry.path))
+            .collect();
         match entries.as_slice() {
             [one] => {
-                let name = Path::new(&one.path).file_name().map_or(one.path.clone(), |name| name.to_string_lossy().into_owned());
+                let name = Path::new(&one.path)
+                    .file_name()
+                    .map_or(one.path.clone(), |name| name.to_string_lossy().into_owned());
                 crate::web::download(&name, &one.contents);
             }
             _ => {
-                let engine: String = target.name().chars().map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '-' }).collect();
-                crate::web::download(&format!("{}-{engine}.zip", options.name), &crate::zip::write(&entries));
+                let engine: String = target
+                    .name()
+                    .chars()
+                    .map(|c| {
+                        if c.is_ascii_alphanumeric() {
+                            c.to_ascii_lowercase()
+                        } else {
+                            '-'
+                        }
+                    })
+                    .collect();
+                crate::web::download(
+                    &format!("{}-{engine}.zip", options.name),
+                    &crate::zip::write(&entries),
+                );
             }
         }
         describe(&report)
@@ -788,9 +1052,13 @@ impl ExportPage {
     /// The same build with the geometry checks on, and nothing written, for
     /// wherever this engine last wrote.
     fn check(&mut self, editor: &Editor) {
-        if let Err(error)=self.settings.validate(){self.status=error;return}
+        if let Err(error) = self.settings.validate() {
+            self.status = error;
+            return;
+        }
         let Tab::Engine(target) = self.tab else {
-            self.status = tr("The .map tab writes the map itself; there is no level to check").to_string();
+            self.status =
+                tr("The .map tab writes the map itself; there is no level to check").to_string();
             return;
         };
         let mut options = self.options.clone();
@@ -806,11 +1074,17 @@ impl ExportPage {
         let directory = PathBuf::from(&options.directory);
         match export::check(&editor.document.borrow(), &directory, &options) {
             Ok(report) if report.warnings.is_empty() => {
-                self.status = fill("nothing wrong with {} triangles", &[&report.triangles.to_string()]);
+                self.status = fill(
+                    "nothing wrong with {} triangles",
+                    &[&report.triangles.to_string()],
+                );
             }
             Ok(report) => {
                 self.status = counted(report.warnings.len(), "issue");
-                self.problems = Some(Problems { target, warnings: report.warnings });
+                self.problems = Some(Problems {
+                    target,
+                    warnings: report.warnings,
+                });
             }
             Err(why) => self.status = why.to_string(),
         }
@@ -819,23 +1093,41 @@ impl ExportPage {
     /// The window listing everything a check found, since the status line holds one
     /// sentence.
     fn show_problems(&mut self, ctx: &egui::Context) {
-        let Some(problems) = &self.problems else { return };
+        let Some(problems) = &self.problems else {
+            return;
+        };
         let mut close = false;
-        let heading = fill("{} in the {} level", &[&counted(problems.warnings.len(), "issue"), problems.target.name()]);
-        let open = dialog::show(ctx, "export-problems", tr("What the check found"), [620.0, 460.0], |ui, part| {
-            if part == dialog::Part::Actions {
-                close = dialog::button(ui, tr("Close"), true).clicked();
-                return;
-            }
-            theme::heading(ui, &heading);
-            ui.add_space(6.0);
-            egui::ScrollArea::vertical().id_salt("export-problems").auto_shrink([false, false]).max_height(ui.available_height() - 48.0).show(ui, |ui| {
-                ui.spacing_mut().item_spacing.y = 6.0;
-                for problem in &problems.warnings {
-                    ui.add(egui::Label::new(problem.as_str()).wrap().selectable(true));
+        let heading = fill(
+            "{} in the {} level",
+            &[
+                &counted(problems.warnings.len(), "issue"),
+                problems.target.name(),
+            ],
+        );
+        let open = dialog::show(
+            ctx,
+            "export-problems",
+            tr("What the check found"),
+            [620.0, 460.0],
+            |ui, part| {
+                if part == dialog::Part::Actions {
+                    close = dialog::button(ui, tr("Close"), true).clicked();
+                    return;
                 }
-            });
-        });
+                theme::heading(ui, &heading);
+                ui.add_space(6.0);
+                egui::ScrollArea::vertical()
+                    .id_salt("export-problems")
+                    .auto_shrink([false, false])
+                    .max_height(ui.available_height() - 48.0)
+                    .show(ui, |ui| {
+                        ui.spacing_mut().item_spacing.y = 6.0;
+                        for problem in &problems.warnings {
+                            ui.add(egui::Label::new(problem.as_str()).wrap().selectable(true));
+                        }
+                    });
+            },
+        );
         if !open || close {
             self.problems = None;
         }
@@ -843,13 +1135,21 @@ impl ExportPage {
 }
 
 /// The live-link section of an engine's page.
-fn live_link(ui: &mut egui::Ui, live: &std::rc::Rc<editor_core::godot_live::LiveLink>, target: Target) {
-    widgets::card(ui, &fill("Live link with {}", &[target.name()]), None, |ui| {
-        form::note(ui, live_hint(target));
-        ui.add_space(4.0);
-        if target == Target::Defold {
-            let mut hot = live.defold_hot_reload();
-            if form::switch_row(
+fn live_link(
+    ui: &mut egui::Ui,
+    live: &std::rc::Rc<editor_core::godot_live::LiveLink>,
+    target: Target,
+) {
+    widgets::card(
+        ui,
+        &fill("Live link with {}", &[target.name()]),
+        None,
+        |ui| {
+            form::note(ui, live_hint(target));
+            ui.add_space(4.0);
+            if target == Target::Defold {
+                let mut hot = live.defold_hot_reload();
+                if form::switch_row(
                 ui,
                 tr("Hot reload running game"),
                 Some(tr("Start the game from Defold first. Adding objects or changing collisions may require restarting the level.")),
@@ -857,38 +1157,45 @@ fn live_link(ui: &mut egui::Ui, live: &std::rc::Rc<editor_core::godot_live::Live
             ) {
                 live.set_defold_hot_reload(hot);
             }
-        }
-        let install = match target {
-            Target::Flax => tr("Install Flax addon"),
-            Target::Unity => tr("Install Unity addon"),
-            _ => tr("Install Godot addon"),
-        };
-        let mut labels = Vec::new();
-        if target != Target::Defold {
-            labels.push(install);
-        }
-        labels.extend([tr("Start live link"), tr("Stop session")]);
-        let offset = usize::from(target == Target::Defold);
-        match form::button_strip(ui, &labels, true).map(|index| index + offset) {
-            Some(0) => live.install_addon(target),
-            Some(1) => live.start_or_say(target),
-            Some(_) => live.stop("Live link stopped"),
-            None => {}
-        }
-        let status = live.status().message;
-        if !status.is_empty() {
-            ui.add_space(2.0);
-            form::text(ui, &status);
-        }
-    });
+            }
+            let install = match target {
+                Target::Flax => tr("Install Flax addon"),
+                Target::Unity => tr("Install Unity addon"),
+                _ => tr("Install Godot addon"),
+            };
+            let mut labels = Vec::new();
+            if target != Target::Defold {
+                labels.push(install);
+            }
+            labels.extend([tr("Start live link"), tr("Stop session")]);
+            let offset = usize::from(target == Target::Defold);
+            match form::button_strip(ui, &labels, true).map(|index| index + offset) {
+                Some(0) => live.install_addon(target),
+                Some(1) => live.start_or_say(target),
+                Some(_) => live.stop("Live link stopped"),
+                None => {}
+            }
+            let status = live.status().message;
+            if !status.is_empty() {
+                ui.add_space(2.0);
+                form::text(ui, &status);
+            }
+        },
+    );
 }
 
 /// Decodes a tab's logo into a texture.
 fn load_logo(ctx: &egui::Context, tab: Tab) -> Option<egui::TextureHandle> {
-    let image = image::load_from_memory_with_format(logo_png(tab), image::ImageFormat::Png).ok()?.to_rgba8();
+    let image = image::load_from_memory_with_format(logo_png(tab), image::ImageFormat::Png)
+        .ok()?
+        .to_rgba8();
     let size = [image.width() as usize, image.height() as usize];
     let pixels = egui::ColorImage::from_rgba_unmultiplied(size, image.as_raw());
-    Some(ctx.load_texture(format!("export-logo-{}", tab.name()), pixels, egui::TextureOptions::LINEAR))
+    Some(ctx.load_texture(
+        format!("export-logo-{}", tab.name()),
+        pixels,
+        egui::TextureOptions::LINEAR,
+    ))
 }
 
 #[cfg(test)]
@@ -896,7 +1203,8 @@ mod tests {
     use super::*;
 
     fn scratch(name: &str) -> PathBuf {
-        let path = std::env::temp_dir().join(format!("heron-brush-export-{name}-{}", std::process::id()));
+        let path =
+            std::env::temp_dir().join(format!("heron-brush-export-{name}-{}", std::process::id()));
         let _ = std::fs::remove_file(&path);
         path
     }
@@ -910,14 +1218,22 @@ mod tests {
         assert_eq!(Text::NameProperty.label(), "Name nodes after");
         *Text::NameProperty.value(&mut page.options) = "targetname".into();
         assert_eq!(page.options.name_property, "targetname");
-        assert_ne!(page.options.name, "targetname", "the level name is left alone");
+        assert_ne!(
+            page.options.name, "targetname",
+            "the level name is left alone"
+        );
         page.options.name = "my-arena".into();
         page.options.export_on_save = true;
         page.commit();
         let read = Settings::load_from(&store).for_target(Target::Godot);
         assert_eq!(read.name_property, "targetname");
         assert!(read.export_on_save);
-        assert!(!std::fs::read_to_string(&store).unwrap().contains("my-arena"), "the level name is the map's, never saved");
+        assert!(
+            !std::fs::read_to_string(&store)
+                .unwrap()
+                .contains("my-arena"),
+            "the level name is the map's, never saved"
+        );
         let _ = std::fs::remove_file(&store);
     }
 
@@ -925,16 +1241,35 @@ mod tests {
     #[test]
     fn engines_show_their_own_controls() {
         let godot = shown(Target::Godot);
-        assert!(godot.live && godot.godot_paths && godot.godot_extras && godot.static_cells && godot.more);
+        assert!(
+            godot.live
+                && godot.godot_paths
+                && godot.godot_extras
+                && godot.static_cells
+                && godot.more
+        );
         let gltf = shown(Target::Gltf);
-        assert!(!gltf.collision && !gltf.optimisations && !gltf.project_folder && !gltf.live && gltf.more);
+        assert!(
+            !gltf.collision
+                && !gltf.optimisations
+                && !gltf.project_folder
+                && !gltf.live
+                && gltf.more
+        );
         assert_eq!(shown(Target::Glb), gltf);
         let obj = shown(Target::Obj);
         assert!(obj.collision && !obj.static_cells && !obj.tool_materials && !obj.more);
         assert!(shown(Target::Defold).defold_paths && !shown(Target::Godot).defold_paths);
-        assert!(shown(Target::Unreal).content_dir && shown(Target::Flax).content_dir && !shown(Target::Bevy).content_dir);
+        assert!(
+            shown(Target::Unreal).content_dir
+                && shown(Target::Flax).content_dir
+                && !shown(Target::Bevy).content_dir
+        );
         assert!(!shown(Target::Unity).godot_extras && shown(Target::Unity).live);
-        assert_eq!(Text::ContentDir.placeholder(Target::Unreal), "/Game/<level>");
+        assert_eq!(
+            Text::ContentDir.placeholder(Target::Unreal),
+            "/Game/<level>"
+        );
         assert_eq!(Text::ContentDir.placeholder(Target::Flax), "<level>");
     }
 
@@ -942,7 +1277,10 @@ mod tests {
     #[test]
     fn resource_paths_stay_inside_the_project() {
         let root = Path::new("/projects/game");
-        assert_eq!(resource_path(Path::new("/projects/game/art/walls"), Some(root)).as_deref(), Some("res://art/walls"));
+        assert_eq!(
+            resource_path(Path::new("/projects/game/art/walls"), Some(root)).as_deref(),
+            Some("res://art/walls")
+        );
         assert_eq!(resource_path(Path::new("/elsewhere/art"), Some(root)), None);
         assert_eq!(resource_path(Path::new("/projects/game/art"), None), None);
     }
@@ -957,10 +1295,16 @@ mod tests {
             saved_faces: 3,
         };
         let said = describe(&report);
-        assert!(said.starts_with("2 files · 1 triangle, 3 faces saved"), "{said}");
+        assert!(
+            said.starts_with("2 files · 1 triangle, 3 faces saved"),
+            "{said}"
+        );
         assert!(said.contains("warning 2") && !said.contains("warning 3"));
         assert!(said.ends_with("… and 2 more"), "{said}");
-        assert_eq!(loss_text(&["a".into(), "b".into()]), "Written this way, a, and b");
+        assert_eq!(
+            loss_text(&["a".into(), "b".into()]),
+            "Written this way, a, and b"
+        );
     }
 
     /// Every tab's logo decodes.

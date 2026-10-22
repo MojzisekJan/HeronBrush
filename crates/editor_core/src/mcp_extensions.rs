@@ -144,10 +144,11 @@ fn target(args: &Value) -> Result<Target, String> {
     }
 }
 
-fn options(document: &Document,args: &Value) -> Result<Options, String> {
-    let settings=crate::export_settings::Settings::for_map(document.path.as_deref());settings.validate()?;
+fn options(document: &Document, args: &Value) -> Result<Options, String> {
+    let settings = crate::export_settings::Settings::for_map(document.path.as_deref());
+    settings.validate()?;
     let mut options = settings.for_target(target(args)?);
-    options.name=document.level_name();
+    options.name = document.level_name();
     let mut value = serde_json::to_value(options).map_err(|e| e.to_string())?;
     if let Some(overrides) = args.get("options").and_then(Value::as_object) {
         for (key, v) in overrides {
@@ -172,14 +173,14 @@ fn options(document: &Document,args: &Value) -> Result<Options, String> {
     Ok(options)
 }
 
-pub(super) fn export_settings(document: &Document,args: &Value) -> Result<String, String> {
-    let mut value = serde_json::to_value(options(document,args)?).map_err(|e| e.to_string())?;
+pub(super) fn export_settings(document: &Document, args: &Value) -> Result<String, String> {
+    let mut value = serde_json::to_value(options(document, args)?).map_err(|e| e.to_string())?;
     value.as_object_mut().unwrap().remove("target");
     Ok(value.to_string())
 }
 
 pub(super) fn export(document: &Document, args: &Value, checking: bool) -> Result<String, String> {
-    let options = options(document,args)?;
+    let options = options(document, args)?;
     let path = std::path::Path::new(string_or(args, "path", ""));
     let report = if checking {
         crate::export::check(document, path, &options)
@@ -237,8 +238,15 @@ pub(super) fn run_plugin(document: &mut Document, args: &Value) -> Result<String
                 );
             }
             let plugin = matches.remove(0);
-            if !plugin.enabled { return Err("Plugin is disabled".into()); }
-            (plugin.source, plugin.settings, plugin.wrong_api, plugin.actions)
+            if !plugin.enabled {
+                return Err("Plugin is disabled".into());
+            }
+            (
+                plugin.source,
+                plugin.settings,
+                plugin.wrong_api,
+                plugin.actions,
+            )
         }
         (None, Some(path)) => {
             let mut path = std::path::PathBuf::from(path.as_str().ok_or("invalid path")?);
@@ -285,10 +293,13 @@ pub(super) fn run_plugin(document: &mut Document, args: &Value) -> Result<String
         };
         values.push((setting.key.clone(), value));
     }
-    let action=args.get("action").and_then(Value::as_str).unwrap_or("");
-    if !action.is_empty() && !actions.iter().any(|a|a.id==action) {return Err("Unknown plugin action".into());}
+    let action = args.get("action").and_then(Value::as_str).unwrap_or("");
+    if !action.is_empty() && !actions.iter().any(|a| a.id == action) {
+        return Err("Unknown plugin action".into());
+    }
     // Same undo semantics as the Plugins window, including partial failed runs.
-    let result = document.run_as_one_edit(|doc| crate::plugin::run_action(doc, &source, &values, action));
+    let result =
+        document.run_as_one_edit(|doc| crate::plugin::run_action(doc, &source, &values, action));
     result
         .map(|output| json!({"messages":output.lines,"panel":output.panel}).to_string())
         .map_err(|e| {
@@ -357,7 +368,10 @@ pub(super) fn tighten_schemas(tools: &mut [Value]) {
             "select" => {
                 props["ids"]["items"] = id.clone();
             }
-            "describe_brush" | "set_face_color" | "set_surface_material" | "set_face_export_hidden" => {
+            "describe_brush"
+            | "set_face_color"
+            | "set_surface_material"
+            | "set_face_export_hidden" => {
                 props["brush"] = id.clone();
             }
             _ => {}
@@ -368,7 +382,8 @@ pub(super) fn tighten_schemas(tools: &mut [Value]) {
                 props[key] = json!({"type":"number","minimum":0,"maximum":255});
             }
             props["color"]["items"] = json!({"type":"number","minimum":0,"maximum":255});
-            props["gradient"]["anyOf"] = json!([{"required":["from", "to"]}, {"required":["stops"]}]);
+            props["gradient"]["anyOf"] =
+                json!([{"required":["from", "to"]}, {"required":["stops"]}]);
             props["gradient"]["additionalProperties"] = json!(false);
             for key in ["from", "to"] {
                 props["gradient"]["properties"][key]["items"] =

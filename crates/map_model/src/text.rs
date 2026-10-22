@@ -12,9 +12,9 @@
 //! `depth` along the world's y, and drops the result at `origin`.
 
 use geometry_math::bbox::Bbox3d;
-use geometry_math::Float;
 use geometry_math::mat_ext;
 use geometry_math::vec::Vec3d;
+use geometry_math::Float;
 
 use crate::brush::Brush;
 
@@ -24,7 +24,11 @@ enum Seg {
     /// An axis-aligned bar between two corners.
     Rect { x0: f64, y0: f64, x1: f64, y1: f64 },
     /// A slanted bar of the given thickness between two points -- the four diagonals.
-    Bar { a: (f64, f64), b: (f64, f64), thick: f64 },
+    Bar {
+        a: (f64, f64),
+        b: (f64, f64),
+        thick: f64,
+    },
 }
 
 /// The glyph box width.
@@ -51,20 +55,70 @@ fn segments() -> [Seg; 16] {
     let diag = T * 0.72;
     [
         // A1, A2: the top, split at the centre.
-        Seg::Rect { x0: 0.0, y0: TOP, x1: CX - G, y1: 1.0 },
-        Seg::Rect { x0: CX + G, y0: TOP, x1: W, y1: 1.0 },
+        Seg::Rect {
+            x0: 0.0,
+            y0: TOP,
+            x1: CX - G,
+            y1: 1.0,
+        },
+        Seg::Rect {
+            x0: CX + G,
+            y0: TOP,
+            x1: W,
+            y1: 1.0,
+        },
         // B, C: the right side, upper and lower.
-        Seg::Rect { x0: W - T, y0: MID_HI + G, x1: W, y1: TOP - G },
-        Seg::Rect { x0: W - T, y0: T + G, x1: W, y1: MID_LO - G },
+        Seg::Rect {
+            x0: W - T,
+            y0: MID_HI + G,
+            x1: W,
+            y1: TOP - G,
+        },
+        Seg::Rect {
+            x0: W - T,
+            y0: T + G,
+            x1: W,
+            y1: MID_LO - G,
+        },
         // D1, D2: the bottom, split at the centre.
-        Seg::Rect { x0: 0.0, y0: 0.0, x1: CX - G, y1: T },
-        Seg::Rect { x0: CX + G, y0: 0.0, x1: W, y1: T },
+        Seg::Rect {
+            x0: 0.0,
+            y0: 0.0,
+            x1: CX - G,
+            y1: T,
+        },
+        Seg::Rect {
+            x0: CX + G,
+            y0: 0.0,
+            x1: W,
+            y1: T,
+        },
         // E, F: the left side, lower and upper.
-        Seg::Rect { x0: 0.0, y0: T + G, x1: T, y1: MID_LO - G },
-        Seg::Rect { x0: 0.0, y0: MID_HI + G, x1: T, y1: TOP - G },
+        Seg::Rect {
+            x0: 0.0,
+            y0: T + G,
+            x1: T,
+            y1: MID_LO - G,
+        },
+        Seg::Rect {
+            x0: 0.0,
+            y0: MID_HI + G,
+            x1: T,
+            y1: TOP - G,
+        },
         // G1, G2: the middle, split at the centre.
-        Seg::Rect { x0: T + G, y0: MID_LO, x1: CX - T / 2.0 - G, y1: MID_HI },
-        Seg::Rect { x0: CX + T / 2.0 + G, y0: MID_LO, x1: W - T - G, y1: MID_HI },
+        Seg::Rect {
+            x0: T + G,
+            y0: MID_LO,
+            x1: CX - T / 2.0 - G,
+            y1: MID_HI,
+        },
+        Seg::Rect {
+            x0: CX + T / 2.0 + G,
+            y0: MID_LO,
+            x1: W - T - G,
+            y1: MID_HI,
+        },
         // H, J: the upper diagonals, from a corner in towards the centre.
         Seg::Bar {
             a: (T + G + diag * 0.4, TOP - G),
@@ -317,9 +371,16 @@ pub fn text_brushes(
             continue;
         };
         for seg in strokes {
-            if let Some(brush) =
-                seg_brush(seg, pen_x, line_y, height, depth, material, origin, world_bounds)
-            {
+            if let Some(brush) = seg_brush(
+                seg,
+                pen_x,
+                line_y,
+                height,
+                depth,
+                material,
+                origin,
+                world_bounds,
+            ) {
                 brushes.push(brush);
             }
         }
@@ -376,10 +437,7 @@ fn seg_brush(
             )?;
             let mid = Vec3d::new((ax + bx) / 2.0, origin.y(), (az + bz) / 2.0);
             let transform = mat_ext::translation_matrix(mid)
-                * mat_ext::rotation_matrix_about_axis(
-                    Vec3d::new(0.0, 1.0, 0.0),
-                    -dz.atan2(dx),
-                );
+                * mat_ext::rotation_matrix_about_axis(Vec3d::new(0.0, 1.0, 0.0), -dz.atan2(dx));
             bar.transform(world_bounds, &transform).ok()
         }
     }
@@ -457,9 +515,7 @@ fn prism(
     let geometry = crate::polyhedron::Polyhedron::from_points(&points, f64::ALMOST_ZERO).ok()?;
     let brush = Brush::from_polyhedron(geometry, material);
     // A glyph placed outside the world is no glyph at all.
-    world_bounds
-        .contains(&brush.bounds())
-        .then_some(brush)
+    world_bounds.contains(&brush.bounds()).then_some(brush)
 }
 
 /// Cuts the filled regions the outlines describe into convex polygons.
@@ -536,16 +592,28 @@ pub(crate) fn convex_pieces(outlines: &[Outline]) -> Vec<Vec<geometry_math::vec:
 fn reflection_symmetric(outer: &Outline, holes: &[Outline]) -> bool {
     (0..2).any(|axis| {
         let min = outer.iter().map(|p| p[axis]).fold(f64::INFINITY, f64::min);
-        let max = outer.iter().map(|p| p[axis]).fold(f64::NEG_INFINITY, f64::max);
-        let reflect = |mut p: geometry_math::vec::Vec2d| { p[axis] = min + max - p[axis]; p };
-        let close = |a: geometry_math::vec::Vec2d, b: geometry_math::vec::Vec2d| geometry_math::vec::length(a - b) < 1e-9;
+        let max = outer
+            .iter()
+            .map(|p| p[axis])
+            .fold(f64::NEG_INFINITY, f64::max);
+        let reflect = |mut p: geometry_math::vec::Vec2d| {
+            p[axis] = min + max - p[axis];
+            p
+        };
+        let close = |a: geometry_math::vec::Vec2d, b: geometry_math::vec::Vec2d| {
+            geometry_math::vec::length(a - b) < 1e-9
+        };
         std::iter::once(outer).chain(holes.iter()).all(|ring| {
-            ring.iter().zip(ring.iter().cycle().skip(1)).all(|(&a, &b)| {
-                ring.iter().zip(ring.iter().cycle().skip(1)).any(|(&c, &d)| {
-                    (close(reflect(a), c) && close(reflect(b), d))
-                        || (close(reflect(a), d) && close(reflect(b), c))
+            ring.iter()
+                .zip(ring.iter().cycle().skip(1))
+                .all(|(&a, &b)| {
+                    ring.iter()
+                        .zip(ring.iter().cycle().skip(1))
+                        .any(|(&c, &d)| {
+                            (close(reflect(a), c) && close(reflect(b), d))
+                                || (close(reflect(a), d) && close(reflect(b), c))
+                        })
                 })
-            })
         })
     })
 }
@@ -554,8 +622,13 @@ fn reflection_symmetric(outer: &Outline, holes: &[Outline]) -> bool {
 /// Evaluating both ends on the original edges keeps adjacent bands coincident.
 fn horizontal_bands(outer: &Outline, holes: &[Outline]) -> Vec<Outline> {
     use geometry_math::vec::Vec2d;
-    let rings = std::iter::once(outer).chain(holes.iter()).collect::<Vec<_>>();
-    let mut levels = rings.iter().flat_map(|r| r.iter().map(|p| p.y())).collect::<Vec<_>>();
+    let rings = std::iter::once(outer)
+        .chain(holes.iter())
+        .collect::<Vec<_>>();
+    let mut levels = rings
+        .iter()
+        .flat_map(|r| r.iter().map(|p| p.y()))
+        .collect::<Vec<_>>();
     levels.sort_by(f64::total_cmp);
     levels.dedup_by(|a, b| (*a - *b).abs() < 1e-10);
     let mut result = Vec::new();
@@ -565,7 +638,9 @@ fn horizontal_bands(outer: &Outline, holes: &[Outline]) -> Vec<Outline> {
         let mut crossings = Vec::new();
         for ring in &rings {
             for (&a, &b) in ring.iter().zip(ring.iter().cycle().skip(1)) {
-                if middle <= a.y().min(b.y()) || middle >= a.y().max(b.y()) { continue; }
+                if middle <= a.y().min(b.y()) || middle >= a.y().max(b.y()) {
+                    continue;
+                }
                 let at = |y: f64| a.x() + (y - a.y()) * (b.x() - a.x()) / (b.y() - a.y());
                 crossings.push((at(middle), at(bottom), at(top)));
             }
@@ -573,11 +648,21 @@ fn horizontal_bands(outer: &Outline, holes: &[Outline]) -> Vec<Outline> {
         crossings.sort_by(|a, b| a.0.total_cmp(&b.0));
         for pair in crossings.as_chunks::<2>().0 {
             let (left, right) = (pair[0], pair[1]);
-            let mut polygon = vec![Vec2d::new(left.1, bottom), Vec2d::new(right.1, bottom),
-                Vec2d::new(right.2, top), Vec2d::new(left.2, top)];
+            let mut polygon = vec![
+                Vec2d::new(left.1, bottom),
+                Vec2d::new(right.1, bottom),
+                Vec2d::new(right.2, top),
+                Vec2d::new(left.2, top),
+            ];
             polygon.dedup_by(|a, b| geometry_math::vec::length(*a - *b) < 1e-10);
-            if polygon.len() > 2 && geometry_math::vec::length(polygon[0] - *polygon.last().unwrap()) < 1e-10 { polygon.pop(); }
-            if polygon.len() >= 3 { result.push(polygon); }
+            if polygon.len() > 2
+                && geometry_math::vec::length(polygon[0] - *polygon.last().unwrap()) < 1e-10
+            {
+                polygon.pop();
+            }
+            if polygon.len() >= 3 {
+                result.push(polygon);
+            }
         }
     }
     result
@@ -612,7 +697,10 @@ fn point_in_ring(ring: &[geometry_math::vec::Vec2d], point: geometry_math::vec::
 /// The usual bridge: the hole's rightmost corner is joined to a corner of the outer ring,
 /// and the hole is walked into the outer ring's own list at that point. The seam is a
 /// zero-width slit, which the triangulation then treats as an edge like any other.
-fn bridge_holes(ring: &[geometry_math::vec::Vec2d], holes: &[Outline]) -> Vec<geometry_math::vec::Vec2d> {
+fn bridge_holes(
+    ring: &[geometry_math::vec::Vec2d],
+    holes: &[Outline],
+) -> Vec<geometry_math::vec::Vec2d> {
     let mut out = ring.to_vec();
     // The rightmost hole first, so a bridge never has to cross a hole that is still to
     // come.
@@ -630,17 +718,31 @@ fn bridge_holes(ring: &[geometry_math::vec::Vec2d], holes: &[Outline]) -> Vec<ge
 
         // Cast rightward to the nearest boundary. The nearest vertex can lie
         // behind a concavity or create crossing seams between several counters.
-        let hit = out.iter().enumerate().filter_map(|(index, a)| {
-            let b = out[(index + 1) % out.len()];
-            if (a.y() > from.y()) == (b.y() > from.y()) { return None; }
-            let x = a.x() + (from.y() - a.y()) * (b.x() - a.x()) / (b.y() - a.y());
-            (x > from.x() + 1e-9).then_some((index, geometry_math::vec::Vec2d::new(x, from.y())))
-        }).min_by(|(_,a),(_,b)| a.x().total_cmp(&b.x()));
-        let Some((edge, point)) = hit else { continue; };
+        let hit = out
+            .iter()
+            .enumerate()
+            .filter_map(|(index, a)| {
+                let b = out[(index + 1) % out.len()];
+                if (a.y() > from.y()) == (b.y() > from.y()) {
+                    return None;
+                }
+                let x = a.x() + (from.y() - a.y()) * (b.x() - a.x()) / (b.y() - a.y());
+                (x > from.x() + 1e-9)
+                    .then_some((index, geometry_math::vec::Vec2d::new(x, from.y())))
+            })
+            .min_by(|(_, a), (_, b)| a.x().total_cmp(&b.x()));
+        let Some((edge, point)) = hit else {
+            continue;
+        };
         let next = (edge + 1) % out.len();
-        let join = if same_point(out[edge], point) { edge }
-            else if same_point(out[next], point) { next }
-            else { out.insert(edge + 1, point); edge + 1 };
+        let join = if same_point(out[edge], point) {
+            edge
+        } else if same_point(out[next], point) {
+            next
+        } else {
+            out.insert(edge + 1, point);
+            edge + 1
+        };
 
         // After the outer corner: into the hole, once round it, back to where the hole
         // was entered, and back out to the outer corner. The seam is walked twice, which
@@ -725,7 +827,11 @@ fn ear_clip(ring: &[geometry_math::vec::Vec2d]) -> Vec<Vec<geometry_math::vec::V
 }
 
 /// Twice the signed area of the triangle `a b c`.
-fn cross(a: geometry_math::vec::Vec2d, b: geometry_math::vec::Vec2d, c: geometry_math::vec::Vec2d) -> f64 {
+fn cross(
+    a: geometry_math::vec::Vec2d,
+    b: geometry_math::vec::Vec2d,
+    c: geometry_math::vec::Vec2d,
+) -> f64 {
     (b.x() - a.x()) * (c.y() - a.y()) - (b.y() - a.y()) * (c.x() - a.x())
 }
 
@@ -745,12 +851,13 @@ fn blocks_ear(
     cross(a, b, point) >= -EDGE && cross(b, c, point) >= -EDGE && cross(c, a, point) >= -EDGE
 }
 
-
 /// Joins neighbouring triangles back together while what they make stays convex.
 ///
 /// Hertel and Mehlhorn: every diagonal that is not needed is taken out, which leaves at
 /// most four times as many pieces as the fewest possible -- and, for a letter, a handful.
-fn merge_into_convex(triangles: Vec<Vec<geometry_math::vec::Vec2d>>) -> Vec<Vec<geometry_math::vec::Vec2d>> {
+fn merge_into_convex(
+    triangles: Vec<Vec<geometry_math::vec::Vec2d>>,
+) -> Vec<Vec<geometry_math::vec::Vec2d>> {
     let mut pieces = triangles;
     let mut merged_any = true;
     while merged_any {
@@ -884,7 +991,9 @@ mod outline_tests {
         );
         // And the ring itself is solid.
         let on_the_ring = Vec3d::new(4.0, 4.0, 16.0);
-        assert!(brushes.iter().any(|brush| brush.contains_point(on_the_ring)));
+        assert!(brushes
+            .iter()
+            .any(|brush| brush.contains_point(on_the_ring)));
     }
 
     #[test]
@@ -899,8 +1008,7 @@ mod outline_tests {
             Vec2d::new(0.3, 1.0),
             Vec2d::new(0.0, 1.0),
         ];
-        let brushes =
-            brushes_from_outlines(&[outline], 32.0, 8.0, "stone", Vec3d::zero(), &world);
+        let brushes = brushes_from_outlines(&[outline], 32.0, 8.0, "stone", Vec3d::zero(), &world);
         assert_eq!(brushes.len(), 2, "an L is two convex pieces");
     }
 }

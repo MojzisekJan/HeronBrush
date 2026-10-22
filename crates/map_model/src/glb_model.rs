@@ -168,19 +168,35 @@ fn accessor(
             let value = match component {
                 5120 => {
                     let v = b[0] as i8 as f64;
-                    if normalized { (v / 127.).max(-1.) } else { v }
+                    if normalized {
+                        (v / 127.).max(-1.)
+                    } else {
+                        v
+                    }
                 }
                 5121 => {
                     let v = b[0] as f64;
-                    if normalized { v / 255. } else { v }
+                    if normalized {
+                        v / 255.
+                    } else {
+                        v
+                    }
                 }
                 5122 => {
                     let v = i16::from_le_bytes(b.try_into().unwrap()) as f64;
-                    if normalized { (v / 32767.).max(-1.) } else { v }
+                    if normalized {
+                        (v / 32767.).max(-1.)
+                    } else {
+                        v
+                    }
                 }
                 5123 => {
                     let v = u16::from_le_bytes(b.try_into().unwrap()) as f64;
-                    if normalized { v / 65535. } else { v }
+                    if normalized {
+                        v / 65535.
+                    } else {
+                        v
+                    }
                 }
                 5125 => u32::from_le_bytes(b.try_into().unwrap()) as f64,
                 5126 => f32::from_le_bytes(b.try_into().unwrap()) as f64,
@@ -466,7 +482,9 @@ pub fn read(bytes: &[u8]) -> Result<EntityModel, String> {
                 _ => return Err("Invalid GLB alpha mode".into()),
             };
             imported.alpha_cutoff = factor(&mat["alphaCutoff"], 0.5, false)?;
-            if imported.alpha_cutoff < 0.0 { return Err("Invalid GLB alpha cutoff".into()); }
+            if imported.alpha_cutoff < 0.0 {
+                return Err("Invalid GLB alpha cutoff".into());
+            }
             imported.double_sided = match mat.get("doubleSided") {
                 None => false,
                 Some(Value::Bool(value)) => *value,
@@ -571,9 +589,12 @@ mod tests {
         let json_len = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
         let root: Value = serde_json::from_slice(&bytes[20..20 + json_len]).unwrap();
         let binary = bytes[28 + json_len..].to_vec();
-        for material in [serde_json::json!({"alphaMode":"UNKNOWN"}),
-            serde_json::json!({"alphaMode":2}), serde_json::json!({"alphaCutoff":-0.1}),
-            serde_json::json!({"doubleSided":"true"})] {
+        for material in [
+            serde_json::json!({"alphaMode":"UNKNOWN"}),
+            serde_json::json!({"alphaMode":2}),
+            serde_json::json!({"alphaCutoff":-0.1}),
+            serde_json::json!({"doubleSided":"true"}),
+        ] {
             let mut root = root.clone();
             root["materials"] = serde_json::json!([material]);
             root["meshes"][0]["primitives"][0]["material"] = serde_json::json!(0);
@@ -582,26 +603,43 @@ mod tests {
         let mut root = root;
         root["materials"] = serde_json::json!([{"alphaMode":"MASK","alphaCutoff":2.0}]);
         root["meshes"][0]["primitives"][0]["material"] = serde_json::json!(0);
-        assert_eq!(read(&encode(root, binary)).unwrap().pbr[0].alpha_cutoff, 2.0);
+        assert_eq!(
+            read(&encode(root, binary)).unwrap().pbr[0].alpha_cutoff,
+            2.0
+        );
     }
 
     #[test]
     fn source_material_modes_cutoff_and_sidedness_survive_import() {
         use crate::material::Alpha;
-        let model = read(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),
-            "/../../examples/editor-checks/fixtures/material_modes.glb"))).unwrap();
+        let model = read(include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/editor-checks/fixtures/material_modes.glb"
+        )))
+        .unwrap();
         assert_eq!(model.pbr.len(), 6);
         for (index, material) in model.pbr.iter().enumerate() {
-            assert_eq!(material.alpha_mode, [Alpha::Opaque, Alpha::Masked, Alpha::Blended][index / 2]);
+            assert_eq!(
+                material.alpha_mode,
+                [Alpha::Opaque, Alpha::Masked, Alpha::Blended][index / 2]
+            );
             assert_eq!(material.double_sided, index % 2 == 1);
-            assert_eq!(material.alpha_cutoff, if index / 2 == 1 { 0.42 } else { 0.5 });
+            assert_eq!(
+                material.alpha_cutoff,
+                if index / 2 == 1 { 0.42 } else { 0.5 }
+            );
         }
         // Identical texture pixels must not merge materials with different rules.
-        let hashes: std::collections::HashSet<_> = model.pbr.iter().map(|material| {
-            use std::hash::{Hash, Hasher};
-            let mut hash = std::collections::hash_map::DefaultHasher::new();
-            material.hash(&mut hash); hash.finish()
-        }).collect();
+        let hashes: std::collections::HashSet<_> = model
+            .pbr
+            .iter()
+            .map(|material| {
+                use std::hash::{Hash, Hasher};
+                let mut hash = std::collections::hash_map::DefaultHasher::new();
+                material.hash(&mut hash);
+                hash.finish()
+            })
+            .collect();
         assert_eq!(hashes.len(), 6);
     }
 

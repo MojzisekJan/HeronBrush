@@ -54,7 +54,14 @@ extern "C" {
     fn playtest_export_busy() -> bool;
     fn take_playtest_export() -> wasm_bindgen::JsValue;
     fn cancel_playtest_export(close: bool);
-    fn submit_playtest_export(snapshot: &str, directory: &str, options: &str, files: js_sys::Array, map_key: &str, prepare_ms: f64) -> bool;
+    fn submit_playtest_export(
+        snapshot: &str,
+        directory: &str,
+        options: &str,
+        files: js_sys::Array,
+        map_key: &str,
+        prepare_ms: f64,
+    ) -> bool;
     fn publish_playtest_export(answer: &wasm_bindgen::JsValue) -> bool;
 
 }
@@ -84,14 +91,21 @@ enum CjkFonts {
 fn speaks_cjk() -> bool {
     use editor_core::i18n::Language;
     let speaking = editor_core::preferences::pref(|p| p.language).resolved();
-    matches!(speaking, Language::Chinese | Language::ChineseTraditional | Language::Japanese | Language::Korean)
+    matches!(
+        speaking,
+        Language::Chinese | Language::ChineseTraditional | Language::Japanese | Language::Korean
+    )
 }
 
 /// Puts the fonts the archive holds where `theme` looks for them.
 fn preload_cjk_fonts(files: wasm_bindgen::JsValue) {
     let fonts = pairs(files);
     if !fonts.is_empty() {
-        editor_core::files::preload(fonts.into_iter().map(|(path, contents)| (Path::new(INSTALL_DIR).join(path), contents)));
+        editor_core::files::preload(
+            fonts
+                .into_iter()
+                .map(|(path, contents)| (Path::new(INSTALL_DIR).join(path), contents)),
+        );
     }
 }
 
@@ -131,8 +145,15 @@ pub async fn run() -> Result<(), String> {
     eframe::WebLogger::init(log::LevelFilter::Info).ok();
     // Paths that name no disk: without them the profile would be looked for under the
     // temporary directory, and asking for that panics in the browser.
-    editor_core::preferences::set_platform_directories("/heron-brush/config".into(), INSTALL_DIR.into());
-    editor_core::files::preload(pairs(load_bundle().await).into_iter().map(|(path, contents)| (Path::new(INSTALL_DIR).join(path), contents)));
+    editor_core::preferences::set_platform_directories(
+        "/heron-brush/config".into(),
+        INSTALL_DIR.into(),
+    );
+    editor_core::files::preload(
+        pairs(load_bundle().await)
+            .into_iter()
+            .map(|(path, contents)| (Path::new(INSTALL_DIR).join(path), contents)),
+    );
     editor_core::files::preload(pairs(load_files().await));
     // A Chinese, Japanese or Korean interface waits for its fonts, so it never shows
     // empty boxes; every other language starts without them.
@@ -155,7 +176,11 @@ pub async fn run() -> Result<(), String> {
     // wgpu over WebGL, which render_wgpu cannot run on.
     #[cfg(feature = "wgpu")]
     {
-        options.renderer = if use_webgpu().await.as_bool() == Some(true) { eframe::Renderer::Wgpu } else { eframe::Renderer::Glow };
+        options.renderer = if use_webgpu().await.as_bool() == Some(true) {
+            eframe::Renderer::Wgpu
+        } else {
+            eframe::Renderer::Glow
+        };
         if options.renderer == eframe::Renderer::Glow {
             // The 3D view blits its picture into the canvas, which WebGL refuses for a
             // multisampled canvas, and `antialias` is on unless asked otherwise. The context
@@ -208,13 +233,18 @@ pub fn set_title(title: &str) {
 
 /// `[path, bytes]` pairs from `web_files.js`: the bundled data, or what IndexedDB kept.
 fn pairs(value: wasm_bindgen::JsValue) -> Vec<(PathBuf, Vec<u8>)> {
-    let Ok(entries) = value.dyn_into::<js_sys::Array>() else { return Vec::new() };
+    let Ok(entries) = value.dyn_into::<js_sys::Array>() else {
+        return Vec::new();
+    };
     entries
         .iter()
         .filter_map(|entry| {
             let entry = entry.dyn_into::<js_sys::Array>().ok()?;
             let path = entry.get(0).as_string()?;
-            Some((PathBuf::from(path), js_sys::Uint8Array::new(&entry.get(1)).to_vec()))
+            Some((
+                PathBuf::from(path),
+                js_sys::Uint8Array::new(&entry.get(1)).to_vec(),
+            ))
         })
         .collect()
 }
@@ -229,8 +259,13 @@ fn written(path: &Path, contents: Option<&[u8]>) {
         return;
     };
     store_file(&key, contents);
-    if path.parent() == Some(Path::new(FILES_DIR)) || path.parent().and_then(Path::parent) == Some(Path::new(PICKED_DIR)) {
-        let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+    if path.parent() == Some(Path::new(FILES_DIR))
+        || path.parent().and_then(Path::parent) == Some(Path::new(PICKED_DIR))
+    {
+        let name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default();
         let _ = save_user_file(&key, &name, contents);
     }
 }
@@ -240,7 +275,11 @@ fn written(path: &Path, contents: Option<&[u8]>) {
 /// [`editor_core::files`] by then.
 pub fn choose_file(key: String, save: bool, extensions: Vec<String>, suggested: Option<String>) {
     wasm_bindgen_futures::spawn_local(async move {
-        let path = if save { save_target(&extensions, suggested).await } else { open_file(extensions).await };
+        let path = if save {
+            save_target(&extensions, suggested).await
+        } else {
+            open_file(extensions).await
+        };
         crate::file_dialog::deliver(key, path);
         CONTEXT.with(|context| {
             if let Some(context) = &*context.borrow() {
@@ -265,7 +304,8 @@ pub fn choose_folder(key: String) {
                 editor_core::files::store(path, contents);
             }
             Some(root)
-        }.await;
+        }
+        .await;
         crate::file_dialog::deliver(key, folder);
         CONTEXT.with(|context| {
             if let Some(context) = &*context.borrow() {
@@ -276,7 +316,10 @@ pub fn choose_folder(key: String) {
 }
 
 async fn open_file(extensions: Vec<String>) -> Option<PathBuf> {
-    let picked = pick_open(extensions).await.dyn_into::<js_sys::Array>().ok()?;
+    let picked = pick_open(extensions)
+        .await
+        .dyn_into::<js_sys::Array>()
+        .ok()?;
     let name = picked.get(0).as_string()?;
     let contents = js_sys::Uint8Array::new(&picked.get(1)).to_vec();
     let path = PathBuf::from(picked_file_path(PICKED_DIR, &name).await.as_string()?);
@@ -287,11 +330,20 @@ async fn open_file(extensions: Vec<String>) -> Option<PathBuf> {
 }
 
 async fn save_target(extensions: &[String], suggested: Option<String>) -> Option<PathBuf> {
-    let fallback = format!("untitled.{}", extensions.first().map_or("map", String::as_str));
-    let mut name = pick_save(&suggested.unwrap_or(fallback), extensions.to_vec()).await.as_string()?;
+    let fallback = format!(
+        "untitled.{}",
+        extensions.first().map_or("map", String::as_str)
+    );
+    let mut name = pick_save(&suggested.unwrap_or(fallback), extensions.to_vec())
+        .await
+        .as_string()?;
     // The path the editor will write to, extension and all, is the one the picked file
     // goes with.
-    let has_extension = Path::new(&name).extension().is_some_and(|ext| extensions.iter().any(|wanted| ext.eq_ignore_ascii_case(wanted)));
+    let has_extension = Path::new(&name).extension().is_some_and(|ext| {
+        extensions
+            .iter()
+            .any(|wanted| ext.eq_ignore_ascii_case(wanted))
+    });
     if !has_extension {
         if let Some(extension) = extensions.first() {
             name = format!("{name}.{extension}");
@@ -318,55 +370,110 @@ thread_local! {
 pub fn open_playtest() {
     if js_open_playtest() {
         PLAYTEST.with(|slot| slot.borrow_mut().sent = None);
-        CONTEXT.with(|slot| { if let Some(ctx) = slot.borrow().as_ref() { ctx.request_repaint(); } });
-    } else { editor_core::complain!("The browser blocked the playtest tab. Allow popups for this editor."); }
+        CONTEXT.with(|slot| {
+            if let Some(ctx) = slot.borrow().as_ref() {
+                ctx.request_repaint();
+            }
+        });
+    } else {
+        editor_core::complain!(
+            "The browser blocked the playtest tab. Allow popups for this editor."
+        );
+    }
 }
 /// Send an authoring snapshot to the export worker after changes stop for 300 ms.
 pub fn update_playtest(ctx: &egui::Context, document: &editor_core::document::Document) {
     if !playtest_active() {
         cancel_playtest_export(true);
-        PLAYTEST.with(|slot| { let mut state = slot.borrow_mut(); state.in_flight = None; state.sent = None; });
+        PLAYTEST.with(|slot| {
+            let mut state = slot.borrow_mut();
+            state.in_flight = None;
+            state.sent = None;
+        });
         return;
     }
     PLAYTEST.with(|slot| {
         let mut state = slot.borrow_mut();
-        let revision = (document.generation(), document.content_revision(), document.materials_revision());
+        let revision = (
+            document.generation(),
+            document.content_revision(),
+            document.materials_revision(),
+        );
         if state.revision != Some(revision) {
             cancel_playtest_export(false);
             state.in_flight = None;
-            state.revision = Some(revision); state.changed = web_time::Instant::now();
+            state.revision = Some(revision);
+            state.changed = web_time::Instant::now();
         }
         let answer = take_playtest_export();
         if !answer.is_undefined() && !answer.is_null() {
             if state.in_flight == Some(revision) {
-                if let Some(error) = js_sys::Reflect::get(&answer, &"error".into()).ok().and_then(|v|v.as_string()) {
+                if let Some(error) = js_sys::Reflect::get(&answer, &"error".into())
+                    .ok()
+                    .and_then(|v| v.as_string())
+                {
                     editor_core::complain!("Playtest: {error}");
                 } else {
                     if let Ok(warnings) = js_sys::Reflect::get(&answer, &"warnings".into()) {
-                        for warning in js_sys::Array::from(&warnings).iter().filter_map(|v|v.as_string()) { editor_core::say!("Playtest: {warning}"); }
+                        for warning in js_sys::Array::from(&warnings)
+                            .iter()
+                            .filter_map(|v| v.as_string())
+                        {
+                            editor_core::say!("Playtest: {warning}");
+                        }
                     }
-                    if !publish_playtest_export(&answer) { state.sent = None; }
+                    if !publish_playtest_export(&answer) {
+                        state.sent = None;
+                    }
                 }
             }
             state.in_flight = None;
         }
-        if playtest_export_busy() { ctx.request_repaint_after(web_time::Duration::from_millis(40)); }
-        if state.sent == Some(revision) { return; }
+        if playtest_export_busy() {
+            ctx.request_repaint_after(web_time::Duration::from_millis(40));
+        }
+        if state.sent == Some(revision) {
+            return;
+        }
         let delay = web_time::Duration::from_millis(300);
         if state.changed.elapsed() < delay {
-            ctx.request_repaint_after(delay - state.changed.elapsed()); return;
+            ctx.request_repaint_after(delay - state.changed.elapsed());
+            return;
         }
         let settings = editor_core::export_settings::Settings::for_map(document.path.as_deref());
-        if let Err(error) = settings.validate() { state.sent = Some(revision); editor_core::complain!("Playtest: {error}"); return; }
+        if let Err(error) = settings.validate() {
+            state.sent = Some(revision);
+            editor_core::complain!("Playtest: {error}");
+            return;
+        }
         let mut options = settings.for_target(editor_core::export::Target::ThreeJs);
-        options.name = document.path.as_ref().and_then(|p| p.file_stem()).map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "untitled".into());
-        let directory = document.path.as_ref().and_then(|p| p.parent()).unwrap_or(Path::new(FILES_DIR));
+        options.name = document
+            .path
+            .as_ref()
+            .and_then(|p| p.file_stem())
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "untitled".into());
+        let directory = document
+            .path
+            .as_ref()
+            .and_then(|p| p.parent())
+            .unwrap_or(Path::new(FILES_DIR));
         let prepare = web_time::Instant::now();
-        let snapshot = match serde_json::to_string(&document.export_snapshot(&directory.join(format!("{}.map",options.name)))) {
-            Ok(value) => value, Err(error) => { state.sent = Some(revision); editor_core::complain!("Playtest snapshot: {error}"); return; }
+        let snapshot = match serde_json::to_string(
+            &document.export_snapshot(&directory.join(format!("{}.map", options.name))),
+        ) {
+            Ok(value) => value,
+            Err(error) => {
+                state.sent = Some(revision);
+                editor_core::complain!("Playtest snapshot: {error}");
+                return;
+            }
         };
         let epoch = playtest_export_epoch();
-        if epoch != state.worker_epoch { state.worker_epoch = epoch; state.file_revision = 0; }
+        if epoch != state.worker_epoch {
+            state.worker_epoch = epoch;
+            state.file_revision = 0;
+        }
         let mut preferences_changed = false;
         if state.file_revision > 0 {
             let preferences = editor_core::preferences::config_dir().join("preferences");
@@ -382,19 +489,43 @@ pub fn update_playtest(ctx: &egui::Context, document: &editor_core::document::Do
             state.file_revision = 0;
         }
         let files = js_sys::Array::new();
-        let file_revision = editor_core::files::visit_changes_since(state.file_revision, |path, bytes| {
-            let pair = js_sys::Array::new(); pair.push(&path.to_string_lossy().as_ref().into());
-            match bytes {
-                Some(bytes) => { let copy = js_sys::Uint8Array::new_with_length(bytes.len() as u32); copy.copy_from(bytes); pair.push(&copy); },
-                None => { pair.push(&wasm_bindgen::JsValue::NULL); },
-            }
-            files.push(&pair);
-        });
+        let file_revision =
+            editor_core::files::visit_changes_since(state.file_revision, |path, bytes| {
+                let pair = js_sys::Array::new();
+                pair.push(&path.to_string_lossy().as_ref().into());
+                match bytes {
+                    Some(bytes) => {
+                        let copy = js_sys::Uint8Array::new_with_length(bytes.len() as u32);
+                        copy.copy_from(bytes);
+                        pair.push(&copy);
+                    }
+                    None => {
+                        pair.push(&wasm_bindgen::JsValue::NULL);
+                    }
+                }
+                files.push(&pair);
+            });
         let options = serde_json::to_string(&options).expect("export options serialize");
-        let key = format!("{}:{}", document.generation(), document.path.as_ref().map(|p|p.to_string_lossy().into_owned()).unwrap_or_else(||"untitled".into()));
-        if submit_playtest_export(&snapshot, &directory.to_string_lossy(), &options, files, &key, prepare.elapsed().as_secs_f64()*1000.0) {
+        let key = format!(
+            "{}:{}",
+            document.generation(),
+            document
+                .path
+                .as_ref()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "untitled".into())
+        );
+        if submit_playtest_export(
+            &snapshot,
+            &directory.to_string_lossy(),
+            &options,
+            files,
+            &key,
+            prepare.elapsed().as_secs_f64() * 1000.0,
+        ) {
             state.file_revision = file_revision;
-            state.sent = Some(revision); state.in_flight = Some(revision);
+            state.sent = Some(revision);
+            state.in_flight = Some(revision);
             ctx.request_repaint_after(web_time::Duration::from_millis(40));
         }
     });

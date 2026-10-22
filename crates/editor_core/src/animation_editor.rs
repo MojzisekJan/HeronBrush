@@ -73,7 +73,10 @@ impl Draft {
         use crate::animation_curves::Interpolation;
         use crate::animation_library::{Entry, Library};
         if !self.is_current(document) || document.in_transaction() {
-            return Err(crate::i18n::translation_key("Finish editing and select the animation again").into());
+            return Err(crate::i18n::translation_key(
+                "Finish editing and select the animation again",
+            )
+            .into());
         }
         let mut clip = empty_clip();
         clip.duration = 1.0;
@@ -104,7 +107,9 @@ impl Draft {
         library.validate()?;
         document.run_as_one_edit(|document| -> Result<(), String> {
             self.commit(document)?;
-            let id = self.entity.ok_or(crate::i18n::translation_key("Select brushes to animate"))?;
+            let id = self
+                .entity
+                .ok_or(crate::i18n::translation_key("Select brushes to animate"))?;
             library.write(document, id, name);
             document.set_entity_property(id, "start_on", "0");
             Ok(())
@@ -126,7 +131,8 @@ impl Draft {
     }
     /// The name of the clip being edited, as the library calls it.
     pub fn name(&self, document: &Document) -> String {
-        self.property(document, "animation_name").unwrap_or_else(|| "default".into())
+        self.property(document, "animation_name")
+            .unwrap_or_else(|| "default".into())
     }
     /// Whether no animation has been written yet: no entity, or one without keys.
     pub fn blank(&self, document: &Document) -> bool {
@@ -139,7 +145,10 @@ impl Draft {
     }
     pub fn commit(&mut self, document: &mut Document) -> Result<(), String> {
         if !self.is_current(document) {
-            return Err(crate::i18n::translation_key("Selection or animation changed. Reload the animation.").into());
+            return Err(crate::i18n::translation_key(
+                "Selection or animation changed. Reload the animation.",
+            )
+            .into());
         }
         if document.in_transaction() {
             return Err(crate::i18n::translation_key("Finish the current drag first").into());
@@ -165,7 +174,8 @@ impl Draft {
                 );
             }
         });
-        self.entity = Some(entity.ok_or(crate::i18n::translation_key("Select brushes to animate"))?);
+        self.entity =
+            Some(entity.ok_or(crate::i18n::translation_key("Select brushes to animate"))?);
         self.revision = document.revision();
         self.selection = document.selection_ids().clone();
         Ok(())

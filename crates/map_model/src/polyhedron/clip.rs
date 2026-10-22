@@ -150,11 +150,7 @@ impl<T: Float> Polyhedron<T> {
     /// Clips this polyhedron with the given plane, keeping the part behind it.
     ///
     /// Vertices within `epsilon` of the plane count as being on it.
-    pub fn clip(
-        &self,
-        plane: &Plane<T, 3>,
-        epsilon: T,
-    ) -> Result<ClipResult<T>, ClipError> {
+    pub fn clip(&self, plane: &Plane<T, 3>, epsilon: T) -> Result<ClipResult<T>, ClipError> {
         if let Some(trivial) = self.side_of(plane, epsilon) {
             return Ok(trivial);
         }
@@ -274,8 +270,7 @@ impl<T: Float> Polyhedron<T> {
             faces = next;
         }
 
-        let polyhedron =
-            Polyhedron::from_faces(&faces, epsilon).map_err(ClipError::Degenerate)?;
+        let polyhedron = Polyhedron::from_faces(&faces, epsilon).map_err(ClipError::Degenerate)?;
         Ok(FromPlanes::Built {
             polyhedron,
             redundant,

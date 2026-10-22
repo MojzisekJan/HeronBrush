@@ -124,7 +124,9 @@ impl std::fmt::Display for FilletError {
             FilletError::RadiusNotPositive { given } => {
                 write!(f, "a fillet radius must be more than zero, not {given}")
             }
-            FilletError::TooManyFaces { given } => write!(f,"a fillet supports at most 64 faces, not {given}"),
+            FilletError::TooManyFaces { given } => {
+                write!(f, "a fillet supports at most 64 faces, not {given}")
+            }
             FilletError::TooFewFaces { given } => {
                 write!(f, "a fillet takes at least one face, not {given}")
             }
@@ -181,26 +183,44 @@ pub fn fillet_edges(
         return Err(FilletError::TooFewFaces { given: faces });
     }
 
-    if faces>64 {return Err(FilletError::TooManyFaces{given:faces});}
+    if faces > 64 {
+        return Err(FilletError::TooManyFaces { given: faces });
+    }
     let geometry = brush.geometry();
-    let mut strips=Vec::new();let mut used=std::collections::HashSet::new();let mut unique_edges=Vec::new();
+    let mut strips = Vec::new();
+    let mut used = std::collections::HashSet::new();
+    let mut unique_edges = Vec::new();
     let mut planes = Vec::with_capacity(edges.len() * faces);
     for &(from, to) in edges {
-        let edge = find_edge(geometry, from, to)
-            .ok_or(FilletError::NoSuchEdge { from, to })?;
-        if !used.insert(edge.0) {continue;}unique_edges.push((from,to));
-        let arc=edge_planes(geometry,edge,radius,faces).ok_or(FilletError::EdgeIsFlat{from,to})?;
-        let edge=geometry.edge(edge);
-        let sources=[edge.first,edge.second].map(|half| {
-            let normal=geometry.face_plane(geometry.half_edge(half).face).normal;
-            brush.faces().iter().find(|face|vec::length(face.normal()-normal)<1e-7).unwrap().clone()
+        let edge = find_edge(geometry, from, to).ok_or(FilletError::NoSuchEdge { from, to })?;
+        if !used.insert(edge.0) {
+            continue;
+        }
+        unique_edges.push((from, to));
+        let arc = edge_planes(geometry, edge, radius, faces)
+            .ok_or(FilletError::EdgeIsFlat { from, to })?;
+        let edge = geometry.edge(edge);
+        let sources = [edge.first, edge.second].map(|half| {
+            let normal = geometry.face_plane(geometry.half_edge(half).face).normal;
+            brush
+                .faces()
+                .iter()
+                .find(|face| vec::length(face.normal() - normal) < 1e-7)
+                .unwrap()
+                .clone()
         });
-        strips.push((sources,arc.clone(),from));
+        strips.push((sources, arc.clone(), from));
         planes.extend(arc);
     }
 
     if fillet.corners != Corners::Mitred {
-        planes.extend(corner_planes(geometry, &unique_edges, radius, faces, fillet.corners));
+        planes.extend(corner_planes(
+            geometry,
+            &unique_edges,
+            radius,
+            faces,
+            fillet.corners,
+        ));
     }
 
     let mut rounded = brush.clone();
@@ -208,37 +228,69 @@ pub fn fillet_edges(
         match rounded.clip(&plane) {
             ClipOutcome::Clipped(brush) => rounded = brush,
             ClipOutcome::Unchanged => {}
-            ClipOutcome::Empty => {
-                return Err(FilletError::RadiusTooLarge { given: radius })
-            }
+            ClipOutcome::Empty => return Err(FilletError::RadiusTooLarge { given: radius }),
         }
     }
-    let mut attrs=rounded.faces().to_vec();
-    for (sources,arc,from) in strips {
-        let same=sources[0].material_name==sources[1].material_name;
-        for reverse in [false,true] {
-            if same && reverse {continue;}
-            let mut previous=sources[usize::from(reverse)].clone();
-            let planes:Vec<_>=if reverse {arc.iter().rev().collect()} else {arc.iter().collect()};
-            let indices:Vec<_>=planes.iter().filter_map(|p|attrs.iter().position(|f|vec::length(f.normal()-p.normal)<1e-7 && (f.plane.distance-p.distance).abs()<1e-6)).collect();
+    let mut attrs = rounded.faces().to_vec();
+    for (sources, arc, from) in strips {
+        let same = sources[0].material_name == sources[1].material_name;
+        for reverse in [false, true] {
+            if same && reverse {
+                continue;
+            }
+            let mut previous = sources[usize::from(reverse)].clone();
+            let planes: Vec<_> = if reverse {
+                arc.iter().rev().collect()
+            } else {
+                arc.iter().collect()
+            };
+            let indices: Vec<_> = planes
+                .iter()
+                .filter_map(|p| {
+                    attrs.iter().position(|f| {
+                        vec::length(f.normal() - p.normal) < 1e-7
+                            && (f.plane.distance - p.distance).abs() < 1e-6
+                    })
+                })
+                .collect();
             for index in indices {
-                if !same && attrs[index].material_name!=previous.material_name {continue;}
-                carry_fillet_uv(&previous,&mut attrs[index],from);previous=attrs[index].clone();
+                if !same && attrs[index].material_name != previous.material_name {
+                    continue;
+                }
+                carry_fillet_uv(&previous, &mut attrs[index], from);
+                previous = attrs[index].clone();
             }
             if same {
-                if let Some(index)=attrs.iter().position(|f|vec::length(f.normal()-sources[1].normal())<1e-7 && (f.plane.distance-sources[1].plane.distance).abs()<1e-6) {carry_fillet_uv(&previous,&mut attrs[index],from);}
+                if let Some(index) = attrs.iter().position(|f| {
+                    vec::length(f.normal() - sources[1].normal()) < 1e-7
+                        && (f.plane.distance - sources[1].plane.distance).abs() < 1e-6
+                }) {
+                    carry_fillet_uv(&previous, &mut attrs[index], from);
+                }
             }
         }
     }
     Ok(rounded.with_exact_face_attributes(&attrs).unwrap())
 }
 
-fn carry_fillet_uv(source:&crate::brush_face::BrushFace,target:&mut crate::brush_face::BrushFace,near:Vec3d) {
-    let p=source.plane;let q=target.plane;let line=vec::cross(p.normal,q.normal);let denominator=vec::squared_length(line);
-    let anchor=if denominator>1e-12 {
-        (vec::cross(q.normal,line)*p.distance+vec::cross(line,p.normal)*q.distance+line*vec::dot(near,line))/denominator
-    } else {near};
-    target.wrap_uv_from(source,anchor);
+fn carry_fillet_uv(
+    source: &crate::brush_face::BrushFace,
+    target: &mut crate::brush_face::BrushFace,
+    near: Vec3d,
+) {
+    let p = source.plane;
+    let q = target.plane;
+    let line = vec::cross(p.normal, q.normal);
+    let denominator = vec::squared_length(line);
+    let anchor = if denominator > 1e-12 {
+        (vec::cross(q.normal, line) * p.distance
+            + vec::cross(line, p.normal) * q.distance
+            + line * vec::dot(near, line))
+            / denominator
+    } else {
+        near
+    };
+    target.wrap_uv_from(source, anchor);
 }
 
 /// Returns the edges around one face of a brush, as pairs of end positions.
@@ -251,7 +303,9 @@ pub fn face_edges(brush: &Brush, face: crate::polyhedron::FaceId) -> Vec<(Vec3d,
         .face_half_edges(face)
         .into_iter()
         .map(|half_edge| {
-            let origin = geometry.vertex(geometry.half_edge(half_edge).origin).position;
+            let origin = geometry
+                .vertex(geometry.half_edge(half_edge).origin)
+                .position;
             let destination = geometry.vertex(geometry.destination(half_edge)).position;
             (origin, destination)
         })
@@ -270,7 +324,9 @@ pub fn has_edge(brush: &Brush, from: Vec3d, to: Vec3d) -> bool {
 fn find_edge(geometry: &Polyhedron<f64>, from: Vec3d, to: Vec3d) -> Option<EdgeId> {
     (0..geometry.edge_count() as u32).map(EdgeId).find(|&id| {
         let half_edge = geometry.edge(id).first;
-        let origin = geometry.vertex(geometry.half_edge(half_edge).origin).position;
+        let origin = geometry
+            .vertex(geometry.half_edge(half_edge).origin)
+            .position;
         let destination = geometry.vertex(geometry.destination(half_edge)).position;
         (is_at(origin, from) && is_at(destination, to))
             || (is_at(origin, to) && is_at(destination, from))
@@ -301,7 +357,11 @@ fn corner_planes(
     faces: usize,
     corners: Corners,
 ) -> Vec<Plane3d> {
-    let radius = if corners == Corners::Setback { radius * SETBACK } else { radius };
+    let radius = if corners == Corners::Setback {
+        radius * SETBACK
+    } else {
+        radius
+    };
     let mut planes = Vec::new();
     for vertex in shared_vertices(geometry, edges) {
         // Every face meeting there. Three is the case a corner of a box gives, and the
@@ -354,10 +414,7 @@ fn shared_vertices(geometry: &Polyhedron<f64>, edges: &[(Vec3d, Vec3d)]) -> Vec<
             continue;
         };
         let half = geometry.edge(edge).first;
-        for vertex in [
-            geometry.half_edge(half).origin,
-            geometry.destination(half),
-        ] {
+        for vertex in [geometry.half_edge(half).origin, geometry.destination(half)] {
             match counted.iter_mut().find(|(seen, _)| *seen == vertex) {
                 Some((_, count)) => *count += 1,
                 None => counted.push((vertex, 1)),
@@ -525,10 +582,7 @@ mod tests {
 
     /// The top edge of the cube running along Y at x = size.
     fn top_edge(size: f64) -> (Vec3d, Vec3d) {
-        (
-            Vec3d::new(size, 0.0, size),
-            Vec3d::new(size, size, size),
-        )
+        (Vec3d::new(size, 0.0, size), Vec3d::new(size, size, size))
     }
 
     #[test]
@@ -606,7 +660,16 @@ mod tests {
         let edges = face_edges(&brush, top);
         assert_eq!(edges.len(), 4);
 
-        let rounded = fillet_edges(&brush, &edges, &Fillet { radius: 8.0, faces: 2, corners: Corners::Mitred }).expect("the loop rounds");
+        let rounded = fillet_edges(
+            &brush,
+            &edges,
+            &Fillet {
+                radius: 8.0,
+                faces: 2,
+                corners: Corners::Mitred,
+            },
+        )
+        .expect("the loop rounds");
         assert_eq!(rounded.geometry().face_count(), 6 + 4 * 2);
         // The top face is still there, narrower by the radius on all four sides.
         assert!(rounded.contains_point(Vec3d::new(32.0, 32.0, size - 0.5)));
@@ -619,16 +682,19 @@ mod tests {
         let brush = cube(size);
         // The two top edges that meet at the corner (size, size, size).
         let edges = [
-            (
-                Vec3d::new(size, 0.0, size),
-                Vec3d::new(size, size, size),
-            ),
-            (
-                Vec3d::new(0.0, size, size),
-                Vec3d::new(size, size, size),
-            ),
+            (Vec3d::new(size, 0.0, size), Vec3d::new(size, size, size)),
+            (Vec3d::new(0.0, size, size), Vec3d::new(size, size, size)),
         ];
-        let rounded = fillet_edges(&brush, &edges, &Fillet { radius: 8.0, faces: 3, corners: Corners::Mitred }).expect("both edges round");
+        let rounded = fillet_edges(
+            &brush,
+            &edges,
+            &Fillet {
+                radius: 8.0,
+                faces: 3,
+                corners: Corners::Mitred,
+            },
+        )
+        .expect("both edges round");
 
         // Six faces, three for each rounding, and no extra face where they meet: the two
         // sets of planes cut each other into a mitre rather than leaving a step.
@@ -648,7 +714,16 @@ mod tests {
             (Vec3d::new(0.0, size, size), corner),
             (Vec3d::new(size, size, 0.0), corner),
         ];
-        let rounded = fillet_edges(&brush, &edges, &Fillet { radius: 8.0, faces: 2, corners: Corners::Mitred }).expect("the corner rounds");
+        let rounded = fillet_edges(
+            &brush,
+            &edges,
+            &Fillet {
+                radius: 8.0,
+                faces: 2,
+                corners: Corners::Mitred,
+            },
+        )
+        .expect("the corner rounds");
 
         assert_eq!(rounded.geometry().face_count(), 6 + 3 * 2);
         assert!(!rounded.contains_point(Vec3d::new(63.0, 63.0, 63.0)));
@@ -731,14 +806,25 @@ mod tests {
             (Vec3d::new(0.0, size, size), corner),
             (Vec3d::new(size, size, 0.0), corner),
         ];
-        fillet_edges(&cube(size), &edges, &Fillet { radius: 12.0, faces: 2, corners }).expect("the corner rounds")
+        fillet_edges(
+            &cube(size),
+            &edges,
+            &Fillet {
+                radius: 12.0,
+                faces: 2,
+                corners,
+            },
+        )
+        .expect("the corner rounds")
     }
 
     #[test]
     fn a_chamfered_corner_is_one_face_across_the_corner() {
         let chamfered = round_corner(Corners::Chamfered);
         let diagonal = vec::normalize(Vec3d::fill(1.0));
-        let face = &chamfered.faces()[chamfered.find_face_by_normal(diagonal, 1e-9).expect("a face looks along the diagonal")];
+        let face = &chamfered.faces()[chamfered
+            .find_face_by_normal(diagonal, 1e-9)
+            .expect("a face looks along the diagonal")];
         // It touches the ball the rounded corner lies on, a radius inside each face.
         let center = Vec3d::fill(64.0 - 12.0);
         assert!((face.plane.distance - vec::dot(diagonal, center) - 12.0).abs() < 1e-9);
@@ -757,7 +843,10 @@ mod tests {
         // and more, while far along an edge both are the edge's own rounding.
         let center = Vec3d::fill(64.0 - 12.0 * SETBACK);
         for plane in setback.face_planes() {
-            assert!(plane.distance - vec::dot(plane.normal, center) > 12.0 * SETBACK - 1e-9, "a face cuts into the ball");
+            assert!(
+                plane.distance - vec::dot(plane.normal, center) > 12.0 * SETBACK - 1e-9,
+                "a face cuts into the ball"
+            );
         }
         let near = Vec3d::fill(58.0);
         assert!(rounded.contains_point(near) && !setback.contains_point(near));

@@ -100,8 +100,9 @@ impl CircleShape {
     /// Returns how many vertices go around the circle.
     pub fn vertex_count(self) -> usize {
         match self {
-            CircleShape::EdgeAligned { num_sides }
-            | CircleShape::VertexAligned { num_sides } => num_sides,
+            CircleShape::EdgeAligned { num_sides } | CircleShape::VertexAligned { num_sides } => {
+                num_sides
+            }
             CircleShape::Scalable { precision } => 12 * (1 << precision),
         }
     }
@@ -109,8 +110,7 @@ impl CircleShape {
     /// Returns the error for a shape that cannot be built, if there is one.
     fn check(self) -> Result<(), ShapeError> {
         match self {
-            CircleShape::EdgeAligned { num_sides }
-            | CircleShape::VertexAligned { num_sides }
+            CircleShape::EdgeAligned { num_sides } | CircleShape::VertexAligned { num_sides }
                 if num_sides < 3 =>
             {
                 Err(ShapeError::TooFewSides { given: num_sides })
@@ -139,8 +139,7 @@ fn make_edge_aligned_circle(num_sides: usize, bounds: &Bbox2d) -> Vec<Vec2d> {
 
     (0..num_sides)
         .map(|i| {
-            let angle = (i as f64 + 0.5) * std::f64::consts::TAU / n
-                - std::f64::consts::FRAC_PI_2;
+            let angle = (i as f64 + 0.5) * std::f64::consts::TAU / n - std::f64::consts::FRAC_PI_2;
             // Half the angle one side subtends. Dividing by its cosine pushes the
             // vertices out far enough that the edges, not the vertices, touch the bounds.
             let a = std::f64::consts::PI / n;
@@ -235,9 +234,7 @@ fn make_scalable_circle(precision: usize, bounds: &Bbox2d) -> Vec<Vec2d> {
 fn make_circle(circle_shape: CircleShape, bounds: &Bbox2d) -> Vec<Vec2d> {
     match circle_shape {
         CircleShape::EdgeAligned { num_sides } => make_edge_aligned_circle(num_sides, bounds),
-        CircleShape::VertexAligned { num_sides } => {
-            make_vertex_aligned_circle(num_sides, bounds)
-        }
+        CircleShape::VertexAligned { num_sides } => make_vertex_aligned_circle(num_sides, bounds),
         CircleShape::Scalable { precision } => make_scalable_circle(precision, bounds),
     }
 }
@@ -541,10 +538,7 @@ fn make_arch_cross_section(
     // Upper half of an ellipse whose diameter lies on the springing line (v == v_min).
     // Build the full ellipse in bounds doubled downwards, then keep only the upper half,
     // reusing the cylinder circle-mode machinery.
-    let circle_bounds = Bbox2d::new(
-        Vec2d::new(s_min, v_min - height),
-        Vec2d::new(s_max, v_max),
-    );
+    let circle_bounds = Bbox2d::new(Vec2d::new(s_min, v_min - height), Vec2d::new(s_max, v_max));
 
     let circle = make_circle(circle_shape, &circle_bounds);
     let upper = arch_upper_run(&circle, v_min);
@@ -628,7 +622,10 @@ fn make_scalable_uv_sphere(bounds_xy: &Bbox3d, precision: usize) -> Vec<Vec3d> {
 
     let mut vertices = set_z(&make_scalable_cone_tip(bounds_xy), get_z(0));
     for i in 1..=num_rings {
-        vertices.extend(set_z(&make_scalable_circle(precision, &get_bounds(i)), get_z(i)));
+        vertices.extend(set_z(
+            &make_scalable_circle(precision, &get_bounds(i)),
+            get_z(i),
+        ));
     }
     vertices.extend(set_z(
         &make_scalable_cone_tip(bounds_xy),
@@ -782,17 +779,41 @@ pub fn create_cuboid(
     let (min, max) = (bounds.min, bounds.max);
     let faces = [
         // left
-        [min, min + Vec3d::new(0.0, 1.0, 0.0), min + Vec3d::new(0.0, 0.0, 1.0)],
+        [
+            min,
+            min + Vec3d::new(0.0, 1.0, 0.0),
+            min + Vec3d::new(0.0, 0.0, 1.0),
+        ],
         // right
-        [max, max + Vec3d::new(0.0, 0.0, 1.0), max + Vec3d::new(0.0, 1.0, 0.0)],
+        [
+            max,
+            max + Vec3d::new(0.0, 0.0, 1.0),
+            max + Vec3d::new(0.0, 1.0, 0.0),
+        ],
         // front
-        [min, min + Vec3d::new(0.0, 0.0, 1.0), min + Vec3d::new(1.0, 0.0, 0.0)],
+        [
+            min,
+            min + Vec3d::new(0.0, 0.0, 1.0),
+            min + Vec3d::new(1.0, 0.0, 0.0),
+        ],
         // back
-        [max, max + Vec3d::new(1.0, 0.0, 0.0), max + Vec3d::new(0.0, 0.0, 1.0)],
+        [
+            max,
+            max + Vec3d::new(1.0, 0.0, 0.0),
+            max + Vec3d::new(0.0, 0.0, 1.0),
+        ],
         // top
-        [max, max + Vec3d::new(0.0, 1.0, 0.0), max + Vec3d::new(1.0, 0.0, 0.0)],
+        [
+            max,
+            max + Vec3d::new(0.0, 1.0, 0.0),
+            max + Vec3d::new(1.0, 0.0, 0.0),
+        ],
         // bottom
-        [min, min + Vec3d::new(1.0, 0.0, 0.0), min + Vec3d::new(0.0, 1.0, 0.0)],
+        [
+            min,
+            min + Vec3d::new(1.0, 0.0, 0.0),
+            min + Vec3d::new(0.0, 1.0, 0.0),
+        ],
     ];
 
     let faces = faces
@@ -857,7 +878,11 @@ pub fn create_cylinder(
     let (to_xy, from_xy) = axis_transforms(axis);
 
     let cylinder = make_cylinder(circle_shape, &bounds.transform(&to_xy));
-    create_brush(world_bounds, &transform_points(&from_xy, &cylinder), material)
+    create_brush(
+        world_bounds,
+        &transform_points(&from_xy, &cylinder),
+        material,
+    )
 }
 
 /// Builds a cylindrical shell, as one brush per segment of its wall.
@@ -884,13 +909,13 @@ pub fn create_hollow_cylinder(
 
     (0..outer_circle.len())
         .map(|i| {
-            let fragment = make_hollow_cylinder_fragment_vertices(
-                &outer_circle,
-                &inner_circle,
-                i,
-                &bounds_xy,
-            );
-            create_brush(world_bounds, &transform_points(&from_xy, &fragment), material)
+            let fragment =
+                make_hollow_cylinder_fragment_vertices(&outer_circle, &inner_circle, i, &bounds_xy);
+            create_brush(
+                world_bounds,
+                &transform_points(&from_xy, &fragment),
+                material,
+            )
         })
         .collect()
 }
@@ -1071,45 +1096,82 @@ pub fn create_ico_sphere(
 /// so every step adds four triangles without T junctions or open contacts.
 fn shell_mesh(brush_count: usize) -> Result<(Vec<Vec3d>, Vec<[usize; 3]>), ShapeError> {
     let (mut vertices, mut triangles) = sphere_mesh(0);
-    let mut opposite: Vec<_> = vertices.iter().map(|v| vertices.iter().position(|w| vec::length(*v + *w) < 1e-12).expect("antipodal icosahedron")).collect();
+    let mut opposite: Vec<_> = vertices
+        .iter()
+        .map(|v| {
+            vertices
+                .iter()
+                .position(|w| vec::length(*v + *w) < 1e-12)
+                .expect("antipodal icosahedron")
+        })
+        .collect();
     while triangles.len() < brush_count {
-        let sorted = |a: usize,b: usize| if a < b {(a,b)}else{(b,a)};
-        let length = |edge: (usize,usize)| vec::squared_length(vertices[edge.0]-vertices[edge.1]);
-        let edge = triangles.iter().flat_map(|t|[sorted(t[0],t[1]),sorted(t[1],t[2]),sorted(t[2],t[0])])
-            .min_by(|a,b| length(*b).total_cmp(&length(*a)).then_with(||a.cmp(b))).expect("closed sphere edges");
-        let anti = sorted(opposite[edge.0],opposite[edge.1]);
-        let midpoint = vec::normalize(vertices[edge.0]+vertices[edge.1]);
+        let sorted = |a: usize, b: usize| if a < b { (a, b) } else { (b, a) };
+        let length =
+            |edge: (usize, usize)| vec::squared_length(vertices[edge.0] - vertices[edge.1]);
+        let edge = triangles
+            .iter()
+            .flat_map(|t| [sorted(t[0], t[1]), sorted(t[1], t[2]), sorted(t[2], t[0])])
+            .min_by(|a, b| length(*b).total_cmp(&length(*a)).then_with(|| a.cmp(b)))
+            .expect("closed sphere edges");
+        let anti = sorted(opposite[edge.0], opposite[edge.1]);
+        let midpoint = vec::normalize(vertices[edge.0] + vertices[edge.1]);
         let mid = vertices.len();
-        vertices.extend([midpoint,-midpoint]);
-        opposite.extend([mid+1,mid]);
-        let mut next = Vec::with_capacity(triangles.len()+4);
+        vertices.extend([midpoint, -midpoint]);
+        opposite.extend([mid + 1, mid]);
+        let mut next = Vec::with_capacity(triangles.len() + 4);
         for triangle in triangles {
-            if let Some((i,m)) = (0..3).find_map(|i| {
-                let candidate = sorted(triangle[i],triangle[(i+1)%3]);
-                if candidate == edge {Some((i,mid))}else if candidate == anti {Some((i,mid+1))}else{None}
+            if let Some((i, m)) = (0..3).find_map(|i| {
+                let candidate = sorted(triangle[i], triangle[(i + 1) % 3]);
+                if candidate == edge {
+                    Some((i, mid))
+                } else if candidate == anti {
+                    Some((i, mid + 1))
+                } else {
+                    None
+                }
             }) {
-                let [a,b,c] = [triangle[i],triangle[(i+1)%3],triangle[(i+2)%3]];
-                next.extend([[a,m,c],[m,b,c]]);
-            } else { next.push(triangle); }
+                let [a, b, c] = [triangle[i], triangle[(i + 1) % 3], triangle[(i + 2) % 3]];
+                next.extend([[a, m, c], [m, b, c]]);
+            } else {
+                next.push(triangle);
+            }
         }
-        debug_assert_eq!(next.len()%4,0);
+        debug_assert_eq!(next.len() % 4, 0);
         triangles = next;
     }
     // Hull the unit vertices once after refinement. Merely splitting curved edges
     // can leave a concave diagonal between four samples of the sphere.
-    let hull = Polyhedron::from_points(&vertices,f64::ALMOST_ZERO).map_err(ShapeError::Hull)?;
+    let hull = Polyhedron::from_points(&vertices, f64::ALMOST_ZERO).map_err(ShapeError::Hull)?;
     let mut surface = Vec::with_capacity(brush_count);
     for face in 0..hull.face_count() {
         let polygon = hull.face_positions(crate::polyhedron::FaceId(face as u32));
-        let mut indices = polygon.iter().map(|p| vertices.iter().position(|v|vec::length(*v-*p)<1e-12)
-            .ok_or(ShapeError::InvalidParameter("sphere hull changed its sample vertices"))).collect::<Result<Vec<_>,_>>()?;
+        let mut indices = polygon
+            .iter()
+            .map(|p| {
+                vertices
+                    .iter()
+                    .position(|v| vec::length(*v - *p) < 1e-12)
+                    .ok_or(ShapeError::InvalidParameter(
+                        "sphere hull changed its sample vertices",
+                    ))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         // Coplanar hull polygons must use antipodally matching fan diagonals too.
-        let first = (0..indices.len()).min_by_key(|&i| indices[i].min(opposite[indices[i]])).unwrap();
+        let first = (0..indices.len())
+            .min_by_key(|&i| indices[i].min(opposite[indices[i]]))
+            .unwrap();
         indices.rotate_left(first);
-        for i in 1..indices.len()-1 { surface.push([indices[0],indices[i],indices[i+1]]); }
+        for i in 1..indices.len() - 1 {
+            surface.push([indices[0], indices[i], indices[i + 1]]);
+        }
     }
-    if surface.len()!=brush_count { return Err(ShapeError::InvalidParameter("sphere hull lost a refinement vertex")); }
-    Ok((vertices,surface))
+    if surface.len() != brush_count {
+        return Err(ShapeError::InvalidParameter(
+            "sphere hull lost a refinement vertex",
+        ));
+    }
+    Ok((vertices, surface))
 }
 
 /// A closed geodesic shell. Each triangle becomes a convex six-vertex frustum,
@@ -1123,41 +1185,75 @@ pub fn create_hollow_sphere(
     brush_count: usize,
     material: &str,
 ) -> Result<Vec<Brush>, ShapeError> {
-    if !(20..=320).contains(&brush_count) || brush_count%4 != 0 {
-        return Err(ShapeError::InvalidParameter("hollow sphere brush count must be a multiple of four from 20 to 320"));
+    if !(20..=320).contains(&brush_count) || brush_count % 4 != 0 {
+        return Err(ShapeError::InvalidParameter(
+            "hollow sphere brush count must be a multiple of four from 20 to 320",
+        ));
     }
-    let size=bounds.size();
-    if (0..3).any(|i| !bounds.min[i].is_finite() || !bounds.max[i].is_finite() || !size[i].is_finite() || size[i]<=0.0) {
+    let size = bounds.size();
+    if (0..3).any(|i| {
+        !bounds.min[i].is_finite()
+            || !bounds.max[i].is_finite()
+            || !size[i].is_finite()
+            || size[i] <= 0.0
+    }) {
         return Err(ShapeError::FlatBounds);
     }
-    let radius=size[0].min(size[1]).min(size[2])*0.5;
-    if !thickness.is_finite() || thickness<=0.0 || thickness>=radius {
-        return Err(ShapeError::InvalidParameter("wall thickness must be positive and smaller than the shortest radius"));
+    let radius = size[0].min(size[1]).min(size[2]) * 0.5;
+    if !thickness.is_finite() || thickness <= 0.0 || thickness >= radius {
+        return Err(ShapeError::InvalidParameter(
+            "wall thickness must be positive and smaller than the shortest radius",
+        ));
     }
-    let center=bounds.min+size*0.5;
-    let ratio=1.0-thickness/radius;
-    let (vertices,triangles)=shell_mesh(brush_count)?;
-    let outer:Vec<_>=vertices.iter().map(|v|center+Vec3d::new(v[0]*size[0]*0.5,v[1]*size[1]*0.5,v[2]*size[2]*0.5)).collect();
-    if outer.iter().any(|p|!world_bounds.contains_point(*p)) {
-        return Err(ShapeError::InvalidParameter("the hollow sphere must fit inside the world bounds"));
+    let center = bounds.min + size * 0.5;
+    let ratio = 1.0 - thickness / radius;
+    let (vertices, triangles) = shell_mesh(brush_count)?;
+    let outer: Vec<_> = vertices
+        .iter()
+        .map(|v| {
+            center
+                + Vec3d::new(
+                    v[0] * size[0] * 0.5,
+                    v[1] * size[1] * 0.5,
+                    v[2] * size[2] * 0.5,
+                )
+        })
+        .collect();
+    if outer.iter().any(|p| !world_bounds.contains_point(*p)) {
+        return Err(ShapeError::InvalidParameter(
+            "the hollow sphere must fit inside the world bounds",
+        ));
     }
-    let inner:Vec<_>=outer.iter().map(|p|center+(*p-center)*ratio).collect();
-    let mut result=Vec::with_capacity(triangles.len());
+    let inner: Vec<_> = outer
+        .iter()
+        .map(|p| center + (*p - center) * ratio)
+        .collect();
+    let mut result = Vec::with_capacity(triangles.len());
     for indices in triangles {
-        let points:Vec<_>=indices.iter().flat_map(|&i|[outer[i],inner[i]]).collect();
-        let brush=create_brush(world_bounds,&points,material)?;
-        if brush.faces().len()!=5 || brush.volume()<=1e-9 {
-            return Err(ShapeError::InvalidParameter("the shell cells are too small; increase the size or reduce the brush count"));
+        let points: Vec<_> = indices.iter().flat_map(|&i| [outer[i], inner[i]]).collect();
+        let brush = create_brush(world_bounds, &points, material)?;
+        if brush.faces().len() != 5 || brush.volume() <= 1e-9 {
+            return Err(ShapeError::InvalidParameter(
+                "the shell cells are too small; increase the size or reduce the brush count",
+            ));
         }
-        let mut faces=brush.faces().to_vec();
+        let mut faces = brush.faces().to_vec();
         for face in &mut faces {
             // A radial contact plane passes through the common shell centre.
-            if (vec::dot(face.normal(),center)-face.plane.distance).abs()<1e-7 {
-                face.material_name="skip".into();
+            if (vec::dot(face.normal(), center) - face.plane.distance).abs() < 1e-7 {
+                face.material_name = "skip".into();
             }
         }
-        if faces.iter().filter(|f|f.material_name.as_str()=="skip").count()!=3 && material!="skip" {
-            return Err(ShapeError::InvalidParameter("the shell is too small to distinguish its inner and outer surfaces"));
+        if faces
+            .iter()
+            .filter(|f| f.material_name.as_str() == "skip")
+            .count()
+            != 3
+            && material != "skip"
+        {
+            return Err(ShapeError::InvalidParameter(
+                "the shell is too small to distinguish its inner and outer surfaces",
+            ));
         }
         result.push(brush.with_face_attributes_from(&faces));
     }
@@ -1242,46 +1338,72 @@ fn create_brush(
     points: &[Vec3d],
     material: &str,
 ) -> Result<Brush, ShapeError> {
-    let geometry =
-        Polyhedron::from_points(points, f64::ALMOST_ZERO).map_err(ShapeError::Hull)?;
+    let geometry = Polyhedron::from_points(points, f64::ALMOST_ZERO).map_err(ShapeError::Hull)?;
     Ok(Brush::from_polyhedron(geometry, material))
 }
 
 #[path = "advanced_stairs.rs"]
 mod advanced_stairs;
-pub use advanced_stairs::{StairLayout,StairOptions,create_stairs_options};
+pub use advanced_stairs::{create_stairs_options, StairLayout, StairOptions};
 
 #[cfg(test)]
 mod shell_mesh_tests {
     use super::*;
     #[test]
     fn every_shell_count_has_closed_convex_antipodal_topology() {
-        use std::collections::{BTreeMap,BTreeSet};
+        use std::collections::{BTreeMap, BTreeSet};
         for count in (20..=320).step_by(4) {
-            let (vertices,triangles) = shell_mesh(count).unwrap();
-            assert_eq!(triangles.len(),count);
-            assert_eq!(vertices.len(),count/2+2);
-            let opposite:Vec<_> = vertices.iter().map(|v|vertices.iter().position(|w|vec::length(*v+*w)<1e-12).unwrap()).collect();
-            let faces:BTreeSet<_> = triangles.iter().map(|t| {let mut t=*t;t.sort();t}).collect();
-            assert_eq!(faces.len(),count);
-            let mut edges=BTreeMap::new();
+            let (vertices, triangles) = shell_mesh(count).unwrap();
+            assert_eq!(triangles.len(), count);
+            assert_eq!(vertices.len(), count / 2 + 2);
+            let opposite: Vec<_> = vertices
+                .iter()
+                .map(|v| {
+                    vertices
+                        .iter()
+                        .position(|w| vec::length(*v + *w) < 1e-12)
+                        .unwrap()
+                })
+                .collect();
+            let faces: BTreeSet<_> = triangles
+                .iter()
+                .map(|t| {
+                    let mut t = *t;
+                    t.sort();
+                    t
+                })
+                .collect();
+            assert_eq!(faces.len(), count);
+            let mut edges = BTreeMap::new();
             for triangle in &triangles {
-                let mut anti=triangle.map(|i|opposite[i]);anti.sort();
-                assert!(faces.contains(&anti),"{count}: asymmetric triangle");
-                let [a,b,c]=triangle.map(|i|vertices[i]);
-                let mut normal=vec::normalize(vec::cross(b-a,c-a));
-                if vec::dot(normal,a)<0.0 {normal=-normal;}
-                assert!(vertices.iter().all(|p|vec::dot(normal,*p-a)<1e-9),"{count}: concave outer surface");
+                let mut anti = triangle.map(|i| opposite[i]);
+                anti.sort();
+                assert!(faces.contains(&anti), "{count}: asymmetric triangle");
+                let [a, b, c] = triangle.map(|i| vertices[i]);
+                let mut normal = vec::normalize(vec::cross(b - a, c - a));
+                if vec::dot(normal, a) < 0.0 {
+                    normal = -normal;
+                }
+                assert!(
+                    vertices.iter().all(|p| vec::dot(normal, *p - a) < 1e-9),
+                    "{count}: concave outer surface"
+                );
                 for i in 0..3 {
-                    let a=triangle[i];let b=triangle[(i+1)%3];
-                    *edges.entry((a.min(b),a.max(b))).or_insert(0)+=1;
+                    let a = triangle[i];
+                    let b = triangle[(i + 1) % 3];
+                    *edges.entry((a.min(b), a.max(b))).or_insert(0) += 1;
                 }
             }
-            assert!(edges.values().all(|n|*n==2),"{count}: open edge or T junction");
+            assert!(
+                edges.values().all(|n| *n == 2),
+                "{count}: open edge or T junction"
+            );
         }
     }
     #[test]
     fn shell_refinement_is_repeatable() {
-        for count in [24,84,320] { assert_eq!(shell_mesh(count).unwrap(),shell_mesh(count).unwrap()); }
+        for count in [24, 84, 320] {
+            assert_eq!(shell_mesh(count).unwrap(), shell_mesh(count).unwrap());
+        }
     }
 }

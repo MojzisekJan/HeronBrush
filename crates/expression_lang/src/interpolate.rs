@@ -42,8 +42,8 @@ pub fn interpolate(variables: &dyn VariableStore, s: &str) -> Result<String, Str
     let mut expressions = Vec::with_capacity(positions.len());
     for &(start, length) in &positions {
         let expression_str = &s[start + 2..start + length - 1];
-        let node = parse_expression(ParseMode::Strict, expression_str)
-            .map_err(|e| e.into_message())?;
+        let node =
+            parse_expression(ParseMode::Strict, expression_str).map_err(|e| e.into_message())?;
         expressions.push(node);
     }
 

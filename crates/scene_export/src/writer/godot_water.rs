@@ -18,31 +18,64 @@ const SHADER_ID: &str = "HeronWaterShader";
 
 /// Adds the `heron_water` child that holds the volume.
 pub fn attach(node: &mut Node, water: &Water, sub_resources: &mut Vec<SubResource>) {
-    shared(sub_resources, SCRIPT_ID, "GDScript", "script/source", SCRIPT);
+    shared(
+        sub_resources,
+        SCRIPT_ID,
+        "GDScript",
+        "script/source",
+        SCRIPT,
+    );
     let mut child = Node::new("heron_water", "Node");
     child.groups.push(GROUP.into());
     // The script before its variables, or Godot drops them.
     child.set("script", GdValue::SubResource(SCRIPT_ID.into()));
-    child.set("data_json", GdValue::Str(serde_json::to_string(water).unwrap()));
+    child.set(
+        "data_json",
+        GdValue::Str(serde_json::to_string(water).unwrap()),
+    );
     node.add_child(child);
 }
 
 /// The baseline surface material for one of the volume's surfaces, keeping the
 /// surface's texture when it has one.
-pub fn material(id: String, water: &Water, albedo: Option<&str>, sub_resources: &mut Vec<SubResource>) -> GdValue {
+pub fn material(
+    id: String,
+    water: &Water,
+    albedo: Option<&str>,
+    sub_resources: &mut Vec<SubResource>,
+) -> GdValue {
     shared(sub_resources, SHADER_ID, "Shader", "code", SHADER);
     let [r, g, b] = water.color;
     let mut properties = vec![
         ("render_priority".into(), GdValue::Int(0)),
         ("shader".into(), GdValue::SubResource(SHADER_ID.into())),
-        ("shader_parameter/tint".into(), GdValue::Color(r, g, b, water.opacity)),
-        ("shader_parameter/wave_height".into(), GdValue::Float(water.wave_height)),
-        ("shader_parameter/wave_speed".into(), GdValue::Float(water.wave_speed)),
+        (
+            "shader_parameter/tint".into(),
+            GdValue::Color(r, g, b, water.opacity),
+        ),
+        (
+            "shader_parameter/wave_height".into(),
+            GdValue::Float(water.wave_height),
+        ),
+        (
+            "shader_parameter/wave_speed".into(),
+            GdValue::Float(water.wave_speed),
+        ),
     ];
     if let Some(path) = albedo {
-        properties.push(("shader_parameter/albedo_texture".into(), GdValue::ExtResource { ty: "Texture2D".into(), path: path.into() }));
+        properties.push((
+            "shader_parameter/albedo_texture".into(),
+            GdValue::ExtResource {
+                ty: "Texture2D".into(),
+                path: path.into(),
+            },
+        ));
     }
-    sub_resources.push(SubResource { id: id.clone(), ty: "ShaderMaterial".into(), properties });
+    sub_resources.push(SubResource {
+        id: id.clone(),
+        ty: "ShaderMaterial".into(),
+        properties,
+    });
     GdValue::SubResource(id)
 }
 
@@ -56,6 +89,10 @@ pub fn used(scene: &Scene) -> bool {
 
 fn shared(sub_resources: &mut Vec<SubResource>, id: &str, ty: &str, key: &str, text: &str) {
     if !sub_resources.iter().any(|r| r.id == id) {
-        sub_resources.push(SubResource { id: id.into(), ty: ty.into(), properties: vec![(key.into(), GdValue::Str(text.into()))] });
+        sub_resources.push(SubResource {
+            id: id.into(),
+            ty: ty.into(),
+            properties: vec![(key.into(), GdValue::Str(text.into()))],
+        });
     }
 }

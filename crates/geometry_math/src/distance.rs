@@ -176,11 +176,7 @@ pub fn squared_distance_ray_segment<T: Float, const S: usize>(
         if p1_on_r < T::ZERO && p2_on_r < T::ZERO {
             // The segment lies entirely behind the ray's origin.
             return if p1_on_r > p2_on_r {
-                LineDistance::parallel(
-                    T::ZERO,
-                    vec::squared_distance(r.origin, p1),
-                    T::ZERO,
-                )
+                LineDistance::parallel(T::ZERO, vec::squared_distance(r.origin, p1), T::ZERO)
             } else {
                 LineDistance::parallel(
                     T::ZERO,
@@ -270,8 +266,7 @@ pub fn squared_distance_ray_ray<T: Float, const S: usize>(
     if scalar::is_zero(denominator, T::ALMOST_ZERO) {
         let rhs_origin_on_lhs = lhs.distance_to_projected_point(rhs.origin);
         let lhs_origin_on_rhs = rhs.distance_to_projected_point(lhs.origin);
-        let perpendicular =
-            vec::squared_distance(lhs.project_point(rhs.origin), rhs.origin);
+        let perpendicular = vec::squared_distance(lhs.project_point(rhs.origin), rhs.origin);
         return LineDistance::parallel(
             scalar::max(T::ZERO, rhs_origin_on_lhs),
             perpendicular,

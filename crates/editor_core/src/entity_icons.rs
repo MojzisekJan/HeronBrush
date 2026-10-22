@@ -44,7 +44,13 @@ pub fn draw(cr: &mut dyn Canvas, name: &str, x: f64, y: f64, size: f64) {
     cr.set_line_join(LineJoin::Round);
     match k {
         "water" => {
-            for y in [7.,12.,17.] {cr.move_to(2.,y);for i in 1..=5 {cr.line_to(2.+i as f64*4.,y+if i%2==0{0.}else{-2.});}cr.new_sub_path();}
+            for y in [7., 12., 17.] {
+                cr.move_to(2., y);
+                for i in 1..=5 {
+                    cr.line_to(2. + i as f64 * 4., y + if i % 2 == 0 { 0. } else { -2. });
+                }
+                cr.new_sub_path();
+            }
         }
         "sound" => {
             cr.move_to(3., 9.);
@@ -63,7 +69,9 @@ pub fn draw(cr: &mut dyn Canvas, name: &str, x: f64, y: f64, size: f64) {
             cr.arc(12., 10., 4., 0., std::f64::consts::TAU);
             for i in 0..8 {
                 let a = i as f64 * std::f64::consts::TAU / 8.;
-                line(cr, 12. + 6. * a.cos(),
+                line(
+                    cr,
+                    12. + 6. * a.cos(),
                     10. + 6. * a.sin(),
                     12. + 8. * a.cos(),
                     10. + 8. * a.sin(),

@@ -4,11 +4,11 @@
 //! and written by code that never met in the middle, so opening a map and saving it
 //! destroyed it; these check the rest of the same path.
 
+use geometry_math::bbox::Bbox3d;
 use map_model::io::map_reader::read_map;
 use map_model::io::map_writer::write_map;
 use map_model::map_format::MapFormat;
 use map_model::node::{build_tree, flatten_tree};
-use geometry_math::bbox::Bbox3d;
 
 fn world_bounds() -> Bbox3d {
     Bbox3d::from_scalars(-16384.0, 16384.0)
@@ -23,7 +23,13 @@ fn round_trip(source: &str, format: MapFormat) -> String {
 }
 
 /// Reads a map twice, so the second reading can be compared with the first.
-fn read_twice(source: &str, format: MapFormat) -> (map_model::io::map_reader::MapFile, map_model::io::map_reader::MapFile) {
+fn read_twice(
+    source: &str,
+    format: MapFormat,
+) -> (
+    map_model::io::map_reader::MapFile,
+    map_model::io::map_reader::MapFile,
+) {
     let first = read_map(source, None).expect("it reads");
     let written = round_trip(source, format);
     let second = read_map(&written, None)
@@ -448,7 +454,10 @@ fn the_worldspawns_editor_properties_survive() {
         world.property("_tb_textures"),
         Some("textures/base;textures/trim")
     );
-    assert_eq!(world.property("_tb_def"), Some("external:/home/someone/game.fgd"));
+    assert_eq!(
+        world.property("_tb_def"),
+        Some("external:/home/someone/game.fgd")
+    );
     assert_eq!(
         world.property("_tb_soft_map_bounds"),
         Some("-4096 -4096 -4096 4096 4096 4096")
@@ -534,9 +543,9 @@ fn a_face_colour_survives_being_read_and_written() {
     let faces = &map.entities[0].brushes[0].faces;
     assert_eq!(
         faces[0].paint(),
-        Some(map_model::brush_face::FaceColor::solid(map_model::brush_face::Rgb::new(
-            220, 40, 40
-        )))
+        Some(map_model::brush_face::FaceColor::solid(
+            map_model::brush_face::Rgb::new(220, 40, 40)
+        ))
     );
     assert_eq!(
         faces[1].paint(),
@@ -549,7 +558,10 @@ fn a_face_colour_survives_being_read_and_written() {
     assert_eq!(faces[2].color, None, "a face with no comment has no colour");
 
     let written = round_trip(COLOURED, MapFormat::Standard);
-    assert!(written.contains("// heron_brush color 220 40 40"), "{written}");
+    assert!(
+        written.contains("// heron_brush color 220 40 40"),
+        "{written}"
+    );
     assert!(
         written.contains("// heron_brush gradient 0 0 0 255 255 255 45"),
         "{written}"
@@ -558,8 +570,7 @@ fn a_face_colour_survives_being_read_and_written() {
     // And reading what was written gives the same colours again.
     let again = read_map(&written, None).expect("it reads back");
     assert_eq!(
-        again.entities[0].brushes[0].faces[0].color,
-        faces[0].color,
+        again.entities[0].brushes[0].faces[0].color, faces[0].color,
         "the colour is the same after a round trip"
     );
 }
@@ -580,19 +591,31 @@ fn a_see_through_face_colour_survives_a_round_trip() {
 
     let map = read_map(&source, None).expect("it reads");
     let faces = &map.entities[0].brushes[0].faces;
-    assert_eq!(faces[0].paint(), Some(FaceColor::solid(Rgb::new(220, 40, 40)).with_alpha(128)));
+    assert_eq!(
+        faces[0].paint(),
+        Some(FaceColor::solid(Rgb::new(220, 40, 40)).with_alpha(128))
+    );
     assert_eq!(
         faces[1].paint(),
         Some(FaceColor::gradient(Rgb::new(0, 0, 0), Rgb::new(255, 255, 255), 45.0).with_alpha(64)),
     );
 
     let written = round_trip(&source, MapFormat::Standard);
-    assert!(written.contains("// heron_brush color 220 40 40 128"), "{written}");
-    assert!(written.contains("// heron_brush gradient 0 0 0 255 255 255 45 64"), "{written}");
+    assert!(
+        written.contains("// heron_brush color 220 40 40 128"),
+        "{written}"
+    );
+    assert!(
+        written.contains("// heron_brush gradient 0 0 0 255 255 255 45 64"),
+        "{written}"
+    );
 
     // An opaque colour still writes with no trailing number.
     let opaque = round_trip(COLOURED, MapFormat::Standard);
-    assert!(opaque.contains("// heron_brush color 220 40 40\n") || opaque.contains("// heron_brush color 220 40 40 "));
+    assert!(
+        opaque.contains("// heron_brush color 220 40 40\n")
+            || opaque.contains("// heron_brush color 220 40 40 ")
+    );
     assert!(!opaque.contains("// heron_brush color 220 40 40 255"));
 }
 
@@ -708,11 +731,17 @@ fn the_lossless_dialect_carries_a_quake_2_maps_flags() {
         .collect();
     assert_eq!(
         flags,
-        [(1, 8, 700), (2, 16, 800), (0, 0, 0), (0, 0, 0), (0, 0, 0), (0, 0, 0)],
+        [
+            (1, 8, 700),
+            (2, 16, 800),
+            (0, 0, 0),
+            (0, 0, 0),
+            (0, 0, 0),
+            (0, 0, 0)
+        ],
         "in {written}"
     );
 }
-
 
 #[test]
 fn multicolor_and_radial_gradient_comments_round_trip() {
@@ -720,16 +749,30 @@ fn multicolor_and_radial_gradient_comments_round_trip() {
         let comment = format!("heron_brush {kind} 37.5 3 0 255 0 0 0.35 0 255 0 1 0 0 255 123");
         let source = COLOURED.replace("heron_brush gradient 0 0 0 255 255 255 45", &comment);
         let (before, after) = read_twice(&source, MapFormat::Standard);
-        assert!(matches!(before.entities[0].brushes[0].faces[1].paint(), Some(map_model::brush_face::FaceColor::MultiGradient { .. })));
-        assert_eq!(before.entities[0].brushes[0].faces[1].color, after.entities[0].brushes[0].faces[1].color);
+        assert!(matches!(
+            before.entities[0].brushes[0].faces[1].paint(),
+            Some(map_model::brush_face::FaceColor::MultiGradient { .. })
+        ));
+        assert_eq!(
+            before.entities[0].brushes[0].faces[1].color,
+            after.entities[0].brushes[0].faces[1].color
+        );
         assert!(round_trip(&source, MapFormat::Standard).contains(&format!("heron_brush {kind} ")));
     }
 }
 
 #[test]
 fn malformed_multicolor_gradient_comments_are_ignored() {
-    for bad in ["heron_brush linear 0 999", "heron_brush radial NaN 2 0 1 2 3 1 4 5 6", "heron_brush linear 0 2 -1 1 2 3 1 4 5 6", "heron_brush linear 0 2 0 1 2 3 1 4 5 6 999"] {
+    for bad in [
+        "heron_brush linear 0 999",
+        "heron_brush radial NaN 2 0 1 2 3 1 4 5 6",
+        "heron_brush linear 0 2 -1 1 2 3 1 4 5 6",
+        "heron_brush linear 0 2 0 1 2 3 1 4 5 6 999",
+    ] {
         let source = COLOURED.replace("heron_brush gradient 0 0 0 255 255 255 45", bad);
-        assert_eq!(read_map(&source,None).unwrap().entities[0].brushes[0].faces[1].color,None);
+        assert_eq!(
+            read_map(&source, None).unwrap().entities[0].brushes[0].faces[1].color,
+            None
+        );
     }
 }

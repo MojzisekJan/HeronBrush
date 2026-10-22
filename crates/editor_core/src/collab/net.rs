@@ -98,7 +98,10 @@ impl Link {
     /// open across rejoins rather than binding afresh for each. A connection that opens
     /// with an HTTP `GET` is a browser asking for a WebSocket, and is answered as one.
     pub fn from_accepted(stream: TcpStream) -> std::io::Result<Link> {
-        let peer = stream.peer_addr().map(|a| a.to_string()).unwrap_or_default();
+        let peer = stream
+            .peer_addr()
+            .map(|a| a.to_string())
+            .unwrap_or_default();
         // The listener may be non-blocking; the link's threads want to block.
         stream.set_nonblocking(false)?;
         #[cfg(not(target_arch = "wasm32"))]
@@ -121,39 +124,47 @@ impl Link {
     fn from_websocket(stream: TcpStream, peer: String) -> std::io::Result<Link> {
         use tungstenite::Message;
         let teardown = stream.try_clone()?;
-        let mut socket = tungstenite::accept(stream).map_err(|e| std::io::Error::other(e.to_string()))?;
-        socket.get_ref().set_read_timeout(Some(std::time::Duration::from_millis(15)))?;
+        let mut socket =
+            tungstenite::accept(stream).map_err(|e| std::io::Error::other(e.to_string()))?;
+        socket
+            .get_ref()
+            .set_read_timeout(Some(std::time::Duration::from_millis(15)))?;
         socket.get_ref().set_nodelay(true).ok();
         let closed = Arc::new(AtomicBool::new(false));
         let (in_tx, in_rx) = mpsc::channel::<String>();
         let (out_tx, out_rx) = mpsc::channel::<String>();
-        std::thread::Builder::new().name(format!("collab-websocket {peer}")).spawn({
-            let closed = Arc::clone(&closed);
-            move || {
-                'link: loop {
-                    match socket.read() {
-                        Ok(Message::Text(text)) => {
-                            for line in text.as_str().lines().filter(|line| !line.is_empty()) {
-                                if in_tx.send(line.to_string()).is_err() {
-                                    break 'link;
+        std::thread::Builder::new()
+            .name(format!("collab-websocket {peer}"))
+            .spawn({
+                let closed = Arc::clone(&closed);
+                move || {
+                    'link: loop {
+                        match socket.read() {
+                            Ok(Message::Text(text)) => {
+                                for line in text.as_str().lines().filter(|line| !line.is_empty()) {
+                                    if in_tx.send(line.to_string()).is_err() {
+                                        break 'link;
+                                    }
                                 }
                             }
+                            Ok(Message::Close(_)) => break,
+                            Ok(_) => {}
+                            Err(tungstenite::Error::Io(error))
+                                if matches!(
+                                    error.kind(),
+                                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                                ) => {}
+                            Err(_) => break,
                         }
-                        Ok(Message::Close(_)) => break,
-                        Ok(_) => {}
-                        Err(tungstenite::Error::Io(error))
-                            if matches!(error.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut) => {}
-                        Err(_) => break,
-                    }
-                    while let Ok(line) = out_rx.try_recv() {
-                        if socket.send(Message::text(line)).is_err() {
-                            break 'link;
+                        while let Ok(line) = out_rx.try_recv() {
+                            if socket.send(Message::text(line)).is_err() {
+                                break 'link;
+                            }
                         }
                     }
+                    closed.store(true, Ordering::Relaxed);
                 }
-                closed.store(true, Ordering::Relaxed);
-            }
-        })?;
+            })?;
         Ok(Link {
             role: Role::Host,
             inbox: in_rx,
@@ -174,18 +185,21 @@ impl Link {
         use std::rc::Rc;
         use wasm_bindgen::closure::Closure;
         use wasm_bindgen::JsCast as _;
-        let socket = web_sys::WebSocket::new(url).map_err(|e| std::io::Error::other(format!("{e:?}")))?;
+        let socket =
+            web_sys::WebSocket::new(url).map_err(|e| std::io::Error::other(format!("{e:?}")))?;
         let closed = Arc::new(AtomicBool::new(false));
         let (in_tx, in_rx) = mpsc::channel::<String>();
         let waiting: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
 
-        let on_message = Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |event: web_sys::MessageEvent| {
-            if let Some(text) = event.data().as_string() {
-                for line in text.lines().filter(|line| !line.is_empty()) {
-                    let _ = in_tx.send(line.to_string());
+        let on_message = Closure::<dyn FnMut(web_sys::MessageEvent)>::new(
+            move |event: web_sys::MessageEvent| {
+                if let Some(text) = event.data().as_string() {
+                    for line in text.lines().filter(|line| !line.is_empty()) {
+                        let _ = in_tx.send(line.to_string());
+                    }
                 }
-            }
-        });
+            },
+        );
         socket.set_onmessage(Some(on_message.as_ref().unchecked_ref()));
         on_message.forget();
         let on_open = Closure::<dyn FnMut()>::new({
@@ -226,7 +240,10 @@ impl Link {
     /// Connects to a TCP host.
     pub fn join(addr: impl ToSocketAddrs) -> std::io::Result<Link> {
         let stream = TcpStream::connect(addr)?;
-        let peer = stream.peer_addr().map(|a| a.to_string()).unwrap_or_default();
+        let peer = stream
+            .peer_addr()
+            .map(|a| a.to_string())
+            .unwrap_or_default();
         Self::from_tcp(Role::Guest, stream, peer)
     }
 
@@ -319,7 +336,6 @@ impl Link {
 mod over_the_internet {
     use super::*;
 
-
     fn io_err(error: impl std::fmt::Display) -> std::io::Error {
         std::io::Error::other(error.to_string())
     }
@@ -348,57 +364,62 @@ mod over_the_internet {
         let (ticket_tx, ticket_rx) = mpsc::sync_channel::<std::io::Result<String>>(1);
         let (link_tx, link_rx) = mpsc::channel::<std::io::Result<Link>>();
 
-        std::thread::Builder::new().name("collab-iroh-host".into()).spawn(move || {
-            let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
-                Ok(runtime) => runtime,
-                Err(error) => {
-                    let _ = ticket_tx.send(Err(io_err(error)));
-                    return;
-                }
-            };
-            runtime.block_on(async move {
-                let endpoint = match iroh::Endpoint::builder(iroh::endpoint::presets::N0)
-                    .alpns(vec![ALPN.to_vec()])
-                    .bind()
-                    .await
+        std::thread::Builder::new()
+            .name("collab-iroh-host".into())
+            .spawn(move || {
+                let runtime = match tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
                 {
-                    Ok(endpoint) => endpoint,
+                    Ok(runtime) => runtime,
                     Err(error) => {
                         let _ = ticket_tx.send(Err(io_err(error)));
                         return;
                     }
                 };
-                endpoint.online().await;
-                let _ = ticket_tx.send(Ok(encode_ticket(&endpoint.addr())));
-
-                // Accept for as long as the endpoint stands, each connection running as a
-                // task of its own: a second guest joins while the first is still linked --
-                // the hub holds them all -- and the same token stays good throughout.
-                loop {
-                    let connection = match endpoint.accept().await {
-                        Some(incoming) => match incoming.await {
-                            Ok(connection) => connection,
-                            Err(error) => {
-                                if link_tx.send(Err(io_err(error))).is_err() {
-                                    break;
-                                }
-                                continue;
-                            }
-                        },
-                        None => {
-                            let _ =
-                                link_tx.send(Err(io_err("the endpoint closed before anyone joined")));
-                            break;
+                runtime.block_on(async move {
+                    let endpoint = match iroh::Endpoint::builder(iroh::endpoint::presets::N0)
+                        .alpns(vec![ALPN.to_vec()])
+                        .bind()
+                        .await
+                    {
+                        Ok(endpoint) => endpoint,
+                        Err(error) => {
+                            let _ = ticket_tx.send(Err(io_err(error)));
+                            return;
                         }
                     };
-                    let task_tx = link_tx.clone();
-                    tokio::spawn(async move {
-                        let _ = run_iroh_connection(Role::Host, connection, &task_tx).await;
-                    });
-                }
-                endpoint.close().await;
-            });
-        })?;
+                    endpoint.online().await;
+                    let _ = ticket_tx.send(Ok(encode_ticket(&endpoint.addr())));
+
+                    // Accept for as long as the endpoint stands, each connection running as a
+                    // task of its own: a second guest joins while the first is still linked --
+                    // the hub holds them all -- and the same token stays good throughout.
+                    loop {
+                        let connection = match endpoint.accept().await {
+                            Some(incoming) => match incoming.await {
+                                Ok(connection) => connection,
+                                Err(error) => {
+                                    if link_tx.send(Err(io_err(error))).is_err() {
+                                        break;
+                                    }
+                                    continue;
+                                }
+                            },
+                            None => {
+                                let _ = link_tx
+                                    .send(Err(io_err("the endpoint closed before anyone joined")));
+                                break;
+                            }
+                        };
+                        let task_tx = link_tx.clone();
+                        tokio::spawn(async move {
+                            let _ = run_iroh_connection(Role::Host, connection, &task_tx).await;
+                        });
+                    }
+                    endpoint.close().await;
+                });
+            })?;
 
         match ticket_rx.recv() {
             Ok(Ok(ticket)) => Ok((ticket, link_rx)),
@@ -413,37 +434,42 @@ mod over_the_internet {
         let addr = decode_ticket(ticket)?;
         let (link_tx, link_rx) = mpsc::channel::<std::io::Result<Link>>();
 
-        std::thread::Builder::new().name("collab-iroh-guest".into()).spawn(move || {
-            let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
-                Ok(runtime) => runtime,
-                Err(error) => {
-                    let _ = link_tx.send(Err(io_err(error)));
-                    return;
-                }
-            };
-            runtime.block_on(async move {
-                let endpoint = match iroh::Endpoint::builder(iroh::endpoint::presets::N0)
-                    .alpns(vec![ALPN.to_vec()])
-                    .bind()
-                    .await
+        std::thread::Builder::new()
+            .name("collab-iroh-guest".into())
+            .spawn(move || {
+                let runtime = match tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
                 {
-                    Ok(endpoint) => endpoint,
+                    Ok(runtime) => runtime,
                     Err(error) => {
                         let _ = link_tx.send(Err(io_err(error)));
                         return;
                     }
                 };
-                let connection = match endpoint.connect(addr, ALPN).await {
-                    Ok(connection) => connection,
-                    Err(error) => {
-                        let _ = link_tx.send(Err(io_err(error)));
-                        return;
-                    }
-                };
-                let _ = run_iroh_connection(Role::Guest, connection, &link_tx).await;
-                endpoint.close().await;
-            });
-        })?;
+                runtime.block_on(async move {
+                    let endpoint = match iroh::Endpoint::builder(iroh::endpoint::presets::N0)
+                        .alpns(vec![ALPN.to_vec()])
+                        .bind()
+                        .await
+                    {
+                        Ok(endpoint) => endpoint,
+                        Err(error) => {
+                            let _ = link_tx.send(Err(io_err(error)));
+                            return;
+                        }
+                    };
+                    let connection = match endpoint.connect(addr, ALPN).await {
+                        Ok(connection) => connection,
+                        Err(error) => {
+                            let _ = link_tx.send(Err(io_err(error)));
+                            return;
+                        }
+                    };
+                    let _ = run_iroh_connection(Role::Guest, connection, &link_tx).await;
+                    endpoint.close().await;
+                });
+            })?;
 
         match link_rx.recv() {
             Ok(result) => result,
@@ -549,7 +575,11 @@ mod tests {
     use web_time::{Duration, Instant};
 
     fn free_port() -> u16 {
-        TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port()
+        TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port()
     }
 
     fn recv_within(link: &Link, timeout: Duration) -> Option<String> {
@@ -628,12 +658,18 @@ mod tests {
         use crate::history::Edit;
 
         let (host, guest) = linked_pair();
-        let edit = Edit::Added { layer: 3, nodes: vec![] };
+        let edit = Edit::Added {
+            layer: 3,
+            nodes: vec![],
+        };
         host.send(&WireEdit::from_edit(&edit).to_json());
 
         let line = recv_within(&guest, Duration::from_secs(2)).expect("it arrives");
         let bounds = geometry_math::bbox::Bbox3d::from_scalars(-16384.0, 16384.0);
-        let back = WireEdit::from_json(&line).unwrap().into_edit(&bounds).unwrap();
+        let back = WireEdit::from_json(&line)
+            .unwrap()
+            .into_edit(&bounds)
+            .unwrap();
         assert!(matches!(back, Edit::Added { layer: 3, .. }));
     }
 

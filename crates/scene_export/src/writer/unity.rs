@@ -42,29 +42,72 @@ impl Default for UnityOptions {
     }
 }
 
-pub fn validate(level:&Level)->Result<(),String>{
+pub fn validate(level: &Level) -> Result<(), String> {
     use crate::level::Value;
     for entity in &level.entities {
-        if let Some(value)=entity.properties.get("unity_prefab") {
-            if !matches!(value,Value::String(path) if path.starts_with("Assets/")&&path.ends_with(".prefab")){return Err(format!("{}: unity_prefab must name an Assets/*.prefab resource",entity.name))}
+        if let Some(value) = entity.properties.get("unity_prefab") {
+            if !matches!(value,Value::String(path) if path.starts_with("Assets/")&&path.ends_with(".prefab"))
+            {
+                return Err(format!(
+                    "{}: unity_prefab must name an Assets/*.prefab resource",
+                    entity.name
+                ));
+            }
         }
-        if let Some(path)=prefab_path(entity){if !path.starts_with("Assets/"){return Err(format!("{}: Unity prefab scene must name an Assets/*.prefab resource",entity.name))}}
-        if let Some(value)=entity.properties.get("unity_body_type") {
-            let Value::String(body)=value else{return Err(format!("{}: unity_body_type must be a string",entity.name))};
-            if !matches!(body.as_str(),"static"|"kinematic"|"dynamic"){return Err(format!("{}: invalid unity_body_type {body}",entity.name))}
-            if (body!="kinematic" && entity.properties.contains_key("_heron_animation")) || (body=="dynamic" && entity.collision.as_ref().is_some_and(|shape|shape.kind!=crate::level::CollisionShape::Convex)){return Err(format!("{}: dynamic Unity bodies require convex collision and cannot use exported animation",entity.name))}
+        if let Some(path) = prefab_path(entity) {
+            if !path.starts_with("Assets/") {
+                return Err(format!(
+                    "{}: Unity prefab scene must name an Assets/*.prefab resource",
+                    entity.name
+                ));
+            }
         }
-        if let Some(value)=entity.properties.get("unity_mass") {
-            let mass=match value{Value::Float(value)=>*value,Value::Int(value)=>*value as f64,_=>return Err(format!("{}: unity_mass must be numeric",entity.name))};
-            if !mass.is_finite() || mass<=0.{return Err(format!("{}: unity_mass must be positive",entity.name))}
+        if let Some(value) = entity.properties.get("unity_body_type") {
+            let Value::String(body) = value else {
+                return Err(format!("{}: unity_body_type must be a string", entity.name));
+            };
+            if !matches!(body.as_str(), "static" | "kinematic" | "dynamic") {
+                return Err(format!("{}: invalid unity_body_type {body}", entity.name));
+            }
+            if (body != "kinematic" && entity.properties.contains_key("_heron_animation"))
+                || (body == "dynamic"
+                    && entity
+                        .collision
+                        .as_ref()
+                        .is_some_and(|shape| shape.kind != crate::level::CollisionShape::Convex))
+            {
+                return Err(format!("{}: dynamic Unity bodies require convex collision and cannot use exported animation",entity.name));
+            }
+        }
+        if let Some(value) = entity.properties.get("unity_mass") {
+            let mass = match value {
+                Value::Float(value) => *value,
+                Value::Int(value) => *value as f64,
+                _ => return Err(format!("{}: unity_mass must be numeric", entity.name)),
+            };
+            if !mass.is_finite() || mass <= 0. {
+                return Err(format!("{}: unity_mass must be positive", entity.name));
+            }
         }
     }
     Ok(())
 }
 
-fn prefab_path(entity:&crate::level::Entity)->Option<&str>{
-    entity.properties.get("unity_prefab").and_then(|value|match value{crate::level::Value::String(value)=>Some(value.as_str()),_=>None})
-        .or_else(||entity.scene.as_deref().filter(|path|path.ends_with(".prefab"))).map(|path|path.strip_prefix("res://").unwrap_or(path))
+fn prefab_path(entity: &crate::level::Entity) -> Option<&str> {
+    entity
+        .properties
+        .get("unity_prefab")
+        .and_then(|value| match value {
+            crate::level::Value::String(value) => Some(value.as_str()),
+            _ => None,
+        })
+        .or_else(|| {
+            entity
+                .scene
+                .as_deref()
+                .filter(|path| path.ends_with(".prefab"))
+        })
+        .map(|path| path.strip_prefix("res://").unwrap_or(path))
 }
 
 /// Builds the generated files: the Editor script, with every placement baked in.
@@ -73,21 +116,36 @@ pub fn write(level: &Level, collision: &[CollisionMesh], options: &UnityOptions)
 }
 
 /// Preserve generated glTF material maps through Unity's OBJ geometry path.
-pub fn write_with_materials(level: &Level, collision: &[CollisionMesh], options: &UnityOptions, materials: &indexmap::IndexMap<String, crate::materials::GeneratedMaterial>) -> Vec<UnityFile> {
+pub fn write_with_materials(
+    level: &Level,
+    collision: &[CollisionMesh],
+    options: &UnityOptions,
+    materials: &indexmap::IndexMap<String, crate::materials::GeneratedMaterial>,
+) -> Vec<UnityFile> {
     let mut entries = String::new();
     let mut setup = String::new();
     let mut property_setup=String::from("        var namedNodes = new Dictionary<string,GameObject>();\n        foreach(var node in nodes) namedNodes.Add(node.name,node);\n");
     for (index, entity) in level.entities.iter().enumerate() {
         let metadata = serde_json::to_string(entity).expect("entity JSON");
-        for (name,value) in &entity.properties {
-            property_setup.push_str(&format!("        SetProperty(nodes[{index}], \"{}\", {}, namedNodes);\n",escape(name),property_literal(value)));
+        for (name, value) in &entity.properties {
+            property_setup.push_str(&format!(
+                "        SetProperty(nodes[{index}], \"{}\", {}, namedNodes);\n",
+                escape(name),
+                property_literal(value)
+            ));
         }
-        setup.push_str(&format!("        nodes[{index}].AddComponent<HeronBrushEntity>().entityJson = \"{}\";\n", escape(&metadata)));
-        if let Some(crate::level::Value::String(data))=entity.properties.get("_heron_water") {
-            setup.push_str(&format!("        nodes[{index}].AddComponent<HeronBrushWater>().dataJson=\"{}\";\n",escape(data)));
+        setup.push_str(&format!(
+            "        nodes[{index}].AddComponent<HeronBrushEntity>().entityJson = \"{}\";\n",
+            escape(&metadata)
+        ));
+        if let Some(crate::level::Value::String(data)) = entity.properties.get("_heron_water") {
+            setup.push_str(&format!(
+                "        nodes[{index}].AddComponent<HeronBrushWater>().dataJson=\"{}\";\n",
+                escape(data)
+            ));
         }
         if let Some(light) = super::common_entities::light(entity) {
-            let [r,g,b,a] = light.color;
+            let [r, g, b, a] = light.color;
             setup.push_str(&format!(
                 "        var light{index} = nodes[{index}].AddComponent<Light>();\n        light{index}.type = LightType.{};\n        light{index}.color = new Color({r:.6}f,{g:.6}f,{b:.6}f,{a:.6}f);\n        light{index}.intensity = {:.6}f;\n        light{index}.range = {:.6}f;\n        light{index}.spotAngle = {:.6}f;\n        light{index}.shadows = LightShadows.{};\n        light{index}.transform.Rotate(0f,180f,0f,Space.Self);\n",
                 light.kind, light.energy, light.range, light.half_angle*2., if light.shadows { "Soft" } else { "None" }));
@@ -95,23 +153,33 @@ pub fn write_with_materials(level: &Level, collision: &[CollisionMesh], options:
         if let Some(shapes) = collision.get(index) {
             let sensor = entity.collision.as_ref().is_some_and(|c| c.sensor);
             let mut add = |points: Vec<f32>, convex: bool| {
-                let points = points.iter().map(|v| format!("{v:.9}f")).collect::<Vec<_>>().join(",");
+                let points = points
+                    .iter()
+                    .map(|v| format!("{v:.9}f"))
+                    .collect::<Vec<_>>()
+                    .join(",");
                 setup.push_str(&format!("        AddCollision(nodes[{index}], new Shape {{ convex = {convex}, points = new float[] {{ {points} }} }}, {sensor}, ToAssetPath(Path.Combine(here, \"Collision\")));\n"));
             };
-            if !shapes.triangles.is_empty() { add(shapes.triangles.iter().flatten().copied().collect(), false); }
-            for hull in &shapes.hulls { if hull.len() >= 4 { add(hull.iter().flatten().copied().collect(), true); } }
+            if !shapes.triangles.is_empty() {
+                add(shapes.triangles.iter().flatten().copied().collect(), false);
+            }
+            for hull in &shapes.hulls {
+                if hull.len() >= 4 {
+                    add(hull.iter().flatten().copied().collect(), true);
+                }
+            }
         }
-        if let Some(crate::level::Value::String(data))=entity.properties.get("_heron_animation") {
+        if let Some(crate::level::Value::String(data)) = entity.properties.get("_heron_animation") {
             setup.push_str(&format!("        var animation{index}=nodes[{index}].AddComponent<HeronBrushAnimation>();\n        animation{index}.dataJson=\"{}\";\n        var body{index}=nodes[{index}].GetComponent<Rigidbody>(); if(body{index}==null)body{index}=nodes[{index}].AddComponent<Rigidbody>(); body{index}.isKinematic=true; body{index}.useGravity=false;\n",escape(data)));
         }
-        if let Some(crate::level::Value::String(body))=entity.properties.get("unity_body_type") {
-            if body=="static" {
+        if let Some(crate::level::Value::String(body)) = entity.properties.get("unity_body_type") {
+            if body == "static" {
                 setup.push_str(&format!("        var staticBody{index}=nodes[{index}].GetComponent<Rigidbody>(); if(staticBody{index}!=null)Object.DestroyImmediate(staticBody{index});\n"));
             } else {
                 setup.push_str(&format!("        var configuredBody{index}=nodes[{index}].GetComponent<Rigidbody>(); if(configuredBody{index}==null)configuredBody{index}=nodes[{index}].AddComponent<Rigidbody>(); configuredBody{index}.isKinematic={}; configuredBody{index}.useGravity={};\n",body=="kinematic",body=="dynamic"));
             }
         }
-        if let Some(mass)=entity.properties.get("unity_mass") {
+        if let Some(mass) = entity.properties.get("unity_mass") {
             setup.push_str(&format!("        var massBody{index}=nodes[{index}].GetComponent<Rigidbody>(); if(massBody{index}==null)throw new System.InvalidOperationException(\"{}: unity_mass needs a Rigidbody\"); massBody{index}.mass=System.Convert.ToSingle({});\n",escape(&entity.name),property_literal(mass)));
         }
         let t = &entity.transform;
@@ -142,29 +210,46 @@ pub fn write_with_materials(level: &Level, collision: &[CollisionMesh], options:
             x = -t.translation[0],
             y = t.translation[1],
             z = t.translation[2],
-
             collides = has_collision,
             sensor = sensor,
-            prefab=prefab_path(entity).map(|path|format!("\"{}\"",escape(path))).unwrap_or_else(||"null".into()),
+            prefab = prefab_path(entity)
+                .map(|path| format!("\"{}\"", escape(path)))
+                .unwrap_or_else(|| "null".into()),
         ));
     }
 
-    for (index,entity) in level.entities.iter().enumerate() {
-        if let Some(crate::level::Value::String(data))=entity.properties.get("_heron_trigger") {
-            let targets=entity.targets.iter().filter_map(|name|level.entities.iter().position(|e|e.name==*name&&e.properties.contains_key("_heron_animation"))).map(|i|format!("nodes[{i}].GetComponent<HeronBrushAnimation>()")).collect::<Vec<_>>().join(",");
+    for (index, entity) in level.entities.iter().enumerate() {
+        if let Some(crate::level::Value::String(data)) = entity.properties.get("_heron_trigger") {
+            let targets = entity
+                .targets
+                .iter()
+                .filter_map(|name| {
+                    level.entities.iter().position(|e| {
+                        e.name == *name && e.properties.contains_key("_heron_animation")
+                    })
+                })
+                .map(|i| format!("nodes[{i}].GetComponent<HeronBrushAnimation>()"))
+                .collect::<Vec<_>>()
+                .join(",");
             setup.push_str(&format!("        var trigger{index}=nodes[{index}].AddComponent<HeronBrushAnimationTrigger>(); trigger{index}.dataJson=\"{}\"; trigger{index}.targets=new HeronBrushAnimation[]{{{targets}}};\n",escape(data)));
         }
     }
     let mut surface_setup = String::new();
     for texture in &level.textures {
         if let Some([roughness, metallic, emission]) = texture.surface {
-            surface_setup.push_str(&format!("        ApplySurface(root, here, \"{}\", {:.6}f, {:.6}f, {:.6}f);\n", escape(&texture.name), roughness, metallic, emission));
+            surface_setup.push_str(&format!(
+                "        ApplySurface(root, here, \"{}\", {:.6}f, {:.6}f, {:.6}f);\n",
+                escape(&texture.name),
+                roughness,
+                metallic,
+                emission
+            ));
         }
     }
     for (name, material) in materials {
         let Some(pbr) = &material.pbr else { continue };
         let has = |slot| pbr.images.iter().any(|image| image.slot == slot);
-        let [r,g,b] = pbr.emissive_factor;
+        let [r, g, b] = pbr.emissive_factor;
         surface_setup.push_str(&format!(
             "        ApplyPbr(root, here, \"{}\", \"{}_paint\", {:.6}f, {:.6}f, new Color({r:.6}f,{g:.6}f,{b:.6}f,1f), {:.6}f, {:.6}f, {}, {}, {}, {}, {}, {:.6}f, {});\n",
             escape(name), escape(&level.name), pbr.roughness, pbr.metallic, pbr.normal_scale, pbr.occlusion_strength,
@@ -355,7 +440,7 @@ public static class HeronBrushLevelImporter
         pbr_helper = include_str!("unity_pbr.cs"),
         hint = options.assets_hint,
         name = escape(&level.name),
-        namespace = namespace(level,options),
+        namespace = namespace(level, options),
         entries = entries,
         setup = setup,
     );
@@ -387,36 +472,82 @@ public static class HeronBrushLevelImporter
         },
         UnityFile {path:"HeronBrushLevelRoot.cs".into(),contents:"using UnityEngine;\npublic sealed class HeronBrushLevelRoot : MonoBehaviour { public string sourceGuid; }\n".into()},
     ];
-    if materials.values().any(|material| material.pbr.as_ref().is_some_and(|pbr| pbr.double_sided)) {
-        files.push(UnityFile {path:"HeronBrushPbr.shader".into(),contents:include_str!("unity_pbr.shader").into()});
+    if materials
+        .values()
+        .any(|material| material.pbr.as_ref().is_some_and(|pbr| pbr.double_sided))
+    {
+        files.push(UnityFile {
+            path: "HeronBrushPbr.shader".into(),
+            contents: include_str!("unity_pbr.shader").into(),
+        });
     }
-    let namespace=namespace(level,options);
+    let namespace = namespace(level, options);
     for file in &mut files {
         if file.path.ends_with(".cs") {
-            file.contents=if file.contents.contains("#if UNITY_EDITOR") {
-                file.contents.replace("#if UNITY_EDITOR",&format!("#if UNITY_EDITOR\nnamespace {namespace} {{")).replace("#endif","}\n#endif")
-            } else {format!("namespace {namespace} {{\n{}\n}}\n",file.contents)};
+            file.contents = if file.contents.contains("#if UNITY_EDITOR") {
+                file.contents
+                    .replace(
+                        "#if UNITY_EDITOR",
+                        &format!("#if UNITY_EDITOR\nnamespace {namespace} {{"),
+                    )
+                    .replace("#endif", "}\n#endif")
+            } else {
+                format!("namespace {namespace} {{\n{}\n}}\n", file.contents)
+            };
         }
     }
     files
 }
 
-fn property_literal(value:&crate::level::Value)->String {
+fn property_literal(value: &crate::level::Value) -> String {
     use crate::level::Value;
     match value {
-        Value::Bool(value)=>value.to_string(),Value::Int(value)=>format!("{value}L"),Value::Float(value)=>format!("{value:.17}d"),
-        Value::String(value)=>format!("\"{}\"",escape(value)),
-        Value::Array(values)=>format!("new object[]{{{}}}",values.iter().map(property_literal).collect::<Vec<_>>().join(",")),
-        Value::Vec2(values)=>format!("new object[]{{{}}}",values.iter().map(|value|format!("{value:.17}d")).collect::<Vec<_>>().join(",")),
-        Value::Vec3(values)=>format!("new object[]{{{}}}",values.iter().map(|value|format!("{value:.17}d")).collect::<Vec<_>>().join(",")),
-        Value::Color(values)=>format!("new object[]{{{}}}",values.iter().map(|value|format!("{value:.17}d")).collect::<Vec<_>>().join(",")),
+        Value::Bool(value) => value.to_string(),
+        Value::Int(value) => format!("{value}L"),
+        Value::Float(value) => format!("{value:.17}d"),
+        Value::String(value) => format!("\"{}\"", escape(value)),
+        Value::Array(values) => format!(
+            "new object[]{{{}}}",
+            values
+                .iter()
+                .map(property_literal)
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+        Value::Vec2(values) => format!(
+            "new object[]{{{}}}",
+            values
+                .iter()
+                .map(|value| format!("{value:.17}d"))
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+        Value::Vec3(values) => format!(
+            "new object[]{{{}}}",
+            values
+                .iter()
+                .map(|value| format!("{value:.17}d"))
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+        Value::Color(values) => format!(
+            "new object[]{{{}}}",
+            values
+                .iter()
+                .map(|value| format!("{value:.17}d"))
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
     }
 }
 
 /// Stable per-export namespace prevents runtime class collisions across levels.
-pub fn namespace(level:&Level,options:&UnityOptions)->String {
-    let mut hash=0xcbf29ce484222325u64;
-    for byte in format!("{}\n{}",options.assets_hint.replace('\\',"/"),level.name).bytes(){hash^=u64::from(byte);hash=hash.wrapping_mul(0x100000001b3);}
+pub fn namespace(level: &Level, options: &UnityOptions) -> String {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in format!("{}\n{}", options.assets_hint.replace('\\', "/"), level.name).bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
     format!("HeronBrush.Level_{hash:016x}")
 }
 
@@ -431,20 +562,37 @@ fn unity_euler_degrees([pitch, yaw, roll]: [f64; 3]) -> [f64; 3] {
 
 /// Escapes a string for a C# string literal.
 fn escape(text: &str) -> String {
-    text.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n").replace('\r', "\\r").replace('\t', "\\t")
+    text.replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
 }
 
 /// Data-only snapshots for the Unity live addon: no C# regeneration/domain reload.
 pub fn live_data(level: &Level, collision: &[CollisionMesh]) -> String {
-    fn property(name:&str,value:&crate::level::Value)->serde_json::Value {
+    fn property(name: &str, value: &crate::level::Value) -> serde_json::Value {
         use crate::level::Value;
-        let typed=serde_json::to_value(value).expect("entity property JSON");let raw=&typed["value"];
-        let items=match value {
-            Value::Array(values)=>values.iter().map(|value|property("",value)).collect::<Vec<_>>(),
-            Value::Vec2(values)=>values.iter().map(|value|property("",&Value::Float(*value))).collect(),
-            Value::Vec3(values)=>values.iter().map(|value|property("",&Value::Float(*value))).collect(),
-            Value::Color(values)=>values.iter().map(|value|property("",&Value::Float(*value))).collect(),
-            _=>vec![],
+        let typed = serde_json::to_value(value).expect("entity property JSON");
+        let raw = &typed["value"];
+        let items = match value {
+            Value::Array(values) => values
+                .iter()
+                .map(|value| property("", value))
+                .collect::<Vec<_>>(),
+            Value::Vec2(values) => values
+                .iter()
+                .map(|value| property("", &Value::Float(*value)))
+                .collect(),
+            Value::Vec3(values) => values
+                .iter()
+                .map(|value| property("", &Value::Float(*value)))
+                .collect(),
+            Value::Color(values) => values
+                .iter()
+                .map(|value| property("", &Value::Float(*value)))
+                .collect(),
+            _ => vec![],
         };
         serde_json::json!({"name":name,"kind":typed["type"],"value":raw.as_str().map(str::to_owned).unwrap_or_else(||raw.to_string()),"items":items})
     }
@@ -468,7 +616,8 @@ pub fn live_data(level: &Level, collision: &[CollisionMesh]) -> String {
             "rotation":unity_euler_degrees(t.rotation_yxz),
             "scale":t.scale,"light":light,"shapes":shapes,"sensor":e.collision.as_ref().is_some_and(|c|c.sensor)})
     }).collect();
-    serde_json::json!({"version":1,"name":level.name,"scale":level.scale,"entities":entities}).to_string()
+    serde_json::json!({"version":1,"name":level.name,"scale":level.scale,"entities":entities})
+        .to_string()
 }
 
 #[cfg(test)]
@@ -476,13 +625,14 @@ mod tests {
     use super::*;
     use crate::level::{Entity, Transform};
     #[test]
-    fn native_prefab_scene_mapping_is_the_same_in_file_and_live(){
-        let mut level=a_level();level.entities[0].scene=Some("res://Assets/Puzzle.prefab".into());
+    fn native_prefab_scene_mapping_is_the_same_in_file_and_live() {
+        let mut level = a_level();
+        level.entities[0].scene = Some("res://Assets/Puzzle.prefab".into());
         validate(&level).unwrap();
-        let script=&write(&level,&[],&UnityOptions::default())[0].contents;
+        let script = &write(&level, &[], &UnityOptions::default())[0].contents;
         assert!(script.contains(", false, false, \"Assets/Puzzle.prefab\")"));
-        let live:serde_json::Value=serde_json::from_str(&live_data(&level,&[])).unwrap();
-        assert_eq!(live["entities"][0]["prefab"],"Assets/Puzzle.prefab");
+        let live: serde_json::Value = serde_json::from_str(&live_data(&level, &[])).unwrap();
+        assert_eq!(live["entities"][0]["prefab"], "Assets/Puzzle.prefab");
     }
 
     fn a_level() -> Level {
@@ -532,30 +682,48 @@ mod tests {
         let t = t.clone();
         let script = &write(&level, &[], &UnityOptions::default())[0].contents;
         let entry = script.lines().find(|l| l.contains("new Entry(")).unwrap();
-        let vectors: Vec<DVec3> = entry.split("new Vector3(").skip(1).map(|part| {
-            let v: Vec<f64> = part.split(')').next().unwrap().split(',')
-                .map(|n| n.trim().trim_end_matches('f').parse().unwrap()).collect();
-            DVec3::new(v[0], v[1], v[2])
-        }).collect();
+        let vectors: Vec<DVec3> = entry
+            .split("new Vector3(")
+            .skip(1)
+            .map(|part| {
+                let v: Vec<f64> = part
+                    .split(')')
+                    .next()
+                    .unwrap()
+                    .split(',')
+                    .map(|n| n.trim().trim_end_matches('f').parse().unwrap())
+                    .collect();
+                DVec3::new(v[0], v[1], v[2])
+            })
+            .collect();
         assert_eq!(vectors.len(), 3);
         let live: serde_json::Value = serde_json::from_str(&live_data(&level, &[])).unwrap();
         for (i, key) in ["position", "rotation", "scale"].iter().enumerate() {
             for axis in 0..3 {
-                assert!((live["entities"][0][*key][axis].as_f64().unwrap() - vectors[i][axis]).abs() < 1e-6);
+                assert!(
+                    (live["entities"][0][*key][axis].as_f64().unwrap() - vectors[i][axis]).abs()
+                        < 1e-6
+                );
             }
         }
         // Independent reference: the Godot writer's actual row-major basis.
-        let [x,y,z] = t.rotation_yxz;
-        let basis = crate::scene::basis_from_euler_yxz(crate::math::Vec3::new(x,y,z));
+        let [x, y, z] = t.rotation_yxz;
+        let basis = crate::scene::basis_from_euler_yxz(crate::math::Vec3::new(x, y, z));
         let source = DMat3::from_cols_array(&basis).transpose();
         // Unity documentation specifies extrinsic Z, then X, then Y.
         let e = vectors[1] * (std::f64::consts::PI / 180.0);
-        let rotation = DQuat::from_rotation_y(e.y) * DQuat::from_rotation_x(e.x) * DQuat::from_rotation_z(e.z);
-        let mirror = |p: DVec3| DVec3::new(-p.x,p.y,p.z);
-        for point in [DVec3::X, DVec3::Y, DVec3::Z, DVec3::new(0.3,-2.,4.)] {
-            let expected = mirror(source * (DVec3::from_array(t.scale) * point) + DVec3::from_array(t.translation));
+        let rotation =
+            DQuat::from_rotation_y(e.y) * DQuat::from_rotation_x(e.x) * DQuat::from_rotation_z(e.z);
+        let mirror = |p: DVec3| DVec3::new(-p.x, p.y, p.z);
+        for point in [DVec3::X, DVec3::Y, DVec3::Z, DVec3::new(0.3, -2., 4.)] {
+            let expected = mirror(
+                source * (DVec3::from_array(t.scale) * point) + DVec3::from_array(t.translation),
+            );
             let actual = rotation * (vectors[2] * mirror(point)) + vectors[0];
-            assert!((actual - expected).length() < 1e-6, "{actual} != {expected}");
+            assert!(
+                (actual - expected).length() < 1e-6,
+                "{actual} != {expected}"
+            );
         }
         assert!(script.contains("node.transform.localScale = entry.scale;"));
         // A Unity light emits along +Z; its local half-turn must produce the

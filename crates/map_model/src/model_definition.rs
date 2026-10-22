@@ -39,7 +39,11 @@ pub struct ModelSpecification {
 impl ModelSpecification {
     /// A specification with just a path.
     pub fn from_path(path: impl Into<PathBuf>) -> Self {
-        Self { path: path.into(), skin_index: 0, frame_index: 0 }
+        Self {
+            path: path.into(),
+            skin_index: 0,
+            frame_index: 0,
+        }
     }
 }
 
@@ -58,7 +62,9 @@ impl Default for ModelDefinition {
 impl ModelDefinition {
     /// A definition that names no model.
     pub fn new() -> Self {
-        Self { expression: ExpressionNode::literal(expression_lang::Value::undefined()) }
+        Self {
+            expression: ExpressionNode::literal(expression_lang::Value::undefined()),
+        }
     }
 
     /// A definition from an already-parsed expression.
@@ -86,7 +92,10 @@ impl ModelDefinition {
         variables: &dyn VariableStore,
     ) -> Result<ModelSpecification, String> {
         let mut context = EvaluationContext::with_variables(variables);
-        let value = self.expression.evaluate(&mut context).map_err(expression_lang::ElError::into_message)?;
+        let value = self
+            .expression
+            .evaluate(&mut context)
+            .map_err(expression_lang::ElError::into_message)?;
         Ok(convert_to_model(&mut context, &value))
     }
 
@@ -110,8 +119,10 @@ impl ModelDefinition {
     /// the entity browser shows before an entity is placed. `defaultModelSpecification`.
     pub fn default_model_specification(&self) -> Result<ModelSpecification, String> {
         let mut context = EvaluationContext::new();
-        let value =
-            self.expression.try_evaluate(&mut context).map_err(expression_lang::ElError::into_message)?;
+        let value = self
+            .expression
+            .try_evaluate(&mut context)
+            .map_err(expression_lang::ElError::into_message)?;
         Ok(convert_to_model(&mut context, &value))
     }
 
@@ -124,7 +135,10 @@ impl ModelDefinition {
         default_scale_expression: Option<&ExpressionNode>,
     ) -> Result<Vec3d, String> {
         let mut context = EvaluationContext::with_variables(variables);
-        let value = self.expression.evaluate(&mut context).map_err(expression_lang::ElError::into_message)?;
+        let value = self
+            .expression
+            .evaluate(&mut context)
+            .map_err(expression_lang::ElError::into_message)?;
 
         if value.value_type() == ValueType::Map {
             let scale_value = value
@@ -136,8 +150,9 @@ impl ModelDefinition {
         }
 
         if let Some(expression) = default_scale_expression {
-            let default_value =
-                expression.evaluate(&mut context).map_err(expression_lang::ElError::into_message)?;
+            let default_value = expression
+                .evaluate(&mut context)
+                .map_err(expression_lang::ElError::into_message)?;
             if let Some(scale) = convert_to_scale(&mut context, &default_value)? {
                 return Ok(scale);
             }
@@ -168,7 +183,9 @@ pub fn parse_model_definition(expression: &str) -> Result<ModelDefinition, Strin
 /// Runs `expression_lang`'s constant folder over a model expression. `optimizeModelExpression`.
 pub fn optimize_model_expression(expression: &ExpressionNode) -> Result<ExpressionNode, String> {
     let mut context = EvaluationContext::new();
-    expression.optimize(&mut context).map_err(expression_lang::ElError::into_message)
+    expression
+        .optimize(&mut context)
+        .map_err(expression_lang::ElError::into_message)
 }
 
 /// What a `model(...)` / `studio(...)` / `iconsprite(...)` / `sprite(...)` argument
@@ -189,9 +206,8 @@ pub fn parse_model_argument(arguments: &str, line: usize) -> Result<ParsedModel,
         match expression_lang::parse_expression(expression_lang::ParseMode::Strict, arguments) {
             Ok(node) => (node, None),
             Err(modern_error) => {
-                match crate::legacy_model_definition::parse_legacy_model_definition(
-                    arguments, line,
-                ) {
+                match crate::legacy_model_definition::parse_legacy_model_definition(arguments, line)
+                {
                     Ok(node) => {
                         let note = format!(
                             "the legacy model syntax is deprecated, replace it with `{}`",
@@ -205,7 +221,10 @@ pub fn parse_model_argument(arguments: &str, line: usize) -> Result<ParsedModel,
         };
 
     let expression = optimize_model_expression(&expression).unwrap_or(expression);
-    Ok(ParsedModel { definition: ModelDefinition::from_expression(expression), deprecation })
+    Ok(ParsedModel {
+        definition: ModelDefinition::from_expression(expression),
+        deprecation,
+    })
 }
 
 // --- reading an evaluated value as a model -----------------------------------------
@@ -223,13 +242,19 @@ fn model_index(context: &mut EvaluationContext, value: &expression_lang::Value) 
     if !value.convertible_to(ValueType::Number) {
         return 0;
     }
-    match value.convert_to(context, ValueType::Number).and_then(|n| n.integer_value(context)) {
+    match value
+        .convert_to(context, ValueType::Number)
+        .and_then(|n| n.integer_value(context))
+    {
         Ok(n) => n.max(0) as usize,
         Err(_) => 0,
     }
 }
 
-fn convert_to_model(context: &mut EvaluationContext, value: &expression_lang::Value) -> ModelSpecification {
+fn convert_to_model(
+    context: &mut EvaluationContext,
+    value: &expression_lang::Value,
+) -> ModelSpecification {
     match value.value_type() {
         ValueType::Map => {
             let path_value = value
@@ -276,7 +301,9 @@ fn scale_value(
     value: &expression_lang::Value,
 ) -> Result<Option<Vec3d>, String> {
     if value.value_type() == ValueType::Number {
-        let scale = value.number_value(context).map_err(expression_lang::ElError::into_message)?;
+        let scale = value
+            .number_value(context)
+            .map_err(expression_lang::ElError::into_message)?;
         return Ok(Some(Vec3d::new(scale, scale, scale)));
     }
 
@@ -284,7 +311,9 @@ fn scale_value(
         return Ok(None);
     }
 
-    let string = value.string_value(context).map_err(expression_lang::ElError::into_message)?;
+    let string = value
+        .string_value(context)
+        .map_err(expression_lang::ElError::into_message)?;
     if string.trim().is_empty() {
         return Ok(None);
     }
@@ -308,7 +337,9 @@ fn convert_to_scale(
     value: &expression_lang::Value,
 ) -> Result<Option<Vec3d>, String> {
     if value.value_type() == ValueType::Array {
-        let array = value.array_value(context).map_err(expression_lang::ElError::into_message)?;
+        let array = value
+            .array_value(context)
+            .map_err(expression_lang::ElError::into_message)?;
         for entry in &array {
             if let Some(scale) = scale_value(context, entry)? {
                 return Ok(Some(scale));

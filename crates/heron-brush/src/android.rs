@@ -26,10 +26,16 @@ static APP: OnceLock<AndroidApp> = OnceLock::new();
 /// The application, from `android_main`. Returns when the activity is destroyed; the
 /// process then exits, since winit's event loop cannot be created a second time in it.
 pub fn run(app: AndroidApp) {
-    android_logger::init_once(android_logger::Config::default().with_max_level(log::LevelFilter::Info).with_tag("HeronBrush"));
+    android_logger::init_once(
+        android_logger::Config::default()
+            .with_max_level(log::LevelFilter::Info)
+            .with_tag("HeronBrush"),
+    );
     std::panic::set_hook(Box::new(|info| log::error!("panic: {info}")));
 
-    let files = app.internal_data_path().unwrap_or_else(|| PathBuf::from("/data/local/tmp/heron-brush"));
+    let files = app
+        .internal_data_path()
+        .unwrap_or_else(|| PathBuf::from("/data/local/tmp/heron-brush"));
     let install = files.join("bundle");
     let temporary = files.join("tmp");
     let _ = std::fs::create_dir_all(&temporary);
@@ -45,7 +51,11 @@ pub fn run(app: AndroidApp) {
     let _ = APP.set(app.clone());
 
     let viewport = egui::ViewportBuilder::default().with_title("Heron Brush");
-    let mut options = eframe::NativeOptions { android_app: Some(app), viewport, ..Default::default() };
+    let mut options = eframe::NativeOptions {
+        android_app: Some(app),
+        viewport,
+        ..Default::default()
+    };
     #[cfg(feature = "wgpu")]
     {
         options.renderer = eframe::Renderer::Wgpu;
@@ -55,7 +65,11 @@ pub fn run(app: AndroidApp) {
     {
         options.renderer = eframe::Renderer::Glow;
     }
-    let result = eframe::run_native("heron-brush", options, Box::new(|cc| crate::create_app(cc, crate::Startup::default())));
+    let result = eframe::run_native(
+        "heron-brush",
+        options,
+        Box::new(|cc| crate::create_app(cc, crate::Startup::default())),
+    );
     if let Err(error) = result {
         log::error!("the editor stopped: {error}");
     }
@@ -66,7 +80,13 @@ pub fn run(app: AndroidApp) {
 /// Documents and Download folders, and the app's folder on shared storage, which a
 /// computer sees over USB. Shared folders an app may not read are left out.
 fn places(app: &AndroidApp, maps: &Path) -> Vec<crate::file_dialog::Place> {
-    let mut places = vec![("Heron Brush".to_string(), maps.to_path_buf()), (editor_core::i18n::tr("Examples").to_string(), editor_core::samples::directory())];
+    let mut places = vec![
+        ("Heron Brush".to_string(), maps.to_path_buf()),
+        (
+            editor_core::i18n::tr("Examples").to_string(),
+            editor_core::samples::directory(),
+        ),
+    ];
     let shared = Path::new("/storage/emulated/0");
     let documents = shared.join("Documents/Heron Brush");
     if std::fs::create_dir_all(&documents).is_ok() {
@@ -123,7 +143,11 @@ fn unpack_bundle(app: &AndroidApp, install: &Path) {
     }
     let text = String::from_utf8_lossy(&index);
     let mut copied = 0;
-    for name in text.lines().skip(1).filter(|line| !line.is_empty() && !line.contains("..")) {
+    for name in text
+        .lines()
+        .skip(1)
+        .filter(|line| !line.is_empty() && !line.contains(".."))
+    {
         let Some(bytes) = read(name) else {
             log::warn!("{name} is listed but not in the APK");
             continue;
@@ -146,10 +170,14 @@ fn unpack_bundle(app: &AndroidApp, install: &Path) {
 /// `Context::content_rect`. Usually nothing, since the activity is laid out between the
 /// system bars and resized for the keyboard (docs/android.md).
 pub fn covered(ctx: &egui::Context, raw: &egui::RawInput) -> egui::SafeAreaInsets {
-    let Some(app) = APP.get() else { return egui::SafeAreaInsets::default() };
+    let Some(app) = APP.get() else {
+        return egui::SafeAreaInsets::default();
+    };
     let rect = app.content_rect();
     let ppp = ctx.pixels_per_point();
-    let Some(screen) = raw.screen_rect.or_else(|| Some(ctx.viewport_rect())) else { return egui::SafeAreaInsets::default() };
+    let Some(screen) = raw.screen_rect.or_else(|| Some(ctx.viewport_rect())) else {
+        return egui::SafeAreaInsets::default();
+    };
     let (width, height) = (screen.width() * ppp, screen.height() * ppp);
     if rect.right <= rect.left || rect.bottom <= rect.top {
         return egui::SafeAreaInsets::default();

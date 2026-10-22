@@ -74,7 +74,10 @@ fn the_monkey_is_no_worse_than_it_was() {
     // shared an edge; that was not checked again after it. `scene_export`'s own checker
     // counts fewer -- the two differ over how nearly two faces have to lie together to
     // count as touching rather than crossing. The first construction had 4734.
-    assert!(found <= 3050, "{found} pairs share space, which is more than it had");
+    assert!(
+        found <= 3050,
+        "{found} pairs share space, which is more than it had"
+    );
 }
 
 /// The check can see an overlap when there is one.
@@ -98,9 +101,18 @@ fn two_boxes_inside_each_other_are_found() {
     let map = |a: String, b: String| format!("{{\n\"classname\" \"worldspawn\"\n{a}{b}}}\n");
 
     // Half inside each other.
-    assert_eq!(overlapping_pairs(&map(box_at(0.0, 16.0), box_at(8.0, 24.0))), 1);
+    assert_eq!(
+        overlapping_pairs(&map(box_at(0.0, 16.0), box_at(8.0, 24.0))),
+        1
+    );
     // Sharing a face, which is how brushwork is built.
-    assert_eq!(overlapping_pairs(&map(box_at(0.0, 16.0), box_at(16.0, 32.0))), 0);
+    assert_eq!(
+        overlapping_pairs(&map(box_at(0.0, 16.0), box_at(16.0, 32.0))),
+        0
+    );
     // Nowhere near each other.
-    assert_eq!(overlapping_pairs(&map(box_at(0.0, 16.0), box_at(64.0, 80.0))), 0);
+    assert_eq!(
+        overlapping_pairs(&map(box_at(0.0, 16.0), box_at(64.0, 80.0))),
+        0
+    );
 }

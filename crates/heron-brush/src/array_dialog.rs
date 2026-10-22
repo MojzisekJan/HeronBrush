@@ -10,10 +10,22 @@ use geometry_math::vec::Vec3d;
 
 /// The layouts' names, in [`ArrayKind::ALL`]'s order: the label and its tooltip.
 const KINDS: [(&str, &str); 4] = [
-    (translation_key("Row"), translation_key("Copies one after another, each moved and turned a step further")),
-    (translation_key("Grid"), translation_key("Copies along X, Y and Z")),
-    (translation_key("Ring"), translation_key("Copies round a centre, evenly over an angle")),
-    (translation_key("Scatter"), translation_key("Copies at random places within a radius")),
+    (
+        translation_key("Row"),
+        translation_key("Copies one after another, each moved and turned a step further"),
+    ),
+    (
+        translation_key("Grid"),
+        translation_key("Copies along X, Y and Z"),
+    ),
+    (
+        translation_key("Ring"),
+        translation_key("Copies round a centre, evenly over an angle"),
+    ),
+    (
+        translation_key("Scatter"),
+        translation_key("Copies at random places within a radius"),
+    ),
 ];
 
 pub struct ArrayDialog {
@@ -26,7 +38,12 @@ pub struct ArrayDialog {
 
 impl Default for ArrayDialog {
     fn default() -> Self {
-        Self { open: false, parameters: ArrayParameters::default(), status: String::new(), failed: false }
+        Self {
+            open: false,
+            parameters: ArrayParameters::default(),
+            status: String::new(),
+            failed: false,
+        }
     }
 }
 
@@ -40,7 +57,10 @@ impl ArrayDialog {
     }
 
     fn begin(&mut self, editor: &Editor) {
-        let result = editor.document.borrow_mut().begin_array_preview(self.parameters);
+        let result = editor
+            .document
+            .borrow_mut()
+            .begin_array_preview(self.parameters);
         self.report(result);
     }
 
@@ -67,22 +87,36 @@ impl ArrayDialog {
                     cancel |= theme::button(ui, tr("Cancel"), width, true).clicked();
                     apply |= form::accent_button_width(ui, tr("Apply"), width, true).clicked();
                 } else {
-                    make |= form::accent_button_width(ui, tr("Make array"), width * 2.0, true).clicked();
+                    make |= form::accent_button_width(ui, tr("Make array"), width * 2.0, true)
+                        .clicked();
                 }
                 return;
             }
-            egui::ScrollArea::vertical().id_salt("array-controls").auto_shrink([false, false]).show(ui, |ui| {
-                self.controls(ui, linkable);
-                ui.add_space(6.0);
-                let colour = if self.failed { theme::error() } else { theme::dim() };
-                ui.label(egui::RichText::new(&self.status).color(colour));
-                if !previewing && !self.failed {
-                    ui.label(egui::RichText::new(tr("Select what to copy, then press Make array.")).color(theme::dim()));
-                }
-            });
+            egui::ScrollArea::vertical()
+                .id_salt("array-controls")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    self.controls(ui, linkable);
+                    ui.add_space(6.0);
+                    let colour = if self.failed {
+                        theme::error()
+                    } else {
+                        theme::dim()
+                    };
+                    ui.label(egui::RichText::new(&self.status).color(colour));
+                    if !previewing && !self.failed {
+                        ui.label(
+                            egui::RichText::new(tr("Select what to copy, then press Make array."))
+                                .color(theme::dim()),
+                        );
+                    }
+                });
         });
         if self.parameters != before && previewing {
-            let result = editor.document.borrow_mut().update_array_preview(self.parameters);
+            let result = editor
+                .document
+                .borrow_mut()
+                .update_array_preview(self.parameters);
             self.report(result);
         }
         if make {
@@ -107,17 +141,30 @@ impl ArrayDialog {
     fn controls(&mut self, ui: &mut egui::Ui, linkable: bool) {
         let p = &mut self.parameters;
         ui.horizontal(|ui| {
-            let mut kind = ArrayKind::ALL.iter().position(|k| *k == p.kind).unwrap_or(0);
-            let items: Vec<(&str, &str)> = KINDS.iter().map(|(name, tip)| (tr(name), tr(tip))).collect();
-            if widgets::segmented_choice(ui, "array-kind", &items, &mut kind, ui.available_width()) {
+            let mut kind = ArrayKind::ALL
+                .iter()
+                .position(|k| *k == p.kind)
+                .unwrap_or(0);
+            let items: Vec<(&str, &str)> = KINDS
+                .iter()
+                .map(|(name, tip)| (tr(name), tr(tip)))
+                .collect();
+            if widgets::segmented_choice(ui, "array-kind", &items, &mut kind, ui.available_width())
+            {
                 p.kind = ArrayKind::ALL[kind];
             }
         });
         ui.add_space(4.0);
         let count = |ui: &mut egui::Ui, label: &'static str, value: &mut u32| {
-            widgets::row(ui, tr(label), None, |ui| widgets::number_buttons(ui, value, 1.0..=1025.0));
+            widgets::row(ui, tr(label), None, |ui| {
+                widgets::number_buttons(ui, value, 1.0..=1025.0)
+            });
         };
-        let number = |ui: &mut egui::Ui, label: &'static str, value: &mut f64, range: std::ops::RangeInclusive<f64>, step: f64| {
+        let number = |ui: &mut egui::Ui,
+                      label: &'static str,
+                      value: &mut f64,
+                      range: std::ops::RangeInclusive<f64>,
+                      step: f64| {
             widgets::row(ui, tr(label), None, |ui| {
                 let width = ui.available_width().min(150.0);
                 widgets::spin_width(ui, value, range, step, 1, width);
@@ -125,7 +172,14 @@ impl ArrayDialog {
         };
         let step = |ui: &mut egui::Ui, step: &mut Vec3d| {
             let mut v = [step.x(), step.y(), step.z()];
-            for (label, value) in [translation_key("Step X"), translation_key("Step Y"), translation_key("Step Z")].into_iter().zip(&mut v) {
+            for (label, value) in [
+                translation_key("Step X"),
+                translation_key("Step Y"),
+                translation_key("Step Z"),
+            ]
+            .into_iter()
+            .zip(&mut v)
+            {
                 number(ui, label, value, -65536.0..=65536.0, 8.0);
             }
             *step = Vec3d::new(v[0], v[1], v[2]);
@@ -133,7 +187,13 @@ impl ArrayDialog {
         let axis = |ui: &mut egui::Ui, axis: &mut Axis| {
             widgets::row(ui, tr("Axis:"), None, |ui| {
                 let mut index = axis.index();
-                if widgets::segmented_choice(ui, "array-axis", &[("X", ""), ("Y", ""), ("Z", "")], &mut index, ui.available_width().min(200.0)) {
+                if widgets::segmented_choice(
+                    ui,
+                    "array-axis",
+                    &[("X", ""), ("Y", ""), ("Z", "")],
+                    &mut index,
+                    ui.available_width().min(200.0),
+                ) {
                     *axis = [Axis::X, Axis::Y, Axis::Z][index];
                 }
             });
@@ -142,7 +202,13 @@ impl ArrayDialog {
             ArrayKind::Line => {
                 count(ui, translation_key("Count"), &mut p.count[0]);
                 step(ui, &mut p.step);
-                number(ui, translation_key("Turn per copy (degrees)"), &mut p.turn, -360.0..=360.0, 15.0);
+                number(
+                    ui,
+                    translation_key("Turn per copy (degrees)"),
+                    &mut p.turn,
+                    -360.0..=360.0,
+                    15.0,
+                );
                 axis(ui, &mut p.axis);
             }
             ArrayKind::Grid => {
@@ -154,16 +220,36 @@ impl ArrayDialog {
             ArrayKind::Radial => {
                 count(ui, translation_key("Count"), &mut p.count[0]);
                 axis(ui, &mut p.axis);
-                number(ui, translation_key("Radius (units)"), &mut p.radius, 0.0..=65536.0, 16.0);
-                number(ui, translation_key("Angle (degrees)"), &mut p.angle, -360.0..=360.0, 15.0);
+                number(
+                    ui,
+                    translation_key("Radius (units)"),
+                    &mut p.radius,
+                    0.0..=65536.0,
+                    16.0,
+                );
+                number(
+                    ui,
+                    translation_key("Angle (degrees)"),
+                    &mut p.angle,
+                    -360.0..=360.0,
+                    15.0,
+                );
                 form::switch_row(ui, tr("Face the centre"), None, &mut p.rotate);
             }
             ArrayKind::Scatter => {
                 count(ui, translation_key("Count"), &mut p.count[0]);
                 axis(ui, &mut p.axis);
-                number(ui, translation_key("Radius (units)"), &mut p.radius, 1.0..=65536.0, 16.0);
+                number(
+                    ui,
+                    translation_key("Radius (units)"),
+                    &mut p.radius,
+                    1.0..=65536.0,
+                    16.0,
+                );
                 form::switch_row(ui, tr("Random turn"), None, &mut p.rotate);
-                widgets::row(ui, tr("Seed"), None, |ui| widgets::number_buttons(ui, &mut p.seed, 0.0..=99999.0));
+                widgets::row(ui, tr("Seed"), None, |ui| {
+                    widgets::number_buttons(ui, &mut p.seed, 0.0..=99999.0)
+                });
             }
         }
         ui.add_space(4.0);
@@ -183,17 +269,30 @@ mod tests {
     fn the_window_previews_applies_and_cancels() {
         let ctx = egui::Context::default();
         let editor = Editor::open(&ctx, None);
-        let bounds = geometry_math::bbox::Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(32.0, 32.0, 32.0));
-        let cube = map_model::shapes::create_cuboid(&editor.document.borrow().world_bounds(), &bounds, map_model::shapes::DEFAULT_MATERIAL).unwrap();
+        let bounds = geometry_math::bbox::Bbox3d::new(
+            Vec3d::new(0.0, 0.0, 0.0),
+            Vec3d::new(32.0, 32.0, 32.0),
+        );
+        let cube = map_model::shapes::create_cuboid(
+            &editor.document.borrow().world_bounds(),
+            &bounds,
+            map_model::shapes::DEFAULT_MATERIAL,
+        )
+        .unwrap();
         editor.document.borrow_mut().add_brushes(vec![cube]);
         // The new map has brushes of its own; only the cube is selected.
-        let brushes = |editor: &Editor| map_model::node::brushes_by_layer(editor.document.borrow().tree_world()).len();
+        let brushes = |editor: &Editor| {
+            map_model::node::brushes_by_layer(editor.document.borrow().tree_world()).len()
+        };
         let start = brushes(&editor) - 1;
         let mut dialog = ArrayDialog::default();
         dialog.open(&editor);
         assert_eq!(brushes(&editor), start + 4);
         dialog.parameters.count[0] = 6;
-        let result = editor.document.borrow_mut().update_array_preview(dialog.parameters);
+        let result = editor
+            .document
+            .borrow_mut()
+            .update_array_preview(dialog.parameters);
         dialog.report(result);
         assert_eq!(brushes(&editor), start + 6);
         assert_eq!(dialog.status, "Copies: 5");

@@ -3,8 +3,8 @@
 //! The samples are in the shape real FGD files take, since the format has no
 //! specification and what matters is that the files games actually ship parse.
 
-use map_model::fgd::{read_fgd, DefinitionKind, PropertyType};
 use geometry_math::vec::Vec3d;
+use map_model::fgd::{read_fgd, DefinitionKind, PropertyType};
 
 const SAMPLE: &str = r#"
 // A comment at the top, as every FGD has.
@@ -148,10 +148,7 @@ fn a_flags_property_keeps_its_bits_and_their_defaults() {
     let definitions = read_fgd(SAMPLE).expect("the sample parses");
     let base = definitions.find("Appearflags").expect("it is defined");
 
-    let PropertyType::Flags(flags) = &base
-        .property("spawnflags")
-        .expect("it has spawnflags")
-        .kind
+    let PropertyType::Flags(flags) = &base.property("spawnflags").expect("it has spawnflags").kind
     else {
         panic!("spawnflags should be a flags property");
     };
@@ -189,7 +186,10 @@ fn a_class_overrides_a_property_it_inherits() {
     assert_eq!(speed.short_description, "Fast speed");
     assert_eq!(speed.default.as_deref(), Some("500"));
     // And it appears only once.
-    assert_eq!(fast.properties.iter().filter(|p| p.key == "speed").count(), 1);
+    assert_eq!(
+        fast.properties.iter().filter(|p| p.key == "speed").count(),
+        1
+    );
 }
 
 #[test]
@@ -202,7 +202,10 @@ fn appearance_is_inherited_where_a_class_gives_none() {
     let thing = definitions.find("thing").expect("it is defined");
 
     assert_eq!(thing.color, Some([1, 2, 3]));
-    assert_eq!(thing.bounds.expect("inherited").max, Vec3d::new(4.0, 4.0, 4.0));
+    assert_eq!(
+        thing.bounds.expect("inherited").max,
+        Vec3d::new(4.0, 4.0, 4.0)
+    );
 }
 
 #[test]
@@ -210,7 +213,13 @@ fn a_model_expression_resolves_to_a_path() {
     let definitions = read_fgd(SAMPLE).expect("the sample parses");
     let light = definitions.find("light").expect("it is defined");
     assert_eq!(
-        light.model.as_ref().unwrap().default_model_specification().unwrap().path,
+        light
+            .model
+            .as_ref()
+            .unwrap()
+            .default_model_specification()
+            .unwrap()
+            .path,
         std::path::PathBuf::from("progs/light.mdl")
     );
 
@@ -218,16 +227,22 @@ fn a_model_expression_resolves_to_a_path() {
     let source = r#"@PointClass model("progs/x.mdl") = x : "X" []"#;
     let definitions = read_fgd(source).expect("it parses");
     assert_eq!(
-        definitions.find("x").unwrap().model.as_ref().unwrap()
-            .default_model_specification().unwrap().path,
+        definitions
+            .find("x")
+            .unwrap()
+            .model
+            .as_ref()
+            .unwrap()
+            .default_model_specification()
+            .unwrap()
+            .path,
         std::path::PathBuf::from("progs/x.mdl")
     );
 }
 
 #[test]
 fn a_model_expression_can_depend_on_the_entitys_properties() {
-    let source =
-        "@PointClass model({{ spawnflags == 2 -> \"a.mdl\", \"b.mdl\" }}) = x : \"X\" []";
+    let source = "@PointClass model({{ spawnflags == 2 -> \"a.mdl\", \"b.mdl\" }}) = x : \"X\" []";
     let definitions = read_fgd(source).expect("it parses");
     let model = definitions.find("x").unwrap().model.clone().unwrap();
 
@@ -238,8 +253,9 @@ fn a_model_expression_can_depend_on_the_entitys_properties() {
     );
 
     // With the flag, the first case.
-    let vars: expression_lang::VariableTable =
-        [("spawnflags", expression_lang::Value::integer(2))].into_iter().collect();
+    let vars: expression_lang::VariableTable = [("spawnflags", expression_lang::Value::integer(2))]
+        .into_iter()
+        .collect();
     assert_eq!(
         model.model_specification(&vars).unwrap().path,
         std::path::PathBuf::from("a.mdl")
@@ -253,7 +269,10 @@ fn an_unparseable_model_expression_is_reported() {
 
     assert_eq!(definitions.find("x").expect("defined").model, None);
     assert!(
-        definitions.warnings.iter().any(|w| w.contains("model expression")),
+        definitions
+            .warnings
+            .iter()
+            .any(|w| w.contains("model expression")),
         "{:?}",
         definitions.warnings
     );
@@ -272,8 +291,9 @@ fn the_legacy_static_model_syntax_is_read_as_a_fallback() {
         std::path::PathBuf::from("maps/b_shell0.bsp")
     );
 
-    let vars: expression_lang::VariableTable =
-        [("spawnflags", expression_lang::Value::integer(1))].into_iter().collect();
+    let vars: expression_lang::VariableTable = [("spawnflags", expression_lang::Value::integer(1))]
+        .into_iter()
+        .collect();
     assert_eq!(
         model.model_specification(&vars).unwrap().path,
         std::path::PathBuf::from("maps/b_shell1.bsp")
@@ -281,7 +301,10 @@ fn the_legacy_static_model_syntax_is_read_as_a_fallback() {
 
     // And it is called out as deprecated.
     assert!(
-        definitions.warnings.iter().any(|w| w.contains("legacy model syntax")),
+        definitions
+            .warnings
+            .iter()
+            .any(|w| w.contains("legacy model syntax")),
         "{:?}",
         definitions.warnings
     );
@@ -296,7 +319,9 @@ fn the_legacy_dynamic_model_syntax_reads_path_skin_and_frame_from_properties() {
     let model = definitions.find("x").unwrap().model.clone().unwrap();
 
     let just_path: expression_lang::VariableTable =
-        [("model", expression_lang::Value::string("maps/b_shell1.bsp"))].into_iter().collect();
+        [("model", expression_lang::Value::string("maps/b_shell1.bsp"))]
+            .into_iter()
+            .collect();
     let spec = model.model_specification(&just_path).unwrap();
     assert_eq!(spec.path, std::path::PathBuf::from("maps/b_shell1.bsp"));
     assert_eq!((spec.skin_index, spec.frame_index), (0, 0));
@@ -318,7 +343,12 @@ fn a_legacy_model_case_carries_its_skin_and_frame() {
     // `parseLegacyModelWithParseError`: two cases, the second with a skin and a frame.
     let source = r#"@PointClass model(":progs/polyp.mdl" 0 153, ":progs/polyp.mdl" startonground = "1") = monster_polyp : "Polyp" []"#;
     let definitions = read_fgd(source).expect("it parses");
-    let model = definitions.find("monster_polyp").unwrap().model.clone().unwrap();
+    let model = definitions
+        .find("monster_polyp")
+        .unwrap()
+        .model
+        .clone()
+        .unwrap();
 
     // Nothing set: the static case with the skin and frame.
     let spec = model.default_model_specification().unwrap();
@@ -327,7 +357,9 @@ fn a_legacy_model_case_carries_its_skin_and_frame() {
 
     // The flag set: the guarded case, which names only a path.
     let vars: expression_lang::VariableTable =
-        [("startonground", expression_lang::Value::string("1"))].into_iter().collect();
+        [("startonground", expression_lang::Value::string("1"))]
+            .into_iter()
+            .collect();
     let spec = model.model_specification(&vars).unwrap();
     assert_eq!(spec.path, std::path::PathBuf::from("progs/polyp.mdl"));
     assert_eq!(spec.frame_index, 0);
@@ -335,8 +367,7 @@ fn a_legacy_model_case_carries_its_skin_and_frame() {
 
 #[test]
 fn a_model_maps_scale_is_read_from_the_entitys_properties() {
-    let source =
-        r#"@PointClass model({ "path": "x.mdl", "scale": scale }) = x : "X" []"#;
+    let source = r#"@PointClass model({ "path": "x.mdl", "scale": scale }) = x : "X" []"#;
     let definitions = read_fgd(source).expect("it parses");
     let model = definitions.find("x").unwrap().model.clone().unwrap();
 
@@ -432,7 +463,9 @@ fn an_include_pulls_in_another_files_classes() {
 
     // Both files' classes are here, and the base class from the include resolved.
     assert!(definitions.find("shared").is_some());
-    let thing = definitions.find("thing").expect("the including file's class");
+    let thing = definitions
+        .find("thing")
+        .expect("the including file's class");
     assert!(
         thing.property("spawnflags").is_some(),
         "inherited the base class from the included file"
@@ -468,7 +501,10 @@ fn an_include_cycle_is_broken_rather_than_looping() {
     assert!(definitions.find("a").is_some());
     assert!(definitions.find("b").is_some());
     assert!(
-        definitions.warnings.iter().any(|w| w.contains("includes itself")),
+        definitions
+            .warnings
+            .iter()
+            .any(|w| w.contains("includes itself")),
         "{:?}",
         definitions.warnings
     );
@@ -492,7 +528,10 @@ fn an_include_that_escapes_the_directory_is_refused() {
     let definitions = read_fgd_file(dir.join("game.fgd")).expect("it reads");
     assert!(definitions.find("thing").is_some());
     assert!(
-        definitions.warnings.iter().any(|w| w.contains("outside") || w.contains("under")),
+        definitions
+            .warnings
+            .iter()
+            .any(|w| w.contains("outside") || w.contains("under")),
         "{:?}",
         definitions.warnings
     );
@@ -529,7 +568,11 @@ fn spawnflags_are_merged_across_inheritance_rather_than_shadowed() {
     };
 
     let bits: Vec<i64> = flags.iter().map(|f| f.value).collect();
-    assert_eq!(bits, vec![1, 2, 256, 512, 1024], "the class's own bits and the base's");
+    assert_eq!(
+        bits,
+        vec![1, 2, 256, 512, 1024],
+        "the class's own bits and the base's"
+    );
 
     // The class's own default (bit 2) and the base's (bit 1024) both carry over.
     let by_value = |v: i64| flags.iter().find(|f| f.value == v).unwrap();

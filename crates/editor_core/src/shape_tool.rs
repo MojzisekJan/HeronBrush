@@ -3,10 +3,10 @@
 //! An enum selects the brush generator and its parameters.
 
 use crate::i18n::translation_key;
-use map_model::brush::Brush;
-use map_model::shapes::{self, CircleShape, ShapeError};
 use geometry_math::bbox::Bbox3d;
 use geometry_math::util::Axis;
+use map_model::brush::Brush;
+use map_model::shapes::{self, CircleShape, ShapeError};
 
 /// A shape the draw tool can make.
 ///
@@ -70,7 +70,10 @@ impl ShapeKind {
 
     /// Returns whether this shape is laid out along a chosen axis.
     pub fn has_axis(self) -> bool {
-        !matches!(self, ShapeKind::Cuboid | ShapeKind::IcoSphere | ShapeKind::HollowSphere)
+        !matches!(
+            self,
+            ShapeKind::Cuboid | ShapeKind::IcoSphere | ShapeKind::HollowSphere
+        )
     }
 }
 
@@ -297,10 +300,8 @@ pub fn create_brushes(
             }
         }
 
-        ShapeKind::Cone => {
-            shapes::create_cone(world_bounds, bounds, circle_shape, axis, material)
-                .map(|brush| vec![brush])
-        }
+        ShapeKind::Cone => shapes::create_cone(world_bounds, bounds, circle_shape, axis, material)
+            .map(|brush| vec![brush]),
 
         ShapeKind::UvSphere => shapes::create_uv_sphere(
             world_bounds,
@@ -313,7 +314,11 @@ pub fn create_brushes(
         .map(|brush| vec![brush]),
 
         ShapeKind::HollowSphere => shapes::create_hollow_sphere(
-            world_bounds, bounds, parameters.sphere_thickness, parameters.sphere_brushes, material,
+            world_bounds,
+            bounds,
+            parameters.sphere_thickness,
+            parameters.sphere_brushes,
+            material,
         ),
         ShapeKind::IcoSphere => {
             shapes::create_ico_sphere(world_bounds, bounds, parameters.accuracy, material)
@@ -332,27 +337,37 @@ mod tests {
     }
 
     fn bounds() -> Bbox3d {
-        Bbox3d::new(
-            Vec3d::new(-64.0, -64.0, 0.0),
-            Vec3d::new(64.0, 64.0, 64.0),
-        )
+        Bbox3d::new(Vec3d::new(-64.0, -64.0, 0.0), Vec3d::new(64.0, 64.0, 64.0))
     }
 
     #[test]
     fn hollow_sphere_is_the_eighth_shape_and_uses_wall_settings() {
-        let parameters=std::rc::Rc::new(std::cell::RefCell::new(ShapeParameters::default()));
-        assert!(crate::commands::select_shape_kind(&parameters,8));
-        assert_eq!(parameters.borrow().kind,ShapeKind::HollowSphere);
+        let parameters = std::rc::Rc::new(std::cell::RefCell::new(ShapeParameters::default()));
+        assert!(crate::commands::select_shape_kind(&parameters, 8));
+        assert_eq!(parameters.borrow().kind, ShapeKind::HollowSphere);
         assert!(!ShapeKind::HollowSphere.has_axis());
         assert!(!ShapeKind::HollowSphere.is_circular());
-        let brushes=create_brushes(&world(),&bounds(),&parameters.borrow(),"stone").unwrap();
-        assert_eq!(brushes.len(),80);
-        let initial_depth=Bbox3d::new(Vec3d::new(-64.0,-64.0,-16.0),Vec3d::new(64.0,64.0,16.0));
-        assert_eq!(create_brushes(&world(),&initial_depth,&parameters.borrow(),"stone").unwrap().len(),80);
-        parameters.borrow_mut().sphere_brushes=24;
-        assert_eq!(create_brushes(&world(),&bounds(),&parameters.borrow(),"stone").unwrap().len(),24);
-        parameters.borrow_mut().sphere_thickness=32.0;
-        assert!(create_brushes(&world(),&bounds(),&parameters.borrow(),"stone").is_err());
+        let brushes = create_brushes(&world(), &bounds(), &parameters.borrow(), "stone").unwrap();
+        assert_eq!(brushes.len(), 80);
+        let initial_depth = Bbox3d::new(
+            Vec3d::new(-64.0, -64.0, -16.0),
+            Vec3d::new(64.0, 64.0, 16.0),
+        );
+        assert_eq!(
+            create_brushes(&world(), &initial_depth, &parameters.borrow(), "stone")
+                .unwrap()
+                .len(),
+            80
+        );
+        parameters.borrow_mut().sphere_brushes = 24;
+        assert_eq!(
+            create_brushes(&world(), &bounds(), &parameters.borrow(), "stone")
+                .unwrap()
+                .len(),
+            24
+        );
+        parameters.borrow_mut().sphere_thickness = 32.0;
+        assert!(create_brushes(&world(), &bounds(), &parameters.borrow(), "stone").is_err());
     }
 
     #[test]
@@ -441,11 +456,11 @@ mod tests {
             .bounds()
             .min
             .x();
-        let lowest_when_down =
-            create_brushes(&world(), &bounds(), &down, "stone").expect("stairs")[0]
-                .bounds()
-                .max
-                .x();
+        let lowest_when_down = create_brushes(&world(), &bounds(), &down, "stone").expect("stairs")
+            [0]
+        .bounds()
+        .max
+        .x();
 
         geometry_math::assert_approx_eq!(lowest_when_up, -64.0, 1e-6);
         geometry_math::assert_approx_eq!(lowest_when_down, 64.0, 1e-6);

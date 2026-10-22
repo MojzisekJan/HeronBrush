@@ -4,7 +4,10 @@ use crate::{i18n::Language, preferences};
 
 /// The codes agents may choose: following the desktop and every complete language.
 fn codes() -> Vec<&'static str> {
-    Language::choices(Language::System).into_iter().map(Language::code).collect()
+    Language::choices(Language::System)
+        .into_iter()
+        .map(Language::code)
+        .collect()
 }
 
 pub(super) fn definitions() -> Vec<Value> {
@@ -99,11 +102,9 @@ mod tests {
         call_tool(&mut document, &mut collab, "set_editor_settings", &args).unwrap();
         assert!(collab.settings_changed);
         assert_eq!(preferences::pref(|p| p.language), Language::Czech);
-        assert!(
-            std::fs::read_to_string(&path)
-                .unwrap()
-                .contains("ui/Language=czech")
-        );
+        assert!(std::fs::read_to_string(&path)
+            .unwrap()
+            .contains("ui/Language=czech"));
         for invalid in [
             json!({"language":"unknown"}),
             json!({"panel_opacity":101}),
@@ -115,24 +116,20 @@ mod tests {
             );
         }
         collab.settings_path = Some(path.join("impossible"));
-        assert!(
-            call(
-                &mut collab,
-                "set_editor_settings",
-                &json!({"language":"en"})
-            )
-            .is_err()
-        );
+        assert!(call(
+            &mut collab,
+            "set_editor_settings",
+            &json!({"language":"en"})
+        )
+        .is_err());
         assert_eq!(preferences::pref(|p| p.language), Language::Czech);
         assert_eq!(document.revision(), revision);
-        assert!(
-            call(
-                &mut Collab::default(),
-                "set_editor_settings",
-                &json!({"language":"en"})
-            )
-            .is_err()
-        );
+        assert!(call(
+            &mut Collab::default(),
+            "set_editor_settings",
+            &json!({"language":"en"})
+        )
+        .is_err());
         std::fs::remove_file(path).unwrap();
         preferences::set_current(original);
     }

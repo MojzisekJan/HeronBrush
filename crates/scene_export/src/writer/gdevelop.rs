@@ -107,13 +107,26 @@ pub fn gdevelop_rotation(q: [f64; 4]) -> (f64, f64, f64) {
     let p = [0, 2, 1];
     let g = |i: usize, j: usize| m.col(p[j])[p[i]];
     let s = g(2, 0).clamp(-1., 1.);
-    let (angle, x) = if s.abs() < 0.9999999 { (g(1, 0).atan2(g(0, 0)), g(2, 1).atan2(g(2, 2))) } else { ((-g(0, 1)).atan2(g(1, 1)), 0.) };
+    let (angle, x) = if s.abs() < 0.9999999 {
+        (g(1, 0).atan2(g(0, 0)), g(2, 1).atan2(g(2, 2)))
+    } else {
+        ((-g(0, 1)).atan2(g(1, 1)), 0.)
+    };
     (angle.to_degrees(), (-s.asin()).to_degrees(), x.to_degrees())
 }
 
 /// A name GDevelop accepts for an object: letters, digits and underscores.
 fn identifier(name: &str) -> String {
-    let mut out: String = name.chars().map(|c| if c.is_ascii_alphanumeric() || c == '_' { c } else { '_' }).collect();
+    let mut out: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
     if out.is_empty() || out.starts_with(|c: char| c.is_ascii_digit()) {
         out.insert(0, '_');
     }
@@ -135,7 +148,9 @@ fn value_json(value: &Value) -> Json {
         Value::Vec2(v) => numbers(v),
         Value::Vec3(v) => numbers(v),
         Value::Color(v) => numbers(v),
-        Value::Array(items) => json!({"type": "array", "children": items.iter().map(value_json).collect::<Vec<_>>()}),
+        Value::Array(items) => {
+            json!({"type": "array", "children": items.iter().map(value_json).collect::<Vec<_>>()})
+        }
     }
 }
 fn strings(name: &str, items: &[String]) -> Json {
@@ -161,7 +176,13 @@ fn physics(body: &str, shape: &str, size: [f64; 3], offset: [f64; 3], mesh: &str
     })
 }
 
-fn model_object(name: &str, resource: &str, size: [f64; 3], behaviors: Vec<Json>, variables: Vec<Json>) -> Json {
+fn model_object(
+    name: &str,
+    resource: &str,
+    size: [f64; 3],
+    behaviors: Vec<Json>,
+    variables: Vec<Json>,
+) -> Json {
     json!({
         "assetStoreId": "", "name": name, "type": "Scene3D::Model3DObject",
         "variables": variables, "effects": [], "behaviors": behaviors,
@@ -188,8 +209,13 @@ fn point_object(name: &str) -> Json {
 }
 
 fn resource(name: &str) -> Json {
-    let kind = if name.ends_with(".png") { "image" } else { "model3D" };
-    let mut r = json!({"file": name, "kind": kind, "metadata": "", "name": name, "userAdded": false});
+    let kind = if name.ends_with(".png") {
+        "image"
+    } else {
+        "model3D"
+    };
+    let mut r =
+        json!({"file": name, "kind": kind, "metadata": "", "name": name, "userAdded": false});
     if kind == "image" {
         r["smoothed"] = json!(true);
         r["alwaysLoaded"] = json!(false);
@@ -201,7 +227,9 @@ fn effect(kind: &str, name: &str, doubles: Json, strings: Json, booleans: Json) 
     json!({"effectType": kind, "name": name, "doubleParameters": doubles, "stringParameters": strings, "booleanParameters": booleans})
 }
 fn rgb(c: [f32; 3]) -> String {
-    c.map(|v| (v.clamp(0., 1.) * 255.).round() as u8).map(|v| v.to_string()).join(";")
+    c.map(|v| (v.clamp(0., 1.) * 255.).round() as u8)
+        .map(|v| v.to_string())
+        .join(";")
 }
 
 /// A fresh project holding nothing but what a scene needs to run.
@@ -234,10 +262,17 @@ fn new_project(level: &str) -> Json {
 
 /// Writes the level's scene into `existing` (a project's `game.json`), or into a new
 /// project when there is none. Returns the files to write beside the meshes.
-pub fn write(level: &Level, collision: &[CollisionMesh], options: &GDevelopOptions, meshes: &[GDevelopMesh], existing: Option<&str>) -> Result<Vec<GDevelopFile>, String> {
+pub fn write(
+    level: &Level,
+    collision: &[CollisionMesh],
+    options: &GDevelopOptions,
+    meshes: &[GDevelopMesh],
+    existing: Option<&str>,
+) -> Result<Vec<GDevelopFile>, String> {
     let s = PIXELS_PER_METRE;
     let mut project = match existing {
-        Some(text) => serde_json::from_str::<Json>(text).map_err(|why| format!("game.json is not a GDevelop project: {why}"))?,
+        Some(text) => serde_json::from_str::<Json>(text)
+            .map_err(|why| format!("game.json is not a GDevelop project: {why}"))?,
         None => new_project(&level.name),
     };
     if !project["layouts"].is_array() || !project["resources"]["resources"].is_array() {
@@ -287,13 +322,25 @@ pub fn write(level: &Level, collision: &[CollisionMesh], options: &GDevelopOptio
             i
         };
         let mut entity_objects = Vec::new();
-        let mesh = entity.mesh.as_deref().and_then(|m| meshes.iter().find(|x| m.ends_with(&format!("/{}", x.file_name)) || m == x.file_name));
+        let mesh = entity.mesh.as_deref().and_then(|m| {
+            meshes
+                .iter()
+                .find(|x| m.ends_with(&format!("/{}", x.file_name)) || m == x.file_name)
+        });
         let shape = collision.get(index);
         let sensor = entity.collision.as_ref().is_some_and(|c| c.sensor);
-        let mover = entity.collision.as_ref().is_some_and(|c| c.kind == crate::level::CollisionShape::Convex);
+        let mover = entity
+            .collision
+            .as_ref()
+            .is_some_and(|c| c.kind == crate::level::CollisionShape::Convex);
         if let Some(mesh) = mesh.filter(|_| !entity.surfaces.is_empty()) {
-            let (lo, hi) = bounds_with_origin(mesh.glb).ok_or_else(|| format!("{}: unreadable mesh", entity.name))?;
-            let size = [(hi[0] - lo[0]) * s * scale[0].abs(), (hi[2] - lo[2]) * s * scale[2].abs(), (hi[1] - lo[1]) * s * scale[1].abs()];
+            let (lo, hi) = bounds_with_origin(mesh.glb)
+                .ok_or_else(|| format!("{}: unreadable mesh", entity.name))?;
+            let size = [
+                (hi[0] - lo[0]) * s * scale[0].abs(),
+                (hi[2] - lo[2]) * s * scale[2].abs(),
+                (hi[1] - lo[1]) * s * scale[1].abs(),
+            ];
             let name = unique(identifier(&entity.name));
             let resource_name = format!("{}{}", prefix, mesh.file_name);
             let mut behaviors = Vec::new();
@@ -310,7 +357,8 @@ pub fn write(level: &Level, collision: &[CollisionMesh], options: &GDevelopOptio
                     let centre = |i: usize| (lo[i] + hi[i]) / 2.;
                     let gd = |v: [f64; 3]| [v[0], v[2], v[1]];
                     let extent = gd([0, 1, 2].map(|i| f64::from(b[i] - a[i]) * s * scale[i].abs()));
-                    let offset = gd([0, 1, 2].map(|i| ((f64::from(a[i] + b[i])) / 2. - centre(i)) * s * scale[i]));
+                    let offset = gd([0, 1, 2]
+                        .map(|i| ((f64::from(a[i] + b[i])) / 2. - centre(i)) * s * scale[i]));
                     behaviors.push(physics("Kinematic", "Box", extent, offset, ""));
                 }
             }
@@ -327,17 +375,36 @@ pub fn write(level: &Level, collision: &[CollisionMesh], options: &GDevelopOptio
         // Static geometry collides through a triangle mesh of its own, so collision the
         // eye does not see (clip brushes) still blocks, and drawn faces marked as not
         // solid do not.
-        if let Some(triangles) = shape.map(|c| &c.triangles).filter(|t| !t.is_empty() && !sensor && !mover) {
+        if let Some(triangles) = shape
+            .map(|c| &c.triangles)
+            .filter(|t| !t.is_empty() && !sensor && !mover)
+        {
             let name = unique(format!("{}_collision", identifier(&entity.name)));
             let file = format!("{prefix}{}_collision.glb", identifier(&entity.name));
             // The model's fit mirrors GDevelop's Y; Jolt's triangles are one-sided, so
             // they are wound the other way round to keep facing out of the solid.
-            let wound: Vec<[f32; 3]> = triangles.chunks_exact(3).flat_map(|t| [t[0], t[2], t[1]]).collect();
+            let wound: Vec<[f32; 3]> = triangles
+                .chunks_exact(3)
+                .flat_map(|t| [t[0], t[2], t[1]])
+                .collect();
             let glb = collision_glb(&wound);
             let (lo, hi) = bounds_with_origin(&glb).unwrap();
-            let size = [(hi[0] - lo[0]) * s * scale[0].abs(), (hi[2] - lo[2]) * s * scale[2].abs(), (hi[1] - lo[1]) * s * scale[1].abs()];
-            files.push(GDevelopFile { path: file.clone(), contents: glb });
-            objects.push(model_object(&name, &file, size, vec![physics("Static", "Mesh", [0.; 3], [0.; 3], "")], Vec::new()));
+            let size = [
+                (hi[0] - lo[0]) * s * scale[0].abs(),
+                (hi[2] - lo[2]) * s * scale[2].abs(),
+                (hi[1] - lo[1]) * s * scale[1].abs(),
+            ];
+            files.push(GDevelopFile {
+                path: file.clone(),
+                contents: glb,
+            });
+            objects.push(model_object(
+                &name,
+                &file,
+                size,
+                vec![physics("Static", "Mesh", [0.; 3], [0.; 3], "")],
+                Vec::new(),
+            ));
             resources.push(resource(&file));
             instances.push(instance(&name, index as i64));
             hidden.push(name.clone());
@@ -372,7 +439,11 @@ pub fn write(level: &Level, collision: &[CollisionMesh], options: &GDevelopOptio
         let to_sun = sky.to_sun();
         // In GDevelop's axes the sun is (x, z, y) of the level's; its rotation is the
         // compass angle in the ground plane, its elevation the angle above it.
-        let (x, y, z) = (f64::from(to_sun[0]), f64::from(to_sun[2]), f64::from(to_sun[1]));
+        let (x, y, z) = (
+            f64::from(to_sun[0]),
+            f64::from(to_sun[2]),
+            f64::from(to_sun[1]),
+        );
         effects.push(effect("Scene3D::DirectionalLight", "Heron sun",
             json!({"intensity": sky.sun_intensity, "elevation": z.asin().to_degrees(), "rotation": y.atan2(x).to_degrees(),
                    "shadowDistance": 3000, "distanceFromCamera": 1500, "frustumSize": 4000, "minimumShadowBias": 0.0008}),
@@ -389,19 +460,45 @@ pub fn write(level: &Level, collision: &[CollisionMesh], options: &GDevelopOptio
         let mut parameters = json!({"top": "Z+"});
         for (face, png) in names.iter().zip(faces) {
             let file = format!("{prefix}sky_{face}.png");
-            files.push(GDevelopFile { path: file.clone(), contents: png });
+            files.push(GDevelopFile {
+                path: file.clone(),
+                contents: png,
+            });
             resources.push(resource(&file));
             parameters[format!("{face}FaceResourceName")] = json!(file);
         }
-        effects.push(effect("Scene3D::Skybox", "Heron sky", json!({"environmentIntensity": sky.ambient_intensity, "backgroundIntensity": 1}), parameters, json!({})));
+        effects.push(effect(
+            "Scene3D::Skybox",
+            "Heron sky",
+            json!({"environmentIntensity": sky.ambient_intensity, "backgroundIntensity": 1}),
+            parameters,
+            json!({}),
+        ));
         if let Some((color, density)) = sky.fog {
-            effects.push(effect("Scene3D::ExponentialFog", "Heron fog", json!({"density": f64::from(density) / s}), json!({"color": rgb(color)}), json!({})));
+            effects.push(effect(
+                "Scene3D::ExponentialFog",
+                "Heron fog",
+                json!({"density": f64::from(density) / s}),
+                json!({"color": rgb(color)}),
+                json!({}),
+            ));
         }
         // The 3D view tone maps with AgX after scaling by 1.8 (render_wgpu post.wgsl).
-        effects.push(effect("Scene3D::ToneMapping", "Heron tone mapping", json!({"exposure": f64::from(sky.exposure) * 1.8}), json!({"mode": "AgX"}), json!({})));
+        effects.push(effect(
+            "Scene3D::ToneMapping",
+            "Heron tone mapping",
+            json!({"exposure": f64::from(sky.exposure) * 1.8}),
+            json!({"mode": "AgX"}),
+            json!({}),
+        ));
     } else {
-        effects.push(effect("Scene3D::HemisphereLight", "Heron ambient", json!({"elevation": 90, "intensity": 1, "rotation": 0}),
-            json!({"skyColor": "255;255;255", "groundColor": "127;127;127", "top": "Z+"}), json!({})));
+        effects.push(effect(
+            "Scene3D::HemisphereLight",
+            "Heron ambient",
+            json!({"elevation": 90, "intensity": 1, "rotation": 0}),
+            json!({"skyColor": "255;255;255", "groundColor": "127;127;127", "top": "Z+"}),
+            json!({}),
+        ));
     }
 
     // Start the camera where the player starts, looking the way the start faces.
@@ -411,7 +508,8 @@ pub fn write(level: &Level, collision: &[CollisionMesh], options: &GDevelopOptio
         json!({"x": t[0] * s, "y": t[2] * s, "z": (t[1] + 1.6) * s, "rotationX": 90, "angle": forward.z.atan2(forward.x).to_degrees() + 90.})
     });
     let data = json!({"level": level.name, "pixelsPerMetre": s, "entities": runtime_entities, "hidden": hidden, "camera": camera});
-    let script = include_str!("gdevelop_runtime.js").replace("__DATA__", &serde_json::to_string(&data).unwrap());
+    let script = include_str!("gdevelop_runtime.js")
+        .replace("__DATA__", &serde_json::to_string(&data).unwrap());
     let events = json!([{
         "type": "BuiltinCommonInstructions::JsCode",
         "inlineCode": script.lines().collect::<Vec<_>>(),
@@ -422,13 +520,13 @@ pub fn write(level: &Level, collision: &[CollisionMesh], options: &GDevelopOptio
             "gridOffsetX": 0, "gridOffsetY": 0, "gridOffsetZ": 0, "gridColor": 10401023, "gridAlpha": 0.8, "snap": false,
             "zoomFactor": 1, "windowMask": false, "selectedLayer": ""});
     let layer = json!({
-            "ambientLightColorB": 200, "ambientLightColorG": 200, "ambientLightColorR": 200,
-            "camera2DPlaneMaxDrawingDistance": 5000, "camera3DFarPlaneDistance": 100000, "camera3DFieldOfView": 60,
-            "camera3DNearPlaneDistance": 3, "cameraType": "perspective", "followBaseLayerCamera": false,
-            "isLightingLayer": false, "isLocked": false, "name": "", "renderingType": "3d", "visibility": true,
-            "cameras": [{"defaultSize": true, "defaultViewport": true, "height": 0, "viewportBottom": 1, "viewportLeft": 0, "viewportRight": 1, "viewportTop": 0, "width": 0}],
-            "effects": effects,
-        });
+        "ambientLightColorB": 200, "ambientLightColorG": 200, "ambientLightColorR": 200,
+        "camera2DPlaneMaxDrawingDistance": 5000, "camera3DFarPlaneDistance": 100000, "camera3DFieldOfView": 60,
+        "camera3DNearPlaneDistance": 3, "cameraType": "perspective", "followBaseLayerCamera": false,
+        "isLightingLayer": false, "isLocked": false, "name": "", "renderingType": "3d", "visibility": true,
+        "cameras": [{"defaultSize": true, "defaultViewport": true, "height": 0, "viewportBottom": 1, "viewportLeft": 0, "viewportRight": 1, "viewportTop": 0, "width": 0}],
+        "effects": effects,
+    });
     let layout = json!({
         "b": 230, "r": 160, "v": 200, "disableInputWhenNotFocused": true, "mangledName": identifier(&level.name),
         "name": level.name, "standardSortMethod": true, "stopSoundsOnStartup": true, "title": "", "renderer3DWorldScale": 100,
@@ -449,7 +547,10 @@ pub fn write(level: &Level, collision: &[CollisionMesh], options: &GDevelopOptio
     let list = project["resources"]["resources"].as_array_mut().unwrap();
     list.retain(|r| !r["name"].as_str().is_some_and(|n| n.starts_with(&prefix)));
     list.extend(resources);
-    files.push(GDevelopFile { path: "game.json".into(), contents: serde_json::to_vec_pretty(&project).unwrap() });
+    files.push(GDevelopFile {
+        path: "game.json".into(),
+        contents: serde_json::to_vec_pretty(&project).unwrap(),
+    });
     Ok(files)
 }
 
@@ -463,101 +564,276 @@ mod tests {
     }
 
     fn level() -> Level {
-        Level { format: 2, generator: "test".into(), name: "arena".into(), scale: 32., textures: vec![], entities: vec![] }
+        Level {
+            format: 2,
+            generator: "test".into(),
+            name: "arena".into(),
+            scale: 32.,
+            textures: vec![],
+            entities: vec![],
+        }
     }
 
     fn project(files: &[GDevelopFile]) -> Json {
-        serde_json::from_slice(&files.iter().find(|f| f.path == "game.json").unwrap().contents).unwrap()
+        serde_json::from_slice(
+            &files
+                .iter()
+                .find(|f| f.path == "game.json")
+                .unwrap()
+                .contents,
+        )
+        .unwrap()
     }
 
     #[test]
     fn a_mesh_is_sized_to_its_bounds_with_the_origin_so_it_stays_in_place() {
         let mut level = level();
-        level.entities.push(Entity { name: "worldspawn".into(), classname: "worldspawn".into(), mesh: Some("arena/worldspawn.glb".into()),
-            surfaces: vec![crate::level::Surface { primitive: 0, texture: "stone".into() }], ..Default::default() });
+        level.entities.push(Entity {
+            name: "worldspawn".into(),
+            classname: "worldspawn".into(),
+            mesh: Some("arena/worldspawn.glb".into()),
+            surfaces: vec![crate::level::Surface {
+                primitive: 0,
+                texture: "stone".into(),
+            }],
+            ..Default::default()
+        });
         let bytes = glb([2., 0., -5.], [4., 1., -3.]);
-        let files = write(&level, &[], &GDevelopOptions { sky: None }, &[GDevelopMesh { file_name: "worldspawn.glb", glb: &bytes }], None).unwrap();
+        let files = write(
+            &level,
+            &[],
+            &GDevelopOptions { sky: None },
+            &[GDevelopMesh {
+                file_name: "worldspawn.glb",
+                glb: &bytes,
+            }],
+            None,
+        )
+        .unwrap();
         let p = project(&files);
         assert_eq!(p["firstLayout"], "arena");
         let layout = &p["layouts"][0];
         let object = &layout["objects"][0];
         assert_eq!(object["type"], "Scene3D::Model3DObject");
         // x 0..4, z -5..0 (GDevelop y), y 0..1 (elevation), in pixels.
-        assert_eq!([&object["content"]["width"], &object["content"]["height"], &object["content"]["depth"]], [&json!(400.), &json!(500.), &json!(100.)]);
+        assert_eq!(
+            [
+                &object["content"]["width"],
+                &object["content"]["height"],
+                &object["content"]["depth"]
+            ],
+            [&json!(400.), &json!(500.), &json!(100.)]
+        );
         assert_eq!(object["content"]["rotationX"], 90);
         assert_eq!(layout["instances"][0]["x"], 0.);
-        assert_eq!(p["resources"]["resources"][0]["file"], "arena/worldspawn.glb");
+        assert_eq!(
+            p["resources"]["resources"][0]["file"],
+            "arena/worldspawn.glb"
+        );
     }
 
     #[test]
     fn positions_and_rotations_take_gdevelops_axes() {
         // A quarter turn about the level's Y (up) is a turn about GDevelop's Z, its angle.
-        let (angle, y, x) = gdevelop_rotation(glam::DQuat::from_rotation_y(std::f64::consts::FRAC_PI_2).to_array());
-        assert!((angle.abs() - 90.).abs() < 1e-9 && y.abs() < 1e-9 && x.abs() < 1e-9, "{angle} {y} {x}");
+        let (angle, y, x) =
+            gdevelop_rotation(glam::DQuat::from_rotation_y(std::f64::consts::FRAC_PI_2).to_array());
+        assert!(
+            (angle.abs() - 90.).abs() < 1e-9 && y.abs() < 1e-9 && x.abs() < 1e-9,
+            "{angle} {y} {x}"
+        );
         // A turn about the level's X stays a turn about X, mirrored by the axis swap.
         let (angle, y, x) = gdevelop_rotation(glam::DQuat::from_rotation_x(0.5).to_array());
-        assert!(angle.abs() < 1e-9 && y.abs() < 1e-9 && (x + 0.5f64.to_degrees()).abs() < 1e-9, "{angle} {y} {x}");
+        assert!(
+            angle.abs() < 1e-9 && y.abs() < 1e-9 && (x + 0.5f64.to_degrees()).abs() < 1e-9,
+            "{angle} {y} {x}"
+        );
         let mut level = level();
-        let mut e = Entity { name: "lamp".into(), classname: "light".into(), ..Default::default() };
-        e.transform = Transform { translation: [1., 2., 3.], ..Default::default() };
+        let mut e = Entity {
+            name: "lamp".into(),
+            classname: "light".into(),
+            ..Default::default()
+        };
+        e.transform = Transform {
+            translation: [1., 2., 3.],
+            ..Default::default()
+        };
         e.properties.insert("charge".into(), Value::Int(7));
         e.properties.insert("armed".into(), Value::Bool(true));
         level.entities.push(e);
         let p = project(&write(&level, &[], &GDevelopOptions { sky: None }, &[], None).unwrap());
         let instance = &p["layouts"][0]["instances"][0];
-        assert_eq!((&instance["x"], &instance["y"], &instance["z"]), (&json!(100.), &json!(300.), &json!(200.)));
+        assert_eq!(
+            (&instance["x"], &instance["y"], &instance["z"]),
+            (&json!(100.), &json!(300.), &json!(200.))
+        );
         assert_eq!(instance["name"], "HeronPoint");
         let vars = instance["initialVariables"].as_array().unwrap();
         assert!(vars.contains(&json!({"name": "charge", "type": "number", "value": 7})));
         assert!(vars.contains(&json!({"name": "armed", "type": "boolean", "value": true})));
-        assert!(vars.contains(&json!({"name": "heron_classname", "type": "string", "value": "light"})));
+        assert!(
+            vars.contains(&json!({"name": "heron_classname", "type": "string", "value": "light"}))
+        );
     }
 
     #[test]
     fn static_collision_gets_a_hidden_mesh_body_and_movers_a_kinematic_box() {
         let mut level = level();
-        let surfaces = vec![crate::level::Surface { primitive: 0, texture: "stone".into() }];
-        level.entities.push(Entity { name: "worldspawn".into(), classname: "worldspawn".into(), mesh: Some("arena/worldspawn.glb".into()), surfaces: surfaces.clone(),
-            collision: Some(Collision { kind: CollisionShape::Trimesh, mesh: 1, parts: 1, sensor: false }), ..Default::default() });
-        level.entities.push(Entity { name: "lift".into(), classname: "func_animate".into(), mesh: Some("arena/lift.glb".into()), surfaces,
-            collision: Some(Collision { kind: CollisionShape::Convex, mesh: 1, parts: 1, sensor: false }), ..Default::default() });
+        let surfaces = vec![crate::level::Surface {
+            primitive: 0,
+            texture: "stone".into(),
+        }];
+        level.entities.push(Entity {
+            name: "worldspawn".into(),
+            classname: "worldspawn".into(),
+            mesh: Some("arena/worldspawn.glb".into()),
+            surfaces: surfaces.clone(),
+            collision: Some(Collision {
+                kind: CollisionShape::Trimesh,
+                mesh: 1,
+                parts: 1,
+                sensor: false,
+            }),
+            ..Default::default()
+        });
+        level.entities.push(Entity {
+            name: "lift".into(),
+            classname: "func_animate".into(),
+            mesh: Some("arena/lift.glb".into()),
+            surfaces,
+            collision: Some(Collision {
+                kind: CollisionShape::Convex,
+                mesh: 1,
+                parts: 1,
+                sensor: false,
+            }),
+            ..Default::default()
+        });
         let world = glb([-1., -1., -1.], [1., 0., 1.]);
         let lift = glb([-1., -0.5, -1.], [1., 0.5, 1.]);
         let collision = vec![
-            CollisionMesh { triangles: vec![[-1., 0., -1.], [1., 0., -1.], [1., 0., 1.]], boxes: vec![], hulls: vec![] },
-            CollisionMesh { triangles: vec![], boxes: vec![[[-1., -0.5, -1.], [1., 0.5, 1.]]], hulls: vec![] },
+            CollisionMesh {
+                triangles: vec![[-1., 0., -1.], [1., 0., -1.], [1., 0., 1.]],
+                boxes: vec![],
+                hulls: vec![],
+            },
+            CollisionMesh {
+                triangles: vec![],
+                boxes: vec![[[-1., -0.5, -1.], [1., 0.5, 1.]]],
+                hulls: vec![],
+            },
         ];
-        let files = write(&level, &collision, &GDevelopOptions { sky: None }, &[GDevelopMesh { file_name: "worldspawn.glb", glb: &world }, GDevelopMesh { file_name: "lift.glb", glb: &lift }], None).unwrap();
+        let files = write(
+            &level,
+            &collision,
+            &GDevelopOptions { sky: None },
+            &[
+                GDevelopMesh {
+                    file_name: "worldspawn.glb",
+                    glb: &world,
+                },
+                GDevelopMesh {
+                    file_name: "lift.glb",
+                    glb: &lift,
+                },
+            ],
+            None,
+        )
+        .unwrap();
         let p = project(&files);
         let objects = p["layouts"][0]["objects"].as_array().unwrap();
         let named = |n: &str| objects.iter().find(|o| o["name"] == n).unwrap();
-        assert_eq!(named("worldspawn_collision")["behaviors"][0]["shape"], "Mesh");
-        assert_eq!(named("worldspawn_collision")["behaviors"][0]["bodyType"], "Static");
+        assert_eq!(
+            named("worldspawn_collision")["behaviors"][0]["shape"],
+            "Mesh"
+        );
+        assert_eq!(
+            named("worldspawn_collision")["behaviors"][0]["bodyType"],
+            "Static"
+        );
         assert_eq!(named("lift")["behaviors"][0]["bodyType"], "Kinematic");
         assert_eq!(named("lift")["behaviors"][0]["shapeDimensionA"], 200.);
-        assert!(files.iter().any(|f| f.path == "arena/worldspawn_collision.glb"));
-        let script = p["layouts"][0]["events"][0]["inlineCode"].as_array().unwrap().iter().map(|l| l.as_str().unwrap()).collect::<Vec<_>>().join("\n");
-        assert!(script.contains("\"hidden\":[\"worldspawn_collision\"]"), "{script}");
+        assert!(files
+            .iter()
+            .any(|f| f.path == "arena/worldspawn_collision.glb"));
+        let script = p["layouts"][0]["events"][0]["inlineCode"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|l| l.as_str().unwrap())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            script.contains("\"hidden\":[\"worldspawn_collision\"]"),
+            "{script}"
+        );
     }
 
     #[test]
     fn re_export_replaces_only_the_levels_scene_and_resources() {
         let mut level = level();
-        level.entities.push(Entity { name: "start".into(), classname: "info_player_start".into(), ..Default::default() });
+        level.entities.push(Entity {
+            name: "start".into(),
+            classname: "info_player_start".into(),
+            ..Default::default()
+        });
         let mut existing = new_project("menu");
         existing["layouts"] = json!([{"name": "menu", "objects": []}, {"name": "arena", "objects": [{"name": "stale"}]}]);
         existing["resources"]["resources"] = json!([{"name": "ui/logo.png", "file": "ui/logo.png", "kind": "image"}, {"name": "arena/old.glb", "file": "arena/old.glb", "kind": "model3D"}]);
-        let sky = Sky { sky: [0.1, 0.4, 0.85], horizon: [0.7, 0.8, 0.9], ground: [0.2, 0.18, 0.15], sun_color: [1., 0.9, 0.8], sun_intensity: 3., ambient_intensity: 0.5, sun_elevation: 45., sun_azimuth: 0., exposure: 1., fog: None };
-        let files = write(&level, &[], &GDevelopOptions { sky: Some(sky) }, &[], Some(&existing.to_string())).unwrap();
+        let sky = Sky {
+            sky: [0.1, 0.4, 0.85],
+            horizon: [0.7, 0.8, 0.9],
+            ground: [0.2, 0.18, 0.15],
+            sun_color: [1., 0.9, 0.8],
+            sun_intensity: 3.,
+            ambient_intensity: 0.5,
+            sun_elevation: 45.,
+            sun_azimuth: 0.,
+            exposure: 1.,
+            fog: None,
+        };
+        let files = write(
+            &level,
+            &[],
+            &GDevelopOptions { sky: Some(sky) },
+            &[],
+            Some(&existing.to_string()),
+        )
+        .unwrap();
         let p = project(&files);
         assert_eq!(p["firstLayout"], "menu");
         assert_eq!(p["layouts"].as_array().unwrap().len(), 2);
         assert_eq!(p["layouts"][0]["name"], "menu");
-        assert!(p["layouts"][1]["objects"].as_array().unwrap().iter().all(|o| o["name"] != "stale"));
-        let names: Vec<_> = p["resources"]["resources"].as_array().unwrap().iter().map(|r| r["name"].as_str().unwrap().to_string()).collect();
-        assert!(names.contains(&"ui/logo.png".into()) && !names.contains(&"arena/old.glb".into()) && names.contains(&"arena/sky_top.png".into()), "{names:?}");
+        assert!(p["layouts"][1]["objects"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|o| o["name"] != "stale"));
+        let names: Vec<_> = p["resources"]["resources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["name"].as_str().unwrap().to_string())
+            .collect();
+        assert!(
+            names.contains(&"ui/logo.png".into())
+                && !names.contains(&"arena/old.glb".into())
+                && names.contains(&"arena/sky_top.png".into()),
+            "{names:?}"
+        );
         let effects = p["layouts"][1]["layers"][0]["effects"].as_array().unwrap();
-        assert!(effects.iter().any(|e| e["effectType"] == "Scene3D::Skybox") && effects.iter().any(|e| e["effectType"] == "Scene3D::DirectionalLight"));
-        assert!(write(&level, &[], &GDevelopOptions { sky: None }, &[], Some("{\"not\": 1}")).is_err());
+        assert!(
+            effects.iter().any(|e| e["effectType"] == "Scene3D::Skybox")
+                && effects
+                    .iter()
+                    .any(|e| e["effectType"] == "Scene3D::DirectionalLight")
+        );
+        assert!(write(
+            &level,
+            &[],
+            &GDevelopOptions { sky: None },
+            &[],
+            Some("{\"not\": 1}")
+        )
+        .is_err());
     }
 }

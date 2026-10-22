@@ -7,12 +7,12 @@
 //! a `WireEdit` names the nodes it touches by id and the receiving editor applies it to
 //! those nodes directly.
 
+use geometry_math::bbox::Bbox3d;
 use map_model::brush::Brush;
 use map_model::brush_face::BrushFace;
 use map_model::io::map_reader::Patch;
 use map_model::node::{EntityNode, Group, Layer, Node, NodeId, NodeKind};
 use serde::{Deserialize, Serialize};
-use geometry_math::bbox::Bbox3d;
 
 use crate::history::Edit;
 
@@ -103,10 +103,15 @@ impl WireNode {
                 properties: entity.properties.clone(),
                 children: entity.children.iter().map(WireNode::from_node).collect(),
             }),
-            NodeKind::Brush(brush) => WireKind::Brush { faces: brush.faces().to_vec() },
+            NodeKind::Brush(brush) => WireKind::Brush {
+                faces: brush.faces().to_vec(),
+            },
             NodeKind::Patch(patch) => WireKind::Patch(patch.clone()),
         };
-        WireNode { id: node.id.0, kind }
+        WireNode {
+            id: node.id.0,
+            kind,
+        }
     }
 
     fn into_node(self, bounds: &Bbox3d) -> Result<Node, WireError> {
@@ -137,7 +142,10 @@ impl WireNode {
             ),
             WireKind::Patch(patch) => NodeKind::Patch(patch),
         };
-        Ok(Node { id: NodeId(self.id), kind })
+        Ok(Node {
+            id: NodeId(self.id),
+            kind,
+        })
     }
 }
 
@@ -300,7 +308,11 @@ pub enum WireEdit {
         nodes: Vec<WireNode>,
     },
     /// Root order in a layer, using stable node identifiers.
-    Reordered { layer: usize, before: Vec<u64>, after: Vec<u64> },
+    Reordered {
+        layer: usize,
+        before: Vec<u64>,
+        after: Vec<u64>,
+    },
     /// Several edits that are one step.
     Batch(Vec<WireEdit>),
 }
@@ -313,13 +325,23 @@ impl WireEdit {
                 before: from_nodes(before),
                 after: from_nodes(after),
             },
-            Edit::Added { layer, nodes } => {
-                WireEdit::Added { layer: *layer, nodes: from_nodes(nodes) }
-            }
-            Edit::Removed { layer, nodes } => {
-                WireEdit::Removed { layer: *layer, nodes: from_nodes(nodes) }
-            }
-            Edit::Reordered { layer, before, after } => WireEdit::Reordered { layer: *layer, before: before.iter().map(|id| id.0).collect(), after: after.iter().map(|id| id.0).collect() },
+            Edit::Added { layer, nodes } => WireEdit::Added {
+                layer: *layer,
+                nodes: from_nodes(nodes),
+            },
+            Edit::Removed { layer, nodes } => WireEdit::Removed {
+                layer: *layer,
+                nodes: from_nodes(nodes),
+            },
+            Edit::Reordered {
+                layer,
+                before,
+                after,
+            } => WireEdit::Reordered {
+                layer: *layer,
+                before: before.iter().map(|id| id.0).collect(),
+                after: after.iter().map(|id| id.0).collect(),
+            },
             Edit::Batch(parts) => WireEdit::Batch(parts.iter().map(WireEdit::from_edit).collect()),
         }
     }
@@ -331,15 +353,28 @@ impl WireEdit {
                 before: into_nodes(before, bounds)?,
                 after: into_nodes(after, bounds)?,
             },
-            WireEdit::Added { layer, nodes } => {
-                Edit::Added { layer, nodes: into_nodes(nodes, bounds)? }
-            }
-            WireEdit::Removed { layer, nodes } => {
-                Edit::Removed { layer, nodes: into_nodes(nodes, bounds)? }
-            }
-            WireEdit::Reordered { layer, before, after } => Edit::Reordered { layer, before: before.into_iter().map(NodeId).collect(), after: after.into_iter().map(NodeId).collect() },
+            WireEdit::Added { layer, nodes } => Edit::Added {
+                layer,
+                nodes: into_nodes(nodes, bounds)?,
+            },
+            WireEdit::Removed { layer, nodes } => Edit::Removed {
+                layer,
+                nodes: into_nodes(nodes, bounds)?,
+            },
+            WireEdit::Reordered {
+                layer,
+                before,
+                after,
+            } => Edit::Reordered {
+                layer,
+                before: before.into_iter().map(NodeId).collect(),
+                after: after.into_iter().map(NodeId).collect(),
+            },
             WireEdit::Batch(parts) => Edit::Batch(
-                parts.into_iter().map(|p| p.into_edit(bounds)).collect::<Result<_, _>>()?,
+                parts
+                    .into_iter()
+                    .map(|p| p.into_edit(bounds))
+                    .collect::<Result<_, _>>()?,
             ),
         })
     }
@@ -421,7 +456,9 @@ mod tests {
         };
         let back = WireNode::from_node(&entity).into_node(&bounds()).unwrap();
         assert_eq!(back.id, entity.id);
-        let NodeKind::Entity(e) = &back.kind else { panic!() };
+        let NodeKind::Entity(e) = &back.kind else {
+            panic!()
+        };
         assert_eq!(e.properties.len(), 2);
         assert_eq!(e.children.len(), 1);
         assert_eq!(e.children[0].id, NodeId(42));
@@ -430,19 +467,30 @@ mod tests {
     #[test]
     fn an_edit_round_trips_through_json() {
         let edit = Edit::Batch(vec![
-            Edit::Added { layer: 0, nodes: vec![a_brush_node()] },
+            Edit::Added {
+                layer: 0,
+                nodes: vec![a_brush_node()],
+            },
             Edit::Changed {
                 before: vec![a_brush_node()],
                 after: vec![a_brush_node()],
             },
-            Edit::Removed { layer: 2, nodes: vec![a_brush_node()] },
+            Edit::Removed {
+                layer: 2,
+                nodes: vec![a_brush_node()],
+            },
         ]);
 
         let json = WireEdit::from_edit(&edit).to_json();
         assert!(!json.contains('\n'), "one line: {json}");
 
-        let back = WireEdit::from_json(&json).unwrap().into_edit(&bounds()).unwrap();
-        let Edit::Batch(parts) = back else { panic!("expected a batch") };
+        let back = WireEdit::from_json(&json)
+            .unwrap()
+            .into_edit(&bounds())
+            .unwrap();
+        let Edit::Batch(parts) = back else {
+            panic!("expected a batch")
+        };
         assert!(matches!(parts[0], Edit::Added { layer: 0, .. }));
         assert!(matches!(parts[1], Edit::Changed { .. }));
         assert!(matches!(parts[2], Edit::Removed { layer: 2, .. }));
@@ -466,6 +514,9 @@ mod tests {
 
     #[test]
     fn malformed_json_is_an_error() {
-        assert!(matches!(WireEdit::from_json("not json"), Err(WireError::Json(_))));
+        assert!(matches!(
+            WireEdit::from_json("not json"),
+            Err(WireError::Json(_))
+        ));
     }
 }

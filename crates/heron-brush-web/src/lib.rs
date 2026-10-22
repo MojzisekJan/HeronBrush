@@ -8,7 +8,9 @@
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 pub async fn start() {
     let result = heron_brush::web::run().await;
-    let note = web_sys::window().and_then(|window| window.document()).and_then(|document| document.get_element_by_id("loading"));
+    let note = web_sys::window()
+        .and_then(|window| window.document())
+        .and_then(|document| document.get_element_by_id("loading"));
     match (result, note) {
         (Ok(()), Some(note)) => note.remove(),
         (Err(why), Some(note)) => {

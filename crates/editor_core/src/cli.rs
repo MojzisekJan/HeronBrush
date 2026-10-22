@@ -57,7 +57,11 @@ pub fn parse(args: &[String]) -> Command {
         Some("--run-script") => Command::RunScript(rest()),
         _ => {
             let path = |at: usize| args.get(at).filter(|a| !a.is_empty()).map(PathBuf::from);
-            Command::Open(Positional { map: path(0), fgd: path(1), materials: path(2) })
+            Command::Open(Positional {
+                map: path(0),
+                fgd: path(1),
+                materials: path(2),
+            })
         }
     }
 }
@@ -137,12 +141,15 @@ pub fn render_preview(args: &[String], program: &str) -> i32 {
 /// the result to `<out.map>` (default `<in.map>`). `key=value` arguments answer the
 /// settings the plugin's manifest declares.
 pub fn run_script(args: &[String], program: &str) -> i32 {
-    let (paths, overrides): (Vec<&String>, Vec<&String>) = args.iter().partition(|arg| !arg.contains('='));
+    let (paths, overrides): (Vec<&String>, Vec<&String>) =
+        args.iter().partition(|arg| !arg.contains('='));
     let (script_path, input, output) = match paths.as_slice() {
         [script, input] => (*script, *input, (*input).clone()),
         [script, input, output] => (*script, *input, (*output).clone()),
         _ => {
-            eprintln!("usage: {program} --run-script <script.rhai> <in.map> [out.map] [key=value ...]");
+            eprintln!(
+                "usage: {program} --run-script <script.rhai> <in.map> [out.map] [key=value ...]"
+            );
             return 2;
         }
     };
@@ -153,7 +160,8 @@ pub fn run_script(args: &[String], program: &str) -> i32 {
             return 2;
         }
     };
-    let manifest = plugin_manifest::Manifest::beside(std::path::Path::new(script_path)).unwrap_or_default();
+    let manifest =
+        plugin_manifest::Manifest::beside(std::path::Path::new(script_path)).unwrap_or_default();
     if let Err(error) = crate::plugins::check_path_enabled(std::path::Path::new(script_path)) {
         eprintln!("heron-brush script: {error}");
         return 2;
@@ -176,7 +184,9 @@ pub fn run_script(args: &[String], program: &str) -> i32 {
     document.select_all();
     let mut settings = manifest.defaults();
     for over in overrides {
-        let Some((key, value)) = over.split_once('=') else { continue };
+        let Some((key, value)) = over.split_once('=') else {
+            continue;
+        };
         let Some(slot) = settings.iter_mut().find(|(declared, _)| declared == key) else {
             eprintln!("heron-brush script: this plugin has no setting called {key}");
             return 2;
@@ -192,7 +202,9 @@ pub fn run_script(args: &[String], program: &str) -> i32 {
             plugin_manifest::SettingValue::Check(_) => {
                 plugin_manifest::SettingValue::Check(matches!(value, "true" | "yes" | "1" | "on"))
             }
-            plugin_manifest::SettingValue::Text(_) => plugin_manifest::SettingValue::Text(value.to_string()),
+            plugin_manifest::SettingValue::Text(_) => {
+                plugin_manifest::SettingValue::Text(value.to_string())
+            }
         };
     }
     match plugin::run_with(&mut document, &script, &settings) {
@@ -227,9 +239,12 @@ pub fn merge_map(args: &[String], program: &str) -> i32 {
         }
     };
     let read = |path: &str| {
-        std::fs::read_to_string(path).map_err(|error| eprintln!("heron-brush merge: cannot read {path}: {error}"))
+        std::fs::read_to_string(path)
+            .map_err(|error| eprintln!("heron-brush merge: cannot read {path}: {error}"))
     };
-    let (Ok(base), Ok(ours), Ok(theirs)) = (read(base), read(ours), read(theirs)) else { return 2 };
+    let (Ok(base), Ok(ours), Ok(theirs)) = (read(base), read(ours), read(theirs)) else {
+        return 2;
+    };
     match map_model::merge::merge_text(&base, &ours, &theirs) {
         Ok((merged, conflicts)) => {
             if let Err(error) = std::fs::write(&output, merged) {
@@ -252,7 +267,9 @@ pub fn merge_map(args: &[String], program: &str) -> i32 {
 /// of a mesh becomes a thin wedge brush (or `solid` grid boxes, or `layered` slabs).
 pub fn obj_to_map(args: &[String], program: &str) -> i32 {
     let [source, output, rest @ ..] = args else {
-        eprintln!("usage: {program} --obj-to-map <in.obj> <out.map> [size] [thickness] [snap] [material]");
+        eprintln!(
+            "usage: {program} --obj-to-map <in.obj> <out.map> [size] [thickness] [snap] [material]"
+        );
         eprintln!("       size is what the model's longest side becomes, in map units;");
         eprintln!("       snap is the grid the corners are rounded onto, 0 for none;");
         eprintln!("       `layered` builds it as slabs of convex pieces, `solid` as grid boxes");
@@ -281,7 +298,8 @@ pub fn obj_to_map(args: &[String], program: &str) -> i32 {
         ..map_model::obj_to_brushes::Options::default()
     };
     let bounds = world::WorldBounds::default();
-    let world = geometry_math::bbox::Bbox3d::from_scalars(-bounds.half_extent(), bounds.half_extent());
+    let world =
+        geometry_math::bbox::Bbox3d::from_scalars(-bounds.half_extent(), bounds.half_extent());
     let (brushes, report) = map_model::obj_to_brushes::brushes_from_obj(&text, &world, &options);
     if brushes.is_empty() {
         eprintln!("{source}: no brushes came out of it");
@@ -291,7 +309,13 @@ pub fn obj_to_map(args: &[String], program: &str) -> i32 {
     document.add_brushes(brushes);
     match document.export_map_to(output, map_model::map_format::MapFormat::LOSSLESS) {
         Ok(()) => {
-            let part = |n: usize, what: &str| if n > 0 { format!(", {n} {what}") } else { String::new() };
+            let part = |n: usize, what: &str| {
+                if n > 0 {
+                    format!(", {n} {what}")
+                } else {
+                    String::new()
+                }
+            };
             println!(
                 "wrote {output}: {} brushes from {} triangles{}{}{}",
                 report.brushes,
@@ -323,21 +347,37 @@ mod tests {
         assert_eq!(parse(&args(&["--version"])), Command::Version);
         assert_eq!(parse(&args(&["-h"])), Command::Help);
         assert_eq!(parse(&args(&["--mcp"])), Command::Mcp);
-        assert_eq!(parse(&args(&["--merge-map", "a", "b", "c"])), Command::MergeMap(args(&["a", "b", "c"])));
-        assert_eq!(parse(&args(&["--obj-to-map", "x.obj", "y.map"])), Command::ObjToMap(args(&["x.obj", "y.map"])));
-        assert_eq!(parse(&args(&["--render-preview", "m.map", "o.png", "64"])), Command::RenderPreview(args(&["m.map", "o.png", "64"])));
-        assert_eq!(parse(&args(&["--run-script", "s.rhai", "m.map"])), Command::RunScript(args(&["s.rhai", "m.map"])));
+        assert_eq!(
+            parse(&args(&["--merge-map", "a", "b", "c"])),
+            Command::MergeMap(args(&["a", "b", "c"]))
+        );
+        assert_eq!(
+            parse(&args(&["--obj-to-map", "x.obj", "y.map"])),
+            Command::ObjToMap(args(&["x.obj", "y.map"]))
+        );
+        assert_eq!(
+            parse(&args(&["--render-preview", "m.map", "o.png", "64"])),
+            Command::RenderPreview(args(&["m.map", "o.png", "64"]))
+        );
+        assert_eq!(
+            parse(&args(&["--run-script", "s.rhai", "m.map"])),
+            Command::RunScript(args(&["s.rhai", "m.map"]))
+        );
     }
 
     #[test]
     fn positional_arguments_skip_empty_ones() {
         assert_eq!(parse(&[]), Command::Open(Positional::default()));
         assert_eq!(parse(&args(&[""])), Command::Open(Positional::default()));
-        let Command::Open(open) = parse(&args(&["m.map", "", "textures"])) else { panic!() };
+        let Command::Open(open) = parse(&args(&["m.map", "", "textures"])) else {
+            panic!()
+        };
         assert_eq!(open.map, Some(PathBuf::from("m.map")));
         assert_eq!(open.fgd, None);
         assert_eq!(open.materials, Some(PathBuf::from("textures")));
-        let Command::Open(open) = parse(&args(&["m.map", "q.fgd"])) else { panic!() };
+        let Command::Open(open) = parse(&args(&["m.map", "q.fgd"])) else {
+            panic!()
+        };
         assert_eq!(open.fgd, Some(PathBuf::from("q.fgd")));
         assert_eq!(open.materials, None);
     }
@@ -348,16 +388,29 @@ mod tests {
         assert_eq!(run(&Command::ObjToMap(vec![]), "heron", "v"), Some(2));
         assert_eq!(run(&Command::RenderPreview(vec![]), "heron", "v"), Some(2));
         assert_eq!(run(&Command::RunScript(vec![]), "heron", "v"), Some(2));
-        assert_eq!(run(&Command::Open(Positional::default()), "heron", "v"), None);
+        assert_eq!(
+            run(&Command::Open(Positional::default()), "heron", "v"),
+            None
+        );
     }
 
     #[test]
     fn render_preview_writes_a_png() {
         let map = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/crate.map");
-        let out = std::env::temp_dir().join(format!("heron-cli-preview-{}.png", std::process::id()));
-        let code = render_preview(&[map.display().to_string(), out.display().to_string(), "32".into()], "heron");
+        let out =
+            std::env::temp_dir().join(format!("heron-cli-preview-{}.png", std::process::id()));
+        let code = render_preview(
+            &[
+                map.display().to_string(),
+                out.display().to_string(),
+                "32".into(),
+            ],
+            "heron",
+        );
         assert_eq!(code, 0);
-        assert!(std::fs::metadata(&out).map(|m| m.len() > 0).unwrap_or(false));
+        assert!(std::fs::metadata(&out)
+            .map(|m| m.len() > 0)
+            .unwrap_or(false));
         let _ = std::fs::remove_file(out);
     }
 }

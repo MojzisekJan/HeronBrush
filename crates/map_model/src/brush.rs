@@ -171,10 +171,9 @@ pub enum SnapError {
 impl std::fmt::Display for SnapError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SnapError::Collapsed(cause) => write!(
-                f,
-                "snapping to this grid would collapse the brush: {cause}"
-            ),
+            SnapError::Collapsed(cause) => {
+                write!(f, "snapping to this grid would collapse the brush: {cause}")
+            }
             SnapError::InvalidGridSize { given } => {
                 write!(f, "the grid size must be positive, got {given}")
             }
@@ -207,10 +206,7 @@ impl Brush {
     /// The geometry is the part of `world_bounds` behind every face's plane. Faces whose
     /// plane cuts nothing off are dropped, as they contribute no surface; that is a normal
     /// thing to find in a map file rather than an error.
-    pub fn from_faces(
-        world_bounds: &Bbox3d,
-        faces: Vec<BrushFace>,
-    ) -> Result<Self, BrushError> {
+    pub fn from_faces(world_bounds: &Bbox3d, faces: Vec<BrushFace>) -> Result<Self, BrushError> {
         if faces.len() < 4 {
             return Err(BrushError::NotEnoughFaces { given: faces.len() });
         }
@@ -221,18 +217,33 @@ impl Brush {
         // tiny near-coplanar facets against the large world box. Arbitrary plane
         // defining points still use the usual intersection path.
         let points: Vec<_> = faces.iter().flat_map(|f| f.points).collect();
-        let lattice = points.iter().all(|p| (0..3).all(|a|
-            (p[a] * 8.0 - (p[a] * 8.0).round()).abs() < 1e-8));
-        let direct = if lattice && points.iter().all(|p| world_bounds.contains_point(*p)
-            && planes.iter().all(|plane| vec::dot(plane.normal, *p) - plane.distance <= 1e-7)) {
-            Polyhedron::from_points(&points, 1e-7).ok().filter(|hull|
-                hull.faces().iter().all(|f| planes.iter().any(|p|
-                    vec::length(p.normal - f.plane.normal) < 1e-7
-                    && (p.distance - f.plane.distance).abs() < 1e-6)))
-        } else { None };
-        let geometry = if let Some(hull) = direct { hull } else {
+        let lattice = points
+            .iter()
+            .all(|p| (0..3).all(|a| (p[a] * 8.0 - (p[a] * 8.0).round()).abs() < 1e-8));
+        let direct = if lattice
+            && points.iter().all(|p| {
+                world_bounds.contains_point(*p)
+                    && planes
+                        .iter()
+                        .all(|plane| vec::dot(plane.normal, *p) - plane.distance <= 1e-7)
+            }) {
+            Polyhedron::from_points(&points, 1e-7).ok().filter(|hull| {
+                hull.faces().iter().all(|f| {
+                    planes.iter().any(|p| {
+                        vec::length(p.normal - f.plane.normal) < 1e-7
+                            && (p.distance - f.plane.distance).abs() < 1e-6
+                    })
+                })
+            })
+        } else {
+            None
+        };
+        let geometry = if let Some(hull) = direct {
+            hull
+        } else {
             match Polyhedron::from_planes(world_bounds, &planes, f64::ALMOST_ZERO)
-                .map_err(BrushError::Geometry)? {
+                .map_err(BrushError::Geometry)?
+            {
                 FromPlanes::Built { polyhedron, .. } => polyhedron,
                 FromPlanes::Empty { plane } => return Err(BrushError::Empty { face: plane }),
             }
@@ -487,9 +498,9 @@ impl Brush {
             let mut moved = self.clone();
             match shift {
                 Some(by) => moved.geometry.translate(by),
-                None => moved.geometry.transform(transform, |at| {
-                    faces[moved.face_of_geometry[at]].plane
-                }),
+                None => moved
+                    .geometry
+                    .transform(transform, |at| faces[moved.face_of_geometry[at]].plane),
             }
             // Only while it stays inside the world. A brush pushed past the edge is
             // clipped by it, and clipping is the long way round's job.
@@ -509,7 +520,9 @@ impl Brush {
     fn face_invariant(&self, index: usize) -> Vec3d {
         match self.face_polygon(index) {
             Some(polygon) if !polygon.is_empty() => {
-                polygon.iter().fold(Vec3d::zero(), |sum, point| sum + *point)
+                polygon
+                    .iter()
+                    .fold(Vec3d::zero(), |sum, point| sum + *point)
                     / polygon.len() as f64
             }
             _ => {
@@ -687,9 +700,7 @@ impl Brush {
         delta: Vec3d,
         epsilon: f64,
     ) -> Result<Self, VertexError> {
-        self.move_vertices_with_uv_lock(positions, delta, epsilon, false, |_| {
-            NO_MATERIAL_SIZE
-        })
+        self.move_vertices_with_uv_lock(positions, delta, epsilon, false, |_| NO_MATERIAL_SIZE)
     }
 
     /// Returns this brush with the given corners moved, keeping the material where it is
@@ -761,69 +772,141 @@ impl Brush {
     /// encloses anything.
     /// Insets the boundary of a selected face region once. Shared selected edges
     /// stay connected; every affected vertex is solved from the same original solid.
-    pub fn bevel_face_region(&self, indices:&[usize], inset:f64, depth:f64) -> Result<Self,VertexError> {
-        self.bevel_face_region_with_seams(indices,inset,depth,&[])
+    pub fn bevel_face_region(
+        &self,
+        indices: &[usize],
+        inset: f64,
+        depth: f64,
+    ) -> Result<Self, VertexError> {
+        self.bevel_face_region_with_seams(indices, inset, depth, &[])
     }
 
     /// Coplanar selected faces on other brushes may share these full edges. Their
     /// seam stays in place while the external region boundary is inset.
-    pub fn bevel_face_region_with_seams(&self, indices:&[usize], inset:f64, depth:f64,seams:&[(Vec3d,Vec3d)]) -> Result<Self,VertexError> {
-        if !inset.is_finite() || !depth.is_finite() || inset<0.0 {return Err(VertexError::NoFaceThere);}
-        let mut indices=indices.to_vec();indices.sort_unstable();indices.dedup();
-        if indices.is_empty() {return Err(VertexError::NoFaceThere);}
-        let mut regions=Vec::new();
-        for &index in &indices {
-            let polygon=self.face_polygon(index).ok_or(VertexError::NoFaceThere)?;
-            let face=self.faces.get(index).ok_or(VertexError::NoFaceThere)?;
-            let center=polygon.iter().copied().fold(Vec3d::zero(),|a,b|a+b)/polygon.len() as f64;
-            let mut boundary=Vec::new();
-            for (&a,&b) in polygon.iter().zip(polygon.iter().cycle().skip(1)) {
-                let shared=self.faces.iter().enumerate().any(|(other,f)|other!=index && indices.contains(&other)
-                    && (vec::dot(f.normal(),a)-f.plane.distance).abs()<1e-7
-                    && (vec::dot(f.normal(),b)-f.plane.distance).abs()<1e-7);
-                if shared {continue;}
-                let mut outward=vec::normalize(vec::cross(b-a,face.normal()));
-                if vec::dot(outward,center-a)>0.0 {outward=-outward;}
-                let seam=seams.iter().any(|(x,y)|
-                    (vec::squared_distance(a,*x)<1e-12 && vec::squared_distance(b,*y)<1e-12)
-                    || (vec::squared_distance(a,*y)<1e-12 && vec::squared_distance(b,*x)<1e-12));
-                boundary.push((a,b,Plane3d::from_anchor_and_normal(a-outward*if seam {0.0}else{inset},outward)));
-            }
-            regions.push((index,polygon,boundary));
+    pub fn bevel_face_region_with_seams(
+        &self,
+        indices: &[usize],
+        inset: f64,
+        depth: f64,
+        seams: &[(Vec3d, Vec3d)],
+    ) -> Result<Self, VertexError> {
+        if !inset.is_finite() || !depth.is_finite() || inset < 0.0 {
+            return Err(VertexError::NoFaceThere);
         }
-        if depth==0.0 && inset>0.0 && regions.iter().all(|(_,_,boundary)|boundary.is_empty()) {return Err(VertexError::NoFaceThere);}
-        let mut points=Vec::new();
+        let mut indices = indices.to_vec();
+        indices.sort_unstable();
+        indices.dedup();
+        if indices.is_empty() {
+            return Err(VertexError::NoFaceThere);
+        }
+        let mut regions = Vec::new();
+        for &index in &indices {
+            let polygon = self.face_polygon(index).ok_or(VertexError::NoFaceThere)?;
+            let face = self.faces.get(index).ok_or(VertexError::NoFaceThere)?;
+            let center =
+                polygon.iter().copied().fold(Vec3d::zero(), |a, b| a + b) / polygon.len() as f64;
+            let mut boundary = Vec::new();
+            for (&a, &b) in polygon.iter().zip(polygon.iter().cycle().skip(1)) {
+                let shared = self.faces.iter().enumerate().any(|(other, f)| {
+                    other != index
+                        && indices.contains(&other)
+                        && (vec::dot(f.normal(), a) - f.plane.distance).abs() < 1e-7
+                        && (vec::dot(f.normal(), b) - f.plane.distance).abs() < 1e-7
+                });
+                if shared {
+                    continue;
+                }
+                let mut outward = vec::normalize(vec::cross(b - a, face.normal()));
+                if vec::dot(outward, center - a) > 0.0 {
+                    outward = -outward;
+                }
+                let seam = seams.iter().any(|(x, y)| {
+                    (vec::squared_distance(a, *x) < 1e-12 && vec::squared_distance(b, *y) < 1e-12)
+                        || (vec::squared_distance(a, *y) < 1e-12
+                            && vec::squared_distance(b, *x) < 1e-12)
+                });
+                boundary.push((
+                    a,
+                    b,
+                    Plane3d::from_anchor_and_normal(
+                        a - outward * if seam { 0.0 } else { inset },
+                        outward,
+                    ),
+                ));
+            }
+            regions.push((index, polygon, boundary));
+        }
+        if depth == 0.0 && inset > 0.0 && regions.iter().all(|(_, _, boundary)| boundary.is_empty())
+        {
+            return Err(VertexError::NoFaceThere);
+        }
+        let mut points = Vec::new();
         for vertex in self.geometry.vertices() {
-            let position=vertex.position;
-            let incident:Vec<_>=regions.iter().filter(|(_,polygon,_)|polygon.iter().any(|p|vec::squared_distance(*p,position)<1e-10)).collect();
-            if incident.is_empty() {points.push(position);continue;}
-            let mut constraints=Vec::new();
-            for (index,_,boundary) in &incident {
-                let mut plane=self.faces[*index].plane;plane.distance+=depth;constraints.push(plane);
-                for (a,b,plane) in boundary {
-                    if vec::squared_distance(*a,position)<1e-10 || vec::squared_distance(*b,position)<1e-10 {constraints.push(*plane);}
+            let position = vertex.position;
+            let incident: Vec<_> = regions
+                .iter()
+                .filter(|(_, polygon, _)| {
+                    polygon
+                        .iter()
+                        .any(|p| vec::squared_distance(*p, position) < 1e-10)
+                })
+                .collect();
+            if incident.is_empty() {
+                points.push(position);
+                continue;
+            }
+            let mut constraints = Vec::new();
+            for (index, _, boundary) in &incident {
+                let mut plane = self.faces[*index].plane;
+                plane.distance += depth;
+                constraints.push(plane);
+                for (a, b, plane) in boundary {
+                    if vec::squared_distance(*a, position) < 1e-10
+                        || vec::squared_distance(*b, position) < 1e-10
+                    {
+                        constraints.push(*plane);
+                    }
                 }
             }
-            let mut gram=[[0.0;3];3];let mut rhs=Vec3d::zero();
+            let mut gram = [[0.0; 3]; 3];
+            let mut rhs = Vec3d::zero();
             for plane in &constraints {
-                let n=plane.normal;rhs=rhs+n*(plane.distance-vec::dot(n,position));
-                for i in 0..3 {for j in 0..3 {gram[i][j]+=n[i]*n[j];}}
+                let n = plane.normal;
+                rhs = rhs + n * (plane.distance - vec::dot(n, position));
+                for i in 0..3 {
+                    for j in 0..3 {
+                        gram[i][j] += n[i] * n[j];
+                    }
+                }
             }
-            let inverse=geometry_math::mat::invert(geometry_math::mat::Mat3x3d::from_rows(gram)).ok_or(VertexError::NoFaceThere)?;
-            let moved=position+inverse*rhs;
-            if constraints.iter().any(|p|(vec::dot(p.normal,moved)-p.distance).abs()>1e-6)
-                || incident.iter().any(|(_,_,boundary)|boundary.iter().any(|(_,_,p)|vec::dot(p.normal,moved)-p.distance>1e-6)) {
+            let inverse = geometry_math::mat::invert(geometry_math::mat::Mat3x3d::from_rows(gram))
+                .ok_or(VertexError::NoFaceThere)?;
+            let moved = position + inverse * rhs;
+            if constraints
+                .iter()
+                .any(|p| (vec::dot(p.normal, moved) - p.distance).abs() > 1e-6)
+                || incident.iter().any(|(_, _, boundary)| {
+                    boundary
+                        .iter()
+                        .any(|(_, _, p)| vec::dot(p.normal, moved) - p.distance > 1e-6)
+                })
+            {
                 return Err(VertexError::NoFaceThere);
             }
             points.push(moved);
         }
-        let geometry=Polyhedron::from_points(&points,f64::ALMOST_ZERO).map_err(VertexError::Collapsed)?;
-        for (index,_,_) in regions {
-            let expected=self.faces[index].plane;
-            if !geometry.faces().iter().any(|f|vec::length(f.plane.normal-expected.normal)<1e-6
-                && (f.plane.distance-expected.distance-depth).abs()<1e-6) {return Err(VertexError::NoFaceThere);}
+        let geometry =
+            Polyhedron::from_points(&points, f64::ALMOST_ZERO).map_err(VertexError::Collapsed)?;
+        for (index, _, _) in regions {
+            let expected = self.faces[index].plane;
+            if !geometry.faces().iter().any(|f| {
+                vec::length(f.plane.normal - expected.normal) < 1e-6
+                    && (f.plane.distance - expected.distance - depth).abs() < 1e-6
+            }) {
+                return Err(VertexError::NoFaceThere);
+            }
         }
-        Ok(self.rebuilt_with_uv_lock(geometry,&[],|_|NO_MATERIAL_SIZE))
+        Ok(self.rebuilt_with_uv_lock(geometry, &[], |_| NO_MATERIAL_SIZE))
     }
 
     /// Insets one face independently and optionally raises it along its normal.
@@ -833,7 +916,9 @@ impl Brush {
         inset: f64,
         depth: f64,
     ) -> Result<Self, VertexError> {
-        let polygon = self.face_polygon(face_index).ok_or(VertexError::NoFaceThere)?;
+        let polygon = self
+            .face_polygon(face_index)
+            .ok_or(VertexError::NoFaceThere)?;
         let normal = self
             .faces
             .get(face_index)
@@ -857,8 +942,8 @@ impl Brush {
             .collect();
         points.extend(moved.iter().map(|corner| *corner + normal * depth));
 
-        let geometry = Polyhedron::from_points(&points, f64::ALMOST_ZERO)
-            .map_err(VertexError::Collapsed)?;
+        let geometry =
+            Polyhedron::from_points(&points, f64::ALMOST_ZERO).map_err(VertexError::Collapsed)?;
         Ok(self.rebuilt_with_uv_lock(geometry, &[], |_| NO_MATERIAL_SIZE))
     }
 
@@ -876,7 +961,9 @@ impl Brush {
         if depth == 0.0 {
             return Err(VertexError::NoFaceThere);
         }
-        let polygon = self.face_polygon(face_index).ok_or(VertexError::NoFaceThere)?;
+        let polygon = self
+            .face_polygon(face_index)
+            .ok_or(VertexError::NoFaceThere)?;
         let normal = self
             .faces
             .get(face_index)
@@ -887,8 +974,8 @@ impl Brush {
         let mut points = footprint.clone();
         points.extend(footprint.iter().map(|corner| *corner + normal * depth));
 
-        let geometry = Polyhedron::from_points(&points, f64::ALMOST_ZERO)
-            .map_err(VertexError::Collapsed)?;
+        let geometry =
+            Polyhedron::from_points(&points, f64::ALMOST_ZERO).map_err(VertexError::Collapsed)?;
         let material = self
             .faces
             .get(face_index)
@@ -932,11 +1019,7 @@ impl Brush {
     /// remain, so taking a corner off a cube leaves the slanted face that closes it. A
     /// brush needs four corners to enclose anything, so removing more than that many is
     /// refused rather than leaving nothing.
-    pub fn remove_vertices(
-        &self,
-        positions: &[Vec3d],
-        epsilon: f64,
-    ) -> Result<Self, VertexError> {
+    pub fn remove_vertices(&self, positions: &[Vec3d], epsilon: f64) -> Result<Self, VertexError> {
         let mut removed_any = false;
         let left: Vec<Vec3d> = self
             .geometry
@@ -975,10 +1058,7 @@ impl Brush {
             .face_of_geometry
             .iter()
             .position(|source| *source == face_index)?;
-        Some(
-            self.geometry
-                .face_positions(FaceId(geometry_face as u32)),
-        )
+        Some(self.geometry.face_positions(FaceId(geometry_face as u32)))
     }
 
     /// Returns which face of the geometry the face at the given index bounds.
@@ -1055,8 +1135,9 @@ impl Brush {
             for point in &mut face.points {
                 *point += *delta;
             }
-            face.plane = geometry_math::plane::from_points(face.points[0], face.points[1], face.points[2])
-                .ok_or(BrushError::NoSuchFace { index: *face_index })?;
+            face.plane =
+                geometry_math::plane::from_points(face.points[0], face.points[1], face.points[2])
+                    .ok_or(BrushError::NoSuchFace { index: *face_index })?;
         }
 
         Self::from_faces(world_bounds, faces)
@@ -1074,8 +1155,9 @@ impl Brush {
             for point in &mut face.points {
                 *point += move_amount;
             }
-            face.plane = geometry_math::plane::from_points(face.points[0], face.points[1], face.points[2])
-                .ok_or(BrushError::NoSuchFace { index: 0 })?;
+            face.plane =
+                geometry_math::plane::from_points(face.points[0], face.points[1], face.points[2])
+                    .ok_or(BrushError::NoSuchFace { index: 0 })?;
         }
         Self::from_faces(world_bounds, faces)
     }
@@ -1091,9 +1173,18 @@ impl Brush {
     /// one whose middle is nearest this face's plane.
     /// Copies all attributes without rebuilding geometry. Plane-defining data must
     /// match exactly, so face indices and cached hull topology remain valid.
-    pub fn with_exact_face_attributes(&self, faces:&[BrushFace]) -> Option<Self> {
-        if faces.len()!=self.faces.len() || faces.iter().zip(&self.faces).any(|(a,b)|a.plane!=b.plane || a.points!=b.points) {return None;}
-        let mut result=self.clone();result.faces.clone_from_slice(faces);Some(result)
+    pub fn with_exact_face_attributes(&self, faces: &[BrushFace]) -> Option<Self> {
+        if faces.len() != self.faces.len()
+            || faces
+                .iter()
+                .zip(&self.faces)
+                .any(|(a, b)| a.plane != b.plane || a.points != b.points)
+        {
+            return None;
+        }
+        let mut result = self.clone();
+        result.faces.clone_from_slice(faces);
+        Some(result)
     }
 
     /// Transfers attributes from coplanar candidates, with nearest-plane fallback.
@@ -1115,15 +1206,17 @@ impl Brush {
 
             let coplanar: Vec<&BrushFace> = candidates
                 .iter()
-                .filter(|face| geometry_math::plane::is_equal(&face.plane, &plane, f64::ALMOST_ZERO))
+                .filter(|face| {
+                    geometry_math::plane::is_equal(&face.plane, &plane, f64::ALMOST_ZERO)
+                })
                 .collect();
 
             let best = if !coplanar.is_empty() {
-                coplanar
-                    .into_iter()
-                    .max_by(|a, b| {
-                        area(a).partial_cmp(&area(b)).unwrap_or(std::cmp::Ordering::Equal)
-                    })
+                coplanar.into_iter().max_by(|a, b| {
+                    area(a)
+                        .partial_cmp(&area(b))
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
             } else {
                 candidates.iter().min_by(|a, b| {
                     let distance = |face: &BrushFace| {
@@ -1173,9 +1266,7 @@ impl Brush {
     pub fn face_at(&self, point: Vec3d, epsilon: f64) -> Option<FaceId> {
         (0..self.geometry.face_count())
             .map(|index| FaceId(index as u32))
-            .find(|face| {
-                self.geometry.face_plane(*face).point_distance(point).abs() <= epsilon
-            })
+            .find(|face| self.geometry.face_plane(*face).point_distance(point).abs() <= epsilon)
     }
 
     /// Returns this brush rebuilt around new geometry, carrying its materials across.
@@ -1211,8 +1302,8 @@ impl Brush {
             let locked = (!moved.is_empty())
                 .then(|| self.uv_under_lock(source_index, moved, &material_size))
                 .flatten();
-            let (uv_coord_system, uv_attributes) = locked
-                .unwrap_or((source.uv_coord_system, source.uv_attributes));
+            let (uv_coord_system, uv_attributes) =
+                locked.unwrap_or((source.uv_coord_system, source.uv_attributes));
 
             faces.push(BrushFace {
                 points: [positions[0], positions[1], positions[2]],
@@ -1266,8 +1357,7 @@ impl Brush {
             .map(|vertex| geometry_math::vec::round(vertex.position / grid_size) * grid_size)
             .collect();
 
-        let geometry = Polyhedron::from_points(&snapped, 1e-7)
-            .map_err(SnapError::Collapsed)?;
+        let geometry = Polyhedron::from_points(&snapped, 1e-7).map_err(SnapError::Collapsed)?;
 
         Ok(self.rebuilt_with(geometry))
     }
@@ -1279,7 +1369,12 @@ impl Brush {
     /// is dropped. Returns an error and leaves this brush untouched if they no longer
     /// enclose a volume.
     pub fn map_vertices(&self, place: impl Fn(Vec3d) -> Vec3d) -> Result<Self, HullError> {
-        let moved: Vec<Vec3d> = self.geometry.vertices().iter().map(|vertex| place(vertex.position)).collect();
+        let moved: Vec<Vec3d> = self
+            .geometry
+            .vertices()
+            .iter()
+            .map(|vertex| place(vertex.position))
+            .collect();
         let geometry = Polyhedron::from_points(&moved, 1e-7)?;
         Ok(self.rebuilt_with(geometry))
     }
@@ -1305,10 +1400,7 @@ impl Brush {
     /// real UV axes, `size_of` giving each material's pixel size. `None` when no face was
     /// waiting -- the usual case -- so the caller skips the copy. A face whose material
     /// `size_of` does not know keeps its matrix for a later try.
-    pub fn resolved_primitive_uv(
-        &self,
-        size_of: impl Fn(&str) -> Option<Vec2f>,
-    ) -> Option<Self> {
+    pub fn resolved_primitive_uv(&self, size_of: impl Fn(&str) -> Option<Vec2f>) -> Option<Self> {
         if !self.has_pending_primitive_uv() {
             return None;
         }
@@ -1366,9 +1458,7 @@ impl Brush {
         for corner in polygon {
             let to = moved
                 .iter()
-                .find(|(from, _)| {
-                    vec::squared_distance(*from, corner) <= f64::ALMOST_ZERO
-                })
+                .find(|(from, _)| vec::squared_distance(*from, corner) <= f64::ALMOST_ZERO)
                 .map_or(corner, |(_, to)| *to);
             if vec::is_equal(&to, &corner, f64::ALMOST_ZERO) {
                 unmoved.push(corner);
@@ -1468,7 +1558,11 @@ fn inset_polygon(polygon: &[Vec3d], normal: Vec3d, distance: f64) -> Option<Vec<
         let b = polygon[(index + 1) % count];
         turning += vec::cross(a, b);
     }
-    let sign = if vec::dot(turning, normal) < 0.0 { -1.0 } else { 1.0 };
+    let sign = if vec::dot(turning, normal) < 0.0 {
+        -1.0
+    } else {
+        1.0
+    };
 
     // Each edge, moved inward by the distance: a point on it and the way it runs.
     let mut lines = Vec::with_capacity(count);
@@ -1541,7 +1635,10 @@ mod bevel_tests {
     fn cube() -> Brush {
         crate::shapes::create_cuboid(
             &world(),
-            &Bbox3d::new(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0)),
+            &Bbox3d::new(
+                Vec3d::new(-32.0, -32.0, -32.0),
+                Vec3d::new(32.0, 32.0, 32.0),
+            ),
             "stone",
         )
         .expect("a cube")
@@ -1550,7 +1647,10 @@ mod bevel_tests {
     #[test]
     fn nearby_facets_keep_distinct_source_faces_for_export() {
         let mut faces = cube().faces().to_vec();
-        let top = faces.iter().position(|face| face.plane.normal.z() > 0.99).unwrap();
+        let top = faces
+            .iter()
+            .position(|face| face.plane.normal.z() > 0.99)
+            .unwrap();
         let mut other = faces[top].clone();
         faces[top].plane.normal = vec::normalize(Vec3d::new(0.01, 0.0, 1.0));
         other.plane.normal = vec::normalize(Vec3d::new(-0.01, 0.0, 1.0));
@@ -1563,12 +1663,12 @@ mod bevel_tests {
             let source = brush.source_face_index(index).unwrap();
             assert!(sources.insert(source), "two facets map to one source face");
             assert_eq!(brush.face_polygon(source).unwrap(), polygon);
-            assert!(polygon.iter().all(|p|
-                (vec::dot(face.plane.normal, *p) - face.plane.distance).abs() < 1e-6));
+            assert!(polygon
+                .iter()
+                .all(|p| (vec::dot(face.plane.normal, *p) - face.plane.distance).abs() < 1e-6));
         });
         assert_eq!(sources.len(), 7);
     }
-
 
     /// The index of the face pointing the given way.
     fn face_facing(brush: &Brush, direction: Vec3d) -> usize {
@@ -1590,9 +1690,13 @@ mod bevel_tests {
         let corners = tapered.vertex_positions();
         let at_the_top: Vec<&Vec3d> = corners.iter().filter(|c| c.z() > 31.0).collect();
         assert_eq!(at_the_top.len(), 4, "the top is still a quad");
-        assert!(at_the_top.iter().all(|c| (c.x().abs() - 24.0).abs() < 0.001));
+        assert!(at_the_top
+            .iter()
+            .all(|c| (c.x().abs() - 24.0).abs() < 0.001));
         let at_the_bottom: Vec<&Vec3d> = corners.iter().filter(|c| c.z() < -31.0).collect();
-        assert!(at_the_bottom.iter().all(|c| (c.x().abs() - 32.0).abs() < 0.001));
+        assert!(at_the_bottom
+            .iter()
+            .all(|c| (c.x().abs() - 32.0).abs() < 0.001));
     }
 
     #[test]
@@ -1600,7 +1704,10 @@ mod bevel_tests {
         let brush = cube();
         let top = face_facing(&brush, Vec3d::new(0.0, 0.0, 1.0));
         let raised = brush.bevel_face(top, 8.0, 16.0).expect("it bevels");
-        assert!((raised.bounds().max.z() - 48.0).abs() < 0.001, "the top went up");
+        assert!(
+            (raised.bounds().max.z() - 48.0).abs() < 0.001,
+            "the top went up"
+        );
         // Four sloped faces, the six the cube had, and no others.
         assert_eq!(raised.faces().len(), 6);
     }
@@ -1621,10 +1728,23 @@ mod bevel_tests {
         let panel = brush.panel_on_face(top, 8.0, 16.0).expect("a panel");
 
         let bounds = panel.bounds();
-        assert!((bounds.min.z() - 32.0).abs() < 0.001, "it starts on the face");
-        assert!((bounds.max.z() - 48.0).abs() < 0.001, "and is as deep as asked");
-        assert!((bounds.size().x() - 48.0).abs() < 0.001, "drawn in by eight all round");
-        assert_eq!(panel.faces()[0].material_name, "stone", "it wears what the face wore");
+        assert!(
+            (bounds.min.z() - 32.0).abs() < 0.001,
+            "it starts on the face"
+        );
+        assert!(
+            (bounds.max.z() - 48.0).abs() < 0.001,
+            "and is as deep as asked"
+        );
+        assert!(
+            (bounds.size().x() - 48.0).abs() < 0.001,
+            "drawn in by eight all round"
+        );
+        assert_eq!(
+            panel.faces()[0].material_name,
+            "stone",
+            "it wears what the face wore"
+        );
     }
 
     #[test]
@@ -1638,6 +1758,8 @@ mod bevel_tests {
         // Taking it out of the cube leaves a tray: the walls and the floor under it.
         let left = crate::csg::subtract(&brush, &tool);
         assert!(!left.is_empty());
-        assert!(!left.iter().any(|piece| piece.contains_point(Vec3d::new(0.0, 0.0, 24.0))));
+        assert!(!left
+            .iter()
+            .any(|piece| piece.contains_point(Vec3d::new(0.0, 0.0, 24.0))));
     }
 }

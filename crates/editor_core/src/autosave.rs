@@ -51,10 +51,17 @@ impl Autosaver {
     /// [`MIN_RETRY`], so a backup that cannot happen yet -- a drag held still, a write
     /// that failed -- is retried at that pace rather than in a busy loop.
     pub fn next_due(&self, document: &Document) -> Option<Duration> {
-        if !document.is_modified() || document.modification_count() == self.last_modification_count || !document.path.as_deref().is_some_and(Path::is_file) {
+        if !document.is_modified()
+            || document.modification_count() == self.last_modification_count
+            || !document.path.as_deref().is_some_and(Path::is_file)
+        {
             return None;
         }
-        Some(self.interval.saturating_sub(self.last_save.elapsed()).max(MIN_RETRY))
+        Some(
+            self.interval
+                .saturating_sub(self.last_save.elapsed())
+                .max(MIN_RETRY),
+        )
     }
 
     /// Writes a backup if one is due, returning the path written.
@@ -91,11 +98,7 @@ impl Autosaver {
 }
 
 /// Writes one backup and rotates the folder around it.
-fn autosave(
-    document: &Document,
-    map_path: &Path,
-    max_backups: usize,
-) -> std::io::Result<PathBuf> {
+fn autosave(document: &Document, map_path: &Path, max_backups: usize) -> std::io::Result<PathBuf> {
     let dir = map_path
         .parent()
         .unwrap_or_else(|| Path::new("."))
@@ -144,7 +147,9 @@ fn collect_backups(dir: &Path, basename: &str) -> std::io::Result<Vec<PathBuf>> 
         if !crate::files::is_file(&path) {
             continue;
         }
-        let Some(name) = path.file_name().and_then(|name| name.to_str()) else { continue };
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
         if let Some(number) = backup_number(name, basename) {
             found.push((number, path));
         }
@@ -173,11 +178,7 @@ fn thin_backups(backups: &mut Vec<PathBuf>, max_backups: usize) -> std::io::Resu
 /// `cleanBackups`: the list is sorted ascending and the target number at each position
 /// is never larger than the number already there, so renaming front to back never lands
 /// on a file still waiting its turn.
-fn clean_backups(
-    dir: &Path,
-    basename: &str,
-    backups: &mut [PathBuf],
-) -> std::io::Result<()> {
+fn clean_backups(dir: &Path, basename: &str, backups: &mut [PathBuf]) -> std::io::Result<()> {
     for (index, path) in backups.iter_mut().enumerate() {
         let wanted = dir.join(backup_name(basename, index + 1));
         if *path != wanted {
@@ -192,9 +193,9 @@ fn clean_backups(
 mod tests {
     use super::*;
     use crate::world::WorldBounds;
-    use std::fs;
     use geometry_math::bbox::Bbox3d;
     use geometry_math::vec::Vec3d;
+    use std::fs;
 
     fn scratch(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("heron-autosave-{name}"));
@@ -218,7 +219,9 @@ mod tests {
     /// A clean map saved to `<dir>/test.map`, with an autosaver tracking its current revision.
     fn saved_document(dir: &Path, max_backups: usize) -> (Document, Autosaver) {
         let mut document = Document::new(WorldBounds::default());
-        document.save_as(dir.join("test.map")).expect("the map saves");
+        document
+            .save_as(dir.join("test.map"))
+            .expect("the map saves");
         let saver = Autosaver::with(&document, Duration::ZERO, max_backups);
         (document, saver)
     }
@@ -239,8 +242,7 @@ mod tests {
         let dir = scratch("interval");
         let mut document = Document::new(WorldBounds::default());
         document.save_as(dir.join("test.map")).expect("it saves");
-        let mut saver =
-            Autosaver::with(&document, Duration::from_secs(600), MAX_BACKUPS);
+        let mut saver = Autosaver::with(&document, Duration::from_secs(600), MAX_BACKUPS);
 
         add_cube(&mut document, -16.0, 16.0);
         assert_eq!(saver.trigger(&document), None);
@@ -253,21 +255,42 @@ mod tests {
         let mut document = Document::new(WorldBounds::default());
         document.save_as(dir.join("test.map")).expect("it saves");
         let saver = Autosaver::with(&document, Duration::from_secs(600), MAX_BACKUPS);
-        assert_eq!(saver.next_due(&document), None, "nothing to back up: no wake-up");
+        assert_eq!(
+            saver.next_due(&document),
+            None,
+            "nothing to back up: no wake-up"
+        );
         add_cube(&mut document, -16.0, 16.0);
-        let due = saver.next_due(&document).expect("an edit makes a backup due");
-        assert!(due > Duration::from_secs(590) && due <= Duration::from_secs(600), "{due:?}");
+        let due = saver
+            .next_due(&document)
+            .expect("an edit makes a backup due");
+        assert!(
+            due > Duration::from_secs(590) && due <= Duration::from_secs(600),
+            "{due:?}"
+        );
 
         let (mut document, mut saver) = saved_document(&scratch("due-now"), MAX_BACKUPS);
         add_cube(&mut document, -16.0, 16.0);
-        assert_eq!(saver.next_due(&document), Some(MIN_RETRY), "an overdue backup is retried, never in a busy loop");
+        assert_eq!(
+            saver.next_due(&document),
+            Some(MIN_RETRY),
+            "an overdue backup is retried, never in a busy loop"
+        );
         saver.trigger(&document).expect("a backup");
-        assert_eq!(saver.next_due(&document), None, "backed up: nothing until the next edit");
+        assert_eq!(
+            saver.next_due(&document),
+            None,
+            "backed up: nothing until the next edit"
+        );
 
         let mut unsaved = Document::new(WorldBounds::default());
         let saver = Autosaver::with(&unsaved, Duration::ZERO, MAX_BACKUPS);
         add_cube(&mut unsaved, -16.0, 16.0);
-        assert_eq!(saver.next_due(&unsaved), None, "a map with no file is never backed up");
+        assert_eq!(
+            saver.next_due(&unsaved),
+            None,
+            "a map with no file is never backed up"
+        );
     }
 
     #[test]
@@ -333,7 +356,10 @@ mod tests {
         assert!(autosave.join("test.1.map").is_file());
         assert!(autosave.join("test.2.map").is_file());
         assert!(autosave.join("test.3.map").is_file());
-        assert_eq!(fs::read_to_string(autosave.join("test.1.map")).unwrap(), "one");
+        assert_eq!(
+            fs::read_to_string(autosave.join("test.1.map")).unwrap(),
+            "one"
+        );
         assert_eq!(
             fs::read_to_string(autosave.join("test.2.map")).unwrap(),
             "three"
@@ -346,8 +372,11 @@ mod tests {
         let autosave = dir.join("autosave");
         fs::create_dir_all(&autosave).unwrap();
         for number in 1..=5 {
-            fs::write(autosave.join(format!("test.{number}.map")), number.to_string())
-                .unwrap();
+            fs::write(
+                autosave.join(format!("test.{number}.map")),
+                number.to_string(),
+            )
+            .unwrap();
         }
 
         let (mut document, mut saver) = saved_document(&dir, 3);
@@ -361,8 +390,14 @@ mod tests {
             .map(|entry| entry.unwrap().file_name().into_string().unwrap())
             .collect();
         assert_eq!(names.len(), 3);
-        assert_eq!(fs::read_to_string(autosave.join("test.1.map")).unwrap(), "4");
-        assert_eq!(fs::read_to_string(autosave.join("test.2.map")).unwrap(), "5");
+        assert_eq!(
+            fs::read_to_string(autosave.join("test.1.map")).unwrap(),
+            "4"
+        );
+        assert_eq!(
+            fs::read_to_string(autosave.join("test.2.map")).unwrap(),
+            "5"
+        );
         assert!(autosave.join("test.3.map").is_file());
     }
 

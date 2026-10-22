@@ -118,7 +118,10 @@ impl Grid {
             self.origin.y() + at[1] as f64 * self.cell_size,
             self.origin.z() + at[2] as f64 * self.cell_size,
         );
-        Bbox3d::new(min, min + Vec3d::new(self.cell_size, self.cell_size, self.cell_size))
+        Bbox3d::new(
+            min,
+            min + Vec3d::new(self.cell_size, self.cell_size, self.cell_size),
+        )
     }
 
     /// The cell the given world point falls in, or nothing if it is outside the grid.
@@ -158,9 +161,21 @@ fn brush_reaches(brush: &Brush, cell: &Bbox3d) -> bool {
         // The corner of the box furthest along the plane's normal. If even that one is
         // outside the plane, the whole box is.
         let corner = Vec3d::new(
-            if face.plane.normal.x() > 0.0 { cell.min.x() } else { cell.max.x() },
-            if face.plane.normal.y() > 0.0 { cell.min.y() } else { cell.max.y() },
-            if face.plane.normal.z() > 0.0 { cell.min.z() } else { cell.max.z() },
+            if face.plane.normal.x() > 0.0 {
+                cell.min.x()
+            } else {
+                cell.max.x()
+            },
+            if face.plane.normal.y() > 0.0 {
+                cell.min.y()
+            } else {
+                cell.max.y()
+            },
+            if face.plane.normal.z() > 0.0 {
+                cell.min.z()
+            } else {
+                cell.max.z()
+            },
         );
         face.plane.point_distance(corner) <= 0.0
     })
@@ -172,12 +187,7 @@ fn brush_reaches(brush: &Brush, cell: &Bbox3d) -> bool {
 /// where the point entities are -- and `cell_size` how finely the space is cut up. The
 /// cell size should be no larger than the thinnest wall, or the flood can step through
 /// one.
-pub fn find_leak(
-    solids: &[Brush],
-    starts: &[Vec3d],
-    cell_size: f64,
-    cell_budget: usize,
-) -> Leak {
+pub fn find_leak(solids: &[Brush], starts: &[Vec3d], cell_size: f64, cell_budget: usize) -> Leak {
     if solids.is_empty() {
         return Leak::NothingToSeal;
     }
@@ -349,8 +359,7 @@ mod tests {
     }
 
     fn box_brush(min: Vec3d, max: Vec3d) -> Brush {
-        crate::shapes::create_cuboid(&world(), &Bbox3d::new(min, max), "stone")
-            .expect("a box")
+        crate::shapes::create_cuboid(&world(), &Bbox3d::new(min, max), "stone").expect("a box")
     }
 
     /// A hollow room with walls sixteen units thick, inside 128 units on a side.
@@ -400,12 +409,7 @@ mod tests {
 
     #[test]
     fn a_sealed_room_is_sealed() {
-        let outcome = find_leak(
-            &room(None),
-            &[Vec3d::zero()],
-            8.0,
-            DEFAULT_CELL_BUDGET,
-        );
+        let outcome = find_leak(&room(None), &[Vec3d::zero()], 8.0, DEFAULT_CELL_BUDGET);
         assert_eq!(outcome, Leak::Sealed, "a closed box should hold");
     }
 
@@ -428,12 +432,8 @@ mod tests {
     #[test]
     fn the_trace_starts_at_the_entity_and_ends_outside() {
         let start = Vec3d::new(0.0, 0.0, 0.0);
-        let Leak::Leaked(trace) = find_leak(
-            &room(Some(0)),
-            &[start],
-            8.0,
-            DEFAULT_CELL_BUDGET,
-        ) else {
+        let Leak::Leaked(trace) = find_leak(&room(Some(0)), &[start], 8.0, DEFAULT_CELL_BUDGET)
+        else {
             panic!("the room leaks");
         };
 
@@ -455,12 +455,9 @@ mod tests {
     #[test]
     fn a_trace_down_a_corridor_is_not_one_point_per_cell() {
         // Only the turns are kept, so following the line is possible.
-        let Leak::Leaked(trace) = find_leak(
-            &room(Some(1)),
-            &[Vec3d::zero()],
-            4.0,
-            DEFAULT_CELL_BUDGET,
-        ) else {
+        let Leak::Leaked(trace) =
+            find_leak(&room(Some(1)), &[Vec3d::zero()], 4.0, DEFAULT_CELL_BUDGET)
+        else {
             panic!("the room leaks");
         };
         // A straight run out through one wall is a handful of turns, not the forty cells
@@ -474,7 +471,10 @@ mod tests {
         // at all is solid, so a gap has to be a whole cell wide before the flood fits.
         let mut walls = room(None);
         // A gap eight units across in the -X wall, which is the width of one cell.
-        walls[0] = box_brush(Vec3d::new(-80.0, -80.0, -80.0), Vec3d::new(-64.0, 80.0, -4.0));
+        walls[0] = box_brush(
+            Vec3d::new(-80.0, -80.0, -80.0),
+            Vec3d::new(-64.0, 80.0, -4.0),
+        );
         walls.push(box_brush(
             Vec3d::new(-80.0, -80.0, 4.0),
             Vec3d::new(-64.0, 80.0, 80.0),
@@ -524,10 +524,7 @@ mod tests {
     fn a_level_too_large_for_the_budget_says_so_rather_than_hanging() {
         let far = room(None);
         let outcome = find_leak(&far, &[Vec3d::zero()], 0.01, 1000);
-        assert!(
-            matches!(outcome, Leak::TooLarge { .. }),
-            "{outcome:?}"
-        );
+        assert!(matches!(outcome, Leak::TooLarge { .. }), "{outcome:?}");
     }
 
     #[test]

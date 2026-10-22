@@ -1,6 +1,9 @@
 //! Document operations for geometry.
 
-use super::{Float, Document, Bbox3d, Brush, EXTRUDE_EPSILON, Edit, FaceRef, HashMap, HashSet, Node, NodeId, NodeKind, Plane3d, Polyhedron, Ray3d, Vec2f, Vec3d, brush_node, csg, node, patch_node, vec};
+use super::{
+    brush_node, csg, node, patch_node, vec, Bbox3d, Brush, Document, Edit, FaceRef, Float, HashMap,
+    HashSet, Node, NodeId, NodeKind, Plane3d, Polyhedron, Ray3d, Vec2f, Vec3d, EXTRUDE_EPSILON,
+};
 
 impl Document {
     /// Subtracts the selection from every other brush.
@@ -32,7 +35,8 @@ impl Document {
             .iter()
             .flat_map(|(_, brush)| brush.vertex_positions())
             .collect();
-        let Ok(geometry) = map_model::polyhedron::Polyhedron::from_points(&points, f64::ALMOST_ZERO)
+        let Ok(geometry) =
+            map_model::polyhedron::Polyhedron::from_points(&points, f64::ALMOST_ZERO)
         else {
             return false;
         };
@@ -74,7 +78,8 @@ impl Document {
     ///
     /// Returns how many brushes were hollowed.
     pub fn hollow_selection(&mut self, thickness: f64) -> usize {
-        self.hollow_selection_options(thickness,map_model::hollow::Direction::Inward,&[],false).unwrap_or(0)
+        self.hollow_selection_options(thickness, map_model::hollow::Direction::Inward, &[], false)
+            .unwrap_or(0)
     }
 
     pub fn subtract_selection(&mut self) -> usize {
@@ -91,7 +96,8 @@ impl Document {
         // Only a brush whose box meets a tool's can be cut by it; the rest of the map is
         // left alone without being copied (copying every unselected brush of a big map
         // was most of the cost).
-        let tool_bounds: Vec<geometry_math::bbox::Bbox3d> = tools.iter().map(|tool| tool.bounds()).collect();
+        let tool_bounds: Vec<geometry_math::bbox::Bbox3d> =
+            tools.iter().map(|tool| tool.bounds()).collect();
         let targets: Vec<(NodeId, Brush)> = all
             .iter()
             .filter(|(id, _)| !self.selection.contains(id))
@@ -314,39 +320,82 @@ impl Document {
     /// Leaves faces unchanged if the inset would consume them. Returns the number of bevelled
     /// faces.
     pub fn bevel_faces(&mut self, faces: &[FaceRef], inset: f64, depth: f64) -> usize {
-        self.bevel_faces_options(faces,inset,depth,true).unwrap_or(0)
+        self.bevel_faces_options(faces, inset, depth, true)
+            .unwrap_or(0)
     }
 
     /// Stages every brush before committing, so a refused region changes nothing.
-    pub fn bevel_faces_options(&mut self,faces:&[FaceRef],inset:f64,depth:f64,region:bool)->Result<usize,String> {
-        if inset==0.0 && depth==0.0 {return Ok(0);}
-        if self.in_transaction() {return Err("Finish the current drag first.".into());}
-        let mut seen=HashSet::new();let unique:Vec<_>=faces.iter().copied().filter(|face|seen.insert(*face)).collect();let faces=unique.as_slice();
-        let mut groups:HashMap<NodeId,Vec<usize>>=HashMap::new();
-        for face in faces {groups.entry(face.node).or_default().push(face.face);}
-        let mut seams=Vec::new();
+    pub fn bevel_faces_options(
+        &mut self,
+        faces: &[FaceRef],
+        inset: f64,
+        depth: f64,
+        region: bool,
+    ) -> Result<usize, String> {
+        if inset == 0.0 && depth == 0.0 {
+            return Ok(0);
+        }
+        if self.in_transaction() {
+            return Err("Finish the current drag first.".into());
+        }
+        let mut seen = HashSet::new();
+        let unique: Vec<_> = faces
+            .iter()
+            .copied()
+            .filter(|face| seen.insert(*face))
+            .collect();
+        let faces = unique.as_slice();
+        let mut groups: HashMap<NodeId, Vec<usize>> = HashMap::new();
+        for face in faces {
+            groups.entry(face.node).or_default().push(face.face);
+        }
+        let mut seams = Vec::new();
         if region {
-            let mut edges=std::collections::BTreeMap::<[[i64;3];2],Vec<(NodeId,Plane3d,Vec3d,Vec3d)>>::new();
+            let mut edges = std::collections::BTreeMap::<
+                [[i64; 3]; 2],
+                Vec<(NodeId, Plane3d, Vec3d, Vec3d)>,
+            >::new();
             for face in faces {
-                let brush=self.brush(face.node).ok_or("A selected brush no longer exists.")?;
-                let polygon=brush.face_polygon(face.face).ok_or("A selected face no longer exists.")?;
-                let plane=brush.faces()[face.face].plane;
-                for (&a,&b) in polygon.iter().zip(polygon.iter().cycle().skip(1)) {
-                    let mut key=[a,b].map(|p|[(p[0]*1e6).round() as i64,(p[1]*1e6).round() as i64,(p[2]*1e6).round() as i64]);key.sort();
-                    edges.entry(key).or_default().push((face.node,plane,a,b));
+                let brush = self
+                    .brush(face.node)
+                    .ok_or("A selected brush no longer exists.")?;
+                let polygon = brush
+                    .face_polygon(face.face)
+                    .ok_or("A selected face no longer exists.")?;
+                let plane = brush.faces()[face.face].plane;
+                for (&a, &b) in polygon.iter().zip(polygon.iter().cycle().skip(1)) {
+                    let mut key = [a, b].map(|p| {
+                        [
+                            (p[0] * 1e6).round() as i64,
+                            (p[1] * 1e6).round() as i64,
+                            (p[2] * 1e6).round() as i64,
+                        ]
+                    });
+                    key.sort();
+                    edges.entry(key).or_default().push((face.node, plane, a, b));
                 }
             }
             for edge in edges.values() {
-                if let [(a,pa,start,end),(b,pb,_,_)]=edge.as_slice() {
-                    if a!=b && vec::length(pa.normal-pb.normal)<1e-7 && (pa.distance-pb.distance).abs()<1e-7 {seams.push((*start,*end));}
+                if let [(a, pa, start, end), (b, pb, _, _)] = edge.as_slice() {
+                    if a != b
+                        && vec::length(pa.normal - pb.normal) < 1e-7
+                        && (pa.distance - pb.distance).abs() < 1e-7
+                    {
+                        seams.push((*start, *end));
+                    }
                 }
             }
         }
-        let mut replacements=HashMap::new();let mut count=0;
-        for (id,mut indices) in groups {
-            if !self.is_editable(id) {return Err("Every selected face must be editable.".into());}
-            let brush=self.brush(id).ok_or("A selected brush no longer exists.")?;
-            indices.sort_unstable();indices.dedup();count+=indices.len();
+        let mut replacements = HashMap::new();
+        let mut count = 0;
+        for (id, mut indices) in groups {
+            if !self.is_editable(id) {
+                return Err("Every selected face must be editable.".into());
+            }
+            let brush = self.brush(id).ok_or("A selected brush no longer exists.")?;
+            indices.sort_unstable();
+            indices.dedup();
+            count += indices.len();
             let result=if region {brush.bevel_face_region_with_seams(&indices,inset,depth,&seams)} else {
                 let mut working=brush.clone();
                 for index in indices {
@@ -357,9 +406,11 @@ impl Document {
                 }
                 Ok(working)
             }.map_err(|_|"The face region cannot take this inset/depth without collapsing or separating its boundary.")?;
-            replacements.insert(id,vec![result]);
+            replacements.insert(id, vec![result]);
         }
-        if !replacements.is_empty() {self.replace_geometry_in_place(replacements);}
+        if !replacements.is_empty() {
+            self.replace_geometry_in_place(replacements);
+        }
         Ok(count)
     }
 
@@ -498,7 +549,10 @@ impl Document {
                 .iter()
                 .take_while(|v| v.x() <= bounds.max.x() + epsilon)
                 .filter(|v| {
-                    (1..3).all(|axis| v[axis] >= bounds.min[axis] - epsilon && v[axis] <= bounds.max[axis] + epsilon)
+                    (1..3).all(|axis| {
+                        v[axis] >= bounds.min[axis] - epsilon
+                            && v[axis] <= bounds.max[axis] + epsilon
+                    })
                 })
                 .copied()
                 .collect()
@@ -512,7 +566,9 @@ impl Document {
             if handles.is_empty() {
                 return Err(map_model::brush::VertexError::NoVerticesMatched);
             }
-            brush.move_vertices_with_uv_lock(&handles, delta, epsilon, uv_lock, |name| super::transforms::material_size_in(materials, name))
+            brush.move_vertices_with_uv_lock(&handles, delta, epsilon, uv_lock, |name| {
+                super::transforms::material_size_in(materials, name)
+            })
         };
         let results: Vec<_> = if selected.len() >= 64 {
             selected.par_iter().map(|(_, brush)| moved(brush)).collect()
@@ -599,7 +655,9 @@ impl Document {
                 if !self.is_face_selected(reference) {
                     continue;
                 }
-                if let Some(face)=brush.geometry_face_of(index) {edges.extend(map_model::fillet::face_edges(brush,face));}
+                if let Some(face) = brush.geometry_face_of(index) {
+                    edges.extend(map_model::fillet::face_edges(brush, face));
+                }
             }
             if !edges.is_empty() {
                 wanted.push((id, edges));
@@ -753,10 +811,8 @@ impl Document {
                 added.push(Node::new(NodeKind::Brush(slab)));
             } else {
                 // The plane where the face has been dragged to, cutting the brush in two.
-                let cut = Plane3d::from_anchor_and_normal(
-                    face_plane.anchor() + delta,
-                    face_plane.normal,
-                );
+                let cut =
+                    Plane3d::from_anchor_and_normal(face_plane.anchor() + delta, face_plane.normal);
                 let Some(front) = brush.clip(&cut.flip()).clipped() else {
                     return false;
                 };
@@ -813,9 +869,7 @@ impl Document {
 
             let mut points = vertices.clone();
             points.extend(vertices.iter().map(|point| *point + delta));
-            let Ok(geometry) =
-                Polyhedron::from_points(&points, EXTRUDE_EPSILON)
-            else {
+            let Ok(geometry) = Polyhedron::from_points(&points, EXTRUDE_EPSILON) else {
                 return false;
             };
             added.push(Node::new(NodeKind::Brush(Brush::from_polyhedron(
@@ -887,13 +941,35 @@ impl Document {
             return 0;
         }
 
-        fn rewrite(source: &Node, selected: &HashSet<NodeId>, clip: &crate::clip_tool::ClipTool, bounds: &Bbox3d, picked: &mut HashSet<NodeId>) -> Option<Vec<Node>> {
+        fn rewrite(
+            source: &Node,
+            selected: &HashSet<NodeId>,
+            clip: &crate::clip_tool::ClipTool,
+            bounds: &Bbox3d,
+            picked: &mut HashSet<NodeId>,
+        ) -> Option<Vec<Node>> {
             if let NodeKind::Brush(brush) = &source.kind {
-                if !selected.contains(&source.id) { return None; }
-                return Some(clip.clip_brush(bounds, brush).into_iter().enumerate().map(|(index, brush)| {
-                    let node = Node::with_id(if index == 0 { source.id } else { NodeId::next() }, NodeKind::Brush(brush));
-                    picked.insert(node.id); node
-                }).collect());
+                if !selected.contains(&source.id) {
+                    return None;
+                }
+                return Some(
+                    clip.clip_brush(bounds, brush)
+                        .into_iter()
+                        .enumerate()
+                        .map(|(index, brush)| {
+                            let node = Node::with_id(
+                                if index == 0 {
+                                    source.id
+                                } else {
+                                    NodeId::next()
+                                },
+                                NodeKind::Brush(brush),
+                            );
+                            picked.insert(node.id);
+                            node
+                        })
+                        .collect(),
+                );
             }
             let children = match &source.kind {
                 NodeKind::Group(group) => &group.children,
@@ -902,11 +978,21 @@ impl Document {
                 _ => return None,
             };
             let mut changed = false;
-            let after: Vec<Node> = children.iter().flat_map(|child| match rewrite(child, selected, clip, bounds, picked) {
-                Some(nodes) => { changed = true; nodes },
-                None => vec![child.clone()],
-            }).collect();
-            if !changed { return None; }
+            let after: Vec<Node> = children
+                .iter()
+                .flat_map(
+                    |child| match rewrite(child, selected, clip, bounds, picked) {
+                        Some(nodes) => {
+                            changed = true;
+                            nodes
+                        }
+                        None => vec![child.clone()],
+                    },
+                )
+                .collect();
+            if !changed {
+                return None;
+            }
             let mut parent = source.clone();
             match &mut parent.kind {
                 NodeKind::Group(group) => group.children = after,
@@ -916,17 +1002,41 @@ impl Document {
             }
             Some(vec![parent])
         }
-        let count = node::brushes_with_ids(&self.tree.world).iter().filter(|(id,_)|self.selection.contains(id)).count();
-        if count == 0 { return 0; }
-        let mut edits = Vec::new(); let mut picked = HashSet::new();
+        let count = node::brushes_with_ids(&self.tree.world)
+            .iter()
+            .filter(|(id, _)| self.selection.contains(id))
+            .count();
+        if count == 0 {
+            return 0;
+        }
+        let mut edits = Vec::new();
+        let mut picked = HashSet::new();
         for (layer, contents) in self.tree.world.layers.iter().enumerate() {
             for source in &contents.children {
-                if let Some(mut replacements) = rewrite(source, &self.selection, clip, &self.world_bounds, &mut picked) {
-                    if replacements.is_empty() { edits.push(Edit::Removed { layer, nodes: vec![source.clone()] }); }
-                    else {
+                if let Some(mut replacements) = rewrite(
+                    source,
+                    &self.selection,
+                    clip,
+                    &self.world_bounds,
+                    &mut picked,
+                ) {
+                    if replacements.is_empty() {
+                        edits.push(Edit::Removed {
+                            layer,
+                            nodes: vec![source.clone()],
+                        });
+                    } else {
                         let first = replacements.remove(0);
-                        edits.push(Edit::Changed { before:vec![source.clone()], after:vec![first] });
-                        if !replacements.is_empty() { edits.push(Edit::Added { layer, nodes:replacements }); }
+                        edits.push(Edit::Changed {
+                            before: vec![source.clone()],
+                            after: vec![first],
+                        });
+                        if !replacements.is_empty() {
+                            edits.push(Edit::Added {
+                                layer,
+                                nodes: replacements,
+                            });
+                        }
                     }
                 }
             }
@@ -995,7 +1105,9 @@ impl Document {
     ///
     /// Returns how many brushes were deleted.
     pub fn delete_selection(&mut self) -> usize {
-        if self.selection.is_empty() { return 0; }
+        if self.selection.is_empty() {
+            return 0;
+        }
         let mut parts = Vec::new();
         let mut count = 0;
         let selected: Vec<_> = self.selection.iter().copied().collect();
@@ -1019,18 +1131,34 @@ impl Document {
                         };
                         count += selected_count;
                         node::remove_nodes(children, &selected);
-                        parts.push(Edit::Changed { before: vec![root.clone()], after: vec![after] });
+                        parts.push(Edit::Changed {
+                            before: vec![root.clone()],
+                            after: vec![after],
+                        });
                     }
                 }
             }
             if !removed.is_empty() {
                 let before: Vec<_> = contents.children.iter().map(|n| n.id).collect();
-                let after = before.iter().copied().filter(|id| !self.selection.contains(id)).collect();
-                parts.push(Edit::Reordered { layer, before, after });
-                parts.push(Edit::Removed { layer, nodes: removed });
+                let after = before
+                    .iter()
+                    .copied()
+                    .filter(|id| !self.selection.contains(id))
+                    .collect();
+                parts.push(Edit::Reordered {
+                    layer,
+                    before,
+                    after,
+                });
+                parts.push(Edit::Removed {
+                    layer,
+                    nodes: removed,
+                });
             }
         }
-        if parts.is_empty() { return 0; }
+        if parts.is_empty() {
+            return 0;
+        }
         self.apply_and_record(Edit::Batch(parts));
         count
     }
@@ -1116,10 +1244,8 @@ impl Document {
         match reference {
             // The handle sits on the edge, which lies in the face's plane, so the plane's
             // offset is the handle projected onto its normal.
-            Some(edge) => self.coplanar_selected_face_outlines(
-                edge.normal,
-                vec::dot(edge.normal, edge.handle),
-            ),
+            Some(edge) => self
+                .coplanar_selected_face_outlines(edge.normal, vec::dot(edge.normal, edge.handle)),
             None => Vec::new(),
         }
     }
@@ -1142,9 +1268,8 @@ impl Document {
                 if vec::dot(plane.normal, reference_normal) > 0.999
                     && (plane.distance - reference_distance).abs() < 0.1
                 {
-                    outlines.push(
-                        geometry.face_positions(map_model::polyhedron::FaceId(index as u32)),
-                    );
+                    outlines
+                        .push(geometry.face_positions(map_model::polyhedron::FaceId(index as u32)));
                 }
             }
         }
@@ -1191,7 +1316,9 @@ impl Document {
                 .get(&face.material_name)
                 .map(|m| Vec2f::new(m.width.max(1) as f32, m.height.max(1) as f32))
                 .unwrap_or(Vec2f::new(64.0, 64.0));
-            for patch in map_model::face_to_patch::create_patches(face, polygon, points, points, size) {
+            for patch in
+                map_model::face_to_patch::create_patches(face, polygon, points, points, size)
+            {
                 patch_nodes.push(Node::new(NodeKind::Patch(patch)));
             }
         }

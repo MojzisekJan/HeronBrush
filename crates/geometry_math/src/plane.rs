@@ -189,11 +189,7 @@ impl<T: Float> Plane<T, 3> {
 
 /// Returns whether the given planes have the same normal and distance up to `epsilon`.
 #[inline]
-pub fn is_equal<T: Num, const S: usize>(
-    lhs: &Plane<T, S>,
-    rhs: &Plane<T, S>,
-    epsilon: T,
-) -> bool {
+pub fn is_equal<T: Num, const S: usize>(lhs: &Plane<T, S>, rhs: &Plane<T, S>, epsilon: T) -> bool {
     scalar::is_equal(lhs.distance, rhs.distance, epsilon)
         && vec::is_equal(&lhs.normal, &rhs.normal, epsilon)
 }
@@ -221,8 +217,7 @@ pub fn plane_normal<T: Float>(
     let v2 = p2 - p1;
     let normal = vec::cross(v1, v2);
 
-    let sin_theta =
-        scalar::abs(vec::length(normal) / (vec::length(v1) * vec::length(v2)));
+    let sin_theta = scalar::abs(vec::length(normal) / (vec::length(v1) * vec::length(v2)));
     if sin_theta.is_nan() || sin_theta.is_infinite() || sin_theta < epsilon {
         return None;
     }
@@ -261,10 +256,7 @@ pub fn horizontal_plane<T: Float>(position: Vector<T, 3>) -> Plane<T, 3> {
 
 /// Returns the plane through the given position perpendicular to the given direction.
 #[inline]
-pub fn orthogonal_plane<T: Float>(
-    position: Vector<T, 3>,
-    direction: Vector<T, 3>,
-) -> Plane<T, 3> {
+pub fn orthogonal_plane<T: Float>(position: Vector<T, 3>, direction: Vector<T, 3>) -> Plane<T, 3> {
     Plane::from_anchor_and_normal(position, vec::normalize(direction))
 }
 

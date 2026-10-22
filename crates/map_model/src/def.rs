@@ -93,11 +93,7 @@ pub fn read_def(source: &str) -> Result<EntityDefinitions, DefError> {
 
 /// Reads one block: its head line, an optional `{ ... }` directives block, then the text
 /// under it. `line` is where the block starts, for the warnings.
-fn read_block(
-    block: &str,
-    line: usize,
-    warnings: &mut Vec<String>,
-) -> Option<EntityDefinition> {
+fn read_block(block: &str, line: usize, warnings: &mut Vec<String>) -> Option<EntityDefinition> {
     let (head, body) = block.split_once('\n').unwrap_or((block, ""));
 
     // An optional `{ ... }` block between the header and description contains directives such as
@@ -275,10 +271,10 @@ fn split_directives_block(body: &str) -> (Vec<(String, String)>, &str) {
             // The keyword is the first word; anything between it and the `(` -- a
             // `choice "key"` names its property there -- rides along with the arguments.
             let head = entry[..open].trim();
-            let (keyword, between) =
-                head.split_once(char::is_whitespace).unwrap_or((head, ""));
-            let arguments =
-                format!("{between} {}", &entry[open + 1..close]).trim().to_string();
+            let (keyword, between) = head.split_once(char::is_whitespace).unwrap_or((head, ""));
+            let arguments = format!("{between} {}", &entry[open + 1..close])
+                .trim()
+                .to_string();
             Some((keyword.to_string(), arguments))
         })
         .collect();
@@ -298,7 +294,10 @@ fn parse_choice_directive(arguments: &str) -> Option<(String, Vec<crate::fgd::Ch
         let close = after_open.find(')')?;
         let (value, name) = after_open[..close].split_once(',')?;
         let name = name.trim().trim_matches('"').to_string();
-        choices.push(crate::fgd::Choice { value: value.trim().to_string(), description: name });
+        choices.push(crate::fgd::Choice {
+            value: value.trim().to_string(),
+            description: name,
+        });
         rest = after_open[close + 1..].trim_start();
     }
 
@@ -428,8 +427,8 @@ A door. Brushes make its shape.
 
     #[test]
     fn anything_outside_a_quaked_block_is_not_read() {
-        let read = read_def("int x = 3;\n/* a plain comment */\nvoid f(void) {}\n")
-            .expect("it reads");
+        let read =
+            read_def("int x = 3;\n/* a plain comment */\nvoid f(void) {}\n").expect("it reads");
         assert_eq!(read.placeable().count(), 0);
     }
 
@@ -475,7 +474,9 @@ A door. Brushes make its shape.
             std::path::PathBuf::from("maps/b_shell0.bsp")
         );
         let vars: expression_lang::VariableTable =
-            [("spawnflags", expression_lang::Value::integer(1))].into_iter().collect();
+            [("spawnflags", expression_lang::Value::integer(1))]
+                .into_iter()
+                .collect();
         assert_eq!(
             model.model_specification(&vars).unwrap().path,
             std::path::PathBuf::from("maps/b_shell1.bsp")
@@ -523,7 +524,9 @@ The world.
 */";
         let read = read_def(source).expect("it reads");
         let world = read.find("worldspawn").expect("it is there");
-        let prop = world.property("worldtype").expect("the choice became a property");
+        let prop = world
+            .property("worldtype")
+            .expect("the choice became a property");
         match &prop.kind {
             crate::fgd::PropertyType::Choices(choices) => {
                 let pairs: Vec<(&str, &str)> = choices
@@ -558,7 +561,10 @@ A regular soldier.
         let read = read_def(source).expect("it reads");
         let army = read.find("monster_army").expect("it is there");
         assert_eq!(
-            army.model.as_ref().and_then(|m| m.default_model_specification().ok()).map(|s| s.path),
+            army.model
+                .as_ref()
+                .and_then(|m| m.default_model_specification().ok())
+                .map(|s| s.path),
             Some(std::path::PathBuf::from("progs/soldier.mdl")),
             "inherited the model from the base"
         );

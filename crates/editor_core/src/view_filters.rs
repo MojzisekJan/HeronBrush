@@ -90,11 +90,20 @@ pub struct ViewFilters {
 }
 
 impl ViewFilters {
-    pub fn brush_edges(&self, brush: &map_model::brush::Brush) -> Vec<(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)> {
-        if self.show_export_hidden {return brush.edge_positions();}
-        let mut edges=Vec::new();
-        brush.for_each_geometry_face(|_,face,polygon| {
-            if !face.export_hidden {for i in 0..polygon.len(){edges.push((polygon[i],polygon[(i+1)%polygon.len()]));}}
+    pub fn brush_edges(
+        &self,
+        brush: &map_model::brush::Brush,
+    ) -> Vec<(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)> {
+        if self.show_export_hidden {
+            return brush.edge_positions();
+        }
+        let mut edges = Vec::new();
+        brush.for_each_geometry_face(|_, face, polygon| {
+            if !face.export_hidden {
+                for i in 0..polygon.len() {
+                    edges.push((polygon[i], polygon[(i + 1) % polygon.len()]));
+                }
+            }
         });
         edges
     }
@@ -159,7 +168,9 @@ impl EntityLink {
     /// Whether the link removes what it aims at (`killtarget`) rather than firing it,
     /// which the views draw in their own colour.
     pub fn kills(&self) -> bool {
-        self.key.trim_end_matches(|c: char| c.is_ascii_digit()).eq_ignore_ascii_case("killtarget")
+        self.key
+            .trim_end_matches(|c: char| c.is_ascii_digit())
+            .eq_ignore_ascii_case("killtarget")
     }
 
     /// What the views write by a link that touches the selection: `killtarget → lamp`.
@@ -222,9 +233,9 @@ pub fn report_tag_outcome(name: &str, outcome: Option<crate::document::TagOutcom
         Some(TagOutcome::Changed(count)) => {
             crate::say!("changed {count} faces for `{name}`")
         }
-        Some(TagOutcome::Ambiguous { used, changed }) => crate::say!(
-            "`{name}` matches several materials; put `{used}` on {changed} faces"
-        ),
+        Some(TagOutcome::Ambiguous { used, changed }) => {
+            crate::say!("`{name}` matches several materials; put `{used}` on {changed} faces")
+        }
         Some(TagOutcome::NoMaterial) => {
             crate::complain!("no loaded material matches `{name}`")
         }

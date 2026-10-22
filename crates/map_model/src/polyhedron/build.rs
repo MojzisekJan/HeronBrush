@@ -12,9 +12,7 @@ use geometry_math::plane;
 use geometry_math::scalar::Float;
 use geometry_math::vec::{self, Vector};
 
-use super::{
-    Edge, EdgeId, Face, FaceId, HalfEdge, HalfEdgeId, Polyhedron, Vertex, VertexId,
-};
+use super::{Edge, EdgeId, Face, FaceId, HalfEdge, HalfEdgeId, Polyhedron, Vertex, VertexId};
 
 /// Why a polyhedron could not be built from a set of face polygons.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,10 +88,7 @@ impl<T: Float> Polyhedron<T> {
     /// polyhedron, as described in the module documentation. Vertices closer together
     /// than `epsilon` are treated as the same vertex, which is how faces get stitched to
     /// their neighbours.
-    pub fn from_faces(
-        faces: &[Vec<Vector<T, 3>>],
-        epsilon: T,
-    ) -> Result<Self, BuildError> {
+    pub fn from_faces(faces: &[Vec<Vector<T, 3>>], epsilon: T) -> Result<Self, BuildError> {
         if faces.len() < 4 {
             return Err(BuildError::NotEnoughFaces { given: faces.len() });
         }
@@ -166,11 +161,7 @@ impl<T: Float> Builder<T> {
         VertexId::from_index(self.positions.len() - 1)
     }
 
-    fn add_face(
-        &mut self,
-        index: usize,
-        polygon: &[Vector<T, 3>],
-    ) -> Result<(), BuildError> {
+    fn add_face(&mut self, index: usize, polygon: &[Vector<T, 3>]) -> Result<(), BuildError> {
         // Resolve the polygon's points to vertex ids, dropping any that repeat the
         // previous one after snapping.
         let mut ring: Vec<VertexId> = Vec::with_capacity(polygon.len());

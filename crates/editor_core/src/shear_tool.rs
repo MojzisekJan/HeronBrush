@@ -68,7 +68,11 @@ pub fn picker(
 
     // A 2D view: the face slides across the screen, which is the direction perpendicular
     // to both its normal and the way the view looks.
-    along(side_center, vec::cross(side_normal, camera_direction), offset)
+    along(
+        side_center,
+        vec::cross(side_normal, camera_direction),
+        offset,
+    )
 }
 
 /// A line through the given point, or nothing if the direction has no length.
@@ -200,7 +204,11 @@ mod tests {
                     // all -- never a direction that is really a zero vector.
                     match picker {
                         Some(HandlePicker::Line { line, .. }) => {
-                            geometry_math::assert_approx_eq!(vec::length(line.direction), 1.0, 1e-9);
+                            geometry_math::assert_approx_eq!(
+                                vec::length(line.direction),
+                                1.0,
+                                1e-9
+                            );
                         }
                         Some(HandlePicker::Plane { plane, .. }) => {
                             geometry_math::assert_approx_eq!(vec::length(plane.normal), 1.0, 1e-9);

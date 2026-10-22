@@ -83,7 +83,9 @@ pub fn validate(document: &Document) -> Vec<Issue> {
 fn check_entity_bounds(document: &Document, issues: &mut Vec<Issue>) {
     let world_bounds = document.world_bounds();
     for (id, entity) in map_model::node::entities_with_ids(document.tree_world()) {
-        let Some(origin) = entity.origin() else { continue };
+        let Some(origin) = entity.origin() else {
+            continue;
+        };
         if !world_bounds.contains_point(origin) {
             let name = entity.classname().unwrap_or("<no classname>");
             issues.push(Issue {
@@ -183,8 +185,18 @@ fn check_entities(document: &Document, issues: &mut Vec<Issue>) {
             continue;
         };
         if entity.property("_heron_model").is_some() {
-            if document.imported_model(entity).is_none(){issues.push(Issue{severity:Severity::Error,kind:"imported model unavailable",description:"The imported model cannot be loaded or its transforms are invalid".into(),node:Some(id)});}
-            if classname=="heron_model"{continue}
+            if document.imported_model(entity).is_none() {
+                issues.push(Issue {
+                    severity: Severity::Error,
+                    kind: "imported model unavailable",
+                    description:
+                        "The imported model cannot be loaded or its transforms are invalid".into(),
+                    node: Some(id),
+                });
+            }
+            if classname == "heron_model" {
+                continue;
+            }
         }
         let definition = document
             .definitions()
@@ -273,9 +285,7 @@ fn check_links(document: &Document, issues: &mut Vec<Issue>) {
                 issues.push(Issue {
                     severity: Severity::Hint,
                     kind: "missing link source",
-                    description: format!(
-                        "{name} is called \"{value}\", which nothing targets"
-                    ),
+                    description: format!("{name} is called \"{value}\", which nothing targets"),
                     node: Some(*id),
                 });
             }
@@ -312,7 +322,10 @@ fn check_brushes(document: &Document, issues: &mut Vec<Issue>) {
     let world_bounds = document.world_bounds();
     let soft_bounds = document.soft_map_bounds();
     let materials = document.materials();
-    let has_project_materials = materials.materials().iter().any(|m| !m.path.starts_with("builtin/special"));
+    let has_project_materials = materials
+        .materials()
+        .iter()
+        .any(|m| !m.path.starts_with("builtin/special"));
 
     for (id, brush) in map_model::node::brushes_with_ids(document.tree_world()) {
         // `WorldBoundsValidator`.
@@ -340,8 +353,7 @@ fn check_brushes(document: &Document, issues: &mut Vec<Issue>) {
             issues.push(Issue {
                 severity: Severity::Hint,
                 kind: "off-grid vertices",
-                description: "Brush has corners outside the 0.125-unit grid"
-                    .to_string(),
+                description: "Brush has corners outside the 0.125-unit grid".to_string(),
                 node: Some(id),
             });
         }
@@ -421,12 +433,9 @@ mod tests {
     fn document_with_a_cube() -> Document {
         let mut document = Document::new(WorldBounds::default());
         let world = document.world_bounds();
-        let brush = map_model::shapes::create_cuboid(
-            &world,
-            &Bbox3d::from_scalars(-32.0, 32.0),
-            "stone",
-        )
-        .expect("a cube");
+        let brush =
+            map_model::shapes::create_cuboid(&world, &Bbox3d::from_scalars(-32.0, 32.0), "stone")
+                .expect("a cube");
         document.add_brushes(vec![brush]);
         document.clear_selection();
         document
@@ -479,8 +488,7 @@ mod tests {
         document.set_entity_property_on(&[id], "note", r#"a "quote""#);
         document.set_entity_property_on(&[id], "blank", "");
 
-        let severities: Vec<Severity> =
-            validate(&document).iter().map(|i| i.severity).collect();
+        let severities: Vec<Severity> = validate(&document).iter().map(|i| i.severity).collect();
         assert!(
             severities.windows(2).all(|w| w[0] >= w[1]),
             "not sorted worst-first: {severities:?}"
@@ -491,10 +499,8 @@ mod tests {
     fn a_point_entity_outside_the_world_is_an_error() {
         let mut document = document_with_a_cube();
         let inside = document.create_point_entity("info_player_start", Vec3d::zero());
-        let outside = document.create_point_entity(
-            "info_player_start",
-            Vec3d::new(100_000.0, 0.0, 0.0),
-        );
+        let outside =
+            document.create_point_entity("info_player_start", Vec3d::new(100_000.0, 0.0, 0.0));
 
         let issues = validate(&document);
         let out: Vec<NodeId> = issues
@@ -522,15 +528,17 @@ mod tests {
 }
 }
 ";
-        let path =
-            std::env::temp_dir().join(format!("heron-zero-uv-{}.map", std::process::id()));
+        let path = std::env::temp_dir().join(format!("heron-zero-uv-{}.map", std::process::id()));
         std::fs::write(&path, source).expect("a written map");
         let document = Document::open(&path, WorldBounds::default()).expect("it opens");
         let _ = std::fs::remove_file(&path);
 
         let issues = validate(&document);
         assert_eq!(
-            issues.iter().filter(|i| i.kind == "invalid UV scale").count(),
+            issues
+                .iter()
+                .filter(|i| i.kind == "invalid UV scale")
+                .count(),
             1,
             "just the one face"
         );
@@ -575,7 +583,8 @@ mod tests {
 }
 }
 ";
-        let path = std::env::temp_dir().join(format!("heron-soft-bounds-{}.map", std::process::id()));
+        let path =
+            std::env::temp_dir().join(format!("heron-soft-bounds-{}.map", std::process::id()));
         std::fs::write(&path, source).expect("a written map");
         let document = Document::open(&path, WorldBounds::default()).expect("it opens");
 
@@ -619,15 +628,20 @@ mod tests {
 }
 }
 ";
-        let path =
-            std::env::temp_dir().join(format!("heron-backslash-{}.map", std::process::id()));
+        let path = std::env::temp_dir().join(format!("heron-backslash-{}.map", std::process::id()));
         std::fs::write(&path, source).expect("a written map");
         let document = Document::open(&path, WorldBounds::default()).expect("it opens");
 
         let issues = validate(&document);
-        let path_issues: Vec<&Issue> =
-            issues.iter().filter(|i| i.kind == "backslash in a path").collect();
-        assert_eq!(path_issues.len(), 1, "only the wad, not the forward-slashed def");
+        let path_issues: Vec<&Issue> = issues
+            .iter()
+            .filter(|i| i.kind == "backslash in a path")
+            .collect();
+        assert_eq!(
+            path_issues.len(),
+            1,
+            "only the wad, not the forward-slashed def"
+        );
         assert!(path_issues[0].description.contains("wad"));
         assert_eq!(path_issues[0].severity, Severity::Warning);
 
@@ -717,7 +731,11 @@ mod tests {
             .filter(|i| i.kind == "missing link target")
             .map(|i| i.description.clone())
             .collect();
-        assert_eq!(targets.len(), 1, "the door is fine, the monster is not: {targets:?}");
+        assert_eq!(
+            targets.len(),
+            1,
+            "the door is fine, the monster is not: {targets:?}"
+        );
         assert!(targets[0].contains("the_monster") && targets[0].contains("killtarget"));
     }
 
@@ -741,7 +759,8 @@ mod tests {
             &document.world_bounds(),
             &Bbox3d::new(Vec3d::new(-0.125, 0.375, 0.5), Vec3d::new(32.0, 32.0, 32.0)),
             "stone",
-        ).unwrap();
+        )
+        .unwrap();
         document.add_brushes(vec![brush]);
         assert!(!kinds(&validate(&document)).contains(&"off-grid vertices"));
     }
@@ -772,7 +791,9 @@ mod tests {
             .expect("a written png");
 
         let mut document = document_with_a_cube();
-        document.load_materials(&directory).expect("the materials load");
+        document
+            .load_materials(&directory)
+            .expect("the materials load");
 
         // Every face of the cube wears "stone", which is not in the collection, and one
         // report is enough.
@@ -793,7 +814,6 @@ mod tests {
         assert!(kinds(&validate(&document)).contains(&"unknown class"));
     }
 }
-
 
 /// What to tell the user about a leak check.
 pub fn describe_leak(outcome: &map_model::leak::Leak) -> String {
@@ -825,11 +845,20 @@ mod bundled_assets {
     fn every_bundled_asset_checks_clean() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
         let mut found = Vec::new();
-        for path in std::fs::read_dir(&dir).unwrap().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|e| e == "map")) {
+        for path in std::fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e == "map"))
+        {
             let document = crate::document::Document::open(&path, Default::default()).unwrap();
             for issue in super::validate(&document) {
                 if issue.severity != super::Severity::Hint {
-                    found.push(format!("{}: {}", path.file_name().unwrap().to_string_lossy(), issue.description));
+                    found.push(format!(
+                        "{}: {}",
+                        path.file_name().unwrap().to_string_lossy(),
+                        issue.description
+                    ));
                 }
             }
         }

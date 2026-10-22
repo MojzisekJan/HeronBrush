@@ -60,7 +60,12 @@ pub struct MapSpec {
 impl MapSpec {
     /// A map of about `brushes` brushes over 64 materials, nothing animated.
     pub fn brushes(brushes: usize) -> Self {
-        Self { brushes, materials: 64, animated: 0, seed: 1 }
+        Self {
+            brushes,
+            materials: 64,
+            animated: 0,
+            seed: 1,
+        }
     }
 }
 
@@ -78,27 +83,57 @@ fn world() -> Bbox3d {
 /// One structure's brushes: a box, an eight-sided cylinder or a five-piece arch.
 fn structure(rng: &mut Rng, at: Vec3d, material: &str) -> Vec<map_model::brush::Brush> {
     let world = world();
-    let size = Vec3d::new(32.0 + 16.0 * rng.below(5) as f64, 32.0 + 16.0 * rng.below(5) as f64, 32.0 + 32.0 * rng.below(4) as f64);
+    let size = Vec3d::new(
+        32.0 + 16.0 * rng.below(5) as f64,
+        32.0 + 16.0 * rng.below(5) as f64,
+        32.0 + 32.0 * rng.below(4) as f64,
+    );
     let bounds = Bbox3d::new(at, at + size);
     let roll = rng.below(100);
     if roll < 60 {
-        create_cuboid(&world, &bounds, material).map(|b| vec![b]).unwrap_or_default()
-    } else if roll < 85 {
-        create_cylinder(&world, &bounds, CircleShape::EdgeAligned { num_sides: 8 }, Axis::Z, material)
+        create_cuboid(&world, &bounds, material)
             .map(|b| vec![b])
             .unwrap_or_default()
+    } else if roll < 85 {
+        create_cylinder(
+            &world,
+            &bounds,
+            CircleShape::EdgeAligned { num_sides: 8 },
+            Axis::Z,
+            material,
+        )
+        .map(|b| vec![b])
+        .unwrap_or_default()
     } else {
         let axis = if rng.below(2) == 0 { Axis::X } else { Axis::Y };
-        create_arch(&world, &bounds, 8.0, CircleShape::EdgeAligned { num_sides: 10 }, axis, material).unwrap_or_default()
+        create_arch(
+            &world,
+            &bounds,
+            8.0,
+            CircleShape::EdgeAligned { num_sides: 10 },
+            axis,
+            material,
+        )
+        .unwrap_or_default()
     }
 }
 
 fn map_brush(brush: &map_model::brush::Brush) -> MapBrush {
-    MapBrush { faces: brush.faces().to_vec(), id: None, line: 0 }
+    MapBrush {
+        faces: brush.faces().to_vec(),
+        id: None,
+        line: 0,
+    }
 }
 
 fn entity(properties: &[(&str, String)]) -> Entity {
-    Entity { properties: properties.iter().map(|(k, v)| (k.to_string(), v.clone())).collect(), ..Default::default() }
+    Entity {
+        properties: properties
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect(),
+        ..Default::default()
+    }
 }
 
 /// The map text for `spec`: brushes laid out on a grid across the world, spread over the
@@ -116,7 +151,11 @@ pub fn synthetic_map(spec: &MapSpec) -> String {
         let z = slot / (across * across);
         slot += 1;
         let jitter = 8.0 * rng.below(4) as f64;
-        Vec3d::new(-WORLD + 256.0 + x as f64 * cell + jitter, -WORLD + 256.0 + y as f64 * cell, -2048.0 + z as f64 * 384.0)
+        Vec3d::new(
+            -WORLD + 256.0 + x as f64 * cell + jitter,
+            -WORLD + 256.0 + y as f64 * cell,
+            -2048.0 + z as f64 * 384.0,
+        )
     };
     let mut material = 0usize;
     let mut next_material = || {
@@ -143,7 +182,14 @@ pub fn synthetic_map(spec: &MapSpec) -> String {
         let at = next_at(&mut rng);
         let mut e = entity(&[
             ("classname", "func_animate".into()),
-            ("animation_keys", format!("0 0 0 0 0 0 0; 1 {} 0 32 0 0 90; 2 0 {} 0 0 0 180; 4 0 0 0 0 0 360", 64 + a % 64, 32 + a % 32)),
+            (
+                "animation_keys",
+                format!(
+                    "0 0 0 0 0 0 0; 1 {} 0 32 0 0 90; 2 0 {} 0 0 0 180; 4 0 0 0 0 0 360",
+                    64 + a % 64,
+                    32 + a % 32
+                ),
+            ),
             ("animation_mode", "loop".into()),
             ("start_on", "1".into()),
         ]);
@@ -169,7 +215,10 @@ pub fn synthetic_map(spec: &MapSpec) -> String {
                 ("_tb_type", "_tb_group".into()),
                 ("_tb_name", format!("Group {group_id}")),
                 ("_tb_id", group_id.to_string()),
-                ("_tb_layer", layer_ids[rng.below(layer_ids.len())].to_string()),
+                (
+                    "_tb_layer",
+                    layer_ids[rng.below(layer_ids.len())].to_string(),
+                ),
             ]);
             for _ in 0..20 {
                 let at = next_at(&mut rng);
@@ -180,7 +229,11 @@ pub fn synthetic_map(spec: &MapSpec) -> String {
             entities.push(g);
         } else if roll < 15 {
             // A brush entity of two structures.
-            let class = if roll % 2 == 0 { "func_wall" } else { "func_door" };
+            let class = if roll % 2 == 0 {
+                "func_wall"
+            } else {
+                "func_door"
+            };
             let mut e = entity(&[("classname", class.into())]);
             for _ in 0..2 {
                 let brushes = structure(&mut rng, at, &m);
@@ -196,7 +249,9 @@ pub fn synthetic_map(spec: &MapSpec) -> String {
                 worldspawn.brushes.extend(brushes.iter().map(map_brush));
             } else {
                 // A layer's loose brushes are written inside the layer's own entity.
-                entities[layer - 1].brushes.extend(brushes.iter().map(map_brush));
+                entities[layer - 1]
+                    .brushes
+                    .extend(brushes.iter().map(map_brush));
             }
         }
         if made % 50 < 2 && rng.below(2) == 0 {
@@ -211,7 +266,10 @@ pub fn synthetic_map(spec: &MapSpec) -> String {
 
     let mut all = vec![worldspawn];
     all.extend(entities);
-    let map = MapFile { entities: all, ..Default::default() };
+    let map = MapFile {
+        entities: all,
+        ..Default::default()
+    };
     map_model::io::map_writer::write_map(&map)
 }
 
@@ -223,17 +281,33 @@ struct Placer {
 
 impl Placer {
     fn new() -> Self {
-        Self { slot: 0, across: ((WORLD * 2.0 - 512.0) / 160.0) as usize }
+        Self {
+            slot: 0,
+            across: ((WORLD * 2.0 - 512.0) / 160.0) as usize,
+        }
     }
     fn next(&mut self) -> Vec3d {
-        let (x, y, z) = (self.slot % self.across, (self.slot / self.across) % self.across, self.slot / (self.across * self.across));
+        let (x, y, z) = (
+            self.slot % self.across,
+            (self.slot / self.across) % self.across,
+            self.slot / (self.across * self.across),
+        );
         self.slot += 1;
-        Vec3d::new(-WORLD + 256.0 + x as f64 * 160.0, -WORLD + 256.0 + y as f64 * 160.0, -2048.0 + z as f64 * 384.0)
+        Vec3d::new(
+            -WORLD + 256.0 + x as f64 * 160.0,
+            -WORLD + 256.0 + y as f64 * 160.0,
+            -2048.0 + z as f64 * 384.0,
+        )
     }
 }
 
 fn boxed(at: Vec3d, size: f64, material: &str) -> MapBrush {
-    let brush = create_cuboid(&world(), &Bbox3d::new(at, at + Vec3d::new(size, size, size)), material).expect("a box");
+    let brush = create_cuboid(
+        &world(),
+        &Bbox3d::new(at, at + Vec3d::new(size, size, size)),
+        material,
+    )
+    .expect("a box");
     map_brush(&brush)
 }
 
@@ -252,7 +326,10 @@ fn group_entity(id: u64, parent: Option<u64>) -> Entity {
 
 /// The map text for these entities, the first being the worldspawn.
 fn write(entities: Vec<Entity>) -> String {
-    map_model::io::map_writer::write_map(&MapFile { entities, ..Default::default() })
+    map_model::io::map_writer::write_map(&MapFile {
+        entities,
+        ..Default::default()
+    })
 }
 
 /// What a map for the group benchmarks holds.
@@ -274,7 +351,14 @@ pub struct GroupSpec {
 
 impl Default for GroupSpec {
     fn default() -> Self {
-        Self { small_groups: 5_000, per_group: 4, chains: 100, depth: 10, big_group: 5_000, loose: 2_000 }
+        Self {
+            small_groups: 5_000,
+            per_group: 4,
+            chains: 100,
+            depth: 10,
+            big_group: 5_000,
+            loose: 2_000,
+        }
     }
 }
 
@@ -291,12 +375,15 @@ pub fn grouped_map(spec: &GroupSpec) -> String {
     let mut placer = Placer::new();
     let mut worldspawn = entity(&[("classname", "worldspawn".into())]);
     for i in 0..spec.loose {
-        worldspawn.brushes.push(boxed(placer.next(), 64.0, &material_name(i % 64)));
+        worldspawn
+            .brushes
+            .push(boxed(placer.next(), 64.0, &material_name(i % 64)));
     }
     let mut entities = vec![];
     let mut big = group_entity(BIG_GROUP_ID, None);
     for i in 0..spec.big_group {
-        big.brushes.push(boxed(placer.next(), 64.0, &material_name(i % 64)));
+        big.brushes
+            .push(boxed(placer.next(), 64.0, &material_name(i % 64)));
     }
     entities.push(big);
     let mut next_chain_id = FIRST_CHAIN_ID;
@@ -307,7 +394,11 @@ pub fn grouped_map(spec: &GroupSpec) -> String {
             next_chain_id += 1;
             let mut g = group_entity(id, parent);
             for _ in 0..2 {
-                g.brushes.push(boxed(placer.next(), 48.0 - level as f64, &material_name(level)));
+                g.brushes.push(boxed(
+                    placer.next(),
+                    48.0 - level as f64,
+                    &material_name(level),
+                ));
             }
             entities.push(g);
             parent = Some(id);
@@ -316,7 +407,8 @@ pub fn grouped_map(spec: &GroupSpec) -> String {
     for i in 0..spec.small_groups {
         let mut g = group_entity(FIRST_SMALL_GROUP_ID + i as u64, None);
         for _ in 0..spec.per_group {
-            g.brushes.push(boxed(placer.next(), 64.0, &material_name(i % 64)));
+            g.brushes
+                .push(boxed(placer.next(), 64.0, &material_name(i % 64)));
         }
         entities.push(g);
     }
@@ -331,19 +423,37 @@ pub fn linked_map(copies: usize, per_copy: usize, loose: usize) -> String {
     let mut placer = Placer::new();
     let mut worldspawn = entity(&[("classname", "worldspawn".into())]);
     for i in 0..loose {
-        worldspawn.brushes.push(boxed(placer.next(), 64.0, &material_name(i % 64)));
+        worldspawn
+            .brushes
+            .push(boxed(placer.next(), 64.0, &material_name(i % 64)));
     }
     // The source's boxes, in a block above the loose ones; each copy is shifted.
-    let source: Vec<Vec3d> = (0..per_copy).map(|i| Vec3d::new((i % 10) as f64 * 80.0, (i / 10) as f64 * 80.0, 4096.0)).collect();
+    let source: Vec<Vec3d> = (0..per_copy)
+        .map(|i| Vec3d::new((i % 10) as f64 * 80.0, (i / 10) as f64 * 80.0, 4096.0))
+        .collect();
     let mut all = vec![worldspawn];
     let across = 30usize;
     for c in 0..copies {
-        let delta = Vec3d::new((c % across) as f64 * 1024.0 - 15.0 * 1024.0, (c / across) as f64 * 1024.0 - 8.0 * 1024.0, 0.0);
+        let delta = Vec3d::new(
+            (c % across) as f64 * 1024.0 - 15.0 * 1024.0,
+            (c / across) as f64 * 1024.0 - 8.0 * 1024.0,
+            0.0,
+        );
         let mut g = group_entity(10_000 + c as u64, None);
-        g.properties.push(("_tb_linked_group_id".into(), "bench_link".into()));
-        g.properties.push(("_tb_transformation".into(), format!("1 0 0 {} 0 1 0 {} 0 0 1 {} 0 0 0 1", delta.x(), delta.y(), delta.z())));
+        g.properties
+            .push(("_tb_linked_group_id".into(), "bench_link".into()));
+        g.properties.push((
+            "_tb_transformation".into(),
+            format!(
+                "1 0 0 {} 0 1 0 {} 0 0 1 {} 0 0 0 1",
+                delta.x(),
+                delta.y(),
+                delta.z()
+            ),
+        ));
         for (i, at) in source.iter().enumerate() {
-            g.brushes.push(boxed(*at + delta, 64.0, &material_name(i % 64)));
+            g.brushes
+                .push(boxed(*at + delta, 64.0, &material_name(i % 64)));
         }
         all.push(g);
     }
@@ -355,7 +465,9 @@ pub fn point_entity_map(entities: usize, brushes: usize) -> String {
     let mut placer = Placer::new();
     let mut worldspawn = entity(&[("classname", "worldspawn".into())]);
     for i in 0..brushes {
-        worldspawn.brushes.push(boxed(placer.next(), 64.0, &material_name(i % 64)));
+        worldspawn
+            .brushes
+            .push(boxed(placer.next(), 64.0, &material_name(i % 64)));
     }
     let mut all = vec![worldspawn];
     let classes = ["light", "info_player_start", "info_null", "light_spot"];
@@ -385,7 +497,9 @@ pub fn layered_map(layers: usize, brushes: usize) -> String {
     }
     for i in 0..brushes {
         let layer = i % layers.max(1);
-        all[layer].brushes.push(boxed(placer.next(), 64.0, &material_name(i % 64)));
+        all[layer]
+            .brushes
+            .push(boxed(placer.next(), 64.0, &material_name(i % 64)));
     }
     write(all)
 }
@@ -398,19 +512,37 @@ pub fn write_textures(dir: &Path, count: usize, big: usize, seed: u64) -> std::i
     let mut rng = Rng::new(seed);
     let mut total = 0u64;
     for index in 0..count + big {
-        let size: u32 = if index >= count { 2048 } else { [64, 128, 128, 256, 256, 512][rng.below(6)] };
-        let name = if index >= count { format!("big{:02}", index - count) } else { format!("m{index:05}") };
+        let size: u32 = if index >= count {
+            2048
+        } else {
+            [64, 128, 128, 256, 256, 512][rng.below(6)]
+        };
+        let name = if index >= count {
+            format!("big{:02}", index - count)
+        } else {
+            format!("m{index:05}")
+        };
         let path = folder.join(format!("{name}.png"));
-        let base = [rng.below(256) as u8, rng.below(256) as u8, rng.below(256) as u8];
+        let base = [
+            rng.below(256) as u8,
+            rng.below(256) as u8,
+            rng.below(256) as u8,
+        ];
         let mut pixels = Vec::with_capacity((size * size * 4) as usize);
         for y in 0..size {
             for x in 0..size {
                 let check = (((x / 16) + (y / 16)) % 2) as u8 * 40;
                 let noise = ((x.wrapping_mul(31) ^ y.wrapping_mul(17)) & 15) as u8;
-                pixels.extend([base[0].wrapping_add(check + noise), base[1].wrapping_add(check), base[2].wrapping_add(noise), 255]);
+                pixels.extend([
+                    base[0].wrapping_add(check + noise),
+                    base[1].wrapping_add(check),
+                    base[2].wrapping_add(noise),
+                    255,
+                ]);
             }
         }
-        let bytes = crate::assets::encode_png(size, size, &pixels).map_err(std::io::Error::other)?;
+        let bytes =
+            crate::assets::encode_png(size, size, &pixels).map_err(std::io::Error::other)?;
         total += bytes.len() as u64;
         std::fs::write(path, bytes)?;
     }
@@ -424,7 +556,9 @@ pub struct Scratch(pub PathBuf);
 impl Scratch {
     /// A fresh `heron-bench-<name>` directory.
     pub fn new(name: &str) -> Self {
-        let root = std::env::var_os("HERON_BENCH_DIR").map(PathBuf::from).unwrap_or_else(std::env::temp_dir);
+        let root = std::env::var_os("HERON_BENCH_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(std::env::temp_dir);
         let path = root.join(format!("heron-bench-{name}"));
         let _ = std::fs::remove_dir_all(&path);
         std::fs::create_dir_all(&path).expect("the scratch directory can be made");
@@ -461,11 +595,19 @@ impl Stats {
 }
 
 /// Runs `body` `runs` times after `setup` (untimed) and returns the sorted timings.
-pub fn measure<S, T>(name: &str, runs: usize, mut setup: impl FnMut() -> S, mut body: impl FnMut(S) -> T) -> Stats {
+pub fn measure<S, T>(
+    name: &str,
+    runs: usize,
+    mut setup: impl FnMut() -> S,
+    mut body: impl FnMut(S) -> T,
+) -> Stats {
     // `HERON_BENCH_ONLY=<text>` runs only the benchmarks whose name contains it: what a
     // profiler is attached to.
     if std::env::var("HERON_BENCH_ONLY").is_ok_and(|only| !name.contains(&only)) {
-        return Stats { name: name.to_string(), runs: Vec::new() };
+        return Stats {
+            name: name.to_string(),
+            runs: Vec::new(),
+        };
     }
     let mut times = Vec::with_capacity(runs);
     for _ in 0..runs.max(1) {
@@ -476,15 +618,35 @@ pub fn measure<S, T>(name: &str, runs: usize, mut setup: impl FnMut() -> S, mut 
         drop(std::hint::black_box(output));
     }
     times.sort();
-    let stats = Stats { name: name.to_string(), runs: times };
-    eprintln!("  {:<58} median {:>10.3} ms   p95 {:>10.3} ms   (n={})", stats.name, ms(stats.median()), ms(stats.p95()), stats.runs.len());
+    let stats = Stats {
+        name: name.to_string(),
+        runs: times,
+    };
+    eprintln!(
+        "  {:<58} median {:>10.3} ms   p95 {:>10.3} ms   (n={})",
+        stats.name,
+        ms(stats.median()),
+        ms(stats.p95()),
+        stats.runs.len()
+    );
     stats
 }
 
 /// [`measure`] where the untimed setup and the timed body both work on `target`.
-pub fn measure_on<S, T>(name: &str, runs: usize, target: &mut S, mut setup: impl FnMut(&mut S), mut body: impl FnMut(&mut S) -> T) -> Stats {
+pub fn measure_on<S, T>(
+    name: &str,
+    runs: usize,
+    target: &mut S,
+    mut setup: impl FnMut(&mut S),
+    mut body: impl FnMut(&mut S) -> T,
+) -> Stats {
     let cell = std::cell::RefCell::new(target);
-    measure(name, runs, || setup(&mut cell.borrow_mut()), |()| body(&mut cell.borrow_mut()))
+    measure(
+        name,
+        runs,
+        || setup(&mut cell.borrow_mut()),
+        |()| body(&mut cell.borrow_mut()),
+    )
 }
 
 /// Milliseconds, as a float.
@@ -498,7 +660,13 @@ pub fn print_table(title: &str, rows: &[Stats]) {
     println!("| benchmark | median ms | p95 ms | n |");
     println!("|---|---:|---:|---:|");
     for row in rows.iter().filter(|row| !row.runs.is_empty()) {
-        println!("| {} | {:.3} | {:.3} | {} |", row.name, ms(row.median()), ms(row.p95()), row.runs.len());
+        println!(
+            "| {} | {:.3} | {:.3} | {} |",
+            row.name,
+            ms(row.median()),
+            ms(row.p95()),
+            row.runs.len()
+        );
     }
 }
 
@@ -529,7 +697,11 @@ pub fn peak_rss() -> u64 {
         }
         let maxrss = unsafe { usage.assume_init() }.maxrss.max(0) as u64;
         // macOS reports bytes, Linux kilobytes.
-        if cfg!(target_os = "macos") { maxrss } else { maxrss * 1024 }
+        if cfg!(target_os = "macos") {
+            maxrss
+        } else {
+            maxrss * 1024
+        }
     }
     #[cfg(not(unix))]
     {
@@ -557,10 +729,14 @@ thread_local! {
 pub fn with_legacy_line_paths<R>(legacy: bool, body: impl FnOnce() -> R) -> R {
     struct Restore(bool);
     impl Drop for Restore {
-        fn drop(&mut self) { LEGACY_LINE_PATHS.with(|flag|flag.set(self.0)); }
+        fn drop(&mut self) {
+            LEGACY_LINE_PATHS.with(|flag| flag.set(self.0));
+        }
     }
-    let _restore=Restore(LEGACY_LINE_PATHS.with(|flag|flag.replace(legacy)));
+    let _restore = Restore(LEGACY_LINE_PATHS.with(|flag| flag.replace(legacy)));
     body()
 }
 
-pub(crate) fn legacy_line_paths() -> bool { LEGACY_LINE_PATHS.with(std::cell::Cell::get) }
+pub(crate) fn legacy_line_paths() -> bool {
+    LEGACY_LINE_PATHS.with(std::cell::Cell::get)
+}

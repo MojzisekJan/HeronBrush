@@ -360,11 +360,9 @@ mod tests {
         assert!(validate(&Bindings::new(), Keymap::HeronBrush).is_ok());
         assert!(validate(&Bindings::new(), Keymap::Blender).is_ok());
         let bindings = Bindings::from([("tool_brush".into(), "Ctrl+S".into())]);
-        assert!(
-            validate(&bindings, Keymap::HeronBrush)
-                .unwrap_err()
-                .contains("conflicts")
-        );
+        assert!(validate(&bindings, Keymap::HeronBrush)
+            .unwrap_err()
+            .contains("conflicts"));
         let bindings = Bindings::from([("save".into(), "S".into())]);
         assert!(validate(&bindings, Keymap::HeronBrush).is_err());
         assert!(parse("F25").is_err());

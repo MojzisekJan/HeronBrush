@@ -89,7 +89,9 @@ fn across(axis: Axis) -> (Vec3d, Vec3d) {
 
 /// A turn of `degrees` about `axis` through `pivot`.
 fn turn_about(pivot: Vec3d, axis: Axis, degrees: f64) -> Mat4x4d {
-    mat_ext::translation_matrix(pivot) * mat_ext::rotation_matrix_about_axis(unit(axis), scalar::to_radians(degrees)) * mat_ext::translation_matrix(-pivot)
+    mat_ext::translation_matrix(pivot)
+        * mat_ext::rotation_matrix_about_axis(unit(axis), scalar::to_radians(degrees))
+        * mat_ext::translation_matrix(-pivot)
 }
 
 /// SplitMix64: a scatter is the same for the same seed on every platform.
@@ -108,9 +110,21 @@ impl Random {
 
 /// Where each copy goes, as a transform of the selection centred on `centre`. The
 /// original is not among them.
-pub fn array_transforms(parameters: &ArrayParameters, centre: Vec3d) -> Result<Vec<Mat4x4d>, &'static str> {
+pub fn array_transforms(
+    parameters: &ArrayParameters,
+    centre: Vec3d,
+) -> Result<Vec<Mat4x4d>, &'static str> {
     let p = parameters;
-    let finite = [p.step.x(), p.step.y(), p.step.z(), p.turn, p.angle, p.radius].iter().all(|v| v.is_finite());
+    let finite = [
+        p.step.x(),
+        p.step.y(),
+        p.step.z(),
+        p.turn,
+        p.angle,
+        p.radius,
+    ]
+    .iter()
+    .all(|v| v.is_finite());
     if !finite {
         return Err(translation_key("Enter numbers for every value."));
     }
@@ -139,7 +153,11 @@ pub fn array_transforms(parameters: &ArrayParameters, centre: Vec3d) -> Result<V
                 for y in 0..rows {
                     for x in 0..columns {
                         if (x, y, z) != (0, 0, 0) {
-                            let offset = Vec3d::new(p.step.x() * f64::from(x), p.step.y() * f64::from(y), p.step.z() * f64::from(z));
+                            let offset = Vec3d::new(
+                                p.step.x() * f64::from(x),
+                                p.step.y() * f64::from(y),
+                                p.step.z() * f64::from(z),
+                            );
                             transforms.push(mat_ext::translation_matrix(offset));
                         }
                     }
@@ -153,12 +171,20 @@ pub fn array_transforms(parameters: &ArrayParameters, centre: Vec3d) -> Result<V
             }
             // A full ring spaces the items evenly round it; an arc puts the last at its end.
             let full = (p.angle.abs() - 360.0).abs() < 1e-9;
-            let spacing = if full { p.angle / count as f64 } else { p.angle / (count - 1) as f64 };
+            let spacing = if full {
+                p.angle / count as f64
+            } else {
+                p.angle / (count - 1) as f64
+            };
             let pivot = centre - across(p.axis).0 * p.radius;
             (1..count)
                 .map(|i| {
                     let turn = turn_about(pivot, p.axis, spacing * i as f64);
-                    if p.rotate { turn } else { mat_ext::translation_matrix(turn * centre - centre) }
+                    if p.rotate {
+                        turn
+                    } else {
+                        mat_ext::translation_matrix(turn * centre - centre)
+                    }
                 })
                 .collect()
         }
@@ -174,7 +200,8 @@ pub fn array_transforms(parameters: &ArrayParameters, centre: Vec3d) -> Result<V
                     let distance = p.radius * random.next().sqrt();
                     let bearing = random.next() * std::f64::consts::TAU;
                     let offset = (u * bearing.cos() + v * bearing.sin()) * distance;
-                    let offset = Vec3d::new(offset.x().round(), offset.y().round(), offset.z().round());
+                    let offset =
+                        Vec3d::new(offset.x().round(), offset.y().round(), offset.z().round());
                     let spin = if p.rotate { random.next() * 360.0 } else { 0.0 };
                     mat_ext::translation_matrix(offset) * turn_about(centre, p.axis, spin)
                 })
@@ -197,19 +224,30 @@ impl Document {
     /// Whether the selection is one whole group, which an array can copy as linked
     /// duplicates.
     pub fn can_link_array(&self) -> bool {
-        if let Some(preview) = self.array_preview.as_ref().filter(|_| self.has_array_preview()) {
+        if let Some(preview) = self
+            .array_preview
+            .as_ref()
+            .filter(|_| self.has_array_preview())
+        {
             return preview.linkable;
         }
         node::groups_with_contents(&self.tree.world)
             .iter()
-            .any(|group| !group.contents.is_empty() && group.contents.len() == self.selection.len() && group.contents.iter().all(|id| self.selection.contains(id)))
+            .any(|group| {
+                !group.contents.is_empty()
+                    && group.contents.len() == self.selection.len()
+                    && group.contents.iter().all(|id| self.selection.contains(id))
+            })
     }
 
     /// Copies the selection where `parameters` say, as one undo step, and selects the
     /// original with the copies. The copies can be made again with other parameters
     /// until [`Document::finish_array_preview`] or [`Document::cancel_array_preview`].
     /// Returns how many copies there are.
-    pub fn begin_array_preview(&mut self, parameters: ArrayParameters) -> Result<usize, &'static str> {
+    pub fn begin_array_preview(
+        &mut self,
+        parameters: ArrayParameters,
+    ) -> Result<usize, &'static str> {
         if self.in_transaction() {
             return Err(translation_key("Finish the current drag first."));
         }
@@ -220,23 +258,36 @@ impl Document {
         let originals = self.selection.clone();
         let linkable = self.can_link_array();
         let copies = self.make_array(&originals, &parameters, linkable)?;
-        self.array_preview = Some(ArrayPreview { originals, parameters, linkable, revision: self.revision() });
+        self.array_preview = Some(ArrayPreview {
+            originals,
+            parameters,
+            linkable,
+            revision: self.revision(),
+        });
         Ok(copies)
     }
 
     /// Whether the selection is still the previewed array, with nothing edited since.
     pub fn has_array_preview(&self) -> bool {
-        self.array_preview.as_ref().is_some_and(|preview| preview.revision == self.revision())
+        self.array_preview
+            .as_ref()
+            .is_some_and(|preview| preview.revision == self.revision())
     }
 
     /// The parameters the preview was last made with.
     pub fn array_preview_parameters(&self) -> Option<ArrayParameters> {
-        self.array_preview.as_ref().filter(|_| self.has_array_preview()).map(|preview| preview.parameters)
+        self.array_preview
+            .as_ref()
+            .filter(|_| self.has_array_preview())
+            .map(|preview| preview.parameters)
     }
 
     /// Makes the previewed array again with `parameters`. On an error the previous array
     /// stays. Returns how many copies there are now.
-    pub fn update_array_preview(&mut self, parameters: ArrayParameters) -> Result<usize, &'static str> {
+    pub fn update_array_preview(
+        &mut self,
+        parameters: ArrayParameters,
+    ) -> Result<usize, &'static str> {
         if !self.has_array_preview() || self.in_transaction() {
             return Err(translation_key("The array is no longer being previewed."));
         }
@@ -249,10 +300,15 @@ impl Document {
             parameters
         } else {
             // Puts the last good array back.
-            self.make_array(&preview.originals, &preview.parameters, preview.linkable).expect("it was made before");
+            self.make_array(&preview.originals, &preview.parameters, preview.linkable)
+                .expect("it was made before");
             preview.parameters
         };
-        self.array_preview = Some(ArrayPreview { parameters, revision: self.revision(), ..preview });
+        self.array_preview = Some(ArrayPreview {
+            parameters,
+            revision: self.revision(),
+            ..preview
+        });
         made
     }
 
@@ -281,8 +337,16 @@ impl Document {
 
     /// Copies `originals` to every place [`array_transforms`] gives, as one undo step, and
     /// selects the originals with the copies. Changes nothing on an error.
-    fn make_array(&mut self, originals: &HashSet<NodeId>, parameters: &ArrayParameters, linkable: bool) -> Result<usize, &'static str> {
-        let centre = self.selection_bounds().ok_or(translation_key("Select what to copy first."))?.center();
+    fn make_array(
+        &mut self,
+        originals: &HashSet<NodeId>,
+        parameters: &ArrayParameters,
+        linkable: bool,
+    ) -> Result<usize, &'static str> {
+        let centre = self
+            .selection_bounds()
+            .ok_or(translation_key("Select what to copy first."))?
+            .center();
         let transforms = array_transforms(parameters, centre)?;
         let linked = parameters.linked && linkable;
         let mark = self.history.undo_len();
@@ -290,12 +354,18 @@ impl Document {
             let mut selected = originals.clone();
             for transform in &transforms {
                 document.selection = originals.clone();
-                let copied = if linked { document.create_linked_duplicate(0.0).is_some() } else { document.duplicate_selection_by(Vec3d::zero()) > 0 };
+                let copied = if linked {
+                    document.create_linked_duplicate(0.0).is_some()
+                } else {
+                    document.duplicate_selection_by(Vec3d::zero()) > 0
+                };
                 if !copied {
                     return Err(translation_key("The selection could not be copied."));
                 }
                 if !document.transform_selection(transform) {
-                    return Err(translation_key("A copy would leave the map's bounds or break a brush."));
+                    return Err(translation_key(
+                        "A copy would leave the map's bounds or break a brush.",
+                    ));
                 }
                 selected.extend(document.selection.iter().copied());
             }
@@ -320,7 +390,12 @@ mod tests {
 
     fn cube(document: &mut Document) -> NodeId {
         let bounds = Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(32.0, 32.0, 32.0));
-        document.add_brushes(vec![map_model::shapes::create_cuboid(&document.world_bounds(), &bounds, map_model::shapes::DEFAULT_MATERIAL).unwrap()]);
+        document.add_brushes(vec![map_model::shapes::create_cuboid(
+            &document.world_bounds(),
+            &bounds,
+            map_model::shapes::DEFAULT_MATERIAL,
+        )
+        .unwrap()]);
         *document.selection_ids().iter().next().unwrap()
     }
 
@@ -329,7 +404,11 @@ mod tests {
             .into_iter()
             .map(|(_, brush, _)| {
                 let c = brush.bounds().center();
-                [c.x().round() as i64, c.y().round() as i64, c.z().round() as i64]
+                [
+                    c.x().round() as i64,
+                    c.y().round() as i64,
+                    c.z().round() as i64,
+                ]
             })
             .collect();
         centres.sort();
@@ -341,26 +420,58 @@ mod tests {
         let mut d = Document::new(Default::default());
         cube(&mut d);
         let before = d.to_map_text();
-        let line = ArrayParameters { count: [3, 1, 1], step: Vec3d::new(64.0, 0.0, 0.0), ..Default::default() };
+        let line = ArrayParameters {
+            count: [3, 1, 1],
+            step: Vec3d::new(64.0, 0.0, 0.0),
+            ..Default::default()
+        };
         assert_eq!(d.begin_array_preview(line).unwrap(), 2);
         assert_eq!(centres(&d), vec![[16, 16, 16], [80, 16, 16], [144, 16, 16]]);
         assert_eq!(d.selection_count(), 3);
 
-        let grid = ArrayParameters { kind: ArrayKind::Grid, count: [2, 3, 1], step: Vec3d::new(48.0, 64.0, 0.0), ..line };
+        let grid = ArrayParameters {
+            kind: ArrayKind::Grid,
+            count: [2, 3, 1],
+            step: Vec3d::new(48.0, 64.0, 0.0),
+            ..line
+        };
         assert_eq!(d.update_array_preview(grid).unwrap(), 5);
         assert_eq!(centres(&d).len(), 6);
         assert!(centres(&d).contains(&[64, 144, 16]));
 
-        let ring = ArrayParameters { kind: ArrayKind::Radial, count: [4, 1, 1], radius: 100.0, ..line };
+        let ring = ArrayParameters {
+            kind: ArrayKind::Radial,
+            count: [4, 1, 1],
+            radius: 100.0,
+            ..line
+        };
         assert_eq!(d.update_array_preview(ring).unwrap(), 3);
         // The ring's centre is 100 units along -X from the cube's centre.
-        assert_eq!(centres(&d), vec![[-184, 16, 16], [-84, -84, 16], [-84, 116, 16], [16, 16, 16]]);
+        assert_eq!(
+            centres(&d),
+            vec![[-184, 16, 16], [-84, -84, 16], [-84, 116, 16], [16, 16, 16]]
+        );
 
-        let scatter = ArrayParameters { kind: ArrayKind::Scatter, count: [6, 1, 1], radius: 200.0, seed: 7, ..line };
+        let scatter = ArrayParameters {
+            kind: ArrayKind::Scatter,
+            count: [6, 1, 1],
+            radius: 200.0,
+            seed: 7,
+            ..line
+        };
         assert_eq!(d.update_array_preview(scatter).unwrap(), 5);
         let first = centres(&d);
-        assert!(first.iter().all(|c| ((c[0] - 16).pow(2) + (c[1] - 16).pow(2)) as f64 <= 201.0f64.powi(2) && c[2] == 16));
-        assert_eq!(d.update_array_preview(ArrayParameters { seed: 8, ..scatter }).unwrap(), 5);
+        assert!(first
+            .iter()
+            .all(
+                |c| ((c[0] - 16).pow(2) + (c[1] - 16).pow(2)) as f64 <= 201.0f64.powi(2)
+                    && c[2] == 16
+            ));
+        assert_eq!(
+            d.update_array_preview(ArrayParameters { seed: 8, ..scatter })
+                .unwrap(),
+            5
+        );
         assert_ne!(centres(&d), first, "another seed scatters differently");
         assert_eq!(d.update_array_preview(scatter).unwrap(), 5);
         assert_eq!(centres(&d), first, "the same seed scatters the same");
@@ -377,11 +488,24 @@ mod tests {
         let mut d = Document::new(Default::default());
         cube(&mut d);
         let before = d.to_map_text();
-        let line = ArrayParameters { count: [3, 1, 1], ..Default::default() };
+        let line = ArrayParameters {
+            count: [3, 1, 1],
+            ..Default::default()
+        };
         d.begin_array_preview(line).unwrap();
         let three = centres(&d);
-        assert!(d.update_array_preview(ArrayParameters { count: [1, 1, 1], ..line }).is_err());
-        assert!(d.update_array_preview(ArrayParameters { step: Vec3d::new(1e9, 0.0, 0.0), ..line }).is_err());
+        assert!(d
+            .update_array_preview(ArrayParameters {
+                count: [1, 1, 1],
+                ..line
+            })
+            .is_err());
+        assert!(d
+            .update_array_preview(ArrayParameters {
+                step: Vec3d::new(1e9, 0.0, 0.0),
+                ..line
+            })
+            .is_err());
         // The last good array is made again, with new ids.
         assert_eq!(centres(&d), three);
         assert_eq!(d.selection_count(), 3);
@@ -412,7 +536,13 @@ mod tests {
         cube(&mut d);
         d.group_selection("pillar");
         assert!(d.can_link_array());
-        let ring = ArrayParameters { kind: ArrayKind::Radial, count: [4, 1, 1], radius: 100.0, linked: true, ..Default::default() };
+        let ring = ArrayParameters {
+            kind: ArrayKind::Radial,
+            count: [4, 1, 1],
+            radius: 100.0,
+            linked: true,
+            ..Default::default()
+        };
         assert_eq!(d.begin_array_preview(ring).unwrap(), 3);
         d.finish_array_preview();
         let groups = node::groups_with_contents(d.tree_world());

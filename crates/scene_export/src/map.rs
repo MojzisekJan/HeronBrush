@@ -292,8 +292,10 @@ impl<'a> Lexer<'a> {
                 let start = self.at;
                 let line = self.line;
                 while self.at < bytes.len() && bytes[self.at] != b'"' {
-                    if bytes[self.at] == b'\\' && self.at + 1 < bytes.len()
-                        && matches!(bytes[self.at + 1], b'"' | b'\\') {
+                    if bytes[self.at] == b'\\'
+                        && self.at + 1 < bytes.len()
+                        && matches!(bytes[self.at + 1], b'"' | b'\\')
+                    {
                         self.at += 2;
                     } else {
                         self.line += (bytes[self.at] == b'\n') as usize;
@@ -818,13 +820,20 @@ mod tests {
 
     #[test]
     fn reads_escaped_json_and_preserves_unknown_path_escapes() {
-        let map = parse(r#"{
+        let map = parse(
+            r#"{
 "classname" "func_animate"
 "animation_curves" "{\"version\":1,\"label\":\"věž\"}"
 "path" "C:\maps\tower"
 "slash" "a\\b"
-}"#, "escaped.map").unwrap();
-        assert_eq!(map.entities[0].get("animation_curves"), Some(r#"{"version":1,"label":"věž"}"#));
+}"#,
+            "escaped.map",
+        )
+        .unwrap();
+        assert_eq!(
+            map.entities[0].get("animation_curves"),
+            Some(r#"{"version":1,"label":"věž"}"#)
+        );
         assert_eq!(map.entities[0].get("path"), Some(r"C:\maps\tower"));
         assert_eq!(map.entities[0].get("slash"), Some(r"a\b"));
         assert!(parse(r#"{"classname" "unterminated\""#, "bad.map").is_err());

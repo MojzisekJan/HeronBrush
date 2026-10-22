@@ -4,10 +4,10 @@
 //! needed. Their generator scripts use the MCP document API.
 
 use std::path::{Path, PathBuf};
-#[path = "sample_resources.rs"]
-mod resources;
 #[path = "motion_sample_resources.rs"]
 mod motion_resources;
+#[path = "sample_resources.rs"]
+mod resources;
 
 /// One bundled example.
 pub struct Sample {
@@ -101,7 +101,10 @@ pub fn ensure() -> Vec<PathBuf> {
     // The web build has no disk to write them to: their paths are handed out as they are,
     // and opening one reads the bundled text ([`bundled`]).
     if cfg!(target_arch = "wasm32") {
-        return SAMPLES.iter().map(|sample| directory().join(sample.file)).collect();
+        return SAMPLES
+            .iter()
+            .map(|sample| directory().join(sample.file))
+            .collect();
     }
     ensure_in(&directory())
 }
@@ -109,7 +112,10 @@ pub fn ensure() -> Vec<PathBuf> {
 /// The bundled text of the example at `path`, where [`ensure`] would have written it.
 pub fn bundled(path: &Path) -> Option<&'static str> {
     let file = path.strip_prefix(directory()).ok()?;
-    SAMPLES.iter().find(|sample| Path::new(sample.file) == file).map(|sample| sample.map)
+    SAMPLES
+        .iter()
+        .find(|sample| Path::new(sample.file) == file)
+        .map(|sample| sample.map)
 }
 
 fn ensure_in(dir: &Path) -> Vec<PathBuf> {
@@ -117,8 +123,12 @@ fn ensure_in(dir: &Path) -> Vec<PathBuf> {
     for (name, bytes) in resources::FILES.iter().chain(motion_resources::FILES) {
         let path = dir.join(name);
         // Motion lab is a working project: preserve any edits in the user copy.
-        if name.starts_with("motion_lab/") && path.exists() { continue; }
-        if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
+        if name.starts_with("motion_lab/") && path.exists() {
+            continue;
+        }
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
         if std::fs::read(&path).ok().as_deref() != Some(*bytes) {
             let _ = std::fs::write(&path, bytes);
         }
@@ -126,8 +136,13 @@ fn ensure_in(dir: &Path) -> Vec<PathBuf> {
     let mut paths = Vec::with_capacity(SAMPLES.len());
     for sample in SAMPLES {
         let path = dir.join(sample.file);
-        if sample.file.starts_with("motion_lab/") && path.is_file() { paths.push(path); continue; }
-        if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
+        if sample.file.starts_with("motion_lab/") && path.is_file() {
+            paths.push(path);
+            continue;
+        }
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
         let up_to_date = std::fs::read_to_string(&path)
             .map(|on_disk| on_disk == sample.map)
             .unwrap_or(false);
@@ -167,12 +182,23 @@ mod tests {
         let parsed = map_model::io::map_reader::read_map(&text, None).unwrap();
         let bounds = geometry_math::bbox::Bbox3d::from_scalars(-16384.0, 16384.0);
         let tree = map_model::node::build_tree(&parsed, &bounds);
-        let mut document = crate::document::Document::open(&path, crate::world::WorldBounds::default()).unwrap();
-        document.load_definitions(dir.join("lantern_lane/lantern_lane.fgd")).unwrap();
+        let mut document =
+            crate::document::Document::open(&path, crate::world::WorldBounds::default()).unwrap();
+        document
+            .load_definitions(dir.join("lantern_lane/lantern_lane.fgd"))
+            .unwrap();
         // Keyframe and water entities are demonstrated by their dedicated lab maps.
-        let demo_text = format!("{}\n{}", text, include_str!("../../../demos/motion_lab/motion_lab.map")) + include_str!("../../../demos/water_lab/water_lab.map");
+        let demo_text = format!(
+            "{}\n{}",
+            text,
+            include_str!("../../../demos/motion_lab/motion_lab.map")
+        ) + include_str!("../../../demos/water_lab/water_lab.map");
         for definition in document.definitions().unwrap().placeable() {
-            assert!(demo_text.contains(&format!("\"classname\" \"{}\"", definition.name)), "missing demo entity {}", definition.name);
+            assert!(
+                demo_text.contains(&format!("\"classname\" \"{}\"", definition.name)),
+                "missing demo entity {}",
+                definition.name
+            );
         }
         let source_brushes: usize = parsed.entities.iter().map(|e| e.brushes.len()).sum();
         assert!(source_brushes > 2000);
@@ -181,7 +207,11 @@ mod tests {
         for brush in map_model::node::brushes(&tree.world) {
             for face in brush.faces() {
                 if face.material_name.starts_with("kenney_fantasy/") {
-                    assert!(document.materials().get(&face.material_name).is_some(), "{}", face.material_name);
+                    assert!(
+                        document.materials().get(&face.material_name).is_some(),
+                        "{}",
+                        face.material_name
+                    );
                 }
             }
         }
@@ -191,21 +221,31 @@ mod tests {
 
     #[test]
     fn motion_lab_is_portable_and_preserves_user_edits() {
-        let dir=std::env::temp_dir().join(format!("heron-motion-resources-{}",std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("heron-motion-resources-{}", std::process::id()));
         ensure_in(&dir);
-        let map=dir.join("motion_lab/motion_lab.map");
-        let doc=crate::document::Document::open(&map,Default::default()).unwrap();
-        assert!(doc.brush_count()>20);
-        for file in ["godot/project.godot","godot/maps/motion_lab.tscn","godot/player.gd","godot/verify.gd","motion_lab.fgd"] {
-            assert!(dir.join("motion_lab").join(file).is_file(),"{file}");
+        let map = dir.join("motion_lab/motion_lab.map");
+        let doc = crate::document::Document::open(&map, Default::default()).unwrap();
+        assert!(doc.brush_count() > 20);
+        for file in [
+            "godot/project.godot",
+            "godot/maps/motion_lab.tscn",
+            "godot/player.gd",
+            "godot/verify.gd",
+            "motion_lab.fgd",
+        ] {
+            assert!(dir.join("motion_lab").join(file).is_file(), "{file}");
         }
-        std::fs::write(&map,"user map changes").unwrap();
-        let player=dir.join("motion_lab/godot/player.gd");
-        std::fs::write(&player,"user controller changes").unwrap();
+        std::fs::write(&map, "user map changes").unwrap();
+        let player = dir.join("motion_lab/godot/player.gd");
+        std::fs::write(&player, "user controller changes").unwrap();
         ensure_in(&dir);
-        assert_eq!(std::fs::read_to_string(map).unwrap(),"user map changes");
-        assert_eq!(std::fs::read_to_string(player).unwrap(),"user controller changes");
-        let _=std::fs::remove_dir_all(dir);
+        assert_eq!(std::fs::read_to_string(map).unwrap(), "user map changes");
+        assert_eq!(
+            std::fs::read_to_string(player).unwrap(),
+            "user controller changes"
+        );
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

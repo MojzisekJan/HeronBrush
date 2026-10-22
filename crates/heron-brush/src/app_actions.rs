@@ -1,21 +1,40 @@
 //! Window actions and small dialogs shared by menu entries and keyboard shortcuts.
-use crate::{dialog, editor::Editor, file_dialog, file_dialog::FileDialog, form, theme, widgets, App};
+use crate::{
+    dialog, editor::Editor, file_dialog, file_dialog::FileDialog, form, theme, widgets, App,
+};
 
 /// File > Open's chooser.
 fn model_chooser() -> FileDialog {
-    FileDialog::new().id("import-model").set_title(tr("Import model")).add_filter(tr("OBJ and GLB models"), &["obj", "glb"])
+    FileDialog::new()
+        .id("import-model")
+        .set_title(tr("Import model"))
+        .add_filter(tr("OBJ and GLB models"), &["obj", "glb"])
 }
 
 fn open_chooser() -> FileDialog {
-    FileDialog::new().id("open-map").set_title(tr("Open")).add_filter(tr("Quake maps"), &["map"])
+    FileDialog::new()
+        .id("open-map")
+        .set_title(tr("Open"))
+        .add_filter(tr("Quake maps"), &["map"])
 }
 
 /// The chooser for a point file (`point`) or a portal file.
 fn point_file_chooser(point: bool) -> FileDialog {
     FileDialog::new()
-        .id(if point { "load-point-file" } else { "load-portal-file" })
-        .set_title(tr(if point { "Load point file" } else { "Load portal file" }))
-        .add_filter(tr(if point { "Point files" } else { "Portal files" }), if point { &["pts", "lin"] } else { &["prt"] })
+        .id(if point {
+            "load-point-file"
+        } else {
+            "load-portal-file"
+        })
+        .set_title(tr(if point {
+            "Load point file"
+        } else {
+            "Load portal file"
+        }))
+        .add_filter(
+            tr(if point { "Point files" } else { "Portal files" }),
+            if point { &["pts", "lin"] } else { &["prt"] },
+        )
 }
 use editor_core::i18n::tr;
 use eframe::egui;
@@ -36,7 +55,14 @@ fn model_insert_target(
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
-    Undo, Redo, Copy, Cut, Paste, Delete, Duplicate, SelectAll,
+    Undo,
+    Redo,
+    Copy,
+    Cut,
+    Paste,
+    Delete,
+    Duplicate,
+    SelectAll,
     Welcome,
     Render,
     Session,
@@ -115,7 +141,10 @@ pub fn save(document: &mut editor_core::document::Document, save_as: bool) -> bo
         let result = document.save();
         return finish_save(document, result, false);
     }
-    let mut picker = FileDialog::new().id(SAVE_AS).set_title(tr("Save map as")).add_filter(tr("Quake maps"), &["map"]);
+    let mut picker = FileDialog::new()
+        .id(SAVE_AS)
+        .set_title(tr("Save map as"))
+        .add_filter(tr("Quake maps"), &["map"]);
     match &document.path {
         Some(path) => {
             if let Some(parent) = path.parent() {
@@ -137,13 +166,19 @@ pub fn save(document: &mut editor_core::document::Document, save_as: bool) -> bo
 /// Takes the answer of an in-app Save As chooser and saves there. Returns whether it saved.
 /// Call every frame.
 pub fn saved_as(document: &mut editor_core::document::Document) -> bool {
-    let Some(path) = FileDialog::new().id(SAVE_AS).save_file(false) else { return false };
+    let Some(path) = FileDialog::new().id(SAVE_AS).save_file(false) else {
+        return false;
+    };
     let result = document.save_as(with_map_extension(path));
     finish_save(document, result, true)
 }
 
 /// Records and reports a save, and exports on save.
-fn finish_save(document: &mut editor_core::document::Document, result: Result<(), editor_core::document::SaveError>, chosen: bool) -> bool {
+fn finish_save(
+    document: &mut editor_core::document::Document,
+    result: Result<(), editor_core::document::SaveError>,
+    chosen: bool,
+) -> bool {
     match result {
         Ok(()) => {
             if let Some(path) = &document.path {
@@ -156,7 +191,10 @@ fn finish_save(document: &mut editor_core::document::Document, result: Result<()
             }
             // The web build has no folder to write a level into on every save.
             #[cfg(not(target_arch = "wasm32"))]
-            for message in editor_core::export::export_on_save(document, &editor_core::export_settings::Settings::for_map(document.path.as_deref())) {
+            for message in editor_core::export::export_on_save(
+                document,
+                &editor_core::export_settings::Settings::for_map(document.path.as_deref()),
+            ) {
                 editor_core::say!("wrote {message}");
             }
             true
@@ -171,7 +209,12 @@ fn finish_save(document: &mut editor_core::document::Document, result: Result<()
 /// What the unsaved-changes prompt says about `document`: the map's name, then that
 /// discarded changes are gone.
 pub fn unsaved_message(document: &editor_core::document::Document) -> String {
-    format!("{} {}\n{}", document.name(), tr("has changes that are not saved."), tr("If you discard them they are gone."))
+    format!(
+        "{} {}\n{}",
+        document.name(),
+        tr("has changes that are not saved."),
+        tr("If you discard them they are gone.")
+    )
 }
 
 /// The unsaved-changes question, by its key in [`file_dialog::question`].
@@ -193,7 +236,13 @@ pub fn can_leave(document: &mut editor_core::document::Document) -> bool {
     }
     let buttons = [tr("Save"), tr("Discard"), tr("Cancel")];
     let in_app = file_dialog::in_app();
-    match file_dialog::question(UNSAVED, true, tr("Unsaved changes"), &unsaved_message(document), &buttons) {
+    match file_dialog::question(
+        UNSAVED,
+        true,
+        tr("Unsaved changes"),
+        &unsaved_message(document),
+        &buttons,
+    ) {
         _ if in_app => false,
         Some(0) => save(document, false),
         Some(1) => true,
@@ -242,12 +291,16 @@ pub fn run_document_command(editor: &Editor, action: Action) {
     match action {
         Action::ReloadPoint => match document.reload_point_file() {
             Some(Ok(points)) => editor_core::say!("point file: {points} points"),
-            Some(Err(error)) => editor_core::complain!("the point file could not be read again: {error}"),
+            Some(Err(error)) => {
+                editor_core::complain!("the point file could not be read again: {error}")
+            }
             None => editor_core::say!("no point file to read again"),
         },
         Action::ReloadPortal => match document.reload_portal_file() {
             Some(Ok(portals)) => editor_core::say!("portal file: {portals} portals"),
-            Some(Err(why)) => editor_core::complain!("the portal file could not be read again: {why}"),
+            Some(Err(why)) => {
+                editor_core::complain!("the portal file could not be read again: {why}")
+            }
             None => editor_core::say!("no portal file to read again"),
         },
         Action::UnloadPoint => document.unload_point_file(),
@@ -261,7 +314,8 @@ pub fn run_document_command(editor: &Editor, action: Action) {
             editor_core::say!("synced {synced} linked groups");
         }
         Action::Patches => {
-            let made = document.convert_selection_to_patches(map_model::face_to_patch::DEFAULT_POINTS);
+            let made =
+                document.convert_selection_to_patches(map_model::face_to_patch::DEFAULT_POINTS);
             if made > 0 {
                 editor_core::say!("convert faces to patches: {made} patches");
             } else {
@@ -324,20 +378,77 @@ pub struct Dialogs {
 impl App {
     pub(crate) fn action(&mut self, ctx: &egui::Context, action: Action) {
         match action {
-            Action::Undo|Action::Redo|Action::Copy|Action::Cut|Action::Paste|Action::Delete|Action::Duplicate|Action::SelectAll => {
-                use editor_core::input::{Key,Modifiers};
-                if matches!(action,Action::Undo|Action::Redo) {
+            Action::Undo
+            | Action::Redo
+            | Action::Copy
+            | Action::Cut
+            | Action::Paste
+            | Action::Delete
+            | Action::Duplicate
+            | Action::SelectAll => {
+                use editor_core::input::{Key, Modifiers};
+                if matches!(action, Action::Undo | Action::Redo) {
                     self.cancel_animation_previews();
                 }
-                let animation_event=match action {
-                    Action::Copy=>Some(egui::Event::Copy),Action::Cut=>Some(egui::Event::Cut),Action::Paste=>Some(egui::Event::Paste(String::new())),
-                    Action::Duplicate|Action::SelectAll=>Some(egui::Event::Key{key:if matches!(action,Action::Duplicate){egui::Key::D}else{egui::Key::A},physical_key:None,pressed:true,repeat:false,modifiers:egui::Modifiers{ctrl:true,..Default::default()}}),
-                    Action::Delete|Action::Undo|Action::Redo=>Some(egui::Event::Key{key:if matches!(action,Action::Delete){egui::Key::Delete}else{egui::Key::Z},physical_key:None,pressed:true,repeat:false,modifiers:egui::Modifiers{ctrl:!matches!(action,Action::Delete),shift:matches!(action,Action::Redo),..Default::default()}}),
-                    _=>None,
+                let animation_event = match action {
+                    Action::Copy => Some(egui::Event::Copy),
+                    Action::Cut => Some(egui::Event::Cut),
+                    Action::Paste => Some(egui::Event::Paste(String::new())),
+                    Action::Duplicate | Action::SelectAll => Some(egui::Event::Key {
+                        key: if matches!(action, Action::Duplicate) {
+                            egui::Key::D
+                        } else {
+                            egui::Key::A
+                        },
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers {
+                            ctrl: true,
+                            ..Default::default()
+                        },
+                    }),
+                    Action::Delete | Action::Undo | Action::Redo => Some(egui::Event::Key {
+                        key: if matches!(action, Action::Delete) {
+                            egui::Key::Delete
+                        } else {
+                            egui::Key::Z
+                        },
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers {
+                            ctrl: !matches!(action, Action::Delete),
+                            shift: matches!(action, Action::Redo),
+                            ..Default::default()
+                        },
+                    }),
+                    _ => None,
                 };
-                if animation_event.as_ref().is_some_and(|event|self.animation.key_event(event,&self.editor)){return;}
-                let key=match action {Action::Undo|Action::Redo=>Key::Letter('z'),Action::Copy=>Key::Letter('c'),Action::Cut=>Key::Letter('x'),Action::Paste=>Key::Letter('v'),Action::Duplicate=>Key::Letter('d'),Action::SelectAll=>Key::Letter('a'),_=>Key::Delete};
-                self.commands.key_pressed(key,None,Modifiers{control:!matches!(action,Action::Delete),shift:matches!(action,Action::Redo),alt:false});
+                if animation_event
+                    .as_ref()
+                    .is_some_and(|event| self.animation.key_event(event, &self.editor))
+                {
+                    return;
+                }
+                let key = match action {
+                    Action::Undo | Action::Redo => Key::Letter('z'),
+                    Action::Copy => Key::Letter('c'),
+                    Action::Cut => Key::Letter('x'),
+                    Action::Paste => Key::Letter('v'),
+                    Action::Duplicate => Key::Letter('d'),
+                    Action::SelectAll => Key::Letter('a'),
+                    _ => Key::Delete,
+                };
+                self.commands.key_pressed(
+                    key,
+                    None,
+                    Modifiers {
+                        control: !matches!(action, Action::Delete),
+                        shift: matches!(action, Action::Redo),
+                        alt: false,
+                    },
+                );
             }
 
             Action::Welcome => self.welcome.open = true,
@@ -348,19 +459,32 @@ impl App {
             Action::Animation => self.animation.open = !self.animation.open,
             Action::UvEditor => {
                 self.inspector.toggle_uv_window(&self.editor.document);
-                if !self.inspector.uv_window_open() {self.window.borrow_mut().inspector_hidden=false;}
+                if !self.inspector.uv_window_open() {
+                    self.window.borrow_mut().inspector_hidden = false;
+                }
             }
             Action::ShapeSettings => self.shapes.open_settings(),
             Action::Text => self.shapes.text_open = true,
-            Action::ImportModel => {if let Some(path)=model_chooser().pick_file(true){self.import_model_file(&path);}},
+            Action::ImportModel => {
+                if let Some(path) = model_chooser().pick_file(true) {
+                    self.import_model_file(&path);
+                }
+            }
             Action::Corner => self.shapes.corner(&self.editor),
             Action::Array => self.arrays.open(&self.editor),
             Action::SplitColumns => {
                 let cell = self.editor.grid.borrow().actual_size();
                 let shape = editor_core::sculpt::parameters().columns;
-                let result = self.editor.document.borrow_mut().split_into_columns(cell, shape);
+                let result = self
+                    .editor
+                    .document
+                    .borrow_mut()
+                    .split_into_columns(cell, shape);
                 match result {
-                    Ok(count) => editor_core::say!("{}", editor_core::i18n::fill("Columns: {}", &[&count.to_string()])),
+                    Ok(count) => editor_core::say!(
+                        "{}",
+                        editor_core::i18n::fill("Columns: {}", &[&count.to_string()])
+                    ),
                     Err(why) => editor_core::say!("{}", tr(why)),
                 }
             }
@@ -375,13 +499,18 @@ impl App {
                 if self.mcp.is_none() {
                     match editor_core::live_mcp::Server::start() {
                         Ok(server) => self.mcp = Some(server),
-                        Err(error) => editor_core::complain!("the MCP endpoint could not start: {error}"),
+                        Err(error) => {
+                            editor_core::complain!("the MCP endpoint could not start: {error}")
+                        }
                     }
                 }
                 self.dialogs.mcp = self.mcp.is_some();
             }
             Action::Save | Action::SaveAs => {
-                save(&mut self.editor.document.borrow_mut(), matches!(action, Action::SaveAs));
+                save(
+                    &mut self.editor.document.borrow_mut(),
+                    matches!(action, Action::SaveAs),
+                );
             }
             Action::New => self.open_map(ctx, None),
             Action::Open => {
@@ -393,7 +522,8 @@ impl App {
                 if let Some(sources) = revert(&self.editor) {
                     self.cancel_animation_previews();
                     *self.commands.sources.borrow_mut() = sources;
-                    self.autosaver = editor_core::autosave::Autosaver::new(&self.editor.document.borrow());
+                    self.autosaver =
+                        editor_core::autosave::Autosaver::new(&self.editor.document.borrow());
                 }
             }
             Action::GoTo => {
@@ -404,12 +534,25 @@ impl App {
             }
             Action::About => self.dialogs.about = true,
             Action::Manual => self.manual.open = true,
-            Action::Repeat => editor_core::commands::repeat_last_commands(&self.editor.document, self.commands.window.as_ref()),
-            Action::ClearRepeat | Action::Patches | Action::Structural | Action::Sync | Action::ReloadPoint | Action::ReloadPortal | Action::UnloadPoint | Action::UnloadPortal => {
+            Action::Repeat => editor_core::commands::repeat_last_commands(
+                &self.editor.document,
+                self.commands.window.as_ref(),
+            ),
+            Action::ClearRepeat
+            | Action::Patches
+            | Action::Structural
+            | Action::Sync
+            | Action::ReloadPoint
+            | Action::ReloadPortal
+            | Action::UnloadPoint
+            | Action::UnloadPortal => {
                 run_document_command(&self.editor, action);
             }
             Action::PlaceCamera => {
-                editor_core::render_camera::align_to_view(&mut self.editor.document.borrow_mut(), &self.editor.camera);
+                editor_core::render_camera::align_to_view(
+                    &mut self.editor.document.borrow_mut(),
+                    &self.editor.camera,
+                );
             }
             Action::LoadPoint | Action::LoadPortal => {
                 let point = matches!(action, Action::LoadPoint);
@@ -418,7 +561,11 @@ impl App {
                 }
             }
             Action::Detach3d => self.chrome.detach_3d = !self.chrome.detach_3d,
-            Action::SnapGrid | Action::ShowGrid | Action::PreviewAnimations | Action::ShowOmitted | Action::GridSize(_) => toggle(&self.editor, action),
+            Action::SnapGrid
+            | Action::ShowGrid
+            | Action::PreviewAnimations
+            | Action::ShowOmitted
+            | Action::GridSize(_) => toggle(&self.editor, action),
             Action::StopLiveLink => self.live.stop("Live link stopped"),
             Action::ToggleInspector => self.commands.window.toggle_inspector(),
             Action::NextView => self.commands.window.cycle_layout(),
@@ -427,12 +574,20 @@ impl App {
     }
 
     /// Inserts a model at the last cursor position, resolving unspecified 2D depth.
-    pub(crate) fn import_model_file(&mut self,path:&std::path::Path){
-        let at=model_insert_target(*self.editor.paste_target.borrow(),self.editor.document.borrow().reference_bounds().center());
-        let at=self.editor.grid.borrow().snap_point(at);
-        match self.editor.document.borrow_mut().import_model_copy(path,at){
-            Ok(_)=>editor_core::say!("Imported model {}",path.display()),
-            Err(error)=>editor_core::complain!("{}",error),
+    pub(crate) fn import_model_file(&mut self, path: &std::path::Path) {
+        let at = model_insert_target(
+            *self.editor.paste_target.borrow(),
+            self.editor.document.borrow().reference_bounds().center(),
+        );
+        let at = self.editor.grid.borrow().snap_point(at);
+        match self
+            .editor
+            .document
+            .borrow_mut()
+            .import_model_copy(path, at)
+        {
+            Ok(_) => editor_core::say!("Imported model {}", path.display()),
+            Err(error) => editor_core::complain!("{}", error),
         }
     }
 
@@ -444,7 +599,9 @@ impl App {
         if let Some(path) = open_chooser().pick_file(false) {
             self.open_map(ctx, Some(path));
         }
-        if let Some(path)=model_chooser().pick_file(false){self.import_model_file(&path);}
+        if let Some(path) = model_chooser().pick_file(false) {
+            self.import_model_file(&path);
+        }
         for point in [true, false] {
             if let Some(path) = point_file_chooser(point).pick_file(false) {
                 self.load_point_file(&path, point);
@@ -516,7 +673,14 @@ impl App {
             return;
         }
         self.editor.document.borrow().save_material_info();
-        match Self::build(ctx, self.gpu.clone(), crate::Startup { map: path, ..Default::default() }) {
+        match Self::build(
+            ctx,
+            self.gpu.clone(),
+            crate::Startup {
+                map: path,
+                ..Default::default()
+            },
+        ) {
             Ok(mut next) => {
                 next.placed = self.placed && !self.startup;
                 next.startup = false;
@@ -552,18 +716,37 @@ impl App {
                     stop = dialog::button(ui, tr("Stop server"), true).clicked();
                 } else if let Some(server) = &self.mcp {
                     ui.horizontal(|ui| {
-                        let (dot, _) = ui.allocate_exact_size(egui::vec2(10.0, 16.0), egui::Sense::hover());
-                        ui.painter().circle_filled(dot.center(), 4.0, theme::success());
+                        let (dot, _) =
+                            ui.allocate_exact_size(egui::vec2(10.0, 16.0), egui::Sense::hover());
+                        ui.painter()
+                            .circle_filled(dot.center(), 4.0, theme::success());
                         ui.label(egui::RichText::new(tr("MCP active")).font(theme::body_bold()));
                     });
                     ui.add_space(4.0);
-                    ui.add(egui::Label::new(egui::RichText::new(tr("Serve for an agent (MCP)")).color(theme::dim())).wrap());
+                    ui.add(
+                        egui::Label::new(
+                            egui::RichText::new(tr("Serve for an agent (MCP)")).color(theme::dim()),
+                        )
+                        .wrap(),
+                    );
                     ui.add_space(8.0);
                     let address = format!("127.0.0.1:{}", server.port);
                     ui.horizontal(|ui| {
                         // Selectable and copyable; anything typed into it is put back.
                         let mut shown = address.clone();
-                        ui.add(egui::TextEdit::singleline(&mut shown).font(egui::TextStyle::Monospace).desired_width(ui.available_width() - 90.0).margin(crate::widgets::entry_margin(ui, &egui::TextStyle::Monospace.resolve(ui.style()), 8, 8)).min_size(egui::vec2(0.0, theme::CONTROL_HEIGHT)).vertical_align(egui::Align::Center));
+                        ui.add(
+                            egui::TextEdit::singleline(&mut shown)
+                                .font(egui::TextStyle::Monospace)
+                                .desired_width(ui.available_width() - 90.0)
+                                .margin(crate::widgets::entry_margin(
+                                    ui,
+                                    &egui::TextStyle::Monospace.resolve(ui.style()),
+                                    8,
+                                    8,
+                                ))
+                                .min_size(egui::vec2(0.0, theme::CONTROL_HEIGHT))
+                                .vertical_align(egui::Align::Center),
+                        );
                         if theme::button(ui, tr("Copy"), 80.0, true).clicked() {
                             ui.ctx().copy_text(address);
                         }
@@ -584,7 +767,15 @@ impl App {
                         return;
                     }
                     widgets::card(ui, tr("A point in the world"), None, |ui| {
-                        widgets::axis_spins(ui, "go-to-at", &mut self.dialogs.at, &["X", "Y", "Z"], -131_072.0..=131_072.0, 1.0, 2);
+                        widgets::axis_spins(
+                            ui,
+                            "go-to-at",
+                            &mut self.dialogs.at,
+                            &["X", "Y", "Z"],
+                            -131_072.0..=131_072.0,
+                            1.0,
+                            2,
+                        );
                         ui.add_space(2.0);
                         if form::button(ui, tr("Move camera there"), true).clicked() {
                             let [x, y, z] = self.dialogs.at;
@@ -599,7 +790,15 @@ impl App {
                     });
                     ui.add_space(6.0);
                     widgets::card(ui, tr("Move the selection by"), None, |ui| {
-                        widgets::axis_spins(ui, "go-to-delta", &mut self.dialogs.delta, &["X", "Y", "Z"], -131_072.0..=131_072.0, 1.0, 2);
+                        widgets::axis_spins(
+                            ui,
+                            "go-to-delta",
+                            &mut self.dialogs.delta,
+                            &["X", "Y", "Z"],
+                            -131_072.0..=131_072.0,
+                            1.0,
+                            2,
+                        );
                         ui.add_space(2.0);
                         if form::button(ui, tr("Move it"), true).clicked() {
                             let [x, y, z] = self.dialogs.delta;
@@ -643,24 +842,31 @@ impl App {
         if self.dialogs.about {
             let mut close = false;
             let mut licences = false;
-            self.dialogs.about = dialog::show(ctx, "about", tr("About"), [460.0, 360.0], |ui, part| {
-                if part == dialog::Part::Actions {
-                    close = dialog::button(ui, tr("Close"), true).clicked();
-                    return;
-                }
-                licences |= about(ui);
-            }) && !close;
+            self.dialogs.about =
+                dialog::show(ctx, "about", tr("About"), [460.0, 360.0], |ui, part| {
+                    if part == dialog::Part::Actions {
+                        close = dialog::button(ui, tr("Close"), true).clicked();
+                        return;
+                    }
+                    licences |= about(ui);
+                }) && !close;
             self.dialogs.licences |= licences;
         }
         if self.dialogs.licences {
             let mut close = false;
-            self.dialogs.licences = dialog::show(ctx, "licences", tr("Licences and third-party credits"), [760.0, 640.0], |ui, part| {
-                if part == dialog::Part::Actions {
-                    close = dialog::button(ui, tr("Close"), true).clicked();
-                    return;
-                }
-                licences(ui);
-            }) && !close;
+            self.dialogs.licences = dialog::show(
+                ctx,
+                "licences",
+                tr("Licences and third-party credits"),
+                [760.0, 640.0],
+                |ui, part| {
+                    if part == dialog::Part::Actions {
+                        close = dialog::button(ui, tr("Close"), true).clicked();
+                        return;
+                    }
+                    licences(ui);
+                },
+            ) && !close;
         }
     }
 }
@@ -673,8 +879,14 @@ pub fn about(ui: &mut egui::Ui) -> bool {
         let (uri, bytes) = crate::chrome::LOGO;
         ui.add(egui::Image::from_bytes(uri, bytes).fit_to_exact_size(egui::Vec2::splat(72.0)));
         ui.add_space(6.0);
-        ui.label(egui::RichText::new("Heron Brush").font(egui::FontId::new(theme::text_size() * 1.7, theme::bold())));
-        ui.label(egui::RichText::new(format!("{} {}", tr("Version"), env!("CARGO_PKG_VERSION"))).color(theme::dim()));
+        ui.label(
+            egui::RichText::new("Heron Brush")
+                .font(egui::FontId::new(theme::text_size() * 1.7, theme::bold())),
+        );
+        ui.label(
+            egui::RichText::new(format!("{} {}", tr("Version"), env!("CARGO_PKG_VERSION")))
+                .color(theme::dim()),
+        );
         ui.add_space(12.0);
         ui.label(tr("Licensed under GPL-3.0-or-later"));
         ui.add_space(10.0);
@@ -706,7 +918,9 @@ fn notice_blocks(text: &str) -> Vec<NoticeBlock> {
     let mut paragraph = String::new();
     let finish = |paragraph: &mut String, blocks: &mut Vec<NoticeBlock>| {
         if !paragraph.is_empty() {
-            blocks.push(NoticeBlock::Paragraph(links_as_text(&std::mem::take(paragraph))));
+            blocks.push(NoticeBlock::Paragraph(links_as_text(&std::mem::take(
+                paragraph,
+            ))));
         }
     };
     for line in text.lines().map(str::trim_end) {
@@ -738,9 +952,10 @@ fn links_as_text(text: &str) -> String {
     let mut out = String::new();
     let mut rest = text;
     while let Some(open) = rest.find('[') {
-        let Some((label, url, after)) = rest[open + 1..].split_once("](").and_then(|(label, tail)| {
-            tail.split_once(')').map(|(url, after)| (label, url, after))
-        }) else {
+        let Some((label, url, after)) = rest[open + 1..]
+            .split_once("](")
+            .and_then(|(label, tail)| tail.split_once(')').map(|(url, after)| (label, url, after)))
+        else {
             break;
         };
         out.push_str(&rest[..open]);
@@ -757,25 +972,27 @@ fn links_as_text(text: &str) -> String {
 /// The credits window's page: [`NOTICE`], scrolled.
 fn licences(ui: &mut egui::Ui) {
     let size = theme::text_size();
-    egui::ScrollArea::vertical().id_salt("licences-body").show(ui, |ui| {
-        ui.vertical(|ui| {
-            ui.set_width(ui.available_width());
-            for block in notice_blocks(NOTICE) {
-                match block {
-                    NoticeBlock::Heading(level, text) => {
-                        ui.add_space(size * 0.6);
-                        let scale = if level == 1 { 1.5 } else { 1.15 };
-                        ui.label(egui::RichText::new(text).size(size * scale).strong());
-                        ui.add_space(size * 0.3);
-                    }
-                    NoticeBlock::Paragraph(text) => {
-                        ui.label(crate::manual_page::inline(ui.style(), &text, size));
-                        ui.add_space(size * 0.5);
+    egui::ScrollArea::vertical()
+        .id_salt("licences-body")
+        .show(ui, |ui| {
+            ui.vertical(|ui| {
+                ui.set_width(ui.available_width());
+                for block in notice_blocks(NOTICE) {
+                    match block {
+                        NoticeBlock::Heading(level, text) => {
+                            ui.add_space(size * 0.6);
+                            let scale = if level == 1 { 1.5 } else { 1.15 };
+                            ui.label(egui::RichText::new(text).size(size * scale).strong());
+                            ui.add_space(size * 0.3);
+                        }
+                        NoticeBlock::Paragraph(text) => {
+                            ui.label(crate::manual_page::inline(ui.style(), &text, size));
+                            ui.add_space(size * 0.5);
+                        }
                     }
                 }
-            }
+            });
         });
-    });
 }
 
 #[cfg(test)]
@@ -784,7 +1001,9 @@ mod notice_tests {
 
     #[test]
     fn the_notice_reads_as_headings_and_joined_paragraphs() {
-        let blocks = notice_blocks("# Title\n\nOne line\nwrapped, see [the site](https://x.y).\n\n## Fonts\n- a\n- b\n");
+        let blocks = notice_blocks(
+            "# Title\n\nOne line\nwrapped, see [the site](https://x.y).\n\n## Fonts\n- a\n- b\n",
+        );
         assert_eq!(
             blocks,
             [
@@ -815,7 +1034,10 @@ mod model_placement_tests {
             target[axis] = f64::NAN;
             let resolved = model_insert_target(Some(target), reference);
             for i in 0..3 {
-                assert_eq!(resolved[i], if i == axis { reference[i] } else { target[i] });
+                assert_eq!(
+                    resolved[i],
+                    if i == axis { reference[i] } else { target[i] }
+                );
             }
         }
         assert_eq!(model_insert_target(None, reference), Vec3d::zero());

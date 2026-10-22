@@ -322,10 +322,7 @@ mod tests {
             Vec3d::zero(),
         );
         assert_eq!(
-            picker.pick(&ray(
-                Vec3d::new(0.0, 0.0, 32.0),
-                Vec3d::new(1.0, 0.0, 0.0)
-            )),
+            picker.pick(&ray(Vec3d::new(0.0, 0.0, 32.0), Vec3d::new(1.0, 0.0, 0.0))),
             None
         );
     }
@@ -399,10 +396,7 @@ mod tests {
             Vec3d::zero(),
         );
         assert_eq!(
-            picker.pick(&ray(
-                Vec3d::new(0.0, 0.0, 64.0),
-                Vec3d::new(0.0, 0.0, -1.0)
-            )),
+            picker.pick(&ray(Vec3d::new(0.0, 0.0, 64.0), Vec3d::new(0.0, 0.0, -1.0))),
             None
         );
     }
@@ -493,7 +487,10 @@ mod tests {
     fn shift_constricts_to_the_axis_the_drag_has_gone_furthest_in() {
         let initial = Vec3d::zero();
         let current = Vec3d::new(8.0, 40.0, 2.0);
-        assert_eq!(move_mode(false, true, initial, current), MoveMode::Constricted);
+        assert_eq!(
+            move_mode(false, true, initial, current),
+            MoveMode::Constricted
+        );
 
         let picker = picker_for_move(MoveMode::Constricted, initial, current, Vec3d::zero());
         let HandlePicker::Line { line, .. } = picker else {
@@ -597,7 +594,10 @@ mod grazing_tests {
     #[test]
     fn a_ray_running_along_the_plane_says_nothing_about_where_it_meets_it() {
         let picker = HandlePicker::plane(
-            geometry_math::plane::Plane3d::from_anchor_and_normal(Vec3d::zero(), Vec3d::new(0.0, 0.0, 1.0)),
+            geometry_math::plane::Plane3d::from_anchor_and_normal(
+                Vec3d::zero(),
+                Vec3d::new(0.0, 0.0, 1.0),
+            ),
             Vec3d::zero(),
         );
 

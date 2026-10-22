@@ -10,7 +10,10 @@ use editor_core::grid::Grid;
 use editor_core::tool::Tool;
 use editor_core::view2d::ViewportState;
 use editor_core::world::WorldBounds;
-use editor_core::{assemble_tool, clip_tool, fillet_tool, handle_tool, rotate_tool, shape_tool, sweep_tool, view_filters};
+use editor_core::{
+    assemble_tool, clip_tool, fillet_tool, handle_tool, rotate_tool, shape_tool, sweep_tool,
+    view_filters,
+};
 use geometry_math::bbox::Bbox3d;
 use geometry_math::vec::Vec3d;
 
@@ -79,7 +82,12 @@ impl Editor {
 
     /// [`Editor::open`] with entity definitions and materials named on the command line,
     /// which take precedence over the ones found beside the map or from the game.
-    pub fn open_with(ctx: &eframe::egui::Context, path: Option<std::path::PathBuf>, fgd: Option<std::path::PathBuf>, materials: Option<std::path::PathBuf>) -> Self {
+    pub fn open_with(
+        ctx: &eframe::egui::Context,
+        path: Option<std::path::PathBuf>,
+        fgd: Option<std::path::PathBuf>,
+        materials: Option<std::path::PathBuf>,
+    ) -> Self {
         let loaded = editor_core::document_setup::load(path, fgd, materials);
         if let Some(path) = loaded.document.path.as_deref() {
             editor_core::recent_documents::record(path);
@@ -119,8 +127,12 @@ impl Editor {
     /// The face tool's handles narrow property/UV editing without changing its geometry selection.
     pub fn sync_face_edit_targets(&self) {
         let targets = if *self.tool.borrow() == Tool::Face {
-            self.document.borrow().faces_at(&self.handles.borrow().selected_face_centres())
-        } else { Vec::new() };
+            self.document
+                .borrow()
+                .faces_at(&self.handles.borrow().selected_face_centres())
+        } else {
+            Vec::new()
+        };
         self.document.borrow_mut().set_face_edit_targets(targets);
     }
 }

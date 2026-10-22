@@ -1291,8 +1291,19 @@ pub fn build_solid(
             });
         }
     }
-    if let Some(around) = Aabb::from_points(entity.external_surfaces.iter().flat_map(|s|s.vertices.iter().map(|v|v.position))) {
-        bounds = Some(match bounds {Some(b)=>Aabb{min:b.min.min(around.min),max:b.max.max(around.max)},None=>around});
+    if let Some(around) = Aabb::from_points(
+        entity
+            .external_surfaces
+            .iter()
+            .flat_map(|s| s.vertices.iter().map(|v| v.position)),
+    ) {
+        bounds = Some(match bounds {
+            Some(b) => Aabb {
+                min: b.min.min(around.min),
+                max: b.max.max(around.max),
+            },
+            None => around,
+        });
     }
     let origin = if options.force_zero_origin {
         Vec3::ZERO
@@ -1323,13 +1334,22 @@ pub fn build_solid(
         let mut surfaces: IndexMap<String, Surface> = IndexMap::new();
         for incoming in &entity.external_surfaces {
             let mut surface = incoming.clone();
-            for vertex in &mut surface.vertices {vertex.position=to_local(vertex.position);vertex.normal=math::to_godot(vertex.normal);}
-            let target = surfaces.entry(surface.texture.clone()).or_insert_with(|| Surface {
-                texture: surface.texture.clone(), vertices: Vec::new(), indices: Vec::new(),
-            });
+            for vertex in &mut surface.vertices {
+                vertex.position = to_local(vertex.position);
+                vertex.normal = math::to_godot(vertex.normal);
+            }
+            let target = surfaces
+                .entry(surface.texture.clone())
+                .or_insert_with(|| Surface {
+                    texture: surface.texture.clone(),
+                    vertices: Vec::new(),
+                    indices: Vec::new(),
+                });
             let offset = target.vertices.len() as u32;
             target.vertices.extend(surface.vertices);
-            target.indices.extend(surface.indices.into_iter().map(|i| i + offset));
+            target
+                .indices
+                .extend(surface.indices.into_iter().map(|i| i + offset));
         }
 
         for brush in &brushes {
@@ -1452,7 +1472,13 @@ pub fn build_solid(
             }
         }
         CollisionKind::Concave => {
-            for surface in &entity.external_surfaces {for index in &surface.indices {if let Some(vertex)=surface.vertices.get(*index as usize){geometry.concave_triangles.push(to_local(vertex.position));}}}
+            for surface in &entity.external_surfaces {
+                for index in &surface.indices {
+                    if let Some(vertex) = surface.vertices.get(*index as usize) {
+                        geometry.concave_triangles.push(to_local(vertex.position));
+                    }
+                }
+            }
             // A patch is a surface, not a solid, so it can only ever be part of
             // a concave shape. An entity that wants convex collision gets none
             // from its patches.
@@ -1479,7 +1505,11 @@ pub fn build_solid(
                 for face in &brush.faces {
                     // Culled faces are inside the solid or already covered by the face that
                     // ate them. Left in, four blocks in a row cost 48 triangles instead of 12.
-                    if face.culled || face.vertices.len() < 3 || (settings.is_skip(&face.texture) && face.texture != crate::settings::EXPORT_HIDDEN_TEXTURE) {
+                    if face.culled
+                        || face.vertices.len() < 3
+                        || (settings.is_skip(&face.texture)
+                            && face.texture != crate::settings::EXPORT_HIDDEN_TEXTURE)
+                    {
                         continue;
                     }
                     for [a, b, c] in triangles_of(&face.vertices) {
@@ -1525,17 +1555,30 @@ mod tests {
     fn external_materials_sharing_a_texture_append_all_vertices_and_indices() {
         let surface = Surface {
             texture: "shared".into(),
-            vertices: [Vec3::new(0.,0.,0.),Vec3::new(32.,0.,0.),Vec3::new(0.,32.,0.)].map(|position| Vertex {
-                position, normal: Vec3::new(0.,0.,1.), uv: Vec2::new(0.,0.),
-            }).to_vec(),
-            indices: vec![0,1,2],
+            vertices: [
+                Vec3::new(0., 0., 0.),
+                Vec3::new(32., 0., 0.),
+                Vec3::new(0., 32., 0.),
+            ]
+            .map(|position| Vertex {
+                position,
+                normal: Vec3::new(0., 0., 1.),
+                uv: Vec2::new(0., 0.),
+            })
+            .to_vec(),
+            indices: vec![0, 1, 2],
         };
         let mut entity = Entity::default();
-        entity.external_surfaces = vec![surface.clone(),surface];
-        let geo = build_solid(&entity,&Settings::default(),SolidOptions::default(),&TextureSizes::new(32.));
-        assert_eq!(geo.mesh.surfaces.len(),1);
-        assert_eq!(geo.mesh.surfaces[0].vertices.len(),6);
-        assert_eq!(geo.mesh.surfaces[0].indices,vec![0,1,2,3,4,5]);
+        entity.external_surfaces = vec![surface.clone(), surface];
+        let geo = build_solid(
+            &entity,
+            &Settings::default(),
+            SolidOptions::default(),
+            &TextureSizes::new(32.),
+        );
+        assert_eq!(geo.mesh.surfaces.len(), 1);
+        assert_eq!(geo.mesh.surfaces[0].vertices.len(), 6);
+        assert_eq!(geo.mesh.surfaces[0].indices, vec![0, 1, 2, 3, 4, 5]);
     }
 
     #[test]

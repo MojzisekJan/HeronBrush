@@ -183,23 +183,39 @@ pub struct GradientStops {
 impl GradientStops {
     /// Validate and sort two to eight stops.
     pub fn new(stops: &[ColorStop]) -> Option<Self> {
-        if !(2..=8).contains(&stops.len()) || stops.iter().any(|s| !s.position.is_finite() || !(0.0..=1.0).contains(&s.position)) {
+        if !(2..=8).contains(&stops.len())
+            || stops
+                .iter()
+                .any(|s| !s.position.is_finite() || !(0.0..=1.0).contains(&s.position))
+        {
             return None;
         }
-        let mut result = Self { stops: [ColorStop { position: 0.0, color: Rgb::new(0, 0, 0) }; 8], len: stops.len() as u8 };
+        let mut result = Self {
+            stops: [ColorStop {
+                position: 0.0,
+                color: Rgb::new(0, 0, 0),
+            }; 8],
+            len: stops.len() as u8,
+        };
         result.stops[..stops.len()].copy_from_slice(stops);
         result.stops[..stops.len()].sort_by(|a, b| a.position.total_cmp(&b.position));
         Some(result)
     }
     /// Stops in ascending position order.
-    pub fn as_slice(&self) -> &[ColorStop] { &self.stops[..usize::from(self.len).clamp(2, 8)] }
+    pub fn as_slice(&self) -> &[ColorStop] {
+        &self.stops[..usize::from(self.len).clamp(2, 8)]
+    }
     /// Sample the piecewise linear colour ramp, clamping outside its ends.
     pub fn at(&self, t: f32) -> [f32; 3] {
         let stops = self.as_slice();
-        if t < stops[0].position { return stops[0].color.to_f32(); }
+        if t < stops[0].position {
+            return stops[0].color.to_f32();
+        }
         for pair in stops.windows(2) {
             if t < pair[1].position {
-                let t = ((t - pair[0].position) / (pair[1].position - pair[0].position).max(f32::EPSILON)).clamp(0.0, 1.0);
+                let t = ((t - pair[0].position)
+                    / (pair[1].position - pair[0].position).max(f32::EPSILON))
+                .clamp(0.0, 1.0);
                 let a = pair[0].color.to_f32();
                 let b = pair[1].color.to_f32();
                 return std::array::from_fn(|i| a[i] + (b[i] - a[i]) * t);
@@ -285,14 +301,28 @@ impl FaceColor {
     /// How opaque the face is drawn, 0 to 255.
     pub const fn alpha(self) -> u8 {
         match self {
-            Self::Solid { alpha, .. } | Self::Gradient { alpha, .. } | Self::MultiGradient { alpha, .. } => alpha,
+            Self::Solid { alpha, .. }
+            | Self::Gradient { alpha, .. }
+            | Self::MultiGradient { alpha, .. } => alpha,
         }
     }
 
     /// The same colour at a different opacity.
     pub const fn with_alpha(self, alpha: u8) -> Self {
         match self {
-            Self::MultiGradient { stops, radial, angle, ends, .. } => Self::MultiGradient { stops, radial, angle, alpha, ends },
+            Self::MultiGradient {
+                stops,
+                radial,
+                angle,
+                ends,
+                ..
+            } => Self::MultiGradient {
+                stops,
+                radial,
+                angle,
+                alpha,
+                ends,
+            },
             Self::Solid { color, .. } => Self::Solid { color, alpha },
             Self::Gradient {
                 from, to, angle, ..
@@ -320,11 +350,21 @@ pub struct PaintOnFace {
 impl PaintOnFace {
     /// Fit paint to the face UV bounds.
     pub fn new(face: &BrushFace, polygon: &[Vec3d], paint: FaceColor) -> Self {
-        Self::from_uv(&polygon.iter().map(|p| face.uv_coords(*p)).collect::<Vec<_>>(), paint)
+        Self::from_uv(
+            &polygon
+                .iter()
+                .map(|p| face.uv_coords(*p))
+                .collect::<Vec<_>>(),
+            paint,
+        )
     }
     /// Fit paint to an already projected polygon.
     pub fn from_uv(polygon: &[Vec2f], paint: FaceColor) -> Self {
-        let angle = match paint { FaceColor::Gradient { angle, .. } | FaceColor::MultiGradient { angle, .. } => angle, _ => 0.0 }.to_radians();
+        let angle = match paint {
+            FaceColor::Gradient { angle, .. } | FaceColor::MultiGradient { angle, .. } => angle,
+            _ => 0.0,
+        }
+        .to_radians();
         let direction = Vec2f::new(angle.cos(), angle.sin());
         let mut lo = Vec2f::new(f32::INFINITY, f32::INFINITY);
         let mut hi = Vec2f::new(f32::NEG_INFINITY, f32::NEG_INFINITY);
@@ -333,42 +373,83 @@ impl PaintOnFace {
             lo = Vec2f::new(lo.x().min(p.x()), lo.y().min(p.y()));
             hi = Vec2f::new(hi.x().max(p.x()), hi.y().max(p.y()));
             let d = vec::dot(*p, direction);
-            start = start.min(d); end = end.max(d);
+            start = start.min(d);
+            end = end.max(d);
         }
-        if polygon.is_empty() { lo = Vec2f::new(0.0, 0.0); hi = Vec2f::new(1.0, 1.0); start = 0.0; end = 1.0; }
-        let mut sampler = Self { paint, lo, span: Vec2f::new((hi.x()-lo.x()).max(1e-6), (hi.y()-lo.y()).max(1e-6)), direction, start, extent: (end-start).max(1e-6), ends: None };
-        if let FaceColor::MultiGradient { ends: Some(ends), .. } = paint {
-            let (a, b) = (sampler.from_bounds(ends.start), sampler.from_bounds(ends.end));
+        if polygon.is_empty() {
+            lo = Vec2f::new(0.0, 0.0);
+            hi = Vec2f::new(1.0, 1.0);
+            start = 0.0;
+            end = 1.0;
+        }
+        let mut sampler = Self {
+            paint,
+            lo,
+            span: Vec2f::new((hi.x() - lo.x()).max(1e-6), (hi.y() - lo.y()).max(1e-6)),
+            direction,
+            start,
+            extent: (end - start).max(1e-6),
+            ends: None,
+        };
+        if let FaceColor::MultiGradient {
+            ends: Some(ends), ..
+        } = paint
+        {
+            let (a, b) = (
+                sampler.from_bounds(ends.start),
+                sampler.from_bounds(ends.end),
+            );
             // Two ends in one place have no direction: the gradient keeps its fitted one.
-            if vec::length(b - a) > 1e-6 { sampler.ends = Some((a, b)); }
+            if vec::length(b - a) > 1e-6 {
+                sampler.ends = Some((a, b));
+            }
         }
         sampler
     }
     /// The UV point at `fraction` of the face's UV bounds.
     pub fn from_bounds(&self, fraction: [f32; 2]) -> Vec2f {
-        Vec2f::new(self.lo.x() + fraction[0] * self.span.x(), self.lo.y() + fraction[1] * self.span.y())
+        Vec2f::new(
+            self.lo.x() + fraction[0] * self.span.x(),
+            self.lo.y() + fraction[1] * self.span.y(),
+        )
     }
     /// Where `uv` falls in the face's UV bounds, as [`GradientEnds`] holds a point.
     pub fn to_bounds(&self, uv: Vec2f) -> [f32; 2] {
-        [(uv.x() - self.lo.x()) / self.span.x(), (uv.y() - self.lo.y()) / self.span.y()]
+        [
+            (uv.x() - self.lo.x()) / self.span.x(),
+            (uv.y() - self.lo.y()) / self.span.y(),
+        ]
     }
     /// Where the gradient runs, as [`GradientEnds`]: its own ends, or for a gradient fitted
     /// to the face the ends that paint the same (a radial one as a circle as wide as the
     /// bounds). `None` for paint that is not a gradient.
     pub fn ends(&self) -> Option<GradientEnds> {
-        if !matches!(self.paint, FaceColor::MultiGradient { .. } | FaceColor::Gradient { .. }) { return None; }
+        if !matches!(
+            self.paint,
+            FaceColor::MultiGradient { .. } | FaceColor::Gradient { .. }
+        ) {
+            return None;
+        }
         let (a, b) = self.ends_uv();
-        Some(GradientEnds { start: self.to_bounds(a), end: self.to_bounds(b) })
+        Some(GradientEnds {
+            start: self.to_bounds(a),
+            end: self.to_bounds(b),
+        })
     }
     /// The gradient's two ends in UV, its own or the fitted ones.
     pub fn ends_uv(&self) -> (Vec2f, Vec2f) {
-        if let Some(ends) = self.ends { return ends; }
+        if let Some(ends) = self.ends {
+            return ends;
+        }
         let centre = self.from_bounds([0.5, 0.5]);
         if matches!(self.paint, FaceColor::MultiGradient { radial: true, .. }) {
             return (centre, centre + Vec2f::new(self.span.x() / 2.0, 0.0));
         }
         let across = vec::dot(centre, self.direction);
-        (centre + self.direction * (self.start - across), centre + self.direction * (self.start + self.extent - across))
+        (
+            centre + self.direction * (self.start - across),
+            centre + self.direction * (self.start + self.extent - across),
+        )
     }
     /// The gradient position at `uv`, unclamped: 0 at the start, 1 at the end.
     pub fn position_at_uv(&self, uv: Vec2f) -> f32 {
@@ -377,11 +458,11 @@ impl PaintOnFace {
             Some((a, b)) if radial => vec::length(uv - a) / vec::length(b - a),
             Some((a, b)) => vec::dot(uv - a, b - a) / vec::dot(b - a, b - a),
             None if radial => {
-                let x = (uv.x()-self.lo.x())/self.span.x()*2.0-1.0;
-                let y = (uv.y()-self.lo.y())/self.span.y()*2.0-1.0;
-                (x*x+y*y).sqrt()
+                let x = (uv.x() - self.lo.x()) / self.span.x() * 2.0 - 1.0;
+                let y = (uv.y() - self.lo.y()) / self.span.y() * 2.0 - 1.0;
+                (x * x + y * y).sqrt()
             }
-            None => (vec::dot(uv, self.direction)-self.start)/self.extent,
+            None => (vec::dot(uv, self.direction) - self.start) / self.extent,
         }
     }
     /// Sample paint at UV coordinates.
@@ -391,29 +472,49 @@ impl PaintOnFace {
             FaceColor::Solid { color, .. } => color.to_f32(),
             FaceColor::MultiGradient { stops, .. } => stops.at(t),
             FaceColor::Gradient { from, to, .. } => {
-                let a = from.to_f32(); let b = to.to_f32();
-                std::array::from_fn(|i| a[i]+(b[i]-a[i])*t)
+                let a = from.to_f32();
+                let b = to.to_f32();
+                std::array::from_fn(|i| a[i] + (b[i] - a[i]) * t)
             }
         }
     }
     /// Sample paint at a world position.
-    pub fn at(&self, face: &BrushFace, point: Vec3d) -> [f32; 3] { self.at_uv(face.uv_coords(point)) }
+    pub fn at(&self, face: &BrushFace, point: Vec3d) -> [f32; 3] {
+        self.at_uv(face.uv_coords(point))
+    }
 }
 
 /// Subdivide painted faces so interior stops and radial centres survive vertex-colour rendering.
-pub fn paint_triangles(face: &BrushFace, polygon: &[Vec3d], paint: Option<FaceColor>) -> Vec<[Vec3d; 3]> {
-    if let Some(paint @ FaceColor::MultiGradient { stops, radial: false, .. }) = paint {
+pub fn paint_triangles(
+    face: &BrushFace,
+    polygon: &[Vec3d],
+    paint: Option<FaceColor>,
+) -> Vec<[Vec3d; 3]> {
+    if let Some(
+        paint @ FaceColor::MultiGradient {
+            stops,
+            radial: false,
+            ..
+        },
+    ) = paint
+    {
         let sampler = PaintOnFace::new(face, polygon, paint);
         let along = |p| sampler.position_at_uv(face.uv_coords(p));
         let clip = |input: &[Vec3d], boundary: f32, above: bool| {
             let mut out = Vec::new();
             for i in 0..input.len() {
-                let a = input[i]; let b = input[(i+1)%input.len()];
-                let da = along(a)-boundary; let db = along(b)-boundary;
+                let a = input[i];
+                let b = input[(i + 1) % input.len()];
+                let da = along(a) - boundary;
+                let db = along(b) - boundary;
                 let inside_a = if above { da >= 0.0 } else { da <= 0.0 };
                 let inside_b = if above { db >= 0.0 } else { db <= 0.0 };
-                if inside_a { out.push(a); }
-                if inside_a != inside_b { out.push(a+(b-a)*f64::from(da/(da-db))); }
+                if inside_a {
+                    out.push(a);
+                }
+                if inside_a != inside_b {
+                    out.push(a + (b - a) * f64::from(da / (da - db)));
+                }
             }
             out
         };
@@ -426,19 +527,31 @@ pub fn paint_triangles(face: &BrushFace, polygon: &[Vec3d], paint: Option<FaceCo
         let mut triangles = Vec::new();
         for band in boundaries.windows(2) {
             let part = clip(&clip(polygon, band[0], true), band[1], false);
-            for i in 1..part.len().saturating_sub(1) { triangles.push([part[0], part[i], part[i+1]]); }
+            for i in 1..part.len().saturating_sub(1) {
+                triangles.push([part[0], part[i], part[i + 1]]);
+            }
         }
         return triangles;
     }
-    let steps = if matches!(paint, Some(FaceColor::MultiGradient { radial: true, .. })) { 16 } else { 1 };
+    let steps = if matches!(paint, Some(FaceColor::MultiGradient { radial: true, .. })) {
+        16
+    } else {
+        1
+    };
     let mut triangles = Vec::new();
     for k in 1..polygon.len().saturating_sub(1) {
-        let a = polygon[0]; let b = polygon[k]; let c = polygon[k+1];
-        let point = |i: usize, j: usize| a + (b-a)*(i as f64/steps as f64) + (c-a)*(j as f64/steps as f64);
+        let a = polygon[0];
+        let b = polygon[k];
+        let c = polygon[k + 1];
+        let point = |i: usize, j: usize| {
+            a + (b - a) * (i as f64 / steps as f64) + (c - a) * (j as f64 / steps as f64)
+        };
         for i in 0..steps {
-            for j in 0..steps-i {
-                triangles.push([point(i,j), point(i+1,j), point(i,j+1)]);
-                if i+j+1 < steps { triangles.push([point(i+1,j), point(i+1,j+1), point(i,j+1)]); }
+            for j in 0..steps - i {
+                triangles.push([point(i, j), point(i + 1, j), point(i, j + 1)]);
+                if i + j + 1 < steps {
+                    triangles.push([point(i + 1, j), point(i + 1, j + 1), point(i, j + 1)]);
+                }
             }
         }
     }
@@ -521,12 +634,22 @@ pub struct SurfaceMaterial {
     pub emission: u16,
 }
 impl Default for SurfaceMaterial {
-    fn default() -> Self { Self { roughness: 65, metallic: 0, emission: 0 } }
+    fn default() -> Self {
+        Self {
+            roughness: 65,
+            metallic: 0,
+            emission: 0,
+        }
+    }
 }
 impl SurfaceMaterial {
     /// Clamped roughness, metallic and emission factors for rendering/export.
     pub fn factors(self) -> [f32; 3] {
-        [self.roughness.min(100) as f32 / 100.0, self.metallic.min(100) as f32 / 100.0, self.emission.min(800) as f32 / 100.0]
+        [
+            self.roughness.min(100) as f32 / 100.0,
+            self.metallic.min(100) as f32 / 100.0,
+            self.emission.min(800) as f32 / 100.0,
+        ]
     }
 }
 
@@ -699,13 +822,19 @@ impl BrushFace {
 
     /// Carries UV axes onto this plane by rotating around a shared edge.
     /// `anchor` must lie on both planes; its texel coordinates remain unchanged.
-    pub fn wrap_uv_from(&mut self, source:&Self, anchor:Vec3d) {
-        let (u_axis,v_axis)=source.uv_coord_system.axes(source.normal(),&source.uv_attributes);
-        self.uv_attributes=source.uv_attributes;
-        self.primitive_uv=None;
-        self.uv_coord_system=crate::uv::UvCoordSystem::Parallel{u_axis,v_axis}
-            .updated_for_normal(source.normal(),self.normal(),crate::uv::WrapStyle::Rotation);
-        self.uv_attributes.offset+=source.uv_coords(anchor)-self.uv_coords(anchor);
+    pub fn wrap_uv_from(&mut self, source: &Self, anchor: Vec3d) {
+        let (u_axis, v_axis) = source
+            .uv_coord_system
+            .axes(source.normal(), &source.uv_attributes);
+        self.uv_attributes = source.uv_attributes;
+        self.primitive_uv = None;
+        self.uv_coord_system = crate::uv::UvCoordSystem::Parallel { u_axis, v_axis }
+            .updated_for_normal(
+                source.normal(),
+                self.normal(),
+                crate::uv::WrapStyle::Rotation,
+            );
+        self.uv_attributes.offset += source.uv_coords(anchor) - self.uv_coords(anchor);
     }
 
     /* ========== UV editing ========== */
@@ -729,8 +858,16 @@ impl BrushFace {
     pub fn scale_uv(&mut self, factors: Vec2f) {
         let scale = self.uv_attributes.scale;
         self.uv_attributes.scale = Vec2f::new(
-            if factors.x() == 0.0 { scale.x() } else { scale.x() * factors.x() },
-            if factors.y() == 0.0 { scale.y() } else { scale.y() * factors.y() },
+            if factors.x() == 0.0 {
+                scale.x()
+            } else {
+                scale.x() * factors.x()
+            },
+            if factors.y() == 0.0 {
+                scale.y()
+            } else {
+                scale.y() * factors.y()
+            },
         );
     }
 
@@ -846,14 +983,19 @@ impl BrushFace {
         // Scale so the face's extent becomes the material's, then shift its corner to the
         // material's origin.
         let scale = Vec2f::new(
-            if extent.x() > 0.0 { extent.x() / material_size.x() } else { 1.0 },
-            if extent.y() > 0.0 { extent.y() / material_size.y() } else { 1.0 },
+            if extent.x() > 0.0 {
+                extent.x() / material_size.x()
+            } else {
+                1.0
+            },
+            if extent.y() > 0.0 {
+                extent.y() / material_size.y()
+            } else {
+                1.0
+            },
         );
         self.uv_attributes.scale = scale;
-        self.uv_attributes.offset = Vec2f::new(
-            -min.x() / scale.x(),
-            -min.y() / scale.y(),
-        );
+        self.uv_attributes.offset = Vec2f::new(-min.x() / scale.x(), -min.y() / scale.y());
     }
 
     /// Returns three points on this face's plane, suitable for writing back out.
@@ -904,50 +1046,111 @@ mod tests {
 
     fn three_stops() -> GradientStops {
         GradientStops::new(&[
-            ColorStop { position: 0.0, color: Rgb::new(255, 0, 0) },
-            ColorStop { position: 0.5, color: Rgb::new(0, 255, 0) },
-            ColorStop { position: 1.0, color: Rgb::new(0, 0, 255) },
-        ]).unwrap()
+            ColorStop {
+                position: 0.0,
+                color: Rgb::new(255, 0, 0),
+            },
+            ColorStop {
+                position: 0.5,
+                color: Rgb::new(0, 255, 0),
+            },
+            ColorStop {
+                position: 1.0,
+                color: Rgb::new(0, 0, 255),
+            },
+        ])
+        .unwrap()
     }
 
     #[test]
     fn multicolor_gradient_samples_stops_and_rejects_invalid_positions() {
         let stops = three_stops();
-        assert_eq!(GradientStops::new(&[stops.as_slice()[2], stops.as_slice()[0], stops.as_slice()[1]]).unwrap(), stops);
+        assert_eq!(
+            GradientStops::new(&[
+                stops.as_slice()[2],
+                stops.as_slice()[0],
+                stops.as_slice()[1]
+            ])
+            .unwrap(),
+            stops
+        );
         assert_eq!(stops.at(0.5), [0.0, 1.0, 0.0]);
         assert_eq!(stops.at(0.25), [0.5, 0.5, 0.0]);
         assert_eq!(stops.at(-1.0), [1.0, 0.0, 0.0]);
         assert_eq!(stops.at(2.0), [0.0, 0.0, 1.0]);
         assert!(GradientStops::new(&[]).is_none());
-        assert!(GradientStops::new(&[ColorStop { position: f32::NAN, color: Rgb::new(0,0,0) }; 2]).is_none());
-        assert!(GradientStops::new(&[ColorStop { position: 0.0, color: Rgb::new(0,0,0) }; 9]).is_none());
+        assert!(GradientStops::new(
+            &[ColorStop {
+                position: f32::NAN,
+                color: Rgb::new(0, 0, 0)
+            }; 2]
+        )
+        .is_none());
+        assert!(GradientStops::new(
+            &[ColorStop {
+                position: 0.0,
+                color: Rgb::new(0, 0, 0)
+            }; 9]
+        )
+        .is_none());
     }
 
     #[test]
     fn radial_gradient_has_a_coloured_centre_and_preserves_triangle_area() {
         let (face, polygon) = top_face();
-        let paint = FaceColor::MultiGradient { stops: three_stops(), radial: true, angle: 0.0, alpha: 123, ends: None };
+        let paint = FaceColor::MultiGradient {
+            stops: three_stops(),
+            radial: true,
+            angle: 0.0,
+            alpha: 123,
+            ends: None,
+        };
         let sampler = PaintOnFace::new(&face, &polygon, paint);
-        let centre = polygon.iter().copied().fold(Vec3d::zero(), |a,b| a+b)/polygon.len() as f64;
-        assert_eq!(sampler.at(&face, centre), [1.0,0.0,0.0]);
-        assert_eq!(sampler.at(&face, polygon[0]), [0.0,0.0,1.0]);
+        let centre =
+            polygon.iter().copied().fold(Vec3d::zero(), |a, b| a + b) / polygon.len() as f64;
+        assert_eq!(sampler.at(&face, centre), [1.0, 0.0, 0.0]);
+        assert_eq!(sampler.at(&face, polygon[0]), [0.0, 0.0, 1.0]);
         let mesh = paint_triangles(&face, &polygon, Some(paint));
-        assert!(mesh.iter().flatten().any(|p| sampler.at(&face, *p) == [1.0,0.0,0.0]));
-        let area = |triangles: Vec<[Vec3d;3]>| triangles.iter().map(|t| vec::length(vec::cross(t[1]-t[0],t[2]-t[0]))/2.0).sum::<f64>();
-        assert!((area(mesh)-area(paint_triangles(&face, &polygon, None))).abs()<1e-6);
-        assert_eq!(paint.with_alpha(44).alpha(),44);
+        assert!(mesh
+            .iter()
+            .flatten()
+            .any(|p| sampler.at(&face, *p) == [1.0, 0.0, 0.0]));
+        let area = |triangles: Vec<[Vec3d; 3]>| {
+            triangles
+                .iter()
+                .map(|t| vec::length(vec::cross(t[1] - t[0], t[2] - t[0])) / 2.0)
+                .sum::<f64>()
+        };
+        assert!((area(mesh) - area(paint_triangles(&face, &polygon, None))).abs() < 1e-6);
+        assert_eq!(paint.with_alpha(44).alpha(), 44);
     }
 
     #[test]
     fn a_gradient_placed_on_the_face_runs_between_its_ends() {
         let (face, polygon) = top_face();
         let stops = GradientStops::new(&[
-            ColorStop { position: 0.0, color: Rgb::new(255, 0, 0) },
-            ColorStop { position: 1.0, color: Rgb::new(0, 0, 255) },
-        ]).unwrap();
-        let ends = GradientEnds { start: [0.25, 0.5], end: [0.75, 0.5] };
+            ColorStop {
+                position: 0.0,
+                color: Rgb::new(255, 0, 0),
+            },
+            ColorStop {
+                position: 1.0,
+                color: Rgb::new(0, 0, 255),
+            },
+        ])
+        .unwrap();
+        let ends = GradientEnds {
+            start: [0.25, 0.5],
+            end: [0.75, 0.5],
+        };
         for radial in [false, true] {
-            let paint = FaceColor::MultiGradient { stops, radial, angle: 0.0, alpha: 255, ends: Some(ends) };
+            let paint = FaceColor::MultiGradient {
+                stops,
+                radial,
+                angle: 0.0,
+                alpha: 255,
+                ends: Some(ends),
+            };
             let sampler = PaintOnFace::new(&face, &polygon, paint);
             let start = sampler.from_bounds(ends.start);
             let end = sampler.from_bounds(ends.end);
@@ -956,22 +1159,48 @@ mod tests {
             assert!((sampler.position_at_uv(start + (end - start) * 0.5) - 0.5).abs() < 1e-5);
             assert_eq!(sampler.ends(), Some(ends));
             let mesh = paint_triangles(&face, &polygon, Some(paint));
-            let area = |triangles: Vec<[Vec3d;3]>| triangles.iter().map(|t| vec::length(vec::cross(t[1]-t[0],t[2]-t[0]))/2.0).sum::<f64>();
+            let area = |triangles: Vec<[Vec3d; 3]>| {
+                triangles
+                    .iter()
+                    .map(|t| vec::length(vec::cross(t[1] - t[0], t[2] - t[0])) / 2.0)
+                    .sum::<f64>()
+            };
             let (painted, whole) = (area(mesh), area(paint_triangles(&face, &polygon, None)));
-            assert!((painted - whole).abs() < 1e-3, "radial {radial}: {painted} of {whole}");
+            assert!(
+                (painted - whole).abs() < 1e-3,
+                "radial {radial}: {painted} of {whole}"
+            );
         }
     }
 
     #[test]
     fn a_fitted_gradient_has_ends_that_paint_the_same() {
         let (face, polygon) = top_face();
-        let fitted = FaceColor::MultiGradient { stops: three_stops(), radial: false, angle: 37.0, alpha: 255, ends: None };
+        let fitted = FaceColor::MultiGradient {
+            stops: three_stops(),
+            radial: false,
+            angle: 37.0,
+            alpha: 255,
+            ends: None,
+        };
         let ends = PaintOnFace::new(&face, &polygon, fitted).ends().unwrap();
-        let placed = FaceColor::MultiGradient { stops: three_stops(), radial: false, angle: 37.0, alpha: 255, ends: Some(ends) };
-        let (a, b) = (PaintOnFace::new(&face, &polygon, fitted), PaintOnFace::new(&face, &polygon, placed));
+        let placed = FaceColor::MultiGradient {
+            stops: three_stops(),
+            radial: false,
+            angle: 37.0,
+            alpha: 255,
+            ends: Some(ends),
+        };
+        let (a, b) = (
+            PaintOnFace::new(&face, &polygon, fitted),
+            PaintOnFace::new(&face, &polygon, placed),
+        );
         for corner in &polygon {
             let (x, y) = (a.at(&face, *corner), b.at(&face, *corner));
-            assert!(x.iter().zip(y).all(|(x, y)| (x - y).abs() < 1e-4), "{x:?} {y:?}");
+            assert!(
+                x.iter().zip(y).all(|(x, y)| (x - y).abs() < 1e-4),
+                "{x:?} {y:?}"
+            );
         }
     }
 
@@ -979,17 +1208,40 @@ mod tests {
     fn linear_gradient_mesh_keeps_narrow_interior_stops() {
         let (face, polygon) = top_face();
         let stops = GradientStops::new(&[
-            ColorStop { position: 0.0, color: Rgb::new(0,0,0) },
-            ColorStop { position: 0.501, color: Rgb::new(255,0,0) },
-            ColorStop { position: 0.502, color: Rgb::new(0,255,0) },
-            ColorStop { position: 1.0, color: Rgb::new(0,0,255) },
-        ]).unwrap();
-        let paint = FaceColor::MultiGradient { stops, radial: false, angle: 37.0, alpha: 255, ends: None };
+            ColorStop {
+                position: 0.0,
+                color: Rgb::new(0, 0, 0),
+            },
+            ColorStop {
+                position: 0.501,
+                color: Rgb::new(255, 0, 0),
+            },
+            ColorStop {
+                position: 0.502,
+                color: Rgb::new(0, 255, 0),
+            },
+            ColorStop {
+                position: 1.0,
+                color: Rgb::new(0, 0, 255),
+            },
+        ])
+        .unwrap();
+        let paint = FaceColor::MultiGradient {
+            stops,
+            radial: false,
+            angle: 37.0,
+            alpha: 255,
+            ends: None,
+        };
         let sampler = PaintOnFace::new(&face, &polygon, paint);
         let mesh = paint_triangles(&face, &polygon, Some(paint));
         assert!(mesh.len() < 30);
-        for expected in [[1.0,0.0,0.0], [0.0,1.0,0.0]] {
-            assert!(mesh.iter().flatten().any(|p| sampler.at(&face,*p).iter().zip(expected).all(|(a,b)| (a-b).abs()<0.001)));
+        for expected in [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]] {
+            assert!(mesh.iter().flatten().any(|p| sampler
+                .at(&face, *p)
+                .iter()
+                .zip(expected)
+                .all(|(a, b)| (a - b).abs() < 0.001)));
         }
     }
 
@@ -1008,11 +1260,20 @@ mod tests {
         face.shear_uv_about(origin, Vec2f::new(0.4, 0.0));
 
         let after = face.uv_coords(anchor);
-        assert!((after.x() - origin.x()).abs() < 1e-3, "{after:?} vs {origin:?}");
-        assert!((after.y() - origin.y()).abs() < 1e-3, "{after:?} vs {origin:?}");
+        assert!(
+            (after.x() - origin.x()).abs() < 1e-3,
+            "{after:?} vs {origin:?}"
+        );
+        assert!(
+            (after.y() - origin.y()).abs() < 1e-3,
+            "{after:?} vs {origin:?}"
+        );
         // And the material really is skewed: a point along U now has a different V.
         let along_u = face.uv_coords(anchor + Vec3d::new(10.0, 0.0, 0.0));
-        assert!((along_u.y() - origin.y()).abs() > 1e-3, "nothing was sheared");
+        assert!(
+            (along_u.y() - origin.y()).abs() > 1e-3,
+            "nothing was sheared"
+        );
     }
 
     #[test]
@@ -1028,11 +1289,20 @@ mod tests {
             .iter()
             .map(|corner| gradient.at(&face, *corner)[0])
             .collect();
-        assert!(colours.iter().any(|c| *c < 1e-6), "a corner is the start colour");
-        assert!(colours.iter().any(|c| *c > 1.0 - 1e-6), "a corner is the end colour");
+        assert!(
+            colours.iter().any(|c| *c < 1e-6),
+            "a corner is the start colour"
+        );
+        assert!(
+            colours.iter().any(|c| *c > 1.0 - 1e-6),
+            "a corner is the end colour"
+        );
 
         let middle = gradient.at(&face, Vec3d::new(16.0, 16.0, 32.0))[0];
-        assert!((middle - 0.5).abs() < 1e-6, "the middle is halfway: {middle}");
+        assert!(
+            (middle - 0.5).abs() < 1e-6,
+            "the middle is halfway: {middle}"
+        );
     }
 
     #[test]

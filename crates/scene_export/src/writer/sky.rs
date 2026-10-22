@@ -29,7 +29,9 @@ impl Sky {
     /// `fog_light_color` and `fog_density`, over the editor's own.
     pub fn with_worldspawn(mut self, level: &crate::level::Level) -> Self {
         use crate::level::Value;
-        let Some(world) = level.entities.iter().find(|e| e.classname == "worldspawn") else { return self };
+        let Some(world) = level.entities.iter().find(|e| e.classname == "worldspawn") else {
+            return self;
+        };
         let switch = |key: &str| match world.properties.get(key) {
             Some(Value::Int(n)) => *n == 1,
             Some(Value::Bool(b)) => *b,
@@ -40,9 +42,16 @@ impl Sky {
             match world.properties.get(key)? {
                 Value::Color(c) => Some([c[0] as f32, c[1] as f32, c[2] as f32]),
                 Value::String(s) => {
-                    let v: Vec<f32> = s.split_whitespace().filter_map(|x| x.parse().ok()).collect();
+                    let v: Vec<f32> = s
+                        .split_whitespace()
+                        .filter_map(|x| x.parse().ok())
+                        .collect();
                     (v.len() >= 3).then(|| {
-                        let scale = if v[..3].iter().any(|x| *x > 1.) { 255. } else { 1. };
+                        let scale = if v[..3].iter().any(|x| *x > 1.) {
+                            255.
+                        } else {
+                            1.
+                        };
                         [v[0] / scale, v[1] / scale, v[2] / scale]
                     })
                 }
@@ -50,8 +59,12 @@ impl Sky {
             }
         };
         if switch("sky") {
-            if let Some(top) = color("sky_top_color") { self.sky = top; }
-            if let Some(horizon) = color("sky_horizon_color") { self.horizon = horizon; }
+            if let Some(top) = color("sky_top_color") {
+                self.sky = top;
+            }
+            if let Some(horizon) = color("sky_horizon_color") {
+                self.horizon = horizon;
+            }
         }
         if switch("fog_enabled") {
             let density = match world.properties.get("fog_density") {
@@ -60,7 +73,10 @@ impl Sky {
                 Some(Value::String(s)) => s.trim().parse().unwrap_or(0.01),
                 _ => 0.01,
             };
-            self.fog = Some((color("fog_light_color").unwrap_or(self.horizon), density.max(0.)));
+            self.fog = Some((
+                color("fog_light_color").unwrap_or(self.horizon),
+                density.max(0.),
+            ));
         }
         self
     }
@@ -68,7 +84,11 @@ impl Sky {
 
 type V = [f32; 3];
 fn mix(a: V, b: V, t: f32) -> V {
-    [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
+    [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+    ]
 }
 fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
     let t = ((x - e0) / (e1 - e0)).clamp(0., 1.);
@@ -85,7 +105,10 @@ fn normalize(v: V) -> V {
 impl Sky {
     /// The direction towards the sun in map space (Z up).
     pub fn to_sun_map(&self) -> V {
-        let (e, a) = (self.sun_elevation.to_radians(), self.sun_azimuth.to_radians());
+        let (e, a) = (
+            self.sun_elevation.to_radians(),
+            self.sun_azimuth.to_radians(),
+        );
         [e.cos() * a.cos(), e.cos() * a.sin(), e.sin()]
     }
     /// The direction towards the sun in the exported frame: right-handed and Y up, the
@@ -104,7 +127,11 @@ impl Sky {
         let flat = (direction[0] * sun[0] + direction[1] * sun[1]).max(0.);
         let facing = flat * flat * flat;
         let horizon = mix(self.horizon, [1.0, 0.40, 0.12], sunset * facing * 0.55);
-        let zenith = mix(self.sky, [self.sky[0] * 0.65, self.sky[1] * 0.55, self.sky[2] * 0.85], sunset * 0.3);
+        let zenith = mix(
+            self.sky,
+            [self.sky[0] * 0.65, self.sky[1] * 0.55, self.sky[2] * 0.85],
+            sunset * 0.3,
+        );
         let above = mix(horizon, zenith, up.max(0.).powf(0.38));
         let below = mix(horizon, self.ground, (-up).max(0.).powf(0.35));
         let base = if up >= 0. { above } else { below };
@@ -112,7 +139,9 @@ impl Sky {
         let angle = dot(direction, sun).clamp(-1., 1.).acos();
         let halo = 0.65 * (-angle * 18.).exp() + 0.12 * (-angle * 3.).exp();
         let warmth = mix([1., 1., 1.], [1.0, 0.48, 0.16], sunset);
-        let glow = halo * smoothstep(-0.12, 0.06, up) * smoothstep(-0.06, 0., sun_height + 0.75f32.to_radians());
+        let glow = halo
+            * smoothstep(-0.12, 0.06, up)
+            * smoothstep(-0.06, 0., sun_height + 0.75f32.to_radians());
         [0, 1, 2].map(|i| base[i] * night + self.sun_color[i] * warmth[i] * glow)
     }
 
@@ -157,9 +186,13 @@ impl Sky {
         const DFD_LENGTH: u32 = 92;
         let data_offset = (DFD_OFFSET + DFD_LENGTH).next_multiple_of(8);
         let face_bytes = (size * size * 8) as u64;
-        let mut out = vec![0xAB, b'K', b'T', b'X', b' ', b'2', b'0', 0xBB, b'\r', b'\n', 0x1A, b'\n'];
+        let mut out = vec![
+            0xAB, b'K', b'T', b'X', b' ', b'2', b'0', 0xBB, b'\r', b'\n', 0x1A, b'\n',
+        ];
         // VK_FORMAT_R16G16B16A16_SFLOAT, type size, width, height, depth, layers, faces, levels, supercompression.
-        for value in [97u32, 2, size, size, 0, 0, 6, 1, 0, DFD_OFFSET, DFD_LENGTH, 0, 0] {
+        for value in [
+            97u32, 2, size, size, 0, 0, 6, 1, 0, DFD_OFFSET, DFD_LENGTH, 0, 0,
+        ] {
             out.extend(value.to_le_bytes());
         }
         for value in [0u64, 0, data_offset as u64, face_bytes * 6, face_bytes * 6] {
@@ -171,7 +204,12 @@ impl Sky {
             out.extend(value.to_le_bytes());
         }
         for (channel, offset) in [(0u32, 0u32), (1, 16), (2, 32), (15, 48)] {
-            for value in [offset | (15 << 16) | ((channel | 0xC0) << 24), 0, 0xBF80_0000, 0x3F80_0000] {
+            for value in [
+                offset | (15 << 16) | ((channel | 0xC0) << 24),
+                0,
+                0xBF80_0000,
+                0x3F80_0000,
+            ] {
                 out.extend(value.to_le_bytes());
             }
         }
@@ -207,7 +245,11 @@ pub fn cube_direction(face: usize, u: f32, v: f32) -> V {
 
 fn srgb(linear: f32) -> u8 {
     let c = linear.clamp(0., 1.);
-    let encoded = if c <= 0.0031308 { c * 12.92 } else { 1.055 * c.powf(1. / 2.4) - 0.055 };
+    let encoded = if c <= 0.0031308 {
+        c * 12.92
+    } else {
+        1.055 * c.powf(1. / 2.4) - 0.055
+    };
     (encoded * 255. + 0.5) as u8
 }
 
@@ -221,13 +263,24 @@ impl Sky {
 
     /// Six faces as they look on screen in the 3D view, after its exposure and AgX
     /// tone mapping: for an engine that draws a texture's colour as it is.
-    pub fn display_faces(&self, size: u32, direction: impl Fn(usize, f32, f32) -> V) -> Vec<Vec<u8>> {
+    pub fn display_faces(
+        &self,
+        size: u32,
+        direction: impl Fn(usize, f32, f32) -> V,
+    ) -> Vec<Vec<u8>> {
         let exposure = self.exposure * AGX_EXPOSURE;
         self.png_faces_mapped(size, direction, |c| agx(c.map(|v| v * exposure)))
     }
 
-    fn png_faces_mapped(&self, size: u32, direction: impl Fn(usize, f32, f32) -> V, map: impl Fn(V) -> V) -> Vec<Vec<u8>> {
-        (0..6).map(|face| png(size, size, &self.face_rgba(face, size, &direction, &map))).collect()
+    fn png_faces_mapped(
+        &self,
+        size: u32,
+        direction: impl Fn(usize, f32, f32) -> V,
+        map: impl Fn(V) -> V,
+    ) -> Vec<Vec<u8>> {
+        (0..6)
+            .map(|face| png(size, size, &self.face_rgba(face, size, &direction, &map)))
+            .collect()
     }
 
     /// The six display faces stacked top to bottom in one PNG, `size` wide and six
@@ -235,11 +288,19 @@ impl Sky {
     pub fn display_strip(&self, size: u32, direction: impl Fn(usize, f32, f32) -> V) -> Vec<u8> {
         let exposure = self.exposure * AGX_EXPOSURE;
         let map = |c: V| agx(c.map(|v| v * exposure));
-        let rgba: Vec<u8> = (0..6).flat_map(|face| self.face_rgba(face, size, &direction, &map)).collect();
+        let rgba: Vec<u8> = (0..6)
+            .flat_map(|face| self.face_rgba(face, size, &direction, &map))
+            .collect();
         png(size, size * 6, &rgba)
     }
 
-    fn face_rgba(&self, face: usize, size: u32, direction: &impl Fn(usize, f32, f32) -> V, map: &impl Fn(V) -> V) -> Vec<u8> {
+    fn face_rgba(
+        &self,
+        face: usize,
+        size: u32,
+        direction: &impl Fn(usize, f32, f32) -> V,
+        map: &impl Fn(V) -> V,
+    ) -> Vec<u8> {
         let mut rgba = Vec::with_capacity((size * size * 4) as usize);
         for y in 0..size {
             for x in 0..size {
@@ -257,11 +318,20 @@ impl Sky {
     /// An equirectangular panorama as a Radiance `.hdr` (RGBE, flat scanlines), for an
     /// engine that takes the sky as one HDR image. `direction` gives the exported-frame
     /// direction of each pixel from its `u` (across) and `v` (down), both in 0..1.
-    pub fn panorama_hdr(&self, width: u32, height: u32, direction: impl Fn(f32, f32) -> V) -> Vec<u8> {
-        let mut out = format!("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y {height} +X {width}\n").into_bytes();
+    pub fn panorama_hdr(
+        &self,
+        width: u32,
+        height: u32,
+        direction: impl Fn(f32, f32) -> V,
+    ) -> Vec<u8> {
+        let mut out =
+            format!("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y {height} +X {width}\n").into_bytes();
         for y in 0..height {
             for x in 0..width {
-                let c = self.radiance(direction((x as f32 + 0.5) / width as f32, (y as f32 + 0.5) / height as f32));
+                let c = self.radiance(direction(
+                    (x as f32 + 0.5) / width as f32,
+                    (y as f32 + 0.5) / height as f32,
+                ));
                 out.extend(rgbe(c));
             }
         }
@@ -273,15 +343,26 @@ impl Sky {
 /// it: `u` turns from -Z through +X, `v` runs from straight up to straight down.
 pub fn godot_panorama_direction(u: f32, v: f32) -> V {
     let (phi, theta) = (u * std::f32::consts::TAU, v * std::f32::consts::PI);
-    [theta.sin() * phi.sin(), theta.cos(), -theta.sin() * phi.cos()]
+    [
+        theta.sin() * phi.sin(),
+        theta.cos(),
+        -theta.sin() * phi.cos(),
+    ]
 }
 
 /// The direction a panorama pixel looks along as three.js samples an equirectangular
 /// texture loaded top row first: `u` turns from -X through +Z, `v` runs from straight
 /// up to straight down.
 pub fn three_panorama_direction(u: f32, v: f32) -> V {
-    let (phi, latitude) = ((u - 0.5) * std::f32::consts::TAU, (0.5 - v) * std::f32::consts::PI);
-    [phi.cos() * latitude.cos(), latitude.sin(), phi.sin() * latitude.cos()]
+    let (phi, latitude) = (
+        (u - 0.5) * std::f32::consts::TAU,
+        (0.5 - v) * std::f32::consts::PI,
+    );
+    [
+        phi.cos() * latitude.cos(),
+        latitude.sin(),
+        phi.sin() * latitude.cos(),
+    ]
 }
 
 /// The view's exposure multiplier ahead of AgX (render_wgpu `post.wgsl`).
@@ -291,14 +372,26 @@ const AGX_EXPOSURE: f32 = 1.8;
 /// colour out.
 fn agx(color: V) -> V {
     // Columns, as WGSL's mat3x3 takes them.
-    const INSET: [V; 3] = [[0.842479062253094, 0.0423282422610123, 0.0423756549057051], [0.0784335999999992, 0.878468636469772, 0.0784336], [0.0792237451477643, 0.0791661274605434, 0.879142973793104]];
-    const OUTSET: [V; 3] = [[1.19687900512017, -0.0528968517574562, -0.0529716355144438], [-0.0980208811401368, 1.15190312990417, -0.0980434501171241], [-0.0990297440797205, -0.0989611768448433, 1.15107367264116]];
-    let apply = |m: &[V; 3], x: V| [0, 1, 2].map(|i| m[0][i] * x[0] + m[1][i] * x[1] + m[2][i] * x[2]);
+    const INSET: [V; 3] = [
+        [0.842479062253094, 0.0423282422610123, 0.0423756549057051],
+        [0.0784335999999992, 0.878468636469772, 0.0784336],
+        [0.0792237451477643, 0.0791661274605434, 0.879142973793104],
+    ];
+    const OUTSET: [V; 3] = [
+        [1.19687900512017, -0.0528968517574562, -0.0529716355144438],
+        [-0.0980208811401368, 1.15190312990417, -0.0980434501171241],
+        [-0.0990297440797205, -0.0989611768448433, 1.15107367264116],
+    ];
+    let apply =
+        |m: &[V; 3], x: V| [0, 1, 2].map(|i| m[0][i] * x[0] + m[1][i] * x[1] + m[2][i] * x[2]);
     let (min_ev, max_ev) = (-12.47393f32, 4.026069f32);
     let x = apply(&INSET, color.map(|v| v.max(1e-10))).map(|v| {
         let x = ((v.log2() - min_ev) / (max_ev - min_ev)).clamp(0., 1.);
         let (x2, x4) = (x * x, x * x * x * x);
-        let x = 15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + 0.4298 * x2 + 0.1191 * x - 0.00232;
+        let x = 15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x
+            + 0.4298 * x2
+            + 0.1191 * x
+            - 0.00232;
         x.max(0.).powf(1.2)
     });
     let luma = 0.2126 * x[0] + 0.7152 * x[1] + 0.0722 * x[2];
@@ -314,7 +407,12 @@ fn rgbe(c: V) -> [u8; 4] {
     }
     let exponent = m.log2().floor() as i32 + 1;
     let scale = 256. / 2f32.powi(exponent);
-    [(c[0] * scale) as u8, (c[1] * scale) as u8, (c[2] * scale) as u8, (exponent + 128) as u8]
+    [
+        (c[0] * scale) as u8,
+        (c[1] * scale) as u8,
+        (c[2] * scale) as u8,
+        (exponent + 128) as u8,
+    ]
 }
 
 fn png(width: u32, height: u32, rgba: &[u8]) -> Vec<u8> {
@@ -322,7 +420,10 @@ fn png(width: u32, height: u32, rgba: &[u8]) -> Vec<u8> {
     let mut encoder = png::Encoder::new(&mut out, width, height);
     encoder.set_color(png::ColorType::Rgba);
     encoder.set_depth(png::BitDepth::Eight);
-    encoder.write_header().and_then(|mut w| w.write_image_data(rgba)).expect("PNG into memory");
+    encoder
+        .write_header()
+        .and_then(|mut w| w.write_image_data(rgba))
+        .expect("PNG into memory");
     out
 }
 
@@ -389,7 +490,18 @@ mod tests {
     use super::*;
 
     fn sky() -> Sky {
-        Sky { sky: [0.1, 0.4, 0.85], horizon: [0.7, 0.8, 0.9], ground: [0.2, 0.18, 0.15], sun_color: [1., 0.95, 0.9], sun_intensity: 3., ambient_intensity: 1., sun_elevation: 45., sun_azimuth: 135., exposure: 1., fog: None }
+        Sky {
+            sky: [0.1, 0.4, 0.85],
+            horizon: [0.7, 0.8, 0.9],
+            ground: [0.2, 0.18, 0.15],
+            sun_color: [1., 0.95, 0.9],
+            sun_intensity: 3.,
+            ambient_intensity: 1.,
+            sun_elevation: 45.,
+            sun_azimuth: 135.,
+            exposure: 1.,
+            fog: None,
+        }
     }
 
     #[test]
@@ -422,7 +534,11 @@ mod tests {
         let bytes = sky().cube_dds(8, false);
         assert_eq!(&bytes[0..4], b"DDS ");
         assert_eq!(bytes.len(), 148 + 6 * 8 * 8 * 8);
-        assert_eq!(u32::from_le_bytes(bytes[128..132].try_into().unwrap()), 10, "RGBA16F");
+        assert_eq!(
+            u32::from_le_bytes(bytes[128..132].try_into().unwrap()),
+            10,
+            "RGBA16F"
+        );
         // The +Y face, whose centre looks straight up, holds the zenith.
         let face = 148 + 2 * 8 * 8 * 8;
         let centre = face + (4 * 8 + 4) * 8;
@@ -433,23 +549,55 @@ mod tests {
     fn half_to_f32(h: u16) -> f32 {
         let e = ((h >> 10) & 0x1f) as i32;
         let m = (h & 0x3ff) as f32;
-        let v = if e == 0 { m / 1024. * 2f32.powi(-14) } else { (1. + m / 1024.) * 2f32.powi(e - 15) };
-        if h & 0x8000 != 0 { -v } else { v }
+        let v = if e == 0 {
+            m / 1024. * 2f32.powi(-14)
+        } else {
+            (1. + m / 1024.) * 2f32.powi(e - 15)
+        };
+        if h & 0x8000 != 0 {
+            -v
+        } else {
+            v
+        }
     }
 
     #[test]
     fn a_worldspawn_that_sets_its_sky_and_fog_overrides_the_editors() {
         use crate::level::{Entity, Level, Value};
-        let mut world = Entity { name: "worldspawn".into(), classname: "worldspawn".into(), ..Default::default() };
+        let mut world = Entity {
+            name: "worldspawn".into(),
+            classname: "worldspawn".into(),
+            ..Default::default()
+        };
         world.properties.insert("sky".into(), Value::Int(0));
-        world.properties.insert("sky_top_color".into(), Value::Color([0.25, 0.5, 1., 1.]));
-        let mut level = Level { format: 2, generator: "test".into(), name: "a".into(), scale: 32., textures: vec![], entities: vec![world] };
-        assert_eq!(sky().with_worldspawn(&level), sky(), "0 leaves the editor's sky");
+        world
+            .properties
+            .insert("sky_top_color".into(), Value::Color([0.25, 0.5, 1., 1.]));
+        let mut level = Level {
+            format: 2,
+            generator: "test".into(),
+            name: "a".into(),
+            scale: 32.,
+            textures: vec![],
+            entities: vec![world],
+        };
+        assert_eq!(
+            sky().with_worldspawn(&level),
+            sky(),
+            "0 leaves the editor's sky"
+        );
         let world = &mut level.entities[0];
         world.properties.insert("sky".into(), Value::Int(1));
-        world.properties.insert("sky_horizon_color".into(), Value::String("255 128 0".into()));
-        world.properties.insert("fog_enabled".into(), Value::String("1".into()));
-        world.properties.insert("fog_density".into(), Value::Float(0.05));
+        world.properties.insert(
+            "sky_horizon_color".into(),
+            Value::String("255 128 0".into()),
+        );
+        world
+            .properties
+            .insert("fog_enabled".into(), Value::String("1".into()));
+        world
+            .properties
+            .insert("fog_density".into(), Value::Float(0.05));
         let s = sky().with_worldspawn(&level);
         assert_eq!((s.sky, s.horizon), ([0.25, 0.5, 1.], [1., 128. / 255., 0.]));
         assert_eq!(s.fog, Some(([1., 128. / 255., 0.], 0.05)));
@@ -475,7 +623,10 @@ mod tests {
     fn agx_keeps_black_black_and_mid_grey_near_the_views() {
         assert!(agx([0.; 3])[0] < 1e-3);
         let grey = agx([0.18 * AGX_EXPOSURE; 3]);
-        assert!(grey[0] > 0.1 && grey[0] < 0.4 && (grey[0] - grey[2]).abs() < 1e-3, "{grey:?}");
+        assert!(
+            grey[0] > 0.1 && grey[0] < 0.4 && (grey[0] - grey[2]).abs() < 1e-3,
+            "{grey:?}"
+        );
         assert!(agx([100.; 3])[0] <= 1.05);
     }
 
@@ -484,7 +635,11 @@ mod tests {
         let bytes = sky().cube_ktx2(4, cube_direction);
         assert_eq!(&bytes[..12], b"\xABKTX 20\xBB\r\n\x1A\n");
         let word = |at: usize| u32::from_le_bytes(bytes[at..at + 4].try_into().unwrap());
-        assert_eq!((word(12), word(20), word(36)), (97, 4, 6), "format, width, faces");
+        assert_eq!(
+            (word(12), word(20), word(36)),
+            (97, 4, 6),
+            "format, width, faces"
+        );
         let offset = u64::from_le_bytes(bytes[80..88].try_into().unwrap()) as usize;
         assert_eq!(offset % 8, 0);
         assert_eq!(word(104), 92, "descriptor size");

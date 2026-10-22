@@ -9,11 +9,11 @@
 //!
 //! Changing the format is allowed. Changing it without noticing is not.
 
+use geometry_math::bbox::Bbox3d;
 use map_model::io::map_reader::read_map;
 use map_model::io::map_writer::write_map;
 use map_model::map_format::MapFormat;
 use map_model::node::{build_tree, flatten_tree};
-use geometry_math::bbox::Bbox3d;
 
 const FIXTURE: &str = include_str!("fixtures/format.map");
 
@@ -25,7 +25,11 @@ fn world_bounds() -> Bbox3d {
 fn round_trip(source: &str) -> String {
     let map = read_map(source, None).expect("it reads");
     let tree = build_tree(&map, &world_bounds());
-    write_map(&flatten_tree(&tree.world, MapFormat::LOSSLESS, map.game.clone()))
+    write_map(&flatten_tree(
+        &tree.world,
+        MapFormat::LOSSLESS,
+        map.game.clone(),
+    ))
 }
 
 #[test]
@@ -55,20 +59,44 @@ fn writing_is_a_fixed_point() {
 #[test]
 fn the_fixture_carries_one_of_everything() {
     let claims: [(&str, &str); 15] = [
-        ("the version of the editor's own notes", "// heron_brush format 3"),
-        ("an unresolved brush-primitive matrix", "primitive_uv 0.0078125 0 0.25 0 0.015625 -0.125"),
+        (
+            "the version of the editor's own notes",
+            "// heron_brush format 3",
+        ),
+        (
+            "an unresolved brush-primitive matrix",
+            "primitive_uv 0.0078125 0 0.25 0 0.015625 -0.125",
+        ),
         ("a durable id", "// heron_brush id "),
-        ("a Valve face, with its own UV axes", "[ 0 1 0 4 ] [ 0 0 -1 8 ]"),
+        (
+            "a Valve face, with its own UV axes",
+            "[ 0 1 0 4 ] [ 0 0 -1 8 ]",
+        ),
         ("a Standard face, deriving them", "south 12 16 0 1 1"),
         ("the Quake 2 surface flag trio", "1 8 700"),
-        ("a colour shared by every face of a brush", "\n// heron_brush color 210 90 40\n"),
-        ("a gradient shared by every face", "\n// heron_brush gradient 20 40 90 200 220 255 35\n"),
+        (
+            "a colour shared by every face of a brush",
+            "\n// heron_brush color 210 90 40\n",
+        ),
+        (
+            "a gradient shared by every face",
+            "\n// heron_brush gradient 20 40 90 200 220 255 35\n",
+        ),
         ("a Bezier patch", "patchDef2"),
-        ("a patch control point, five numbers in one bracket", "( -64 0 32 0 0.5 )"),
+        (
+            "a patch control point, five numbers in one bracket",
+            "( -64 0 32 0 0.5 )",
+        ),
         ("a layer", "\"_tb_type\" \"_tb_layer\""),
-        ("a layer left out of exports", "\"_tb_layer_omit_from_export\" \"1\""),
+        (
+            "a layer left out of exports",
+            "\"_tb_layer_omit_from_export\" \"1\"",
+        ),
         ("an entity on a layer", "\"_tb_layer\" \"7\""),
-        ("a protected property", "\"_tb_protected_properties\" \"targetname\""),
+        (
+            "a protected property",
+            "\"_tb_protected_properties\" \"targetname\"",
+        ),
         ("a point entity", "\"classname\" \"info_player_start\""),
     ];
     for (what, text) in claims {
@@ -148,7 +176,10 @@ fn every_entity_and_brush_is_named_by_the_line_above_it() {
     let brushes: Vec<usize> = (0..lines.len())
         .filter(|at| lines[*at].starts_with("// brush "))
         .collect();
-    assert!(entities.len() >= 3 && brushes.len() >= 2, "the fixture shrank");
+    assert!(
+        entities.len() >= 3 && brushes.len() >= 2,
+        "the fixture shrank"
+    );
 
     for at in brushes {
         assert!(named(at), "the brush at line {} has no id", at + 1);
@@ -200,7 +231,14 @@ fn a_uniform_colour_is_written_once_and_a_mixed_one_per_face() {
         "one comment for the whole brush:\n{uniform}"
     );
 
-    let mixed = round_trip(&map(brush(&[all, all, all, all, all, " // heron_brush color 99 99 99"])));
+    let mixed = round_trip(&map(brush(&[
+        all,
+        all,
+        all,
+        all,
+        all,
+        " // heron_brush color 99 99 99",
+    ])));
     assert_eq!(
         mixed.matches("heron_brush color").count(),
         6,
@@ -222,9 +260,14 @@ fn a_map_from_a_newer_editor_is_reported_rather_than_quietly_read() {
         map_model::map_format::NOTES_VERSION + 1
     );
     let map = read_map(&from_the_future, None).expect("it still reads");
-    assert_eq!(map.notes_version, Some(map_model::map_format::NOTES_VERSION + 1));
+    assert_eq!(
+        map.notes_version,
+        Some(map_model::map_format::NOTES_VERSION + 1)
+    );
     assert!(
-        map.warnings.iter().any(|w| w.message.contains("newer Heron Brush")),
+        map.warnings
+            .iter()
+            .any(|w| w.message.contains("newer Heron Brush")),
         "{:?}",
         map.warnings
     );
@@ -235,7 +278,6 @@ fn a_map_from_a_newer_editor_is_reported_rather_than_quietly_read() {
     assert!(plain.warnings.is_empty(), "{:?}", plain.warnings);
 }
 
-
 #[test]
 fn consuming_the_map_preserves_the_complete_frozen_format() {
     let map = read_map(FIXTURE, None).unwrap();
@@ -243,5 +285,8 @@ fn consuming_the_map_preserves_the_complete_frozen_format() {
     let borrowed = build_tree(&map, &world_bounds());
     let owned = map_model::node::build_tree_owned(map, &world_bounds());
     assert_eq!(borrowed.warnings, owned.warnings);
-    assert_eq!(write_map(&flatten_tree(&owned.world, MapFormat::LOSSLESS, game)), FIXTURE);
+    assert_eq!(
+        write_map(&flatten_tree(&owned.world, MapFormat::LOSSLESS, game)),
+        FIXTURE
+    );
 }

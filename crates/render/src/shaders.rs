@@ -48,7 +48,7 @@ vec3 mapped_normal(vec3 n, vec3 position, vec2 texels) {
 "#;
 
 pub fn normal_mapping(source: &str) -> String {
-    source.replace("// NORMAL_MAPPING",NORMAL_MAPPING)
+    source.replace("// NORMAL_MAPPING", NORMAL_MAPPING)
 }
 
 /// Writes depth and nothing else, for the shadow map.
@@ -795,7 +795,6 @@ void main() {
     fragment = vec4(pow(mapped, vec3(1.0 / 2.2)), 1.0);
 }
 "#;
-
 
 /// Screen-space reflections.
 ///

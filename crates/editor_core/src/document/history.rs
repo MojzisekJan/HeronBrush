@@ -1,17 +1,43 @@
 //! Document operations for history.
 
-use super::{Document, Edit, EditListener, HashMap, HashSet, History, Node, NodeId, Rc, Repeatable, brush_node, brush_vertices, node, remove_nodes, touched_ids};
+use super::{
+    brush_node, brush_vertices, node, remove_nodes, touched_ids, Document, Edit, EditListener,
+    HashMap, HashSet, History, Node, NodeId, Rc, Repeatable,
+};
 
 impl Document {
-    pub fn set_face_color_live(&mut self, color: Option<map_model::brush_face::FaceColor>, picked: &[super::FaceRef], session: &mut super::LivePaint) -> usize {
-        let selection=self.selection_snapshot();
-        let mark=session.state.as_ref().filter(|(revision,_,old,faces,time)|
-            *revision==self.revision() && old==&selection && faces==picked && time.elapsed()<web_time::Duration::from_millis(600))
-            .map(|(_,mark,..)|*mark).unwrap_or_else(||self.history.undo_len());
-        let changed=if picked.is_empty(){self.set_face_color(color)}else{self.set_face_color_on(picked,color)};
-        if changed>0 {
+    pub fn set_face_color_live(
+        &mut self,
+        color: Option<map_model::brush_face::FaceColor>,
+        picked: &[super::FaceRef],
+        session: &mut super::LivePaint,
+    ) -> usize {
+        let selection = self.selection_snapshot();
+        let mark = session
+            .state
+            .as_ref()
+            .filter(|(revision, _, old, faces, time)| {
+                *revision == self.revision()
+                    && old == &selection
+                    && faces == picked
+                    && time.elapsed() < web_time::Duration::from_millis(600)
+            })
+            .map(|(_, mark, ..)| *mark)
+            .unwrap_or_else(|| self.history.undo_len());
+        let changed = if picked.is_empty() {
+            self.set_face_color(color)
+        } else {
+            self.set_face_color_on(picked, color)
+        };
+        if changed > 0 {
             self.history.coalesce_since(mark);
-            session.state=Some((self.revision(),mark,selection,picked.to_vec(),web_time::Instant::now()));
+            session.state = Some((
+                self.revision(),
+                mark,
+                selection,
+                picked.to_vec(),
+                web_time::Instant::now(),
+            ));
         }
         changed
     }
@@ -25,7 +51,12 @@ impl Document {
     /// Paints `picked`, folding this edit and every one since `mark` into one undo step:
     /// a handle dragged or a colour picked live, which undoes in one go however long it
     /// took.
-    pub fn set_face_color_since(&mut self, color: Option<map_model::brush_face::FaceColor>, picked: &[super::FaceRef], mark: usize) -> usize {
+    pub fn set_face_color_since(
+        &mut self,
+        color: Option<map_model::brush_face::FaceColor>,
+        picked: &[super::FaceRef],
+        mark: usize,
+    ) -> usize {
         let changed = self.set_face_color_on(picked, color);
         if changed > 0 && self.history.undo_len() > mark {
             self.history.coalesce_since(mark);
@@ -33,15 +64,38 @@ impl Document {
         changed
     }
 
-    pub fn set_surface_material_live(&mut self, color: Option<map_model::brush_face::SurfaceMaterial>, picked: &[super::FaceRef], session: &mut super::LivePaint) -> usize {
-        let selection=self.selection_snapshot();
-        let mark=session.state.as_ref().filter(|(revision,_,old,faces,time)|
-            *revision==self.revision() && old==&selection && faces==picked && time.elapsed()<web_time::Duration::from_millis(600))
-            .map(|(_,mark,..)|*mark).unwrap_or_else(||self.history.undo_len());
-        let changed=if picked.is_empty(){self.set_surface_material(color)}else{self.set_surface_material_on(picked,color)};
-        if changed>0 {
+    pub fn set_surface_material_live(
+        &mut self,
+        color: Option<map_model::brush_face::SurfaceMaterial>,
+        picked: &[super::FaceRef],
+        session: &mut super::LivePaint,
+    ) -> usize {
+        let selection = self.selection_snapshot();
+        let mark = session
+            .state
+            .as_ref()
+            .filter(|(revision, _, old, faces, time)| {
+                *revision == self.revision()
+                    && old == &selection
+                    && faces == picked
+                    && time.elapsed() < web_time::Duration::from_millis(600)
+            })
+            .map(|(_, mark, ..)| *mark)
+            .unwrap_or_else(|| self.history.undo_len());
+        let changed = if picked.is_empty() {
+            self.set_surface_material(color)
+        } else {
+            self.set_surface_material_on(picked, color)
+        };
+        if changed > 0 {
             self.history.coalesce_since(mark);
-            session.state=Some((self.revision(),mark,selection,picked.to_vec(),web_time::Instant::now()));
+            session.state = Some((
+                self.revision(),
+                mark,
+                selection,
+                picked.to_vec(),
+                web_time::Instant::now(),
+            ));
         }
         changed
     }
@@ -151,20 +205,39 @@ impl Document {
     /// `Map::startTransaction` with `TransactionScope::LongRunning`. Everything edited
     /// until the matching commit becomes one step in the history.
     pub fn begin_entity_transaction(&mut self, id: NodeId) -> bool {
-        if self.transaction.is_some() { return false; }
-        let Some(node) = node::find_node(&self.tree.world, id).filter(|n| matches!(n.kind, node::NodeKind::Entity(_))).cloned() else { return false; };
+        if self.transaction.is_some() {
+            return false;
+        }
+        let Some(node) = node::find_node(&self.tree.world, id)
+            .filter(|n| matches!(n.kind, node::NodeKind::Entity(_)))
+            .cloned()
+        else {
+            return false;
+        };
         self.transaction = Some(vec![node]);
         true
     }
 
     pub fn commit_entity_transaction(&mut self) -> bool {
-        let Some(before) = self.transaction.take() else { return false; };
-        let after: Vec<_> = before.iter().filter_map(|n| node::find_node(&self.tree.world,n.id).cloned()).collect();
-        let changed = before.iter().zip(&after).any(|(a,b)| match (&a.kind,&b.kind) {
-            (node::NodeKind::Entity(a),node::NodeKind::Entity(b)) => a.properties != b.properties,
-            _ => false,
-        });
-        if changed { self.record_edit(Edit::Changed { before, after }); }
+        let Some(before) = self.transaction.take() else {
+            return false;
+        };
+        let after: Vec<_> = before
+            .iter()
+            .filter_map(|n| node::find_node(&self.tree.world, n.id).cloned())
+            .collect();
+        let changed = before
+            .iter()
+            .zip(&after)
+            .any(|(a, b)| match (&a.kind, &b.kind) {
+                (node::NodeKind::Entity(a), node::NodeKind::Entity(b)) => {
+                    a.properties != b.properties
+                }
+                _ => false,
+            });
+        if changed {
+            self.record_edit(Edit::Changed { before, after });
+        }
         changed
     }
 
@@ -193,7 +266,9 @@ impl Document {
             return;
         };
         let staleness = self.edge_staleness();
-        let selected_only = before.iter().all(|node| matches!(node.kind, super::NodeKind::Brush(_)) && self.selection.contains(&node.id));
+        let selected_only = before.iter().all(|node| {
+            matches!(node.kind, super::NodeKind::Brush(_)) && self.selection.contains(&node.id)
+        });
         let touched = super::ids_under(before);
         node::replace_nodes(&mut self.tree.world, before);
         self.mark_nodes_changed(touched);
@@ -213,21 +288,24 @@ impl Document {
         let after = self.selected_brush_nodes();
         // Nothing to record if the brushes came back to where they started.
         let unchanged = before.len() == after.len()
-            && before
-                .iter()
-                .zip(&after)
-                .all(|(was, now)| {
-                    brush_vertices(was) == brush_vertices(now)
-                        && match (was.as_brush(), now.as_brush()) {
-                            (Some(a), Some(b)) => a.faces().len() == b.faces().len()
-                                && a.faces().iter().zip(b.faces()).all(|(a,b)|
-                                    a.uv_attributes == b.uv_attributes && a.uv_coord_system == b.uv_coord_system
-                                    && a.primitive_uv == b.primitive_uv && a.material_name == b.material_name
-                                    && a.color == b.color && a.surface_material == b.surface_material
-                                    && a.surface_attributes == b.surface_attributes),
-                            _ => true,
+            && before.iter().zip(&after).all(|(was, now)| {
+                brush_vertices(was) == brush_vertices(now)
+                    && match (was.as_brush(), now.as_brush()) {
+                        (Some(a), Some(b)) => {
+                            a.faces().len() == b.faces().len()
+                                && a.faces().iter().zip(b.faces()).all(|(a, b)| {
+                                    a.uv_attributes == b.uv_attributes
+                                        && a.uv_coord_system == b.uv_coord_system
+                                        && a.primitive_uv == b.primitive_uv
+                                        && a.material_name == b.material_name
+                                        && a.color == b.color
+                                        && a.surface_material == b.surface_material
+                                        && a.surface_attributes == b.surface_attributes
+                                })
                         }
-                });
+                        _ => true,
+                    }
+            });
         if unchanged {
             return false;
         }
@@ -258,7 +336,10 @@ impl Document {
     fn selected_brush_nodes(&self) -> Vec<Node> {
         let mut nodes: Vec<(NodeId, Node)> = node::brushes_with_ids(&self.tree.world)
             .into_iter()
-            .filter(|(id, _)| self.selection.contains(id) || self.face_selection.iter().any(|face| face.node == *id))
+            .filter(|(id, _)| {
+                self.selection.contains(id)
+                    || self.face_selection.iter().any(|face| face.node == *id)
+            })
             .map(|(id, brush)| (id, brush_node(id, brush.clone())))
             .collect();
         nodes.sort_by_key(|(id, _)| *id);
@@ -303,7 +384,9 @@ impl Document {
             return;
         };
         let staleness = self.edge_staleness();
-        let selected_only = after.iter().all(|node| matches!(node.kind, super::NodeKind::Brush(_)) && self.selection.contains(&node.id));
+        let selected_only = after.iter().all(|node| {
+            matches!(node.kind, super::NodeKind::Brush(_)) && self.selection.contains(&node.id)
+        });
         let touched = super::ids_under(&after);
         node::replace_nodes_owned(&mut self.tree.world, after);
         self.clear_leak_trace();
@@ -337,9 +420,12 @@ impl Document {
             Edit::Reordered { layer, after, .. } => {
                 self.flush_removals(removing);
                 if let Some(layer) = self.tree.world.layers.get_mut(*layer) {
-                    let positions: HashMap<_, _> = after.iter().enumerate().map(|(i, id)| (*id, i)).collect();
+                    let positions: HashMap<_, _> =
+                        after.iter().enumerate().map(|(i, id)| (*id, i)).collect();
                     // Stable sorting keeps concurrent additions in their existing order.
-                    layer.children.sort_by_key(|n| positions.get(&n.id).copied().unwrap_or(usize::MAX));
+                    layer
+                        .children
+                        .sort_by_key(|n| positions.get(&n.id).copied().unwrap_or(usize::MAX));
                 }
             }
             Edit::Removed { nodes, .. } => removing.extend(nodes.iter().map(|node| node.id)),
@@ -394,12 +480,15 @@ impl Document {
         // A walk of the tree per selected node is fine for a few; for a big selection it
         // was the whole cost of the undo.
         if self.selection.len() + self.face_selection.len() <= 8 {
-            self.selection.retain(|id| node::find_node(&self.tree.world, *id).is_some());
-            self.face_selection.retain(|face| node::find_node(&self.tree.world, face.node).is_some());
+            self.selection
+                .retain(|id| node::find_node(&self.tree.world, *id).is_some());
+            self.face_selection
+                .retain(|face| node::find_node(&self.tree.world, face.node).is_some());
         } else {
             let present = node::all_node_ids(&self.tree.world);
             self.selection.retain(|id| present.contains(id));
-            self.face_selection.retain(|face| present.contains(&face.node));
+            self.face_selection
+                .retain(|face| present.contains(&face.node));
         }
     }
 
@@ -422,7 +511,8 @@ impl Document {
         }
         if !self.face_selection.is_empty() {
             let gone: HashSet<NodeId> = ids.iter().copied().collect();
-            self.face_selection.retain(|face| !gone.contains(&face.node));
+            self.face_selection
+                .retain(|face| !gone.contains(&face.node));
         }
     }
 
@@ -475,7 +565,10 @@ impl Document {
     /// and the preferences stay; the selection and the undo history do not, since they
     /// were about the tree that is gone.
     pub fn adopt_world(&mut self, world: node::World) {
-        self.tree = node::Tree { world, warnings: Vec::new() };
+        self.tree = node::Tree {
+            world,
+            warnings: Vec::new(),
+        };
         self.selection.clear();
         self.face_selection.clear();
         self.hidden_nodes.clear();
@@ -512,7 +605,9 @@ impl Document {
                 self.insert_nodes(*layer, nodes);
             }
             Edit::Batch(parts) => {
-                for part in parts { self.apply_remote_parts(part); }
+                for part in parts {
+                    self.apply_remote_parts(part);
+                }
             }
             _ => self.apply_parts(edit),
         }

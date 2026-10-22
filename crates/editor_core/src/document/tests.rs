@@ -11,39 +11,62 @@ fn profile_map_interaction() {
     let path = std::env::var("HERON_PROFILE_MAP").expect("HERON_PROFILE_MAP");
     let start = Instant::now();
     let mut document = Document::open(path, WorldBounds::default()).unwrap();
-    eprintln!("open {:?}, brushes {}", start.elapsed(), document.brush_count());
+    eprintln!(
+        "open {:?}, brushes {}",
+        start.elapsed(),
+        document.brush_count()
+    );
     let bounds = document.bounds().unwrap();
-    let ids: Vec<_> = node::brushes_with_ids(document.tree_world()).into_iter().map(|(id,_)|id).collect();
-    let ray = Ray3d::new(bounds.center() + Vec3d::new(0.0, 0.0, bounds.max.z()-bounds.min.z()), Vec3d::new(0.0,0.0,-1.0));
+    let ids: Vec<_> = node::brushes_with_ids(document.tree_world())
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect();
+    let ray = Ray3d::new(
+        bounds.center() + Vec3d::new(0.0, 0.0, bounds.max.z() - bounds.min.z()),
+        Vec3d::new(0.0, 0.0, -1.0),
+    );
     let start = Instant::now();
-    for _ in 0..20 { black_box(document.pick(&ray)); }
-    eprintln!("pick {:?}", start.elapsed()/20);
+    for _ in 0..20 {
+        black_box(document.pick(&ray));
+    }
+    eprintln!("pick {:?}", start.elapsed() / 20);
     let start = Instant::now();
-    for id in ids.iter().take(20) { document.select_only(*id); }
-    eprintln!("select {:?}", start.elapsed()/20);
+    for id in ids.iter().take(20) {
+        document.select_only(*id);
+    }
+    eprintln!("select {:?}", start.elapsed() / 20);
     let filters = crate::view_filters::ViewFilters::default();
     let start = Instant::now();
     for _ in 0..5 {
         *document.surface_cache.borrow_mut() = Default::default();
         black_box(document.preview_mesh(&filters));
     }
-    eprintln!("cold preview mesh {:?}", start.elapsed()/5);
+    eprintln!("cold preview mesh {:?}", start.elapsed() / 5);
     let start = Instant::now();
-    for id in ids.iter().take(20) { document.select_only(*id); black_box(document.preview_mesh(&filters)); }
-    eprintln!("select + cached preview {:?}", start.elapsed()/20);
+    for id in ids.iter().take(20) {
+        document.select_only(*id);
+        black_box(document.preview_mesh(&filters));
+    }
+    eprintln!("select + cached preview {:?}", start.elapsed() / 20);
     let start = Instant::now();
-    for id in ids.iter().take(20) { document.select_only(*id); black_box(document.edges()); }
-    eprintln!("select + edges {:?}", start.elapsed()/20);
+    for id in ids.iter().take(20) {
+        document.select_only(*id);
+        black_box(document.edges());
+    }
+    eprintln!("select + edges {:?}", start.elapsed() / 20);
     let start = Instant::now();
-    for _ in 0..20 { black_box(document.selection_bounds()); black_box(document.selected_brushes()); black_box(document.paintable_face_count()); }
-    eprintln!("selection queries {:?}", start.elapsed()/20);
+    for _ in 0..20 {
+        black_box(document.selection_bounds());
+        black_box(document.selected_brushes());
+        black_box(document.paintable_face_count());
+    }
+    eprintln!("selection queries {:?}", start.elapsed() / 20);
     let start = Instant::now();
     black_box(document.group_bounds());
     eprintln!("group bounds: {:?}", start.elapsed());
     let start = Instant::now();
     black_box(document.selectable_brushes());
     eprintln!("selectable brushes: {:?}", start.elapsed());
-
 }
 
 #[test]
@@ -57,7 +80,7 @@ fn content_revision_ignores_selection_but_tracks_edits_and_undo() {
     document.select_face_only(FaceRef { node: id, face: 0 });
     assert_eq!(document.content_revision(), original);
     document.select_only(id);
-    document.translate_selection(Vec3d::new(0.0,0.0,16.0));
+    document.translate_selection(Vec3d::new(0.0, 0.0, 16.0));
     assert_ne!(document.content_revision(), original);
     let edited = document.content_revision();
     document.undo();
@@ -75,26 +98,69 @@ fn preview_cache_tracks_selection_edits_undo_and_filters() {
     // A selection change patches flags; nothing is triangulated again.
     assert_eq!(document.surface_cache.borrow().rebuilt, 0);
     assert_eq!(selected.triangles.iter().filter(|t| t.selected).count(), 12);
-    assert_eq!(selected.triangles.iter().map(|t| t.positions).collect::<Vec<_>>(), initial.triangles.iter().map(|t| t.positions).collect::<Vec<_>>());
+    assert_eq!(
+        selected
+            .triangles
+            .iter()
+            .map(|t| t.positions)
+            .collect::<Vec<_>>(),
+        initial
+            .triangles
+            .iter()
+            .map(|t| t.positions)
+            .collect::<Vec<_>>()
+    );
     document.select_face_only(FaceRef { node: id, face: 0 });
-    assert_eq!(document.preview_mesh(&filters).triangles.iter().filter(|t| t.selected).count(), 2);
+    assert_eq!(
+        document
+            .preview_mesh(&filters)
+            .triangles
+            .iter()
+            .filter(|t| t.selected)
+            .count(),
+        2
+    );
     document.clear_selection();
-    assert!(document.preview_mesh(&filters).triangles.iter().all(|t| !t.selected));
+    assert!(document
+        .preview_mesh(&filters)
+        .triangles
+        .iter()
+        .all(|t| !t.selected));
     document.select_only(id);
     assert!(document.translate_selection(Vec3d::new(0.0, 0.0, 100.0)));
     let moved = document.preview_mesh(&filters);
     assert_ne!(moved.triangles[0].positions, initial.triangles[0].positions);
     document.undo();
     let undone = document.preview_mesh(&filters);
-    assert_eq!(undone.triangles.iter().map(|t| t.positions).collect::<Vec<_>>(), initial.triangles.iter().map(|t| t.positions).collect::<Vec<_>>());
-    let hidden = crate::view_filters::ViewFilters { show_brushes: false, ..filters };
+    assert_eq!(
+        undone
+            .triangles
+            .iter()
+            .map(|t| t.positions)
+            .collect::<Vec<_>>(),
+        initial
+            .triangles
+            .iter()
+            .map(|t| t.positions)
+            .collect::<Vec<_>>()
+    );
+    let hidden = crate::view_filters::ViewFilters {
+        show_brushes: false,
+        ..filters
+    };
     assert!(document.preview_mesh(&hidden).triangles.is_empty());
-    assert_eq!(document.preview_mesh(&filters).triangles.len(), initial.triangles.len());
+    assert_eq!(
+        document.preview_mesh(&filters).triangles.len(),
+        initial.triangles.len()
+    );
     document.select_only(id);
     document.isolate_selection();
     assert_eq!(document.preview_mesh(&filters).triangles.len(), 12);
     document.show_all();
-    assert_eq!(document.preview_mesh(&filters).triangles.len(), initial.triangles.len());
+    assert_eq!(
+        document.preview_mesh(&filters).triangles.len(),
+        initial.triangles.len()
+    );
 }
 
 /// A box whose first face carries its own UV axes and whose second carries surface
@@ -139,7 +205,10 @@ fn what_one_drag_step_of_the_monkey_costs() {
     for _ in 0..10 {
         document.transform_selection(&shift);
     }
-    eprintln!("{count} selected: {:?} per drag step", started.elapsed() / 10);
+    eprintln!(
+        "{count} selected: {:?} per drag step",
+        started.elapsed() / 10
+    );
 
     let filters = crate::view_filters::ViewFilters::default();
     let started = Instant::now();
@@ -163,10 +232,11 @@ fn what_one_drag_step_of_the_monkey_costs() {
     eprintln!("one scale step: {:?}", started.elapsed() / 10);
 
     // Where the drag step's time goes.
-    let brushes: Vec<map_model::brush::Brush> = map_model::node::brushes_with_ids(document.tree_world())
-        .into_iter()
-        .map(|(_, brush)| brush.clone())
-        .collect();
+    let brushes: Vec<map_model::brush::Brush> =
+        map_model::node::brushes_with_ids(document.tree_world())
+            .into_iter()
+            .map(|(_, brush)| brush.clone())
+            .collect();
 
     let started = Instant::now();
     for _ in 0..10 {
@@ -228,7 +298,9 @@ fn a_dialect_says_what_this_map_would_lose_in_it() {
     }
 
     let document = box_with_axes_and_flags();
-    assert!(document.what_a_dialect_would_drop(MapFormat::Quake2Valve).is_empty());
+    assert!(document
+        .what_a_dialect_would_drop(MapFormat::Quake2Valve)
+        .is_empty());
 
     // Standard has room for neither.
     let lost = document.what_a_dialect_would_drop(MapFormat::Standard);
@@ -276,9 +348,9 @@ fn a_face_the_face_tool_has_hold_of_is_painted_on_its_own() {
 
     let painted = document.set_face_color_on(
         &picked,
-        Some(map_model::brush_face::FaceColor::solid(map_model::brush_face::Rgb::new(
-            200, 30, 30,
-        ))),
+        Some(map_model::brush_face::FaceColor::solid(
+            map_model::brush_face::Rgb::new(200, 30, 30),
+        )),
     );
     assert_eq!(painted, 1);
 
@@ -362,12 +434,18 @@ fn painting_a_selected_brush_colours_every_face_of_it() {
             triangle.material, None,
             "a painted face is drawn in its colour, not through its material"
         );
-        assert_eq!(triangle.corner_colors, None, "a solid colour needs no corners");
+        assert_eq!(
+            triangle.corner_colors, None,
+            "a solid colour needs no corners"
+        );
     }
 
     document.undo();
     assert!(
-        document.triangles(&filters).iter().all(|t| t.color != red.to_f32()),
+        document
+            .triangles(&filters)
+            .iter()
+            .all(|t| t.color != red.to_f32()),
         "one undo takes the paint off"
     );
 }
@@ -390,7 +468,9 @@ fn a_gradient_gives_every_triangle_a_colour_per_corner() {
     let mut darkest = f32::INFINITY;
     let mut lightest = f32::NEG_INFINITY;
     for triangle in &triangles {
-        let corners = triangle.corner_colors.expect("a gradient has corner colours");
+        let corners = triangle
+            .corner_colors
+            .expect("a gradient has corner colours");
         for corner in corners {
             darkest = darkest.min(corner[0]);
             lightest = lightest.max(corner[0]);
@@ -422,9 +502,7 @@ fn rounding_an_edge_replaces_the_brush_in_one_undoable_step() {
     let edge = brush
         .edge_positions()
         .into_iter()
-        .find(|(from, to)| {
-            from.x() > 15.0 && to.x() > 15.0 && from.z() > 15.0 && to.z() > 15.0
-        })
+        .find(|(from, to)| from.x() > 15.0 && to.x() > 15.0 && from.z() > 15.0 && to.z() > 15.0)
         .expect("the box has a top edge at +x");
 
     let faces_before = brush.geometry().face_count();
@@ -482,10 +560,16 @@ fn the_revision_changes_when_the_selection_does() {
     document.select_all();
     assert_ne!(document.revision(), before);
     assert_eq!(document.selection_count(), 1);
-    assert!(document.triangles(&crate::view_filters::ViewFilters::default()).iter().all(|t| t.selected));
+    assert!(document
+        .triangles(&crate::view_filters::ViewFilters::default())
+        .iter()
+        .all(|t| t.selected));
 
     document.clear_selection();
-    assert!(document.triangles(&crate::view_filters::ViewFilters::default()).iter().all(|t| !t.selected));
+    assert!(document
+        .triangles(&crate::view_filters::ViewFilters::default())
+        .iter()
+        .all(|t| !t.selected));
 }
 
 #[test]
@@ -549,14 +633,18 @@ fn loading_materials_and_applying_one_puts_it_on_the_triangles() {
     assert_eq!(changed, 6, "a box has six faces");
 
     let triangles = document.triangles(&crate::view_filters::ViewFilters::default());
-    assert!(triangles.iter().all(|triangle| triangle.material == Some(0)));
+    assert!(triangles
+        .iter()
+        .all(|triangle| triangle.material == Some(0)));
 }
 
 #[test]
 fn uv_coordinates_come_out_in_texels() {
     let directory = material_dir("uv");
     let mut document = one_box();
-    document.load_materials(&directory).expect("the materials load");
+    document
+        .load_materials(&directory)
+        .expect("the materials load");
     document.select_all();
     document.apply_current_material();
 
@@ -567,7 +655,10 @@ fn uv_coordinates_come_out_in_texels() {
         .iter()
         .flat_map(|triangle| triangle.uv)
         .fold(0.0f32, |widest, uv| widest.max(uv.x().abs()));
-    assert!(spread > 1.0, "the coordinates are normalized, not texels: {spread}");
+    assert!(
+        spread > 1.0,
+        "the coordinates are normalized, not texels: {spread}"
+    );
 }
 
 #[test]
@@ -575,7 +666,9 @@ fn replacing_the_collection_is_visible_to_the_renderer() {
     let directory = material_dir("revision");
     let mut document = one_box();
     let before = document.materials_revision();
-    document.load_materials(&directory).expect("the materials load");
+    document
+        .load_materials(&directory)
+        .expect("the materials load");
     assert_ne!(document.materials_revision(), before);
 }
 
@@ -590,19 +683,29 @@ fn a_source_that_is_taken_away_takes_its_materials_with_it() {
         .expect("a written png");
 
     let mut document = one_box();
-    document.load_materials(&bricks).expect("the materials load");
+    document
+        .load_materials(&bricks)
+        .expect("the materials load");
     document.load_materials(&tiles).expect("the materials load");
 
     // Both folders are there, and both folders' materials with them.
     assert_eq!(document.material_sources().len(), 2);
     assert_eq!(document.materials().len(), 5);
-    assert_eq!(document.material_sources()[1].name(), "heron-document-materials-sources-tiles");
+    assert_eq!(
+        document.material_sources()[1].name(),
+        "heron-document-materials-sources-tiles"
+    );
 
     // The same folder again is the same folder, not a second one; it goes to the end,
     // which is where the last word about a shared name belongs.
-    document.load_materials(&bricks).expect("the materials load");
+    document
+        .load_materials(&bricks)
+        .expect("the materials load");
     assert_eq!(document.material_sources().len(), 2);
-    assert_eq!(document.material_sources()[1].path(), bricks.canonicalize().unwrap());
+    assert_eq!(
+        document.material_sources()[1].path(),
+        bricks.canonicalize().unwrap()
+    );
 
     assert!(document.remove_material_source(0));
     assert_eq!(document.material_sources().len(), 1);
@@ -617,7 +720,9 @@ fn a_source_that_is_taken_away_takes_its_materials_with_it() {
 fn applying_a_material_with_nothing_selected_changes_nothing() {
     let directory = material_dir("empty");
     let mut document = one_box();
-    document.load_materials(&directory).expect("the materials load");
+    document
+        .load_materials(&directory)
+        .expect("the materials load");
     assert_eq!(document.apply_current_material(), 0);
 }
 
@@ -633,7 +738,9 @@ fn face_facing(document: &Document, direction: Vec3d) -> FaceRef {
     let face = (0..geometry.face_count())
         .find(|face| {
             vec::dot(
-                geometry.face_plane(map_model::polyhedron::FaceId(*face as u32)).normal,
+                geometry
+                    .face_plane(map_model::polyhedron::FaceId(*face as u32))
+                    .normal,
                 direction,
             ) > 0.9
         })
@@ -655,12 +762,7 @@ fn copying_the_material_alone_leaves_the_mapping_where_it_was() {
     });
 
     let before = document.face_at(side).expect("a face").uv_attributes;
-    assert!(document.copy_face_attributes(
-        top,
-        side,
-        FaceAttributeTransfer::MaterialOnly,
-        false
-    ));
+    assert!(document.copy_face_attributes(top, side, FaceAttributeTransfer::MaterialOnly, false));
 
     let after = document.face_at(side).expect("a face");
     assert_eq!(after.material_name, "brick");
@@ -680,12 +782,7 @@ fn copying_the_mapping_carries_the_offsets_too() {
         face.uv_attributes.rotation = 45.0;
     });
 
-    assert!(document.copy_face_attributes(
-        top,
-        side,
-        FaceAttributeTransfer::Projection,
-        false
-    ));
+    assert!(document.copy_face_attributes(top, side, FaceAttributeTransfer::Projection, false));
 
     let after = document.face_at(side).expect("a face");
     assert_eq!(after.material_name, "brick");
@@ -702,12 +799,7 @@ fn a_double_click_puts_the_material_on_the_whole_brush() {
     document.select_face_only(top);
     document.edit_faces(|face| face.material_name = "brick".into());
 
-    assert!(document.copy_face_attributes(
-        top,
-        side,
-        FaceAttributeTransfer::MaterialOnly,
-        true
-    ));
+    assert!(document.copy_face_attributes(top, side, FaceAttributeTransfer::MaterialOnly, true));
 
     let brush = document.brush(side.node).expect("a brush");
     assert!(brush
@@ -747,10 +839,16 @@ fn copying_is_one_step_of_undo() {
         .clone();
 
     document.copy_face_attributes(top, side, FaceAttributeTransfer::Projection, false);
-    assert_eq!(document.face_at(side).expect("a face").material_name, "brick");
+    assert_eq!(
+        document.face_at(side).expect("a face").material_name,
+        "brick"
+    );
 
     document.undo();
-    assert_eq!(document.face_at(side).expect("a face").material_name, before);
+    assert_eq!(
+        document.face_at(side).expect("a face").material_name,
+        before
+    );
 }
 
 #[test]
@@ -769,13 +867,25 @@ fn a_swept_transfer_touches_every_face_in_one_step() {
         FaceAttributeTransfer::MaterialOnly,
     );
     assert_eq!(changed, 2);
-    assert_eq!(document.face_at(side).expect("a face").material_name, "brick");
-    assert_eq!(document.face_at(front).expect("a face").material_name, "brick");
+    assert_eq!(
+        document.face_at(side).expect("a face").material_name,
+        "brick"
+    );
+    assert_eq!(
+        document.face_at(front).expect("a face").material_name,
+        "brick"
+    );
 
     // One undo takes both back.
     document.undo();
-    assert_ne!(document.face_at(side).expect("a face").material_name, "brick");
-    assert_ne!(document.face_at(front).expect("a face").material_name, "brick");
+    assert_ne!(
+        document.face_at(side).expect("a face").material_name,
+        "brick"
+    );
+    assert_ne!(
+        document.face_at(front).expect("a face").material_name,
+        "brick"
+    );
 }
 
 #[test]
@@ -801,40 +911,51 @@ fn a_swept_transfer_that_changes_nothing_records_nothing() {
 fn material_assignment_reveals_textures_over_paint_and_preserves_uvs() {
     let mut document = one_box();
     document.select_all();
-    document.set_face_color(Some(map_model::brush_face::FaceColor::solid(map_model::brush_face::Rgb::new(120,160,200))));
-    let top = face_facing(&document,Vec3d::new(0.0,0.0,1.0));
-    let side = face_facing(&document,Vec3d::new(1.0,0.0,0.0));
+    document.set_face_color(Some(map_model::brush_face::FaceColor::solid(
+        map_model::brush_face::Rgb::new(120, 160, 200),
+    )));
+    let top = face_facing(&document, Vec3d::new(0.0, 0.0, 1.0));
+    let side = face_facing(&document, Vec3d::new(1.0, 0.0, 0.0));
     let original_uv = document.face_at(top).unwrap().uv_attributes;
     // Face selection takes precedence even if its brush is selected too.
     document.select_face_only(top);
     document.selection.insert(top.node);
     let before = document.to_map_text();
     document.set_current_material("brick");
-    assert_eq!(document.apply_current_material(),1);
-    assert_eq!(document.face_at(top).unwrap().material_name,"brick");
+    assert_eq!(document.apply_current_material(), 1);
+    assert_eq!(document.face_at(top).unwrap().material_name, "brick");
     assert!(document.face_at(top).unwrap().color.is_none());
     assert!(document.face_at(side).unwrap().color.is_some());
-    assert_eq!(document.face_at(top).unwrap().uv_attributes,original_uv);
+    assert_eq!(document.face_at(top).unwrap().uv_attributes, original_uv);
     let after = document.to_map_text();
-    assert_eq!(document.apply_current_material(),0,"repeated clicks must not add undo steps");
-    document.undo().unwrap();assert_eq!(document.to_map_text(),before);
-    document.redo().unwrap();assert_eq!(document.to_map_text(),after);
+    assert_eq!(
+        document.apply_current_material(),
+        0,
+        "repeated clicks must not add undo steps"
+    );
+    document.undo().unwrap();
+    assert_eq!(document.to_map_text(), before);
+    document.redo().unwrap();
+    assert_eq!(document.to_map_text(), after);
 }
 
 #[test]
 fn paint_tool_reveals_the_same_material_under_a_colour_override() {
     let mut document = one_box();
-    let top = face_facing(&document,Vec3d::new(0.0,0.0,1.0));
+    let top = face_facing(&document, Vec3d::new(0.0, 0.0, 1.0));
     document.select_face_only(top);
-    document.set_face_color(Some(map_model::brush_face::FaceColor::solid(map_model::brush_face::Rgb::new(120,160,200))));
+    document.set_face_color(Some(map_model::brush_face::FaceColor::solid(
+        map_model::brush_face::Rgb::new(120, 160, 200),
+    )));
     let before = document.to_map_text();
     let material = document.face_at(top).unwrap().material_name.to_string();
     let uv = document.face_at(top).unwrap().uv_attributes;
-    assert!(document.paint_face(top,&material));
+    assert!(document.paint_face(top, &material));
     assert!(document.face_at(top).unwrap().color.is_none());
-    assert_eq!(document.face_at(top).unwrap().uv_attributes,uv);
-    assert!(!document.paint_face(top,&material));
-    document.undo().unwrap();assert_eq!(document.to_map_text(),before);
+    assert_eq!(document.face_at(top).unwrap().uv_attributes, uv);
+    assert!(!document.paint_face(top, &material));
+    document.undo().unwrap();
+    assert_eq!(document.to_map_text(), before);
 }
 
 #[test]
@@ -849,8 +970,14 @@ fn painting_a_face_sets_only_that_face() {
         .clone();
 
     assert!(document.paint_face(top, "brick"));
-    assert_eq!(document.face_at(top).expect("a face").material_name, "brick");
-    assert_eq!(document.face_at(side).expect("a face").material_name, untouched);
+    assert_eq!(
+        document.face_at(top).expect("a face").material_name,
+        "brick"
+    );
+    assert_eq!(
+        document.face_at(side).expect("a face").material_name,
+        untouched
+    );
 }
 
 #[test]
@@ -862,7 +989,10 @@ fn painting_a_face_the_colour_it_already_is_records_nothing() {
     // to leave behind.
     assert!(!document.paint_face(top, "brick"));
     assert!(document.undo().is_some());
-    assert_ne!(document.face_at(top).expect("a face").material_name, "brick");
+    assert_ne!(
+        document.face_at(top).expect("a face").material_name,
+        "brick"
+    );
     // And that was the only step: a second undo has nothing to do.
     assert!(document.undo().is_none());
 }
@@ -903,8 +1033,22 @@ fn replacing_a_material_swaps_every_face_that_wears_it() {
     assert_eq!(document.replace_material("brick", "grass"), 2);
 
     let brush = document.brush(top.node).expect("a brush");
-    assert_eq!(brush.faces().iter().filter(|f| f.material_name == "brick").count(), 0);
-    assert_eq!(brush.faces().iter().filter(|f| f.material_name == "grass").count(), 2);
+    assert_eq!(
+        brush
+            .faces()
+            .iter()
+            .filter(|f| f.material_name == "brick")
+            .count(),
+        0
+    );
+    assert_eq!(
+        brush
+            .faces()
+            .iter()
+            .filter(|f| f.material_name == "grass")
+            .count(),
+        2
+    );
 }
 
 #[test]
@@ -944,8 +1088,22 @@ fn replacing_a_material_inside_a_face_selection_leaves_the_rest() {
     assert_eq!(document.replace_material("brick", "grass"), 1);
 
     let brush = document.brush(node).expect("a brush");
-    assert_eq!(brush.faces().iter().filter(|f| f.material_name == "grass").count(), 1);
-    assert_eq!(brush.faces().iter().filter(|f| f.material_name == "brick").count(), 5);
+    assert_eq!(
+        brush
+            .faces()
+            .iter()
+            .filter(|f| f.material_name == "grass")
+            .count(),
+        1
+    );
+    assert_eq!(
+        brush
+            .faces()
+            .iter()
+            .filter(|f| f.material_name == "brick")
+            .count(),
+        5
+    );
 }
 
 /* ========== entities in the 3D view ========== */
@@ -1035,8 +1193,14 @@ fn the_selections_chain_reaches_further_than_what_touches_it() {
 
     let links = document.entity_links();
     assert_eq!(links.len(), 2);
-    assert_eq!(links.iter().filter(|link| link.touches_selection).count(), 1);
-    assert_eq!(links.iter().filter(|link| link.reaches_selection).count(), 2);
+    assert_eq!(
+        links.iter().filter(|link| link.touches_selection).count(),
+        1
+    );
+    assert_eq!(
+        links.iter().filter(|link| link.reaches_selection).count(),
+        2
+    );
 
     use crate::view_filters::EntityLinkMode;
     let showing = |mode: EntityLinkMode| links.iter().filter(|link| mode.shows(link)).count();
@@ -1064,12 +1228,25 @@ fn nothing_selected_means_no_chain_to_follow() {
 #[test]
 fn a_point_entity_is_drawn_as_a_box() {
     let mut document = one_box();
-    let before = document.triangles(&crate::view_filters::ViewFilters { show_point_entity_models: false, ..Default::default() }).len();
+    let before = document
+        .triangles(&crate::view_filters::ViewFilters {
+            show_point_entity_models: false,
+            ..Default::default()
+        })
+        .len();
 
     document.create_point_entity("info_player_start", Vec3d::new(64.0, 0.0, 0.0));
 
     // Twelve triangles more: the six faces of the box the class is given.
-    assert_eq!(document.triangles(&crate::view_filters::ViewFilters { show_point_entity_models: false, ..Default::default() }).len(), before + 12);
+    assert_eq!(
+        document
+            .triangles(&crate::view_filters::ViewFilters {
+                show_point_entity_models: false,
+                ..Default::default()
+            })
+            .len(),
+        before + 12
+    );
 }
 
 #[test]
@@ -1077,7 +1254,10 @@ fn an_entity_is_drawn_in_its_own_colour_and_a_brush_is_not() {
     let mut document = one_box();
     document.create_point_entity("info_player_start", Vec3d::zero());
 
-    let triangles = document.triangles(&crate::view_filters::ViewFilters { show_point_entity_models: false, ..Default::default() });
+    let triangles = document.triangles(&crate::view_filters::ViewFilters {
+        show_point_entity_models: false,
+        ..Default::default()
+    });
     let entity_colour = triangles
         .last()
         .expect("the entity's triangles come last")
@@ -1111,13 +1291,15 @@ fn every_face_of_an_entity_box_faces_outwards() {
     document.create_point_entity("info_player_start", Vec3d::new(256.0, 0.0, 0.0));
 
     // The entity's own triangles are the last twelve.
-    let triangles = document.triangles(&crate::view_filters::ViewFilters { show_point_entity_models: false, ..Default::default() });
+    let triangles = document.triangles(&crate::view_filters::ViewFilters {
+        show_point_entity_models: false,
+        ..Default::default()
+    });
     let entity = &triangles[triangles.len() - 12..];
     let centre = Vec3d::new(256.0, 0.0, 0.0);
 
     for triangle in entity {
-        let middle = (triangle.positions[0] + triangle.positions[1] + triangle.positions[2])
-            / 3.0;
+        let middle = (triangle.positions[0] + triangle.positions[1] + triangle.positions[2]) / 3.0;
         // The normal points away from the middle of the box, which is what makes the
         // renderer's back-face culling keep the right half.
         assert!(
@@ -1172,12 +1354,8 @@ fn a_new_brush_lands_on_the_current_layer() {
     assert_eq!(document.current_layer(), second);
 
     let world = document.world_bounds();
-    let brush = map_model::shapes::create_cuboid(
-        &world,
-        &Bbox3d::from_scalars(-8.0, 8.0),
-        "stone",
-    )
-    .expect("a cube");
+    let brush = map_model::shapes::create_cuboid(&world, &Bbox3d::from_scalars(-8.0, 8.0), "stone")
+        .expect("a cube");
     document.add_brushes(vec![brush]);
 
     let layers = document.layers();
@@ -1188,10 +1366,14 @@ fn a_new_brush_lands_on_the_current_layer() {
 #[test]
 fn a_hidden_layer_is_not_drawn_and_cannot_be_picked() {
     let mut document = one_box();
-    assert!(!document.triangles(&crate::view_filters::ViewFilters::default()).is_empty());
+    assert!(!document
+        .triangles(&crate::view_filters::ViewFilters::default())
+        .is_empty());
 
     document.set_layer_hidden(0, true);
-    assert!(document.triangles(&crate::view_filters::ViewFilters::default()).is_empty());
+    assert!(document
+        .triangles(&crate::view_filters::ViewFilters::default())
+        .is_empty());
     assert!(document.edges().is_empty());
 
     // And a ray straight at it reaches nothing.
@@ -1202,7 +1384,9 @@ fn a_hidden_layer_is_not_drawn_and_cannot_be_picked() {
     assert!(document.pick(&ray).is_none());
 
     document.set_layer_hidden(0, false);
-    assert!(!document.triangles(&crate::view_filters::ViewFilters::default()).is_empty());
+    assert!(!document
+        .triangles(&crate::view_filters::ViewFilters::default())
+        .is_empty());
     assert!(document.pick(&ray).is_some());
 }
 
@@ -1212,7 +1396,9 @@ fn a_locked_layer_is_drawn_but_cannot_be_picked() {
     document.set_layer_locked(0, true);
 
     // Still there to look at.
-    assert!(!document.triangles(&crate::view_filters::ViewFilters::default()).is_empty());
+    assert!(!document
+        .triangles(&crate::view_filters::ViewFilters::default())
+        .is_empty());
 
     // But not to click on.
     let ray = Ray3d {
@@ -1249,29 +1435,49 @@ fn select_all_leaves_a_locked_layer_alone() {
 fn marquee_preview_grows_shrinks_and_restores_without_history_edits() {
     let mut document = Document::new(WorldBounds::default());
     let a = add_box(&mut document, Vec3d::zero(), Vec3d::new(32.0, 32.0, 32.0));
-    let b = add_box(&mut document, Vec3d::new(64.0, 0.0, 0.0), Vec3d::new(96.0, 32.0, 32.0));
+    let b = add_box(
+        &mut document,
+        Vec3d::new(64.0, 0.0, 0.0),
+        Vec3d::new(96.0, 32.0, 32.0),
+    );
     document.select_only(a);
     let initial = document.selection_snapshot();
     document.preview_marquee(&initial, &[b], true);
     assert_eq!(document.selection_ids(), &HashSet::from([a, b]));
     let revision = document.revision();
     document.preview_marquee(&initial, &[b], true);
-    assert_eq!(document.revision(), revision, "unchanged preview should not invalidate the scene");
+    assert_eq!(
+        document.revision(),
+        revision,
+        "unchanged preview should not invalidate the scene"
+    );
     document.preview_marquee(&initial, &[], true);
-    assert_eq!(document.selection_ids(), &HashSet::from([a]), "shrinking removes only newly caught objects");
+    assert_eq!(
+        document.selection_ids(),
+        &HashSet::from([a]),
+        "shrinking removes only newly caught objects"
+    );
     document.preview_marquee(&initial, &[b], false);
     assert_eq!(document.selection_ids(), &HashSet::from([b]));
     document.restore_selection(&initial);
     assert_eq!(document.selection_ids(), &HashSet::from([a]));
     document.undo().unwrap();
-    assert_eq!(document.brush_count(), 1, "preview must not add an Undo operation");
+    assert_eq!(
+        document.brush_count(),
+        1,
+        "preview must not add an Undo operation"
+    );
 }
 
 #[test]
 fn marquee_preview_selects_a_group_once_and_cancel_restores_faces() {
     let mut document = Document::new(WorldBounds::default());
     let a = add_box(&mut document, Vec3d::zero(), Vec3d::new(32.0, 32.0, 32.0));
-    let b = add_box(&mut document, Vec3d::new(64.0, 0.0, 0.0), Vec3d::new(96.0, 32.0, 32.0));
+    let b = add_box(
+        &mut document,
+        Vec3d::new(64.0, 0.0, 0.0),
+        Vec3d::new(96.0, 32.0, 32.0),
+    );
     document.select_all();
     document.group_selection("Pair");
     document.clear_selection();
@@ -1301,8 +1507,8 @@ fn add_box(document: &mut Document, min: Vec3d, max: Vec3d) -> NodeId {
 fn add_box_of(document: &mut Document, min: Vec3d, max: Vec3d, material: &str) -> NodeId {
     let kept: Vec<NodeId> = document.selection.iter().copied().collect();
     let world = document.world_bounds();
-    let brush = map_model::shapes::create_cuboid(&world, &Bbox3d::new(min, max), material)
-        .expect("a box");
+    let brush =
+        map_model::shapes::create_cuboid(&world, &Bbox3d::new(min, max), material).expect("a box");
     document.add_brushes(vec![brush]);
     let id = node::brushes_with_ids(&document.tree.world)
         .into_iter()
@@ -1316,9 +1522,21 @@ fn add_box_of(document: &mut Document, min: Vec3d, max: Vec3d, material: &str) -
 #[test]
 fn select_touching_takes_what_the_lasso_overlaps_and_eats_the_lasso() {
     let mut document = Document::new(WorldBounds::default());
-    let lasso = add_box(&mut document, Vec3d::new(-40.0, -40.0, -40.0), Vec3d::new(40.0, 40.0, 40.0));
-    let overlapping = add_box(&mut document, Vec3d::new(20.0, 20.0, 20.0), Vec3d::new(80.0, 80.0, 80.0));
-    let far = add_box(&mut document, Vec3d::new(200.0, 200.0, 200.0), Vec3d::new(240.0, 240.0, 240.0));
+    let lasso = add_box(
+        &mut document,
+        Vec3d::new(-40.0, -40.0, -40.0),
+        Vec3d::new(40.0, 40.0, 40.0),
+    );
+    let overlapping = add_box(
+        &mut document,
+        Vec3d::new(20.0, 20.0, 20.0),
+        Vec3d::new(80.0, 80.0, 80.0),
+    );
+    let far = add_box(
+        &mut document,
+        Vec3d::new(200.0, 200.0, 200.0),
+        Vec3d::new(240.0, 240.0, 240.0),
+    );
 
     document.selection = std::iter::once(lasso).collect();
     assert!(document.select_touching());
@@ -1331,9 +1549,21 @@ fn select_touching_takes_what_the_lasso_overlaps_and_eats_the_lasso() {
 #[test]
 fn select_inside_takes_only_what_is_wholly_enclosed() {
     let mut document = Document::new(WorldBounds::default());
-    let lasso = add_box(&mut document, Vec3d::new(-100.0, -100.0, -100.0), Vec3d::new(100.0, 100.0, 100.0));
-    let within = add_box(&mut document, Vec3d::new(-20.0, -20.0, -20.0), Vec3d::new(20.0, 20.0, 20.0));
-    let straddling = add_box(&mut document, Vec3d::new(50.0, 50.0, 50.0), Vec3d::new(150.0, 150.0, 150.0));
+    let lasso = add_box(
+        &mut document,
+        Vec3d::new(-100.0, -100.0, -100.0),
+        Vec3d::new(100.0, 100.0, 100.0),
+    );
+    let within = add_box(
+        &mut document,
+        Vec3d::new(-20.0, -20.0, -20.0),
+        Vec3d::new(20.0, 20.0, 20.0),
+    );
+    let straddling = add_box(
+        &mut document,
+        Vec3d::new(50.0, 50.0, 50.0),
+        Vec3d::new(150.0, 150.0, 150.0),
+    );
 
     document.selection = std::iter::once(lasso).collect();
     assert!(document.select_inside());
@@ -1346,11 +1576,23 @@ fn select_inside_takes_only_what_is_wholly_enclosed() {
 fn select_tall_reaches_along_the_view_axis() {
     let mut document = Document::new(WorldBounds::default());
     // A thin lasso slab high up, footprint 0..64 in X and Y.
-    let lasso = add_box(&mut document, Vec3d::new(0.0, 0.0, 400.0), Vec3d::new(64.0, 64.0, 432.0));
+    let lasso = add_box(
+        &mut document,
+        Vec3d::new(0.0, 0.0, 400.0),
+        Vec3d::new(64.0, 64.0, 432.0),
+    );
     // Under the footprint, far below -- only "tall" selection reaches it.
-    let below = add_box(&mut document, Vec3d::new(8.0, 8.0, -200.0), Vec3d::new(56.0, 56.0, -160.0));
+    let below = add_box(
+        &mut document,
+        Vec3d::new(8.0, 8.0, -200.0),
+        Vec3d::new(56.0, 56.0, -160.0),
+    );
     // Same height as `below` but outside the footprint in X.
-    let aside = add_box(&mut document, Vec3d::new(200.0, 8.0, -200.0), Vec3d::new(248.0, 56.0, -160.0));
+    let aside = add_box(
+        &mut document,
+        Vec3d::new(200.0, 8.0, -200.0),
+        Vec3d::new(248.0, 56.0, -160.0),
+    );
 
     document.selection = std::iter::once(lasso).collect();
     assert!(document.select_tall(2), "stretched along Z");
@@ -1491,14 +1733,24 @@ fn an_open_group_leaves_the_rest_of_the_map_alone() {
 
     let inside = ids[0];
     let outside = ids[1];
-    assert!(document.selectable_brushes().iter().any(|(id, _)| *id == inside));
+    assert!(document
+        .selectable_brushes()
+        .iter()
+        .any(|(id, _)| *id == inside));
     assert!(
-        !document.selectable_brushes().iter().any(|(id, _)| *id == outside),
+        !document
+            .selectable_brushes()
+            .iter()
+            .any(|(id, _)| *id == outside),
         "the brush outside the open group is out of reach"
     );
 
     document.select_all();
-    assert_eq!(document.selection_count(), 1, "Select All stays in the group");
+    assert_eq!(
+        document.selection_count(),
+        1,
+        "Select All stays in the group"
+    );
     assert!(document.is_selected(inside));
 
     // Closing the group brings the rest of the map back.
@@ -1559,10 +1811,16 @@ fn hiding_the_selection_drops_it_from_the_drawn_geometry_and_from_select_all() {
     document.selection = std::iter::once(first).collect();
 
     assert_eq!(document.hide_selection(), 1);
-    assert!(!document.has_selection(), "a hidden object cannot stay selected");
+    assert!(
+        !document.has_selection(),
+        "a hidden object cannot stay selected"
+    );
 
     document.select_all();
-    assert!(!document.is_selected(first), "select-all skips the hidden one");
+    assert!(
+        !document.is_selected(first),
+        "select-all skips the hidden one"
+    );
     assert_eq!(document.selection_count(), 1, "only the visible box");
 
     assert_eq!(document.show_all(), 1);
@@ -1595,7 +1853,10 @@ fn a_hidden_brush_cannot_be_picked() {
     document.hide_selection();
 
     let ray = Ray3d::new(Vec3d::new(0.0, 0.0, 200.0), Vec3d::new(0.0, 0.0, -1.0));
-    assert!(document.pick(&ray).is_none(), "the ray passes through the hidden box");
+    assert!(
+        document.pick(&ray).is_none(),
+        "the ray passes through the hidden box"
+    );
 }
 
 #[test]
@@ -1614,8 +1875,16 @@ fn select_by_brush_needs_a_selection_of_only_brushes() {
 #[test]
 fn select_touching_is_one_undo_step() {
     let mut document = Document::new(WorldBounds::default());
-    let lasso = add_box(&mut document, Vec3d::new(-40.0, -40.0, -40.0), Vec3d::new(40.0, 40.0, 40.0));
-    add_box(&mut document, Vec3d::new(20.0, 20.0, 20.0), Vec3d::new(80.0, 80.0, 80.0));
+    let lasso = add_box(
+        &mut document,
+        Vec3d::new(-40.0, -40.0, -40.0),
+        Vec3d::new(40.0, 40.0, 40.0),
+    );
+    add_box(
+        &mut document,
+        Vec3d::new(20.0, 20.0, 20.0),
+        Vec3d::new(80.0, 80.0, 80.0),
+    );
 
     document.selection = std::iter::once(lasso).collect();
     document.select_touching();
@@ -1628,9 +1897,21 @@ fn select_touching_is_one_undo_step() {
 #[test]
 fn select_siblings_takes_the_rest_of_a_group() {
     let mut document = Document::new(WorldBounds::default());
-    let a = add_box(&mut document, Vec3d::new(-16.0, -16.0, -16.0), Vec3d::new(16.0, 16.0, 16.0));
-    let b = add_box(&mut document, Vec3d::new(48.0, -16.0, -16.0), Vec3d::new(80.0, 16.0, 16.0));
-    let loose = add_box(&mut document, Vec3d::new(200.0, -16.0, -16.0), Vec3d::new(232.0, 16.0, 16.0));
+    let a = add_box(
+        &mut document,
+        Vec3d::new(-16.0, -16.0, -16.0),
+        Vec3d::new(16.0, 16.0, 16.0),
+    );
+    let b = add_box(
+        &mut document,
+        Vec3d::new(48.0, -16.0, -16.0),
+        Vec3d::new(80.0, 16.0, 16.0),
+    );
+    let loose = add_box(
+        &mut document,
+        Vec3d::new(200.0, -16.0, -16.0),
+        Vec3d::new(232.0, 16.0, 16.0),
+    );
 
     document.selection = [a, b].into_iter().collect();
     document.group_selection("Doorway");
@@ -1653,7 +1934,10 @@ fn adding_a_face_to_a_brush_selection_keeps_what_was_picked() {
         .collect();
     document.select_only(ids[0]);
 
-    let face = FaceRef { node: ids[1], face: 0 };
+    let face = FaceRef {
+        node: ids[1],
+        face: 0,
+    };
     document.toggle_face_selected(face);
 
     assert_eq!(document.selection_count(), 0, "the brushes are faces now");
@@ -1680,7 +1964,11 @@ fn select_faces_with_material_takes_only_the_faces_wearing_it() {
 
     assert_eq!(document.select_faces_with_material("brick"), 1);
     assert_eq!(document.selected_faces().len(), 1);
-    assert_eq!(document.selection_count(), 0, "the brush itself is not taken");
+    assert_eq!(
+        document.selection_count(),
+        0,
+        "the brush itself is not taken"
+    );
 
     // And the other five faces are the other material.
     assert_eq!(document.select_faces_with_material("stone"), 5);
@@ -1692,9 +1980,24 @@ fn select_faces_with_material_takes_only_the_faces_wearing_it() {
 #[test]
 fn select_brushes_with_material_takes_every_brush_wearing_it() {
     let mut document = Document::new(WorldBounds::default());
-    let stone_a = add_box_of(&mut document, Vec3d::new(-16.0, -16.0, -16.0), Vec3d::new(16.0, 16.0, 16.0), "stone");
-    let brick = add_box_of(&mut document, Vec3d::new(48.0, -16.0, -16.0), Vec3d::new(80.0, 16.0, 16.0), "brick");
-    let stone_b = add_box_of(&mut document, Vec3d::new(112.0, -16.0, -16.0), Vec3d::new(144.0, 16.0, 16.0), "STONE");
+    let stone_a = add_box_of(
+        &mut document,
+        Vec3d::new(-16.0, -16.0, -16.0),
+        Vec3d::new(16.0, 16.0, 16.0),
+        "stone",
+    );
+    let brick = add_box_of(
+        &mut document,
+        Vec3d::new(48.0, -16.0, -16.0),
+        Vec3d::new(80.0, 16.0, 16.0),
+        "brick",
+    );
+    let stone_b = add_box_of(
+        &mut document,
+        Vec3d::new(112.0, -16.0, -16.0),
+        Vec3d::new(144.0, 16.0, 16.0),
+        "STONE",
+    );
 
     document.select_brushes_with_material("stone");
 
@@ -1706,9 +2009,21 @@ fn select_brushes_with_material_takes_every_brush_wearing_it() {
 #[test]
 fn invert_selection_swaps_what_is_and_is_not_selected() {
     let mut document = Document::new(WorldBounds::default());
-    let a = add_box(&mut document, Vec3d::new(-16.0, -16.0, -16.0), Vec3d::new(16.0, 16.0, 16.0));
-    let b = add_box(&mut document, Vec3d::new(48.0, -16.0, -16.0), Vec3d::new(80.0, 16.0, 16.0));
-    let c = add_box(&mut document, Vec3d::new(112.0, -16.0, -16.0), Vec3d::new(144.0, 16.0, 16.0));
+    let a = add_box(
+        &mut document,
+        Vec3d::new(-16.0, -16.0, -16.0),
+        Vec3d::new(16.0, 16.0, 16.0),
+    );
+    let b = add_box(
+        &mut document,
+        Vec3d::new(48.0, -16.0, -16.0),
+        Vec3d::new(80.0, 16.0, 16.0),
+    );
+    let c = add_box(
+        &mut document,
+        Vec3d::new(112.0, -16.0, -16.0),
+        Vec3d::new(144.0, 16.0, 16.0),
+    );
 
     document.selection = std::iter::once(a).collect();
     document.invert_selection();
@@ -1752,12 +2067,8 @@ fn selecting_a_layer_takes_everything_on_it_and_nothing_else() {
     let mut document = one_box();
     let second = document.add_layer("Detail");
     let world = document.world_bounds();
-    let brush = map_model::shapes::create_cuboid(
-        &world,
-        &Bbox3d::from_scalars(-8.0, 8.0),
-        "stone",
-    )
-    .expect("a cube");
+    let brush = map_model::shapes::create_cuboid(&world, &Bbox3d::from_scalars(-8.0, 8.0), "stone")
+        .expect("a cube");
     document.add_brushes(vec![brush]);
 
     assert_eq!(document.select_layer(0), 1);
@@ -1821,12 +2132,30 @@ fn sealed_room(missing: Option<usize>) -> Document {
     let outer = 80.0;
     let inner = 64.0;
     let walls = [
-        (Vec3d::new(-outer, -outer, -outer), Vec3d::new(-inner, outer, outer)),
-        (Vec3d::new(inner, -outer, -outer), Vec3d::new(outer, outer, outer)),
-        (Vec3d::new(-outer, -outer, -outer), Vec3d::new(outer, -inner, outer)),
-        (Vec3d::new(-outer, inner, -outer), Vec3d::new(outer, outer, outer)),
-        (Vec3d::new(-outer, -outer, -outer), Vec3d::new(outer, outer, -inner)),
-        (Vec3d::new(-outer, -outer, inner), Vec3d::new(outer, outer, outer)),
+        (
+            Vec3d::new(-outer, -outer, -outer),
+            Vec3d::new(-inner, outer, outer),
+        ),
+        (
+            Vec3d::new(inner, -outer, -outer),
+            Vec3d::new(outer, outer, outer),
+        ),
+        (
+            Vec3d::new(-outer, -outer, -outer),
+            Vec3d::new(outer, -inner, outer),
+        ),
+        (
+            Vec3d::new(-outer, inner, -outer),
+            Vec3d::new(outer, outer, outer),
+        ),
+        (
+            Vec3d::new(-outer, -outer, -outer),
+            Vec3d::new(outer, outer, -inner),
+        ),
+        (
+            Vec3d::new(-outer, -outer, inner),
+            Vec3d::new(outer, outer, outer),
+        ),
     ];
     let brushes: Vec<map_model::brush::Brush> = walls
         .into_iter()
@@ -1940,17 +2269,27 @@ fn duplicate_preserves_nested_groups_layer_and_fresh_ids_through_undo_and_save()
     document.group_selection("Inner").unwrap();
     let inner = document.tree.world.layers[layer].children.remove(0);
     let outer = Node::new(NodeKind::Group(Group {
-        id: document.fresh_id(), name: "Outer".into(), linked_group_id: None,
-        transformation: None, children: vec![inner],
+        id: document.fresh_id(),
+        name: "Outer".into(),
+        linked_group_id: None,
+        transformation: None,
+        children: vec![inner],
     }));
     let original_id = outer.id;
     document.tree.world.layers[layer].children.push(outer);
     document.select_all();
     let original_selection = document.selection_ids().clone();
     let center = document.selection_bounds().unwrap().center();
-    assert_eq!(document.duplicate_selection_by(Vec3d::new(128.0, 0.0, 0.0)), 1);
+    assert_eq!(
+        document.duplicate_selection_by(Vec3d::new(128.0, 0.0, 0.0)),
+        1
+    );
     assert!(document.selection_ids().is_disjoint(&original_selection));
-    assert!(vec::length(document.selection_bounds().unwrap().center() - center - Vec3d::new(128.0, 0.0, 0.0)) < 0.001);
+    assert!(
+        vec::length(
+            document.selection_bounds().unwrap().center() - center - Vec3d::new(128.0, 0.0, 0.0)
+        ) < 0.001
+    );
     assert_eq!(document.tree.world.layers[layer].children.len(), 2);
     let groups = node::groups_with_ids(&document.tree.world);
     assert_eq!(groups.len(), 4);
@@ -1965,7 +2304,10 @@ fn duplicate_preserves_nested_groups_layer_and_fresh_ids_through_undo_and_save()
     document.undo().unwrap();
     assert_eq!(document.brush_count(), 1);
     assert_eq!(node::groups_with_ids(&document.tree.world).len(), 2);
-    assert!(!document.has_selection(), "Undo must not leave deleted child IDs selected");
+    assert!(
+        !document.has_selection(),
+        "Undo must not leave deleted child IDs selected"
+    );
     document.redo().unwrap();
     assert_eq!(document.brush_count(), 2);
     assert_eq!(node::groups_with_ids(&document.tree.world).len(), 4);
@@ -1978,7 +2320,10 @@ fn duplicate_inside_open_group_stays_inside_and_invalid_move_is_atomic() {
     let group = document.group_selection("Editable").unwrap();
     assert!(document.open_selected_group());
     let original = document.selection_ids().clone();
-    assert_eq!(document.duplicate_selection_by(Vec3d::new(128.0, 0.0, 0.0)), 1);
+    assert_eq!(
+        document.duplicate_selection_by(Vec3d::new(128.0, 0.0, 0.0)),
+        1
+    );
     assert_eq!(node::contents_of(&document.tree.world, group).len(), 2);
     assert_eq!(node::groups_with_ids(&document.tree.world).len(), 1);
     assert!(document.selection_ids().is_disjoint(&original));
@@ -1991,7 +2336,10 @@ fn duplicate_inside_open_group_stays_inside_and_invalid_move_is_atomic() {
     document.select_all();
     let before = document.to_map_text();
     let selected = document.selection_ids().clone();
-    assert_eq!(document.duplicate_selection_by(Vec3d::new(1e9, 0.0, 0.0)), 0);
+    assert_eq!(
+        document.duplicate_selection_by(Vec3d::new(1e9, 0.0, 0.0)),
+        0
+    );
     assert_eq!(document.to_map_text(), before);
     assert_eq!(document.selection_ids(), &selected);
 }
@@ -2062,7 +2410,10 @@ fn an_export_leaves_out_the_layers_that_are_marked_to_be_left_out() {
 
     document.set_layer_omitted(notes, true);
     let exported = document.export_map_text(map_model::map_format::MapFormat::LOSSLESS);
-    assert!(!exported.contains("stone"), "the omitted layer's brush is written");
+    assert!(
+        !exported.contains("stone"),
+        "the omitted layer's brush is written"
+    );
     // The layer itself is still there, so the export opens as the same map.
     assert!(exported.contains("Notes"));
 }
@@ -2082,7 +2433,9 @@ fn the_class_defaults_can_be_put_back_or_filled_in() {
     .expect("a written fgd");
 
     let mut document = Document::new(WorldBounds::default());
-    document.load_definitions(&fgd).expect("the definitions load");
+    document
+        .load_definitions(&fgd)
+        .expect("the definitions load");
     let id = document.create_point_entity("thing", Vec3d::zero());
     // Placing one writes the class's defaults, so this starts from an entity that has
     // been edited since and had a property taken off it.
@@ -2118,7 +2471,10 @@ fn selected_brushes_become_a_brush_entity_and_undo_takes_it_back() {
     let id = document
         .create_brush_entity("func_door")
         .expect("an entity is made");
-    let entity = match &map_model::node::find_node(&document.tree.world, id).expect("it is there").kind {
+    let entity = match &map_model::node::find_node(&document.tree.world, id)
+        .expect("it is there")
+        .kind
+    {
         NodeKind::Entity(entity) => entity.clone(),
         _ => panic!("that is not an entity"),
     };
@@ -2152,7 +2508,10 @@ fn box_with_face_picked(direction: Vec3d) -> Document {
         .iter()
         .position(|face| geometry_math::vec::dot(face.normal(), direction) > 0.99)
         .expect("a face that way");
-    document.select_face_only(FaceRef { node: id, face: index });
+    document.select_face_only(FaceRef {
+        node: id,
+        face: index,
+    });
     document
 }
 
@@ -2160,7 +2519,10 @@ fn box_with_face_picked(direction: Vec3d) -> Document {
 fn bevelling_a_face_draws_it_in_and_leaves_the_rest_where_it_was() {
     // The box is 32 units across, from -16 to 16.
     let mut document = box_with_face_picked(Vec3d::new(0.0, 0.0, 1.0));
-    assert_eq!(document.bevel_faces(&document.selected_faces(), 4.0, 0.0), 1);
+    assert_eq!(
+        document.bevel_faces(&document.selected_faces(), 4.0, 0.0),
+        1
+    );
 
     let brushes = map_model::node::brushes_with_ids(&document.tree.world);
     let (_, brush) = *brushes.first().expect("the brush");
@@ -2170,7 +2532,9 @@ fn bevelling_a_face_draws_it_in_and_leaves_the_rest_where_it_was() {
         .filter(|corner| corner.z() > 15.0)
         .collect();
     assert_eq!(top.len(), 4);
-    assert!(top.iter().all(|corner| (corner.x().abs() - 12.0).abs() < 0.001));
+    assert!(top
+        .iter()
+        .all(|corner| (corner.x().abs() - 12.0).abs() < 0.001));
     // The bottom is untouched, so the brush still stands where it did.
     assert!((brush.bounds().min.z() + 16.0).abs() < 0.001);
 }
@@ -2178,7 +2542,10 @@ fn bevelling_a_face_draws_it_in_and_leaves_the_rest_where_it_was() {
 #[test]
 fn an_inset_that_would_eat_the_face_changes_nothing() {
     let mut document = box_with_face_picked(Vec3d::new(0.0, 0.0, 1.0));
-    assert_eq!(document.bevel_faces(&document.selected_faces(), 32.0, 0.0), 0);
+    assert_eq!(
+        document.bevel_faces(&document.selected_faces(), 32.0, 0.0),
+        0
+    );
     let brushes = map_model::node::brushes_with_ids(&document.tree.world);
     assert_eq!(brushes[0].1.vertex_positions().len(), 8);
 }
@@ -2187,7 +2554,10 @@ fn an_inset_that_would_eat_the_face_changes_nothing() {
 fn a_panel_is_a_new_brush_standing_on_the_face() {
     let mut document = box_with_face_picked(Vec3d::new(0.0, 0.0, 1.0));
     let before = document.brush_count();
-    assert_eq!(document.panel_on_faces(&document.selected_faces(), 4.0, 8.0), 1);
+    assert_eq!(
+        document.panel_on_faces(&document.selected_faces(), 4.0, 8.0),
+        1
+    );
     assert_eq!(document.brush_count(), before + 1);
 
     // It sits on the face and is as deep as it was asked to be.
@@ -2204,7 +2574,10 @@ fn a_panel_is_a_new_brush_standing_on_the_face() {
 #[test]
 fn a_recess_takes_the_shape_out_of_the_brush() {
     let mut document = box_with_face_picked(Vec3d::new(0.0, 0.0, 1.0));
-    assert_eq!(document.panel_on_faces(&document.selected_faces(), 4.0, -8.0), 1);
+    assert_eq!(
+        document.panel_on_faces(&document.selected_faces(), 4.0, -8.0),
+        1
+    );
 
     // The middle of the recess is empty, and the wall beside it is not.
     let pieces = map_model::node::brushes(&document.tree.world);
@@ -2326,13 +2699,15 @@ fn a_surfaceparm_tag_goes_by_what_the_shader_said() {
     );
     from_shader.surface_parms = vec!["playerclip".to_string(), "nodraw".to_string()];
     document.materials.insert(from_shader);
-    document.materials.insert(map_model::material::Material::rgba(
-        "brick".to_string(),
-        std::path::PathBuf::new(),
-        1,
-        1,
-        vec![0, 0, 0, 255],
-    ));
+    document
+        .materials
+        .insert(map_model::material::Material::rgba(
+            "brick".to_string(),
+            std::path::PathBuf::new(),
+            1,
+            1,
+            vec![0, 0, 0, 255],
+        ));
 
     let tag = Tag {
         name: "Clip".to_string(),
@@ -2360,7 +2735,15 @@ fn turning_the_selection_into_a_material_tag_puts_that_material_on_it() {
 
     let mut document = one_box();
     for name in ["clip", "brick"] {
-        document.materials.insert(map_model::material::Material::rgba(name.to_string(), std::path::PathBuf::new(), 1, 1, vec![0, 0, 0, 255]));
+        document
+            .materials
+            .insert(map_model::material::Material::rgba(
+                name.to_string(),
+                std::path::PathBuf::new(),
+                1,
+                1,
+                vec![0, 0, 0, 255],
+            ));
     }
     let clip = Tag {
         name: "Clip".to_string(),
@@ -2377,7 +2760,10 @@ fn turning_the_selection_into_a_material_tag_puts_that_material_on_it() {
     document.set_tags(Vec::new(), vec![clip.clone(), missing.clone()]);
 
     assert!(document.can_enable_tag(&clip));
-    assert!(!document.can_enable_tag(&missing), "the custom material is not loaded");
+    assert!(
+        !document.can_enable_tag(&missing),
+        "the custom material is not loaded"
+    );
 
     // With nothing selected there is nothing to act on.
     assert_eq!(document.enable_tag(&clip), TagOutcome::NoSelection);
@@ -2458,11 +2844,23 @@ fn transparent_tags_draw_triggers_and_clip_faces_see_through() {
     use crate::games::{Tag, TagRule};
 
     let mut document = one_box();
-    let tag = |name: &str, rule, pattern: &str| Tag { name: name.to_string(), rule, pattern: pattern.to_string(), transparent: true };
-    document.set_tags(vec![tag("Trigger", TagRule::Classname, "trigger_*")], vec![tag("Clip", TagRule::Material, "clip")]);
+    let tag = |name: &str, rule, pattern: &str| Tag {
+        name: name.to_string(),
+        rule,
+        pattern: pattern.to_string(),
+        transparent: true,
+    };
+    document.set_tags(
+        vec![tag("Trigger", TagRule::Classname, "trigger_*")],
+        vec![tag("Clip", TagRule::Material, "clip")],
+    );
     let filters = crate::view_filters::ViewFilters::default();
     let alphas = |document: &Document| {
-        let mut alphas: Vec<f32> = document.triangles(&filters).iter().map(|triangle| triangle.alpha).collect();
+        let mut alphas: Vec<f32> = document
+            .triangles(&filters)
+            .iter()
+            .map(|triangle| triangle.alpha)
+            .collect();
         alphas.dedup();
         alphas
     };
@@ -2482,7 +2880,12 @@ fn transparent_tags_draw_triggers_and_clip_faces_see_through() {
     let mut document = Document::new(Default::default());
     document.set_tags(Vec::new(), vec![tag("Clip", TagRule::Material, "clip")]);
     let bounds = Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(32.0, 32.0, 32.0));
-    document.add_brushes(vec![map_model::shapes::create_cuboid(&document.world_bounds(), &bounds, "clip").unwrap()]);
+    document.add_brushes(vec![map_model::shapes::create_cuboid(
+        &document.world_bounds(),
+        &bounds,
+        "clip",
+    )
+    .unwrap()]);
     assert_eq!(alphas(&document), [surfaces::SEE_THROUGH_ALPHA]);
 }
 
@@ -2511,7 +2914,10 @@ fn a_brush_tag_hides_the_brushes_of_the_entity_it_matches() {
     assert!(!document.selected_edges().is_empty());
 
     document.set_tag_hidden("Trigger", true);
-    assert!(document.triangles(&filters).is_empty(), "the trigger is still drawn");
+    assert!(
+        document.triangles(&filters).is_empty(),
+        "the trigger is still drawn"
+    );
     // The flat views draw gathered edges, so those go too.
     assert!(document.selected_edges().is_empty());
     assert!(document.edges().is_empty());
@@ -2541,14 +2947,19 @@ fn a_class_with_a_model_is_drawn_as_it_rather_than_as_a_box() {
     .expect("a written fgd");
 
     let mut document = Document::new(WorldBounds::default());
-    document.load_definitions(&fgd).expect("the definitions load");
+    document
+        .load_definitions(&fgd)
+        .expect("the definitions load");
     document.create_point_entity("thing", Vec3d::new(64.0, 0.0, 0.0));
 
     let filters = crate::view_filters::ViewFilters::default();
     let triangles = document.triangles(&filters);
     // The model is one triangle; a box would be twelve.
     assert_eq!(triangles.len(), 1, "the box was drawn instead of the model");
-    assert!(triangles[0].material.is_some(), "the skin is there to draw it with");
+    assert!(
+        triangles[0].material.is_some(),
+        "the skin is there to draw it with"
+    );
     // It stands where the entity does.
     assert!(triangles[0].positions.iter().all(|point| point.x() >= 64.0));
 
@@ -2590,7 +3001,10 @@ fn a_class_with_an_iconsprite_is_drawn_as_a_sprite_not_a_box() {
     spr.extend_from_slice(&[1u8; 8]); // 8 pixels
     std::fs::write(game.join("id1/sprites/bulb.spr"), &spr).expect("a written sprite");
 
-    crate::preferences::edit(|p| {p.game="Quake".into(); p.game_path = game.display().to_string();});
+    crate::preferences::edit(|p| {
+        p.game = "Quake".into();
+        p.game_path = game.display().to_string();
+    });
     let fgd = game.join("test.fgd");
     std::fs::write(
         &fgd,
@@ -2604,12 +3018,18 @@ fn a_class_with_an_iconsprite_is_drawn_as_a_sprite_not_a_box() {
 
     let filters = crate::view_filters::ViewFilters::default();
     // No box triangles for it -- the sprite is a separate billboard pass.
-    assert!(document.triangles(&filters).is_empty(), "the box was still drawn");
+    assert!(
+        document.triangles(&filters).is_empty(),
+        "the box was still drawn"
+    );
 
     let sprites = document.sprites();
     assert_eq!(sprites.len(), 1);
     assert_eq!(sprites[0].position, Vec3d::new(64.0, 0.0, 0.0));
-    assert!(sprites[0].half_width > sprites[0].half_height, "4x2 sprite is wider than tall");
+    assert!(
+        sprites[0].half_width > sprites[0].half_height,
+        "4x2 sprite is wider than tall"
+    );
 
     // With the model filter off it is a box again.
     let boxes = document.triangles(&crate::view_filters::ViewFilters {
@@ -2631,14 +3051,25 @@ fn a_class_with_a_builtin_icon_keeps_its_see_through_box_and_outline() {
 
     let triangles = document.triangles(&filters);
     assert_eq!(triangles.len(), 12, "a box of twelve triangles");
-    assert!(triangles.iter().all(|t| t.alpha < 1.0), "the box is see-through");
-    let colour = document.entity_boxes()[0].color.map(|channel| f32::from(channel) / 255.0);
-    assert!(triangles.iter().all(|t| t.color == colour), "in the class's colour");
+    assert!(
+        triangles.iter().all(|t| t.alpha < 1.0),
+        "the box is see-through"
+    );
+    let colour = document.entity_boxes()[0]
+        .color
+        .map(|channel| f32::from(channel) / 255.0);
+    assert!(
+        triangles.iter().all(|t| t.color == colour),
+        "in the class's colour"
+    );
 
     let outlines = document.entity_box_outlines(&filters);
     assert_eq!(outlines.len(), 1);
     assert_eq!(outlines[0].bounds, document.entity_boxes()[0].bounds);
-    let hidden = crate::view_filters::ViewFilters { show_point_entities: false, ..filters };
+    let hidden = crate::view_filters::ViewFilters {
+        show_point_entities: false,
+        ..filters
+    };
     assert!(document.entity_box_outlines(&hidden).is_empty());
 
     // A light is drawn as its symbol, with no outline.
@@ -2735,11 +3166,7 @@ fn a_point_entity_turns_about_the_selections_centre() {
 #[test]
 fn a_point_entity_turned_about_a_point_away_from_it_moves_as_well() {
     let mut document = one_entity();
-    assert!(document.rotate_selection_about(
-        Vec3d::zero(),
-        Vec3d::new(0.0, 0.0, 1.0),
-        90.0
-    ));
+    assert!(document.rotate_selection_about(Vec3d::zero(), Vec3d::new(0.0, 0.0, 1.0), 90.0));
     let origin = the_entity(&document).origin().expect("an origin");
     assert!(
         vec::length(origin - Vec3d::new(0.0, 64.0, 16.0)) < 0.001,
@@ -2753,7 +3180,10 @@ fn a_point_entity_is_mirrored_with_the_selection() {
     let world = document.world_bounds();
     let brush = map_model::shapes::create_cuboid(
         &world,
-        &Bbox3d::new(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0)),
+        &Bbox3d::new(
+            Vec3d::new(-32.0, -32.0, -32.0),
+            Vec3d::new(32.0, 32.0, 32.0),
+        ),
         "stone",
     )
     .expect("a cube");
@@ -2774,12 +3204,17 @@ fn all_library_assets_stay_on_grid_after_insertion() {
     let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
     let grid_one = include_str!("../../../../assets/grid1_assets.txt");
     for name in grid_one.lines().filter(|name| !name.is_empty()) {
-        assert!(directory.join(format!("{name}.map")).is_file(), "missing grid 1 asset {name}");
+        assert!(
+            directory.join(format!("{name}.map")).is_file(),
+            "missing grid 1 asset {name}"
+        );
     }
     let mut checked = 0;
     for entry in std::fs::read_dir(directory).unwrap() {
         let path = entry.unwrap().path();
-        if path.extension().is_none_or(|extension| extension != "map") { continue; }
+        if path.extension().is_none_or(|extension| extension != "map") {
+            continue;
+        }
         let text = std::fs::read_to_string(&path).unwrap();
         let map = map_model::io::map_reader::read_map(&text, None).unwrap();
         let expected: usize = map.entities.iter().map(|e| e.brushes.len()).sum();
@@ -2788,10 +3223,20 @@ fn all_library_assets_stay_on_grid_after_insertion() {
         let brushes = node::brushes_with_ids(document.tree_world());
         assert_eq!(brushes.len(), expected, "{} lost brushes", path.display());
         for (_, brush) in brushes {
-            let grid = if grid_one.lines().any(|name| Some(name) == path.file_stem().and_then(|s| s.to_str())) { 1.0 } else { 0.125 };
-            assert!(brush.geometry().vertices().iter().all(|v| (0..3).all(|i|
-                (v.position[i] / grid - (v.position[i] / grid).round()).abs() < 1e-5
-            )), "{} moved off grid {grid}", path.display());
+            let grid = if grid_one
+                .lines()
+                .any(|name| Some(name) == path.file_stem().and_then(|s| s.to_str()))
+            {
+                1.0
+            } else {
+                0.125
+            };
+            assert!(
+                brush.geometry().vertices().iter().all(|v| (0..3)
+                    .all(|i| (v.position[i] / grid - (v.position[i] / grid).round()).abs() < 1e-5)),
+                "{} moved off grid {grid}",
+                path.display()
+            );
         }
         checked += 1;
     }
@@ -2805,9 +3250,17 @@ fn asset_paste_with_a_half_grid_center_preserves_the_vertex_grid() {
         &source.world_bounds(),
         &Bbox3d::new(Vec3d::zero(), Vec3d::new(4.125, 8.125, 16.125)),
         "stone",
-    ).unwrap()]);
+    )
+    .unwrap()]);
     let mut target = Document::new(WorldBounds::default());
-    assert_eq!(target.paste_asset_at(&source.to_map_text(), Vec3d::new(32.0, 48.0, 64.0), "Detail"), 1);
+    assert_eq!(
+        target.paste_asset_at(
+            &source.to_map_text(),
+            Vec3d::new(32.0, 48.0, 64.0),
+            "Detail"
+        ),
+        1
+    );
     for (_, brush) in node::brushes_with_ids(target.tree_world()) {
         assert!(brush.vertices_are_on_grid(0.125));
         assert_eq!(brush.bounds().size(), Vec3d::new(4.125, 8.125, 16.125));
@@ -2818,7 +3271,10 @@ fn asset_paste_with_a_half_grid_center_preserves_the_vertex_grid() {
 fn asset_paste_groups_all_parts_in_one_undo_step() {
     let source = two_boxes().to_map_text();
     let mut document = Document::new(WorldBounds::default());
-    assert_eq!(document.paste_asset_at(&source, Vec3d::new(128.0, 0.0, 0.0), "Gate"), 2);
+    assert_eq!(
+        document.paste_asset_at(&source, Vec3d::new(128.0, 0.0, 0.0), "Gate"),
+        2
+    );
     let groups = document.groups();
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].1, "Gate");
@@ -2832,7 +3288,12 @@ fn asset_paste_groups_all_parts_in_one_undo_step() {
     assert_eq!(document.groups().len(), 1);
     assert!(document.undo().is_some());
     assert!(document.groups().is_empty());
-    assert!(document.tree.world.layers.iter().all(|layer| layer.children.is_empty()));
+    assert!(document
+        .tree
+        .world
+        .layers
+        .iter()
+        .all(|layer| layer.children.is_empty()));
     assert!(document.undo().is_none());
     assert!(document.redo().is_some());
     assert_eq!(document.groups().len(), 1);
@@ -2853,14 +3314,18 @@ fn grouping_the_selection_makes_a_group_of_it() {
 
     // The brushes are the same brushes, still drawn and still selected.
     assert_eq!(document.brush_count(), 2);
-    assert!(!document.triangles(&crate::view_filters::ViewFilters::default()).is_empty());
+    assert!(!document
+        .triangles(&crate::view_filters::ViewFilters::default())
+        .is_empty());
 }
 
 #[test]
 fn grouping_and_ungrouping_can_be_undone() {
     let mut document = two_boxes();
-    let brushes: Vec<NodeId> =
-        node::brushes_with_ids(&document.tree.world).iter().map(|(id, _)| *id).collect();
+    let brushes: Vec<NodeId> = node::brushes_with_ids(&document.tree.world)
+        .iter()
+        .map(|(id, _)| *id)
+        .collect();
 
     document.group_selection("Doorway");
     assert_eq!(document.groups().len(), 1);
@@ -2868,7 +3333,11 @@ fn grouping_and_ungrouping_can_be_undone() {
 
     document.undo();
     assert!(document.groups().is_empty(), "the group is gone");
-    assert_eq!(document.brush_count(), 2, "the boxes came back to the layer");
+    assert_eq!(
+        document.brush_count(),
+        2,
+        "the boxes came back to the layer"
+    );
 
     document.redo();
     assert_eq!(document.groups().len(), 1);
@@ -2880,10 +3349,7 @@ fn grouping_and_ungrouping_can_be_undone() {
 
     document.undo();
     assert_eq!(document.groups().len(), 1, "the group is back");
-    assert_eq!(
-        document.groups()[0].2, 2,
-        "with both boxes in it"
-    );
+    assert_eq!(document.groups()[0].2, 2, "with both boxes in it");
 }
 
 #[test]
@@ -2893,14 +3359,19 @@ fn objects_move_in_and_out_of_the_open_group() {
     for x in [0.0, 128.0] {
         let brush = map_model::shapes::create_cuboid(
             &document.world_bounds(),
-            &Bbox3d::new(Vec3d::new(x - 16.0, -16.0, -16.0), Vec3d::new(x + 16.0, 16.0, 16.0)),
+            &Bbox3d::new(
+                Vec3d::new(x - 16.0, -16.0, -16.0),
+                Vec3d::new(x + 16.0, 16.0, 16.0),
+            ),
             "stone",
         )
         .expect("a cube");
         document.add_brushes(vec![brush]);
     }
-    let brushes: Vec<NodeId> =
-        node::brushes_with_ids(&document.tree.world).iter().map(|(id, _)| *id).collect();
+    let brushes: Vec<NodeId> = node::brushes_with_ids(&document.tree.world)
+        .iter()
+        .map(|(id, _)| *id)
+        .collect();
     document.select_only(brushes[0]);
     let group = document.group_selection("G").expect("a group");
     document.select_only(brushes[0]); // opens the group when asked
@@ -2911,7 +3382,8 @@ fn objects_move_in_and_out_of_the_open_group() {
     document.select_only(brushes[1]);
     assert_eq!(document.add_selection_to_open_group(), 1);
     assert_eq!(
-        document.groups()[0].2, 2,
+        document.groups()[0].2,
+        2,
         "both brushes are in the group now"
     );
 
@@ -2940,7 +3412,13 @@ fn extracting_from_a_linked_set_splits_it_in_two() {
     document.select_only(node::contents_of(&document.tree.world, group)[0]);
     document.open_selected_group();
     let first_brush = {
-        let NodeKind::Group(g) = &node::find_node(&document.tree.world, document.open_group().unwrap()).unwrap().kind else { unreachable!() };
+        let NodeKind::Group(g) =
+            &node::find_node(&document.tree.world, document.open_group().unwrap())
+                .unwrap()
+                .kind
+        else {
+            unreachable!()
+        };
         g.children[0].id
     };
     document.select_only(first_brush);
@@ -2971,7 +3449,10 @@ fn merging_groups_folds_them_into_one_and_undoes() {
     for x in [0.0, 128.0, 256.0] {
         let brush = map_model::shapes::create_cuboid(
             &document.world_bounds(),
-            &Bbox3d::new(Vec3d::new(x - 16.0, -16.0, -16.0), Vec3d::new(x + 16.0, 16.0, 16.0)),
+            &Bbox3d::new(
+                Vec3d::new(x - 16.0, -16.0, -16.0),
+                Vec3d::new(x + 16.0, 16.0, 16.0),
+            ),
             "stone",
         )
         .expect("a cube");
@@ -2983,9 +3464,17 @@ fn merging_groups_folds_them_into_one_and_undoes() {
 
     // Select every member of every group, then merge.
     document.select_all();
-    assert_eq!(document.merge_selected_groups(), 2, "two folded into the third");
+    assert_eq!(
+        document.merge_selected_groups(),
+        2,
+        "two folded into the third"
+    );
     assert_eq!(document.groups().len(), 1);
-    assert_eq!(document.groups()[0].2, 3, "all three brushes in the one group");
+    assert_eq!(
+        document.groups()[0].2,
+        3,
+        "all three brushes in the one group"
+    );
 
     document.undo();
     assert_eq!(document.groups().len(), 3, "the three groups are back");
@@ -3071,10 +3560,7 @@ fn renaming_one_linked_group_renames_the_set() {
     document.create_linked_duplicate(128.0);
     // The copy is what is selected after a linked duplicate.
     assert_eq!(document.rename_selected_groups("Arch"), 2);
-    assert!(document
-        .groups()
-        .iter()
-        .all(|(_, name, _)| name == "Arch"));
+    assert!(document.groups().iter().all(|(_, name, _)| name == "Arch"));
 }
 
 /// The `linked_group_id` of every group, in listing order.
@@ -3091,7 +3577,10 @@ fn separating_one_of_three_linked_groups_frees_only_it() {
     document.group_selection("Doorway");
     document.create_linked_duplicate(128.0);
     document.create_linked_duplicate(128.0);
-    assert_eq!(link_ids(&document).iter().filter(|l| l.is_some()).count(), 3);
+    assert_eq!(
+        link_ids(&document).iter().filter(|l| l.is_some()).count(),
+        3
+    );
 
     // The last copy is what is selected.
     assert_eq!(document.separate_selected_linked_groups(), 1);
@@ -3104,9 +3593,16 @@ fn separating_from_a_pair_frees_both() {
     let mut document = two_boxes();
     document.group_selection("Doorway");
     document.create_linked_duplicate(128.0);
-    assert_eq!(link_ids(&document).iter().filter(|l| l.is_some()).count(), 2);
+    assert_eq!(
+        link_ids(&document).iter().filter(|l| l.is_some()).count(),
+        2
+    );
 
-    assert_eq!(document.separate_selected_linked_groups(), 2, "a set of one is no set");
+    assert_eq!(
+        document.separate_selected_linked_groups(),
+        2,
+        "a set of one is no set"
+    );
     assert!(link_ids(&document).iter().all(|l| l.is_none()));
 }
 
@@ -3135,18 +3631,20 @@ fn a_linked_duplicate_shares_an_id_and_sits_a_step_over() {
         .expect("a whole group is selected");
 
     // Two groups, both wearing the same link id, each with a transformation.
-    let groups: Vec<(NodeId, Option<String>, bool)> =
-        node::groups_with_ids(&document.tree.world)
-            .into_iter()
-            .map(|(id, g)| (id, g.linked_group_id.clone(), g.transformation.is_some()))
-            .collect();
+    let groups: Vec<(NodeId, Option<String>, bool)> = node::groups_with_ids(&document.tree.world)
+        .into_iter()
+        .map(|(id, g)| (id, g.linked_group_id.clone(), g.transformation.is_some()))
+        .collect();
     assert_eq!(groups.len(), 2);
     assert!(groups[0].1.is_some() && groups[0].1 == groups[1].1);
     assert!(groups.iter().all(|(_, _, has_transform)| *has_transform));
 
     // The copy is already selected; its brushes sit a grid step along x from the
     // source's.
-    let copy_center = document.selection_bounds().expect("the copy is selected").center();
+    let copy_center = document
+        .selection_bounds()
+        .expect("the copy is selected")
+        .center();
     let source_id = groups.iter().find(|(id, _, _)| *id != copy_id).unwrap().0;
     let source_first = node::contents_of(&document.tree.world, source_id)[0];
     document.select_only(source_first);
@@ -3285,7 +3783,9 @@ fn put_a_light_in(document: &mut Document, group_id: NodeId) {
         ],
         children: Vec::new(),
     }));
-    let mut group = node::find_node(&document.tree.world, group_id).unwrap().clone();
+    let mut group = node::find_node(&document.tree.world, group_id)
+        .unwrap()
+        .clone();
     if let NodeKind::Group(g) = &mut group.kind {
         g.children.push(light);
     }
@@ -3329,7 +3829,9 @@ fn a_linked_set_at_a_turn_turns_its_entities_facings_too() {
     put_a_light_in(&mut document, source_id);
 
     // Set the copy a quarter turn about z from the source.
-    let mut copy_group = node::find_node(&document.tree.world, copy_id).unwrap().clone();
+    let mut copy_group = node::find_node(&document.tree.world, copy_id)
+        .unwrap()
+        .clone();
     if let NodeKind::Group(g) = &mut copy_group.kind {
         g.transformation = Some("0 -1 0 0 1 0 0 0 0 0 1 0 0 0 0 1".to_string());
     }
@@ -3390,8 +3892,12 @@ fn edit_the_light_in(
     group_id: NodeId,
     edit: impl FnOnce(&mut map_model::node::EntityNode),
 ) {
-    let mut group = node::find_node(&document.tree.world, group_id).unwrap().clone();
-    let NodeKind::Group(g) = &mut group.kind else { panic!("not a group") };
+    let mut group = node::find_node(&document.tree.world, group_id)
+        .unwrap()
+        .clone();
+    let NodeKind::Group(g) = &mut group.kind else {
+        panic!("not a group")
+    };
     let light = g
         .children
         .iter_mut()
@@ -3511,7 +4017,10 @@ fn make_structural_pulls_brushes_out_of_a_brush_entity() {
     for x in [0.0, 128.0] {
         let brush = map_model::shapes::create_cuboid(
             &document.world_bounds(),
-            &Bbox3d::new(Vec3d::new(x - 16.0, -16.0, -16.0), Vec3d::new(x + 16.0, 16.0, 16.0)),
+            &Bbox3d::new(
+                Vec3d::new(x - 16.0, -16.0, -16.0),
+                Vec3d::new(x + 16.0, 16.0, 16.0),
+            ),
             "stone",
         )
         .expect("a cube");
@@ -3521,8 +4030,10 @@ fn make_structural_pulls_brushes_out_of_a_brush_entity() {
     document.create_brush_entity("func_wall");
     assert_eq!(node::entities_with_ids(&document.tree.world).len(), 1);
 
-    let brushes: Vec<NodeId> =
-        node::brushes_with_ids(&document.tree.world).iter().map(|(id, _)| *id).collect();
+    let brushes: Vec<NodeId> = node::brushes_with_ids(&document.tree.world)
+        .iter()
+        .map(|(id, _)| *id)
+        .collect();
 
     // Pull one brush out: the entity keeps the other.
     document.select_only(brushes[0]);
@@ -3532,7 +4043,10 @@ fn make_structural_pulls_brushes_out_of_a_brush_entity() {
 
     document.undo();
     assert_eq!(
-        node::entities_with_ids(&document.tree.world)[0].1.children.len(),
+        node::entities_with_ids(&document.tree.world)[0]
+            .1
+            .children
+            .len(),
         2,
         "the move undid"
     );
@@ -3540,7 +4054,10 @@ fn make_structural_pulls_brushes_out_of_a_brush_entity() {
     // Pull both out: the emptied entity goes too.
     document.select_all();
     assert_eq!(document.make_structural(), 2);
-    assert!(node::entities_with_ids(&document.tree.world).is_empty(), "the entity is gone");
+    assert!(
+        node::entities_with_ids(&document.tree.world).is_empty(),
+        "the entity is gone"
+    );
     assert_eq!(document.brush_count(), 2, "the brushes are still there");
 }
 
@@ -3585,9 +4102,16 @@ fn clearing_protected_properties_takes_the_siblings_values_and_drops_the_flag() 
     document.select_only(copy_light);
     assert_eq!(document.clear_protected_properties(), 1);
 
-    match &node::find_node(&document.tree.world, copy_light).unwrap().kind {
+    match &node::find_node(&document.tree.world, copy_light)
+        .unwrap()
+        .kind
+    {
         NodeKind::Entity(e) => {
-            assert_eq!(e.property("mangle"), Some("10 0 0"), "took the sibling's value");
+            assert_eq!(
+                e.property("mangle"),
+                Some("10 0 0"),
+                "took the sibling's value"
+            );
             assert!(e.protected_properties().is_empty(), "the flag is gone");
         }
         _ => unreachable!(),
@@ -3605,11 +4129,9 @@ fn a_property_edit_reaches_every_selected_entity_in_one_undo_step() {
 
     let ids = [a, b, c];
     document.set_entity_property_on(&ids, "light", "300");
-    let value_of = |doc: &Document, id| {
-        match &node::find_node(&doc.tree.world, id).unwrap().kind {
-            NodeKind::Entity(e) => e.property("light").map(str::to_string),
-            _ => None,
-        }
+    let value_of = |doc: &Document, id| match &node::find_node(&doc.tree.world, id).unwrap().kind {
+        NodeKind::Entity(e) => e.property("light").map(str::to_string),
+        _ => None,
     };
     assert_eq!(value_of(&document, a).as_deref(), Some("300"));
     assert_eq!(value_of(&document, c).as_deref(), Some("300"));
@@ -3620,15 +4142,19 @@ fn a_property_edit_reaches_every_selected_entity_in_one_undo_step() {
     assert_eq!(value_of(&document, b), None);
 
     let flags_of = |doc: &Document, id| match &node::find_node(&doc.tree.world, id).unwrap().kind {
-        NodeKind::Entity(e) => {
-            e.property("spawnflags").and_then(|v| v.trim().parse::<i64>().ok())
-        }
+        NodeKind::Entity(e) => e
+            .property("spawnflags")
+            .and_then(|v| v.trim().parse::<i64>().ok()),
         _ => None,
     };
 
     // Seeding: `c` has no spawnflags, so it starts from the given default bits.
     document.set_entity_flag_seeded_on(&[c], "spawnflags", 1024, 2, true);
-    assert_eq!(flags_of(&document, c), Some(1024 | 2), "the default bit plus the ticked one");
+    assert_eq!(
+        flags_of(&document, c),
+        Some(1024 | 2),
+        "the default bit plus the ticked one"
+    );
     document.undo();
 
     // A plain flag edit keeps each entity's other bits: a has bit 1, b has 1|2, c none.
@@ -3676,10 +4202,8 @@ fn a_linked_duplicate_survives_a_save() {
     document.group_selection("Doorway");
     document.create_linked_duplicate(64.0);
 
-    let path = std::env::temp_dir().join(format!(
-        "heron-linked-roundtrip-{}.map",
-        std::process::id()
-    ));
+    let path =
+        std::env::temp_dir().join(format!("heron-linked-roundtrip-{}.map", std::process::id()));
     document.save_as(&path).expect("it saves");
     let reopened = Document::open(&path, WorldBounds::default()).expect("it opens");
     let _ = std::fs::remove_file(&path);
@@ -3762,12 +4286,19 @@ fn turning_off_entities_stops_them_being_drawn_but_leaves_the_brushes() {
     let mut document = one_box();
     document.create_point_entity("info_player_start", Vec3d::new(128.0, 0.0, 0.0));
 
-    let mut filters = crate::view_filters::ViewFilters { show_point_entity_models: false, ..Default::default() };
+    let mut filters = crate::view_filters::ViewFilters {
+        show_point_entity_models: false,
+        ..Default::default()
+    };
     let with_entity = document.triangles(&filters).len();
     filters.show_point_entities = false;
     let without = document.triangles(&filters).len();
 
-    assert_eq!(with_entity - without, 12, "the entity's box is twelve triangles");
+    assert_eq!(
+        with_entity - without,
+        12,
+        "the entity's box is twelve triangles"
+    );
     assert!(without > 0, "the brush is still drawn");
 }
 
@@ -3829,7 +4360,15 @@ fn a_patch_s_uv_coordinates_are_scaled_to_the_material() {
     // 0..1 both ways, so on a 128x64 material it should reach 128 across and 64 down.
     let mut document = document_with_a_patch("uv-scale");
     // Only the size matters here; the pixels are never read.
-    document.materials.insert(map_model::material::Material::rgba("common/caulk".to_string(), std::path::PathBuf::new(), 128, 64, vec![0, 0, 0, 255]));
+    document
+        .materials
+        .insert(map_model::material::Material::rgba(
+            "common/caulk".to_string(),
+            std::path::PathBuf::new(),
+            128,
+            64,
+            vec![0, 0, 0, 255],
+        ));
 
     let filters = crate::view_filters::ViewFilters::default();
     let (mut widest, mut tallest) = (0.0f32, 0.0f32);
@@ -3868,9 +4407,17 @@ fn a_control_point_moves_and_takes_the_surface_with_it() {
     assert!(document.move_control_points(&[corner], Vec3d::new(0.0, 0.0, 32.0)));
 
     let after = document.selected_patches()[0].clone();
-    assert_eq!(after.control_points[0].position, corner + Vec3d::new(0.0, 0.0, 32.0));
+    assert_eq!(
+        after.control_points[0].position,
+        corner + Vec3d::new(0.0, 0.0, 32.0)
+    );
     // Every other control point stayed where it was.
-    for (moved, still) in after.control_points.iter().zip(&before.control_points).skip(1) {
+    for (moved, still) in after
+        .control_points
+        .iter()
+        .zip(&before.control_points)
+        .skip(1)
+    {
         assert_eq!(moved.position, still.position);
     }
     // And the surface followed, rather than the point moving on its own.
@@ -4009,7 +4556,9 @@ fn a_loose_brush_moves_into_an_existing_entity_and_undoes() {
         .collect();
 
     document.select_only(brushes[0]);
-    let entity = document.create_brush_entity("func_wall").expect("an entity");
+    let entity = document
+        .create_brush_entity("func_wall")
+        .expect("an entity");
 
     document.select_only(brushes[1]);
     let moved = document.move_selection_to_entity(entity);
@@ -4026,7 +4575,11 @@ fn a_loose_brush_moves_into_an_existing_entity_and_undoes() {
         .into_iter()
         .find(|(id, _)| *id == entity)
         .expect("the entity is still there");
-    assert_eq!(entity_node.children.len(), 1, "undo put the brush back on the layer");
+    assert_eq!(
+        entity_node.children.len(),
+        1,
+        "undo put the brush back on the layer"
+    );
 }
 
 #[test]
@@ -4096,7 +4649,11 @@ fn setting_a_property_adds_it_then_changes_it() {
     assert_eq!(entity.property("targetname"), Some("torch"));
     // Changing does not add a second copy.
     assert_eq!(
-        entity.properties.iter().filter(|(k, _)| k == "targetname").count(),
+        entity
+            .properties
+            .iter()
+            .filter(|(k, _)| k == "targetname")
+            .count(),
         1
     );
 }
@@ -4158,7 +4715,10 @@ fn an_entity_edit_can_be_undone() {
     document.set_entity_property(id, "light", "500");
 
     assert!(document.undo().is_some());
-    assert_eq!(document.selected_entity().unwrap().1.property("light"), None);
+    assert_eq!(
+        document.selected_entity().unwrap().1.property("light"),
+        None
+    );
 }
 
 #[test]
@@ -4379,7 +4939,10 @@ fn two_documents_stay_in_step_through_the_wire() {
     // B joins: it adopts A's whole world, node ids and all, rather than parsing the
     // map itself and minting its own.
     let snapshot = WireWorld::from_world(&a.tree.world).to_json();
-    let world = WireWorld::from_json(&snapshot).unwrap().into_world(&bounds).unwrap();
+    let world = WireWorld::from_json(&snapshot)
+        .unwrap()
+        .into_world(&bounds)
+        .unwrap();
     let mut b = Document::from_world(world, WorldBounds::default(), a.format, None);
     assert_eq!(
         map_model::io::map_writer::write_map(&node::flatten_tree(&a.tree.world, a.format, None)),
@@ -4397,17 +4960,16 @@ fn two_documents_stay_in_step_through_the_wire() {
     let ship = |sent: &Rc<RefCell<Vec<Edit>>>, b: &mut Document| {
         for edit in sent.borrow_mut().drain(..) {
             let json = WireEdit::from_edit(&edit).to_json();
-            let remote = WireEdit::from_json(&json).unwrap().into_edit(&bounds).unwrap();
+            let remote = WireEdit::from_json(&json)
+                .unwrap()
+                .into_edit(&bounds)
+                .unwrap();
             b.apply_remote(&remote);
         }
     };
 
     let flatten = |doc: &Document| {
-        map_model::io::map_writer::write_map(&node::flatten_tree(
-            &doc.tree.world,
-            doc.format,
-            None,
-        ))
+        map_model::io::map_writer::write_map(&node::flatten_tree(&doc.tree.world, doc.format, None))
     };
 
     // A adds a brush.
@@ -4437,9 +4999,15 @@ fn the_peers_selection_draws_in_its_own_edge_set() {
     assert!(plain_before > 0);
 
     document.set_peer_selection(1, HashSet::from([box_id]));
-    assert!(!document.peer_edges().is_empty(), "the box moved to the peer set");
+    assert!(
+        !document.peer_edges().is_empty(),
+        "the box moved to the peer set"
+    );
     assert!(document.edges().is_empty(), "and left the plain set");
-    assert!(document.selected_edges().is_empty(), "the local selection is untouched");
+    assert!(
+        document.selected_edges().is_empty(),
+        "the local selection is untouched"
+    );
 
     // The local selection wins where the two overlap.
     document.select_only(box_id);
@@ -4448,7 +5016,11 @@ fn the_peers_selection_draws_in_its_own_edge_set() {
 
     document.set_peer_selection(1, HashSet::new());
     document.clear_selection();
-    assert_eq!(document.edges().len(), plain_before, "back to how it started");
+    assert_eq!(
+        document.edges().len(),
+        plain_before,
+        "back to how it started"
+    );
 }
 
 #[test]
@@ -4458,7 +5030,11 @@ fn a_peer_selection_message_round_trips_through_a_session() {
     use std::net::TcpListener;
     use std::time::{Duration, Instant};
 
-    let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
     let host_thread = std::thread::spawn(move || Session::host(port).unwrap());
     std::thread::sleep(Duration::from_millis(50));
     let guest = Session::join(&format!("127.0.0.1:{port}")).unwrap();
@@ -4471,10 +5047,12 @@ fn a_peer_selection_message_round_trips_through_a_session() {
     let deadline = Instant::now() + Duration::from_secs(2);
     loop {
         let events = guest.poll(&bounds);
-        if let Some(SessionEvent::PeerSelection { peer, ids: got }) =
-            events.into_iter().next()
-        {
-            assert_eq!(peer, crate::collab::HOST_PEER, "a guest hears from the host");
+        if let Some(SessionEvent::PeerSelection { peer, ids: got }) = events.into_iter().next() {
+            assert_eq!(
+                peer,
+                crate::collab::HOST_PEER,
+                "a guest hears from the host"
+            );
             assert_eq!(got, ids);
             break;
         }
@@ -4524,7 +5102,11 @@ fn edits_made_while_apart_replay_onto_the_rejoined_world() {
 
     // The rejoin: a fresh link, the host re-sends its world, the guest adopts it
     // and replays what it held -- the exact sequence main.rs runs.
-    let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
     let host_thread = std::thread::spawn(move || Session::host(port).unwrap());
     std::thread::sleep(Duration::from_millis(50));
     let guest_session = Session::join(&format!("127.0.0.1:{port}")).unwrap();
@@ -4566,9 +5148,19 @@ fn edits_made_while_apart_replay_onto_the_rejoined_world() {
     let flatten = |doc: &Document| {
         map_model::io::map_writer::write_map(&node::flatten_tree(&doc.tree.world, doc.format, None))
     };
-    assert_eq!(flatten(&host), flatten(&guest), "both sides hold both brushes");
-    assert!(flatten(&host).contains("offline"), "the outage edit survived");
-    assert!(flatten(&host).contains("host_side"), "the host's work survived");
+    assert_eq!(
+        flatten(&host),
+        flatten(&guest),
+        "both sides hold both brushes"
+    );
+    assert!(
+        flatten(&host).contains("offline"),
+        "the outage edit survived"
+    );
+    assert!(
+        flatten(&host).contains("host_side"),
+        "the host's work survived"
+    );
 }
 
 #[test]
@@ -4578,7 +5170,11 @@ fn a_guest_joins_a_real_session_and_follows_the_host() {
     use std::rc::Rc;
     use std::time::{Duration, Instant};
 
-    let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+    let port = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
     let host_thread = std::thread::spawn(move || Session::host(port).unwrap());
     std::thread::sleep(Duration::from_millis(50));
     let guest_session = Session::join(&format!("127.0.0.1:{port}")).unwrap();
@@ -4626,7 +5222,11 @@ fn a_guest_joins_a_real_session_and_follows_the_host() {
     };
 
     poll_until(&mut guest, true);
-    assert_eq!(flatten(&host), flatten(&guest), "the guest adopted the host's world");
+    assert_eq!(
+        flatten(&host),
+        flatten(&guest),
+        "the guest adopted the host's world"
+    );
 
     // The host makes an edit; the guest picks it up off the socket.
     host.select_all();
@@ -4638,29 +5238,56 @@ fn a_guest_joins_a_real_session_and_follows_the_host() {
 #[test]
 fn surface_material_survives_history_save_and_geometry_edits() {
     use map_model::brush_face::{FaceColor, Rgb, SurfaceMaterial};
-    for paint in [None, Some(FaceColor::solid(Rgb::new(200,100,30))), Some(FaceColor::gradient(Rgb::new(200,100,30),Rgb::new(20,40,80),45.0))] {
+    for paint in [
+        None,
+        Some(FaceColor::solid(Rgb::new(200, 100, 30))),
+        Some(FaceColor::gradient(
+            Rgb::new(200, 100, 30),
+            Rgb::new(20, 40, 80),
+            45.0,
+        )),
+    ] {
         let mut doc = one_box();
         doc.select_all();
         doc.set_face_color(paint);
         let id = *doc.selection_ids().iter().next().unwrap();
-        let face = FaceRef { node:id, face:0 };
-        let surface = SurfaceMaterial { roughness: 20, metallic: 80, emission: 250 };
+        let face = FaceRef { node: id, face: 0 };
+        let surface = SurfaceMaterial {
+            roughness: 20,
+            metallic: 80,
+            emission: 250,
+        };
         assert_eq!(doc.set_surface_material_on(&[face], Some(surface)), 1);
         assert_eq!(doc.face_at(face).unwrap().surface_material, Some(surface));
         let saved = doc.to_map_text();
-        let map = read_map(&saved,None).unwrap();
+        let map = read_map(&saved, None).unwrap();
         let faces = &map.entities[0].brushes[0].faces;
-        assert_eq!(faces.iter().filter(|f| f.surface_material == Some(surface)).count(),1);
+        assert_eq!(
+            faces
+                .iter()
+                .filter(|f| f.surface_material == Some(surface))
+                .count(),
+            1
+        );
         assert!(faces.iter().all(|f| f.paint() == paint));
         doc.undo();
-        assert_eq!(doc.face_at(face).unwrap().surface_material,None);
+        assert_eq!(doc.face_at(face).unwrap().surface_material, None);
         doc.redo();
-        assert_eq!(doc.to_map_text(),saved);
-        doc.rotate_selection(Vec3d::new(0.,0.,1.),30.);
-        let triangles=doc.triangles(&crate::view_filters::ViewFilters::default());
-        assert_eq!(triangles.iter().filter(|t| t.surface_material==Some(surface)).count(),2);
-        assert_eq!(doc.set_surface_material(None),1);
-        assert!(doc.triangles(&crate::view_filters::ViewFilters::default()).iter().all(|t|t.surface_material.is_none()));
+        assert_eq!(doc.to_map_text(), saved);
+        doc.rotate_selection(Vec3d::new(0., 0., 1.), 30.);
+        let triangles = doc.triangles(&crate::view_filters::ViewFilters::default());
+        assert_eq!(
+            triangles
+                .iter()
+                .filter(|t| t.surface_material == Some(surface))
+                .count(),
+            2
+        );
+        assert_eq!(doc.set_surface_material(None), 1);
+        assert!(doc
+            .triangles(&crate::view_filters::ViewFilters::default())
+            .iter()
+            .all(|t| t.surface_material.is_none()));
     }
 }
 
@@ -4686,15 +5313,23 @@ fn point_light_symbol_tracks_color_selection_and_stays_out_of_render_output() {
         }
     }
     assert!(symbol.iter().any(|t| t.color[2] > t.color[0] + 0.5));
-    assert!(document.render_triangles().is_empty(), "editor symbols must not enter image renders");
-    assert!(document.triangles(&crate::view_filters::ViewFilters {
-        show_point_entities: false, ..filters
-    }).is_empty());
+    assert!(
+        document.render_triangles().is_empty(),
+        "editor symbols must not enter image renders"
+    );
+    assert!(document
+        .triangles(&crate::view_filters::ViewFilters {
+            show_point_entities: false,
+            ..filters
+        })
+        .is_empty());
     assert_eq!(document.to_map_text(), original);
     document.set_entity_property(entity, "light_color", "NaN 1 2");
-    assert!(document.triangles(&filters).iter().all(|t| t.color.iter().all(|v| v.is_finite())));
+    assert!(document
+        .triangles(&filters)
+        .iter()
+        .all(|t| t.color.iter().all(|v| v.is_finite())));
 }
-
 
 #[test]
 fn library_asset_placement_aligns_base_and_footprint_to_active_grid() {
@@ -4703,15 +5338,25 @@ fn library_asset_placement_aligns_base_and_footprint_to_active_grid() {
     let mut checked = 0;
     for entry in std::fs::read_dir(directory).unwrap() {
         let path = entry.unwrap().path();
-        if path.extension().is_none_or(|ext| ext != "map") { continue; }
+        if path.extension().is_none_or(|ext| ext != "map") {
+            continue;
+        }
         let text = std::fs::read_to_string(&path).unwrap();
         let mut document = Document::new(WorldBounds::default());
         document.paste_asset_on_grid(&text, Vec3d::new(-128.0, 96.0, 64.0), "Asset", &grid);
-        let bounds = Bbox3d::merge_all(node::brushes_with_ids(document.tree_world()).into_iter()
-            .flat_map(|(_, brush)| [brush.bounds().min, brush.bounds().max])).unwrap();
+        let bounds = Bbox3d::merge_all(
+            node::brushes_with_ids(document.tree_world())
+                .into_iter()
+                .flat_map(|(_, brush)| [brush.bounds().min, brush.bounds().max]),
+        )
+        .unwrap();
         for axis in 0..3 {
-            assert!((bounds.min[axis] / 4.0 - (bounds.min[axis] / 4.0).round()).abs() < 1e-6,
-                "{}: {:?}", path.display(), bounds.min);
+            assert!(
+                (bounds.min[axis] / 4.0 - (bounds.min[axis] / 4.0).round()).abs() < 1e-6,
+                "{}: {:?}",
+                path.display(),
+                bounds.min
+            );
         }
         assert!((bounds.min.z() - 64.0).abs() < 1e-6, "{}", path.display());
         for (_, brush) in node::brushes_with_ids(document.tree_world()) {
@@ -4729,35 +5374,48 @@ fn library_asset_placement_aligns_base_and_footprint_to_active_grid() {
 fn modular_pipe_ports_remain_on_grid_four_after_asset_placement() {
     let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets");
     for (name, ports) in [
-        ("pipe_straight", vec![[-32.,0.,12.],[32.,0.,12.]]),
-        ("pipe_elbow", vec![[-36.,0.,12.],[0.,36.,12.]]),
-        ("pipe_tee", vec![[-32.,0.,12.],[32.,0.,12.],[0.,36.,12.]]),
-        ("pipe_valve", vec![[-32.,0.,12.],[32.,0.,12.]]),
-        ("pipe_reducer", vec![[-24.,0.,12.],[24.,0.,12.]]),
-        ("pipe_broken", vec![[-32.,0.,12.],[32.,0.,12.]]),
+        ("pipe_straight", vec![[-32., 0., 12.], [32., 0., 12.]]),
+        ("pipe_elbow", vec![[-36., 0., 12.], [0., 36., 12.]]),
+        (
+            "pipe_tee",
+            vec![[-32., 0., 12.], [32., 0., 12.], [0., 36., 12.]],
+        ),
+        ("pipe_valve", vec![[-32., 0., 12.], [32., 0., 12.]]),
+        ("pipe_reducer", vec![[-24., 0., 12.], [24., 0., 12.]]),
+        ("pipe_broken", vec![[-32., 0., 12.], [32., 0., 12.]]),
     ] {
         let text = std::fs::read_to_string(directory.join(format!("{name}.map"))).unwrap();
         let mut original = Document::new(WorldBounds::default());
         original.paste_at(&text, None);
         let before = original.selection_bounds().unwrap();
         let mut document = Document::new(WorldBounds::default());
-        document.paste_asset_on_grid(&text, Vec3d::new(128.,96.,64.), name, &crate::grid::Grid::new(2));
+        document.paste_asset_on_grid(
+            &text,
+            Vec3d::new(128., 96., 64.),
+            name,
+            &crate::grid::Grid::new(2),
+        );
         let after = document.selection_bounds().unwrap();
         let delta = after.min - before.min;
         for port in ports {
-            let p = Vec3d::new(port[0],port[1],port[2]) + delta;
+            let p = Vec3d::new(port[0], port[1], port[2]) + delta;
             for axis in 0..3 {
-                assert!((p[axis]/4. - (p[axis]/4.).round()).abs()<1e-6, "{name}: {p:?}");
-                assert!((after.size()[axis]/8. - (after.size()[axis]/8.).round()).abs()<1e-6);
+                assert!(
+                    (p[axis] / 4. - (p[axis] / 4.).round()).abs() < 1e-6,
+                    "{name}: {p:?}"
+                );
+                assert!((after.size()[axis] / 8. - (after.size()[axis] / 8.).round()).abs() < 1e-6);
             }
         }
     }
 }
 
-
 #[test]
 fn fan_frame_contacts_are_skip_and_preview_does_not_use_the_frame_paint() {
-    let text = std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/fan.map")).unwrap();
+    let text = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/fan.map"),
+    )
+    .unwrap();
     let mut document = Document::new(WorldBounds::default());
     document.paste_at(&text, None);
     let brushes = node::brushes_with_ids(document.tree_world());
@@ -4776,10 +5434,19 @@ fn fan_frame_contacts_are_skip_and_preview_does_not_use_the_frame_paint() {
     }
     assert_eq!(contacts, 16, "both sides of all eight frame joins");
     let triangles = document.triangles(&crate::view_filters::ViewFilters::default());
-    assert!(triangles.iter().filter(|t| t.material == Some(render::SKIP_PREVIEW_MATERIAL) && t.alpha < 1.0 && t.corner_colors.is_none()).count() >= 32);
-    assert!(triangles.iter().any(|t| t.color == [48./255.,106./255.,113./255.]));
+    assert!(
+        triangles
+            .iter()
+            .filter(|t| t.material == Some(render::SKIP_PREVIEW_MATERIAL)
+                && t.alpha < 1.0
+                && t.corner_colors.is_none())
+            .count()
+            >= 32
+    );
+    assert!(triangles
+        .iter()
+        .any(|t| t.color == [48. / 255., 106. / 255., 113. / 255.]));
 }
-
 
 #[test]
 fn orthographic_move_can_hit_a_selected_brush_behind_another() {
@@ -4790,7 +5457,8 @@ fn orthographic_move_can_hit_a_selected_brush_behind_another() {
         &document.world_bounds(),
         &Bbox3d::new(Vec3d::new(-32.0, -32.0, 64.0), Vec3d::new(32.0, 32.0, 96.0)),
         "stone",
-    ).unwrap();
+    )
+    .unwrap();
     document.add_brushes(vec![front]);
     document.select_only(rear);
     let ray = Ray3d::new(Vec3d::new(0.0, 0.0, 200.0), Vec3d::new(0.0, 0.0, -1.0));
@@ -4816,7 +5484,8 @@ fn selected_group_picking_does_not_fill_the_gap_between_members() {
         &document.world_bounds(),
         &Bbox3d::new(Vec3d::new(64.0, -16.0, -16.0), Vec3d::new(96.0, 16.0, 16.0)),
         "stone",
-    ).unwrap();
+    )
+    .unwrap();
     document.add_brushes(vec![second]);
     document.select_all();
     document.group_selection("Pair");
@@ -4829,16 +5498,29 @@ fn selected_group_picking_does_not_fill_the_gap_between_members() {
 #[test]
 fn special_materials_survive_loading_and_removing_project_textures() {
     let mut document = one_box();
-    for name in ["skip", "clip", "origin"] { assert!(document.materials().get(name).is_some()); }
+    for name in ["skip", "clip", "origin"] {
+        assert!(document.materials().get(name).is_some());
+    }
     let directory = material_dir("special-fallback");
-    image::RgbaImage::from_pixel(2, 2, image::Rgba([12, 34, 56, 255])).save(directory.join("clip.png")).unwrap();
+    image::RgbaImage::from_pixel(2, 2, image::Rgba([12, 34, 56, 255]))
+        .save(directory.join("clip.png"))
+        .unwrap();
     document.load_materials(&directory).unwrap();
     assert_eq!(document.current_material(), "brick");
-    for name in ["skip", "clip", "origin"] { assert!(document.materials().get(name).is_some()); }
+    for name in ["skip", "clip", "origin"] {
+        assert!(document.materials().get(name).is_some());
+    }
     assert_eq!(document.materials().get("clip").unwrap().width, 2);
     document.remove_material_source(0);
-    assert!(document.materials().get("clip").unwrap().path.starts_with("builtin/special"));
-    for name in ["skip", "clip", "origin"] { assert!(document.materials().get(name).is_some()); }
+    assert!(document
+        .materials()
+        .get("clip")
+        .unwrap()
+        .path
+        .starts_with("builtin/special"));
+    for name in ["skip", "clip", "origin"] {
+        assert!(document.materials().get(name).is_some());
+    }
     document.set_current_material("skip");
     document.select_all();
     document.apply_current_material();
@@ -4848,36 +5530,68 @@ fn special_materials_survive_loading_and_removing_project_textures() {
 
 #[test]
 fn keyframe_animation_persists_and_undoes_as_one_edit() {
-    let mut document=one_box();document.select_all();
-    let before=document.to_map_text();
+    let mut document = one_box();
+    document.select_all();
+    let before = document.to_map_text();
     document.run_as_one_edit(|d| {
-        let id=d.create_brush_entity("func_animate").unwrap();
-        d.set_entity_property(id,"animation_keys","0 0 0 0 0 0 0; 2 128 0 0 0 0 90");
-        d.set_entity_property(id,"animation_pivot","0 0 0");
-        d.set_entity_property(id,"animation_mode","pingpong");
+        let id = d.create_brush_entity("func_animate").unwrap();
+        d.set_entity_property(id, "animation_keys", "0 0 0 0 0 0 0; 2 128 0 0 0 0 90");
+        d.set_entity_property(id, "animation_pivot", "0 0 0");
+        d.set_entity_property(id, "animation_mode", "pingpong");
     });
-    let text=document.to_map_text();
+    let text = document.to_map_text();
     assert!(text.contains("animation_keys"));
-    let parsed=map_model::io::map_reader::read_map(&text,None).unwrap();
-    let tree=map_model::node::build_tree(&parsed,&geometry_math::bbox::Bbox3d::from_scalars(-16384.0,16384.0));
-    let motions=crate::motion_preview::motions(&tree.world);
-    assert_eq!(motions.len(),1);
-    document.undo();assert_eq!(document.to_map_text(),before);
-    document.redo();assert_eq!(document.to_map_text(),text);
+    let parsed = map_model::io::map_reader::read_map(&text, None).unwrap();
+    let tree = map_model::node::build_tree(
+        &parsed,
+        &geometry_math::bbox::Bbox3d::from_scalars(-16384.0, 16384.0),
+    );
+    let motions = crate::motion_preview::motions(&tree.world);
+    assert_eq!(motions.len(), 1);
+    document.undo();
+    assert_eq!(document.to_map_text(), before);
+    document.redo();
+    assert_eq!(document.to_map_text(), text);
 }
 
 #[test]
 fn live_gradient_edits_group_without_swallowing_other_edits() {
-    let mut d=one_box();d.select_all();let before=d.to_map_text();
-    let mut session=super::LivePaint::default();
-    for angle in [0.0,15.0,30.0] {
-        d.set_face_color_live(Some(map_model::brush_face::FaceColor::Gradient{from:map_model::brush_face::Rgb::new(255,0,0),to:map_model::brush_face::Rgb::new(0,0,255),angle,alpha:255}),&[],&mut session);
+    let mut d = one_box();
+    d.select_all();
+    let before = d.to_map_text();
+    let mut session = super::LivePaint::default();
+    for angle in [0.0, 15.0, 30.0] {
+        d.set_face_color_live(
+            Some(map_model::brush_face::FaceColor::Gradient {
+                from: map_model::brush_face::Rgb::new(255, 0, 0),
+                to: map_model::brush_face::Rgb::new(0, 0, 255),
+                angle,
+                alpha: 255,
+            }),
+            &[],
+            &mut session,
+        );
     }
-    let gradient=d.to_map_text();d.undo();assert_eq!(d.to_map_text(),before);d.redo();assert_eq!(d.to_map_text(),gradient);
-    d.set_face_color(Some(map_model::brush_face::FaceColor::solid(map_model::brush_face::Rgb::new(0,255,0))));
-    let solid=d.to_map_text();
-    d.set_face_color_live(Some(map_model::brush_face::FaceColor::solid(map_model::brush_face::Rgb::new(255,255,0))),&[],&mut session);
-    d.undo();assert_eq!(d.to_map_text(),solid);d.undo();assert_eq!(d.to_map_text(),gradient);
+    let gradient = d.to_map_text();
+    d.undo();
+    assert_eq!(d.to_map_text(), before);
+    d.redo();
+    assert_eq!(d.to_map_text(), gradient);
+    d.set_face_color(Some(map_model::brush_face::FaceColor::solid(
+        map_model::brush_face::Rgb::new(0, 255, 0),
+    )));
+    let solid = d.to_map_text();
+    d.set_face_color_live(
+        Some(map_model::brush_face::FaceColor::solid(
+            map_model::brush_face::Rgb::new(255, 255, 0),
+        )),
+        &[],
+        &mut session,
+    );
+    d.undo();
+    assert_eq!(d.to_map_text(), solid);
+    d.undo();
+    assert_eq!(d.to_map_text(), gradient);
 }
 
 #[test]
@@ -4896,8 +5610,18 @@ fn timeline_last_frame_does_not_wrap_and_preview_does_not_edit() {
     let loop_frame = mesh.at(2.0);
     for (range, _) in &mesh.motions {
         for index in range.clone() {
-            assert!((frame[index].positions[0].x()-mesh.triangles[index].positions[0].x()-128.0).abs()<1e-8);
-            for (a,b) in loop_frame[index].positions.into_iter().zip(mesh.triangles[index].positions) {assert!(geometry_math::vec::length(a-b)<1e-8);}
+            assert!(
+                (frame[index].positions[0].x() - mesh.triangles[index].positions[0].x() - 128.0)
+                    .abs()
+                    < 1e-8
+            );
+            for (a, b) in loop_frame[index]
+                .positions
+                .into_iter()
+                .zip(mesh.triangles[index].positions)
+            {
+                assert!(geometry_math::vec::length(a - b) < 1e-8);
+            }
         }
     }
     assert_eq!(d.to_map_text(), before);
@@ -4907,30 +5631,46 @@ fn timeline_last_frame_does_not_wrap_and_preview_does_not_edit() {
 fn animation_of_brush_group_preserves_group_and_moves_every_member() {
     let mut d = two_boxes();
     let group = d.group_selection("Moving platform").unwrap();
-    let member = node::contents_of(d.tree_world(), group).into_iter().find(|id| d.brush(*id).is_some()).unwrap();
+    let member = node::contents_of(d.tree_world(), group)
+        .into_iter()
+        .find(|id| d.brush(*id).is_some())
+        .unwrap();
     d.select_only(member);
     let before = d.to_map_text();
     let members = d.selection_ids().clone();
     let entity = d.create_brush_entity("func_animate").unwrap();
     let created = d.to_map_text();
-    let NodeKind::Group(g) = &node::find_node(d.tree_world(), group).unwrap().kind else { panic!() };
+    let NodeKind::Group(g) = &node::find_node(d.tree_world(), group).unwrap().kind else {
+        panic!()
+    };
     assert_eq!(g.children.len(), 1);
     assert_eq!(g.children[0].id, entity);
-    assert!(members.iter().all(|id| node::contents_of(d.tree_world(), entity).contains(id)));
+    assert!(members
+        .iter()
+        .all(|id| node::contents_of(d.tree_world(), entity).contains(id)));
     d.undo().unwrap();
     assert_eq!(d.to_map_text(), before);
     d.redo().unwrap();
     assert_eq!(d.to_map_text(), created);
     d.set_entity_property(entity, "animation_keys", "0 0 0 0 0 0 0; 2 128 32 64 0 0 0");
     d.select_only(member);
-    assert_eq!(crate::animation_pose::Pose::selected(&d, 1.0).unwrap().entity, entity);
+    assert_eq!(
+        crate::animation_pose::Pose::selected(&d, 1.0)
+            .unwrap()
+            .entity,
+        entity
+    );
     let mesh = d.preview_mesh(&Default::default());
     let moved = mesh.at_frame(2.0);
     assert!(!mesh.motions.is_empty());
     for (range, _) in &mesh.motions {
         for i in range.clone() {
-            for (a,b) in moved[i].positions.into_iter().zip(mesh.triangles[i].positions) {
-                assert!(geometry_math::vec::length(a-b-Vec3d::new(128.0,32.0,64.0)) < 1e-8);
+            for (a, b) in moved[i]
+                .positions
+                .into_iter()
+                .zip(mesh.triangles[i].positions)
+            {
+                assert!(geometry_math::vec::length(a - b - Vec3d::new(128.0, 32.0, 64.0)) < 1e-8);
             }
         }
     }
@@ -4939,7 +5679,13 @@ fn animation_of_brush_group_preserves_group_and_moves_every_member() {
     let reloaded = Document::from_map(&parsed, WorldBounds::default(), None);
     assert_eq!(reloaded.brush_count(), 2);
     assert_eq!(node::groups_with_ids(reloaded.tree_world()).len(), 1);
-    assert_eq!(node::entities_with_ids(reloaded.tree_world()).iter().filter(|(_,e)|e.property("animation_keys").is_some()).count(),1);
+    assert_eq!(
+        node::entities_with_ids(reloaded.tree_world())
+            .iter()
+            .filter(|(_, e)| e.property("animation_keys").is_some())
+            .count(),
+        1
+    );
 }
 
 /// The edges walked again for the selection alone (a drag) are the ones a full walk
@@ -4948,7 +5694,10 @@ fn animation_of_brush_group_preserves_group_and_moves_every_member() {
 #[test]
 fn the_selection_only_edge_refill_matches_a_full_walk() {
     let mut document = two_boxes();
-    let ids: Vec<NodeId> = node::brushes_with_ids(document.tree_world()).into_iter().map(|(id, _)| id).collect();
+    let ids: Vec<NodeId> = node::brushes_with_ids(document.tree_world())
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect();
     document.select_only(ids[0]);
     let full = |document: &mut Document| {
         document.mark_changed();
@@ -4968,7 +5717,11 @@ fn the_selection_only_edge_refill_matches_a_full_walk() {
     document.begin_transaction();
     for step in 1..=3 {
         document.rollback_transaction();
-        document.rotate_selection_about(Vec3d::zero(), Vec3d::new(0.0, 0.0, 1.0), 10.0 * f64::from(step));
+        document.rotate_selection_about(
+            Vec3d::zero(),
+            Vec3d::new(0.0, 0.0, 1.0),
+            10.0 * f64::from(step),
+        );
         let dragged = fast(&document);
         assert_eq!(dragged, full(&mut document));
     }
@@ -4999,7 +5752,11 @@ fn an_unchanged_folder_is_kept_and_a_changed_one_read_again_when_another_is_adde
     let write = |dir: &std::path::Path, name: &str, colour: u8, size: u32| {
         std::fs::create_dir_all(dir).unwrap();
         let pixels: Vec<u8> = (0..size * size).flat_map(|_| [colour, 0, 0, 255]).collect();
-        std::fs::write(dir.join(name), crate::assets::encode_png(size, size, &pixels).unwrap()).unwrap();
+        std::fs::write(
+            dir.join(name),
+            crate::assets::encode_png(size, size, &pixels).unwrap(),
+        )
+        .unwrap();
     };
     let root = std::env::temp_dir().join(format!("heron-folder-reuse-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
@@ -5010,22 +5767,44 @@ fn an_unchanged_folder_is_kept_and_a_changed_one_read_again_when_another_is_adde
     let mut document = Document::new(WorldBounds::default());
     document.load_materials(&a).unwrap();
     document.load_materials(&b).unwrap();
-    assert_eq!(document.materials().get("wall").unwrap().pixels().unwrap()[0], 10);
-    assert_eq!(document.materials().get("floor").unwrap().pixels().unwrap()[0], 20);
+    assert_eq!(
+        document.materials().get("wall").unwrap().pixels().unwrap()[0],
+        10
+    );
+    assert_eq!(
+        document.materials().get("floor").unwrap().pixels().unwrap()[0],
+        20
+    );
 
     // `a` changes on disk (a new size, so its stamp moves even within the same second).
     write(&a, "wall.png", 99, 16);
     document.load_materials(&c).unwrap();
     let wall = document.materials().get("wall").unwrap();
-    assert_eq!((wall.width, wall.pixels().unwrap()[0]), (16, 99), "the changed folder was read again");
-    assert_eq!(document.materials().get("floor").unwrap().pixels().unwrap()[0], 20);
-    assert_eq!(document.materials().get("roof").unwrap().pixels().unwrap()[0], 30);
+    assert_eq!(
+        (wall.width, wall.pixels().unwrap()[0]),
+        (16, 99),
+        "the changed folder was read again"
+    );
+    assert_eq!(
+        document.materials().get("floor").unwrap().pixels().unwrap()[0],
+        20
+    );
+    assert_eq!(
+        document.materials().get("roof").unwrap().pixels().unwrap()[0],
+        30
+    );
 
     // Taking a source away leaves the others as they were.
     assert!(document.remove_material_source(1));
     assert!(document.materials().get("floor").is_none());
-    assert_eq!(document.materials().get("wall").unwrap().pixels().unwrap()[0], 99);
-    assert_eq!(document.materials().get("roof").unwrap().pixels().unwrap()[0], 30);
+    assert_eq!(
+        document.materials().get("wall").unwrap().pixels().unwrap()[0],
+        99
+    );
+    assert_eq!(
+        document.materials().get("roof").unwrap().pixels().unwrap()[0],
+        30
+    );
     let _ = std::fs::remove_dir_all(&root);
 }
 
@@ -5034,11 +5813,20 @@ fn a_linked_sync_rebuilds_only_the_copies_of_what_changed() {
     let mut document = two_boxes();
     document.group_selection("Doorway");
     document.create_linked_duplicate(128.0);
-    let groups: Vec<NodeId> = node::groups_with_ids(&document.tree.world).iter().map(|(id, _)| *id).collect();
-    let source_id = *groups.iter().find(|id| !document.is_selected(node::contents_of(&document.tree.world, **id)[0])).unwrap();
+    let groups: Vec<NodeId> = node::groups_with_ids(&document.tree.world)
+        .iter()
+        .map(|(id, _)| *id)
+        .collect();
+    let source_id = *groups
+        .iter()
+        .find(|id| !document.is_selected(node::contents_of(&document.tree.world, **id)[0]))
+        .unwrap();
     let copy_id = *groups.iter().find(|id| **id != source_id).unwrap();
     let corners = |document: &Document, group: NodeId| -> Vec<(NodeId, Vec<Vec3d>)> {
-        node::contents_of(&document.tree.world, group).into_iter().map(|id| (id, document.brush(id).unwrap().vertex_positions())).collect()
+        node::contents_of(&document.tree.world, group)
+            .into_iter()
+            .map(|id| (id, document.brush(id).unwrap().vertex_positions()))
+            .collect()
     };
     let before = corners(&document, copy_id);
 
@@ -5047,15 +5835,29 @@ fn a_linked_sync_rebuilds_only_the_copies_of_what_changed() {
     document.select_only(node::contents_of(&document.tree.world, source_id)[0]);
     assert!(document.translate_selection(Vec3d::new(0.0, 0.0, 32.0)));
     let after = corners(&document, copy_id);
-    assert_eq!(after.iter().map(|(id, _)| *id).collect::<Vec<_>>(), before.iter().map(|(id, _)| *id).collect::<Vec<_>>(), "the copy's children keep their ids");
-    assert!(after.iter().zip(&before).all(|(a, b)| a.1 != b.1), "the copies followed");
+    assert_eq!(
+        after.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
+        before.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
+        "the copy's children keep their ids"
+    );
+    assert!(
+        after.iter().zip(&before).all(|(a, b)| a.1 != b.1),
+        "the copies followed"
+    );
 
     // The piecewise result is what a full rebuild (the menu action) makes.
     let mut piecewise: Vec<Vec<Vec3d>> = after.into_iter().map(|(_, c)| c).collect();
     document.select_only(node::contents_of(&document.tree.world, source_id)[0]);
     document.sync_linked_groups();
-    let copy_id = node::groups_with_ids(&document.tree.world).iter().map(|(id, _)| *id).find(|id| *id != source_id).unwrap();
-    let mut full: Vec<Vec<Vec3d>> = corners(&document, copy_id).into_iter().map(|(_, c)| c).collect();
+    let copy_id = node::groups_with_ids(&document.tree.world)
+        .iter()
+        .map(|(id, _)| *id)
+        .find(|id| *id != source_id)
+        .unwrap();
+    let mut full: Vec<Vec<Vec3d>> = corners(&document, copy_id)
+        .into_iter()
+        .map(|(_, c)| c)
+        .collect();
     let key = |c: &Vec<Vec3d>| format!("{c:?}");
     piecewise.sort_by_key(key);
     full.sort_by_key(key);
@@ -5065,302 +5867,857 @@ fn a_linked_sync_rebuilds_only_the_copies_of_what_changed() {
 #[test]
 fn clipping_is_one_undo_step_and_keeps_brush_entity_parent() {
     let mut d = Document::new(WorldBounds::default());
-    let brush = map_model::shapes::create_cuboid(&d.world_bounds(), &Bbox3d::new(Vec3d::fill(-64.0),Vec3d::fill(64.0)), "stone").unwrap();
-    d.add_brushes(vec![brush]); d.select_all();
+    let brush = map_model::shapes::create_cuboid(
+        &d.world_bounds(),
+        &Bbox3d::new(Vec3d::fill(-64.0), Vec3d::fill(64.0)),
+        "stone",
+    )
+    .unwrap();
+    d.add_brushes(vec![brush]);
+    d.select_all();
     let entity = d.create_brush_entity("project_door").unwrap();
     let brush_id = node::brushes_with_ids(d.tree_world())[0].0;
     d.select_only(brush_id);
-    let before=d.to_map_text();
-    let mut clip=crate::clip_tool::ClipTool::new();
-    clip.add_point(Vec3d::new(0.0,-64.0,0.0),vec![Vec3d::new(0.0,0.0,-1.0)]);
-    clip.add_point(Vec3d::new(0.0,64.0,0.0),vec![Vec3d::new(0.0,0.0,-1.0)]);
+    let before = d.to_map_text();
+    let mut clip = crate::clip_tool::ClipTool::new();
+    clip.add_point(
+        Vec3d::new(0.0, -64.0, 0.0),
+        vec![Vec3d::new(0.0, 0.0, -1.0)],
+    );
+    clip.add_point(Vec3d::new(0.0, 64.0, 0.0), vec![Vec3d::new(0.0, 0.0, -1.0)]);
     clip.toggle_side();
-    assert_eq!(d.clip_selection(&clip),1);
-    assert_eq!(d.brush_count(),2);
-    for (id,_) in node::brushes_with_ids(d.tree_world()) {assert_eq!(d.entity_around(id).unwrap().id,entity);}
-    d.undo().unwrap();assert_eq!(d.to_map_text(),before);
-    d.redo().unwrap();assert_eq!(d.brush_count(),2);
+    assert_eq!(d.clip_selection(&clip), 1);
+    assert_eq!(d.brush_count(), 2);
+    for (id, _) in node::brushes_with_ids(d.tree_world()) {
+        assert_eq!(d.entity_around(id).unwrap().id, entity);
+    }
+    d.undo().unwrap();
+    assert_eq!(d.to_map_text(), before);
+    d.redo().unwrap();
+    assert_eq!(d.brush_count(), 2);
 }
 
 fn game_asset_fixture(file: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/editor-checks/fixtures/game-assets").join(file)
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/editor-checks/fixtures/game-assets")
+        .join(file)
 }
 
 #[test]
 fn game_and_mod_materials_models_dependencies_shaders_and_reload_share_the_same_winners() {
-    let root=std::env::temp_dir().join(format!("heron-shared-game-assets-{}",std::process::id()));
-    let _=std::fs::remove_dir_all(&root);
-    for folder in ["id1/textures","id1/progs","first","second/textures","second/gfx","explicit"] {std::fs::create_dir_all(root.join(folder)).unwrap();}
-    std::fs::copy(game_asset_fixture("red.png"),root.join("id1/textures/check.png")).unwrap();
-    std::fs::copy(game_asset_fixture("mod.pk3"),root.join("first/pak0.pk3")).unwrap();
-    std::fs::write(root.join("id1/progs/thing.mdl"),crate::entity_models::tests::one_triangle_model()).unwrap();
-    std::fs::write(root.join("second/gfx/palette.lmp"),[0,0,255].repeat(256)).unwrap();
-    std::fs::copy(game_asset_fixture("blue.png"),root.join("second/textures/check.png")).unwrap();
-    std::fs::copy(game_asset_fixture("red.png"),root.join("explicit/check.png")).unwrap();
-    crate::preferences::edit(|p| {p.game="Quake".into();p.game_path=root.to_string_lossy().into_owned();p.game_mods="first;second".into();});
-    let mut doc=Document::new(WorldBounds::default());
-    let fgd=root.join("objects.fgd");
+    let root =
+        std::env::temp_dir().join(format!("heron-shared-game-assets-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    for folder in [
+        "id1/textures",
+        "id1/progs",
+        "first",
+        "second/textures",
+        "second/gfx",
+        "explicit",
+    ] {
+        std::fs::create_dir_all(root.join(folder)).unwrap();
+    }
+    std::fs::copy(
+        game_asset_fixture("red.png"),
+        root.join("id1/textures/check.png"),
+    )
+    .unwrap();
+    std::fs::copy(game_asset_fixture("mod.pk3"), root.join("first/pak0.pk3")).unwrap();
+    std::fs::write(
+        root.join("id1/progs/thing.mdl"),
+        crate::entity_models::tests::one_triangle_model(),
+    )
+    .unwrap();
+    std::fs::write(root.join("second/gfx/palette.lmp"), [0, 0, 255].repeat(256)).unwrap();
+    std::fs::copy(
+        game_asset_fixture("blue.png"),
+        root.join("second/textures/check.png"),
+    )
+    .unwrap();
+    std::fs::copy(
+        game_asset_fixture("red.png"),
+        root.join("explicit/check.png"),
+    )
+    .unwrap();
+    crate::preferences::edit(|p| {
+        p.game = "Quake".into();
+        p.game_path = root.to_string_lossy().into_owned();
+        p.game_mods = "first;second".into();
+    });
+    let mut doc = Document::new(WorldBounds::default());
+    let fgd = root.join("objects.fgd");
     std::fs::write(&fgd,"@PointClass model({ \"path\": \"models/marker.obj\" }) = prop_marker []\n@PointClass model(\"progs/thing.mdl\") = mdl_marker []\n").unwrap();
     doc.load_definitions(&fgd).unwrap();
-    let color=|doc: &Document| doc.materials().get("textures/CHECK").unwrap().pixels().unwrap()[..4].to_vec();
-    assert_eq!(color(&doc),[0,0,255,255]);
-    assert_eq!(doc.models["mdl_marker"].skins().next().unwrap().pixels[..4],[0,0,255,255],"MDL palette comes from the winning mod");
-    let model=doc.models.get("prop_marker").unwrap();
-    assert_eq!(model.skins().next().unwrap().pixels[..4],[0,0,255,255]);
-    assert!(model.triangles.iter().any(|t|t.positions.iter().any(|p|p.x()==7.0)));
-    assert_eq!(doc.materials().get("check").unwrap().normal_map.as_ref().unwrap().pixels().unwrap()[..4],[128,128,255,255]);
-    assert!(doc.materials().get("textures/tagged").unwrap().surface_parms.contains(&"nodraw".to_string()));
-    let old_fs=doc.model_store.shared_assets().unwrap().clone();
+    let color = |doc: &Document| {
+        doc.materials()
+            .get("textures/CHECK")
+            .unwrap()
+            .pixels()
+            .unwrap()[..4]
+            .to_vec()
+    };
+    assert_eq!(color(&doc), [0, 0, 255, 255]);
+    assert_eq!(
+        doc.models["mdl_marker"].skins().next().unwrap().pixels[..4],
+        [0, 0, 255, 255],
+        "MDL palette comes from the winning mod"
+    );
+    let model = doc.models.get("prop_marker").unwrap();
+    assert_eq!(model.skins().next().unwrap().pixels[..4], [0, 0, 255, 255]);
+    assert!(model
+        .triangles
+        .iter()
+        .any(|t| t.positions.iter().any(|p| p.x() == 7.0)));
+    assert_eq!(
+        doc.materials()
+            .get("check")
+            .unwrap()
+            .normal_map
+            .as_ref()
+            .unwrap()
+            .pixels()
+            .unwrap()[..4],
+        [128, 128, 255, 255]
+    );
+    assert!(doc
+        .materials()
+        .get("textures/tagged")
+        .unwrap()
+        .surface_parms
+        .contains(&"nodraw".to_string()));
+    let old_fs = doc.model_store.shared_assets().unwrap().clone();
     doc.load_entity_models();
-    assert!(std::sync::Arc::ptr_eq(&old_fs,doc.model_store.shared_assets().unwrap()),"ordinary edits reuse the mounted archives");
-    crate::preferences::edit(|p|p.game_mods="second;first".into());
+    assert!(
+        std::sync::Arc::ptr_eq(&old_fs, doc.model_store.shared_assets().unwrap()),
+        "ordinary edits reuse the mounted archives"
+    );
+    crate::preferences::edit(|p| p.game_mods = "second;first".into());
     doc.load_entity_models();
-    assert_eq!(color(&doc),[0,255,0,255]);
-    assert_eq!(doc.models["mdl_marker"].skins().next().unwrap().pixels[..4],[0,255,0,255],"palette and model caches change with mod order");
-    assert_eq!(doc.models["prop_marker"].skins().next().unwrap().pixels[..4],[0,255,0,255]);
-    assert!(doc.materials().get("check").unwrap().path.to_string_lossy().contains("pak0.pk3!/textures/check.png"));
+    assert_eq!(color(&doc), [0, 255, 0, 255]);
+    assert_eq!(
+        doc.models["mdl_marker"].skins().next().unwrap().pixels[..4],
+        [0, 255, 0, 255],
+        "palette and model caches change with mod order"
+    );
+    assert_eq!(
+        doc.models["prop_marker"].skins().next().unwrap().pixels[..4],
+        [0, 255, 0, 255]
+    );
+    assert!(doc
+        .materials()
+        .get("check")
+        .unwrap()
+        .path
+        .to_string_lossy()
+        .contains("pak0.pk3!/textures/check.png"));
     doc.load_asset_materials(&root.join("explicit")).unwrap();
-    assert_eq!(color(&doc),[0,255,0,255],"game assets override generic library defaults");
+    assert_eq!(
+        color(&doc),
+        [0, 255, 0, 255],
+        "game assets override generic library defaults"
+    );
     doc.load_materials(root.join("explicit")).unwrap();
-    assert_eq!(color(&doc),[255,0,0,255],"explicit project materials override game defaults");
+    assert_eq!(
+        color(&doc),
+        [255, 0, 0, 255],
+        "explicit project materials override game defaults"
+    );
     doc.remove_material_source(0);
-    assert_eq!(color(&doc),[0,255,0,255]);
+    assert_eq!(color(&doc), [0, 255, 0, 255]);
     std::fs::create_dir_all(root.join("first/textures")).unwrap();
-    std::fs::copy(game_asset_fixture("red.png"),root.join("first/textures/check.png")).unwrap();
+    std::fs::copy(
+        game_asset_fixture("red.png"),
+        root.join("first/textures/check.png"),
+    )
+    .unwrap();
     doc.reload_game_assets();
-    assert_eq!(color(&doc),[255,0,0,255],"Reload sees newly added loose overrides");
-    assert_eq!(doc.models["prop_marker"].skins().next().unwrap().pixels[..4],[255,0,0,255]);
-    assert!(doc.game_asset_warnings().is_empty(),"{:?}",doc.game_asset_warnings());
+    assert_eq!(
+        color(&doc),
+        [255, 0, 0, 255],
+        "Reload sees newly added loose overrides"
+    );
+    assert_eq!(
+        doc.models["prop_marker"].skins().next().unwrap().pixels[..4],
+        [255, 0, 0, 255]
+    );
+    assert!(
+        doc.game_asset_warnings().is_empty(),
+        "{:?}",
+        doc.game_asset_warnings()
+    );
     crate::preferences::set_current(Default::default());
     std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
 fn shared_game_texture_pixels_survive_portable_engine_and_obj_exports_without_unpacking() {
-    let root=std::env::temp_dir().join(format!("heron-shared-assets-export-{}",std::process::id()));
-    let _=std::fs::remove_dir_all(&root);std::fs::create_dir_all(root.join("mod")).unwrap();
-    std::fs::copy(game_asset_fixture("mod.pk3"),root.join("mod/pak0.pk3")).unwrap();
-    crate::preferences::edit(|p|{p.game="heron_brush".into();p.game_path=root.to_string_lossy().into_owned();p.game_mods="mod".into();});
-    let mut doc=Document::new(WorldBounds::default());
-    let brush=map_model::shapes::create_cuboid(&doc.world_bounds(),&Bbox3d::from_scalars(-16.0,16.0),"check").unwrap();
+    let root =
+        std::env::temp_dir().join(format!("heron-shared-assets-export-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("mod")).unwrap();
+    std::fs::copy(game_asset_fixture("mod.pk3"), root.join("mod/pak0.pk3")).unwrap();
+    crate::preferences::edit(|p| {
+        p.game = "heron_brush".into();
+        p.game_path = root.to_string_lossy().into_owned();
+        p.game_mods = "mod".into();
+    });
+    let mut doc = Document::new(WorldBounds::default());
+    let brush = map_model::shapes::create_cuboid(
+        &doc.world_bounds(),
+        &Bbox3d::from_scalars(-16.0, 16.0),
+        "check",
+    )
+    .unwrap();
     doc.add_brushes(vec![brush]);
-    for target in [crate::export::Target::Glb,crate::export::Target::Godot,crate::export::Target::ThreeJs] {
-        let out=root.join(format!("{:?}",target));std::fs::create_dir_all(&out).unwrap();
-        let options=crate::export::Options{target,name:"assets".into(),..Default::default()};
-        let report=crate::export::export(&doc,&out,&options).unwrap();
+    for target in [
+        crate::export::Target::Glb,
+        crate::export::Target::Godot,
+        crate::export::Target::ThreeJs,
+    ] {
+        let out = root.join(format!("{:?}", target));
+        std::fs::create_dir_all(&out).unwrap();
+        let options = crate::export::Options {
+            target,
+            name: "assets".into(),
+            ..Default::default()
+        };
+        let report = crate::export::export(&doc, &out, &options).unwrap();
         assert!(!report.files.is_empty());
-        let mut found=false;
+        let mut found = false;
         for file in report.files {
-            if file.extension().is_some_and(|ext|ext=="png") {
-                let pixels=image::open(&file).unwrap().to_rgba8();
-                if pixels.get_pixel(0,0).0==[0,255,0,255] {found=true;}
+            if file.extension().is_some_and(|ext| ext == "png") {
+                let pixels = image::open(&file).unwrap().to_rgba8();
+                if pixels.get_pixel(0, 0).0 == [0, 255, 0, 255] {
+                    found = true;
+                }
             }
         }
-        if target==crate::export::Target::Glb {
-            let model=map_model::glb_model::read(&std::fs::read(out.join("assets.glb")).unwrap()).unwrap();
-            assert_eq!(model.skins().next().unwrap().pixels[..4],[0,255,0,255]);
-        } else {assert!(found,"{target:?} packages the winning green texture");}
+        if target == crate::export::Target::Glb {
+            let model = map_model::glb_model::read(&std::fs::read(out.join("assets.glb")).unwrap())
+                .unwrap();
+            assert_eq!(model.skins().next().unwrap().pixels[..4], [0, 255, 0, 255]);
+        } else {
+            assert!(found, "{target:?} packages the winning green texture");
+        }
     }
-    let (_,files)=crate::obj_export::files(&doc,&root.join("mesh.obj"),crate::obj_export::ObjOptions{selection_only:false,y_up:true});
-    let mtl=files.iter().find(|(p,_)|p.extension().is_some_and(|e|e=="mtl")).unwrap();
-    assert!(!String::from_utf8_lossy(&mtl.1).contains("!/"),"MTL must not contain an archive pseudo-path");
-    assert!(files.iter().any(|(p,bytes)|p.extension().is_some_and(|e|e=="png") && image::load_from_memory(bytes).unwrap().to_rgba8().get_pixel(0,0).0==[0,255,0,255]));
-    assert!(!root.join("mod/textures").exists(),"archives were never unpacked into the game");
-    crate::preferences::set_current(Default::default());std::fs::remove_dir_all(root).unwrap();
+    let (_, files) = crate::obj_export::files(
+        &doc,
+        &root.join("mesh.obj"),
+        crate::obj_export::ObjOptions {
+            selection_only: false,
+            y_up: true,
+        },
+    );
+    let mtl = files
+        .iter()
+        .find(|(p, _)| p.extension().is_some_and(|e| e == "mtl"))
+        .unwrap();
+    assert!(
+        !String::from_utf8_lossy(&mtl.1).contains("!/"),
+        "MTL must not contain an archive pseudo-path"
+    );
+    assert!(files
+        .iter()
+        .any(|(p, bytes)| p.extension().is_some_and(|e| e == "png")
+            && image::load_from_memory(bytes)
+                .unwrap()
+                .to_rgba8()
+                .get_pixel(0, 0)
+                .0
+                == [0, 255, 0, 255]));
+    assert!(
+        !root.join("mod/textures").exists(),
+        "archives were never unpacked into the game"
+    );
+    crate::preferences::set_current(Default::default());
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
 fn md2_entity_preview_uses_archive_skin_class_scale_and_entity_placement() {
-    let root=std::env::temp_dir().join("heron-md2-document");let _=std::fs::remove_dir_all(&root);
+    let root = std::env::temp_dir().join("heron-md2-document");
+    let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("baseq2")).unwrap();
-    std::fs::write(root.join("baseq2/pak0.pk3"),include_bytes!("../../../../examples/editor-checks/fixtures/md2/models.pk3")).unwrap();
-    let before=crate::preferences::pref(Clone::clone);
-    crate::preferences::edit(|p|{p.game="Quake 2".into();p.game_path=root.to_string_lossy().into_owned();p.game_mods.clear();});
-    let fgd=root.join("preview.fgd");
+    std::fs::write(
+        root.join("baseq2/pak0.pk3"),
+        include_bytes!("../../../../examples/editor-checks/fixtures/md2/models.pk3"),
+    )
+    .unwrap();
+    let before = crate::preferences::pref(Clone::clone);
+    crate::preferences::edit(|p| {
+        p.game = "Quake 2".into();
+        p.game_path = root.to_string_lossy().into_owned();
+        p.game_mods.clear();
+    });
+    let fgd = root.join("preview.fgd");
     std::fs::write(&fgd,"@PointClass size(-8 -8 -8, 8 8 8) model({\"path\":\":models/check/preview.md2\",\"scale\":2}) = prop_md2 : \"MD2\" []\n").unwrap();
-    let mut doc=Document::new(WorldBounds::default());doc.load_definitions(&fgd).unwrap();
-    doc.create_point_entity("prop_md2",Vec3d::new(128.,0.,0.));
-    let triangles=doc.triangles(&crate::view_filters::ViewFilters::default());assert_eq!(triangles.len(),6);
-    let points:Vec<_>=triangles.iter().flat_map(|t|t.positions).collect();
-    assert!(points.contains(&Vec3d::new(64.,-48.,0.)));assert!(points.contains(&Vec3d::new(128.,0.,128.)));
+    let mut doc = Document::new(WorldBounds::default());
+    doc.load_definitions(&fgd).unwrap();
+    doc.create_point_entity("prop_md2", Vec3d::new(128., 0., 0.));
+    let triangles = doc.triangles(&crate::view_filters::ViewFilters::default());
+    assert_eq!(triangles.len(), 6);
+    let points: Vec<_> = triangles.iter().flat_map(|t| t.positions).collect();
+    assert!(points.contains(&Vec3d::new(64., -48., 0.)));
+    assert!(points.contains(&Vec3d::new(128., 0., 128.)));
     for t in &triangles {
-        let material=&doc.materials.materials()[t.material.unwrap()];
-        assert_eq!((material.width,material.height),(4,2));assert_eq!(&material.pixels().unwrap()[..4],&[255,40,40,255]);
+        let material = &doc.materials.materials()[t.material.unwrap()];
+        assert_eq!((material.width, material.height), (4, 2));
+        assert_eq!(&material.pixels().unwrap()[..4], &[255, 40, 40, 255]);
     }
-    assert_eq!(doc.triangles(&crate::view_filters::ViewFilters{show_point_entity_models:false,..Default::default()}).len(),12);
-    crate::preferences::edit(|p|*p=before);std::fs::remove_dir_all(root).unwrap();
+    assert_eq!(
+        doc.triangles(&crate::view_filters::ViewFilters {
+            show_point_entity_models: false,
+            ..Default::default()
+        })
+        .len(),
+        12
+    );
+    crate::preferences::edit(|p| *p = before);
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
 fn md3_entity_preview_uses_quake_three_archive_surfaces_scale_and_normals() {
-    let root = std::env::temp_dir().join(format!("heron-md3-document-{}-{}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+    let root = std::env::temp_dir().join(format!(
+        "heron-md3-document-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
     std::fs::create_dir_all(root.join("baseq3")).unwrap();
-    std::fs::write(root.join("baseq3/pak0.pk3"), include_bytes!("../../../../examples/editor-checks/fixtures/md3/models.pk3")).unwrap();
+    std::fs::write(
+        root.join("baseq3/pak0.pk3"),
+        include_bytes!("../../../../examples/editor-checks/fixtures/md3/models.pk3"),
+    )
+    .unwrap();
     let before = crate::preferences::pref(Clone::clone);
-    crate::preferences::edit(|p| { p.game = "Quake 3".into(); p.game_path = root.to_string_lossy().into_owned(); p.game_mods.clear(); });
+    crate::preferences::edit(|p| {
+        p.game = "Quake 3".into();
+        p.game_path = root.to_string_lossy().into_owned();
+        p.game_mods.clear();
+    });
     assert_eq!(crate::games::current().unwrap().name, "Quake 3");
     let fgd = root.join("preview.fgd");
     std::fs::write(&fgd, r#"@PointClass size(-8 -8 -8, 8 8 8) model({"path":":models/check/preview.md3","scale":2}) = prop_md3 : "MD3" []
 "#).unwrap();
-    let mut doc = Document::new(WorldBounds::default()); doc.load_definitions(&fgd).unwrap();
+    let mut doc = Document::new(WorldBounds::default());
+    doc.load_definitions(&fgd).unwrap();
     doc.create_point_entity("prop_md3", Vec3d::new(128., 0., 0.));
     let triangles = doc.triangles(&crate::view_filters::ViewFilters::default());
     assert_eq!(triangles.len(), 2);
     for (i, triangle) in triangles.iter().enumerate() {
-        assert_eq!(triangle.positions, [Vec3d::new(126., 0., (i * 2) as f64), Vec3d::new(130., 0., (i * 2) as f64), Vec3d::new(128., 2., (i * 2) as f64)]);
-        let expected_normal = if i == 0 { Vec3d::new(1., 0., 0.) } else { Vec3d::new(0., 1., 0.) };
-        for n in triangle.corner_normals.unwrap() { assert!(geometry_math::vec::length(n - expected_normal) < 1e-12); }
+        assert_eq!(
+            triangle.positions,
+            [
+                Vec3d::new(126., 0., (i * 2) as f64),
+                Vec3d::new(130., 0., (i * 2) as f64),
+                Vec3d::new(128., 2., (i * 2) as f64)
+            ]
+        );
+        let expected_normal = if i == 0 {
+            Vec3d::new(1., 0., 0.)
+        } else {
+            Vec3d::new(0., 1., 0.)
+        };
+        for n in triangle.corner_normals.unwrap() {
+            assert!(geometry_math::vec::length(n - expected_normal) < 1e-12);
+        }
         let material = &doc.materials.materials()[triangle.material.unwrap()];
         assert_eq!((material.width, material.height), (2, 2));
-        let expected = if i == 0 { [240, 20, 30, 255] } else { [10, 220, 40, 255] };
+        let expected = if i == 0 {
+            [240, 20, 30, 255]
+        } else {
+            [10, 220, 40, 255]
+        };
         assert_eq!(&material.pixels().unwrap()[..4], &expected);
     }
-    assert_eq!(doc.triangles(&crate::view_filters::ViewFilters { show_point_entity_models: false, ..Default::default() }).len(), 12);
+    assert_eq!(
+        doc.triangles(&crate::view_filters::ViewFilters {
+            show_point_entity_models: false,
+            ..Default::default()
+        })
+        .len(),
+        12
+    );
     assert!(!root.join("baseq3/models").exists());
-    crate::preferences::edit(|p| *p = before); std::fs::remove_dir_all(root).unwrap();
+    crate::preferences::edit(|p| *p = before);
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
 fn water_volume_contract_and_runtime_adapters_export_to_all_five_targets() {
-    use crate::export::{self,Target};
-    let dir=std::env::temp_dir().join("heron-water-check");std::fs::create_dir_all(&dir).unwrap();
-    let mut doc=Document::new(WorldBounds::default());
-    let mut add=|class:&str,min:Vec3d,max:Vec3d,props:&[(&str,&str)]|{
-        doc.clear_selection();let brush=map_model::shapes::create_cuboid(&doc.world_bounds(),&geometry_math::bbox::Bbox3d::new(min,max),"plain").unwrap();doc.add_brushes(vec![brush]);doc.set_face_color(Some(map_model::brush_face::FaceColor::Solid{color:map_model::brush_face::Rgb{r:255,g:255,b:255},alpha:255}));
-        if class!="worldspawn" {let id=doc.create_brush_entity(class).unwrap();for (key,value) in props{doc.set_entity_property(id,key,value);}}
+    use crate::export::{self, Target};
+    let dir = std::env::temp_dir().join("heron-water-check");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut doc = Document::new(WorldBounds::default());
+    let mut add = |class: &str, min: Vec3d, max: Vec3d, props: &[(&str, &str)]| {
+        doc.clear_selection();
+        let brush = map_model::shapes::create_cuboid(
+            &doc.world_bounds(),
+            &geometry_math::bbox::Bbox3d::new(min, max),
+            "plain",
+        )
+        .unwrap();
+        doc.add_brushes(vec![brush]);
+        doc.set_face_color(Some(map_model::brush_face::FaceColor::Solid {
+            color: map_model::brush_face::Rgb {
+                r: 255,
+                g: 255,
+                b: 255,
+            },
+            alpha: 255,
+        }));
+        if class != "worldspawn" {
+            let id = doc.create_brush_entity(class).unwrap();
+            for (key, value) in props {
+                doc.set_entity_property(id, key, value);
+            }
+        }
     };
-    add("worldspawn",Vec3d::new(-320.,-320.,-160.),Vec3d::new(320.,320.,-128.),&[]);
-    add("water_volume",Vec3d::new(-128.,-128.,-128.),Vec3d::new(128.,128.,0.),&[("targetname","pool"),("water_color","0.05 0.38 0.48")]);
-    add("custom_pool",Vec3d::new(-64.,-64.,-96.),Vec3d::new(64.,64.,-32.),&[("water_enabled","1"),("water_priority","10"),("water_surface_material","0"),("targetname","overlap")]);
-    add("water_volume",Vec3d::new(256.,256.,-128.),Vec3d::new(320.,320.,0.),&[("water_enabled","0"),("targetname","disabled")]);
-    doc.create_point_entity("info_player_start",Vec3d::new(0.,0.,-96.));
-    std::fs::write(dir.join("water.map"),doc.to_map_text()).unwrap();
-    for (target,sub) in [(Target::ThreeJs,"three"),(Target::Bevy,"bevy"),(Target::Unity,"unity/Assets/Water"),(Target::Flax,"flax/Content/arena"),(Target::Defold,"defold/main")]{
-        let path=dir.join(sub);std::fs::create_dir_all(&path).unwrap();
-        let project=if target==Target::Unity{dir.join("unity")}else if target==Target::Defold{dir.join("defold")}else if target==Target::Flax{dir.join("flax")}else{path.clone()};
-        let report=export::export(&doc,&path,&export::Options{target,name:"water".into(),scale:32.,project_dir:project.to_string_lossy().into_owned(),asset_dir:"/main/water".into(),content_dir:"arena/water".into(),..Default::default()}).unwrap();
-        assert!(!report.warnings.iter().any(|w|w.starts_with("Water ")));
-        let json:serde_json::Value=serde_json::from_slice(&std::fs::read(path.join(if target==Target::Flax{"water.level.json"}else{"water.json"})).unwrap()).unwrap();
-        let entities=json["entities"].as_array().unwrap();let pool=entities.iter().find(|e|e["name"]=="water_volume").unwrap();
-        assert_eq!(pool["collision"]["sensor"],true);assert_eq!(pool["collision"]["kind"],"convex");
-        let water:serde_json::Value=serde_json::from_str(pool["properties"]["_heron_water"]["value"].as_str().unwrap()).unwrap();
-        assert_eq!(water["version"],1);assert_eq!(water["surface_indices"].as_array().unwrap().len(),6);assert_eq!(water["swim_speed"],3.);assert_eq!(water["volumes"][0]["planes"].as_array().unwrap().len(),6);
-        let overlap=entities.iter().find(|e|e["name"]=="custom_pool").unwrap();let custom:serde_json::Value=serde_json::from_str(overlap["properties"]["_heron_water"]["value"].as_str().unwrap()).unwrap();assert_eq!(custom["priority"],10);assert_eq!(custom["surface_material"],false);
-        assert!(entities.iter().find(|e|e["name"]=="water_volume_1").unwrap()["properties"].get("_heron_water").is_none());
-        if target==Target::Bevy{std::fs::write(dir.join("water-data.json"),serde_json::to_vec(&water).unwrap()).unwrap();}
-        if target==Target::ThreeJs {
+    add(
+        "worldspawn",
+        Vec3d::new(-320., -320., -160.),
+        Vec3d::new(320., 320., -128.),
+        &[],
+    );
+    add(
+        "water_volume",
+        Vec3d::new(-128., -128., -128.),
+        Vec3d::new(128., 128., 0.),
+        &[("targetname", "pool"), ("water_color", "0.05 0.38 0.48")],
+    );
+    add(
+        "custom_pool",
+        Vec3d::new(-64., -64., -96.),
+        Vec3d::new(64., 64., -32.),
+        &[
+            ("water_enabled", "1"),
+            ("water_priority", "10"),
+            ("water_surface_material", "0"),
+            ("targetname", "overlap"),
+        ],
+    );
+    add(
+        "water_volume",
+        Vec3d::new(256., 256., -128.),
+        Vec3d::new(320., 320., 0.),
+        &[("water_enabled", "0"), ("targetname", "disabled")],
+    );
+    doc.create_point_entity("info_player_start", Vec3d::new(0., 0., -96.));
+    std::fs::write(dir.join("water.map"), doc.to_map_text()).unwrap();
+    for (target, sub) in [
+        (Target::ThreeJs, "three"),
+        (Target::Bevy, "bevy"),
+        (Target::Unity, "unity/Assets/Water"),
+        (Target::Flax, "flax/Content/arena"),
+        (Target::Defold, "defold/main"),
+    ] {
+        let path = dir.join(sub);
+        std::fs::create_dir_all(&path).unwrap();
+        let project = if target == Target::Unity {
+            dir.join("unity")
+        } else if target == Target::Defold {
+            dir.join("defold")
+        } else if target == Target::Flax {
+            dir.join("flax")
+        } else {
+            path.clone()
+        };
+        let report = export::export(
+            &doc,
+            &path,
+            &export::Options {
+                target,
+                name: "water".into(),
+                scale: 32.,
+                project_dir: project.to_string_lossy().into_owned(),
+                asset_dir: "/main/water".into(),
+                content_dir: "arena/water".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(!report.warnings.iter().any(|w| w.starts_with("Water ")));
+        let json: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(path.join(if target == Target::Flax {
+                "water.level.json"
+            } else {
+                "water.json"
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let entities = json["entities"].as_array().unwrap();
+        let pool = entities
+            .iter()
+            .find(|e| e["name"] == "water_volume")
+            .unwrap();
+        assert_eq!(pool["collision"]["sensor"], true);
+        assert_eq!(pool["collision"]["kind"], "convex");
+        let water: serde_json::Value = serde_json::from_str(
+            pool["properties"]["_heron_water"]["value"]
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(water["version"], 1);
+        assert_eq!(water["surface_indices"].as_array().unwrap().len(), 6);
+        assert_eq!(water["swim_speed"], 3.);
+        assert_eq!(water["volumes"][0]["planes"].as_array().unwrap().len(), 6);
+        let overlap = entities
+            .iter()
+            .find(|e| e["name"] == "custom_pool")
+            .unwrap();
+        let custom: serde_json::Value = serde_json::from_str(
+            overlap["properties"]["_heron_water"]["value"]
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(custom["priority"], 10);
+        assert_eq!(custom["surface_material"], false);
+        assert!(entities
+            .iter()
+            .find(|e| e["name"] == "water_volume_1")
+            .unwrap()["properties"]
+            .get("_heron_water")
+            .is_none());
+        if target == Target::Bevy {
+            std::fs::write(
+                dir.join("water-data.json"),
+                serde_json::to_vec(&water).unwrap(),
+            )
+            .unwrap();
+        }
+        if target == Target::ThreeJs {
             // Godot has no level JSON; its volumes are nodes in the scene.
-            let path=dir.join("godot");std::fs::create_dir_all(&path).unwrap();std::fs::write(path.join("project.godot"),"").unwrap();
-            let report=export::export(&doc,&path,&export::Options{target:Target::Godot,name:"water".into(),scale:32.,project_dir:path.to_string_lossy().into_owned(),..Default::default()}).unwrap();
-            assert!(!report.warnings.iter().any(|w|w.starts_with("Water ")),"{:?}",report.warnings);
-            let scene=std::fs::read_to_string(path.join("water.tscn")).unwrap();
-            assert_eq!(scene.matches("[node name=\"heron_water\" type=\"Node\"").count(),2,"{scene}");
+            let path = dir.join("godot");
+            std::fs::create_dir_all(&path).unwrap();
+            std::fs::write(path.join("project.godot"), "").unwrap();
+            let report = export::export(
+                &doc,
+                &path,
+                &export::Options {
+                    target: Target::Godot,
+                    name: "water".into(),
+                    scale: 32.,
+                    project_dir: path.to_string_lossy().into_owned(),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            assert!(
+                !report.warnings.iter().any(|w| w.starts_with("Water ")),
+                "{:?}",
+                report.warnings
+            );
+            let scene = std::fs::read_to_string(path.join("water.tscn")).unwrap();
+            assert_eq!(
+                scene
+                    .matches("[node name=\"heron_water\" type=\"Node\"")
+                    .count(),
+                2,
+                "{scene}"
+            );
             assert!(scene.contains("[node name=\"water_volume\" type=\"Area3D\""));
             assert!(scene.contains("[node name=\"custom_pool\" type=\"Area3D\""));
-            assert_eq!(scene.matches("type=\"ShaderMaterial\"").count(),1,"the custom pool keeps its own material");
+            assert_eq!(
+                scene.matches("type=\"ShaderMaterial\"").count(),
+                1,
+                "the custom pool keeps its own material"
+            );
             assert!(path.join("water/heron_water_view.gd").exists());
             // Cocos, GDevelop and Stride read the same payload with runtimes of their own.
-            for (target,sub) in [(Target::Cocos,"cocos"),(Target::GDevelop,"gdevelop"),(Target::Stride,"stride"),(Target::Raylib,"raylib")] {
-                let path=dir.join(sub);std::fs::create_dir_all(&path).unwrap();
-                let report=export::export(&doc,&path,&export::Options{target,name:"water".into(),scale:32.,project_dir:path.to_string_lossy().into_owned(),..Default::default()}).unwrap();
-                assert!(!report.warnings.iter().any(|w|w.starts_with("Water ")),"{target:?} {:?}",report.warnings);
+            for (target, sub) in [
+                (Target::Cocos, "cocos"),
+                (Target::GDevelop, "gdevelop"),
+                (Target::Stride, "stride"),
+                (Target::Raylib, "raylib"),
+            ] {
+                let path = dir.join(sub);
+                std::fs::create_dir_all(&path).unwrap();
+                let report = export::export(
+                    &doc,
+                    &path,
+                    &export::Options {
+                        target,
+                        name: "water".into(),
+                        scale: 32.,
+                        project_dir: path.to_string_lossy().into_owned(),
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+                assert!(
+                    !report.warnings.iter().any(|w| w.starts_with("Water ")),
+                    "{target:?} {:?}",
+                    report.warnings
+                );
                 match target {
                     Target::Cocos => {
-                        assert!(std::fs::read_to_string(path.join("water.json")).unwrap().contains("_heron_water"));
-                        let runtime=std::fs::read_to_string(path.join("HeronBrushLevel.ts")).unwrap();
-                        assert!(runtime.contains("export class HeronWater")&&runtime.contains("waterSurface"));
+                        assert!(std::fs::read_to_string(path.join("water.json"))
+                            .unwrap()
+                            .contains("_heron_water"));
+                        let runtime =
+                            std::fs::read_to_string(path.join("HeronBrushLevel.ts")).unwrap();
+                        assert!(
+                            runtime.contains("export class HeronWater")
+                                && runtime.contains("waterSurface")
+                        );
                     }
                     Target::GDevelop => {
-                        let project:serde_json::Value=serde_json::from_str(&std::fs::read_to_string(path.join("game.json")).unwrap()).unwrap();
-                        let layout=project["layouts"].as_array().unwrap().iter().find(|l|l["name"]=="water").unwrap();
-                        let code=layout["events"][0]["inlineCode"].as_array().unwrap().iter().map(|l|l.as_str().unwrap()).collect::<Vec<_>>().join("\n");
-                        assert_eq!(code.matches("\"water\":\"{").count(),2,"both enabled volumes reach the runtime");
+                        let project: serde_json::Value = serde_json::from_str(
+                            &std::fs::read_to_string(path.join("game.json")).unwrap(),
+                        )
+                        .unwrap();
+                        let layout = project["layouts"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .find(|l| l["name"] == "water")
+                            .unwrap();
+                        let code = layout["events"][0]["inlineCode"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .map(|l| l.as_str().unwrap())
+                            .collect::<Vec<_>>()
+                            .join("\n");
+                        assert_eq!(
+                            code.matches("\"water\":\"{").count(),
+                            2,
+                            "both enabled volumes reach the runtime"
+                        );
                         assert!(code.contains("waterAt"));
-                        let pool=layout["objects"].as_array().unwrap().iter().find(|o|o["name"]=="water_volume").unwrap();
-                        assert_eq!(pool["content"]["isCastingShadow"],false);
+                        let pool = layout["objects"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .find(|o| o["name"] == "water_volume")
+                            .unwrap();
+                        assert_eq!(pool["content"]["isCastingShadow"], false);
                     }
                     Target::Raylib => {
-                        let header=std::fs::read_to_string(path.join("water_water.h")).unwrap();
-                        assert!(header.contains("#define HB_WATER_COUNT 2\n")&&header.contains("HbWaterFind"),"{header}");
-                        assert_eq!(header.matches("\"custom_pool\"").count(),1);
-                        let preview=std::fs::read_to_string(path.join("water_preview.c")).unwrap();
+                        let header = std::fs::read_to_string(path.join("water_water.h")).unwrap();
+                        assert!(
+                            header.contains("#define HB_WATER_COUNT 2\n")
+                                && header.contains("HbWaterFind"),
+                            "{header}"
+                        );
+                        assert_eq!(header.matches("\"custom_pool\"").count(), 1);
+                        let preview =
+                            std::fs::read_to_string(path.join("water_preview.c")).unwrap();
                         assert!(preview.contains("#define HB_WATER\n#include \"water_water.h\""));
-                        assert!(std::fs::read_to_string(path.join("water.level")).unwrap().contains("sensor"));
+                        assert!(std::fs::read_to_string(path.join("water.level"))
+                            .unwrap()
+                            .contains("sensor"));
                         // The plain-C half, as a C loader without raylib includes it.
                         std::fs::write(path.join("check.c"),"#include <assert.h>\n#include \"water_water.h\"\nint main(void){double d,v[3],z[3]={0},in[3]={3,-2,3},both[3]={0,-2,0},dry[3]={0,0.5,0};\n\
                             int w=HbWaterFind(in,&d);assert(w>=0&&fabs(d-2)<1e-9&&hb_waters[w].priority==0);\n\
                             w=HbWaterFind(both,&d);assert(w>=0&&hb_waters[w].priority==10);assert(HbWaterFind(dry,&d)<0&&d<0);\n\
                             HbWaterVelocity(w,z,z,0,0,1,v);assert(v[1]<-0.79&&v[1]>-0.81);return 0;}\n").unwrap();
-                        let built=std::process::Command::new("cc").current_dir(&path).args(["-std=c99","-Wall","-Wextra","-Werror","check.c","-lm","-o","check"]).output().unwrap();
-                        assert!(built.status.success(),"{}",String::from_utf8_lossy(&built.stderr));
-                        assert!(std::process::Command::new(path.join("check")).status().unwrap().success());
+                        let built = std::process::Command::new("cc")
+                            .current_dir(&path)
+                            .args([
+                                "-std=c99", "-Wall", "-Wextra", "-Werror", "check.c", "-lm", "-o",
+                                "check",
+                            ])
+                            .output()
+                            .unwrap();
+                        assert!(
+                            built.status.success(),
+                            "{}",
+                            String::from_utf8_lossy(&built.stderr)
+                        );
+                        assert!(std::process::Command::new(path.join("check"))
+                            .status()
+                            .unwrap()
+                            .success());
                     }
                     _ => {
-                        let level=std::fs::read_to_string(path.join("water/HeronBrushStrideLevel.cs")).unwrap();
-                        assert!(level.contains("_heron_water")&&level.contains("level.Waters.Add"));
-                        let blended=std::fs::read_dir(path.join("water/Materials")).unwrap().filter_map(|f|f.ok()).filter(|f|f.file_name().to_string_lossy().contains("_blend_")).collect::<Vec<_>>();
-                        assert_eq!(blended.len(),1,"the pool's see-through surface is a material of its own");
-                        assert!(std::fs::read_to_string(blended[0].path()).unwrap().contains("MaterialTransparencyBlendFeature"));
+                        let level =
+                            std::fs::read_to_string(path.join("water/HeronBrushStrideLevel.cs"))
+                                .unwrap();
+                        assert!(
+                            level.contains("_heron_water") && level.contains("level.Waters.Add")
+                        );
+                        let blended = std::fs::read_dir(path.join("water/Materials"))
+                            .unwrap()
+                            .filter_map(|f| f.ok())
+                            .filter(|f| f.file_name().to_string_lossy().contains("_blend_"))
+                            .collect::<Vec<_>>();
+                        assert_eq!(
+                            blended.len(),
+                            1,
+                            "the pool's see-through surface is a material of its own"
+                        );
+                        assert!(std::fs::read_to_string(blended[0].path())
+                            .unwrap()
+                            .contains("MaterialTransparencyBlendFeature"));
                     }
                 }
             }
         }
-        if target!=Target::Unity {
-            let mesh=pool["mesh"].as_str().unwrap();let file=if target==Target::Flax{path.join("water").join(std::path::Path::new(mesh).file_name().unwrap())}else{path.join(mesh)};
-            let bytes=std::fs::read(file).unwrap();let len=u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;let glb:serde_json::Value=serde_json::from_slice(&bytes[20..20+len]).unwrap();
-            for material in glb["materials"].as_array().unwrap(){assert_eq!(material["alphaMode"],"BLEND");assert_eq!(material["doubleSided"],true);}
+        if target != Target::Unity {
+            let mesh = pool["mesh"].as_str().unwrap();
+            let file = if target == Target::Flax {
+                path.join("water")
+                    .join(std::path::Path::new(mesh).file_name().unwrap())
+            } else {
+                path.join(mesh)
+            };
+            let bytes = std::fs::read(file).unwrap();
+            let len = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
+            let glb: serde_json::Value = serde_json::from_slice(&bytes[20..20 + len]).unwrap();
+            for material in glb["materials"].as_array().unwrap() {
+                assert_eq!(material["alphaMode"], "BLEND");
+                assert_eq!(material["doubleSided"], true);
+            }
         }
     }
 }
 
 #[test]
 fn quake_two_wal_uses_profile_palette_mod_override_and_exports_decoded_pixels() {
-    let root=std::env::temp_dir().join(format!("heron-wal-document-{}",std::process::id()));
-    let _=std::fs::remove_dir_all(&root);std::fs::create_dir_all(root.join("baseq2/textures/base")).unwrap();
+    let root = std::env::temp_dir().join(format!("heron-wal-document-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("baseq2/textures/base")).unwrap();
     std::fs::create_dir_all(root.join("mod/pics")).unwrap();
-    let mut wal=vec![0;100];wal[32..36].copy_from_slice(&8u32.to_le_bytes());wal[36..40].copy_from_slice(&8u32.to_le_bytes());
-    for level in 0..4 {let offset=wal.len() as u32;wal[40+level*4..44+level*4].copy_from_slice(&offset.to_le_bytes());wal.extend(vec![1;(8>>level)*(8>>level)]);}
-    std::fs::write(root.join("baseq2/textures/base/wall.wal"),wal).unwrap();
-    let before=crate::preferences::pref(Clone::clone);
-    crate::preferences::edit(|p|{p.game="Quake 2".into();p.game_path=root.to_string_lossy().into_owned();p.game_mods.clear();});
-    let game=crate::games::current().expect("bundled Quake II profile");
-    assert_eq!(game.materials_palette.as_deref(),Some("pics/colormap.pcx"));
-    let bundled=map_model::pcx::palette(&file_store::read(&game.directory.join("colormap.pcx")).unwrap()).unwrap();
-    let mut doc=Document::new(WorldBounds::default());
-    let brush=map_model::shapes::create_cuboid(&doc.world_bounds(),&Bbox3d::from_scalars(-16.,16.),"base/wall").unwrap();doc.add_brushes(vec![brush]);
-    assert_eq!(&doc.materials().get("base/wall").expect("WAL fallback material").pixels().unwrap()[..3],&bundled[3..6]);
-    let mut palette=vec![0;128];palette[..4].copy_from_slice(&[10,5,1,8]);palette[65]=1;palette[66]=1;
-    palette.extend([1,12]);let mut rgb=[0;768];rgb[3..6].copy_from_slice(&[17,39,61]);palette.extend(rgb);
-    std::fs::write(root.join("mod/pics/colormap.pcx"),palette).unwrap();
-    crate::preferences::edit(|p|p.game_mods="mod".into());doc.reload_game_assets();
-    assert!(doc.game_asset_warnings().is_empty(),"{:?}",doc.game_asset_warnings());
-    assert_eq!(&doc.materials().get("base/wall").unwrap().pixels().unwrap()[..4],&[17,39,61,255]);
-    for target in [crate::export::Target::Glb,crate::export::Target::Godot,crate::export::Target::ThreeJs] {
-        let out=root.join(format!("{target:?}"));std::fs::create_dir_all(&out).unwrap();
-        let report=crate::export::export(&doc,&out,&crate::export::Options{target,name:"wal".into(),..Default::default()}).unwrap();
-        if target==crate::export::Target::Glb {
-            let model=map_model::glb_model::read(&std::fs::read(out.join("wal.glb")).unwrap()).unwrap();
-            assert_eq!(&model.skins().next().unwrap().pixels[..4],&[17,39,61,255]);
+    let mut wal = vec![0; 100];
+    wal[32..36].copy_from_slice(&8u32.to_le_bytes());
+    wal[36..40].copy_from_slice(&8u32.to_le_bytes());
+    for level in 0..4 {
+        let offset = wal.len() as u32;
+        wal[40 + level * 4..44 + level * 4].copy_from_slice(&offset.to_le_bytes());
+        wal.extend(vec![1; (8 >> level) * (8 >> level)]);
+    }
+    std::fs::write(root.join("baseq2/textures/base/wall.wal"), wal).unwrap();
+    let before = crate::preferences::pref(Clone::clone);
+    crate::preferences::edit(|p| {
+        p.game = "Quake 2".into();
+        p.game_path = root.to_string_lossy().into_owned();
+        p.game_mods.clear();
+    });
+    let game = crate::games::current().expect("bundled Quake II profile");
+    assert_eq!(game.materials_palette.as_deref(), Some("pics/colormap.pcx"));
+    let bundled =
+        map_model::pcx::palette(&file_store::read(&game.directory.join("colormap.pcx")).unwrap())
+            .unwrap();
+    let mut doc = Document::new(WorldBounds::default());
+    let brush = map_model::shapes::create_cuboid(
+        &doc.world_bounds(),
+        &Bbox3d::from_scalars(-16., 16.),
+        "base/wall",
+    )
+    .unwrap();
+    doc.add_brushes(vec![brush]);
+    assert_eq!(
+        &doc.materials()
+            .get("base/wall")
+            .expect("WAL fallback material")
+            .pixels()
+            .unwrap()[..3],
+        &bundled[3..6]
+    );
+    let mut palette = vec![0; 128];
+    palette[..4].copy_from_slice(&[10, 5, 1, 8]);
+    palette[65] = 1;
+    palette[66] = 1;
+    palette.extend([1, 12]);
+    let mut rgb = [0; 768];
+    rgb[3..6].copy_from_slice(&[17, 39, 61]);
+    palette.extend(rgb);
+    std::fs::write(root.join("mod/pics/colormap.pcx"), palette).unwrap();
+    crate::preferences::edit(|p| p.game_mods = "mod".into());
+    doc.reload_game_assets();
+    assert!(
+        doc.game_asset_warnings().is_empty(),
+        "{:?}",
+        doc.game_asset_warnings()
+    );
+    assert_eq!(
+        &doc.materials().get("base/wall").unwrap().pixels().unwrap()[..4],
+        &[17, 39, 61, 255]
+    );
+    for target in [
+        crate::export::Target::Glb,
+        crate::export::Target::Godot,
+        crate::export::Target::ThreeJs,
+    ] {
+        let out = root.join(format!("{target:?}"));
+        std::fs::create_dir_all(&out).unwrap();
+        let report = crate::export::export(
+            &doc,
+            &out,
+            &crate::export::Options {
+                target,
+                name: "wal".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        if target == crate::export::Target::Glb {
+            let model =
+                map_model::glb_model::read(&std::fs::read(out.join("wal.glb")).unwrap()).unwrap();
+            assert_eq!(
+                &model.skins().next().unwrap().pixels[..4],
+                &[17, 39, 61, 255]
+            );
         } else {
-            assert!(report.files.iter().filter(|path|path.extension().is_some_and(|e|e=="png"))
-                .any(|path|image::open(path).unwrap().to_rgba8().get_pixel(0,0).0==[17,39,61,255]),"{target:?} exports the resolved WAL colors");
+            assert!(
+                report
+                    .files
+                    .iter()
+                    .filter(|path| path.extension().is_some_and(|e| e == "png"))
+                    .any(
+                        |path| image::open(path).unwrap().to_rgba8().get_pixel(0, 0).0
+                            == [17, 39, 61, 255]
+                    ),
+                "{target:?} exports the resolved WAL colors"
+            );
         }
     }
-    crate::preferences::edit(|p|*p=before);std::fs::remove_dir_all(root).unwrap();
+    crate::preferences::edit(|p| *p = before);
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
 fn pending_primitive_uv_survives_save_and_reopen_until_material_discovery() {
-    let root = std::env::temp_dir().join(format!("heron-pending-uv-{}-{}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+    let root = std::env::temp_dir().join(format!(
+        "heron-pending-uv-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
     std::fs::create_dir_all(&root).unwrap();
     let before = crate::preferences::pref(Clone::clone);
-    crate::preferences::edit(|p| { p.game = "heron_brush".into(); p.game_path.clear(); p.game_mods.clear(); });
-    let mut map = map_model::io::map_reader::read_map(include_str!("../../../map_model/tests/fixtures/format.map"), None).unwrap();
-    map.entities.truncate(1); map.entities[0].brushes.truncate(1); map.entities[0].patches.clear();
-    map.entities[0].properties.retain(|(key, _)| key == "classname");
+    crate::preferences::edit(|p| {
+        p.game = "heron_brush".into();
+        p.game_path.clear();
+        p.game_mods.clear();
+    });
+    let mut map = map_model::io::map_reader::read_map(
+        include_str!("../../../map_model/tests/fixtures/format.map"),
+        None,
+    )
+    .unwrap();
+    map.entities.truncate(1);
+    map.entities[0].brushes.truncate(1);
+    map.entities[0].patches.clear();
+    map.entities[0]
+        .properties
+        .retain(|(key, _)| key == "classname");
     for face in &mut map.entities[0].brushes[0].faces {
         face.material_name = "primitive_uv_check".into();
-        face.primitive_uv = Some(Box::new([[0.0078125, 0.001, 0.25], [-0.002, 0.015625, -0.125]]));
+        face.primitive_uv = Some(Box::new([
+            [0.0078125, 0.001, 0.25],
+            [-0.002, 0.015625, -0.125],
+        ]));
     }
     let doc = Document::from_map(&map, WorldBounds::default(), None);
     assert!(doc.materials().get("primitive_uv_check").is_none());
@@ -5373,63 +6730,114 @@ fn pending_primitive_uv_survives_save_and_reopen_until_material_discovery() {
     reopened.select_all();
     reopened.edit_faces(|f| f.set_paint(None));
     let painted = map_model::io::map_reader::read_map(&reopened.to_map_text(), None).unwrap();
-    assert!(painted.entities[0].brushes[0].faces.iter().all(|f| f.primitive_uv.is_some()));
+    assert!(painted.entities[0].brushes[0]
+        .faces
+        .iter()
+        .all(|f| f.primitive_uv.is_some()));
     reopened.undo();
     reopened.edit_faces(|f| f.move_uv(geometry_math::vec::Vec2f::new(7., -3.)));
     let edited = map_model::io::map_reader::read_map(&reopened.to_map_text(), None).unwrap();
-    assert!(edited.entities[0].brushes[0].faces.iter().all(|f| f.primitive_uv.is_none()));
+    assert!(edited.entities[0].brushes[0]
+        .faces
+        .iter()
+        .all(|f| f.primitive_uv.is_none()));
     reopened.undo();
     reopened.edit_faces(|f| f.reset_uv_to_paraxial());
     let reset = map_model::io::map_reader::read_map(&reopened.to_map_text(), None).unwrap();
-    assert!(reset.entities[0].brushes[0].faces.iter().all(|f| f.primitive_uv.is_none()));
+    assert!(reset.entities[0].brushes[0]
+        .faces
+        .iter()
+        .all(|f| f.primitive_uv.is_none()));
     reopened.undo();
     assert_eq!(reopened.to_map_text(), saved);
-    image::RgbaImage::from_pixel(128, 64, image::Rgba([50, 100, 150, 255])).save(root.join("primitive_uv_check.png")).unwrap();
+    image::RgbaImage::from_pixel(128, 64, image::Rgba([50, 100, 150, 255]))
+        .save(root.join("primitive_uv_check.png"))
+        .unwrap();
     reopened.load_materials(&root).unwrap();
     let converted = map_model::io::map_reader::read_map(&reopened.to_map_text(), None).unwrap();
     for face in &converted.entities[0].brushes[0].faces {
         assert!(face.primitive_uv.is_none());
-        assert!(matches!(face.uv_coord_system, map_model::uv::UvCoordSystem::Parallel { .. }));
-        let mut expected = pending.iter().find(|p| p.points == face.points).unwrap().clone();
+        assert!(matches!(
+            face.uv_coord_system,
+            map_model::uv::UvCoordSystem::Parallel { .. }
+        ));
+        let mut expected = pending
+            .iter()
+            .find(|p| p.points == face.points)
+            .unwrap()
+            .clone();
         expected.resolve_primitive_uv(geometry_math::vec::Vec2f::new(128., 64.));
-        for point in face.points { geometry_math::assert_approx_eq!(face.uv_coords(point), expected.uv_coords(point), 1e-5); }
+        for point in face.points {
+            geometry_math::assert_approx_eq!(
+                face.uv_coords(point),
+                expected.uv_coords(point),
+                1e-5
+            );
+        }
     }
-    crate::preferences::edit(|p| *p = before); std::fs::remove_dir_all(root).unwrap();
+    crate::preferences::edit(|p| *p = before);
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
-fn quake3_native_export_uses_texture_dimensions_omits_layers_and_preserves_existing_files_on_failure() {
-    let root = std::env::temp_dir().join(format!("heron-q3-export-{}-{}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+fn quake3_native_export_uses_texture_dimensions_omits_layers_and_preserves_existing_files_on_failure(
+) {
+    let root = std::env::temp_dir().join(format!(
+        "heron-q3-export-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
     std::fs::create_dir_all(&root).unwrap();
     let mut document = one_box();
-    let path = root.join("native.map"); std::fs::write(&path, "existing map").unwrap();
-    assert!(document.quake3_map_export_problems().iter().any(|s| s.contains("stone")));
+    let path = root.join("native.map");
+    std::fs::write(&path, "existing map").unwrap();
+    assert!(document
+        .quake3_map_export_problems()
+        .iter()
+        .any(|s| s.contains("stone")));
     assert!(document.export_quake3_map_to(&path).is_err());
     assert_eq!(std::fs::read_to_string(&path).unwrap(), "existing map");
     // An omitted layer needs no material dimensions and contributes no brushes.
-    let layer = document.add_layer("Omitted"); document.select_all(); document.move_selection_to_layer(layer);
-    document.set_layer_omitted(layer,true);
+    let layer = document.add_layer("Omitted");
+    document.select_all();
+    document.move_selection_to_layer(layer);
+    document.set_layer_omitted(layer, true);
     assert!(document.quake3_map_export_problems().is_empty());
     assert!(!document.export_quake3_map_text().unwrap().contains("stone"));
-    document.set_layer_omitted(layer,false);
-    image::RgbaImage::from_pixel(128,64,image::Rgba([80,120,160,255])).save(root.join("stone.png")).unwrap();
+    document.set_layer_omitted(layer, false);
+    image::RgbaImage::from_pixel(128, 64, image::Rgba([80, 120, 160, 255]))
+        .save(root.join("stone.png"))
+        .unwrap();
     document.load_materials(&root).unwrap();
-    document.edit_faces(|face| { face.rotate_uv(37.); face.scale_uv(geometry_math::vec::Vec2f::new(-0.5,2.)); face.move_uv(geometry_math::vec::Vec2f::new(7.,-3.)); });
+    document.edit_faces(|face| {
+        face.rotate_uv(37.);
+        face.scale_uv(geometry_math::vec::Vec2f::new(-0.5, 2.));
+        face.move_uv(geometry_math::vec::Vec2f::new(7., -3.));
+    });
     let source = document.to_map_text();
     document.export_quake3_map_to(&path).unwrap();
     let written = std::fs::read_to_string(&path).unwrap();
     assert!(written.contains("\nbrushDef\n"));
     assert!(!written.contains("primitive_uv"));
-    assert_eq!(document.to_map_text(),source,"export does not mutate the editable map");
-    let expected = map_model::io::map_reader::read_map(&source,None).unwrap();
-    let mut actual = map_model::io::map_reader::read_map(&written,None).unwrap();
-    for (a,b) in expected.entities.iter().zip(&mut actual.entities) {
-        for (a,b) in a.brushes.iter().zip(&mut b.brushes) {
-            assert_eq!(a.faces.len(),b.faces.len());
-            for (a,b) in a.faces.iter().zip(&mut b.faces) {
-                b.resolve_primitive_uv(geometry_math::vec::Vec2f::new(128.,64.));
-                assert_eq!(a.points,b.points);
-                for point in a.points { geometry_math::assert_approx_eq!(a.uv_coords(point),b.uv_coords(point),1e-4); }
+    assert_eq!(
+        document.to_map_text(),
+        source,
+        "export does not mutate the editable map"
+    );
+    let expected = map_model::io::map_reader::read_map(&source, None).unwrap();
+    let mut actual = map_model::io::map_reader::read_map(&written, None).unwrap();
+    for (a, b) in expected.entities.iter().zip(&mut actual.entities) {
+        for (a, b) in a.brushes.iter().zip(&mut b.brushes) {
+            assert_eq!(a.faces.len(), b.faces.len());
+            for (a, b) in a.faces.iter().zip(&mut b.faces) {
+                b.resolve_primitive_uv(geometry_math::vec::Vec2f::new(128., 64.));
+                assert_eq!(a.points, b.points);
+                for point in a.points {
+                    geometry_math::assert_approx_eq!(a.uv_coords(point), b.uv_coords(point), 1e-4);
+                }
             }
         }
     }
@@ -5438,31 +6846,53 @@ fn quake3_native_export_uses_texture_dimensions_omits_layers_and_preserves_exist
 
 #[test]
 fn doom3_native_export_preserves_world_geometry_and_rejects_unhandled_rotation_before_writing() {
-    let root = std::env::temp_dir().join(format!("heron-doom3-export-{}-{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+    let root = std::env::temp_dir().join(format!(
+        "heron-doom3-export-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
     std::fs::create_dir_all(&root).unwrap();
-    let path = root.join("native.map"); std::fs::write(&path,"existing map").unwrap();
+    let path = root.join("native.map");
+    std::fs::write(&path, "existing map").unwrap();
     let mut doc = one_box();
     assert!(doc.export_doom3_map_to(&path).is_err());
-    assert_eq!(std::fs::read_to_string(&path).unwrap(),"existing map");
-    image::RgbaImage::from_pixel(128,64,image::Rgba([80,120,160,255])).save(root.join("stone.png")).unwrap();
-    doc.load_materials(&root).unwrap(); doc.select_all();
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "existing map");
+    image::RgbaImage::from_pixel(128, 64, image::Rgba([80, 120, 160, 255]))
+        .save(root.join("stone.png"))
+        .unwrap();
+    doc.load_materials(&root).unwrap();
+    doc.select_all();
     let id = doc.create_brush_entity("func_static").unwrap();
-    doc.set_entity_property(id,"origin","128 64 32");
+    doc.set_entity_property(id, "origin", "128 64 32");
     let before = doc.to_map_text();
     doc.export_doom3_map_to(&path).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
-    assert!(text.starts_with("Version 2\n")); assert!(text.contains("brushDef3"));
-    assert_eq!(doc.to_map_text(),before);
-    let expected = map_model::io::map_reader::read_map(&before,None).unwrap();
-    let mut actual = map_model::io::map_reader::read_map(&text,None).unwrap();
-    for (a,b) in expected.entities.iter().zip(&mut actual.entities) { for (a,b) in a.brushes.iter().zip(&mut b.brushes) { for (a,b) in a.faces.iter().zip(&mut b.faces) {
-        geometry_math::assert_approx_eq!(a.plane.normal,b.plane.normal,1e-9);
-        assert!((a.plane.distance-b.plane.distance).abs()<1e-8);
-        b.resolve_primitive_uv(geometry_math::vec::Vec2f::new(128.,64.));
-        for point in a.points { geometry_math::assert_approx_eq!(a.uv_coords(point),b.uv_coords(point),1e-4); }
-    } } }
-    doc.set_entity_property(id,"rotation","0 -1 0 1 0 0 0 0 1");
-    assert!(doc.export_doom3_map_to(&path).unwrap_err().to_string().contains("rotation"));
-    assert_eq!(std::fs::read_to_string(&path).unwrap(),text);
+    assert!(text.starts_with("Version 2\n"));
+    assert!(text.contains("brushDef3"));
+    assert_eq!(doc.to_map_text(), before);
+    let expected = map_model::io::map_reader::read_map(&before, None).unwrap();
+    let mut actual = map_model::io::map_reader::read_map(&text, None).unwrap();
+    for (a, b) in expected.entities.iter().zip(&mut actual.entities) {
+        for (a, b) in a.brushes.iter().zip(&mut b.brushes) {
+            for (a, b) in a.faces.iter().zip(&mut b.faces) {
+                geometry_math::assert_approx_eq!(a.plane.normal, b.plane.normal, 1e-9);
+                assert!((a.plane.distance - b.plane.distance).abs() < 1e-8);
+                b.resolve_primitive_uv(geometry_math::vec::Vec2f::new(128., 64.));
+                for point in a.points {
+                    geometry_math::assert_approx_eq!(a.uv_coords(point), b.uv_coords(point), 1e-4);
+                }
+            }
+        }
+    }
+    doc.set_entity_property(id, "rotation", "0 -1 0 1 0 0 0 0 1");
+    assert!(doc
+        .export_doom3_map_to(&path)
+        .unwrap_err()
+        .to_string()
+        .contains("rotation"));
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), text);
     std::fs::remove_dir_all(root).unwrap();
 }

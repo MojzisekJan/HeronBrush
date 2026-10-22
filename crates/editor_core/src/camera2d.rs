@@ -190,7 +190,12 @@ impl Camera2d {
     ///
     /// A 2D view is orthographic, so the ray runs along the axis the view looks down,
     /// starting far enough back to be outside anything it might hit.
-    pub fn ray_through(&self, screen: Vec2d, viewport: (f64, f64), reach: f64) -> geometry_math::ray::Ray3d {
+    pub fn ray_through(
+        &self,
+        screen: Vec2d,
+        viewport: (f64, f64),
+        reach: f64,
+    ) -> geometry_math::ray::Ray3d {
         let on_plane = self.screen_to_plane(screen, viewport);
         let direction = self.plane.view_direction();
         // Starting a full reach behind the scene means everything in front of the viewer
@@ -327,11 +332,7 @@ mod tests {
 
             // Wherever the ray is along its length, it projects back onto the click.
             let on_ray = ray.point_at_distance(1000.0);
-            assert_approx_eq!(
-                camera.world_to_screen(on_ray, VIEWPORT),
-                screen,
-                1e-9
-            );
+            assert_approx_eq!(camera.world_to_screen(on_ray, VIEWPORT), screen, 1e-9);
         }
     }
 

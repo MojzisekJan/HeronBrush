@@ -37,23 +37,30 @@ impl<J: Send + 'static, R: Send + 'static> Pool<J, R> {
             let queue = Arc::new(std::sync::Mutex::new(queue));
             for n in 0..threads.max(1) {
                 let (queue, done, work) = (Arc::clone(&queue), done.clone(), Arc::clone(&work));
-                let _ = std::thread::Builder::new().name(format!("{name} {n}")).spawn(move || loop {
-                    let job = match queue.lock() {
-                        Ok(queue) => queue.recv(),
-                        Err(_) => return,
-                    };
-                    let Ok(job) = job else { return };
-                    if done.send(work(job)).is_err() {
-                        return;
-                    }
-                });
+                let _ = std::thread::Builder::new()
+                    .name(format!("{name} {n}"))
+                    .spawn(move || loop {
+                        let job = match queue.lock() {
+                            Ok(queue) => queue.recv(),
+                            Err(_) => return,
+                        };
+                        let Ok(job) = job else { return };
+                        if done.send(work(job)).is_err() {
+                            return;
+                        }
+                    });
             }
             Pool { jobs, answers }
         }
         #[cfg(target_arch = "wasm32")]
         {
             let _ = (name, threads);
-            Pool { jobs, answers, inline: (queue, done, work), worked: std::cell::Cell::new(None) }
+            Pool {
+                jobs,
+                answers,
+                inline: (queue, done, work),
+                worked: std::cell::Cell::new(None),
+            }
         }
     }
 

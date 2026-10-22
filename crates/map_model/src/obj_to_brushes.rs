@@ -321,7 +321,11 @@ fn dress(
         .iter()
         .map(|face| {
             let mut face = face.clone();
-            let name = if on_surface(&face.plane) { outside } else { inside };
+            let name = if on_surface(&face.plane) {
+                outside
+            } else {
+                inside
+            };
             face.material_name = name.into();
             face
         })
@@ -383,8 +387,11 @@ fn join_two(a: &Brush, b: &Brush, world_bounds: &Bbox3d) -> Option<Brush> {
     }
     let mut points = a.vertex_positions();
     points.extend(b.vertex_positions());
-    let geometry =
-        crate::polyhedron::Polyhedron::from_points(&points, geometry_math::scalar::Float::ALMOST_ZERO).ok()?;
+    let geometry = crate::polyhedron::Polyhedron::from_points(
+        &points,
+        geometry_math::scalar::Float::ALMOST_ZERO,
+    )
+    .ok()?;
     let one = Brush::from_polyhedron(geometry, a.faces().first()?.material_name.as_str());
     if !world_bounds.contains(&one.bounds()) {
         return None;
@@ -504,7 +511,9 @@ fn rings_at(triangles: &[[Vec3d; 3]], height: f64) -> Vec<crate::text::Outline> 
 }
 
 /// Joins loose segments into closed rings, end to end.
-fn chain(mut segments: Vec<(geometry_math::vec::Vec2d, geometry_math::vec::Vec2d)>) -> Vec<crate::text::Outline> {
+fn chain(
+    mut segments: Vec<(geometry_math::vec::Vec2d, geometry_math::vec::Vec2d)>,
+) -> Vec<crate::text::Outline> {
     // A cut through a mesh gives the same point from two triangles at slightly different
     // precision, so ends are matched by nearness rather than by equality.
     const NEAR: f64 = 1e-6;
@@ -516,7 +525,9 @@ fn chain(mut segments: Vec<(geometry_math::vec::Vec2d, geometry_math::vec::Vec2d
     while let Some((start, mut end)) = segments.pop() {
         let mut ring = vec![start, end];
         loop {
-            let next = segments.iter().position(|(a, b)| close(*a, end) || close(*b, end));
+            let next = segments
+                .iter()
+                .position(|(a, b)| close(*a, end) || close(*b, end));
             let Some(at) = next else {
                 break;
             };
@@ -553,8 +564,11 @@ fn slab_brush(
         points.push(Vec3d::new(corner.x(), corner.y(), bottom));
         points.push(Vec3d::new(corner.x(), corner.y(), top));
     }
-    let geometry =
-        crate::polyhedron::Polyhedron::from_points(&points, geometry_math::scalar::Float::ALMOST_ZERO).ok()?;
+    let geometry = crate::polyhedron::Polyhedron::from_points(
+        &points,
+        geometry_math::scalar::Float::ALMOST_ZERO,
+    )
+    .ok()?;
     let brush = Brush::from_polyhedron(geometry, material);
     world_bounds.contains(&brush.bounds()).then_some(brush)
 }
@@ -910,7 +924,11 @@ fn wedge(
     // `.map` face line is written in.
     let mut faces = vec![
         [triangle[0], triangle[2], triangle[1]],
-        [back_of(triangle[0]), back_of(triangle[1]), back_of(triangle[2])],
+        [
+            back_of(triangle[0]),
+            back_of(triangle[1]),
+            back_of(triangle[2]),
+        ],
     ];
     for at in 0..3 {
         let a = triangle[at];
@@ -1111,9 +1129,8 @@ f 1/1/1 2/1/1 3/1/1 4/1/1
                 Vec3d::new(hi, hi, hi),
                 Vec3d::new(lo, hi, hi),
             ];
-            let quad = |a: usize, b: usize, d: usize, e: usize| {
-                [[c[a], c[b], c[d]], [c[a], c[d], c[e]]]
-            };
+            let quad =
+                |a: usize, b: usize, d: usize, e: usize| [[c[a], c[b], c[d]], [c[a], c[d], c[e]]];
             let mut out = Vec::new();
             for face in [
                 quad(0, 3, 2, 1),
@@ -1156,7 +1173,11 @@ f 1/1/1 2/1/1 3/1/1 4/1/1
             ..Options::default()
         };
         let (brushes, _) = brushes_from_triangles(&flat_square(), &world(), &options);
-        assert!(brushes.is_empty(), "{} brushes from a flat sheet", brushes.len());
+        assert!(
+            brushes.is_empty(),
+            "{} brushes from a flat sheet",
+            brushes.len()
+        );
     }
 
     /// A closed cube of triangles, wound so the normals face out.
@@ -1171,9 +1192,8 @@ f 1/1/1 2/1/1 3/1/1 4/1/1
             Vec3d::new(hi, hi, hi),
             Vec3d::new(lo, hi, hi),
         ];
-        let quad = |a: usize, b: usize, d: usize, e: usize| {
-            [[c[a], c[b], c[d]], [c[a], c[d], c[e]]]
-        };
+        let quad =
+            |a: usize, b: usize, d: usize, e: usize| [[c[a], c[b], c[d]], [c[a], c[d], c[e]]];
         let mut out = Vec::new();
         for face in [
             quad(0, 3, 2, 1),
@@ -1199,11 +1219,12 @@ f 1/1/1 2/1/1 3/1/1 4/1/1
             thickness: 4.0,
             ..Options::default()
         };
-        let (brushes, report) =
-            brushes_from_triangles(&closed_cube(0.0, 64.0), &world(), &options);
+        let (brushes, report) = brushes_from_triangles(&closed_cube(0.0, 64.0), &world(), &options);
         assert!(report.brushes > 0, "{report:?}");
 
-        let whole = brushes.iter().fold(brushes[0].bounds(), |all, b| all.merged(&b.bounds()));
+        let whole = brushes
+            .iter()
+            .fold(brushes[0].bounds(), |all, b| all.merged(&b.bounds()));
         // Every brush is within the cube, give or take the rounding of a corner.
         assert!(whole.min.x() > -0.01, "it grew outwards: {whole:?}");
         assert!(whole.max.x() < 64.01, "it grew outwards: {whole:?}");
@@ -1219,7 +1240,9 @@ f 1/1/1 2/1/1 3/1/1 4/1/1
             ..Options::default()
         };
         let (brushes, _) = brushes_from_triangles(&closed_cube(0.0, 8.0), &world(), &options);
-        let whole = brushes.iter().fold(brushes[0].bounds(), |all, b| all.merged(&b.bounds()));
+        let whole = brushes
+            .iter()
+            .fold(brushes[0].bounds(), |all, b| all.merged(&b.bounds()));
         assert!(whole.min.x() > -0.01 && whole.max.x() < 8.01, "{whole:?}");
         // A wedge of a whole face of the cube is as wide as the face, so two of its three
         // extents are the face's own. What the clamp governs is the third: how deep the
@@ -1229,7 +1252,11 @@ f 1/1/1 2/1/1 3/1/1 4/1/1
             let deepest = size.x().min(size.y()).min(size.z());
             // Half the cube: as far as a wall may go before it is where the wall from
             // the other side would be.
-            assert!(deepest <= 4.0 + 1e-6, "a wall past the middle: {:?}", brush.bounds());
+            assert!(
+                deepest <= 4.0 + 1e-6,
+                "a wall past the middle: {:?}",
+                brush.bounds()
+            );
         }
     }
 
@@ -1329,7 +1356,10 @@ f 1/1/1 2/1/1 3/1/1 4/1/1
                 .count();
             assert_eq!(outside, 1, "one face of each is the model's own surface");
             assert!(
-                brush.faces().iter().any(|f| f.material_name.as_str() == "skip"),
+                brush
+                    .faces()
+                    .iter()
+                    .any(|f| f.material_name.as_str() == "skip"),
                 "the rest are inside it"
             );
         }

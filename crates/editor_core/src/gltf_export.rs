@@ -1,11 +1,11 @@
 //! Portable glTF scenes from the editor tree, including native face paint and patches.
 use super::{Contents, Document, Error, Options, Report, Target};
+use geometry_math::vec::Vec3d;
 use map_model::brush_face::FaceColor;
 use map_model::node::{Node, NodeKind};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::Path;
-use geometry_math::vec::Vec3d;
 
 struct Scene<'a> {
     document: &'a Document,
@@ -14,14 +14,14 @@ struct Scene<'a> {
     bin: Vec<u8>,
     images: Vec<Vec<u8>>,
     image_cache: HashMap<Vec<u8>, usize>,
-    model_meshes: HashMap<String, (usize,usize)>,
+    model_meshes: HashMap<String, (usize, usize)>,
     texture_cache: HashMap<(usize, bool), usize>,
     materials: HashMap<String, usize>,
     /// Materials given a `normalTexture`, whose primitives also get `TANGENT`.
     normal_materials: std::collections::HashSet<usize>,
     report: Report,
     settings: scene_export::settings::Settings,
-    classes: scene_export::indexmap::IndexMap<String,scene_export::fgd::EntityClass>,
+    classes: scene_export::indexmap::IndexMap<String, scene_export::fgd::EntityClass>,
 }
 
 fn linear(v: f32) -> f32 {
@@ -103,7 +103,8 @@ impl Scene<'_> {
         double: bool,
         surface: Option<map_model::brush_face::SurfaceMaterial>,
     ) -> usize {
-        let [roughness, metallic, emission] = surface.map(|s| s.factors()).unwrap_or([1.0,0.0,0.0]);
+        let [roughness, metallic, emission] =
+            surface.map(|s| s.factors()).unwrap_or([1.0, 0.0, 0.0]);
         let mut pbr = json!({"metallicFactor":metallic,"roughnessFactor":roughness});
         if let Some(rgb) = solid {
             pbr["baseColorFactor"] = json!([linear(rgb[0]), linear(rgb[1]), linear(rgb[2]), 1.0]);
@@ -113,21 +114,32 @@ impl Scene<'_> {
         }
         let mut value = json!({"name":name,"pbrMetallicRoughness":pbr,"doubleSided":double,"alphaMode":if alpha {"BLEND"} else {"OPAQUE"}});
         if emission > 0.0 {
-            let rgb = solid.map(|rgb| rgb.map(linear)).unwrap_or([1.0;3]);
+            let rgb = solid.map(|rgb| rgb.map(linear)).unwrap_or([1.0; 3]);
             value["emissiveFactor"] = json!(rgb);
-            if let Some(index) = image { value["emissiveTexture"] = json!({"index":index}); }
-            value["extensions"]["KHR_materials_emissive_strength"] = json!({"emissiveStrength":emission});
+            if let Some(index) = image {
+                value["emissiveTexture"] = json!({"index":index});
+            }
+            value["extensions"]["KHR_materials_emissive_strength"] =
+                json!({"emissiveStrength":emission});
             self.root["extensionsUsed"] = json!(["KHR_materials_emissive_strength"]);
         }
         self.push("materials", value)
     }
-    fn texture_material(&mut self, name: &str, double: bool, surface: Option<map_model::brush_face::SurfaceMaterial>) -> usize {
+    fn texture_material(
+        &mut self,
+        name: &str,
+        double: bool,
+        surface: Option<map_model::brush_face::SurfaceMaterial>,
+    ) -> usize {
         let key = format!("{name}:{double}:{surface:?}");
         if let Some(id) = self.materials.get(&key) {
             return *id;
         }
         let material = self.document.materials().get(name);
-        let (image, alpha) = if let Some(pixels) = material.and_then(|m| Some((m, m.pixels()?))).map(|(m, p)| (m, p[..(m.width * m.height * 4) as usize].to_vec())) {
+        let (image, alpha) = if let Some(pixels) = material
+            .and_then(|m| Some((m, m.pixels()?)))
+            .map(|(m, p)| (m, p[..(m.width * m.height * 4) as usize].to_vec()))
+        {
             let (m, pixels) = pixels;
             let alpha = pixels.as_chunks::<4>().0.iter().any(|p| p[3] < 255);
             (Some(self.image(m.width, m.height, pixels, true)), alpha)
@@ -139,7 +151,9 @@ impl Scene<'_> {
         };
         let id = self.material(name, None, image, alpha, double, surface);
         // The companion normal map, in the glTF (OpenGL +Y) convention.
-        let normal = material.and_then(|m| m.normal_map.as_ref()).filter(|_| image.is_some());
+        let normal = material
+            .and_then(|m| m.normal_map.as_ref())
+            .filter(|_| image.is_some());
         if let Some((normal, pixels)) = normal.and_then(|n| Some((n, n.pixels()?))) {
             let mut rgba = pixels[..(normal.width * normal.height * 4) as usize].to_vec();
             for p in rgba.as_chunks_mut::<4>().0 {
@@ -152,9 +166,11 @@ impl Scene<'_> {
             self.root["materials"][id]["normalTexture"] = json!({"index":texture});
             self.normal_materials.insert(id);
         }
-        if let Some(pbr)=material.and_then(|m|m.model_pbr.clone()) {
-            self.root["materials"][id]["pbrMetallicRoughness"]["roughnessFactor"] = json!(pbr.roughness);
-            self.root["materials"][id]["pbrMetallicRoughness"]["metallicFactor"] = json!(pbr.metallic);
+        if let Some(pbr) = material.and_then(|m| m.model_pbr.clone()) {
+            self.root["materials"][id]["pbrMetallicRoughness"]["roughnessFactor"] =
+                json!(pbr.roughness);
+            self.root["materials"][id]["pbrMetallicRoughness"]["metallicFactor"] =
+                json!(pbr.metallic);
             self.root["materials"][id]["emissiveFactor"] = json!(pbr.emissive_factor);
             self.root["materials"][id]["alphaMode"] = json!(match pbr.alpha_mode {
                 map_model::material::Alpha::Opaque => "OPAQUE",
@@ -165,15 +181,28 @@ impl Scene<'_> {
                 self.root["materials"][id]["alphaCutoff"] = json!(pbr.alpha_cutoff);
             }
             self.root["materials"][id]["doubleSided"] = json!(pbr.double_sided);
-            if self.root["materials"][id]["normalTexture"].is_object() {self.root["materials"][id]["normalTexture"]["scale"]=json!(pbr.normal_scale);}
-            for (slot,map) in [("metallicRoughnessTexture",&pbr.metallic_roughness),("occlusionTexture",&pbr.occlusion),("emissiveTexture",&pbr.emissive)] {
-                if let Some(map)=map {
-                    let texture=self.image(map.width,map.height,map.pixels.clone(),true);
-                    if slot=="metallicRoughnessTexture" {self.root["materials"][id]["pbrMetallicRoughness"][slot]=json!({"index":texture});}
-                    else {self.root["materials"][id][slot]=json!({"index":texture});}
+            if self.root["materials"][id]["normalTexture"].is_object() {
+                self.root["materials"][id]["normalTexture"]["scale"] = json!(pbr.normal_scale);
+            }
+            for (slot, map) in [
+                ("metallicRoughnessTexture", &pbr.metallic_roughness),
+                ("occlusionTexture", &pbr.occlusion),
+                ("emissiveTexture", &pbr.emissive),
+            ] {
+                if let Some(map) = map {
+                    let texture = self.image(map.width, map.height, map.pixels.clone(), true);
+                    if slot == "metallicRoughnessTexture" {
+                        self.root["materials"][id]["pbrMetallicRoughness"][slot] =
+                            json!({"index":texture});
+                    } else {
+                        self.root["materials"][id][slot] = json!({"index":texture});
+                    }
                 }
             }
-            if self.root["materials"][id]["occlusionTexture"].is_object() {self.root["materials"][id]["occlusionTexture"]["strength"]=json!(pbr.occlusion_strength);}
+            if self.root["materials"][id]["occlusionTexture"].is_object() {
+                self.root["materials"][id]["occlusionTexture"]["strength"] =
+                    json!(pbr.occlusion_strength);
+            }
         }
         self.materials.insert(key, id);
         id
@@ -212,20 +241,37 @@ impl Scene<'_> {
             let id = if let Some(id) = self.materials.get(&key) {
                 *id
             } else {
-                let id = self.material(&key, Some(color.to_f32()), None, false, false, face.surface_material);
+                let id = self.material(
+                    &key,
+                    Some(color.to_f32()),
+                    None,
+                    false,
+                    false,
+                    face.surface_material,
+                );
                 self.materials.insert(key, id);
                 id
             };
             return (id, vec![[0.0, 0.0]; polygon.len()]);
         }
         let baked = super::paint_export::bake(face, polygon, material).expect("painted polygon");
-        let uv = polygon.iter().map(|p| {
-            let uv = baked.uv(face.uv_coords(*p));
-            [uv.x(), uv.y()]
-        }).collect();
+        let uv = polygon
+            .iter()
+            .map(|p| {
+                let uv = baked.uv(face.uv_coords(*p));
+                [uv.x(), uv.y()]
+            })
+            .collect();
         let alpha = baked.pixels.as_chunks::<4>().0.iter().any(|p| p[3] < 255);
         let image = self.image(baked.width, baked.height, baked.pixels, false);
-        let id = self.material("Face paint", None, Some(image), alpha, false, face.surface_material);
+        let id = self.material(
+            "Face paint",
+            None,
+            Some(image),
+            alpha,
+            false,
+            face.surface_material,
+        );
         (id, uv)
     }
 
@@ -240,7 +286,12 @@ impl Scene<'_> {
     }
 
     fn primitive_with_normals(
-        &mut self, points: &[Vec3d], normal: Vec3d, corner_normals: Option<[Vec3d;3]>, uv: &[[f32;2]], material: usize,
+        &mut self,
+        points: &[Vec3d],
+        normal: Vec3d,
+        corner_normals: Option<[Vec3d; 3]>,
+        uv: &[[f32; 2]],
+        material: usize,
     ) -> Value {
         let mut positions = Vec::new();
         let mut normals = Vec::new();
@@ -330,14 +381,31 @@ impl Scene<'_> {
                     .iter()
                     .map(|(k, v)| (k.clone(), json!(v)))
                     .collect();
-                let class=e.classname().and_then(|name|self.classes.get(name));
-                let mut raw=std::collections::BTreeMap::new();
-                if let Some(class)=class {for (name,definition) in &class.properties {if let Some(default)=&definition.default {raw.insert(name.clone(),default.clone());}}}
-                for (name,value) in &e.properties {raw.insert(name.clone(),value.clone());}
-                let typed:serde_json::Map<String,Value>=raw.iter().map(|(name,value)|{
-                    let definition=class.and_then(|class|class.properties.get(name));
-                    (name.clone(),serde_json::to_value(scene_export::level::Value::from_fgd(definition,value)).expect("entity property serializes"))
-                }).collect();
+                let class = e.classname().and_then(|name| self.classes.get(name));
+                let mut raw = std::collections::BTreeMap::new();
+                if let Some(class) = class {
+                    for (name, definition) in &class.properties {
+                        if let Some(default) = &definition.default {
+                            raw.insert(name.clone(), default.clone());
+                        }
+                    }
+                }
+                for (name, value) in &e.properties {
+                    raw.insert(name.clone(), value.clone());
+                }
+                let typed: serde_json::Map<String, Value> = raw
+                    .iter()
+                    .map(|(name, value)| {
+                        let definition = class.and_then(|class| class.properties.get(name));
+                        (
+                            name.clone(),
+                            serde_json::to_value(scene_export::level::Value::from_fgd(
+                                definition, value,
+                            ))
+                            .expect("entity property serializes"),
+                        )
+                    })
+                    .collect();
                 let translation = if e.children.is_empty() {
                     e.property("origin").and_then(|s| {
                         let v: Vec<f64> = s
@@ -355,42 +423,99 @@ impl Scene<'_> {
                 } else {
                     None
                 };
-                let build=class.map(|class|serde_json::to_value(&class.directives.entries).expect("class directives serialize"));
-                let mut primitives=Vec::new();
+                let build = class.map(|class| {
+                    serde_json::to_value(&class.directives.entries)
+                        .expect("class directives serialize")
+                });
+                let mut primitives = Vec::new();
                 if e.property("_heron_model").is_some() {
-                    if let Some(baked)=self.document.imported_model(e) {
-                        let path=self.document.imported_model_path(e).unwrap();
-                        let raw = e.children.is_empty().then(|| self.document.imported_model_source(e)).flatten();
+                    if let Some(baked) = self.document.imported_model(e) {
+                        let path = self.document.imported_model_path(e).unwrap();
+                        let raw = e
+                            .children
+                            .is_empty()
+                            .then(|| self.document.imported_model_source(e))
+                            .flatten();
                         let model = if let Some(raw) = raw {
                             let key = path.to_string_lossy().into_owned();
                             cached_mesh = self.model_meshes.get(&key).copied();
                             model_key = Some(key);
-                            let info = map_model::entity_rotation::RotationInfo { kind: map_model::entity_rotation::RotationType::Euler, property_key: "angles".into(), usage: map_model::entity_rotation::RotationUsage::Allowed };
-                            let rotation = map_model::entity_rotation::rotation(&e.properties,&info);
-                            let parts = e.property("modelscale").unwrap_or("1").split_whitespace().filter_map(|p|p.parse::<f64>().ok()).collect::<Vec<_>>();
-                            let scale = match parts.as_slice() { [s] => [*s;3], [x,y,z] => [*x,*y,*z], _ => [1.;3] };
-                            let axes = [Vec3d::new(scale[0],0.,0.),Vec3d::new(0.,0.,scale[2]),Vec3d::new(0.,-scale[1],0.)];
+                            let info = map_model::entity_rotation::RotationInfo {
+                                kind: map_model::entity_rotation::RotationType::Euler,
+                                property_key: "angles".into(),
+                                usage: map_model::entity_rotation::RotationUsage::Allowed,
+                            };
+                            let rotation =
+                                map_model::entity_rotation::rotation(&e.properties, &info);
+                            let parts = e
+                                .property("modelscale")
+                                .unwrap_or("1")
+                                .split_whitespace()
+                                .filter_map(|p| p.parse::<f64>().ok())
+                                .collect::<Vec<_>>();
+                            let scale = match parts.as_slice() {
+                                [s] => [*s; 3],
+                                [x, y, z] => [*x, *y, *z],
+                                _ => [1.; 3],
+                            };
+                            let axes = [
+                                Vec3d::new(scale[0], 0., 0.),
+                                Vec3d::new(0., 0., scale[2]),
+                                Vec3d::new(0., -scale[1], 0.),
+                            ];
                             let mut matrix = Vec::new();
-                            for a in axes { let p = rotation*a; matrix.extend([p.x(),p.z(),-p.y(),0.]); }
-                            let origin = e.origin().unwrap_or_else(Vec3d::zero)/self.options.scale;
-                            matrix.extend([origin.x(),origin.z(),-origin.y(),1.]);
+                            for a in axes {
+                                let p = rotation * a;
+                                matrix.extend([p.x(), p.z(), -p.y(), 0.]);
+                            }
+                            let origin =
+                                e.origin().unwrap_or_else(Vec3d::zero) / self.options.scale;
+                            matrix.extend([origin.x(), origin.z(), -origin.y(), 1.]);
                             model_matrix = Some(json!(matrix));
                             raw
-                        } else { baked };
+                        } else {
+                            baked
+                        };
                         if cached_mesh.is_none() {
-                        let materials = model.skins().enumerate().map(|(i, _)| {
-                            let name = if i == 0 { format!("#model/{}",path.to_string_lossy()) } else { format!("#model/{}#skin/{i}",path.to_string_lossy()) };
-                            self.texture_material(&name, false, None)
-                        }).collect::<Vec<_>>();
-                        for triangle in &model.triangles {
-                            let normal=geometry_math::vec::cross(triangle.positions[1]-triangle.positions[0],triangle.positions[2]-triangle.positions[0]);
-                            let length=geometry_math::vec::length(normal);if length<1e-9{continue}
-                            let skin = model.skin_at(triangle.material);
-                            let uv=triangle.uv.map(|uv|[uv.x()/skin.width as f32,uv.y()/skin.height as f32]);
-                            primitives.push(self.primitive_with_normals(&triangle.positions,normal/length,triangle.normals,&uv,materials[triangle.material]));
+                            let materials = model
+                                .skins()
+                                .enumerate()
+                                .map(|(i, _)| {
+                                    let name = if i == 0 {
+                                        format!("#model/{}", path.to_string_lossy())
+                                    } else {
+                                        format!("#model/{}#skin/{i}", path.to_string_lossy())
+                                    };
+                                    self.texture_material(&name, false, None)
+                                })
+                                .collect::<Vec<_>>();
+                            for triangle in &model.triangles {
+                                let normal = geometry_math::vec::cross(
+                                    triangle.positions[1] - triangle.positions[0],
+                                    triangle.positions[2] - triangle.positions[0],
+                                );
+                                let length = geometry_math::vec::length(normal);
+                                if length < 1e-9 {
+                                    continue;
+                                }
+                                let skin = model.skin_at(triangle.material);
+                                let uv = triangle.uv.map(|uv| {
+                                    [uv.x() / skin.width as f32, uv.y() / skin.height as f32]
+                                });
+                                primitives.push(self.primitive_with_normals(
+                                    &triangle.positions,
+                                    normal / length,
+                                    triangle.normals,
+                                    &uv,
+                                    materials[triangle.material],
+                                ));
+                            }
                         }
-                        }
-                    } else {self.report.warnings.push("Imported model is unavailable; its entity has no exported mesh".into());}
+                    } else {
+                        self.report.warnings.push(
+                            "Imported model is unavailable; its entity has no exported mesh".into(),
+                        );
+                    }
                 }
                 (
                     name,
@@ -403,7 +528,9 @@ impl Scene<'_> {
             NodeKind::Brush(brush) => {
                 let mut primitives = Vec::new();
                 for (i, face) in brush.faces().iter().enumerate() {
-                    if face.export_hidden {continue;}
+                    if face.export_hidden {
+                        continue;
+                    }
                     if self.tool(&face.material_name) {
                         continue;
                     }
@@ -432,14 +559,16 @@ impl Scene<'_> {
                     return vec![];
                 }
                 let material = self.texture_material(&patch.material_name, true, None);
-                let primitives =
-                    map_model::patch_mesh::tessellate(patch, map_model::patch_mesh::DEFAULT_SUBDIVISIONS)
-                        .iter()
-                        .map(|t| {
-                            let uv = t.uv.map(|p| [p.x(), p.y()]);
-                            self.primitive(&t.positions, t.normal, &uv, material)
-                        })
-                        .collect::<Vec<_>>();
+                let primitives = map_model::patch_mesh::tessellate(
+                    patch,
+                    map_model::patch_mesh::DEFAULT_SUBDIVISIONS,
+                )
+                .iter()
+                .map(|t| {
+                    let uv = t.uv.map(|p| [p.x(), p.y()]);
+                    self.primitive(&t.positions, t.normal, &uv, material)
+                })
+                .collect::<Vec<_>>();
                 if primitives.is_empty() {
                     return vec![];
                 }
@@ -456,13 +585,16 @@ impl Scene<'_> {
         if !children.is_empty() {
             value["children"] = json!(children);
         }
-        if let Some((mesh,triangles)) = cached_mesh {
+        if let Some((mesh, triangles)) = cached_mesh {
             value["mesh"] = json!(mesh);
             self.report.triangles += triangles;
         } else if !primitives.is_empty() {
             let mesh = self.push("meshes", json!({"name":name,"primitives":primitives}));
             value["mesh"] = json!(mesh);
-            if let Some(key) = model_key { self.model_meshes.insert(key,(mesh,self.report.triangles-before_triangles)); }
+            if let Some(key) = model_key {
+                self.model_meshes
+                    .insert(key, (mesh, self.report.triangles - before_triangles));
+            }
         }
         if !extras.is_null() {
             value["extras"] = extras;
@@ -486,9 +618,10 @@ pub(super) fn build(
             "Units per metre must be finite and greater than zero".into(),
         ));
     }
-    let map=scene_export::map::parse(&document.to_map_text(),&options.name).map_err(|error|Error::Map(error.to_string()))?;
-    let (mut classes,class_warnings)=super::entity_classes(document);
-    crate::export_bindings::apply(&map,&mut classes,&options.entities).map_err(Error::Map)?;
+    let map = scene_export::map::parse(&document.to_map_text(), &options.name)
+        .map_err(|error| Error::Map(error.to_string()))?;
+    let (mut classes, class_warnings) = super::entity_classes(document);
+    crate::export_bindings::apply(&map, &mut classes, &options.entities).map_err(Error::Map)?;
     let mut scene = Scene {
         document,
         options,
@@ -623,8 +756,8 @@ fn pack(mut json: Vec<u8>, mut bin: Vec<u8>) -> Vec<u8> {
 mod tests {
     use super::*;
     use crate::world::WorldBounds;
-    use map_model::brush_face::Rgb;
     use geometry_math::bbox::Bbox3d;
+    use map_model::brush_face::Rgb;
 
     fn cube() -> Document {
         let mut doc = Document::new(WorldBounds::default());
@@ -679,7 +812,9 @@ mod tests {
         bin[start..start + a["count"].as_u64().unwrap() as usize * width * 4]
             .chunks_exact(width * 4)
             .map(|p| {
-                p.as_chunks::<4>().0.iter()
+                p.as_chunks::<4>()
+                    .0
+                    .iter()
                     .map(|b| f32::from_le_bytes(*b))
                     .collect()
             })
@@ -687,46 +822,87 @@ mod tests {
     }
 
     #[test]
-    fn interchange_extras_keep_authored_strings_and_typed_project_defaults(){
-        let mut doc=cube();
-        doc.create_point_entity("beacon",Vec3d::new(32.,64.,96.));
-        let mut opts=options(Target::Glb);
+    fn interchange_extras_keep_authored_strings_and_typed_project_defaults() {
+        let mut doc = cube();
+        doc.create_point_entity("beacon", Vec3d::new(32., 64., 96.));
+        let mut opts = options(Target::Glb);
         opts.entities=serde_json::from_value(json!({"beacon":{"defaults":{"armed":true,"sequence":[2,3,5],"charge":9},"build":{"scene":"res://project-owned.tscn"}}})).unwrap();
-        let (_,files)=build(&doc,Path::new("/tmp"),&opts).unwrap();
-        let bytes=files.iter().find_map(|(_,contents)|match contents{Contents::Bytes(bytes) if bytes.starts_with(b"glTF")=>Some(bytes),_=>None}).unwrap();
-        let length=u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
-        let scene:Value=serde_json::from_slice(&bytes[20..20+length]).unwrap();
-        let entity=scene["nodes"].as_array().unwrap().iter().find(|node|node["name"]=="beacon").unwrap();
-        assert_eq!(entity["extras"]["entity"]["classname"],"beacon");
-        assert_eq!(entity["extras"]["heron"]["properties"]["armed"],json!({"type":"bool","value":true}));
-        assert_eq!(entity["extras"]["heron"]["properties"]["sequence"]["value"][1],json!({"type":"int","value":3}));
-        assert_eq!(entity["extras"]["heron"]["build"]["scene"],"res://project-owned.tscn");
+        let (_, files) = build(&doc, Path::new("/tmp"), &opts).unwrap();
+        let bytes = files
+            .iter()
+            .find_map(|(_, contents)| match contents {
+                Contents::Bytes(bytes) if bytes.starts_with(b"glTF") => Some(bytes),
+                _ => None,
+            })
+            .unwrap();
+        let length = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
+        let scene: Value = serde_json::from_slice(&bytes[20..20 + length]).unwrap();
+        let entity = scene["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|node| node["name"] == "beacon")
+            .unwrap();
+        assert_eq!(entity["extras"]["entity"]["classname"], "beacon");
+        assert_eq!(
+            entity["extras"]["heron"]["properties"]["armed"],
+            json!({"type":"bool","value":true})
+        );
+        assert_eq!(
+            entity["extras"]["heron"]["properties"]["sequence"]["value"][1],
+            json!({"type":"int","value":3})
+        );
+        assert_eq!(
+            entity["extras"]["heron"]["build"]["scene"],
+            "res://project-owned.tscn"
+        );
     }
     #[test]
     fn radial_and_multicolor_gradient_export_contains_interior_colours() {
-        use map_model::brush_face::{GradientStops, ColorStop};
+        use map_model::brush_face::{ColorStop, GradientStops};
         for radial in [false, true] {
             let mut doc = cube();
             doc.select_all();
             doc.set_face_color(Some(FaceColor::MultiGradient {
                 stops: GradientStops::new(&[
-                    ColorStop { position: 0.0, color: Rgb::new(255,0,0) },
-                    ColorStop { position: 0.5, color: Rgb::new(0,255,0) },
-                    ColorStop { position: 1.0, color: Rgb::new(0,0,255) },
-                ]).unwrap(), radial, angle: 0.0, alpha: 123, ends: None,
+                    ColorStop {
+                        position: 0.0,
+                        color: Rgb::new(255, 0, 0),
+                    },
+                    ColorStop {
+                        position: 0.5,
+                        color: Rgb::new(0, 255, 0),
+                    },
+                    ColorStop {
+                        position: 1.0,
+                        color: Rgb::new(0, 0, 255),
+                    },
+                ])
+                .unwrap(),
+                radial,
+                angle: 0.0,
+                alpha: 123,
+                ends: None,
             }));
             let (_, json, bin) = glb(&doc);
             for image in json["images"].as_array().unwrap() {
                 let view = &json["bufferViews"][image["bufferView"].as_u64().unwrap() as usize];
                 let start = view["byteOffset"].as_u64().unwrap() as usize;
                 let len = view["byteLength"].as_u64().unwrap() as usize;
-                let png = image::load_from_memory(&bin[start..start+len]).unwrap().to_rgba8();
-                for channel in 0..3 { assert!(png.pixels().any(|p| p[channel]>230), "missing colour {channel}"); }
-                assert!(png.pixels().all(|p| p[3]==123));
+                let png = image::load_from_memory(&bin[start..start + len])
+                    .unwrap()
+                    .to_rgba8();
+                for channel in 0..3 {
+                    assert!(
+                        png.pixels().any(|p| p[channel] > 230),
+                        "missing colour {channel}"
+                    );
+                }
+                assert!(png.pixels().all(|p| p[3] == 123));
                 if radial {
-                    let middle=png.get_pixel(png.width()/2,png.height()/2);
-                    assert!(middle[0]>230 && middle[2]<10);
-                    assert_eq!(png.get_pixel(0,0)[2],255);
+                    let middle = png.get_pixel(png.width() / 2, png.height() / 2);
+                    assert!(middle[0] > 230 && middle[2] < 10);
+                    assert_eq!(png.get_pixel(0, 0)[2], 255);
                 }
             }
         }
@@ -735,40 +911,88 @@ mod tests {
     #[test]
     fn untextured_crystal_paint_preserves_transparency_in_glb_and_engine_bake() {
         use map_model::brush_face::{Rgb, SurfaceMaterial};
-        for paint in [FaceColor::solid(Rgb::new(40,120,220)), FaceColor::gradient(Rgb::new(40,120,220),Rgb::new(150,220,255),90.0)] {
-            let mut doc=cube();doc.select_all();
+        for paint in [
+            FaceColor::solid(Rgb::new(40, 120, 220)),
+            FaceColor::gradient(Rgb::new(40, 120, 220), Rgb::new(150, 220, 255), 90.0),
+        ] {
+            let mut doc = cube();
+            doc.select_all();
             doc.set_face_color(Some(paint.with_alpha(185)));
-            doc.set_surface_material(Some(SurfaceMaterial{roughness:12,metallic:0,emission:25}));
-            let (_,json,bin)=glb(&doc);
-            assert!(json["materials"].as_array().unwrap().iter().all(|m|m["alphaMode"]=="BLEND"));
+            doc.set_surface_material(Some(SurfaceMaterial {
+                roughness: 12,
+                metallic: 0,
+                emission: 25,
+            }));
+            let (_, json, bin) = glb(&doc);
+            assert!(json["materials"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|m| m["alphaMode"] == "BLEND"));
             for image in json["images"].as_array().unwrap() {
-                let view=&json["bufferViews"][image["bufferView"].as_u64().unwrap() as usize];
-                let at=view["byteOffset"].as_u64().unwrap() as usize;
-                let len=view["byteLength"].as_u64().unwrap() as usize;
-                let pixels=image::load_from_memory(&bin[at..at+len]).unwrap().to_rgba8();
-                assert!(pixels.pixels().all(|p|p.0[3]==185));
+                let view = &json["bufferViews"][image["bufferView"].as_u64().unwrap() as usize];
+                let at = view["byteOffset"].as_u64().unwrap() as usize;
+                let len = view["byteLength"].as_u64().unwrap() as usize;
+                let pixels = image::load_from_memory(&bin[at..at + len])
+                    .unwrap()
+                    .to_rgba8();
+                assert!(pixels.pixels().all(|p| p.0[3] == 185));
             }
-            let options=Options::default();
-            let mut settings=options.settings(Path::new("/tmp/crystal-alpha"));
-            super::super::paint_export::prepare(&doc,Path::new("/tmp/crystal-alpha"),&options,&mut settings).unwrap();
-            assert!(settings.generated_materials.values().all(|m|m.alpha));
+            let options = Options::default();
+            let mut settings = options.settings(Path::new("/tmp/crystal-alpha"));
+            super::super::paint_export::prepare(
+                &doc,
+                Path::new("/tmp/crystal-alpha"),
+                &options,
+                &mut settings,
+            )
+            .unwrap();
+            assert!(settings.generated_materials.values().all(|m| m.alpha));
         }
     }
     #[test]
     fn surface_material_exports_distinct_pbr_and_emission_for_same_colour() {
-        use map_model::brush_face::{SurfaceMaterial, Rgb};
-        let mut doc=cube(); doc.select_all();
-        doc.set_face_color(Some(FaceColor::solid(Rgb::new(200,100,20))));
-        let id=*doc.selection_ids().iter().next().unwrap();
-        doc.set_surface_material_on(&[crate::document::FaceRef {node:id, face:0}], Some(SurfaceMaterial {roughness:20,metallic:80,emission:250}));
-        let (_,json,_)=glb(&doc);
-        let materials=json["materials"].as_array().unwrap();
-        assert_eq!(materials.len(),2);
-        let material=materials.iter().find(|m|m.get("emissiveFactor").is_some()).unwrap();
-        assert!((material["pbrMetallicRoughness"]["roughnessFactor"].as_f64().unwrap()-0.2).abs()<1e-6);
-        assert!((material["pbrMetallicRoughness"]["metallicFactor"].as_f64().unwrap()-0.8).abs()<1e-6);
-        assert_eq!(material["extensions"]["KHR_materials_emissive_strength"]["emissiveStrength"],2.5);
-        assert_eq!(json["extensionsUsed"][0],"KHR_materials_emissive_strength");
+        use map_model::brush_face::{Rgb, SurfaceMaterial};
+        let mut doc = cube();
+        doc.select_all();
+        doc.set_face_color(Some(FaceColor::solid(Rgb::new(200, 100, 20))));
+        let id = *doc.selection_ids().iter().next().unwrap();
+        doc.set_surface_material_on(
+            &[crate::document::FaceRef { node: id, face: 0 }],
+            Some(SurfaceMaterial {
+                roughness: 20,
+                metallic: 80,
+                emission: 250,
+            }),
+        );
+        let (_, json, _) = glb(&doc);
+        let materials = json["materials"].as_array().unwrap();
+        assert_eq!(materials.len(), 2);
+        let material = materials
+            .iter()
+            .find(|m| m.get("emissiveFactor").is_some())
+            .unwrap();
+        assert!(
+            (material["pbrMetallicRoughness"]["roughnessFactor"]
+                .as_f64()
+                .unwrap()
+                - 0.2)
+                .abs()
+                < 1e-6
+        );
+        assert!(
+            (material["pbrMetallicRoughness"]["metallicFactor"]
+                .as_f64()
+                .unwrap()
+                - 0.8)
+                .abs()
+                < 1e-6
+        );
+        assert_eq!(
+            material["extensions"]["KHR_materials_emissive_strength"]["emissiveStrength"],
+            2.5
+        );
+        assert_eq!(json["extensionsUsed"][0], "KHR_materials_emissive_strength");
     }
     #[test]
     fn cube_has_metres_outward_triangles_and_groups() {
@@ -777,13 +1001,11 @@ mod tests {
         doc.group_selection("Car");
         let (report, json, bin) = glb(&doc);
         assert_eq!(report.triangles, 12);
-        assert!(
-            json["nodes"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|n| n["name"] == "Car")
-        );
+        assert!(json["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|n| n["name"] == "Car"));
         for p in json["meshes"][0]["primitives"].as_array().unwrap() {
             let pos = read(
                 &json,
@@ -797,14 +1019,24 @@ mod tests {
                 p["attributes"]["NORMAL"].as_u64().unwrap() as usize,
                 3,
             );
-            for (points, n) in pos.as_chunks::<3>().0.iter().zip(normals.as_chunks::<3>().0.iter()) {
+            for (points, n) in pos
+                .as_chunks::<3>()
+                .0
+                .iter()
+                .zip(normals.as_chunks::<3>().0.iter())
+            {
                 let v: Vec<Vec3d> = points
                     .iter()
                     .map(|p| Vec3d::new(p[0] as f64, p[1] as f64, p[2] as f64))
                     .collect();
                 assert!(points.iter().flatten().all(|v| v.abs() <= 1.00001));
                 let normal = Vec3d::new(n[0][0] as f64, n[0][1] as f64, n[0][2] as f64);
-                assert!(geometry_math::vec::dot(geometry_math::vec::cross(v[1] - v[0], v[2] - v[0]), normal) > 0.0);
+                assert!(
+                    geometry_math::vec::dot(
+                        geometry_math::vec::cross(v[1] - v[0], v[2] - v[0]),
+                        normal
+                    ) > 0.0
+                );
             }
         }
     }
@@ -935,13 +1167,11 @@ mod tests {
             panic!()
         };
         let (json, _) = unpack(bytes);
-        assert!(
-            !json["nodes"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|n| n["name"] == "Geometry")
-        );
+        assert!(!json["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|n| n["name"] == "Geometry"));
     }
     #[test]
     fn patch_exports_its_tessellation_as_double_sided_geometry() {

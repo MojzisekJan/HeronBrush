@@ -1,10 +1,10 @@
 //! Whether a patch survives being read, held in the node tree and written back.
 
+use geometry_math::bbox::Bbox3d;
 use map_model::io::map_reader::read_map;
 use map_model::io::map_writer::write_map;
 use map_model::map_format::MapFormat;
 use map_model::node::{build_tree, flatten_tree};
-use geometry_math::bbox::Bbox3d;
 
 const WITH_A_PATCH: &str = r#"
 {
@@ -55,6 +55,9 @@ fn a_patch_is_written_back() {
     let flattened = flatten_tree(&tree.world, MapFormat::Valve, None);
 
     let written = write_map(&flattened);
-    assert!(written.contains("patchDef2"), "the patch is not in the output");
+    assert!(
+        written.contains("patchDef2"),
+        "the patch is not in the output"
+    );
     assert!(written.contains("common/caulk"));
 }

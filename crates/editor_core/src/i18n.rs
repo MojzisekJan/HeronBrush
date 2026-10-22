@@ -277,7 +277,10 @@ impl Language {
     /// The language's line in [`LANGUAGES`]; English's for [`Language::System`], which
     /// has none.
     pub fn info(self) -> &'static LanguageInfo {
-        LANGUAGES.iter().find(|info| info.language == self).unwrap_or(&LANGUAGES[0])
+        LANGUAGES
+            .iter()
+            .find(|info| info.language == self)
+            .unwrap_or(&LANGUAGES[0])
     }
 
     /// The language with this [`LanguageInfo::code`], or `"system"`.
@@ -285,7 +288,10 @@ impl Language {
         if code == "system" {
             return Some(Language::System);
         }
-        LANGUAGES.iter().find(|info| info.code == code).map(|info| info.language)
+        LANGUAGES
+            .iter()
+            .find(|info| info.code == code)
+            .map(|info| info.language)
     }
 
     /// [`LanguageInfo::code`], or `"system"`.
@@ -318,7 +324,10 @@ impl Language {
         if text == "system" {
             return Some(Language::System);
         }
-        LANGUAGES.iter().find(|info| info.stored == text).map(|info| info.language)
+        LANGUAGES
+            .iter()
+            .find(|info| info.stored == text)
+            .map(|info| info.language)
     }
 
     /// Match a locale against [`LanguageInfo::locales`], independent of encoding,
@@ -339,9 +348,15 @@ impl Language {
         LANGUAGES
             .iter()
             .filter(|info| info.complete || !complete)
-            .flat_map(|info| info.locales.iter().map(move |prefix| (info.language, *prefix)))
+            .flat_map(|info| {
+                info.locales
+                    .iter()
+                    .map(move |prefix| (info.language, *prefix))
+            })
             .filter(|(_, prefix)| {
-                locale.strip_prefix(prefix).is_some_and(|rest| rest.is_empty() || rest.starts_with('_'))
+                locale
+                    .strip_prefix(prefix)
+                    .is_some_and(|rest| rest.is_empty() || rest.starts_with('_'))
             })
             .max_by_key(|(_, prefix)| prefix.len())
             .map_or(Language::English, |(language, _)| language)
@@ -402,7 +417,10 @@ pub fn tr_ctx(context: &'static str, text: &'static str) -> &'static str {
 
 /// The translation of `text` in `table`, if it has one.
 fn look_up(table: &'static [(&'static str, &'static str)], text: &str) -> Option<&'static str> {
-    table.iter().find(|(english, _)| *english == text).map(|(_, translated)| *translated)
+    table
+        .iter()
+        .find(|(english, _)| *english == text)
+        .map(|(_, translated)| *translated)
 }
 
 /// The text in the language in force, or the English it was written in.
@@ -413,7 +431,9 @@ pub fn tr(text: &'static str) -> &'static str {
 /// [`tr`] for text that arrives at run time, such as an error message the core wrote
 /// with a [`translation_key`]. Text the tables do not know is returned as it is.
 pub fn tr_text(text: &str) -> String {
-    look_up(speaking().table, text).unwrap_or_else(|| without_context(text)).to_owned()
+    look_up(speaking().table, text)
+        .unwrap_or_else(|| without_context(text))
+        .to_owned()
 }
 
 /// A count with the noun it counts, in the language's own form.
@@ -428,7 +448,11 @@ pub fn counted(count: usize, noun: &str) -> String {
     let Some((_, forms)) = info.nouns.iter().find(|(key, _)| *key == noun) else {
         return format!("{count} {noun}");
     };
-    let form = forms.get(info.plural.form(count)).or(forms.last()).copied().unwrap_or(noun);
+    let form = forms
+        .get(info.plural.form(count))
+        .or(forms.last())
+        .copied()
+        .unwrap_or(noun);
     format!("{count} {form}")
 }
 
@@ -458,8 +482,12 @@ fn source_keys() -> std::collections::BTreeSet<String> {
     use proc_macro2::{TokenStream, TokenTree};
     use std::{collections::BTreeSet, path::Path};
     fn string(token: &TokenTree) -> Option<String> {
-        let TokenTree::Literal(literal) = token else { return None };
-        syn::parse_str::<syn::LitStr>(&literal.to_string()).ok().map(|text| text.value())
+        let TokenTree::Literal(literal) = token else {
+            return None;
+        };
+        syn::parse_str::<syn::LitStr>(&literal.to_string())
+            .ok()
+            .map(|text| text.value())
     }
     /// Every string literal in `stream`, however deep.
     fn every_string(stream: TokenStream, keys: &mut BTreeSet<String>) {
@@ -473,7 +501,9 @@ fn source_keys() -> std::collections::BTreeSet<String> {
     fn collect(stream: TokenStream, keys: &mut BTreeSet<String>) {
         let tokens: Vec<_> = stream.into_iter().collect();
         for (index, token) in tokens.iter().enumerate() {
-            if let (TokenTree::Ident(name), Some(TokenTree::Group(args))) = (token, tokens.get(index + 1)) {
+            if let (TokenTree::Ident(name), Some(TokenTree::Group(args))) =
+                (token, tokens.get(index + 1))
+            {
                 let args: Vec<_> = args.stream().into_iter().collect();
                 let first = args.first().and_then(string);
                 match name.to_string().as_str() {
@@ -500,7 +530,9 @@ fn source_keys() -> std::collections::BTreeSet<String> {
                 if path.file_name().unwrap() != "i18n" {
                     scan(&path, keys);
                 }
-            } else if path.extension().is_some_and(|e| e == "rs") && path.file_name().unwrap() != "i18n.rs" {
+            } else if path.extension().is_some_and(|e| e == "rs")
+                && path.file_name().unwrap() != "i18n.rs"
+            {
                 let source = std::fs::read_to_string(&path).unwrap();
                 collect(source.parse().expect("valid Rust tokens"), keys);
             }
@@ -537,29 +569,57 @@ mod missing {
     fn keys() {
         let wanted = wanted_keys();
         let missing = |info: &LanguageInfo| -> Vec<&String> {
-            wanted.iter().filter(|key| look_up(info.table, key).is_none()).collect()
+            wanted
+                .iter()
+                .filter(|key| look_up(info.table, key).is_none())
+                .collect()
         };
-        let Some(code) = std::env::var("HERON_LANG").ok().filter(|code| !code.is_empty()) else {
-            println!("{} strings to translate. Missing per language:", wanted.len());
+        let Some(code) = std::env::var("HERON_LANG")
+            .ok()
+            .filter(|code| !code.is_empty())
+        else {
+            println!(
+                "{} strings to translate. Missing per language:",
+                wanted.len()
+            );
             for info in &LANGUAGES[1..] {
-                let state = if info.complete { "complete" } else { "in progress" };
-                println!("  {:<6} {:<20} {:>5}  ({state})", info.code, info.name, missing(info).len());
+                let state = if info.complete {
+                    "complete"
+                } else {
+                    "in progress"
+                };
+                println!(
+                    "  {:<6} {:<20} {:>5}  ({state})",
+                    info.code,
+                    info.name,
+                    missing(info).len()
+                );
             }
             println!("Set HERON_LANG=<code> to list one language's missing strings.");
             return;
         };
-        let Some(info) = LANGUAGES
-            .iter()
-            .find(|info| info.code.eq_ignore_ascii_case(&code) || info.code.replace('-', "_").eq_ignore_ascii_case(&code))
-        else {
+        let Some(info) = LANGUAGES.iter().find(|info| {
+            info.code.eq_ignore_ascii_case(&code)
+                || info.code.replace('-', "_").eq_ignore_ascii_case(&code)
+        }) else {
             panic!("no language with the code {code:?}; the codes are in i18n::LANGUAGES");
         };
         let missing = missing(info);
-        println!("// {} of {} strings missing from {} ({}):", missing.len(), wanted.len(), info.name, info.code);
+        println!(
+            "// {} of {} strings missing from {} ({}):",
+            missing.len(),
+            wanted.len(),
+            info.name,
+            info.code
+        );
         for key in &missing {
             println!("    ({key:?}, \"\"),");
         }
-        let stale: Vec<_> = info.table.iter().filter(|(key, _)| !wanted.contains(*key)).collect();
+        let stale: Vec<_> = info
+            .table
+            .iter()
+            .filter(|(key, _)| !wanted.contains(*key))
+            .collect();
         if !stale.is_empty() {
             println!("// {} no longer wanted, to remove:", stale.len());
             for (key, _) in stale {
@@ -569,7 +629,9 @@ mod missing {
         let untranslated = info
             .nouns
             .iter()
-            .filter(|(noun, forms)| info.language != Language::English && forms.first() == Some(noun))
+            .filter(|(noun, forms)| {
+                info.language != Language::English && forms.first() == Some(noun)
+            })
             .count();
         if untranslated > 0 {
             println!("// {untranslated} of the 13 counted nouns (NOUNS) still start with the English word; fine only where it is borrowed.");
@@ -583,7 +645,9 @@ mod tests {
 
     /// The languages other than English, which is the source and needs no table.
     fn translations() -> impl Iterator<Item = &'static LanguageInfo> {
-        LANGUAGES.iter().filter(|info| info.language != Language::English)
+        LANGUAGES
+            .iter()
+            .filter(|info| info.language != Language::English)
     }
 
     #[test]
@@ -597,7 +661,9 @@ mod tests {
             assert_eq!(Language::from_locale(locale), language);
             preferences::edit(|p| p.language = language);
             assert_eq!(tr("Save"), save);
-            for count in [0, 1, 2, 12] { assert_eq!(counted(count, "vertex"), format!("{count} {vertex}")); }
+            for count in [0, 1, 2, 12] {
+                assert_eq!(counted(count, "vertex"), format!("{count} {vertex}"));
+            }
         }
         assert_eq!(Language::from_locale("in_ID"), Language::Indonesian);
         preferences::edit(|p| p.language = Language::English);
@@ -618,13 +684,19 @@ mod tests {
         assert_eq!(counted(0, "vertex"), "0 sommet");
         assert_eq!(counted(1, "vertex"), "1 sommet");
         assert_eq!(counted(2, "vertex"), "2 sommets");
-        assert_eq!(fill("Connected guests: {}", &["3"]), "Invités connectés : 3");
+        assert_eq!(
+            fill("Connected guests: {}", &["3"]),
+            "Invités connectés : 3"
+        );
         preferences::edit(|p| p.language = Language::PortugueseBrazil);
         assert_eq!(tr("Save"), "Salvar");
         assert_eq!(counted(0, "vertex"), "0 vértice");
         assert_eq!(counted(1, "vertex"), "1 vértice");
         assert_eq!(counted(2, "vertex"), "2 vértices");
-        assert_eq!(fill("Connected guests: {}", &["3"]), "Convidados conectados: 3");
+        assert_eq!(
+            fill("Connected guests: {}", &["3"]),
+            "Convidados conectados: 3"
+        );
         preferences::edit(|p| p.language = Language::English);
     }
 
@@ -677,8 +749,14 @@ mod tests {
             }
         }
         if !Language::ChineseTraditional.info().complete {
-            assert_eq!(Language::from_locale_among("zh_TW.UTF-8", true), Language::Chinese);
-            assert_eq!(Language::from_locale_among("ru_RU", true), Language::English);
+            assert_eq!(
+                Language::from_locale_among("zh_TW.UTF-8", true),
+                Language::Chinese
+            );
+            assert_eq!(
+                Language::from_locale_among("ru_RU", true),
+                Language::English
+            );
         }
     }
 
@@ -687,7 +765,11 @@ mod tests {
         assert_eq!(LANGUAGES[0].language, Language::English);
         for (index, info) in LANGUAGES.iter().enumerate() {
             for other in &LANGUAGES[..index] {
-                assert_ne!(info.language, other.language, "{} is listed twice", info.code);
+                assert_ne!(
+                    info.language, other.language,
+                    "{} is listed twice",
+                    info.code
+                );
                 assert_ne!(info.code, other.code);
                 assert_ne!(info.stored, other.stored);
                 assert_ne!(info.name, other.name);
@@ -700,7 +782,11 @@ mod tests {
             assert_eq!(Language::from_stored(info.stored), Some(info.language));
             assert!(!info.locales.is_empty());
             for locale in info.locales {
-                assert_eq!(*locale, locale.to_ascii_lowercase().replace('-', "_"), "{locale}");
+                assert_eq!(
+                    *locale,
+                    locale.to_ascii_lowercase().replace('-', "_"),
+                    "{locale}"
+                );
             }
         }
         // Every variant but System has a line: a forgotten one would read as English.
@@ -717,16 +803,25 @@ mod tests {
         for language in &choices[1..] {
             assert!(language.info().complete);
         }
-        assert_eq!(choices.len(), 1 + LANGUAGES.iter().filter(|info| info.complete).count());
+        assert_eq!(
+            choices.len(),
+            1 + LANGUAGES.iter().filter(|info| info.complete).count()
+        );
         // One chosen by hand in the preferences file still shows as itself.
         if let Some(unfinished) = LANGUAGES.iter().find(|info| !info.complete) {
-            assert_eq!(Language::choices(unfinished.language).last(), Some(&unfinished.language));
+            assert_eq!(
+                Language::choices(unfinished.language).last(),
+                Some(&unfinished.language)
+            );
         }
     }
 
     #[test]
     fn an_incomplete_language_falls_back_to_english_string_by_string() {
-        let Some(unfinished) = LANGUAGES.iter().find(|info| !info.complete && info.table.is_empty()) else {
+        let Some(unfinished) = LANGUAGES
+            .iter()
+            .find(|info| !info.complete && info.table.is_empty())
+        else {
             return;
         };
         preferences::edit(|p| p.language = unfinished.language);
@@ -771,7 +866,12 @@ mod tests {
             sorted.sort_unstable();
             assert_eq!(sorted, given, "the {} table is out of order", info.code);
             sorted.dedup();
-            assert_eq!(sorted.len(), table.len(), "the {} table repeats a string", info.code);
+            assert_eq!(
+                sorted.len(),
+                table.len(),
+                "the {} table repeats a string",
+                info.code
+            );
         }
     }
 
@@ -790,7 +890,10 @@ mod tests {
                 // One being translated may lack strings, but not know ones nobody wants.
                 let wanted = wanted_keys();
                 let stale: Vec<_> = other.iter().filter(|key| !wanted.contains(**key)).collect();
-                assert!(stale.is_empty(), "{name} translates strings nothing asks for: {stale:?}");
+                assert!(
+                    stale.is_empty(),
+                    "{name} translates strings nothing asks for: {stale:?}"
+                );
             }
         }
     }
@@ -799,7 +902,11 @@ mod tests {
     fn nothing_is_left_in_english_by_accident() {
         for info in translations() {
             for (english, translated) in info.table {
-                assert!(!translated.is_empty(), "{english} has no {} translation", info.code);
+                assert!(
+                    !translated.is_empty(),
+                    "{english} has no {} translation",
+                    info.code
+                );
             }
         }
     }
@@ -811,8 +918,17 @@ mod tests {
             let nouns: Vec<&str> = info.nouns.iter().map(|(noun, _)| *noun).collect();
             assert_eq!(nouns, english, "{} counts other nouns", info.code);
             for (noun, forms) in info.nouns {
-                assert_eq!(forms.len(), info.plural.forms(), "{} {noun}: one form per category", info.code);
-                assert!(forms.iter().all(|form| !form.is_empty()), "{} {noun}", info.code);
+                assert_eq!(
+                    forms.len(),
+                    info.plural.forms(),
+                    "{} {noun}: one form per category",
+                    info.code
+                );
+                assert!(
+                    forms.iter().all(|form| !form.is_empty()),
+                    "{} {noun}",
+                    info.code
+                );
             }
         }
     }
@@ -822,7 +938,9 @@ mod tests {
         let forms = |rule: PluralRule, counts: &[usize]| -> Vec<usize> {
             counts.iter().map(|count| rule.form(*count)).collect()
         };
-        let counts = [0, 1, 2, 3, 4, 5, 11, 12, 14, 19, 20, 21, 22, 25, 101, 102, 103, 111, 112, 120];
+        let counts = [
+            0, 1, 2, 3, 4, 5, 11, 12, 14, 19, 20, 21, 22, 25, 101, 102, 103, 111, 112, 120,
+        ];
         assert_eq!(forms(PluralRule::NoPlural, &counts), [0; 20]);
         assert_eq!(
             forms(PluralRule::OneOther, &counts),
@@ -867,7 +985,10 @@ mod tests {
             PluralRule::Lithuanian,
             PluralRule::Romanian,
         ] {
-            assert!((0..1000).all(|count| rule.form(count) < rule.forms()), "{rule:?}");
+            assert!(
+                (0..1000).all(|count| rule.form(count) < rule.forms()),
+                "{rule:?}"
+            );
         }
     }
 
@@ -893,13 +1014,27 @@ mod tests {
     #[test]
     fn every_complete_language_is_offered_and_speaks_its_own() {
         let choices = Language::choices(Language::System);
-        assert_eq!(choices.len(), LANGUAGES.len() + 1, "System and every language");
+        assert_eq!(
+            choices.len(),
+            LANGUAGES.len() + 1,
+            "System and every language"
+        );
         for info in translations() {
             preferences::edit(|p| p.language = info.language);
-            for key in ["Save", "Target requires keyframes", "Select all", "Missing target: {}"] {
+            for key in [
+                "Save",
+                "Target requires keyframes",
+                "Select all",
+                "Missing target: {}",
+            ] {
                 assert_ne!(tr(key), key, "{} leaves {key:?} in English", info.code);
             }
-            assert_ne!(counted(2, "entity"), "2 entities", "{} counts entities in English", info.code);
+            assert_ne!(
+                counted(2, "entity"),
+                "2 entities",
+                "{} counts entities in English",
+                info.code
+            );
         }
         preferences::edit(|p| p.language = Language::English);
     }
@@ -952,7 +1087,10 @@ mod tests {
         assert_eq!(counted(1, "face"), "1 face");
         assert_eq!(counted(3, "face"), "3 faces");
         assert_eq!(counted(1, "entity"), "1 entity");
-        assert_eq!(fill("{} of different classes", &[&counted(2, "entity")]), "2 entities of different classes");
+        assert_eq!(
+            fill("{} of different classes", &[&counted(2, "entity")]),
+            "2 entities of different classes"
+        );
         // A noun the table does not know is counted the English way.
         assert_eq!(counted(2, "widget"), "2 widget");
     }

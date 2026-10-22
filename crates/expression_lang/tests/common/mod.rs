@@ -4,10 +4,10 @@
 use std::collections::BTreeMap;
 
 use expression_lang::expression::ExpressionKind;
+use expression_lang::{parse_expression, ParseMode};
 use expression_lang::{
     BinaryOperation, EvaluationContext, ExpressionNode, UnaryOperation, Value, VariableTable,
 };
-use expression_lang::{parse_expression, ParseMode};
 
 pub fn lit(value: impl Into<Value>) -> ExpressionNode {
     ExpressionNode::new(ExpressionKind::Literal(value.into()), None)
@@ -36,7 +36,14 @@ fn binary(
     left: ExpressionNode,
     right: ExpressionNode,
 ) -> ExpressionNode {
-    ExpressionNode::new(ExpressionKind::Binary { operation, left, right }, None)
+    ExpressionNode::new(
+        ExpressionKind::Binary {
+            operation,
+            left,
+            right,
+        },
+        None,
+    )
 }
 
 pub fn plus(o: ExpressionNode) -> ExpressionNode {

@@ -263,8 +263,9 @@ fn pairs(
         // the other side's list alone. A big floor is one surface with thousands of
         // faces all looking the same way, and asking each of every other was seconds.
         let reference = shapes[group[0]].plane.normal;
-        let (forward, backward): (Vec<usize>, Vec<usize>) =
-            group.iter().partition(|&&i| shapes[i].plane.normal.dot(reference) > 0.0);
+        let (forward, backward): (Vec<usize>, Vec<usize>) = group
+            .iter()
+            .partition(|&&i| shapes[i].plane.normal.dot(reference) > 0.0);
         for &a in group.iter() {
             if is_tool(&shapes[a].texture) {
                 continue;
@@ -273,7 +274,11 @@ fn pairs(
             if area < WORTH_MENTIONING {
                 continue;
             }
-            let facing = if shapes[a].plane.normal.dot(reference) > 0.0 { &backward } else { &forward };
+            let facing = if shapes[a].plane.normal.dot(reference) > 0.0 {
+                &backward
+            } else {
+                &forward
+            };
             for &b in facing.iter() {
                 // Faces of the same size meeting exactly are thrown away by the
                 // build already. Sorted biggest first, so once one is too small

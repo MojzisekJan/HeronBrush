@@ -50,7 +50,10 @@ const RING_SEGMENTS: usize = 64;
 /// caller sizes it to a constant number of pixels on screen, `RotateHandle::majorRadius`
 /// times the camera's perspective scaling, rather than to the selection -- a ring scaled
 /// to a large selection lands near the camera and its segments cross the near plane.
-#[allow(clippy::too_many_arguments, reason = "one call gathers every tool's overlay")]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "one call gathers every tool's overlay"
+)]
 pub fn build(
     document: &Document,
     tool: Tool,
@@ -267,7 +270,11 @@ pub fn bounds_guide(bounds: &Bbox3d, color: [f32; 4]) -> Vec<Marked> {
         let origin = bounds.corner_position(corners);
         for axis in 0..3 {
             let mut direction = Vec3d::zero();
-            direction[axis] = if corners[axis] == Corner::Min { -1.0 } else { 1.0 };
+            direction[axis] = if corners[axis] == Corner::Min {
+                -1.0
+            } else {
+                1.0
+            };
             let knee = origin + direction * (SPIKE_LENGTH * 0.75);
             let tip = origin + direction * SPIKE_LENGTH;
             lines.push((origin, color));
@@ -365,7 +372,9 @@ mod tests {
                 let mut wanted = Vec3d::zero();
                 wanted[axis] = sign;
                 assert!(
-                    directions.iter().any(|d| geometry_math::vec::is_equal(d, &wanted, 1e-9)),
+                    directions
+                        .iter()
+                        .any(|d| geometry_math::vec::is_equal(d, &wanted, 1e-9)),
                     "no spike along {wanted:?}"
                 );
             }
@@ -383,7 +392,10 @@ mod tests {
             // Starts on a corner and heads away from the box.
             assert!(origin.v.iter().all(|c| c.abs() == 32.0), "{origin:?}");
             let outward = tip - origin;
-            assert!(geometry_math::vec::dot(outward, origin) > 0.0, "{outward:?} points in");
+            assert!(
+                geometry_math::vec::dot(outward, origin) > 0.0,
+                "{outward:?} points in"
+            );
             assert!((geometry_math::vec::length(outward) - SPIKE_LENGTH).abs() < 1e-9);
             assert!((geometry_math::vec::length(knee - origin) - SPIKE_LENGTH * 0.75).abs() < 1e-9);
             // The far quarter fades.
@@ -404,7 +416,16 @@ mod tests {
     fn the_select_tool_draws_nothing() {
         let document = document_with_a_cube();
         let (handles, rotate, clip, assemble) = empty();
-        let (points, lines) = build(&document, Tool::Select, &handles, &rotate, &clip, &assemble, &Default::default(), 64.0);
+        let (points, lines) = build(
+            &document,
+            Tool::Select,
+            &handles,
+            &rotate,
+            &clip,
+            &assemble,
+            &Default::default(),
+            64.0,
+        );
         assert!(points.is_empty());
         assert!(lines.is_empty());
     }
@@ -415,7 +436,16 @@ mod tests {
         let (mut handles, rotate, clip, assemble) = empty();
         handles.collect(HandleKind::Vertex, document.selected_brushes().into_iter());
 
-        let (points, lines) = build(&document, Tool::Vertex, &handles, &rotate, &clip, &assemble, &Default::default(), 64.0);
+        let (points, lines) = build(
+            &document,
+            Tool::Vertex,
+            &handles,
+            &rotate,
+            &clip,
+            &assemble,
+            &Default::default(),
+            64.0,
+        );
         // Eight corners, and the middle of every edge and centre of every face beside
         // them, which are what a Shift-drag splits.
         assert_eq!(points.len(), 8 + 12 + 6);
@@ -430,7 +460,16 @@ mod tests {
         let first = handles.handles()[0].position;
         handles.select(first, false);
 
-        let (points, _) = build(&document, Tool::Vertex, &handles, &rotate, &clip, &assemble, &Default::default(), 64.0);
+        let (points, _) = build(
+            &document,
+            Tool::Vertex,
+            &handles,
+            &rotate,
+            &clip,
+            &assemble,
+            &Default::default(),
+            64.0,
+        );
         let selected = points
             .iter()
             .filter(|(_, color)| *color == selected_color())
@@ -443,7 +482,16 @@ mod tests {
         let document = document_with_a_cube();
         let (handles, rotate, clip, assemble) = empty();
 
-        let (points, lines) = build(&document, Tool::Scale, &handles, &rotate, &clip, &assemble, &Default::default(), 64.0);
+        let (points, lines) = build(
+            &document,
+            Tool::Scale,
+            &handles,
+            &rotate,
+            &clip,
+            &assemble,
+            &Default::default(),
+            64.0,
+        );
         // Six sides, twelve edges and eight corners.
         assert_eq!(points.len(), 26);
         // Twelve edges, two endpoints each.
@@ -457,7 +505,16 @@ mod tests {
         rotate.set_center(Vec3d::zero());
 
         let radius = 64.0;
-        let (points, lines) = build(&document, Tool::Rotate, &handles, &rotate, &clip, &assemble, &Default::default(), radius);
+        let (points, lines) = build(
+            &document,
+            Tool::Rotate,
+            &handles,
+            &rotate,
+            &clip,
+            &assemble,
+            &Default::default(),
+            radius,
+        );
         assert_eq!(points.len(), 1);
         assert_eq!(lines.len(), 3 * RING_SEGMENTS * 2);
 
@@ -472,7 +529,16 @@ mod tests {
         let document = document_with_a_cube();
         let (handles, rotate, clip, assemble) = empty();
 
-        let (points, lines) = build(&document, Tool::Shear, &handles, &rotate, &clip, &assemble, &Default::default(), 64.0);
+        let (points, lines) = build(
+            &document,
+            Tool::Shear,
+            &handles,
+            &rotate,
+            &clip,
+            &assemble,
+            &Default::default(),
+            64.0,
+        );
         assert_eq!(points.len(), 6);
         assert_eq!(lines.len(), 24);
     }
@@ -484,13 +550,31 @@ mod tests {
         let looking_down = vec![Vec3d::new(0.0, 0.0, -1.0)];
 
         clip.add_point(Vec3d::new(-32.0, 0.0, 0.0), looking_down.clone());
-        let (points, lines) = build(&document, Tool::Clip, &handles, &rotate, &clip, &assemble, &Default::default(), 64.0);
+        let (points, lines) = build(
+            &document,
+            Tool::Clip,
+            &handles,
+            &rotate,
+            &clip,
+            &assemble,
+            &Default::default(),
+            64.0,
+        );
         assert_eq!(points.len(), 1);
         // One point does not describe a plane, so there is no cut to draw yet.
         assert!(lines.is_empty());
 
         clip.add_point(Vec3d::new(32.0, 0.0, 0.0), looking_down);
-        let (points, lines) = build(&document, Tool::Clip, &handles, &rotate, &clip, &assemble, &Default::default(), 64.0);
+        let (points, lines) = build(
+            &document,
+            Tool::Clip,
+            &handles,
+            &rotate,
+            &clip,
+            &assemble,
+            &Default::default(),
+            64.0,
+        );
         assert_eq!(points.len(), 2);
         // The cut between the two points, once.
         let cut = lines
@@ -500,7 +584,9 @@ mod tests {
         assert_eq!(cut, 2, "one segment is two endpoints");
         // And the outlines of the halves the cut would keep and throw away.
         assert!(lines.iter().any(|(_, colour)| *colour == CLIP_KEPT_COLOR));
-        assert!(lines.iter().any(|(_, colour)| *colour == CLIP_REMOVED_COLOR));
+        assert!(lines
+            .iter()
+            .any(|(_, colour)| *colour == CLIP_REMOVED_COLOR));
     }
 
     #[test]
@@ -512,7 +598,16 @@ mod tests {
         clip.add_point(Vec3d::new(-32.0, 0.0, 0.0), looking_down.clone());
         clip.add_point(Vec3d::new(32.0, 0.0, 0.0), looking_down);
 
-        let (_, lines) = build(&document, Tool::Clip, &handles, &rotate, &clip, &assemble, &Default::default(), 64.0);
+        let (_, lines) = build(
+            &document,
+            Tool::Clip,
+            &handles,
+            &rotate,
+            &clip,
+            &assemble,
+            &Default::default(),
+            64.0,
+        );
         // The cut line still shows; the half outlines do not, since nothing is selected.
         assert!(lines.iter().all(|(_, colour)| *colour == selected_color()));
     }
@@ -529,28 +624,49 @@ mod tests {
             .iter()
             .position(|f| f.plane.normal.z() > 0.99)
             .expect("a top face");
-        document.select_face_only(FaceRef { node: id, face: top });
+        document.select_face_only(FaceRef {
+            node: id,
+            face: top,
+        });
 
         let (handles, rotate, clip, assemble) = empty();
 
         // With no transform, only the source is marked -- the destination sits on it.
         let idle = SweepInputs::default();
-        let (points, _) =
-            build(&document, Tool::Sweep, &handles, &rotate, &clip, &assemble, &idle, 64.0);
+        let (points, _) = build(
+            &document,
+            Tool::Sweep,
+            &handles,
+            &rotate,
+            &clip,
+            &assemble,
+            &idle,
+            64.0,
+        );
         assert_eq!(points.len(), 2, "source centre and destination, coincident");
 
         // Move the destination up and the preview brushes appear.
         let mut inputs = SweepInputs::default();
         inputs.transform.translation = Vec3d::new(0.0, 0.0, 128.0);
-        let (points, lines) =
-            build(&document, Tool::Sweep, &handles, &rotate, &clip, &assemble, &inputs, 64.0);
+        let (points, lines) = build(
+            &document,
+            Tool::Sweep,
+            &handles,
+            &rotate,
+            &clip,
+            &assemble,
+            &inputs,
+            64.0,
+        );
         let destination = points
             .iter()
             .find(|(p, _)| p.z() > 60.0)
             .expect("the destination cap is up where it was dragged");
         assert_eq!(destination.1, selected_color());
         assert!(
-            lines.iter().any(|(_, colour)| *colour == SWEEP_PREVIEW_COLOR),
+            lines
+                .iter()
+                .any(|(_, colour)| *colour == SWEEP_PREVIEW_COLOR),
             "the brushes the sweep would make are outlined"
         );
     }

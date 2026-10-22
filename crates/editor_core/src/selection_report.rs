@@ -44,9 +44,17 @@ pub fn describe(document: &Document) -> Value {
 pub fn text(document: &Document) -> String {
     let report = describe(document);
     let list = |key: &str| report[key].as_array().cloned().unwrap_or_default();
-    let (brushes, entities, groups, patches) = (list("brushes"), list("entities"), list("groups"), list("patches"));
+    let (brushes, entities, groups, patches) = (
+        list("brushes"),
+        list("entities"),
+        list("groups"),
+        list("patches"),
+    );
     if brushes.is_empty() && entities.is_empty() && groups.is_empty() && patches.is_empty() {
-        return format!("Nothing is selected in Heron Brush ({}).", report["map"].as_str().unwrap_or(""));
+        return format!(
+            "Nothing is selected in Heron Brush ({}).",
+            report["map"].as_str().unwrap_or("")
+        );
     }
     let mut out = format!(
         "Selected in Heron Brush, map \"{}\": {} brushes, {} entities, {} groups, {} patches.\n",
@@ -56,23 +64,42 @@ pub fn text(document: &Document) -> String {
         groups.len(),
         patches.len()
     );
-    let number = |v: &Value| v.as_f64().map_or_else(|| "?".to_string(), |f| format!("{}", (f * 100.0).round() / 100.0));
+    let number = |v: &Value| {
+        v.as_f64().map_or_else(
+            || "?".to_string(),
+            |f| format!("{}", (f * 100.0).round() / 100.0),
+        )
+    };
     let triple = |v: &Value| format!("({} {} {})", number(&v[0]), number(&v[1]), number(&v[2]));
     for brush in &brushes {
-        let materials: Vec<&str> = brush["materials"].as_array().map(|m| m.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+        let materials: Vec<&str> = brush["materials"]
+            .as_array()
+            .map(|m| m.iter().filter_map(Value::as_str).collect())
+            .unwrap_or_default();
         out.push_str(&format!(
             "- brush {} in {}, {} units, from {} to {}, materials {}\n",
             brush["id"].as_str().unwrap_or(""),
-            brush["entity"]["classname"].as_str().unwrap_or("worldspawn"),
-            triple(&brush["size"]).trim_matches(|c| c == '(' || c == ')').replace(' ', " x "),
+            brush["entity"]["classname"]
+                .as_str()
+                .unwrap_or("worldspawn"),
+            triple(&brush["size"])
+                .trim_matches(|c| c == '(' || c == ')')
+                .replace(' ', " x "),
             triple(&brush["min"]),
             triple(&brush["max"]),
             materials.join(", ")
         ));
     }
     for entity in &entities {
-        let name = entity["name"].as_str().map(|n| format!(" \"{n}\"")).unwrap_or_default();
-        let at = if entity["origin"].is_null() { String::new() } else { format!(" at {}", triple(&entity["origin"])) };
+        let name = entity["name"]
+            .as_str()
+            .map(|n| format!(" \"{n}\""))
+            .unwrap_or_default();
+        let at = if entity["origin"].is_null() {
+            String::new()
+        } else {
+            format!(" at {}", triple(&entity["origin"]))
+        };
         out.push_str(&format!(
             "- entity {} {}{name}{at}, {} brushes\n",
             entity["id"].as_str().unwrap_or(""),
@@ -81,10 +108,19 @@ pub fn text(document: &Document) -> String {
         ));
     }
     for group in &groups {
-        out.push_str(&format!("- group {} \"{}\"\n", group["id"].as_str().unwrap_or(""), group["name"].as_str().unwrap_or("")));
+        out.push_str(&format!(
+            "- group {} \"{}\"\n",
+            group["id"].as_str().unwrap_or(""),
+            group["name"].as_str().unwrap_or("")
+        ));
     }
     for patch in &patches {
-        out.push_str(&format!("- patch {} from {} to {}\n", patch["id"].as_str().unwrap_or(""), triple(&patch["min"]), triple(&patch["max"])));
+        out.push_str(&format!(
+            "- patch {} from {} to {}\n",
+            patch["id"].as_str().unwrap_or(""),
+            triple(&patch["min"]),
+            triple(&patch["max"])
+        ));
     }
     out.push_str("The ids are what the Heron Brush MCP tools take (describe_brush, select, translate_selection and the rest).");
     out
@@ -98,14 +134,24 @@ struct Report {
     patches: Vec<Value>,
 }
 
-fn walk(nodes: &[Node], owner: Option<Owner<'_>>, layer: &str, selection: &std::collections::HashSet<NodeId>, report: &mut Report) {
+fn walk(
+    nodes: &[Node],
+    owner: Option<Owner<'_>>,
+    layer: &str,
+    selection: &std::collections::HashSet<NodeId>,
+    report: &mut Report,
+) {
     for node in nodes {
         let selected = selection.contains(&node.id);
         match &node.kind {
             NodeKind::Brush(brush) => {
                 if selected {
                     let bounds = brush.bounds();
-                    let mut materials: Vec<&str> = brush.faces().iter().map(|face| face.material_name.as_str()).collect();
+                    let mut materials: Vec<&str> = brush
+                        .faces()
+                        .iter()
+                        .map(|face| face.material_name.as_str())
+                        .collect();
                     materials.sort_unstable();
                     materials.dedup();
                     report.brushes.push(json!({
@@ -129,7 +175,9 @@ fn walk(nodes: &[Node], owner: Option<Owner<'_>>, layer: &str, selection: &std::
             }
             NodeKind::Entity(entity) => {
                 let classname = entity.classname().unwrap_or("");
-                let name = entity.property("targetname").or_else(|| entity.property("name"));
+                let name = entity
+                    .property("targetname")
+                    .or_else(|| entity.property("name"));
                 if selected {
                     let brushes = count_brushes(&entity.children);
                     report.entities.push(json!({
@@ -141,7 +189,17 @@ fn walk(nodes: &[Node], owner: Option<Owner<'_>>, layer: &str, selection: &std::
                         "brushes": brushes,
                     }));
                 }
-                walk(&entity.children, Some(Owner { id: node.id, classname, name }), layer, selection, report);
+                walk(
+                    &entity.children,
+                    Some(Owner {
+                        id: node.id,
+                        classname,
+                        name,
+                    }),
+                    layer,
+                    selection,
+                    report,
+                );
             }
             NodeKind::Group(group) => {
                 if selected {

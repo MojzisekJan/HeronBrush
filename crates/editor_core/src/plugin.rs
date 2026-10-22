@@ -115,16 +115,33 @@ pub struct Session {
 impl Session {
     /// Compile source without running it or touching a document.
     pub fn new(source: &str) -> Result<Self, String> {
-        Ok(Self { ast: Engine::new().compile(source).map_err(|e| e.to_string())?,
-            state: Rc::new(RefCell::new(std::collections::BTreeMap::new())) })
+        Ok(Self {
+            ast: Engine::new().compile(source).map_err(|e| e.to_string())?,
+            state: Rc::new(RefCell::new(std::collections::BTreeMap::new())),
+        })
     }
     /// Execute an action using the loaded AST and retained scalar state.
-    pub fn run(&mut self, document: &mut Document, settings: &[(String, SettingValue)], action: &str) -> Result<RunOutput, String> {
+    pub fn run(
+        &mut self,
+        document: &mut Document,
+        settings: &[(String, SettingValue)],
+        action: &str,
+    ) -> Result<RunOutput, String> {
         execute(document, settings, action, &self.ast, self.state.clone())
     }
     /// Inspect an isolated snapshot. Even a misbehaving panel cannot edit the map.
-    pub fn inspect(&mut self, document: &Document, settings: &[(String, SettingValue)], action: &str) -> Result<RunOutput, String> {
-        let mut snapshot = Document::from_world(document.tree_world().clone(), WorldBounds::new(document.world_bounds().max.x()), document.format, document.game.clone());
+    pub fn inspect(
+        &mut self,
+        document: &Document,
+        settings: &[(String, SettingValue)],
+        action: &str,
+    ) -> Result<RunOutput, String> {
+        let mut snapshot = Document::from_world(
+            document.tree_world().clone(),
+            WorldBounds::new(document.world_bounds().max.x()),
+            document.format,
+            document.game.clone(),
+        );
         snapshot.restore_selection(&document.selection_snapshot());
         self.run(&mut snapshot, settings, action)
     }
@@ -140,8 +157,13 @@ pub fn run_action(
     Session::new(script)?.run(document, settings, action)
 }
 
-fn execute(document: &mut Document, settings: &[(String, SettingValue)], action: &str,
-    ast: &rhai::AST, state: Rc<RefCell<std::collections::BTreeMap<String, Dynamic>>>) -> Result<RunOutput, String> {
+fn execute(
+    document: &mut Document,
+    settings: &[(String, SettingValue)],
+    action: &str,
+    ast: &rhai::AST,
+    state: Rc<RefCell<std::collections::BTreeMap<String, Dynamic>>>,
+) -> Result<RunOutput, String> {
     // The document is shared with the registered functions for the length of the run. An
     // empty document stands in its place meanwhile; the real one is put back at the end.
     let shared = Rc::new(RefCell::new(std::mem::replace(
@@ -194,14 +216,31 @@ fn execute(document: &mut Document, settings: &[(String, SettingValue)], action:
         });
     }
     let read_state = state.clone();
-    engine.register_fn("state", move |key: &str| read_state.borrow().get(key).cloned().unwrap_or(Dynamic::UNIT));
-    engine.register_fn("set_state", move |key: &str, value: Dynamic| -> Result<(), Box<EvalAltResult>> {
-        if !(value.is::<rhai::INT>() || value.is::<f64>() || value.is::<bool>() || value.is::<rhai::ImmutableString>() || value.is_unit()) || key.len() > 128 || value.to_string().len() > 4096 || (!state.borrow().contains_key(key) && state.borrow().len() >= 64) {
-            return Err(runtime("Plugin state limit exceeded".into()));
-        }
-        state.borrow_mut().insert(key.to_owned(), value);
-        Ok(())
+    engine.register_fn("state", move |key: &str| {
+        read_state
+            .borrow()
+            .get(key)
+            .cloned()
+            .unwrap_or(Dynamic::UNIT)
     });
+    engine.register_fn(
+        "set_state",
+        move |key: &str, value: Dynamic| -> Result<(), Box<EvalAltResult>> {
+            if !(value.is::<rhai::INT>()
+                || value.is::<f64>()
+                || value.is::<bool>()
+                || value.is::<rhai::ImmutableString>()
+                || value.is_unit())
+                || key.len() > 128
+                || value.to_string().len() > 4096
+                || (!state.borrow().contains_key(key) && state.borrow().len() >= 64)
+            {
+                return Err(runtime("Plugin state limit exceeded".into()));
+            }
+            state.borrow_mut().insert(key.to_owned(), value);
+            Ok(())
+        },
+    );
     let result = engine.run_ast(ast);
     // The engine's registered closures each hold a handle on the shared state; dropping
     // it is what lets the document be taken back out.
@@ -388,16 +427,35 @@ fn build_engine(
                     Some(FaceColor::Solid { color, alpha }) => {
                         Dynamic::from_array(rgba_array(color, alpha))
                     }
-                    Some(FaceColor::MultiGradient { stops, radial, angle, alpha, ends }) => {
+                    Some(FaceColor::MultiGradient {
+                        stops,
+                        radial,
+                        angle,
+                        alpha,
+                        ends,
+                    }) => {
                         let mut gradient = vec![
                             Dynamic::from(if radial { "radial" } else { "linear" }),
-                            Dynamic::from_array(stops.as_slice().iter().map(|s| Dynamic::from_array(vec![
-                                Dynamic::from_float(f64::from(s.position)), Dynamic::from_array(rgba_array(s.color, alpha))
-                            ])).collect()),
+                            Dynamic::from_array(
+                                stops
+                                    .as_slice()
+                                    .iter()
+                                    .map(|s| {
+                                        Dynamic::from_array(vec![
+                                            Dynamic::from_float(f64::from(s.position)),
+                                            Dynamic::from_array(rgba_array(s.color, alpha)),
+                                        ])
+                                    })
+                                    .collect(),
+                            ),
                             Dynamic::from_float(f64::from(angle)),
                         ];
                         if let Some(ends) = ends {
-                            gradient.push(Dynamic::from_array([ends.start[0], ends.start[1], ends.end[0], ends.end[1]].map(|v| Dynamic::from_float(f64::from(v))).to_vec()));
+                            gradient.push(Dynamic::from_array(
+                                [ends.start[0], ends.start[1], ends.end[0], ends.end[1]]
+                                    .map(|v| Dynamic::from_float(f64::from(v)))
+                                    .to_vec(),
+                            ));
                         }
                         Dynamic::from_array(gradient)
                     }
@@ -466,7 +524,10 @@ fn build_engine(
             "add_cuboid",
             move |min: Array, max: Array, material: Dynamic| -> Result<i64, Box<EvalAltResult>> {
                 let (min, max) = (vec3(&min)?, vec3(&max)?);
-                let bounds = geometry_math::bbox::Bbox3d::new(geometry_math::vec::min(min, max), geometry_math::vec::max(min, max));
+                let bounds = geometry_math::bbox::Bbox3d::new(
+                    geometry_math::vec::min(min, max),
+                    geometry_math::vec::max(min, max),
+                );
                 if (bounds.max - bounds.min).v.iter().any(|e| *e <= 0.0) {
                     return Err(runtime(
                         "a cuboid needs a positive size on every axis".into(),
@@ -569,38 +630,80 @@ fn build_engine(
 
     // Entity handles share the invocation-local table, but every property API checks type.
     {
-        let document=document.clone(); let handles=handles.clone();
+        let document = document.clone();
+        let handles = handles.clone();
         engine.register_fn("entities", move || -> Array {
-            let doc=document.borrow(); let mut handles=handles.borrow_mut();
-            map_model::node::entities_with_ids(doc.tree_world()).into_iter().map(|(id,_)| Dynamic::from_int(handles.handle_of(id))).collect()
+            let doc = document.borrow();
+            let mut handles = handles.borrow_mut();
+            map_model::node::entities_with_ids(doc.tree_world())
+                .into_iter()
+                .map(|(id, _)| Dynamic::from_int(handles.handle_of(id)))
+                .collect()
         });
     }
     {
-        let document=document.clone(); let handles=handles.clone();
+        let document = document.clone();
+        let handles = handles.clone();
         engine.register_fn("selected_entities", move || -> Array {
-            let doc=document.borrow(); let mut handles=handles.borrow_mut();
-            let mut selected=std::collections::HashSet::new();
-            for id in doc.selection_ids() { if let Some(entity)=doc.entity_around(*id) { selected.insert(entity.id); } }
-            map_model::node::entities_with_ids(doc.tree_world()).into_iter().filter(|(id,_)|selected.contains(id)).map(|(id,_)|Dynamic::from_int(handles.handle_of(id))).collect()
+            let doc = document.borrow();
+            let mut handles = handles.borrow_mut();
+            let mut selected = std::collections::HashSet::new();
+            for id in doc.selection_ids() {
+                if let Some(entity) = doc.entity_around(*id) {
+                    selected.insert(entity.id);
+                }
+            }
+            map_model::node::entities_with_ids(doc.tree_world())
+                .into_iter()
+                .filter(|(id, _)| selected.contains(id))
+                .map(|(id, _)| Dynamic::from_int(handles.handle_of(id)))
+                .collect()
         });
     }
     {
-        let document=document.clone(); let handles=handles.clone();
-        engine.register_fn("property", move |handle:i64,key:&str| -> Result<Dynamic,Box<EvalAltResult>> {
-            let id=handles.borrow().node_of(handle)?;let doc=document.borrow();
-            let entity=map_model::node::entities_with_ids(doc.tree_world()).into_iter().find(|(eid,_)|*eid==id).ok_or_else(||runtime("Handle is not an entity".into()))?.1;
-            Ok(entity.property(key).map(|value|Dynamic::from(value.to_owned())).unwrap_or(Dynamic::UNIT))
-        });
+        let document = document.clone();
+        let handles = handles.clone();
+        engine.register_fn(
+            "property",
+            move |handle: i64, key: &str| -> Result<Dynamic, Box<EvalAltResult>> {
+                let id = handles.borrow().node_of(handle)?;
+                let doc = document.borrow();
+                let entity = map_model::node::entities_with_ids(doc.tree_world())
+                    .into_iter()
+                    .find(|(eid, _)| *eid == id)
+                    .ok_or_else(|| runtime("Handle is not an entity".into()))?
+                    .1;
+                Ok(entity
+                    .property(key)
+                    .map(|value| Dynamic::from(value.to_owned()))
+                    .unwrap_or(Dynamic::UNIT))
+            },
+        );
     }
     {
-        let document=document.clone(); let handles=handles.clone();
-        engine.register_fn("set_property", move |handle:i64,key:&str,value:&str| -> Result<bool,Box<EvalAltResult>> {
-            if key.is_empty() || key.len()>128 || value.len()>4096 || key.chars().any(char::is_control) {return Err(runtime("Invalid entity property".into()));}
-            let id=handles.borrow().node_of(handle)?;
-            let mut doc=document.borrow_mut();
-            if !map_model::node::entities_with_ids(doc.tree_world()).iter().any(|(eid,_)|*eid==id) {return Err(runtime("Handle is not an entity".into()));}
-            Ok(doc.set_entity_property(id,key,value))
-        });
+        let document = document.clone();
+        let handles = handles.clone();
+        engine.register_fn(
+            "set_property",
+            move |handle: i64, key: &str, value: &str| -> Result<bool, Box<EvalAltResult>> {
+                if key.is_empty()
+                    || key.len() > 128
+                    || value.len() > 4096
+                    || key.chars().any(char::is_control)
+                {
+                    return Err(runtime("Invalid entity property".into()));
+                }
+                let id = handles.borrow().node_of(handle)?;
+                let mut doc = document.borrow_mut();
+                if !map_model::node::entities_with_ids(doc.tree_world())
+                    .iter()
+                    .any(|(eid, _)| *eid == id)
+                {
+                    return Err(runtime("Handle is not an entity".into()));
+                }
+                Ok(doc.set_entity_property(id, key, value))
+            },
+        );
     }
     engine
 }
@@ -702,32 +805,63 @@ fn parse_color(value: Dynamic) -> Result<Option<FaceColor>, Box<EvalAltResult>> 
     let kind = array.first().and_then(|v| v.clone().into_string().ok());
     if matches!(kind.as_deref(), Some("linear" | "radial")) {
         use map_model::brush_face::{ColorStop, GradientStops};
-        if !(3..=4).contains(&array.len()) { return Err(runtime("a gradient is [kind, [[position, rgba], ...], angle] or with [su, sv, eu, ev] after the angle".into())); }
-        let values = array[1].clone().into_array().map_err(|_| runtime("stops must be an array".into()))?;
+        if !(3..=4).contains(&array.len()) {
+            return Err(runtime("a gradient is [kind, [[position, rgba], ...], angle] or with [su, sv, eu, ev] after the angle".into()));
+        }
+        let values = array[1]
+            .clone()
+            .into_array()
+            .map_err(|_| runtime("stops must be an array".into()))?;
         let mut stops = Vec::new();
         let mut alpha = 255;
         for value in values {
-            let pair = value.into_array().map_err(|_| runtime("stop must be [position, rgba]".into()))?;
-            if pair.len() != 2 { return Err(runtime("stop must be [position, rgba]".into())); }
-            let position = number(&pair[0]).ok_or_else(|| runtime("invalid stop position".into()))? as f32;
+            let pair = value
+                .into_array()
+                .map_err(|_| runtime("stop must be [position, rgba]".into()))?;
+            if pair.len() != 2 {
+                return Err(runtime("stop must be [position, rgba]".into()));
+            }
+            let position =
+                number(&pair[0]).ok_or_else(|| runtime("invalid stop position".into()))? as f32;
             let (color, opacity) = parse_rgba(&pair[1])?;
-            if stops.is_empty() { alpha = opacity; }
+            if stops.is_empty() {
+                alpha = opacity;
+            }
             stops.push(ColorStop { position, color });
         }
         let angle = number(&array[2]).ok_or_else(|| runtime("invalid angle".into()))? as f32;
-        if !angle.is_finite() { return Err(runtime("invalid angle".into())); }
+        if !angle.is_finite() {
+            return Err(runtime("invalid angle".into()));
+        }
         let ends = match array.get(3) {
             None => None,
             Some(value) => {
-                let values = value.clone().into_array().map_err(|_| runtime("the ends are [su, sv, eu, ev]".into()))?;
-                let numbers: Vec<f32> = values.iter().filter_map(number).map(|v| v as f32).filter(|v| v.is_finite()).collect();
-                let [su, sv, eu, ev] = numbers[..] else { return Err(runtime("the ends are [su, sv, eu, ev]".into())) };
-                Some(map_model::brush_face::GradientEnds { start: [su, sv], end: [eu, ev] })
+                let values = value
+                    .clone()
+                    .into_array()
+                    .map_err(|_| runtime("the ends are [su, sv, eu, ev]".into()))?;
+                let numbers: Vec<f32> = values
+                    .iter()
+                    .filter_map(number)
+                    .map(|v| v as f32)
+                    .filter(|v| v.is_finite())
+                    .collect();
+                let [su, sv, eu, ev] = numbers[..] else {
+                    return Err(runtime("the ends are [su, sv, eu, ev]".into()));
+                };
+                Some(map_model::brush_face::GradientEnds {
+                    start: [su, sv],
+                    end: [eu, ev],
+                })
             }
         };
         return Ok(Some(FaceColor::MultiGradient {
-            stops: GradientStops::new(&stops).ok_or_else(|| runtime("provide 2 to 8 stops with positions from 0 to 1".into()))?,
-            radial: kind.as_deref() == Some("radial"), angle, alpha, ends,
+            stops: GradientStops::new(&stops)
+                .ok_or_else(|| runtime("provide 2 to 8 stops with positions from 0 to 1".into()))?,
+            radial: kind.as_deref() == Some("radial"),
+            angle,
+            alpha,
+            ends,
         }));
     }
 
@@ -815,16 +949,35 @@ mod tests {
             let value = Dynamic::from_array(vec![
                 Dynamic::from(kind),
                 Dynamic::from_array(vec![
-                    Dynamic::from_array(vec![Dynamic::from_float(0.0), Dynamic::from_array(rgba_array(Rgb::new(255,0,0),123))]),
-                    Dynamic::from_array(vec![Dynamic::from_float(0.5), Dynamic::from_array(rgba_array(Rgb::new(0,255,0),123))]),
-                    Dynamic::from_array(vec![Dynamic::from_float(1.0), Dynamic::from_array(rgba_array(Rgb::new(0,0,255),123))]),
-                ]), Dynamic::from_float(45.0),
+                    Dynamic::from_array(vec![
+                        Dynamic::from_float(0.0),
+                        Dynamic::from_array(rgba_array(Rgb::new(255, 0, 0), 123)),
+                    ]),
+                    Dynamic::from_array(vec![
+                        Dynamic::from_float(0.5),
+                        Dynamic::from_array(rgba_array(Rgb::new(0, 255, 0), 123)),
+                    ]),
+                    Dynamic::from_array(vec![
+                        Dynamic::from_float(1.0),
+                        Dynamic::from_array(rgba_array(Rgb::new(0, 0, 255), 123)),
+                    ]),
+                ]),
+                Dynamic::from_float(45.0),
             ]);
-            let Some(FaceColor::MultiGradient { stops, radial, angle, alpha, .. }) = parse_color(value).unwrap() else { panic!("not a gradient") };
-            assert_eq!(stops.as_slice().len(),3);
-            assert_eq!(radial,kind=="radial");
-            assert_eq!(angle,45.0);
-            assert_eq!(alpha,123);
+            let Some(FaceColor::MultiGradient {
+                stops,
+                radial,
+                angle,
+                alpha,
+                ..
+            }) = parse_color(value).unwrap()
+            else {
+                panic!("not a gradient")
+            };
+            assert_eq!(stops.as_slice().len(), 3);
+            assert_eq!(radial, kind == "radial");
+            assert_eq!(angle, 45.0);
+            assert_eq!(alpha, 123);
         }
     }
 
@@ -1145,18 +1298,24 @@ mod session_tests {
     #[test]
     fn loaded_actions_retain_bounded_state_and_inspection_cannot_edit_document() {
         let mut document = Document::new(WorldBounds::default());
-        let mut session = Session::new(r#"
+        let mut session = Session::new(
+            r#"
             let count = state("count") ?? 0;
             set_state("count", count + 1);
             ui_value("Runs", state("count"));
             if action() == "panel" { add_cuboid([0.0,0.0,0.0], [16.0,16.0,16.0], "stone"); }
-        "#).unwrap();
+        "#,
+        )
+        .unwrap();
         let before = document.to_map_text();
         session.inspect(&document, &[], "panel").unwrap();
         assert_eq!(document.to_map_text(), before);
         let output = session.run(&mut document, &[], "inspect").unwrap();
         assert!(matches!(&output.panel[0], UiItem::Value { value, .. } if value == "2"));
-        assert!(Session::new("set_state(\"bad\", [1,2,3]);").unwrap().run(&mut document, &[], "").is_err());
+        assert!(Session::new("set_state(\"bad\", [1,2,3]);")
+            .unwrap()
+            .run(&mut document, &[], "")
+            .is_err());
     }
 }
 
@@ -1165,20 +1324,49 @@ mod entity_plugin_tests {
     use super::*;
     #[test]
     fn bulk_property_example_changes_only_selection_and_undoes_once() {
-        let mut doc=Document::new(WorldBounds::default());
-        let a=doc.create_point_entity("relic",geometry_math::vec::Vec3d::zero());
-        let b=doc.create_point_entity("relic",geometry_math::vec::Vec3d::fill(32.0));
-        let c=doc.create_point_entity("other",geometry_math::vec::Vec3d::fill(64.0));
-        doc.select_only(a);doc.toggle_selected(b);
-        let source=include_str!("../../../assets/plugins/bulk-properties/main.rhai");
-        let mut session=Session::new(source).unwrap();
-        let values=vec![("key".into(),SettingValue::Text("team".into())),("value".into(),SettingValue::Text("blue".into()))];
-        doc.run_as_one_edit(|doc|session.run(doc,&values,"apply")).unwrap();
-        let get=|doc:&Document,id|map_model::node::entities_with_ids(doc.tree_world()).into_iter().find(|(eid,_)|*eid==id).unwrap().1.property("team").map(str::to_owned);
-        assert_eq!(get(&doc,a).as_deref(),Some("blue"));assert_eq!(get(&doc,b).as_deref(),Some("blue"));assert_eq!(get(&doc,c),None);
-        doc.undo().unwrap();assert_eq!(get(&doc,a),None);assert_eq!(get(&doc,b),None);
-        let before=doc.to_map_text();
-        Session::new(include_str!("../../../assets/plugins/project-rules/main.rhai")).unwrap().inspect(&doc,&[("classname".into(),SettingValue::Text("relic".into())),("required".into(),SettingValue::Text("charge".into()))],"check").unwrap();
-        assert_eq!(doc.to_map_text(),before);
+        let mut doc = Document::new(WorldBounds::default());
+        let a = doc.create_point_entity("relic", geometry_math::vec::Vec3d::zero());
+        let b = doc.create_point_entity("relic", geometry_math::vec::Vec3d::fill(32.0));
+        let c = doc.create_point_entity("other", geometry_math::vec::Vec3d::fill(64.0));
+        doc.select_only(a);
+        doc.toggle_selected(b);
+        let source = include_str!("../../../assets/plugins/bulk-properties/main.rhai");
+        let mut session = Session::new(source).unwrap();
+        let values = vec![
+            ("key".into(), SettingValue::Text("team".into())),
+            ("value".into(), SettingValue::Text("blue".into())),
+        ];
+        doc.run_as_one_edit(|doc| session.run(doc, &values, "apply"))
+            .unwrap();
+        let get = |doc: &Document, id| {
+            map_model::node::entities_with_ids(doc.tree_world())
+                .into_iter()
+                .find(|(eid, _)| *eid == id)
+                .unwrap()
+                .1
+                .property("team")
+                .map(str::to_owned)
+        };
+        assert_eq!(get(&doc, a).as_deref(), Some("blue"));
+        assert_eq!(get(&doc, b).as_deref(), Some("blue"));
+        assert_eq!(get(&doc, c), None);
+        doc.undo().unwrap();
+        assert_eq!(get(&doc, a), None);
+        assert_eq!(get(&doc, b), None);
+        let before = doc.to_map_text();
+        Session::new(include_str!(
+            "../../../assets/plugins/project-rules/main.rhai"
+        ))
+        .unwrap()
+        .inspect(
+            &doc,
+            &[
+                ("classname".into(), SettingValue::Text("relic".into())),
+                ("required".into(), SettingValue::Text("charge".into())),
+            ],
+            "check",
+        )
+        .unwrap();
+        assert_eq!(doc.to_map_text(), before);
     }
 }

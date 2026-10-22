@@ -193,7 +193,9 @@ impl Manifest {
                 "version" => manifest.version = Some(value),
                 "author" => manifest.author = Some(value),
                 "api" => manifest.api = value.parse().ok(),
-                "panel_action" if value.len() <= 64 && !value.is_empty() => manifest.panel_action = Some(value),
+                "panel_action" if value.len() <= 64 && !value.is_empty() => {
+                    manifest.panel_action = Some(value)
+                }
                 _ => {}
             }
         }

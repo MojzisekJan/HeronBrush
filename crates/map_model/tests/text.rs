@@ -1,8 +1,8 @@
 //! Tests for the brush font.
 
-use map_model::text;
 use geometry_math::bbox::Bbox3d;
 use geometry_math::vec::Vec3d;
+use map_model::text;
 
 fn world() -> Bbox3d {
     Bbox3d::from_scalars(-16384.0, 16384.0)
@@ -16,7 +16,8 @@ fn brushes(text: &str) -> Vec<map_model::brush::Brush> {
 }
 
 /// Every printable character the font knows.
-const KNOWN: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -_=+/\\.,:!?'\"()<>";
+const KNOWN: &str =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -_=+/\\.,:!?'\"()<>";
 
 #[test]
 fn no_two_brushes_of_a_glyph_share_a_volume() {
@@ -70,9 +71,17 @@ fn the_text_sits_at_the_origin_and_is_the_height_it_was_asked_for() {
         .expect("some brushes");
 
     assert!(bounds.min.z() >= -1.0, "{:?}", bounds.min);
-    assert!((bounds.max.z() - HEIGHT).abs() < HEIGHT * 0.05, "{:?}", bounds.max);
+    assert!(
+        (bounds.max.z() - HEIGHT).abs() < HEIGHT * 0.05,
+        "{:?}",
+        bounds.max
+    );
     assert!(bounds.min.x() >= -1.0, "{:?}", bounds.min);
-    assert!(bounds.min.y() >= -1.0 && (bounds.max.y() - DEPTH).abs() < 1.0, "{:?}", bounds);
+    assert!(
+        bounds.min.y() >= -1.0 && (bounds.max.y() - DEPTH).abs() < 1.0,
+        "{:?}",
+        bounds
+    );
 }
 
 #[test]

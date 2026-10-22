@@ -30,39 +30,62 @@ pub const SCALE_RADIUS: f64 = 26.0;
 
 /// Navigation is local to the UV view and never edits the document.
 #[derive(Clone, Copy, Debug)]
-pub struct UvView { pub zoom: f64, pub pan: (f64, f64), face: Option<crate::document::FaceRef>, offset: Vec2f }
+pub struct UvView {
+    pub zoom: f64,
+    pub pan: (f64, f64),
+    face: Option<crate::document::FaceRef>,
+    offset: Vec2f,
+}
 impl Default for UvView {
-    fn default() -> Self { Self { zoom: 1.0, pan: (0.0, 0.0), face: None, offset: Vec2f::zero() } }
+    fn default() -> Self {
+        Self {
+            zoom: 1.0,
+            pan: (0.0, 0.0),
+            face: None,
+            offset: Vec2f::zero(),
+        }
+    }
 }
 impl UvView {
     pub fn sync(&mut self, document: &Document, width: f64, height: f64) {
-        let Some((id, face)) = document.face_to_edit() else { self.face=None; return; };
+        let Some((id, face)) = document.face_to_edit() else {
+            self.face = None;
+            return;
+        };
         if self.face != Some(id) {
             let points = document.face_to_edit_polygon().unwrap_or_default();
             let uvs: Vec<_> = points.iter().map(|p| face.uv_coords(*p)).collect();
             if !uvs.is_empty() {
-                let (mut lo,mut hi)=(uvs[0],uvs[0]);
-                for uv in &uvs { for k in 0..2 { lo[k]=lo[k].min(uv[k]); hi[k]=hi[k].max(uv[k]); } }
-                let base=canvas_scale(document,height);
-                let scale=((width-60.0).max(1.0)/f64::from((hi.x()-lo.x()).max(1.0)))
-                    .min((height-60.0).max(1.0)/f64::from((hi.y()-lo.y()).max(1.0)));
-                self.zoom=(scale/base).clamp(0.02,64.0);
-                let center=(lo+hi)*0.5;
-                self.pan=(width/2.0-f64::from(center.x())*base*self.zoom,height/2.0-f64::from(center.y())*base*self.zoom);
+                let (mut lo, mut hi) = (uvs[0], uvs[0]);
+                for uv in &uvs {
+                    for k in 0..2 {
+                        lo[k] = lo[k].min(uv[k]);
+                        hi[k] = hi[k].max(uv[k]);
+                    }
+                }
+                let base = canvas_scale(document, height);
+                let scale = ((width - 60.0).max(1.0) / f64::from((hi.x() - lo.x()).max(1.0)))
+                    .min((height - 60.0).max(1.0) / f64::from((hi.y() - lo.y()).max(1.0)));
+                self.zoom = (scale / base).clamp(0.02, 64.0);
+                let center = (lo + hi) * 0.5;
+                self.pan = (
+                    width / 2.0 - f64::from(center.x()) * base * self.zoom,
+                    height / 2.0 - f64::from(center.y()) * base * self.zoom,
+                );
             }
-            self.face=Some(id);
+            self.face = Some(id);
         } else {
-            let delta=self.offset-face.uv_attributes.offset;
-            let scale=canvas_scale(document,height*self.zoom);
-            self.pan.0+=f64::from(delta.x())*scale;
-            self.pan.1+=f64::from(delta.y())*scale;
+            let delta = self.offset - face.uv_attributes.offset;
+            let scale = canvas_scale(document, height * self.zoom);
+            self.pan.0 += f64::from(delta.x()) * scale;
+            self.pan.1 += f64::from(delta.y()) * scale;
         }
-        self.offset=face.uv_attributes.offset;
+        self.offset = face.uv_attributes.offset;
     }
     pub fn zoom_at(&mut self, x: f64, y: f64, delta: f64) {
         let next = (self.zoom * (-delta * 0.15).exp()).clamp(0.02, 64.0);
         let ratio = next / self.zoom;
-        self.pan = (x - (x-self.pan.0)*ratio, y - (y-self.pan.1)*ratio);
+        self.pan = (x - (x - self.pan.0) * ratio, y - (y - self.pan.1) * ratio);
         self.zoom = next;
     }
 }
@@ -84,13 +107,19 @@ pub enum Grip {
     Offset,
     /// A tile edge, held with Alt, so the drag skews the material: `UvShearTool`. A
     /// vertical edge is the X handle, a horizontal one the Y handle, and a corner both.
-    Shear { horizontally: bool, vertically: bool },
+    Shear {
+        horizontally: bool,
+        vertically: bool,
+    },
     /// The point the other two work about.
     Origin,
     /// The ring, so the drag turns the material.
     Rotate,
     /// One of the four corners, so the drag scales it.
-    Scale { horizontally: bool, vertically: bool },
+    Scale {
+        horizontally: bool,
+        vertically: bool,
+    },
 }
 
 /// Builds the editor, returning it and the way to bring it up to date.
@@ -129,7 +158,10 @@ impl UvCanvas {
         self.view.sync(document, width, height);
         let view = self.view;
         draw(document, cr, width, height, view);
-        if document.face_to_edit().is_some_and(|(_, face)| face.export_hidden) {
+        if document
+            .face_to_edit()
+            .is_some_and(|(_, face)| face.export_hidden)
+        {
             cr.save();
             cr.set_source_rgba(1.0, 0.55, 0.1, 0.28);
             cr.set_line_width(1.0);
@@ -153,7 +185,14 @@ impl UvCanvas {
     /// A press that starts a drag at `(x, y)` on a canvas `height` pixels tall. `shear`
     /// is an Alt-press, or a Shift-middle one: it catches a tile edge and skews the
     /// material, and anywhere else does nothing.
-    pub fn drag_begin(&mut self, document: &mut Document, height: f64, x: f64, y: f64, shear: bool) {
+    pub fn drag_begin(
+        &mut self,
+        document: &mut Document,
+        height: f64,
+        x: f64,
+        y: f64,
+        shear: bool,
+    ) {
         self.applied = Vec2f::zero();
         let camera = self.view;
         let height = height * camera.zoom;
@@ -165,7 +204,10 @@ impl UvCanvas {
                 // far enough from the origin's own axes to be safe.
                 let held = shear_grip_at(document, height, x, y);
                 let hit = unscaled_offset(document, from_canvas(document, height, x, y) - at);
-                if held.is_some() && hit.x().abs() >= SHEAR_MIN_OFFSET && hit.y().abs() >= SHEAR_MIN_OFFSET {
+                if held.is_some()
+                    && hit.x().abs() >= SHEAR_MIN_OFFSET
+                    && hit.y().abs() >= SHEAR_MIN_OFFSET
+                {
                     self.initial_hit = hit;
                     held.unwrap_or(Grip::Nothing)
                 } else {
@@ -184,7 +226,14 @@ impl UvCanvas {
 
     /// The drag has moved `(dx, dy)` pixels from where it began. `control` turns the
     /// shear's snapping off. Returns whether the document changed.
-    pub fn drag_update(&mut self, document: &mut Document, height: f64, dx: f64, dy: f64, control: bool) -> bool {
+    pub fn drag_update(
+        &mut self,
+        document: &mut Document,
+        height: f64,
+        dx: f64,
+        dy: f64,
+        control: bool,
+    ) -> bool {
         let Some(held) = self.grip else { return false };
         let camera = self.view;
         let height = height * camera.zoom;
@@ -242,7 +291,10 @@ impl UvCanvas {
                 document.edit_faces(|face| face.rotate_uv_about(handle, step));
             }
 
-            Grip::Shear { horizontally, vertically } => {
+            Grip::Shear {
+                horizontally,
+                vertically,
+            } => {
                 // `UvShearDragTracker::update`: the factors come from how far the pointer
                 // has moved across each axis, over how far from the origin the handle
                 // started along the other, so a handle far out shears gently and one
@@ -252,7 +304,11 @@ impl UvCanvas {
                 let zoom = canvas_scale(document, height) as f32;
                 let delta = current - initial;
                 let factors = Vec2f::new(-delta.y() / initial.x(), -delta.x() / initial.y());
-                let factors = if control { factors } else { snap_shear_factors(document, factors, current, zoom) };
+                let factors = if control {
+                    factors
+                } else {
+                    snap_shear_factors(document, factors, current, zoom)
+                };
                 let total = Vec2f::new(
                     if horizontally { factors.x() } else { 0.0 },
                     if vertically { factors.y() } else { 0.0 },
@@ -287,7 +343,11 @@ impl UvCanvas {
                     }
                 };
                 let total = Vec2f::new(ratio(started.x(), now.x()), ratio(started.y(), now.y()));
-                let previous = if self.applied == Vec2f::zero() { Vec2f::new(1.0, 1.0) } else { self.applied };
+                let previous = if self.applied == Vec2f::zero() {
+                    Vec2f::new(1.0, 1.0)
+                } else {
+                    self.applied
+                };
                 let step = Vec2f::new(total.x() / previous.x(), total.y() / previous.y());
                 if step == Vec2f::new(1.0, 1.0) {
                     return false;
@@ -369,13 +429,45 @@ pub enum Action {
 
 /// The first row of buttons: label, action and tooltip.
 pub const BUTTONS: [(&str, Action, &str); 7] = [
-    (translation_key("Reset"), Action::Reset, translation_key("Default alignment, keeping the axes the face has")),
-    (translation_key("Reset to world"), Action::ResetToWorld, translation_key("Default alignment on the world-aligned axes, dropping a Valve face's free axes")),
+    (
+        translation_key("Reset"),
+        Action::Reset,
+        translation_key("Default alignment, keeping the axes the face has"),
+    ),
+    (
+        translation_key("Reset to world"),
+        Action::ResetToWorld,
+        translation_key(
+            "Default alignment on the world-aligned axes, dropping a Valve face's free axes",
+        ),
+    ),
     (translation_key("Fit"), Action::Fit, ""),
-    (translation_key("Flip H"), Action::Flip { horizontally: true }, ""),
-    (translation_key("Flip V"), Action::Flip { horizontally: false }, ""),
-    (translation_key("⟲ 90°"), Action::Rotate { counter_clockwise: true }, translation_key("Rotate the material 90° counter-clockwise")),
-    (translation_key("⟳ 90°"), Action::Rotate { counter_clockwise: false }, translation_key("Rotate the material 90° clockwise")),
+    (
+        translation_key("Flip H"),
+        Action::Flip { horizontally: true },
+        "",
+    ),
+    (
+        translation_key("Flip V"),
+        Action::Flip {
+            horizontally: false,
+        },
+        "",
+    ),
+    (
+        translation_key("⟲ 90°"),
+        Action::Rotate {
+            counter_clockwise: true,
+        },
+        translation_key("Rotate the material 90° counter-clockwise"),
+    ),
+    (
+        translation_key("⟳ 90°"),
+        Action::Rotate {
+            counter_clockwise: false,
+        },
+        translation_key("Rotate the material 90° clockwise"),
+    ),
 ];
 
 /// The alignment buttons, which cycle through their answers when pressed again; Shift
@@ -404,8 +496,16 @@ fn material_size_vec(document: &Document) -> Vec2f {
 pub fn run(document: &mut Document, action: Action, modifiers: Modifiers) {
     // `FaceAttribsEditor`: Shift steps backwards through the answers, and Ctrl asks a fit
     // to keep a trim sheet's subdivision.
-    let policy = if modifiers.shift { UvPolicy::Prev } else { UvPolicy::Next };
-    let mode = if modifiers.control { UvFitMode::TrimSheet } else { UvFitMode::FitToFace };
+    let policy = if modifiers.shift {
+        UvPolicy::Prev
+    } else {
+        UvPolicy::Next
+    };
+    let mode = if modifiers.control {
+        UvFitMode::TrimSheet
+    } else {
+        UvFitMode::FitToFace
+    };
     match action {
         Action::Reset => document.edit_faces(|face| face.reset_uv()),
         Action::ResetToWorld => document.edit_faces(|face| face.reset_uv_to_paraxial()),
@@ -431,7 +531,9 @@ pub fn run(document: &mut Document, action: Action, modifiers: Modifiers) {
                     }
                 }
                 Action::Justify(axis, sign) => {
-                    if let Some(offset) = map_model::uv_alignment::justify(face, &polygon, size, axis, sign, policy) {
+                    if let Some(offset) =
+                        map_model::uv_alignment::justify(face, &polygon, size, axis, sign, policy)
+                    {
                         let was = face.uv_attributes.offset;
                         face.uv_attributes.offset = match axis {
                             UvAxis::U => Vec2f::new(offset, was.y()),
@@ -440,7 +542,9 @@ pub fn run(document: &mut Document, action: Action, modifiers: Modifiers) {
                     }
                 }
                 Action::FitAxis(axis) => {
-                    if let Some(scale) = map_model::uv_alignment::fit(face, &polygon, size, axis, policy, mode) {
+                    if let Some(scale) =
+                        map_model::uv_alignment::fit(face, &polygon, size, axis, policy, mode)
+                    {
                         let was = face.uv_attributes.scale;
                         face.uv_attributes.scale = match axis {
                             UvAxis::U => Vec2f::new(scale, was.y()),
@@ -572,7 +676,6 @@ pub fn omit_covered(document: &mut Document) -> String {
     let count = document.omit_covered_faces();
     format!("{}: {}", tr("Omit covered faces"), count)
 }
-
 
 /// How near, in degrees of the drag, an edge has to come to an axis before the turn is
 /// held there.
@@ -800,13 +903,18 @@ pub fn snap_shear_factors(document: &Document, factors: Vec2f, offset: Vec2f, zo
         return factors;
     };
     // `getEdgeVectorsUv`: each edge of the face in unscaled UV coordinates.
-    let (u_axis, v_axis) = face.uv_coord_system.axes(face.normal(), &face.uv_attributes);
+    let (u_axis, v_axis) = face
+        .uv_coord_system
+        .axes(face.normal(), &face.uv_attributes);
     let edges: Vec<Vec2f> = polygon
         .iter()
         .zip(polygon.iter().cycle().skip(1))
         .map(|(from, to)| {
             let d = *to - *from;
-            Vec2f::new(geometry_math::vec::dot(d, u_axis) as f32, geometry_math::vec::dot(d, v_axis) as f32)
+            Vec2f::new(
+                geometry_math::vec::dot(d, u_axis) as f32,
+                geometry_math::vec::dot(d, v_axis) as f32,
+            )
         })
         .collect();
 
@@ -831,10 +939,7 @@ pub fn snap_shear_factors(document: &Document, factors: Vec2f, offset: Vec2f, zo
 
 /// Builds the UV shear matrix from two factors.
 pub fn shear_rows(factors: Vec2f) -> [[f64; 2]; 2] {
-    [
-        [1.0, f64::from(factors.x())],
-        [f64::from(factors.y()), 1.0],
-    ]
+    [[1.0, f64::from(factors.x())], [f64::from(factors.y()), 1.0]]
 }
 
 pub fn invert_2x2(m: [[f64; 2]; 2]) -> Option<[[f64; 2]; 2]> {
@@ -898,12 +1003,27 @@ pub fn draw(document: &Document, cr: &mut dyn Canvas, width: f64, height: f64, v
     if let Some(material) = material {
         // Decoded on demand; the canvas keeps its own copy (keyed by name), so this
         // decodes once, not per frame, while the canvas has it.
-        if let Some(pixels) = (material.width > 0 && material.height > 0).then(|| material.pixels()).flatten() {
-            cr.paint_tiled_image(&face.material_name, material.width, material.height, &pixels[..(material.width * material.height * 4) as usize], view.pan, scale);
+        if let Some(pixels) = (material.width > 0 && material.height > 0)
+            .then(|| material.pixels())
+            .flatten()
+        {
+            cr.paint_tiled_image(
+                &face.material_name,
+                material.width,
+                material.height,
+                &pixels[..(material.width * material.height * 4) as usize],
+                view.pan,
+                scale,
+            );
         }
     } else {
         cr.set_source_rgb(0.2, 0.2, 0.24);
-        cr.rectangle(view.pan.0, view.pan.1, material_width * scale, material_height * scale);
+        cr.rectangle(
+            view.pan.0,
+            view.pan.1,
+            material_width * scale,
+            material_height * scale,
+        );
         cr.fill();
     }
 
@@ -959,8 +1079,8 @@ pub fn draw(document: &Document, cr: &mut dyn Canvas, width: f64, height: f64, v
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::WorldBounds;
     use crate::canvas::Raster;
+    use crate::world::WorldBounds;
     use geometry_math::bbox::Bbox3d;
 
     fn cube_with_a_selected_face() -> Document {
@@ -979,74 +1099,100 @@ mod tests {
 
     #[test]
     fn face_only_uv_drags_undo_redo_and_cancel_as_one_edit() {
-        let operations: [fn(&mut map_model::brush_face::BrushFace);4] = [
-            |f| f.move_uv(Vec2f::new(7.,-3.)),
-            |f| f.rotate_uv_about(Vec2f::zero(),15.),
-            |f| f.scale_uv_about(Vec2f::zero(),Vec2f::new(1.5,0.75)),
-            |f| f.skew_uv_about(Vec2f::zero(),[[1.,0.2],[0.,1.]]),
+        let operations: [fn(&mut map_model::brush_face::BrushFace); 4] = [
+            |f| f.move_uv(Vec2f::new(7., -3.)),
+            |f| f.rotate_uv_about(Vec2f::zero(), 15.),
+            |f| f.scale_uv_about(Vec2f::zero(), Vec2f::new(1.5, 0.75)),
+            |f| f.skew_uv_about(Vec2f::zero(), [[1., 0.2], [0., 1.]]),
         ];
-        for (index,operation) in operations.into_iter().enumerate() {
-            let mut document=cube_with_a_selected_face();
-            let reference=document.face_to_edit().unwrap().0;
+        for (index, operation) in operations.into_iter().enumerate() {
+            let mut document = cube_with_a_selected_face();
+            let reference = document.face_to_edit().unwrap().0;
             document.select_face_only(reference);
             assert!(document.selection_ids().is_empty());
             // Shear requires Valve's explicit axes; Standard mappings cannot express it.
             document.edit_faces(|f| {
-                let (u_axis,v_axis)=f.uv_coord_system.axes(f.normal(),&f.uv_attributes);
-                f.uv_coord_system=map_model::uv::UvCoordSystem::Parallel { u_axis, v_axis };
+                let (u_axis, v_axis) = f.uv_coord_system.axes(f.normal(), &f.uv_attributes);
+                f.uv_coord_system = map_model::uv::UvCoordSystem::Parallel { u_axis, v_axis };
             });
-            let state=|d:&Document| { let b=d.brush(reference.node).unwrap();
-                b.faces().iter().map(|f|(f.uv_attributes,f.uv_coord_system.clone(),f.primitive_uv.clone())).collect::<Vec<_>>() };
-            let before=state(&document);
+            let state = |d: &Document| {
+                let b = d.brush(reference.node).unwrap();
+                b.faces()
+                    .iter()
+                    .map(|f| {
+                        (
+                            f.uv_attributes,
+                            f.uv_coord_system.clone(),
+                            f.primitive_uv.clone(),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let before = state(&document);
             document.begin_transaction();
-            document.edit_faces(operation); document.edit_faces(operation);
+            document.edit_faces(operation);
+            document.edit_faces(operation);
             assert!(document.commit_transaction(), "operation {index}");
-            let after=state(&document); assert_ne!(after,before);
-            document.undo(); assert_eq!(state(&document),before);
-            document.redo(); assert_eq!(state(&document),after);
-            document.begin_transaction(); document.edit_faces(operation);
-            document.cancel_transaction(); assert_eq!(state(&document),after);
+            let after = state(&document);
+            assert_ne!(after, before);
+            document.undo();
+            assert_eq!(state(&document), before);
+            document.redo();
+            assert_eq!(state(&document), after);
+            document.begin_transaction();
+            document.edit_faces(operation);
+            document.cancel_transaction();
+            assert_eq!(state(&document), after);
         }
     }
 
     #[test]
     fn uv_navigation_keeps_the_cursor_anchor_and_does_not_edit_the_map() {
-        let document=cube_with_a_selected_face();
-        let mut view=UvView::default();
-        view.sync(&document,400.0,200.0);
-        let before=view;
-        let pointer=(123.0,87.0);
-        let anchor=((pointer.0-view.pan.0)/view.zoom,(pointer.1-view.pan.1)/view.zoom);
-        view.zoom_at(pointer.0,pointer.1,-3.0);
-        assert!((view.pan.0+anchor.0*view.zoom-pointer.0).abs()<1e-9);
-        assert!((view.pan.1+anchor.1*view.zoom-pointer.1).abs()<1e-9);
-        view.zoom_at(pointer.0,pointer.1,3.0);
-        assert!((view.zoom-before.zoom).abs()<1e-9);
-        assert!((view.pan.0-before.pan.0).abs()<1e-9);
-        view.zoom_at(0.0,0.0,1e6); assert_eq!(view.zoom,0.02);
-        view.zoom_at(0.0,0.0,-1e6); assert_eq!(view.zoom,64.0);
+        let document = cube_with_a_selected_face();
+        let mut view = UvView::default();
+        view.sync(&document, 400.0, 200.0);
+        let before = view;
+        let pointer = (123.0, 87.0);
+        let anchor = (
+            (pointer.0 - view.pan.0) / view.zoom,
+            (pointer.1 - view.pan.1) / view.zoom,
+        );
+        view.zoom_at(pointer.0, pointer.1, -3.0);
+        assert!((view.pan.0 + anchor.0 * view.zoom - pointer.0).abs() < 1e-9);
+        assert!((view.pan.1 + anchor.1 * view.zoom - pointer.1).abs() < 1e-9);
+        view.zoom_at(pointer.0, pointer.1, 3.0);
+        assert!((view.zoom - before.zoom).abs() < 1e-9);
+        assert!((view.pan.0 - before.pan.0).abs() < 1e-9);
+        view.zoom_at(0.0, 0.0, 1e6);
+        assert_eq!(view.zoom, 0.02);
+        view.zoom_at(0.0, 0.0, -1e6);
+        assert_eq!(view.zoom, 64.0);
     }
 
     #[test]
     fn offset_moves_texture_and_keeps_outline_fixed_including_undo() {
-        let mut document=cube_with_a_selected_face();
-        let mut view=UvView::default(); view.sync(&document,400.0,200.0);
-        let point=document.face_to_edit_polygon().unwrap()[0];
-        let position=|d: &Document,v: UvView| {
-            let uv=d.face_to_edit().unwrap().1.uv_coords(point);
-            let (x,y)=to_canvas(d,200.0*v.zoom,uv); (x+v.pan.0,y+v.pan.1)
+        let mut document = cube_with_a_selected_face();
+        let mut view = UvView::default();
+        view.sync(&document, 400.0, 200.0);
+        let point = document.face_to_edit_polygon().unwrap()[0];
+        let position = |d: &Document, v: UvView| {
+            let uv = d.face_to_edit().unwrap().1.uv_coords(point);
+            let (x, y) = to_canvas(d, 200.0 * v.zoom, uv);
+            (x + v.pan.0, y + v.pan.1)
         };
-        let before=position(&document,view); let pan=view.pan;
+        let before = position(&document, view);
+        let pan = view.pan;
         document.begin_transaction();
-        document.edit_faces(|f| f.move_uv(Vec2f::new(-4.0,-2.0)));
-        document.edit_faces(|f| f.move_uv(Vec2f::new(-6.0,-3.0)));
+        document.edit_faces(|f| f.move_uv(Vec2f::new(-4.0, -2.0)));
+        document.edit_faces(|f| f.move_uv(Vec2f::new(-6.0, -3.0)));
         document.commit_transaction();
-        view.sync(&document,400.0,200.0);
-        assert_eq!(position(&document,view),before);
-        assert!(view.pan.0>pan.0 && view.pan.1>pan.1);
-        document.undo(); view.sync(&document,400.0,200.0);
-        assert_eq!(position(&document,view),before);
-        assert_eq!(view.pan,pan);
+        view.sync(&document, 400.0, 200.0);
+        assert_eq!(position(&document, view), before);
+        assert!(view.pan.0 > pan.0 && view.pan.1 > pan.1);
+        document.undo();
+        view.sync(&document, 400.0, 200.0);
+        assert_eq!(position(&document, view), before);
+        assert_eq!(view.pan, pan);
     }
 
     #[test]
@@ -1054,7 +1200,12 @@ mod tests {
         // The cube's faces are square to the axes, so the edges lie along U and V and
         // the factor that lays an edge along an axis is nought.
         let document = cube_with_a_selected_face();
-        let near = snap_shear_factors(&document, Vec2f::new(0.05, 0.0), Vec2f::new(20.0, 20.0), 2.0);
+        let near = snap_shear_factors(
+            &document,
+            Vec2f::new(0.05, 0.0),
+            Vec2f::new(20.0, 20.0),
+            2.0,
+        );
         assert_eq!(near, Vec2f::new(0.0, 0.0));
         // Further out than the threshold -- ten over the offset over the zoom -- it is
         // left alone.
@@ -1081,13 +1232,35 @@ mod tests {
         let scale = canvas_scale(&document, height);
         let (width, material_height) = material_size(&document);
         // On the vertical edge of the first repeat, midway up a tile.
-        let on_x = shear_grip_at(&document, height, width * scale, material_height * scale / 2.0);
-        assert_eq!(on_x, Some(Grip::Shear { horizontally: true, vertically: false }));
+        let on_x = shear_grip_at(
+            &document,
+            height,
+            width * scale,
+            material_height * scale / 2.0,
+        );
+        assert_eq!(
+            on_x,
+            Some(Grip::Shear {
+                horizontally: true,
+                vertically: false
+            })
+        );
         // On the corner of the first repeat: both.
         let corner = shear_grip_at(&document, height, width * scale, material_height * scale);
-        assert_eq!(corner, Some(Grip::Shear { horizontally: true, vertically: true }));
+        assert_eq!(
+            corner,
+            Some(Grip::Shear {
+                horizontally: true,
+                vertically: true
+            })
+        );
         // In the middle of a tile: nothing.
-        let open = shear_grip_at(&document, height, width * scale / 2.0, material_height * scale / 2.0);
+        let open = shear_grip_at(
+            &document,
+            height,
+            width * scale / 2.0,
+            material_height * scale / 2.0,
+        );
         assert_eq!(open, None);
     }
 

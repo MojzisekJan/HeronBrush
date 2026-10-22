@@ -85,7 +85,11 @@ impl CubeShadows {
     fn new(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, size: u32, slots: usize) -> Self {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("render_wgpu light shadows"),
-            size: wgpu::Extent3d { width: size, height: size, depth_or_array_layers: 6 * slots as u32 },
+            size: wgpu::Extent3d {
+                width: size,
+                height: size,
+                depth_or_array_layers: 6 * slots as u32,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -93,10 +97,18 @@ impl CubeShadows {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         });
-        let array_view = texture.create_view(&wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::CubeArray), ..Default::default() });
+        let array_view = texture.create_view(&wgpu::TextureViewDescriptor {
+            dimension: Some(wgpu::TextureViewDimension::CubeArray),
+            ..Default::default()
+        });
         let faces = (0..6 * slots as u32)
             .map(|layer| {
-                texture.create_view(&wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::D2), base_array_layer: layer, array_layer_count: Some(1), ..Default::default() })
+                texture.create_view(&wgpu::TextureViewDescriptor {
+                    dimension: Some(wgpu::TextureViewDimension::D2),
+                    base_array_layer: layer,
+                    array_layer_count: Some(1),
+                    ..Default::default()
+                })
             })
             .collect();
         let uniform = device.create_buffer(&wgpu::BufferDescriptor {
@@ -108,9 +120,25 @@ impl CubeShadows {
         let uniform_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("render_wgpu light shadow faces"),
             layout,
-            entries: &[wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding { buffer: &uniform, offset: 0, size: wgpu::BufferSize::new(64) }) }],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &uniform,
+                    offset: 0,
+                    size: wgpu::BufferSize::new(64),
+                }),
+            }],
         });
-        Self { size, slots, _texture: texture, array_view, faces, uniform, uniform_group, cache: vec![None; 6 * slots] }
+        Self {
+            size,
+            slots,
+            _texture: texture,
+            array_view,
+            faces,
+            uniform,
+            uniform_group,
+            cache: vec![None; 6 * slots],
+        }
     }
 
     /// The dynamic offset of a face's matrix.
@@ -125,13 +153,24 @@ impl CubeShadows {
 
     /// Whether a face must be drawn again for `key`; if so writes its matrix and
     /// remembers the key.
-    pub fn claim(&mut self, queue: &wgpu::Queue, slot: usize, face: usize, key: u64, matrix: &[[f32; 4]; 4]) -> bool {
+    pub fn claim(
+        &mut self,
+        queue: &wgpu::Queue,
+        slot: usize,
+        face: usize,
+        key: u64,
+        matrix: &[[f32; 4]; 4],
+    ) -> bool {
         let entry = &mut self.cache[slot * 6 + face];
         if *entry == Some(key) {
             return false;
         }
         *entry = Some(key);
-        queue.write_buffer(&self.uniform, u64::from(Self::offset(slot, face)), bytemuck::cast_slice(matrix));
+        queue.write_buffer(
+            &self.uniform,
+            u64::from(Self::offset(slot, face)),
+            bytemuck::cast_slice(matrix),
+        );
         true
     }
 }
@@ -163,7 +202,12 @@ pub(crate) struct Lights {
 }
 
 fn storage(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor { label: Some(label), size: size.max(256), usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false })
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some(label),
+        size: size.max(256),
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
 }
 
 /// Godot's distance attenuation, in metres: the light's own falloff, windowed to zero at
@@ -171,7 +215,10 @@ fn storage(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {
 fn attenuation(distance: f32, range: f32, decay: f32) -> f32 {
     let nd = (distance / range).powi(4);
     let window = (1.0 - nd).max(0.0).powi(2);
-    window * (distance / MAP_UNITS_PER_METRE as f32).max(0.1).powf(-decay)
+    window
+        * (distance / MAP_UNITS_PER_METRE as f32)
+            .max(0.1)
+            .powf(-decay)
 }
 
 impl Lights {
@@ -179,7 +226,11 @@ impl Lights {
         let cells = (GRID[0] * GRID[1] * GRID[2]) as usize;
         let no_shadows_texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("render_wgpu no light shadows"),
-            size: wgpu::Extent3d { width: 1, height: 1, depth_or_array_layers: 6 },
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 6,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -187,7 +238,10 @@ impl Lights {
             usage: wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         });
-        let no_shadows = no_shadows_texture.create_view(&wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::CubeArray), ..Default::default() });
+        let no_shadows = no_shadows_texture.create_view(&wgpu::TextureViewDescriptor {
+            dimension: Some(wgpu::TextureViewDimension::CubeArray),
+            ..Default::default()
+        });
         Self {
             table: Vec::new(),
             uploaded: None,
@@ -210,7 +264,9 @@ impl Lights {
 
     /// The cube array the forward pass samples.
     pub fn shadow_view(&self) -> &wgpu::TextureView {
-        self.shadows.as_ref().map_or(&self.no_shadows, |s| &s.array_view)
+        self.shadows
+            .as_ref()
+            .map_or(&self.no_shadows, |s| &s.array_view)
     }
 
     /// Brings the light table, the shadow slots and the clusters up to date for one
@@ -243,24 +299,36 @@ impl Lights {
         // slots of those that stay so their cubes stay cached.
         self.ranked.clear();
         for (index, light) in lights.iter().enumerate() {
-            let p = [light.position.x() as f32, light.position.y() as f32, light.position.z() as f32];
+            let p = [
+                light.position.x() as f32,
+                light.position.y() as f32,
+                light.position.z() as f32,
+            ];
             if !sphere_visible(planes, p, light.range) {
                 continue;
             }
             if light.shadows {
-                let distance = ((p[0] - eye[0]).powi(2) + (p[1] - eye[1]).powi(2) + (p[2] - eye[2]).powi(2)).sqrt();
+                let distance =
+                    ((p[0] - eye[0]).powi(2) + (p[1] - eye[1]).powi(2) + (p[2] - eye[2]).powi(2))
+                        .sqrt();
                 // The light's strength at the camera's distance from its sphere (or at its
                 // half reach from inside), so a near lamp outranks a far floodlight.
                 let probe = (distance - light.range).max(light.range * 0.5);
-                let luminance = 0.2126 * light.color[0] + 0.7152 * light.color[1] + 0.0722 * light.color[2];
-                self.ranked.push((luminance * attenuation(probe.min(light.range * 0.99), light.range, light.decay), index));
+                let luminance =
+                    0.2126 * light.color[0] + 0.7152 * light.color[1] + 0.0722 * light.color[2];
+                self.ranked.push((
+                    luminance
+                        * attenuation(probe.min(light.range * 0.99), light.range, light.decay),
+                    index,
+                ));
             }
         }
         self.ranked.sort_by(|a, b| b.0.total_cmp(&a.0));
         self.ranked.truncate(MAX_SHADOWED);
         // A light that leaves the set keeps its cube until another light needs the slot,
         // so turning the camera away and back does not redraw it.
-        let wanted = |id: u64, ranked: &[(f32, usize)]| ranked.iter().any(|(_, i)| lights[*i].id == id);
+        let wanted =
+            |id: u64, ranked: &[(f32, usize)]| ranked.iter().any(|(_, i)| lights[*i].id == id);
         for &(_, index) in &self.ranked {
             let id = lights[index].id;
             let slot = match self.slot_owner.iter().position(|o| *o == Some(id)) {
@@ -270,7 +338,11 @@ impl Lights {
                         .slot_owner
                         .iter()
                         .position(Option::is_none)
-                        .or_else(|| self.slot_owner.iter().position(|o| o.is_some_and(|owner| !wanted(owner, &self.ranked))))
+                        .or_else(|| {
+                            self.slot_owner
+                                .iter()
+                                .position(|o| o.is_some_and(|owner| !wanted(owner, &self.ranked)))
+                        })
                         .expect("as many slots as ranked lights");
                     self.slot_owner[free] = Some(id);
                     free
@@ -278,23 +350,42 @@ impl Lights {
             };
             self.shadowed.push((slot, index));
         }
-        let slots_needed = self.shadowed.iter().map(|(slot, _)| slot + 1).max().unwrap_or(0);
+        let slots_needed = self
+            .shadowed
+            .iter()
+            .map(|(slot, _)| slot + 1)
+            .max()
+            .unwrap_or(0);
         if slots_needed > 0 {
             let slots = slots_needed.next_power_of_two().min(MAX_SHADOWED);
-            if self.shadows.as_ref().is_none_or(|s| s.size != shadow_size || s.slots < slots) {
+            if self
+                .shadows
+                .as_ref()
+                .is_none_or(|s| s.size != shadow_size || s.slots < slots)
+            {
                 self.shadows = Some(CubeShadows::new(device, cascade_layout, shadow_size, slots));
                 self.generation += 1;
             }
         }
 
         // The light table: rewritten when the scene's lights or the shadow slots changed.
-        let mut table_changed = self.uploaded != Some(scene_generation) || self.table.len() != lights.len();
+        let mut table_changed =
+            self.uploaded != Some(scene_generation) || self.table.len() != lights.len();
         self.table.resize(lights.len(), LightGpu::default());
         for (index, light) in lights.iter().enumerate() {
-            let slot = self.shadowed.iter().find(|(_, i)| *i == index).map_or(-1.0, |(s, _)| *s as f32);
+            let slot = self
+                .shadowed
+                .iter()
+                .find(|(_, i)| *i == index)
+                .map_or(-1.0, |(s, _)| *s as f32);
             let (direction, cutoff, exponent) = light.spot.unwrap_or(([0.0, 0.0, -1.0], -2.0, 1.0));
             let entry = LightGpu {
-                position_range: [light.position.x() as f32, light.position.y() as f32, light.position.z() as f32, light.range],
+                position_range: [
+                    light.position.x() as f32,
+                    light.position.y() as f32,
+                    light.position.z() as f32,
+                    light.range,
+                ],
                 color_decay: [light.color[0], light.color[1], light.color[2], light.decay],
                 direction_cutoff: [direction[0], direction[1], direction[2], cutoff],
                 params: [exponent, slot, MAP_UNITS_PER_METRE as f32, 0.0],
@@ -307,7 +398,8 @@ impl Lights {
         if table_changed {
             let bytes = (self.table.len() * std::mem::size_of::<LightGpu>()) as u64;
             if bytes > self.light_buffer.size() {
-                self.light_buffer = storage(device, "render_wgpu lights", bytes.next_power_of_two());
+                self.light_buffer =
+                    storage(device, "render_wgpu lights", bytes.next_power_of_two());
                 self.generation += 1;
             }
             queue.write_buffer(&self.light_buffer, 0, bytemuck::cast_slice(&self.table));
@@ -316,16 +408,30 @@ impl Lights {
 
         // Clusters. Depth slices: slice = log2(z / near) / log2(far / near) * slices.
         let near = CLUSTER_NEAR;
-        let far = lights.iter().map(|l| l.range).fold(near * 4.0, f32::max).max(near * 4.0) * 64.0;
+        let far = lights
+            .iter()
+            .map(|l| l.range)
+            .fold(near * 4.0, f32::max)
+            .max(near * 4.0)
+            * 64.0;
         let slice_scale = GRID[2] as f32 / (far / near).log2();
         let slice_bias = near.log2() * slice_scale;
-        let slice_of = |z: f32| ((z.max(near).log2() * slice_scale - slice_bias).floor().max(0.0) as u32).min(GRID[2] - 1);
+        let slice_of = |z: f32| {
+            ((z.max(near).log2() * slice_scale - slice_bias)
+                .floor()
+                .max(0.0) as u32)
+                .min(GRID[2] - 1)
+        };
         let cells = (GRID[0] * GRID[1] * GRID[2]) as usize;
         self.counts.iter_mut().for_each(|c| *c = 0);
         self.boxes.clear();
         let camera_near = near_plane(proj);
         for (index, light) in lights.iter().enumerate() {
-            let p = [light.position.x() as f32, light.position.y() as f32, light.position.z() as f32];
+            let p = [
+                light.position.x() as f32,
+                light.position.y() as f32,
+                light.position.z() as f32,
+            ];
             let r = light.range;
             if !sphere_visible(planes, p, r) {
                 continue;
@@ -342,7 +448,11 @@ impl Lights {
                 // The sphere's view-space box, projected: a conservative screen rectangle.
                 let (mut lo, mut hi) = ([f32::MAX; 2], [f32::MIN; 2]);
                 for corner in 0..8 {
-                    let q = [c[0] + if corner & 1 == 0 { -r } else { r }, c[1] + if corner & 2 == 0 { -r } else { r }, c[2] + if corner & 4 == 0 { -r } else { r }];
+                    let q = [
+                        c[0] + if corner & 1 == 0 { -r } else { r },
+                        c[1] + if corner & 2 == 0 { -r } else { r },
+                        c[2] + if corner & 4 == 0 { -r } else { r },
+                    ];
                     let clip = transform4(proj, q);
                     let w = clip[3].max(1e-4);
                     for axis in 0..2 {
@@ -354,8 +464,15 @@ impl Lights {
                     continue;
                 }
                 // NDC y up, tiles counted from the top.
-                let tile = |v: f32, n: u32| (((v * 0.5 + 0.5) * n as f32).floor().max(0.0) as u32).min(n - 1);
-                tiles = [tile(lo[0], GRID[0]), tile(-hi[1], GRID[1]), tile(hi[0], GRID[0]), tile(-lo[1], GRID[1])];
+                let tile = |v: f32, n: u32| {
+                    (((v * 0.5 + 0.5) * n as f32).floor().max(0.0) as u32).min(n - 1)
+                };
+                tiles = [
+                    tile(lo[0], GRID[0]),
+                    tile(-hi[1], GRID[1]),
+                    tile(hi[0], GRID[0]),
+                    tile(-lo[1], GRID[1]),
+                ];
             }
             let b = [tiles[0], tiles[1], s0, tiles[2], tiles[3], s1];
             for z in b[2]..=b[5] {
@@ -392,17 +509,35 @@ impl Lights {
                 }
             }
         }
-        queue.write_buffer(&self.cluster_buffer, 0, bytemuck::cast_slice(&self.clusters));
+        queue.write_buffer(
+            &self.cluster_buffer,
+            0,
+            bytemuck::cast_slice(&self.clusters),
+        );
         let bytes = (self.indices.len() * 4) as u64;
         if bytes > self.index_buffer.size() {
-            self.index_buffer = storage(device, "render_wgpu light indices", bytes.next_power_of_two());
+            self.index_buffer = storage(
+                device,
+                "render_wgpu light indices",
+                bytes.next_power_of_two(),
+            );
             self.generation += 1;
         }
         if !self.indices.is_empty() {
             queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&self.indices));
         }
-        frame.lights = [self.boxes.len() as f32, GRID[0] as f32, GRID[1] as f32, GRID[2] as f32];
-        frame.cluster = [size.0 as f32 / GRID[0] as f32, size.1 as f32 / GRID[1] as f32, slice_scale, slice_bias];
+        frame.lights = [
+            self.boxes.len() as f32,
+            GRID[0] as f32,
+            GRID[1] as f32,
+            GRID[2] as f32,
+        ];
+        frame.cluster = [
+            size.0 as f32 / GRID[0] as f32,
+            size.1 as f32 / GRID[1] as f32,
+            slice_scale,
+            slice_bias,
+        ];
         let side = self.shadows.as_ref().map_or(1, |s| s.size) as f32;
         frame.point_shadow = [side, 1.0 / side, SHADOW_NEAR, 0.0];
         frame
@@ -462,7 +597,12 @@ pub(crate) fn face_matrix(face: usize, light: [f32; 3], far: f32) -> [[f32; 4]; 
     let rows = [
         [s[0], s[1], s[2], -dot(s, light)],
         [-t[0], -t[1], -t[2], dot(t, light)],
-        [a * forward[0], a * forward[1], a * forward[2], -a * dot(forward, light) + b],
+        [
+            a * forward[0],
+            a * forward[1],
+            a * forward[2],
+            -a * dot(forward, light) + b,
+        ],
         [forward[0], forward[1], forward[2], -dot(forward, light)],
     ];
     let mut columns = [[0.0; 4]; 4];
@@ -478,14 +618,24 @@ pub(crate) fn face_matrix(face: usize, light: [f32; 3], far: f32) -> [[f32; 4]; 
 /// 54.7 degrees from its axis (the corner), so a cone whose axis is further than that
 /// plus its half-angle from the face's axis misses it.
 pub(crate) fn face_reached(face: usize, spot: Option<([f32; 3], f32, f32)>) -> bool {
-    let Some((direction, cutoff, _)) = spot else { return true };
+    let Some((direction, cutoff, _)) = spot else {
+        return true;
+    };
     let forward = FACES[face].0;
-    let angle = (direction[0] * forward[0] + direction[1] * forward[1] + direction[2] * forward[2]).clamp(-1.0, 1.0).acos();
+    let angle = (direction[0] * forward[0] + direction[1] * forward[1] + direction[2] * forward[2])
+        .clamp(-1.0, 1.0)
+        .acos();
     angle <= cutoff.clamp(-1.0, 1.0).acos() + 54.8f32.to_radians()
 }
 
 /// The cache key of a cube face: the light and the casters its frustum covers.
-pub(crate) fn face_key(light: &SceneLight, face: usize, chunks: impl Iterator<Item = ((i32, i32, i32), u64)>, hidden: u64, materials: u64) -> u64 {
+pub(crate) fn face_key(
+    light: &SceneLight,
+    face: usize,
+    chunks: impl Iterator<Item = ((i32, i32, i32), u64)>,
+    hidden: u64,
+    materials: u64,
+) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     light.id.hash(&mut hasher);
     face.hash(&mut hasher);
@@ -523,7 +673,8 @@ mod tests {
         for (face, (forward, s, t)) in FACES.iter().enumerate() {
             let m = face_matrix(face, light, far);
             // 50 units along the axis, a bit along s and t.
-            let p: [f32; 3] = std::array::from_fn(|i| light[i] + forward[i] * 50.0 + s[i] * 10.0 + t[i] * 20.0);
+            let p: [f32; 3] =
+                std::array::from_fn(|i| light[i] + forward[i] * 50.0 + s[i] * 10.0 + t[i] * 20.0);
             let clip = transform4(&m, p);
             let (x, y, z) = (clip[0] / clip[3], clip[1] / clip[3], clip[2] / clip[3]);
             assert!((x - 0.2).abs() < 1e-4, "face {face}: s {x}");
@@ -536,7 +687,16 @@ mod tests {
 
     #[test]
     fn a_downward_spot_reaches_only_the_faces_round_its_cone() {
-        let reached = |half_angle: f32| -> Vec<usize> { (0..6).filter(|&f| face_reached(f, Some(([0.0, 0.0, -1.0], half_angle.to_radians().cos(), 1.0)))).collect() };
+        let reached = |half_angle: f32| -> Vec<usize> {
+            (0..6)
+                .filter(|&f| {
+                    face_reached(
+                        f,
+                        Some(([0.0, 0.0, -1.0], half_angle.to_radians().cos(), 1.0)),
+                    )
+                })
+                .collect()
+        };
         assert_eq!(reached(30.0), vec![5]);
         assert_eq!(reached(60.0), vec![0, 1, 2, 3, 5]);
         assert!((0..6).all(|f| face_reached(f, None)));

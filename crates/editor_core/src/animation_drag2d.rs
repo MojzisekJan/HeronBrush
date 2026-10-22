@@ -19,7 +19,11 @@ fn triangle_hit(p: Vec2d, a: Vec2d, b: Vec2d, c: Vec2d) -> bool {
     if cross(b - a, c - a).abs() < 1e-8 {
         return false;
     }
-    let s = [cross(b - a, p - a), cross(c - b, p - b), cross(a - c, p - c)];
+    let s = [
+        cross(b - a, p - a),
+        cross(c - b, p - b),
+        cross(a - c, p - c),
+    ];
     s.iter().all(|x| *x >= -1e-8) || s.iter().all(|x| *x <= 1e-8)
 }
 
@@ -87,7 +91,11 @@ pub struct Turn {
 impl Turn {
     /// A turn starting at `start`, the press relative to the centre in plane units.
     pub fn new(start: Vec2d) -> Self {
-        Self { start, previous: start.y().atan2(start.x()), angle: 0.0 }
+        Self {
+            start,
+            previous: start.y().atan2(start.x()),
+            angle: 0.0,
+        }
     }
     /// The total angle in radians after the pointer moved `delta` from the press.
     pub fn update(&mut self, delta: Vec2d) -> Option<f64> {

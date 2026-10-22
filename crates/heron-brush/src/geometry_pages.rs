@@ -39,15 +39,30 @@ pub fn patch(ui: &mut egui::Ui, document: &mut Document) {
         map_model::patch_edit::remove_rows,
         map_model::patch_edit::add_rows,
     ];
-    for (row, label) in [translation_key("Columns"), translation_key("Rows")].into_iter().enumerate() {
+    for (row, label) in [translation_key("Columns"), translation_key("Rows")]
+        .into_iter()
+        .enumerate()
+    {
         ui.push_id(label, |ui| {
             widgets::row(ui, tr(label), None, |ui| {
                 ui.spacing_mut().item_spacing.x = 2.0;
                 type Icon = fn(&egui::Painter, egui::Rect, egui::Color32);
-                let buttons: [(Icon, &str); 2] = [(icons::minus, translation_key("Drop pair")), (icons::plus, translation_key("Add pair"))];
+                let buttons: [(Icon, &str); 2] = [
+                    (icons::minus, translation_key("Drop pair")),
+                    (icons::plus, translation_key("Add pair")),
+                ];
                 for (column, (icon, tip)) in buttons.into_iter().enumerate() {
                     let index = row * 2 + column;
-                    if widgets::icon_button(ui, widgets::ROW_HEIGHT, tr(tip), enabled[index], false, icon).clicked() {
+                    if widgets::icon_button(
+                        ui,
+                        widgets::ROW_HEIGHT,
+                        tr(tip),
+                        enabled[index],
+                        false,
+                        icon,
+                    )
+                    .clicked()
+                    {
                         document.resize_selected_patches(operations[index]);
                     }
                 }
@@ -107,29 +122,51 @@ impl BevelPage {
         });
         widgets::status(ui, &status);
         let tip = tr("How far the face is drawn in from its own edges");
-        if widgets::row(ui, tr("Inset"), Some(tip), |ui| widgets::spin(ui, &mut self.inset, 0.0..=1024.0, 1.0, 0).on_hover_text(tip).changed()) {
+        if widgets::row(ui, tr("Inset"), Some(tip), |ui| {
+            widgets::spin(ui, &mut self.inset, 0.0..=1024.0, 1.0, 0)
+                .on_hover_text(tip)
+                .changed()
+        }) {
             self.result = None;
         }
-        let tip = tr("How far the face is pushed out along its normal; a negative depth pulls it in");
-        if widgets::row(ui, tr("Depth"), Some(tip), |ui| widgets::spin(ui, &mut self.depth, -1024.0..=1024.0, 1.0, 0).on_hover_text(tip).changed()) {
+        let tip =
+            tr("How far the face is pushed out along its normal; a negative depth pulls it in");
+        if widgets::row(ui, tr("Depth"), Some(tip), |ui| {
+            widgets::spin(ui, &mut self.depth, -1024.0..=1024.0, 1.0, 0)
+                .on_hover_text(tip)
+                .changed()
+        }) {
             self.result = None;
         }
-        if crate::widgets::checkbox(ui, &mut self.connected_region,tr("Connected face region")).changed() {self.result=None;}
+        if crate::widgets::checkbox(ui, &mut self.connected_region, tr("Connected face region"))
+            .changed()
+        {
+            self.result = None;
+        }
         let label = if self.depth < 0.0 {
             translation_key("Cut a recess")
         } else {
             translation_key("Add panel")
         };
         let actions = [
-            (tr("Bevel faces"), "", !faces.is_empty() && (self.inset != 0.0 || self.depth != 0.0)),
+            (
+                tr("Bevel faces"),
+                "",
+                !faces.is_empty() && (self.inset != 0.0 || self.depth != 0.0),
+            ),
             (tr("Join corner"), "", true),
             (tr(label), "", !faces.is_empty() && self.depth != 0.0),
         ];
         match widgets::segmented(ui, "bevel-actions", &actions) {
             Some(0) => {
-                match document.bevel_faces_options(&faces,self.inset,self.depth,self.connected_region) {
-                    Ok(done)=>self.report(done,translation_key("No face could take that inset")),
-                    Err(error)=>self.result=Some(error),
+                match document.bevel_faces_options(
+                    &faces,
+                    self.inset,
+                    self.depth,
+                    self.connected_region,
+                ) {
+                    Ok(done) => self.report(done, translation_key("No face could take that inset")),
+                    Err(error) => self.result = Some(error),
                 }
             }
             Some(1) => self.corner_requested = true,
@@ -140,17 +177,53 @@ impl BevelPage {
             None => {}
         }
         ui.separator();
-        let mut hollow_changed=widgets::row(ui,tr("Wall thickness"),None,|ui| widgets::number_buttons(ui,&mut self.hollow_thickness,0.01..=1024.0));
-        let modes=[tr("Inward"),tr("Outward"),tr("Centered")];
-        hollow_changed|=widgets::dropdown(ui,"hollow-direction",&mut self.hollow_direction,&modes,140.0);
-        if crate::widgets::checkbox(ui, &mut self.hollow_open,tr("Open selected faces")).changed() {hollow_changed=true;if self.hollow_open {self.hollow_join=false;}}
-        if crate::widgets::checkbox(ui, &mut self.hollow_join,tr("Join convex pair")).changed() {hollow_changed=true;if self.hollow_join {self.hollow_open=false;}}
-        if hollow_changed {self.result=None;}
-        if ui.add_enabled(!self.hollow_open || !faces.is_empty(),egui::Button::new(tr("Hollow selection"))).clicked() {
-            let direction=[map_model::hollow::Direction::Inward,map_model::hollow::Direction::Outward,map_model::hollow::Direction::Centered][self.hollow_direction];
-            match document.hollow_selection_options(self.hollow_thickness,direction,if self.hollow_open {&faces} else {&[]},self.hollow_join) {
-                Ok(done)=>self.report(done,translation_key("Nothing to hollow")),
-                Err(error)=>self.result=Some(error),
+        let mut hollow_changed = widgets::row(ui, tr("Wall thickness"), None, |ui| {
+            widgets::number_buttons(ui, &mut self.hollow_thickness, 0.01..=1024.0)
+        });
+        let modes = [tr("Inward"), tr("Outward"), tr("Centered")];
+        hollow_changed |= widgets::dropdown(
+            ui,
+            "hollow-direction",
+            &mut self.hollow_direction,
+            &modes,
+            140.0,
+        );
+        if crate::widgets::checkbox(ui, &mut self.hollow_open, tr("Open selected faces")).changed()
+        {
+            hollow_changed = true;
+            if self.hollow_open {
+                self.hollow_join = false;
+            }
+        }
+        if crate::widgets::checkbox(ui, &mut self.hollow_join, tr("Join convex pair")).changed() {
+            hollow_changed = true;
+            if self.hollow_join {
+                self.hollow_open = false;
+            }
+        }
+        if hollow_changed {
+            self.result = None;
+        }
+        if ui
+            .add_enabled(
+                !self.hollow_open || !faces.is_empty(),
+                egui::Button::new(tr("Hollow selection")),
+            )
+            .clicked()
+        {
+            let direction = [
+                map_model::hollow::Direction::Inward,
+                map_model::hollow::Direction::Outward,
+                map_model::hollow::Direction::Centered,
+            ][self.hollow_direction];
+            match document.hollow_selection_options(
+                self.hollow_thickness,
+                direction,
+                if self.hollow_open { &faces } else { &[] },
+                self.hollow_join,
+            ) {
+                Ok(done) => self.report(done, translation_key("Nothing to hollow")),
+                Err(error) => self.result = Some(error),
             }
         }
     }

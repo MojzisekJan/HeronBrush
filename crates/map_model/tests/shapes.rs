@@ -2,11 +2,11 @@
 //!
 //! Checks bounds, face geometry and construction errors.
 
-use map_model::brush::Brush;
-use map_model::shapes::{self, CircleShape, ShapeError};
 use geometry_math::bbox::Bbox3d;
 use geometry_math::util::Axis;
 use geometry_math::vec::Vec3d;
+use map_model::brush::Brush;
+use map_model::shapes::{self, CircleShape, ShapeError};
 
 fn world_bounds() -> Bbox3d {
     Bbox3d::from_scalars(-16384.0, 16384.0)
@@ -147,14 +147,9 @@ fn a_cylinder_fits_inside_its_bounds() {
 #[test]
 fn a_cylinder_can_run_along_any_axis() {
     for axis in [Axis::X, Axis::Y, Axis::Z] {
-        let brush = shapes::create_cylinder(
-            &world_bounds(),
-            &bounds(),
-            edge_aligned(8),
-            axis,
-            "stone",
-        )
-        .unwrap_or_else(|e| panic!("{axis:?}: {e}"));
+        let brush =
+            shapes::create_cylinder(&world_bounds(), &bounds(), edge_aligned(8), axis, "stone")
+                .unwrap_or_else(|e| panic!("{axis:?}: {e}"));
 
         brush.geometry().check_invariant().expect("a valid mesh");
         assert_eq!(brush.geometry().face_count(), 10);
@@ -230,27 +225,23 @@ fn degenerate_bounds_make_no_arch_rather_than_an_error() {
         Bbox3d::new(Vec3d::new(-128.0, 0.0, 0.0), Vec3d::new(128.0, 0.0, 64.0)),
         Bbox3d::new(Vec3d::new(0.0, -64.0, 0.0), Vec3d::new(0.0, 64.0, 64.0)),
     ] {
-        assert!(
-            shapes::create_arch(
-                &world_bounds(),
-                &degenerate,
-                16.0,
-                edge_aligned(12),
-                Axis::X,
-                "someName",
-            )
-            .is_ok_and(|brushes| brushes.is_empty())
-        );
-        assert!(
-            shapes::create_spandrel_for_arch(
-                &world_bounds(),
-                &degenerate,
-                edge_aligned(12),
-                Axis::X,
-                "someName",
-            )
-            .is_ok_and(|brushes| brushes.is_empty())
-        );
+        assert!(shapes::create_arch(
+            &world_bounds(),
+            &degenerate,
+            16.0,
+            edge_aligned(12),
+            Axis::X,
+            "someName",
+        )
+        .is_ok_and(|brushes| brushes.is_empty()));
+        assert!(shapes::create_spandrel_for_arch(
+            &world_bounds(),
+            &degenerate,
+            edge_aligned(12),
+            Axis::X,
+            "someName",
+        )
+        .is_ok_and(|brushes| brushes.is_empty()));
     }
 }
 
@@ -432,10 +423,22 @@ fn a_shape_with_too_few_sides_is_refused() {
 fn every_shape_has_the_material_it_was_given() {
     let brushes = vec![
         shapes::create_cuboid(&world_bounds(), &bounds(), "marble").unwrap(),
-        shapes::create_cylinder(&world_bounds(), &bounds(), edge_aligned(8), Axis::Z, "marble")
-            .unwrap(),
-        shapes::create_cone(&world_bounds(), &bounds(), edge_aligned(8), Axis::Z, "marble")
-            .unwrap(),
+        shapes::create_cylinder(
+            &world_bounds(),
+            &bounds(),
+            edge_aligned(8),
+            Axis::Z,
+            "marble",
+        )
+        .unwrap(),
+        shapes::create_cone(
+            &world_bounds(),
+            &bounds(),
+            edge_aligned(8),
+            Axis::Z,
+            "marble",
+        )
+        .unwrap(),
         shapes::create_ico_sphere(&world_bounds(), &bounds(), 0, "marble").unwrap(),
         shapes::create_uv_sphere(
             &world_bounds(),
@@ -462,8 +465,7 @@ fn every_shape_has_outward_normals() {
         shapes::create_cuboid(&world_bounds(), &bounds, "stone").unwrap(),
         shapes::create_cylinder(&world_bounds(), &bounds, edge_aligned(12), Axis::Z, "stone")
             .unwrap(),
-        shapes::create_cone(&world_bounds(), &bounds, edge_aligned(12), Axis::Z, "stone")
-            .unwrap(),
+        shapes::create_cone(&world_bounds(), &bounds, edge_aligned(12), Axis::Z, "stone").unwrap(),
         shapes::create_ico_sphere(&world_bounds(), &bounds, 1, "stone").unwrap(),
     ];
 
@@ -481,36 +483,62 @@ fn every_shape_has_outward_normals() {
 
 #[test]
 fn hollow_sphere_is_closed_empty_and_has_exactly_paired_contacts() {
-    for count in [20,24,28,44,80,84,180,320] {
-        let bounds=Bbox3d::new(Vec3d::new(100.0,200.0,300.0),Vec3d::new(228.0,328.0,428.0));
-        let center=(bounds.min+bounds.max)*0.5;
-        let shell=shapes::create_hollow_sphere(&world_bounds(),&bounds,8.0,count,"stone").unwrap();
-        assert_eq!(shell.len(),count);
-        let points:Vec<_> = shell.iter().flat_map(Brush::vertex_positions).collect();
-        let hull=map_model::polyhedron::Polyhedron::from_points(&points,1e-9).unwrap();
-        let solid=Brush::from_polyhedron(hull,"stone");
-        let expected=solid.volume()*(1.0-(1.0-8.0/64.0f64).powi(3));
-        assert!((shell.iter().map(Brush::volume).sum::<f64>()-expected).abs()<expected*1e-7);
-        let mut contacts=std::collections::HashMap::new();
+    for count in [20, 24, 28, 44, 80, 84, 180, 320] {
+        let bounds = Bbox3d::new(
+            Vec3d::new(100.0, 200.0, 300.0),
+            Vec3d::new(228.0, 328.0, 428.0),
+        );
+        let center = (bounds.min + bounds.max) * 0.5;
+        let shell =
+            shapes::create_hollow_sphere(&world_bounds(), &bounds, 8.0, count, "stone").unwrap();
+        assert_eq!(shell.len(), count);
+        let points: Vec<_> = shell.iter().flat_map(Brush::vertex_positions).collect();
+        let hull = map_model::polyhedron::Polyhedron::from_points(&points, 1e-9).unwrap();
+        let solid = Brush::from_polyhedron(hull, "stone");
+        let expected = solid.volume() * (1.0 - (1.0 - 8.0 / 64.0f64).powi(3));
+        assert!((shell.iter().map(Brush::volume).sum::<f64>() - expected).abs() < expected * 1e-7);
+        let mut contacts = std::collections::HashMap::new();
         for brush in &shell {
-            assert!(brush.volume()>0.0);
+            assert!(brush.volume() > 0.0);
             assert!(!brush.contains_point(center));
-            assert_eq!(brush.faces().len(),5);
-            assert_eq!(brush.faces().iter().filter(|f|f.material_name.as_str()=="stone").count(),2);
-            for (face,polygon) in brush.geometry_faces() {
-                if face.material_name.as_str()!="skip" {continue;}
-                let mut key:Vec<_>=polygon.iter().map(|p|[
-                    (p[0]*1e6).round() as i64,(p[1]*1e6).round() as i64,(p[2]*1e6).round() as i64]).collect();
+            assert_eq!(brush.faces().len(), 5);
+            assert_eq!(
+                brush
+                    .faces()
+                    .iter()
+                    .filter(|f| f.material_name.as_str() == "stone")
+                    .count(),
+                2
+            );
+            for (face, polygon) in brush.geometry_faces() {
+                if face.material_name.as_str() != "skip" {
+                    continue;
+                }
+                let mut key: Vec<_> = polygon
+                    .iter()
+                    .map(|p| {
+                        [
+                            (p[0] * 1e6).round() as i64,
+                            (p[1] * 1e6).round() as i64,
+                            (p[2] * 1e6).round() as i64,
+                        ]
+                    })
+                    .collect();
                 key.sort();
-                *contacts.entry(key).or_insert(0usize)+=1;
+                *contacts.entry(key).or_insert(0usize) += 1;
             }
         }
-        assert_eq!(contacts.len(),shell.len()*3/2);
-        assert!(contacts.values().all(|count|*count==2),"unpaired contact leaves a hole");
-        if count<=84 {
-            for (i,brush) in shell.iter().enumerate() {
-                for other in shell.iter().skip(i+1) {
-                    assert!(map_model::csg::intersect(brush,other).is_none_or(|b|b.volume()<1e-5));
+        assert_eq!(contacts.len(), shell.len() * 3 / 2);
+        assert!(
+            contacts.values().all(|count| *count == 2),
+            "unpaired contact leaves a hole"
+        );
+        if count <= 84 {
+            for (i, brush) in shell.iter().enumerate() {
+                for other in shell.iter().skip(i + 1) {
+                    assert!(
+                        map_model::csg::intersect(brush, other).is_none_or(|b| b.volume() < 1e-5)
+                    );
                 }
             }
         }
@@ -519,16 +547,37 @@ fn hollow_sphere_is_closed_empty_and_has_exactly_paired_contacts() {
 
 #[test]
 fn hollow_sphere_validates_inputs_and_can_be_stretched() {
-    for thickness in [0.0,-1.0,32.0,64.0,f64::NAN,f64::INFINITY] {
-        assert!(shapes::create_hollow_sphere(&world_bounds(),&cube_32(),thickness,80,"stone").is_err());
+    for thickness in [0.0, -1.0, 32.0, 64.0, f64::NAN, f64::INFINITY] {
+        assert!(
+            shapes::create_hollow_sphere(&world_bounds(), &cube_32(), thickness, 80, "stone")
+                .is_err()
+        );
     }
-    for count in [0,19,21,22,23,321,324,usize::MAX] {
-        assert!(shapes::create_hollow_sphere(&world_bounds(),&cube_32(),8.0,count,"stone").is_err());
+    for count in [0, 19, 21, 22, 23, 321, 324, usize::MAX] {
+        assert!(
+            shapes::create_hollow_sphere(&world_bounds(), &cube_32(), 8.0, count, "stone").is_err()
+        );
     }
-    assert!(shapes::create_hollow_sphere(&world_bounds(),&Bbox3d::from_scalars(0.0,0.0),1.0,20,"stone").is_err());
-    let bounds=Bbox3d::new(Vec3d::zero(),Vec3d::new(64.0,128.0,256.0));
-    let brushes=shapes::create_hollow_sphere(&world_bounds(),&bounds,8.0,84,"stone").unwrap();
-    assert_eq!(brushes.len(),84);
-    assert!(brushes.iter().all(|b|!b.contains_point(Vec3d::new(32.0,64.0,128.0))));
-    assert!(shapes::create_hollow_sphere(&Bbox3d::from_scalars(-1.0,1.0),&bounds,8.0,84,"stone").is_err());
+    assert!(shapes::create_hollow_sphere(
+        &world_bounds(),
+        &Bbox3d::from_scalars(0.0, 0.0),
+        1.0,
+        20,
+        "stone"
+    )
+    .is_err());
+    let bounds = Bbox3d::new(Vec3d::zero(), Vec3d::new(64.0, 128.0, 256.0));
+    let brushes = shapes::create_hollow_sphere(&world_bounds(), &bounds, 8.0, 84, "stone").unwrap();
+    assert_eq!(brushes.len(), 84);
+    assert!(brushes
+        .iter()
+        .all(|b| !b.contains_point(Vec3d::new(32.0, 64.0, 128.0))));
+    assert!(shapes::create_hollow_sphere(
+        &Bbox3d::from_scalars(-1.0, 1.0),
+        &bounds,
+        8.0,
+        84,
+        "stone"
+    )
+    .is_err());
 }

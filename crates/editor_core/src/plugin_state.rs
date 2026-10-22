@@ -55,28 +55,42 @@ mod tests {
 }
 
 /// Settings keyed by stable plugin installation ID, independent of display names.
-pub type Settings = std::collections::BTreeMap<String, std::collections::BTreeMap<String, crate::plugin_manifest::SettingValue>>;
+pub type Settings = std::collections::BTreeMap<
+    String,
+    std::collections::BTreeMap<String, crate::plugin_manifest::SettingValue>,
+>;
 
 /// Load persisted answers. A malformed store is reported and never overwritten silently.
 pub fn load_settings(path: &Path) -> Result<Settings, String> {
     match crate::files::read(path) {
-        Ok(bytes) if bytes.len() <= 1024 * 1024 => serde_json::from_slice(&bytes).map_err(|e| format!("Cannot read plugin settings: {e}")),
+        Ok(bytes) if bytes.len() <= 1024 * 1024 => {
+            serde_json::from_slice(&bytes).map_err(|e| format!("Cannot read plugin settings: {e}"))
+        }
         Ok(_) => Err("Plugin settings store exceeds 1 MiB".into()),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Settings::new()),
         Err(e) => Err(format!("Cannot read plugin settings: {e}")),
     }
 }
 /// Save one plugin's answers while retaining other installations' settings.
-pub fn save_settings(path: &Path, id: &str, answers: &[(String, crate::plugin_manifest::SettingValue)]) -> Result<(), String> {
+pub fn save_settings(
+    path: &Path,
+    id: &str,
+    answers: &[(String, crate::plugin_manifest::SettingValue)],
+) -> Result<(), String> {
     let mut settings = load_settings(path)?;
     settings.insert(id.to_owned(), answers.iter().cloned().collect());
     let bytes = serde_json::to_vec_pretty(&settings).map_err(|e| e.to_string())?;
-    if bytes.len() > 1024 * 1024 { return Err("Plugin settings store exceeds 1 MiB".into()); }
+    if bytes.len() > 1024 * 1024 {
+        return Err("Plugin settings store exceeds 1 MiB".into());
+    }
     #[cfg(target_arch = "wasm32")]
-    { crate::files::write(path, bytes).map_err(|e| e.to_string()) }
+    {
+        crate::files::write(path, bytes).map_err(|e| e.to_string())
+    }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        std::fs::create_dir_all(path.parent().ok_or("Missing plugin settings directory")?).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(path.parent().ok_or("Missing plugin settings directory")?)
+            .map_err(|e| e.to_string())?;
         crate::godot_live::atomic_write(path, &bytes).map_err(|e| e.to_string())
     }
 }
@@ -87,16 +101,30 @@ mod settings_tests {
     use crate::plugin_manifest::SettingValue;
     #[test]
     fn answers_survive_restart_and_corrupt_files_are_retained() {
-        let dir=std::env::temp_dir().join(format!("heron-plugin-settings-{}",std::process::id()));
-        let path=dir.join("answers.json");
-        save_settings(&path,"builtin:bulk-properties",&[("value".into(),SettingValue::Text("blue".into()))]).unwrap();
-        save_settings(&path,"user:custom",&[("count".into(),SettingValue::Number(9.0))]).unwrap();
-        let restarted=load_settings(&path).unwrap();
-        assert_eq!(restarted["builtin:bulk-properties"]["value"],SettingValue::Text("blue".into()));
-        assert_eq!(restarted["user:custom"]["count"],SettingValue::Number(9.0));
-        std::fs::write(&path,"broken").unwrap();
-        assert!(save_settings(&path,"user:custom",&[]).is_err());
-        assert_eq!(std::fs::read_to_string(&path).unwrap(),"broken");
+        let dir =
+            std::env::temp_dir().join(format!("heron-plugin-settings-{}", std::process::id()));
+        let path = dir.join("answers.json");
+        save_settings(
+            &path,
+            "builtin:bulk-properties",
+            &[("value".into(), SettingValue::Text("blue".into()))],
+        )
+        .unwrap();
+        save_settings(
+            &path,
+            "user:custom",
+            &[("count".into(), SettingValue::Number(9.0))],
+        )
+        .unwrap();
+        let restarted = load_settings(&path).unwrap();
+        assert_eq!(
+            restarted["builtin:bulk-properties"]["value"],
+            SettingValue::Text("blue".into())
+        );
+        assert_eq!(restarted["user:custom"]["count"], SettingValue::Number(9.0));
+        std::fs::write(&path, "broken").unwrap();
+        assert!(save_settings(&path, "user:custom", &[]).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "broken");
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

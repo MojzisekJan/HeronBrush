@@ -11,7 +11,11 @@
 //! face changes, as the UV editor changes them, and a drag undoes in one step. Escape
 //! takes it back.
 use crate::paint_gizmo::land_on;
-use editor_core::{camera3d::Camera3d, document::{Document, FaceRef}, tool::Tool};
+use editor_core::{
+    camera3d::Camera3d,
+    document::{Document, FaceRef},
+    tool::Tool,
+};
 use eframe::egui;
 use geometry_math::vec::{self, Vec2f, Vec3d};
 use map_model::brush_face::BrushFace;
@@ -45,7 +49,10 @@ enum Grip {
     Move,
     Turn,
     /// Scales along U, along V, or both.
-    Scale { u: bool, v: bool },
+    Scale {
+        u: bool,
+        v: bool,
+    },
 }
 
 /// The face being edited, as it was when the handles were placed.
@@ -77,7 +84,12 @@ fn shows(tool: Tool) -> bool {
 impl Face {
     /// The face being edited, when it is picked, wears its material and faces the camera,
     /// outlined at the `kept` block when that is of this face.
-    fn find(document: &Document, camera: &Camera3d, rect: egui::Rect, kept: Option<Kept>) -> Option<Face> {
+    fn find(
+        document: &Document,
+        camera: &Camera3d,
+        rect: egui::Rect,
+        kept: Option<Kept>,
+    ) -> Option<Face> {
         let (reference, source) = document.face_to_edit()?;
         if source.paint().is_some() || !document.selected_edit_faces().contains(&reference) {
             return None;
@@ -96,7 +108,14 @@ impl Face {
             .map(|m| Vec2f::new(m.width as f32, m.height as f32))
             .filter(|t| t.x() > 0.0 && t.y() > 0.0)
             .unwrap_or(editor_core::commands::DEFAULT_MATERIAL_SIZE);
-        let mut face = Face { reference, source: source.clone(), polygon, centre, corner: Vec2f::zero(), size: tile };
+        let mut face = Face {
+            reference,
+            source: source.clone(),
+            polygon,
+            centre,
+            corner: Vec2f::zero(),
+            size: tile,
+        };
         match kept.filter(|k| k.face == reference) {
             Some(kept) => (face.corner, face.size) = (kept.corner, kept.size),
             None => face.place(camera, rect, tile),
@@ -108,14 +127,25 @@ impl Face {
     /// face's centre, with sides no shorter than [`SHORTEST`] and, where that allows, no
     /// longer than the face is across.
     fn place(&mut self, camera: &Camera3d, rect: egui::Rect, tile: Vec2f) {
-        let across = self.polygon.iter().filter_map(|p| screen(camera, rect, *p)).collect::<Vec<_>>();
+        let across = self
+            .polygon
+            .iter()
+            .filter_map(|p| screen(camera, rect, *p))
+            .collect::<Vec<_>>();
         let across = egui::Rect::from_points(&across).size().length();
         let middle = self.source.uv_coords(self.centre);
         let side = |count: f32| {
             let size = tile * count;
             let a = self.at(middle);
-            let (b, c) = (self.at(middle + Vec2f::new(size.x(), 0.0)), self.at(middle + Vec2f::new(0.0, size.y())));
-            match (a.and_then(|a| screen(camera, rect, a)), b.and_then(|b| screen(camera, rect, b)), c.and_then(|c| screen(camera, rect, c))) {
+            let (b, c) = (
+                self.at(middle + Vec2f::new(size.x(), 0.0)),
+                self.at(middle + Vec2f::new(0.0, size.y())),
+            );
+            match (
+                a.and_then(|a| screen(camera, rect, a)),
+                b.and_then(|b| screen(camera, rect, b)),
+                c.and_then(|c| screen(camera, rect, c)),
+            ) {
                 (Some(a), Some(b), Some(c)) => a.distance(b).min(a.distance(c)),
                 _ => SHORTEST,
             }
@@ -128,7 +158,10 @@ impl Face {
             count /= 2.0;
         }
         self.size = tile * count;
-        self.corner = Vec2f::new((middle.x() / self.size.x()).floor() * self.size.x(), (middle.y() / self.size.y()).floor() * self.size.y());
+        self.corner = Vec2f::new(
+            (middle.x() / self.size.x()).floor() * self.size.x(),
+            (middle.y() / self.size.y()).floor() * self.size.y(),
+        );
     }
 
     /// The point of the face at texel `uv`.
@@ -153,7 +186,13 @@ impl Face {
     /// The outline's corners, in order around it.
     fn outline(&self) -> [Option<Vec3d>; 4] {
         let (w, h) = (self.size.x(), self.size.y());
-        [Vec2f::zero(), Vec2f::new(w, 0.0), Vec2f::new(w, h), Vec2f::new(0.0, h)].map(|o| self.at(self.corner + o))
+        [
+            Vec2f::zero(),
+            Vec2f::new(w, 0.0),
+            Vec2f::new(w, h),
+            Vec2f::new(0.0, h),
+        ]
+        .map(|o| self.at(self.corner + o))
     }
 }
 
@@ -166,12 +205,16 @@ const GRIPS: [Grip; 5] = [
 ];
 
 fn screen(camera: &Camera3d, rect: egui::Rect, p: Vec3d) -> Option<egui::Pos2> {
-    camera.project(p, f64::from(rect.width()), f64::from(rect.height())).map(|s| egui::pos2(rect.min.x + s.x() as f32, rect.min.y + s.y() as f32))
+    camera
+        .project(p, f64::from(rect.width()), f64::from(rect.height()))
+        .map(|s| egui::pos2(rect.min.x + s.x() as f32, rect.min.y + s.y() as f32))
 }
 
 /// The angle from `a` to `b` about `normal`, in degrees.
 fn angle_about(a: Vec3d, b: Vec3d, normal: Vec3d) -> f64 {
-    vec::dot(vec::cross(a, b), normal).atan2(vec::dot(a, b)).to_degrees()
+    vec::dot(vec::cross(a, b), normal)
+        .atan2(vec::dot(a, b))
+        .to_degrees()
 }
 
 fn wrap_180(degrees: f64) -> f64 {
@@ -180,7 +223,9 @@ fn wrap_180(degrees: f64) -> f64 {
 
 /// The direction of U on `face` at texel `at`, in the world.
 fn u_direction(face: &BrushFace, at: Vec2f) -> Option<Vec3d> {
-    let point = |uv: Vec2f| map_model::uv::point_at_uv(&face.uv_coord_system, uv, &face.plane, &face.uv_attributes);
+    let point = |uv: Vec2f| {
+        map_model::uv::point_at_uv(&face.uv_coord_system, uv, &face.plane, &face.uv_attributes)
+    };
     Some(point(at + Vec2f::new(1.0, 0.0))? - point(at)?)
 }
 
@@ -189,7 +234,9 @@ fn u_direction(face: &BrushFace, at: Vec2f) -> Option<Vec3d> {
 /// the angle on a sloped face is not the angle given: a few corrections close the gap.
 fn turn_for(face: &BrushFace, pivot: Vec2f, want: f64) -> f32 {
     let normal = face.normal();
-    let Some(before) = u_direction(face, pivot) else { return want as f32 };
+    let Some(before) = u_direction(face, pivot) else {
+        return want as f32;
+    };
     let achieved = |degrees: f32| {
         let mut probe = face.clone();
         probe.rotate_uv_about(pivot, degrees);
@@ -210,7 +257,15 @@ fn turn_for(face: &BrushFace, pivot: Vec2f, want: f64) -> f32 {
 impl TextureGizmo {
     /// Follows a drag, or takes a primary press on a handle before the view would select
     /// or drag with it. Returns whether the pointer is the handles'.
-    pub fn update(&mut self, ui: &egui::Ui, rect: egui::Rect, document: &Rc<RefCell<Document>>, tool: Tool, camera: &Camera3d, hovered: bool) -> bool {
+    pub fn update(
+        &mut self,
+        ui: &egui::Ui,
+        rect: egui::Rect,
+        document: &Rc<RefCell<Document>>,
+        tool: Tool,
+        camera: &Camera3d,
+        hovered: bool,
+    ) -> bool {
         if self.drag.is_some() {
             self.follow(ui, rect, document, camera);
             return true;
@@ -218,35 +273,78 @@ impl TextureGizmo {
         if !shows(tool) || !hovered || !ui.input(|i| i.pointer.primary_pressed()) {
             return false;
         }
-        let Some(at) = ui.input(|i| i.pointer.press_origin()) else { return false };
+        let Some(at) = ui.input(|i| i.pointer.press_origin()) else {
+            return false;
+        };
         let mut document = document.borrow_mut();
-        let Some(face) = Face::find(&document, camera, rect, self.kept) else { return false };
+        let Some(face) = Face::find(&document, camera, rect, self.kept) else {
+            return false;
+        };
         let grabbed = GRIPS
             .iter()
-            .filter_map(|grip| Some((*grip, screen(camera, rect, face.at(face.uv(*grip))?)?.distance(at))))
+            .filter_map(|grip| {
+                Some((
+                    *grip,
+                    screen(camera, rect, face.at(face.uv(*grip))?)?.distance(at),
+                ))
+            })
             .filter(|(_, distance)| *distance <= GRAB)
             .min_by(|a, b| a.1.total_cmp(&b.1));
-        let Some((grip, _)) = grabbed else { return false };
+        let Some((grip, _)) = grabbed else {
+            return false;
+        };
         document.begin_transaction();
-        self.drag = Some(Drag { face, grip, origin: at, moved: false, snapped: None, note: String::new() });
+        self.drag = Some(Drag {
+            face,
+            grip,
+            origin: at,
+            moved: false,
+            snapped: None,
+            note: String::new(),
+        });
         true
     }
 
-    fn follow(&mut self, ui: &egui::Ui, rect: egui::Rect, document: &Rc<RefCell<Document>>, camera: &Camera3d) {
-        let Some(drag) = self.drag.as_mut() else { return };
+    fn follow(
+        &mut self,
+        ui: &egui::Ui,
+        rect: egui::Rect,
+        document: &Rc<RefCell<Document>>,
+        camera: &Camera3d,
+    ) {
+        let Some(drag) = self.drag.as_mut() else {
+            return;
+        };
         if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
             document.borrow_mut().cancel_transaction();
             self.drag = None;
             return;
         }
-        let (pointer, down, shift, alt) = ui.input(|i| (i.pointer.interact_pos(), i.pointer.primary_down(), i.modifiers.shift, i.modifiers.alt));
+        let (pointer, down, shift, alt) = ui.input(|i| {
+            (
+                i.pointer.interact_pos(),
+                i.pointer.primary_down(),
+                i.modifiers.shift,
+                i.modifiers.alt,
+            )
+        });
         if let Some(at) = pointer {
             drag.moved |= at.distance(drag.origin) > 3.0;
         }
         if drag.moved {
             let face = &drag.face;
             let snap = !alt && !(shift && drag.grip == Grip::Turn);
-            if let Some((point, snapped)) = pointer.and_then(|at| land_on(&face.source.plane, &face.polygon, face.centre, camera, rect, at, snap)) {
+            if let Some((point, snapped)) = pointer.and_then(|at| {
+                land_on(
+                    &face.source.plane,
+                    &face.polygon,
+                    face.centre,
+                    camera,
+                    rect,
+                    at,
+                    snap,
+                )
+            }) {
                 drag.snapped = snapped.then_some(point);
                 let (edit, note) = drag.grip.edit(face, point, shift, !alt);
                 drag.note = note;
@@ -259,23 +357,47 @@ impl TextureGizmo {
         if !down {
             document.borrow_mut().commit_transaction();
             let face = self.drag.take().expect("a drag").face;
-            self.kept = Some(Kept { face: face.reference, corner: face.corner, size: face.size });
+            self.kept = Some(Kept {
+                face: face.reference,
+                corner: face.corner,
+                size: face.size,
+            });
         }
     }
 
     /// Draws the outline and the handles over the view.
-    pub fn show(&self, ui: &egui::Ui, rect: egui::Rect, document: &Rc<RefCell<Document>>, tool: Tool, camera: &Camera3d, hidden: bool) {
+    pub fn show(
+        &self,
+        ui: &egui::Ui,
+        rect: egui::Rect,
+        document: &Rc<RefCell<Document>>,
+        tool: Tool,
+        camera: &Camera3d,
+        hidden: bool,
+    ) {
         if !shows(tool) || hidden {
             return;
         }
         // During a drag the handles follow the face as it is now, in the block they began in.
-        let kept = self.drag.as_ref().map(|d| Kept { face: d.face.reference, corner: d.face.corner, size: d.face.size }).or(self.kept);
+        let kept = self
+            .drag
+            .as_ref()
+            .map(|d| Kept {
+                face: d.face.reference,
+                corner: d.face.corner,
+                size: d.face.size,
+            })
+            .or(self.kept);
         let face = Face::find(&document.borrow(), camera, rect, kept);
         let Some(face) = face else { return };
         let painter = ui.painter_at(rect);
         let dark = egui::Stroke::new(3.0, egui::Color32::from_black_alpha(110));
         let light = egui::Stroke::new(1.25, egui::Color32::from_white_alpha(220));
-        let corners: Vec<egui::Pos2> = face.outline().iter().filter_map(|p| p.and_then(|p| screen(camera, rect, p))).collect();
+        let corners: Vec<egui::Pos2> = face
+            .outline()
+            .iter()
+            .filter_map(|p| p.and_then(|p| screen(camera, rect, p)))
+            .collect();
         if corners.len() == 4 {
             for i in 0..4 {
                 painter.line_segment([corners[i], corners[(i + 1) % 4]], dark);
@@ -288,24 +410,59 @@ impl TextureGizmo {
         let accent = crate::theme::accent();
         let outline = egui::Stroke::new(1.0, egui::Color32::from_black_alpha(160));
         for grip in GRIPS {
-            let Some(at) = face.at(face.uv(grip)).and_then(|p| screen(camera, rect, p)) else { continue };
-            let hot = self.drag.as_ref().is_some_and(|d| d.grip == grip) || (self.drag.is_none() && pointer.is_some_and(|p| p.distance(at) <= GRAB));
+            let Some(at) = face.at(face.uv(grip)).and_then(|p| screen(camera, rect, p)) else {
+                continue;
+            };
+            let hot = self.drag.as_ref().is_some_and(|d| d.grip == grip)
+                || (self.drag.is_none() && pointer.is_some_and(|p| p.distance(at) <= GRAB));
             let grow = if hot { 2.0 } else { 0.0 };
             match grip {
                 Grip::Move => {
-                    let square = egui::Rect::from_center_size(at, egui::vec2(11.0 + grow, 11.0 + grow));
-                    painter.rect_stroke(square.expand(1.0), 2.0, outline, egui::StrokeKind::Outside);
-                    painter.rect(square, 2.0, accent, egui::Stroke::new(2.0, egui::Color32::WHITE), egui::StrokeKind::Middle);
+                    let square =
+                        egui::Rect::from_center_size(at, egui::vec2(11.0 + grow, 11.0 + grow));
+                    painter.rect_stroke(
+                        square.expand(1.0),
+                        2.0,
+                        outline,
+                        egui::StrokeKind::Outside,
+                    );
+                    painter.rect(
+                        square,
+                        2.0,
+                        accent,
+                        egui::Stroke::new(2.0, egui::Color32::WHITE),
+                        egui::StrokeKind::Middle,
+                    );
                 }
                 Grip::Turn => {
                     painter.circle(at, 7.0 + grow, egui::Color32::TRANSPARENT, outline);
-                    painter.circle(at, 6.0 + grow, egui::Color32::WHITE, egui::Stroke::new(2.0, accent));
+                    painter.circle(
+                        at,
+                        6.0 + grow,
+                        egui::Color32::WHITE,
+                        egui::Stroke::new(2.0, accent),
+                    );
                 }
                 Grip::Scale { .. } => {
-                    let side = if grip == (Grip::Scale { u: true, v: true }) { 9.0 } else { 7.0 } + grow;
+                    let side = if grip == (Grip::Scale { u: true, v: true }) {
+                        9.0
+                    } else {
+                        7.0
+                    } + grow;
                     let square = egui::Rect::from_center_size(at, egui::vec2(side, side));
-                    painter.rect_stroke(square.expand(1.0), 1.0, outline, egui::StrokeKind::Outside);
-                    painter.rect(square, 1.0, egui::Color32::WHITE, egui::Stroke::new(1.5, accent), egui::StrokeKind::Middle);
+                    painter.rect_stroke(
+                        square.expand(1.0),
+                        1.0,
+                        outline,
+                        egui::StrokeKind::Outside,
+                    );
+                    painter.rect(
+                        square,
+                        1.0,
+                        egui::Color32::WHITE,
+                        egui::Stroke::new(1.5, accent),
+                        egui::StrokeKind::Middle,
+                    );
                 }
             }
         }
@@ -314,10 +471,19 @@ impl TextureGizmo {
                 painter.circle_stroke(at, 9.0, egui::Stroke::new(1.5, accent));
             }
             if let (Some(at), false) = (pointer, drag.note.is_empty()) {
-                let galley = painter.layout_no_wrap(drag.note.clone(), crate::theme::body(), egui::Color32::WHITE);
-                let place = egui::Rect::from_min_size(at + egui::vec2(14.0, 14.0), galley.size()).expand(4.0);
+                let galley = painter.layout_no_wrap(
+                    drag.note.clone(),
+                    crate::theme::body(),
+                    egui::Color32::WHITE,
+                );
+                let place = egui::Rect::from_min_size(at + egui::vec2(14.0, 14.0), galley.size())
+                    .expand(4.0);
                 painter.rect_filled(place, 4.0, egui::Color32::from_black_alpha(170));
-                painter.galley(place.min + egui::vec2(4.0, 4.0), galley, egui::Color32::WHITE);
+                painter.galley(
+                    place.min + egui::vec2(4.0, 4.0),
+                    galley,
+                    egui::Color32::WHITE,
+                );
             }
         }
     }
@@ -365,16 +531,32 @@ impl Grip {
                         delta.v[0] = 0.0;
                     }
                 }
-                (Edit::Move(delta), format!("{:+.0}, {:+.0}", -delta.x(), -delta.y()))
+                (
+                    Edit::Move(delta),
+                    format!("{:+.0}, {:+.0}", -delta.x(), -delta.y()),
+                )
             }
             Grip::Turn => {
                 let normal = source.normal();
-                let (Some(from), Some(corner)) = (face.at(face.uv(Grip::Turn)), face.at(pivot)) else {
-                    return (Edit::Turn { pivot, degrees: 0.0 }, String::new());
+                let (Some(from), Some(corner)) = (face.at(face.uv(Grip::Turn)), face.at(pivot))
+                else {
+                    return (
+                        Edit::Turn {
+                            pivot,
+                            degrees: 0.0,
+                        },
+                        String::new(),
+                    );
                 };
                 let (start, now) = (from - corner, point - corner);
                 if vec::length(now) < 1e-9 {
-                    return (Edit::Turn { pivot, degrees: 0.0 }, String::new());
+                    return (
+                        Edit::Turn {
+                            pivot,
+                            degrees: 0.0,
+                        },
+                        String::new(),
+                    );
                 }
                 let mut want = angle_about(start, now, normal);
                 if shift {
@@ -399,16 +581,32 @@ impl Grip {
                     }
                 }
                 let want = wrap_180(want);
-                (Edit::Turn { pivot, degrees: turn_for(source, pivot, want) }, format!("{want:.1}°"))
+                (
+                    Edit::Turn {
+                        pivot,
+                        degrees: turn_for(source, pivot, want),
+                    },
+                    format!("{want:.1}°"),
+                )
             }
             Grip::Scale { u, v } => {
                 let reach = face.uv(self) - pivot;
                 let now = to - pivot;
-                let ratio = |now: f32, reach: f32| if reach.abs() < 1e-6 { 1.0 } else { (now / reach).clamp(0.02, 50.0) };
-                let mut factors = Vec2f::new(if u { ratio(now.x(), reach.x()) } else { 1.0 }, if v { ratio(now.y(), reach.y()) } else { 1.0 });
+                let ratio = |now: f32, reach: f32| {
+                    if reach.abs() < 1e-6 {
+                        1.0
+                    } else {
+                        (now / reach).clamp(0.02, 50.0)
+                    }
+                };
+                let mut factors = Vec2f::new(
+                    if u { ratio(now.x(), reach.x()) } else { 1.0 },
+                    if v { ratio(now.y(), reach.y()) } else { 1.0 },
+                );
                 if u && v && shift {
                     // Even: how far along the diagonal the pointer has come.
-                    let along = (now.x() * reach.x() + now.y() * reach.y()) / (reach.x() * reach.x() + reach.y() * reach.y()).max(1e-6);
+                    let along = (now.x() * reach.x() + now.y() * reach.y())
+                        / (reach.x() * reach.x() + reach.y() * reach.y()).max(1e-6);
                     factors = Vec2f::new(along.clamp(0.02, 50.0), along.clamp(0.02, 50.0));
                 }
                 let scale = source.uv_attributes.scale * factors;
@@ -431,14 +629,33 @@ mod tests {
     /// A face on the floor, 128 units square, with the material in its default place.
     fn floor() -> Face {
         let source = BrushFace::from_points(
-            [Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(0.0, 1.0, 0.0), Vec3d::new(1.0, 0.0, 0.0)],
+            [
+                Vec3d::new(0.0, 0.0, 0.0),
+                Vec3d::new(0.0, 1.0, 0.0),
+                Vec3d::new(1.0, 0.0, 0.0),
+            ],
             "stone",
             map_model::uv::UvCoordSystem::Paraxial,
             Default::default(),
         )
         .expect("a face");
-        let polygon = vec![Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(128.0, 0.0, 0.0), Vec3d::new(128.0, 128.0, 0.0), Vec3d::new(0.0, 128.0, 0.0)];
-        Face { reference: FaceRef { node: map_model::node::NodeId(0), face: 0 }, source, polygon, centre: Vec3d::new(64.0, 64.0, 0.0), corner: Vec2f::zero(), size: Vec2f::new(64.0, 64.0) }
+        let polygon = vec![
+            Vec3d::new(0.0, 0.0, 0.0),
+            Vec3d::new(128.0, 0.0, 0.0),
+            Vec3d::new(128.0, 128.0, 0.0),
+            Vec3d::new(0.0, 128.0, 0.0),
+        ];
+        Face {
+            reference: FaceRef {
+                node: map_model::node::NodeId(0),
+                face: 0,
+            },
+            source,
+            polygon,
+            centre: Vec3d::new(64.0, 64.0, 0.0),
+            corner: Vec2f::zero(),
+            size: Vec2f::new(64.0, 64.0),
+        }
     }
 
     fn edited(face: &Face, grip: Grip, point: Vec3d, shift: bool) -> BrushFace {
@@ -480,7 +697,10 @@ mod tests {
         let far = face.at(face.uv(Grip::Scale { u: true, v: true })).unwrap();
         let point = corner + (far - corner) * 1.5;
         let after = edited(&face, Grip::Scale { u: true, v: true }, point, false);
-        assert!(near(after.uv_coords(point), face.uv(Grip::Scale { u: true, v: true })));
+        assert!(near(
+            after.uv_coords(point),
+            face.uv(Grip::Scale { u: true, v: true })
+        ));
         assert!(near(after.uv_coords(corner), face.corner));
     }
 
@@ -499,7 +719,11 @@ mod tests {
     #[test]
     fn a_turn_on_a_sloped_face_lands_on_the_angle_asked() {
         let source = BrushFace::from_points(
-            [Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(0.0, 1.0, 0.7), Vec3d::new(1.0, 0.0, 0.0)],
+            [
+                Vec3d::new(0.0, 0.0, 0.0),
+                Vec3d::new(0.0, 1.0, 0.7),
+                Vec3d::new(1.0, 0.0, 0.0),
+            ],
             "stone",
             map_model::uv::UvCoordSystem::Paraxial,
             Default::default(),

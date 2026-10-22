@@ -2,7 +2,10 @@
 
 use std::collections::BTreeMap;
 
-use expression_lang::{BoundedRange, ElError, EvaluationContext, LeftBoundedRange, Range, RightBoundedRange, Value, ValueType};
+use expression_lang::{
+    BoundedRange, ElError, EvaluationContext, LeftBoundedRange, Range, RightBoundedRange, Value,
+    ValueType,
+};
 
 fn ctx() -> EvaluationContext {
     EvaluationContext::new()
@@ -39,7 +42,10 @@ const ALL_TYPES: [ValueType; 8] = [
 ];
 
 fn convertible_types(value: &Value) -> Vec<ValueType> {
-    ALL_TYPES.into_iter().filter(|t| value.convertible_to(*t)).collect()
+    ALL_TYPES
+        .into_iter()
+        .filter(|t| value.convertible_to(*t))
+        .collect()
 }
 
 fn is_deref(r: &Result<impl std::fmt::Debug, ElError>) -> bool {
@@ -90,8 +96,14 @@ fn describe() {
     assert_eq!(Value::boolean(true).describe(), "true");
     assert_eq!(Value::string("test").describe(), r#""test""#);
     assert_eq!(Value::number(1.0).describe(), "1");
-    assert_eq!(v_arr(vec![Value::number(1.0), Value::number(2.0)]).describe(), "[1, 2]");
-    assert_eq!(v_map(vec![("key", Value::number(1.0))]).describe(), r#"{ "key": 1 }"#);
+    assert_eq!(
+        v_arr(vec![Value::number(1.0), Value::number(2.0)]).describe(),
+        "[1, 2]"
+    );
+    assert_eq!(
+        v_map(vec![("key", Value::number(1.0))]).describe(),
+        r#"{ "key": 1 }"#
+    );
 }
 
 #[test]
@@ -109,15 +121,23 @@ fn boolean_value() {
     assert!(is_deref(&Value::undefined().boolean_value(&c)));
 
     assert_eq!(
-        Value::number(1.0).boolean_value(&c).map_err(|e| e.into_message()),
-        Err("At unknown location: Cannot dereference value '1' of type 'Number' as type 'Boolean'".to_string())
+        Value::number(1.0)
+            .boolean_value(&c)
+            .map_err(|e| e.into_message()),
+        Err(
+            "At unknown location: Cannot dereference value '1' of type 'Number' as type 'Boolean'"
+                .to_string()
+        )
     );
 }
 
 #[test]
 fn string_value() {
     let c = ctx();
-    assert_eq!(Value::string("test").string_value(&c), Ok("test".to_string()));
+    assert_eq!(
+        Value::string("test").string_value(&c),
+        Ok("test".to_string())
+    );
     assert_eq!(Value::null().string_value(&c), Ok(String::new()));
 
     assert!(is_deref(&Value::boolean(true).string_value(&c)));
@@ -127,8 +147,13 @@ fn string_value() {
     assert!(is_deref(&Value::undefined().string_value(&c)));
 
     assert_eq!(
-        Value::number(1.0).string_value(&c).map_err(|e| e.into_message()),
-        Err("At unknown location: Cannot dereference value '1' of type 'Number' as type 'String'".to_string())
+        Value::number(1.0)
+            .string_value(&c)
+            .map_err(|e| e.into_message()),
+        Err(
+            "At unknown location: Cannot dereference value '1' of type 'Number' as type 'String'"
+                .to_string()
+        )
     );
 }
 
@@ -162,7 +187,10 @@ fn integer_value() {
 #[test]
 fn array_value() {
     let c = ctx();
-    assert_eq!(v_arr(vec![Value::number(1.0)]).array_value(&c), Ok(vec![Value::number(1.0)]));
+    assert_eq!(
+        v_arr(vec![Value::number(1.0)]).array_value(&c),
+        Ok(vec![Value::number(1.0)])
+    );
     assert_eq!(Value::null().array_value(&c), Ok(vec![]));
     assert!(is_deref(&Value::boolean(true).array_value(&c)));
     assert!(is_deref(&Value::string("test").array_value(&c)));
@@ -175,7 +203,9 @@ fn map_value() {
     let c = ctx();
     assert_eq!(
         v_map(vec![("key", Value::number(1.0))]).map_value(&c),
-        Ok([("key".to_string(), Value::number(1.0))].into_iter().collect())
+        Ok([("key".to_string(), Value::number(1.0))]
+            .into_iter()
+            .collect())
     );
     assert_eq!(Value::null().map_value(&c), Ok(BTreeMap::new()));
     assert!(is_deref(&Value::boolean(true).map_value(&c)));
@@ -186,9 +216,18 @@ fn map_value() {
 #[test]
 fn range_value() {
     let c = ctx();
-    assert_eq!(bounded_range().range_value(&c), Ok(Range::Bounded(BoundedRange { first: 1, last: 3 })));
-    assert_eq!(left_bounded_range().range_value(&c), Ok(Range::Left(LeftBoundedRange { first: 2 })));
-    assert_eq!(right_bounded_range().range_value(&c), Ok(Range::Right(RightBoundedRange { last: 5 })));
+    assert_eq!(
+        bounded_range().range_value(&c),
+        Ok(Range::Bounded(BoundedRange { first: 1, last: 3 }))
+    );
+    assert_eq!(
+        left_bounded_range().range_value(&c),
+        Ok(Range::Left(LeftBoundedRange { first: 2 }))
+    );
+    assert_eq!(
+        right_bounded_range().range_value(&c),
+        Ok(Range::Right(RightBoundedRange { last: 5 }))
+    );
     assert!(is_deref(&Value::boolean(true).range_value(&c)));
     assert!(is_deref(&Value::string("test").range_value(&c)));
     // unlike the other accessors, a range cannot be dereferenced from null
@@ -202,15 +241,27 @@ fn as_string_list_and_set() {
     assert_eq!(Value::array(vec![]).as_string_list(&c), Ok(vec![]));
     assert_eq!(Value::null().as_string_list(&c), Ok(vec![]));
     assert_eq!(
-        v_arr(vec![Value::string("b"), Value::string("a"), Value::string("b"), Value::null()])
-            .as_string_list(&c),
+        v_arr(vec![
+            Value::string("b"),
+            Value::string("a"),
+            Value::string("b"),
+            Value::null()
+        ])
+        .as_string_list(&c),
         Ok(vec!["b".to_string(), "a".into(), "b".into(), "".into()])
     );
-    assert!(is_deref(&v_arr(vec![Value::number(1.0)]).as_string_list(&c)));
+    assert!(is_deref(
+        &v_arr(vec![Value::number(1.0)]).as_string_list(&c)
+    ));
     assert!(is_deref(&Value::string("test").as_string_list(&c)));
 
     assert_eq!(
-        v_arr(vec![Value::string("b"), Value::string("a"), Value::string("b")]).as_string_set(&c),
+        v_arr(vec![
+            Value::string("b"),
+            Value::string("a"),
+            Value::string("b")
+        ])
+        .as_string_set(&c),
         Ok(vec!["a".to_string(), "b".into()])
     );
 }
@@ -222,7 +273,10 @@ fn length() {
     assert_eq!(Value::string("test").length(), 4);
     assert_eq!(Value::number(1.0).length(), 1);
     assert_eq!(Value::array(vec![]).length(), 0);
-    assert_eq!(v_arr(vec![Value::number(1.0), Value::number(2.0)]).length(), 2);
+    assert_eq!(
+        v_arr(vec![Value::number(1.0), Value::number(2.0)]).length(),
+        2
+    );
     assert_eq!(Value::map(BTreeMap::new()).length(), 0);
     assert_eq!(v_map(vec![("key", Value::number(1.0))]).length(), 1);
     assert_eq!(bounded_range().length(), 2);
@@ -233,15 +287,33 @@ fn length() {
 #[test]
 fn convertible_to() {
     use ValueType::*;
-    assert_eq!(convertible_types(&Value::boolean(true)), vec![Boolean, String, Number]);
-    assert_eq!(convertible_types(&Value::string("test")), vec![Boolean, String]);
-    assert_eq!(convertible_types(&Value::string("2.0")), vec![Boolean, String, Number]);
-    assert_eq!(convertible_types(&Value::string(" ")), vec![Boolean, String, Number]);
-    assert_eq!(convertible_types(&Value::number(1.0)), vec![Boolean, String, Number]);
+    assert_eq!(
+        convertible_types(&Value::boolean(true)),
+        vec![Boolean, String, Number]
+    );
+    assert_eq!(
+        convertible_types(&Value::string("test")),
+        vec![Boolean, String]
+    );
+    assert_eq!(
+        convertible_types(&Value::string("2.0")),
+        vec![Boolean, String, Number]
+    );
+    assert_eq!(
+        convertible_types(&Value::string(" ")),
+        vec![Boolean, String, Number]
+    );
+    assert_eq!(
+        convertible_types(&Value::number(1.0)),
+        vec![Boolean, String, Number]
+    );
     assert_eq!(convertible_types(&Value::array(vec![])), vec![Array]);
     assert_eq!(convertible_types(&Value::map(BTreeMap::new())), vec![Map]);
     assert_eq!(convertible_types(&bounded_range()), vec![Range]);
-    assert_eq!(convertible_types(&Value::null()), vec![Boolean, String, Number, Array, Map, Null]);
+    assert_eq!(
+        convertible_types(&Value::null()),
+        vec![Boolean, String, Number, Array, Map, Null]
+    );
     assert_eq!(convertible_types(&Value::undefined()), vec![Undefined]);
 }
 
@@ -251,9 +323,18 @@ fn convert_to() {
     let mut c = ctx();
     let mut conv = |v: Value, t: ValueType| v.convert_to(&mut c, t);
 
-    assert_eq!(conv(Value::boolean(true), Boolean), Ok(Value::boolean(true)));
-    assert_eq!(conv(Value::boolean(true), String), Ok(Value::string("true")));
-    assert_eq!(conv(Value::boolean(false), String), Ok(Value::string("false")));
+    assert_eq!(
+        conv(Value::boolean(true), Boolean),
+        Ok(Value::boolean(true))
+    );
+    assert_eq!(
+        conv(Value::boolean(true), String),
+        Ok(Value::string("true"))
+    );
+    assert_eq!(
+        conv(Value::boolean(false), String),
+        Ok(Value::string("false"))
+    );
     assert_eq!(conv(Value::boolean(true), Number), Ok(Value::integer(1)));
     assert_eq!(conv(Value::boolean(false), Number), Ok(Value::integer(0)));
     assert!(is_conv(&conv(Value::boolean(true), Array)));
@@ -262,10 +343,19 @@ fn convert_to() {
     assert!(is_conv(&conv(Value::boolean(true), Null)));
     assert!(is_conv(&conv(Value::boolean(true), Undefined)));
 
-    assert_eq!(conv(Value::string("asdf"), Boolean), Ok(Value::boolean(true)));
-    assert_eq!(conv(Value::string("false"), Boolean), Ok(Value::boolean(false)));
+    assert_eq!(
+        conv(Value::string("asdf"), Boolean),
+        Ok(Value::boolean(true))
+    );
+    assert_eq!(
+        conv(Value::string("false"), Boolean),
+        Ok(Value::boolean(false))
+    );
     assert_eq!(conv(Value::string(""), Boolean), Ok(Value::boolean(false)));
-    assert_eq!(conv(Value::string("asdf"), String), Ok(Value::string("asdf")));
+    assert_eq!(
+        conv(Value::string("asdf"), String),
+        Ok(Value::string("asdf"))
+    );
     assert_eq!(conv(Value::string("2"), Number), Ok(Value::integer(2)));
     assert_eq!(conv(Value::string("-2.0"), Number), Ok(Value::integer(-2)));
     assert_eq!(conv(Value::string(" "), Number), Ok(Value::integer(0)));
@@ -281,8 +371,14 @@ fn convert_to() {
     assert_eq!(conv(Value::integer(0), Boolean), Ok(Value::boolean(false)));
     assert_eq!(conv(Value::number(1.0), String), Ok(Value::string("1")));
     assert_eq!(conv(Value::number(-1.0), String), Ok(Value::string("-1")));
-    assert_eq!(conv(Value::number(1.1), String), Ok(Value::string("1.1000000000000001")));
-    assert_eq!(conv(Value::number(-1.1), String), Ok(Value::string("-1.1000000000000001")));
+    assert_eq!(
+        conv(Value::number(1.1), String),
+        Ok(Value::string("1.1000000000000001"))
+    );
+    assert_eq!(
+        conv(Value::number(-1.1), String),
+        Ok(Value::string("-1.1000000000000001"))
+    );
     assert_eq!(conv(Value::number(1.0), Number), Ok(Value::integer(1)));
     assert!(is_conv(&conv(Value::integer(1), Array)));
     assert!(is_conv(&conv(Value::integer(2), Map)));
@@ -297,7 +393,10 @@ fn convert_to() {
     assert!(is_conv(&conv(Value::array(vec![]), Map)));
 
     assert!(is_conv(&conv(Value::map(BTreeMap::new()), Boolean)));
-    assert_eq!(conv(Value::map(BTreeMap::new()), Map), Ok(Value::map(BTreeMap::new())));
+    assert_eq!(
+        conv(Value::map(BTreeMap::new()), Map),
+        Ok(Value::map(BTreeMap::new()))
+    );
 
     assert!(is_conv(&conv(bounded_range(), Boolean)));
     assert_eq!(conv(bounded_range(), Range), Ok(bounded_range()));
@@ -318,9 +417,18 @@ fn convert_to() {
 #[test]
 fn try_convert_to() {
     let mut c = ctx();
-    assert_eq!(Value::string("2").try_convert_to(&mut c, ValueType::Number), Ok(Some(Value::integer(2))));
-    assert_eq!(Value::string("asdf").try_convert_to(&mut c, ValueType::Number), Ok(None));
-    assert_eq!(Value::array(vec![]).try_convert_to(&mut c, ValueType::Map), Ok(None));
+    assert_eq!(
+        Value::string("2").try_convert_to(&mut c, ValueType::Number),
+        Ok(Some(Value::integer(2)))
+    );
+    assert_eq!(
+        Value::string("asdf").try_convert_to(&mut c, ValueType::Number),
+        Ok(None)
+    );
+    assert_eq!(
+        Value::array(vec![]).try_convert_to(&mut c, ValueType::Map),
+        Ok(None)
+    );
 }
 
 #[test]
@@ -334,10 +442,19 @@ fn as_string_single_line() {
     assert_eq!(Value::number(1.1).as_string(false), "1.1000000000000001");
     assert_eq!(Value::array(vec![]).as_string(false), "[]");
     assert_eq!(v_arr(vec![Value::number(1.0)]).as_string(false), "[1]");
-    assert_eq!(v_arr(vec![Value::number(1.0), Value::string("a")]).as_string(false), r#"[1, "a"]"#);
-    assert_eq!(v_arr(vec![v_arr(vec![Value::number(1.0)])]).as_string(false), "[[1]]");
+    assert_eq!(
+        v_arr(vec![Value::number(1.0), Value::string("a")]).as_string(false),
+        r#"[1, "a"]"#
+    );
+    assert_eq!(
+        v_arr(vec![v_arr(vec![Value::number(1.0)])]).as_string(false),
+        "[[1]]"
+    );
     assert_eq!(Value::map(BTreeMap::new()).as_string(false), "{}");
-    assert_eq!(v_map(vec![("a", Value::number(1.0))]).as_string(false), r#"{ "a": 1 }"#);
+    assert_eq!(
+        v_map(vec![("a", Value::number(1.0))]).as_string(false),
+        r#"{ "a": 1 }"#
+    );
     assert_eq!(
         v_map(vec![("a", Value::number(1.0)), ("b", Value::number(2.0))]).as_string(false),
         r#"{ "a": 1, "b": 2 }"#
@@ -357,8 +474,14 @@ fn as_string_single_line() {
 fn as_string_multiline() {
     assert_eq!(Value::boolean(true).as_string(true), "true");
     assert_eq!(Value::array(vec![]).as_string(true), "[]");
-    assert_eq!(v_arr(vec![Value::number(1.0), Value::number(2.0)]).as_string(true), "[\n\t1,\n\t2\n]");
-    assert_eq!(v_arr(vec![v_arr(vec![Value::number(1.0)])]).as_string(true), "[\n\t[\n\t\t1\n\t]\n]");
+    assert_eq!(
+        v_arr(vec![Value::number(1.0), Value::number(2.0)]).as_string(true),
+        "[\n\t1,\n\t2\n]"
+    );
+    assert_eq!(
+        v_arr(vec![v_arr(vec![Value::number(1.0)])]).as_string(true),
+        "[\n\t[\n\t\t1\n\t]\n]"
+    );
     assert_eq!(Value::map(BTreeMap::new()).as_string(true), "{}");
     assert_eq!(
         v_map(vec![("a", Value::number(1.0)), ("b", Value::number(2.0))]).as_string(true),
@@ -399,8 +522,14 @@ fn contains_by_index() {
 #[test]
 fn contains_by_key() {
     let c = ctx();
-    assert_eq!(v_map(vec![("a", Value::number(1.0))]).contains_key(&c, "a"), Ok(true));
-    assert_eq!(v_map(vec![("a", Value::number(1.0))]).contains_key(&c, "b"), Ok(false));
+    assert_eq!(
+        v_map(vec![("a", Value::number(1.0))]).contains_key(&c, "a"),
+        Ok(true)
+    );
+    assert_eq!(
+        v_map(vec![("a", Value::number(1.0))]).contains_key(&c, "b"),
+        Ok(false)
+    );
     assert_eq!(Value::map(BTreeMap::new()).contains_key(&c, "a"), Ok(false));
     assert_eq!(Value::null().contains_key(&c, "a"), Ok(false));
 
@@ -426,12 +555,20 @@ fn at_by_index() {
     let c = ctx();
     assert_eq!(Value::string("abc").at_index(&c, 0), Ok(Value::string("a")));
     assert_eq!(Value::string("abc").at_index(&c, 2), Ok(Value::string("c")));
-    assert!(Value::string("abc").at_index(&c, 3).unwrap_err().message().contains("out of bounds"));
+    assert!(Value::string("abc")
+        .at_index(&c, 3)
+        .unwrap_err()
+        .message()
+        .contains("out of bounds"));
 
     let array = v_arr(vec![Value::number(1.0), Value::string("a")]);
     assert_eq!(array.at_index(&c, 0), Ok(Value::number(1.0)));
     assert_eq!(array.at_index(&c, 1), Ok(Value::string("a")));
-    assert!(array.at_index(&c, 2).unwrap_err().message().contains("out of bounds"));
+    assert!(array
+        .at_index(&c, 2)
+        .unwrap_err()
+        .message()
+        .contains("out of bounds"));
 
     for v in [
         Value::map(BTreeMap::new()),
@@ -441,7 +578,11 @@ fn at_by_index() {
         Value::null(),
         Value::undefined(),
     ] {
-        assert!(v.at_index(&c, 0).unwrap_err().message().contains("not a compatible index"));
+        assert!(v
+            .at_index(&c, 0)
+            .unwrap_err()
+            .message()
+            .contains("not a compatible index"));
     }
 }
 
@@ -450,7 +591,11 @@ fn at_by_key() {
     let c = ctx();
     let map = v_map(vec![("a", Value::number(1.0))]);
     assert_eq!(map.at_key(&c, "a"), Ok(Value::number(1.0)));
-    assert!(map.at_key(&c, "b").unwrap_err().message().contains("not found in"));
+    assert!(map
+        .at_key(&c, "b")
+        .unwrap_err()
+        .message()
+        .contains("not found in"));
 
     for v in [
         Value::string("abc"),
@@ -461,21 +606,43 @@ fn at_by_key() {
         Value::null(),
         Value::undefined(),
     ] {
-        assert!(v.at_key(&c, "a").unwrap_err().message().contains("not a compatible index"));
+        assert!(v
+            .at_key(&c, "a")
+            .unwrap_err()
+            .message()
+            .contains("not a compatible index"));
     }
 }
 
 #[test]
 fn at_or_default_by_index() {
     let c = ctx();
-    assert_eq!(Value::string("abc").at_or_default_index(&c, 0, Value::null()), Ok(Value::string("a")));
-    assert_eq!(Value::string("abc").at_or_default_index(&c, 3, Value::null()), Ok(Value::null()));
-    assert_eq!(Value::string("abc").at_or_default_index(&c, 3, Value::string("x")), Ok(Value::string("x")));
+    assert_eq!(
+        Value::string("abc").at_or_default_index(&c, 0, Value::null()),
+        Ok(Value::string("a"))
+    );
+    assert_eq!(
+        Value::string("abc").at_or_default_index(&c, 3, Value::null()),
+        Ok(Value::null())
+    );
+    assert_eq!(
+        Value::string("abc").at_or_default_index(&c, 3, Value::string("x")),
+        Ok(Value::string("x"))
+    );
 
     let array = v_arr(vec![Value::number(1.0)]);
-    assert_eq!(array.at_or_default_index(&c, 0, Value::null()), Ok(Value::number(1.0)));
-    assert_eq!(array.at_or_default_index(&c, 1, Value::null()), Ok(Value::null()));
-    assert_eq!(array.at_or_default_index(&c, 1, Value::string("x")), Ok(Value::string("x")));
+    assert_eq!(
+        array.at_or_default_index(&c, 0, Value::null()),
+        Ok(Value::number(1.0))
+    );
+    assert_eq!(
+        array.at_or_default_index(&c, 1, Value::null()),
+        Ok(Value::null())
+    );
+    assert_eq!(
+        array.at_or_default_index(&c, 1, Value::string("x")),
+        Ok(Value::string("x"))
+    );
 
     for v in [
         Value::map(BTreeMap::new()),
@@ -493,9 +660,18 @@ fn at_or_default_by_index() {
 fn at_or_default_by_key() {
     let c = ctx();
     let map = v_map(vec![("a", Value::number(1.0))]);
-    assert_eq!(map.at_or_default_key(&c, "a", Value::null()), Ok(Value::number(1.0)));
-    assert_eq!(map.at_or_default_key(&c, "b", Value::null()), Ok(Value::null()));
-    assert_eq!(map.at_or_default_key(&c, "b", Value::string("x")), Ok(Value::string("x")));
+    assert_eq!(
+        map.at_or_default_key(&c, "a", Value::null()),
+        Ok(Value::number(1.0))
+    );
+    assert_eq!(
+        map.at_or_default_key(&c, "b", Value::null()),
+        Ok(Value::null())
+    );
+    assert_eq!(
+        map.at_or_default_key(&c, "b", Value::string("x")),
+        Ok(Value::string("x"))
+    );
 
     for v in [
         Value::string("abc"),
@@ -518,11 +694,23 @@ fn equality() {
     assert_ne!(Value::string("a"), Value::string("b"));
     assert_eq!(Value::number(1.0), Value::number(1.0));
     assert_ne!(Value::number(1.0), Value::number(2.0));
-    assert_eq!(v_arr(vec![Value::number(1.0)]), v_arr(vec![Value::number(1.0)]));
+    assert_eq!(
+        v_arr(vec![Value::number(1.0)]),
+        v_arr(vec![Value::number(1.0)])
+    );
     assert_ne!(v_arr(vec![Value::number(1.0)]), Value::array(vec![]));
-    assert_eq!(v_map(vec![("a", Value::number(1.0))]), v_map(vec![("a", Value::number(1.0))]));
-    assert_ne!(v_map(vec![("a", Value::number(1.0))]), Value::map(BTreeMap::new()));
-    assert_eq!(bounded_range(), Value::range(Range::Bounded(BoundedRange { first: 1, last: 3 })));
+    assert_eq!(
+        v_map(vec![("a", Value::number(1.0))]),
+        v_map(vec![("a", Value::number(1.0))])
+    );
+    assert_ne!(
+        v_map(vec![("a", Value::number(1.0))]),
+        Value::map(BTreeMap::new())
+    );
+    assert_eq!(
+        bounded_range(),
+        Value::range(Range::Bounded(BoundedRange { first: 1, last: 3 }))
+    );
     assert_ne!(bounded_range(), left_bounded_range());
     assert_eq!(Value::null(), Value::null());
     assert_eq!(Value::undefined(), Value::undefined());
@@ -538,5 +726,8 @@ fn equality() {
 
 #[test]
 fn display_is_multiline() {
-    assert_eq!(format!("{}", v_arr(vec![Value::number(1.0), Value::number(2.0)])), "[\n\t1,\n\t2\n]");
+    assert_eq!(
+        format!("{}", v_arr(vec![Value::number(1.0), Value::number(2.0)])),
+        "[\n\t1,\n\t2\n]"
+    );
 }

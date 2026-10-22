@@ -7,27 +7,27 @@ mod clipboard;
 mod corner_join;
 pub use corner_join::CornerDraft;
 mod animation_wireframe;
-mod omit_faces;
-mod entities;
-mod geometry;
 mod diagnostics;
-mod imported_models;
+mod entities;
 mod export_snapshot;
+mod geometry;
+mod imported_models;
+mod omit_faces;
 pub use export_snapshot::ExportSnapshot;
 mod groups;
 mod history;
 mod layers;
 mod links;
 pub use links::{EntityGraph, GraphEdge, GraphNode};
+mod array;
 mod light_marker;
 mod materials;
 mod scene_lights;
+mod sculpt;
 mod selection;
 mod shape_preview;
-mod array;
-mod sculpt;
-pub use sculpt::{SculptStroke, MAX_COLUMNS};
 pub use array::{array_transforms, ArrayKind, ArrayParameters, MAX_COPIES as MAX_ARRAY_COPIES};
+pub use sculpt::{SculptStroke, MAX_COLUMNS};
 mod surfaces;
 pub use surfaces::{NodeSurface, SurfaceCache};
 mod tags;
@@ -41,23 +41,23 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
+use geometry_math::bbox::Bbox3d;
+use geometry_math::mat::Mat4x4d;
+use geometry_math::mat_ext;
+use geometry_math::plane::Plane3d;
+use geometry_math::ray::Ray3d;
+use geometry_math::scalar::{self, Float};
+use geometry_math::util::Axis;
+use geometry_math::vec::{self, Vec2f, Vec3d};
+use map_model::brush::Brush;
+use map_model::csg;
 use map_model::io::map_reader::{read_map, MapFile};
 use map_model::io::map_writer::write_map;
 use map_model::map_format::MapFormat;
-use map_model::brush::Brush;
-use map_model::csg;
-use geometry_math::mat::Mat4x4d;
-use geometry_math::mat_ext;
-use geometry_math::scalar::{self, Float};
-use geometry_math::util::Axis;
+use map_model::material::MaterialCollection;
 use map_model::node::{self, remove_nodes, EntityNode, Group, Node, NodeId, NodeKind, Tree};
 use map_model::pick;
-use map_model::material::MaterialCollection;
 use map_model::polyhedron::Polyhedron;
-use geometry_math::bbox::Bbox3d;
-use geometry_math::plane::Plane3d;
-use geometry_math::ray::Ray3d;
-use geometry_math::vec::{self, Vec2f, Vec3d};
 
 use crate::history::{Edit, History};
 
@@ -83,7 +83,13 @@ pub struct SelectionSnapshot {
 /// Consecutive live paint changes share one undo entry until another edit intervenes.
 #[derive(Default)]
 pub struct LivePaint {
-    state: Option<(u64, usize, SelectionSnapshot, Vec<FaceRef>, web_time::Instant)>,
+    state: Option<(
+        u64,
+        usize,
+        SelectionSnapshot,
+        Vec<FaceRef>,
+        web_time::Instant,
+    )>,
 }
 
 /// One held-button material stroke, with a fixed material and one Undo step.
@@ -266,7 +272,7 @@ pub struct Document {
     ///
     /// `EntityModelManager`. See [`crate::entity_models`].
     model_store: crate::entity_models::ModelStore,
-    game_asset_key: Option<(String,String,String)>,
+    game_asset_key: Option<(String, String, String)>,
     game_materials: Vec<map_model::material::Material>,
     game_asset_warnings: Vec<String>,
     /// The model each class is drawn as, by classname, once it has been loaded.
@@ -338,7 +344,10 @@ pub struct Document {
     /// Kept so the export can hand the same file to the builder, which reads it with its
     /// own reader: what an entity becomes in an engine is what its class says it is.
     definitions_path: Option<PathBuf>,
-    pub(crate) export_classes_override: Option<(scene_export::indexmap::IndexMap<String, scene_export::fgd::EntityClass>, Vec<String>)>,
+    pub(crate) export_classes_override: Option<(
+        scene_export::indexmap::IndexMap<String, scene_export::fgd::EntityClass>,
+        Vec<String>,
+    )>,
     /// What was selected before the selection was last emptied.
     ///
     /// New geometry is sized against this when nothing is selected, so drawing a run of
@@ -457,7 +466,13 @@ fn fold_contents(children: &[Node], selection: &HashSet<NodeId>) -> Contents {
             }
         }
     }
-    let mut out = Contents { bounds: None, members: 0, all_selected: true, brushes: 0, brushes_selected: true };
+    let mut out = Contents {
+        bounds: None,
+        members: 0,
+        all_selected: true,
+        brushes: 0,
+        brushes_selected: true,
+    };
     walk(children, selection, &mut out);
     out
 }
@@ -531,14 +546,62 @@ fn box_triangles(
     // Each face as its four corners in order, and the way it faces.
     let faces = [
         // -X, +X
-        ([corner(false, false, false), corner(false, false, true), corner(false, true, true), corner(false, true, false)], Vec3d::new(-1.0, 0.0, 0.0)),
-        ([corner(true, false, false), corner(true, true, false), corner(true, true, true), corner(true, false, true)], Vec3d::new(1.0, 0.0, 0.0)),
+        (
+            [
+                corner(false, false, false),
+                corner(false, false, true),
+                corner(false, true, true),
+                corner(false, true, false),
+            ],
+            Vec3d::new(-1.0, 0.0, 0.0),
+        ),
+        (
+            [
+                corner(true, false, false),
+                corner(true, true, false),
+                corner(true, true, true),
+                corner(true, false, true),
+            ],
+            Vec3d::new(1.0, 0.0, 0.0),
+        ),
         // -Y, +Y
-        ([corner(false, false, false), corner(true, false, false), corner(true, false, true), corner(false, false, true)], Vec3d::new(0.0, -1.0, 0.0)),
-        ([corner(false, true, false), corner(false, true, true), corner(true, true, true), corner(true, true, false)], Vec3d::new(0.0, 1.0, 0.0)),
+        (
+            [
+                corner(false, false, false),
+                corner(true, false, false),
+                corner(true, false, true),
+                corner(false, false, true),
+            ],
+            Vec3d::new(0.0, -1.0, 0.0),
+        ),
+        (
+            [
+                corner(false, true, false),
+                corner(false, true, true),
+                corner(true, true, true),
+                corner(true, true, false),
+            ],
+            Vec3d::new(0.0, 1.0, 0.0),
+        ),
         // -Z, +Z
-        ([corner(false, false, false), corner(false, true, false), corner(true, true, false), corner(true, false, false)], Vec3d::new(0.0, 0.0, -1.0)),
-        ([corner(false, false, true), corner(true, false, true), corner(true, true, true), corner(false, true, true)], Vec3d::new(0.0, 0.0, 1.0)),
+        (
+            [
+                corner(false, false, false),
+                corner(false, true, false),
+                corner(true, true, false),
+                corner(true, false, false),
+            ],
+            Vec3d::new(0.0, 0.0, -1.0),
+        ),
+        (
+            [
+                corner(false, false, true),
+                corner(true, false, true),
+                corner(true, true, true),
+                corner(false, true, true),
+            ],
+            Vec3d::new(0.0, 0.0, 1.0),
+        ),
     ];
 
     let mut triangles = Vec::with_capacity(12);
@@ -597,7 +660,11 @@ fn model_triangles(
     // The model matrix is translation * rotation * scale: scale in model space, rotate, then place
     // at the entity origin.
     let place = |point: Vec3d| {
-        let point = Vec3d::new(point.x() * scale.x(), point.y() * scale.y(), point.z() * scale.z());
+        let point = Vec3d::new(
+            point.x() * scale.x(),
+            point.y() * scale.y(),
+            point.z() * scale.z(),
+        );
         Vec3d::new(
             point.x() * cos - point.y() * sin,
             point.x() * sin + point.y() * cos,
@@ -614,16 +681,23 @@ fn model_triangles(
                 place(triangle.positions[1]),
                 place(triangle.positions[2]),
             ];
-            let normal = geometry_math::vec::cross(positions[1] - positions[0], positions[2] - positions[0]);
+            let normal =
+                geometry_math::vec::cross(positions[1] - positions[0], positions[2] - positions[0]);
             // A triangle with no area has no normal and nothing to draw.
             if geometry_math::vec::length(normal) < 1e-9 {
                 return None;
             }
             Some(Triangle {
-                corner_normals: triangle.normals.map(|normals| normals.map(|n| {
-                    let n = Vec3d::new(n.x()/scale.x(), n.y()/scale.y(), n.z()/scale.z());
-                    geometry_math::vec::normalize(Vec3d::new(n.x()*cos-n.y()*sin, n.x()*sin+n.y()*cos, n.z()))
-                })),
+                corner_normals: triangle.normals.map(|normals| {
+                    normals.map(|n| {
+                        let n = Vec3d::new(n.x() / scale.x(), n.y() / scale.y(), n.z() / scale.z());
+                        geometry_math::vec::normalize(Vec3d::new(
+                            n.x() * cos - n.y() * sin,
+                            n.x() * sin + n.y() * cos,
+                            n.z(),
+                        ))
+                    })
+                }),
                 surface_material: None,
                 positions,
                 normal: geometry_math::vec::normalize(normal),
@@ -819,10 +893,7 @@ fn preserve_protected_properties(rebuilt: &mut [Node], corresponding: &[Node]) {
                 preserve_entity_protected_properties(rebuilt_entity, corr_entity);
             }
             (NodeKind::Group(rebuilt_group), NodeKind::Group(corr_group)) => {
-                preserve_protected_properties(
-                    &mut rebuilt_group.children,
-                    &corr_group.children,
-                );
+                preserve_protected_properties(&mut rebuilt_group.children, &corr_group.children);
             }
             _ => {}
         }
@@ -952,7 +1023,7 @@ fn touched_ids(edit: &Edit) -> HashSet<NodeId> {
             Edit::Added { nodes, .. } | Edit::Removed { nodes, .. } => {
                 nodes.iter().for_each(|n| add_ids_under(n, out));
             }
-            Edit::Reordered { .. } => {},
+            Edit::Reordered { .. } => {}
             Edit::Batch(parts) => parts.iter().for_each(|p| walk(p, out)),
         }
     }
@@ -1013,7 +1084,8 @@ impl LinkKeys {
 
     /// The key without its trailing number: `target2` links the same way `target` does.
     fn base(key: &str) -> String {
-        key.trim_end_matches(|c: char| c.is_ascii_digit()).to_string()
+        key.trim_end_matches(|c: char| c.is_ascii_digit())
+            .to_string()
     }
 }
 
@@ -1164,8 +1236,11 @@ impl std::error::Error for OpenError {
 }
 
 impl Document {
-    pub fn animation_path(&self,pose:&crate::animation_pose::Pose)->std::rc::Rc<Option<crate::animation_path::Path>> {
-        self.animation_path.borrow_mut().get(self.revision(),pose)
+    pub fn animation_path(
+        &self,
+        pose: &crate::animation_pose::Pose,
+    ) -> std::rc::Rc<Option<crate::animation_path::Path>> {
+        self.animation_path.borrow_mut().get(self.revision(), pose)
     }
 
     /// Creates an empty document.
@@ -1184,7 +1259,11 @@ impl Document {
         if !document.restore_material_paths(&source, path) {
             if let Some(textures) = crate::document_setup::project_material_directory(path) {
                 match document.load_materials(&textures) {
-                    Ok(warnings) => for warning in warnings { crate::complain!("materials: {warning}"); },
+                    Ok(warnings) => {
+                        for warning in warnings {
+                            crate::complain!("materials: {warning}");
+                        }
+                    }
                     Err(error) => crate::complain!("{}: {error}", textures.display()),
                 }
             }
@@ -1217,7 +1296,16 @@ impl Document {
         format: MapFormat,
         game: Option<String>,
     ) -> Self {
-        Self::from_tree(node::Tree { world, warnings: Vec::new() }, bounds, format, game, None)
+        Self::from_tree(
+            node::Tree {
+                world,
+                warnings: Vec::new(),
+            },
+            bounds,
+            format,
+            game,
+            None,
+        )
     }
 
     fn from_tree(
@@ -1313,8 +1401,10 @@ impl Document {
     /// The drawing and the issue browser ask this the same question, so a map cannot show
     /// a link the validator does not know about, or the other way round.
     pub fn link_keys(&self) -> LinkKeys {
-        let mut targets: std::collections::HashSet<String> =
-            ["target", "killtarget"].iter().map(|key| key.to_string()).collect();
+        let mut targets: std::collections::HashSet<String> = ["target", "killtarget"]
+            .iter()
+            .map(|key| key.to_string())
+            .collect();
         let mut sources: std::collections::HashSet<String> =
             std::iter::once("targetname".to_string()).collect();
         if let Some(definitions) = self.definitions() {
@@ -1351,7 +1441,9 @@ impl Document {
                 let origin = entity.origin().or_else(|| {
                     // A brush entity has no origin of its own; the middle of its brushes
                     // is where a link to it should point.
-                    fold_contents(&entity.children, &self.selection).bounds.map(|bounds| bounds.center())
+                    fold_contents(&entity.children, &self.selection)
+                        .bounds
+                        .map(|bounds| bounds.center())
                 })?;
                 Some((*id, origin, None))
             })
@@ -1376,8 +1468,12 @@ impl Document {
         // reach is a question about the whole graph rather than about one link.
         let mut pairs: Vec<(NodeId, NodeId, Vec3d, Vec3d, &str, &str)> = Vec::new();
         // Looked up by id rather than searched for, once per entity and per target.
-        let position_of: HashMap<NodeId, Vec3d> = positions.iter().map(|(id, at, _)| (*id, *at)).collect();
-        let names_of: HashMap<NodeId, &[&str]> = names.iter().map(|(id, held)| (*id, held.as_slice())).collect();
+        let position_of: HashMap<NodeId, Vec3d> =
+            positions.iter().map(|(id, at, _)| (*id, *at)).collect();
+        let names_of: HashMap<NodeId, &[&str]> = names
+            .iter()
+            .map(|(id, held)| (*id, held.as_slice()))
+            .collect();
         for (id, entity) in &entities {
             let Some(from) = position_of.get(id) else {
                 continue;
@@ -1462,16 +1558,20 @@ impl Document {
             .and_then(|(_, group)| group.linked_group_id.clone())?;
 
         let centre = |group: &node::Group| -> Option<Vec3d> {
-            fold_contents(&group.children, &self.selection).bounds.map(|bounds| bounds.center())
+            fold_contents(&group.children, &self.selection)
+                .bounds
+                .map(|bounds| bounds.center())
         };
 
-        let from = groups.iter().find(|(id, _)| *id == subject).and_then(|(_, group)| centre(group))?;
+        let from = groups
+            .iter()
+            .find(|(id, _)| *id == subject)
+            .and_then(|(_, group)| centre(group))?;
         Some(
             groups
                 .iter()
                 .filter(|(id, group)| {
-                    *id != subject
-                        && group.linked_group_id.as_deref() == Some(link_id.as_str())
+                    *id != subject && group.linked_group_id.as_deref() == Some(link_id.as_str())
                 })
                 .filter_map(|(_, group)| centre(group).map(|to| (from, to)))
                 .collect(),
@@ -1542,8 +1642,7 @@ impl Document {
         if self.is_hidden(id) {
             return false;
         }
-        if !node::layer_of(&self.tree.world, id)
-            .is_some_and(|layer| self.layer_is_editable(layer))
+        if !node::layer_of(&self.tree.world, id).is_some_and(|layer| self.layer_is_editable(layer))
         {
             return false;
         }
@@ -1554,7 +1653,12 @@ impl Document {
     /// is [`Document::open_group_contents`], gathered once by the caller. Asking
     /// `is_editable` of every node walked the tree for each one's layer, which made
     /// Select All on a big map take seconds.
-    pub(super) fn is_editable_on(&self, id: NodeId, layer: usize, open: &Option<HashSet<NodeId>>) -> bool {
+    pub(super) fn is_editable_on(
+        &self,
+        id: NodeId,
+        layer: usize,
+        open: &Option<HashSet<NodeId>>,
+    ) -> bool {
         !self.is_hidden(id)
             && self.layer_is_editable(layer)
             && open.as_ref().is_none_or(|inside| inside.contains(&id))
@@ -1564,7 +1668,9 @@ impl Document {
     /// open: what [`Document::inside_open_group`] asks, gathered for many questions.
     pub(super) fn open_group_contents(&self) -> Option<HashSet<NodeId>> {
         self.open_group.map(|open| {
-            let mut inside: HashSet<NodeId> = node::contents_of(&self.tree.world, open).into_iter().collect();
+            let mut inside: HashSet<NodeId> = node::contents_of(&self.tree.world, open)
+                .into_iter()
+                .collect();
             inside.insert(open);
             inside
         })
@@ -1717,7 +1823,11 @@ impl Document {
     fn model_of(
         &self,
         node: NodeId,
-    ) -> Option<(std::rc::Rc<map_model::entity_model::EntityModel>, Vec<Option<usize>>, Vec3d)> {
+    ) -> Option<(
+        std::rc::Rc<map_model::entity_model::EntityModel>,
+        Vec<Option<usize>>,
+        Vec3d,
+    )> {
         match &node::find_node(&self.tree.world, node)?.kind {
             NodeKind::Entity(entity) => self.model_of_entity(entity),
             _ => None,
@@ -1728,11 +1838,22 @@ impl Document {
     fn model_of_entity(
         &self,
         entity: &EntityNode,
-    ) -> Option<(std::rc::Rc<map_model::entity_model::EntityModel>, Vec<Option<usize>>, Vec3d)> {
+    ) -> Option<(
+        std::rc::Rc<map_model::entity_model::EntityModel>,
+        Vec<Option<usize>>,
+        Vec3d,
+    )> {
         if let Some(model) = self.imported_model(entity) {
-            let named = self.imported_model_path(entity)?.to_string_lossy().into_owned();
-            let material = model.skins().enumerate().map(|(i, _)| self.materials.index_of(&Self::model_skin_name(&named, i))).collect();
-            return Some((model, material, Vec3d::new(1.0,1.0,1.0)));
+            let named = self
+                .imported_model_path(entity)?
+                .to_string_lossy()
+                .into_owned();
+            let material = model
+                .skins()
+                .enumerate()
+                .map(|(i, _)| self.materials.index_of(&Self::model_skin_name(&named, i)))
+                .collect();
+            return Some((model, material, Vec3d::new(1.0, 1.0, 1.0)));
         }
         let classname = entity.classname()?;
         let model = self.models.get(classname)?.clone();
@@ -1744,7 +1865,11 @@ impl Document {
             .ok()
             .map(|spec| spec.path.to_string_lossy().into_owned())
             .filter(|path| !path.is_empty())?;
-        let material = model.skins().enumerate().map(|(i, _)| self.materials.index_of(&Self::model_skin_name(&named, i))).collect();
+        let material = model
+            .skins()
+            .enumerate()
+            .map(|(i, _)| self.materials.index_of(&Self::model_skin_name(&named, i)))
+            .collect();
         // A `model({ …, scale: … })` or a class that scales its model by a property; the
         // game configuration's own default scale expression is not plumbed here yet.
         let scale = definition.resolve_scale(&entity.properties, None);
@@ -1757,7 +1882,8 @@ impl Document {
     /// with that property, and so what the editor has to do to show where a monster will
     /// be looking.
     fn entity_placement(&self, node: NodeId) -> (Vec3d, f64) {
-        let Some(NodeKind::Entity(entity)) = node::find_node(&self.tree.world, node).map(|n| &n.kind)
+        let Some(NodeKind::Entity(entity)) =
+            node::find_node(&self.tree.world, node).map(|n| &n.kind)
         else {
             return (Vec3d::zero(), 0.0);
         };
@@ -1769,7 +1895,9 @@ impl Document {
         let origin = entity.origin().unwrap_or_else(Vec3d::zero);
         // `angle` is degrees about Z; the two negative values Quake gives it mean straight
         // up and straight down, which a model in an editor is not turned by.
-        if entity.property("_heron_model").is_some() { return (origin,0.0); }
+        if entity.property("_heron_model").is_some() {
+            return (origin, 0.0);
+        }
         let angle = entity
             .property("angle")
             .and_then(|value| value.trim().parse::<f64>().ok())
@@ -1789,17 +1917,35 @@ impl Document {
     }
 
     fn model_skin_name(named: &str, index: usize) -> String {
-        if index == 0 { Self::model_material_name(named) } else { format!("#model/{named}#skin/{index}") }
+        if index == 0 {
+            Self::model_material_name(named)
+        } else {
+            format!("#model/{named}#skin/{index}")
+        }
     }
 
     fn register_model_skins(&mut self, named: &str, model: &map_model::entity_model::EntityModel) {
         for (index, skin) in model.skins().enumerate() {
             let material = Self::model_skin_name(named, index);
             if self.materials.get(&material).is_none() {
-                let mut loaded = map_model::material::Material::rgba(material, PathBuf::from(named), skin.width, skin.height, skin.pixels.clone());
+                let mut loaded = map_model::material::Material::rgba(
+                    material,
+                    PathBuf::from(named),
+                    skin.width,
+                    skin.height,
+                    skin.pixels.clone(),
+                );
                 if let Some(pbr) = model.pbr_at(index) {
                     loaded.model_pbr = Some(std::sync::Arc::new(pbr.clone()));
-                    loaded.normal_map = pbr.normal.as_ref().map(|n| map_model::material::NormalMap::rgba(PathBuf::from(named), n.width, n.height, n.pixels.clone(), false));
+                    loaded.normal_map = pbr.normal.as_ref().map(|n| {
+                        map_model::material::NormalMap::rgba(
+                            PathBuf::from(named),
+                            n.width,
+                            n.height,
+                            n.pixels.clone(),
+                            false,
+                        )
+                    });
                 }
                 self.materials.insert(loaded);
                 self.materials_revision = self.materials_revision.wrapping_add(1);
@@ -1841,18 +1987,31 @@ impl Document {
 
         // Built-in symbols are fallbacks; project models and sprites take precedence.
         self.sprites.clear();
-        self.models.retain(|key,_|key.starts_with("#import/"));
+        self.models.retain(|key, _| key.starts_with("#import/"));
         let has_points = !node::point_entities_by_layer(&self.tree.world).is_empty();
         for definition in definitions.all() {
-            if !has_points || definition.name == "light" || definition.kind != map_model::fgd::DefinitionKind::Point || definition.model.is_some()
-                || crate::entity_icons::kind(&definition.name).is_none() { continue; }
+            if !has_points
+                || definition.name == "light"
+                || definition.kind != map_model::fgd::DefinitionKind::Point
+                || definition.model.is_some()
+                || crate::entity_icons::kind(&definition.name).is_none()
+            {
+                continue;
+            }
             let material = format!("{BUILTIN_SPRITE_PREFIX}{}", definition.name);
             if self.materials.get(&material).is_none() {
                 let sprite = crate::entity_icons::sprite(&definition.name);
-                self.materials.insert(map_model::material::Material::rgba(material.clone(), std::path::PathBuf::new(), sprite.width, sprite.height, sprite.pixels));
+                self.materials.insert(map_model::material::Material::rgba(
+                    material.clone(),
+                    std::path::PathBuf::new(),
+                    sprite.width,
+                    sprite.height,
+                    sprite.pixels,
+                ));
                 self.materials_revision = self.materials_revision.wrapping_add(1);
             }
-            self.sprites.insert(definition.name.clone(), (material, 48, 48));
+            self.sprites
+                .insert(definition.name.clone(), (material, 48, 48));
         }
 
         for (classname, named) in wanted {
@@ -1862,7 +2021,13 @@ impl Document {
                 };
                 let material = Self::model_material_name(&named);
                 if self.materials.get(&material).is_none() {
-                    self.materials.insert(map_model::material::Material::rgba(material.clone(), std::path::PathBuf::from(&named), sprite.width, sprite.height, sprite.pixels.clone()));
+                    self.materials.insert(map_model::material::Material::rgba(
+                        material.clone(),
+                        std::path::PathBuf::from(&named),
+                        sprite.width,
+                        sprite.height,
+                        sprite.pixels.clone(),
+                    ));
                     self.materials_revision = self.materials_revision.wrapping_add(1);
                 }
                 self.sprites
@@ -1892,11 +2057,15 @@ impl Document {
             if !self.node_is_drawn(id, layer) {
                 continue;
             }
-            let Some(classname) = entity.classname() else { continue };
+            let Some(classname) = entity.classname() else {
+                continue;
+            };
             let Some((material, width, height)) = self.sprites.get(classname) else {
                 continue;
             };
-            let Some(origin) = entity.origin() else { continue };
+            let Some(origin) = entity.origin() else {
+                continue;
+            };
             let Some(material_index) = self.materials.index_of(material) else {
                 continue;
             };
@@ -1975,7 +2144,9 @@ impl Document {
             .filter_map(|(_, entity)| {
                 // It is the brushes that are drawn and selected.
                 let contents = fold_contents(&entity.children, &self.selection);
-                contents.bounds.map(|bounds| (bounds, contents.brushes > 0 && contents.brushes_selected))
+                contents
+                    .bounds
+                    .map(|bounds| (bounds, contents.brushes > 0 && contents.brushes_selected))
             })
             .collect()
     }
@@ -1986,22 +2157,27 @@ impl Document {
     /// selected there is no one face to sweep, so there is nothing to start from.
     pub fn sweep_source(&self) -> Option<crate::sweep_tool::SweepSource> {
         let mut faces = Vec::new();
-        let mut attributes=Vec::new();
+        let mut attributes = Vec::new();
         let mut total = Vec3d::zero();
         let mut count = 0usize;
         let mut normal = Vec3d::zero();
 
         for (id, brush) in node::brushes_with_ids(&self.tree.world) {
             for index in 0..brush.faces().len() {
-                if !self.is_face_selected(FaceRef { node: id, face: index }) {
+                if !self.is_face_selected(FaceRef {
+                    node: id,
+                    face: index,
+                }) {
                     continue;
                 }
-                let Some(polygon)=brush.face_polygon(index) else {continue;};
+                let Some(polygon) = brush.face_polygon(index) else {
+                    continue;
+                };
                 for corner in &polygon {
                     total += *corner;
                     count += 1;
                 }
-                let source=&brush.faces()[index];
+                let source = &brush.faces()[index];
                 normal += source.normal();
                 attributes.push(source.clone());
                 faces.push(polygon);
@@ -2033,28 +2209,62 @@ impl Document {
         transform: &crate::sweep_tool::SweepTransform,
         parameters: &crate::sweep_tool::SweepParameters,
     ) -> usize {
-        self.sweep_selection_checked(transform,parameters).unwrap_or(0)
+        self.sweep_selection_checked(transform, parameters)
+            .unwrap_or(0)
     }
 
     /// Rejects the whole operation rather than inserting a partial or intersecting path.
-    pub fn sweep_selection_checked(&mut self,transform:&crate::sweep_tool::SweepTransform,parameters:&crate::sweep_tool::SweepParameters)->Result<usize,String> {
-        if self.in_transaction() {return Err("Finish the current drag first.".into());}
-        let source=self.sweep_source().ok_or("Select faces to sweep.")?;
-        let mut ids=Vec::new();
-        for (id,brush) in node::brushes_with_ids(&self.tree.world) {for face in 0..brush.faces().len() {
-            if brush.geometry_face_of(face).is_some() && self.is_face_selected(FaceRef{node:id,face}) {ids.push(id);}
-        }}
-        if ids.iter().any(|id|!self.is_editable(*id)) {return Err("Every source face must be editable.".into());}
-        let brushes=crate::sweep_tool::generate_checked(&source,transform,parameters,&self.current_material)?;
-        if brushes.iter().flat_map(|b|b.vertex_positions()).any(|p|!self.world_bounds.contains_point(p)) {return Err("The sweep extends outside the world bounds.".into());}
-        let count=brushes.len();let per_face=parameters.segments*parameters.iterations;
-        let mut replacements:HashMap<NodeId,Vec<Brush>>=HashMap::new();
-        for (id,cells) in ids.iter().zip(brushes.chunks(per_face)) {
-            let initial=self.brush(*id).ok_or("A source brush no longer exists.")?.clone();
-            replacements.entry(*id).or_insert_with(||vec![initial]).extend(cells.iter().cloned());
+    pub fn sweep_selection_checked(
+        &mut self,
+        transform: &crate::sweep_tool::SweepTransform,
+        parameters: &crate::sweep_tool::SweepParameters,
+    ) -> Result<usize, String> {
+        if self.in_transaction() {
+            return Err("Finish the current drag first.".into());
+        }
+        let source = self.sweep_source().ok_or("Select faces to sweep.")?;
+        let mut ids = Vec::new();
+        for (id, brush) in node::brushes_with_ids(&self.tree.world) {
+            for face in 0..brush.faces().len() {
+                if brush.geometry_face_of(face).is_some()
+                    && self.is_face_selected(FaceRef { node: id, face })
+                {
+                    ids.push(id);
+                }
+            }
+        }
+        if ids.iter().any(|id| !self.is_editable(*id)) {
+            return Err("Every source face must be editable.".into());
+        }
+        let brushes = crate::sweep_tool::generate_checked(
+            &source,
+            transform,
+            parameters,
+            &self.current_material,
+        )?;
+        if brushes
+            .iter()
+            .flat_map(|b| b.vertex_positions())
+            .any(|p| !self.world_bounds.contains_point(p))
+        {
+            return Err("The sweep extends outside the world bounds.".into());
+        }
+        let count = brushes.len();
+        let per_face = parameters.segments * parameters.iterations;
+        let mut replacements: HashMap<NodeId, Vec<Brush>> = HashMap::new();
+        for (id, cells) in ids.iter().zip(brushes.chunks(per_face)) {
+            let initial = self
+                .brush(*id)
+                .ok_or("A source brush no longer exists.")?
+                .clone();
+            replacements
+                .entry(*id)
+                .or_insert_with(|| vec![initial])
+                .extend(cells.iter().cloned());
         }
         self.replace_geometry_in_place(replacements);
-        self.selection.retain(|id|!ids.contains(id));Ok(count)
+        self.selection.retain(|id| !ids.contains(id));
+        Ok(count)
     }
 
     /// Returns the face the UV editor should show.
@@ -2063,8 +2273,12 @@ impl Document {
     /// operations still apply to the entire selection.
     pub fn face_to_edit(&self) -> Option<(FaceRef, &map_model::brush_face::BrushFace)> {
         if self.face_selection.is_empty() {
-            if let Some(reference) = self.face_edit_targets.iter().copied().find(|face|self.selection.contains(&face.node) && self.face_at(*face).is_some()) {
-                return Some((reference,self.face_at(reference)?));
+            if let Some(reference) =
+                self.face_edit_targets.iter().copied().find(|face| {
+                    self.selection.contains(&face.node) && self.face_at(*face).is_some()
+                })
+            {
+                return Some((reference, self.face_at(reference)?));
             }
         }
         let brushes = node::brushes_with_ids(&self.tree.world);
@@ -2088,13 +2302,7 @@ impl Document {
                 continue;
             }
             let source = brush.source_face_index(0)?;
-            return Some((
-                FaceRef {
-                    node: *id,
-                    face: 0,
-                },
-                &brush.faces()[source],
-            ));
+            return Some((FaceRef { node: *id, face: 0 }, &brush.faces()[source]));
         }
 
         None
@@ -2160,7 +2368,10 @@ impl Document {
     }
 
     pub fn peer_name(&self, peer: u32) -> String {
-        self.peer_names.get(&peer).cloned().unwrap_or_else(|| format!("Peer {peer}"))
+        self.peer_names
+            .get(&peer)
+            .cloned()
+            .unwrap_or_else(|| format!("Peer {peer}"))
     }
 
     /// Updates presence without changing map geometry or undo history.
@@ -2178,7 +2389,11 @@ impl Document {
     /// Sets which nodes one participant in a live session has selected, and rebuilds
     /// the view geometry so their work area shows. See [`crate::collab`].
     pub fn set_peer_selection(&mut self, peer: u32, ids: HashSet<NodeId>) {
-        if self.peer_selection.get(&peer).is_some_and(|held| *held == ids) {
+        if self
+            .peer_selection
+            .get(&peer)
+            .is_some_and(|held| *held == ids)
+        {
             return;
         }
         if ids.is_empty() {
@@ -2234,7 +2449,10 @@ impl Document {
             .classname()
             .and_then(|name| self.definitions.as_ref()?.find(name));
 
-        let local = self.imported_model(entity).map(|m|m.bounds).or_else(|| definition.and_then(|d|d.bounds))
+        let local = self
+            .imported_model(entity)
+            .map(|m| m.bounds)
+            .or_else(|| definition.and_then(|d| d.bounds))
             .unwrap_or_else(|| Bbox3d::from_scalars(-DEFAULT_ENTITY_RADIUS, DEFAULT_ENTITY_RADIUS));
         let color = definition
             .and_then(|d| d.color)
@@ -2316,11 +2534,18 @@ impl Document {
         self.preview_mesh(filters).triangles
     }
 
-    pub fn preview_mesh(&self, filters: &crate::view_filters::ViewFilters) -> crate::motion_preview::Mesh {
+    pub fn preview_mesh(
+        &self,
+        filters: &crate::view_filters::ViewFilters,
+    ) -> crate::motion_preview::Mesh {
         self.preview_mesh_with_clip(filters, None)
     }
 
-    pub fn preview_mesh_with_clip(&self, filters: &crate::view_filters::ViewFilters, clip: Option<&crate::clip_tool::ClipTool>) -> crate::motion_preview::Mesh {
+    pub fn preview_mesh_with_clip(
+        &self,
+        filters: &crate::view_filters::ViewFilters,
+        clip: Option<&crate::clip_tool::ClipTool>,
+    ) -> crate::motion_preview::Mesh {
         self.with_preview_surfaces(filters, clip, SurfaceCache::triangles)
     }
 
@@ -2334,7 +2559,11 @@ impl Document {
     /// `time` seconds in, as the 3D view's animation preview draws them. Entity models stay
     /// at rest.
     pub fn render_triangles_at(&self, time: Option<f64>) -> Vec<Triangle> {
-        let filters = crate::view_filters::ViewFilters { show_point_entities: false, show_edges: false, ..Default::default() };
+        let filters = crate::view_filters::ViewFilters {
+            show_point_entities: false,
+            show_edges: false,
+            ..Default::default()
+        };
         let mesh = self.preview_mesh(&filters);
         let mut triangles = match time {
             Some(time) => mesh.at(time),
@@ -2342,10 +2571,20 @@ impl Document {
         };
         for entity in self.entity_boxes() {
             if let Some((model, material, scale)) = self.model_of(entity.node) {
-                triangles.extend(model_triangles(&model, material, self.entity_placement(entity.node), scale, false, false));
+                triangles.extend(model_triangles(
+                    &model,
+                    material,
+                    self.entity_placement(entity.node),
+                    scale,
+                    false,
+                    false,
+                ));
             }
         }
-        for triangle in &mut triangles { triangle.selected = false; triangle.locked = false; }
+        for triangle in &mut triangles {
+            triangle.selected = false;
+            triangle.locked = false;
+        }
         triangles
     }
 
@@ -2361,7 +2600,6 @@ impl Document {
     pub fn content_revision(&self) -> u64 {
         self.revision.wrapping_sub(self.selection_change_count)
     }
-
 
     /// Returns the number of brushes in the document. Part of the document's public
     /// surface; the views stopped painting it but the tests still lean on it.
@@ -2437,13 +2675,19 @@ impl Document {
     ///
     /// Preserve tessellation on selection-only changes; all other revisions miss the cache.
     fn mark_selection_changed(&mut self) {
-        let preview=self.shape_preview.take().filter(|s|self.face_selection.is_empty()
-            && s.nodes.len()==self.selection.len() && s.nodes.iter().all(|n|self.selection.contains(&n.id)));
+        let preview = self.shape_preview.take().filter(|s| {
+            self.face_selection.is_empty()
+                && s.nodes.len() == self.selection.len()
+                && s.nodes.iter().all(|n| self.selection.contains(&n.id))
+        });
         self.selection_change_count = self.selection_change_count.wrapping_add(1);
         // The surfaces stay: the next rebuild patches the selection flags of the nodes
         // whose selection changed.
         self.note_changed();
-        self.shape_preview=preview.map(|mut s|{s.revision=self.revision();s});
+        self.shape_preview = preview.map(|mut s| {
+            s.revision = self.revision();
+            s
+        });
     }
 
     /// Selected and unselected edges are kept apart so that drawing does not have to
@@ -2537,8 +2781,12 @@ impl Document {
     /// Whether every part of `edit` replaces a selected brush and nothing else.
     pub(super) fn touches_only_selected_brushes(&self, edit: &Edit) -> bool {
         match edit {
-            Edit::Changed { after, .. } => after.iter().all(|node| matches!(node.kind, NodeKind::Brush(_)) && self.selection.contains(&node.id)),
-            Edit::Batch(parts) => parts.iter().all(|part| self.touches_only_selected_brushes(part)),
+            Edit::Changed { after, .. } => after.iter().all(|node| {
+                matches!(node.kind, NodeKind::Brush(_)) && self.selection.contains(&node.id)
+            }),
+            Edit::Batch(parts) => parts
+                .iter()
+                .all(|part| self.touches_only_selected_brushes(part)),
             Edit::Added { .. } | Edit::Removed { .. } | Edit::Reordered { .. } => false,
         }
     }
@@ -2658,29 +2906,55 @@ impl Document {
     pub fn export_quake3_map_text(&self) -> Result<String, String> {
         let mut world = self.tree.world.clone();
         for layer in &mut world.layers {
-            if layer.omit_from_export { layer.children.clear(); }
+            if layer.omit_from_export {
+                layer.children.clear();
+            }
         }
-        let map = node::flatten_tree(&world, map_model::map_format::MapFormat::Quake2, self.game.clone());
-        map_model::io::map_writer::write_quake3_map(&map, &mut |name| self.materials.get(name).map(|m| Vec2f::new(m.width as f32, m.height as f32)))
+        let map = node::flatten_tree(
+            &world,
+            map_model::map_format::MapFormat::Quake2,
+            self.game.clone(),
+        );
+        map_model::io::map_writer::write_quake3_map(&map, &mut |name| {
+            self.materials
+                .get(name)
+                .map(|m| Vec2f::new(m.width as f32, m.height as f32))
+        })
     }
 
     /// Writes a native Quake III map only after all UV conversions succeed.
     pub fn export_quake3_map_to(&self, path: impl AsRef<Path>) -> std::io::Result<()> {
-        let text = self.export_quake3_map_text().map_err(|why| std::io::Error::new(std::io::ErrorKind::InvalidInput, why))?;
+        let text = self
+            .export_quake3_map_text()
+            .map_err(|why| std::io::Error::new(std::io::ErrorKind::InvalidInput, why))?;
         crate::files::write(path.as_ref(), text)
     }
 
     /// Doom 3 Version 2 export with local brush planes and literal strings.
     pub fn export_doom3_map_text(&self) -> Result<String, String> {
         let mut world = self.tree.world.clone();
-        for layer in &mut world.layers { if layer.omit_from_export { layer.children.clear(); } }
-        let map = node::flatten_tree(&world, map_model::map_format::MapFormat::Quake2, self.game.clone());
-        map_model::io::map_writer::write_doom3_map(&map, &mut |name| self.materials.get(name).map(|m| Vec2f::new(m.width as f32, m.height as f32)))
+        for layer in &mut world.layers {
+            if layer.omit_from_export {
+                layer.children.clear();
+            }
+        }
+        let map = node::flatten_tree(
+            &world,
+            map_model::map_format::MapFormat::Quake2,
+            self.game.clone(),
+        );
+        map_model::io::map_writer::write_doom3_map(&map, &mut |name| {
+            self.materials
+                .get(name)
+                .map(|m| Vec2f::new(m.width as f32, m.height as f32))
+        })
     }
 
     /// Writes only after Doom 3 map validation succeeds.
     pub fn export_doom3_map_to(&self, path: impl AsRef<Path>) -> std::io::Result<()> {
-        let text = self.export_doom3_map_text().map_err(|why| std::io::Error::new(std::io::ErrorKind::InvalidInput, why))?;
+        let text = self
+            .export_doom3_map_text()
+            .map_err(|why| std::io::Error::new(std::io::ErrorKind::InvalidInput, why))?;
         crate::files::write(path.as_ref(), text)
     }
 
@@ -2689,15 +2963,29 @@ impl Document {
         let mut missing = std::collections::BTreeSet::new();
         let mut annotated = 0;
         for (_, brush, layer) in node::brushes_by_layer(&self.tree.world) {
-            if self.tree.world.layers[layer].omit_from_export { continue; }
+            if self.tree.world.layers[layer].omit_from_export {
+                continue;
+            }
             for face in brush.faces() {
-                if face.primitive_uv.is_none() && self.materials.get(&face.material_name).is_none() { missing.insert(face.material_name.to_string()); }
-                if face.paint().is_some() || face.surface_material.is_some() || face.export_hidden { annotated += 1; }
+                if face.primitive_uv.is_none() && self.materials.get(&face.material_name).is_none()
+                {
+                    missing.insert(face.material_name.to_string());
+                }
+                if face.paint().is_some() || face.surface_material.is_some() || face.export_hidden {
+                    annotated += 1;
+                }
             }
         }
         let mut notes = Vec::new();
-        if !missing.is_empty() { notes.push(format!("Load textures before export; dimensions are unavailable for: {}", missing.into_iter().collect::<Vec<_>>().join(", "))); }
-        if annotated > 0 { notes.push(format!("{annotated} faces carry paint, PBR or export visibility in Heron comments; Quake III tools ignore those comments")); }
+        if !missing.is_empty() {
+            notes.push(format!(
+                "Load textures before export; dimensions are unavailable for: {}",
+                missing.into_iter().collect::<Vec<_>>().join(", ")
+            ));
+        }
+        if annotated > 0 {
+            notes.push(format!("{annotated} faces carry paint, PBR or export visibility in Heron comments; Quake III tools ignore those comments"));
+        }
         notes
     }
 
@@ -2716,7 +3004,10 @@ impl Document {
     /// The export window says this before it writes, because the answer depends on the
     /// map: a dialect with nowhere to put a face's UV axes costs nothing at all until
     /// some face actually carries some.
-    pub fn what_a_dialect_would_drop(&self, format: map_model::map_format::MapFormat) -> Vec<String> {
+    pub fn what_a_dialect_would_drop(
+        &self,
+        format: map_model::map_format::MapFormat,
+    ) -> Vec<String> {
         let mut lost = Vec::new();
         let faces = || {
             node::brushes_with_ids(&self.tree.world)
@@ -2727,7 +3018,10 @@ impl Document {
         if !format.has_explicit_uv_axes() {
             let carrying = faces()
                 .filter(|face| {
-                    matches!(face.uv_coord_system, map_model::uv::UvCoordSystem::Parallel { .. })
+                    matches!(
+                        face.uv_coord_system,
+                        map_model::uv::UvCoordSystem::Parallel { .. }
+                    )
                 })
                 .count();
             if carrying > 0 {
@@ -2739,9 +3033,9 @@ impl Document {
         if !format.has_surface_attributes() {
             let flagged = faces()
                 .filter(|face| {
-                    face.surface_attributes
-                        .as_ref()
-                        .is_some_and(|s| s.content_flags != 0 || s.surface_flags != 0 || s.value != 0)
+                    face.surface_attributes.as_ref().is_some_and(|s| {
+                        s.content_flags != 0 || s.surface_flags != 0 || s.value != 0
+                    })
                 })
                 .count();
             if flagged > 0 {
@@ -2838,7 +3132,7 @@ impl Document {
     /// Writes the document to the given path, and remembers it as the document's own.
     pub fn save_as(&mut self, path: impl Into<PathBuf>) -> Result<(), SaveError> {
         let path = path.into();
-        let imported_refs=self.imported_references_for(&path).map_err(SaveError::Io)?;
+        let imported_refs = self.imported_references_for(&path).map_err(SaveError::Io)?;
         self.save_copy_to(&path).map_err(SaveError::Io)?;
         self.path = Some(path);
         self.adopt_imported_references(&imported_refs);
@@ -2863,9 +3157,24 @@ impl Document {
             map_model::map_format::MapFormat::LOSSLESS,
             self.game.clone(),
         );
-        let refs=self.imported_references_for(path.as_ref())?;
-        for entity in &mut map.entities {for (key,value)in &mut entity.properties{if key=="_heron_model"{if let Some(new)=refs.get(value){*value=new.clone();}}}}
-        crate::files::write(path.as_ref(), format!("{}{}", self.saved_material_paths(path.as_ref()), write_map(&map)))
+        let refs = self.imported_references_for(path.as_ref())?;
+        for entity in &mut map.entities {
+            for (key, value) in &mut entity.properties {
+                if key == "_heron_model" {
+                    if let Some(new) = refs.get(value) {
+                        *value = new.clone();
+                    }
+                }
+            }
+        }
+        crate::files::write(
+            path.as_ref(),
+            format!(
+                "{}{}",
+                self.saved_material_paths(path.as_ref()),
+                write_map(&map)
+            ),
+        )
     }
 
     /// The number of edits made to the document.
@@ -2885,20 +3194,16 @@ impl Document {
     /// A map that needed working around still opens, so the user is told rather than
     /// stopped.
     pub fn warnings(&self) -> Vec<String> {
-        self.tree
-            .warnings
-            .iter()
-            .map(ToString::to_string)
-            .collect()
+        self.tree.warnings.iter().map(ToString::to_string).collect()
     }
 }
 
 #[path = "document/hollow.rs"]
 mod hollow;
 #[cfg(test)]
-#[path="document/tool_upgrade_tests.rs"]
+#[path = "document/tool_upgrade_tests.rs"]
 mod tool_upgrade_tests;
 
 #[cfg(test)]
-#[path="document/basic_workflow_tests.rs"]
+#[path = "document/basic_workflow_tests.rs"]
 mod basic_workflow_tests;

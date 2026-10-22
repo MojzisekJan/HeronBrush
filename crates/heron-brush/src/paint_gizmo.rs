@@ -4,10 +4,19 @@
 //! centre. Shift keeps an end's direction to 15° steps or along an edge, Alt drags without
 //! snapping, and Alt+click adds a stop on the gradient's line or removes the one clicked.
 //! A drag paints as it goes and undoes in one step.
-use editor_core::{camera3d::Camera3d, document::{Document, FaceRef}, tool::Tool};
+use editor_core::{
+    camera3d::Camera3d,
+    document::{Document, FaceRef},
+    tool::Tool,
+};
 use eframe::egui;
-use geometry_math::{plane::Plane3d, vec::{self, Vec3d}};
-use map_model::brush_face::{BrushFace, ColorStop, FaceColor, GradientEnds, GradientStops, PaintOnFace, Rgb};
+use geometry_math::{
+    plane::Plane3d,
+    vec::{self, Vec3d},
+};
+use map_model::brush_face::{
+    BrushFace, ColorStop, FaceColor, GradientEnds, GradientStops, PaintOnFace, Rgb,
+};
 use std::{cell::RefCell, rc::Rc};
 
 /// How close the pointer must come to a handle to take it, and to a corner, edge or centre
@@ -89,9 +98,29 @@ type Gradient = (Vec<ColorStop>, bool, f32, u8, Option<GradientEnds>);
 /// A gradient as [`Gradient`], a two-colour one too.
 fn as_gradient(paint: FaceColor) -> Option<Gradient> {
     match paint {
-        FaceColor::MultiGradient { stops, radial, angle, alpha, ends } => Some((stops.as_slice().to_vec(), radial, angle, alpha, ends)),
-        FaceColor::Gradient { from, to, angle, alpha } => Some((
-            vec![ColorStop { position: 0.0, color: from }, ColorStop { position: 1.0, color: to }],
+        FaceColor::MultiGradient {
+            stops,
+            radial,
+            angle,
+            alpha,
+            ends,
+        } => Some((stops.as_slice().to_vec(), radial, angle, alpha, ends)),
+        FaceColor::Gradient {
+            from,
+            to,
+            angle,
+            alpha,
+        } => Some((
+            vec![
+                ColorStop {
+                    position: 0.0,
+                    color: from,
+                },
+                ColorStop {
+                    position: 1.0,
+                    color: to,
+                },
+            ],
             false,
             angle,
             alpha,
@@ -109,14 +138,26 @@ impl Face {
             .take(MOST_FACES)
             .filter_map(|face| {
                 let brush = document.brush(face.node)?;
-                let source = brush.faces().get(brush.source_face_index(face.face)?)?.clone();
+                let source = brush
+                    .faces()
+                    .get(brush.source_face_index(face.face)?)?
+                    .clone();
                 let paint = source.paint()?;
-                let polygon = brush.geometry().face_positions(map_model::polyhedron::FaceId(face.face as u32));
+                let polygon = brush
+                    .geometry()
+                    .face_positions(map_model::polyhedron::FaceId(face.face as u32));
                 if polygon.len() < 3 {
                     return None;
                 }
-                let centre = polygon.iter().fold(Vec3d::zero(), |a, p| a + *p) / polygon.len() as f64;
-                Some(Face { face, source, polygon, centre, paint })
+                let centre =
+                    polygon.iter().fold(Vec3d::zero(), |a, p| a + *p) / polygon.len() as f64;
+                Some(Face {
+                    face,
+                    source,
+                    polygon,
+                    centre,
+                    paint,
+                })
             })
             .collect()
     }
@@ -128,7 +169,12 @@ impl Face {
     /// The point on the face at `fraction` of its UV bounds.
     fn point(&self, sampler: &PaintOnFace, fraction: [f32; 2]) -> Option<Vec3d> {
         let s = &self.source;
-        map_model::uv::point_at_uv(&s.uv_coord_system, sampler.from_bounds(fraction), &s.plane, &s.uv_attributes)
+        map_model::uv::point_at_uv(
+            &s.uv_coord_system,
+            sampler.from_bounds(fraction),
+            &s.plane,
+            &s.uv_attributes,
+        )
     }
 
     /// Whether the face is turned towards the camera.
@@ -147,23 +193,45 @@ struct Handle {
 /// The handles of `face`, on the screen of `rect`.
 fn handles(face: &Face, camera: &Camera3d, rect: egui::Rect) -> Vec<Handle> {
     let size = (f64::from(rect.width()), f64::from(rect.height()));
-    let screen = |p: Vec3d| camera.project(p, size.0, size.1).map(|s| egui::pos2(rect.min.x + s.x() as f32, rect.min.y + s.y() as f32));
+    let screen = |p: Vec3d| {
+        camera
+            .project(p, size.0, size.1)
+            .map(|s| egui::pos2(rect.min.x + s.x() as f32, rect.min.y + s.y() as f32))
+    };
     let mut out = Vec::new();
     match as_gradient(face.paint) {
         None => {
-            let FaceColor::Solid { color, .. } = face.paint else { return out };
+            let FaceColor::Solid { color, .. } = face.paint else {
+                return out;
+            };
             if let Some(at) = screen(face.centre) {
-                out.push(Handle { grip: Grip::Colour, screen: at, colour: color });
+                out.push(Handle {
+                    grip: Grip::Colour,
+                    screen: at,
+                    colour: color,
+                });
             }
         }
         Some((stops, ..)) => {
             let sampler = face.sampler(face.paint);
-            let Some(ends) = sampler.ends() else { return out };
-            let (Some(a), Some(b)) = (face.point(&sampler, ends.start), face.point(&sampler, ends.end)) else { return out };
+            let Some(ends) = sampler.ends() else {
+                return out;
+            };
+            let (Some(a), Some(b)) = (
+                face.point(&sampler, ends.start),
+                face.point(&sampler, ends.end),
+            ) else {
+                return out;
+            };
             for (end, world) in [(false, a), (true, b)] {
-                let colour = if end { stops.last() } else { stops.first() }.map_or(Rgb::new(0, 0, 0), |s| s.color);
+                let colour = if end { stops.last() } else { stops.first() }
+                    .map_or(Rgb::new(0, 0, 0), |s| s.color);
                 if let Some(at) = screen(world) {
-                    out.push(Handle { grip: Grip::End(end), screen: at, colour });
+                    out.push(Handle {
+                        grip: Grip::End(end),
+                        screen: at,
+                        colour,
+                    });
                 }
             }
             for (index, stop) in stops.iter().enumerate() {
@@ -173,7 +241,11 @@ fn handles(face: &Face, camera: &Camera3d, rect: egui::Rect) -> Vec<Handle> {
                 }
                 let world = a + (b - a) * f64::from(stop.position);
                 if let Some(at) = screen(world) {
-                    out.push(Handle { grip: Grip::Stop(index), screen: at, colour: stop.color });
+                    out.push(Handle {
+                        grip: Grip::Stop(index),
+                        screen: at,
+                        colour: stop.color,
+                    });
                 }
             }
         }
@@ -194,12 +266,34 @@ fn nearest_on_segment(a: Vec3d, b: Vec3d, p: Vec3d) -> Vec3d {
 /// Where the pointer at `at` lands on the face's plane, snapped (when `snap`) to a corner,
 /// the middle of an edge or the centre within [`SNAP`] points of it, else to an edge; and
 /// whether it snapped.
-fn land(face: &Face, camera: &Camera3d, rect: egui::Rect, at: egui::Pos2, snap: bool) -> Option<(Vec3d, bool)> {
-    land_on(&face.source.plane, &face.polygon, face.centre, camera, rect, at, snap)
+fn land(
+    face: &Face,
+    camera: &Camera3d,
+    rect: egui::Rect,
+    at: egui::Pos2,
+    snap: bool,
+) -> Option<(Vec3d, bool)> {
+    land_on(
+        &face.source.plane,
+        &face.polygon,
+        face.centre,
+        camera,
+        rect,
+        at,
+        snap,
+    )
 }
 
 /// [`land`] for any face, given as its plane, its corners and its centre.
-pub(crate) fn land_on(plane: &Plane3d, polygon: &[Vec3d], centre: Vec3d, camera: &Camera3d, rect: egui::Rect, at: egui::Pos2, snap: bool) -> Option<(Vec3d, bool)> {
+pub(crate) fn land_on(
+    plane: &Plane3d,
+    polygon: &[Vec3d],
+    centre: Vec3d,
+    camera: &Camera3d,
+    rect: egui::Rect,
+    at: egui::Pos2,
+    snap: bool,
+) -> Option<(Vec3d, bool)> {
     let size = (f64::from(rect.width()), f64::from(rect.height()));
     let local = at - rect.min;
     let ray = camera.ray_through(f64::from(local.x), f64::from(local.y), size.0, size.1);
@@ -208,16 +302,27 @@ pub(crate) fn land_on(plane: &Plane3d, polygon: &[Vec3d], centre: Vec3d, camera:
     if !snap {
         return Some((hit, false));
     }
-    let screen = |p: Vec3d| camera.project(p, size.0, size.1).map(|s| egui::pos2(rect.min.x + s.x() as f32, rect.min.y + s.y() as f32));
+    let screen = |p: Vec3d| {
+        camera
+            .project(p, size.0, size.1)
+            .map(|s| egui::pos2(rect.min.x + s.x() as f32, rect.min.y + s.y() as f32))
+    };
     let near = |p: Vec3d| screen(p).is_some_and(|s| s.distance(at) <= SNAP);
     let count = polygon.len();
     let middles = (0..count).map(|i| (polygon[i] + polygon[(i + 1) % count]) * 0.5);
     let corners = polygon.iter().copied().chain(middles).chain([centre]);
-    if let Some(point) = corners.filter(|p| near(*p)).min_by(|a, b| vec::length(*a - hit).total_cmp(&vec::length(*b - hit))) {
+    if let Some(point) = corners
+        .filter(|p| near(*p))
+        .min_by(|a, b| vec::length(*a - hit).total_cmp(&vec::length(*b - hit)))
+    {
         return Some((point, true));
     }
-    let edges = (0..polygon.len()).map(|i| nearest_on_segment(polygon[i], polygon[(i + 1) % polygon.len()], hit));
-    if let Some(point) = edges.filter(|p| near(*p)).min_by(|a, b| vec::length(*a - hit).total_cmp(&vec::length(*b - hit))) {
+    let edges = (0..polygon.len())
+        .map(|i| nearest_on_segment(polygon[i], polygon[(i + 1) % polygon.len()], hit));
+    if let Some(point) = edges
+        .filter(|p| near(*p))
+        .min_by(|a, b| vec::length(*a - hit).total_cmp(&vec::length(*b - hit)))
+    {
         return Some((point, true));
     }
     Some((hit, false))
@@ -240,12 +345,18 @@ fn constrain(face: &Face, from: Vec3d, point: Vec3d) -> Vec3d {
         u * a.cos() + v * a.sin()
     });
     let count = face.polygon.len();
-    let edges = (0..count).map(|i| face.polygon[(i + 1) % count] - face.polygon[i]).filter(|d| vec::length(*d) > 1e-9).flat_map(|d| {
-        let d = vec::normalize(d);
-        [d, d * -1.0]
-    });
+    let edges = (0..count)
+        .map(|i| face.polygon[(i + 1) % count] - face.polygon[i])
+        .filter(|d| vec::length(*d) > 1e-9)
+        .flat_map(|d| {
+            let d = vec::normalize(d);
+            [d, d * -1.0]
+        });
     let direction = offset / length;
-    let best = steps.chain(edges).max_by(|a, b| vec::dot(*a, direction).total_cmp(&vec::dot(*b, direction))).unwrap_or(direction);
+    let best = steps
+        .chain(edges)
+        .max_by(|a, b| vec::dot(*a, direction).total_cmp(&vec::dot(*b, direction)))
+        .unwrap_or(direction);
     from + best * vec::dot(offset, best)
 }
 
@@ -261,11 +372,20 @@ impl PaintGizmo {
 
     /// Takes a primary press on a handle, before the view would select or drag with it.
     /// Returns whether it took the press.
-    pub fn press(&mut self, ui: &egui::Ui, rect: egui::Rect, document: &Rc<RefCell<Document>>, tool: Tool, camera: &Camera3d) -> bool {
+    pub fn press(
+        &mut self,
+        ui: &egui::Ui,
+        rect: egui::Rect,
+        document: &Rc<RefCell<Document>>,
+        tool: Tool,
+        camera: &Camera3d,
+    ) -> bool {
         if !shows(tool) || self.drag.is_some() || !ui.input(|i| i.pointer.primary_pressed()) {
             return false;
         }
-        let Some(at) = ui.input(|i| i.pointer.press_origin()) else { return false };
+        let Some(at) = ui.input(|i| i.pointer.press_origin()) else {
+            return false;
+        };
         if !rect.contains(at) {
             return false;
         }
@@ -274,7 +394,14 @@ impl PaintGizmo {
         let grabbed = faces
             .into_iter()
             .filter(|face| face.facing(camera))
-            .flat_map(|face| handles(&face, camera, rect).into_iter().map(|h| (h.grip, h.screen.distance(at))).collect::<Vec<_>>().into_iter().map(move |h| (face.face, h)))
+            .flat_map(|face| {
+                handles(&face, camera, rect)
+                    .into_iter()
+                    .map(|h| (h.grip, h.screen.distance(at)))
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .map(move |h| (face.face, h))
+            })
             .filter(|(_, (_, distance))| *distance <= GRAB)
             .min_by(|a, b| a.1 .1.total_cmp(&b.1 .1));
         let alt = ui.input(|i| i.modifiers.alt);
@@ -283,8 +410,17 @@ impl PaintGizmo {
             return alt && self.add_stop(document, camera, rect, at);
         };
         // Collected again for the one face, to own it.
-        let Some(face) = Face::collect(&document_ref).into_iter().find(|f| f.face == picked) else { return false };
-        let alike: Vec<FaceRef> = Face::collect(&document_ref).into_iter().filter(|f| f.paint == face.paint).map(|f| f.face).collect();
+        let Some(face) = Face::collect(&document_ref)
+            .into_iter()
+            .find(|f| f.face == picked)
+        else {
+            return false;
+        };
+        let alike: Vec<FaceRef> = Face::collect(&document_ref)
+            .into_iter()
+            .filter(|f| f.paint == face.paint)
+            .map(|f| f.face)
+            .collect();
         let mark = document_ref.history_mark();
         drop(document_ref);
         self.picker = None;
@@ -292,42 +428,106 @@ impl PaintGizmo {
             Some((stops, radial, angle, alpha, ends)) => (stops, radial, angle, alpha, ends),
             None => (Vec::new(), false, 0.0, face.paint.alpha(), None),
         };
-        let ends = ends.or_else(|| face.sampler(face.paint).ends()).unwrap_or(GradientEnds { start: [0.0, 0.5], end: [1.0, 0.5] });
-        self.drag = Some(Drag { face, faces: alike, grip, stops, radial, angle, alpha, ends, origin: at, moved: false, mark, snapped: None, alt });
+        let ends = ends
+            .or_else(|| face.sampler(face.paint).ends())
+            .unwrap_or(GradientEnds {
+                start: [0.0, 0.5],
+                end: [1.0, 0.5],
+            });
+        self.drag = Some(Drag {
+            face,
+            faces: alike,
+            grip,
+            stops,
+            radial,
+            angle,
+            alpha,
+            ends,
+            origin: at,
+            moved: false,
+            mark,
+            snapped: None,
+            alt,
+        });
         true
     }
 
     /// Alt+click on a gradient's line: a stop there, in the colour the gradient has there.
     /// Returns whether the click was on a line.
-    fn add_stop(&mut self, document: &Rc<RefCell<Document>>, camera: &Camera3d, rect: egui::Rect, at: egui::Pos2) -> bool {
+    fn add_stop(
+        &mut self,
+        document: &Rc<RefCell<Document>>,
+        camera: &Camera3d,
+        rect: egui::Rect,
+        at: egui::Pos2,
+    ) -> bool {
         let faces = Face::collect(&document.borrow());
         for face in faces.iter().filter(|f| f.facing(camera)) {
-            let Some((mut stops, radial, angle, alpha, _)) = as_gradient(face.paint) else { continue };
+            let Some((mut stops, radial, angle, alpha, _)) = as_gradient(face.paint) else {
+                continue;
+            };
             let handles = handles(face, camera, rect);
-            let (Some(a), Some(b)) = (handles.iter().find(|h| h.grip == Grip::End(false)), handles.iter().find(|h| h.grip == Grip::End(true))) else { continue };
+            let (Some(a), Some(b)) = (
+                handles.iter().find(|h| h.grip == Grip::End(false)),
+                handles.iter().find(|h| h.grip == Grip::End(true)),
+            ) else {
+                continue;
+            };
             let along = b.screen - a.screen;
             let t = ((at - a.screen).dot(along) / along.length_sq().max(1e-6)).clamp(0.0, 1.0);
             if (a.screen + along * t).distance(at) > 6.0 || stops.len() >= 8 {
                 continue;
             }
             let sampler = face.sampler(face.paint);
-            let Some((point, _)) = land(face, camera, rect, at, false) else { continue };
-            let position = sampler.position_at_uv(face.source.uv_coords(point)).clamp(0.001, 0.999);
+            let Some((point, _)) = land(face, camera, rect, at, false) else {
+                continue;
+            };
+            let position = sampler
+                .position_at_uv(face.source.uv_coords(point))
+                .clamp(0.001, 0.999);
             let ends = sampler.ends();
-            let colour = Rgb::from_f32(GradientStops::new(&stops).map_or([0.0; 3], |g| g.at(position)));
-            stops.push(ColorStop { position, color: colour });
-            let Some(stops) = GradientStops::new(&stops) else { continue };
-            let alike: Vec<FaceRef> = faces.iter().filter(|f| f.paint == face.paint).map(|f| f.face).collect();
+            let colour =
+                Rgb::from_f32(GradientStops::new(&stops).map_or([0.0; 3], |g| g.at(position)));
+            stops.push(ColorStop {
+                position,
+                color: colour,
+            });
+            let Some(stops) = GradientStops::new(&stops) else {
+                continue;
+            };
+            let alike: Vec<FaceRef> = faces
+                .iter()
+                .filter(|f| f.paint == face.paint)
+                .map(|f| f.face)
+                .collect();
             let mut document = document.borrow_mut();
             let mark = document.history_mark();
-            document.set_face_color_since(Some(FaceColor::MultiGradient { stops, radial, angle, alpha, ends }), &alike, mark);
+            document.set_face_color_since(
+                Some(FaceColor::MultiGradient {
+                    stops,
+                    radial,
+                    angle,
+                    alpha,
+                    ends,
+                }),
+                &alike,
+                mark,
+            );
             return true;
         }
         false
     }
 
     /// Follows a drag, opens the picker for a click, and draws the handles over the view.
-    pub fn show(&mut self, ui: &egui::Ui, rect: egui::Rect, document: &Rc<RefCell<Document>>, tool: Tool, camera: &Camera3d, hidden: bool) {
+    pub fn show(
+        &mut self,
+        ui: &egui::Ui,
+        rect: egui::Rect,
+        document: &Rc<RefCell<Document>>,
+        tool: Tool,
+        camera: &Camera3d,
+        hidden: bool,
+    ) {
         self.follow(ui, rect, document, camera);
         self.picker(ui, document);
         if !shows(tool) || hidden {
@@ -336,17 +536,31 @@ impl PaintGizmo {
         let painter = ui.painter_at(rect);
         let faces = Face::collect(&document.borrow());
         let pointer = ui.input(|i| i.pointer.hover_pos());
-        let dragged = self.drag.as_ref().filter(|d| d.moved).map(|d| (d.face.face, d.grip));
+        let dragged = self
+            .drag
+            .as_ref()
+            .filter(|d| d.moved)
+            .map(|d| (d.face.face, d.grip));
         for face in faces.iter().filter(|f| f.facing(camera)) {
             let handles = handles(face, camera, rect);
             if handles.len() >= 2 {
-                if let (Some(a), Some(b)) = (handles.iter().find(|h| h.grip == Grip::End(false)), handles.iter().find(|h| h.grip == Grip::End(true))) {
-                    painter.line_segment([a.screen, b.screen], egui::Stroke::new(3.0, egui::Color32::from_black_alpha(110)));
-                    painter.line_segment([a.screen, b.screen], egui::Stroke::new(1.5, egui::Color32::WHITE));
+                if let (Some(a), Some(b)) = (
+                    handles.iter().find(|h| h.grip == Grip::End(false)),
+                    handles.iter().find(|h| h.grip == Grip::End(true)),
+                ) {
+                    painter.line_segment(
+                        [a.screen, b.screen],
+                        egui::Stroke::new(3.0, egui::Color32::from_black_alpha(110)),
+                    );
+                    painter.line_segment(
+                        [a.screen, b.screen],
+                        egui::Stroke::new(1.5, egui::Color32::WHITE),
+                    );
                 }
             }
             for handle in &handles {
-                let hot = dragged == Some((face.face, handle.grip)) || pointer.is_some_and(|p| p.distance(handle.screen) <= GRAB);
+                let hot = dragged == Some((face.face, handle.grip))
+                    || pointer.is_some_and(|p| p.distance(handle.screen) <= GRAB);
                 let fill = colour32(handle.colour);
                 let ring = egui::Stroke::new(2.0, egui::Color32::WHITE);
                 let outline = egui::Stroke::new(1.0, egui::Color32::from_black_alpha(160));
@@ -358,8 +572,14 @@ impl PaintGizmo {
                     }
                     Grip::End(_) => {
                         let side = if hot { 12.0 } else { 10.0 };
-                        let square = egui::Rect::from_center_size(handle.screen, egui::vec2(side, side));
-                        painter.rect_stroke(square.expand(1.0), 2.0, outline, egui::StrokeKind::Outside);
+                        let square =
+                            egui::Rect::from_center_size(handle.screen, egui::vec2(side, side));
+                        painter.rect_stroke(
+                            square.expand(1.0),
+                            2.0,
+                            outline,
+                            egui::StrokeKind::Outside,
+                        );
                         painter.rect(square, 2.0, fill, ring, egui::StrokeKind::Middle);
                     }
                     Grip::Stop(_) => {
@@ -381,21 +601,41 @@ impl PaintGizmo {
 
     /// Moves the dragged handle, paints, and ends the drag on release; a release that did
     /// not move opens the picker.
-    fn follow(&mut self, ui: &egui::Ui, rect: egui::Rect, document: &Rc<RefCell<Document>>, camera: &Camera3d) {
-        let Some(drag) = self.drag.as_mut() else { return };
-        let (pointer, down, released) = ui.input(|i| (i.pointer.interact_pos(), i.pointer.primary_down(), i.pointer.primary_released()));
+    fn follow(
+        &mut self,
+        ui: &egui::Ui,
+        rect: egui::Rect,
+        document: &Rc<RefCell<Document>>,
+        camera: &Camera3d,
+    ) {
+        let Some(drag) = self.drag.as_mut() else {
+            return;
+        };
+        let (pointer, down, released) = ui.input(|i| {
+            (
+                i.pointer.interact_pos(),
+                i.pointer.primary_down(),
+                i.pointer.primary_released(),
+            )
+        });
         if let Some(at) = pointer {
             drag.moved |= at.distance(drag.origin) > 3.0;
         }
         if drag.moved && drag.grip != Grip::Colour {
             let (shift, alt) = ui.input(|i| (i.modifiers.shift, i.modifiers.alt));
             let end = matches!(drag.grip, Grip::End(_));
-            if let Some((mut point, snapped)) = pointer.and_then(|at| land(&drag.face, camera, rect, at, !alt && !(shift && end))) {
+            if let Some((mut point, snapped)) =
+                pointer.and_then(|at| land(&drag.face, camera, rect, at, !alt && !(shift && end)))
+            {
                 drag.snapped = snapped.then_some(point);
                 let paint = drag.paint();
                 let sampler = drag.face.sampler(paint);
                 if let (true, Grip::End(which)) = (shift, drag.grip) {
-                    let other = if which { drag.ends.start } else { drag.ends.end };
+                    let other = if which {
+                        drag.ends.start
+                    } else {
+                        drag.ends.end
+                    };
                     if let Some(from) = drag.face.point(&sampler, other) {
                         point = constrain(&drag.face, from, point);
                     }
@@ -408,13 +648,19 @@ impl PaintGizmo {
                         let t = sampler.position_at_uv(uv);
                         if let Some(stop) = drag.stops.get_mut(index) {
                             // Kept just inside the ends, so it stays a handle of its own.
-                            stop.position = if t.is_finite() { t.clamp(0.001, 0.999) } else { stop.position };
+                            stop.position = if t.is_finite() {
+                                t.clamp(0.001, 0.999)
+                            } else {
+                                stop.position
+                            };
                         }
                     }
                     Grip::Colour => {}
                 }
                 let paint = drag.paint();
-                document.borrow_mut().set_face_color_since(Some(paint), &drag.faces, drag.mark);
+                document
+                    .borrow_mut()
+                    .set_face_color_since(Some(paint), &drag.faces, drag.mark);
                 ui.ctx().request_repaint();
             }
         }
@@ -424,7 +670,9 @@ impl PaintGizmo {
                 (false, true, Grip::Stop(index)) if drag.stops.len() > 2 => {
                     drag.stops.remove(index);
                     let paint = drag.paint();
-                    document.borrow_mut().set_face_color_since(Some(paint), &drag.faces, drag.mark);
+                    document
+                        .borrow_mut()
+                        .set_face_color_since(Some(paint), &drag.faces, drag.mark);
                 }
                 (false, _, _) => self.open_picker(ui, drag),
                 _ => {}
@@ -437,7 +685,9 @@ impl PaintGizmo {
         let at = drag.origin + egui::vec2(12.0, 12.0);
         let (rgb, target) = match drag.grip {
             Grip::Colour => {
-                let FaceColor::Solid { color, .. } = drag.face.paint else { return };
+                let FaceColor::Solid { color, .. } = drag.face.paint else {
+                    return;
+                };
                 (color, Target::Solid)
             }
             grip => {
@@ -447,8 +697,16 @@ impl PaintGizmo {
                     Grip::Stop(index) => index,
                     Grip::Colour => unreachable!(),
                 };
-                let Some(stop) = drag.stops.get(index) else { return };
-                (stop.color, Target::Stop { paint: drag.face.paint, index })
+                let Some(stop) = drag.stops.get(index) else {
+                    return;
+                };
+                (
+                    stop.color,
+                    Target::Stop {
+                        paint: drag.face.paint,
+                        index,
+                    },
+                )
             }
         };
         self.picker = Some(Picker {
@@ -464,17 +722,27 @@ impl PaintGizmo {
 
     /// The open picker: what it picks paints live, and one undo takes it all back.
     fn picker(&mut self, ui: &egui::Ui, document: &Rc<RefCell<Document>>) {
-        let Some(picker) = self.picker.as_mut() else { return };
+        let Some(picker) = self.picker.as_mut() else {
+            return;
+        };
         let mut changed = false;
-        let shown = egui::Popup::new(picker_id(), ui.ctx().clone(), egui::PopupAnchor::Position(picker.at), egui::LayerId::new(egui::Order::Foreground, picker_id()))
-            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
-            .open_memory(None)
-            .show(|ui| {
-                egui::Frame::new().inner_margin(egui::Margin::same(6)).show(ui, |ui| {
+        let shown = egui::Popup::new(
+            picker_id(),
+            ui.ctx().clone(),
+            egui::PopupAnchor::Position(picker.at),
+            egui::LayerId::new(egui::Order::Foreground, picker_id()),
+        )
+        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+        .open_memory(None)
+        .show(|ui| {
+            egui::Frame::new()
+                .inner_margin(egui::Margin::same(6))
+                .show(ui, |ui| {
                     let alpha = matches!(picker.target, Target::Solid).then_some(&mut picker.alpha);
-                    changed = crate::colour_picker::contents(ui, picker_id(), &mut picker.rgb, alpha);
+                    changed =
+                        crate::colour_picker::contents(ui, picker_id(), &mut picker.rgb, alpha);
                 });
-            });
+        });
         if shown.is_none() {
             self.picker = None;
             return;
@@ -484,17 +752,30 @@ impl PaintGizmo {
         }
         let [r, g, b] = picker.rgb;
         let paint = match &picker.target {
-            Target::Solid => FaceColor::solid(Rgb::new(r, g, b)).with_alpha((picker.alpha.clamp(0.0, 1.0) * 255.0).round() as u8),
+            Target::Solid => FaceColor::solid(Rgb::new(r, g, b))
+                .with_alpha((picker.alpha.clamp(0.0, 1.0) * 255.0).round() as u8),
             Target::Stop { paint, index } => {
-                let Some((mut stops, radial, angle, alpha, ends)) = as_gradient(*paint) else { return };
+                let Some((mut stops, radial, angle, alpha, ends)) = as_gradient(*paint) else {
+                    return;
+                };
                 if let Some(stop) = stops.get_mut(*index) {
                     stop.color = Rgb::new(r, g, b);
                 }
-                let Some(stops) = GradientStops::new(&stops) else { return };
-                FaceColor::MultiGradient { stops, radial, angle, alpha, ends }
+                let Some(stops) = GradientStops::new(&stops) else {
+                    return;
+                };
+                FaceColor::MultiGradient {
+                    stops,
+                    radial,
+                    angle,
+                    alpha,
+                    ends,
+                }
             }
         };
-        document.borrow_mut().set_face_color_since(Some(paint), &picker.faces, picker.mark);
+        document
+            .borrow_mut()
+            .set_face_color_since(Some(paint), &picker.faces, picker.mark);
     }
 }
 
@@ -503,12 +784,24 @@ impl Drag {
     fn paint(&self) -> FaceColor {
         let stops = GradientStops::new(&self.stops).unwrap_or_else(|| {
             GradientStops::new(&[
-                ColorStop { position: 0.0, color: Rgb::new(0, 0, 0) },
-                ColorStop { position: 1.0, color: Rgb::new(255, 255, 255) },
+                ColorStop {
+                    position: 0.0,
+                    color: Rgb::new(0, 0, 0),
+                },
+                ColorStop {
+                    position: 1.0,
+                    color: Rgb::new(255, 255, 255),
+                },
             ])
             .expect("two stops")
         });
-        FaceColor::MultiGradient { stops, radial: self.radial, angle: self.angle, alpha: self.alpha, ends: Some(self.ends) }
+        FaceColor::MultiGradient {
+            stops,
+            radial: self.radial,
+            angle: self.angle,
+            alpha: self.alpha,
+            ends: Some(self.ends),
+        }
     }
 }
 
@@ -523,15 +816,26 @@ mod tests {
     #[test]
     fn the_nearest_point_on_a_segment_stays_on_it() {
         let (a, b) = (Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(10.0, 0.0, 0.0));
-        assert_eq!(nearest_on_segment(a, b, Vec3d::new(4.0, 3.0, 0.0)), Vec3d::new(4.0, 0.0, 0.0));
+        assert_eq!(
+            nearest_on_segment(a, b, Vec3d::new(4.0, 3.0, 0.0)),
+            Vec3d::new(4.0, 0.0, 0.0)
+        );
         assert_eq!(nearest_on_segment(a, b, Vec3d::new(-4.0, 3.0, 0.0)), a);
         assert_eq!(nearest_on_segment(a, b, Vec3d::new(14.0, 3.0, 0.0)), b);
     }
 
     #[test]
     fn a_two_colour_gradient_reads_as_two_stops() {
-        let (stops, radial, angle, alpha, ends) = as_gradient(FaceColor::gradient(Rgb::new(1, 2, 3), Rgb::new(4, 5, 6), 30.0)).unwrap();
-        assert_eq!((stops.len(), radial, angle, alpha, ends), (2, false, 30.0, 255, None));
+        let (stops, radial, angle, alpha, ends) = as_gradient(FaceColor::gradient(
+            Rgb::new(1, 2, 3),
+            Rgb::new(4, 5, 6),
+            30.0,
+        ))
+        .unwrap();
+        assert_eq!(
+            (stops.len(), radial, angle, alpha, ends),
+            (2, false, 30.0, 255, None)
+        );
         assert!(as_gradient(FaceColor::solid(Rgb::new(0, 0, 0))).is_none());
     }
 }

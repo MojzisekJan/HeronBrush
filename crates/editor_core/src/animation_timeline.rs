@@ -32,7 +32,15 @@ pub struct TimelineGeometry {
 }
 impl TimelineGeometry {
     /// The plain layout: a label column, a ruler along the top and even margins.
-    pub const CLASSIC: Self = Self { left: LEFT, top: 28.0, pad: 0.0, right: 12.0, bottom: 12.0, curve_top: 12.0, curve_bottom: 20.0 };
+    pub const CLASSIC: Self = Self {
+        left: LEFT,
+        top: 28.0,
+        pad: 0.0,
+        right: 12.0,
+        bottom: 12.0,
+        curve_top: 12.0,
+        curve_bottom: 20.0,
+    };
 }
 impl TimelineGeometry {
     /// Where the visible span starts.
@@ -247,7 +255,9 @@ impl State {
     }
     fn y_in(&self, g: &TimelineGeometry, channel: usize, value: f64, h: f64) -> f64 {
         if self.curves {
-            g.top + g.curve_top + (self.high - value) / (self.high - self.low) * self.value_height(g, h)
+            g.top
+                + g.curve_top
+                + (self.high - value) / (self.high - self.low) * self.value_height(g, h)
         } else {
             g.top + (self.row(channel) as f64 + 0.5) * self.lane_height(g, h)
         }
@@ -401,7 +411,11 @@ impl TimelineStyle {
     pub fn classic(fg: [f64; 3]) -> Self {
         let dark = fg.iter().sum::<f64>() > 1.5;
         let bg = if dark { 0.12 } else { 0.94 };
-        let [red, green, blue] = [[0.9, 0.3, 0.3, 1.0], [0.25, 0.7, 0.35, 1.0], [0.25, 0.55, 0.95, 1.0]];
+        let [red, green, blue] = [
+            [0.9, 0.3, 0.3, 1.0],
+            [0.25, 0.7, 0.35, 1.0],
+            [0.25, 0.55, 0.95, 1.0],
+        ];
         let text = [fg[0], fg[1], fg[2], 0.85];
         Self {
             geometry: TimelineGeometry::CLASSIC,
@@ -565,7 +579,11 @@ impl State {
             if s.row(channel) == s.row(s.active) {
                 let top = y - (h - g.top - g.bottom) / (lanes * 2.0);
                 let height = (h - g.top - g.bottom) / lanes;
-                let (top, height) = if st.crisp { (top.round(), (top + height).round() - top.round()) } else { (top, height) };
+                let (top, height) = if st.crisp {
+                    (top.round(), (top + height).round() - top.round())
+                } else {
+                    (top, height)
+                };
                 set(cr, st.active_row);
                 cr.rectangle(0.0, top, g.left - st.active_row_inset, height);
                 let _ = cr.fill();
@@ -575,7 +593,11 @@ impl State {
                     let _ = cr.fill();
                 }
             }
-            let swatch = if st.crisp { (y + st.swatch_top).round() } else { y + st.swatch_top };
+            let swatch = if st.crisp {
+                (y + st.swatch_top).round()
+            } else {
+                y + st.swatch_top
+            };
             if st.position_swatch_split && !s.curves && channel == 0 {
                 for (i, c) in colours[..3].iter().enumerate() {
                     set(cr, *c);
@@ -587,7 +609,11 @@ impl State {
                 cr.rectangle(8.0, swatch, 3.0, 12.0);
                 let _ = cr.fill();
             }
-            let baseline = if st.crisp { (y + st.label_baseline).round() } else { y + st.label_baseline };
+            let baseline = if st.crisp {
+                (y + st.label_baseline).round()
+            } else {
+                y + st.label_baseline
+            };
             let label_x = if st.position_swatch_split { 22.0 } else { 18.0 };
             text(cr, label_x, baseline, label, st.label_text, st.font_size);
             if s.curves || channel >= 3 {
@@ -675,7 +701,14 @@ impl State {
                     continue;
                 }
             }
-            text(cr, at, st.ruler_baseline, &label, st.ruler_text, st.ruler_font_size);
+            text(
+                cr,
+                at,
+                st.ruler_baseline,
+                &label,
+                st.ruler_text,
+                st.ruler_font_size,
+            );
         }
         let end = s.x_in(g, s.clip.duration, w);
         let end = if st.crisp { end.round() } else { end };
@@ -703,7 +736,14 @@ impl State {
                 } else {
                     g.left + 4.0
                 };
-                text(cr, x, (y - 3.0).round_if(st.crisp), &label, st.value_grid_text, st.ruler_font_size);
+                text(
+                    cr,
+                    x,
+                    (y - 3.0).round_if(st.crisp),
+                    &label,
+                    st.value_grid_text,
+                    st.ruler_font_size,
+                );
             }
             if let Some(c) = st.zero_line.filter(|_| s.low < 0.0 && s.high > 0.0) {
                 let y = px(s.y_in(g, s.active, 0.0, h));
@@ -762,7 +802,10 @@ impl State {
                 let x = s.x_in(g, key.time, w);
                 let y = s.y_in(g, channel, key.value, h);
                 let (x, y) = if st.crisp { (px(x), px(y)) } else { (x, y) };
-                let selected = s.key_group(channel, key.id).iter().any(|id| s.selected.contains(id));
+                let selected = s
+                    .key_group(channel, key.id)
+                    .iter()
+                    .any(|id| s.selected.contains(id));
                 if selected {
                     set(cr, st.key_selected);
                 } else if let Some(c) = st.position_key.filter(|_| !s.curves && channel < 3) {
@@ -786,7 +829,12 @@ impl State {
             set(cr, st.selection_fill);
             if st.crisp {
                 let (left, top) = (px(x.min(end.0)), px(y.min(end.1)));
-                cr.rectangle(left, top, (px(x.max(end.0)) - left).max(1.0), (px(y.max(end.1)) - top).max(1.0));
+                cr.rectangle(
+                    left,
+                    top,
+                    (px(x.max(end.0)) - left).max(1.0),
+                    (px(y.max(end.1)) - top).max(1.0),
+                );
             } else {
                 cr.rectangle(
                     x.min(end.0),
@@ -821,7 +869,14 @@ impl State {
                 cr.close_path();
                 let _ = cr.fill();
                 cr.set_font_bold(true);
-                text(cr, (left + (width - advance) / 2.0).round(), st.ruler_baseline, &label, label_colour, st.ruler_font_size);
+                text(
+                    cr,
+                    (left + (width - advance) / 2.0).round(),
+                    st.ruler_baseline,
+                    &label,
+                    label_colour,
+                    st.ruler_font_size,
+                );
                 cr.set_font_bold(false);
             }
         }
@@ -1126,7 +1181,11 @@ impl State {
             .map(|k| k.id)
             .collect();
         self.active = (0..3)
-            .find(|axis| self.clip.tracks[*axis].iter().any(|k| self.selected.contains(&k.id)))
+            .find(|axis| {
+                self.clip.tracks[*axis]
+                    .iter()
+                    .any(|k| self.selected.contains(&k.id))
+            })
             .unwrap_or(0);
     }
     /// Takes newer data from the document while keeping the view: zoom, scroll, the
@@ -1140,7 +1199,12 @@ impl State {
         if renamed || self.clip.tracks[self.active].is_empty() {
             self.selected.clear();
             if self.clip.tracks[self.active].is_empty() {
-                self.active = self.clip.tracks.iter().position(|t| !t.is_empty()).unwrap_or(0);
+                self.active = self
+                    .clip
+                    .tracks
+                    .iter()
+                    .position(|t| !t.is_empty())
+                    .unwrap_or(0);
             }
             self.fit_values();
             self.start = 0.0;
@@ -1310,35 +1374,105 @@ mod tests {
     #[derive(Default)]
     struct Recorder(Vec<String>);
     impl Canvas for Recorder {
-        fn save(&mut self) { self.0.push("save".into()); }
-        fn restore(&mut self) { self.0.push("restore".into()); }
-        fn translate(&mut self, x: f64, y: f64) { self.0.push(format!("translate {x:.6} {y:.6}")); }
-        fn scale(&mut self, x: f64, y: f64) { self.0.push(format!("scale {x:.6} {y:.6}")); }
-        fn new_path(&mut self) { self.0.push("new_path".into()); }
-        fn new_sub_path(&mut self) { self.0.push("new_sub_path".into()); }
-        fn move_to(&mut self, x: f64, y: f64) { self.0.push(format!("move_to {x:.6} {y:.6}")); }
-        fn line_to(&mut self, x: f64, y: f64) { self.0.push(format!("line_to {x:.6} {y:.6}")); }
-        fn arc(&mut self, xc: f64, yc: f64, r: f64, a: f64, b: f64) { self.0.push(format!("arc {xc:.6} {yc:.6} {r:.6} {a:.6} {b:.6}")); }
-        fn arc_negative(&mut self, xc: f64, yc: f64, r: f64, a: f64, b: f64) { self.0.push(format!("arc_negative {xc:.6} {yc:.6} {r:.6} {a:.6} {b:.6}")); }
-        fn rectangle(&mut self, x: f64, y: f64, w: f64, h: f64) { self.0.push(format!("rectangle {x:.6} {y:.6} {w:.6} {h:.6}")); }
-        fn close_path(&mut self) { self.0.push("close_path".into()); }
-        fn set_source_rgba(&mut self, r: f64, g: f64, b: f64, a: f64) { self.0.push(format!("rgba {r:.6} {g:.6} {b:.6} {a:.6}")); }
-        fn set_line_width(&mut self, w: f64) { self.0.push(format!("line_width {w:.6}")); }
-        fn set_dash(&mut self, d: &[f64], o: f64) { self.0.push(format!("dash {d:?} {o}")); }
-        fn set_line_cap(&mut self, c: crate::canvas::LineCap) { self.0.push(format!("cap {c:?}")); }
-        fn set_line_join(&mut self, j: crate::canvas::LineJoin) { self.0.push(format!("join {j:?}")); }
-        fn set_fill_rule(&mut self, r: crate::canvas::FillRule) { self.0.push(format!("rule {r:?}")); }
-        fn stroke_preserve(&mut self) { self.0.push("stroke_preserve".into()); }
-        fn fill_preserve(&mut self) { self.0.push("fill_preserve".into()); }
-        fn paint(&mut self) { self.0.push("paint".into()); }
-        fn clip(&mut self) { self.0.push("clip".into()); }
-        fn paint_tiled_image(&mut self, key: &str, _: u32, _: u32, _: &[u8], _: (f64, f64), _: f64) { self.0.push(format!("image {key}")); }
-        fn set_font_bold(&mut self, b: bool) { self.0.push(format!("bold {b}")); }
-        fn show_text(&mut self, t: &str, s: f64) { self.0.push(format!("text {t} {s:.6}")); }
-        fn show_text_outlined(&mut self, t: &str, s: f64, _: [f64; 4], _: f64) { self.0.push(format!("outlined {t} {s:.6}")); }
+        fn save(&mut self) {
+            self.0.push("save".into());
+        }
+        fn restore(&mut self) {
+            self.0.push("restore".into());
+        }
+        fn translate(&mut self, x: f64, y: f64) {
+            self.0.push(format!("translate {x:.6} {y:.6}"));
+        }
+        fn scale(&mut self, x: f64, y: f64) {
+            self.0.push(format!("scale {x:.6} {y:.6}"));
+        }
+        fn new_path(&mut self) {
+            self.0.push("new_path".into());
+        }
+        fn new_sub_path(&mut self) {
+            self.0.push("new_sub_path".into());
+        }
+        fn move_to(&mut self, x: f64, y: f64) {
+            self.0.push(format!("move_to {x:.6} {y:.6}"));
+        }
+        fn line_to(&mut self, x: f64, y: f64) {
+            self.0.push(format!("line_to {x:.6} {y:.6}"));
+        }
+        fn arc(&mut self, xc: f64, yc: f64, r: f64, a: f64, b: f64) {
+            self.0
+                .push(format!("arc {xc:.6} {yc:.6} {r:.6} {a:.6} {b:.6}"));
+        }
+        fn arc_negative(&mut self, xc: f64, yc: f64, r: f64, a: f64, b: f64) {
+            self.0
+                .push(format!("arc_negative {xc:.6} {yc:.6} {r:.6} {a:.6} {b:.6}"));
+        }
+        fn rectangle(&mut self, x: f64, y: f64, w: f64, h: f64) {
+            self.0
+                .push(format!("rectangle {x:.6} {y:.6} {w:.6} {h:.6}"));
+        }
+        fn close_path(&mut self) {
+            self.0.push("close_path".into());
+        }
+        fn set_source_rgba(&mut self, r: f64, g: f64, b: f64, a: f64) {
+            self.0.push(format!("rgba {r:.6} {g:.6} {b:.6} {a:.6}"));
+        }
+        fn set_line_width(&mut self, w: f64) {
+            self.0.push(format!("line_width {w:.6}"));
+        }
+        fn set_dash(&mut self, d: &[f64], o: f64) {
+            self.0.push(format!("dash {d:?} {o}"));
+        }
+        fn set_line_cap(&mut self, c: crate::canvas::LineCap) {
+            self.0.push(format!("cap {c:?}"));
+        }
+        fn set_line_join(&mut self, j: crate::canvas::LineJoin) {
+            self.0.push(format!("join {j:?}"));
+        }
+        fn set_fill_rule(&mut self, r: crate::canvas::FillRule) {
+            self.0.push(format!("rule {r:?}"));
+        }
+        fn stroke_preserve(&mut self) {
+            self.0.push("stroke_preserve".into());
+        }
+        fn fill_preserve(&mut self) {
+            self.0.push("fill_preserve".into());
+        }
+        fn paint(&mut self) {
+            self.0.push("paint".into());
+        }
+        fn clip(&mut self) {
+            self.0.push("clip".into());
+        }
+        fn paint_tiled_image(
+            &mut self,
+            key: &str,
+            _: u32,
+            _: u32,
+            _: &[u8],
+            _: (f64, f64),
+            _: f64,
+        ) {
+            self.0.push(format!("image {key}"));
+        }
+        fn set_font_bold(&mut self, b: bool) {
+            self.0.push(format!("bold {b}"));
+        }
+        fn show_text(&mut self, t: &str, s: f64) {
+            self.0.push(format!("text {t} {s:.6}"));
+        }
+        fn show_text_outlined(&mut self, t: &str, s: f64, _: [f64; 4], _: f64) {
+            self.0.push(format!("outlined {t} {s:.6}"));
+        }
         fn text_extents(&mut self, t: &str, s: f64) -> crate::canvas::TextExtents {
             let w = t.chars().count() as f64 * s * 0.55;
-            crate::canvas::TextExtents { width: w, x_advance: w, height: s, line_height: s * 1.2, baseline: s, ..Default::default() }
+            crate::canvas::TextExtents {
+                width: w,
+                x_advance: w,
+                height: s,
+                line_height: s * 1.2,
+                baseline: s,
+                ..Default::default()
+            }
         }
     }
     fn styled_clip() -> State {
@@ -1382,7 +1516,15 @@ mod tests {
     }
     #[test]
     fn keys_are_hit_where_a_modern_geometry_draws_them() {
-        let geometry = TimelineGeometry { left: 160.0, top: 26.0, pad: 10.0, right: 16.0, bottom: 0.0, curve_top: 14.0, curve_bottom: 14.0 };
+        let geometry = TimelineGeometry {
+            left: 160.0,
+            top: 26.0,
+            pad: 10.0,
+            right: 16.0,
+            bottom: 0.0,
+            curve_top: 14.0,
+            curve_bottom: 14.0,
+        };
         let mut state = styled_clip();
         state.selected.clear();
         state.geometry = geometry;
@@ -1392,7 +1534,9 @@ mod tests {
         // The rotation X row is the second of four lanes under the 26-pixel ruler.
         let x = 170.0 + (key.time - state.start) / state.span * (w - 186.0);
         let y = 26.0 + 1.5 * (h - 26.0) / 4.0;
-        assert!((state.x(key.time, w) - x).abs() < 1e-9 && (state.y(3, key.value, h) - y).abs() < 1e-9);
+        assert!(
+            (state.x(key.time, w) - x).abs() < 1e-9 && (state.y(3, key.value, h) - y).abs() < 1e-9
+        );
         // Under the classic layout that point misses the key.
         let mut classic = styled_clip();
         classic.selected.clear();
@@ -1422,7 +1566,15 @@ mod tests {
     #[test]
     fn a_modern_style_draws_a_ruler_flag_and_outlined_keys() {
         let mut style = TimelineStyle::classic([0.9; 3]);
-        style.geometry = TimelineGeometry { left: 160.0, top: 26.0, pad: 10.0, right: 16.0, bottom: 0.0, curve_top: 14.0, curve_bottom: 14.0 };
+        style.geometry = TimelineGeometry {
+            left: 160.0,
+            top: 26.0,
+            pad: 10.0,
+            right: 16.0,
+            bottom: 0.0,
+            curve_top: 14.0,
+            curve_bottom: 14.0,
+        };
         style.playhead_flag = Some([1.0; 4]);
         style.key_outline = Some([0.0, 0.0, 0.0, 1.0]);
         style.crisp = true;
@@ -1433,12 +1585,26 @@ mod tests {
         state.geometry = style.geometry;
         let mut out = Recorder::default();
         state.draw_styled(&mut out, 700.0, 220.0, &style);
-        assert!(out.0.iter().any(|c| c == "text 37 11.000000" || c == "text 37 12.000000"), "the flag shows the frame");
-        assert!(out.0.iter().any(|c| c == "stroke_preserve"), "keys are outlined");
+        assert!(
+            out.0
+                .iter()
+                .any(|c| c == "text 37 11.000000" || c == "text 37 12.000000"),
+            "the flag shows the frame"
+        );
+        assert!(
+            out.0.iter().any(|c| c == "stroke_preserve"),
+            "keys are outlined"
+        );
         // Every vertical grid line sits on a pixel centre.
         for pair in out.0.windows(2) {
-            if let (Some(a), Some(b)) = (pair[0].strip_prefix("move_to "), pair[1].strip_prefix("line_to ")) {
-                let (a, b): (Vec<f64>, Vec<f64>) = (a.split(' ').map(|v| v.parse().unwrap()).collect(), b.split(' ').map(|v| v.parse().unwrap()).collect());
+            if let (Some(a), Some(b)) = (
+                pair[0].strip_prefix("move_to "),
+                pair[1].strip_prefix("line_to "),
+            ) {
+                let (a, b): (Vec<f64>, Vec<f64>) = (
+                    a.split(' ').map(|v| v.parse().unwrap()).collect(),
+                    b.split(' ').map(|v| v.parse().unwrap()).collect(),
+                );
                 if a[0] == b[0] && b[1] == 220.0 {
                     assert_eq!(a[0].fract(), 0.5, "{pair:?}");
                 }
@@ -1446,7 +1612,9 @@ mod tests {
         }
     }
     fn two_second_clip(mode: &str) -> State {
-        let track = crate::keyframe_animation::Track::parse("0 0 0 0 0 0 0; 2 128 0 0 0 0 0", "loop").unwrap();
+        let track =
+            crate::keyframe_animation::Track::parse("0 0 0 0 0 0 0; 2 128 0 0 0 0 0", "loop")
+                .unwrap();
         State::new(Clip::from_legacy(&track), mode.into(), [0.0; 3])
     }
     #[test]

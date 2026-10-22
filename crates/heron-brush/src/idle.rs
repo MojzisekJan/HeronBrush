@@ -53,11 +53,40 @@ mod tests {
 
     #[test]
     fn each_clock_wakes_the_window_and_the_soonest_wins() {
-        let autosave = Waiting { autosave: Some(Duration::from_secs(540)), ..Default::default() };
+        let autosave = Waiting {
+            autosave: Some(Duration::from_secs(540)),
+            ..Default::default()
+        };
         assert_eq!(next_wake(&autosave), Some(Duration::from_secs(540)));
-        assert_eq!(next_wake(&Waiting { live_link: true, ..autosave }), Some(LIVE_LINK));
-        assert_eq!(next_wake(&Waiting { session: true, ..Default::default() }), Some(SESSION));
-        assert_eq!(next_wake(&Waiting { connecting: true, ..Default::default() }), Some(CONNECTING));
-        assert_eq!(next_wake(&Waiting { live_link: true, session: true, connecting: true, autosave: Some(Duration::ZERO) }), Some(Duration::ZERO));
+        assert_eq!(
+            next_wake(&Waiting {
+                live_link: true,
+                ..autosave
+            }),
+            Some(LIVE_LINK)
+        );
+        assert_eq!(
+            next_wake(&Waiting {
+                session: true,
+                ..Default::default()
+            }),
+            Some(SESSION)
+        );
+        assert_eq!(
+            next_wake(&Waiting {
+                connecting: true,
+                ..Default::default()
+            }),
+            Some(CONNECTING)
+        );
+        assert_eq!(
+            next_wake(&Waiting {
+                live_link: true,
+                session: true,
+                connecting: true,
+                autosave: Some(Duration::ZERO)
+            }),
+            Some(Duration::ZERO)
+        );
     }
 }

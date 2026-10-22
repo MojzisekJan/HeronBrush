@@ -38,7 +38,16 @@ const COLUMNS: [&str; 8] = ["frame", "ui", "2d", "3d", "build", "gl", "gpu", "pa
 
 impl Sample {
     fn values(&self) -> [f64; 8] {
-        [self.frame, self.ui, self.flat, self.view3d, self.build, self.gl, self.gpu, self.paint]
+        [
+            self.frame,
+            self.ui,
+            self.flat,
+            self.view3d,
+            self.build,
+            self.gl,
+            self.gpu,
+            self.paint,
+        ]
     }
 }
 
@@ -64,8 +73,14 @@ impl Profiler {
         if !editor_core::profile::enabled() {
             return None;
         }
-        let orbit = std::env::var("HERON_BRUSH_ORBIT").ok().and_then(|v| v.parse::<u32>().ok()).map(|n| (n, n));
-        eprintln!("heron-brush: profiling (columns in ms: {})", COLUMNS.join(", "));
+        let orbit = std::env::var("HERON_BRUSH_ORBIT")
+            .ok()
+            .and_then(|v| v.parse::<u32>().ok())
+            .map(|n| (n, n));
+        eprintln!(
+            "heron-brush: profiling (columns in ms: {})",
+            COLUMNS.join(", ")
+        );
         Some(Self {
             window: VecDeque::new(),
             all: Vec::new(),
@@ -121,7 +136,10 @@ impl Profiler {
         }
         if self.last_print.elapsed() >= Duration::from_secs(2) {
             self.last_print = Instant::now();
-            eprintln!("{}", summary("last 240 frames", self.window.iter().copied()));
+            eprintln!(
+                "{}",
+                summary("last 240 frames", self.window.iter().copied())
+            );
         }
     }
 
@@ -176,7 +194,11 @@ pub struct GpuTimer {
 impl GpuTimer {
     /// A timer, if profiling is on.
     pub fn from_env() -> Option<Self> {
-        editor_core::profile::enabled().then(|| Self { free: Vec::new(), pending: VecDeque::new(), last: None })
+        editor_core::profile::enabled().then(|| Self {
+            free: Vec::new(),
+            pending: VecDeque::new(),
+            last: None,
+        })
     }
 
     /// Starts timing; the GL context must be current.
@@ -205,7 +227,8 @@ impl GpuTimer {
                 }
                 let nanoseconds = gl.get_query_parameter_u64(query, glow::QUERY_RESULT);
                 self.last = Some(nanoseconds as f64 / 1e6);
-                self.free.push(self.pending.pop_front().expect("a pending query"));
+                self.free
+                    .push(self.pending.pop_front().expect("a pending query"));
             }
         }
         self.last
@@ -253,7 +276,13 @@ fn view_summary(label: &str, values: &mut [f64]) -> String {
     values.sort_by(f64::total_cmp);
     let at = |q: f64| values[((values.len() - 1) as f64 * q).round() as usize];
     let mean = values.iter().sum::<f64>() / values.len() as f64;
-    format!("{label}: n={} mean={mean:.2}ms median={:.2}ms p95={:.2}ms max={:.2}ms", values.len(), at(0.5), at(0.95), at(1.0))
+    format!(
+        "{label}: n={} mean={mean:.2}ms median={:.2}ms p95={:.2}ms max={:.2}ms",
+        values.len(),
+        at(0.5),
+        at(0.95),
+        at(1.0)
+    )
 }
 
 /// Records one 3D view frame; `changed` when the document changed during it, `drew`
@@ -274,7 +303,11 @@ pub fn view3d_frame(elapsed: Duration, changed: bool, drew: bool) {
         if samples.frames.len() % 120 == 0 {
             let mut drawn = samples.drawn.clone();
             let mut changes = samples.changes.clone();
-            eprintln!("[profile] {} | {}", view_summary("drawn view3d frames", &mut drawn), view_summary("frames with a document change", &mut changes));
+            eprintln!(
+                "[profile] {} | {}",
+                view_summary("drawn view3d frames", &mut drawn),
+                view_summary("frames with a document change", &mut changes)
+            );
         }
     });
 }
@@ -300,7 +333,13 @@ pub fn report() {
     }
     VIEW_SAMPLES.with(|samples| {
         let mut samples = samples.borrow_mut();
-        let ViewSamples { frames, drawn, changes, idle, passes } = &mut *samples;
+        let ViewSamples {
+            frames,
+            drawn,
+            changes,
+            idle,
+            passes,
+        } = &mut *samples;
         eprintln!(
             "[profile] final {} | {} | {} | {}",
             view_summary("all view3d frames", frames),

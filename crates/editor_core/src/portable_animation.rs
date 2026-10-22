@@ -107,7 +107,11 @@ pub fn prepare_triggers(level: &mut Level) {
         if targets.is_empty() {
             continue;
         }
-        let default_wait=if e.classname=="trigger_multiple"{1.0}else{0.0};
+        let default_wait = if e.classname == "trigger_multiple" {
+            1.0
+        } else {
+            0.0
+        };
         let wait = match e.properties.get("wait") {
             Some(Value::Float(v)) => *v,
             Some(Value::Int(v)) => *v as f64,
@@ -125,9 +129,20 @@ pub fn prepare_triggers(level: &mut Level) {
                 }
             })
             .unwrap_or(serde_json::json!([]));
-        let text=|key:&str| match e.properties.get(key){Some(Value::String(v))=>v.clone(),Some(Value::Int(v))=>v.to_string(),Some(Value::Bool(v))=>if *v{"1"}else{"0"}.into(),_=>String::new()};
-        let once=if e.properties.contains_key("animation_once"){text("animation_once")=="1"}else{e.classname=="trigger_once"||wait<0.0};
-        let action=text("animation_action");let action=if action.is_empty(){"toggle"}else{&action};let clip=text("animation_clip");
+        let text = |key: &str| match e.properties.get(key) {
+            Some(Value::String(v)) => v.clone(),
+            Some(Value::Int(v)) => v.to_string(),
+            Some(Value::Bool(v)) => if *v { "1" } else { "0" }.into(),
+            _ => String::new(),
+        };
+        let once = if e.properties.contains_key("animation_once") {
+            text("animation_once") == "1"
+        } else {
+            e.classname == "trigger_once" || wait < 0.0
+        };
+        let action = text("animation_action");
+        let action = if action.is_empty() { "toggle" } else { &action };
+        let clip = text("animation_clip");
         let data = serde_json::json!({"action":action,"clip":clip,"name":e.name,"targets":targets,"once":once,"wait":if wait.is_finite(){wait.max(0.0)}else{1.0},"button":e.classname=="func_button","origin":e.transform.translation,"volumes":volumes});
         e.properties
             .insert("_heron_trigger".into(), Value::String(data.to_string()));
@@ -221,11 +236,24 @@ mod tests {
         d.add_brushes(vec![button]);
         let button = d.create_brush_entity("trigger_once").unwrap();
         d.set_entity_property(button, "target", "animated");
-        for action in ["play","open","close","pause","resume","stop"] {
+        for action in ["play", "open", "close", "pause", "resume", "stop"] {
             d.clear_selection();
-            let brush=map_model::shapes::create_cuboid(&d.world_bounds(),&geometry_math::bbox::Bbox3d::new(Vec3d::new(512.,0.,0.),Vec3d::new(544.,32.,32.)),"stone").unwrap();
-            d.add_brushes(vec![brush]);let trigger=d.create_brush_entity("func_button").unwrap();
-            d.set_entity_property(trigger,"target","animated");d.set_entity_property(trigger,"animation_action",action);d.set_entity_property(trigger,"animation_clip","pingpong");d.set_entity_property(trigger,"animation_once","0");d.set_entity_property(trigger,"wait","0");
+            let brush = map_model::shapes::create_cuboid(
+                &d.world_bounds(),
+                &geometry_math::bbox::Bbox3d::new(
+                    Vec3d::new(512., 0., 0.),
+                    Vec3d::new(544., 32., 32.),
+                ),
+                "stone",
+            )
+            .unwrap();
+            d.add_brushes(vec![brush]);
+            let trigger = d.create_brush_entity("func_button").unwrap();
+            d.set_entity_property(trigger, "target", "animated");
+            d.set_entity_property(trigger, "animation_action", action);
+            d.set_entity_property(trigger, "animation_clip", "pingpong");
+            d.set_entity_property(trigger, "animation_once", "0");
+            d.set_entity_property(trigger, "wait", "0");
         }
         let mut samples = Vec::new();
         for mode in ["once", "loop", "pingpong"] {
@@ -292,9 +320,15 @@ mod tests {
                 "{:?}",
                 report.warnings
             );
-            let level: serde_json::Value =
-                serde_json::from_str(&std::fs::read_to_string(path.join(if target==export::Target::Flax {"check.level.json"}else{"check.json"})).unwrap())
-                    .unwrap();
+            let level: serde_json::Value = serde_json::from_str(
+                &std::fs::read_to_string(path.join(if target == export::Target::Flax {
+                    "check.level.json"
+                } else {
+                    "check.json"
+                }))
+                .unwrap(),
+            )
+            .unwrap();
             assert!(
                 level["entities"]
                     .as_array()
@@ -305,9 +339,18 @@ mod tests {
                         .is_some()),
                 "trigger links must be exported"
             );
-            for action in ["play","open","close","pause","resume","stop"] {
-                let data=level["entities"].as_array().unwrap().iter().filter_map(|e|e["properties"]["_heron_trigger"]["value"].as_str()).filter_map(|v|serde_json::from_str::<serde_json::Value>(v).ok()).find(|v|v["action"]==action).expect("export each configured action");
-                assert_eq!(data["clip"],"pingpong");assert_eq!(data["once"],false);assert_eq!(data["wait"],0.0);
+            for action in ["play", "open", "close", "pause", "resume", "stop"] {
+                let data = level["entities"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter_map(|e| e["properties"]["_heron_trigger"]["value"].as_str())
+                    .filter_map(|v| serde_json::from_str::<serde_json::Value>(v).ok())
+                    .find(|v| v["action"] == action)
+                    .expect("export each configured action");
+                assert_eq!(data["clip"], "pingpong");
+                assert_eq!(data["once"], false);
+                assert_eq!(data["wait"], 0.0);
             }
             let data = level["entities"]
                 .as_array()

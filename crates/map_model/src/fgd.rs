@@ -222,10 +222,13 @@ fn read_fgd_including(
 ) -> Result<(Vec<EntityDefinition>, Vec<String>), FgdError> {
     let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     if visited.contains(&canonical) {
-        return Ok((Vec::new(), vec![format!(
-            "`@include` skipped: `{}` includes itself",
-            path.display()
-        )]));
+        return Ok((
+            Vec::new(),
+            vec![format!(
+                "`@include` skipped: `{}` includes itself",
+                path.display()
+            )],
+        ));
     }
     visited.push(canonical);
 
@@ -437,10 +440,9 @@ impl<'a> Parser<'a> {
                 self.skip_trivia();
                 match self.read_string() {
                     Ok(path) => self.includes.push(path),
-                    Err(_) => self.warnings.push(format!(
-                        "line {}: `@include` with no file path",
-                        self.line
-                    )),
+                    Err(_) => self
+                        .warnings
+                        .push(format!("line {}: `@include` with no file path", self.line)),
                 }
                 self.skip_directive();
                 return Ok(None);
@@ -547,7 +549,8 @@ impl<'a> Parser<'a> {
         match crate::model_definition::parse_model_argument(arguments, self.line) {
             Ok(parsed) => {
                 if let Some(note) = parsed.deprecation {
-                    self.warnings.push(format!("line {}: `{name}(…)`: {note}", self.line));
+                    self.warnings
+                        .push(format!("line {}: `{name}(…)`: {note}", self.line));
                 }
                 definition.model = Some(parsed.definition);
             }

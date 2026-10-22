@@ -77,11 +77,20 @@ pub fn select_brush(
     let hit = hit.filter(|id| document.brush(*id).is_some());
     match hit {
         Some(id) if additive => document.toggle_selected(id),
-        Some(id) => { document.select_only(id); handles.clear_selection(); }
-        None if !additive => { document.clear_selection(); handles.clear_selection(); }
+        Some(id) => {
+            document.select_only(id);
+            handles.clear_selection();
+        }
+        None if !additive => {
+            document.clear_selection();
+            handles.clear_selection();
+        }
         None => {}
     }
-    handles.collect(crate::handle_tool::HandleKind::Edge, document.selected_brushes().into_iter());
+    handles.collect(
+        crate::handle_tool::HandleKind::Edge,
+        document.selected_brushes().into_iter(),
+    );
 }
 
 /// Handles a press on an edge handle with the fillet tool active.
@@ -101,10 +110,17 @@ pub fn press(
     }
 
     // A click pins the preview; only Apply/Enter changes the source geometry.
-    if parameters.inner {return Outcome::Picked;}
-    if !handles.is_selected(position) {handles.select(position,false);}
-    if handles.selected_edges().is_empty() {Outcome::Missed} else {Outcome::Picked}
-
+    if parameters.inner {
+        return Outcome::Picked;
+    }
+    if !handles.is_selected(position) {
+        handles.select(position, false);
+    }
+    if handles.selected_edges().is_empty() {
+        Outcome::Missed
+    } else {
+        Outcome::Picked
+    }
 }
 
 /// Rounds whatever is picked, and says what happened.
@@ -117,15 +133,15 @@ pub fn apply(
     handles: &mut HandleManager,
     parameters: FilletParameters,
 ) -> Outcome {
-    if parameters.inner { return apply_inner(document, handles, parameters); }
+    if parameters.inner {
+        return apply_inner(document, handles, parameters);
+    }
     let edges = edges_to_round(&document.borrow(), handles, None);
     let outcome = if edges.is_empty() {
         if document.borrow().face_selection_count() == 0 {
             return Outcome::Missed;
         }
-        document
-            .borrow_mut()
-            .fillet_face_loops(&parameters.shape())
+        document.borrow_mut().fillet_face_loops(&parameters.shape())
     } else {
         document
             .borrow_mut()
@@ -144,15 +160,27 @@ pub fn apply(
 }
 
 fn inner_options(parameters: FilletParameters) -> crate::corner_join::Rounding {
-    crate::corner_join::Rounding { inner: Some((parameters.radius, parameters.faces)), ..Default::default() }
+    crate::corner_join::Rounding {
+        inner: Some((parameters.radius, parameters.faces)),
+        ..Default::default()
+    }
 }
 
-fn apply_inner(document: &Rc<RefCell<Document>>, handles: &mut HandleManager, parameters: FilletParameters) -> Outcome {
-    let revision=document.borrow().revision();
-    let result=document.borrow_mut().join_corner_options(revision,inner_options(parameters));
+fn apply_inner(
+    document: &Rc<RefCell<Document>>,
+    handles: &mut HandleManager,
+    parameters: FilletParameters,
+) -> Outcome {
+    let revision = document.borrow().revision();
+    let result = document
+        .borrow_mut()
+        .join_corner_options(revision, inner_options(parameters));
     match result {
-        Ok(())=>{handles.clear_selection();Outcome::Rounded(2)},
-        Err(error)=>Outcome::Refused(error),
+        Ok(()) => {
+            handles.clear_selection();
+            Outcome::Rounded(2)
+        }
+        Err(error) => Outcome::Refused(error),
     }
 }
 
@@ -170,7 +198,6 @@ pub fn report(outcome: &Outcome) {
         Outcome::Refused(why) => crate::say!("the edge was not rounded: {why}"),
     }
 }
-
 
 /// The edges a press would round, given what is picked and what the pointer is over.
 ///
@@ -215,7 +242,9 @@ pub fn edges_between_picked_vertices(
     document: &Document,
     handles: &HandleManager,
 ) -> Vec<(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)> {
-    if handles.kind() != Some(crate::handle_tool::HandleKind::Vertex) || handles.selected_count() < 2 {
+    if handles.kind() != Some(crate::handle_tool::HandleKind::Vertex)
+        || handles.selected_count() < 2
+    {
         return Vec::new();
     }
 
@@ -238,7 +267,9 @@ fn same_edge(
     one: (geometry_math::vec::Vec3d, geometry_math::vec::Vec3d),
     other: (geometry_math::vec::Vec3d, geometry_math::vec::Vec3d),
 ) -> bool {
-    let same = |a: geometry_math::vec::Vec3d, b: geometry_math::vec::Vec3d| geometry_math::vec::is_zero(a - b, 0.001);
+    let same = |a: geometry_math::vec::Vec3d, b: geometry_math::vec::Vec3d| {
+        geometry_math::vec::is_zero(a - b, 0.001)
+    };
     (same(one.0, other.0) && same(one.1, other.1)) || (same(one.0, other.1) && same(one.1, other.0))
 }
 
@@ -254,16 +285,52 @@ pub fn preview_edges(
     parameters: FilletParameters,
 ) -> Vec<(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)> {
     if parameters.inner {
-        return document.preview_corner_join_options(inner_options(parameters)).map(|draft|
-            draft.join.after.iter().chain(&draft.join.added).flat_map(|brush|brush.edge_positions()).collect())
+        return document
+            .preview_corner_join_options(inner_options(parameters))
+            .map(|draft| {
+                draft
+                    .join
+                    .after
+                    .iter()
+                    .chain(&draft.join.added)
+                    .flat_map(|brush| brush.edge_positions())
+                    .collect()
+            })
             .unwrap_or_default();
     }
-    let selected=document.selected_faces();
-    let owned_edges:Vec<_>=if edges.is_empty() {selected.iter().filter_map(|f|document.brush(f.node).and_then(|b|b.geometry_face_of(f.face).map(|face|map_model::fillet::face_edges(b,face)))).flatten().collect()}else{Vec::new()};
-    let edges=if edges.is_empty() {owned_edges.as_slice()}else{edges};
-    if edges.is_empty() {return Vec::new();}
-    let mut brushes=document.selected_brushes();
-    if !selected.is_empty() {for face in &selected {if let Some(brush)=document.brush(face.node) {if !brushes.iter().any(|b|std::ptr::eq(*b,brush)) {brushes.push(brush);}}}}
+    let selected = document.selected_faces();
+    let owned_edges: Vec<_> = if edges.is_empty() {
+        selected
+            .iter()
+            .filter_map(|f| {
+                document.brush(f.node).and_then(|b| {
+                    b.geometry_face_of(f.face)
+                        .map(|face| map_model::fillet::face_edges(b, face))
+                })
+            })
+            .flatten()
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let edges = if edges.is_empty() {
+        owned_edges.as_slice()
+    } else {
+        edges
+    };
+    if edges.is_empty() {
+        return Vec::new();
+    }
+    let mut brushes = document.selected_brushes();
+    if !selected.is_empty() {
+        for face in &selected {
+            if let Some(brush) = document.brush(face.node) {
+                if !brushes.iter().any(|b| std::ptr::eq(*b, brush)) {
+                    brushes.push(brush);
+                }
+            }
+        }
+    }
     let mut outline = Vec::new();
     for brush in brushes {
         let mine: Vec<(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)> = edges
@@ -274,9 +341,7 @@ pub fn preview_edges(
         if mine.is_empty() {
             continue;
         }
-        if let Ok(rounded) =
-            map_model::fillet::fillet_edges(brush, &mine, &parameters.shape())
-        {
+        if let Ok(rounded) = map_model::fillet::fillet_edges(brush, &mine, &parameters.shape()) {
             outline.extend(rounded.edge_positions());
         }
     }
@@ -291,15 +356,33 @@ pub struct SurfacePreview {
 
 #[derive(Default)]
 pub struct PreviewCache {
-    key: Option<(u64, u64, FilletParameters, Vec<(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)>)>,
+    key: Option<(
+        u64,
+        u64,
+        FilletParameters,
+        Vec<(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)>,
+    )>,
     value: Option<Rc<SurfacePreview>>,
 }
 
 impl PreviewCache {
-    pub fn get(&mut self, document: &Document, edges: Vec<(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)>, parameters: FilletParameters) -> Option<Rc<SurfacePreview>> {
-        let key = (document.generation(), document.revision(), parameters, edges);
+    pub fn get(
+        &mut self,
+        document: &Document,
+        edges: Vec<(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)>,
+        parameters: FilletParameters,
+    ) -> Option<Rc<SurfacePreview>> {
+        let key = (
+            document.generation(),
+            document.revision(),
+            parameters,
+            edges,
+        );
         if self.key.as_ref() != Some(&key) {
-            self.value = surface_preview(document, &key.3, parameters).ok().filter(|p| !p.brushes.is_empty()).map(Rc::new);
+            self.value = surface_preview(document, &key.3, parameters)
+                .ok()
+                .filter(|p| !p.brushes.is_empty())
+                .map(Rc::new);
             self.key = Some(key);
         }
         self.value.clone()
@@ -307,26 +390,45 @@ impl PreviewCache {
 }
 
 /// Uses the same all-or-nothing geometry as Apply, including face loops and inner fills.
-pub fn surface_preview(document: &Document, edges: &[(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)], parameters: FilletParameters) -> Result<SurfacePreview, String> {
+pub fn surface_preview(
+    document: &Document,
+    edges: &[(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)],
+    parameters: FilletParameters,
+) -> Result<SurfacePreview, String> {
     if parameters.inner {
         let draft = document.preview_corner_join_options(inner_options(parameters))?;
-        let [a,b] = draft.join.after;
+        let [a, b] = draft.join.after;
         let mut first = vec![a];
         first.extend(draft.join.added);
-        return Ok(SurfacePreview { brushes: vec![(draft.ids[0],first),(draft.ids[1],vec![b])] });
+        return Ok(SurfacePreview {
+            brushes: vec![(draft.ids[0], first), (draft.ids[1], vec![b])],
+        });
     }
     let mut result = SurfacePreview::default();
     let faces = document.selected_faces();
-    for (id,brush) in map_model::node::brushes_with_ids(document.tree_world()) {
+    for (id, brush) in map_model::node::brushes_with_ids(document.tree_world()) {
         let mine: Vec<_> = if edges.is_empty() {
-            faces.iter().filter(|f| f.node == id).filter_map(|f| brush.geometry_face_of(f.face))
-                .flat_map(|face| map_model::fillet::face_edges(brush,face)).collect()
+            faces
+                .iter()
+                .filter(|f| f.node == id)
+                .filter_map(|f| brush.geometry_face_of(f.face))
+                .flat_map(|face| map_model::fillet::face_edges(brush, face))
+                .collect()
         } else if document.selection_ids().contains(&id) {
-            edges.iter().copied().filter(|(a,b)| map_model::fillet::has_edge(brush,*a,*b)).collect()
-        } else { Vec::new() };
-        if mine.is_empty() { continue; }
-        let rounded = map_model::fillet::fillet_edges(brush,&mine,&parameters.shape()).map_err(|e|e.to_string())?;
-        result.brushes.push((id,vec![rounded]));
+            edges
+                .iter()
+                .copied()
+                .filter(|(a, b)| map_model::fillet::has_edge(brush, *a, *b))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        if mine.is_empty() {
+            continue;
+        }
+        let rounded = map_model::fillet::fillet_edges(brush, &mine, &parameters.shape())
+            .map_err(|e| e.to_string())?;
+        result.brushes.push((id, vec![rounded]));
     }
     Ok(result)
 }
@@ -345,7 +447,10 @@ mod vertex_tests {
         let world = document.world_bounds();
         let brush = map_model::shapes::create_cuboid(
             &world,
-            &Bbox3d::new(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0)),
+            &Bbox3d::new(
+                Vec3d::new(-32.0, -32.0, -32.0),
+                Vec3d::new(32.0, 32.0, 32.0),
+            ),
             "stone",
         )
         .expect("a cube");
@@ -437,24 +542,46 @@ mod tests {
 
     #[test]
     fn brush_selection_while_fillet_is_active_keeps_valid_pinned_edges() {
-        let (document, mut handles)=two_boxes();
-        let ids: Vec<_>=document.borrow().selectable_brushes().into_iter().map(|(id,_)|id).collect();
-        let before=document.borrow().to_map_text();
-        document.borrow_mut().clear_selection();handles.clear();
-        select_brush(&mut document.borrow_mut(),&mut handles,Some(ids[0]),false);
-        assert_eq!(document.borrow().selection_count(),1);
-        let edge=handles.handles()[0].position;handles.select(edge,false);
-        select_brush(&mut document.borrow_mut(),&mut handles,Some(ids[1]),true);
-        assert_eq!(document.borrow().selection_count(),2);assert!(handles.is_selected(edge));
-        select_brush(&mut document.borrow_mut(),&mut handles,Some(ids[1]),true);
-        assert_eq!(document.borrow().selection_count(),1);assert!(handles.is_selected(edge));
-        select_brush(&mut document.borrow_mut(),&mut handles,None,true);
-        assert_eq!(document.borrow().selection_count(),1);assert!(handles.is_selected(edge));
-        select_brush(&mut document.borrow_mut(),&mut handles,Some(ids[1]),false);
-        assert_eq!(document.borrow().selection_count(),1);assert!(!handles.is_selected(edge));
-        select_brush(&mut document.borrow_mut(),&mut handles,None,false);
-        assert_eq!(document.borrow().selection_count(),0);assert_eq!(handles.selected_count(),0);
-        assert_eq!(document.borrow().to_map_text(),before);
+        let (document, mut handles) = two_boxes();
+        let ids: Vec<_> = document
+            .borrow()
+            .selectable_brushes()
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        let before = document.borrow().to_map_text();
+        document.borrow_mut().clear_selection();
+        handles.clear();
+        select_brush(
+            &mut document.borrow_mut(),
+            &mut handles,
+            Some(ids[0]),
+            false,
+        );
+        assert_eq!(document.borrow().selection_count(), 1);
+        let edge = handles.handles()[0].position;
+        handles.select(edge, false);
+        select_brush(&mut document.borrow_mut(), &mut handles, Some(ids[1]), true);
+        assert_eq!(document.borrow().selection_count(), 2);
+        assert!(handles.is_selected(edge));
+        select_brush(&mut document.borrow_mut(), &mut handles, Some(ids[1]), true);
+        assert_eq!(document.borrow().selection_count(), 1);
+        assert!(handles.is_selected(edge));
+        select_brush(&mut document.borrow_mut(), &mut handles, None, true);
+        assert_eq!(document.borrow().selection_count(), 1);
+        assert!(handles.is_selected(edge));
+        select_brush(
+            &mut document.borrow_mut(),
+            &mut handles,
+            Some(ids[1]),
+            false,
+        );
+        assert_eq!(document.borrow().selection_count(), 1);
+        assert!(!handles.is_selected(edge));
+        select_brush(&mut document.borrow_mut(), &mut handles, None, false);
+        assert_eq!(document.borrow().selection_count(), 0);
+        assert_eq!(handles.selected_count(), 0);
+        assert_eq!(document.borrow().to_map_text(), before);
     }
 
     /// The handle in the middle of the given edge.
@@ -477,7 +604,7 @@ mod tests {
             Vec3d::new(16.0, 16.0, 16.0),
         );
 
-        let before=document.borrow().to_map_text();
+        let before = document.borrow().to_map_text();
         let outcome = press(
             &document,
             &mut handles,
@@ -486,11 +613,17 @@ mod tests {
             false,
         );
         assert_eq!(outcome, Outcome::Picked);
-        assert_eq!(document.borrow().to_map_text(),before);
-        let settings=FilletParameters{radius:4.0,..Default::default()};
-        assert!(!preview_edges(&document.borrow(),&handles.selected_edges(),settings).is_empty());
-        assert_eq!(document.borrow().to_map_text(),before);
-        assert_eq!(apply(&document,&mut handles,settings),Outcome::Rounded(1));
+        assert_eq!(document.borrow().to_map_text(), before);
+        let settings = FilletParameters {
+            radius: 4.0,
+            ..Default::default()
+        };
+        assert!(!preview_edges(&document.borrow(), &handles.selected_edges(), settings).is_empty());
+        assert_eq!(document.borrow().to_map_text(), before);
+        assert_eq!(
+            apply(&document, &mut handles, settings),
+            Outcome::Rounded(1)
+        );
 
         let document = document.borrow();
         let faces: Vec<usize> = document
@@ -498,7 +631,10 @@ mod tests {
             .iter()
             .map(|brush| brush.geometry().face_count())
             .collect();
-        assert!(faces.contains(&(6 + 4)), "one box gained the fillet's faces");
+        assert!(
+            faces.contains(&(6 + 4)),
+            "one box gained the fillet's faces"
+        );
         assert!(faces.contains(&6), "the other box is untouched");
     }
 
@@ -532,7 +668,10 @@ mod tests {
             press(&document, &mut handles, settings, one, false),
             Outcome::Picked
         );
-        assert_eq!(apply(&document,&mut handles,settings),Outcome::Rounded(2));
+        assert_eq!(
+            apply(&document, &mut handles, settings),
+            Outcome::Rounded(2)
+        );
         for brush in document.borrow().selected_brushes() {
             assert_eq!(brush.geometry().face_count(), 6 + 4);
         }
@@ -553,7 +692,10 @@ mod tests {
             faces: 4,
             corners: map_model::fillet::Corners::Mitred,
         };
-        assert_eq!(press(&document,&mut handles,settings,position,false),Outcome::Picked);
+        assert_eq!(
+            press(&document, &mut handles, settings, position, false),
+            Outcome::Picked
+        );
         assert!(matches!(
             apply(&document, &mut handles, settings),
             Outcome::Refused(_)

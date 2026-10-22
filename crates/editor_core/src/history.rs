@@ -50,9 +50,7 @@ fn weigh_node(node: &Node) -> usize {
         NodeKind::Group(group) => weigh(&group.children),
         NodeKind::Entity(entity) => weigh(&entity.children),
         NodeKind::Layer(layer) => weigh(&layer.children),
-        NodeKind::Patch(patch) => {
-            std::mem::size_of_val(patch.control_points.as_slice())
-        }
+        NodeKind::Patch(patch) => std::mem::size_of_val(patch.control_points.as_slice()),
     };
     std::mem::size_of::<Node>() + inside
 }
@@ -85,7 +83,11 @@ pub enum Edit {
         nodes: Vec<Node>,
     },
     /// Root order within a layer, without copying brush geometry.
-    Reordered { layer: usize, before: Vec<NodeId>, after: Vec<NodeId> },
+    Reordered {
+        layer: usize,
+        before: Vec<NodeId>,
+        after: Vec<NodeId>,
+    },
     /// Several edits that are one thing to the user.
     ///
     /// A CSG operation takes brushes out and puts others in, and someone who asked for
@@ -101,7 +103,9 @@ impl Edit {
         match self {
             Edit::Changed { before, after } => weigh(before) + weigh(after),
             Edit::Added { nodes, .. } | Edit::Removed { nodes, .. } => weigh(nodes),
-            Edit::Reordered { before, after, .. } => (before.len() + after.len()) * std::mem::size_of::<NodeId>(),
+            Edit::Reordered { before, after, .. } => {
+                (before.len() + after.len()) * std::mem::size_of::<NodeId>()
+            }
             Edit::Batch(parts) => parts.iter().map(Edit::weight).sum(),
         }
     }
@@ -118,7 +122,15 @@ impl Edit {
             },
             Edit::Added { layer, nodes } => Edit::Removed { layer, nodes },
             Edit::Removed { layer, nodes } => Edit::Added { layer, nodes },
-            Edit::Reordered { layer, before, after } => Edit::Reordered { layer, before: after, after: before },
+            Edit::Reordered {
+                layer,
+                before,
+                after,
+            } => Edit::Reordered {
+                layer,
+                before: after,
+                after: before,
+            },
             Edit::Batch(parts) => {
                 Edit::Batch(parts.into_iter().rev().map(Edit::reversed).collect())
             }
@@ -148,7 +160,10 @@ impl Edit {
 }
 
 fn count(n: usize, singular: &str, plural: &str) -> String {
-    format!("{n} {}", text_utils::string_format::str_plural(n, singular, plural))
+    format!(
+        "{n} {}",
+        text_utils::string_format::str_plural(n, singular, plural)
+    )
 }
 
 /// The undo and redo stacks.
@@ -219,7 +234,9 @@ impl History {
         let steps: Vec<Edit> = self.undo.drain(mark..).collect();
         match steps.len() {
             0 => {}
-            1 => self.undo.push(steps.into_iter().next().expect("length checked")),
+            1 => self
+                .undo
+                .push(steps.into_iter().next().expect("length checked")),
             _ => self.undo.push(Edit::Batch(steps)),
         }
     }
@@ -227,12 +244,28 @@ impl History {
     /// Replaces the latest insertion while a shape is still being configured.
     /// A strict ID check prevents amending unrelated history; only the latest
     /// geometry is retained, rather than a batch containing every intermediate mesh.
-    pub(crate) fn amend_added(&mut self, layer: usize, ids: &[map_model::node::NodeId], nodes: Vec<Node>) -> bool {
-        let Some(Edit::Added { layer: old_layer, nodes: old }) = self.undo.last_mut() else {return false;};
-        if *old_layer!=layer || old.len()!=ids.len() || !old.iter().zip(ids).all(|(n,id)|n.id==*id) {return false;}
-        let before=weigh(old);
-        *old=nodes;
-        self.weight=self.weight.saturating_sub(before)+weigh(old);
+    pub(crate) fn amend_added(
+        &mut self,
+        layer: usize,
+        ids: &[map_model::node::NodeId],
+        nodes: Vec<Node>,
+    ) -> bool {
+        let Some(Edit::Added {
+            layer: old_layer,
+            nodes: old,
+        }) = self.undo.last_mut()
+        else {
+            return false;
+        };
+        if *old_layer != layer
+            || old.len() != ids.len()
+            || !old.iter().zip(ids).all(|(n, id)| n.id == *id)
+        {
+            return false;
+        }
+        let before = weigh(old);
+        *old = nodes;
+        self.weight = self.weight.saturating_sub(before) + weigh(old);
         self.redo.clear();
         self.forget_the_oldest();
         true
@@ -383,11 +416,21 @@ mod tests {
     fn heavy_edits_are_held_to_the_budget_long_before_the_count() {
         let one = weigh(&[a_brush_node()]);
         // A budget of three brushes, so the rule can be watched rather than inferred.
-        let mut history = History { budget: one * 3, ..History::default() };
+        let mut history = History {
+            budget: one * 3,
+            ..History::default()
+        };
         for layer in 0..10 {
-            history.record(Edit::Added { layer, nodes: vec![a_brush_node()] });
+            history.record(Edit::Added {
+                layer,
+                nodes: vec![a_brush_node()],
+            });
         }
-        assert!(history.weight <= history.budget, "the stack weighs {}", history.weight);
+        assert!(
+            history.weight <= history.budget,
+            "the stack weighs {}",
+            history.weight
+        );
         assert!(
             history.undo.len() < CAPACITY,
             "ten steps fit the count; it is the budget that must have stopped this at {}",
@@ -402,11 +445,27 @@ mod tests {
 
     #[test]
     fn one_edit_larger_than_the_whole_budget_is_still_kept() {
-        let mut history = History { budget: 1, ..History::default() };
-        history.record(Edit::Added { layer: 0, nodes: vec![a_brush_node()] });
-        history.record(Edit::Added { layer: 1, nodes: vec![a_brush_node()] });
-        assert_eq!(history.undo.len(), 1, "the newest step is never the one dropped");
-        assert!(history.weight > history.budget, "and it is over the budget on its own");
+        let mut history = History {
+            budget: 1,
+            ..History::default()
+        };
+        history.record(Edit::Added {
+            layer: 0,
+            nodes: vec![a_brush_node()],
+        });
+        history.record(Edit::Added {
+            layer: 1,
+            nodes: vec![a_brush_node()],
+        });
+        assert_eq!(
+            history.undo.len(),
+            1,
+            "the newest step is never the one dropped"
+        );
+        assert!(
+            history.weight > history.budget,
+            "and it is over the budget on its own"
+        );
         let Edit::Added { layer, .. } = history.undo[0] else {
             panic!("expected an add");
         };
@@ -417,12 +476,18 @@ mod tests {
     fn undoing_and_redoing_keep_the_running_weight_honest() {
         let mut history = History::new();
         for layer in 0..4 {
-            history.record(Edit::Added { layer, nodes: vec![a_brush_node()] });
+            history.record(Edit::Added {
+                layer,
+                nodes: vec![a_brush_node()],
+            });
         }
         let full = history.weight;
         history.undo();
         history.undo();
-        assert_eq!(history.weight, history.undo.iter().map(Edit::weight).sum::<usize>());
+        assert_eq!(
+            history.weight,
+            history.undo.iter().map(Edit::weight).sum::<usize>()
+        );
         history.redo();
         history.redo();
         assert_eq!(history.weight, full, "back where it started");

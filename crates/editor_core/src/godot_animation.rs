@@ -241,10 +241,43 @@ fn wire_buttons(scene: &mut Scene) {
         if destinations.is_empty() {
             return used;
         }
-        let wait=props.iter().find_map(|(k,v)|if k=="wait"{match v{GdValue::Float(v)=>Some(*v),GdValue::Int(v)=>Some(*v as f64),GdValue::Str(v)=>v.parse().ok(),_=>None}}else{None}).unwrap_or(if class=="trigger_multiple"{1.0}else{0.0});
-        let once=props.iter().find_map(|(k,v)|if k=="animation_once"{Some(match v{GdValue::Str(v)=>v=="1",GdValue::Int(v)=>*v!=0,GdValue::Bool(v)=>*v,_=>false})}else{None}).unwrap_or(class=="trigger_once"||wait<0.0);
-        let delay=if wait.is_finite(){wait.max(0.0)}else{0.0};
-        let action=text(props,"animation_action").to_owned();let clip=text(props,"animation_clip").to_owned();
+        let wait = props
+            .iter()
+            .find_map(|(k, v)| {
+                if k == "wait" {
+                    match v {
+                        GdValue::Float(v) => Some(*v),
+                        GdValue::Int(v) => Some(*v as f64),
+                        GdValue::Str(v) => v.parse().ok(),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(if class == "trigger_multiple" {
+                1.0
+            } else {
+                0.0
+            });
+        let once = props
+            .iter()
+            .find_map(|(k, v)| {
+                if k == "animation_once" {
+                    Some(match v {
+                        GdValue::Str(v) => v == "1",
+                        GdValue::Int(v) => *v != 0,
+                        GdValue::Bool(v) => *v,
+                        _ => false,
+                    })
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(class == "trigger_once" || wait < 0.0);
+        let delay = if wait.is_finite() { wait.max(0.0) } else { 0.0 };
+        let action = text(props, "animation_action").to_owned();
+        let clip = text(props, "animation_clip").to_owned();
         let mut name = "HeronAnimationTrigger".to_string();
         let mut suffix = 1;
         while node.children.iter().any(|c| c.name == name) {
@@ -266,8 +299,8 @@ fn wire_buttons(scene: &mut Scene) {
         );
         relay.set("once", GdValue::Bool(once));
         relay.set("delay", GdValue::Float(delay));
-        relay.set("action",GdValue::Str(action));
-        relay.set("clip",GdValue::Str(clip));
+        relay.set("action", GdValue::Str(action));
+        relay.set("clip", GdValue::Str(clip));
         connections.push(scene_export::scene::Connection {
             signal: "body_entered".into(),
             from: path.clone(),

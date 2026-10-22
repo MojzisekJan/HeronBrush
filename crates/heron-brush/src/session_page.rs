@@ -44,9 +44,17 @@ pub struct Buttons {
 /// Leave session while busy.
 pub fn buttons(joining: bool, busy: bool) -> Buttons {
     Buttons {
-        start: if joining { translation_key("Join") } else { translation_key("Start session") },
+        start: if joining {
+            translation_key("Join")
+        } else {
+            translation_key("Start session")
+        },
         start_enabled: !busy,
-        stop: if joining { translation_key("Leave session") } else { translation_key("Stop session") },
+        stop: if joining {
+            translation_key("Leave session")
+        } else {
+            translation_key("Stop session")
+        },
         stop_enabled: busy,
     }
 }
@@ -58,9 +66,15 @@ fn describe(state: FrontendState, connecting: Option<Connecting>) -> Option<(Str
     match (connecting, state) {
         (Some(Connecting::Host), _) => same(translation_key("Starting session")),
         (Some(Connecting::Join), _) => same(translation_key("Connecting")),
-        (Some(Connecting::Rejoin), _) | (None, FrontendState::Reconnecting) => same(translation_key("Live: reconnecting")),
+        (Some(Connecting::Rejoin), _) | (None, FrontendState::Reconnecting) => {
+            same(translation_key("Live: reconnecting"))
+        }
         (None, FrontendState::Hosting(count)) => {
-            let line = if count == 0 { tr("Session running — waiting for guests").to_string() } else { fill("Connected guests: {}", &[&count.to_string()]) };
+            let line = if count == 0 {
+                tr("Session running — waiting for guests").to_string()
+            } else {
+                fill("Connected guests: {}", &[&count.to_string()])
+            };
             Some((line, fill("Live: hosting ({})", &[&count.to_string()])))
         }
         (None, FrontendState::Joined) => same(translation_key("Live: connected")),
@@ -163,7 +177,10 @@ impl SessionPage {
             state.poll_frontend(&mut editor.document.borrow_mut());
         }
         let now = state.frontend_state();
-        if now == FrontendState::Reconnecting && self.state != FrontendState::Reconnecting && self.pending.is_none() {
+        if now == FrontendState::Reconnecting
+            && self.state != FrontendState::Reconnecting
+            && self.pending.is_none()
+        {
             // A guest tries to come back on its own; the world is sent again on the rejoin,
             // so a drop costs at most the edits made while apart, which are held for it.
             if let Some(target) = self.joined.clone() {
@@ -186,7 +203,10 @@ impl SessionPage {
         }
         self.state = now;
         self.indicator = describe(self.state, self.connecting).map(|(_, label)| label);
-        if self.sent.is_none_or(|last| last.elapsed().as_millis() >= 100) {
+        if self
+            .sent
+            .is_none_or(|last| last.elapsed().as_millis() >= 100)
+        {
             state.frontend_presence(&editor.document.borrow(), &editor.camera.borrow());
             self.sent = Some(web_time::Instant::now());
         }
@@ -202,7 +222,12 @@ impl SessionPage {
         }
     }
 
-    pub fn show(&mut self, ctx: &egui::Context, editor: &Editor, state: &mut editor_core::mcp::Collab) {
+    pub fn show(
+        &mut self,
+        ctx: &egui::Context,
+        editor: &Editor,
+        state: &mut editor_core::mcp::Collab,
+    ) {
         if !self.open {
             self.was_open = false;
             return;
@@ -219,15 +244,22 @@ impl SessionPage {
         let mut close = false;
         let mut start = false;
         let mut stop = false;
-        self.open = dialog::show(ctx, "session", tr("Live session"), [640.0, 600.0], |ui, part| {
-            if part == dialog::Part::Actions {
-                start = form::accent_button(ui, tr(labels.start), labels.start_enabled).clicked();
-                close = dialog::button(ui, tr("Close"), true).clicked();
-                stop = dialog::button(ui, tr(labels.stop), labels.stop_enabled).clicked();
-                return;
-            }
-            self.body(ui, busy);
-        }) && !close;
+        self.open = dialog::show(
+            ctx,
+            "session",
+            tr("Live session"),
+            [640.0, 600.0],
+            |ui, part| {
+                if part == dialog::Part::Actions {
+                    start =
+                        form::accent_button(ui, tr(labels.start), labels.start_enabled).clicked();
+                    close = dialog::button(ui, tr("Close"), true).clicked();
+                    stop = dialog::button(ui, tr(labels.stop), labels.stop_enabled).clicked();
+                    return;
+                }
+                self.body(ui, busy);
+            },
+        ) && !close;
         if start {
             if joining {
                 self.join(editor);
@@ -333,7 +365,12 @@ impl SessionPage {
         self.remember_name();
         self.connecting = Some(Connecting::Host);
         self.start(move || {
-            let (token, inbox) = if internet { Session::host_iroh() } else { Session::host_on_this_network(port) }.map_err(|e| e.to_string())?;
+            let (token, inbox) = if internet {
+                Session::host_iroh()
+            } else {
+                Session::host_on_this_network(port)
+            }
+            .map_err(|e| e.to_string())?;
             Ok(Connected::Host(token, inbox))
         });
     }
@@ -376,8 +413,15 @@ impl SessionPage {
 
 /// Joins at `target`: `host:port` over the local network, anything else over iroh.
 fn connect(target: &str) -> Result<Session, String> {
-    let address = target.rsplit_once(':').is_some_and(|(host, port)| !host.is_empty() && port.parse::<u16>().is_ok());
-    if address { Session::join(target) } else { Session::join_iroh(target) }.map_err(|e| e.to_string())
+    let address = target
+        .rsplit_once(':')
+        .is_some_and(|(host, port)| !host.is_empty() && port.parse::<u16>().is_ok());
+    if address {
+        Session::join(target)
+    } else {
+        Session::join_iroh(target)
+    }
+    .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -387,8 +431,24 @@ mod tests {
     /// The buttons follow the mode and whether a session runs.
     #[test]
     fn buttons_follow_the_state() {
-        assert_eq!(buttons(false, false), Buttons { start: "Start session", start_enabled: true, stop: "Stop session", stop_enabled: false });
-        assert_eq!(buttons(false, true), Buttons { start: "Start session", start_enabled: false, stop: "Stop session", stop_enabled: true });
+        assert_eq!(
+            buttons(false, false),
+            Buttons {
+                start: "Start session",
+                start_enabled: true,
+                stop: "Stop session",
+                stop_enabled: false
+            }
+        );
+        assert_eq!(
+            buttons(false, true),
+            Buttons {
+                start: "Start session",
+                start_enabled: false,
+                stop: "Stop session",
+                stop_enabled: true
+            }
+        );
         assert_eq!(buttons(true, false).start, "Join");
         assert_eq!(buttons(true, true).stop, "Leave session");
         assert!(buttons(true, true).stop_enabled && !buttons(true, true).start_enabled);
@@ -398,13 +458,35 @@ mod tests {
     #[test]
     fn states_read_as_sentences() {
         assert_eq!(describe(FrontendState::Idle, None), None);
-        assert_eq!(describe(FrontendState::Idle, Some(Connecting::Host)).unwrap().0, "Starting session");
-        assert_eq!(describe(FrontendState::Idle, Some(Connecting::Join)).unwrap().0, "Connecting");
+        assert_eq!(
+            describe(FrontendState::Idle, Some(Connecting::Host))
+                .unwrap()
+                .0,
+            "Starting session"
+        );
+        assert_eq!(
+            describe(FrontendState::Idle, Some(Connecting::Join))
+                .unwrap()
+                .0,
+            "Connecting"
+        );
         let (line, label) = describe(FrontendState::Hosting(0), None).unwrap();
-        assert_eq!((line.as_str(), label.as_str()), ("Session running — waiting for guests", "Live: hosting (0)"));
-        assert_eq!(describe(FrontendState::Hosting(2), None).unwrap().0, "Connected guests: 2");
-        assert_eq!(describe(FrontendState::Joined, None).unwrap().1, "Live: connected");
-        assert_eq!(describe(FrontendState::Reconnecting, None).unwrap().1, "Live: reconnecting");
+        assert_eq!(
+            (line.as_str(), label.as_str()),
+            ("Session running — waiting for guests", "Live: hosting (0)")
+        );
+        assert_eq!(
+            describe(FrontendState::Hosting(2), None).unwrap().0,
+            "Connected guests: 2"
+        );
+        assert_eq!(
+            describe(FrontendState::Joined, None).unwrap().1,
+            "Live: connected"
+        );
+        assert_eq!(
+            describe(FrontendState::Reconnecting, None).unwrap().1,
+            "Live: reconnecting"
+        );
     }
 
     /// A fresh window hosts on the default port and starts idle, with nothing in the header.

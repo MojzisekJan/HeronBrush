@@ -189,8 +189,18 @@ pub fn build(source: &map::Entity, entity: &Entity, scale: f64) -> Option<Water>
 /// `transform`: where a volume's planes are.
 pub fn world_to_local(transform: &crate::level::Transform) -> [f64; 12] {
     let t = transform;
-    let rotation = glam::DQuat::from_euler(glam::EulerRot::YXZ, t.rotation_yxz[1], t.rotation_yxz[0], t.rotation_yxz[2]);
-    let inverse = glam::DMat4::from_scale_rotation_translation(glam::DVec3::from(t.scale), rotation, glam::DVec3::from(t.translation)).inverse();
+    let rotation = glam::DQuat::from_euler(
+        glam::EulerRot::YXZ,
+        t.rotation_yxz[1],
+        t.rotation_yxz[0],
+        t.rotation_yxz[2],
+    );
+    let inverse = glam::DMat4::from_scale_rotation_translation(
+        glam::DVec3::from(t.scale),
+        rotation,
+        glam::DVec3::from(t.translation),
+    )
+    .inverse();
     std::array::from_fn(|i| inverse.col(i % 4)[i / 4])
 }
 pub fn attach(source: &map::Entity, entity: &mut Entity, scale: f64, warnings: &mut Vec<String>) {

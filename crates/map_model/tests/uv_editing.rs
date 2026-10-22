@@ -1,10 +1,10 @@
 //! Tests for the UV operations a material editor drives.
 
+use geometry_math::bbox::Bbox3d;
+use geometry_math::vec::{self, Vec2f, Vec3d};
 use map_model::brush::Brush;
 use map_model::shapes;
 use map_model::uv::{self, UvCoordSystem};
-use geometry_math::bbox::Bbox3d;
-use geometry_math::vec::{self, Vec2f, Vec3d};
 
 fn world_bounds() -> Bbox3d {
     Bbox3d::from_scalars(-16384.0, 16384.0)
@@ -83,7 +83,11 @@ fn rotating_a_paraxial_face_turns_the_material() {
 
     let after = face.uv_coords(point);
     // The point is the same distance from the material's origin, in a different direction.
-    geometry_math::assert_approx_eq!(geometry_math::vec::length(after), geometry_math::vec::length(before), 1e-3);
+    geometry_math::assert_approx_eq!(
+        geometry_math::vec::length(after),
+        geometry_math::vec::length(before),
+        1e-3
+    );
     assert!(
         geometry_math::vec::distance(after, before) > 1.0,
         "rotating should have moved it: {before:?} to {after:?}"
@@ -137,7 +141,10 @@ fn resetting_returns_the_defaults() {
 fn a_plain_reset_keeps_a_valve_face_on_free_axes() {
     let mut face = top_face(&cube());
     let (u, v) = uv::parallel_axes(face.normal());
-    face.uv_coord_system = UvCoordSystem::Parallel { u_axis: u, v_axis: v };
+    face.uv_coord_system = UvCoordSystem::Parallel {
+        u_axis: u,
+        v_axis: v,
+    };
     face.rotate_uv(30.0); // turn the axes off the world
 
     face.reset_uv();
@@ -152,13 +159,20 @@ fn a_plain_reset_keeps_a_valve_face_on_free_axes() {
 fn resetting_to_world_forces_the_paraxial_axes() {
     let mut face = top_face(&cube());
     let (u, v) = uv::parallel_axes(face.normal());
-    face.uv_coord_system = UvCoordSystem::Parallel { u_axis: u, v_axis: v };
+    face.uv_coord_system = UvCoordSystem::Parallel {
+        u_axis: u,
+        v_axis: v,
+    };
     face.move_uv(Vec2f::new(9.0, 9.0));
     face.rotate_uv(30.0);
 
     face.reset_uv_to_paraxial();
 
-    assert_eq!(face.uv_coord_system, UvCoordSystem::Paraxial, "dropped to world-aligned axes");
+    assert_eq!(
+        face.uv_coord_system,
+        UvCoordSystem::Paraxial,
+        "dropped to world-aligned axes"
+    );
     assert_eq!(face.uv_attributes, map_model::uv::UvAttributes::default());
 }
 
@@ -197,8 +211,12 @@ fn fitting_covers_the_face_with_exactly_one_copy() {
 
     // Every corner maps into the material, and the extremes reach its edges.
     let coords: Vec<Vec2f> = polygon.iter().map(|p| face.uv_coords(*p)).collect();
-    let min = coords.iter().fold(coords[0], |a, c| geometry_math::vec::min(a, *c));
-    let max = coords.iter().fold(coords[0], |a, c| geometry_math::vec::max(a, *c));
+    let min = coords
+        .iter()
+        .fold(coords[0], |a, c| geometry_math::vec::min(a, *c));
+    let max = coords
+        .iter()
+        .fold(coords[0], |a, c| geometry_math::vec::max(a, *c));
 
     geometry_math::assert_approx_eq!(min, Vec2f::zero(), 1e-3);
     geometry_math::assert_approx_eq!(max, size, 1e-3);
@@ -219,7 +237,9 @@ fn fitting_a_face_to_a_material_of_a_different_shape() {
     face.fit_uv_to_face(&polygon, size);
 
     let coords: Vec<Vec2f> = polygon.iter().map(|p| face.uv_coords(*p)).collect();
-    let max = coords.iter().fold(coords[0], |a, c| geometry_math::vec::max(a, *c));
+    let max = coords
+        .iter()
+        .fold(coords[0], |a, c| geometry_math::vec::max(a, *c));
     geometry_math::assert_approx_eq!(max, size, 1e-3);
 }
 
@@ -264,7 +284,11 @@ fn the_two_uv_systems_agree_on_an_axis_aligned_face() {
         Vec3d::new(32.0, -16.0, 32.0),
         Vec3d::new(-8.0, 24.0, 32.0),
     ] {
-        geometry_math::assert_approx_eq!(parallel.uv_coords(point), paraxial.uv_coords(point), 1e-4);
+        geometry_math::assert_approx_eq!(
+            parallel.uv_coords(point),
+            paraxial.uv_coords(point),
+            1e-4
+        );
     }
 }
 
@@ -343,7 +367,11 @@ fn a_handle_on_a_point_the_turn_does_not_move_needs_no_correction() {
     about.rotate_uv_about(Vec2f::zero(), 45.0);
     plain.rotate_uv(45.0);
 
-    geometry_math::assert_approx_eq!(about.uv_attributes.rotation, plain.uv_attributes.rotation, 1e-6);
+    geometry_math::assert_approx_eq!(
+        about.uv_attributes.rotation,
+        plain.uv_attributes.rotation,
+        1e-6
+    );
     geometry_math::assert_approx_eq!(about.uv_attributes.offset, plain.uv_attributes.offset, 1e-3);
 }
 

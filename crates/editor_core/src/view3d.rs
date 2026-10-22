@@ -5,46 +5,58 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use crate::camera3d::Camera3d;
 use crate::assemble_tool::AssembleBrushTool;
+use crate::camera3d::Camera3d;
 use crate::canvas::Canvas;
 use crate::clip_tool::ClipTool;
 use crate::document::{Document, FaceAttributeTransfer, FaceRef};
 use crate::extrude_tool::{self, ExtrudeMode};
-use crate::input::{Key, Modifiers};
-use map_model::brush::Brush;
-use map_model::polyhedron::FaceId;
 use crate::grid::Grid;
 use crate::handle_drag::{self, HandlePicker};
-use crate::scale_tool::{self, AnchorPos, BBoxHandle, ProportionalAxes};
-use crate::shear_tool;
 use crate::handle_tool::{HandleKind, HandleManager};
+use crate::input::{Key, Modifiers};
 use crate::overlay;
+use crate::preferences::pref;
 use crate::renderer::Renderer;
 use crate::rotate_tool::RotateTool;
-use crate::preferences::pref;
+use crate::scale_tool::{self, AnchorPos, BBoxHandle, ProportionalAxes};
+use crate::shear_tool;
 use crate::tool::Tool;
 use crate::view_filters::ViewFilters;
 use geometry_math::abstract_line::AbstractLine;
 use geometry_math::bbox::Bbox3d;
 use geometry_math::ray::Ray3d;
 use geometry_math::vec::{self, Vec2d, Vec3d};
+use map_model::brush::Brush;
+use map_model::polyhedron::FaceId;
 
 /// Snap the two surface coordinates and solve the remaining coordinate on the face.
 pub fn snap_clip_surface(grid: &Grid, surface: Vec3d, normal: Vec3d) -> Vec3d {
     let mut at = grid.snap_point(surface);
-    let axis = (0..3).max_by(|a, b| normal[*a].abs().total_cmp(&normal[*b].abs())).unwrap();
+    let axis = (0..3)
+        .max_by(|a, b| normal[*a].abs().total_cmp(&normal[*b].abs()))
+        .unwrap();
     if normal[axis].abs() > 1e-9 {
         at[axis] += vec::dot(normal, surface - at) / normal[axis];
     }
     at
 }
 
-pub fn clip_surface_point(document: &Document, grid: &Grid, ray: &Ray3d) -> Option<(Vec3d, Vec<Vec3d>)> {
+pub fn clip_surface_point(
+    document: &Document,
+    grid: &Grid,
+    ray: &Ray3d,
+) -> Option<(Vec3d, Vec<Vec3d>)> {
     let hit = document.pick(ray)?;
-    let face = document.face_at(FaceRef { node: hit.node, face: hit.face? })?;
+    let face = document.face_at(FaceRef {
+        node: hit.node,
+        face: hit.face?,
+    })?;
     let normal = face.normal();
-    Some((snap_clip_surface(grid, ray.point_at_distance(hit.distance), normal), vec![normal]))
+    Some((
+        snap_clip_surface(grid, ray.point_at_distance(hit.distance), normal),
+        vec![normal],
+    ))
 }
 
 /// How far the camera flies per key press at the default fly speed, in world units.
@@ -181,8 +193,8 @@ pub fn pan_per_pixel() -> (f64, f64) {
 
 /// How far the camera flies per key press.
 pub fn fly_step(fast: bool) -> f64 {
-    let speed = f64::from(pref(|p| p.camera_fly_move_speed))
-        * if fast { SPEED_MODIFIER } else { 1.0 };
+    let speed =
+        f64::from(pref(|p| p.camera_fly_move_speed)) * if fast { SPEED_MODIFIER } else { 1.0 };
     FLY_STEP * speed / DEFAULT_FLY_SPEED
 }
 
@@ -208,23 +220,50 @@ pub struct RotationFeedback {
 }
 
 impl RotationFeedback {
-    pub fn new(camera: &Camera3d, width: f64, height: f64,
-        gesture: &render::rotation_gizmo::RingDrag, radius: f64, angle: Option<f64>) -> Option<Self> {
+    pub fn new(
+        camera: &Camera3d,
+        width: f64,
+        height: f64,
+        gesture: &render::rotation_gizmo::RingDrag,
+        radius: f64,
+        angle: Option<f64>,
+    ) -> Option<Self> {
         let center = gesture.center;
         let radial = gesture.reference;
         let tangent = geometry_math::vec::cross(gesture.axis, radial);
-        let project = |a: f64| camera.project(center + (radial * a.cos() + tangent * a.sin()) * radius, width, height);
-        let ring = (0..=64).map(|i| project(i as f64 * std::f64::consts::TAU / 64.0)).collect::<Option<Vec<_>>>()?;
-        let axis = (0..3).max_by(|&a, &b| gesture.axis[a].abs().total_cmp(&gesture.axis[b].abs()))?;
+        let project = |a: f64| {
+            camera.project(
+                center + (radial * a.cos() + tangent * a.sin()) * radius,
+                width,
+                height,
+            )
+        };
+        let ring = (0..=64)
+            .map(|i| project(i as f64 * std::f64::consts::TAU / 64.0))
+            .collect::<Option<Vec<_>>>()?;
+        let axis =
+            (0..3).max_by(|&a, &b| gesture.axis[a].abs().total_cmp(&gesture.axis[b].abs()))?;
         let color = [[1.0, 0.35, 0.16], [0.48, 0.85, 0.16], [0.18, 0.7, 1.0]][axis];
         let mut sector = Vec::new();
         let label = if let Some(angle) = angle {
             sector.push(camera.project(center, width, height)?);
-            for i in 0..=64 { sector.push(project(angle * i as f64 / 64.0)?); }
+            for i in 0..=64 {
+                sector.push(project(angle * i as f64 / 64.0)?);
+            }
             let anchor = project(angle)?;
-            Some((format!("{}  {:.1}°", ["X", "Y", "Z"][axis], angle.to_degrees()), anchor))
-        } else { None };
-        Some(Self { ring, sector, color, label })
+            Some((
+                format!("{}  {:.1}°", ["X", "Y", "Z"][axis], angle.to_degrees()),
+                anchor,
+            ))
+        } else {
+            None
+        };
+        Some(Self {
+            ring,
+            sector,
+            color,
+            label,
+        })
     }
 
     pub fn draw(&self, cr: &mut dyn Canvas) {
@@ -233,7 +272,9 @@ impl RotationFeedback {
             cr.new_path();
             if let Some(first) = points.first() {
                 cr.move_to(first.x(), first.y());
-                for p in &points[1..] { cr.line_to(p.x(), p.y()); }
+                for p in &points[1..] {
+                    cr.line_to(p.x(), p.y());
+                }
             }
         };
         let [r, g, b] = self.color;
@@ -254,8 +295,14 @@ impl RotationFeedback {
             cr.stroke();
         }
         if let Some((text, anchor)) = &self.label {
-            crate::view2d::draw_label(cr, text, *anchor,
-                crate::size_labels::Alignment::Bottom, 24.0, crate::view2d::LabelStyle::Picked);
+            crate::view2d::draw_label(
+                cr,
+                text,
+                *anchor,
+                crate::size_labels::Alignment::Bottom,
+                24.0,
+                crate::view2d::LabelStyle::Picked,
+            );
         }
         cr.restore();
     }
@@ -322,7 +369,9 @@ pub enum DragKind {
         start_bounds: Bbox3d,
     },
     /// The rotation ring about the given axis.
-    Rotate { gesture: render::rotation_gizmo::RingDrag },
+    Rotate {
+        gesture: render::rotation_gizmo::RingDrag,
+    },
     /// A face of the bounding box, slid across itself.
     Shear {
         normal: Vec3d,
@@ -441,7 +490,10 @@ pub fn lassoed(
 }
 
 /// Works out what a press has hold of, if anything.
-#[allow(clippy::too_many_arguments, reason = "one press consults every tool's state")]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "one press consults every tool's state"
+)]
 pub fn begin_drag(
     camera: &Camera3d,
     viewport_height: f64,
@@ -469,10 +521,7 @@ pub fn begin_drag(
         Tool::Fillet => None,
 
         Tool::Vertex | Tool::Edge | Tool::Face | Tool::ControlPoint => {
-            let positions: Vec<Vec3d> = handles
-                .movable()
-                .map(|handle| handle.position)
-                .collect();
+            let positions: Vec<Vec3d> = handles.movable().map(|handle| handle.position).collect();
             let caught = handle_drag::nearest_handle(
                 camera,
                 viewport_height,
@@ -544,7 +593,12 @@ pub fn begin_drag(
                 * handle_drag::perspective_scaling_factor(camera, center, viewport_height);
 
             let gesture = render::rotation_gizmo::RingDrag::pick(
-                camera, viewport_height, ray, center, radius, pick_radius().max(6.0),
+                camera,
+                viewport_height,
+                ray,
+                center,
+                radius,
+                pick_radius().max(6.0),
             )?;
             Some(Drag {
                 what: DragKind::Rotate { gesture },
@@ -565,19 +619,11 @@ pub fn begin_drag(
                 sides.iter().map(|(_, center)| *center),
                 handle_radius(),
             )?;
-            let (normal, side_center) = sides
-                .into_iter()
-                .find(|(_, center)| *center == caught)?;
+            let (normal, side_center) = sides.into_iter().find(|(_, center)| *center == caught)?;
 
             let offset = offset_of(ray, camera, viewport_height, caught);
-            let picker = shear_tool::picker(
-                normal,
-                side_center,
-                offset,
-                true,
-                camera.direction(),
-                false,
-            )?;
+            let picker =
+                shear_tool::picker(normal, side_center, offset, true, camera.direction(), false)?;
             Some(Drag {
                 what: DragKind::Shear {
                     normal,
@@ -620,7 +666,9 @@ pub fn begin_drag(
             })
         }
 
-        Tool::Select | Tool::Brush | Tool::Clip | Tool::Assemble | Tool::Paint | Tool::Sculpt => None,
+        Tool::Select | Tool::Brush | Tool::Clip | Tool::Assemble | Tool::Paint | Tool::Sculpt => {
+            None
+        }
     }
 }
 
@@ -644,11 +692,22 @@ pub fn transfer_mode(modifiers: Modifiers) -> Option<FaceAttributeTransfer> {
 /// A run of the attribute-transfer drag: the reference face, what it carries, and the
 /// faces the pointer has swept across so far.
 pub enum AttrStroke {
-    Transfer { source:FaceRef, mode:FaceAttributeTransfer, touched:Vec<FaceRef> },
-    Paint { state:crate::document::MaterialStroke, last:(f64,f64) },
+    Transfer {
+        source: FaceRef,
+        mode: FaceAttributeTransfer,
+        touched: Vec<FaceRef>,
+    },
+    Paint {
+        state: crate::document::MaterialStroke,
+        last: (f64, f64),
+    },
     /// A drag of the sculpt brush: where the last dab fell, and whether Shift swapped
     /// raise and lower when it began.
-    Sculpt { state:crate::document::SculptStroke, last:Vec3d, inverted:bool },
+    Sculpt {
+        state: crate::document::SculptStroke,
+        last: Vec3d,
+        inverted: bool,
+    },
 }
 
 /// The sculpt brush for a stroke begun with Shift held or not.
@@ -723,7 +782,10 @@ pub fn offset_of(ray: &Ray3d, camera: &Camera3d, viewport_height: f64, handle: V
 }
 
 /// Moves whatever the drag has hold of. Returns whether anything changed.
-#[allow(clippy::too_many_arguments, reason = "one drag step touches every tool's state")]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "one drag step touches every tool's state"
+)]
 pub fn update_drag(
     drag: &mut Drag,
     ray: &Ray3d,
@@ -744,8 +806,7 @@ pub fn update_drag(
             let at = *at;
             let current = drag.initial + drag.applied;
             let mode = handle_drag::move_mode(alt, false, drag.initial, current);
-            drag.picker =
-                handle_drag::picker_for_move(mode, drag.initial, current, drag.offset);
+            drag.picker = handle_drag::picker_for_move(mode, drag.initial, current, drag.offset);
 
             let Some(proposed) = drag.picker.pick(ray) else {
                 return false;
@@ -772,8 +833,7 @@ pub fn update_drag(
             // Modifiers can change the drag constraint while the gesture is active.
             let current = drag.initial + drag.applied;
             let mode = handle_drag::move_mode(alt, shift, drag.initial, current);
-            drag.picker =
-                handle_drag::picker_for_move(mode, drag.initial, current, drag.offset);
+            drag.picker = handle_drag::picker_for_move(mode, drag.initial, current, drag.offset);
 
             let Some(proposed) = drag.picker.pick(ray) else {
                 return false;
@@ -824,8 +884,7 @@ pub fn update_drag(
             } else {
                 AnchorPos::Opposite
             };
-            let Some(new_bounds) = handle.drag(start_bounds, delta, proportional, anchor)
-            else {
+            let Some(new_bounds) = handle.drag(start_bounds, delta, proportional, anchor) else {
                 return false;
             };
 
@@ -860,7 +919,8 @@ pub fn update_drag(
             let delta = grid.snap_point(proposed - drag.initial);
 
             document.rollback_transaction();
-            let Some(transform) = geometry_math::mat_ext::shear_bbox_matrix(start_bounds, *normal, delta)
+            let Some(transform) =
+                geometry_math::mat_ext::shear_bbox_matrix(start_bounds, *normal, delta)
             else {
                 return false;
             };
@@ -903,9 +963,13 @@ pub fn update_drag(
         }
 
         DragKind::Rotate { gesture } => {
-            let Some(raw_angle) = gesture.angle(ray) else { return false; };
+            let Some(raw_angle) = gesture.angle(ray) else {
+                return false;
+            };
             let angle = rotate.set_drag_angle(grid, raw_angle);
-            if (angle - drag.applied.x()).abs() < 1e-9 { return false; }
+            if (angle - drag.applied.x()).abs() < 1e-9 {
+                return false;
+            }
             document.rollback_transaction();
             document.rotate_selection_about(gesture.center, gesture.axis, angle.to_degrees());
             drag.applied = Vec3d::new(angle, 0.0, 0.0);
@@ -918,8 +982,7 @@ pub fn update_drag(
             // dominant axis with Shift -- the same move modes as a handle.
             let current = drag.initial + drag.applied;
             let mode = handle_drag::move_mode(alt, shift, drag.initial, current);
-            drag.picker =
-                handle_drag::picker_for_move(mode, drag.initial, current, drag.offset);
+            drag.picker = handle_drag::picker_for_move(mode, drag.initial, current, drag.offset);
 
             let Some(proposed) = drag.picker.pick(ray) else {
                 return false;
@@ -943,8 +1006,7 @@ pub fn update_drag(
             // furthest in. Same as a handle drag.
             let current = drag.initial + drag.applied;
             let mode = handle_drag::move_mode(alt, shift, drag.initial, current);
-            drag.picker =
-                handle_drag::picker_for_move(mode, drag.initial, current, drag.offset);
+            drag.picker = handle_drag::picker_for_move(mode, drag.initial, current, drag.offset);
 
             let Some(proposed) = drag.picker.pick(ray) else {
                 return false;
@@ -993,17 +1055,11 @@ pub fn dashes(from: Vec3d, to: Vec3d) -> Vec<(Vec3d, Vec3d)> {
         .step_by(2)
         .map(|index| {
             let start = from + step * index as f64;
-            let end = if index + 1 < count {
-                start + step
-            } else {
-                to
-            };
+            let end = if index + 1 < count { start + step } else { to };
             (start, end)
         })
         .collect()
 }
-
-
 
 impl Hud {
     /// Draws the HUD over a view `viewport` pixels large: the render camera's frame, the
@@ -1017,14 +1073,25 @@ impl Hud {
         }
         for (peer, name, anchor) in &self.cameras {
             let [r, g, b] = crate::collab::peer_color_bytes(*peer);
-            cr.set_source_rgb(f64::from(r) / 255.0, f64::from(g) / 255.0, f64::from(b) / 255.0);
+            cr.set_source_rgb(
+                f64::from(r) / 255.0,
+                f64::from(g) / 255.0,
+                f64::from(b) / 255.0,
+            );
             cr.arc(anchor.x(), anchor.y(), 5.0, 0.0, std::f64::consts::TAU);
             cr.fill_preserve();
             cr.set_source_rgba(0.0, 0.0, 0.0, 0.8);
             cr.set_line_width(1.5);
             cr.stroke();
             // Bottom aligns the label's lower edge above the camera marker.
-            crate::view2d::draw_label(cr, name, *anchor, crate::size_labels::Alignment::Bottom, 24.0, crate::view2d::LabelStyle::Picked);
+            crate::view2d::draw_label(
+                cr,
+                name,
+                *anchor,
+                crate::size_labels::Alignment::Bottom,
+                24.0,
+                crate::view2d::LabelStyle::Picked,
+            );
         }
         if let Some(rotation) = &self.rotation {
             rotation.draw(cr);
@@ -1091,7 +1158,9 @@ pub struct Scene3d {
     pub focus: Rc<dyn Fn()>,
     /// The animation frame the buffers were last uploaded for.
     pub rendered_frame: Rc<Cell<Option<(u32, u32)>>>,
-    pub preview_motions: Rc<RefCell<std::collections::HashMap<map_model::node::NodeId, crate::motion_preview::Motion>>>,
+    pub preview_motions: Rc<
+        RefCell<std::collections::HashMap<map_model::node::NodeId, crate::motion_preview::Motion>>,
+    >,
     pub preview_mesh: Rc<RefCell<crate::motion_preview::Mesh>>,
     pub fillet_surfaces: Rc<RefCell<crate::fillet_tool::PreviewCache>>,
     pub uploaded_surface_epoch: Rc<Cell<Option<u64>>>,
@@ -1136,9 +1205,45 @@ pub struct Scene3d {
 impl Scene3d {
     /// A view of the shared editor state.
     pub fn new(parts: Scene3dParts) -> Self {
-        let Scene3dParts { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus } = parts;
+        let Scene3dParts {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+        } = parts;
         Self {
-            document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus,
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
             rendered_frame: Rc::new(Cell::new(None)),
             preview_motions: Rc::new(RefCell::new(std::collections::HashMap::new())),
             preview_mesh: Rc::new(RefCell::new(crate::motion_preview::Mesh::default())),
@@ -1166,17 +1271,36 @@ impl Scene3d {
     }
 
     /// Cached, view-only geometry for the edge under the pointer or the pinned selection.
-    pub fn fillet_surface_preview(&self, document: &Document, width: f64, height: f64) -> Option<Rc<crate::fillet_tool::SurfacePreview>> {
-        if *self.tool.borrow() != Tool::Fillet { return None; }
+    pub fn fillet_surface_preview(
+        &self,
+        document: &Document,
+        width: f64,
+        height: f64,
+    ) -> Option<Rc<crate::fillet_tool::SurfacePreview>> {
+        if *self.tool.borrow() != Tool::Fillet {
+            return None;
+        }
         let mut handles = self.handles.borrow_mut();
         handles.collect(HandleKind::Edge, document.selected_brushes().into_iter());
-        let (x,y) = *self.pointer.borrow();
+        let (x, y) = *self.pointer.borrow();
         let camera = self.camera.borrow();
-        let hovered = self.pointer_inside.get().then(|| handle_drag::nearest_handle(
-            &camera,height,&camera.ray_through(x,y,width,height),
-            handles.handles().iter().map(|h|h.position),pick_radius())).flatten();
-        let edges = crate::fillet_tool::edges_to_round(document,&handles,hovered);
-        self.fillet_surfaces.borrow_mut().get(document,edges,*self.fillet.borrow())
+        let hovered = self
+            .pointer_inside
+            .get()
+            .then(|| {
+                handle_drag::nearest_handle(
+                    &camera,
+                    height,
+                    &camera.ray_through(x, y, width, height),
+                    handles.handles().iter().map(|h| h.position),
+                    pick_radius(),
+                )
+            })
+            .flatten();
+        let edges = crate::fillet_tool::edges_to_round(document, &handles, hovered);
+        self.fillet_surfaces
+            .borrow_mut()
+            .get(document, edges, *self.fillet.borrow())
     }
 
     /// A new GL context is up: every cached upload is stale, and the axes, which span
@@ -1192,7 +1316,9 @@ impl Scene3d {
     /// samples left to gather, or an animation playing.
     pub fn wants_frame(&self, renderer: &Renderer) -> bool {
         let filters = self.filters.borrow();
-        let playing = filters.animation_frame.is_none() && filters.preview_motion && !self.preview_mesh.borrow().motions.is_empty();
+        let playing = filters.animation_frame.is_none()
+            && filters.preview_motion
+            && !self.preview_mesh.borrow().motions.is_empty();
         playing || (!filters.wireframe && renderer.wants_another_sample())
     }
 
@@ -1200,7 +1326,9 @@ impl Scene3d {
     /// Returns whether it stopped something, in which case the click goes no further.
     pub fn edit_press(&self) -> bool {
         let mut filters = self.filters.borrow_mut();
-        if !(filters.animation_auto_key && filters.animation_frame.is_some()) && (filters.preview_motion || filters.animation_frame.is_some()) {
+        if !(filters.animation_auto_key && filters.animation_frame.is_some())
+            && (filters.preview_motion || filters.animation_frame.is_some())
+        {
             filters.preview_motion = false;
             filters.animation_frame = None;
             drop(filters);
@@ -1215,7 +1343,11 @@ impl Scene3d {
     pub fn pointer_over(&self) {
         self.pointer_inside.set(true);
         let active = *self.tool.borrow();
-        if matches!(active, Tool::Rotate | Tool::Scale | Tool::Shear | Tool::Clip | Tool::Sculpt) || HandleKind::of(active).is_some() {
+        if matches!(
+            active,
+            Tool::Rotate | Tool::Scale | Tool::Shear | Tool::Clip | Tool::Sculpt
+        ) || HandleKind::of(active).is_some()
+        {
             (self.render)();
         }
     }
@@ -1229,7 +1361,14 @@ impl Scene3d {
     /// Escape during a lasso restores the selection. Returns whether it did, in which
     /// case the frontend resets its drag.
     pub fn escape(&self) -> bool {
-        let Self { document, tool, lasso, marquee, redraw, .. } = self;
+        let Self {
+            document,
+            tool,
+            lasso,
+            marquee,
+            redraw,
+            ..
+        } = self;
         let selecting = lasso.borrow().is_some() && *tool.borrow() == Tool::Select;
         if selecting {
             if let Some(initial) = marquee.borrow_mut().take() {
@@ -1251,7 +1390,9 @@ impl Scene3d {
     /// right, and dragging down looks down.
     pub fn look_update(&self, x: f64, y: f64) {
         let (lx, ly) = *self.look_last.borrow();
-        self.camera.borrow_mut().turn((x - lx) * turn_per_pixel().0, (y - ly) * turn_per_pixel().1);
+        self.camera
+            .borrow_mut()
+            .turn((x - lx) * turn_per_pixel().0, (y - ly) * turn_per_pixel().1);
         *self.look_last.borrow_mut() = (x, y);
         (self.render)();
     }
@@ -1271,12 +1412,20 @@ impl Scene3d {
         let alt_move = pref(|p| p.camera_enable_alt_move) && modifiers.alt;
         if alt_move {
             let speed = f64::from(pref(|p| p.camera_move_speed));
-            let sign = if pref(|p| p.camera_alt_move_invert) { -1.0 } else { 1.0 };
-            self.camera.borrow_mut().fly(-(y - ly) * speed * sign, 0.0, 0.0);
+            let sign = if pref(|p| p.camera_alt_move_invert) {
+                -1.0
+            } else {
+                1.0
+            };
+            self.camera
+                .borrow_mut()
+                .fly(-(y - ly) * speed * sign, 0.0, 0.0);
         } else {
             let (horizontal, vertical) = pan_per_pixel();
             // Dragging right slides the world right, which means the camera goes left.
-            self.camera.borrow_mut().pan(-(x - lx) * horizontal, (y - ly) * vertical);
+            self.camera
+                .borrow_mut()
+                .pan(-(x - lx) * horizontal, (y - ly) * vertical);
         }
         *self.pan_last.borrow_mut() = (x, y);
         (self.render)();
@@ -1312,7 +1461,10 @@ impl Scene3d {
 
     /// The node under the pointer.
     pub fn pick_node(&self, x: f64, y: f64, size: (f64, f64)) -> Option<map_model::node::NodeId> {
-        self.document.borrow().pick(&self.ray(x, y, size)).map(|hit| hit.node)
+        self.document
+            .borrow()
+            .pick(&self.ray(x, y, size))
+            .map(|hit| hit.node)
     }
 
     /// Where a new thing goes: the surface under the pointer, or a set distance down the
@@ -1334,7 +1486,14 @@ impl Scene3d {
         crate::view2d::Probe {
             entity: hit.and_then(|hit| document.entity_around(hit.node)),
             material: hit.and_then(|hit| {
-                hit.face.and_then(|face| document.face_at(FaceRef { node: hit.node, face }).map(|face| face.material_name.to_string()))
+                hit.face.and_then(|face| {
+                    document
+                        .face_at(FaceRef {
+                            node: hit.node,
+                            face,
+                        })
+                        .map(|face| face.material_name.to_string())
+                })
             }),
             at,
         }
@@ -1344,7 +1503,12 @@ impl Scene3d {
     /// distance down the ray.
     pub fn drop_prefab(&self, path: &std::path::Path, x: f64, y: f64, size: (f64, f64)) -> bool {
         let at = self.landing(&self.ray(x, y, size));
-        let landed = crate::assets::insert_prefab_on_grid(&mut self.document.borrow_mut(), path, at, &self.grid.borrow());
+        let landed = crate::assets::insert_prefab_on_grid(
+            &mut self.document.borrow_mut(),
+            path,
+            at,
+            &self.grid.borrow(),
+        );
         (self.redraw)();
         (self.refresh_panels)();
         landed
@@ -1355,7 +1519,13 @@ impl Scene3d {
     /// `CreateEntityTool::updateEntityPosition3D`.
     pub fn entity_drag_over(&self, classname: Option<&str>, x: f64, y: f64, size: (f64, f64)) {
         let landing = classname.map(|classname| {
-            crate::entity_placement::drop_preview_bounds(&self.document.borrow(), &self.grid.borrow(), classname, &self.ray(x, y, size), false)
+            crate::entity_placement::drop_preview_bounds(
+                &self.document.borrow(),
+                &self.grid.borrow(),
+                classname,
+                &self.ray(x, y, size),
+                false,
+            )
         });
         let changed = *self.entity_drop_preview.borrow() != landing;
         if changed {
@@ -1376,7 +1546,12 @@ impl Scene3d {
     /// An entity class dropped on the view: one placed there.
     pub fn drop_entity(&self, classname: &str, x: f64, y: f64, size: (f64, f64)) -> bool {
         *self.entity_drop_preview.borrow_mut() = None;
-        let placed = crate::entity_placement::place_entity_on_ray(&self.document, &self.grid.borrow(), classname, &self.ray(x, y, size));
+        let placed = crate::entity_placement::place_entity_on_ray(
+            &self.document,
+            &self.grid.borrow(),
+            classname,
+            &self.ray(x, y, size),
+        );
         (self.redraw)();
         (self.refresh_panels)();
         placed
@@ -1393,112 +1568,190 @@ impl Scene3d {
     /// `drawn` holds the [`picture_key`] of what it shows, and
     /// the drawing is skipped while the frame would be that picture again. Uploads, the
     /// overlay and the HUD still follow the scene, which is cheap next to the drawing.
-    pub fn render_kept(&self, renderer: &mut Renderer, width: f64, height: f64, scale: i32, drawn: Option<&Cell<Option<u64>>>) -> bool {
+    pub fn render_kept(
+        &self,
+        renderer: &mut Renderer,
+        width: f64,
+        height: f64,
+        scale: i32,
+        drawn: Option<&Cell<Option<u64>>>,
+    ) -> bool {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
-            // The renderer draws by what it is handed, not by reading the preference
-            // store itself; this is the desktop frontend filling that in each frame.
-            let settings = self.begin_frame(width, height);
-            renderer.set_settings(settings.clone());
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
+        // The renderer draws by what it is handed, not by reading the preference
+        // store itself; this is the desktop frontend filling that in each frame.
+        let settings = self.begin_frame(width, height);
+        renderer.set_settings(settings.clone());
 
-            let document = document.borrow();
+        let document = document.borrow();
 
-            // The materials first: the geometry's batches index into them.
-            let materials_key = document.materials_revision();
-            if *uploaded_materials.borrow() != Some(materials_key) {
-                renderer.upload_materials(document.materials().materials());
-                *uploaded_materials.borrow_mut() = Some(materials_key);
-                // The batches were built against the collection that has just been
-                // replaced, so they have to be built again.
-                *uploaded.borrow_mut() = None;
-            }
+        // The materials first: the geometry's batches index into them.
+        let materials_key = document.materials_revision();
+        if *uploaded_materials.borrow() != Some(materials_key) {
+            renderer.upload_materials(document.materials().materials());
+            *uploaded_materials.borrow_mut() = Some(materials_key);
+            // The batches were built against the collection that has just been
+            // replaced, so they have to be built again.
+            *uploaded.borrow_mut() = None;
+        }
 
-            // The filters change what is drawn without the document changing, so they are
-            // part of what says whether the buffers are still current.
-            let current_filters = *filters.borrow();
-            let clip_state = (*tool.borrow() == Tool::Clip).then(|| clip.borrow().clone());
-            let fillet_preview = self.fillet_surface_preview(&document,width,height);
-            let surface_epoch = document.with_tool_preview_surfaces(&current_filters,clip_state.as_ref(),fillet_preview.as_ref(), |s| s.epoch());
-            let key = (document.generation(), document.revision());
-            if uploaded_surface_epoch.get() != Some(surface_epoch) || *uploaded.borrow() != Some(key) || *uploaded_filters.borrow() != Some(current_filters.geometry_only()) || *uploaded_clip.borrow() != clip_state
-            {
-                let started = crate::profile::start();
-                *preview_motions.borrow_mut() = document.preview_motions();
-                *preview_mesh.borrow_mut() = document.with_tool_preview_surfaces(&current_filters,clip_state.as_ref(),fillet_preview.as_ref(), |s|s.mesh().0);
-                crate::profile::add_scene_build(started);
-                renderer.upload(&preview_mesh.borrow().triangles);
-                renderer.upload_sprites(if current_filters.show_point_entity_models {
-                    document.sprites()
-                } else {
-                    Vec::new()
-                });
-                *uploaded.borrow_mut() = Some(key);
-                *uploaded_filters.borrow_mut() = Some(current_filters.geometry_only());
-                rendered_frame.set(None);
-                *uploaded_clip.borrow_mut() = clip_state;
-                uploaded_surface_epoch.set(Some(surface_epoch));
-                renderer.restart_accumulating();
-                *last_frame.borrow_mut() = None;
-            }
-
-            let playing = current_filters.animation_frame.is_none() && current_filters.preview_motion && !preview_mesh.borrow().motions.is_empty();
-            document.animation_preview_time(playing);
-                        if let Some(frame) = current_filters.animation_frame {
-                let state = (frame, current_filters.animation_fps.max(1));
-                if rendered_frame.get() != Some(state) {
-                    renderer.upload(&preview_mesh.borrow().at_frame(frame as f64 / state.1 as f64));
-                    renderer.restart_accumulating();
-                    rendered_frame.set(Some(state));
-                }
-            } else if playing {
-                rendered_frame.set(None);
-                let elapsed = document.animation_preview_time(true);
-                renderer.upload(&preview_mesh.borrow().at(elapsed));
-                renderer.restart_accumulating();
-            } else {
-                if rendered_frame.take().is_some() {
-                    renderer.upload(&preview_mesh.borrow().triangles);
-                    renderer.restart_accumulating();
-                }
-            }
-
-            let FrameOverlay { points, guides, hud_changed } = self.build_overlay(&document, width, height, playing);
-            // Editing guides refer to the saved geometry, so hide them during playback.
-            if playing { renderer.upload_overlay(&[], &[]); }
-            else { renderer.upload_overlay(&points, &guides); }
-
-            let (width, height) = ((width * f64::from(scale)).round() as i32, (height * f64::from(scale)).round() as i32);
-
-            // Accumulating averages this frame with the ones before it, so a frame of a
-            // different view would smear across it.
-            let frame = frame_key(
-                &camera.borrow(),
-                key,
+        // The filters change what is drawn without the document changing, so they are
+        // part of what says whether the buffers are still current.
+        let current_filters = *filters.borrow();
+        let clip_state = (*tool.borrow() == Tool::Clip).then(|| clip.borrow().clone());
+        let fillet_preview = self.fillet_surface_preview(&document, width, height);
+        let surface_epoch = document.with_tool_preview_surfaces(
+            &current_filters,
+            clip_state.as_ref(),
+            fillet_preview.as_ref(),
+            |s| s.epoch(),
+        );
+        let key = (document.generation(), document.revision());
+        if uploaded_surface_epoch.get() != Some(surface_epoch)
+            || *uploaded.borrow() != Some(key)
+            || *uploaded_filters.borrow() != Some(current_filters.geometry_only())
+            || *uploaded_clip.borrow() != clip_state
+        {
+            let started = crate::profile::start();
+            *preview_motions.borrow_mut() = document.preview_motions();
+            *preview_mesh.borrow_mut() = document.with_tool_preview_surfaces(
                 &current_filters,
-                width,
-                height,
-                &points,
-                &guides,
-            ) ^ surface_epoch.rotate_left(29);
-            if *last_frame.borrow() != Some(frame) {
-                renderer.restart_accumulating();
-                *last_frame.borrow_mut() = Some(frame);
-            }
-
-            if let Some(drawn) = drawn {
-                let picture = picture_key(frame, &settings, document.materials_revision());
-                let refining = !current_filters.wireframe && renderer.wants_another_sample();
-                if !needs_draw(drawn.get(), picture, refining, playing) {
-                    return hud_changed;
-                }
-                drawn.set(Some(picture));
-            }
-            if current_filters.wireframe {
-                renderer.draw_wireframe(&camera.borrow(), width, height);
+                clip_state.as_ref(),
+                fillet_preview.as_ref(),
+                |s| s.mesh().0,
+            );
+            crate::profile::add_scene_build(started);
+            renderer.upload(&preview_mesh.borrow().triangles);
+            renderer.upload_sprites(if current_filters.show_point_entity_models {
+                document.sprites()
             } else {
-                renderer.draw(&camera.borrow(), width, height);
+                Vec::new()
+            });
+            *uploaded.borrow_mut() = Some(key);
+            *uploaded_filters.borrow_mut() = Some(current_filters.geometry_only());
+            rendered_frame.set(None);
+            *uploaded_clip.borrow_mut() = clip_state;
+            uploaded_surface_epoch.set(Some(surface_epoch));
+            renderer.restart_accumulating();
+            *last_frame.borrow_mut() = None;
+        }
+
+        let playing = current_filters.animation_frame.is_none()
+            && current_filters.preview_motion
+            && !preview_mesh.borrow().motions.is_empty();
+        document.animation_preview_time(playing);
+        if let Some(frame) = current_filters.animation_frame {
+            let state = (frame, current_filters.animation_fps.max(1));
+            if rendered_frame.get() != Some(state) {
+                renderer.upload(
+                    &preview_mesh
+                        .borrow()
+                        .at_frame(frame as f64 / state.1 as f64),
+                );
+                renderer.restart_accumulating();
+                rendered_frame.set(Some(state));
             }
-            hud_changed
+        } else if playing {
+            rendered_frame.set(None);
+            let elapsed = document.animation_preview_time(true);
+            renderer.upload(&preview_mesh.borrow().at(elapsed));
+            renderer.restart_accumulating();
+        } else {
+            if rendered_frame.take().is_some() {
+                renderer.upload(&preview_mesh.borrow().triangles);
+                renderer.restart_accumulating();
+            }
+        }
+
+        let FrameOverlay {
+            points,
+            guides,
+            hud_changed,
+        } = self.build_overlay(&document, width, height, playing);
+        // Editing guides refer to the saved geometry, so hide them during playback.
+        if playing {
+            renderer.upload_overlay(&[], &[]);
+        } else {
+            renderer.upload_overlay(&points, &guides);
+        }
+
+        let (width, height) = (
+            (width * f64::from(scale)).round() as i32,
+            (height * f64::from(scale)).round() as i32,
+        );
+
+        // Accumulating averages this frame with the ones before it, so a frame of a
+        // different view would smear across it.
+        let frame = frame_key(
+            &camera.borrow(),
+            key,
+            &current_filters,
+            width,
+            height,
+            &points,
+            &guides,
+        ) ^ surface_epoch.rotate_left(29);
+        if *last_frame.borrow() != Some(frame) {
+            renderer.restart_accumulating();
+            *last_frame.borrow_mut() = Some(frame);
+        }
+
+        if let Some(drawn) = drawn {
+            let picture = picture_key(frame, &settings, document.materials_revision());
+            let refining = !current_filters.wireframe && renderer.wants_another_sample();
+            if !needs_draw(drawn.get(), picture, refining, playing) {
+                return hud_changed;
+            }
+            drawn.set(Some(picture));
+        }
+        if current_filters.wireframe {
+            renderer.draw_wireframe(&camera.borrow(), width, height);
+        } else {
+            renderer.draw(&camera.borrow(), width, height);
+        }
+        hud_changed
     }
 
     /// What every frame starts with, whatever draws it: the render settings from the
@@ -1507,1340 +1760,2092 @@ impl Scene3d {
     pub fn begin_frame(&self, width: f64, height: f64) -> render::RenderSettings {
         let camera = &self.camera;
         let render_fov = crate::render_camera::view_fov(camera, width, height);
-        camera.borrow_mut().fov_degrees = render_fov.unwrap_or_else(|| f64::from(crate::preferences::pref(|p| p.camera_fov)));
+        camera.borrow_mut().fov_degrees =
+            render_fov.unwrap_or_else(|| f64::from(crate::preferences::pref(|p| p.camera_fov)));
         crate::render_settings::from_preferences()
     }
 
     /// The overlay of a frame, `width` by `height` logical pixels: the handles and guide
     /// lines the tools draw over the scene, in world space, and whether the HUD changed.
     /// Independent of the GPU backend: the GL renderer and the wgpu one both draw it.
-    pub fn build_overlay(&self, doc: &Document, width: f64, height: f64, playing: bool) -> FrameOverlay {
+    pub fn build_overlay(
+        &self,
+        doc: &Document,
+        width: f64,
+        height: f64,
+        playing: bool,
+    ) -> FrameOverlay {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
-            let document = doc;
-            let current_filters = *filters.borrow();
-            let render_aspect = crate::render_camera::view_aspect(camera);
-            let mut hud_changed = false;
-            // The overlay follows the tool and what it has hold of, both of which change
-            // between frames without the document changing, so it is rebuilt every frame.
-            let active = *tool.borrow();
-            let fillet_preview = self.fillet_surface_preview(document,width,height);
-            // Kept alongside the borrow below, since that shadows the name and the fillet
-            // preview further down needs the handles again once it has been dropped.
-            let handle_state = Rc::clone(&handles);
-            let mut handles = handles.borrow_mut();
-            if let Some(kind) = HandleKind::of(active) {
-                if kind == HandleKind::ControlPoint {
-                    handles.collect_control_points(document.selected_patches().into_iter());
-                } else {
-                    handles.collect(kind, document.selected_brushes().into_iter());
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
+        let document = doc;
+        let current_filters = *filters.borrow();
+        let render_aspect = crate::render_camera::view_aspect(camera);
+        let mut hud_changed = false;
+        // The overlay follows the tool and what it has hold of, both of which change
+        // between frames without the document changing, so it is rebuilt every frame.
+        let active = *tool.borrow();
+        let fillet_preview = self.fillet_surface_preview(document, width, height);
+        // Kept alongside the borrow below, since that shadows the name and the fillet
+        // preview further down needs the handles again once it has been dropped.
+        let handle_state = Rc::clone(&handles);
+        let mut handles = handles.borrow_mut();
+        if let Some(kind) = HandleKind::of(active) {
+            if kind == HandleKind::ControlPoint {
+                handles.collect_control_points(document.selected_patches().into_iter());
+            } else {
+                handles.collect(kind, document.selected_brushes().into_iter());
+            }
+        }
+        // The rotate rings are drawn at a constant size on screen, as
+        // `RotateHandle::majorRadius` times the camera's perspective scaling --
+        // sizing them to the selection instead puts a large selection's rings up
+        // against the near plane, where their segments smear across the view.
+        let rotate_ring_radius = rotate
+            .borrow()
+            .center()
+            .map(|center| {
+                f64::from(pref(|p| p.rotate_handle_radius))
+                    * handle_drag::perspective_scaling_factor(&camera.borrow(), center, height)
+            })
+            .unwrap_or(0.0);
+        // Labels the HUD will draw, in world space until it projects them: the
+        // handle a press would take or a drag is moving, written out as its three
+        // coordinates (`NodeHandleToolBase::renderHighlight`).
+        let mut world_labels: Vec<(String, Vec3d)> = Vec::new();
+        let overlay_started = crate::profile::start();
+        let (mut points, mut guides) = overlay::build(
+            &document,
+            active,
+            &handles,
+            &rotate.borrow(),
+            &clip.borrow(),
+            &assemble.borrow(),
+            &sweep.borrow(),
+            rotate_ring_radius,
+        );
+        drop(handles);
+        if active == Tool::Clip && pointer_inside.get() {
+            let (x, y) = *pointer.borrow();
+            let ray = camera.borrow().ray_through(x, y, width, height);
+            if let Some((at, _)) = clip_surface_point(&document, &grid.borrow(), &ray) {
+                if !clip.borrow().is_dragging() && clip.borrow().can_add_point(at) {
+                    points.push((at, pref(|p| p.clip_handle_color).rgba_f32()));
                 }
             }
-            // The rotate rings are drawn at a constant size on screen, as
-            // `RotateHandle::majorRadius` times the camera's perspective scaling --
-            // sizing them to the selection instead puts a large selection's rings up
-            // against the near plane, where their segments smear across the view.
-            let rotate_ring_radius = rotate
-                .borrow()
-                .center()
-                .map(|center| {
-                    f64::from(pref(|p| p.rotate_handle_radius))
-                        * handle_drag::perspective_scaling_factor(
-                            &camera.borrow(),
-                            center,
-                            height,
-                        )
-                })
-                .unwrap_or(0.0);
-            // Labels the HUD will draw, in world space until it projects them: the
-            // handle a press would take or a drag is moving, written out as its three
-            // coordinates (`NodeHandleToolBase::renderHighlight`).
-            let mut world_labels: Vec<(String, Vec3d)> = Vec::new();
-            let overlay_started = crate::profile::start();
-            let (mut points, mut guides) = overlay::build(
-                &document,
-                active,
-                &handles,
-                &rotate.borrow(),
-                &clip.borrow(),
-                &assemble.borrow(),
-                &sweep.borrow(),
-                rotate_ring_radius,
-            );
-            drop(handles);
-            if active == Tool::Clip && pointer_inside.get() {
-                let (x, y) = *pointer.borrow();
-                let ray = camera.borrow().ray_through(x, y, width, height);
-                if let Some((at, _)) = clip_surface_point(&document, &grid.borrow(), &ray) {
-                    if !clip.borrow().is_dragging() && clip.borrow().can_add_point(at) {
-                        points.push((at, pref(|p| p.clip_handle_color).rgba_f32()));
-                    }
+        }
+        // The sculpt brush's outline, lying on the surface under the pointer.
+        if active == Tool::Sculpt && pointer_inside.get() {
+            let (x, y) = *pointer.borrow();
+            let ray = camera.borrow().ray_through(x, y, width, height);
+            let parameters = crate::sculpt::parameters();
+            if let (Some(at), Some(along)) = (
+                document.sculpt_target(&ray),
+                document.sculpt_axis(&ray, parameters.direction),
+            ) {
+                let colour = [0.9, 0.38, 0.0, 1.0];
+                let ring = document.sculpt_ring(at, parameters.radius, along);
+                for pair in ring.windows(2) {
+                    guides.push((pair[0], colour));
+                    guides.push((pair[1], colour));
                 }
+                points.push((at, colour));
             }
-            // The sculpt brush's outline, lying on the surface under the pointer.
-            if active == Tool::Sculpt && pointer_inside.get() {
-                let (x, y) = *pointer.borrow();
-                let ray = camera.borrow().ray_through(x, y, width, height);
-                let parameters = crate::sculpt::parameters();
-                if let (Some(at), Some(along)) = (document.sculpt_target(&ray), document.sculpt_axis(&ray, parameters.direction)) {
-                    let colour = [0.9, 0.38, 0.0, 1.0];
-                    let ring = document.sculpt_ring(at, parameters.radius, along);
-                    for pair in ring.windows(2) {
-                        guides.push((pair[0], colour));
-                        guides.push((pair[1], colour));
+        }
+
+        // Scale and shear use the same point picker for hover and pointer-down.
+        // Recolour only the nearest handle, including handles outside geometry.
+        if pointer_inside.get() && matches!(active, Tool::Scale | Tool::Shear) {
+            let (x, y) = *pointer.borrow();
+            let camera = camera.borrow();
+            let ray = camera.ray_through(x, y, width, height);
+            if let Some(position) = handle_drag::nearest_handle(
+                &camera,
+                height,
+                &ray,
+                points.iter().map(|(at, _)| *at),
+                pick_radius(),
+            ) {
+                for (at, color) in &mut points {
+                    if *at == position {
+                        *color = pref(|p| p.selected_handle_color).rgba_f32();
                     }
-                    points.push((at, colour));
                 }
+                world_labels.push((crate::size_labels::point_text(position), position));
             }
+        }
 
+        // What the pointer is over, for the tools that pick geometry: the vertex,
+        // the edge or the outline of the face a press would take hold of, and for the fillet the solid outline of its result.
+        // Both are worked out from the brushes as they
+        // are, so nothing is changed by looking.
+        if HandleKind::of(active).is_some() {
+            let handles = handle_state.borrow();
+            let (px, py) = *pointer.borrow();
+            let ray = camera.borrow().ray_through(px, py, width, height);
+            let positions: Vec<Vec3d> = handles
+                .handles()
+                .iter()
+                .map(|handle| handle.position)
+                .collect();
+            let hovered = handle_drag::nearest_handle(
+                &camera.borrow(),
+                height,
+                &ray,
+                positions,
+                pick_radius(),
+            )
+            .filter(|_| pointer_inside.get());
 
-            // Scale and shear use the same point picker for hover and pointer-down.
-            // Recolour only the nearest handle, including handles outside geometry.
-            if pointer_inside.get() && matches!(active, Tool::Scale | Tool::Shear) {
-                let (x, y) = *pointer.borrow();
-                let camera = camera.borrow();
-                let ray = camera.ray_through(x, y, width, height);
-                if let Some(position) = handle_drag::nearest_handle(
-                    &camera, height, &ray, points.iter().map(|(at, _)| *at), pick_radius(),
-                ) {
-                    for (at, color) in &mut points {
-                        if *at == position {
-                            *color = pref(|p| p.selected_handle_color).rgba_f32();
-                        }
+            // What a press would take hold of, said in numbers.
+            if let Some(position) = hovered {
+                for (at, color) in &mut points {
+                    if *at == position {
+                        *color = pref(|p| p.selected_handle_color).rgba_f32();
                     }
-                    world_labels.push((crate::size_labels::point_text(position), position));
                 }
+                world_labels.push((crate::size_labels::point_text(position), position));
             }
 
-            // What the pointer is over, for the tools that pick geometry: the vertex,
-            // the edge or the outline of the face a press would take hold of, and for the fillet the solid outline of its result.
-            // Both are worked out from the brushes as they
-            // are, so nothing is changed by looking.
-            if HandleKind::of(active).is_some() {
-                let handles = handle_state.borrow();
-                let (px, py) = *pointer.borrow();
-                let ray = camera.borrow().ray_through(
-                    px,
-                    py,
-                    width,
-                    height,
-                );
-                let positions: Vec<Vec3d> =
-                    handles.handles().iter().map(|handle| handle.position).collect();
-                let hovered = handle_drag::nearest_handle(
-                    &camera.borrow(),
-                    height,
-                    &ray,
-                    positions,
-                    pick_radius(),
-                ).filter(|_| pointer_inside.get());
+            let hover_colour = pref(|p| p.selected_handle_color).rgba_f32();
+            if let Some(handle) = hovered.and_then(|position| {
+                handles
+                    .handles()
+                    .iter()
+                    .find(|handle| geometry_math::vec::is_zero(handle.position - position, 0.001))
+            }) {
+                for (from, to) in crate::handle_tool::outline_of(handle) {
+                    guides.push((from, hover_colour));
+                    guides.push((to, hover_colour));
+                }
+            }
 
-                // What a press would take hold of, said in numbers.
-                if let Some(position) = hovered {
-                    for (at, color) in &mut points {
-                        if *at == position {
-                            *color = pref(|p| p.selected_handle_color).rgba_f32();
-                        }
-                    }
-                    world_labels.push((crate::size_labels::point_text(position), position));
+            if active == Tool::Fillet {
+                let edges = crate::fillet_tool::edges_to_round(&document, &handles, hovered);
+                for (from, to) in &edges {
+                    guides.push((*from, hover_colour));
+                    guides.push((*to, hover_colour));
                 }
 
-                let hover_colour = pref(|p| p.selected_handle_color).rgba_f32();
-                if let Some(handle) = hovered.and_then(|position| {
-                    handles
-                        .handles()
-                        .iter()
-                        .find(|handle| geometry_math::vec::is_zero(handle.position - position, 0.001))
-                }) {
-                    for (from, to) in crate::handle_tool::outline_of(handle) {
-                        guides.push((from, hover_colour));
-                        guides.push((to, hover_colour));
-                    }
-                }
-
-                if active == Tool::Fillet {
-                    let edges = crate::fillet_tool::edges_to_round(&document, &handles, hovered);
-                    for (from, to) in &edges {
-                        guides.push((*from, hover_colour));
-                        guides.push((*to, hover_colour));
-                    }
-
-                    let preview_colour = pref(|p| p.selected_edge_color).rgba_f32();
-                    if let Some(preview) = fillet_preview.as_ref() {
-                        for (_,brushes) in &preview.brushes {
-                            for brush in brushes {
-                                for (from,to) in brush.edge_positions() {
-                                    guides.push((from,preview_colour));
-                                    guides.push((to,preview_colour));
-                                }
+                let preview_colour = pref(|p| p.selected_edge_color).rgba_f32();
+                if let Some(preview) = fillet_preview.as_ref() {
+                    for (_, brushes) in &preview.brushes {
+                        for brush in brushes {
+                            for (from, to) in brush.edge_positions() {
+                                guides.push((from, preview_colour));
+                                guides.push((to, preview_colour));
                             }
                         }
                     }
                 }
             }
+        }
 
-            // The rectangle a selection drag has swept so far. The overlay draws world
-            // lines, so the four corners are put a little way down the rays through them:
-            // a quad in front of the camera, which is the rectangle on the screen.
-            if let Some((from, to)) = *lasso.borrow() {
-                let camera = camera.borrow();
-                let colour = pref(|p| p.selected_edge_color).rgba_f32();
-                let at = |x: f64, y: f64| {
-                    let ray = camera.ray_through(x, y, width, height);
-                    ray.origin + ray.direction * (camera.near * 4.0)
+        // The rectangle a selection drag has swept so far. The overlay draws world
+        // lines, so the four corners are put a little way down the rays through them:
+        // a quad in front of the camera, which is the rectangle on the screen.
+        if let Some((from, to)) = *lasso.borrow() {
+            let camera = camera.borrow();
+            let colour = pref(|p| p.selected_edge_color).rgba_f32();
+            let at = |x: f64, y: f64| {
+                let ray = camera.ray_through(x, y, width, height);
+                ray.origin + ray.direction * (camera.near * 4.0)
+            };
+            let corners = [
+                at(from.x(), from.y()),
+                at(to.x(), from.y()),
+                at(to.x(), to.y()),
+                at(from.x(), to.y()),
+            ];
+            for index in 0..corners.len() {
+                guides.push((corners[index], colour));
+                guides.push((corners[(index + 1) % corners.len()], colour));
+            }
+        }
+
+        // Adjacent poses are outlines of selected animated brushes, never saved geometry.
+        if let Some(frame) = current_filters.animation_frame {
+            let motions = preview_motions.borrow();
+            let fps = current_filters.animation_fps.max(1) as f64;
+            for id in document.selection_ids() {
+                let (
+                    Some(brush),
+                    Some(
+                        crate::motion_preview::Motion::Keyframes { pivot, track, .. }
+                        | crate::motion_preview::Motion::Playback {
+                            pivot,
+                            authored: track,
+                            ..
+                        },
+                    ),
+                ) = (document.brush(*id), motions.get(id))
+                else {
+                    continue;
                 };
+                let now = frame as f64 / fps;
+                for (a, b) in current_filters.brush_edges(brush) {
+                    let colour = pref(|p| p.selected_edge_color).rgba_f32();
+                    guides.push((track.transform_clamped(a, *pivot, now, false), colour));
+                    guides.push((track.transform_clamped(b, *pivot, now, false), colour));
+                }
+                // RGB axes show the animated pivot and rotation.
+                let centre = track.transform_clamped(*pivot, *pivot, now, false);
+                for (axis, colour) in [
+                    (Vec3d::new(32.0, 0.0, 0.0), [1.0, 0.25, 0.25, 1.0]),
+                    (Vec3d::new(0.0, 32.0, 0.0), [0.25, 1.0, 0.25, 1.0]),
+                    (Vec3d::new(0.0, 0.0, 32.0), [0.3, 0.55, 1.0, 1.0]),
+                ] {
+                    guides.push((centre, colour));
+                    guides.push((
+                        centre + track.transform_clamped(axis, *pivot, now, true),
+                        colour,
+                    ));
+                }
+                for offset in 1..=current_filters.onion_frames {
+                    for direction in [-1.0, 1.0] {
+                        let time = now
+                            + direction * offset as f64 * current_filters.onion_step.max(1) as f64
+                                / fps;
+                        if time < 0.0 || time > track.keys.last().unwrap().time {
+                            continue;
+                        }
+                        let colour = if direction < 0.0 {
+                            [0.25, 0.65, 1.0, 0.45 / offset as f32]
+                        } else {
+                            [1.0, 0.55, 0.2, 0.45 / offset as f32]
+                        };
+                        for (a, b) in current_filters.brush_edges(brush) {
+                            guides.push((track.transform_clamped(a, *pivot, time, false), colour));
+                            guides.push((track.transform_clamped(b, *pivot, time, false), colour));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Point entities drawn as boxes: their edges in the class's colour, or the
+        // selection's, over the see-through fill, as the flat views outline them.
+        for entity in document.entity_box_outlines(&current_filters) {
+            let colour = if entity.selected {
+                pref(|p| p.selected_edge_color).rgba_f32()
+            } else {
+                let [r, g, b] = entity.color.map(|channel| f32::from(channel) / 255.0);
+                [r, g, b, 1.0]
+            };
+            for (from, to) in entity.bounds.edges() {
+                guides.push((from, colour));
+                guides.push((to, colour));
+            }
+        }
+
+        // The outline round what is selected: its edges, drawn over the surface and
+        // faintly through it, so the selection reads however the light falls on the
+        // faces. Blender draws the silhouette; the edges are what
+        // this renderer already has a way to draw, and on a brush they come to the
+        // same thing.
+        if current_filters.animation_frame.is_none()
+            && (pref(|p| p.selection_outline) || document.has_shape_preview())
+        {
+            let colour = pref(|p| {
+                if document.has_shape_preview() {
+                    p.resize_handle_color
+                } else {
+                    p.selected_edge_color
+                }
+            })
+            .rgba_f32();
+            for brush in document.selected_brushes() {
+                // Do not draw the old sharp silhouette over its rounded replacement.
+                if fillet_preview.as_ref().is_some_and(|preview| {
+                    preview.brushes.iter().any(|(id, _)| {
+                        document
+                            .brush(*id)
+                            .is_some_and(|source| std::ptr::eq(source, brush))
+                    })
+                }) {
+                    continue;
+                }
+                for (from, to) in current_filters.brush_edges(brush) {
+                    guides.push((from, colour));
+                    guides.push((to, colour));
+                }
+            }
+        }
+
+        // Every selected face needs a perimeter: texture detail can hide its tint.
+        // Painted faces retain this cue even when selection outlines are disabled.
+        {
+            let colour = pref(|p| p.selected_edge_color).rgba_f32();
+            for selected in document.selected_faces() {
+                if fillet_preview.as_ref().is_some_and(|preview| {
+                    preview.brushes.iter().any(|(id, _)| *id == selected.node)
+                }) {
+                    continue;
+                }
+                if let Some(brush) = document.brush(selected.node) {
+                    brush.for_each_geometry_face(|index, face, polygon| {
+                        if index == selected.face
+                            && current_filters.animation_frame.is_none()
+                            && (face.color.is_some() || pref(|p| p.selection_outline))
+                            && (current_filters.show_export_hidden || !face.export_hidden)
+                        {
+                            for i in 0..polygon.len() {
+                                guides.push((polygon[i], colour));
+                                guides.push((polygon[(i + 1) % polygon.len()], colour));
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        // The shape a create drag in a flat view is sweeping out, drawn as the
+        // brushes it would make rather than as a box, so a cylinder or a flight of
+        // stairs shows what it is. The drag happens in another
+        // view; this one only draws what it has been handed.
+        if let Some(bounds) = *pending_shape.borrow() {
+            let preview = crate::shape_tool::create_brushes(
+                &document.world_bounds(),
+                &bounds,
+                &shape_parameters.borrow(),
+                map_model::shapes::DEFAULT_MATERIAL,
+            )
+            .unwrap_or_default();
+            let colour = pref(|p| p.resize_handle_color).rgba_f32();
+            for brush in &preview {
+                for (from, to) in brush.edge_positions() {
+                    guides.push((from, colour));
+                    guides.push((to, colour));
+                }
+            }
+        }
+
+        // The other participants in a live session, each in the colour that person
+        // draws in everywhere, so nothing of theirs reads as this editor's own
+        // work: the edges of what they have selected, and their cameras drawn as
+        // little frusta with a line of sight reaching into the scene -- their
+        // cursors in space.
+        {
+            for (peer, from, to) in document.peer_edges().iter() {
+                let colour = crate::collab::peer_color_f32(*peer);
+                guides.push((*from, colour));
+                guides.push((*to, colour));
+            }
+            for (peer, (position, direction)) in document.peer_cameras() {
+                let colour = crate::collab::peer_color_f32(*peer);
+                let forward = geometry_math::vec::normalize(*direction);
+                let steady = if forward.z().abs() > 0.9 {
+                    Vec3d::new(1.0, 0.0, 0.0)
+                } else {
+                    Vec3d::new(0.0, 0.0, 1.0)
+                };
+                let right =
+                    geometry_math::vec::normalize(geometry_math::vec::cross(forward, steady));
+                let up = geometry_math::vec::normalize(geometry_math::vec::cross(right, forward));
+                // A pyramid the size of a hand: apex where they stand, base a
+                // little way along their look, wider than tall like their viewport.
+                let base = *position + forward * 28.0;
+                let (half_width, half_height) = (16.0, 10.0);
                 let corners = [
-                    at(from.x(), from.y()),
-                    at(to.x(), from.y()),
-                    at(to.x(), to.y()),
-                    at(from.x(), to.y()),
+                    base + right * half_width + up * half_height,
+                    base - right * half_width + up * half_height,
+                    base - right * half_width - up * half_height,
+                    base + right * half_width - up * half_height,
                 ];
                 for index in 0..corners.len() {
+                    guides.push((*position, colour));
+                    guides.push((corners[index], colour));
                     guides.push((corners[index], colour));
                     guides.push((corners[(index + 1) % corners.len()], colour));
                 }
+                guides.push((base, colour));
+                guides.push((*position + forward * 96.0, colour));
             }
+        }
 
-            // Adjacent poses are outlines of selected animated brushes, never saved geometry.
-            if let Some(frame) = current_filters.animation_frame {
-                let motions = preview_motions.borrow();
-                let fps = current_filters.animation_fps.max(1) as f64;
-                for id in document.selection_ids() {
-                    let (Some(brush), Some(crate::motion_preview::Motion::Keyframes { pivot, track, .. } | crate::motion_preview::Motion::Playback { pivot, authored:track, .. })) =
-                        (document.brush(*id), motions.get(id)) else { continue };
-                    let now = frame as f64 / fps;
-                    for (a,b) in current_filters.brush_edges(brush) {
-                        let colour = pref(|p| p.selected_edge_color).rgba_f32();
-                        guides.push((track.transform_clamped(a,*pivot,now,false),colour));
-                        guides.push((track.transform_clamped(b,*pivot,now,false),colour));
-                    }
-                    // RGB axes show the animated pivot and rotation.
-                    let centre = track.transform_clamped(*pivot, *pivot, now, false);
-                    for (axis, colour) in [(Vec3d::new(32.0,0.0,0.0),[1.0,0.25,0.25,1.0]),(Vec3d::new(0.0,32.0,0.0),[0.25,1.0,0.25,1.0]),(Vec3d::new(0.0,0.0,32.0),[0.3,0.55,1.0,1.0])] {
-                        guides.push((centre, colour));
-                        guides.push((centre + track.transform_clamped(axis, *pivot, now, true), colour));
-                    }
-                    for offset in 1..=current_filters.onion_frames {
-                        for direction in [-1.0, 1.0] {
-                            let time = now + direction * offset as f64 * current_filters.onion_step.max(1) as f64 / fps;
-                            if time < 0.0 || time > track.keys.last().unwrap().time { continue; }
-                            let colour = if direction < 0.0 { [0.25,0.65,1.0,0.45 / offset as f32] } else { [1.0,0.55,0.2,0.45 / offset as f32] };
-                            for (a,b) in current_filters.brush_edges(brush) {
-                                guides.push((track.transform_clamped(a,*pivot,time,false),colour));
-                                guides.push((track.transform_clamped(b,*pivot,time,false),colour));
-                            }
+        // Draws world-axis guides and coordinates for the active drag handle.
+        if let Some(dragged) = drag.borrow().as_ref().and_then(dragged_handle) {
+            let colour = pref(|p| p.handle_color);
+            let mut colour = colour.rgba_f32();
+            // `VertexTool::renderGuide` halves the handle colour's alpha.
+            colour[3] *= 0.5;
+            guides.extend(overlay::point_guide(dragged, colour));
+            world_labels.push((crate::size_labels::point_text(dragged), dragged));
+        }
+
+        // Draws links between entities and their targets in the 3D view.
+        if current_filters.entity_links != crate::view_filters::EntityLinkMode::None {
+            for link in document.entity_links() {
+                if !current_filters.entity_links.shows(&link) {
+                    continue;
+                }
+                let colour = crate::view2d::link_colour(&link).rgba_f32();
+                // What the link does, by the links touching the selection (see view2d).
+                if link.touches_selection {
+                    world_labels.push((link.label(), (link.from + link.to) / 2.0));
+                }
+                guides.push((link.from, colour));
+                guides.push((link.to, colour));
+                let delta = link.to - link.from;
+                let length = geometry_math::vec::length(delta);
+                if length > 1e-6 {
+                    let u = delta / length;
+                    let side = geometry_math::vec::cross(u, camera.borrow().direction());
+                    let side_length = geometry_math::vec::length(side);
+                    if side_length > 1e-6 {
+                        let size = (camera.borrow().world_units_per_pixel(link.to, height) * 9.0)
+                            .min(length * 0.25);
+                        for sign in [-1.0, 1.0] {
+                            guides.push((link.to, colour));
+                            guides.push((
+                                link.to - u * size + side / side_length * (size * 0.45 * sign),
+                                colour,
+                            ));
                         }
                     }
                 }
             }
+        }
 
-            // Point entities drawn as boxes: their edges in the class's colour, or the
-            // selection's, over the see-through fill, as the flat views outline them.
-            for entity in document.entity_box_outlines(&current_filters) {
-                let colour = if entity.selected {
-                    pref(|p| p.selected_edge_color).rgba_f32()
-                } else {
-                    let [r, g, b] = entity.color.map(|channel| f32::from(channel) / 255.0);
-                    [r, g, b, 1.0]
-                };
-                for (from, to) in entity.bounds.edges() {
-                    guides.push((from, colour));
-                    guides.push((to, colour));
-                }
+        // And from the linked group being edited to its other copies,
+        // `GroupLinkRenderer`.
+        {
+            let colour = pref(|p| p.linked_group_color).rgba_f32();
+            for (from, to) in document.linked_group_links() {
+                guides.push((from, colour));
+                guides.push((to, colour));
             }
+        }
 
-            // The outline round what is selected: its edges, drawn over the surface and
-            // faintly through it, so the selection reads however the light falls on the
-            // faces. Blender draws the silhouette; the edges are what
-            // this renderer already has a way to draw, and on a brush they come to the
-            // same thing.
-            if current_filters.animation_frame.is_none() && (pref(|p| p.selection_outline) || document.has_shape_preview()) {
-                let colour = pref(|p| if document.has_shape_preview() {p.resize_handle_color} else {p.selected_edge_color}).rgba_f32();
-                for brush in document.selected_brushes() {
-                    // Do not draw the old sharp silhouette over its rounded replacement.
-                    if fillet_preview.as_ref().is_some_and(|preview| preview.brushes.iter().any(|(id,_)| document.brush(*id).is_some_and(|source| std::ptr::eq(source,brush)))) { continue; }
-                    for (from, to) in current_filters.brush_edges(brush) {
-                        guides.push((from, colour));
-                        guides.push((to, colour));
-                    }
-                }
+        // The Shift-extrude preview: the outline of each face a Shift-drag would move,
+        // in the extrude handle's colour, `ExtrudeToolController::render`.
+        let extrude_colour = pref(|p| p.resize_handle_color).rgba_f32();
+        for outline in extrude_preview.borrow().iter() {
+            for pair in 0..outline.len() {
+                guides.push((outline[pair], extrude_colour));
+                guides.push((outline[(pair + 1) % outline.len()], extrude_colour));
             }
+        }
 
-            // Every selected face needs a perimeter: texture detail can hide its tint.
-            // Painted faces retain this cue even when selection outlines are disabled.
-            {
-                let colour=pref(|p|p.selected_edge_color).rgba_f32();
-                for selected in document.selected_faces() {
-                    if fillet_preview.as_ref().is_some_and(|preview| preview.brushes.iter().any(|(id,_)| *id == selected.node)) { continue; }
-                    if let Some(brush)=document.brush(selected.node) {
-                        brush.for_each_geometry_face(|index,face,polygon|{
-                            if index==selected.face && current_filters.animation_frame.is_none()
-                                && (face.color.is_some() || pref(|p| p.selection_outline))
-                                && (current_filters.show_export_hidden || !face.export_hidden) {
-                                for i in 0..polygon.len(){guides.push((polygon[i],colour));guides.push((polygon[(i+1)%polygon.len()],colour));}
-                            }
-                        });
-                    }
-                }
+        // The box an entity drag would drop into, in the handle colour, so where it
+        // lands is visible before the button is let go.
+        if let Some(bounds) = *entity_drop_preview.borrow() {
+            let colour = pref(|p| p.handle_color).rgba_f32();
+            for (from, to) in bounds.edges() {
+                guides.push((from, colour));
+                guides.push((to, colour));
             }
+        }
 
-            // The shape a create drag in a flat view is sweeping out, drawn as the
-            // brushes it would make rather than as a box, so a cylinder or a flight of
-            // stairs shows what it is. The drag happens in another
-            // view; this one only draws what it has been handed.
-            if let Some(bounds) = *pending_shape.borrow() {
-                let preview = crate::shape_tool::create_brushes(
-                    &document.world_bounds(),
-                    &bounds,
-                    &shape_parameters.borrow(),
-                    map_model::shapes::DEFAULT_MATERIAL,
-                )
-                .unwrap_or_default();
-                let colour = pref(|p| p.resize_handle_color).rgba_f32();
-                for brush in &preview {
-                    for (from, to) in brush.edge_positions() {
-                        guides.push((from, colour));
-                        guides.push((to, colour));
-                    }
-                }
-            }
-
-            // The other participants in a live session, each in the colour that person
-            // draws in everywhere, so nothing of theirs reads as this editor's own
-            // work: the edges of what they have selected, and their cameras drawn as
-            // little frusta with a line of sight reaching into the scene -- their
-            // cursors in space.
-            {
-                for (peer, from, to) in document.peer_edges().iter() {
-                    let colour = crate::collab::peer_color_f32(*peer);
-                    guides.push((*from, colour));
-                    guides.push((*to, colour));
-                }
-                for (peer, (position, direction)) in document.peer_cameras() {
-                    let colour = crate::collab::peer_color_f32(*peer);
-                    let forward = geometry_math::vec::normalize(*direction);
-                    let steady = if forward.z().abs() > 0.9 {
-                        Vec3d::new(1.0, 0.0, 0.0)
+        // The HUD -- the compass turned the way the camera is, `Compass3D`, and the
+        // selection's sizes when a tool wants them shown,
+        // `SelectionBoundsRenderer::renderSize3D`.
+        {
+            let camera = camera.borrow();
+            let rotation = if active == Tool::Rotate {
+                let dragging = drag.borrow();
+                let rotating = rotate.borrow();
+                if let Some(Drag {
+                    what: DragKind::Rotate { gesture },
+                    applied,
+                    ..
+                }) = dragging.as_ref()
+                {
+                    let angle = if applied.x() > std::f64::consts::PI {
+                        applied.x() - std::f64::consts::TAU
                     } else {
-                        Vec3d::new(0.0, 0.0, 1.0)
+                        applied.x()
                     };
-                    let right = geometry_math::vec::normalize(geometry_math::vec::cross(forward, steady));
-                    let up = geometry_math::vec::normalize(geometry_math::vec::cross(right, forward));
-                    // A pyramid the size of a hand: apex where they stand, base a
-                    // little way along their look, wider than tall like their viewport.
-                    let base = *position + forward * 28.0;
-                    let (half_width, half_height) = (16.0, 10.0);
-                    let corners = [
-                        base + right * half_width + up * half_height,
-                        base - right * half_width + up * half_height,
-                        base - right * half_width - up * half_height,
-                        base + right * half_width - up * half_height,
-                    ];
-                    for index in 0..corners.len() {
-                        guides.push((*position, colour));
-                        guides.push((corners[index], colour));
-                        guides.push((corners[index], colour));
-                        guides.push((corners[(index + 1) % corners.len()], colour));
-                    }
-                    guides.push((base, colour));
-                    guides.push((*position + forward * 96.0, colour));
-                }
-            }
-
-            // Draws world-axis guides and coordinates for the active drag handle.
-            if let Some(dragged) = drag.borrow().as_ref().and_then(dragged_handle) {
-                let colour = pref(|p| p.handle_color);
-                let mut colour = colour.rgba_f32();
-                // `VertexTool::renderGuide` halves the handle colour's alpha.
-                colour[3] *= 0.5;
-                guides.extend(overlay::point_guide(dragged, colour));
-                world_labels.push((crate::size_labels::point_text(dragged), dragged));
-            }
-
-            // Draws links between entities and their targets in the 3D view.
-            if current_filters.entity_links != crate::view_filters::EntityLinkMode::None {
-                for link in document.entity_links() {
-                    if !current_filters.entity_links.shows(&link) {
-                        continue;
-                    }
-                    let colour = crate::view2d::link_colour(&link).rgba_f32();
-                    // What the link does, by the links touching the selection (see view2d).
-                    if link.touches_selection {
-                        world_labels.push((link.label(), (link.from + link.to) / 2.0));
-                    }
-                    guides.push((link.from, colour));
-                    guides.push((link.to, colour));
-                    let delta=link.to-link.from;let length=geometry_math::vec::length(delta);
-                    if length>1e-6 {let u=delta/length;let side=geometry_math::vec::cross(u,camera.borrow().direction());let side_length=geometry_math::vec::length(side);
-                        if side_length>1e-6 {let size=(camera.borrow().world_units_per_pixel(link.to,height)*9.0).min(length*0.25);for sign in [-1.0,1.0]{guides.push((link.to,colour));guides.push((link.to-u*size+side/side_length*(size*0.45*sign),colour));}}
-                    }
-                }
-            }
-
-            // And from the linked group being edited to its other copies,
-            // `GroupLinkRenderer`.
-            {
-                let colour = pref(|p| p.linked_group_color).rgba_f32();
-                for (from, to) in document.linked_group_links() {
-                    guides.push((from, colour));
-                    guides.push((to, colour));
-                }
-            }
-
-            // The Shift-extrude preview: the outline of each face a Shift-drag would move,
-            // in the extrude handle's colour, `ExtrudeToolController::render`.
-            let extrude_colour = pref(|p| p.resize_handle_color).rgba_f32();
-            for outline in extrude_preview.borrow().iter() {
-                for pair in 0..outline.len() {
-                    guides.push((outline[pair], extrude_colour));
-                    guides.push((outline[(pair + 1) % outline.len()], extrude_colour));
-                }
-            }
-
-            // The box an entity drag would drop into, in the handle colour, so where it
-            // lands is visible before the button is let go.
-            if let Some(bounds) = *entity_drop_preview.borrow() {
-                let colour = pref(|p| p.handle_color).rgba_f32();
-                for (from, to) in bounds.edges() {
-                    guides.push((from, colour));
-                    guides.push((to, colour));
-                }
-            }
-
-            // The HUD -- the compass turned the way the camera is, `Compass3D`, and the
-            // selection's sizes when a tool wants them shown,
-            // `SelectionBoundsRenderer::renderSize3D`.
-            {
-                let camera = camera.borrow();
-                let rotation = if active == Tool::Rotate {
-                    let dragging = drag.borrow();
-                    let rotating = rotate.borrow();
-                    if let Some(Drag { what: DragKind::Rotate { gesture }, applied, .. }) = dragging.as_ref() {
-                        let angle = if applied.x() > std::f64::consts::PI { applied.x() - std::f64::consts::TAU } else { applied.x() };
-                        RotationFeedback::new(&camera, width, height, gesture, rotate_ring_radius, Some(angle))
-                    } else if pointer_inside.get() && dragging.is_none() {
-                        rotating.center().and_then(|center| {
-                            let (x, y) = *pointer.borrow();
-                            let ray = camera.ray_through(x, y, width, height);
-                            render::rotation_gizmo::RingDrag::pick(&camera, height, &ray, center, rotate_ring_radius, pick_radius().max(6.0))
-                                .and_then(|gesture| RotationFeedback::new(&camera, width, height, &gesture, rotate_ring_radius, None))
+                    RotationFeedback::new(
+                        &camera,
+                        width,
+                        height,
+                        gesture,
+                        rotate_ring_radius,
+                        Some(angle),
+                    )
+                } else if pointer_inside.get() && dragging.is_none() {
+                    rotating.center().and_then(|center| {
+                        let (x, y) = *pointer.borrow();
+                        let ray = camera.ray_through(x, y, width, height);
+                        render::rotation_gizmo::RingDrag::pick(
+                            &camera,
+                            height,
+                            &ray,
+                            center,
+                            rotate_ring_radius,
+                            pick_radius().max(6.0),
+                        )
+                        .and_then(|gesture| {
+                            RotationFeedback::new(
+                                &camera,
+                                width,
+                                height,
+                                &gesture,
+                                rotate_ring_radius,
+                                None,
+                            )
                         })
-                    } else { None }
-                } else { None };
-                let mut next = Hud {
-                    hidden: playing,
-                    rotation,
-                    render_aspect,
-                    arrows: crate::compass::arrows(
-                        camera.right(),
-                        camera.up(),
-                        camera.direction(),
-                        None,
-                    ),
-                    labels: Vec::new(),
-                    cameras: Vec::new(),
-                };
-                for (peer, (position, _)) in document.peer_cameras() {
-                    if let Some(anchor) = camera.project(*position, width, height) {
-                        if anchor.x() >= 0.0 && anchor.x() <= width && anchor.y() >= 0.0 && anchor.y() <= height {
-                            next.cameras.push((*peer, document.peer_name(*peer), anchor));
-                        }
-                    }
+                    })
+                } else {
+                    None
                 }
-                next.cameras.sort_by_key(|(peer, _, _)| *peer);
-                for (text, at) in &world_labels {
-                    if let Some(anchor) = camera.project(*at, width, height) {
-                        next.labels.push((
-                            text.clone(),
-                            anchor,
-                            crate::size_labels::Alignment::Bottom,
-                            crate::view2d::HANDLE_LABEL_GAP,
-                            crate::view2d::LabelStyle::Picked,
-                        ));
+            } else {
+                None
+            };
+            let mut next = Hud {
+                hidden: playing,
+                rotation,
+                render_aspect,
+                arrows: crate::compass::arrows(
+                    camera.right(),
+                    camera.up(),
+                    camera.direction(),
+                    None,
+                ),
+                labels: Vec::new(),
+                cameras: Vec::new(),
+            };
+            for (peer, (position, _)) in document.peer_cameras() {
+                if let Some(anchor) = camera.project(*position, width, height) {
+                    if anchor.x() >= 0.0
+                        && anchor.x() <= width
+                        && anchor.y() >= 0.0
+                        && anchor.y() <= height
+                    {
+                        next.cameras
+                            .push((*peer, document.peer_name(*peer), anchor));
                     }
-                }
-                if let Some(bounds) = document.selection_bounds() {
-                    let (moving, rotating) = match drag.borrow().as_ref().map(|d| &d.what) {
-                        Some(DragKind::MoveObjects) => (true, false),
-                        Some(DragKind::Rotate { .. }) => (false, true),
-                        _ => (false, false),
-                    };
-                    let hovering_selected = !moving && !rotating && *hover_selected.borrow();
-                    if crate::view2d::selection_guide_shown(
-                        active,
-                        hovering_selected,
-                        moving,
-                        rotating,
-                    ) {
-                        // `MapView3D::renderMap` adds a `BoundsGuideRenderer` alongside
-                        // the sizes: spikes off the box's corners along the world axes.
-                        guides.extend(overlay::bounds_guide(
-                            &bounds,
-                            pref(|p| p.selection_bounds_color).rgba_f32(),
-                        ));
-                        for label in crate::size_labels::labels_3d(
-                            &bounds,
-                            camera.position,
-                            camera.direction(),
-                        ) {
-                            if let Some(anchor) = camera.project(label.base, width, height) {
-                                next.labels.push((
-                                    label.text,
-                                    anchor,
-                                    label.alignment,
-                                    crate::size_labels::GAP,
-                                    crate::view2d::LabelStyle::Weak,
-                                ));
-                            }
-                        }
-                    }
-                }
-                if *hud.borrow() != next {
-                    *hud.borrow_mut() = next;
-                    hud_changed = true;
                 }
             }
+            next.cameras.sort_by_key(|(peer, _, _)| *peer);
+            for (text, at) in &world_labels {
+                if let Some(anchor) = camera.project(*at, width, height) {
+                    next.labels.push((
+                        text.clone(),
+                        anchor,
+                        crate::size_labels::Alignment::Bottom,
+                        crate::view2d::HANDLE_LABEL_GAP,
+                        crate::view2d::LabelStyle::Picked,
+                    ));
+                }
+            }
+            if let Some(bounds) = document.selection_bounds() {
+                let (moving, rotating) = match drag.borrow().as_ref().map(|d| &d.what) {
+                    Some(DragKind::MoveObjects) => (true, false),
+                    Some(DragKind::Rotate { .. }) => (false, true),
+                    _ => (false, false),
+                };
+                let hovering_selected = !moving && !rotating && *hover_selected.borrow();
+                if crate::view2d::selection_guide_shown(active, hovering_selected, moving, rotating)
+                {
+                    // `MapView3D::renderMap` adds a `BoundsGuideRenderer` alongside
+                    // the sizes: spikes off the box's corners along the world axes.
+                    guides.extend(overlay::bounds_guide(
+                        &bounds,
+                        pref(|p| p.selection_bounds_color).rgba_f32(),
+                    ));
+                    for label in
+                        crate::size_labels::labels_3d(&bounds, camera.position, camera.direction())
+                    {
+                        if let Some(anchor) = camera.project(label.base, width, height) {
+                            next.labels.push((
+                                label.text,
+                                anchor,
+                                label.alignment,
+                                crate::size_labels::GAP,
+                                crate::view2d::LabelStyle::Weak,
+                            ));
+                        }
+                    }
+                }
+            }
+            if *hud.borrow() != next {
+                *hud.borrow_mut() = next;
+                hud_changed = true;
+            }
+        }
 
-            guides.extend(crate::render_camera::guides(&document, &camera.borrow()));
+        guides.extend(crate::render_camera::guides(&document, &camera.borrow()));
 
-            crate::profile::add_scene_build(overlay_started);
-            FrameOverlay { points, guides, hud_changed }
+        crate::profile::add_scene_build(overlay_started);
+        FrameOverlay {
+            points,
+            guides,
+            hud_changed,
+        }
     }
 
     /// The primary press, at `(x, y)`.
     pub fn drag_begin(&self, x: f64, y: f64, modifiers: Modifiers, (width, height): (f64, f64)) {
         self.press.set((x, y));
         if matches!(*self.tool.borrow(), Tool::Paint | Tool::Sculpt) {
-            self.drag.borrow_mut().take();self.lasso.borrow_mut().take();return;
+            self.drag.borrow_mut().take();
+            self.lasso.borrow_mut().take();
+            return;
         }
         // Attribute transfer keeps the source handle selected while pointing at targets.
-        if transfer_mode(modifiers).is_some() && self.document.borrow().single_selected_face().is_some() {
+        if transfer_mode(modifiers).is_some()
+            && self.document.borrow().single_selected_face().is_some()
+        {
             self.drag.borrow_mut().take();
             return;
         }
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-            *marquee.borrow_mut() = Some(document.borrow().selection_snapshot());
-            let ray = camera.borrow().ray_through(x, y, width, height);
-                        let shift = modifiers.shift;
+        *marquee.borrow_mut() = Some(document.borrow().selection_snapshot());
+        let ray = camera.borrow().ray_through(x, y, width, height);
+        let shift = modifiers.shift;
 
-            let ctrl = modifiers.control;
-            let alt = modifiers.alt;
-            // Fillet pins edge previews; clicks away from handles select source brushes.
-            if *tool.borrow() == Tool::Fillet {
-                let mut handles = handles.borrow_mut();
-                handles.collect(
-                    HandleKind::Edge,
-                    document.borrow().selected_brushes().into_iter(),
-                );
-                let hit = document.borrow().pick(&ray).map(|hit| hit.node);
-                // A foreground unselected brush must not be intercepted by a selected edge behind it.
-                let positions: Vec<Vec3d> = if hit.is_none_or(|id| document.borrow().is_selected(id)) {
-                    handles.handles().iter().map(|handle| handle.position).collect()
-                } else { Vec::new() };
-                match handle_drag::nearest_handle(
-                    &camera.borrow(),
-                    height,
-                    &ray,
-                    positions,
-                    pick_radius(),
-                ) {
-                    Some(position) => {
-                        let outcome = crate::fillet_tool::press(
-                            &document,
-                            &mut handles,
-                            *fillet.borrow(),
-                            position,
-                            ctrl,
-                        );
-                        crate::fillet_tool::report(&outcome);
-                    }
-                    None => crate::fillet_tool::select_brush(&mut document.borrow_mut(), &mut handles, hit, ctrl),
-                }
-                drop(handles);
-                *drag.borrow_mut() = None;
-                redraw();
-                refresh_panels();
-                return;
-            }
-
-            // Without modifiers, Select drags an existing selection when pressed on a brush, or
-            // draws from empty space. Brush always draws. The starting corner is the ray hit, or a
-            // default distance along the ray when nothing is hit.
-            {
-                let tool_now = *tool.borrow();
-                let hit = if (tool_now == Tool::Select || tool_now == Tool::Brush) && !ctrl && !alt
-                {
-                    let document = document.borrow();
-                    document
-                        .pick(&ray)
-                        .map(|hit| (hit.node, ray.point_at_distance(hit.distance)))
-                } else {
-                    None
-                };
-
-                if tool_now == Tool::Select && !ctrl && !shift && !alt {
-                    if let Some((node, hit_point)) = hit {
-                        // Landing on an unselected brush takes just that one; landing on
-                        // one already in the selection keeps the whole set, so several
-                        // move at once.
-                        {
-                            let mut document = document.borrow_mut();
-                            if !document.is_selected(node) {
-                                document.select_only(node);
-                            }
-                            document.begin_transaction();
-                        }
-                        let offset = offset_of(&ray, &camera.borrow(), height, hit_point);
-                        *drag.borrow_mut() = Some(Drag {
-                            what: DragKind::MoveObjects,
-                            picker: handle_drag::picker_for_move(
-                                handle_drag::MoveMode::Default,
-                                hit_point,
-                                hit_point,
-                                offset,
-                            ),
-                            initial: hit_point,
-                            offset,
-                            applied: Vec3d::zero(),
-                        });
-                        redraw();
-                        refresh_panels();
-                        return;
-                    }
-                }
-
-                if (tool_now == Tool::Brush
-                    || (tool_now == Tool::Select && !document.borrow().has_selection()))
-                    && !ctrl
-                    && !shift
-                    && !alt
-                {
-                    let start = hit
-                        .map(|(_, point)| point)
-                        .unwrap_or_else(|| ray.point_at_distance(DEFAULT_DRAW_DISTANCE));
-                    *drag.borrow_mut() = Some(Drag {
-                        what: DragKind::Draw { start },
-                        picker: HandlePicker::plane(
-                            geometry_math::plane::horizontal_plane(start),
-                            Vec3d::zero(),
-                        ),
-                        initial: start,
-                        offset: Vec3d::zero(),
-                        applied: Vec3d::zero(),
-                    });
-                    redraw();
-                    return;
-                }
-            }
-
-            // Ctrl-drag from empty space extends the selection with a marquee.
-            if *tool.borrow() == Tool::Select
-                && ctrl
-                && document.borrow().pick(&ray).is_none()
-            {
-                *lasso.borrow_mut() = Some((Vec2d::new(x, y), Vec2d::new(x, y)));
-                *drag.borrow_mut() = None;
-                render();
-                return;
-            }
-
-            // `VertexTool`'s split: Shift and a drag from the middle of an edge or the
-            // centre of a face puts a corner there and then drags that corner, which is
-            // how a brush gains a vertex.
-            // `MoveVertexPart::mouseClick`: Alt and Shift with exactly one vertex picked
-            // snaps that vertex onto whatever handle is clicked.
-            if shift && alt && *tool.borrow() == Tool::Vertex {
-                let snapped = {
-                    let handles = handles.borrow();
-                    let positions: Vec<Vec3d> =
-                        handles.handles().iter().map(|handle| handle.position).collect();
-                    let target = handle_drag::nearest_handle(
-                        &camera.borrow(),
-                        height,
-                        &ray,
-                        positions,
-                        pick_radius(),
+        let ctrl = modifiers.control;
+        let alt = modifiers.alt;
+        // Fillet pins edge previews; clicks away from handles select source brushes.
+        if *tool.borrow() == Tool::Fillet {
+            let mut handles = handles.borrow_mut();
+            handles.collect(
+                HandleKind::Edge,
+                document.borrow().selected_brushes().into_iter(),
+            );
+            let hit = document.borrow().pick(&ray).map(|hit| hit.node);
+            // A foreground unselected brush must not be intercepted by a selected edge behind it.
+            let positions: Vec<Vec3d> = if hit.is_none_or(|id| document.borrow().is_selected(id)) {
+                handles
+                    .handles()
+                    .iter()
+                    .map(|handle| handle.position)
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            match handle_drag::nearest_handle(
+                &camera.borrow(),
+                height,
+                &ray,
+                positions,
+                pick_radius(),
+            ) {
+                Some(position) => {
+                    let outcome = crate::fillet_tool::press(
+                        &document,
+                        &mut handles,
+                        *fillet.borrow(),
+                        position,
+                        ctrl,
                     );
-                    match (target, handles.selected_anchor()) {
-                        (Some(target), Some(from)) if handles.selected_count() == 1 => {
-                            Some((from, target - from))
-                        }
-                        _ => None,
-                    }
-                };
-                if let Some((from, delta)) = snapped {
-                    if delta != Vec3d::zero()
-                        && document.borrow_mut().move_handles(&[from], delta)
-                    {
-                        handles.borrow_mut().move_selection(delta);
-                        *drag.borrow_mut() = None;
-                        redraw();
-                        refresh_panels();
-                        return;
-                    }
+                    crate::fillet_tool::report(&outcome);
                 }
+                None => crate::fillet_tool::select_brush(
+                    &mut document.borrow_mut(),
+                    &mut handles,
+                    hit,
+                    ctrl,
+                ),
             }
+            drop(handles);
+            *drag.borrow_mut() = None;
+            redraw();
+            refresh_panels();
+            return;
+        }
 
-            let splitting = if shift && !alt && *tool.borrow() == Tool::Vertex {
-                let handles_ref = handles.borrow();
-                let positions: Vec<Vec3d> =
-                    handles_ref.splitting().map(|handle| handle.position).collect();
-                drop(handles_ref);
-                handle_drag::nearest_handle(
-                    &camera.borrow(),
-                    height,
-                    &ray,
-                    positions,
-                    pick_radius(),
-                )
+        // Without modifiers, Select drags an existing selection when pressed on a brush, or
+        // draws from empty space. Brush always draws. The starting corner is the ray hit, or a
+        // default distance along the ray when nothing is hit.
+        {
+            let tool_now = *tool.borrow();
+            let hit = if (tool_now == Tool::Select || tool_now == Tool::Brush) && !ctrl && !alt {
+                let document = document.borrow();
+                document
+                    .pick(&ray)
+                    .map(|hit| (hit.node, ray.point_at_distance(hit.distance)))
             } else {
                 None
             };
 
-            if let Some(at) = splitting {
-                // The corner is put where the drag takes it rather than where it started,
-                // since a point sitting on an edge is no corner of the hull at all.
-                handles.borrow_mut().select(at, false);
-                document.borrow_mut().begin_transaction();
-                let offset = offset_of(&ray, &camera.borrow(), height, at);
-                *drag.borrow_mut() = Some(Drag {
-                    what: DragKind::SplitHandle { at },
-                    picker: handle_drag::picker_for_move(
-                        handle_drag::MoveMode::Default,
-                        at,
-                        at,
+            if tool_now == Tool::Select && !ctrl && !shift && !alt {
+                if let Some((node, hit_point)) = hit {
+                    // Landing on an unselected brush takes just that one; landing on
+                    // one already in the selection keeps the whole set, so several
+                    // move at once.
+                    {
+                        let mut document = document.borrow_mut();
+                        if !document.is_selected(node) {
+                            document.select_only(node);
+                        }
+                        document.begin_transaction();
+                    }
+                    let offset = offset_of(&ray, &camera.borrow(), height, hit_point);
+                    *drag.borrow_mut() = Some(Drag {
+                        what: DragKind::MoveObjects,
+                        picker: handle_drag::picker_for_move(
+                            handle_drag::MoveMode::Default,
+                            hit_point,
+                            hit_point,
+                            offset,
+                        ),
+                        initial: hit_point,
                         offset,
-                    ),
-                    initial: at,
-                    offset,
-                    applied: Vec3d::zero(),
-                });
-                redraw();
-                refresh_panels();
-                return;
-            }
-
-            let started = begin_drag(
-                &camera.borrow(),
-                height,
-                &ray,
-                *tool.borrow(),
-                &document.borrow(),
-                &mut handles.borrow_mut(),
-                &rotate.borrow(),
-                &sweep.borrow(),
-                shift,
-                ctrl,
-                alt,
-            );
-
-            // A sweep-cap drag changes no geometry, so it needs no transaction.
-            if started
-                .as_ref()
-                .is_some_and(|d| !matches!(d.what, DragKind::SweepCap { .. }))
-            {
-                document.borrow_mut().begin_transaction();
-            }
-            // A press with a handle tool active belongs to the handles whether or not it
-            // caught one: missing sweeps a lasso over them, the way dragging in a file
-            // list sweeps over files, and the click handler leaves the brush behind alone.
-            // Falling through was what made an edge impossible to pick -- a near miss
-            // threw the brush selection away, and the handles with it.
-            if started.is_none() && HandleKind::of(*tool.borrow()).is_some() {
-                *lasso.borrow_mut() = Some((Vec2d::new(x, y), Vec2d::new(x, y)));
-                if !ctrl {
-                    handles.borrow_mut().clear_selection();
+                        applied: Vec3d::zero(),
+                    });
+                    redraw();
+                    refresh_panels();
+                    return;
                 }
             }
 
-            *drag.borrow_mut() = started;
-            // What a press does to the handles shows in every view, not only in this
-            // one: the flat views draw the same handles and count them in their status
-            // line, and they only draw when they are told to.
+            if (tool_now == Tool::Brush
+                || (tool_now == Tool::Select && !document.borrow().has_selection()))
+                && !ctrl
+                && !shift
+                && !alt
+            {
+                let start = hit
+                    .map(|(_, point)| point)
+                    .unwrap_or_else(|| ray.point_at_distance(DEFAULT_DRAW_DISTANCE));
+                *drag.borrow_mut() = Some(Drag {
+                    what: DragKind::Draw { start },
+                    picker: HandlePicker::plane(
+                        geometry_math::plane::horizontal_plane(start),
+                        Vec3d::zero(),
+                    ),
+                    initial: start,
+                    offset: Vec3d::zero(),
+                    applied: Vec3d::zero(),
+                });
+                redraw();
+                return;
+            }
+        }
+
+        // Ctrl-drag from empty space extends the selection with a marquee.
+        if *tool.borrow() == Tool::Select && ctrl && document.borrow().pick(&ray).is_none() {
+            *lasso.borrow_mut() = Some((Vec2d::new(x, y), Vec2d::new(x, y)));
+            *drag.borrow_mut() = None;
+            render();
+            return;
+        }
+
+        // `VertexTool`'s split: Shift and a drag from the middle of an edge or the
+        // centre of a face puts a corner there and then drags that corner, which is
+        // how a brush gains a vertex.
+        // `MoveVertexPart::mouseClick`: Alt and Shift with exactly one vertex picked
+        // snaps that vertex onto whatever handle is clicked.
+        if shift && alt && *tool.borrow() == Tool::Vertex {
+            let snapped = {
+                let handles = handles.borrow();
+                let positions: Vec<Vec3d> = handles
+                    .handles()
+                    .iter()
+                    .map(|handle| handle.position)
+                    .collect();
+                let target = handle_drag::nearest_handle(
+                    &camera.borrow(),
+                    height,
+                    &ray,
+                    positions,
+                    pick_radius(),
+                );
+                match (target, handles.selected_anchor()) {
+                    (Some(target), Some(from)) if handles.selected_count() == 1 => {
+                        Some((from, target - from))
+                    }
+                    _ => None,
+                }
+            };
+            if let Some((from, delta)) = snapped {
+                if delta != Vec3d::zero() && document.borrow_mut().move_handles(&[from], delta) {
+                    handles.borrow_mut().move_selection(delta);
+                    *drag.borrow_mut() = None;
+                    redraw();
+                    refresh_panels();
+                    return;
+                }
+            }
+        }
+
+        let splitting = if shift && !alt && *tool.borrow() == Tool::Vertex {
+            let handles_ref = handles.borrow();
+            let positions: Vec<Vec3d> = handles_ref
+                .splitting()
+                .map(|handle| handle.position)
+                .collect();
+            drop(handles_ref);
+            handle_drag::nearest_handle(&camera.borrow(), height, &ray, positions, pick_radius())
+        } else {
+            None
+        };
+
+        if let Some(at) = splitting {
+            // The corner is put where the drag takes it rather than where it started,
+            // since a point sitting on an edge is no corner of the hull at all.
+            handles.borrow_mut().select(at, false);
+            document.borrow_mut().begin_transaction();
+            let offset = offset_of(&ray, &camera.borrow(), height, at);
+            *drag.borrow_mut() = Some(Drag {
+                what: DragKind::SplitHandle { at },
+                picker: handle_drag::picker_for_move(
+                    handle_drag::MoveMode::Default,
+                    at,
+                    at,
+                    offset,
+                ),
+                initial: at,
+                offset,
+                applied: Vec3d::zero(),
+            });
             redraw();
-            // Which handles are picked is what the fillet panel works from.
             refresh_panels();
-        
+            return;
+        }
+
+        let started = begin_drag(
+            &camera.borrow(),
+            height,
+            &ray,
+            *tool.borrow(),
+            &document.borrow(),
+            &mut handles.borrow_mut(),
+            &rotate.borrow(),
+            &sweep.borrow(),
+            shift,
+            ctrl,
+            alt,
+        );
+
+        // A sweep-cap drag changes no geometry, so it needs no transaction.
+        if started
+            .as_ref()
+            .is_some_and(|d| !matches!(d.what, DragKind::SweepCap { .. }))
+        {
+            document.borrow_mut().begin_transaction();
+        }
+        // A press with a handle tool active belongs to the handles whether or not it
+        // caught one: missing sweeps a lasso over them, the way dragging in a file
+        // list sweeps over files, and the click handler leaves the brush behind alone.
+        // Falling through was what made an edge impossible to pick -- a near miss
+        // threw the brush selection away, and the handles with it.
+        if started.is_none() && HandleKind::of(*tool.borrow()).is_some() {
+            *lasso.borrow_mut() = Some((Vec2d::new(x, y), Vec2d::new(x, y)));
+            if !ctrl {
+                handles.borrow_mut().clear_selection();
+            }
+        }
+
+        *drag.borrow_mut() = started;
+        // What a press does to the handles shows in every view, not only in this
+        // one: the flat views draw the same handles and count them in their status
+        // line, and they only draw when they are told to.
+        redraw();
+        // Which handles are picked is what the fillet panel works from.
+        refresh_panels();
     }
 
     /// The primary drag moved `(dx, dy)` from the press.
     pub fn drag_update(&self, dx: f64, dy: f64, modifiers: Modifiers, (width, height): (f64, f64)) {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-            // A lasso is not a drag of anything, so it is followed before the rest. The
-            // rectangle is read out before it is written back: an `if let` on a borrow
-            // holds that borrow for the whole body, and writing to the same cell inside
-            // it is what "already borrowed" means.
-            let lassoing = *lasso.borrow();
-            if let Some((from, _)) = lassoing {
-                let to = from + Vec2d::new(dx, dy);
-                *lasso.borrow_mut() = Some((from, to));
-                if *tool.borrow() == Tool::Select {
-                    let caught = lassoed(&camera.borrow(), &document.borrow(), from, to,
-                        width, height);
-                    if let Some(initial) = marquee.borrow().as_ref() {
-                        let add = modifiers.control;
-                        document.borrow_mut().preview_marquee(initial, &caught, add);
-                    }
+        // A lasso is not a drag of anything, so it is followed before the rest. The
+        // rectangle is read out before it is written back: an `if let` on a borrow
+        // holds that borrow for the whole body, and writing to the same cell inside
+        // it is what "already borrowed" means.
+        let lassoing = *lasso.borrow();
+        if let Some((from, _)) = lassoing {
+            let to = from + Vec2d::new(dx, dy);
+            *lasso.borrow_mut() = Some((from, to));
+            if *tool.borrow() == Tool::Select {
+                let caught = lassoed(
+                    &camera.borrow(),
+                    &document.borrow(),
+                    from,
+                    to,
+                    width,
+                    height,
+                );
+                if let Some(initial) = marquee.borrow().as_ref() {
+                    let add = modifiers.control;
+                    document.borrow_mut().preview_marquee(initial, &caught, add);
                 }
+            }
+            redraw();
+            return;
+        }
+
+        // `InputEventRecorder`: a press only becomes a drag once the pointer has
+        // moved off the spot. Without this a click on a handle moved it by whatever
+        // the grid rounded the press point to, which read as picking a handle being
+        // impossible.
+        if vec::length(Vec2d::new(dx, dy)) < DRAG_THRESHOLD
+            && !drag.borrow().as_ref().is_some_and(|d| {
+                matches!(d.what, DragKind::Rotate { .. }) && d.applied != Vec3d::zero()
+            })
+        {
+            return;
+        }
+
+        let mut drag = drag.borrow_mut();
+        let Some(drag) = drag.as_mut() else {
+            return;
+        };
+        let (start_x, start_y) = press.get();
+        let ray = camera
+            .borrow()
+            .ray_through(start_x + dx, start_y + dy, width, height);
+
+        let camera_direction = camera.borrow().direction();
+
+        // A draw drag changes nothing in the document yet: it only sweeps out the box
+        // every view shows as the shape it would make.
+        if let DragKind::Draw { start } = &drag.what {
+            let bounds = drag
+                .picker
+                .pick(&ray)
+                .and_then(|corner| draw_bounds(*start, corner, &grid.borrow(), camera_direction));
+            *pending_shape.borrow_mut() = bounds;
+            redraw();
+            return;
+        }
+
+        if update_drag(
+            drag,
+            &ray,
+            camera_direction,
+            &grid.borrow(),
+            &mut document.borrow_mut(),
+            &mut handles.borrow_mut(),
+            &mut rotate.borrow_mut(),
+            &mut sweep.borrow_mut(),
+            modifiers,
+        ) {
+            // The sweep panel's numbers follow the cap.
+            if matches!(drag.what, DragKind::SweepCap { .. }) {
+                refresh_panels();
+            }
+            if matches!(drag.what, DragKind::Rotate { .. }) {
                 redraw();
-                return;
+            } else {
+                render();
             }
-
-            // `InputEventRecorder`: a press only becomes a drag once the pointer has
-            // moved off the spot. Without this a click on a handle moved it by whatever
-            // the grid rounded the press point to, which read as picking a handle being
-            // impossible.
-            if vec::length(Vec2d::new(dx, dy)) < DRAG_THRESHOLD
-                && !drag.borrow().as_ref().is_some_and(|d|
-                    matches!(d.what, DragKind::Rotate { .. }) && d.applied != Vec3d::zero())
-            {
-                return;
-            }
-
-            let mut drag = drag.borrow_mut();
-            let Some(drag) = drag.as_mut() else {
-                return;
-            };
-            let (start_x, start_y) = press.get();
-            let ray = camera
-                .borrow()
-                .ray_through(start_x + dx, start_y + dy, width, height);
-            
-            let camera_direction = camera.borrow().direction();
-
-            // A draw drag changes nothing in the document yet: it only sweeps out the box
-            // every view shows as the shape it would make.
-            if let DragKind::Draw { start } = &drag.what {
-                let bounds = drag
-                    .picker
-                    .pick(&ray)
-                    .and_then(|corner| draw_bounds(*start, corner, &grid.borrow(), camera_direction));
-                *pending_shape.borrow_mut() = bounds;
-                redraw();
-                return;
-            }
-
-            if update_drag(
-                drag,
-                &ray,
-                camera_direction,
-                &grid.borrow(),
-                &mut document.borrow_mut(),
-                &mut handles.borrow_mut(),
-                &mut rotate.borrow_mut(),
-                &mut sweep.borrow_mut(),
-                modifiers,
-            ) {
-                // The sweep panel's numbers follow the cap.
-                if matches!(drag.what, DragKind::SweepCap { .. }) {
-                    refresh_panels();
-                }
-                if matches!(drag.what, DragKind::Rotate { .. }) { redraw(); }
-                else { render(); }
-            }
-        
+        }
     }
 
     /// The primary release, `(dx, dy)` from the press.
     pub fn drag_end(&self, _dx: f64, _dy: f64, modifiers: Modifiers, (width, height): (f64, f64)) {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-            if let Some((from, to)) = lasso.borrow_mut().take() {
-                let add = modifiers.control;
+        if let Some((from, to)) = lasso.borrow_mut().take() {
+            let add = modifiers.control;
 
-                // With a handle tool in hand the lasso sweeps up handles rather than
-                // objects: `VertexToolController`'s own lasso, which is how several
-                // vertices or edges are taken at once.
-                if HandleKind::of(*tool.borrow()).is_some() {
-                    if vec::distance(from, to) >= DRAG_THRESHOLD {
-                        let camera = camera.borrow();
-                        let mut handles = handles.borrow_mut();
-                        let caught: Vec<Vec3d> = handles
-                            .handles()
-                            .iter()
-                            .map(|handle| handle.position)
-                            .filter(|position| {
-                                camera
-                                    .project(*position, width, height)
-                                    .is_some_and(|on_screen| inside(from, to, on_screen))
-                            })
-                            .collect();
-                        if !add {
-                            handles.clear_selection();
-                        }
-                        for position in &caught {
-                            if !handles.is_selected(*position) {
-                                handles.select(*position, true);
-                            }
-                        }
-                        drop(handles);
-                        drop(camera);
-                        crate::say!("{} handles selected", caught.len());
-                        refresh_panels();
-                    }
-                    redraw();
-                    return;
-                }
-
-                // A drag of a pixel or two is a click that shook; the click handler has
-                // already dealt with it.
+            // With a handle tool in hand the lasso sweeps up handles rather than
+            // objects: `VertexToolController`'s own lasso, which is how several
+            // vertices or edges are taken at once.
+            if HandleKind::of(*tool.borrow()).is_some() {
                 if vec::distance(from, to) >= DRAG_THRESHOLD {
-                    let caught = lassoed(
-                        &camera.borrow(),
-                        &document.borrow(),
-                        from,
-                        to,
-                        width,
-                        height,
-                    );
-                    let mut document = document.borrow_mut();
-                    if let Some(initial) = marquee.borrow_mut().take() {
-                        document.preview_marquee(&initial, &caught, add);
+                    let camera = camera.borrow();
+                    let mut handles = handles.borrow_mut();
+                    let caught: Vec<Vec3d> = handles
+                        .handles()
+                        .iter()
+                        .map(|handle| handle.position)
+                        .filter(|position| {
+                            camera
+                                .project(*position, width, height)
+                                .is_some_and(|on_screen| inside(from, to, on_screen))
+                        })
+                        .collect();
+                    if !add {
+                        handles.clear_selection();
                     }
-                    crate::say!(
-                        "{}",
-                        text_utils::string_format::str_plural(
-                            caught.len(),
-                            "1 object selected",
-                            &format!("{} objects selected", caught.len())
-                        )
-                    );
-                    drop(document);
+                    for position in &caught {
+                        if !handles.is_selected(*position) {
+                            handles.select(*position, true);
+                        }
+                    }
+                    drop(handles);
+                    drop(camera);
+                    crate::say!("{} handles selected", caught.len());
                     refresh_panels();
                 }
-                render();
+                redraw();
                 return;
             }
 
-            let ended = drag.borrow_mut().take();
-            if let Some(Drag { what: DragKind::Draw { .. }, .. }) = &ended {
-                let bounds = pending_shape.borrow_mut().take();
-                if let Some(bounds) = bounds {
-                    let mut document = document.borrow_mut();
-                    match document.begin_shape_preview(bounds,*shape_parameters.borrow()) {
-                        Ok(_)=>*tool.borrow_mut()=Tool::Brush,
-                        Err(error)=>crate::complain!("could not draw the shape: {error}"),
-                    }
+            // A drag of a pixel or two is a click that shook; the click handler has
+            // already dealt with it.
+            if vec::distance(from, to) >= DRAG_THRESHOLD {
+                let caught = lassoed(
+                    &camera.borrow(),
+                    &document.borrow(),
+                    from,
+                    to,
+                    width,
+                    height,
+                );
+                let mut document = document.borrow_mut();
+                if let Some(initial) = marquee.borrow_mut().take() {
+                    document.preview_marquee(&initial, &caught, add);
                 }
-                redraw();
+                crate::say!(
+                    "{}",
+                    text_utils::string_format::str_plural(
+                        caught.len(),
+                        "1 object selected",
+                        &format!("{} objects selected", caught.len())
+                    )
+                );
+                drop(document);
                 refresh_panels();
-                return;
             }
-            if ended.is_some() {
-                document.borrow_mut().commit_transaction();
-                render();
+            render();
+            return;
+        }
+
+        let ended = drag.borrow_mut().take();
+        if let Some(Drag {
+            what: DragKind::Draw { .. },
+            ..
+        }) = &ended
+        {
+            let bounds = pending_shape.borrow_mut().take();
+            if let Some(bounds) = bounds {
+                let mut document = document.borrow_mut();
+                match document.begin_shape_preview(bounds, *shape_parameters.borrow()) {
+                    Ok(_) => *tool.borrow_mut() = Tool::Brush,
+                    Err(error) => crate::complain!("could not draw the shape: {error}"),
+                }
             }
-        
+            redraw();
+            refresh_panels();
+            return;
+        }
+        if ended.is_some() {
+            document.borrow_mut().commit_transaction();
+            render();
+        }
     }
 
     /// The primary drag was taken away without a release.
     pub fn drag_cancel(&self) {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-            if lasso.borrow_mut().take().is_some() {
-                if *tool.borrow() == Tool::Select {
-                    if let Some(initial) = marquee.borrow_mut().take() {
-                        document.borrow_mut().restore_selection(&initial);
-                    }
+        if lasso.borrow_mut().take().is_some() {
+            if *tool.borrow() == Tool::Select {
+                if let Some(initial) = marquee.borrow_mut().take() {
+                    document.borrow_mut().restore_selection(&initial);
                 }
-                redraw();
             }
-            if drag.borrow_mut().take().is_some() {
-                document.borrow_mut().commit_transaction();
-                render();
-            }
-        
+            redraw();
+        }
+        if drag.borrow_mut().take().is_some() {
+            document.borrow_mut().commit_transaction();
+            render();
+        }
     }
 
     /// A primary click, `presses` times, at `(x, y)`.
-    pub fn click(&self, presses: i32, x: f64, y: f64, modifiers: Modifiers, (width, height): (f64, f64)) {
+    pub fn click(
+        &self,
+        presses: i32,
+        x: f64,
+        y: f64,
+        modifiers: Modifiers,
+        (width, height): (f64, f64),
+    ) {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-            // Clicking the view takes the keyboard off whatever number field or entry
-            // had it, so WASD and the arrows reach the view again.
-            focus();
-            // The click can arrive before the drag has stored its state.
-            // Transform handles extend outside the brush: selecting here would clear
-            // or replace the selection before the drag starts. These tools own the
-            // primary-button press, including when their handle has not been caught.
-            if matches!(*tool.borrow(), Tool::Rotate | Tool::Scale | Tool::Shear)
-                || drag.borrow().as_ref().is_some_and(|active|
-                    !(modifiers.shift && matches!(active.what, DragKind::Extrude { .. })))
-            {
-                return;
-            }
-            // Shift-click selects the face even when the press prepared an extrusion.
-            // A later drag still uses the original extrusion source captured at press.
-            let ray = camera.borrow().ray_through(
-                x,
-                y,
-                width,
-                height,
-            );
+        // Clicking the view takes the keyboard off whatever number field or entry
+        // had it, so WASD and the arrows reach the view again.
+        focus();
+        // The click can arrive before the drag has stored its state.
+        // Transform handles extend outside the brush: selecting here would clear
+        // or replace the selection before the drag starts. These tools own the
+        // primary-button press, including when their handle has not been caught.
+        if matches!(*tool.borrow(), Tool::Rotate | Tool::Scale | Tool::Shear)
+            || drag.borrow().as_ref().is_some_and(|active| {
+                !(modifiers.shift && matches!(active.what, DragKind::Extrude { .. }))
+            })
+        {
+            return;
+        }
+        // Shift-click selects the face even when the press prepared an extrusion.
+        // A later drag still uses the original extrusion source captured at press.
+        let ray = camera.borrow().ray_through(x, y, width, height);
 
-            let mut document = document.borrow_mut();
-            
-            // `SetBrushFaceAttributesTool`: with one face selected, Alt and a double click
-            // copies its material -- and by the modifiers its mapping -- onto every face
-            // of the brush under the pointer. The single-face and swept-across cases are
-            // the drag gesture below, where a plain click is a zero-length drag.
-            if let Some(mode) = transfer_mode(modifiers) {
-                if presses >= 2 {
-                    if let (Some(source), Some(hit)) =
-                        (document.single_selected_face(), document.pick(&ray))
-                    {
-                        if let Some(face) = hit.face {
-                            let target = FaceRef {
-                                node: hit.node,
-                                face,
-                            };
-                            if document.copy_face_attributes(source, target, mode, true) {
-                                drop(document);
-                                render();
-                                return;
-                            }
-                        }
-                    }
-                }
-                return;
-            }
+        let mut document = document.borrow_mut();
 
-            // A handle tool has already had this press, in the drag controller above: it
-            // is about the handles, not about which brush is selected.
-            if HandleKind::of(*tool.borrow()).is_some() {
-                return;
-            }
-
-            // A press that began a sculpt stroke is the stroke's; anywhere else it selects.
-            if *tool.borrow() == Tool::Sculpt && matches!(*stroke.borrow(), Some(AttrStroke::Sculpt { .. })) {
-                return;
-            }
-
-            // The paint tool puts the current material on the face under the pointer: a
-            // click paints one face, a double click the whole brush, and Shift takes the
-            // face's material as the current one instead, the way an eyedropper does.
-            if *tool.borrow() == Tool::Paint {
-                if let Some(hit) = document.pick(&ray) {
+        // `SetBrushFaceAttributesTool`: with one face selected, Alt and a double click
+        // copies its material -- and by the modifiers its mapping -- onto every face
+        // of the brush under the pointer. The single-face and swept-across cases are
+        // the drag gesture below, where a plain click is a zero-length drag.
+        if let Some(mode) = transfer_mode(modifiers) {
+            if presses >= 2 {
+                if let (Some(source), Some(hit)) =
+                    (document.single_selected_face(), document.pick(&ray))
+                {
                     if let Some(face) = hit.face {
                         let target = FaceRef {
                             node: hit.node,
                             face,
                         };
-                        if modifiers.shift {
-                            if let Some(picked) =
-                                document.face_at(target).map(|f| f.material_name.clone())
-                            {
-                                document.set_current_material(picked);
-                                drop(document);
-                                refresh_panels();
-                                render();
-                                return;
-                            }
-                        } else {
-                            let material = document.current_material().to_string();
-                            let painted = if let Some(AttrStroke::Paint { state, .. }) = stroke.borrow_mut().as_mut() {
-                                let targets = if presses >= 2 {
-                                    (0..document.brush(hit.node).unwrap().geometry().face_count())
-                                        .map(|face|FaceRef{node:hit.node,face}).collect()
-                                } else { vec![target] };
-                                document.paint_material_stroke(&targets,state)>0
-                            } else if presses >= 2 { document.paint_brush(hit.node,&material) }
-                            else { document.paint_face(target,&material) };
-                            if painted {
-                                drop(document);
-                                render();
-                                return;
-                            }
+                        if document.copy_face_attributes(source, target, mode, true) {
+                            drop(document);
+                            render();
+                            return;
                         }
                     }
                 }
-                return;
             }
+            return;
+        }
 
-            // The clip tool places its points here too, not only in the flat views. A point goes where the ray meets a surface, snapped;
-            // the face's own normal is the help vector, which is what lets two points
-            // placed in one view describe a plane -- `ClipToolController3D`.
-            if *tool.borrow() == Tool::Clip {
-                if let Some((at, help_vectors)) = clip_surface_point(&document, &grid.borrow(), &ray) {
-                    if clip.borrow_mut().add_point(at, help_vectors) {
-                        drop(document);
-                        refresh_panels();
-                        render();
-                        return;
-                    }
-                }
-                return;
-            }
+        // A handle tool has already had this press, in the drag controller above: it
+        // is about the handles, not about which brush is selected.
+        if HandleKind::of(*tool.borrow()).is_some() {
+            return;
+        }
 
-            // With the assemble tool active a click places a point rather than selecting.
-            // The point goes where the ray meets a surface, snapped, since building a
-            // shape against the geometry already there is what the tool is for.
-            if *tool.borrow() == Tool::Assemble {
-                if let Some(hit) = document.pick(&ray) {
-                    let at = grid
-                        .borrow()
-                        .snap_point(ray.point_at_distance(hit.distance));
-                    if assemble.borrow_mut().add_point(at) {
-                        drop(document);
-                        render();
-                        return;
-                    }
-                }
-                return;
-            }
+        // A press that began a sculpt stroke is the stroke's; anywhere else it selects.
+        if *tool.borrow() == Tool::Sculpt
+            && matches!(*stroke.borrow(), Some(AttrStroke::Sculpt { .. }))
+        {
+            return;
+        }
 
-            // `SelectionTool`: Shift picks the individual face under the pointer rather
-            // than the whole brush (`isFaceClick`), and Ctrl adds to the selection
-            // (`isMultiClick`) -- so Shift+Ctrl picks several faces.
-            let add_to_selection = modifiers.control;
-            let pick_face = modifiers.shift;
-
-            match (document.pick(&ray), pick_face) {
-                // Shift picks a face, which only a brush has.
-                (Some(hit), true) if hit.face.is_some() => {
-                    let face = FaceRef {
+        // The paint tool puts the current material on the face under the pointer: a
+        // click paints one face, a double click the whole brush, and Shift takes the
+        // face's material as the current one instead, the way an eyedropper does.
+        if *tool.borrow() == Tool::Paint {
+            if let Some(hit) = document.pick(&ray) {
+                if let Some(face) = hit.face {
+                    let target = FaceRef {
                         node: hit.node,
-                        face: hit.face.expect("checked just above"),
+                        face,
                     };
-                    if add_to_selection {
-                        document.toggle_face_selected(face);
+                    if modifiers.shift {
+                        if let Some(picked) =
+                            document.face_at(target).map(|f| f.material_name.clone())
+                        {
+                            document.set_current_material(picked);
+                            drop(document);
+                            refresh_panels();
+                            render();
+                            return;
+                        }
                     } else {
-                        document.select_face_only(face);
+                        let material = document.current_material().to_string();
+                        let painted = if let Some(AttrStroke::Paint { state, .. }) =
+                            stroke.borrow_mut().as_mut()
+                        {
+                            let targets = if presses >= 2 {
+                                (0..document.brush(hit.node).unwrap().geometry().face_count())
+                                    .map(|face| FaceRef {
+                                        node: hit.node,
+                                        face,
+                                    })
+                                    .collect()
+                            } else {
+                                vec![target]
+                            };
+                            document.paint_material_stroke(&targets, state) > 0
+                        } else if presses >= 2 {
+                            document.paint_brush(hit.node, &material)
+                        } else {
+                            document.paint_face(target, &material)
+                        };
+                        if painted {
+                            drop(document);
+                            render();
+                            return;
+                        }
                     }
                 }
-                (Some(hit), true) if add_to_selection => document.toggle_selected(hit.node),
-                (Some(hit), true) => document.select_only(hit.node),
-                (Some(hit), false) if add_to_selection => document.toggle_selected(hit.node),
-                (Some(hit), false) => document.select_only(hit.node),
-                (None, _) if !add_to_selection => document.clear_selection(),
-                (None, _) => {}
             }
-            render();
-        
+            return;
+        }
+
+        // The clip tool places its points here too, not only in the flat views. A point goes where the ray meets a surface, snapped;
+        // the face's own normal is the help vector, which is what lets two points
+        // placed in one view describe a plane -- `ClipToolController3D`.
+        if *tool.borrow() == Tool::Clip {
+            if let Some((at, help_vectors)) = clip_surface_point(&document, &grid.borrow(), &ray) {
+                if clip.borrow_mut().add_point(at, help_vectors) {
+                    drop(document);
+                    refresh_panels();
+                    render();
+                    return;
+                }
+            }
+            return;
+        }
+
+        // With the assemble tool active a click places a point rather than selecting.
+        // The point goes where the ray meets a surface, snapped, since building a
+        // shape against the geometry already there is what the tool is for.
+        if *tool.borrow() == Tool::Assemble {
+            if let Some(hit) = document.pick(&ray) {
+                let at = grid
+                    .borrow()
+                    .snap_point(ray.point_at_distance(hit.distance));
+                if assemble.borrow_mut().add_point(at) {
+                    drop(document);
+                    render();
+                    return;
+                }
+            }
+            return;
+        }
+
+        // `SelectionTool`: Shift picks the individual face under the pointer rather
+        // than the whole brush (`isFaceClick`), and Ctrl adds to the selection
+        // (`isMultiClick`) -- so Shift+Ctrl picks several faces.
+        let add_to_selection = modifiers.control;
+        let pick_face = modifiers.shift;
+
+        match (document.pick(&ray), pick_face) {
+            // Shift picks a face, which only a brush has.
+            (Some(hit), true) if hit.face.is_some() => {
+                let face = FaceRef {
+                    node: hit.node,
+                    face: hit.face.expect("checked just above"),
+                };
+                if add_to_selection {
+                    document.toggle_face_selected(face);
+                } else {
+                    document.select_face_only(face);
+                }
+            }
+            (Some(hit), true) if add_to_selection => document.toggle_selected(hit.node),
+            (Some(hit), true) => document.select_only(hit.node),
+            (Some(hit), false) if add_to_selection => document.toggle_selected(hit.node),
+            (Some(hit), false) => document.select_only(hit.node),
+            (None, _) if !add_to_selection => document.clear_selection(),
+            (None, _) => {}
+        }
+        render();
     }
 
     /// The face-attribute stroke's press.
     pub fn stroke_begin(&self, x: f64, y: f64, modifiers: Modifiers, (width, height): (f64, f64)) {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-                *stroke.borrow_mut() = None;
-                if *tool.borrow()==Tool::Sculpt && !modifiers.alt && filters.borrow().animation_frame.is_none() {
-                    let ray = camera.borrow().ray_through(x, y, width, height);
-                    let Some(at) = document.borrow().sculpt_target(&ray) else { return; };
-                    let Some(mut state) = document.borrow().begin_sculpt_stroke_under(&ray, crate::sculpt::parameters().direction) else { return; };
-                    if document.borrow_mut().sculpt_dab(at, &sculpt_brush(modifiers.shift), &mut state) { render(); }
-                    *stroke.borrow_mut()=Some(AttrStroke::Sculpt { state, last:at, inverted:modifiers.shift });
-                    return;
-                }
-                if *tool.borrow()==Tool::Paint && !modifiers.shift && !modifiers.alt {
-                    *stroke.borrow_mut()=Some(AttrStroke::Paint { state:document.borrow().begin_material_stroke(), last:(x,y) });
-                    return;
-                }
-                let Some(mode) = transfer_mode(modifiers) else {
-                    return;
-                };
-                let document = document.borrow();
-                let Some(source) = document.single_selected_face() else {
-                    return;
-                };
-                let mut touched = Vec::new();
-                if let Some(face) = face_under(&camera.borrow(), (width, height), &document, x, y) {
-                    touched.push(face);
-                }
-                *stroke.borrow_mut() = Some(AttrStroke::Transfer {
-                    source,
-                    mode,
-                    touched,
-                });
-            
+        *stroke.borrow_mut() = None;
+        if *tool.borrow() == Tool::Sculpt
+            && !modifiers.alt
+            && filters.borrow().animation_frame.is_none()
+        {
+            let ray = camera.borrow().ray_through(x, y, width, height);
+            let Some(at) = document.borrow().sculpt_target(&ray) else {
+                return;
+            };
+            let Some(mut state) = document
+                .borrow()
+                .begin_sculpt_stroke_under(&ray, crate::sculpt::parameters().direction)
+            else {
+                return;
+            };
+            if document
+                .borrow_mut()
+                .sculpt_dab(at, &sculpt_brush(modifiers.shift), &mut state)
+            {
+                render();
+            }
+            *stroke.borrow_mut() = Some(AttrStroke::Sculpt {
+                state,
+                last: at,
+                inverted: modifiers.shift,
+            });
+            return;
+        }
+        if *tool.borrow() == Tool::Paint && !modifiers.shift && !modifiers.alt {
+            *stroke.borrow_mut() = Some(AttrStroke::Paint {
+                state: document.borrow().begin_material_stroke(),
+                last: (x, y),
+            });
+            return;
+        }
+        let Some(mode) = transfer_mode(modifiers) else {
+            return;
+        };
+        let document = document.borrow();
+        let Some(source) = document.single_selected_face() else {
+            return;
+        };
+        let mut touched = Vec::new();
+        if let Some(face) = face_under(&camera.borrow(), (width, height), &document, x, y) {
+            touched.push(face);
+        }
+        *stroke.borrow_mut() = Some(AttrStroke::Transfer {
+            source,
+            mode,
+            touched,
+        });
     }
 
     /// The face-attribute stroke moved; `start` is where it began.
     pub fn stroke_update(&self, start: (f64, f64), dx: f64, dy: f64, (width, height): (f64, f64)) {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-                let mut stroke = stroke.borrow_mut();
-                let Some(stroke) = stroke.as_mut() else {
-                    return;
-                };
-                let point=(start.0+dx,start.1+dy);
-                match stroke {
-                    AttrStroke::Transfer { touched, .. } => {
-                        if let Some(face)=face_under(&camera.borrow(),(width,height),&document.borrow(),point.0,point.1) {
-                            if !touched.contains(&face) { touched.push(face); }
-                        }
-                    }
-                    AttrStroke::Paint { state,last } => {
-                        if *tool.borrow()!=Tool::Paint || filters.borrow().animation_frame.is_some() { return; }
-                        let distance=(point.0-last.0).hypot(point.1-last.1);
-                        let steps=((distance/3.0).ceil() as usize).clamp(1,128);
-                        let mut faces=Vec::new();
-                        for i in 1..=steps {
-                            let t=i as f64/steps as f64;
-                            let at=(last.0+(point.0-last.0)*t,last.1+(point.1-last.1)*t);
-                            if at.0<0.0 || at.1<0.0 || at.0>width || at.1>height { continue; }
-                            if let Some(face)=face_under(&camera.borrow(),(width,height),&document.borrow(),at.0,at.1) {
-                                if !faces.contains(&face) { faces.push(face); }
-                            }
-                        }
-                        *last=point;
-                        if document.borrow_mut().paint_material_stroke(&faces,state)>0 { render(); }
-                    }
-                    AttrStroke::Sculpt { state, last, inverted } => {
-                        if *tool.borrow()!=Tool::Sculpt { return; }
-                        let ray = camera.borrow().ray_through(point.0, point.1, width, height);
-                        let Some(at) = document.borrow().sculpt_target(&ray) else { return; };
-                        let brush = sculpt_brush(*inverted);
-                        // Dabs a spacing apart along the way, so a quick drag leaves no gaps.
-                        let distance = geometry_math::vec::length(at-*last);
-                        let steps = (distance/brush.spacing()).floor() as usize;
-                        let mut changed = false;
-                        for i in 1..=steps.min(64) {
-                            let t = i as f64/steps as f64;
-                            changed |= document.borrow_mut().sculpt_dab(*last+(at-*last)*t, &brush, state);
-                        }
-                        if steps > 0 { *last = at; }
-                        if changed { render(); }
+        let mut stroke = stroke.borrow_mut();
+        let Some(stroke) = stroke.as_mut() else {
+            return;
+        };
+        let point = (start.0 + dx, start.1 + dy);
+        match stroke {
+            AttrStroke::Transfer { touched, .. } => {
+                if let Some(face) = face_under(
+                    &camera.borrow(),
+                    (width, height),
+                    &document.borrow(),
+                    point.0,
+                    point.1,
+                ) {
+                    if !touched.contains(&face) {
+                        touched.push(face);
                     }
                 }
-
-            
+            }
+            AttrStroke::Paint { state, last } => {
+                if *tool.borrow() != Tool::Paint || filters.borrow().animation_frame.is_some() {
+                    return;
+                }
+                let distance = (point.0 - last.0).hypot(point.1 - last.1);
+                let steps = ((distance / 3.0).ceil() as usize).clamp(1, 128);
+                let mut faces = Vec::new();
+                for i in 1..=steps {
+                    let t = i as f64 / steps as f64;
+                    let at = (
+                        last.0 + (point.0 - last.0) * t,
+                        last.1 + (point.1 - last.1) * t,
+                    );
+                    if at.0 < 0.0 || at.1 < 0.0 || at.0 > width || at.1 > height {
+                        continue;
+                    }
+                    if let Some(face) = face_under(
+                        &camera.borrow(),
+                        (width, height),
+                        &document.borrow(),
+                        at.0,
+                        at.1,
+                    ) {
+                        if !faces.contains(&face) {
+                            faces.push(face);
+                        }
+                    }
+                }
+                *last = point;
+                if document.borrow_mut().paint_material_stroke(&faces, state) > 0 {
+                    render();
+                }
+            }
+            AttrStroke::Sculpt {
+                state,
+                last,
+                inverted,
+            } => {
+                if *tool.borrow() != Tool::Sculpt {
+                    return;
+                }
+                let ray = camera.borrow().ray_through(point.0, point.1, width, height);
+                let Some(at) = document.borrow().sculpt_target(&ray) else {
+                    return;
+                };
+                let brush = sculpt_brush(*inverted);
+                // Dabs a spacing apart along the way, so a quick drag leaves no gaps.
+                let distance = geometry_math::vec::length(at - *last);
+                let steps = (distance / brush.spacing()).floor() as usize;
+                let mut changed = false;
+                for i in 1..=steps.min(64) {
+                    let t = i as f64 / steps as f64;
+                    changed |=
+                        document
+                            .borrow_mut()
+                            .sculpt_dab(*last + (at - *last) * t, &brush, state);
+                }
+                if steps > 0 {
+                    *last = at;
+                }
+                if changed {
+                    render();
+                }
+            }
+        }
     }
 
     /// The face-attribute stroke's release.
     pub fn stroke_end(&self) {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-                let Some(stroke) = stroke.borrow_mut().take() else {
-                    return;
-                };
-                if let AttrStroke::Transfer { source,mode,touched }=stroke {
-                    if !touched.is_empty() { document.borrow_mut().copy_face_attributes_across(source,&touched,mode); }
-                }
-                render();
-            
+        let Some(stroke) = stroke.borrow_mut().take() else {
+            return;
+        };
+        if let AttrStroke::Transfer {
+            source,
+            mode,
+            touched,
+        } = stroke
+        {
+            if !touched.is_empty() {
+                document
+                    .borrow_mut()
+                    .copy_face_attributes_across(source, &touched, mode);
+            }
+        }
+        render();
     }
 
     /// The pointer moved over the view.
     pub fn motion(&self, x: f64, y: f64, modifiers: Modifiers, (width, height): (f64, f64)) {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-            *pointer.borrow_mut() = (x, y);
-            // The brush outline follows the pointer.
-            if *tool.borrow() == Tool::Sculpt {
-                render();
+        *pointer.borrow_mut() = (x, y);
+        // The brush outline follows the pointer.
+        if *tool.borrow() == Tool::Sculpt {
+            render();
+        }
+        let ray = camera.borrow().ray_through(x, y, width, height);
+        // With Shift held, outline the faces a Shift-drag would extrude, as
+        // `ExtrudeToolController::render` does with the proposed drag handles.
+        let shift = modifiers.shift;
+        let outlines = if shift {
+            document.borrow().extrude_preview_faces(&ray)
+        } else {
+            Vec::new()
+        };
+        if *extrude_preview.borrow() != outlines {
+            *extrude_preview.borrow_mut() = outlines;
+            render();
+        }
+        let hit = document.borrow().pick(&ray);
+        // Whether that is something selected, for the selection's size labels. A
+        // change is worth a frame; the HUD is rebuilt from it in the render closure.
+        let over = hit.is_some_and(|hit| document.borrow().is_selected(hit.node));
+        if *hover_selected.borrow() != over {
+            *hover_selected.borrow_mut() = over;
+            render();
+        }
+        // Where a paste would land: the surface under the pointer, or a point out in
+        // front of the camera when the pointer is over open space.
+        let at = match hit {
+            Some(hit) => ray.point_at_distance(hit.distance),
+            None => {
+                let camera = camera.borrow();
+                camera.position + camera.direction() * 256.0
             }
-            let ray = camera.borrow().ray_through(
-                x,
-                y,
-                width,
-                height,
-            );
-            // With Shift held, outline the faces a Shift-drag would extrude, as
-            // `ExtrudeToolController::render` does with the proposed drag handles.
-            let shift = modifiers.shift;
-            let outlines = if shift {
-                document.borrow().extrude_preview_faces(&ray)
-            } else {
-                Vec::new()
-            };
-            if *extrude_preview.borrow() != outlines {
-                *extrude_preview.borrow_mut() = outlines;
-                render();
-            }
-            let hit = document.borrow().pick(&ray);
-            // Whether that is something selected, for the selection's size labels. A
-            // change is worth a frame; the HUD is rebuilt from it in the render closure.
-            let over = hit.is_some_and(|hit| document.borrow().is_selected(hit.node));
-            if *hover_selected.borrow() != over {
-                *hover_selected.borrow_mut() = over;
-                render();
-            }
-            // Where a paste would land: the surface under the pointer, or a point out in
-            // front of the camera when the pointer is over open space.
-            let at = match hit {
-                Some(hit) => ray.point_at_distance(hit.distance),
-                None => {
-                    let camera = camera.borrow();
-                    camera.position + camera.direction() * 256.0
-                }
-            };
-            *paste_target.borrow_mut() = Some(at);
-        
+        };
+        *paste_target.borrow_mut() = Some(at);
     }
 
     /// The pointer left the view.
     pub fn leave(&self) {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-            if *hover_selected.borrow() {
-                *hover_selected.borrow_mut() = false;
-                render();
-            }
-        
+        if *hover_selected.borrow() {
+            *hover_selected.borrow_mut() = false;
+            render();
+        }
     }
 
     /// A wheel notch; `dy` below zero is away from the user.
     pub fn scroll(&self, dy: f64, (width, height): (f64, f64)) {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-            // `CameraTool3D::moveSpeed`: the preference times twenty, over a wheel
-            // notch rather than a pixel of drag, so it moves a useful distance.
-            let speed = f64::from(pref(|p| p.camera_move_speed)) * 20.0 * 4.0;
-            let direction = if pref(|p| p.invert_mouse_wheel) { 1.0 } else { -1.0 };
-            let distance = direction * dy * speed;
+        // `CameraTool3D::moveSpeed`: the preference times twenty, over a wheel
+        // notch rather than a pixel of drag, so it moves a useful distance.
+        let speed = f64::from(pref(|p| p.camera_move_speed)) * 20.0 * 4.0;
+        let direction = if pref(|p| p.invert_mouse_wheel) {
+            1.0
+        } else {
+            -1.0
+        };
+        let distance = direction * dy * speed;
 
-            let mut camera = camera.borrow_mut();
-            if pref(|p| p.camera_move_in_cursor_dir) {
-                // Towards what the pointer is over rather than straight ahead, which is
-                // what makes zooming in on a corner keep it in view.
-                let (x, y) = *pointer.borrow();
-                let height = height.max(1.0);
-                let width = width.max(1.0);
-                let ray = camera.ray_through(x, y, width, height);
-                camera.position += ray.direction * distance;
-            } else {
-                camera.fly(distance, 0.0, 0.0);
-            }
-            render();
+        let mut camera = camera.borrow_mut();
+        if pref(|p| p.camera_move_in_cursor_dir) {
+            // Towards what the pointer is over rather than straight ahead, which is
+            // what makes zooming in on a corner keep it in view.
+            let (x, y) = *pointer.borrow();
+            let height = height.max(1.0);
+            let width = width.max(1.0);
+            let ray = camera.ray_through(x, y, width, height);
+            camera.position += ray.direction * distance;
+        } else {
+            camera.fly(distance, 0.0, 0.0);
+        }
+        render();
     }
 
     /// The modifiers changed under a still pointer.
     pub fn modifiers_changed(&self, state: Modifiers, (width, height): (f64, f64)) {
         #[allow(unused_variables)]
-        let Self { document, tool, handles, rotate, camera, fillet, pending_shape, shape_parameters, clip, assemble, grid, filters, sweep, paste_target, refresh_panels, redraw, render, focus, rendered_frame, preview_motions, preview_mesh, fillet_surfaces, uploaded_surface_epoch, hud, hover_selected, drag, uploaded, uploaded_materials, uploaded_filters, uploaded_clip, last_frame, extrude_preview, entity_drop_preview, pointer, pointer_inside, lasso, marquee, stroke, look_last, pan_last, press } = self;
+        let Self {
+            document,
+            tool,
+            handles,
+            rotate,
+            camera,
+            fillet,
+            pending_shape,
+            shape_parameters,
+            clip,
+            assemble,
+            grid,
+            filters,
+            sweep,
+            paste_target,
+            refresh_panels,
+            redraw,
+            render,
+            focus,
+            rendered_frame,
+            preview_motions,
+            preview_mesh,
+            fillet_surfaces,
+            uploaded_surface_epoch,
+            hud,
+            hover_selected,
+            drag,
+            uploaded,
+            uploaded_materials,
+            uploaded_filters,
+            uploaded_clip,
+            last_frame,
+            extrude_preview,
+            entity_drop_preview,
+            pointer,
+            pointer_inside,
+            lasso,
+            marquee,
+            stroke,
+            look_last,
+            pan_last,
+            press,
+        } = self;
 
-            let (x, y) = *pointer.borrow();
-            let ray = camera.borrow().ray_through(
-                x,
-                y,
-                width,
-                height,
-            );
-            let outlines = if state.shift {
-                document.borrow().extrude_preview_faces(&ray)
-            } else {
-                Vec::new()
-            };
-            if *extrude_preview.borrow() != outlines {
-                *extrude_preview.borrow_mut() = outlines;
-                render();
-            }
+        let (x, y) = *pointer.borrow();
+        let ray = camera.borrow().ray_through(x, y, width, height);
+        let outlines = if state.shift {
+            document.borrow().extrude_preview_faces(&ray)
+        } else {
+            Vec::new()
+        };
+        if *extrude_preview.borrow() != outlines {
+            *extrude_preview.borrow_mut() = outlines;
+            render();
+        }
     }
-
 }
 
 #[cfg(test)]
@@ -2850,11 +3855,20 @@ mod clip_preview_tests {
     #[test]
     fn clip_surface_snap_stays_on_sloped_and_offset_faces() {
         let grid = Grid::new(4);
-        for normal in [Vec3d::new(0., 0., 1.), Vec3d::new(1., 0., 1.), Vec3d::new(0., 1., 0.)] {
+        for normal in [
+            Vec3d::new(0., 0., 1.),
+            Vec3d::new(1., 0., 1.),
+            Vec3d::new(0., 1., 0.),
+        ] {
             let surface = Vec3d::new(21., 37., 5.);
             let at = snap_clip_surface(&grid, surface, normal);
             assert!(vec::dot(normal, at - surface).abs() < 1e-9);
-            assert!((0..3).filter(|axis| at[*axis] == grid.snap_point(at)[*axis]).count() >= 2);
+            assert!(
+                (0..3)
+                    .filter(|axis| at[*axis] == grid.snap_point(at)[*axis])
+                    .count()
+                    >= 2
+            );
         }
     }
 }
@@ -2890,15 +3904,19 @@ mod pick_tests {
     #[test]
     fn a_draw_across_the_ground_makes_a_grid_tall_slab_in_front_of_the_camera() {
         let grid = Grid::new(4); // 16 units
-        // Two corners on the same z, as a horizontal-plane drag gives.
+                                 // Two corners on the same z, as a horizontal-plane drag gives.
         let start = Vec3d::new(3.0, 3.0, 0.0);
         let corner = Vec3d::new(40.0, 40.0, 0.0);
         // A camera looking down: the slab grows upward.
-        let bounds = draw_bounds(start, corner, &grid, Vec3d::new(0.0, 0.0, -1.0))
-            .expect("a solid box");
+        let bounds =
+            draw_bounds(start, corner, &grid, Vec3d::new(0.0, 0.0, -1.0)).expect("a solid box");
 
         assert_eq!(bounds.min, Vec3d::new(0.0, 0.0, 0.0), "snapped down");
-        assert_eq!(bounds.max, Vec3d::new(48.0, 48.0, 16.0), "snapped up, one grid tall");
+        assert_eq!(
+            bounds.max,
+            Vec3d::new(48.0, 48.0, 16.0),
+            "snapped up, one grid tall"
+        );
     }
 
     #[test]
@@ -2906,8 +3924,8 @@ mod pick_tests {
         let grid = Grid::new(4);
         let start = Vec3d::new(0.0, 0.0, 0.0);
         let corner = Vec3d::new(32.0, 32.0, 0.0);
-        let bounds = draw_bounds(start, corner, &grid, Vec3d::new(0.0, 0.0, 1.0))
-            .expect("a solid box");
+        let bounds =
+            draw_bounds(start, corner, &grid, Vec3d::new(0.0, 0.0, 1.0)).expect("a solid box");
         assert_eq!(bounds.min.z(), -16.0, "the box is below the drag");
         assert_eq!(bounds.max.z(), 0.0);
     }
@@ -2963,35 +3981,84 @@ mod pick_tests {
         );
 
         assert!(moved, "the pointer moved far enough to slide the brush");
-        assert_eq!(drag.applied, Vec3d::new(48.0, 0.0, 0.0), "snapped to the grid");
-        let bounds = document.selection_bounds().expect("the brush is still selected");
+        assert_eq!(
+            drag.applied,
+            Vec3d::new(48.0, 0.0, 0.0),
+            "snapped to the grid"
+        );
+        let bounds = document
+            .selection_bounds()
+            .expect("the brush is still selected");
         let near = |a: Vec3d, b: Vec3d| (a - b).v.iter().all(|d| d.abs() < 1e-6);
-        assert!(near(bounds.min, Vec3d::new(48.0, 0.0, 0.0)), "min at {:?}", bounds.min);
-        assert!(near(bounds.max, Vec3d::new(112.0, 64.0, 64.0)), "max at {:?}", bounds.max);
+        assert!(
+            near(bounds.min, Vec3d::new(48.0, 0.0, 0.0)),
+            "min at {:?}",
+            bounds.min
+        );
+        assert!(
+            near(bounds.max, Vec3d::new(112.0, 64.0, 64.0)),
+            "max at {:?}",
+            bounds.max
+        );
     }
     #[test]
     fn ring_drag_rotates_from_original_returns_to_start_and_is_one_undo() {
         use crate::world::WorldBounds;
         use geometry_math::bbox::Bbox3d;
-        let mut document=Document::new(WorldBounds::default());
-        let original=Bbox3d::new(Vec3d::zero(),Vec3d::new(32.0,64.0,16.0));
-        let brush=map_model::shapes::create_cuboid(&document.world_bounds(),&original,"stone").unwrap();
+        let mut document = Document::new(WorldBounds::default());
+        let original = Bbox3d::new(Vec3d::zero(), Vec3d::new(32.0, 64.0, 16.0));
+        let brush =
+            map_model::shapes::create_cuboid(&document.world_bounds(), &original, "stone").unwrap();
         document.add_brushes(vec![brush]);
-        let id=document.selectable_brushes()[0].0; document.select_only(id);
-        let center=original.center();
-        let mut camera = crate::camera3d::Camera3d { position: center+Vec3d::new(0.0,0.0,500.0), ..Default::default() };camera.look_along(center-camera.position);
-        let height=800.0;
-        let radius=f64::from(pref(|p| p.rotate_handle_radius))*handle_drag::perspective_scaling_factor(&camera,center,height);
-        let from=Vec3d::new(0.8,0.6,0.0)*radius;
-        let ray=|point| {let at=camera.project(point,height,height).unwrap();camera.ray_through(at.x(),at.y(),height,height)};
-        let mut rotate=RotateTool::new();rotate.set_center(center);
-        let mut handles=HandleManager::new();let mut sweep=crate::sweep_tool::SweepInputs::default();
-        let mut drag=begin_drag(&camera,height,&ray(center+from),Tool::Rotate,&document,&mut handles,&rotate,&sweep,false,false,false).unwrap();
-        let DragKind::Rotate { gesture } = &drag.what else { panic!("expected rotation") };
+        let id = document.selectable_brushes()[0].0;
+        document.select_only(id);
+        let center = original.center();
+        let mut camera = crate::camera3d::Camera3d {
+            position: center + Vec3d::new(0.0, 0.0, 500.0),
+            ..Default::default()
+        };
+        camera.look_along(center - camera.position);
+        let height = 800.0;
+        let radius = f64::from(pref(|p| p.rotate_handle_radius))
+            * handle_drag::perspective_scaling_factor(&camera, center, height);
+        let from = Vec3d::new(0.8, 0.6, 0.0) * radius;
+        let ray = |point| {
+            let at = camera.project(point, height, height).unwrap();
+            camera.ray_through(at.x(), at.y(), height, height)
+        };
+        let mut rotate = RotateTool::new();
+        rotate.set_center(center);
+        let mut handles = HandleManager::new();
+        let mut sweep = crate::sweep_tool::SweepInputs::default();
+        let mut drag = begin_drag(
+            &camera,
+            height,
+            &ray(center + from),
+            Tool::Rotate,
+            &document,
+            &mut handles,
+            &rotate,
+            &sweep,
+            false,
+            false,
+            false,
+        )
+        .unwrap();
+        let DragKind::Rotate { gesture } = &drag.what else {
+            panic!("expected rotation")
+        };
         let hover = RotationFeedback::new(&camera, height, height, gesture, radius, None).unwrap();
         assert_eq!(hover.ring.len(), 65);
         assert!(hover.sector.is_empty() && hover.label.is_none());
-        let feedback = RotationFeedback::new(&camera, height, height, gesture, radius, Some(-std::f64::consts::FRAC_PI_2)).unwrap();
+        let feedback = RotationFeedback::new(
+            &camera,
+            height,
+            height,
+            gesture,
+            radius,
+            Some(-std::f64::consts::FRAC_PI_2),
+        )
+        .unwrap();
         assert_eq!(feedback.sector.len(), 66);
         assert_eq!(feedback.label.as_ref().unwrap().0, "Z  -90.0°");
         let endpoint = center + vec::cross(gesture.axis, gesture.reference) * -radius;
@@ -3000,20 +4067,37 @@ mod pick_tests {
         let mut canvas = crate::canvas::Raster::new(600, 600).unwrap();
         feedback.draw(&mut canvas);
         document.begin_transaction();
-        let grid=Grid::default();
-        for angle in [90.0_f64,0.0,-90.0] {
-            let radians=angle.to_radians();
-            let point=center+from*radians.cos()+vec::cross(Vec3d::new(0.0,0.0,1.0),from)*radians.sin();
-            assert!(update_drag(&mut drag,&ray(point),camera.direction(),&grid,&mut document,&mut handles,&mut rotate,&mut sweep,Modifiers::default()));
-            let bounds=document.selection_bounds().unwrap();
-            let expected=if angle==0.0 {original.size()} else {Vec3d::new(64.0,32.0,16.0)};
-            assert!(vec::length(bounds.size()-expected)<1e-6);
-            assert!(vec::length(bounds.center()-center)<1e-6);
+        let grid = Grid::default();
+        for angle in [90.0_f64, 0.0, -90.0] {
+            let radians = angle.to_radians();
+            let point = center
+                + from * radians.cos()
+                + vec::cross(Vec3d::new(0.0, 0.0, 1.0), from) * radians.sin();
+            assert!(update_drag(
+                &mut drag,
+                &ray(point),
+                camera.direction(),
+                &grid,
+                &mut document,
+                &mut handles,
+                &mut rotate,
+                &mut sweep,
+                Modifiers::default()
+            ));
+            let bounds = document.selection_bounds().unwrap();
+            let expected = if angle == 0.0 {
+                original.size()
+            } else {
+                Vec3d::new(64.0, 32.0, 16.0)
+            };
+            assert!(vec::length(bounds.size() - expected) < 1e-6);
+            assert!(vec::length(bounds.center() - center) < 1e-6);
         }
-        document.commit_transaction();document.undo().unwrap();
-        let restored=document.selection_bounds().unwrap();
-        assert!(vec::length(restored.min-original.min)<1e-6);
-        assert!(vec::length(restored.max-original.max)<1e-6);
+        document.commit_transaction();
+        document.undo().unwrap();
+        let restored = document.selection_bounds().unwrap();
+        assert!(vec::length(restored.min - original.min) < 1e-6);
+        assert!(vec::length(restored.max - original.max) < 1e-6);
     }
 
     #[test]
@@ -3023,19 +4107,26 @@ mod pick_tests {
             for edge_on in [false, true] {
                 let mut document = Document::new(WorldBounds::default());
                 let original = Bbox3d::new(Vec3d::zero(), Vec3d::new(32.0, 64.0, 16.0));
-                let brush = map_model::shapes::create_cuboid(&document.world_bounds(), &original, "stone").unwrap();
+                let brush =
+                    map_model::shapes::create_cuboid(&document.world_bounds(), &original, "stone")
+                        .unwrap();
                 document.add_brushes(vec![brush]);
                 document.select_only(document.selectable_brushes()[0].0);
                 let center = original.center();
                 let mut camera = Camera3d::default();
                 let mut offset = Vec3d::new(-400.0, -450.0, 300.0);
-                if edge_on { offset[index] = 0.0; }
+                if edge_on {
+                    offset[index] = 0.0;
+                }
                 camera.position = center + offset;
                 camera.look_along(-offset);
                 let height = 800.0;
-                let radius = f64::from(pref(|p| p.rotate_handle_radius)) * camera.world_units_per_pixel(center, height);
-                let mut axis = Vec3d::zero(); axis[index] = 1.0;
-                let mut rotate = RotateTool::new(); rotate.set_center(center);
+                let radius = f64::from(pref(|p| p.rotate_handle_radius))
+                    * camera.world_units_per_pixel(center, height);
+                let mut axis = Vec3d::zero();
+                axis[index] = 1.0;
+                let mut rotate = RotateTool::new();
+                rotate.set_center(center);
                 let mut handles = HandleManager::new();
                 let mut sweep = crate::sweep_tool::SweepInputs::default();
                 let mut successful = 0;
@@ -3046,24 +4137,66 @@ mod pick_tests {
                     from[(index + 2) % 3] = radius * angle.sin();
                     let screen = camera.project(center + from, height, height).unwrap();
                     let ray = camera.ray_through(screen.x(), screen.y(), height, height);
-                    let Some(mut drag) = begin_drag(&camera, height, &ray, Tool::Rotate, &document, &mut handles, &rotate, &sweep, false, false, false) else { continue; };
-                    let DragKind::Rotate { gesture } = drag.what else { unreachable!() };
-                    if gesture.axis != axis { continue; }
+                    let Some(mut drag) = begin_drag(
+                        &camera,
+                        height,
+                        &ray,
+                        Tool::Rotate,
+                        &document,
+                        &mut handles,
+                        &rotate,
+                        &sweep,
+                        false,
+                        false,
+                        false,
+                    ) else {
+                        continue;
+                    };
+                    let DragKind::Rotate { gesture } = drag.what else {
+                        unreachable!()
+                    };
+                    if gesture.axis != axis {
+                        continue;
+                    }
                     let tangent = vec::cross(axis, from);
-                    let projected = camera.project(center + from + tangent * 0.01, height, height).unwrap();
+                    let projected = camera
+                        .project(center + from + tangent * 0.01, height, height)
+                        .unwrap();
                     let direction = projected - screen;
-                    if vec::length(direction) < 0.01 { continue; }
+                    if vec::length(direction) < 0.01 {
+                        continue;
+                    }
                     let to = screen + direction / vec::length(direction) * 30.0;
                     let ray = camera.ray_through(to.x(), to.y(), height, height);
                     document.begin_transaction();
-                    assert!(update_drag(&mut drag, &ray, camera.direction(), &Grid::default(), &mut document, &mut handles, &mut rotate, &mut sweep, Modifiers::default()), "axis {index}, edge_on {edge_on}, step {step}");
+                    assert!(
+                        update_drag(
+                            &mut drag,
+                            &ray,
+                            camera.direction(),
+                            &Grid::default(),
+                            &mut document,
+                            &mut handles,
+                            &mut rotate,
+                            &mut sweep,
+                            Modifiers::default()
+                        ),
+                        "axis {index}, edge_on {edge_on}, step {step}"
+                    );
                     let changed = document.selection_bounds().unwrap();
-                    assert!(vec::length(changed.size() - original.size()) > 0.1, "unchanged axis {index}, edge_on {edge_on}, step {step}, angle {}", drag.applied.x());
+                    assert!(
+                        vec::length(changed.size() - original.size()) > 0.1,
+                        "unchanged axis {index}, edge_on {edge_on}, step {step}, angle {}",
+                        drag.applied.x()
+                    );
                     document.rollback_transaction();
                     document.commit_transaction();
                     successful += 1;
                 }
-                assert!(successful > 10, "axis {index}, edge_on {edge_on}: only {successful} usable ring locations");
+                assert!(
+                    successful > 10,
+                    "axis {index}, edge_on {edge_on}: only {successful} usable ring locations"
+                );
             }
         }
     }
@@ -3073,7 +4206,11 @@ mod pick_tests {
         let mut document = Document::new(crate::world::WorldBounds::default());
         let bounds = Bbox3d::new(Vec3d::zero(), Vec3d::new(32.0, 64.0, 16.0));
         document.add_brushes(vec![map_model::shapes::create_cuboid(
-            &document.world_bounds(), &bounds, "stone").unwrap()]);
+            &document.world_bounds(),
+            &bounds,
+            "stone",
+        )
+        .unwrap()]);
         let selected = document.selectable_brushes()[0].0;
         document.select_only(selected);
         let center = bounds.center();
@@ -3086,13 +4223,27 @@ mod pick_tests {
         let sweep = crate::sweep_tool::SweepInputs::default();
         let sample = |document: &Document, tool| {
             let mut handles = HandleManager::new();
-            (280..=520).step_by(4).flat_map(|x| {
-                (280..=520).step_by(4).map(move |y| (x, y))
-            }).map(|(x, y)| {
-                let ray = camera.ray_through(x as f64, y as f64, 800.0, 800.0);
-                begin_drag(&camera, 800.0, &ray, tool, document, &mut handles,
-                    &rotate, &sweep, false, false, false).is_some()
-            }).collect::<Vec<_>>()
+            (280..=520)
+                .step_by(4)
+                .flat_map(|x| (280..=520).step_by(4).map(move |y| (x, y)))
+                .map(|(x, y)| {
+                    let ray = camera.ray_through(x as f64, y as f64, 800.0, 800.0);
+                    begin_drag(
+                        &camera,
+                        800.0,
+                        &ray,
+                        tool,
+                        document,
+                        &mut handles,
+                        &rotate,
+                        &sweep,
+                        false,
+                        false,
+                        false,
+                    )
+                    .is_some()
+                })
+                .collect::<Vec<_>>()
         };
         let tools = [Tool::Rotate, Tool::Scale, Tool::Shear];
         let before = tools.map(|tool| sample(&document, tool));
@@ -3101,19 +4252,41 @@ mod pick_tests {
         document.add_brushes(vec![map_model::shapes::create_cuboid(
             &document.world_bounds(),
             &Bbox3d::new(occluder_center - extent, occluder_center + extent),
-            "stone").unwrap()]);
+            "stone",
+        )
+        .unwrap()]);
         document.select_only(selected);
-        assert_ne!(document.pick(&camera.ray_through(400.0, 400.0, 800.0, 800.0)).unwrap().node, selected);
+        assert_ne!(
+            document
+                .pick(&camera.ray_through(400.0, 400.0, 800.0, 800.0))
+                .unwrap()
+                .node,
+            selected
+        );
         for (tool, expected) in tools.into_iter().zip(before) {
-            assert!(expected.iter().any(|hit| *hit), "{tool:?} must have reachable handles");
-            assert_eq!(sample(&document, tool), expected, "{tool:?} was intercepted");
+            assert!(
+                expected.iter().any(|hit| *hit),
+                "{tool:?} must have reachable handles"
+            );
+            assert_eq!(
+                sample(&document, tool),
+                expected,
+                "{tool:?} was intercepted"
+            );
         }
     }
 
     #[test]
     fn fillet_surface_preview_and_overlay_share_the_pinned_result() {
-        let document = Rc::new(RefCell::new(Document::new(crate::world::WorldBounds::default())));
-        let brush = map_model::shapes::create_cuboid(&document.borrow().world_bounds(),&Bbox3d::new(Vec3d::zero(),Vec3d::fill(64.0)),"stone").unwrap();
+        let document = Rc::new(RefCell::new(Document::new(
+            crate::world::WorldBounds::default(),
+        )));
+        let brush = map_model::shapes::create_cuboid(
+            &document.borrow().world_bounds(),
+            &Bbox3d::new(Vec3d::zero(), Vec3d::fill(64.0)),
+            "stone",
+        )
+        .unwrap();
         document.borrow_mut().add_brushes(vec![brush]);
         document.borrow_mut().select_all();
         let tool = Rc::new(RefCell::new(Tool::Fillet));
@@ -3139,59 +4312,118 @@ mod pick_tests {
             focus: nothing,
         });
         let original = document.borrow().to_map_text();
-        assert!(scene.fillet_surface_preview(&document.borrow(),800.0,600.0).is_none());
+        assert!(scene
+            .fillet_surface_preview(&document.borrow(), 800.0, 600.0)
+            .is_none());
         let edge = scene.handles.borrow().handles()[0].position;
-        scene.handles.borrow_mut().select(edge,false);
-        let shown = scene.fillet_surface_preview(&document.borrow(),800.0,600.0).unwrap();
-        let overlay = scene.build_overlay(&document.borrow(),800.0,600.0,false);
+        scene.handles.borrow_mut().select(edge, false);
+        let shown = scene
+            .fillet_surface_preview(&document.borrow(), 800.0, 600.0)
+            .unwrap();
+        let overlay = scene.build_overlay(&document.borrow(), 800.0, 600.0, false);
         assert!(!overlay.guides.is_empty());
         let id = document.borrow().selectable_brushes()[0].0;
         let rounded_edges = shown.brushes[0].1[0].edge_positions();
         let original_edges = document.borrow().brush(id).unwrap().edge_positions();
-        let stale: Vec<_> = original_edges.into_iter().filter(|edge| !rounded_edges.contains(edge)).collect();
-        assert!(stale.iter().any(|(a,b)| !overlay.guides.chunks_exact(2).any(|line|
-            (line[0].0 == *a && line[1].0 == *b) || (line[0].0 == *b && line[1].0 == *a))), "old silhouette must not obscure the preview");
-        let again = scene.fillet_surface_preview(&document.borrow(),800.0,600.0).unwrap();
-        assert!(Rc::ptr_eq(&shown,&again));
+        let stale: Vec<_> = original_edges
+            .into_iter()
+            .filter(|edge| !rounded_edges.contains(edge))
+            .collect();
+        assert!(
+            stale.iter().any(|(a, b)| !overlay
+                .guides
+                .chunks_exact(2)
+                .any(|line| (line[0].0 == *a && line[1].0 == *b)
+                    || (line[0].0 == *b && line[1].0 == *a))),
+            "old silhouette must not obscure the preview"
+        );
+        let again = scene
+            .fillet_surface_preview(&document.borrow(), 800.0, 600.0)
+            .unwrap();
+        assert!(Rc::ptr_eq(&shown, &again));
         *tool.borrow_mut() = Tool::Select;
-        assert!(scene.fillet_surface_preview(&document.borrow(),800.0,600.0).is_none());
-        assert_eq!(document.borrow().to_map_text(),original);
+        assert!(scene
+            .fillet_surface_preview(&document.borrow(), 800.0, 600.0)
+            .is_none());
+        assert_eq!(document.borrow().to_map_text(), original);
     }
 
     #[test]
     fn fillet_can_pick_and_extend_brush_selection_without_leaving_the_tool() {
-        let mut d=Document::new(crate::world::WorldBounds::default());
-        for x in [-96.0,32.0] {
-            d.add_brushes(vec![map_model::shapes::create_cuboid(&d.world_bounds(),&Bbox3d::new(Vec3d::new(x,-32.0,0.0),Vec3d::new(x+64.0,32.0,64.0)),"stone").unwrap()]);
+        let mut d = Document::new(crate::world::WorldBounds::default());
+        for x in [-96.0, 32.0] {
+            d.add_brushes(vec![map_model::shapes::create_cuboid(
+                &d.world_bounds(),
+                &Bbox3d::new(Vec3d::new(x, -32.0, 0.0), Vec3d::new(x + 64.0, 32.0, 64.0)),
+                "stone",
+            )
+            .unwrap()]);
         }
-        d.clear_selection();let before=d.to_map_text();
-        let document=Rc::new(RefCell::new(d));let tool=Rc::new(RefCell::new(Tool::Fillet));
-        let nothing:Rc<dyn Fn()>=Rc::new(||{});
-        let scene=Scene3d::new(Scene3dParts {
-            document:document.clone(),tool:tool.clone(),handles:Default::default(),rotate:Default::default(),
-            camera:Default::default(),fillet:Default::default(),pending_shape:Default::default(),
-            shape_parameters:Default::default(),clip:Default::default(),assemble:Default::default(),
-            grid:Default::default(),filters:Default::default(),sweep:Default::default(),paste_target:Default::default(),
-            refresh_panels:nothing.clone(),redraw:nothing.clone(),render:nothing.clone(),focus:nothing,
+        d.clear_selection();
+        let before = d.to_map_text();
+        let document = Rc::new(RefCell::new(d));
+        let tool = Rc::new(RefCell::new(Tool::Fillet));
+        let nothing: Rc<dyn Fn()> = Rc::new(|| {});
+        let scene = Scene3d::new(Scene3dParts {
+            document: document.clone(),
+            tool: tool.clone(),
+            handles: Default::default(),
+            rotate: Default::default(),
+            camera: Default::default(),
+            fillet: Default::default(),
+            pending_shape: Default::default(),
+            shape_parameters: Default::default(),
+            clip: Default::default(),
+            assemble: Default::default(),
+            grid: Default::default(),
+            filters: Default::default(),
+            sweep: Default::default(),
+            paste_target: Default::default(),
+            refresh_panels: nothing.clone(),
+            redraw: nothing.clone(),
+            render: nothing.clone(),
+            focus: nothing,
         });
-        {let mut camera=scene.camera.borrow_mut();camera.position=Vec3d::new(0.0,0.0,500.0);camera.look_along(Vec3d::new(0.0,0.0,-1.0));}
-        for (x,ctrl,count) in [(-64.0,false,1),(64.0,true,2),(64.0,true,1),(64.0,false,1)] {
-            let at=scene.camera.borrow().project(Vec3d::new(x,0.0,64.0),800.0,600.0).unwrap();
-            let mods=Modifiers{control:ctrl,..Default::default()};
-            scene.drag_begin(at[0],at[1],mods,(800.0,600.0));
-            scene.click(1,at[0],at[1],mods,(800.0,600.0));
-            scene.drag_end(0.0,0.0,mods,(800.0,600.0));
-            assert_eq!(document.borrow().selection_count(),count);assert_eq!(*tool.borrow(),Tool::Fillet);
+        {
+            let mut camera = scene.camera.borrow_mut();
+            camera.position = Vec3d::new(0.0, 0.0, 500.0);
+            camera.look_along(Vec3d::new(0.0, 0.0, -1.0));
         }
-        scene.drag_begin(-1000.0,-1000.0,Modifiers::default(),(800.0,600.0));
-        assert!(!document.borrow().has_selection());assert_eq!(document.borrow().to_map_text(),before);
+        for (x, ctrl, count) in [
+            (-64.0, false, 1),
+            (64.0, true, 2),
+            (64.0, true, 1),
+            (64.0, false, 1),
+        ] {
+            let at = scene
+                .camera
+                .borrow()
+                .project(Vec3d::new(x, 0.0, 64.0), 800.0, 600.0)
+                .unwrap();
+            let mods = Modifiers {
+                control: ctrl,
+                ..Default::default()
+            };
+            scene.drag_begin(at[0], at[1], mods, (800.0, 600.0));
+            scene.click(1, at[0], at[1], mods, (800.0, 600.0));
+            scene.drag_end(0.0, 0.0, mods, (800.0, 600.0));
+            assert_eq!(document.borrow().selection_count(), count);
+            assert_eq!(*tool.borrow(), Tool::Fillet);
+        }
+        scene.drag_begin(-1000.0, -1000.0, Modifiers::default(), (800.0, 600.0));
+        assert!(!document.borrow().has_selection());
+        assert_eq!(document.borrow().to_map_text(), before);
     }
 
     #[test]
     fn transform_handle_press_does_not_clear_selection_before_drag_begins() {
-        let document = Rc::new(RefCell::new(Document::new(crate::world::WorldBounds::default())));
+        let document = Rc::new(RefCell::new(Document::new(
+            crate::world::WorldBounds::default(),
+        )));
         let bounds = Bbox3d::new(Vec3d::zero(), Vec3d::new(32.0, 64.0, 16.0));
-        let brush = map_model::shapes::create_cuboid(&document.borrow().world_bounds(), &bounds, "stone").unwrap();
+        let brush =
+            map_model::shapes::create_cuboid(&document.borrow().world_bounds(), &bounds, "stone")
+                .unwrap();
         document.borrow_mut().add_brushes(vec![brush]);
         let id = document.borrow().selectable_brushes()[0].0;
         document.borrow_mut().select_only(id);
@@ -3223,22 +4455,42 @@ mod pick_tests {
         for active in [Tool::Rotate, Tool::Scale, Tool::Shear] {
             *tool.borrow_mut() = active;
             scene.click(1, -1000.0, -1000.0, Modifiers::default(), (640.0, 480.0));
-            assert!(document.borrow().is_selected(id), "{active:?} press cleared the brush before the drag could transform it");
+            assert!(
+                document.borrow().is_selected(id),
+                "{active:?} press cleared the brush before the drag could transform it"
+            );
         }
         *tool.borrow_mut() = Tool::Select;
         let before = document.borrow().to_map_text();
-        let on_screen = scene.camera.borrow().project(Vec3d::new(32.0, 32.0, 8.0), 640.0, 480.0).expect("visible cube");
-        let shift = Modifiers { shift: true, ..Modifiers::default() };
+        let on_screen = scene
+            .camera
+            .borrow()
+            .project(Vec3d::new(32.0, 32.0, 8.0), 640.0, 480.0)
+            .expect("visible cube");
+        let shift = Modifiers {
+            shift: true,
+            ..Modifiers::default()
+        };
         scene.drag_begin(on_screen[0], on_screen[1], shift, (640.0, 480.0));
         scene.click(1, on_screen[0], on_screen[1], shift, (640.0, 480.0));
-        assert_eq!(document.borrow().face_selection_count(), 1, "prepared extrusion must allow Shift-click face selection");
+        assert_eq!(
+            document.borrow().face_selection_count(),
+            1,
+            "prepared extrusion must allow Shift-click face selection"
+        );
         scene.drag_end(0.0, 0.0, shift, (640.0, 480.0));
-        assert_eq!(document.borrow().to_map_text(), before, "click without drag must not extrude");
+        assert_eq!(
+            document.borrow().to_map_text(),
+            before,
+            "click without drag must not extrude"
+        );
         *tool.borrow_mut() = Tool::Select;
         scene.click(1, -1000.0, -1000.0, Modifiers::default(), (640.0, 480.0));
-        assert!(!document.borrow().has_selection(), "ordinary selection clicks must still clear the selection");
+        assert!(
+            !document.borrow().has_selection(),
+            "ordinary selection clicks must still clear the selection"
+        );
     }
-
 }
 
 #[cfg(test)]
@@ -3247,7 +4499,13 @@ mod kept_frame_tests {
     //! something it shows changes; each of these is one such change.
     use super::*;
 
-    fn key_of(camera: &Camera3d, document: (u64, u64), filters: &ViewFilters, size: (i32, i32), points: &[(Vec3d, [f32; 4])]) -> u64 {
+    fn key_of(
+        camera: &Camera3d,
+        document: (u64, u64),
+        filters: &ViewFilters,
+        size: (i32, i32),
+        points: &[(Vec3d, [f32; 4])],
+    ) -> u64 {
         frame_key(camera, document, filters, size.0, size.1, points, &[])
     }
 
@@ -3257,8 +4515,20 @@ mod kept_frame_tests {
         let filters = ViewFilters::default();
         let point = [(Vec3d::new(1.0, 2.0, 3.0), [1.0, 1.0, 1.0, 1.0])];
         let settings = crate::render_settings::from_preferences();
-        let base = picture_key(key_of(&camera, (1, 7), &filters, (640, 480), &point), &settings, 3);
-        assert_eq!(base, picture_key(key_of(&camera, (1, 7), &filters, (640, 480), &point), &settings, 3), "the same scene is the same picture");
+        let base = picture_key(
+            key_of(&camera, (1, 7), &filters, (640, 480), &point),
+            &settings,
+            3,
+        );
+        assert_eq!(
+            base,
+            picture_key(
+                key_of(&camera, (1, 7), &filters, (640, 480), &point),
+                &settings,
+                3
+            ),
+            "the same scene is the same picture"
+        );
 
         let mut moved = camera;
         moved.position = Vec3d::new(5.0, 0.0, 0.0);
@@ -3275,18 +4545,102 @@ mod kept_frame_tests {
         no_accumulation.accumulate = !no_accumulation.accumulate;
 
         let changed = [
-            ("camera moved", picture_key(key_of(&moved, (1, 7), &filters, (640, 480), &point), &settings, 3)),
-            ("camera turned", picture_key(key_of(&turned, (1, 7), &filters, (640, 480), &point), &settings, 3)),
-            ("edit or selection", picture_key(key_of(&camera, (1, 8), &filters, (640, 480), &point), &settings, 3)),
-            ("another map", picture_key(key_of(&camera, (2, 7), &filters, (640, 480), &point), &settings, 3)),
-            ("filter", picture_key(key_of(&camera, (1, 7), &hidden, (640, 480), &point), &settings, 3)),
-            ("timeline frame", picture_key(key_of(&camera, (1, 7), &frame, (640, 480), &point), &settings, 3)),
-            ("resized", picture_key(key_of(&camera, (1, 7), &filters, (641, 480), &point), &settings, 3)),
-            ("hover highlight", picture_key(key_of(&camera, (1, 7), &filters, (640, 480), &hover), &settings, 3)),
-            ("handle gone", picture_key(key_of(&camera, (1, 7), &filters, (640, 480), &[]), &settings, 3)),
-            ("render settings", picture_key(key_of(&camera, (1, 7), &filters, (640, 480), &point), &background, 3)),
-            ("accumulation", picture_key(key_of(&camera, (1, 7), &filters, (640, 480), &point), &no_accumulation, 3)),
-            ("materials", picture_key(key_of(&camera, (1, 7), &filters, (640, 480), &point), &settings, 4)),
+            (
+                "camera moved",
+                picture_key(
+                    key_of(&moved, (1, 7), &filters, (640, 480), &point),
+                    &settings,
+                    3,
+                ),
+            ),
+            (
+                "camera turned",
+                picture_key(
+                    key_of(&turned, (1, 7), &filters, (640, 480), &point),
+                    &settings,
+                    3,
+                ),
+            ),
+            (
+                "edit or selection",
+                picture_key(
+                    key_of(&camera, (1, 8), &filters, (640, 480), &point),
+                    &settings,
+                    3,
+                ),
+            ),
+            (
+                "another map",
+                picture_key(
+                    key_of(&camera, (2, 7), &filters, (640, 480), &point),
+                    &settings,
+                    3,
+                ),
+            ),
+            (
+                "filter",
+                picture_key(
+                    key_of(&camera, (1, 7), &hidden, (640, 480), &point),
+                    &settings,
+                    3,
+                ),
+            ),
+            (
+                "timeline frame",
+                picture_key(
+                    key_of(&camera, (1, 7), &frame, (640, 480), &point),
+                    &settings,
+                    3,
+                ),
+            ),
+            (
+                "resized",
+                picture_key(
+                    key_of(&camera, (1, 7), &filters, (641, 480), &point),
+                    &settings,
+                    3,
+                ),
+            ),
+            (
+                "hover highlight",
+                picture_key(
+                    key_of(&camera, (1, 7), &filters, (640, 480), &hover),
+                    &settings,
+                    3,
+                ),
+            ),
+            (
+                "handle gone",
+                picture_key(
+                    key_of(&camera, (1, 7), &filters, (640, 480), &[]),
+                    &settings,
+                    3,
+                ),
+            ),
+            (
+                "render settings",
+                picture_key(
+                    key_of(&camera, (1, 7), &filters, (640, 480), &point),
+                    &background,
+                    3,
+                ),
+            ),
+            (
+                "accumulation",
+                picture_key(
+                    key_of(&camera, (1, 7), &filters, (640, 480), &point),
+                    &no_accumulation,
+                    3,
+                ),
+            ),
+            (
+                "materials",
+                picture_key(
+                    key_of(&camera, (1, 7), &filters, (640, 480), &point),
+                    &settings,
+                    4,
+                ),
+            ),
         ];
         for (what, key) in changed {
             assert_ne!(key, base, "{what} must redraw the kept 3D view");
@@ -3295,11 +4649,19 @@ mod kept_frame_tests {
 
     #[test]
     fn a_kept_picture_is_drawn_again_only_when_it_has_to_be() {
-        assert!(needs_draw(None, 1, false, false), "a new framebuffer holds nothing yet");
+        assert!(
+            needs_draw(None, 1, false, false),
+            "a new framebuffer holds nothing yet"
+        );
         assert!(needs_draw(Some(1), 2, false, false), "another picture");
-        assert!(!needs_draw(Some(1), 1, false, false), "the same picture is shown again");
-        assert!(needs_draw(Some(1), 1, true, false), "samples still to gather");
+        assert!(
+            !needs_draw(Some(1), 1, false, false),
+            "the same picture is shown again"
+        );
+        assert!(
+            needs_draw(Some(1), 1, true, false),
+            "samples still to gather"
+        );
         assert!(needs_draw(Some(1), 1, false, true), "an animation plays");
     }
 }
-

@@ -170,7 +170,12 @@ struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     fn new(src: &'a str, line: usize, column: usize) -> Self {
-        Self { src, pos: 0, line, col: column }
+        Self {
+            src,
+            pos: 0,
+            line,
+            col: column,
+        }
     }
 
     fn remainder(&self) -> &'a str {
@@ -323,7 +328,12 @@ impl<'a> Lexer<'a> {
     }
 
     fn tok(&self, kind: Tok, text: impl Into<String>, line: usize, column: usize) -> Token {
-        Token { kind, text: text.into(), line, column }
+        Token {
+            kind,
+            text: text.into(),
+            line,
+            column,
+        }
     }
 
     /// Reads the next token.
@@ -549,7 +559,10 @@ pub struct Parser<'a> {
 impl<'a> Parser<'a> {
     /// A parser over `src`, with the first token at `line`/`column`.
     pub fn new(mode: ParseMode, src: &'a str) -> Self {
-        Self { mode, lexer: Lexer::new(src, 1, 1) }
+        Self {
+            mode,
+            lexer: Lexer::new(src, 1, 1),
+        }
     }
 
     /// The current lexer position.
@@ -621,7 +634,10 @@ impl<'a> Parser<'a> {
         let expression = self.parse_term()?;
         self.next_token(|k| k == Tok::CParen)?;
         let lhs = ExpressionNode::new(
-            ExpressionKind::Unary { operation: UnaryOperation::Group, operand: expression },
+            ExpressionKind::Unary {
+                operation: UnaryOperation::Group,
+                operand: expression,
+            },
             token.location(),
         );
         if is_compound_term_tok(self.peek_raw()?.kind) {
@@ -679,7 +695,11 @@ impl<'a> Parser<'a> {
         if self.peek_raw()?.kind != Tok::CBracket {
             loop {
                 elements.push(self.parse_expression_or_any_range()?);
-                if self.next_token(|k| k == Tok::Comma || k == Tok::CBracket)?.kind != Tok::Comma {
+                if self
+                    .next_token(|k| k == Tok::Comma || k == Tok::CBracket)?
+                    .kind
+                    != Tok::Comma
+                {
                     break;
                 }
             }
@@ -693,7 +713,10 @@ impl<'a> Parser<'a> {
             ExpressionNode::new(ExpressionKind::Array(elements), location)
         };
         Ok(ExpressionNode::new(
-            ExpressionKind::Subscript { left: lhs, right: rhs },
+            ExpressionKind::Subscript {
+                left: lhs,
+                right: rhs,
+            },
             location,
         ))
     }
@@ -707,9 +730,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_literal(&mut self) -> Result<ExpressionNode, ElError> {
-        let token = self.peek_expect(|k| {
-            is_literal_tok(k) || k == Tok::OBracket || k == Tok::OBrace
-        })?;
+        let token =
+            self.peek_expect(|k| is_literal_tok(k) || k == Tok::OBracket || k == Tok::OBrace)?;
         match token.kind {
             Tok::Str => {
                 self.next_raw()?;
@@ -753,7 +775,11 @@ impl<'a> Parser<'a> {
         if self.peek_raw()?.kind != Tok::CBracket {
             loop {
                 elements.push(self.parse_expression_or_bounded_range()?);
-                if self.next_token(|k| k == Tok::Comma || k == Tok::CBracket)?.kind != Tok::Comma {
+                if self
+                    .next_token(|k| k == Tok::Comma || k == Tok::CBracket)?
+                    .kind
+                    != Tok::Comma
+                {
                     break;
                 }
             }
@@ -761,7 +787,10 @@ impl<'a> Parser<'a> {
             self.next_raw()?;
         }
 
-        Ok(ExpressionNode::new(ExpressionKind::Array(elements), location))
+        Ok(ExpressionNode::new(
+            ExpressionKind::Array(elements),
+            location,
+        ))
     }
 
     fn parse_expression_or_bounded_range(&mut self) -> Result<ExpressionNode, ElError> {
@@ -829,7 +858,11 @@ impl<'a> Parser<'a> {
                 self.next_token(|k| k == Tok::Colon)?;
                 let value = self.parse_expression()?;
                 elements.entry(key).or_insert(value);
-                if self.next_token(|k| k == Tok::Comma || k == Tok::CBrace)?.kind != Tok::Comma {
+                if self
+                    .next_token(|k| k == Tok::Comma || k == Tok::CBrace)?
+                    .kind
+                    != Tok::Comma
+                {
                     break;
                 }
             }
@@ -850,7 +883,10 @@ impl<'a> Parser<'a> {
             _ => unreachable!("checked by next_token"),
         };
         Ok(ExpressionNode::new(
-            ExpressionKind::Unary { operation, operand: self.parse_simple_term_or_switch()? },
+            ExpressionKind::Unary {
+                operation,
+                operand: self.parse_simple_term_or_switch()?,
+            },
             token.location(),
         ))
     }
@@ -864,7 +900,9 @@ impl<'a> Parser<'a> {
         if is_simple_term_tok(peeked.kind) {
             loop {
                 cases.push(self.parse_expression()?);
-                if self.next_token(|k| k == Tok::Comma || k == Tok::DoubleCBrace)?.kind
+                if self
+                    .next_token(|k| k == Tok::Comma || k == Tok::DoubleCBrace)?
+                    .kind
                     != Tok::Comma
                 {
                     break;
@@ -877,10 +915,7 @@ impl<'a> Parser<'a> {
         Ok(ExpressionNode::new(ExpressionKind::Switch(cases), location))
     }
 
-    fn parse_compound_term(
-        &mut self,
-        mut lhs: ExpressionNode,
-    ) -> Result<ExpressionNode, ElError> {
+    fn parse_compound_term(&mut self, mut lhs: ExpressionNode) -> Result<ExpressionNode, ElError> {
         while is_compound_term_tok(self.peek_raw()?.kind) {
             let token = self.next_token(is_compound_term_tok)?;
             let operation = binop_for_tok(token.kind);

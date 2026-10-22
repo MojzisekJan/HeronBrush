@@ -19,9 +19,24 @@ const ADDON: &[(&str, &[u8])] = &[
     ),
 ];
 fn addon() -> Vec<(&'static str, Vec<u8>)> {
-    ADDON.iter().map(|(path, bytes)| (*path, String::from_utf8_lossy(bytes)
-        .replace("        // HERON_COLLISION_HELPER", scene_export::writer::unity::COLLISION_HELPER)
-        .replace("        // HERON_BINDINGS_HELPER",include_str!("../../scene_export/src/writer/unity_bindings.cs")).into_bytes())).collect()
+    ADDON
+        .iter()
+        .map(|(path, bytes)| {
+            (
+                *path,
+                String::from_utf8_lossy(bytes)
+                    .replace(
+                        "        // HERON_COLLISION_HELPER",
+                        scene_export::writer::unity::COLLISION_HELPER,
+                    )
+                    .replace(
+                        "        // HERON_BINDINGS_HELPER",
+                        include_str!("../../scene_export/src/writer/unity_bindings.cs"),
+                    )
+                    .into_bytes(),
+            )
+        })
+        .collect()
 }
 pub fn project(options: &Options) -> Result<PathBuf, String> {
     if options.directory.is_empty() {
@@ -75,7 +90,7 @@ pub fn prepare(
     root: &Path,
 ) -> Result<Prepared, String> {
     let map = scene_export::map::parse(text, &options.name).map_err(|e| e.to_string())?;
-    let classes=crate::export_bindings::classes(&map,classes,&options.entities)?;
+    let classes = crate::export_bindings::classes(&map, classes, &options.entities)?;
     let mut built = scene_export::builder::build_level(
         &map,
         &classes,
@@ -95,15 +110,27 @@ pub fn prepare(
     let mut files = vec![];
     let mut meshes = vec![];
     let mtl = crate::export::paint_mtl(settings, &format!("../{}_paint", options.name));
-    let mtl_name = format!("{}.mtl", crate::export::paint_export::image_name(mtl.as_bytes()));
+    let mtl_name = format!(
+        "{}.mtl",
+        crate::export::paint_export::image_name(mtl.as_bytes())
+    );
     if !settings.generated_materials.is_empty() {
         let path = directory.join("meshes").join(&mtl_name);
-        meshes.push(path.strip_prefix(root).map_err(|e| e.to_string())?.to_string_lossy().replace('\\', "/"));
+        meshes.push(
+            path.strip_prefix(root)
+                .map_err(|e| e.to_string())?
+                .to_string_lossy()
+                .replace('\\', "/"),
+        );
         files.push((path, mtl.into_bytes()));
     }
     for mesh in &built.meshes {
-        let grouped = String::from_utf8_lossy(&mesh.bytes).replace("\no ", "\ng ").into_bytes();
-        let bytes = if settings.generated_materials.is_empty() { grouped.clone() } else {
+        let grouped = String::from_utf8_lossy(&mesh.bytes)
+            .replace("\no ", "\ng ")
+            .into_bytes();
+        let bytes = if settings.generated_materials.is_empty() {
+            grouped.clone()
+        } else {
             let mut bytes = format!("mtllib {mtl_name}\n").into_bytes();
             bytes.extend_from_slice(&grouped);
             bytes
@@ -234,11 +261,10 @@ mod tests {
             )
             .unwrap()
         };
-        assert!(
-            !read(&first)["entities"][0]["shapes"]
-                .as_array()
-                .unwrap().is_empty()
-        );
+        assert!(!read(&first)["entities"][0]["shapes"]
+            .as_array()
+            .unwrap()
+            .is_empty());
         doc.translate_selection(Vec3d::new(128., 0., 0.));
         let moved = snapshot(&doc);
         assert_ne!(

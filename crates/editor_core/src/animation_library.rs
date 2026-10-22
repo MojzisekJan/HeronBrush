@@ -44,7 +44,10 @@ impl Library {
     }
     pub fn validate(&self) -> Result<(), String> {
         if self.version != 1 || self.clips.len() > 32 {
-            return Err(crate::i18n::translation_key("Use at most 32 named animations (library version 1)").into());
+            return Err(crate::i18n::translation_key(
+                "Use at most 32 named animations (library version 1)",
+            )
+            .into());
         }
         for (name, entry) in &self.clips {
             valid_name(name)?;
@@ -109,7 +112,9 @@ impl Library {
             }
             "save_as" => {
                 if next.clips.contains_key(name) {
-                    return Err(crate::i18n::translation_key("Animation name already exists").into());
+                    return Err(
+                        crate::i18n::translation_key("Animation name already exists").into(),
+                    );
                 }
                 next.clips.insert(name.into(), next.clips[current].clone());
                 name
@@ -127,7 +132,11 @@ impl Library {
                     current
                 }
             }
-            _ => return Err(crate::i18n::translation_key("Unknown animation library operation").into()),
+            _ => {
+                return Err(
+                    crate::i18n::translation_key("Unknown animation library operation").into(),
+                )
+            }
         }
         .to_string();
         next.validate()?;

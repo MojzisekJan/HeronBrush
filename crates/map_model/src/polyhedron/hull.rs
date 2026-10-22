@@ -145,10 +145,8 @@ fn build_hull(points: &[Vec3d], epsilon: f64) -> Result<Vec<Triangle>, HullError
         // The horizon is the boundary of the visible region: a directed edge of a visible
         // face whose reverse belongs to a face that is not visible.
         let visible_set: FxHashSet<usize> = visible.iter().copied().collect();
-        let visible_edges: FxHashSet<(usize, usize)> = visible
-            .iter()
-            .flat_map(|i| triangles[*i].edges())
-            .collect();
+        let visible_edges: FxHashSet<(usize, usize)> =
+            visible.iter().flat_map(|i| triangles[*i].edges()).collect();
 
         let horizon: Vec<(usize, usize)> = visible
             .iter()
@@ -246,18 +244,13 @@ const COPLANAR_DISTANCE_TOLERANCE: f64 = 1e-6;
 ///
 /// Without this the hull of a box would have twelve triangular faces rather than six
 /// quadrilateral ones, and every edit would multiply a brush's face count.
-fn merge_coplanar(
-    points: &[Vec3d],
-    triangles: Vec<Triangle>,
-    epsilon: f64,
-) -> Vec<Vec<usize>> {
+fn merge_coplanar(points: &[Vec3d], triangles: Vec<Triangle>, epsilon: f64) -> Vec<Vec<usize>> {
     // Group the triangles by the plane they lie in.
     let mut groups: Vec<(Plane3d, Vec<Triangle>)> = Vec::new();
     for triangle in triangles {
         let group = groups.iter_mut().find(|(plane, _)| {
             vec::dot(plane.normal, triangle.plane.normal) > 1.0 - COPLANAR_NORMAL_TOLERANCE
-                && (plane.distance - triangle.plane.distance).abs()
-                    < COPLANAR_DISTANCE_TOLERANCE
+                && (plane.distance - triangle.plane.distance).abs() < COPLANAR_DISTANCE_TOLERANCE
         });
         match group {
             Some((_, members)) => members.push(triangle),
@@ -280,8 +273,7 @@ fn merge_group(points: &[Vec3d], triangles: &[Triangle], epsilon: f64) -> Option
         return Some(triangles[0].vertices.to_vec());
     }
 
-    let all_edges: FxHashSet<(usize, usize)> =
-        triangles.iter().flat_map(Triangle::edges).collect();
+    let all_edges: FxHashSet<(usize, usize)> = triangles.iter().flat_map(Triangle::edges).collect();
 
     let mut next: FxHashMap<usize, usize> = FxHashMap::default();
     for (a, b) in &all_edges {

@@ -275,7 +275,10 @@ fn the_format_and_game_are_three_wayed() {
 fn merge_text_round_trips_through_the_reader_and_writer() {
     let base = doc(&[&world("\"message\" \"base\"\n", BRUSH_A)]);
     let ours = doc(&[&world("\"message\" \"new\"\n", BRUSH_A)]);
-    let theirs = doc(&[&world("\"message\" \"base\"\n", &format!("{BRUSH_A}{BRUSH_B}"))]);
+    let theirs = doc(&[&world(
+        "\"message\" \"base\"\n",
+        &format!("{BRUSH_A}{BRUSH_B}"),
+    )]);
 
     let (merged, conflicts) = merge_text(&base, &ours, &theirs).unwrap();
     assert!(conflicts.is_empty(), "{conflicts:?}");
@@ -300,7 +303,11 @@ fn entity_key_display() {
     assert_eq!(EntityKey::Worldspawn.to_string(), "worldspawn");
     assert_eq!(EntityKey::TbId("9".into()).to_string(), "entity _tb_id 9");
     assert_eq!(
-        EntityKey::Positional { classname: "light".into(), nth: 2 }.to_string(),
+        EntityKey::Positional {
+            classname: "light".into(),
+            nth: 2
+        }
+        .to_string(),
         "light #2"
     );
     assert_eq!(
@@ -313,8 +320,12 @@ fn entity_key_display() {
         "func_door \"door1\""
     );
     assert_eq!(
-        EntityKey::Spot { classname: "light".into(), origin: "0 0 64".into(), nth: 0 }
-            .to_string(),
+        EntityKey::Spot {
+            classname: "light".into(),
+            origin: "0 0 64".into(),
+            nth: 0
+        }
+        .to_string(),
         "light at 0 0 64"
     );
 }
@@ -341,7 +352,11 @@ fn a_targetnamed_entity_matches_across_a_move() {
     assert_eq!(button.property("wait"), Some("5"));
     // exactly one button, not two
     assert_eq!(
-        out.map.entities.iter().filter(|e| e.classname() == Some("func_button")).count(),
+        out.map
+            .entities
+            .iter()
+            .filter(|e| e.classname() == Some("func_button"))
+            .count(),
         1
     );
 }
@@ -374,7 +389,11 @@ fn an_unmoved_light_matches_by_its_spot_despite_reordering() {
         .unwrap();
     assert_eq!(first.property("light"), Some("250"));
     assert_eq!(
-        out.map.entities.iter().filter(|e| e.classname() == Some("light")).count(),
+        out.map
+            .entities
+            .iter()
+            .filter(|e| e.classname() == Some("light"))
+            .count(),
         2
     );
 }
@@ -383,7 +402,10 @@ fn an_unmoved_light_matches_by_its_spot_despite_reordering() {
 
 /// The same two brushes, each carrying the id this editor writes.
 fn with_ids(a: &str, b: &str) -> String {
-    world("", &format!("// heron_brush id a1\n{a}// heron_brush id b2\n{b}"))
+    world(
+        "",
+        &format!("// heron_brush id a1\n{a}// heron_brush id b2\n{b}"),
+    )
 }
 
 /// Two people editing different brushes do not conflict, even when one file has grown a
@@ -417,7 +439,10 @@ fn a_brush_edited_on_one_side_only_keeps_that_edit() {
     let (merged, conflicts) = merge_text(&base, &base, &theirs).expect("it merges");
     assert!(conflicts.is_empty(), "{conflicts:?}");
     assert!(merged.contains("brass"), "{merged}");
-    assert!(!merged.contains("metal"), "the old brush is not kept beside it:\n{merged}");
+    assert!(
+        !merged.contains("metal"),
+        "the old brush is not kept beside it:\n{merged}"
+    );
 }
 
 /// Two people editing the same brush is still a disagreement, and is still reported.
@@ -435,9 +460,9 @@ fn the_same_brush_edited_both_ways_conflicts() {
 /// A brush's id survives a save, so the file names the same brush next time.
 #[test]
 fn an_id_read_from_a_file_is_written_back() {
+    use geometry_math::bbox::Bbox3d;
     use map_model::io::map_writer::write_map;
     use map_model::node::{build_tree, flatten_tree};
-    use geometry_math::bbox::Bbox3d;
 
     let source = with_ids(BRUSH_A, BRUSH_B);
     let map = m(&source);
@@ -483,6 +508,9 @@ fn an_entity_added_above_another_does_not_disturb_it() {
         .iter()
         .find(|e| e.id == Some(0x11))
         .expect("the light that was there");
-    assert_eq!(brightened.property("light"), Some("500"), "their edit landed");
+    assert_eq!(
+        brightened.property("light"),
+        Some("500"),
+        "their edit landed"
+    );
 }
-

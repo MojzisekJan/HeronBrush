@@ -10,10 +10,10 @@
 //! Both halves are always computed. Which of them survives is the *clip side*, cycled
 //! with a key, so the same two points can keep the front, the back, or both.
 
-use map_model::brush::{Brush, ClipOutcome};
 use geometry_math::bbox::Bbox3d;
 use geometry_math::scalar::Float;
 use geometry_math::vec::{self, Vec3d};
+use map_model::brush::{Brush, ClipOutcome};
 
 /// Which side of the plane is kept.
 ///
@@ -157,13 +157,8 @@ impl ClipTool {
         }
 
         let point = points[1].point + self.compute_help_vector() * THIRD_POINT_DISTANCE;
-        (!vec::is_colinear(
-            points[0].point,
-            points[1].point,
-            point,
-            f64::ALMOST_ZERO,
-        ))
-        .then_some(point)
+        (!vec::is_colinear(points[0].point, points[1].point, point, f64::ALMOST_ZERO))
+            .then_some(point)
     }
 
     /// The axis the help vectors mostly agree on.
@@ -179,7 +174,11 @@ impl ClipTool {
         let mut counts = [0usize; 6];
         for help_vector in points.iter().flat_map(|point| &point.help_vectors) {
             let axis = help_vector.find_abs_max_component(0);
-            let index = if help_vector[axis] > 0.0 { axis } else { axis + 3 };
+            let index = if help_vector[axis] > 0.0 {
+                axis
+            } else {
+                axis + 3
+            };
             counts[index] += 1;
         }
 
@@ -221,12 +220,7 @@ impl ClipTool {
 
         let room = points.len() < 2
             || (points.len() == 2
-                && !vec::is_colinear(
-                    points[0].point,
-                    points[1].point,
-                    point,
-                    f64::ALMOST_ZERO,
-                ));
+                && !vec::is_colinear(points[0].point, points[1].point, point, f64::ALMOST_ZERO));
 
         room && !points
             .iter()
@@ -543,7 +537,11 @@ mod tests {
         tool.add_point(Vec3d::new(-32.0, 0.0, -32.0), along_y.clone());
         tool.add_point(Vec3d::new(32.0, 0.0, 32.0), along_y);
 
-        geometry_math::assert_approx_eq!(tool.compute_help_vector(), Vec3d::new(0.0, 1.0, 0.0), 1e-9);
+        geometry_math::assert_approx_eq!(
+            tool.compute_help_vector(),
+            Vec3d::new(0.0, 1.0, 0.0),
+            1e-9
+        );
     }
 
     #[test]
@@ -552,13 +550,21 @@ mod tests {
         // One vote for X and one for Y: neither is Z, so X wins.
         tool.add_point(Vec3d::new(0.0, 0.0, 0.0), vec![Vec3d::new(1.0, 0.0, 0.0)]);
         tool.add_point(Vec3d::new(0.0, 32.0, 0.0), vec![Vec3d::new(0.0, 1.0, 0.0)]);
-        geometry_math::assert_approx_eq!(tool.compute_help_vector(), Vec3d::new(1.0, 0.0, 0.0), 1e-9);
+        geometry_math::assert_approx_eq!(
+            tool.compute_help_vector(),
+            Vec3d::new(1.0, 0.0, 0.0),
+            1e-9
+        );
 
         // One vote for X and one for Z: Z wins.
         let mut tool = ClipTool::new();
         tool.add_point(Vec3d::new(0.0, 0.0, 0.0), vec![Vec3d::new(1.0, 0.0, 0.0)]);
         tool.add_point(Vec3d::new(0.0, 32.0, 0.0), vec![Vec3d::new(0.0, 0.0, 1.0)]);
-        geometry_math::assert_approx_eq!(tool.compute_help_vector(), Vec3d::new(0.0, 0.0, 1.0), 1e-9);
+        geometry_math::assert_approx_eq!(
+            tool.compute_help_vector(),
+            Vec3d::new(0.0, 0.0, 1.0),
+            1e-9
+        );
     }
 
     #[test]
@@ -654,7 +660,11 @@ mod tests {
         assert_eq!(tool.clip_side(), ClipSide::Back);
         let back = tool.clip_brush(&world(), &cube());
         assert_eq!(back.len(), 1);
-        geometry_math::assert_approx_eq!(back[0].bounds().size(), Vec3d::new(64.0, 64.0, 64.0), 1e-6);
+        geometry_math::assert_approx_eq!(
+            back[0].bounds().size(),
+            Vec3d::new(64.0, 64.0, 64.0),
+            1e-6
+        );
     }
 
     #[test]

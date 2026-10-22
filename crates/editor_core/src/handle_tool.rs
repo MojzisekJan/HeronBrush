@@ -10,9 +10,9 @@
 //! Handles are addressed by position because editing rebuilds brush geometry and invalidates the
 //! previous handle indices.
 
-use map_model::brush::Brush;
 use geometry_math::scalar::Float;
 use geometry_math::vec::{self, Vec2d, Vec3d};
+use map_model::brush::Brush;
 
 use crate::tool::Tool;
 
@@ -133,7 +133,8 @@ impl HandleManager {
                 }
                 let geometry = brush.geometry();
                 for index in 0..geometry.face_count() {
-                    let vertices = geometry.face_positions(map_model::polyhedron::FaceId(index as u32));
+                    let vertices =
+                        geometry.face_positions(map_model::polyhedron::FaceId(index as u32));
                     split_sources.push((centroid(&vertices), vertices));
                 }
             }
@@ -193,8 +194,11 @@ impl HandleManager {
     /// selected -- takes its selection with it.
     fn forget_handles_that_are_gone(&mut self) {
         let handles = std::mem::take(&mut self.handles);
-        self.selected
-            .retain(|position| handles.iter().any(|handle| is_same(handle.position, *position)));
+        self.selected.retain(|position| {
+            handles
+                .iter()
+                .any(|handle| is_same(handle.position, *position))
+        });
         self.handles = handles;
     }
 
@@ -207,7 +211,11 @@ impl HandleManager {
     fn add_split(&mut self, position: Vec3d, vertices: Vec<Vec3d>) {
         // A corner already offered wins: dragging it moves it, which is the commoner
         // thing to want where the two land in the same place.
-        if self.handles.iter().any(|handle| is_same(handle.position, position)) {
+        if self
+            .handles
+            .iter()
+            .any(|handle| is_same(handle.position, position))
+        {
             return;
         }
         self.add_handle(position, vertices, true);
@@ -296,7 +304,12 @@ impl HandleManager {
         project: impl Fn(Vec3d) -> Vec2d,
     ) -> Option<Vec3d> {
         self.movable()
-            .map(|handle| (handle.position, vec::squared_distance(project(handle.position), cursor)))
+            .map(|handle| {
+                (
+                    handle.position,
+                    vec::squared_distance(project(handle.position), cursor),
+                )
+            })
             .filter(|(_, distance)| *distance <= radius * radius)
             .min_by(|(a, da), (b, db)| {
                 if (da - db).abs() <= 1e-9 {
@@ -320,8 +333,13 @@ impl HandleManager {
             delta[depth_axis] = 0.0;
             vec::squared_distance(delta, Vec3d::zero()) <= SAME_HANDLE * SAME_HANDLE
         };
-        let behind: Vec<_> = self.movable()
-            .filter(|handle| self.selected.iter().any(|selected| aligned(handle.position, *selected)))
+        let behind: Vec<_> = self
+            .movable()
+            .filter(|handle| {
+                self.selected
+                    .iter()
+                    .any(|selected| aligned(handle.position, *selected))
+            })
             .map(|handle| handle.position)
             .filter(|position| !self.is_selected(*position))
             .collect();
@@ -580,12 +598,22 @@ mod tests {
                 let project = |p: Vec3d| Vec2d::new(p[axes[0]], p[axes[1]]);
                 let mut direction = Vec3d::zero();
                 direction[depth] = sign;
-                let picked = manager.pick_orthographic(Vec2d::new(32.0,32.0), 4.0, direction, project).unwrap();
+                let picked = manager
+                    .pick_orthographic(Vec2d::new(32.0, 32.0), 4.0, direction, project)
+                    .unwrap();
                 assert!((picked[depth] + sign * 32.0).abs() < 1e-6);
                 manager.select(picked, false);
-                assert_eq!(manager.selected_count(), 1, "a click only selects the front vertex");
+                assert_eq!(
+                    manager.selected_count(),
+                    1,
+                    "a click only selects the front vertex"
+                );
                 manager.expand_vertex_stacks(depth, false);
-                assert_eq!(manager.selected_count(), 1, "disabled preference keeps a single vertex");
+                assert_eq!(
+                    manager.selected_count(),
+                    1,
+                    "disabled preference keeps a single vertex"
+                );
                 manager.expand_vertex_stacks(depth, true);
                 assert_eq!(manager.selected_count(), 2);
                 assert_eq!(manager.selected_anchor(), Some(picked));
@@ -609,7 +637,7 @@ mod tests {
         let picked = Vec3d::new(32.0, 32.0, 32.0);
         let nearby = picked + Vec3d::new(0.125, 0.0, -16.0);
         manager.add_handle(nearby, vec![nearby], false);
-        let split = Vec3d::new(32.0,32.0,0.0);
+        let split = Vec3d::new(32.0, 32.0, 0.0);
         manager.add_handle(split, vec![split], true);
         manager.select(picked, false);
         manager.expand_vertex_stacks(2, true);
@@ -617,12 +645,16 @@ mod tests {
         assert!(!manager.is_selected(nearby));
         assert!(!manager.is_selected(split));
         manager.expand_vertex_stacks(2, true);
-        assert_eq!(manager.selected_count(), 2, "expansion does not toggle existing selections");
+        assert_eq!(
+            manager.selected_count(),
+            2,
+            "expansion does not toggle existing selections"
+        );
     }
 
     #[test]
     fn stack_expansion_does_not_change_edge_selection() {
-        let mut manager = collected(HandleKind::Edge, &[cube(-32.0,32.0)]);
+        let mut manager = collected(HandleKind::Edge, &[cube(-32.0, 32.0)]);
         let position = manager.movable().next().unwrap().position;
         manager.select(position, false);
         manager.expand_vertex_stacks(2, true);

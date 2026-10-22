@@ -34,10 +34,7 @@ enum EdgeCrossing {
 ///
 /// Both vertices are given relative to the point being tested, so the test point is at
 /// the origin and the ray is the positive X axis.
-fn handle_polygon_edge_intersection<T: Float>(
-    v0: Vector<T, 3>,
-    v1: Vector<T, 3>,
-) -> EdgeCrossing {
+fn handle_polygon_edge_intersection<T: Float>(v0: Vector<T, 3>, v1: Vector<T, 3>) -> EdgeCrossing {
     if vec::is_zero(v0, T::ALMOST_ZERO) {
         // The point is a polygon vertex.
         return EdgeCrossing::OnEdge;
@@ -131,10 +128,7 @@ pub fn polygon_contains_point_with_normal<T: Float>(
 ///
 /// The polygon's plane is derived from its first three vertices; returns false if they do
 /// not define one, or if there are fewer than three.
-pub fn polygon_contains_point<T: Float>(
-    point: Vector<T, 3>,
-    vertices: &[Vector<T, 3>],
-) -> bool {
+pub fn polygon_contains_point<T: Float>(point: Vector<T, 3>, vertices: &[Vector<T, 3>]) -> bool {
     if vertices.len() < 3 {
         return false;
     }
@@ -148,10 +142,7 @@ pub fn polygon_contains_point<T: Float>(
 
 /// Returns the distance along the ray to its intersection with the given plane, or `None`
 /// if the ray misses it or points away from it.
-pub fn intersect_ray_plane<T: Float, const S: usize>(
-    r: &Ray<T, S>,
-    p: &Plane<T, S>,
-) -> Option<T> {
+pub fn intersect_ray_plane<T: Float, const S: usize>(r: &Ray<T, S>, p: &Plane<T, S>) -> Option<T> {
     let d = vec::dot(r.direction, p.normal);
     if scalar::is_zero(d, T::ALMOST_ZERO) {
         return None;
@@ -215,20 +206,14 @@ pub fn intersect_ray_polygon_in_plane<T: Float>(
 
 /// Returns the distance along the ray to its intersection with the given polygon, or
 /// `None` if it misses or the vertices do not define a plane.
-pub fn intersect_ray_polygon<T: Float>(
-    r: &Ray<T, 3>,
-    vertices: &[Vector<T, 3>],
-) -> Option<T> {
+pub fn intersect_ray_polygon<T: Float>(r: &Ray<T, 3>, vertices: &[Vector<T, 3>]) -> Option<T> {
     let p = plane::from_point_sequence(vertices.iter().copied())?;
     intersect_ray_polygon_in_plane(r, &p, vertices)
 }
 
 /// Returns the distance along the ray to its entry into the given box, or `None` if it
 /// misses.
-pub fn intersect_ray_bbox<T: Float, const S: usize>(
-    r: &Ray<T, S>,
-    b: &Bbox<T, S>,
-) -> Option<T> {
+pub fn intersect_ray_bbox<T: Float, const S: usize>(r: &Ray<T, S>, b: &Bbox<T, S>) -> Option<T> {
     // Pick the candidate plane on each axis: the near face if the origin is outside the
     // box on that axis, otherwise the face the ray is heading towards.
     let mut origins = [T::ZERO; S];
@@ -361,12 +346,7 @@ pub fn intersect_ray_torus<T: Float>(
     let e = om * om - four * mm_major * (mm_minor - oz * oz);
 
     let roots = scalar::solve_quartic(a, b, c, d, e, T::ALMOST_ZERO);
-    scalar::safe_min(
-        roots
-            .as_slice()
-            .iter()
-            .map(|&t| (t > T::ZERO).then_some(t)),
-    )
+    scalar::safe_min(roots.as_slice().iter().map(|&t| (t > T::ZERO).then_some(t)))
 }
 
 /* ========== line and plane intersections ========== */
@@ -393,10 +373,7 @@ pub fn intersect_line_plane<T: Float>(l: &Line<T, 3>, p: &Plane<T, 3>) -> Option
 }
 
 /// Returns the line where the two given planes meet, or `None` if they are parallel.
-pub fn intersect_plane_plane<T: Float>(
-    p1: &Plane<T, 3>,
-    p2: &Plane<T, 3>,
-) -> Option<Line<T, 3>> {
+pub fn intersect_plane_plane<T: Float>(p1: &Plane<T, 3>, p2: &Plane<T, 3>) -> Option<Line<T, 3>> {
     let line_direction = vec::normalize(vec::cross(p1.normal, p2.normal));
     if vec::is_nan(line_direction) {
         // The normals are parallel, so the planes are too.
@@ -433,9 +410,8 @@ pub fn segments_overlap<T: Float, const S: usize>(
     let direction = axis / length;
 
     let project = |p: Vector<T, S>| vec::dot(p - lhs.start(), direction);
-    let on_line = |p: Vector<T, S>, t: T| {
-        vec::is_equal(&p, &(lhs.start() + direction * t), epsilon)
-    };
+    let on_line =
+        |p: Vector<T, S>, t: T| vec::is_equal(&p, &(lhs.start() + direction * t), epsilon);
 
     let t0 = project(rhs.start());
     let t1 = project(rhs.end());
@@ -443,8 +419,8 @@ pub fn segments_overlap<T: Float, const S: usize>(
         return false;
     }
 
-    let overlap = scalar::min(length, scalar::max(t0, t1))
-        - scalar::max(T::ZERO, scalar::min(t0, t1));
+    let overlap =
+        scalar::min(length, scalar::max(t0, t1)) - scalar::max(T::ZERO, scalar::min(t0, t1));
     overlap > epsilon
 }
 
@@ -566,8 +542,7 @@ pub fn intersect_bbox_polygon<T: Float>(b: &Bbox<T, 3>, vertices: &[Vector<T, 3>
         return true;
     }
 
-    let Some(polygon_plane) = plane::from_points(vertices[0], vertices[1], vertices[2])
-    else {
+    let Some(polygon_plane) = plane::from_points(vertices[0], vertices[1], vertices[2]) else {
         return false;
     };
 

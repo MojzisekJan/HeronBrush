@@ -16,7 +16,10 @@ fn empty_string() {
 #[test]
 fn string_without_expression() {
     let vars = VariableTable::new();
-    assert_eq!(interp(&vars, " asdfasdf  sdf "), Ok(" asdfasdf  sdf ".to_string()));
+    assert_eq!(
+        interp(&vars, " asdfasdf  sdf "),
+        Ok(" asdfasdf  sdf ".to_string())
+    );
 }
 
 #[test]
@@ -52,7 +55,9 @@ fn string_with_nested_expression() {
 
 #[test]
 fn string_with_variable() {
-    let vars: VariableTable = [("TEST", Value::string("interesting"))].into_iter().collect();
+    let vars: VariableTable = [("TEST", Value::string("interesting"))]
+        .into_iter()
+        .collect();
     assert_eq!(
         interp(&vars, " an ${TEST} expression"),
         Ok(" an interesting expression".to_string())
@@ -61,7 +66,9 @@ fn string_with_variable() {
 
 #[test]
 fn string_with_backslash_and_variable() {
-    let vars: VariableTable = [("TEST", Value::string("interesting"))].into_iter().collect();
+    let vars: VariableTable = [("TEST", Value::string("interesting"))]
+        .into_iter()
+        .collect();
     assert_eq!(
         interp(&vars, " an \\${TEST} expression"),
         Ok(" an \\interesting expression".to_string())

@@ -1,0 +1,3 @@
+# Plain rustfmt defaults, as the Google Rust style guide asks. The edition is here so an
+# editor that runs rustfmt on one file formats it as `cargo fmt` does.
+edition = "2021"

@@ -1,6 +1,6 @@
 //! CPU thumbnail rendering with per-pixel visibility, also used by MCP.
-use map_model::brush_face::FaceColor;
 use geometry_math::vec::{Vec2f, Vec3d};
+use map_model::brush_face::FaceColor;
 
 #[derive(Clone, Copy)]
 struct Fragment {
@@ -19,7 +19,11 @@ struct Face {
 impl Face {
     fn translucent(&self) -> bool {
         self.color.map_or_else(
-            || self.texture.as_ref().is_some_and(|m| m.alpha() != map_model::material::Alpha::Opaque),
+            || {
+                self.texture
+                    .as_ref()
+                    .is_some_and(|m| m.alpha() != map_model::material::Alpha::Opaque)
+            },
             |c| c.alpha() < 255,
         )
     }
@@ -48,17 +52,29 @@ fn color_at(face: &Face, uv: Vec2f) -> [f64; 4] {
     };
     let (color, alpha) = match face.color {
         Some(FaceColor::Solid { color, alpha }) => (rgb(color), f64::from(alpha) / 255.),
-        Some(paint) => {
-            (face.sampler.as_ref().expect("painted face sampler").at_uv(uv).map(f64::from), f64::from(paint.alpha())/255.0)
-        }
+        Some(paint) => (
+            face.sampler
+                .as_ref()
+                .expect("painted face sampler")
+                .at_uv(uv)
+                .map(f64::from),
+            f64::from(paint.alpha()) / 255.0,
+        ),
         None => match &face.texture {
             Some(m) => {
                 let x = (uv.x().floor() as i64).rem_euclid(i64::from(m.width)) as usize;
                 let y = (uv.y().floor() as i64).rem_euclid(i64::from(m.height)) as usize;
-                let i = (y*m.width as usize+x)*4;
+                let i = (y * m.width as usize + x) * 4;
                 // In memory: the preview decoded it once when it gathered its textures.
                 match m.resident_pixels() {
-                    Some(p) => ([f64::from(p[i])/255., f64::from(p[i+1])/255., f64::from(p[i+2])/255.], f64::from(p[i+3])/255.),
+                    Some(p) => (
+                        [
+                            f64::from(p[i]) / 255.,
+                            f64::from(p[i + 1]) / 255.,
+                            f64::from(p[i + 2]) / 255.,
+                        ],
+                        f64::from(p[i + 3]) / 255.,
+                    ),
                     None => ([0.60, 0.63, 0.70], 1.),
                 }
             }
@@ -125,7 +141,12 @@ fn raster(face: &Face, size: usize, mut pixel: impl FnMut(usize, Fragment)) {
                         y * size + x,
                         Fragment {
                             depth: wa * a[2] + wb * b[2] + wc * c[2],
-                            rgba: color_at(face, face.uv[0]*wa as f32 + face.uv[i]*wb as f32 + face.uv[i+1]*wc as f32),
+                            rgba: color_at(
+                                face,
+                                face.uv[0] * wa as f32
+                                    + face.uv[i] * wb as f32
+                                    + face.uv[i + 1] * wc as f32,
+                            ),
                         },
                     );
                     break;
@@ -137,10 +158,7 @@ fn raster(face: &Face, size: usize, mut pixel: impl FnMut(usize, Fragment)) {
 
 fn pixels(faces: &[Face], size: usize) -> Vec<[f64; 4]> {
     let mut opaque = vec![None::<Fragment>; size * size];
-    for face in faces
-        .iter()
-        .filter(|f| !f.translucent())
-    {
+    for face in faces.iter().filter(|f| !f.translucent()) {
         raster(face, size, |i, fragment| {
             if opaque[i].is_none_or(|old| fragment.depth > old.depth) {
                 opaque[i] = Some(fragment);
@@ -151,15 +169,9 @@ fn pixels(faces: &[Face], size: usize) -> Vec<[f64; 4]> {
         .iter()
         .map(|f| f.map_or([0.; 4], |f| f.rgba))
         .collect();
-    if faces
-        .iter()
-        .any(Face::translucent)
-    {
+    if faces.iter().any(Face::translucent) {
         let mut translucent = vec![Vec::<Fragment>::new(); size * size];
-        for face in faces
-            .iter()
-            .filter(|f| f.translucent())
-        {
+        for face in faces.iter().filter(|f| f.translucent()) {
             raster(face, size, |i, fragment| {
                 if fragment.rgba[3] > 0. && opaque[i].is_none_or(|old| fragment.depth > old.depth) {
                     translucent[i].push(fragment);
@@ -183,11 +195,16 @@ pub(super) fn render(map_text: &str, size: i32) -> Option<super::Rgba> {
 /// Resolve map-relative folders and packages just as opening the map does.
 pub(super) fn render_file(path: &std::path::Path, size: i32) -> Option<super::Rgba> {
     let text = std::fs::read_to_string(path).ok()?;
-    let document = crate::document::Document::open(path, crate::world::WorldBounds::default()).ok()?;
+    let document =
+        crate::document::Document::open(path, crate::world::WorldBounds::default()).ok()?;
     render_materials(&text, size, Some(document.materials()))
 }
 
-fn render_materials(map_text: &str, size: i32, materials: Option<&map_model::material::MaterialCollection>) -> Option<super::Rgba> {
+fn render_materials(
+    map_text: &str,
+    size: i32,
+    materials: Option<&map_model::material::MaterialCollection>,
+) -> Option<super::Rgba> {
     if !(16..=2048).contains(&size) {
         return None;
     }
@@ -206,7 +223,13 @@ fn render_materials(map_text: &str, size: i32, materials: Option<&map_model::mat
                 // for the whole render.
                 if let Some(material) = materials.and_then(|m| m.get(&face.material_name)) {
                     if let Some(pixels) = material.pixels() {
-                        let texture = map_model::material::Material::rgba(material.name.clone(), material.path.clone(), material.width, material.height, pixels.to_vec());
+                        let texture = map_model::material::Material::rgba(
+                            material.name.clone(),
+                            material.path.clone(),
+                            material.width,
+                            material.height,
+                            pixels.to_vec(),
+                        );
                         textures.insert(material.name.clone(), std::sync::Arc::new(texture));
                     }
                 }
@@ -222,10 +245,27 @@ fn render_materials(map_text: &str, size: i32, materials: Option<&map_model::mat
     );
     for brush in map_model::node::brushes(&tree.world) {
         for (face, polygon) in brush.geometry_faces() {
-            if materials.is_some() && matches!(face.material_name.rsplit('/').next().unwrap_or("").to_ascii_lowercase().as_str(), "skip" | "clip" | "origin") { continue; }
+            if materials.is_some()
+                && matches!(
+                    face.material_name
+                        .rsplit('/')
+                        .next()
+                        .unwrap_or("")
+                        .to_ascii_lowercase()
+                        .as_str(),
+                    "skip" | "clip" | "origin"
+                )
+            {
+                continue;
+            }
             let texture = textures.get(face.material_name.as_str()).cloned();
-            let uv = polygon.iter().map(|p| face.uv_coords(*p)).collect::<Vec<_>>();
-            let sampler = face.paint().map(|paint| map_model::brush_face::PaintOnFace::from_uv(&uv, paint));
+            let uv = polygon
+                .iter()
+                .map(|p| face.uv_coords(*p))
+                .collect::<Vec<_>>();
+            let sampler = face
+                .paint()
+                .map(|paint| map_model::brush_face::PaintOnFace::from_uv(&uv, paint));
             let mut points = Vec::new();
             for p in polygon {
                 let x = (p.x() - p.y()) * 0.866_025;
@@ -237,8 +277,14 @@ fn render_materials(map_text: &str, size: i32, materials: Option<&map_model::mat
                 points.push([x, y, p.x() + p.y() + p.z()]);
             }
             // Opaque back faces cannot be visible. Transparent backs remain layers.
-            if face.paint().map_or_else(|| texture.as_ref().is_none_or(|m| m.alpha() == map_model::material::Alpha::Opaque), |c| c.alpha() == 255)
-                && geometry_math::vec::dot(face.normal(), Vec3d::new(1., 1., 1.)) <= 0.
+            if face.paint().map_or_else(
+                || {
+                    texture
+                        .as_ref()
+                        .is_none_or(|m| m.alpha() == map_model::material::Alpha::Opaque)
+                },
+                |c| c.alpha() == 255,
+            ) && geometry_math::vec::dot(face.normal(), Vec3d::new(1., 1., 1.)) <= 0.
             {
                 continue;
             }
@@ -269,7 +315,11 @@ fn render_materials(map_text: &str, size: i32, materials: Option<&map_model::mat
     for rgba in &image {
         pixels.extend(rgba.map(|channel| (channel * 255.).round().clamp(0., 255.) as u8));
     }
-    Some(super::Rgba { width: size as u32, height: size as u32, pixels })
+    Some(super::Rgba {
+        width: size as u32,
+        height: size as u32,
+        pixels,
+    })
 }
 
 #[cfg(test)]
@@ -278,7 +328,7 @@ mod tests {
     use map_model::brush_face::Rgb;
     fn face(depths: [f64; 3], rgb: Rgb, alpha: u8) -> Face {
         Face {
-            uv: vec![Vec2f::new(0.0,0.0);3],
+            uv: vec![Vec2f::new(0.0, 0.0); 3],
             sampler: None,
             points: vec![
                 [0., 0., depths[0]],
@@ -292,38 +342,66 @@ mod tests {
     }
     #[test]
     fn textures_repeat_at_negative_uvs_and_paint_takes_precedence() {
-        let mut f=face([1.;3],Rgb::new(0,255,0),255);
-        f.texture=Some(std::sync::Arc::new(map_model::material::Material::rgba(
-            "test".into(), Default::default(),2,1,vec![255,0,0,255,0,0,255,128])));
-        assert_eq!(color_at(&f,Vec2f::new(-1.,0.)),[0.,1.,0.,1.]);
-        f.color=None;
-        assert_eq!(color_at(&f,Vec2f::new(2.,0.)),[1.,0.,0.,1.]);
-        assert_eq!(color_at(&f,Vec2f::new(-1.,0.)),[0.,0.,1.,128./255.]);
+        let mut f = face([1.; 3], Rgb::new(0, 255, 0), 255);
+        f.texture = Some(std::sync::Arc::new(map_model::material::Material::rgba(
+            "test".into(),
+            Default::default(),
+            2,
+            1,
+            vec![255, 0, 0, 255, 0, 0, 255, 128],
+        )));
+        assert_eq!(color_at(&f, Vec2f::new(-1., 0.)), [0., 1., 0., 1.]);
+        f.color = None;
+        assert_eq!(color_at(&f, Vec2f::new(2., 0.)), [1., 0., 0., 1.]);
+        assert_eq!(color_at(&f, Vec2f::new(-1., 0.)), [0., 0., 1., 128. / 255.]);
     }
 
     #[test]
     fn transparent_texture_pixels_do_not_hide_geometry_behind_them() {
-        let mut front=face([2.;3],Rgb::new(0,0,0),255); front.color=None;
-        front.texture=Some(std::sync::Arc::new(map_model::material::Material::rgba(
-            "cutout".into(),Default::default(),1,1,vec![255,0,0,0])));
-        let back=face([1.;3],Rgb::new(0,0,255),255);
-        assert_eq!(pixels(&[front,back],8)[0],[0.,0.,1.,1.]);
+        let mut front = face([2.; 3], Rgb::new(0, 0, 0), 255);
+        front.color = None;
+        front.texture = Some(std::sync::Arc::new(map_model::material::Material::rgba(
+            "cutout".into(),
+            Default::default(),
+            1,
+            1,
+            vec![255, 0, 0, 0],
+        )));
+        let back = face([1.; 3], Rgb::new(0, 0, 255), 255);
+        assert_eq!(pixels(&[front, back], 8)[0], [0., 0., 1., 1.]);
     }
 
     #[test]
     fn map_relative_textures_render_on_a_worker_thread() {
-        let root=std::env::temp_dir().join(format!("heron-textured-preview-{}",std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("heron-textured-preview-{}", std::process::id()));
         std::fs::create_dir_all(root.join("maps")).unwrap();
         std::fs::create_dir_all(root.join("textures")).unwrap();
-        image::RgbaImage::from_pixel(8,8,image::Rgba([240,10,5,255])).save(root.join("textures/red.png")).unwrap();
-        let mut document=crate::document::Document::new(crate::world::WorldBounds::default());
-        let brush=map_model::shapes::create_cuboid(&document.world_bounds(),&geometry_math::bbox::Bbox3d::from_scalars(-32.,32.),"red").unwrap();
-        document.add_brushes(vec![brush]); document.load_materials(root.join("textures")).unwrap();
-        let path=root.join("maps/test.map"); document.save_as(&path).unwrap();
-        assert!(std::fs::read_to_string(&path).unwrap().contains("../textures"));
-        let pixels=std::thread::spawn(move || render_file(&path,96).unwrap().pixels).join().unwrap();
-        assert!(pixels.chunks_exact(4).filter(|p|p[3]>0).all(|p|p[0]>p[1]*2 && p[0]>p[2]*2));
-        assert!(pixels.chunks_exact(4).any(|p|p[3]>0));
+        image::RgbaImage::from_pixel(8, 8, image::Rgba([240, 10, 5, 255]))
+            .save(root.join("textures/red.png"))
+            .unwrap();
+        let mut document = crate::document::Document::new(crate::world::WorldBounds::default());
+        let brush = map_model::shapes::create_cuboid(
+            &document.world_bounds(),
+            &geometry_math::bbox::Bbox3d::from_scalars(-32., 32.),
+            "red",
+        )
+        .unwrap();
+        document.add_brushes(vec![brush]);
+        document.load_materials(root.join("textures")).unwrap();
+        let path = root.join("maps/test.map");
+        document.save_as(&path).unwrap();
+        assert!(std::fs::read_to_string(&path)
+            .unwrap()
+            .contains("../textures"));
+        let pixels = std::thread::spawn(move || render_file(&path, 96).unwrap().pixels)
+            .join()
+            .unwrap();
+        assert!(pixels
+            .chunks_exact(4)
+            .filter(|p| p[3] > 0)
+            .all(|p| p[0] > p[1] * 2 && p[0] > p[2] * 2));
+        assert!(pixels.chunks_exact(4).any(|p| p[3] > 0));
         std::fs::remove_dir_all(root).unwrap();
     }
 

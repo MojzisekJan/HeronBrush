@@ -8,8 +8,8 @@
 
 use std::time::Instant;
 
-use eframe::egui;
 use editor_core::bench_support::{self as bench, MapSpec, Scratch, Stats};
+use eframe::egui;
 
 use crate::editor::Editor;
 
@@ -34,40 +34,74 @@ fn perf_egui_flat_view() {
         ctx.set_embed_viewports(true);
         crate::theme::install(&ctx);
         let editor = Editor::open(&ctx, None);
-        *editor.document.borrow_mut() = editor_core::document::Document::open(&path, Default::default()).unwrap();
+        *editor.document.borrow_mut() =
+            editor_core::document::Document::open(&path, Default::default()).unwrap();
         let mut pane = crate::view2d::Pane2d::new(&editor, editor_core::camera2d::ViewPlane::Top);
         let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1200.0, 800.0));
-        let input = || egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1200.0, 800.0))), ..Default::default() };
+        let input = || egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1200.0, 800.0),
+            )),
+            ..Default::default()
+        };
         // A first frame frames the map and warms the caches.
         let _ = ctx.run_ui(input(), |ui| pane.show(ui, rect));
         let mut shapes = 0;
-        rows.push(bench::measure(&format!("{n}: Top view, whole map: draw into egui shapes (run_ui)"), runs, || (), |_| {
-            let output = ctx.run_ui(input(), |ui| pane.show(ui, rect));
-            shapes = output.shapes.len();
-            output
-        }));
+        rows.push(bench::measure(
+            &format!("{n}: Top view, whole map: draw into egui shapes (run_ui)"),
+            runs,
+            || (),
+            |_| {
+                let output = ctx.run_ui(input(), |ui| pane.show(ui, rect));
+                shapes = output.shapes.len();
+                output
+            },
+        ));
         let output = ctx.run_ui(input(), |ui| pane.show(ui, rect));
         let primitives = std::cell::Cell::new(0);
-        rows.push(bench::measure(&format!("{n}: Top view, whole map: tessellate ({shapes} shapes)"), runs, || output.shapes.clone(), |shapes| {
-            let clipped = ctx.tessellate(shapes, 2.0);
-            primitives.set(clipped.iter().map(|c| match &c.primitive {
-                egui::epaint::Primitive::Mesh(mesh) => mesh.indices.len() / 3,
-                _ => 0,
-            }).sum::<usize>());
-            clipped
-        }));
-        eprintln!("{n}: {shapes} shapes, {} triangles after tessellation", primitives.get());
+        rows.push(bench::measure(
+            &format!("{n}: Top view, whole map: tessellate ({shapes} shapes)"),
+            runs,
+            || output.shapes.clone(),
+            |shapes| {
+                let clipped = ctx.tessellate(shapes, 2.0);
+                primitives.set(
+                    clipped
+                        .iter()
+                        .map(|c| match &c.primitive {
+                            egui::epaint::Primitive::Mesh(mesh) => mesh.indices.len() / 3,
+                            _ => 0,
+                        })
+                        .sum::<usize>(),
+                );
+                clipped
+            },
+        ));
+        eprintln!(
+            "{n}: {shapes} shapes, {} triangles after tessellation",
+            primitives.get()
+        );
         // Zoomed in on a corner, as one works: most of the map is off the view.
-        pane.flat.state.borrow_mut().camera.zoom_at(16.0, geometry_math::vec::Vec2d::new(600.0, 400.0), (1200.0, 800.0));
+        pane.flat.state.borrow_mut().camera.zoom_at(
+            16.0,
+            geometry_math::vec::Vec2d::new(600.0, 400.0),
+            (1200.0, 800.0),
+        );
         let start = Instant::now();
         let output = ctx.run_ui(input(), |ui| pane.show(ui, rect));
         let zoomed_shapes = output.shapes.len();
         drop(output);
         let _ = start;
-        rows.push(bench::measure(&format!("{n}: Top view, zoomed 16x: draw + tessellate ({zoomed_shapes} shapes)"), runs, || (), |_| {
-            let output = ctx.run_ui(input(), |ui| pane.show(ui, rect));
-            ctx.tessellate(output.shapes, 2.0)
-        }));
+        rows.push(bench::measure(
+            &format!("{n}: Top view, zoomed 16x: draw + tessellate ({zoomed_shapes} shapes)"),
+            runs,
+            || (),
+            |_| {
+                let output = ctx.run_ui(input(), |ui| pane.show(ui, rect));
+                ctx.tessellate(output.shapes, 2.0)
+            },
+        ));
     }
     bench::print_table("egui flat view", &rows);
 }
@@ -83,17 +117,24 @@ fn perf_egui_flat_view_frames() {
     let scratch = Scratch::new("egui-frames");
     let mut rows: Vec<Stats> = Vec::new();
     for n in sizes() {
-        let runs = std::env::var("HERON_BENCH_RUNS").ok().and_then(|r| r.parse().ok()).unwrap_or(if n >= 50_000 { 10 } else { 20 });
+        let runs = std::env::var("HERON_BENCH_RUNS")
+            .ok()
+            .and_then(|r| r.parse().ok())
+            .unwrap_or(if n >= 50_000 { 10 } else { 20 });
         let path = scratch.0.join(format!("m{n}.map"));
         std::fs::write(&path, bench::synthetic_map(&MapSpec::brushes(n))).unwrap();
         let ctx = egui::Context::default();
         ctx.set_embed_viewports(true);
         crate::theme::install(&ctx);
         let editor = Editor::open(&ctx, None);
-        *editor.document.borrow_mut() = editor_core::document::Document::open(&path, Default::default()).unwrap();
+        *editor.document.borrow_mut() =
+            editor_core::document::Document::open(&path, Default::default()).unwrap();
         let mut pane = crate::view2d::Pane2d::new(&editor, editor_core::camera2d::ViewPlane::Top);
         let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1200.0, 800.0));
-        let input = || egui::RawInput { screen_rect: Some(rect), ..Default::default() };
+        let input = || egui::RawInput {
+            screen_rect: Some(rect),
+            ..Default::default()
+        };
         let frame = |pane: &mut crate::view2d::Pane2d| {
             let mut output = ctx.run_ui(input(), |ui| pane.show(ui, rect));
             output.textures_delta.clear();
@@ -101,7 +142,12 @@ fn perf_egui_flat_view_frames() {
         };
         frame(&mut pane);
         frame(&mut pane);
-        rows.push(bench::measure(&format!("{n}: flat view frame, nothing changed"), runs, || (), |_| frame(&mut pane)));
+        rows.push(bench::measure(
+            &format!("{n}: flat view frame, nothing changed"),
+            runs,
+            || (),
+            |_| frame(&mut pane),
+        ));
         // 100 brushes in the middle selected and dragged a grid step per frame.
         {
             let mut document = editor.document.borrow_mut();
@@ -121,29 +167,59 @@ fn perf_egui_flat_view_frames() {
             document.begin_transaction();
         }
         frame(&mut pane);
-        rows.push(bench::measure(&format!("{n}: flat view frame, dragging 100 selected"), runs, || (), |_| {
-            editor.document.borrow_mut().translate_selection(geometry_math::vec::Vec3d::new(8.0, 0.0, 0.0));
-            frame(&mut pane)
-        }));
+        rows.push(bench::measure(
+            &format!("{n}: flat view frame, dragging 100 selected"),
+            runs,
+            || (),
+            |_| {
+                editor
+                    .document
+                    .borrow_mut()
+                    .translate_selection(geometry_math::vec::Vec3d::new(8.0, 0.0, 0.0));
+                frame(&mut pane)
+            },
+        ));
         editor.document.borrow_mut().commit_transaction();
-        rows.push(bench::measure(&format!("{n}: flat view frame, panning"), runs, || (), |_| {
+        rows.push(bench::measure(
+            &format!("{n}: flat view frame, panning"),
+            runs,
+            || (),
+            |_| {
+                pane.flat.pan(3.0, 0.0);
+                frame(&mut pane)
+            },
+        ));
+        let mut paired = [Vec::new(), Vec::new()];
+        for sample in 0..runs + 2 {
             pane.flat.pan(3.0, 0.0);
-            frame(&mut pane)
-        }));
-        let mut paired=[Vec::new(),Vec::new()];
-        for sample in 0..runs+2 {
-            pane.flat.pan(3.0,0.0);
-            for path in if sample%2==0 {[0,1]}else{[1,0]} {
+            for path in if sample % 2 == 0 { [0, 1] } else { [1, 0] } {
                 pane.base.invalidate();
-                let before=pane.base.rebuilds;
-                let started=Instant::now();
-                bench::with_legacy_line_paths(path==0,||frame(&mut pane));
-                if sample>=2 {paired[path].push(started.elapsed());}
-                assert_eq!(pane.base.rebuilds,before+1,"Both paths must rebuild the same base layer");
+                let before = pane.base.rebuilds;
+                let started = Instant::now();
+                bench::with_legacy_line_paths(path == 0, || frame(&mut pane));
+                if sample >= 2 {
+                    paired[path].push(started.elapsed());
+                }
+                assert_eq!(
+                    pane.base.rebuilds,
+                    before + 1,
+                    "Both paths must rebuild the same base layer"
+                );
             }
         }
-        for (path,mut times) in paired.into_iter().enumerate() {
-            times.sort();rows.push(Stats{name:format!("{n}: paired full pan frame {}",if path==0 {"legacy paths"}else{"streamed segments"}),runs:times});
+        for (path, mut times) in paired.into_iter().enumerate() {
+            times.sort();
+            rows.push(Stats {
+                name: format!(
+                    "{n}: paired full pan frame {}",
+                    if path == 0 {
+                        "legacy paths"
+                    } else {
+                        "streamed segments"
+                    }
+                ),
+                runs: times,
+            });
         }
     }
     bench::print_table("egui flat view, whole frames", &rows);
@@ -165,22 +241,38 @@ fn perf_egui_material_browser() {
     for count in counts {
         let scratch = Scratch::new(&format!("egui-materials{count}"));
         bench::write_textures(&scratch.0, count, 0, 3).unwrap();
-        let document = std::rc::Rc::new(std::cell::RefCell::new(editor_core::document::Document::new(Default::default())));
+        let document = std::rc::Rc::new(std::cell::RefCell::new(
+            editor_core::document::Document::new(Default::default()),
+        ));
         let start = Instant::now();
         document.borrow_mut().load_materials(&scratch.0).unwrap();
         eprintln!("{count}: loaded in {:.0} ms", bench::ms(start.elapsed()));
         let uploaded = std::cell::Cell::new(0usize);
         let time = std::cell::Cell::new(0.0f64);
-        let run = |ctx: &egui::Context, page: &mut crate::material_page::MaterialPage, events: Vec<egui::Event>| {
+        let run = |ctx: &egui::Context,
+                   page: &mut crate::material_page::MaterialPage,
+                   events: Vec<egui::Event>| {
             time.set(time.get() + 1.0 / 60.0);
             let input = egui::RawInput {
-                screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(420.0, 900.0))),
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(420.0, 900.0),
+                )),
                 time: Some(time.get()),
                 events,
                 ..Default::default()
             };
             let mut output = ctx.run_ui(input, |ui| page.show(ui, &document));
-            uploaded.set(uploaded.get() + output.textures_delta.set.iter().flat_map(|(_, deltas)| deltas.iter()).map(|delta| delta.image.width() * delta.image.height() * 4).sum::<usize>());
+            uploaded.set(
+                uploaded.get()
+                    + output
+                        .textures_delta
+                        .set
+                        .iter()
+                        .flat_map(|(_, deltas)| deltas.iter())
+                        .map(|delta| delta.image.width() * delta.image.height() * 4)
+                        .sum::<usize>(),
+            );
             output.textures_delta.clear();
             ctx.tessellate(output.shapes, 2.0).len()
         };
@@ -190,12 +282,20 @@ fn perf_egui_material_browser() {
             ctx.all_styles_mut(|s| s.scroll_animation = egui::style::ScrollAnimation::none());
             (ctx, crate::material_page::MaterialPage::default())
         };
-        rows.push(bench::measure(&format!("{count} materials: first frame of the browser"), 3, fresh, |(ctx, mut page)| {
-            uploaded.set(0);
-            run(&ctx, &mut page, Vec::new());
-            (ctx, page)
-        }));
-        eprintln!("{count}: the first frame uploaded {:.1} MB of textures", uploaded.get() as f64 / 1e6);
+        rows.push(bench::measure(
+            &format!("{count} materials: first frame of the browser"),
+            3,
+            fresh,
+            |(ctx, mut page)| {
+                uploaded.set(0);
+                run(&ctx, &mut page, Vec::new());
+                (ctx, page)
+            },
+        ));
+        eprintln!(
+            "{count}: the first frame uploaded {:.1} MB of textures",
+            uploaded.get() as f64 / 1e6
+        );
         let (ctx, mut page) = fresh();
         let start = Instant::now();
         let mut frames = 0;
@@ -206,15 +306,36 @@ fn perf_egui_material_browser() {
                 break;
             }
         }
-        eprintln!("{count}: {frames} frames until every thumbnail in view was made ({:.0} ms)", bench::ms(start.elapsed()));
-        rows.push(bench::measure(&format!("{count} materials: frame, nothing changing"), 20, || (), |_| run(&ctx, &mut page, Vec::new())));
+        eprintln!(
+            "{count}: {frames} frames until every thumbnail in view was made ({:.0} ms)",
+            bench::ms(start.elapsed())
+        );
+        rows.push(bench::measure(
+            &format!("{count} materials: frame, nothing changing"),
+            20,
+            || (),
+            |_| run(&ctx, &mut page, Vec::new()),
+        ));
         // Scrolling: the pointer over the grid, the wheel turned a few lines a frame.
         let hover = egui::Event::PointerMoved(egui::pos2(200.0, 300.0));
         run(&ctx, &mut page, vec![hover.clone()]);
         uploaded.set(0);
-        let wheel = || egui::Event::MouseWheel { unit: egui::MouseWheelUnit::Point, delta: egui::vec2(0.0, -240.0), phase: egui::TouchPhase::Move, modifiers: egui::Modifiers::NONE };
-        rows.push(bench::measure(&format!("{count} materials: frame while scrolling the grid"), 60, || (), |_| run(&ctx, &mut page, vec![hover.clone(), wheel()])));
-        eprintln!("{count}: 60 scrolling frames uploaded {:.1} MB of textures", uploaded.get() as f64 / 1e6);
+        let wheel = || egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(0.0, -240.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+        };
+        rows.push(bench::measure(
+            &format!("{count} materials: frame while scrolling the grid"),
+            60,
+            || (),
+            |_| run(&ctx, &mut page, vec![hover.clone(), wheel()]),
+        ));
+        eprintln!(
+            "{count}: 60 scrolling frames uploaded {:.1} MB of textures",
+            uploaded.get() as f64 / 1e6
+        );
         drop(page);
         drop(ctx);
     }
@@ -230,19 +351,32 @@ fn perf_egui_map_tab() {
     let scratch = Scratch::new("egui-map-tab");
     let mut rows: Vec<Stats> = Vec::new();
     for (name, text) in [
-        ("5k groups", bench::grouped_map(&bench::GroupSpec::default())),
+        (
+            "5k groups",
+            bench::grouped_map(&bench::GroupSpec::default()),
+        ),
         ("200 layers", bench::layered_map(200, 20_000)),
         ("20k entities", bench::point_entity_map(20_000, 5_000)),
     ] {
         let path = scratch.0.join("map.map");
         std::fs::write(&path, text).unwrap();
-        let document = std::rc::Rc::new(std::cell::RefCell::new(editor_core::document::Document::open(&path, Default::default()).unwrap()));
-        let filters = std::rc::Rc::new(std::cell::RefCell::new(editor_core::view_filters::ViewFilters::default()));
+        let document = std::rc::Rc::new(std::cell::RefCell::new(
+            editor_core::document::Document::open(&path, Default::default()).unwrap(),
+        ));
+        let filters = std::rc::Rc::new(std::cell::RefCell::new(
+            editor_core::view_filters::ViewFilters::default(),
+        ));
         let ctx = egui::Context::default();
         crate::theme::install(&ctx);
         let mut page = crate::map_page::MapPage::default();
         let frame = |page: &mut crate::map_page::MapPage| {
-            let input = egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(420.0, 1000.0))), ..Default::default() };
+            let input = egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(420.0, 1000.0),
+                )),
+                ..Default::default()
+            };
             let mut output = ctx.run_ui(input, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| page.show(ui, &document, &filters));
             });
@@ -251,7 +385,12 @@ fn perf_egui_map_tab() {
         };
         frame(&mut page);
         frame(&mut page);
-        rows.push(bench::measure(&format!("{name}: Map tab frame"), 20, || (), |_| frame(&mut page)));
+        rows.push(bench::measure(
+            &format!("{name}: Map tab frame"),
+            20,
+            || (),
+            |_| frame(&mut page),
+        ));
     }
     bench::print_table("egui Map tab", &rows);
 }
@@ -269,30 +408,48 @@ fn perf_egui_entity_tab() {
     ctx.set_embed_viewports(true);
     crate::theme::install(&ctx);
     let editor = Editor::open(&ctx, None);
-    *editor.document.borrow_mut() = editor_core::document::Document::open(&path, Default::default()).unwrap();
+    *editor.document.borrow_mut() =
+        editor_core::document::Document::open(&path, Default::default()).unwrap();
     let mut page = crate::entity_page::EntityPage::default();
     let frame = |page: &mut crate::entity_page::EntityPage| {
-        let input = egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(420.0, 1000.0))), ..Default::default() };
+        let input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(420.0, 1000.0),
+            )),
+            ..Default::default()
+        };
         let mut output = ctx.run_ui(input, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| page.show(ui, &editor.document, &editor.grid));
+            egui::ScrollArea::vertical()
+                .show(ui, |ui| page.show(ui, &editor.document, &editor.grid));
         });
         output.textures_delta.clear();
         ctx.tessellate(output.shapes, 2.0).len()
     };
-    let lights: Vec<map_model::node::NodeId> = map_model::node::point_entities(editor.document.borrow().tree_world())
-        .into_iter()
-        .filter(|(_, e)| e.classname() == Some("light"))
-        .map(|(id, _)| id)
-        .collect();
+    let lights: Vec<map_model::node::NodeId> =
+        map_model::node::point_entities(editor.document.borrow().tree_world())
+            .into_iter()
+            .filter(|(_, e)| e.classname() == Some("light"))
+            .map(|(id, _)| id)
+            .collect();
     let mut rows: Vec<Stats> = Vec::new();
-    for (what, count) in [("nothing selected", 0usize), ("one light selected", 1), ("5,000 lights selected", 5_000)] {
+    for (what, count) in [
+        ("nothing selected", 0usize),
+        ("one light selected", 1),
+        ("5,000 lights selected", 5_000),
+    ] {
         {
             let mut document = editor.document.borrow_mut();
             let empty = document.selection_snapshot();
             document.preview_marquee(&empty, &lights[..count.min(lights.len())], false);
         }
         frame(&mut page);
-        rows.push(bench::measure(&format!("20k entities: Entity tab frame, {what}"), 10, || (), |_| frame(&mut page)));
+        rows.push(bench::measure(
+            &format!("20k entities: Entity tab frame, {what}"),
+            10,
+            || (),
+            |_| frame(&mut page),
+        ));
     }
     bench::print_table("egui Entity tab", &rows);
 }

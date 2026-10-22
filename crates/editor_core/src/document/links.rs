@@ -87,7 +87,11 @@ impl EntityGraph {
                     .filter(|e| e.from == node.id)
                     .filter_map(|e| placed.get(&e.to).map(|(_, row)| *row as f64))
                     .collect();
-                if rows.is_empty() { f64::INFINITY } else { rows.iter().sum::<f64>() / rows.len() as f64 }
+                if rows.is_empty() {
+                    f64::INFINITY
+                } else {
+                    rows.iter().sum::<f64>() / rows.len() as f64
+                }
             };
             let mut nodes = by_column[c].clone();
             nodes.sort_by(|a, b| {
@@ -116,12 +120,24 @@ impl Document {
             if classname.eq_ignore_ascii_case("worldspawn") {
                 continue;
             }
-            let names: Vec<&str> = entity.properties.iter().filter(|(k, v)| keys.is_source(k) && !v.is_empty()).map(|(_, v)| v.as_str()).collect();
-            let aims = entity.properties.iter().any(|(k, v)| keys.is_target(k) && !v.is_empty());
+            let names: Vec<&str> = entity
+                .properties
+                .iter()
+                .filter(|(k, v)| keys.is_source(k) && !v.is_empty())
+                .map(|(_, v)| v.as_str())
+                .collect();
+            let aims = entity
+                .properties
+                .iter()
+                .any(|(k, v)| keys.is_target(k) && !v.is_empty());
             if names.is_empty() && !aims {
                 continue;
             }
-            let position = entity.origin().or_else(|| fold_contents(&entity.children, &self.selection).bounds.map(|b| b.center()));
+            let position = entity.origin().or_else(|| {
+                fold_contents(&entity.children, &self.selection)
+                    .bounds
+                    .map(|b| b.center())
+            });
             graph.nodes.push(GraphNode {
                 id: *id,
                 classname: classname.to_string(),
@@ -141,7 +157,12 @@ impl Document {
                 }
                 for node in &graph.nodes {
                     if node.id != *id && answers[&node.id].iter().any(|name| name == value) {
-                        graph.edges.push(GraphEdge { from: *id, to: node.id, key: key.clone(), value: value.clone() });
+                        graph.edges.push(GraphEdge {
+                            from: *id,
+                            to: node.id,
+                            key: key.clone(),
+                            value: value.clone(),
+                        });
                     }
                 }
             }
@@ -157,28 +178,72 @@ impl Document {
             return Err("an entity cannot aim at itself".into());
         }
         let entities = node::entities_with_ids(&self.tree.world);
-        let find = |id: NodeId| entities.iter().find(|(e, _)| *e == id).map(|(_, entity)| *entity);
+        let find = |id: NodeId| {
+            entities
+                .iter()
+                .find(|(e, _)| *e == id)
+                .map(|(_, entity)| *entity)
+        };
         let (Some(source), Some(target)) = (find(from), find(to)) else {
             return Err("both ends must be entities".into());
         };
         let keys = self.link_keys();
-        let existing = target.properties.iter().find(|(k, v)| keys.is_source(k) && !v.is_empty()).map(|(_, v)| v.clone());
+        let existing = target
+            .properties
+            .iter()
+            .find(|(k, v)| keys.is_source(k) && !v.is_empty())
+            .map(|(_, v)| v.clone());
         let name = match existing {
             Some(name) => name,
             None => {
-                let taken: HashSet<&str> = entities.iter().flat_map(|(_, e)| e.properties.iter().filter(|(k, _)| keys.is_source(k)).map(|(_, v)| v.as_str())).collect();
+                let taken: HashSet<&str> = entities
+                    .iter()
+                    .flat_map(|(_, e)| {
+                        e.properties
+                            .iter()
+                            .filter(|(k, _)| keys.is_source(k))
+                            .map(|(_, v)| v.as_str())
+                    })
+                    .collect();
                 let stem = target.classname().unwrap_or("entity").to_string();
-                (1..).map(|n| if n == 1 { stem.clone() } else { format!("{stem}_{n}") }).find(|candidate| !taken.contains(candidate.as_str())).unwrap_or(stem)
+                (1..)
+                    .map(|n| {
+                        if n == 1 {
+                            stem.clone()
+                        } else {
+                            format!("{stem}_{n}")
+                        }
+                    })
+                    .find(|candidate| !taken.contains(candidate.as_str()))
+                    .unwrap_or(stem)
             }
         };
-        if source.properties.iter().any(|(k, v)| keys.is_target(k) && *v == name) {
+        if source
+            .properties
+            .iter()
+            .any(|(k, v)| keys.is_target(k) && *v == name)
+        {
             return Err(format!("it already aims at {name}"));
         }
         let key = (1..)
-            .map(|n| if n == 1 { "target".to_string() } else { format!("target{n}") })
-            .find(|key| !source.properties.iter().any(|(k, v)| k == key && !v.is_empty()))
+            .map(|n| {
+                if n == 1 {
+                    "target".to_string()
+                } else {
+                    format!("target{n}")
+                }
+            })
+            .find(|key| {
+                !source
+                    .properties
+                    .iter()
+                    .any(|(k, v)| k == key && !v.is_empty())
+            })
             .unwrap_or_else(|| "target".into());
-        let set_name = target.properties.iter().all(|(k, v)| !(keys.is_source(k) && !v.is_empty()));
+        let set_name = target
+            .properties
+            .iter()
+            .all(|(k, v)| !(keys.is_source(k) && !v.is_empty()));
         self.run_as_one_edit(|document| {
             if set_name {
                 document.set_entity_property(to, "targetname", &name);
@@ -231,11 +296,20 @@ mod tests {
 "origin" "0 0 32"
 }
 "#;
-        Document::from_map(&read_map(source, None).expect("the sample parses"), WorldBounds::default(), None)
+        Document::from_map(
+            &read_map(source, None).expect("the sample parses"),
+            WorldBounds::default(),
+            None,
+        )
     }
 
     fn id_of(graph: &EntityGraph, classname: &str) -> NodeId {
-        graph.nodes.iter().find(|n| n.classname == classname).map(|n| n.id).expect(classname)
+        graph
+            .nodes
+            .iter()
+            .find(|n| n.classname == classname)
+            .map(|n| n.id)
+            .expect(classname)
     }
 
     /// The graph holds the entities that link and the links between them, and lays them
@@ -245,11 +319,27 @@ mod tests {
         let document = sample();
         let graph = document.entity_graph();
         let classes: HashSet<&str> = graph.nodes.iter().map(|n| n.classname.as_str()).collect();
-        assert_eq!(classes, ["func_button", "trigger_once", "func_door", "light"].into_iter().collect());
+        assert_eq!(
+            classes,
+            ["func_button", "trigger_once", "func_door", "light"]
+                .into_iter()
+                .collect()
+        );
         assert_eq!(graph.edges.len(), 3);
-        let (button, trigger, door, light) = (id_of(&graph, "func_button"), id_of(&graph, "trigger_once"), id_of(&graph, "func_door"), id_of(&graph, "light"));
-        assert!(graph.edges.iter().any(|e| e.from == button && e.to == door && e.key == "target"));
-        assert!(graph.edges.iter().any(|e| e.from == trigger && e.to == light && e.key == "killtarget"));
+        let (button, trigger, door, light) = (
+            id_of(&graph, "func_button"),
+            id_of(&graph, "trigger_once"),
+            id_of(&graph, "func_door"),
+            id_of(&graph, "light"),
+        );
+        assert!(graph
+            .edges
+            .iter()
+            .any(|e| e.from == button && e.to == door && e.key == "target"));
+        assert!(graph
+            .edges
+            .iter()
+            .any(|e| e.from == trigger && e.to == light && e.key == "killtarget"));
         let layout = graph.layout();
         for edge in &graph.edges {
             assert!(layout[&edge.from].0 < layout[&edge.to].0, "{edge:?}");
@@ -264,10 +354,16 @@ mod tests {
     fn view_links_know_their_key() {
         let document = sample();
         let links = document.entity_links();
-        let kill = links.iter().find(|link| link.key == "killtarget").expect("the killtarget link");
+        let kill = links
+            .iter()
+            .find(|link| link.key == "killtarget")
+            .expect("the killtarget link");
         assert!(kill.kills() && kill.name == "lamp");
         assert_eq!(kill.label(), "killtarget → lamp");
-        assert!(links.iter().filter(|link| link.key == "target").all(|link| !link.kills()));
+        assert!(links
+            .iter()
+            .filter(|link| link.key == "target")
+            .all(|link| !link.kills()));
     }
 
     /// Linking names an unnamed target from its class, uses the next free key, and is
@@ -278,16 +374,33 @@ mod tests {
         let graph = document.entity_graph();
         let (button, door) = (id_of(&graph, "func_button"), id_of(&graph, "func_door"));
         // The player start has no name: linking the button to it names it.
-        let player = node::entities_with_ids(document.tree_world()).iter().find(|(_, e)| e.classname() == Some("info_player_start")).map(|(id, _)| *id).unwrap();
+        let player = node::entities_with_ids(document.tree_world())
+            .iter()
+            .find(|(_, e)| e.classname() == Some("info_player_start"))
+            .map(|(id, _)| *id)
+            .unwrap();
         let name = document.link_entities(button, player).unwrap();
         assert_eq!(name, "info_player_start");
         let graph = document.entity_graph();
-        assert!(graph.edges.iter().any(|e| e.from == button && e.to == player && e.key == "target2"));
-        assert!(document.link_entities(button, door).is_err(), "already linked");
+        assert!(graph
+            .edges
+            .iter()
+            .any(|e| e.from == button && e.to == player && e.key == "target2"));
+        assert!(
+            document.link_entities(button, door).is_err(),
+            "already linked"
+        );
         document.undo();
         let graph = document.entity_graph();
-        assert!(!graph.nodes.iter().any(|n| n.id == player), "undo took both the name and the link");
+        assert!(
+            !graph.nodes.iter().any(|n| n.id == player),
+            "undo took both the name and the link"
+        );
         assert!(document.unlink_entities(button, "target"));
-        assert!(!document.entity_graph().edges.iter().any(|e| e.from == button));
+        assert!(!document
+            .entity_graph()
+            .edges
+            .iter()
+            .any(|e| e.from == button));
     }
 }

@@ -20,11 +20,32 @@ impl GpuTimer {
         if !device.features().contains(wgpu::Features::TIMESTAMP_QUERY) {
             return None;
         }
-        let set = device.create_query_set(&wgpu::QuerySetDescriptor { label: Some("render_wgpu timestamps"), ty: wgpu::QueryType::Timestamp, count: CAPACITY * 2 });
+        let set = device.create_query_set(&wgpu::QuerySetDescriptor {
+            label: Some("render_wgpu timestamps"),
+            ty: wgpu::QueryType::Timestamp,
+            count: CAPACITY * 2,
+        });
         let size = u64::from(CAPACITY * 2 * wgpu::QUERY_SIZE);
-        let resolve = device.create_buffer(&wgpu::BufferDescriptor { label: Some("render_wgpu timestamps"), size, usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC, mapped_at_creation: false });
-        let readback = device.create_buffer(&wgpu::BufferDescriptor { label: Some("render_wgpu timestamps"), size, usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-        Some(Self { set, resolve, readback, labels: Vec::new(), period_ns: f64::from(queue.get_timestamp_period()), last: Vec::new() })
+        let resolve = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("render_wgpu timestamps"),
+            size,
+            usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let readback = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("render_wgpu timestamps"),
+            size,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        Some(Self {
+            set,
+            resolve,
+            readback,
+            labels: Vec::new(),
+            period_ns: f64::from(queue.get_timestamp_period()),
+            last: Vec::new(),
+        })
     }
 
     /// Starts a frame.
@@ -39,7 +60,11 @@ impl GpuTimer {
             return None;
         }
         self.labels.push(label);
-        Some(wgpu::RenderPassTimestampWrites { query_set: &self.set, beginning_of_pass_write_index: Some(index * 2), end_of_pass_write_index: Some(index * 2 + 1) })
+        Some(wgpu::RenderPassTimestampWrites {
+            query_set: &self.set,
+            beginning_of_pass_write_index: Some(index * 2),
+            end_of_pass_write_index: Some(index * 2 + 1),
+        })
     }
 
     /// Resolves this frame's queries into the readback buffer.
@@ -49,7 +74,13 @@ impl GpuTimer {
             return;
         }
         encoder.resolve_query_set(&self.set, 0..count, &self.resolve, 0);
-        encoder.copy_buffer_to_buffer(&self.resolve, 0, &self.readback, 0, u64::from(count * wgpu::QUERY_SIZE));
+        encoder.copy_buffer_to_buffer(
+            &self.resolve,
+            0,
+            &self.readback,
+            0,
+            u64::from(count * wgpu::QUERY_SIZE),
+        );
     }
 
     /// Reads the frame back (blocking: profiling waits for the GPU anyway).
@@ -61,11 +92,15 @@ impl GpuTimer {
         }
         let slice = self.readback.slice(..(count * 8) as u64);
         slice.map_async(wgpu::MapMode::Read, |_| {});
-        let _ = device.poll(wgpu::PollType::Wait { submission_index: None, timeout: None });
+        let _ = device.poll(wgpu::PollType::Wait {
+            submission_index: None,
+            timeout: None,
+        });
         if let Ok(data) = slice.get_mapped_range() {
             let stamps: &[u64] = bytemuck::cast_slice(&data);
             for (i, label) in self.labels.iter().enumerate() {
-                let ms = stamps[i * 2 + 1].saturating_sub(stamps[i * 2]) as f64 * self.period_ns / 1e6;
+                let ms =
+                    stamps[i * 2 + 1].saturating_sub(stamps[i * 2]) as f64 * self.period_ns / 1e6;
                 match self.last.iter_mut().find(|(l, _)| l == label) {
                     Some((_, total)) => *total += ms,
                     None => self.last.push((label, ms)),

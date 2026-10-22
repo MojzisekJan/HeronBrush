@@ -390,81 +390,146 @@ mod tests {
     use super::*;
     #[test]
     fn pbr_maps_survive_preview_and_all_glb_export_paths() {
-        let root=std::env::var_os("HERON_PBR_OUTPUT").map(PathBuf::from).unwrap_or_else(||std::env::temp_dir().join(format!("heron-pbr-{}",std::process::id())));
+        let root = std::env::var_os("HERON_PBR_OUTPUT")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                std::env::temp_dir().join(format!("heron-pbr-{}", std::process::id()))
+            });
         std::fs::create_dir_all(&root).unwrap();
-        let bytes=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../examples/editor-checks/fixtures/pbr.glb"));
-        let source=map_model::glb_model::read(bytes).unwrap();
-        std::fs::write(root.join("source.glb"),bytes).unwrap();
-        let mut doc=Document::new(WorldBounds::default());
-        doc.import_model(&root.join("source.glb"),Vec3d::zero()).unwrap();
-        let triangles=doc.triangles(&Default::default());
-        assert_eq!(triangles.len(),2);
-        assert_ne!(triangles[0].material,triangles[1].material);
-        for t in triangles {let m=&doc.materials().materials()[t.material.unwrap()];assert!(m.model_pbr.is_some());assert!(m.normal_map.is_some());}
-        let snapshot = serde_json::to_string(&doc.export_snapshot(&root.join("unsaved.map"))).unwrap();
-        let isolated = Document::from_export_snapshot(serde_json::from_str(&snapshot).unwrap()).unwrap();
+        let bytes = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/editor-checks/fixtures/pbr.glb"
+        ));
+        let source = map_model::glb_model::read(bytes).unwrap();
+        std::fs::write(root.join("source.glb"), bytes).unwrap();
+        let mut doc = Document::new(WorldBounds::default());
+        doc.import_model(&root.join("source.glb"), Vec3d::zero())
+            .unwrap();
+        let triangles = doc.triangles(&Default::default());
+        assert_eq!(triangles.len(), 2);
+        assert_ne!(triangles[0].material, triangles[1].material);
+        for t in triangles {
+            let m = &doc.materials().materials()[t.material.unwrap()];
+            assert!(m.model_pbr.is_some());
+            assert!(m.normal_map.is_some());
+        }
+        let snapshot =
+            serde_json::to_string(&doc.export_snapshot(&root.join("unsaved.map"))).unwrap();
+        let isolated =
+            Document::from_export_snapshot(serde_json::from_str(&snapshot).unwrap()).unwrap();
         for target in crate::export::Target::ALL {
-            let options=crate::export::Options {target,name:"pbr".into(),..Default::default()};
-            let directory=root.join(format!("{target:?}"));
-            let (report,files)=crate::export::export_files(&doc,&directory,&options).unwrap_or_else(|e|panic!("{target:?}: {e}"));
-            assert_eq!(report.triangles,2,"{target:?}");
-            let (_, replica) = crate::export::export_files(&isolated,&directory,&options).unwrap();
-            let bytes = |content:&crate::export::Contents| match content {crate::export::Contents::Text(s)=>s.as_bytes().to_vec(),crate::export::Contents::Bytes(b)=>b.clone()};
-            assert_eq!(files.len(),replica.len(),"{target:?}: snapshot file count");
-            for ((path,data),(replica_path,replica_data)) in files.iter().zip(&replica) {
-                assert_eq!(path,replica_path,"{target:?}: snapshot asset path");
-                assert_eq!(bytes(data),bytes(replica_data),"{target:?}: snapshot asset bytes at {}",path.display());
+            let options = crate::export::Options {
+                target,
+                name: "pbr".into(),
+                ..Default::default()
+            };
+            let directory = root.join(format!("{target:?}"));
+            let (report, files) = crate::export::export_files(&doc, &directory, &options)
+                .unwrap_or_else(|e| panic!("{target:?}: {e}"));
+            assert_eq!(report.triangles, 2, "{target:?}");
+            let (_, replica) =
+                crate::export::export_files(&isolated, &directory, &options).unwrap();
+            let bytes = |content: &crate::export::Contents| match content {
+                crate::export::Contents::Text(s) => s.as_bytes().to_vec(),
+                crate::export::Contents::Bytes(b) => b.clone(),
+            };
+            assert_eq!(
+                files.len(),
+                replica.len(),
+                "{target:?}: snapshot file count"
+            );
+            for ((path, data), (replica_path, replica_data)) in files.iter().zip(&replica) {
+                assert_eq!(path, replica_path, "{target:?}: snapshot asset path");
+                assert_eq!(
+                    bytes(data),
+                    bytes(replica_data),
+                    "{target:?}: snapshot asset bytes at {}",
+                    path.display()
+                );
             }
-            for (path,data) in files {
-                let data=match data {crate::export::Contents::Text(s)=>s.into_bytes(),crate::export::Contents::Bytes(b)=>b};
-                if path.extension().is_some_and(|e|e=="glb") {
-                    let loaded=map_model::glb_model::read(&data).unwrap();
-                    assert_eq!(loaded.pbr,source.pbr,"{target:?}: maps or factors changed");
+            for (path, data) in files {
+                let data = match data {
+                    crate::export::Contents::Text(s) => s.into_bytes(),
+                    crate::export::Contents::Bytes(b) => b,
+                };
+                if path.extension().is_some_and(|e| e == "glb") {
+                    let loaded = map_model::glb_model::read(&data).unwrap();
+                    assert_eq!(
+                        loaded.pbr, source.pbr,
+                        "{target:?}: maps or factors changed"
+                    );
                 }
                 if std::env::var_os("HERON_PBR_OUTPUT").is_some() {
-                    std::fs::create_dir_all(path.parent().unwrap()).unwrap();std::fs::write(path,data).unwrap();
+                    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+                    std::fs::write(path, data).unwrap();
                 }
             }
         }
         if std::env::var_os("HERON_PBR_OUTPUT").is_some() {
-            std::fs::write(root.join("Godot/source.glb"),bytes).unwrap();
+            std::fs::write(root.join("Godot/source.glb"), bytes).unwrap();
             std::fs::write(root.join("Godot/project.godot"),"config_version=5\n[application]\nconfig/name=\"Heron PBR check\"\n[rendering]\nrenderer/rendering_method=\"gl_compatibility\"\n").unwrap();
-        } else {std::fs::remove_dir_all(root).unwrap();}
+        } else {
+            std::fs::remove_dir_all(root).unwrap();
+        }
     }
 
     #[test]
     fn material_modes_survive_all_generated_glb_paths() {
         let output = std::env::var_os("HERON_MATERIAL_MODES_OUTPUT");
-        let root = output.as_ref().map(PathBuf::from).unwrap_or_else(||
-            std::env::temp_dir().join(format!("heron-material-modes-{}", std::process::id())));
+        let root = output.as_ref().map(PathBuf::from).unwrap_or_else(|| {
+            std::env::temp_dir().join(format!("heron-material-modes-{}", std::process::id()))
+        });
         std::fs::create_dir_all(&root).unwrap();
-        let bytes = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),
-            "/../../examples/editor-checks/fixtures/material_modes.glb"));
+        let bytes = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/editor-checks/fixtures/material_modes.glb"
+        ));
         let source = map_model::glb_model::read(bytes).unwrap();
         std::fs::write(root.join("source.glb"), bytes).unwrap();
         let mut doc = Document::new(WorldBounds::default());
-        doc.import_model(&root.join("source.glb"), Vec3d::zero()).unwrap();
+        doc.import_model(&root.join("source.glb"), Vec3d::zero())
+            .unwrap();
         let mut checked = 0;
         for target in crate::export::Target::ALL {
-            let options = crate::export::Options {target, name:"modes".into(), ..Default::default()};
-            let (report, files) = crate::export::export_files(&doc, &root.join(format!("{target:?}")), &options).unwrap();
+            let options = crate::export::Options {
+                target,
+                name: "modes".into(),
+                ..Default::default()
+            };
+            let (report, files) =
+                crate::export::export_files(&doc, &root.join(format!("{target:?}")), &options)
+                    .unwrap();
             assert_eq!(report.triangles, 6, "{target:?}");
             if target == crate::export::Target::Unity {
-                assert!(files.iter().any(|(path, _)| path.file_name().is_some_and(|name| name == "HeronBrushPbr.shader")),
-                    "Two-sided Unity materials require their exported shader");
+                assert!(
+                    files.iter().any(|(path, _)| path
+                        .file_name()
+                        .is_some_and(|name| name == "HeronBrushPbr.shader")),
+                    "Two-sided Unity materials require their exported shader"
+                );
             }
             for (path, data) in files {
-                let data = match data { crate::export::Contents::Bytes(bytes) => bytes,
-                    crate::export::Contents::Text(text) => text.into_bytes() };
+                let data = match data {
+                    crate::export::Contents::Bytes(bytes) => bytes,
+                    crate::export::Contents::Text(text) => text.into_bytes(),
+                };
                 if output.is_some() {
                     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
                     std::fs::write(&path, &data).unwrap();
                 }
-                if !path.extension().is_some_and(|extension| extension == "glb") { continue; }
+                if !path.extension().is_some_and(|extension| extension == "glb") {
+                    continue;
+                }
                 let loaded = map_model::glb_model::read(&data).unwrap();
-                assert_eq!(loaded.pbr, source.pbr, "{target:?}: source material rules or PBR changed");
-                assert_eq!(loaded.skins().collect::<Vec<_>>(), source.skins().collect::<Vec<_>>(),
-                    "{target:?}: alpha gradient changed");
+                assert_eq!(
+                    loaded.pbr, source.pbr,
+                    "{target:?}: source material rules or PBR changed"
+                );
+                assert_eq!(
+                    loaded.skins().collect::<Vec<_>>(),
+                    source.skins().collect::<Vec<_>>(),
+                    "{target:?}: alpha gradient changed"
+                );
                 checked += 1;
             }
         }
@@ -473,7 +538,9 @@ mod tests {
             std::fs::write(root.join("Godot/source.glb"), bytes).unwrap();
             std::fs::write(root.join("Godot/project.godot"),
                 "config_version=5\n[application]\nconfig/name=\"Heron material modes\"\n[rendering]\nrenderer/rendering_method=\"gl_compatibility\"\n").unwrap();
-        } else { std::fs::remove_dir_all(root).unwrap(); }
+        } else {
+            std::fs::remove_dir_all(root).unwrap();
+        }
     }
 
     #[test]
@@ -503,7 +570,7 @@ mod tests {
             let model = doc
                 .imported_model(doc.selected_entity().unwrap().1)
                 .unwrap();
-            expected_normals.extend(model.triangles.iter().flat_map(|t|t.normals.unwrap()));
+            expected_normals.extend(model.triangles.iter().flat_map(|t| t.normals.unwrap()));
             expected.extend(
                 model
                     .triangles

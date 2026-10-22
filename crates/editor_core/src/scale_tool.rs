@@ -117,11 +117,7 @@ pub fn all_edges() -> Vec<(Vec3d, Vec3d)> {
 /// Every handle a box offers, sides first, then edges, then corners.
 pub fn all_handles() -> Vec<BBoxHandle> {
     let mut handles: Vec<BBoxHandle> = all_sides().into_iter().map(BBoxHandle::Side).collect();
-    handles.extend(
-        all_edges()
-            .into_iter()
-            .map(|(a, b)| BBoxHandle::Edge(a, b)),
-    );
+    handles.extend(all_edges().into_iter().map(|(a, b)| BBoxHandle::Edge(a, b)));
     handles.extend(all_corners().into_iter().map(BBoxHandle::Corner));
     handles
 }
@@ -365,8 +361,10 @@ pub fn move_bbox_edge(
         let axis1 = old_anchor_dist.find_abs_max_component(0);
         let ratio = (p2 - p1)[axis1] / box_.size()[axis1];
 
-        p1[non_moving_axis] = anchor[non_moving_axis] - (box_.size()[non_moving_axis] * ratio * 0.5);
-        p2[non_moving_axis] = anchor[non_moving_axis] + (box_.size()[non_moving_axis] * ratio * 0.5);
+        p1[non_moving_axis] =
+            anchor[non_moving_axis] - (box_.size()[non_moving_axis] * ratio * 0.5);
+        p2[non_moving_axis] =
+            anchor[non_moving_axis] + (box_.size()[non_moving_axis] * ratio * 0.5);
     } else {
         p1[non_moving_axis] = box_.min[non_moving_axis];
         p2[non_moving_axis] = box_.max[non_moving_axis];
@@ -409,8 +407,7 @@ mod tests {
             1e-9
         );
         geometry_math::assert_approx_eq!(
-            BBoxHandle::Edge(Vec3d::new(1.0, 1.0, 1.0), Vec3d::new(1.0, 1.0, -1.0))
-                .position(&box_),
+            BBoxHandle::Edge(Vec3d::new(1.0, 1.0, 1.0), Vec3d::new(1.0, 1.0, -1.0)).position(&box_),
             Vec3d::new(32.0, 32.0, 0.0),
             1e-9
         );
@@ -565,18 +562,18 @@ mod tests {
         let corner = BBoxHandle::Corner(Vec3d::new(1.0, 1.0, 1.0));
         let line = corner.drag_line(&box_);
         geometry_math::assert_approx_eq!(line.point, Vec3d::fill(-32.0), 1e-9);
-        geometry_math::assert_approx_eq!(
-            line.direction,
-            vec::normalize(Vec3d::fill(1.0)),
-            1e-9
-        );
+        geometry_math::assert_approx_eq!(line.direction, vec::normalize(Vec3d::fill(1.0)), 1e-9);
 
         // And every line passes through the middle of the box.
         for handle in all_handles() {
             let line = handle.drag_line(&box_);
             let to_centre = box_.center() - line.point;
             let along = vec::dot(to_centre, line.direction);
-            geometry_math::assert_approx_eq!(line.point + line.direction * along, box_.center(), 1e-9);
+            geometry_math::assert_approx_eq!(
+                line.point + line.direction * along,
+                box_.center(),
+                1e-9
+            );
         }
     }
 

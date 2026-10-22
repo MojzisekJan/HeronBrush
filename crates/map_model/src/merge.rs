@@ -78,15 +78,27 @@ pub enum EntityKey {
 
 impl std::fmt::Display for EntityKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = |c: &str| if c.is_empty() { "(no classname)".to_string() } else { c.to_string() };
+        let name = |c: &str| {
+            if c.is_empty() {
+                "(no classname)".to_string()
+            } else {
+                c.to_string()
+            }
+        };
         match self {
             EntityKey::Worldspawn => f.write_str("worldspawn"),
             EntityKey::NodeId(id) => write!(f, "entity {id:x}"),
             EntityKey::TbId(id) => write!(f, "entity _tb_id {id}"),
-            EntityKey::Named { classname, targetname, .. } => {
+            EntityKey::Named {
+                classname,
+                targetname,
+                ..
+            } => {
                 write!(f, "{} \"{targetname}\"", name(classname))
             }
-            EntityKey::Spot { classname, origin, .. } => {
+            EntityKey::Spot {
+                classname, origin, ..
+            } => {
                 write!(f, "{} at {origin}", name(classname))
             }
             EntityKey::Positional { classname, nth } => write!(f, "{} #{nth}", name(classname)),
@@ -138,9 +150,18 @@ fn tb_id(entity: &Entity) -> Option<&str> {
 
 /// `"0.0 0 64.00"` -> `"0 0 64"`; `None` if it is not three numbers.
 fn normalize_origin(origin: &str) -> Option<String> {
-    let parts: Vec<f64> = origin.split_whitespace().map(str::parse).collect::<Result<_, _>>().ok()?;
+    let parts: Vec<f64> = origin
+        .split_whitespace()
+        .map(str::parse)
+        .collect::<Result<_, _>>()
+        .ok()?;
     let [x, y, z] = parts[..] else { return None };
-    Some(format!("{} {} {}", x.round() as i64, y.round() as i64, z.round() as i64))
+    Some(format!(
+        "{} {} {}",
+        x.round() as i64,
+        y.round() as i64,
+        z.round() as i64
+    ))
 }
 
 /// The part of an entity's identity that does not depend on how many like it came before.
@@ -168,19 +189,26 @@ fn key_entities(map: &MapFile) -> Vec<(EntityKey, usize)> {
                 entity.property(keys::TARGETNAME).filter(|s| !s.is_empty())
             {
                 Candidate::Named(classname.clone(), name.to_string())
-            } else if let Some(origin) =
-                entity.property(keys::ORIGIN).and_then(normalize_origin)
-            {
+            } else if let Some(origin) = entity.property(keys::ORIGIN).and_then(normalize_origin) {
                 Candidate::Spot(classname.clone(), origin)
             } else {
                 Candidate::Positional(classname.clone())
             };
-            let nth = *counts.entry(candidate.clone()).and_modify(|c| *c += 1).or_insert(0);
+            let nth = *counts
+                .entry(candidate.clone())
+                .and_modify(|c| *c += 1)
+                .or_insert(0);
             match candidate {
-                Candidate::Named(classname, targetname) => {
-                    EntityKey::Named { classname, targetname, nth }
-                }
-                Candidate::Spot(classname, origin) => EntityKey::Spot { classname, origin, nth },
+                Candidate::Named(classname, targetname) => EntityKey::Named {
+                    classname,
+                    targetname,
+                    nth,
+                },
+                Candidate::Spot(classname, origin) => EntityKey::Spot {
+                    classname,
+                    origin,
+                    nth,
+                },
                 Candidate::Positional(classname) => EntityKey::Positional { classname, nth },
             }
         };
@@ -305,7 +333,13 @@ fn merge_entity(
     conflicts: &mut Vec<Conflict>,
 ) -> Entity {
     let properties = merge_properties(key, base, ours, theirs, conflicts);
-    let brushes = merge_brushes(key, &base.brushes, &ours.brushes, &theirs.brushes, conflicts);
+    let brushes = merge_brushes(
+        key,
+        &base.brushes,
+        &ours.brushes,
+        &theirs.brushes,
+        conflicts,
+    );
     let patches = merge_set(&base.patches, &ours.patches, &theirs.patches);
 
     // Ours' identity, since a merged entity is the one that was there: the id is what it
@@ -321,7 +355,10 @@ fn merge_entity(
 
 fn has_duplicate_keys(entity: &Entity) -> bool {
     let mut seen = std::collections::HashSet::new();
-    !entity.properties.iter().all(|(k, _)| seen.insert(k.as_str()))
+    !entity
+        .properties
+        .iter()
+        .all(|(k, _)| seen.insert(k.as_str()))
 }
 
 fn merge_properties(
@@ -701,7 +738,10 @@ fn merge_brushes<'a>(
             continue;
         };
         let ours_at = ours_by_id.get(&id).copied().filter(|at| !ours_taken[*at]);
-        let theirs_at = theirs_by_id.get(&id).copied().filter(|at| !theirs_taken[*at]);
+        let theirs_at = theirs_by_id
+            .get(&id)
+            .copied()
+            .filter(|at| !theirs_taken[*at]);
         base_handled[at] = true;
         match (ours_at, theirs_at) {
             (Some(oi), Some(ti)) => {

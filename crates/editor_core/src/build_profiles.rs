@@ -155,9 +155,8 @@ pub mod runner {
         io::Read,
         process::{Command, Stdio},
         sync::{
-            Arc,
             atomic::{AtomicBool, Ordering},
-            mpsc,
+            mpsc, Arc,
         },
         thread,
         time::Duration,
@@ -578,11 +577,9 @@ mod tests {
         assert_eq!(Store::load(&path).unwrap().profiles[0].name, "Game");
         std::fs::write(&path, "{\"version\":2,\"profiles\":[]}").unwrap();
         assert!(good.save(&path).is_err());
-        assert!(
-            std::fs::read_to_string(&path)
-                .unwrap()
-                .contains("\"version\":2")
-        );
+        assert!(std::fs::read_to_string(&path)
+            .unwrap()
+            .contains("\"version\":2"));
         let vars = BTreeMap::from([("MAP".into(), "path with spaces/$(literal)".into())]);
         assert_eq!(
             expand("${MAP}", &vars).unwrap(),
@@ -662,11 +659,9 @@ mod tests {
             std::fs::read_to_string(root.join("copied.map")).unwrap(),
             doc.to_map_text()
         );
-        assert!(
-            std::fs::read_to_string(root.join("meshes/room.obj"))
-                .unwrap()
-                .contains("v ")
-        );
+        assert!(std::fs::read_to_string(root.join("meshes/room.obj"))
+            .unwrap()
+            .contains("v "));
         assert!(log.contains(&literal));
         assert!(!marker.exists());
         std::fs::remove_dir_all(root).unwrap();

@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
 
-use crate::{file_dialog::FileDialog, dialog, editor::Editor, form, theme, widgets};
+use crate::{dialog, editor::Editor, file_dialog::FileDialog, form, theme, widgets};
 use editor_core::{
     document::Document,
     i18n::{fill, tr},
@@ -30,7 +30,8 @@ thread_local! {
 pub fn plugins() -> Rc<Vec<Plugin>> {
     FOUND.with(|found| {
         Rc::clone(found.borrow_mut().get_or_insert_with(|| {
-            let error = editor_core::plugin_state::load(&editor_core::plugins::activation_path()).err();
+            let error =
+                editor_core::plugin_state::load(&editor_core::plugins::activation_path()).err();
             ACTIVATION_ERROR.with(|slot| *slot.borrow_mut() = error);
             Rc::new(editor_core::plugins::discover())
         }))
@@ -57,7 +58,11 @@ pub fn groups<'a>(plugins: &'a [Plugin], query: &str) -> [(bool, Vec<&'a Plugin>
         plugins
             .iter()
             .filter(|plugin| plugin.enabled == active)
-            .filter(|plugin| format!("{}\n{}", plugin.name, plugin.summary).to_lowercase().contains(&query))
+            .filter(|plugin| {
+                format!("{}\n{}", plugin.name, plugin.summary)
+                    .to_lowercase()
+                    .contains(&query)
+            })
             .collect()
     };
     [(true, matching(true)), (false, matching(false))]
@@ -83,8 +88,13 @@ impl Cards {
     fn sync(&mut self) {
         let generation = GENERATION.with(|generation| generation.get());
         if self.generation != generation {
-            self.sessions.clear(); self.inspected.clear(); self.waiting.clear(); self.outputs.clear();
-            self.values.clear(); self.preferences_loaded = false; self.preferences.clear();
+            self.sessions.clear();
+            self.inspected.clear();
+            self.waiting.clear();
+            self.outputs.clear();
+            self.values.clear();
+            self.preferences_loaded = false;
+            self.preferences.clear();
             self.generation = generation;
         }
     }
@@ -92,26 +102,60 @@ impl Cards {
     /// A setting's answer, its default until the user changes it.
     fn value(&mut self, plugin: &Plugin, setting: &Setting) -> &mut SettingValue {
         if !self.preferences_loaded {
-            let path = self.store.clone().unwrap_or_else(|| editor_core::preferences::config_dir().join("plugin-settings.json"));
+            let path = self.store.clone().unwrap_or_else(|| {
+                editor_core::preferences::config_dir().join("plugin-settings.json")
+            });
             match editor_core::plugin_state::load_settings(&path) {
                 Ok(preferences) => self.preferences = preferences,
                 Err(error) => self.preference_error = Some(error),
             }
             self.preferences_loaded = true;
         }
-        let saved = self.preferences.get(&plugin.id).and_then(|answers| answers.get(&setting.key)).cloned();
+        let saved = self
+            .preferences
+            .get(&plugin.id)
+            .and_then(|answers| answers.get(&setting.key))
+            .cloned();
         let saved = match saved {
-            Some(SettingValue::Number(n)) if setting.kind == SettingKind::Number && n.is_finite() => Some(SettingValue::Number(n.max(setting.min.unwrap_or(-1_000_000.0)).min(setting.max.unwrap_or(1_000_000.0)))),
-            Some(SettingValue::Check(on)) if setting.kind == SettingKind::Check => Some(SettingValue::Check(on)),
-            Some(SettingValue::Text(text)) if text.len() <= 4096 && (setting.kind == SettingKind::Text || (setting.kind == SettingKind::Choice && setting.choices.contains(&text))) => Some(SettingValue::Text(text)),
+            Some(SettingValue::Number(n))
+                if setting.kind == SettingKind::Number && n.is_finite() =>
+            {
+                Some(SettingValue::Number(
+                    n.max(setting.min.unwrap_or(-1_000_000.0))
+                        .min(setting.max.unwrap_or(1_000_000.0)),
+                ))
+            }
+            Some(SettingValue::Check(on)) if setting.kind == SettingKind::Check => {
+                Some(SettingValue::Check(on))
+            }
+            Some(SettingValue::Text(text))
+                if text.len() <= 4096
+                    && (setting.kind == SettingKind::Text
+                        || (setting.kind == SettingKind::Choice
+                            && setting.choices.contains(&text))) =>
+            {
+                Some(SettingValue::Text(text))
+            }
             _ => None,
         };
-        self.values.entry((plugin.id.clone(), setting.key.clone())).or_insert_with(|| saved.unwrap_or_else(|| match setting.kind {
-            SettingKind::Number => SettingValue::Number(setting.default_number()),
-            SettingKind::Check => SettingValue::Check(setting.default_check()),
-            SettingKind::Choice => SettingValue::Text(setting.choices.iter().find(|c| **c == setting.default).or(setting.choices.first()).cloned().unwrap_or_default()),
-            SettingKind::Text => SettingValue::Text(setting.default.clone()),
-        }))
+        self.values
+            .entry((plugin.id.clone(), setting.key.clone()))
+            .or_insert_with(|| {
+                saved.unwrap_or_else(|| match setting.kind {
+                    SettingKind::Number => SettingValue::Number(setting.default_number()),
+                    SettingKind::Check => SettingValue::Check(setting.default_check()),
+                    SettingKind::Choice => SettingValue::Text(
+                        setting
+                            .choices
+                            .iter()
+                            .find(|c| **c == setting.default)
+                            .or(setting.choices.first())
+                            .cloned()
+                            .unwrap_or_default(),
+                    ),
+                    SettingKind::Text => SettingValue::Text(setting.default.clone()),
+                })
+            })
     }
 
     /// Runs one of `plugin`'s actions on the selection (or everything, with nothing
@@ -120,10 +164,22 @@ impl Cards {
         if !editor_core::plugins::enabled(&plugin.id) || plugin.wrong_api.is_some() {
             return;
         }
-        let answers: Vec<(String, SettingValue)> = plugin.settings.iter().map(|setting| (setting.key.clone(), self.value(plugin, setting).clone())).collect();
-        let session = self.sessions.entry(plugin.id.clone()).or_insert_with(|| (plugin.source.clone(), editor_core::plugin::Session::new(&plugin.source)));
+        let answers: Vec<(String, SettingValue)> = plugin
+            .settings
+            .iter()
+            .map(|setting| (setting.key.clone(), self.value(plugin, setting).clone()))
+            .collect();
+        let session = self.sessions.entry(plugin.id.clone()).or_insert_with(|| {
+            (
+                plugin.source.clone(),
+                editor_core::plugin::Session::new(&plugin.source),
+            )
+        });
         if session.0 != plugin.source {
-            *session = (plugin.source.clone(), editor_core::plugin::Session::new(&plugin.source));
+            *session = (
+                plugin.source.clone(),
+                editor_core::plugin::Session::new(&plugin.source),
+            );
         }
         let result = {
             let mut document = document.borrow_mut();
@@ -132,7 +188,10 @@ impl Cards {
                 if !had_selection && plugin.panel_action.is_none() {
                     document.select_all();
                 }
-                match &mut session.1 { Ok(session) => session.run(document, &answers, action), Err(error) => Err(error.clone()) }
+                match &mut session.1 {
+                    Ok(session) => session.run(document, &answers, action),
+                    Err(error) => Err(error.clone()),
+                }
             });
             if !had_selection && plugin.panel_action.is_none() {
                 document.clear_selection();
@@ -148,7 +207,10 @@ impl Cards {
             }
             Err(error) => {
                 editor_core::complain!("{}: {error}", plugin.name);
-                RunOutput { lines: vec![error], panel: vec![] }
+                RunOutput {
+                    lines: vec![error],
+                    panel: vec![],
+                }
             }
         };
         self.outputs.insert(plugin.id.clone(), output);
@@ -164,7 +226,13 @@ enum Request {
 /// One plugin's card. In the window (`management`) it carries the on/off switch and keeps
 /// the settings and actions behind a fold, shown only while the plugin can run; docked,
 /// the settings and actions are out in the open.
-fn card(ui: &mut egui::Ui, plugin: &Plugin, cards: &mut Cards, document: &Rc<RefCell<Document>>, management: bool) -> Option<Request> {
+fn card(
+    ui: &mut egui::Ui,
+    plugin: &Plugin,
+    cards: &mut Cards,
+    document: &Rc<RefCell<Document>>,
+    management: bool,
+) -> Option<Request> {
     cards.sync();
     let mut request = None;
     let runnable = plugin.enabled && plugin.wrong_api.is_none();
@@ -173,11 +241,24 @@ fn card(ui: &mut egui::Ui, plugin: &Plugin, cards: &mut Cards, document: &Rc<Ref
             ui.spacing_mut().item_spacing.y = 4.0;
             if management {
                 ui.horizontal(|ui| {
-                    let title = plugin.version.as_ref().map_or_else(|| plugin.name.clone(), |version| format!("{} {version}", plugin.name));
-                    ui.add(egui::Label::new(egui::RichText::new(title).font(theme::body_bold()).color(theme::fg())).truncate());
+                    let title = plugin.version.as_ref().map_or_else(
+                        || plugin.name.clone(),
+                        |version| format!("{} {version}", plugin.name),
+                    );
+                    ui.add(
+                        egui::Label::new(
+                            egui::RichText::new(title)
+                                .font(theme::body_bold())
+                                .color(theme::fg()),
+                        )
+                        .truncate(),
+                    );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         let mut on = plugin.enabled;
-                        if widgets::switch(ui, &mut on).on_hover_text(tr("Enable plugin")).changed() {
+                        if widgets::switch(ui, &mut on)
+                            .on_hover_text(tr("Enable plugin"))
+                            .changed()
+                        {
                             request = Some(Request::Enable(on));
                         }
                     });
@@ -187,11 +268,19 @@ fn card(ui: &mut egui::Ui, plugin: &Plugin, cards: &mut Cards, document: &Rc<Ref
                 form::note(ui, &plugin.summary);
             }
             if let Some(asked) = plugin.wrong_api {
-                form::text(ui, &fill("Written for plugin API {}; this editor offers {}.", &[&asked.to_string(), &API_VERSION.to_string()]));
+                form::text(
+                    ui,
+                    &fill(
+                        "Written for plugin API {}; this editor offers {}.",
+                        &[&asked.to_string(), &API_VERSION.to_string()],
+                    ),
+                );
             }
             if management {
                 if runnable {
-                    form::fold(ui, "details", tr("Actions and settings"), false, |ui| body(ui, plugin, cards, document));
+                    form::fold(ui, "details", tr("Actions and settings"), false, |ui| {
+                        body(ui, plugin, cards, document)
+                    });
                 }
             } else {
                 ui.add_space(2.0);
@@ -208,7 +297,11 @@ fn card(ui: &mut egui::Ui, plugin: &Plugin, cards: &mut Cards, document: &Rc<Ref
 
 /// A plugin's settings and its action buttons.
 fn body(ui: &mut egui::Ui, plugin: &Plugin, cards: &mut Cards, document: &Rc<RefCell<Document>>) {
-    let before: Vec<_> = plugin.settings.iter().map(|setting| (setting.key.clone(), cards.value(plugin, setting).clone())).collect();
+    let before: Vec<_> = plugin
+        .settings
+        .iter()
+        .map(|setting| (setting.key.clone(), cards.value(plugin, setting).clone()))
+        .collect();
     for setting in &plugin.settings {
         ui.push_id(&setting.key, |ui| {
             widgets::row(ui, &setting.label, None, |ui| {
@@ -220,21 +313,36 @@ fn body(ui: &mut egui::Ui, plugin: &Plugin, cards: &mut Cards, document: &Rc<Ref
                         let max = setting.max.unwrap_or(1_000_000.0);
                         // Whole numbers unless the default or a bound says otherwise, since
                         // most of these are counts.
-                        let fractional = [Some(setting.default_number()), setting.min, setting.max].into_iter().flatten().any(|v| v.fract() != 0.0);
-                        widgets::spin_width(ui, number, min..=max, 1.0, if fractional { 3 } else { 0 }, width.min(160.0));
+                        let fractional = [Some(setting.default_number()), setting.min, setting.max]
+                            .into_iter()
+                            .flatten()
+                            .any(|v| v.fract() != 0.0);
+                        widgets::spin_width(
+                            ui,
+                            number,
+                            min..=max,
+                            1.0,
+                            if fractional { 3 } else { 0 },
+                            width.min(160.0),
+                        );
                     }
                     SettingValue::Check(on) => {
                         widgets::switch(ui, on);
                     }
                     SettingValue::Text(text) if setting.kind == SettingKind::Choice => {
                         let names: Vec<&str> = setting.choices.iter().map(String::as_str).collect();
-                        let mut index = setting.choices.iter().position(|choice| choice == text).unwrap_or(0);
+                        let mut index = setting
+                            .choices
+                            .iter()
+                            .position(|choice| choice == text)
+                            .unwrap_or(0);
                         if widgets::dropdown(ui, "choice", &mut index, &names, width) {
                             *text = setting.choices[index].clone();
                         }
                     }
                     SettingValue::Text(text) => {
-                        if let Some(new) = widgets::field(ui, ui.id().with("text"), text, "", width) {
+                        if let Some(new) = widgets::field(ui, ui.id().with("text"), text, "", width)
+                        {
                             *text = new;
                         }
                     }
@@ -242,39 +350,79 @@ fn body(ui: &mut egui::Ui, plugin: &Plugin, cards: &mut Cards, document: &Rc<Ref
             });
         });
     }
-    let after: Vec<_> = plugin.settings.iter().map(|setting| (setting.key.clone(), cards.value(plugin, setting).clone())).collect();
+    let after: Vec<_> = plugin
+        .settings
+        .iter()
+        .map(|setting| (setting.key.clone(), cards.value(plugin, setting).clone()))
+        .collect();
     if before != after {
-        let path = cards.store.clone().unwrap_or_else(|| editor_core::preferences::config_dir().join("plugin-settings.json"));
-        cards.preference_error = editor_core::plugin_state::save_settings(&path, &plugin.id, &after).err();
+        let path = cards
+            .store
+            .clone()
+            .unwrap_or_else(|| editor_core::preferences::config_dir().join("plugin-settings.json"));
+        cards.preference_error =
+            editor_core::plugin_state::save_settings(&path, &plugin.id, &after).err();
     }
-    if let Some(error) = &cards.preference_error { form::note(ui, error); }
+    if let Some(error) = &cards.preference_error {
+        form::note(ui, error);
+    }
     if let Some(action) = &plugin.panel_action {
-        let answers: Vec<_> = plugin.settings.iter().map(|setting| (setting.key.clone(), cards.value(plugin, setting).clone())).collect();
-        let revision = { let doc = document.borrow(); (doc.generation(), doc.revision()) };
+        let answers: Vec<_> = plugin
+            .settings
+            .iter()
+            .map(|setting| (setting.key.clone(), cards.value(plugin, setting).clone()))
+            .collect();
+        let revision = {
+            let doc = document.borrow();
+            (doc.generation(), doc.revision())
+        };
         let stamp = (revision, answers.clone());
         if cards.inspected.get(&plugin.id) != Some(&stamp) {
-            let waiting = cards.waiting.entry(plugin.id.clone()).or_insert((revision.0, revision.1, web_time::Instant::now()));
-            if (waiting.0, waiting.1) != revision { *waiting = (revision.0, revision.1, web_time::Instant::now()); }
+            let waiting = cards.waiting.entry(plugin.id.clone()).or_insert((
+                revision.0,
+                revision.1,
+                web_time::Instant::now(),
+            ));
+            if (waiting.0, waiting.1) != revision {
+                *waiting = (revision.0, revision.1, web_time::Instant::now());
+            }
             let delay = web_time::Duration::from_millis(150);
             if cards.inspected.contains_key(&plugin.id) && waiting.2.elapsed() < delay {
                 ui.ctx().request_repaint_after(delay - waiting.2.elapsed());
             } else {
-
-            let session = cards.sessions.entry(plugin.id.clone()).or_insert_with(|| (plugin.source.clone(), editor_core::plugin::Session::new(&plugin.source)));
-            if session.0 != plugin.source {
-                *session = (plugin.source.clone(), editor_core::plugin::Session::new(&plugin.source));
-            }
-            let result = match &mut session.1 {
-                Ok(session) => session.inspect(&document.borrow(), &answers, action),
-                Err(error) => Err(error.clone()),
-            };
-            cards.outputs.insert(plugin.id.clone(), result.unwrap_or_else(|error| RunOutput { lines: vec![error], panel: vec![] }));
-            cards.inspected.insert(plugin.id.clone(), stamp);
+                let session = cards.sessions.entry(plugin.id.clone()).or_insert_with(|| {
+                    (
+                        plugin.source.clone(),
+                        editor_core::plugin::Session::new(&plugin.source),
+                    )
+                });
+                if session.0 != plugin.source {
+                    *session = (
+                        plugin.source.clone(),
+                        editor_core::plugin::Session::new(&plugin.source),
+                    );
+                }
+                let result = match &mut session.1 {
+                    Ok(session) => session.inspect(&document.borrow(), &answers, action),
+                    Err(error) => Err(error.clone()),
+                };
+                cards.outputs.insert(
+                    plugin.id.clone(),
+                    result.unwrap_or_else(|error| RunOutput {
+                        lines: vec![error],
+                        panel: vec![],
+                    }),
+                );
+                cards.inspected.insert(plugin.id.clone(), stamp);
             }
         }
     }
     let actions = if plugin.actions.is_empty() {
-        vec![editor_core::plugin_manifest::Action { id: String::new(), label: tr("Run").into(), description: String::new() }]
+        vec![editor_core::plugin_manifest::Action {
+            id: String::new(),
+            label: tr("Run").into(),
+            description: String::new(),
+        }]
     } else {
         plugin.actions.clone()
     };
@@ -283,7 +431,11 @@ fn body(ui: &mut egui::Ui, plugin: &Plugin, cards: &mut Cards, document: &Rc<Ref
     ui.horizontal_wrapped(|ui| {
         for action in &actions {
             let response = form::button(ui, &action.label, ui.is_enabled());
-            let response = if action.description.is_empty() { response } else { response.on_hover_text(&action.description) };
+            let response = if action.description.is_empty() {
+                response
+            } else {
+                response.on_hover_text(&action.description)
+            };
             if response.clicked() {
                 chosen = Some(action.id.clone());
             }
@@ -315,7 +467,11 @@ fn show_output(ui: &mut egui::Ui, output: &RunOutput) {
 /// Switches a plugin on or off and finds the plugins again, so every view follows.
 /// Returns why it could not, when it could not.
 fn set_enabled(plugin: &Plugin, on: bool) -> Result<(), String> {
-    editor_core::plugin_state::set_enabled(&editor_core::plugins::activation_path(), &plugin.id, on)?;
+    editor_core::plugin_state::set_enabled(
+        &editor_core::plugins::activation_path(),
+        &plugin.id,
+        on,
+    )?;
     reload();
     Ok(())
 }
@@ -333,7 +489,10 @@ pub fn docked(ui: &mut egui::Ui, cards: &mut Cards, document: &Rc<RefCell<Docume
     });
     ui.add_space(4.0);
     let found = plugins();
-    for plugin in found.iter().filter(|plugin| plugin.enabled && plugin.wrong_api.is_none()) {
+    for plugin in found
+        .iter()
+        .filter(|plugin| plugin.enabled && plugin.wrong_api.is_none())
+    {
         ui.push_id(("docked-plugin", &plugin.id), |ui| {
             form::fold(ui, "plugin", &plugin.name, false, |ui| {
                 card(ui, plugin, cards, document, false);
@@ -370,8 +529,17 @@ impl PluginPage {
                 ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                     let file = dialog::button(ui, tr("Install a plugin"), true).clicked();
                     let folder = dialog::button(ui, tr("Install a plugin folder"), true).clicked();
-                    let picked = FileDialog::new().id("install-plugin").set_title(tr("Install a plugin")).add_filter("Rhai plugin", &["rhai"]).pick_file(file);
-                    let picked = picked.or_else(|| FileDialog::new().id("install-plugin-folder").set_title(tr("Install a plugin folder")).pick_folder(folder));
+                    let picked = FileDialog::new()
+                        .id("install-plugin")
+                        .set_title(tr("Install a plugin"))
+                        .add_filter("Rhai plugin", &["rhai"])
+                        .pick_file(file);
+                    let picked = picked.or_else(|| {
+                        FileDialog::new()
+                            .id("install-plugin-folder")
+                            .set_title(tr("Install a plugin folder"))
+                            .pick_folder(folder)
+                    });
                     if picked.is_some() {
                         install = picked;
                     }
@@ -416,31 +584,58 @@ impl PluginPage {
         let response = ui.add(edit);
         magnifier(ui.painter(), response.rect, theme::dim());
         ui.add_space(8.0);
-        let status = [activation_error(), (!self.status.is_empty()).then(|| self.status.clone())].into_iter().flatten().collect::<Vec<_>>().join("\n");
-        let reserve = if status.is_empty() { 0.0 } else { 8.0 + 18.0 * status.lines().count() as f32 };
+        let status = [
+            activation_error(),
+            (!self.status.is_empty()).then(|| self.status.clone()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join("\n");
+        let reserve = if status.is_empty() {
+            0.0
+        } else {
+            8.0 + 18.0 * status.lines().count() as f32
+        };
         let found = plugins();
         let mut toggles = Vec::new();
-        egui::ScrollArea::vertical().id_salt("plugins-list").auto_shrink([false, false]).max_height((ui.available_height() - reserve).max(80.0)).show(&mut ui, |ui| {
-            ui.set_max_width(ui.available_width() - 10.0);
-            for (active, plugins) in groups(&found, &self.query) {
-                let label = if active { tr("Active plugins") } else { tr("Inactive plugins") };
-                theme::heading(ui, &format!("{label} ({})", plugins.len()));
-                ui.add_space(4.0);
-                if plugins.is_empty() {
-                    form::note(ui, tr("No matching plugins"));
-                }
-                for plugin in plugins {
-                    if let Some(Request::Enable(on)) = card(ui, plugin, cards, &editor.document, true) {
-                        toggles.push((plugin.clone(), on));
+        egui::ScrollArea::vertical()
+            .id_salt("plugins-list")
+            .auto_shrink([false, false])
+            .max_height((ui.available_height() - reserve).max(80.0))
+            .show(&mut ui, |ui| {
+                ui.set_max_width(ui.available_width() - 10.0);
+                for (active, plugins) in groups(&found, &self.query) {
+                    let label = if active {
+                        tr("Active plugins")
+                    } else {
+                        tr("Inactive plugins")
+                    };
+                    theme::heading(ui, &format!("{label} ({})", plugins.len()));
+                    ui.add_space(4.0);
+                    if plugins.is_empty() {
+                        form::note(ui, tr("No matching plugins"));
+                    }
+                    for plugin in plugins {
+                        if let Some(Request::Enable(on)) =
+                            card(ui, plugin, cards, &editor.document, true)
+                        {
+                            toggles.push((plugin.clone(), on));
+                        }
+                        ui.add_space(8.0);
                     }
                     ui.add_space(8.0);
                 }
-                ui.add_space(8.0);
-            }
-        });
+            });
         for (plugin, on) in toggles {
             if let Err(error) = set_enabled(&plugin, on) {
-                cards.outputs.insert(plugin.id.clone(), RunOutput { lines: vec![error], panel: vec![] });
+                cards.outputs.insert(
+                    plugin.id.clone(),
+                    RunOutput {
+                        lines: vec![error],
+                        panel: vec![],
+                    },
+                );
             }
         }
         if !status.is_empty() {
@@ -454,7 +649,10 @@ impl PluginPage {
 fn magnifier(painter: &egui::Painter, field: egui::Rect, color: egui::Color32) {
     let centre = egui::pos2(field.min.x + 13.0, field.center().y - 1.0);
     painter.circle_stroke(centre, 4.5, egui::Stroke::new(1.5, color));
-    painter.line_segment([centre + egui::vec2(3.3, 3.3), centre + egui::vec2(6.5, 6.5)], egui::Stroke::new(1.5, color));
+    painter.line_segment(
+        [centre + egui::vec2(3.3, 3.3), centre + egui::vec2(6.5, 6.5)],
+        egui::Stroke::new(1.5, color),
+    );
 }
 
 #[cfg(test)]
@@ -480,34 +678,72 @@ mod tests {
     #[test]
     fn visible_panel_reuses_loaded_state_without_editing_the_map() {
         let ctx = egui::Context::default();
-        let document = Rc::new(RefCell::new(Document::new(editor_core::world::WorldBounds::default())));
+        let document = Rc::new(RefCell::new(Document::new(
+            editor_core::world::WorldBounds::default(),
+        )));
         let before = document.borrow().to_map_text();
         let mut owner = plugin("Live", "", true);
         owner.panel_action = Some("inspect".into());
         owner.source = r#"set_state("runs", (state("runs") ?? 0) + 1); ui_value("Runs", state("runs")); add_cuboid([0,0,0],[16,16,16],"stone");"#.into();
         let mut cards = Cards::default();
         for _ in 0..3 {
-            let mut output = ctx.run_ui(egui::RawInput::default(), |ui| body(ui, &owner, &mut cards, &document));
+            let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                body(ui, &owner, &mut cards, &document)
+            });
             output.textures_delta.clear();
         }
         assert_eq!(document.borrow().to_map_text(), before);
-        assert!(matches!(&cards.outputs[&owner.id].panel[0], UiItem::Value { value, .. } if value == "1"));
+        assert!(
+            matches!(&cards.outputs[&owner.id].panel[0], UiItem::Value { value, .. } if value == "1")
+        );
         owner.source = "ui_value(\"Runs\", state(\"runs\") ?? 0);".into();
         cards.inspected.clear();
-        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| body(ui, &owner, &mut cards, &document));
-            output.textures_delta.clear();
-        assert!(matches!(&cards.outputs[&owner.id].panel[0], UiItem::Value { value, .. } if value == "0"));
+        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            body(ui, &owner, &mut cards, &document)
+        });
+        output.textures_delta.clear();
+        assert!(
+            matches!(&cards.outputs[&owner.id].panel[0], UiItem::Value { value, .. } if value == "0")
+        );
     }
 
     #[test]
     fn saved_answers_survive_cards_restart_and_validate_current_schema() {
-        let path = std::env::temp_dir().join(format!("heron-card-settings-{}.json", std::process::id()));
+        let path =
+            std::env::temp_dir().join(format!("heron-card-settings-{}.json", std::process::id()));
         let owner = plugin("Persisted", "", true);
-        editor_core::plugin_state::save_settings(&path, &owner.id, &[("step".into(), SettingValue::Number(200.0)), ("kind".into(), SettingValue::Text("removed".into()))]).unwrap();
-        let number = Setting { key: "step".into(), label: "Step".into(), kind: SettingKind::Number, default: "8".into(), min: Some(0.0), max: Some(64.0), choices: vec![] };
-        let choice = Setting { key: "kind".into(), label: "Kind".into(), kind: SettingKind::Choice, default: "valid".into(), min: None, max: None, choices: vec!["valid".into()] };
+        editor_core::plugin_state::save_settings(
+            &path,
+            &owner.id,
+            &[
+                ("step".into(), SettingValue::Number(200.0)),
+                ("kind".into(), SettingValue::Text("removed".into())),
+            ],
+        )
+        .unwrap();
+        let number = Setting {
+            key: "step".into(),
+            label: "Step".into(),
+            kind: SettingKind::Number,
+            default: "8".into(),
+            min: Some(0.0),
+            max: Some(64.0),
+            choices: vec![],
+        };
+        let choice = Setting {
+            key: "kind".into(),
+            label: "Kind".into(),
+            kind: SettingKind::Choice,
+            default: "valid".into(),
+            min: None,
+            max: None,
+            choices: vec!["valid".into()],
+        };
         for _ in 0..2 {
-            let mut cards = Cards { store: Some(path.clone()), ..Cards::default() };
+            let mut cards = Cards {
+                store: Some(path.clone()),
+                ..Cards::default()
+            };
             assert!(matches!(cards.value(&owner, &number), SettingValue::Number(n) if *n == 64.0));
             assert!(matches!(cards.value(&owner, &choice), SettingValue::Text(s) if s == "valid"));
         }
@@ -518,10 +754,17 @@ mod tests {
     /// group counts only what matches.
     #[test]
     fn plugins_group_by_activation_and_filter_by_search() {
-        let all = [plugin("Bevel", "Rounds edges", true), plugin("Stairs", "Builds a staircase", false), plugin("Inspector", "Says what is selected", true)];
+        let all = [
+            plugin("Bevel", "Rounds edges", true),
+            plugin("Stairs", "Builds a staircase", false),
+            plugin("Inspector", "Says what is selected", true),
+        ];
         let [(active, on), (inactive, off)] = groups(&all, "");
         assert!(active && !inactive);
-        assert_eq!(on.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["Bevel", "Inspector"]);
+        assert_eq!(
+            on.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(),
+            ["Bevel", "Inspector"]
+        );
         assert_eq!(off.len(), 1);
         let [(_, on), (_, off)] = groups(&all, "  STAIRCASE ");
         assert!(on.is_empty());
@@ -536,10 +779,22 @@ mod tests {
     fn a_choice_starts_on_its_default() {
         let mut cards = Cards::default();
         let owner = plugin("Choices", "", true);
-        let mut setting = Setting { key: "size".into(), label: "Size".into(), kind: SettingKind::Choice, default: "large".into(), min: None, max: None, choices: vec!["small".into(), "large".into()] };
-        assert!(matches!(cards.value(&owner, &setting), SettingValue::Text(text) if text == "large"));
+        let mut setting = Setting {
+            key: "size".into(),
+            label: "Size".into(),
+            kind: SettingKind::Choice,
+            default: "large".into(),
+            min: None,
+            max: None,
+            choices: vec!["small".into(), "large".into()],
+        };
+        assert!(
+            matches!(cards.value(&owner, &setting), SettingValue::Text(text) if text == "large")
+        );
         setting.key = "other".into();
         setting.default = "huge".into();
-        assert!(matches!(cards.value(&owner, &setting), SettingValue::Text(text) if text == "small"));
+        assert!(
+            matches!(cards.value(&owner, &setting), SettingValue::Text(text) if text == "small")
+        );
     }
 }

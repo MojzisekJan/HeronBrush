@@ -13,47 +13,47 @@
 //! along with the optional Quake 2 surface flags. See [`map_format::MapFormat`].
 #![forbid(unsafe_code)]
 
+pub mod asset_fs;
 pub mod brush;
 pub mod brush_face;
 pub mod csg;
 pub mod def;
 pub mod ent;
 pub mod entity_model;
-pub mod model_pbr;
-pub mod glb_model;
 pub mod entity_properties;
 pub mod entity_rotation;
 pub mod face_to_patch;
 pub mod fgd;
 pub mod fillet;
+pub mod glb_model;
 pub mod ids;
 pub mod io;
 pub mod leak;
 pub mod legacy_model_definition;
 pub mod map_format;
 pub mod material;
-pub mod merge;
-pub mod model_definition;
-pub mod node;
-pub mod obj_model;
 pub mod md2_model;
 pub mod md3_model;
-pub mod pcx;
-pub mod wal;
+pub mod merge;
+pub mod model_definition;
+pub mod model_pbr;
+pub mod node;
+pub mod obj_model;
 pub mod obj_to_brushes;
 pub mod pak;
-pub mod asset_fs;
 pub mod patch_edit;
 pub mod patch_mesh;
+pub mod pcx;
 pub mod pick;
 pub mod polyhedron;
 pub mod portal;
 pub mod shader;
 pub mod shapes;
 pub mod sprite;
-pub mod text;
 pub mod stylized_text;
+pub mod text;
 pub mod uv;
 pub mod uv_alignment;
+pub mod wal;
 
 pub mod hollow;

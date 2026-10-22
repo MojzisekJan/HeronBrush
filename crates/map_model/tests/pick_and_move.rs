@@ -1,12 +1,12 @@
 //! Tests for picking brushes with a ray and moving them.
 
+use geometry_math::bbox::Bbox3d;
+use geometry_math::ray::Ray3d;
+use geometry_math::vec::Vec3d;
 use map_model::brush::Brush;
 use map_model::io::map_reader::read_map;
 use map_model::node::{self, NodeKind, Tree};
 use map_model::pick::{pick, pick_nearest};
-use geometry_math::bbox::Bbox3d;
-use geometry_math::ray::Ray3d;
-use geometry_math::vec::Vec3d;
 
 fn world_bounds() -> Bbox3d {
     Bbox3d::from_scalars(-16384.0, 16384.0)
@@ -194,7 +194,11 @@ fn replacing_a_brush_that_is_not_there_reports_it() {
 
     let mut tree = tree_with(&cube(-16, 16, "stone"));
     let brush = only_brush(&tree).clone();
-    assert!(!node::replace_brush(&mut tree.world, NodeId(999_999), brush));
+    assert!(!node::replace_brush(
+        &mut tree.world,
+        NodeId(999_999),
+        brush
+    ));
 }
 
 #[test]

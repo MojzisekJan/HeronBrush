@@ -118,9 +118,11 @@ pub fn convex_groups(brushes: Vec<Vec<Plane>>, most_joins: usize) -> Vec<Vec<Pla
 /// join. A pair it passes still goes through the full volume check.
 fn could_be_convex(a: &[Plane], b: &[Plane], ca: &[Vec3], cb: &[Vec3]) -> bool {
     let inside = |planes: &[Plane], points: &[Vec3]| {
-        points
-            .iter()
-            .all(|p| planes.iter().all(|pl| pl.distance_to(*p) <= SAME_PLANE_DISTANCE))
+        points.iter().all(|p| {
+            planes
+                .iter()
+                .all(|pl| pl.distance_to(*p) <= SAME_PLANE_DISTANCE)
+        })
     };
     if inside(a, cb) || inside(b, ca) {
         return true;

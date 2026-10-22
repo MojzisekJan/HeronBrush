@@ -997,20 +997,32 @@ mod tests {
             let (width, _) = glyph(c).unwrap();
             let origin = Vec3d::new(13.0, 7.0, -19.0);
             let bs = brushes(&c.to_string(), 64.0, 16.0, "stone", origin, &world());
-            if c == 'O' || c == '0' { assert_eq!(bs.len(), 8); }
-            let axes: &[usize] = match c { 'O' | '0' => &[0, 2], 'D' => &[2], _ => &[0] };
+            if c == 'O' || c == '0' {
+                assert_eq!(bs.len(), 8);
+            }
+            let axes: &[usize] = match c {
+                'O' | '0' => &[0, 2],
+                'D' => &[2],
+                _ => &[0],
+            };
             for &axis in axes {
                 let sum = 2.0 * origin[axis] + if axis == 0 { width * 64.0 } else { 64.0 };
                 for brush in &bs {
                     let vertices = brush.geometry().vertices();
-                    assert!(bs.iter().any(|other| {
-                        let candidates = other.geometry().vertices();
-                        candidates.len() == vertices.len() && vertices.iter().all(|v| {
-                            let mut mirrored = v.position;
-                            mirrored[axis] = sum - mirrored[axis];
-                            candidates.iter().any(|w| geometry_math::vec::length(w.position - mirrored) < 1e-6)
-                        })
-                    }), "{c}: missing mirrored brush on axis {axis}");
+                    assert!(
+                        bs.iter().any(|other| {
+                            let candidates = other.geometry().vertices();
+                            candidates.len() == vertices.len()
+                                && vertices.iter().all(|v| {
+                                    let mut mirrored = v.position;
+                                    mirrored[axis] = sum - mirrored[axis];
+                                    candidates.iter().any(|w| {
+                                        geometry_math::vec::length(w.position - mirrored) < 1e-6
+                                    })
+                                })
+                        }),
+                        "{c}: missing mirrored brush on axis {axis}"
+                    );
                 }
             }
         }

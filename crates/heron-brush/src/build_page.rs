@@ -277,8 +277,13 @@ impl BuildPage {
 fn field(ui: &mut egui::Ui, label: &str, value: &mut String) -> bool {
     ui.horizontal(|ui| {
         ui.label(label);
-        ui.add(egui::TextEdit::singleline(value).desired_width(480.0).margin(crate::widgets::body_entry_margin(ui, 6, 6)).min_size(egui::vec2(0.0, crate::widgets::ROW_HEIGHT)))
-            .changed()
+        ui.add(
+            egui::TextEdit::singleline(value)
+                .desired_width(480.0)
+                .margin(crate::widgets::body_entry_margin(ui, 6, 6))
+                .min_size(egui::vec2(0.0, crate::widgets::ROW_HEIGHT)),
+        )
+        .changed()
     })
     .inner
 }

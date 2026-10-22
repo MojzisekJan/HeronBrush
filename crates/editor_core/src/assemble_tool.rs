@@ -9,11 +9,11 @@
 //! point added inside what is already there changes nothing and a point outside changes
 //! everything, and neither is worth trying to track incrementally.
 
-use map_model::brush::Brush;
-use map_model::polyhedron::Polyhedron;
 use geometry_math::bbox::Bbox3d;
 use geometry_math::scalar::Float;
 use geometry_math::vec::{self, Vec3d};
+use map_model::brush::Brush;
+use map_model::polyhedron::Polyhedron;
 
 /// How close two points have to be to count as the same one.
 const SAME_POINT: f64 = 0.001;
@@ -83,9 +83,7 @@ impl AssembleBrushTool {
     /// The edges of the solid so far, for drawing what the points have come to.
     pub fn edges(&self) -> Vec<(Vec3d, Vec3d)> {
         self.hull()
-            .map(|hull| {
-                Brush::from_polyhedron(hull, "").edge_positions()
-            })
+            .map(|hull| Brush::from_polyhedron(hull, "").edge_positions())
             .unwrap_or_default()
     }
 }
@@ -169,11 +167,17 @@ mod tests {
         for point in tetrahedron() {
             tool.add_point(point);
         }
-        let before = tool.brush(&world(), "stone").expect("a tetrahedron").bounds();
+        let before = tool
+            .brush(&world(), "stone")
+            .expect("a tetrahedron")
+            .bounds();
 
         // Well inside the tetrahedron.
         tool.add_point(Vec3d::new(8.0, 8.0, 8.0));
-        let after = tool.brush(&world(), "stone").expect("a tetrahedron").bounds();
+        let after = tool
+            .brush(&world(), "stone")
+            .expect("a tetrahedron")
+            .bounds();
 
         geometry_math::assert_approx_eq!(after.min, before.min, 1e-9);
         geometry_math::assert_approx_eq!(after.max, before.max, 1e-9);

@@ -29,7 +29,10 @@ fn str_contains() {
         assert!(cs::str_contains("asdf", needle), "should contain {needle}");
     }
     for needle in ["m", "sdf2", "asf", "sde", "esd"] {
-        assert!(!cs::str_contains("asdf", needle), "should not contain {needle}");
+        assert!(
+            !cs::str_contains("asdf", needle),
+            "should not contain {needle}"
+        );
     }
 
     for needle in ["Asdf", "A", "S", "D", "F", "ASDF"] {

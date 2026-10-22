@@ -11,10 +11,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use eframe::egui;
-use eframe::egui_glow;
 use editor_core::camera3d::Camera3d;
 use editor_core::view3d::{Scene3d, Scene3dParts};
+use eframe::egui;
+use eframe::egui_glow;
 use glow::HasContext;
 
 use crate::editor::Editor;
@@ -48,7 +48,10 @@ impl Gpu {
         if cc.gl.is_some() {
             return Ok(Gpu::Gl(Arc::new(|_| std::ptr::null())));
         }
-        cc.get_proc_address.clone().map(Gpu::Gl).ok_or_else(|| "eframe started with no usable renderer".to_string())
+        cc.get_proc_address
+            .clone()
+            .map(Gpu::Gl)
+            .ok_or_else(|| "eframe started with no usable renderer".to_string())
     }
 }
 
@@ -192,13 +195,25 @@ impl View3d {
         let backend = match gpu {
             Gpu::Gl(proc_address) => {
                 let make = || unsafe { crate::gl_glue::context(proc_address) };
-                match render::Renderer::new(make(), editor_core::render_settings::from_preferences()) {
+                match render::Renderer::new(
+                    make(),
+                    editor_core::render_settings::from_preferences(),
+                ) {
                     Ok(mut renderer) => {
                         scene.renderer_created(&mut renderer);
-                        Backend::Gl(GlView { gl: Rc::clone(renderer.gl()), renderer, target: None, drawn: std::cell::Cell::new(None), gpu_timer: crate::profile::GpuTimer::from_env(), gpu_ms: None })
+                        Backend::Gl(GlView {
+                            gl: Rc::clone(renderer.gl()),
+                            renderer,
+                            target: None,
+                            drawn: std::cell::Cell::new(None),
+                            gpu_timer: crate::profile::GpuTimer::from_env(),
+                            gpu_ms: None,
+                        })
                     }
                     Err(why) => {
-                        let why = format!("The 3D view cannot run on this GPU: {why}. The 2D views work.");
+                        let why = format!(
+                            "The 3D view cannot run on this GPU: {why}. The 2D views work."
+                        );
                         editor_core::complain!("{why}");
                         Backend::Unavailable(why)
                     }
@@ -225,7 +240,7 @@ impl View3d {
             modifiers: Default::default(),
             framed: None,
             context_click: None,
-            material_paste:None,
+            material_paste: None,
             touch_pivot: None,
         })
     }
@@ -236,12 +251,20 @@ impl View3d {
         let generation = self.scene.document.borrow().generation();
         if self.framed != Some(generation) {
             if let Some(bounds) = self.scene.document.borrow().bounds() {
-                self.scene.camera.borrow_mut().frame_in_viewport(&bounds, f64::from(rect.width()), f64::from(rect.height()));
+                self.scene.camera.borrow_mut().frame_in_viewport(
+                    &bounds,
+                    f64::from(rect.width()),
+                    f64::from(rect.height()),
+                );
             }
             self.framed = Some(generation);
         }
 
-        let response = ui.interact(rect, ui.id().with(("view3d", Rc::as_ptr(&self.scene) as usize)), egui::Sense::click_and_drag());
+        let response = ui.interact(
+            rect,
+            ui.id().with(("view3d", Rc::as_ptr(&self.scene) as usize)),
+            egui::Sense::click_and_drag(),
+        );
         let size = (f64::from(rect.width()), f64::from(rect.height()));
         let profiling = crate::profile::enabled();
         let started = web_time::Instant::now();
@@ -250,11 +273,29 @@ impl View3d {
         let tool = *self.scene.tool.borrow();
         let camera = *self.scene.camera.borrow();
         let animating = self.scene.filters.borrow().animation_frame.is_some();
-        let painting = !animating && response.hovered()
-            && self.paint.press(ui, rect, &self.scene.document, tool, &camera);
-        let texturing = !animating && !painting && !self.paint.busy()
-            && self.texture.update(ui, rect, &self.scene.document, tool, &camera, response.hovered());
-        self.handle_input(ui, &response, rect, size, painting || self.paint.busy() || texturing);
+        let painting = !animating
+            && response.hovered()
+            && self
+                .paint
+                .press(ui, rect, &self.scene.document, tool, &camera);
+        let texturing = !animating
+            && !painting
+            && !self.paint.busy()
+            && self.texture.update(
+                ui,
+                rect,
+                &self.scene.document,
+                tool,
+                &camera,
+                response.hovered(),
+            );
+        self.handle_input(
+            ui,
+            &response,
+            rect,
+            size,
+            painting || self.paint.busy() || texturing,
+        );
         if let Some(motion) = crate::touch::take_motion(ui.ctx(), 0) {
             self.touch_motion(motion, size);
         }
@@ -268,8 +309,20 @@ impl View3d {
             Backend::Unavailable(why) => {
                 let painter = ui.painter_at(rect);
                 painter.rect_filled(rect, 0.0, crate::theme::base());
-                let galley = painter.layout(why.clone(), crate::theme::body(), crate::theme::dim(), (rect.width() - 32.0).max(80.0));
-                painter.galley(egui::pos2(rect.center().x - galley.size().x / 2.0, crate::theme::galley_top(painter.ctx(), &galley, rect.center().y)), galley, crate::theme::dim());
+                let galley = painter.layout(
+                    why.clone(),
+                    crate::theme::body(),
+                    crate::theme::dim(),
+                    (rect.width() - 32.0).max(80.0),
+                );
+                painter.galley(
+                    egui::pos2(
+                        rect.center().x - galley.size().x / 2.0,
+                        crate::theme::galley_top(painter.ctx(), &galley, rect.center().y),
+                    ),
+                    galley,
+                    crate::theme::dim(),
+                );
                 false
             }
         };
@@ -278,11 +331,33 @@ impl View3d {
             crate::profile::view3d_frame(started.elapsed(), changed, drew);
         }
 
-        let camera=*self.scene.camera.borrow();
-        let hidden = self.presses.primary.is_some() || self.scene.filters.borrow().animation_frame.is_some();
-        self.texture.show(ui, rect, &self.scene.document, tool, &camera, hidden || self.paint.busy());
-        self.paint.show(ui, rect, &self.scene.document, tool, &camera, hidden || self.texture.busy());
-        self.animation.show(ui,rect,&self.scene.document,&self.scene.filters,&self.scene.grid,camera);
+        let camera = *self.scene.camera.borrow();
+        let hidden =
+            self.presses.primary.is_some() || self.scene.filters.borrow().animation_frame.is_some();
+        self.texture.show(
+            ui,
+            rect,
+            &self.scene.document,
+            tool,
+            &camera,
+            hidden || self.paint.busy(),
+        );
+        self.paint.show(
+            ui,
+            rect,
+            &self.scene.document,
+            tool,
+            &camera,
+            hidden || self.texture.busy(),
+        );
+        self.animation.show(
+            ui,
+            rect,
+            &self.scene.document,
+            &self.scene.filters,
+            &self.scene.grid,
+            camera,
+        );
         let hud = self.scene.hud.borrow();
         if !hud.hidden {
             let painter = ui.painter_at(rect);
@@ -290,32 +365,61 @@ impl View3d {
         }
     }
 
-    fn handle_input(&mut self, ui: &egui::Ui, response: &egui::Response, rect: egui::Rect, size: (f64, f64), paint_handle: bool) {
+    fn handle_input(
+        &mut self,
+        ui: &egui::Ui,
+        response: &egui::Response,
+        rect: egui::Rect,
+        size: (f64, f64),
+        paint_handle: bool,
+    ) {
         let scene = &self.scene;
         let local = |p: egui::Pos2| (f64::from(p.x - rect.min.x), f64::from(p.y - rect.min.y));
         let mods = modifiers(ui);
-        let (pointer, moving, press_origin) = ui.input(|i| (i.pointer.interact_pos(), crate::view2d::pointer_moved(i), i.pointer.press_origin()));
+        let (pointer, moving, press_origin) = ui.input(|i| {
+            (
+                i.pointer.interact_pos(),
+                crate::view2d::pointer_moved(i),
+                i.pointer.press_origin(),
+            )
+        });
         let pressed = |button| ui.input(|i| i.pointer.button_pressed(button));
         let released = |button| ui.input(|i| i.pointer.button_released(button));
 
         // The primary button: the drag gesture, the click and the face-attribute stroke,
         // in that order for each press.
         let picking = self.target_pick.borrow().source.is_some();
-        if picking && ui.input(|i| i.key_pressed(egui::Key::Escape)) { self.target_pick.borrow_mut().source = None; }
+        if picking && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+            self.target_pick.borrow_mut().source = None;
+        }
         if picking && response.hovered() && ui.input(|i| i.pointer.primary_pressed()) {
             if let Some(at) = pointer {
-                let (x,y) = local(at);
-                self.target_pick.borrow_mut().picked = Some(scene.pick_node(x,y,size));
+                let (x, y) = local(at);
+                self.target_pick.borrow_mut().picked = Some(scene.pick_node(x, y, size));
             }
         }
-        if self.presses.primary.is_some() && ui.input(|i| !i.focused || (!i.pointer.primary_down() && !i.pointer.primary_released())) {
-            scene.drag_cancel();scene.stroke_end();self.presses.primary=None;
+        if self.presses.primary.is_some()
+            && ui.input(|i| {
+                !i.focused || (!i.pointer.primary_down() && !i.pointer.primary_released())
+            })
+        {
+            scene.drag_cancel();
+            scene.stroke_end();
+            self.presses.primary = None;
         }
-        if pressed(egui::PointerButton::Primary) && !picking && !paint_handle && response.hovered() && scene.filters.borrow().animation_frame.is_none() {
+        if pressed(egui::PointerButton::Primary)
+            && !picking
+            && !paint_handle
+            && response.hovered()
+            && scene.filters.borrow().animation_frame.is_none()
+        {
             if let Some(at) = press_origin.or(pointer) {
                 if !scene.edit_press() {
                     let (x, y) = local(at);
-                    let double = ui.input(|i| i.pointer.button_double_clicked(egui::PointerButton::Primary));
+                    let double = ui.input(|i| {
+                        i.pointer
+                            .button_double_clicked(egui::PointerButton::Primary)
+                    });
                     scene.drag_begin(x, y, mods, size);
                     scene.stroke_begin(x, y, mods, size);
                     scene.click(if double { 2 } else { 1 }, x, y, mods, size);
@@ -336,7 +440,10 @@ impl View3d {
                 self.presses.primary = None;
             }
         }
-        if self.presses.primary.is_some() && ui.input(|i| i.key_pressed(egui::Key::Escape)) && scene.escape() {
+        if self.presses.primary.is_some()
+            && ui.input(|i| i.key_pressed(egui::Key::Escape))
+            && scene.escape()
+        {
             scene.drag_cancel();
             self.presses.primary = None;
         }
@@ -355,7 +462,10 @@ impl View3d {
             }
             _ => scene.entity_drag_leave(),
         }
-        if let (Some(dropped), Some(at)) = (response.dnd_release_payload::<crate::widgets::Dragged>(), pointer) {
+        if let (Some(dropped), Some(at)) = (
+            response.dnd_release_payload::<crate::widgets::Dragged>(),
+            pointer,
+        ) {
             let (x, y) = local(at);
             match &*dropped {
                 crate::widgets::Dragged::Class(name) => {
@@ -387,25 +497,46 @@ impl View3d {
         if pressed(egui::PointerButton::Middle) && response.hovered() {
             scene.pan_begin();
             self.presses.middle = press_origin.or(pointer);
-            self.presses.middle_dragged=false;
+            self.presses.middle_dragged = false;
         }
         if let (Some(origin), Some(at)) = (self.presses.middle, pointer) {
             let delta = at - origin;
-            self.presses.middle_dragged |= delta.length()>4.0;
-            if self.presses.middle_dragged { scene.pan_update(f64::from(delta.x), f64::from(delta.y), mods); }
+            self.presses.middle_dragged |= delta.length() > 4.0;
+            if self.presses.middle_dragged {
+                scene.pan_update(f64::from(delta.x), f64::from(delta.y), mods);
+            }
         }
         if released(egui::PointerButton::Middle) {
-            if self.presses.middle.is_some() && !self.presses.middle_dragged && response.hovered() && !picking
-                && !mods.shift && !mods.control && !mods.alt && scene.filters.borrow().animation_frame.is_none() {
-                if let Some(at)=pointer {
-                    let (x,y)=local(at);
-                    self.material_paste=editor_core::view3d::face_under(&scene.camera.borrow(),size,&scene.document.borrow(),x,y);
+            if self.presses.middle.is_some()
+                && !self.presses.middle_dragged
+                && response.hovered()
+                && !picking
+                && !mods.shift
+                && !mods.control
+                && !mods.alt
+                && scene.filters.borrow().animation_frame.is_none()
+            {
+                if let Some(at) = pointer {
+                    let (x, y) = local(at);
+                    self.material_paste = editor_core::view3d::face_under(
+                        &scene.camera.borrow(),
+                        size,
+                        &scene.document.borrow(),
+                        x,
+                        y,
+                    );
                 }
             }
             self.presses.middle = None;
         }
-        if self.presses.middle.is_some() && ui.input(|i|!i.focused || (!i.pointer.button_down(egui::PointerButton::Middle) && !i.pointer.button_released(egui::PointerButton::Middle))) {
-            self.presses.middle=None;
+        if self.presses.middle.is_some()
+            && ui.input(|i| {
+                !i.focused
+                    || (!i.pointer.button_down(egui::PointerButton::Middle)
+                        && !i.pointer.button_released(egui::PointerButton::Middle))
+            })
+        {
+            self.presses.middle = None;
         }
 
         if response.hovered() {
@@ -449,7 +580,11 @@ impl View3d {
             let ray = scene.ray(size.0 / 2.0, size.1 / 2.0, size);
             let hit = scene.document.borrow().pick(&ray).map(|hit| hit.distance);
             let camera = scene.camera.borrow();
-            let middle = scene.document.borrow().bounds().map(|bounds| geometry_math::vec::length(bounds.center() - camera.position));
+            let middle = scene
+                .document
+                .borrow()
+                .bounds()
+                .map(|bounds| geometry_math::vec::length(bounds.center() - camera.position));
             self.touch_pivot = Some(hit.or(middle).unwrap_or(256.0).max(16.0));
         }
         let mut distance = self.touch_pivot.unwrap_or(256.0);
@@ -460,15 +595,24 @@ impl View3d {
                 // The look speed preference, slowed: a finger crosses a phone in a moment,
                 // and half the screen should turn the view a third of the way round, not more.
                 let (yaw, pitch) = editor_core::view3d::turn_per_pixel();
-                camera.turn(f64::from(motion.orbit.x) * yaw * 0.6, f64::from(motion.orbit.y) * pitch * 0.6);
+                camera.turn(
+                    f64::from(motion.orbit.x) * yaw * 0.6,
+                    f64::from(motion.orbit.y) * pitch * 0.6,
+                );
                 camera.position = pivot - camera.direction() * distance;
             }
             if motion.pan != egui::Vec2::ZERO {
                 // The fingers keep hold of the point they pan.
                 let per_pixel = camera.world_units_per_pixel(pivot, size.1.max(1.0));
-                camera.pan(-f64::from(motion.pan.x) * per_pixel, f64::from(motion.pan.y) * per_pixel);
+                camera.pan(
+                    -f64::from(motion.pan.x) * per_pixel,
+                    f64::from(motion.pan.y) * per_pixel,
+                );
             }
-            if motion.zoom.is_finite() && motion.zoom > 0.0 && (motion.zoom - 1.0).abs() > f32::EPSILON {
+            if motion.zoom.is_finite()
+                && motion.zoom > 0.0
+                && (motion.zoom - 1.0).abs() > f32::EPSILON
+            {
                 let pivot = camera.position + camera.direction() * distance;
                 distance = (distance / f64::from(motion.zoom)).clamp(1.0, 1.0e6);
                 camera.position = pivot - camera.direction() * distance;
@@ -511,27 +655,50 @@ impl View3d {
 impl GlView {
     /// Draws the scene into the framebuffer and shows it in `rect`. Returns whether it
     /// drew a new picture.
-    fn show(&mut self, ui: &mut egui::Ui, rect: egui::Rect, scene: &Scene3d, size: (f64, f64), scale: i32, profiling: bool) -> bool {
-        let width = (f64::from(rect.width()) * f64::from(scale)).round().max(1.0) as i32;
-        let height = (f64::from(rect.height()) * f64::from(scale)).round().max(1.0) as i32;
+    fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        rect: egui::Rect,
+        scene: &Scene3d,
+        size: (f64, f64),
+        scale: i32,
+        profiling: bool,
+    ) -> bool {
+        let width = (f64::from(rect.width()) * f64::from(scale))
+            .round()
+            .max(1.0) as i32;
+        let height = (f64::from(rect.height()) * f64::from(scale))
+            .round()
+            .max(1.0) as i32;
         if self.target.as_ref().map(|t| t.size) != Some((width, height)) {
             self.resize(width, height);
         }
         let Some(target) = &self.target else {
-            crate::theme::text(ui.painter(), rect.center(), egui::Align2::CENTER_CENTER, "no framebuffer", egui::FontId::default(), crate::theme::error());
+            crate::theme::text(
+                ui.painter(),
+                rect.center(),
+                egui::Align2::CENTER_CENTER,
+                "no framebuffer",
+                egui::FontId::default(),
+                crate::theme::error(),
+            );
             return false;
         };
         let before = self.drawn.get();
 
-        self.renderer.set_settings(editor_core::render_settings::from_preferences());
+        self.renderer
+            .set_settings(editor_core::render_settings::from_preferences());
         unsafe {
             // In WebGL the bound framebuffer may be egui's, which this context cannot name;
             // egui draws to the canvas there, so that is what goes back.
             #[cfg(not(target_arch = "wasm32"))]
-            let previous = self.gl.get_parameter_framebuffer(glow::DRAW_FRAMEBUFFER_BINDING);
+            let previous = self
+                .gl
+                .get_parameter_framebuffer(glow::DRAW_FRAMEBUFFER_BINDING);
             #[cfg(target_arch = "wasm32")]
             let previous = None;
-            self.gl.bind_framebuffer(glow::FRAMEBUFFER, Some(target.framebuffer));
+            self.gl
+                .bind_framebuffer(glow::FRAMEBUFFER, Some(target.framebuffer));
             if let Some(timer) = &mut self.gpu_timer {
                 timer.begin(&self.gl);
             }
@@ -550,7 +717,9 @@ impl GlView {
         let callback = {
             let key = Rc::as_ptr(&self.gl) as usize as u64;
             crate::gl_glue::publish(key, &self.gl, target.framebuffer);
-            egui_glow::CallbackFn::new(move |info, _| crate::gl_glue::blit(key, width, height, info.viewport_in_pixels()))
+            egui_glow::CallbackFn::new(move |info, _| {
+                crate::gl_glue::blit(key, width, height, info.viewport_in_pixels())
+            })
         };
         #[cfg(not(target_arch = "wasm32"))]
         let source = crate::gl_glue::name(target.framebuffer);
@@ -561,7 +730,8 @@ impl GlView {
             let viewport = info.viewport_in_pixels();
             unsafe {
                 let previous = gl.get_parameter_i32(eframe::glow::READ_FRAMEBUFFER_BINDING);
-                let source = crate::gl_glue::eframe_framebuffer(source).expect("framebuffer names are non-zero");
+                let source = crate::gl_glue::eframe_framebuffer(source)
+                    .expect("framebuffer names are non-zero");
                 gl.bind_framebuffer(eframe::glow::READ_FRAMEBUFFER, Some(source));
                 gl.blit_framebuffer(
                     0,
@@ -575,10 +745,16 @@ impl GlView {
                     eframe::glow::COLOR_BUFFER_BIT,
                     eframe::glow::LINEAR,
                 );
-                gl.bind_framebuffer(eframe::glow::READ_FRAMEBUFFER, crate::gl_glue::eframe_framebuffer(previous));
+                gl.bind_framebuffer(
+                    eframe::glow::READ_FRAMEBUFFER,
+                    crate::gl_glue::eframe_framebuffer(previous),
+                );
             }
         });
-        ui.painter().add(egui::PaintCallback { rect, callback: Arc::new(callback) });
+        ui.painter().add(egui::PaintCallback {
+            rect,
+            callback: Arc::new(callback),
+        });
 
         if profiling {
             unsafe { self.gl.finish() };
@@ -594,9 +770,11 @@ impl GlView {
         }
         let gl = &self.gl;
         unsafe {
-            let (Ok(framebuffer), Ok(color), Ok(depth)) =
-                (gl.create_framebuffer(), gl.create_renderbuffer(), gl.create_renderbuffer())
-            else {
+            let (Ok(framebuffer), Ok(color), Ok(depth)) = (
+                gl.create_framebuffer(),
+                gl.create_renderbuffer(),
+                gl.create_renderbuffer(),
+            ) else {
                 eprintln!("3D view: could not create a framebuffer");
                 return;
             };
@@ -607,14 +785,30 @@ impl GlView {
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(framebuffer));
             gl.bind_renderbuffer(glow::RENDERBUFFER, Some(color));
             gl.renderbuffer_storage(glow::RENDERBUFFER, glow::RGBA8, width, height);
-            gl.framebuffer_renderbuffer(glow::FRAMEBUFFER, glow::COLOR_ATTACHMENT0, glow::RENDERBUFFER, Some(color));
+            gl.framebuffer_renderbuffer(
+                glow::FRAMEBUFFER,
+                glow::COLOR_ATTACHMENT0,
+                glow::RENDERBUFFER,
+                Some(color),
+            );
             gl.bind_renderbuffer(glow::RENDERBUFFER, Some(depth));
             gl.renderbuffer_storage(glow::RENDERBUFFER, glow::DEPTH_COMPONENT24, width, height);
-            gl.framebuffer_renderbuffer(glow::FRAMEBUFFER, glow::DEPTH_ATTACHMENT, glow::RENDERBUFFER, Some(depth));
-            let complete = gl.check_framebuffer_status(glow::FRAMEBUFFER) == glow::FRAMEBUFFER_COMPLETE;
+            gl.framebuffer_renderbuffer(
+                glow::FRAMEBUFFER,
+                glow::DEPTH_ATTACHMENT,
+                glow::RENDERBUFFER,
+                Some(depth),
+            );
+            let complete =
+                gl.check_framebuffer_status(glow::FRAMEBUFFER) == glow::FRAMEBUFFER_COMPLETE;
             gl.bind_renderbuffer(glow::RENDERBUFFER, None);
             gl.bind_framebuffer(glow::FRAMEBUFFER, previous);
-            let target = Target { framebuffer, color, depth, size: (width, height) };
+            let target = Target {
+                framebuffer,
+                color,
+                depth,
+                size: (width, height),
+            };
             if complete {
                 self.target = Some(target);
             } else {
@@ -631,5 +825,4 @@ impl GlView {
             self.gl.delete_renderbuffer(target.depth);
         }
     }
-
 }

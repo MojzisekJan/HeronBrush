@@ -104,9 +104,16 @@ pub fn build(document: &Document, probe: &Probe) -> Vec<Vec<Item>> {
             .collect();
         let mut place = vec![
             Item::Submenu(tr("Move to layer").to_string(), layers),
-            action(tr("Move selection out of its entity"), Action::MakeStructural),
+            action(
+                tr("Move selection out of its entity"),
+                Action::MakeStructural,
+            ),
         ];
-        if let Some(entity) = probe.entity.as_ref().filter(|entity| entity.is_brush_entity) {
+        if let Some(entity) = probe
+            .entity
+            .as_ref()
+            .filter(|entity| entity.is_brush_entity)
+        {
             place.push(Item::Action(
                 format!("{} {}", tr("Move to entity"), entity.classname),
                 Action::MoveToEntity(entity.id),
@@ -130,13 +137,22 @@ pub fn build(document: &Document, probe: &Probe) -> Vec<Vec<Item>> {
                     format!("{} {}", tr("Make active layer"), name_of(index)),
                     Action::MakeLayerActive(index),
                 ));
-                section.push(action(tr("Select all in layer"), Action::SelectInLayer(index)));
+                section.push(action(
+                    tr("Select all in layer"),
+                    Action::SelectInLayer(index),
+                ));
             } else {
                 section.push(Item::Submenu(
                     tr("Make active layer").to_string(),
-                    containing.iter().map(|&index| Item::Action(name_of(index), Action::MakeLayerActive(index))).collect(),
+                    containing
+                        .iter()
+                        .map(|&index| Item::Action(name_of(index), Action::MakeLayerActive(index)))
+                        .collect(),
                 ));
-                section.push(action(tr("Select all in layers"), Action::SelectAllInLayers));
+                section.push(action(
+                    tr("Select all in layers"),
+                    Action::SelectAllInLayers,
+                ));
             }
             section.push(action(tr("Hide layers"), Action::HideLayers));
             section.push(action(tr("Isolate layers"), Action::IsolateLayers));
@@ -154,8 +170,14 @@ pub fn build(document: &Document, probe: &Probe) -> Vec<Vec<Item>> {
 
     if let Some(material) = &probe.material {
         menu.push(vec![
-            Item::Action(format!("{} {material}", tr("Reveal in material browser")), Action::RevealMaterial(material.clone())),
-            action(tr("Copy material name"), Action::CopyMaterial(material.clone())),
+            Item::Action(
+                format!("{} {material}", tr("Reveal in material browser")),
+                Action::RevealMaterial(material.clone()),
+            ),
+            action(
+                tr("Copy material name"),
+                Action::CopyMaterial(material.clone()),
+            ),
         ]);
     }
 
@@ -165,11 +187,22 @@ pub fn build(document: &Document, probe: &Probe) -> Vec<Vec<Item>> {
     if let Some(definitions) = document.definitions() {
         let mut section = Vec::new();
         let at = probe.at;
-        if let Some(points) = entity_groups(definitions, map_model::fgd::DefinitionKind::Point, &|name| Action::CreatePoint(name, at)) {
+        if let Some(points) = entity_groups(
+            definitions,
+            map_model::fgd::DefinitionKind::Point,
+            &|name| Action::CreatePoint(name, at),
+        ) {
             section.push(Item::Submenu(tr("Create point entity").to_string(), points));
         }
-        if let Some(brushes) = entity_groups(definitions, map_model::fgd::DefinitionKind::Solid, &Action::CreateBrushEntity) {
-            section.push(Item::Submenu(tr("Create brush entity").to_string(), brushes));
+        if let Some(brushes) = entity_groups(
+            definitions,
+            map_model::fgd::DefinitionKind::Solid,
+            &Action::CreateBrushEntity,
+        ) {
+            section.push(Item::Submenu(
+                tr("Create brush entity").to_string(),
+                brushes,
+            ));
         }
         if !section.is_empty() {
             menu.push(section);
@@ -202,7 +235,9 @@ fn entity_groups(
     let mut menu = Vec::new();
     for (prefix, mut names) in groups {
         names.sort_unstable();
-        let leaves = names.iter().map(|name| Item::Action((*name).to_string(), make((*name).to_string())));
+        let leaves = names
+            .iter()
+            .map(|name| Item::Action((*name).to_string(), make((*name).to_string())));
         if prefix.is_empty() || names.len() == 1 {
             menu.extend(leaves);
         } else {

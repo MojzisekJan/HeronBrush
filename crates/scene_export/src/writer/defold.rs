@@ -25,7 +25,10 @@ use super::sky::Sky;
 use crate::level::{CollisionMesh, Level, Value};
 
 fn text_property<'a>(entity: &'a crate::level::Entity, key: &str) -> Option<&'a str> {
-    match entity.properties.get(key) {Some(Value::String(value)) => Some(value), _ => None}
+    match entity.properties.get(key) {
+        Some(Value::String(value)) => Some(value),
+        _ => None,
+    }
 }
 fn number_property(entity: &crate::level::Entity, key: &str, default: f64) -> f64 {
     match entity.properties.get(key) {
@@ -37,90 +40,215 @@ fn number_property(entity: &crate::level::Entity, key: &str, default: f64) -> f6
     }
 }
 fn engine_hint(key: &str) -> bool {
-    key.starts_with("defold_component_") || key.starts_with("defold_property_") || matches!(key,"defold_go"|"defold_body_type"|"defold_mass"|"defold_friction"|"defold_restitution"|"defold_group"|"defold_mask"|"defold_linear_damping"|"defold_angular_damping"|"defold_locked_rotation"|"defold_material"|"defold_sampler")
+    key.starts_with("defold_component_")
+        || key.starts_with("defold_property_")
+        || matches!(
+            key,
+            "defold_go"
+                | "defold_body_type"
+                | "defold_mass"
+                | "defold_friction"
+                | "defold_restitution"
+                | "defold_group"
+                | "defold_mask"
+                | "defold_linear_damping"
+                | "defold_angular_damping"
+                | "defold_locked_rotation"
+                | "defold_material"
+                | "defold_sampler"
+        )
 }
 
-fn property_override(key:&str,value:&Value,entity:&crate::level::Entity)->Result<Option<(String,String,String,String)>,String>{
-    if key.starts_with("defold_property_type_"){return Ok(None)}
-    let Some(rest)=key.strip_prefix("defold_property_") else {return Ok(None)};
-    let Some((component,property))=rest.split_once("__") else{return Err(format!("{key} needs component__property"))};
-    if component.is_empty() || property.is_empty() || !rest.chars().all(|c|c.is_ascii_alphanumeric() || c=='_'){return Err(format!("invalid override name {key}"))}
-    let (mut kind,text)=match value {
-        Value::Bool(v)=>("BOOLEAN",v.to_string()),Value::Int(v)=>("NUMBER",v.to_string()),Value::Float(v) if v.is_finite()=>("NUMBER",f(*v)),Value::String(v)=>("HASH",v.clone()),
-        Value::Vec3(v)=>("VECTOR3",v.iter().map(|v|f(*v)).collect::<Vec<_>>().join(", ")),
-        Value::Color(v)=>("VECTOR4",v.iter().map(|v|f(*v)).collect::<Vec<_>>().join(", ")),
-        Value::Array(values) if values.len()==3 || values.len()==4 => {
-            let values=values.iter().map(|v|match v{Value::Int(v)=>Ok(*v as f64),Value::Float(v) if v.is_finite()=>Ok(*v),_=>Err(format!("{key} vector needs numeric values"))}).collect::<Result<Vec<_>,_>>()?;
-            (if values.len()==3{"VECTOR3"}else{"VECTOR4"},values.iter().map(|v|f(*v)).collect::<Vec<_>>().join(", "))
-        }
-        _=>return Err(format!("unsupported native property type for {key}")),
+fn property_override(
+    key: &str,
+    value: &Value,
+    entity: &crate::level::Entity,
+) -> Result<Option<(String, String, String, String)>, String> {
+    if key.starts_with("defold_property_type_") {
+        return Ok(None);
+    }
+    let Some(rest) = key.strip_prefix("defold_property_") else {
+        return Ok(None);
     };
-    if let Some(hint)=text_property(entity,&format!("defold_property_type_{rest}")) {
-        kind=match (hint,kind) {
-            ("number","NUMBER")=>"NUMBER",("boolean","BOOLEAN")=>"BOOLEAN",("hash","HASH")=>"HASH",("url","HASH")=>"URL",
-            ("vector3","VECTOR3")=>"VECTOR3",("vector4","VECTOR4")=>"VECTOR4",("quat","VECTOR4")=>"QUAT",
-            _=>return Err(format!("{key}: property type {hint} is incompatible with the supplied value")),
+    let Some((component, property)) = rest.split_once("__") else {
+        return Err(format!("{key} needs component__property"));
+    };
+    if component.is_empty()
+        || property.is_empty()
+        || !rest.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+    {
+        return Err(format!("invalid override name {key}"));
+    }
+    let (mut kind, text) = match value {
+        Value::Bool(v) => ("BOOLEAN", v.to_string()),
+        Value::Int(v) => ("NUMBER", v.to_string()),
+        Value::Float(v) if v.is_finite() => ("NUMBER", f(*v)),
+        Value::String(v) => ("HASH", v.clone()),
+        Value::Vec3(v) => (
+            "VECTOR3",
+            v.iter().map(|v| f(*v)).collect::<Vec<_>>().join(", "),
+        ),
+        Value::Color(v) => (
+            "VECTOR4",
+            v.iter().map(|v| f(*v)).collect::<Vec<_>>().join(", "),
+        ),
+        Value::Array(values) if values.len() == 3 || values.len() == 4 => {
+            let values = values
+                .iter()
+                .map(|v| match v {
+                    Value::Int(v) => Ok(*v as f64),
+                    Value::Float(v) if v.is_finite() => Ok(*v),
+                    _ => Err(format!("{key} vector needs numeric values")),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            (
+                if values.len() == 3 {
+                    "VECTOR3"
+                } else {
+                    "VECTOR4"
+                },
+                values.iter().map(|v| f(*v)).collect::<Vec<_>>().join(", "),
+            )
+        }
+        _ => return Err(format!("unsupported native property type for {key}")),
+    };
+    if let Some(hint) = text_property(entity, &format!("defold_property_type_{rest}")) {
+        kind = match (hint, kind) {
+            ("number", "NUMBER") => "NUMBER",
+            ("boolean", "BOOLEAN") => "BOOLEAN",
+            ("hash", "HASH") => "HASH",
+            ("url", "HASH") => "URL",
+            ("vector3", "VECTOR3") => "VECTOR3",
+            ("vector4", "VECTOR4") => "VECTOR4",
+            ("quat", "VECTOR4") => "QUAT",
+            _ => {
+                return Err(format!(
+                    "{key}: property type {hint} is incompatible with the supplied value"
+                ))
+            }
         };
     }
-    Ok(Some((component.into(),property.into(),kind.into(),text)))
+    Ok(Some((component.into(), property.into(), kind.into(), text)))
 }
 
 /// Validate project-owned engine hints before an export writes any files.
 pub fn validate(level: &Level) -> Result<(), String> {
     for entity in &level.entities {
         let fail = |message: &str| format!("Defold entity {}: {message}", entity.name);
-        if let Some(value)=entity.properties.get("defold_go") {
-            let Value::String(path)=value else{return Err(fail("defold_go must be a resource path"))};
-            if !path.starts_with('/') || !path.ends_with(".go") || path.contains("..") {return Err(fail("defold_go must name a project .go resource"))}
-            if entity.solid || entity.properties.contains_key("_heron_animation") {return Err(fail("defold_go replaces point entities; brush geometry and generated animations need embedded components instead"))}
+        if let Some(value) = entity.properties.get("defold_go") {
+            let Value::String(path) = value else {
+                return Err(fail("defold_go must be a resource path"));
+            };
+            if !path.starts_with('/') || !path.ends_with(".go") || path.contains("..") {
+                return Err(fail("defold_go must name a project .go resource"));
+            }
+            if entity.solid || entity.properties.contains_key("_heron_animation") {
+                return Err(fail("defold_go replaces point entities; brush geometry and generated animations need embedded components instead"));
+            }
         }
         if let Some(value) = entity.properties.get("defold_body_type") {
-            let Value::String(kind) = value else {return Err(fail("defold_body_type must be a string"))};
-            if !matches!(kind.as_str(), "static" | "kinematic" | "dynamic" | "trigger" | "none") {
-                return Err(fail("defold_body_type must be static, kinematic, dynamic, trigger or none"));
+            let Value::String(kind) = value else {
+                return Err(fail("defold_body_type must be a string"));
+            };
+            if !matches!(
+                kind.as_str(),
+                "static" | "kinematic" | "dynamic" | "trigger" | "none"
+            ) {
+                return Err(fail(
+                    "defold_body_type must be static, kinematic, dynamic, trigger or none",
+                ));
             }
             if kind == "dynamic" && entity.properties.contains_key("_heron_animation") {
-                return Err(fail("a dynamic body cannot also be driven by exported animation"));
+                return Err(fail(
+                    "a dynamic body cannot also be driven by exported animation",
+                ));
             }
         }
-        for (key, default, maximum) in [("defold_mass",0.,f64::INFINITY),("defold_friction",0.1,f64::INFINITY),
-            ("defold_restitution",0.5,1.),("defold_linear_damping",0.,1.),("defold_angular_damping",0.,1.)] {
-            let value = number_property(entity,key,default);
-            if !value.is_finite() || value < 0. || value > maximum {return Err(fail(&format!("invalid {key}")))}
+        for (key, default, maximum) in [
+            ("defold_mass", 0., f64::INFINITY),
+            ("defold_friction", 0.1, f64::INFINITY),
+            ("defold_restitution", 0.5, 1.),
+            ("defold_linear_damping", 0., 1.),
+            ("defold_angular_damping", 0., 1.),
+        ] {
+            let value = number_property(entity, key, default);
+            if !value.is_finite() || value < 0. || value > maximum {
+                return Err(fail(&format!("invalid {key}")));
+            }
         }
-        if text_property(entity,"defold_body_type") == Some("dynamic") && number_property(entity,"defold_mass",0.) <= 0. {
+        if text_property(entity, "defold_body_type") == Some("dynamic")
+            && number_property(entity, "defold_mass", 0.) <= 0.
+        {
             return Err(fail("a dynamic body requires positive defold_mass"));
         }
-        if text_property(entity,"defold_body_type") != Some("dynamic") && number_property(entity,"defold_mass",0.) != 0. {
+        if text_property(entity, "defold_body_type") != Some("dynamic")
+            && number_property(entity, "defold_mass", 0.) != 0.
+        {
             return Err(fail("only dynamic bodies may have nonzero defold_mass"));
         }
         if let Some(value) = entity.properties.get("defold_locked_rotation") {
-            if !matches!(value,Value::Bool(_)) && !matches!(value,Value::String(s) if matches!(s.as_str(),"true"|"false"|"0"|"1")) {
+            if !matches!(value, Value::Bool(_))
+                && !matches!(value,Value::String(s) if matches!(s.as_str(),"true"|"false"|"0"|"1"))
+            {
                 return Err(fail("defold_locked_rotation must be a boolean"));
             }
         }
-        for key in ["defold_group", "defold_mask", "defold_material", "defold_sampler"] {
+        for key in [
+            "defold_group",
+            "defold_mask",
+            "defold_material",
+            "defold_sampler",
+        ] {
             if let Some(value) = entity.properties.get(key) {
-                let Value::String(value) = value else {return Err(fail(&format!("{key} must be a string")))};
-                if key != "defold_mask" && value.is_empty() {return Err(fail(&format!("{key} cannot be empty")))}
-                if key == "defold_material" && (!value.starts_with('/') || value.contains("..")) {return Err(fail("defold_material must be a project resource path"))}
+                let Value::String(value) = value else {
+                    return Err(fail(&format!("{key} must be a string")));
+                };
+                if key != "defold_mask" && value.is_empty() {
+                    return Err(fail(&format!("{key} cannot be empty")));
+                }
+                if key == "defold_material" && (!value.starts_with('/') || value.contains("..")) {
+                    return Err(fail("defold_material must be a project resource path"));
+                }
             }
         }
-        for (key,value) in &entity.properties {
-            if let Some(rest)=key.strip_prefix("defold_property_type_") {
-                if !matches!(value,Value::String(_)) || !entity.properties.contains_key(&format!("defold_property_{rest}")){return Err(fail("property type hint needs a matching property override"))}
+        for (key, value) in &entity.properties {
+            if let Some(rest) = key.strip_prefix("defold_property_type_") {
+                if !matches!(value, Value::String(_))
+                    || !entity
+                        .properties
+                        .contains_key(&format!("defold_property_{rest}"))
+                {
+                    return Err(fail(
+                        "property type hint needs a matching property override",
+                    ));
+                }
             }
-            if let Some((component,_,_,_))=property_override(key,value,entity).map_err(|error|fail(&error))? {
-                if text_property(entity,"defold_go").is_none() && !entity.properties.contains_key(&format!("defold_component_{component}")) {
-                    return Err(fail(&format!("property override refers to missing component {component}")))
+            if let Some((component, _, _, _)) =
+                property_override(key, value, entity).map_err(|error| fail(&error))?
+            {
+                if text_property(entity, "defold_go").is_none()
+                    && !entity
+                        .properties
+                        .contains_key(&format!("defold_component_{component}"))
+                {
+                    return Err(fail(&format!(
+                        "property override refers to missing component {component}"
+                    )));
                 }
             }
             if let Some(id) = key.strip_prefix("defold_component_") {
-                if id.is_empty() || !id.chars().all(|c|c.is_ascii_alphanumeric() || c=='_') || matches!(id,"mesh"|"collision"|"properties") {
+                if id.is_empty()
+                    || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+                    || matches!(id, "mesh" | "collision" | "properties")
+                {
                     return Err(fail("custom component id must be unique and cannot be mesh, collision or properties"));
                 }
-                let Value::String(path) = value else {return Err(fail("custom component resource must be a string"))};
-                if !path.starts_with('/') || path.contains("..") || path.contains(['\n','\r']) {return Err(fail("custom component must use a project resource path"))}
+                let Value::String(path) = value else {
+                    return Err(fail("custom component resource must be a string"));
+                };
+                if !path.starts_with('/') || path.contains("..") || path.contains(['\n', '\r']) {
+                    return Err(fail("custom component must use a project resource path"));
+                }
             }
         }
     }
@@ -172,36 +300,72 @@ pub struct DefoldFile {
 pub fn write(level: &Level, collision: &[CollisionMesh], opts: &DefoldOptions) -> Vec<DefoldFile> {
     let dir = opts.asset_dir.trim_end_matches('/');
     let name = ident(&level.name);
-    let water_module=format!("{}/{name}_water",dir.rsplit_once('/').map(|v|v.0).unwrap_or("")).trim_start_matches('/').replace('/',".");
+    let water_module = format!(
+        "{}/{name}_water",
+        dir.rsplit_once('/').map(|v| v.0).unwrap_or("")
+    )
+    .trim_start_matches('/')
+    .replace('/', ".");
 
     let mut files: Vec<DefoldFile> = Vec::new();
-    files.push(DefoldFile{path:format!("{name}_water.lua"),contents:include_str!("defold_water.lua").into()});
-    let parent=dir.rsplit_once('/').map(|v|v.0).unwrap_or("");
-    let has_water=level.entities.iter().any(|e|e.properties.contains_key("_heron_water"));
+    files.push(DefoldFile {
+        path: format!("{name}_water.lua"),
+        contents: include_str!("defold_water.lua").into(),
+    });
+    let parent = dir.rsplit_once('/').map(|v| v.0).unwrap_or("");
+    let has_water = level
+        .entities
+        .iter()
+        .any(|e| e.properties.contains_key("_heron_water"));
     if has_water || opts.sky.is_some() {
         // A baseline 3D renderer: the stock one draws neither the sky nor water.
-        files.push(DefoldFile{path:format!("{name}.render_script"),contents:include_str!("defold.render_script").into()});
-        files.push(DefoldFile{path:format!("{name}.render"),contents:format!("script: \"{parent}/{name}.render_script\"\n")});
+        files.push(DefoldFile {
+            path: format!("{name}.render_script"),
+            contents: include_str!("defold.render_script").into(),
+        });
+        files.push(DefoldFile {
+            path: format!("{name}.render"),
+            contents: format!("script: \"{parent}/{name}.render_script\"\n"),
+        });
     }
     if has_water {
-        for (suffix,contents) in [("vp",include_str!("defold_water.vp")),("fp",include_str!("defold_water.fp")),("gui_script",include_str!("defold_water_view.gui_script"))] {files.push(DefoldFile{path:format!("{name}_water.{suffix}"),contents:contents.into()});}
+        for (suffix, contents) in [
+            ("vp", include_str!("defold_water.vp")),
+            ("fp", include_str!("defold_water.fp")),
+            ("gui_script", include_str!("defold_water_view.gui_script")),
+        ] {
+            files.push(DefoldFile {
+                path: format!("{name}_water.{suffix}"),
+                contents: contents.into(),
+            });
+        }
         let material=format!("name: \"water\"\ntags: \"heron_water\"\nvertex_program: \"{parent}/{name}_water.vp\"\nfragment_program: \"{parent}/{name}_water.fp\"\nvertex_space: VERTEX_SPACE_LOCAL\nvertex_constants {{name: \"mtx_worldview\" type: CONSTANT_TYPE_WORLDVIEW}}\nvertex_constants {{name: \"mtx_proj\" type: CONSTANT_TYPE_PROJECTION}}\nvertex_constants {{name: \"water_params\" type: CONSTANT_TYPE_USER value {{x:0 y:.035 z:1.5 w:0}}}}\nfragment_constants {{name: \"water_tint\" type: CONSTANT_TYPE_USER value {{x:.05 y:.38 z:.48 w:.55}}}}\nsamplers {{name: \"tex0\" wrap_u: WRAP_MODE_REPEAT wrap_v: WRAP_MODE_REPEAT filter_min: FILTER_MODE_MIN_LINEAR filter_mag: FILTER_MODE_MAG_LINEAR}}\n");
-        files.push(DefoldFile{path:format!("{name}_water.material"),contents:material});
+        files.push(DefoldFile {
+            path: format!("{name}_water.material"),
+            contents: material,
+        });
     }
     let mut instances = String::new();
     if let Some(sky) = &opts.sky {
         files.extend(sky_files(&name, dir, parent, sky));
         let proto = format!("components {{\n  id: \"sky\"\n  component: \"{dir}/sky.model\"\n}}\n");
-        instances.push_str(&format!("embedded_instances {{\n  id: \"heron_sky\"\n  data: \"{}\"\n}}\n", escape(&proto)));
+        instances.push_str(&format!(
+            "embedded_instances {{\n  id: \"heron_sky\"\n  data: \"{}\"\n}}\n",
+            escape(&proto)
+        ));
     }
     let mut used: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
 
-    let ids:std::collections::HashMap<_,_>=level.entities.iter().map(|e|(e.name.clone(),unique(&mut used,ident(&e.name)))).collect();
+    let ids: std::collections::HashMap<_, _> = level
+        .entities
+        .iter()
+        .map(|e| (e.name.clone(), unique(&mut used, ident(&e.name))))
+        .collect();
     for (index, entity) in level.entities.iter().enumerate() {
         let id = ids[&entity.name].clone();
-        if let Some(path)=text_property(entity,"defold_go") {
-            instances.push_str(&native_instance(&id,entity,path));
-            continue
+        if let Some(path) = text_property(entity, "defold_go") {
+            instances.push_str(&native_instance(&id, entity, path));
+            continue;
         }
 
         // What components this game object carries.
@@ -227,7 +391,7 @@ pub fn write(level: &Level, collision: &[CollisionMesh], opts: &DefoldOptions) -
             components.push(("collision".into(), format!("{dir}/{id}.collisionobject")));
         }
 
-        if let Some(script) = script_file(entity, &ids,&water_module) {
+        if let Some(script) = script_file(entity, &ids, &water_module) {
             let file = format!("{name}/{id}.script");
             files.push(DefoldFile {
                 path: file,
@@ -236,9 +400,10 @@ pub fn write(level: &Level, collision: &[CollisionMesh], opts: &DefoldOptions) -
             components.push(("properties".into(), format!("{dir}/{id}.script")));
         }
 
-        for (key,value) in &entity.properties {
-            if let (Some(id),Value::String(path)) = (key.strip_prefix("defold_component_"),value) {
-                components.push((id.into(),path.clone()));
+        for (key, value) in &entity.properties {
+            if let (Some(id), Value::String(path)) = (key.strip_prefix("defold_component_"), value)
+            {
+                components.push((id.into(), path.clone()));
             }
         }
 
@@ -263,8 +428,15 @@ pub fn write(level: &Level, collision: &[CollisionMesh], opts: &DefoldOptions) -
         value["environment"] = super::three::environment(sky, None);
         json = serde_json::to_string_pretty(&value).expect("level JSON");
     }
-    files.push(DefoldFile { path: format!("{name}.json"), contents: json });
-    if level.entities.iter().any(|e|e.properties.contains_key("_heron_animation")) {
+    files.push(DefoldFile {
+        path: format!("{name}.json"),
+        contents: json,
+    });
+    if level
+        .entities
+        .iter()
+        .any(|e| e.properties.contains_key("_heron_animation"))
+    {
         files.push(DefoldFile {path:format!("{name}_animation.md"),contents:"# Defold keyframe animations\n\nAnimation playback is included in each animated entity's generated #properties script. Animations start automatically only when start_on is enabled. Animated collision objects are kinematic; sensor volumes remain triggers.\n\nSend messages to the game object's #properties URL: heron_play_animation { clip = \"open\" }, heron_pause_animation, heron_resume_animation, heron_stop_animation, heron_seek_animation { time = 1.5 }. Clip names are strings. stop restores the rest pose; once holds its final pose. Exported func_button, trigger_once and trigger_multiple targets are wired in their generated scripts. Put the player collider in the player physics group with a default mask. Entry/contact activates the targets. Send heron_activate to a button or trigger properties URL for explicit interaction. Once-only behavior and wait cooldowns are included; named open/close clips toggle.\n\nExample: msg.post(\"/level/func_animate#properties\", \"heron_play_animation\", {clip=\"open\"}). Adjust the collection instance and object id to your scene. Re-export overwrites generated scripts; keep gameplay in separate components.\n".into()});
     }
     files
@@ -285,16 +457,40 @@ fn sky_files(name: &str, dir: &str, parent: &str, sky: &Sky) -> Vec<DefoldFile> 
     let material = format!("name: \"heron_sky\"\ntags: \"heron_sky\"\nvertex_program: \"{parent}/{name}_sky.vp\"\nfragment_program: \"{parent}/{name}_sky.fp\"\nvertex_space: VERTEX_SPACE_LOCAL\nvertex_constants {{name: \"mtx_view\" type: CONSTANT_TYPE_VIEW}}\nvertex_constants {{name: \"mtx_proj\" type: CONSTANT_TYPE_PROJECTION}}\nsamplers {{name: \"sky\" wrap_u: WRAP_MODE_CLAMP_TO_EDGE wrap_v: WRAP_MODE_CLAMP_TO_EDGE filter_min: FILTER_MODE_MIN_LINEAR filter_mag: FILTER_MODE_MAG_LINEAR}}\n");
     let model = format!("mesh: \"{dir}/sky.gltf\"\nmaterials {{\n  name: \"sky\"\n  material: \"{parent}/{name}_sky.material\"\n  textures {{\n    sampler: \"sky\"\n    texture: \"{dir}/sky.cubemap\"\n  }}\n}}\n");
     let v = |c: [f32; 3]| format!("vmath.vector3({}, {}, {})", c[0], c[1], c[2]);
-    let fog = sky.fog.map(|(color, density)| format!("{{color = {}, density = {density}}}", v(color))).unwrap_or_else(|| "nil".into());
+    let fog = sky
+        .fog
+        .map(|(color, density)| format!("{{color = {}, density = {density}}}", v(color)))
+        .unwrap_or_else(|| "nil".into());
     let environment = format!("-- The map's sun, ambient light and fog, in the level's frame. Colours are linear.\nreturn {{\n  to_sun = {},\n  sun_color = {},\n  sun_intensity = {},\n  ambient_intensity = {},\n  fog = {fog},\n}}\n", v(sky.to_sun()), v(sky.sun_color), sky.sun_intensity, sky.ambient_intensity);
     vec![
-        DefoldFile { path: format!("{name}/sky.cubemap"), contents: cubemap },
-        DefoldFile { path: format!("{name}/sky.model"), contents: model },
-        DefoldFile { path: format!("{name}/sky.gltf"), contents: cube_gltf() },
-        DefoldFile { path: format!("{name}_sky.material"), contents: material },
-        DefoldFile { path: format!("{name}_sky.vp"), contents: include_str!("defold_sky.vp").into() },
-        DefoldFile { path: format!("{name}_sky.fp"), contents: include_str!("defold_sky.fp").into() },
-        DefoldFile { path: format!("{name}_environment.lua"), contents: environment },
+        DefoldFile {
+            path: format!("{name}/sky.cubemap"),
+            contents: cubemap,
+        },
+        DefoldFile {
+            path: format!("{name}/sky.model"),
+            contents: model,
+        },
+        DefoldFile {
+            path: format!("{name}/sky.gltf"),
+            contents: cube_gltf(),
+        },
+        DefoldFile {
+            path: format!("{name}_sky.material"),
+            contents: material,
+        },
+        DefoldFile {
+            path: format!("{name}_sky.vp"),
+            contents: include_str!("defold_sky.vp").into(),
+        },
+        DefoldFile {
+            path: format!("{name}_sky.fp"),
+            contents: include_str!("defold_sky.fp").into(),
+        },
+        DefoldFile {
+            path: format!("{name}_environment.lua"),
+            contents: environment,
+        },
     ]
 }
 
@@ -302,8 +498,11 @@ fn sky_files(name: &str, dir: &str, parent: &str, sky: &Sky) -> Vec<DefoldFile> 
 /// mapping.
 pub fn sky_binaries(level_name: &str, sky: &Sky) -> Vec<(String, Vec<u8>)> {
     let name = ident(level_name);
-    let files: Vec<(String, Vec<u8>)> = SKY_FACES.iter().zip(sky.display_faces(SKY_SIZE, super::sky::cube_direction))
-        .map(|(face, png)| (format!("{name}/sky_{face}.png"), png)).collect();
+    let files: Vec<(String, Vec<u8>)> = SKY_FACES
+        .iter()
+        .zip(sky.display_faces(SKY_SIZE, super::sky::cube_direction))
+        .map(|(face, png)| (format!("{name}/sky_{face}.png"), png))
+        .collect();
     files
 }
 
@@ -317,7 +516,14 @@ fn cube_gltf() -> String {
         }
     }
     // Two triangles per side; the sky is seen from inside and drawn without culling.
-    let quads = [[0, 2, 6, 4], [1, 5, 7, 3], [0, 4, 5, 1], [2, 3, 7, 6], [0, 1, 3, 2], [4, 6, 7, 5]];
+    let quads = [
+        [0, 2, 6, 4],
+        [1, 5, 7, 3],
+        [0, 4, 5, 1],
+        [2, 3, 7, 6],
+        [0, 1, 3, 2],
+        [4, 6, 7, 5],
+    ];
     for q in quads {
         for i in [q[0], q[1], q[2], q[0], q[2], q[3]] {
             bin.extend((i as u16).to_le_bytes());
@@ -349,7 +555,9 @@ fn embedded_instance(
     let mut proto = String::new();
     for (cid, path) in components {
         proto.push_str(&format!(
-            "components {{\n  id: \"{}\"\n  component: \"{}\"\n}}\n",escape(cid),escape(path)
+            "components {{\n  id: \"{}\"\n  component: \"{}\"\n}}\n",
+            escape(cid),
+            escape(path)
         ));
     }
 
@@ -373,28 +581,50 @@ fn embedded_instance(
         f(q[2]),
         f(q[3]),
     ));
-    out.push_str(&format!("  scale3 {{\n    x: {}\n    y: {}\n    z: {}\n  }}\n", f(t.scale[0]), f(t.scale[1]), f(t.scale[2])));
+    out.push_str(&format!(
+        "  scale3 {{\n    x: {}\n    y: {}\n    z: {}\n  }}\n",
+        f(t.scale[0]),
+        f(t.scale[1]),
+        f(t.scale[2])
+    ));
     out.push_str(&component_overrides(entity));
     out.push_str("}\n");
     out
 }
 
-fn component_overrides(entity:&crate::level::Entity)->String{
-    let mut components:std::collections::BTreeMap<String,Vec<(String,String,String)>>=Default::default();
-    for (key,value) in &entity.properties {
-        if let Ok(Some((component,property,kind,value)))=property_override(key,value,entity){components.entry(component).or_default().push((property,kind,value));}
+fn component_overrides(entity: &crate::level::Entity) -> String {
+    let mut components: std::collections::BTreeMap<String, Vec<(String, String, String)>> =
+        Default::default();
+    for (key, value) in &entity.properties {
+        if let Ok(Some((component, property, kind, value))) = property_override(key, value, entity)
+        {
+            components
+                .entry(component)
+                .or_default()
+                .push((property, kind, value));
+        }
     }
-    let mut out=String::new();
-    for (component,properties) in components {
-        out.push_str(&format!("  component_properties {{\n    id: \"{}\"\n",escape(&component)));
-        for (property,kind,value) in properties{out.push_str(&format!("    properties {{ id: \"{}\" value: \"{}\" type: PROPERTY_TYPE_{kind} }}\n",escape(&property),escape(&value)));}
+    let mut out = String::new();
+    for (component, properties) in components {
+        out.push_str(&format!(
+            "  component_properties {{\n    id: \"{}\"\n",
+            escape(&component)
+        ));
+        for (property, kind, value) in properties {
+            out.push_str(&format!(
+                "    properties {{ id: \"{}\" value: \"{}\" type: PROPERTY_TYPE_{kind} }}\n",
+                escape(&property),
+                escape(&value)
+            ));
+        }
         out.push_str("  }\n");
     }
     out
 }
 
-fn native_instance(id:&str,entity:&crate::level::Entity,path:&str)->String{
-    let t=&entity.transform;let q=quat_yxz(t.rotation_yxz);
+fn native_instance(id: &str, entity: &crate::level::Entity, path: &str) -> String {
+    let t = &entity.transform;
+    let q = quat_yxz(t.rotation_yxz);
     format!("instances {{\n  id: \"{}\"\n  prototype: \"{}\"\n  position {{ x: {} y: {} z: {} }}\n  rotation {{ x: {} y: {} z: {} w: {} }}\n  scale3 {{ x: {} y: {} z: {} }}\n{}}}\n",escape(id),escape(path),f(t.translation[0]),f(t.translation[1]),f(t.translation[2]),f(q[0]),f(q[1]),f(q[2]),f(q[3]),f(t.scale[0]),f(t.scale[1]),f(t.scale[2]),component_overrides(entity))
 }
 
@@ -408,7 +638,11 @@ fn model_file(
     opts: &DefoldOptions,
     dir: &str,
 ) -> String {
-    let water_material=format!("{}/{}_water.material",dir.rsplit_once('/').map(|v|v.0).unwrap_or(""),ident(&level.name));
+    let water_material = format!(
+        "{}/{}_water.material",
+        dir.rsplit_once('/').map(|v| v.0).unwrap_or(""),
+        ident(&level.name)
+    );
 
     let glb = format!("{dir}/{}", mesh.rsplit('/').next().unwrap_or(mesh));
     let mut out = format!("mesh: \"{glb}\"\n");
@@ -422,7 +656,27 @@ fn model_file(
 
         out.push_str("materials {\n");
         out.push_str(&format!("  name: \"{}\"\n", surface.texture));
-        out.push_str(&format!("  material: \"{}\"\n", escape(text_property(entity,"defold_material").unwrap_or(if entity.properties.get("_heron_water").and_then(|v|if let Value::String(s)=v{serde_json::from_str::<serde_json::Value>(s).ok()}else{None}).is_some_and(|d|d["surface_material"]==true){water_material.as_str()}else{&opts.model_material}))));
+        out.push_str(&format!(
+            "  material: \"{}\"\n",
+            escape(
+                text_property(entity, "defold_material").unwrap_or(
+                    if entity
+                        .properties
+                        .get("_heron_water")
+                        .and_then(|v| if let Value::String(s) = v {
+                            serde_json::from_str::<serde_json::Value>(s).ok()
+                        } else {
+                            None
+                        })
+                        .is_some_and(|d| d["surface_material"] == true)
+                    {
+                        water_material.as_str()
+                    } else {
+                        &opts.model_material
+                    }
+                )
+            )
+        ));
         if let Some(image) = level
             .textures
             .iter()
@@ -432,7 +686,7 @@ fn model_file(
             let path = join_resource(&opts.texture_prefix, image);
             out.push_str(&format!(
                 "  textures {{\n    sampler: \"{}\"\n    texture: \"{path}\"\n  }}\n",
-                escape(text_property(entity,"defold_sampler").unwrap_or(&opts.model_sampler))
+                escape(text_property(entity, "defold_sampler").unwrap_or(&opts.model_sampler))
             ));
         }
         out.push_str("}\n");
@@ -444,7 +698,9 @@ fn model_file(
 // Collision
 
 fn collision_file(entity: &crate::level::Entity, mesh: Option<&CollisionMesh>) -> Option<String> {
-    if text_property(entity,"defold_body_type") == Some("none") {return None}
+    if text_property(entity, "defold_body_type") == Some("none") {
+        return None;
+    }
     entity.collision.as_ref()?;
     let mesh = mesh?;
 
@@ -480,31 +736,55 @@ fn collision_file(entity: &crate::level::Entity, mesh: Option<&CollisionMesh>) -
 
     let is_sensor = entity.collision.as_ref().is_some_and(|c| c.sensor)
         || entity.classname.starts_with("trigger");
-    let kind = match text_property(entity,"defold_body_type") {
+    let kind = match text_property(entity, "defold_body_type") {
         Some("static") => "COLLISION_OBJECT_TYPE_STATIC",
         Some("kinematic") => "COLLISION_OBJECT_TYPE_KINEMATIC",
         Some("dynamic") => "COLLISION_OBJECT_TYPE_DYNAMIC",
         Some("trigger") => "COLLISION_OBJECT_TYPE_TRIGGER",
-        _ => if is_sensor {
-        "COLLISION_OBJECT_TYPE_TRIGGER"
-    } else if is_mover(&entity.classname) || entity.properties.contains_key("_heron_animation") {
-        "COLLISION_OBJECT_TYPE_KINEMATIC"
-    } else {
-        "COLLISION_OBJECT_TYPE_STATIC"
+        _ => {
+            if is_sensor {
+                "COLLISION_OBJECT_TYPE_TRIGGER"
+            } else if is_mover(&entity.classname)
+                || entity.properties.contains_key("_heron_animation")
+            {
+                "COLLISION_OBJECT_TYPE_KINEMATIC"
+            } else {
+                "COLLISION_OBJECT_TYPE_STATIC"
+            }
         }
     };
 
     let mut out = String::new();
     out.push_str(&format!("type: {kind}\n"));
-    out.push_str(&format!("mass: {}\nfriction: {}\nrestitution: {}\n",f(number_property(entity,"defold_mass",0.)),f(number_property(entity,"defold_friction",0.1)),f(number_property(entity,"defold_restitution",0.5))));
-    out.push_str(&format!("group: \"{}\"\n",escape(text_property(entity,"defold_group").unwrap_or("default"))));
+    out.push_str(&format!(
+        "mass: {}\nfriction: {}\nrestitution: {}\n",
+        f(number_property(entity, "defold_mass", 0.)),
+        f(number_property(entity, "defold_friction", 0.1)),
+        f(number_property(entity, "defold_restitution", 0.5))
+    ));
+    out.push_str(&format!(
+        "group: \"{}\"\n",
+        escape(text_property(entity, "defold_group").unwrap_or("default"))
+    ));
     // The generated trigger protocol uses the player group. Both sides of a
     // Defold collision must permit it, including the solid floor and movers.
-    for mask in text_property(entity,"defold_mask").unwrap_or("default,player").split([',',' ']).filter(|v|!v.is_empty()) {
-        out.push_str(&format!("mask: \"{}\"\n",escape(mask)));
+    for mask in text_property(entity, "defold_mask")
+        .unwrap_or("default,player")
+        .split([',', ' '])
+        .filter(|v| !v.is_empty())
+    {
+        out.push_str(&format!("mask: \"{}\"\n", escape(mask)));
     }
-    out.push_str(&format!("linear_damping: {}\nangular_damping: {}\n",f(number_property(entity,"defold_linear_damping",0.)),f(number_property(entity,"defold_angular_damping",0.))));
-    let locked = match entity.properties.get("defold_locked_rotation") {Some(Value::Bool(v))=>*v,Some(Value::String(v))=>v=="true"||v=="1",_=>true};
+    out.push_str(&format!(
+        "linear_damping: {}\nangular_damping: {}\n",
+        f(number_property(entity, "defold_linear_damping", 0.)),
+        f(number_property(entity, "defold_angular_damping", 0.))
+    ));
+    let locked = match entity.properties.get("defold_locked_rotation") {
+        Some(Value::Bool(v)) => *v,
+        Some(Value::String(v)) => v == "true" || v == "1",
+        _ => true,
+    };
     out.push_str(&format!("locked_rotation: {locked}\n"));
     out.push_str("embedded_collision_shape {\n");
     out.push_str(&shapes);
@@ -585,11 +865,21 @@ fn is_reserved_key(key: &str) -> bool {
     )
 }
 
-fn script_file(entity: &crate::level::Entity, ids:&std::collections::HashMap<String,String>, water_module:&str) -> Option<String> {
+fn script_file(
+    entity: &crate::level::Entity,
+    ids: &std::collections::HashMap<String, String>,
+    water_module: &str,
+) -> Option<String> {
     let props: Vec<(&String, &Value)> = entity
         .properties
         .iter()
-        .filter(|(k, v)| !engine_hint(k) && !k.starts_with("animation_") && !k.starts_with("_heron_") && !is_reserved_key(k) && !matches!(v, Value::String(s) if s.is_empty()))
+        .filter(|(k, v)| {
+            !engine_hint(k)
+                && !k.starts_with("animation_")
+                && !k.starts_with("_heron_")
+                && !is_reserved_key(k)
+                && !matches!(v, Value::String(s) if s.is_empty())
+        })
         .collect();
     if props.is_empty() && entity.targets.is_empty() && entity.classname == "worldspawn" {
         return None;
@@ -604,7 +894,10 @@ fn script_file(entity: &crate::level::Entity, ids:&std::collections::HashMap<Str
         lua_str(&entity.classname)
     ));
     if let Some(target) = entity.targets.first() {
-        out.push_str(&format!("go.property(\"target\", hash(\"{}\"))\n", lua_str(target)));
+        out.push_str(&format!(
+            "go.property(\"target\", hash(\"{}\"))\n",
+            lua_str(target)
+        ));
     }
     for (key, value) in props {
         let id = ident(key);
@@ -637,19 +930,37 @@ fn script_file(entity: &crate::level::Entity, ids:&std::collections::HashMap<Str
             Value::Array(_) => {}
         }
     }
-    if let Some(Value::String(data))=entity.properties.get("_heron_animation") {
-        out.push_str(&format!("\nlocal hb_data = json.decode(\"{}\")\n",lua_str(data)));
+    if let Some(Value::String(data)) = entity.properties.get("_heron_animation") {
+        out.push_str(&format!(
+            "\nlocal hb_data = json.decode(\"{}\")\n",
+            lua_str(data)
+        ));
         out.push_str(include_str!("defold_animation.script"));
     }
-    if let Some(Value::String(data))=entity.properties.get("_heron_trigger") {
-        let mut data:serde_json::Value=serde_json::from_str(data).expect("validated trigger");
-        if let Some(targets)=data["targets"].as_array_mut(){for name in targets {if let Some(s)=name.as_str(){*name=serde_json::json!(ids.get(s).cloned().unwrap_or_else(||ident(s)));}}}
-        out.push_str(&format!("\nlocal hb_trigger=json.decode(\"{}\")\n",lua_str(&data.to_string())));
+    if let Some(Value::String(data)) = entity.properties.get("_heron_trigger") {
+        let mut data: serde_json::Value = serde_json::from_str(data).expect("validated trigger");
+        if let Some(targets) = data["targets"].as_array_mut() {
+            for name in targets {
+                if let Some(s) = name.as_str() {
+                    *name = serde_json::json!(ids.get(s).cloned().unwrap_or_else(|| ident(s)));
+                }
+            }
+        }
+        out.push_str(&format!(
+            "\nlocal hb_trigger=json.decode(\"{}\")\n",
+            lua_str(&data.to_string())
+        ));
         out.push_str(include_str!("defold_animation_trigger.script"));
     }
-    if let Some(Value::String(data))=entity.properties.get("_heron_water") {
-        out.push_str(&format!("\nlocal hb_water=require \"{}\"\nlocal hb_water_data=json.decode(\"{}\")\n",lua_str(water_module),lua_str(data)));
-        if entity.properties.contains_key("defold_material") {out.push_str("hb_water_data.surface_material=false\n");}
+    if let Some(Value::String(data)) = entity.properties.get("_heron_water") {
+        out.push_str(&format!(
+            "\nlocal hb_water=require \"{}\"\nlocal hb_water_data=json.decode(\"{}\")\n",
+            lua_str(water_module),
+            lua_str(data)
+        ));
+        if entity.properties.contains_key("defold_material") {
+            out.push_str("hb_water_data.surface_material=false\n");
+        }
         out.push_str("local water_init,water_update,water_final=init,update,final\nfunction init(self) if water_init then water_init(self) end;self.hb_water_time=0;hb_water.add(go.get_id(),hb_water_data) end\nfunction final(self) hb_water.remove(go.get_id());if water_final then water_final(self) end end\nfunction update(self,dt) if water_update then water_update(self,dt) end;self.hb_water_time=self.hb_water_time+dt;if hb_water_data.surface_material then go.set(\"#mesh\",\"water_tint\",vmath.vector4(hb_water_data.color[1],hb_water_data.color[2],hb_water_data.color[3],hb_water_data.opacity));go.set(\"#mesh\",\"water_params\",vmath.vector4(self.hb_water_time,hb_water_data.wave_height,hb_water_data.wave_speed,0)) end end\n");
     }
     Some(out)
@@ -766,22 +1077,54 @@ mod tests {
 
     #[test]
     fn a_sky_is_a_cubemap_on_a_model_the_render_script_draws_first() {
-        let sky = Sky { sky: [0.1, 0.4, 0.85], horizon: [0.7, 0.8, 0.9], ground: [0.2, 0.18, 0.15], sun_color: [1., 0.9, 0.8], sun_intensity: 3., ambient_intensity: 0.5, sun_elevation: 45., sun_azimuth: 0., exposure: 1., fog: None };
-        let files = write(&level(), &[], &DefoldOptions { sky: Some(sky.clone()), ..opts() });
-        let file = |path: &str| files.iter().find(|f| f.path == path).unwrap_or_else(|| panic!("{path}")).contents.clone();
+        let sky = Sky {
+            sky: [0.1, 0.4, 0.85],
+            horizon: [0.7, 0.8, 0.9],
+            ground: [0.2, 0.18, 0.15],
+            sun_color: [1., 0.9, 0.8],
+            sun_intensity: 3.,
+            ambient_intensity: 0.5,
+            sun_elevation: 45.,
+            sun_azimuth: 0.,
+            exposure: 1.,
+            fog: None,
+        };
+        let files = write(
+            &level(),
+            &[],
+            &DefoldOptions {
+                sky: Some(sky.clone()),
+                ..opts()
+            },
+        );
+        let file = |path: &str| {
+            files
+                .iter()
+                .find(|f| f.path == path)
+                .unwrap_or_else(|| panic!("{path}"))
+                .contents
+                .clone()
+        };
         assert!(file("arena.collection").contains("id: \"heron_sky\""));
         assert!(file("arena/sky.cubemap").contains("front: \"/main/arena/sky_front.png\""));
         assert!(file("arena/sky.model").contains("texture: \"/main/arena/sky.cubemap\""));
         assert!(file("arena/sky.gltf").contains("data:application/octet-stream;base64,"));
         assert!(file("arena.render").contains("/main/arena.render_script"));
         let script = file("arena.render_script");
-        assert!(script.find("render.draw(self.sky)").unwrap() < script.find("render.draw(self.model)").unwrap());
+        assert!(
+            script.find("render.draw(self.sky)").unwrap()
+                < script.find("render.draw(self.model)").unwrap()
+        );
         assert!(file("arena_environment.lua").contains("sun_intensity = 3"));
         let images = sky_binaries("arena", &sky);
         assert_eq!(images.len(), 6);
-        assert!(images.iter().all(|(path, png)| path.starts_with("arena/sky_") && png.starts_with(b"\x89PNG")));
+        assert!(images
+            .iter()
+            .all(|(path, png)| path.starts_with("arena/sky_") && png.starts_with(b"\x89PNG")));
         // Without a sky or water nothing replaces the project's renderer.
-        assert!(!write(&level(), &[], &opts()).iter().any(|f| f.path.ends_with(".render")));
+        assert!(!write(&level(), &[], &opts())
+            .iter()
+            .any(|f| f.path.ends_with(".render")));
     }
 
     fn level() -> Level {
@@ -791,7 +1134,7 @@ mod tests {
             name: "arena".into(),
             scale: 32.0,
             textures: vec![Texture {
-                    surface: None,
+                surface: None,
                 name: "wall".into(),
                 image: Some("textures/wall.png".into()),
                 maps: vec![],
@@ -849,32 +1192,78 @@ mod tests {
 
     #[test]
     fn project_hints_support_custom_physics_and_components_without_game_classnames() {
-        let mut level=level();let entity=&mut level.entities[0];entity.classname="relic".into();
-        for (key,value) in [("defold_body_type","dynamic"),("defold_group","artifact"),("defold_mask","geometry,artifact"),("defold_component_logic","/game/relic.script"),("defold_material","/game/stone.material"),("defold_sampler","albedo")] {
-            entity.properties.insert(key.into(),Value::String(value.into()));
+        let mut level = level();
+        let entity = &mut level.entities[0];
+        entity.classname = "relic".into();
+        for (key, value) in [
+            ("defold_body_type", "dynamic"),
+            ("defold_group", "artifact"),
+            ("defold_mask", "geometry,artifact"),
+            ("defold_component_logic", "/game/relic.script"),
+            ("defold_material", "/game/stone.material"),
+            ("defold_sampler", "albedo"),
+        ] {
+            entity
+                .properties
+                .insert(key.into(), Value::String(value.into()));
         }
-        entity.properties.insert("defold_mass".into(),Value::Float(2.));
+        entity
+            .properties
+            .insert("defold_mass".into(), Value::Float(2.));
         assert!(validate(&level).is_ok());
-        let files=write(&level,&[hull_cube(),CollisionMesh::default()],&opts());
-        let collision=&files.iter().find(|f|f.path.ends_with("worldspawn.collisionobject")).unwrap().contents;
-        assert!(collision.contains("COLLISION_OBJECT_TYPE_DYNAMIC"));assert!(collision.contains("mass: 2"));
-        assert!(collision.contains("group: \"artifact\""));assert!(collision.contains("mask: \"geometry\""));
+        let files = write(&level, &[hull_cube(), CollisionMesh::default()], &opts());
+        let collision = &files
+            .iter()
+            .find(|f| f.path.ends_with("worldspawn.collisionobject"))
+            .unwrap()
+            .contents;
+        assert!(collision.contains("COLLISION_OBJECT_TYPE_DYNAMIC"));
+        assert!(collision.contains("mass: 2"));
+        assert!(collision.contains("group: \"artifact\""));
+        assert!(collision.contains("mask: \"geometry\""));
         assert!(files[0].contents.contains("/game/relic.script"));
-        assert!(files.iter().find(|f|f.path.ends_with("worldspawn.model")).unwrap().contents.contains("/game/stone.material"));
-        let script=&files.iter().find(|f|f.path.ends_with("worldspawn.script")).unwrap().contents;
+        assert!(files
+            .iter()
+            .find(|f| f.path.ends_with("worldspawn.model"))
+            .unwrap()
+            .contents
+            .contains("/game/stone.material"));
+        let script = &files
+            .iter()
+            .find(|f| f.path.ends_with("worldspawn.script"))
+            .unwrap()
+            .contents;
         assert!(!script.contains("defold_component_logic"));
-        level.entities[0].properties.insert("defold_body_type".into(),Value::String("none".into()));
+        level.entities[0]
+            .properties
+            .insert("defold_body_type".into(), Value::String("none".into()));
         level.entities[0].properties.shift_remove("defold_mass");
-        assert!(!write(&level,&[hull_cube(),CollisionMesh::default()],&opts()).iter().any(|f|f.path.ends_with("worldspawn.collisionobject")));
+        assert!(
+            !write(&level, &[hull_cube(), CollisionMesh::default()], &opts())
+                .iter()
+                .any(|f| f.path.ends_with("worldspawn.collisionobject"))
+        );
     }
 
     #[test]
     fn invalid_project_hints_are_reported_instead_of_silently_ignored() {
-        for (key,value) in [("defold_body_type",Value::String("dynamci".into())),("defold_mass",Value::Float(f64::NAN)),("defold_restitution",Value::Float(2.)),("defold_component_mesh",Value::String("/custom.model".into()))] {
-            let mut level=level();level.entities[0].properties.insert(key.into(),value);
-            assert!(validate(&level).is_err(),"{key}");
+        for (key, value) in [
+            ("defold_body_type", Value::String("dynamci".into())),
+            ("defold_mass", Value::Float(f64::NAN)),
+            ("defold_restitution", Value::Float(2.)),
+            (
+                "defold_component_mesh",
+                Value::String("/custom.model".into()),
+            ),
+        ] {
+            let mut level = level();
+            level.entities[0].properties.insert(key.into(), value);
+            assert!(validate(&level).is_err(), "{key}");
         }
-        let mut level=level();level.entities[0].properties.insert("defold_body_type".into(),Value::String("dynamic".into()));
+        let mut level = level();
+        level.entities[0]
+            .properties
+            .insert("defold_body_type".into(), Value::String("dynamic".into()));
         assert!(validate(&level).is_err());
     }
 
@@ -955,7 +1344,11 @@ mod tests {
         options.model_material = "/main/custom.material".into();
         options.model_sampler = "albedo".into();
         let files = write(&level(), &[], &options);
-        let model = &files.iter().find(|f| f.path.ends_with(".model")).unwrap().contents;
+        let model = &files
+            .iter()
+            .find(|f| f.path.ends_with(".model"))
+            .unwrap()
+            .contents;
         assert!(model.contains("/main/custom.material"));
         assert!(model.contains("albedo"));
     }
@@ -963,14 +1356,18 @@ mod tests {
     #[test]
     fn mixed_rotation_and_scale_match_engine_neutral_transform() {
         let angles = [0.3, -0.7, 0.4];
-        let expected = glam::DQuat::from_euler(glam::EulerRot::YXZ, angles[1], angles[0], angles[2]).to_array();
+        let expected =
+            glam::DQuat::from_euler(glam::EulerRot::YXZ, angles[1], angles[0], angles[2])
+                .to_array();
         for (actual, expected) in quat_yxz(angles).iter().zip(expected) {
             assert!((actual - expected).abs() < 1e-12);
         }
         let mut entity = crate::level::Entity::default();
         entity.transform.scale = [2.0, 0.5, 3.0];
         let collection = embedded_instance("scaled", &entity, &[]);
-        assert!(collection.contains("scale3 {\n    x: 2.0\n    y: 0.5\n    z: 3.0"), "{collection}");
+        assert!(
+            collection.contains("scale3 {\n    x: 2.0\n    y: 0.5\n    z: 3.0"),
+            "{collection}"
+        );
     }
-
 }

@@ -297,20 +297,16 @@ mod tests {
                 assert_eq!(Zip::open(&path).unwrap().read(0).unwrap(), payload);
                 bytes[30] ^= 1;
                 std::fs::write(&path, &bytes).unwrap();
-                assert!(
-                    Zip::open(&path)
-                        .unwrap()
-                        .read(0)
-                        .unwrap_err()
-                        .contains("name differs")
-                );
-                assert!(
-                    Zip::parse(bytes)
-                        .unwrap()
-                        .read(0)
-                        .unwrap_err()
-                        .contains("name differs")
-                );
+                assert!(Zip::open(&path)
+                    .unwrap()
+                    .read(0)
+                    .unwrap_err()
+                    .contains("name differs"));
+                assert!(Zip::parse(bytes)
+                    .unwrap()
+                    .read(0)
+                    .unwrap_err()
+                    .contains("name differs"));
             }
         }
         std::fs::remove_file(path).unwrap();
@@ -390,13 +386,11 @@ mod tests {
                     .copy_from_slice(&value.to_le_bytes());
             }
             std::fs::write(&path, &bytes).unwrap();
-            assert!(
-                Zip::open(&path)
-                    .unwrap()
-                    .read(0)
-                    .unwrap_err()
-                    .contains(expected)
-            );
+            assert!(Zip::open(&path)
+                .unwrap()
+                .read(0)
+                .unwrap_err()
+                .contains(expected));
         }
         let mut unsupported = super::super::tests::zip(&[("item", b"payload")], false);
         let directory = u32_at(&unsupported, unsupported.len() - 6).unwrap() as usize;
@@ -404,13 +398,11 @@ mod tests {
         unsupported[directory + 10..directory + 12].copy_from_slice(&93u16.to_le_bytes());
         unsupported[directory + 20..directory + 24].copy_from_slice(&(128u32 << 20).to_le_bytes());
         std::fs::write(&path, unsupported).unwrap();
-        assert!(
-            Zip::open(&path)
-                .unwrap()
-                .read(0)
-                .unwrap_err()
-                .contains("unsupported ZIP compression method 93")
-        );
+        assert!(Zip::open(&path)
+            .unwrap()
+            .read(0)
+            .unwrap_err()
+            .contains("unsupported ZIP compression method 93"));
         std::fs::remove_file(path).unwrap();
     }
     #[test]
@@ -449,13 +441,11 @@ mod tests {
         file.set_modified(modified + std::time::Duration::from_secs(60))
             .unwrap();
         assert!(archive.read(0).unwrap_err().contains("changed"));
-        assert!(
-            Zip::open(&path)
-                .unwrap()
-                .read(0)
-                .unwrap_err()
-                .contains("CRC")
-        );
+        assert!(Zip::open(&path)
+            .unwrap()
+            .read(0)
+            .unwrap_err()
+            .contains("CRC"));
         let valid = super::super::tests::zip(&[("item", b"new")], false);
         std::fs::write(&path, valid).unwrap();
         let reloaded = Zip::open(&path).unwrap();

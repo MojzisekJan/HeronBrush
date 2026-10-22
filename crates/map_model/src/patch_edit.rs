@@ -51,8 +51,7 @@ pub fn add_rows(patch: &Patch) -> Option<Patch> {
         return None;
     }
     let columns = columns_of(patch);
-    let refined: Vec<Vec<PatchControlPoint>> =
-        columns.iter().map(|col| subdivide(col)).collect();
+    let refined: Vec<Vec<PatchControlPoint>> = columns.iter().map(|col| subdivide(col)).collect();
     Some(from_columns(patch, refined))
 }
 

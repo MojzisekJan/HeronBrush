@@ -148,9 +148,8 @@ fn a_ray_hits_a_triangle() {
     let p0 = Vec3d::new(2.0, 5.0, 2.0);
     let p1 = Vec3d::new(4.0, 7.0, 2.0);
     let p2 = Vec3d::new(3.0, 2.0, 2.0);
-    let hit = |origin: Vec3d, dir: Vec3d| {
-        intersect_ray_triangle(&Ray3d::new(origin, dir), p0, p1, p2)
-    };
+    let hit =
+        |origin: Vec3d, dir: Vec3d| intersect_ray_triangle(&Ray3d::new(origin, dir), p0, p1, p2);
 
     assert_eq!(hit(Vec3d::zero(), Vec3d::new(1.0, 0.0, 0.0)), None);
     assert_eq!(hit(Vec3d::zero(), Vec3d::new(0.0, 1.0, 0.0)), None);
@@ -171,7 +170,10 @@ fn a_ray_hits_a_triangle() {
 #[test]
 fn a_ray_hits_a_polygon() {
     // The square lifted one unit up the Z axis.
-    let poly: Vec<Vec3d> = square().iter().map(|v| *v + Vec3d::new(0.0, 0.0, 1.0)).collect();
+    let poly: Vec<Vec3d> = square()
+        .iter()
+        .map(|v| *v + Vec3d::new(0.0, 0.0, 1.0))
+        .collect();
     let z = Vec3d::new(0.0, 0.0, 1.0);
 
     assert_approx_eq!(
@@ -221,10 +223,7 @@ fn a_ray_hits_a_sphere() {
     let r = Ray3f::new(Vec3f::zero(), Vec3f::new(0.0, 0.0, 1.0));
 
     // Originating inside the sphere, hitting the far side.
-    assert_approx_eq!(
-        intersect_ray_sphere(&r, Vec3f::zero(), 2.0),
-        Some(2.0f32)
-    );
+    assert_approx_eq!(intersect_ray_sphere(&r, Vec3f::zero(), 2.0), Some(2.0f32));
     // Originating outside, hitting the near side.
     assert_approx_eq!(
         intersect_ray_sphere(&r, Vec3f::new(0.0, 0.0, 5.0), 2.0),
@@ -298,10 +297,7 @@ fn two_lines_meet_at_one_point() {
     );
 
     assert_eq!(
-        intersect_line_line(
-            &vertical,
-            &Line2d::new(Vec2d::zero(), Vec2d::new(1.0, 0.0))
-        ),
+        intersect_line_line(&vertical, &Line2d::new(Vec2d::zero(), Vec2d::new(1.0, 0.0))),
         Some(0.0)
     );
     assert_eq!(
@@ -347,29 +343,23 @@ fn intersect_plane_plane_handles_nearly_parallel_planes() {
     let p1 = Plane3f::from_anchor_and_normal(anchor, Vec3f::new(1.0, 0.0, 0.0));
 
     // Half a degree apart: still a usable intersection.
-    let rotated = Quatf::from_axis_angle(
-        Vec3f::new(0.0, -1.0, 0.0),
-        scalar::to_radians(0.5),
-    ) * Vec3f::new(1.0, 0.0, 0.0);
+    let rotated = Quatf::from_axis_angle(Vec3f::new(0.0, -1.0, 0.0), scalar::to_radians(0.5))
+        * Vec3f::new(1.0, 0.0, 0.0);
     let p2 = Plane3f::from_anchor_and_normal(anchor, rotated);
     let line = intersect_plane_plane(&p1, &p2).expect("half a degree is enough");
     assert!(line_on_plane(&p1, &line));
     assert!(line_on_plane(&p2, &line));
 
     // A ten-thousandth of a degree apart: too close to tell apart in f32.
-    let barely = Quatf::from_axis_angle(
-        Vec3f::new(0.0, -1.0, 0.0),
-        scalar::to_radians(0.0001),
-    ) * Vec3f::new(1.0, 0.0, 0.0);
+    let barely = Quatf::from_axis_angle(Vec3f::new(0.0, -1.0, 0.0), scalar::to_radians(0.0001))
+        * Vec3f::new(1.0, 0.0, 0.0);
     let p3 = Plane3f::from_anchor_and_normal(anchor, barely);
     assert_eq!(intersect_plane_plane(&p1, &p3), None);
 }
 
 #[test]
 fn colinear_segments_overlap() {
-    let along_x = |a: f64, b: f64| {
-        Segment3d::new(Vec3d::new(a, 0.0, 0.0), Vec3d::new(b, 0.0, 0.0))
-    };
+    let along_x = |a: f64, b: f64| Segment3d::new(Vec3d::new(a, 0.0, 0.0), Vec3d::new(b, 0.0, 0.0));
     let eps = f64::ALMOST_ZERO;
 
     assert!(segments_overlap(
@@ -417,7 +407,10 @@ fn a_plane_clips_a_polygon() {
     let clipped = polygon_clip_by_plane(&halving, &poly);
     assert_eq!(clipped.len(), 4);
     for v in &clipped {
-        assert!(v.x() <= 0.0 + f64::ALMOST_ZERO, "kept vertex {v:?} is in front");
+        assert!(
+            v.x() <= 0.0 + f64::ALMOST_ZERO,
+            "kept vertex {v:?} is in front"
+        );
     }
 }
 
@@ -563,11 +556,12 @@ fn distance_between_a_ray_and_a_line() {
     assert_approx_eq!(d.position1, 5.0);
 
     // A line, unlike a ray, extends backwards, so its position can be negative.
-    let parallel = geometry_math::line::Line3d::new(
-        Vec3d::new(3.0, 0.0, 0.0),
-        Vec3d::new(0.0, 0.0, 1.0),
+    let parallel =
+        geometry_math::line::Line3d::new(Vec3d::new(3.0, 0.0, 0.0), Vec3d::new(0.0, 0.0, 1.0));
+    let d = distance_ray_line(
+        &Ray3d::new(Vec3d::new(0.0, 0.0, 7.0), Vec3d::new(0.0, 0.0, 1.0)),
+        &parallel,
     );
-    let d = distance_ray_line(&Ray3d::new(Vec3d::new(0.0, 0.0, 7.0), Vec3d::new(0.0, 0.0, 1.0)), &parallel);
     assert!(d.parallel);
     assert_approx_eq!(d.distance, 3.0);
     assert_approx_eq!(d.position2, 7.0);

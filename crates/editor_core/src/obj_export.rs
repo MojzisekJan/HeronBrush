@@ -45,7 +45,9 @@ pub struct ObjReport {
 pub fn write(document: &Document, obj_path: &Path, options: ObjOptions) -> io::Result<ObjReport> {
     let (report, files) = files(document, obj_path, options);
     for (path, contents) in files {
-        if let Some(parent) = path.parent() { fs::create_dir_all(parent)?; }
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
         fs::write(path, contents)?;
     }
     Ok(report)
@@ -53,21 +55,34 @@ pub fn write(document: &Document, obj_path: &Path, options: ObjOptions) -> io::R
 
 /// What [`write`] writes, as paths and contents: the images, then the `.obj` and the
 /// `.mtl`.
-pub fn files(document: &Document, obj_path: &Path, options: ObjOptions) -> (ObjReport, Vec<(PathBuf, Vec<u8>)>) {
-    files_scaled(document,obj_path,options,1.)
+pub fn files(
+    document: &Document,
+    obj_path: &Path,
+    options: ObjOptions,
+) -> (ObjReport, Vec<(PathBuf, Vec<u8>)>) {
+    files_scaled(document, obj_path, options, 1.)
 }
 
 /// Engine export units; the standalone mesh writer retains map units by default.
-pub fn files_scaled(document:&Document,obj_path:&Path,options:ObjOptions,scale_factor:f64)->(ObjReport,Vec<(PathBuf,Vec<u8>)>){
+pub fn files_scaled(
+    document: &Document,
+    obj_path: &Path,
+    options: ObjOptions,
+    scale_factor: f64,
+) -> (ObjReport, Vec<(PathBuf, Vec<u8>)>) {
     let stem = obj_path
         .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "map".to_string());
     let mtl_name = format!("{stem}.mtl");
 
-    let (obj, mtl, report, images) = generate_painted_scaled(document, &mtl_name, options,scale_factor);
+    let (obj, mtl, report, images) =
+        generate_painted_scaled(document, &mtl_name, options, scale_factor);
     let directory = obj_path.parent().unwrap_or(Path::new("."));
-    let mut files: Vec<(PathBuf, Vec<u8>)> = images.into_iter().map(|(relative, png)| (directory.join(relative), png)).collect();
+    let mut files: Vec<(PathBuf, Vec<u8>)> = images
+        .into_iter()
+        .map(|(relative, png)| (directory.join(relative), png))
+        .collect();
     files.push((obj_path.to_path_buf(), obj.into_bytes()));
     files.push((obj_path.with_file_name(&mtl_name), mtl.into_bytes()));
     (report, files)
@@ -85,13 +100,20 @@ fn generate(
 }
 
 #[cfg(test)]
-fn generate_painted(document: &Document, mtl_name: &str, options: ObjOptions)
-    -> (String, String, ObjReport, Vec<(String, Vec<u8>)>)
-{generate_painted_scaled(document,mtl_name,options,1.)}
+fn generate_painted(
+    document: &Document,
+    mtl_name: &str,
+    options: ObjOptions,
+) -> (String, String, ObjReport, Vec<(String, Vec<u8>)>) {
+    generate_painted_scaled(document, mtl_name, options, 1.)
+}
 
-fn generate_painted_scaled(document: &Document, mtl_name: &str, options: ObjOptions,scale_factor:f64)
-    -> (String, String, ObjReport, Vec<(String, Vec<u8>)>)
-{
+fn generate_painted_scaled(
+    document: &Document,
+    mtl_name: &str,
+    options: ObjOptions,
+    scale_factor: f64,
+) -> (String, String, ObjReport, Vec<(String, Vec<u8>)>) {
     let mut surfaces = std::collections::BTreeMap::new();
     let mut paint_images = std::collections::BTreeMap::<String, Vec<u8>>::new();
     let paint_dir = format!("{}_paint", mtl_name.trim_end_matches(".mtl"));
@@ -129,7 +151,9 @@ fn generate_painted_scaled(document: &Document, mtl_name: &str, options: ObjOpti
         let _ = writeln!(faces, "o brush_{}", brush_count);
 
         for (index, face) in brush.faces().iter().enumerate() {
-                    if face.export_hidden {continue;}
+            if face.export_hidden {
+                continue;
+            }
             let Some(polygon) = brush.face_polygon(index) else {
                 continue;
             };
@@ -137,20 +161,38 @@ fn generate_painted_scaled(document: &Document, mtl_name: &str, options: ObjOpti
                 continue;
             }
 
-            let paint = if scene_export::settings::Settings::default().is_tool_texture(&face.material_name) {
+            let paint = if scene_export::settings::Settings::default()
+                .is_tool_texture(&face.material_name)
+            {
                 None
             } else {
-                crate::export::paint_export::bake(face, &polygon, document.materials().get(&face.material_name))
+                crate::export::paint_export::bake(
+                    face,
+                    &polygon,
+                    document.materials().get(&face.material_name),
+                )
             };
-            let surface_suffix = face.surface_material.map(|s|format!("_pbr_{}_{}_{}",s.roughness,s.metallic,s.emission)).unwrap_or_default();
+            let surface_suffix = face
+                .surface_material
+                .map(|s| format!("_pbr_{}_{}_{}", s.roughness, s.metallic, s.emission))
+                .unwrap_or_default();
             let material_name = if let Some(image) = &paint {
                 let png = image.png().expect("built-in PNG encoder");
-                let name = format!("{}{}",crate::export::paint_export::image_name(&png),surface_suffix);
+                let name = format!(
+                    "{}{}",
+                    crate::export::paint_export::image_name(&png),
+                    surface_suffix
+                );
                 paint_images.entry(name.clone()).or_insert(png);
                 name
-            } else { format!("{}{}",face.material_name,surface_suffix) };
-            if let Some(surface)=face.surface_material {
-                surfaces.insert(material_name.clone(),(face.material_name.to_string(),surface));
+            } else {
+                format!("{}{}", face.material_name, surface_suffix)
+            };
+            if let Some(surface) = face.surface_material {
+                surfaces.insert(
+                    material_name.clone(),
+                    (face.material_name.to_string(), surface),
+                );
             }
             if current_material.as_deref() != Some(material_name.as_str()) {
                 let _ = writeln!(faces, "usemtl {}", material_name);
@@ -168,25 +210,39 @@ fn generate_painted_scaled(document: &Document, mtl_name: &str, options: ObjOpti
 
             let normal = fold(face.plane.normal);
             normal_count += 1;
-            let _ = writeln!(normals, "vn {:.6} {:.6} {:.6}", normal.x(), normal.y(), normal.z());
+            let _ = writeln!(
+                normals,
+                "vn {:.6} {:.6} {:.6}",
+                normal.x(),
+                normal.y(),
+                normal.z()
+            );
             let normal_index = normal_count;
 
             let first_vertex = vertex_count + 1;
             for corner in &polygon {
                 let p = fold(*corner);
                 vertex_count += 1;
-                let _ = writeln!(positions, "v {:.6} {:.6} {:.6}", p.x()*scale_factor, p.y()*scale_factor, p.z()*scale_factor);
+                let _ = writeln!(
+                    positions,
+                    "v {:.6} {:.6} {:.6}",
+                    p.x() * scale_factor,
+                    p.y() * scale_factor,
+                    p.z() * scale_factor
+                );
 
                 let original_uv = face.uv_coords(*corner);
-                let uv = paint.as_ref().map(|p| p.uv(original_uv))
-                    .unwrap_or_else(|| geometry_math::vec::Vec2f::new(original_uv.x()/size.0 as f32, original_uv.y()/size.1 as f32));
+                let uv = paint
+                    .as_ref()
+                    .map(|p| p.uv(original_uv))
+                    .unwrap_or_else(|| {
+                        geometry_math::vec::Vec2f::new(
+                            original_uv.x() / size.0 as f32,
+                            original_uv.y() / size.1 as f32,
+                        )
+                    });
                 // OBJ's V runs up, the material's runs down, so it is flipped.
-                let _ = writeln!(
-                    uvs,
-                    "vt {:.6} {:.6}",
-                    f64::from(uv.x()),
-                    -f64::from(uv.y())
-                );
+                let _ = writeln!(uvs, "vt {:.6} {:.6}", f64::from(uv.x()), -f64::from(uv.y()));
             }
 
             // A convex polygon as a triangle fan from its first vertex. Each vertex got a
@@ -209,7 +265,8 @@ fn generate_painted_scaled(document: &Document, mtl_name: &str, options: ObjOpti
         if options.selection_only && !document.is_selected(id) {
             continue;
         }
-        let mesh = map_model::patch_mesh::tessellate(patch, map_model::patch_mesh::DEFAULT_SUBDIVISIONS);
+        let mesh =
+            map_model::patch_mesh::tessellate(patch, map_model::patch_mesh::DEFAULT_SUBDIVISIONS);
         if mesh.is_empty() {
             continue;
         }
@@ -227,14 +284,26 @@ fn generate_painted_scaled(document: &Document, mtl_name: &str, options: ObjOpti
         for triangle in mesh {
             let normal = fold(triangle.normal);
             normal_count += 1;
-            let _ = writeln!(normals, "vn {:.6} {:.6} {:.6}", normal.x(), normal.y(), normal.z());
+            let _ = writeln!(
+                normals,
+                "vn {:.6} {:.6} {:.6}",
+                normal.x(),
+                normal.y(),
+                normal.z()
+            );
             let n = normal_count;
 
             let first_vertex = vertex_count + 1;
             for corner in 0..3 {
                 let p = fold(triangle.positions[corner]);
                 vertex_count += 1;
-                let _ = writeln!(positions, "v {:.6} {:.6} {:.6}", p.x()*scale_factor, p.y()*scale_factor, p.z()*scale_factor);
+                let _ = writeln!(
+                    positions,
+                    "v {:.6} {:.6} {:.6}",
+                    p.x() * scale_factor,
+                    p.y() * scale_factor,
+                    p.z() * scale_factor
+                );
 
                 let uv = triangle.uv[corner];
                 let _ = writeln!(uvs, "vt {:.6} {:.6}", uv.x(), -uv.y());
@@ -246,42 +315,74 @@ fn generate_painted_scaled(document: &Document, mtl_name: &str, options: ObjOpti
         }
     }
 
-    for (id,entity,layer) in map_model::node::point_entities_by_layer(document.tree_world()) {
-        if (options.selection_only&&!document.is_selected(id))||document.tree_world().layers[layer].omit_from_export{continue}
-        let Some(model)=document.imported_model(entity)else{continue};
+    for (id, entity, layer) in map_model::node::point_entities_by_layer(document.tree_world()) {
+        if (options.selection_only && !document.is_selected(id))
+            || document.tree_world().layers[layer].omit_from_export
+        {
+            continue;
+        }
+        let Some(model) = document.imported_model(entity) else {
+            continue;
+        };
         let mut names = Vec::new();
         for skin in model.skins() {
             use std::hash::{Hash, Hasher};
             let mut hash = crate::export_hash::ExportHasher::default();
-            skin.pixels.hash(&mut hash); skin.width.hash(&mut hash); skin.height.hash(&mut hash);
+            skin.pixels.hash(&mut hash);
+            skin.width.hash(&mut hash);
+            skin.height.hash(&mut hash);
             let name = format!("heron_import_{:016x}", hash.finish());
             if !paint_images.contains_key(&name) {
-                if let Ok(png) = crate::assets::encode_png(skin.width, skin.height, &skin.pixels) { paint_images.insert(name.clone(), png); }
+                if let Ok(png) = crate::assets::encode_png(skin.width, skin.height, &skin.pixels) {
+                    paint_images.insert(name.clone(), png);
+                }
             }
-            if !used_materials.contains(&name) { used_materials.push(name.clone()); }
+            if !used_materials.contains(&name) {
+                used_materials.push(name.clone());
+            }
             names.push(name);
         }
         let _ = writeln!(faces, "o imported_{vertex_count}");
-        let origin=entity.origin().unwrap_or_else(Vec3d::zero);
+        let origin = entity.origin().unwrap_or_else(Vec3d::zero);
         for triangle in &model.triangles {
             let skin = model.skin_at(triangle.material);
             let _ = writeln!(faces, "usemtl {}", names[triangle.material]);
-            let normal = geometry_math::vec::cross(triangle.positions[1]-triangle.positions[0], triangle.positions[2]-triangle.positions[0]);
-            let length = geometry_math::vec::length(normal); if length < 1e-9 { continue }
-            let normals_at = triangle.normals.unwrap_or([normal/length;3]);
+            let normal = geometry_math::vec::cross(
+                triangle.positions[1] - triangle.positions[0],
+                triangle.positions[2] - triangle.positions[0],
+            );
+            let length = geometry_math::vec::length(normal);
+            if length < 1e-9 {
+                continue;
+            }
+            let normals_at = triangle.normals.unwrap_or([normal / length; 3]);
             let first = vertex_count + 1;
             let first_normal = normal_count + 1;
             for i in 0..3 {
-                let normal = fold(normals_at[i]); normal_count += 1;
-                let _ = writeln!(normals, "vn {:.6} {:.6} {:.6}", normal.x(),normal.y(),normal.z());
-                let p = fold(triangle.positions[i]+origin)*scale_factor; vertex_count += 1;
-                let _ = writeln!(positions, "v {:.6} {:.6} {:.6}",p.x(),p.y(),p.z());
+                let normal = fold(normals_at[i]);
+                normal_count += 1;
+                let _ = writeln!(
+                    normals,
+                    "vn {:.6} {:.6} {:.6}",
+                    normal.x(),
+                    normal.y(),
+                    normal.z()
+                );
+                let p = fold(triangle.positions[i] + origin) * scale_factor;
+                vertex_count += 1;
+                let _ = writeln!(positions, "v {:.6} {:.6} {:.6}", p.x(), p.y(), p.z());
                 let uv = triangle.uv[i];
-                let _ = writeln!(uvs, "vt {:.6} {:.6}",uv.x()/skin.width as f32,1.0-uv.y()/skin.height as f32);
+                let _ = writeln!(
+                    uvs,
+                    "vt {:.6} {:.6}",
+                    uv.x() / skin.width as f32,
+                    1.0 - uv.y() / skin.height as f32
+                );
             }
-            let (a,b,c)=(first,first+1,first+2);
-            let (n,m,k)=(first_normal,first_normal+1,first_normal+2);
-            let _ = writeln!(faces, "f {a}/{a}/{n} {b}/{b}/{m} {c}/{c}/{k}"); triangle_count += 1;
+            let (a, b, c) = (first, first + 1, first + 2);
+            let (n, m, k) = (first_normal, first_normal + 1, first_normal + 2);
+            let _ = writeln!(faces, "f {a}/{a}/{n} {b}/{b}/{m} {c}/{c}/{k}");
+            triangle_count += 1;
         }
     }
 
@@ -291,23 +392,35 @@ fn generate_painted_scaled(document: &Document, mtl_name: &str, options: ObjOpti
     obj.push_str(&faces);
 
     for name in &used_materials {
-        if paint_images.contains_key(name) { continue; }
-        let Some(material)=document.materials().get(name).filter(|m|m.is_game_asset()) else {continue;};
-        if let Some(pixels)=material.pixels() {
-            if let Ok(png)=crate::assets::encode_png(material.width,material.height,&pixels) {paint_images.insert(name.clone(),png);}
+        if paint_images.contains_key(name) {
+            continue;
+        }
+        let Some(material) = document.materials().get(name).filter(|m| m.is_game_asset()) else {
+            continue;
+        };
+        if let Some(pixels) = material.pixels() {
+            if let Ok(png) = crate::assets::encode_png(material.width, material.height, &pixels) {
+                paint_images.insert(name.clone(), png);
+            }
         }
     }
 
     let mut mtl = String::from("# exported by Heron Brush\n");
     for name in &used_materials {
         let _ = writeln!(mtl, "\nnewmtl {name}");
-        if let Some((_,surface))=surfaces.get(name) {
-            let [roughness,metallic,emission]=surface.factors();
-            let specular=0.04*(1.0-metallic)+metallic;
-            let _=writeln!(mtl,"Pr {roughness}\nPm {metallic}\nNs {}\nKs {specular} {specular} {specular}",(2.0/roughness.max(0.05).powi(4)-2.0).min(1000.0));
-            if emission>0.0 {
-                let _=writeln!(mtl,"Ke {emission} {emission} {emission}");
-                if paint_images.contains_key(name) { let _=writeln!(mtl,"map_Ke {paint_dir}/{name}.png"); }
+        if let Some((_, surface)) = surfaces.get(name) {
+            let [roughness, metallic, emission] = surface.factors();
+            let specular = 0.04 * (1.0 - metallic) + metallic;
+            let _ = writeln!(
+                mtl,
+                "Pr {roughness}\nPm {metallic}\nNs {}\nKs {specular} {specular} {specular}",
+                (2.0 / roughness.max(0.05).powi(4) - 2.0).min(1000.0)
+            );
+            if emission > 0.0 {
+                let _ = writeln!(mtl, "Ke {emission} {emission} {emission}");
+                if paint_images.contains_key(name) {
+                    let _ = writeln!(mtl, "map_Ke {paint_dir}/{name}.png");
+                }
             }
         }
         if paint_images.contains_key(name) {
@@ -315,7 +428,12 @@ fn generate_painted_scaled(document: &Document, mtl_name: &str, options: ObjOpti
             continue;
         }
         let _ = writeln!(mtl, "Kd 0.8 0.8 0.8");
-        if let Some(material) = document.materials().get(surfaces.get(name).map(|(name,_)|name.as_str()).unwrap_or(name)) {
+        if let Some(material) = document.materials().get(
+            surfaces
+                .get(name)
+                .map(|(name, _)| name.as_str())
+                .unwrap_or(name),
+        ) {
             let _ = writeln!(mtl, "map_Kd {}", material.path.display());
         }
     }
@@ -328,9 +446,15 @@ fn generate_painted_scaled(document: &Document, mtl_name: &str, options: ObjOpti
             patches: patch_count,
             triangles: triangle_count,
             materials: used_materials.len(),
-            images: paint_images.keys().map(|name| format!("{paint_dir}/{name}.png")).collect(),
+            images: paint_images
+                .keys()
+                .map(|name| format!("{paint_dir}/{name}.png"))
+                .collect(),
         },
-        paint_images.into_iter().map(|(name, png)| (format!("{paint_dir}/{name}.png"), png)).collect(),
+        paint_images
+            .into_iter()
+            .map(|(name, png)| (format!("{paint_dir}/{name}.png"), png))
+            .collect(),
     )
 }
 
@@ -343,12 +467,9 @@ mod tests {
     fn one_cube() -> Document {
         let mut document = Document::new(WorldBounds::default());
         let world = document.world_bounds();
-        let brush = map_model::shapes::create_cuboid(
-            &world,
-            &Bbox3d::from_scalars(-32.0, 32.0),
-            "stone",
-        )
-        .expect("a cube");
+        let brush =
+            map_model::shapes::create_cuboid(&world, &Bbox3d::from_scalars(-32.0, 32.0), "stone")
+                .expect("a cube");
         document.add_brushes(vec![brush]);
         document
     }
@@ -389,7 +510,10 @@ common/caulk
         let (obj, _, report) = generate(&one_cube(), "m.mtl", opts());
         assert_eq!(report.brushes, 1);
         assert_eq!(report.triangles, 12, "six quads, two triangles each");
-        assert_eq!(obj.matches("\nf ").count() + obj.starts_with("f ") as usize, 12);
+        assert_eq!(
+            obj.matches("\nf ").count() + obj.starts_with("f ") as usize,
+            12
+        );
         assert!(obj.contains("mtllib m.mtl"));
         assert!(obj.lines().filter(|l| l.starts_with("v ")).count() == 24);
     }
@@ -427,7 +551,9 @@ common/caulk
         assert_eq!(report.brushes, 1);
         assert!(obj.is_file());
         assert!(dir.join("room.mtl").is_file());
-        assert!(fs::read_to_string(&obj).unwrap().contains("mtllib room.mtl"));
+        assert!(fs::read_to_string(&obj)
+            .unwrap()
+            .contains("mtllib room.mtl"));
 
         let _ = fs::remove_dir_all(&dir);
     }

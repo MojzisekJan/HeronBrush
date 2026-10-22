@@ -3,11 +3,11 @@
 //! Checks that construction and clipping produce closed, consistently wound convex meshes with
 //! valid arena links.
 
-use map_model::polyhedron::{ClipResult, FromPlanes, Polyhedron};
 use geometry_math::bbox::Bbox3d;
 use geometry_math::plane::{self, Plane3d};
 use geometry_math::scalar::Float;
 use geometry_math::vec::{self, Vec3d};
+use map_model::polyhedron::{ClipResult, FromPlanes, Polyhedron};
 
 /// The epsilon used throughout, matching what the editor uses for vertex snapping.
 const EPS: f64 = f64::ALMOST_ZERO;
@@ -27,7 +27,9 @@ fn a_box_has_the_expected_counts() {
 
 #[test]
 fn a_box_satisfies_the_mesh_invariants() {
-    unit_cube().check_invariant().expect("a box is a valid mesh");
+    unit_cube()
+        .check_invariant()
+        .expect("a box is a valid mesh");
 }
 
 #[test]
@@ -104,8 +106,16 @@ fn surface_area_of_a_unit_cube() {
 #[test]
 fn building_from_too_few_faces_is_rejected() {
     let faces = vec![
-        vec![Vec3d::zero(), Vec3d::new(1.0, 0.0, 0.0), Vec3d::new(0.0, 1.0, 0.0)],
-        vec![Vec3d::zero(), Vec3d::new(0.0, 1.0, 0.0), Vec3d::new(0.0, 0.0, 1.0)],
+        vec![
+            Vec3d::zero(),
+            Vec3d::new(1.0, 0.0, 0.0),
+            Vec3d::new(0.0, 1.0, 0.0),
+        ],
+        vec![
+            Vec3d::zero(),
+            Vec3d::new(0.0, 1.0, 0.0),
+            Vec3d::new(0.0, 0.0, 1.0),
+        ],
     ];
     assert!(Polyhedron::from_faces(&faces, EPS).is_err());
 }
@@ -134,10 +144,8 @@ fn building_from_an_open_mesh_is_rejected() {
 fn clipping_with_a_plane_that_misses_leaves_it_unchanged() {
     let cube = unit_cube();
     // Well above the cube, facing up.
-    let above = Plane3d::from_anchor_and_normal(
-        Vec3d::new(0.0, 0.0, 10.0),
-        Vec3d::new(0.0, 0.0, 1.0),
-    );
+    let above =
+        Plane3d::from_anchor_and_normal(Vec3d::new(0.0, 0.0, 10.0), Vec3d::new(0.0, 0.0, 1.0));
     assert!(cube.clip(&above, EPS).unwrap().is_unchanged());
 }
 
@@ -145,10 +153,8 @@ fn clipping_with_a_plane_that_misses_leaves_it_unchanged() {
 fn clipping_with_a_plane_that_covers_it_empties_it() {
     let cube = unit_cube();
     // Well below the cube, facing up: the whole cube is in front of it.
-    let below = Plane3d::from_anchor_and_normal(
-        Vec3d::new(0.0, 0.0, -10.0),
-        Vec3d::new(0.0, 0.0, 1.0),
-    );
+    let below =
+        Plane3d::from_anchor_and_normal(Vec3d::new(0.0, 0.0, -10.0), Vec3d::new(0.0, 0.0, 1.0));
     assert!(cube.clip(&below, EPS).unwrap().is_empty());
 }
 
@@ -160,7 +166,9 @@ fn clipping_a_cube_in_half_gives_a_valid_box() {
     let result = cube.clip(&halving, EPS).expect("the plane cuts the cube");
     let clipped = result.polyhedron().expect("the cube was cut");
 
-    clipped.check_invariant().expect("the result is a valid mesh");
+    clipped
+        .check_invariant()
+        .expect("the result is a valid mesh");
     // Still a box: 8 vertices, 12 edges, 6 faces.
     assert_eq!(clipped.vertex_count(), 8);
     assert_eq!(clipped.edge_count(), 12);
@@ -186,14 +194,21 @@ fn slicing_a_corner_off_a_cube_adds_a_triangle() {
 
     let result = cube.clip(&corner, EPS).expect("the plane cuts the cube");
     let clipped = result.polyhedron().expect("the cube was cut");
-    clipped.check_invariant().expect("the result is a valid mesh");
+    clipped
+        .check_invariant()
+        .expect("the result is a valid mesh");
 
     // The corner vertex is replaced by three, and a triangular face appears.
     assert_eq!(clipped.vertex_count(), 10);
     assert_eq!(clipped.face_count(), 7);
 
     let triangles = (0..clipped.face_count())
-        .filter(|i| clipped.face_vertices(map_model::polyhedron::FaceId(*i as u32)).len() == 3)
+        .filter(|i| {
+            clipped
+                .face_vertices(map_model::polyhedron::FaceId(*i as u32))
+                .len()
+                == 3
+        })
         .count();
     assert_eq!(triangles, 1, "expected exactly one new triangular face");
 }
@@ -201,10 +216,8 @@ fn slicing_a_corner_off_a_cube_adds_a_triangle() {
 #[test]
 fn the_new_face_lies_in_the_clipping_plane() {
     let cube = unit_cube();
-    let halving = Plane3d::from_anchor_and_normal(
-        Vec3d::new(0.0, 0.0, 0.25),
-        Vec3d::new(0.0, 0.0, 1.0),
-    );
+    let halving =
+        Plane3d::from_anchor_and_normal(Vec3d::new(0.0, 0.0, 0.25), Vec3d::new(0.0, 0.0, 1.0));
 
     let result = cube.clip(&halving, EPS).expect("the plane cuts the cube");
     let ClipResult::Clipped {
@@ -243,7 +256,10 @@ fn box_planes(min: Vec3d, max: Vec3d) -> Vec<Plane3d> {
 #[test]
 fn a_brush_shaped_box_can_be_built_from_its_planes() {
     let world = Bbox3d::from_scalars(-16384.0, 16384.0);
-    let planes = box_planes(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0));
+    let planes = box_planes(
+        Vec3d::new(-32.0, -32.0, -32.0),
+        Vec3d::new(32.0, 32.0, 32.0),
+    );
 
     let FromPlanes::Built {
         polyhedron,
@@ -253,7 +269,9 @@ fn a_brush_shaped_box_can_be_built_from_its_planes() {
         panic!("expected the planes to enclose a volume");
     };
 
-    polyhedron.check_invariant().expect("the result is a valid mesh");
+    polyhedron
+        .check_invariant()
+        .expect("the result is a valid mesh");
     assert!(redundant.is_empty(), "no plane should be redundant");
     assert_eq!(polyhedron.vertex_count(), 8);
     assert_eq!(polyhedron.face_count(), 6);
@@ -266,7 +284,10 @@ fn a_brush_shaped_box_can_be_built_from_its_planes() {
 #[test]
 fn a_wedge_can_be_built_by_adding_a_seventh_plane() {
     let world = Bbox3d::from_scalars(-16384.0, 16384.0);
-    let mut planes = box_planes(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0));
+    let mut planes = box_planes(
+        Vec3d::new(-32.0, -32.0, -32.0),
+        Vec3d::new(32.0, 32.0, 32.0),
+    );
     // Slice the +X+Z edge off. The cut is shallow enough that every original face keeps
     // some area, so the result has the six original faces plus the new one.
     planes.push(Plane3d::from_anchor_and_normal(
@@ -276,14 +297,19 @@ fn a_wedge_can_be_built_by_adding_a_seventh_plane() {
 
     let built = Polyhedron::from_planes(&world, &planes, EPS).expect("the planes enclose a wedge");
     let polyhedron = built.polyhedron().expect("the planes enclose a volume");
-    polyhedron.check_invariant().expect("the result is a valid mesh");
+    polyhedron
+        .check_invariant()
+        .expect("the result is a valid mesh");
     assert_eq!(polyhedron.face_count(), 7);
 }
 
 #[test]
 fn a_plane_that_cuts_a_face_down_to_an_edge_removes_that_face() {
     let world = Bbox3d::from_scalars(-16384.0, 16384.0);
-    let mut planes = box_planes(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0));
+    let mut planes = box_planes(
+        Vec3d::new(-32.0, -32.0, -32.0),
+        Vec3d::new(32.0, 32.0, 32.0),
+    );
     // Straight through the middle along the diagonal: the +X and +Z faces are left with
     // no area at all, so the wedge has five faces rather than seven.
     planes.push(Plane3d::from_anchor_and_normal(
@@ -293,14 +319,19 @@ fn a_plane_that_cuts_a_face_down_to_an_edge_removes_that_face() {
 
     let built = Polyhedron::from_planes(&world, &planes, EPS).expect("the planes enclose a wedge");
     let polyhedron = built.polyhedron().expect("the planes enclose a volume");
-    polyhedron.check_invariant().expect("the result is a valid mesh");
+    polyhedron
+        .check_invariant()
+        .expect("the result is a valid mesh");
     assert_eq!(polyhedron.face_count(), 5);
 }
 
 #[test]
 fn a_redundant_plane_is_reported_rather_than_silently_dropped() {
     let world = Bbox3d::from_scalars(-16384.0, 16384.0);
-    let mut planes = box_planes(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0));
+    let mut planes = box_planes(
+        Vec3d::new(-32.0, -32.0, -32.0),
+        Vec3d::new(32.0, 32.0, 32.0),
+    );
     // Far outside the box, so it cuts nothing.
     planes.push(Plane3d::from_anchor_and_normal(
         Vec3d::new(0.0, 0.0, 1000.0),
@@ -343,7 +374,9 @@ fn a_plane_defined_from_three_points_clips_the_same_way() {
 
     let result = cube.clip(&p, EPS).expect("the plane cuts the cube");
     let clipped = result.polyhedron().expect("the cube was cut");
-    clipped.check_invariant().expect("the result is a valid mesh");
+    clipped
+        .check_invariant()
+        .expect("the result is a valid mesh");
     assert_eq!(clipped.face_count(), 6);
 }
 
@@ -362,7 +395,8 @@ fn the_hull_of_a_cubes_corners_is_a_cube() {
 
     for index in 0..hull.face_count() {
         assert_eq!(
-            hull.face_vertices(map_model::polyhedron::FaceId(index as u32)).len(),
+            hull.face_vertices(map_model::polyhedron::FaceId(index as u32))
+                .len(),
             4
         );
     }
@@ -426,8 +460,8 @@ fn a_point_outside_extends_the_hull() {
 
 #[test]
 fn hull_face_normals_point_outwards() {
-    let hull = Polyhedron::from_points(&Bbox3d::from_scalars(-8.0, 8.0).vertices(), EPS)
-        .expect("a cube");
+    let hull =
+        Polyhedron::from_points(&Bbox3d::from_scalars(-8.0, 8.0).vertices(), EPS).expect("a cube");
 
     for (index, face) in hull.faces().iter().enumerate() {
         assert!(

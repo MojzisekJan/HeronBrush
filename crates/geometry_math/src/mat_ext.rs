@@ -98,28 +98,13 @@ pub fn rotation_matrix_from_euler<T: Float>(roll: T, pitch: T, yaw: T) -> Matrix
     let (o, i) = (T::ZERO, T::ONE);
 
     let (cr, sr) = (roll.cos(), roll.sin());
-    let r = Matrix::from_rows([
-        [i, o, o, o],
-        [o, cr, -sr, o],
-        [o, sr, cr, o],
-        [o, o, o, i],
-    ]);
+    let r = Matrix::from_rows([[i, o, o, o], [o, cr, -sr, o], [o, sr, cr, o], [o, o, o, i]]);
 
     let (cp, sp) = (pitch.cos(), pitch.sin());
-    let p = Matrix::from_rows([
-        [cp, o, sp, o],
-        [o, i, o, o],
-        [-sp, o, cp, o],
-        [o, o, o, i],
-    ]);
+    let p = Matrix::from_rows([[cp, o, sp, o], [o, i, o, o], [-sp, o, cp, o], [o, o, o, i]]);
 
     let (cy, sy) = (yaw.cos(), yaw.sin());
-    let y = Matrix::from_rows([
-        [cy, -sy, o, o],
-        [sy, cy, o, o],
-        [o, o, i, o],
-        [o, o, o, i],
-    ]);
+    let y = Matrix::from_rows([[cy, -sy, o, o], [sy, cy, o, o], [o, o, i, o], [o, o, o, i]]);
 
     y * p * r
 }
@@ -156,10 +141,7 @@ pub fn rotation_matrix_to_euler_angles<T: Float>(rot: &Matrix<T, 4, 4>) -> Vecto
 /// Returns a matrix rotating by `angle` radians about the given axis.
 ///
 /// The axis is expected to be normalized.
-pub fn rotation_matrix_about_axis<T: Float>(
-    axis: Vector<T, 3>,
-    angle: T,
-) -> Matrix<T, 4, 4> {
+pub fn rotation_matrix_about_axis<T: Float>(axis: Vector<T, 3>, angle: T) -> Matrix<T, 4, 4> {
     let s = (-angle).sin();
     let c = (-angle).cos();
     let i = T::ONE - c;
@@ -193,9 +175,24 @@ pub fn rotation_matrix_from_quat<T: Float>(q: &Quat<T>) -> Matrix<T, 4, 4> {
     let (one, two, o) = (T::ONE, T::TWO, T::ZERO);
 
     Matrix::from_rows([
-        [one - two * (y2 + z2), two * (x * y - z * w), two * (x * z + y * w), o],
-        [two * (x * y + z * w), one - two * (x2 + z2), two * (y * z - x * w), o],
-        [two * (x * z - y * w), two * (y * z + x * w), one - two * (x2 + y2), o],
+        [
+            one - two * (y2 + z2),
+            two * (x * y - z * w),
+            two * (x * z + y * w),
+            o,
+        ],
+        [
+            two * (x * y + z * w),
+            one - two * (x2 + z2),
+            two * (y * z - x * w),
+            o,
+        ],
+        [
+            two * (x * z - y * w),
+            two * (y * z + x * w),
+            one - two * (x2 + y2),
+            o,
+        ],
         [o, o, o, one],
     ])
 }
@@ -203,10 +200,7 @@ pub fn rotation_matrix_from_quat<T: Float>(q: &Quat<T>) -> Matrix<T, 4, 4> {
 /// Returns the matrix for the shortest rotation taking `from` to `to`.
 ///
 /// Both vectors are expected to be normalized.
-pub fn rotation_matrix_from_to<T: Float>(
-    from: Vector<T, 3>,
-    to: Vector<T, 3>,
-) -> Matrix<T, 4, 4> {
+pub fn rotation_matrix_from_to<T: Float>(from: Vector<T, 3>, to: Vector<T, 3>) -> Matrix<T, 4, 4> {
     rotation_matrix_from_quat(&Quat::from_to(from, to))
 }
 
@@ -243,7 +237,11 @@ pub fn translation_of<T: Float>(matrix: &Matrix<T, 4, 4>) -> Option<Vector<T, 3>
     if !scalar::is_equal(matrix.v[3].v[3], T::ONE, T::ALMOST_ZERO) {
         return None;
     }
-    Some(Vector::<T, 3>::new(matrix.v[3].v[0], matrix.v[3].v[1], matrix.v[3].v[2]))
+    Some(Vector::<T, 3>::new(
+        matrix.v[3].v[0],
+        matrix.v[3].v[1],
+        matrix.v[3].v[2],
+    ))
 }
 
 /// Returns a 3x3 matrix translating by the given 2D delta.
@@ -382,10 +380,7 @@ pub fn plane_projection_matrix<T: Float>(
 /* ========== bounding box transforms ========== */
 
 /// Returns the transform taking `old_box` onto `new_box`.
-pub fn scale_bbox_matrix<T: Float>(
-    old_box: &Bbox<T, 3>,
-    new_box: &Bbox<T, 3>,
-) -> Matrix<T, 4, 4> {
+pub fn scale_bbox_matrix<T: Float>(old_box: &Bbox<T, 3>, new_box: &Bbox<T, 3>) -> Matrix<T, 4, 4> {
     let scale_factors = new_box.size() / old_box.size();
     translation_matrix(new_box.min)
         * scaling_matrix(scale_factors)
@@ -492,9 +487,15 @@ pub fn points_transformation_matrix<T: Float>(
     // Nine unknowns — the 3x3 matrix, read row by row — and nine equations, three per
     // point correspondence.
     let b = Vector::<T, 9>::from_array([
-        v0_out.x(), v0_out.y(), v0_out.z(),
-        v1_out.x(), v1_out.y(), v1_out.z(),
-        v2_out.x(), v2_out.y(), v2_out.z(),
+        v0_out.x(),
+        v0_out.y(),
+        v0_out.z(),
+        v1_out.x(),
+        v1_out.y(),
+        v1_out.z(),
+        v2_out.x(),
+        v2_out.y(),
+        v2_out.z(),
     ]);
 
     let o = T::ZERO;
@@ -506,9 +507,15 @@ pub fn points_transformation_matrix<T: Float>(
         r
     };
     let a = Matrix::<T, 9, 9>::from_rows([
-        row(v0_in, 0), row(v0_in, 1), row(v0_in, 2),
-        row(v1_in, 0), row(v1_in, 1), row(v1_in, 2),
-        row(v2_in, 0), row(v2_in, 1), row(v2_in, 2),
+        row(v0_in, 0),
+        row(v0_in, 1),
+        row(v0_in, 2),
+        row(v1_in, 0),
+        row(v1_in, 1),
+        row(v1_in, 2),
+        row(v2_in, 0),
+        row(v2_in, 1),
+        row(v2_in, 2),
     ]);
 
     let x = mat::lup_solve(a, b)?;

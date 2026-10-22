@@ -1,6 +1,10 @@
 //! Document operations for clipboard.
 
-use super::{Document, Bbox3d, Brush, Edit, FACE_CLIPBOARD_MARKER, FaceAttributeTransfer, FaceRef, Group, Node, NodeId, NodeKind, Vec3d, apply_face_attributes, brush_node, collect_for_paste, entity_node, node, paste_bounds, patch_node, renumber_for_paste, translate_paste, vec};
+use super::{
+    apply_face_attributes, brush_node, collect_for_paste, entity_node, node, paste_bounds,
+    patch_node, renumber_for_paste, translate_paste, vec, Bbox3d, Brush, Document, Edit,
+    FaceAttributeTransfer, FaceRef, Group, Node, NodeId, NodeKind, Vec3d, FACE_CLIPBOARD_MARKER,
+};
 
 impl Document {
     /// Writes the selection out as `.map` text, for the clipboard.
@@ -80,15 +84,31 @@ impl Document {
 
     /// Places an asset with its bottom at the target height and its footprint
     /// near the target, aligning the footprint minimum to the enabled grid.
-    pub fn paste_asset_on_grid(&mut self, text: &str, target: Vec3d, name: &str, grid: &crate::grid::Grid) -> usize {
+    pub fn paste_asset_on_grid(
+        &mut self,
+        text: &str,
+        target: Vec3d,
+        name: &str,
+        grid: &crate::grid::Grid,
+    ) -> usize {
         self.paste_nodes_at(text, Some(target), Some(name), Some(grid))
     }
 
-    fn paste_nodes_at(&mut self, text: &str, target: Option<Vec3d>, group_name: Option<&str>, placement_grid: Option<&crate::grid::Grid>) -> usize {
+    fn paste_nodes_at(
+        &mut self,
+        text: &str,
+        target: Option<Vec3d>,
+        group_name: Option<&str>,
+        placement_grid: Option<&crate::grid::Grid>,
+    ) -> usize {
         // A face-attributes copy carries a marker; pasting it puts the material and
         // mapping on the selected faces rather than adding geometry.
         if text.trim_start().starts_with(FACE_CLIPBOARD_MARKER) {
-            return if group_name.is_none() { self.paste_face_attributes(text) } else { 0 };
+            return if group_name.is_none() {
+                self.paste_face_attributes(text)
+            } else {
+                0
+            };
         }
         let Ok(map) = map_model::io::map_reader::read_map(text, None) else {
             return 0;
@@ -106,8 +126,7 @@ impl Document {
         }
 
         // New ids, so pasting twice does not put the same object in twice over.
-        let mut pasted: Vec<Node> =
-            pasted.into_iter().map(renumber_for_paste).collect();
+        let mut pasted: Vec<Node> = pasted.into_iter().map(renumber_for_paste).collect();
 
         if let (Some(target), Some(bounds)) = (target, paste_bounds(&pasted)) {
             // A NaN component means "leave this axis alone", which is how a 2D view says
@@ -121,11 +140,19 @@ impl Document {
             }
             if let Some(grid) = placement_grid {
                 for axis in 0..3 {
-                    if !target[axis].is_finite() { continue; }
-                    let minimum = if axis == 2 { target[axis] } else { bounds.min[axis] + delta[axis] };
+                    if !target[axis].is_finite() {
+                        continue;
+                    }
+                    let minimum = if axis == 2 {
+                        target[axis]
+                    } else {
+                        bounds.min[axis] + delta[axis]
+                    };
                     let minimum = if grid.snap() {
                         (minimum / grid.actual_size()).round() * grid.actual_size()
-                    } else { minimum };
+                    } else {
+                        minimum
+                    };
                     delta[axis] = minimum - bounds.min[axis];
                 }
             }
@@ -142,12 +169,17 @@ impl Document {
                     // retain their existing lattice on each axis.
                     let brushes = node::brushes(&tree.world);
                     for axis in 0..3 {
-                        let step = [1.0, 0.5, 0.25, finest].into_iter().find(|step| {
-                            brushes.iter().all(|brush| brush.geometry().vertices().iter().all(|v| {
-                                let coordinate = v.position[axis] / step;
-                                (coordinate - coordinate.round()).abs() < 1e-5
-                            }))
-                        }).unwrap_or(finest);
+                        let step = [1.0, 0.5, 0.25, finest]
+                            .into_iter()
+                            .find(|step| {
+                                brushes.iter().all(|brush| {
+                                    brush.geometry().vertices().iter().all(|v| {
+                                        let coordinate = v.position[axis] / step;
+                                        (coordinate - coordinate.round()).abs() < 1e-5
+                                    })
+                                })
+                            })
+                            .unwrap_or(finest);
                         delta[axis] = (delta[axis] / step).round() * step;
                     }
                 }
@@ -221,20 +253,23 @@ impl Document {
             )],
             layers: vec![layer],
         };
-        let body = map_model::io::map_writer::write_map(&node::flatten_tree(&world, self.format, None));
+        let body =
+            map_model::io::map_writer::write_map(&node::flatten_tree(&world, self.format, None));
         Some(format!("{FACE_CLIPBOARD_MARKER}\n{body}"))
     }
 
     /// Puts a copied face's material and mapping on every selected face, in one undo step.
     fn paste_face_attributes(&mut self, text: &str) -> usize {
-        let targets=self.selected_edit_faces();
-        self.paste_face_attributes_on(text,&targets)
+        let targets = self.selected_edit_faces();
+        self.paste_face_attributes_on(text, &targets)
     }
 
     /// Paste only copied face attributes onto explicit targets, preserving selection.
     /// Object clipboard contents never insert geometry through this operation.
-    pub fn paste_face_attributes_on(&mut self, text:&str, targets:&[FaceRef]) -> usize {
-        if !text.trim_start().starts_with(FACE_CLIPBOARD_MARKER) { return 0; }
+    pub fn paste_face_attributes_on(&mut self, text: &str, targets: &[FaceRef]) -> usize {
+        if !text.trim_start().starts_with(FACE_CLIPBOARD_MARKER) {
+            return 0;
+        }
         let body = text
             .trim_start()
             .strip_prefix(FACE_CLIPBOARD_MARKER)

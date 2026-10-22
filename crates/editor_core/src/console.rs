@@ -24,7 +24,10 @@ struct Log {
 
 impl Log {
     const fn new() -> Self {
-        Self { lines: Vec::new(), listener: None }
+        Self {
+            lines: Vec::new(),
+            listener: None,
+        }
     }
 }
 
@@ -108,7 +111,9 @@ mod tests {
     #[test]
     fn what_is_said_before_there_is_a_panel_is_kept_for_it() {
         record_said("something happened".to_string());
-        assert!(lines().iter().any(|(kind, line)| *kind == Kind::Said && line == "something happened"));
+        assert!(lines()
+            .iter()
+            .any(|(kind, line)| *kind == Kind::Said && line == "something happened"));
     }
 
     #[test]
@@ -125,6 +130,9 @@ mod tests {
         let sink = std::rc::Rc::clone(&heard);
         set_listener(move |kind, line| sink.borrow_mut().push((kind, line.to_string())));
         record_complaint("it broke".into());
-        assert_eq!(heard.borrow().as_slice(), &[(Kind::Complaint, "it broke".to_string())]);
+        assert_eq!(
+            heard.borrow().as_slice(),
+            &[(Kind::Complaint, "it broke".to_string())]
+        );
     }
 }

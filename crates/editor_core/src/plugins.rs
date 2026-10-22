@@ -40,8 +40,16 @@ pub struct Plugin {
 /// The scripts compiled into the binary, the starter set: a name to fall back on, the
 /// script, and the manifest text, empty for a plugin that declares nothing.
 pub const BUNDLED: &[(&str, &str, &str)] = &[
-    ("bulk-properties", include_str!("../../../assets/plugins/bulk-properties/main.rhai"), include_str!("../../../assets/plugins/bulk-properties/plugin.toml")),
-    ("project-rules", include_str!("../../../assets/plugins/project-rules/main.rhai"), include_str!("../../../assets/plugins/project-rules/plugin.toml")),
+    (
+        "bulk-properties",
+        include_str!("../../../assets/plugins/bulk-properties/main.rhai"),
+        include_str!("../../../assets/plugins/bulk-properties/plugin.toml"),
+    ),
+    (
+        "project-rules",
+        include_str!("../../../assets/plugins/project-rules/main.rhai"),
+        include_str!("../../../assets/plugins/project-rules/plugin.toml"),
+    ),
     (
         "selection-inspector",
         include_str!("../../../assets/plugins/selection-inspector/main.rhai"),
@@ -84,10 +92,15 @@ pub fn user_directory() -> PathBuf {
 /// than cut off mid-sentence. The paragraph ends at an empty `//` line or the first line
 /// that is not a comment. Empty when the script has no leading comment.
 pub fn summarise(source: &str) -> String {
-    let lines = source.lines().map(str::trim).skip_while(|line| !line.starts_with("//"));
+    let lines = source
+        .lines()
+        .map(str::trim)
+        .skip_while(|line| !line.starts_with("//"));
     let mut parts: Vec<&str> = Vec::new();
     for line in lines {
-        let Some(text) = line.strip_prefix("//") else { break };
+        let Some(text) = line.strip_prefix("//") else {
+            break;
+        };
         let text = text.trim_start_matches('/').trim();
         if text.is_empty() {
             break;
@@ -130,7 +143,8 @@ pub fn discover() -> Vec<Plugin> {
         for path in entries {
             let script = if path.extension().is_some_and(|e| e == "rhai") {
                 path.clone()
-            } else if crate::files::is_dir(&path) && crate::files::is_file(&path.join("main.rhai")) {
+            } else if crate::files::is_dir(&path) && crate::files::is_file(&path.join("main.rhai"))
+            {
                 path.join("main.rhai")
             } else {
                 continue;
@@ -190,7 +204,11 @@ pub fn install(chosen: &Path) -> Result<String, String> {
         if chosen.extension().is_none_or(|e| e != "rhai") {
             return Err(tr("a plugin is a .rhai file or a folder holding one").to_string());
         }
-        crate::files::write(&landing, crate::files::read(chosen).map_err(|error| error.to_string())?).map_err(|error| error.to_string())?;
+        crate::files::write(
+            &landing,
+            crate::files::read(chosen).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
     }
     Ok(name.to_string_lossy().into_owned())
 }
@@ -199,7 +217,9 @@ pub fn install(chosen: &Path) -> Result<String, String> {
 pub fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
     crate::files::create_dir_all(to)?;
     for source in crate::files::read_dir(from)? {
-        let Some(name) = source.file_name() else { continue };
+        let Some(name) = source.file_name() else {
+            continue;
+        };
         let target = to.join(name);
         if crate::files::is_dir(&source) {
             copy_tree(&source, &target)?;
@@ -238,7 +258,6 @@ pub fn check_path_enabled(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-
 #[cfg(test)]
 mod summary_tests {
     use super::summarise;
@@ -247,6 +266,9 @@ mod summary_tests {
     fn a_wrapped_first_comment_is_kept_whole() {
         assert_eq!(summarise("// Do a thing.\nlet x = 1;"), "Do a thing.");
         assert_eq!(summarise("let x = 1; // trailing"), "");
-        assert_eq!(summarise("// Paint faces, for blocking out a\n// level first.\n//\n// Run it."), "Paint faces, for blocking out a level first.");
+        assert_eq!(
+            summarise("// Paint faces, for blocking out a\n// level first.\n//\n// Run it."),
+            "Paint faces, for blocking out a level first."
+        );
     }
 }

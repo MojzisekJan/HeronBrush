@@ -201,7 +201,11 @@ mod tests {
         let frame = read(&sprite(2), None).expect("it reads");
         assert_eq!((frame.width, frame.height), (2, 1));
         assert_eq!(&frame.pixels[0..4], &[40, 50, 60, 255], "colour 1");
-        assert_eq!(&frame.pixels[4..8], &[0, 0, 0, 0], "index 255 is transparent");
+        assert_eq!(
+            &frame.pixels[4..8],
+            &[0, 0, 0, 0],
+            "index 255 is transparent"
+        );
     }
 
     #[test]
@@ -210,7 +214,11 @@ mod tests {
         palette[3] = 200; // colour 1 is red
         let frame = read(&sprite(1), Some(&palette)).expect("it reads");
         assert_eq!(&frame.pixels[0..4], &[200, 0, 0, 255]);
-        assert_eq!(&frame.pixels[4..8], &[0, 0, 0, 255], "no transparent index in Quake");
+        assert_eq!(
+            &frame.pixels[4..8],
+            &[0, 0, 0, 255],
+            "no transparent index in Quake"
+        );
     }
 
     #[test]

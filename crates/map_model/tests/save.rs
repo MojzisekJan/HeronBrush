@@ -1,11 +1,11 @@
 //! Tests for taking the document tree back apart into a map file.
 
+use geometry_math::bbox::Bbox3d;
+use geometry_math::vec::Vec3d;
 use map_model::io::map_reader::read_map;
 use map_model::io::map_writer::write_map;
 use map_model::map_format::MapFormat;
 use map_model::node::{self, NodeKind};
-use geometry_math::bbox::Bbox3d;
-use geometry_math::vec::Vec3d;
 
 fn world_bounds() -> Bbox3d {
     Bbox3d::from_scalars(-16384.0, 16384.0)
@@ -247,5 +247,8 @@ fn a_layer_with_no_id_is_given_one() {
         .iter()
         .find(|e| e.property("_tb_name") == Some("New Layer"))
         .expect("the layer was written");
-    assert!(layer.property("_tb_id").is_some(), "it needs an id to be found by");
+    assert!(
+        layer.property("_tb_id").is_some(),
+        "it needs an id to be found by"
+    );
 }

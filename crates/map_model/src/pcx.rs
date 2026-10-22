@@ -24,12 +24,12 @@ pub fn dimensions(bytes: &[u8]) -> Result<(u32, u32), String> {
 }
 
 /// Reads the trailing RGB palette without expanding image pixels.
-pub fn palette(bytes: &[u8]) -> Result<[u8;768], String> {
+pub fn palette(bytes: &[u8]) -> Result<[u8; 768], String> {
     dimensions(bytes)?;
-    if bytes.len() < 128+769 || bytes[bytes.len()-769] != 12 {
+    if bytes.len() < 128 + 769 || bytes[bytes.len() - 769] != 12 {
         return Err("missing indexed PCX palette".into());
     }
-    Ok(bytes[bytes.len()-768..].try_into().unwrap())
+    Ok(bytes[bytes.len() - 768..].try_into().unwrap())
 }
 
 /// Decodes a version-5 indexed PCX with its trailing 256-colour palette.
@@ -38,7 +38,9 @@ pub fn read(bytes: &[u8]) -> Result<Skin, String> {
     let bad = || "invalid or unsupported indexed PCX".to_string();
     let (width, height) = dimensions(bytes)?;
     let (width, height) = (width as usize, height as usize);
-    if bytes.len() < 128 + 769 { return Err(bad()); }
+    if bytes.len() < 128 + 769 {
+        return Err(bad());
+    }
     let stride = u16::from_le_bytes([bytes[66], bytes[67]]) as usize;
     let palette_at = bytes.len() - 769;
     if bytes[palette_at] != 12 {

@@ -46,8 +46,14 @@ pub struct Rgba {
 impl Rgba {
     /// Encodes the image as a PNG file.
     pub fn save_png(&self, path: &Path) -> Result<(), String> {
-        image::save_buffer(path, &self.pixels, self.width, self.height, image::ColorType::Rgba8)
-            .map_err(|error| error.to_string())
+        image::save_buffer(
+            path,
+            &self.pixels,
+            self.width,
+            self.height,
+            image::ColorType::Rgba8,
+        )
+        .map_err(|error| error.to_string())
     }
 }
 
@@ -113,16 +119,32 @@ pub fn modified(path: &Path) -> SystemTime {
 
 /// The image files a prefab's thumbnail may be read from, in the order they are tried.
 pub fn thumbnail_candidates(prefab: &Path) -> Vec<PathBuf> {
-    THUMBNAIL_EXTENSIONS.iter().map(|extension| prefab.with_extension(extension)).collect()
+    THUMBNAIL_EXTENSIONS
+        .iter()
+        .map(|extension| prefab.with_extension(extension))
+        .collect()
 }
 
 /// A prefab's thumbnail: its image scaled to fit [`THUMBNAIL`], or a drawn preview of its
 /// brushes when it has none. Safe to call off the UI thread.
 pub fn thumbnail(prefab: &Path) -> Option<Rgba> {
     for candidate in thumbnail_candidates(prefab) {
-        if let Ok(image) = crate::files::read(&candidate).map_err(image::ImageError::IoError).and_then(|bytes| image::load_from_memory(&bytes)) {
-            let image = image.resize(THUMBNAIL as u32, THUMBNAIL as u32, image::imageops::FilterType::Triangle).to_rgba8();
-            return Some(Rgba { width: image.width(), height: image.height(), pixels: image.into_raw() });
+        if let Ok(image) = crate::files::read(&candidate)
+            .map_err(image::ImageError::IoError)
+            .and_then(|bytes| image::load_from_memory(&bytes))
+        {
+            let image = image
+                .resize(
+                    THUMBNAIL as u32,
+                    THUMBNAIL as u32,
+                    image::imageops::FilterType::Triangle,
+                )
+                .to_rgba8();
+            return Some(Rgba {
+                width: image.width(),
+                height: image.height(),
+                pixels: image.into_raw(),
+            });
         }
     }
     let text = crate::files::read_to_string(prefab).ok()?;
@@ -148,7 +170,11 @@ pub fn thumbnail_cached(prefab: &Path, cache: &Path) -> Option<Rgba> {
     let entry = cache.join(format!("{:016x}.png", h.finish()));
     if let Ok(image) = image::open(&entry) {
         let image = image.to_rgba8();
-        return Some(Rgba { width: image.width(), height: image.height(), pixels: image.into_raw() });
+        return Some(Rgba {
+            width: image.width(),
+            height: image.height(),
+            pixels: image.into_raw(),
+        });
     }
     let made = thumbnail(prefab)?;
     if fs::create_dir_all(cache).is_ok() {
@@ -192,7 +218,12 @@ pub fn insert_prefab(document: &mut Document, path: &Path, at: Vec3d) -> bool {
 }
 
 /// Inserts on the active grid, using the base and footprint as placement anchors.
-pub fn insert_prefab_on_grid(document: &mut Document, path: &Path, at: Vec3d, grid: &crate::grid::Grid) -> bool {
+pub fn insert_prefab_on_grid(
+    document: &mut Document,
+    path: &Path,
+    at: Vec3d,
+    grid: &crate::grid::Grid,
+) -> bool {
     let text = match crate::files::read_to_string(path) {
         Ok(text) => text,
         Err(error) => {
@@ -219,13 +250,19 @@ fn load_folder_materials(document: &mut Document, folder: &Path) {
     let textures = folder.join("textures");
     if crate::files::is_dir(&textures) {
         match document.load_asset_materials(&textures) {
-            Ok(warnings) => for warning in warnings { crate::complain!("asset materials: {warning}"); },
-            Err(error) => crate::complain!("{}: {error}",textures.display()),
+            Ok(warnings) => {
+                for warning in warnings {
+                    crate::complain!("asset materials: {warning}");
+                }
+            }
+            Err(error) => crate::complain!("{}: {error}", textures.display()),
         }
     }
 }
 
 /// Restore bundled textures when opening a map that uses library assets.
 pub fn load_library_materials(document: &mut Document) {
-    for folder in folders() { load_folder_materials(document, &folder); }
+    for folder in folders() {
+        load_folder_materials(document, &folder);
+    }
 }

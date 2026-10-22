@@ -5,7 +5,9 @@
 //!
 
 use std::cmp::Ordering;
-use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{
+    Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign,
+};
 
 use crate::scalar::{self, Float, Num};
 
@@ -61,7 +63,10 @@ impl<T: Num, const S: usize> Vector<T, S> {
     /// Panics if `index` is out of range.
     #[inline]
     pub fn axis(index: usize) -> Self {
-        assert!(index < S, "axis index {index} out of range for {S} components");
+        assert!(
+            index < S,
+            "axis index {index} out of range for {S} components"
+        );
         let mut result = Self::zero();
         result.v[index] = T::ONE;
         result
@@ -641,10 +646,7 @@ pub fn mix<T: Num, const S: usize>(
 /// Rounds each component towards 0 to the nearest multiple of the corresponding
 /// component of `m`.
 #[inline]
-pub fn snap_down<T: Float, const S: usize>(
-    mut v: Vector<T, S>,
-    m: Vector<T, S>,
-) -> Vector<T, S> {
+pub fn snap_down<T: Float, const S: usize>(mut v: Vector<T, S>, m: Vector<T, S>) -> Vector<T, S> {
     for i in 0..S {
         v.v[i] = scalar::snap_down(v.v[i], m.v[i]);
     }
@@ -729,10 +731,7 @@ pub fn normalize<T: Float, const S: usize>(v: Vector<T, S>) -> Vector<T, S> {
 
 /// Returns the squared distance between the given points.
 #[inline]
-pub fn squared_distance<T: Num, const S: usize>(
-    lhs: Vector<T, S>,
-    rhs: Vector<T, S>,
-) -> T {
+pub fn squared_distance<T: Num, const S: usize>(lhs: Vector<T, S>, rhs: Vector<T, S>) -> T {
     squared_length(lhs - rhs)
 }
 

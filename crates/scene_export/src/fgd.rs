@@ -24,8 +24,7 @@ pub enum FgdError {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ClassKind {
     Base,
     Point,
@@ -33,24 +32,21 @@ pub enum ClassKind {
 }
 
 /// One value of a `choices` property.
-#[derive(Debug, Clone)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Choice {
     pub value: String,
     pub label: String,
 }
 
 /// One bit of a `flags` property.
-#[derive(Debug, Clone)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Flag {
     pub value: i64,
     pub label: String,
     pub default_on: bool,
 }
 
-#[derive(Debug, Clone)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Property {
     pub name: String,
     /// The declared FGD type, lowercased: `integer`, `float`, `string`,
@@ -76,8 +72,7 @@ impl Property {
 }
 
 /// Build instructions from a `// @heron_brush ...` comment.
-#[derive(Debug, Clone, Default)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Directives {
     pub entries: IndexMap<String, String>,
 }
@@ -113,8 +108,7 @@ impl Directives {
     }
 }
 
-#[derive(Debug, Clone)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct EntityClass {
     pub kind: ClassKind,
     pub classname: String,

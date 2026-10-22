@@ -23,17 +23,34 @@ const RIGHT_PAD: f32 = 10.0;
 pub enum Entry<A> {
     /// Something to do. `checked` makes it a toggle that shows its state; `icon` is a
     /// glyph from `egui_phosphor::regular`, or empty for none.
-    Item { label: String, shortcut: String, action: A, enabled: bool, checked: Option<bool>, icon: &'static str },
+    Item {
+        label: String,
+        shortcut: String,
+        action: A,
+        enabled: bool,
+        checked: Option<bool>,
+        icon: &'static str,
+    },
     /// A hairline between groups.
     Separator,
     /// A menu opened beside this row.
-    Sub { label: String, entries: Vec<Entry<A>> },
+    Sub {
+        label: String,
+        entries: Vec<Entry<A>>,
+    },
 }
 
 impl<A> Entry<A> {
     /// An enabled item without a shortcut.
     pub fn item(label: impl Into<String>, action: A) -> Self {
-        Entry::Item { label: label.into(), shortcut: String::new(), action, enabled: true, checked: None, icon: "" }
+        Entry::Item {
+            label: label.into(),
+            shortcut: String::new(),
+            action,
+            enabled: true,
+            checked: None,
+            icon: "",
+        }
     }
     /// Gives an item an icon from `egui_phosphor::regular`. A toggle's check mark takes
     /// the same place, so a checked item shows the check instead.
@@ -88,16 +105,23 @@ pub fn begin_frame(ctx: &egui::Context) {
 }
 
 fn remember(ctx: &egui::Context, rect: Rect) {
-    ctx.data_mut(|d| d.get_temp_mut_or_default::<Vec<Rect>>(rects_id()).push(rect));
+    ctx.data_mut(|d| {
+        d.get_temp_mut_or_default::<Vec<Rect>>(rects_id())
+            .push(rect)
+    });
 }
 
 /// Whether a press this frame landed outside every menu shown this frame and outside
 /// `also` (the button that opened it).
 pub fn pressed_outside(ctx: &egui::Context, also: Option<Rect>) -> bool {
-    let rects = ctx.data(|d| d.get_temp::<Vec<Rect>>(rects_id())).unwrap_or_default();
+    let rects = ctx
+        .data(|d| d.get_temp::<Vec<Rect>>(rects_id()))
+        .unwrap_or_default();
     ctx.input(|i| {
         i.pointer.any_pressed()
-            && i.pointer.press_origin().is_some_and(|p| !rects.iter().any(|r| r.contains(p)) && !also.is_some_and(|r| r.contains(p)))
+            && i.pointer.press_origin().is_some_and(|p| {
+                !rects.iter().any(|r| r.contains(p)) && !also.is_some_and(|r| r.contains(p))
+            })
     })
 }
 
@@ -108,7 +132,13 @@ pub fn popup<A: Clone>(ctx: &egui::Context, id: Id, at: Pos2, entries: &[Entry<A
 
 /// [`popup`] with the corner of the popup that goes at `at` chosen by `pivot`:
 /// `RIGHT_TOP` hangs it from a button at the end of a bar.
-pub fn popup_aligned<A: Clone>(ctx: &egui::Context, id: Id, at: Pos2, pivot: egui::Align2, entries: &[Entry<A>]) -> Option<A> {
+pub fn popup_aligned<A: Clone>(
+    ctx: &egui::Context,
+    id: Id,
+    at: Pos2,
+    pivot: egui::Align2,
+    entries: &[Entry<A>],
+) -> Option<A> {
     let mut picked = None;
     let area = egui::Area::new(id)
         .order(egui::Order::Foreground)
@@ -119,7 +149,9 @@ pub fn popup_aligned<A: Clone>(ctx: &egui::Context, id: Id, at: Pos2, pivot: egu
             let tall = ui.ctx().content_rect().height() * 0.8;
             frame(ui.style()).show(ui, |ui| {
                 if entries.len() > 24 {
-                    egui::ScrollArea::vertical().max_height(tall).show(ui, |ui| picked = show(ui, id, entries));
+                    egui::ScrollArea::vertical()
+                        .max_height(tall)
+                        .show(ui, |ui| picked = show(ui, id, entries));
                 } else {
                     picked = show(ui, id, entries);
                 }
@@ -139,10 +171,23 @@ pub fn show<A: Clone>(ui: &mut Ui, id: Id, entries: &[Entry<A>]) -> Option<A> {
         match entry {
             Entry::Separator => {
                 let (rect, _) = ui.allocate_exact_size(egui::vec2(width, 9.0), Sense::hover());
-                ui.painter().hline(rect.x_range().shrink(6.0), rect.center().y, Stroke::new(1.0, theme::border()));
+                ui.painter().hline(
+                    rect.x_range().shrink(6.0),
+                    rect.center().y,
+                    Stroke::new(1.0, theme::border()),
+                );
             }
-            Entry::Item { label, shortcut, action, enabled, checked, icon } => {
-                let response = row(ui, width, label, shortcut, icon, *enabled, *checked, false, false);
+            Entry::Item {
+                label,
+                shortcut,
+                action,
+                enabled,
+                checked,
+                icon,
+            } => {
+                let response = row(
+                    ui, width, label, shortcut, icon, *enabled, *checked, false, false,
+                );
                 if response.hovered() {
                     ui.data_mut(|d| d.remove::<usize>(open_sub));
                 }
@@ -158,7 +203,8 @@ pub fn show<A: Clone>(ui: &mut Ui, id: Id, entries: &[Entry<A>]) -> Option<A> {
                 }
                 if open || response.hovered() {
                     let at = egui::pos2(response.rect.right() + 6.0, response.rect.top() - 4.0);
-                    if let Some(action) = popup(ui.ctx(), Id::new((id, "sub", index)), at, entries) {
+                    if let Some(action) = popup(ui.ctx(), Id::new((id, "sub", index)), at, entries)
+                    {
                         picked = Some(action);
                     }
                 }
@@ -175,14 +221,22 @@ fn width<A>(ui: &Ui, entries: &[Entry<A>]) -> f32 {
         if text.is_empty() {
             0.0
         } else {
-            ui.fonts_mut(|f| f.layout_no_wrap(text.to_string(), theme::body(), theme::fg()).size().x)
+            ui.fonts_mut(|f| {
+                f.layout_no_wrap(text.to_string(), theme::body(), theme::fg())
+                    .size()
+                    .x
+            })
         }
     };
     let mut widest: f32 = 0.0;
     let mut shortcut: f32 = 0.0;
     for entry in entries {
         match entry {
-            Entry::Item { label, shortcut: keys, .. } => {
+            Entry::Item {
+                label,
+                shortcut: keys,
+                ..
+            } => {
                 widest = widest.max(measure(label));
                 shortcut = shortcut.max(measure(keys));
             }
@@ -194,13 +248,29 @@ fn width<A>(ui: &Ui, entries: &[Entry<A>]) -> f32 {
         }
     }
     let gap = if shortcut > 0.0 { SHORTCUT_GAP } else { 12.0 };
-    (CHECK_COLUMN + widest + gap + shortcut + RIGHT_PAD).max(200.0).ceil()
+    (CHECK_COLUMN + widest + gap + shortcut + RIGHT_PAD)
+        .max(200.0)
+        .ceil()
 }
 
 /// One row. `arrow` marks a submenu row, `open` one whose submenu is showing.
 #[allow(clippy::too_many_arguments)]
-fn row(ui: &mut Ui, width: f32, label: &str, shortcut: &str, icon: &str, enabled: bool, checked: Option<bool>, arrow: bool, open: bool) -> egui::Response {
-    let sense = if enabled { Sense::click() } else { Sense::hover() };
+fn row(
+    ui: &mut Ui,
+    width: f32,
+    label: &str,
+    shortcut: &str,
+    icon: &str,
+    enabled: bool,
+    checked: Option<bool>,
+    arrow: bool,
+    open: bool,
+) -> egui::Response {
+    let sense = if enabled {
+        Sense::click()
+    } else {
+        Sense::hover()
+    };
     let (rect, response) = ui.allocate_exact_size(egui::vec2(width, ROW), sense);
     // WinUI marks the row under the pointer with a subtle fill; the others with the accent.
     let hot = enabled && response.hovered() && !theme::win();
@@ -211,21 +281,61 @@ fn row(ui: &mut Ui, width: f32, label: &str, shortcut: &str, icon: &str, enabled
     } else if open || subtle {
         painter.rect_filled(rect, CornerRadius::same(4), theme::button_hover());
     }
-    let text = if !enabled { theme::disabled() } else if hot { theme::on_accent() } else { theme::fg() };
-    let weak = if !enabled { theme::disabled() } else if hot { theme::on_accent().gamma_multiply(0.8) } else { theme::dim() };
+    let text = if !enabled {
+        theme::disabled()
+    } else if hot {
+        theme::on_accent()
+    } else {
+        theme::fg()
+    };
+    let weak = if !enabled {
+        theme::disabled()
+    } else if hot {
+        theme::on_accent().gamma_multiply(0.8)
+    } else {
+        theme::dim()
+    };
     let column = egui::pos2(rect.left() + CHECK_COLUMN / 2.0, rect.center().y);
     if checked == Some(true) {
         check_mark(painter, column, text);
     } else if !icon.is_empty() {
-        crate::theme::text(&painter, column, egui::Align2::CENTER_CENTER, icon, theme::icon(), weak);
+        crate::theme::text(
+            &painter,
+            column,
+            egui::Align2::CENTER_CENTER,
+            icon,
+            theme::icon(),
+            weak,
+        );
     }
-    crate::theme::text(&painter, egui::pos2(rect.left() + CHECK_COLUMN, rect.center().y), egui::Align2::LEFT_CENTER, label, theme::body(), text);
+    crate::theme::text(
+        &painter,
+        egui::pos2(rect.left() + CHECK_COLUMN, rect.center().y),
+        egui::Align2::LEFT_CENTER,
+        label,
+        theme::body(),
+        text,
+    );
     if !shortcut.is_empty() {
-        crate::theme::text(&painter, egui::pos2(rect.right() - RIGHT_PAD, rect.center().y), egui::Align2::RIGHT_CENTER, shortcut, theme::body(), weak);
+        crate::theme::text(
+            &painter,
+            egui::pos2(rect.right() - RIGHT_PAD, rect.center().y),
+            egui::Align2::RIGHT_CENTER,
+            shortcut,
+            theme::body(),
+            weak,
+        );
     }
     if arrow {
         let c = egui::pos2(rect.right() - RIGHT_PAD - 3.0, rect.center().y);
-        painter.add(egui::Shape::line(vec![c + egui::vec2(-3.0, -4.0), c + egui::vec2(1.0, 0.0), c + egui::vec2(-3.0, 4.0)], Stroke::new(1.4, weak)));
+        painter.add(egui::Shape::line(
+            vec![
+                c + egui::vec2(-3.0, -4.0),
+                c + egui::vec2(1.0, 0.0),
+                c + egui::vec2(-3.0, 4.0),
+            ],
+            Stroke::new(1.4, weak),
+        ));
     }
     response
 }
@@ -233,7 +343,11 @@ fn row(ui: &mut Ui, width: f32, label: &str, shortcut: &str, icon: &str, enabled
 /// A check mark centred on `c`.
 pub fn check_mark(painter: &egui::Painter, c: Pos2, color: Color32) {
     painter.add(egui::Shape::line(
-        vec![c + egui::vec2(-4.0, 0.0), c + egui::vec2(-1.2, 3.0), c + egui::vec2(4.0, -3.5)],
+        vec![
+            c + egui::vec2(-4.0, 0.0),
+            c + egui::vec2(-1.2, 3.0),
+            c + egui::vec2(4.0, -3.5),
+        ],
         Stroke::new(1.6, color),
     ));
 }
@@ -263,7 +377,11 @@ pub fn ctrl(rest: &str) -> String {
     let key = if key.is_empty() { "+" } else { key_label(key) };
     if cfg!(target_os = "macos") {
         let alt = if modifiers.contains("Alt") { "⌥" } else { "" };
-        let shift = if modifiers.contains("Shift") { "⇧" } else { "" };
+        let shift = if modifiers.contains("Shift") {
+            "⇧"
+        } else {
+            ""
+        };
         format!("{alt}{shift}⌘{key}")
     } else if modifiers.is_empty() {
         format!("Ctrl+{key}")

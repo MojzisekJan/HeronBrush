@@ -136,13 +136,17 @@ impl ExpressionNode {
     /// Builds a node and rebalances it according to operator precedence.
     pub fn new(kind: ExpressionKind, location: Option<FileLocation>) -> Self {
         let (kind, location) = rebalance(kind, location);
-        ExpressionNode { inner: Rc::new(Inner { kind, location }) }
+        ExpressionNode {
+            inner: Rc::new(Inner { kind, location }),
+        }
     }
 
     /// Builds a node without rebalancing, for [`ExpressionNode::optimize`] and the precedence
     /// rebalancer.
     pub fn from_parts(kind: ExpressionKind, location: Option<FileLocation>) -> Self {
-        ExpressionNode { inner: Rc::new(Inner { kind, location }) }
+        ExpressionNode {
+            inner: Rc::new(Inner { kind, location }),
+        }
     }
 
     /// A literal node with no location.
@@ -221,9 +225,11 @@ impl ExpressionNode {
                 let value = operand.eval_inner(ctx, try_mode)?;
                 evaluate_unary(ctx, *operation, &value, self)
             }
-            ExpressionKind::Binary { operation, left, right } => {
-                evaluate_binary(ctx, *operation, left, right, self, try_mode)
-            }
+            ExpressionKind::Binary {
+                operation,
+                left,
+                right,
+            } => evaluate_binary(ctx, *operation, left, right, self, try_mode),
             ExpressionKind::Subscript { left, right } => {
                 let l = left.eval_inner(ctx, try_mode)?;
                 let r = right.eval_inner(ctx, try_mode)?;
@@ -282,10 +288,17 @@ impl ExpressionNode {
                     let value = optimized.evaluate(ctx)?;
                     ExpressionKind::Literal(evaluate_unary(ctx, *operation, &value, self)?)
                 } else {
-                    ExpressionKind::Unary { operation: *operation, operand: optimized }
+                    ExpressionKind::Unary {
+                        operation: *operation,
+                        operand: optimized,
+                    }
                 }
             }
-            ExpressionKind::Binary { operation, left, right } => {
+            ExpressionKind::Binary {
+                operation,
+                left,
+                right,
+            } => {
                 return optimize_binary(ctx, *operation, left, right, self);
             }
             ExpressionKind::Subscript { left, right } => {
@@ -296,7 +309,10 @@ impl ExpressionNode {
                     let r = opt_right.evaluate(ctx)?;
                     ExpressionKind::Literal(evaluate_subscript(ctx, &l, &r, self)?)
                 } else {
-                    ExpressionKind::Subscript { left: opt_left, right: opt_right }
+                    ExpressionKind::Subscript {
+                        left: opt_left,
+                        right: opt_right,
+                    }
                 }
             }
             ExpressionKind::Switch(cases) => {
@@ -397,7 +413,11 @@ impl fmt::Display for ExpressionKind {
                 UnaryOperation::LeftBoundedRange => write!(f, "{operand}.."),
                 UnaryOperation::RightBoundedRange => write!(f, "..{operand}"),
             },
-            ExpressionKind::Binary { operation, left, right } => {
+            ExpressionKind::Binary {
+                operation,
+                left,
+                right,
+            } => {
                 let op = match operation {
                     BinaryOperation::Addition => " + ",
                     BinaryOperation::Subtraction => " - ",
@@ -483,7 +503,12 @@ fn rebalance(
     kind: ExpressionKind,
     location: Option<FileLocation>,
 ) -> (ExpressionKind, Option<FileLocation>) {
-    let ExpressionKind::Binary { operation, left, right } = kind else {
+    let ExpressionKind::Binary {
+        operation,
+        left,
+        right,
+    } = kind
+    else {
         return (kind, location);
     };
     let my_p = binop_precedence(operation);
@@ -503,11 +528,19 @@ fn rebalance(
                 unreachable!("a child with precedence < 13 is a binary expression");
             };
             let old_this = ExpressionNode::from_parts(
-                ExpressionKind::Binary { operation, left: lr, right: rebalance_node(right) },
+                ExpressionKind::Binary {
+                    operation,
+                    left: lr,
+                    right: rebalance_node(right),
+                },
                 location,
             );
             return (
-                ExpressionKind::Binary { operation: lop, left: ll, right: old_this },
+                ExpressionKind::Binary {
+                    operation: lop,
+                    left: ll,
+                    right: old_this,
+                },
                 left_loc,
             );
         } else {
@@ -522,17 +555,32 @@ fn rebalance(
                 unreachable!("a child with precedence < 13 is a binary expression");
             };
             let old_this = ExpressionNode::from_parts(
-                ExpressionKind::Binary { operation, left: rebalance_node(left), right: rl },
+                ExpressionKind::Binary {
+                    operation,
+                    left: rebalance_node(left),
+                    right: rl,
+                },
                 location,
             );
             return (
-                ExpressionKind::Binary { operation: rop, left: old_this, right: rr },
+                ExpressionKind::Binary {
+                    operation: rop,
+                    left: old_this,
+                    right: rr,
+                },
                 right_loc,
             );
         }
     }
 
-    (ExpressionKind::Binary { operation, left, right }, location)
+    (
+        ExpressionKind::Binary {
+            operation,
+            left,
+            right,
+        },
+        location,
+    )
 }
 
 // --- error builders ---------------------------------------------------------------
@@ -540,14 +588,22 @@ fn rebalance(
 fn evaluation_error_node(node: &ExpressionNode, reason: &str) -> ElError {
     ElError::Evaluation(crate::prepend_location(
         node.location(),
-        &format!("Cannot evaluate expression '{}': {}", node.as_string(), reason),
+        &format!(
+            "Cannot evaluate expression '{}': {}",
+            node.as_string(),
+            reason
+        ),
     ))
 }
 
 fn invalid_operand_types(node: &ExpressionNode, lhs: &Value, rhs: &Value) -> ElError {
     evaluation_error_node(
         node,
-        &format!("Invalid operand types {} and {}", lhs.type_name(), rhs.type_name()),
+        &format!(
+            "Invalid operand types {} and {}",
+            lhs.type_name(),
+            rhs.type_name()
+        ),
     )
 }
 
@@ -594,12 +650,22 @@ fn evaluate_unary(
         UnaryOperation::BitwiseNegation => evaluate_bitwise_negation(ctx, operand, node),
         UnaryOperation::Group => Ok(ctx.trace_to_value(operand.clone(), operand)),
         UnaryOperation::LeftBoundedRange => {
-            let first = operand.convert_to(ctx, ValueType::Number)?.number_value(ctx)? as i64;
-            Ok(ctx.trace_to_value(Value::range(Range::Left(LeftBoundedRange { first })), operand))
+            let first = operand
+                .convert_to(ctx, ValueType::Number)?
+                .number_value(ctx)? as i64;
+            Ok(ctx.trace_to_value(
+                Value::range(Range::Left(LeftBoundedRange { first })),
+                operand,
+            ))
         }
         UnaryOperation::RightBoundedRange => {
-            let last = operand.convert_to(ctx, ValueType::Number)?.number_value(ctx)? as i64;
-            Ok(ctx.trace_to_value(Value::range(Range::Right(RightBoundedRange { last })), operand))
+            let last = operand
+                .convert_to(ctx, ValueType::Number)?
+                .number_value(ctx)? as i64;
+            Ok(ctx.trace_to_value(
+                Value::range(Range::Right(RightBoundedRange { last })),
+                operand,
+            ))
         }
     }
 }
@@ -610,9 +676,9 @@ fn evaluate_unary_plus(
     node: &ExpressionNode,
 ) -> Result<Value, ElError> {
     match v.value_type() {
-        ValueType::Boolean | ValueType::Number => {
-            Ok(Value::number(v.convert_to(ctx, ValueType::Number)?.number_value(ctx)?))
-        }
+        ValueType::Boolean | ValueType::Number => Ok(Value::number(
+            v.convert_to(ctx, ValueType::Number)?.number_value(ctx)?,
+        )),
         ValueType::String => {
             if let Some(result) = v.try_convert_to(ctx, ValueType::Number)? {
                 return Ok(Value::number(result.number_value(ctx)?));
@@ -629,9 +695,9 @@ fn evaluate_unary_minus(
     node: &ExpressionNode,
 ) -> Result<Value, ElError> {
     match v.value_type() {
-        ValueType::Boolean | ValueType::Number => {
-            Ok(Value::number(-v.convert_to(ctx, ValueType::Number)?.number_value(ctx)?))
-        }
+        ValueType::Boolean | ValueType::Number => Ok(Value::number(
+            -v.convert_to(ctx, ValueType::Number)?.number_value(ctx)?,
+        )),
         ValueType::String => {
             if let Some(result) = v.try_convert_to(ctx, ValueType::Number)? {
                 return Ok(Value::number(-result.number_value(ctx)?));
@@ -676,7 +742,9 @@ fn evaluate_binary(
         Case => {
             let lhs = left.eval_inner(ctx, try_mode)?;
             if lhs.value_type() != ValueType::Undefined
-                && lhs.convert_to(ctx, ValueType::Boolean)?.boolean_value(ctx)?
+                && lhs
+                    .convert_to(ctx, ValueType::Boolean)?
+                    .boolean_value(ctx)?
             {
                 right.eval_inner(ctx, try_mode)
             } else {
@@ -843,7 +911,9 @@ fn evaluate_logical_and(
         }
         let rhs = right.eval_inner(ctx, try_mode)?;
         if rhs.has_type(&[Boolean, Null]) {
-            return Ok(Value::boolean(rhs.convert_to(ctx, Boolean)?.boolean_value(ctx)?));
+            return Ok(Value::boolean(
+                rhs.convert_to(ctx, Boolean)?.boolean_value(ctx)?,
+            ));
         }
         if rhs.value_type() == Undefined {
             return Ok(Value::undefined());
@@ -875,7 +945,9 @@ fn evaluate_logical_or(
         }
         let rhs = right.eval_inner(ctx, try_mode)?;
         if rhs.has_type(&[Boolean, Null]) {
-            return Ok(Value::boolean(rhs.convert_to(ctx, Boolean)?.boolean_value(ctx)?));
+            return Ok(Value::boolean(
+                rhs.convert_to(ctx, Boolean)?.boolean_value(ctx)?,
+            ));
         }
         if rhs.value_type() == Undefined {
             return Ok(Value::undefined());
@@ -894,8 +966,12 @@ fn compare_as_booleans(
     lhs: &Value,
     rhs: &Value,
 ) -> Result<i32, ElError> {
-    let a = lhs.convert_to(ctx, ValueType::Boolean)?.boolean_value(ctx)?;
-    let b = rhs.convert_to(ctx, ValueType::Boolean)?.boolean_value(ctx)?;
+    let a = lhs
+        .convert_to(ctx, ValueType::Boolean)?
+        .boolean_value(ctx)?;
+    let b = rhs
+        .convert_to(ctx, ValueType::Boolean)?
+        .boolean_value(ctx)?;
     Ok(if a == b {
         0
     } else if a {
@@ -984,8 +1060,10 @@ fn evaluate_compare_inner(
         },
         Map => match rhs.value_type() {
             Map => {
-                let a: Vec<(std::string::String, Value)> = lhs.map_value(ctx)?.into_iter().collect();
-                let b: Vec<(std::string::String, Value)> = rhs.map_value(ctx)?.into_iter().collect();
+                let a: Vec<(std::string::String, Value)> =
+                    lhs.map_value(ctx)?.into_iter().collect();
+                let b: Vec<(std::string::String, Value)> =
+                    rhs.map_value(ctx)?.into_iter().collect();
                 range_lex_compare_pairs(ctx, node, &a, &b)
             }
             Null | Undefined => Ok(1),
@@ -1030,16 +1108,18 @@ fn range_lex_compare_pairs(
     a: &[(String, Value)],
     b: &[(String, Value)],
 ) -> Result<i32, ElError> {
-    let pair_less =
-        |ctx: &mut EvaluationContext, l: &(String, Value), r: &(String, Value)| -> Result<bool, ElError> {
-            if l.0 < r.0 {
-                Ok(true)
-            } else if r.0 < l.0 {
-                Ok(false)
-            } else {
-                Ok(evaluate_compare_inner(ctx, &l.1, &r.1, node)? < 0)
-            }
-        };
+    let pair_less = |ctx: &mut EvaluationContext,
+                     l: &(String, Value),
+                     r: &(String, Value)|
+     -> Result<bool, ElError> {
+        if l.0 < r.0 {
+            Ok(true)
+        } else if r.0 < l.0 {
+            Ok(false)
+        } else {
+            Ok(evaluate_compare_inner(ctx, &l.1, &r.1, node)? < 0)
+        }
+    };
     let mut i = 0;
     while i < a.len() && i < b.len() {
         if pair_less(ctx, &a[i], &b[i])? {
@@ -1069,7 +1149,10 @@ fn evaluate_bounded_range(
     }
     let from = lhs.convert_to(ctx, ValueType::Number)?.number_value(ctx)? as i64;
     let to = rhs.convert_to(ctx, ValueType::Number)?.number_value(ctx)? as i64;
-    Ok(Value::range(Range::Bounded(BoundedRange { first: from, last: to })))
+    Ok(Value::range(Range::Bounded(BoundedRange {
+        first: from,
+        last: to,
+    })))
 }
 
 // --- subscripting -------------------------------------------------------------
@@ -1091,7 +1174,9 @@ fn compute_index_from_value(
     index_value: &Value,
     size: usize,
 ) -> Result<usize, ElError> {
-    let n = index_value.convert_to(ctx, ValueType::Number)?.number_value(ctx)? as i64;
+    let n = index_value
+        .convert_to(ctx, ValueType::Number)?
+        .number_value(ctx)? as i64;
     Ok(compute_index(n, size))
 }
 
@@ -1249,7 +1334,9 @@ fn optimize_binary(
                 v
             };
             if lhs.value_type() != ValueType::Undefined
-                && lhs.convert_to(ctx, ValueType::Boolean)?.boolean_value(ctx)?
+                && lhs
+                    .convert_to(ctx, ValueType::Boolean)?
+                    .boolean_value(ctx)?
             {
                 let o = right.optimize(ctx)?;
                 let v = o.evaluate(ctx)?;
@@ -1295,7 +1382,11 @@ fn optimize_binary(
         None => right.optimize(ctx)?,
     };
     Ok(ExpressionNode::from_parts(
-        ExpressionKind::Binary { operation: op, left: final_left, right: final_right },
+        ExpressionKind::Binary {
+            operation: op,
+            left: final_left,
+            right: final_right,
+        },
         node.inner.location,
     ))
 }
@@ -1329,7 +1420,9 @@ fn optimize_logical(
             v
         };
         if rhs.has_type(&[Boolean, Null]) {
-            return Ok(Value::boolean(rhs.convert_to(ctx, Boolean)?.boolean_value(ctx)?));
+            return Ok(Value::boolean(
+                rhs.convert_to(ctx, Boolean)?.boolean_value(ctx)?,
+            ));
         }
         if rhs.value_type() == Undefined {
             return Ok(Value::undefined());

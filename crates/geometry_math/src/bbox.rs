@@ -334,12 +334,30 @@ impl<T: Num> Bbox<T, 3> {
         let (o, i) = (T::ZERO, T::ONE);
 
         [
-            Face::new([max, max - y, max - y - x, max - x], Vector::<T, 3>::new(o, o, i)),
-            Face::new([min, min + x, min + x + y, min + y], Vector::<T, 3>::new(o, o, -i)),
-            Face::new([min, min + z, min + z + x, min + x], Vector::<T, 3>::new(o, -i, o)),
-            Face::new([max, max - x, max - x - z, max - z], Vector::<T, 3>::new(o, i, o)),
-            Face::new([min, min + y, min + y + z, min + z], Vector::<T, 3>::new(-i, o, o)),
-            Face::new([max, max - z, max - z - y, max - y], Vector::<T, 3>::new(i, o, o)),
+            Face::new(
+                [max, max - y, max - y - x, max - x],
+                Vector::<T, 3>::new(o, o, i),
+            ),
+            Face::new(
+                [min, min + x, min + x + y, min + y],
+                Vector::<T, 3>::new(o, o, -i),
+            ),
+            Face::new(
+                [min, min + z, min + z + x, min + x],
+                Vector::<T, 3>::new(o, -i, o),
+            ),
+            Face::new(
+                [max, max - x, max - x - z, max - z],
+                Vector::<T, 3>::new(o, i, o),
+            ),
+            Face::new(
+                [min, min + y, min + y + z, min + z],
+                Vector::<T, 3>::new(-i, o, o),
+            ),
+            Face::new(
+                [max, max - z, max - z - y, max - y],
+                Vector::<T, 3>::new(i, o, o),
+            ),
         ]
     }
 
@@ -391,11 +409,7 @@ impl<T: Float> Bbox<T, 3> {
 
 /// Returns whether the given boxes have the same corners up to `epsilon`.
 #[inline]
-pub fn is_equal<T: Num, const S: usize>(
-    lhs: &Bbox<T, S>,
-    rhs: &Bbox<T, S>,
-    epsilon: T,
-) -> bool {
+pub fn is_equal<T: Num, const S: usize>(lhs: &Bbox<T, S>, rhs: &Bbox<T, S>, epsilon: T) -> bool {
     vec::is_equal(&lhs.min, &rhs.min, epsilon) && vec::is_equal(&lhs.max, &rhs.max, epsilon)
 }
 

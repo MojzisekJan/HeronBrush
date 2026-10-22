@@ -92,8 +92,10 @@ pub fn draw(cr: &mut dyn Canvas, viewport: (f64, f64), arrows: &[Arrow]) {
         let (r, g, b, _) = axis_color(axis.axis).rgba_f64();
         let extents = cr.text_extents(label, 9.0);
         cr.new_path();
-        cr.move_to(end.x() - extents.width / 2.0 - extents.x_bearing,
-            end.y() - extents.height / 2.0 - extents.y_bearing);
+        cr.move_to(
+            end.x() - extents.width / 2.0 - extents.x_bearing,
+            end.y() - extents.height / 2.0 - extents.y_bearing,
+        );
         cr.set_source_rgba(r, g, b, 0.95);
         cr.show_text_outlined(label, 9.0, [0.0, 0.0, 0.0, 0.65], 2.0);
     }
@@ -131,7 +133,10 @@ mod tests {
         let arrows = arrows(right, up, direction, None);
         assert_eq!(arrows.len(), 3);
         assert!(arrows[0].depth >= arrows[1].depth && arrows[1].depth >= arrows[2].depth);
-        assert_eq!(arrows[0].axis, 2, "Z has the largest share of the look direction");
+        assert_eq!(
+            arrows[0].axis, 2,
+            "Z has the largest share of the look direction"
+        );
     }
 
     #[test]
@@ -145,5 +150,4 @@ mod tests {
         assert_eq!(arrows.len(), 2);
         assert!(arrows.iter().all(|a| a.axis != 2));
     }
-
 }

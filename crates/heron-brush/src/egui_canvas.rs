@@ -69,12 +69,23 @@ impl Capture {
 
     /// Everything recorded, as meshes ready to paint in order: the shapes tessellated by
     /// egui clipped to `clip`, the segments as they are.
-    pub fn into_meshes(self, ctx: &egui::Context, clip: Rect, pixels_per_point: f32) -> Vec<std::sync::Arc<egui::Mesh>> {
+    pub fn into_meshes(
+        self,
+        ctx: &egui::Context,
+        clip: Rect,
+        pixels_per_point: f32,
+    ) -> Vec<std::sync::Arc<egui::Mesh>> {
         let mut out = Vec::new();
         for layer in self.layers {
             match layer {
                 Captured::Shapes(shapes) => {
-                    let clipped = shapes.into_iter().map(|shape| egui::epaint::ClippedShape { clip_rect: clip, shape }).collect();
+                    let clipped = shapes
+                        .into_iter()
+                        .map(|shape| egui::epaint::ClippedShape {
+                            clip_rect: clip,
+                            shape,
+                        })
+                        .collect();
                     for primitive in ctx.tessellate(clipped, pixels_per_point) {
                         if let egui::epaint::Primitive::Mesh(mesh) = primitive.primitive {
                             if !mesh.is_empty() {
@@ -143,7 +154,9 @@ impl<'a> EguiCanvas<'a> {
 
     /// What a capturing canvas recorded.
     pub fn into_capture(self) -> Capture {
-        self.capture.map(std::cell::RefCell::into_inner).unwrap_or_default()
+        self.capture
+            .map(std::cell::RefCell::into_inner)
+            .unwrap_or_default()
     }
 
     /// Paints `shapes`, or records them when capturing.
@@ -168,7 +181,9 @@ impl<'a> EguiCanvas<'a> {
     /// for a fraction of the work of going through its tessellator a segment at a time.
     /// Returns false (drawing nothing) when not capturing or the stroke is too wide.
     fn capture_segment(&self, from: Pos2, to: Pos2, width: f32, color: Color32) -> bool {
-        let Some(capture) = &self.capture else { return false };
+        let Some(capture) = &self.capture else {
+            return false;
+        };
         let pixel = 1.0 / self.pixels_per_point;
         if width > 2.5 * pixel {
             return false;
@@ -188,13 +203,21 @@ impl<'a> EguiCanvas<'a> {
         // A segment shorter than a pixel is drawn as a pixel-long dash, so a brush far too
         // small to see at this zoom is still a dot rather than nothing.
         let (direction, from, to) = if length < pixel {
-            (egui::vec2(1.0, 0.0), from - egui::vec2(pixel / 2.0, 0.0), from + egui::vec2(pixel / 2.0, 0.0))
+            (
+                egui::vec2(1.0, 0.0),
+                from - egui::vec2(pixel / 2.0, 0.0),
+                from + egui::vec2(pixel / 2.0, 0.0),
+            )
         } else {
             (along / length, from, to)
         };
         let normal = egui::vec2(-direction.y, direction.x);
         // Thinner than a pixel: one pixel wide, fainter (as egui draws a hairline).
-        let (core, color) = if width < pixel { (0.0, color.gamma_multiply(width / pixel)) } else { ((width - pixel) / 2.0, color) };
+        let (core, color) = if width < pixel {
+            (0.0, color.gamma_multiply(width / pixel))
+        } else {
+            ((width - pixel) / 2.0, color)
+        };
         let fade = normal * (core + pixel);
         let inner = normal * core;
         let base = mesh.vertices.len() as u32;
@@ -202,19 +225,57 @@ impl<'a> EguiCanvas<'a> {
         let uv = egui::epaint::WHITE_UV;
         if core == 0.0 {
             // A hairline: a bright middle fading out either side, three vertices across.
-            for (p, c) in [(from + fade, clear), (from, color), (from - fade, clear), (to + fade, clear), (to, color), (to - fade, clear)] {
-                mesh.vertices.push(egui::epaint::Vertex { pos: p, uv, color: c });
+            for (p, c) in [
+                (from + fade, clear),
+                (from, color),
+                (from - fade, clear),
+                (to + fade, clear),
+                (to, color),
+                (to - fade, clear),
+            ] {
+                mesh.vertices.push(egui::epaint::Vertex {
+                    pos: p,
+                    uv,
+                    color: c,
+                });
             }
             for (a, b) in [(0, 1), (1, 2)] {
-                mesh.indices.extend([base + a, base + b, base + 3 + a, base + b, base + 3 + b, base + 3 + a]);
+                mesh.indices.extend([
+                    base + a,
+                    base + b,
+                    base + 3 + a,
+                    base + b,
+                    base + 3 + b,
+                    base + 3 + a,
+                ]);
             }
             return true;
         }
-        for (p, c) in [(from + fade, clear), (from + inner, color), (from - inner, color), (from - fade, clear), (to + fade, clear), (to + inner, color), (to - inner, color), (to - fade, clear)] {
-            mesh.vertices.push(egui::epaint::Vertex { pos: p, uv, color: c });
+        for (p, c) in [
+            (from + fade, clear),
+            (from + inner, color),
+            (from - inner, color),
+            (from - fade, clear),
+            (to + fade, clear),
+            (to + inner, color),
+            (to - inner, color),
+            (to - fade, clear),
+        ] {
+            mesh.vertices.push(egui::epaint::Vertex {
+                pos: p,
+                uv,
+                color: c,
+            });
         }
         for (a, b) in [(0, 1), (1, 2), (2, 3)] {
-            mesh.indices.extend([base + a, base + b, base + 4 + a, base + b, base + 4 + b, base + 4 + a]);
+            mesh.indices.extend([
+                base + a,
+                base + b,
+                base + 4 + a,
+                base + b,
+                base + 4 + b,
+                base + 4 + a,
+            ]);
         }
         true
     }
@@ -298,7 +359,12 @@ impl<'a> EguiCanvas<'a> {
         let bold = egui::FontFamily::Name("bold".into());
         // The bold family exists once the theme has loaded its fonts; plain text stands
         // in before that.
-        let family = if self.state.bold && self.painter.ctx().fonts(|f| f.definitions().families.contains_key(&bold)) {
+        let family = if self.state.bold
+            && self
+                .painter
+                .ctx()
+                .fonts(|f| f.definitions().families.contains_key(&bold))
+        {
             bold
         } else {
             egui::FontFamily::Proportional
@@ -307,7 +373,8 @@ impl<'a> EguiCanvas<'a> {
     }
 
     fn galley(&self, text: &str, size: f64) -> std::sync::Arc<egui::Galley> {
-        self.painter.layout_no_wrap(text.to_string(), self.font(size), self.state.color)
+        self.painter
+            .layout_no_wrap(text.to_string(), self.font(size), self.state.color)
     }
 
     /// One stroked polyline with the state's caps and joins.
@@ -330,10 +397,16 @@ impl<'a> EguiCanvas<'a> {
         if closed {
             points.push(points[0]);
         }
-        let round = |out: &mut Vec<Shape>, at: Pos2| out.push(Shape::circle_filled(at, half, self.state.color));
+        let round = |out: &mut Vec<Shape>, at: Pos2| {
+            out.push(Shape::circle_filled(at, half, self.state.color))
+        };
         if half > 0.75 {
             if self.state.join == LineJoin::Round {
-                let interior = if closed { 0..points.len() - 1 } else { 1..points.len() - 1 };
+                let interior = if closed {
+                    0..points.len() - 1
+                } else {
+                    1..points.len() - 1
+                };
                 for i in interior {
                     round(out, points[i]);
                 }
@@ -437,8 +510,15 @@ impl Canvas for EguiCanvas<'_> {
     fn set_dash(&mut self, dashes: &[f64], offset: f64) {
         // Cairo turns off dashing for an empty pattern and refuses one that is all zero
         // or has a negative length.
-        let usable = !dashes.is_empty() && dashes.iter().all(|d| *d >= 0.0 && d.is_finite()) && dashes.iter().any(|d| *d > 0.0);
-        self.state.dash = usable.then(|| (dashes.to_vec(), if offset.is_finite() { offset } else { 0.0 }));
+        let usable = !dashes.is_empty()
+            && dashes.iter().all(|d| *d >= 0.0 && d.is_finite())
+            && dashes.iter().any(|d| *d > 0.0);
+        self.state.dash = usable.then(|| {
+            (
+                dashes.to_vec(),
+                if offset.is_finite() { offset } else { 0.0 },
+            )
+        });
     }
     fn set_line_cap(&mut self, cap: LineCap) {
         self.state.cap = cap;
@@ -453,16 +533,31 @@ impl Canvas for EguiCanvas<'_> {
         let paths = self.paths.clone();
         self.stroke_paths(paths);
     }
-    fn stroke_segments(&mut self, segments: &mut dyn Iterator<Item = (geometry_math::vec::Vec2d, geometry_math::vec::Vec2d)>) {
-        let width=self.stroke_width();
-        if self.capture.is_some() && self.paths.is_empty() && self.state.dash.is_none()
-            && self.state.cap==LineCap::Butt && width<=2.5/self.pixels_per_point {
-            for (from,to) in segments {
-                self.capture_segment(self.map(from.x(),from.y()),self.map(to.x(),to.y()),width,self.state.color);
+    fn stroke_segments(
+        &mut self,
+        segments: &mut dyn Iterator<Item = (geometry_math::vec::Vec2d, geometry_math::vec::Vec2d)>,
+    ) {
+        let width = self.stroke_width();
+        if self.capture.is_some()
+            && self.paths.is_empty()
+            && self.state.dash.is_none()
+            && self.state.cap == LineCap::Butt
+            && width <= 2.5 / self.pixels_per_point
+        {
+            for (from, to) in segments {
+                self.capture_segment(
+                    self.map(from.x(), from.y()),
+                    self.map(to.x(), to.y()),
+                    width,
+                    self.state.color,
+                );
             }
             self.new_path();
         } else {
-            for (from,to) in segments {self.move_to(from.x(),from.y());self.line_to(to.x(),to.y());}
+            for (from, to) in segments {
+                self.move_to(from.x(), from.y());
+                self.line_to(to.x(), to.y());
+            }
             self.stroke();
         }
     }
@@ -473,13 +568,22 @@ impl Canvas for EguiCanvas<'_> {
         self.new_path();
     }
     fn fill_preserve(&mut self) {
-        let rings: Vec<&[Pos2]> = self.paths.iter().map(|(points, _)| points.as_slice()).filter(|p| p.len() >= 3).collect();
+        let rings: Vec<&[Pos2]> = self
+            .paths
+            .iter()
+            .map(|(points, _)| points.as_slice())
+            .filter(|p| p.len() >= 3)
+            .collect();
         if rings.is_empty() {
             return;
         }
         let color = self.state.color;
         if rings.len() == 1 && is_convex(rings[0]) {
-            self.emit_one(Shape::convex_polygon(rings[0].to_vec(), color, Stroke::NONE));
+            self.emit_one(Shape::convex_polygon(
+                rings[0].to_vec(),
+                color,
+                Stroke::NONE,
+            ));
             return;
         }
         self.emit_one(Shape::mesh(fill_mesh(&rings, self.state.fill_rule, color)));
@@ -508,7 +612,15 @@ impl Canvas for EguiCanvas<'_> {
         self.state.clip = self.state.clip.intersect(bounds);
         self.new_path();
     }
-    fn paint_tiled_image(&mut self, key: &str, width: u32, height: u32, pixels: &[u8], origin: (f64, f64), scale: f64) {
+    fn paint_tiled_image(
+        &mut self,
+        key: &str,
+        width: u32,
+        height: u32,
+        pixels: &[u8],
+        origin: (f64, f64),
+        scale: f64,
+    ) {
         // The upload is kept in egui's memory under the key, with a signature of the
         // pixels, so a material is sent to the GPU once rather than every frame, and again
         // when it is reloaded with new pixels under the same name and size.
@@ -519,7 +631,10 @@ impl Canvas for EguiCanvas<'_> {
         let texture = match cached {
             Some((seen, texture)) if seen == signature => texture,
             _ => {
-                let image = egui::ColorImage::from_rgba_unmultiplied([width as usize, height as usize], pixels);
+                let image = egui::ColorImage::from_rgba_unmultiplied(
+                    [width as usize, height as usize],
+                    pixels,
+                );
                 let options = egui::TextureOptions {
                     magnification: egui::TextureFilter::Nearest,
                     minification: egui::TextureFilter::Nearest,
@@ -542,7 +657,11 @@ impl Canvas for EguiCanvas<'_> {
         }
         let uv = |p: Pos2| Pos2::new((p.x - at.x) / tile.x, (p.y - at.y) / tile.y);
         let mut mesh = egui::Mesh::with_texture(texture.id());
-        mesh.add_rect_with_uv(clip, Rect::from_min_max(uv(clip.min), uv(clip.max)), Color32::WHITE);
+        mesh.add_rect_with_uv(
+            clip,
+            Rect::from_min_max(uv(clip.min), uv(clip.max)),
+            Color32::WHITE,
+        );
         self.emit_one(Shape::mesh(mesh));
     }
     fn clip_extents(&mut self) -> Option<(f64, f64, f64, f64)> {
@@ -585,7 +704,12 @@ impl Canvas for EguiCanvas<'_> {
         // blank text has none, as Cairo reports.
         let ink = galley.mesh_bounds;
         let (x_bearing, y_bearing, width, height) = if ink.is_positive() {
-            (f64::from(ink.min.x), f64::from(ink.min.y) - base, f64::from(ink.width()), f64::from(ink.height()))
+            (
+                f64::from(ink.min.x),
+                f64::from(ink.min.y) - base,
+                f64::from(ink.width()),
+                f64::from(ink.height()),
+            )
         } else {
             (0.0, 0.0, 0.0, 0.0)
         };
@@ -726,7 +850,11 @@ pub(crate) fn fill_mesh(rings: &[&[Pos2]], rule: FillRule, color: Color32) -> eg
                 continue;
             }
             let (top, bottom, winding) = if a.y < b.y { (a, b, 1) } else { (b, a, -1) };
-            edges.push(Edge { top, bottom, winding });
+            edges.push(Edge {
+                top,
+                bottom,
+                winding,
+            });
         }
     }
     // The bands run between every vertex height and every height where two edges cross,
@@ -785,7 +913,12 @@ pub(crate) fn fill_mesh(rings: &[&[Pos2]], rule: FillRule, color: Color32) -> eg
                 (true, None) => left = Some((x0, x1)),
                 (false, Some((l0, l1))) => {
                     let base = mesh.vertices.len() as u32;
-                    for p in [Pos2::new(l0, y0), Pos2::new(x0, y0), Pos2::new(x1, y1), Pos2::new(l1, y1)] {
+                    for p in [
+                        Pos2::new(l0, y0),
+                        Pos2::new(x0, y0),
+                        Pos2::new(x1, y1),
+                        Pos2::new(l1, y1),
+                    ] {
                         mesh.colored_vertex(p, color);
                     }
                     mesh.add_triangle(base, base + 1, base + 2);
@@ -851,15 +984,25 @@ mod tests {
     fn even_odd_fill_of_a_ring_leaves_the_hole_empty() {
         let (outer, inner) = (square(50.0, 40.0, true), square(50.0, 15.0, true));
         let mesh = fill_mesh(&[&outer, &inner], FillRule::EvenOdd, Color32::WHITE);
-        assert!(covered(&mesh, Pos2::new(15.0, 50.0)), "the band of the ring is filled");
+        assert!(
+            covered(&mesh, Pos2::new(15.0, 50.0)),
+            "the band of the ring is filled"
+        );
         assert!(covered(&mesh, Pos2::new(50.0, 80.0)));
-        assert!(!covered(&mesh, Pos2::new(50.0, 50.0)), "the hole stays open");
+        assert!(
+            !covered(&mesh, Pos2::new(50.0, 50.0)),
+            "the hole stays open"
+        );
         assert!(!covered(&mesh, Pos2::new(95.0, 50.0)), "nothing outside");
     }
 
     #[test]
     fn nonzero_fill_needs_the_hole_wound_the_other_way() {
-        let (outer, same, opposite) = (square(50.0, 40.0, true), square(50.0, 15.0, true), square(50.0, 15.0, false));
+        let (outer, same, opposite) = (
+            square(50.0, 40.0, true),
+            square(50.0, 15.0, true),
+            square(50.0, 15.0, false),
+        );
         let filled = fill_mesh(&[&outer, &same], FillRule::Winding, Color32::WHITE);
         assert!(covered(&filled, Pos2::new(50.0, 50.0)));
         let holed = fill_mesh(&[&outer, &opposite], FillRule::Winding, Color32::WHITE);
@@ -872,12 +1015,19 @@ mod tests {
         // A pentagram: its centre is wound twice.
         let star: Vec<Pos2> = (0..5)
             .map(|i| {
-                let angle = std::f32::consts::TAU * (i as f32 * 2.0) / 5.0 - std::f32::consts::FRAC_PI_2;
+                let angle =
+                    std::f32::consts::TAU * (i as f32 * 2.0) / 5.0 - std::f32::consts::FRAC_PI_2;
                 Pos2::new(50.0 + 40.0 * angle.cos(), 50.0 + 40.0 * angle.sin())
             })
             .collect();
-        assert!(!covered(&fill_mesh(&[&star], FillRule::EvenOdd, Color32::WHITE), Pos2::new(50.0, 52.0)));
-        assert!(covered(&fill_mesh(&[&star], FillRule::Winding, Color32::WHITE), Pos2::new(50.0, 52.0)));
+        assert!(!covered(
+            &fill_mesh(&[&star], FillRule::EvenOdd, Color32::WHITE),
+            Pos2::new(50.0, 52.0)
+        ));
+        assert!(covered(
+            &fill_mesh(&[&star], FillRule::Winding, Color32::WHITE),
+            Pos2::new(50.0, 52.0)
+        ));
     }
 
     #[test]
@@ -885,9 +1035,16 @@ mod tests {
         let line = [Pos2::new(0.0, 0.0), Pos2::new(20.0, 0.0)];
         let pieces = dash_polyline(&line, &[4.0, 2.0, 1.0, 3.0], 0.0);
         let spans: Vec<(f32, f32)> = pieces.iter().map(|p| (p[0].x, p[p.len() - 1].x)).collect();
-        assert_eq!(spans, vec![(0.0, 4.0), (6.0, 7.0), (10.0, 14.0), (16.0, 17.0)]);
+        assert_eq!(
+            spans,
+            vec![(0.0, 4.0), (6.0, 7.0), (10.0, 14.0), (16.0, 17.0)]
+        );
         let shifted = dash_polyline(&line, &[4.0, 2.0], 3.0);
-        assert_eq!((shifted[0][0].x, shifted[0][1].x), (0.0, 1.0), "three units into the first dash");
+        assert_eq!(
+            (shifted[0][0].x, shifted[0][1].x),
+            (0.0, 1.0),
+            "three units into the first dash"
+        );
         assert_eq!(shifted[1][0].x, 3.0);
         // An odd pattern repeats with on and off swapped.
         let odd = dash_polyline(&line, &[3.0], 0.0);
@@ -897,9 +1054,20 @@ mod tests {
 
     #[test]
     fn dashes_continue_round_corners() {
-        let corner = [Pos2::new(0.0, 0.0), Pos2::new(3.0, 0.0), Pos2::new(3.0, 3.0)];
+        let corner = [
+            Pos2::new(0.0, 0.0),
+            Pos2::new(3.0, 0.0),
+            Pos2::new(3.0, 3.0),
+        ];
         let pieces = dash_polyline(&corner, &[5.0, 1.0], 0.0);
-        assert_eq!(pieces[0], vec![Pos2::new(0.0, 0.0), Pos2::new(3.0, 0.0), Pos2::new(3.0, 2.0)]);
+        assert_eq!(
+            pieces[0],
+            vec![
+                Pos2::new(0.0, 0.0),
+                Pos2::new(3.0, 0.0),
+                Pos2::new(3.0, 2.0)
+            ]
+        );
     }
 
     #[test]
@@ -925,11 +1093,20 @@ mod tests {
         let ctx = egui::Context::default();
         let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
             let painter = ui.painter().clone();
-            let mut canvas = EguiCanvas::new(&painter, Rect::from_min_size(Pos2::ZERO, egui::vec2(100.0, 100.0)));
+            let mut canvas = EguiCanvas::new(
+                &painter,
+                Rect::from_min_size(Pos2::ZERO, egui::vec2(100.0, 100.0)),
+            );
             let dot = canvas.text_extents(".", 20.0);
             let line = canvas.text_extents("Hg", 20.0);
-            assert!(dot.height < line.height, "a full stop is inked lower than a line");
-            assert!(dot.y_bearing > line.y_bearing, "and starts nearer the baseline");
+            assert!(
+                dot.height < line.height,
+                "a full stop is inked lower than a line"
+            );
+            assert!(
+                dot.y_bearing > line.y_bearing,
+                "and starts nearer the baseline"
+            );
             assert!(line.y_bearing < 0.0);
             assert!(line.width <= line.x_advance + 1.0);
             let blank = canvas.text_extents(" ", 20.0);
@@ -946,33 +1123,75 @@ mod streamed_segment_tests {
     use geometry_math::vec::Vec2d;
     #[test]
     fn streamed_segments_match_legacy_meshes_including_style_fallbacks() {
-        let ctx=egui::Context::default();
-        let rect=Rect::from_min_size(Pos2::new(20.,10.),egui::vec2(640.,480.));
-        let segments=[(Vec2d::new(4.,8.),Vec2d::new(140.,12.)),(Vec2d::new(140.,12.),Vec2d::new(4.,8.)),
-            (Vec2d::new(10.,20.),Vec2d::new(10.01,20.)),(Vec2d::new(-4.,30.),Vec2d::new(64.,40.)),(Vec2d::zero(),Vec2d::zero())];
-        for ppp in [1.,2.] {
+        let ctx = egui::Context::default();
+        let rect = Rect::from_min_size(Pos2::new(20., 10.), egui::vec2(640., 480.));
+        let segments = [
+            (Vec2d::new(4., 8.), Vec2d::new(140., 12.)),
+            (Vec2d::new(140., 12.), Vec2d::new(4., 8.)),
+            (Vec2d::new(10., 20.), Vec2d::new(10.01, 20.)),
+            (Vec2d::new(-4., 30.), Vec2d::new(64., 40.)),
+            (Vec2d::zero(), Vec2d::zero()),
+        ];
+        for ppp in [1., 2.] {
             ctx.set_pixels_per_point(ppp);
-            for width in [0.3,1.,2.,4.] {for cap in [LineCap::Butt,LineCap::Square,LineCap::Round] {for dashed in [false,true] {for pending in [false,true] {
-                let render=|streamed| {
-                    let mut meshes=Vec::new();
-                    let mut output=ctx.run_ui(egui::RawInput{screen_rect:Some(rect),..Default::default()},|ui| {
-                        let painter=ui.painter_at(rect);let mut canvas=EguiCanvas::capturing(&painter,rect);
-                        canvas.translate(3.5,-2.25);canvas.scale(0.8,1.2);
-                        canvas.set_source_rgba(0.2,0.4,0.8,0.6);canvas.set_line_width(width);canvas.set_line_cap(cap);
-                        if dashed {canvas.set_dash(&[3.,2.],1.5);}
-                        if pending {canvas.move_to(4.,10.);canvas.line_to(40.,10.);}
-                        if streamed {canvas.stroke_segments(&mut segments.into_iter());}
-                        else {for (a,b) in segments {canvas.move_to(a.x(),a.y());canvas.line_to(b.x(),b.y());}canvas.stroke();}
-                        assert!(canvas.paths.is_empty());assert!(canvas.current.is_none());
-                        meshes=canvas.into_capture().into_meshes(&ctx,rect,ctx.pixels_per_point());
-                    });output.textures_delta.clear();meshes
-                };
-                let (legacy,streamed)=(render(false),render(true));
-                assert_eq!(legacy.len(),streamed.len(),"ppp {ppp}, width {width}, cap {cap:?}, dash {dashed}, pending {pending}");
-                for (a,b) in legacy.iter().zip(&streamed) {
-                    assert_eq!(a.vertices,b.vertices);assert_eq!(a.indices,b.indices);assert_eq!(a.texture_id,b.texture_id);
+            for width in [0.3, 1., 2., 4.] {
+                for cap in [LineCap::Butt, LineCap::Square, LineCap::Round] {
+                    for dashed in [false, true] {
+                        for pending in [false, true] {
+                            let render = |streamed| {
+                                let mut meshes = Vec::new();
+                                let mut output = ctx.run_ui(
+                                    egui::RawInput {
+                                        screen_rect: Some(rect),
+                                        ..Default::default()
+                                    },
+                                    |ui| {
+                                        let painter = ui.painter_at(rect);
+                                        let mut canvas = EguiCanvas::capturing(&painter, rect);
+                                        canvas.translate(3.5, -2.25);
+                                        canvas.scale(0.8, 1.2);
+                                        canvas.set_source_rgba(0.2, 0.4, 0.8, 0.6);
+                                        canvas.set_line_width(width);
+                                        canvas.set_line_cap(cap);
+                                        if dashed {
+                                            canvas.set_dash(&[3., 2.], 1.5);
+                                        }
+                                        if pending {
+                                            canvas.move_to(4., 10.);
+                                            canvas.line_to(40., 10.);
+                                        }
+                                        if streamed {
+                                            canvas.stroke_segments(&mut segments.into_iter());
+                                        } else {
+                                            for (a, b) in segments {
+                                                canvas.move_to(a.x(), a.y());
+                                                canvas.line_to(b.x(), b.y());
+                                            }
+                                            canvas.stroke();
+                                        }
+                                        assert!(canvas.paths.is_empty());
+                                        assert!(canvas.current.is_none());
+                                        meshes = canvas.into_capture().into_meshes(
+                                            &ctx,
+                                            rect,
+                                            ctx.pixels_per_point(),
+                                        );
+                                    },
+                                );
+                                output.textures_delta.clear();
+                                meshes
+                            };
+                            let (legacy, streamed) = (render(false), render(true));
+                            assert_eq!(legacy.len(),streamed.len(),"ppp {ppp}, width {width}, cap {cap:?}, dash {dashed}, pending {pending}");
+                            for (a, b) in legacy.iter().zip(&streamed) {
+                                assert_eq!(a.vertices, b.vertices);
+                                assert_eq!(a.indices, b.indices);
+                                assert_eq!(a.texture_id, b.texture_id);
+                            }
+                        }
+                    }
                 }
-            }}}}
+            }
         }
     }
 }

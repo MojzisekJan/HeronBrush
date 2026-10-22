@@ -1,6 +1,8 @@
 //! Tests for types behavior.
 
-use expression_lang::{type_name, BoundedRange, LeftBoundedRange, Range, RightBoundedRange, ValueType};
+use expression_lang::{
+    type_name, BoundedRange, LeftBoundedRange, Range, RightBoundedRange, ValueType,
+};
 
 const ALL_TYPES: [ValueType; 8] = [
     ValueType::Boolean,

@@ -146,12 +146,18 @@ fn binary_operators() {
 fn operator_combinations() {
     assert_eq!(p("1 + 2 * 3"), add(lit(1), mul(lit(2), lit(3))));
     assert_eq!(p("1 * 2 + 3"), add(mul(lit(1), lit(2)), lit(3)));
-    assert_eq!(p("1 + 2 * 3 + 2"), add(add(lit(1), mul(lit(2), lit(3))), lit(2)));
+    assert_eq!(
+        p("1 + 2 * 3 + 2"),
+        add(add(lit(1), mul(lit(2), lit(3))), lit(2))
+    );
     assert_eq!(
         p("1 + 2 * 3 + 2 * 2"),
         add(add(lit(1), mul(lit(2), lit(3))), mul(lit(2), lit(2)))
     );
-    assert_eq!(p("3 + 2 < 3 + 3"), ls(add(lit(3), lit(2)), add(lit(3), lit(3))));
+    assert_eq!(
+        p("3 + 2 < 3 + 3"),
+        ls(add(lit(3), lit(2)), add(lit(3), lit(3)))
+    );
     assert_eq!(
         p("3 + 2 < 3 + 3 + 0 && true"),
         log_and(
@@ -177,7 +183,10 @@ fn subscript() {
     );
     assert_eq!(
         p(r#"[ 1.0, 2.0, "test" ][1+1]"#),
-        scr(arr(vec![lit(1.0), lit(2.0), lit("test")]), add(lit(1), lit(1)))
+        scr(
+            arr(vec![lit(1.0), lit(2.0), lit("test")]),
+            add(lit(1), lit(1))
+        )
     );
     assert_eq!(
         p(r#"{ "key1":1, "key2":2, "key3":"test"}["key1"]"#),
@@ -193,7 +202,10 @@ fn subscript() {
     assert_eq!(
         p(r#"[ 1.0, [ 2.0, "test"] ][1][0]"#),
         scr(
-            scr(arr(vec![lit(1.0), arr(vec![lit(2.0), lit("test")])]), lit(1)),
+            scr(
+                arr(vec![lit(1.0), arr(vec![lit(2.0), lit("test")])]),
+                lit(1)
+            ),
             lit(0)
         )
     );
@@ -206,7 +218,10 @@ fn subscript() {
     );
     assert_eq!(
         p(r#"[ 1.0, 2.0, "test" ][0..2]"#),
-        scr(arr(vec![lit(1.0), lit(2.0), lit("test")]), b_rng(lit(0), lit(2)))
+        scr(
+            arr(vec![lit(1.0), lit(2.0), lit("test")]),
+            b_rng(lit(0), lit(2))
+        )
     );
     assert_eq!(
         p(r#"[ 1.0, 2.0, "test" ][0..2,3]"#),
@@ -297,7 +312,10 @@ fn numbers_need_not_be_separated_from_the_operator() {
     assert_eq!(p("1e2<2"), ls(lit(100.0), lit(2)));
     assert_eq!(p("1e-2<2"), ls(lit(0.01), lit(2)));
 
-    assert_eq!(p("[1,2][0..1]"), scr(arr(vec![lit(1), lit(2)]), b_rng(lit(0), lit(1))));
+    assert_eq!(
+        p("[1,2][0..1]"),
+        scr(arr(vec![lit(1), lit(2)]), b_rng(lit(0), lit(1)))
+    );
 }
 
 #[test]

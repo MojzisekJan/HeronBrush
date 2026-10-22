@@ -3,12 +3,12 @@
 //! `Preferences::AlignmentLock` decides this, and getting it wrong is the kind of thing
 //! that is only noticed after a room has been built: every wall's material has crept.
 
-use map_model::brush::Brush;
-use map_model::uv::UvCoordSystem;
 use geometry_math::bbox::Bbox3d;
 use geometry_math::mat_ext;
 use geometry_math::scalar::Float as _;
 use geometry_math::vec::{self, Vec2f, Vec3d};
+use map_model::brush::Brush;
+use map_model::uv::UvCoordSystem;
 
 fn world_bounds() -> Bbox3d {
     Bbox3d::from_scalars(-16384.0, 16384.0)
@@ -17,7 +17,10 @@ fn world_bounds() -> Bbox3d {
 fn cube() -> Brush {
     map_model::shapes::create_cuboid(
         &world_bounds(),
-        &Bbox3d::new(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0)),
+        &Bbox3d::new(
+            Vec3d::new(-32.0, -32.0, -32.0),
+            Vec3d::new(32.0, 32.0, 32.0),
+        ),
         "stone",
     )
     .expect("a cube")
@@ -85,7 +88,10 @@ fn with_the_lock_off_a_moved_face_slides_across_the_material() {
 
     // Without the lock the material stays put in the world, so the corner has slid across
     // it by exactly the distance moved.
-    assert!((after.x() - before.x() - 16.0).abs() < 0.001, "{before:?} {after:?}");
+    assert!(
+        (after.x() - before.x() - 16.0).abs() < 0.001,
+        "{before:?} {after:?}"
+    );
 }
 
 #[test]
@@ -123,10 +129,8 @@ fn with_the_lock_on_a_turned_face_wears_the_same_part_of_the_material() {
     let corner = Vec3d::new(32.0, -32.0, 32.0);
     let before = uv_at(&brush, front, corner);
 
-    let turn = mat_ext::rotation_matrix_about_axis(
-        Vec3d::new(0.0, 0.0, 1.0),
-        std::f64::consts::FRAC_PI_2,
-    );
+    let turn =
+        mat_ext::rotation_matrix_about_axis(Vec3d::new(0.0, 0.0, 1.0), std::f64::consts::FRAC_PI_2);
     let turned = brush
         .transform_with_alignment(&world_bounds(), &turn, true, material_size)
         .expect("still a box");
@@ -181,10 +185,7 @@ fn with_the_uv_lock_off_a_dragged_edge_leaves_the_material_alone() {
 
     let stretched = brush
         .move_vertices_with_uv_lock(
-            &[
-                Vec3d::new(32.0, 32.0, 32.0),
-                Vec3d::new(32.0, -32.0, 32.0),
-            ],
+            &[Vec3d::new(32.0, 32.0, 32.0), Vec3d::new(32.0, -32.0, 32.0)],
             Vec3d::new(32.0, 0.0, 0.0),
             f64::ALMOST_ZERO,
             false,
@@ -207,10 +208,7 @@ fn with_the_uv_lock_on_a_dragged_edge_stretches_the_material_with_it() {
     // one transformation that holds all four mappings.
     let stretched = brush
         .move_vertices_with_uv_lock(
-            &[
-                Vec3d::new(32.0, 32.0, 32.0),
-                Vec3d::new(32.0, -32.0, 32.0),
-            ],
+            &[Vec3d::new(32.0, 32.0, 32.0), Vec3d::new(32.0, -32.0, 32.0)],
             Vec3d::new(32.0, 0.0, 0.0),
             f64::ALMOST_ZERO,
             true,
@@ -269,13 +267,7 @@ fn the_uv_lock_never_writes_a_mapping_with_no_scale() {
             Vec3d::new(-8.0, 12.0, 4.0),
         ] {
             let moved = brush
-                .move_vertices_with_uv_lock(
-                    &[corner],
-                    delta,
-                    f64::ALMOST_ZERO,
-                    true,
-                    material_size,
-                )
+                .move_vertices_with_uv_lock(&[corner], delta, f64::ALMOST_ZERO, true, material_size)
                 .expect("still a brush");
             for face in moved.faces() {
                 assert!(

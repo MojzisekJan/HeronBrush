@@ -112,7 +112,17 @@ impl Target {
 
     /// Whether the export writes the 3D view's sky, sun and fog for this engine.
     pub fn exports_sky(self) -> bool {
-        matches!(self, Target::Godot | Target::ThreeJs | Target::Bevy | Target::Raylib | Target::Defold | Target::Stride | Target::Cocos | Target::GDevelop)
+        matches!(
+            self,
+            Target::Godot
+                | Target::ThreeJs
+                | Target::Bevy
+                | Target::Raylib
+                | Target::Defold
+                | Target::Stride
+                | Target::Cocos
+                | Target::GDevelop
+        )
     }
 
     /// The name shown in the chooser.
@@ -134,7 +144,6 @@ impl Target {
             Target::Glb => "GLB .glb",
         }
     }
-
 }
 
 fn sky_default() -> bool {
@@ -147,7 +156,7 @@ fn sky_default() -> bool {
 pub struct Options {
     /// Per-class project build instructions and typed defaults for this target.
     #[serde(default)]
-    pub entities: std::collections::BTreeMap<String,crate::export_bindings::Rule>,
+    pub entities: std::collections::BTreeMap<String, crate::export_bindings::Rule>,
     /// Which engine the level is for.
     pub target: Target,
     /// The level's name, which names the files.
@@ -274,7 +283,7 @@ impl Options {
             scale_factor: 1.0 / self.scale.max(1.0),
             cull_hidden: self.cull_hidden,
             merge_faces: self.merge_faces,
-            static_cell_size: if self.static_cells {1024.0}else{0.0},
+            static_cell_size: if self.static_cells { 1024.0 } else { 0.0 },
             merge_collision: self.merge_collision,
             ..Settings::default()
         };
@@ -360,13 +369,8 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 /// Writes the document into `directory` for the engine the options name.
-pub fn export(
-    document: &Document,
-    directory: &Path,
-    options: &Options,
-) -> Result<Report, Error> {
-    std::fs::create_dir_all(directory)
-        .map_err(|why| Error::Write(directory.to_path_buf(), why))?;
+pub fn export(document: &Document, directory: &Path, options: &Options) -> Result<Report, Error> {
+    std::fs::create_dir_all(directory).map_err(|why| Error::Write(directory.to_path_buf(), why))?;
     let (mut report, files) = export_files(document, directory, options)?;
 
     for (path, contents) in files {
@@ -392,7 +396,11 @@ pub fn export_files(
     directory: &Path,
     options: &Options,
 ) -> Result<(Report, Vec<(PathBuf, Contents)>), Error> {
-    if !options.scale.is_finite() || options.scale<=0.{return Err(Error::Map("Units per metre must be finite and greater than zero".into()))}
+    if !options.scale.is_finite() || options.scale <= 0. {
+        return Err(Error::Map(
+            "Units per metre must be finite and greater than zero".into(),
+        ));
+    }
     build(document, directory, options, false)
 }
 
@@ -408,11 +416,7 @@ pub fn export_files(
 ///
 /// `directory` is still wanted: it is what finds the engine project, and without it no
 /// texture can be looked up, so a check would report the sizes wrong.
-pub fn check(
-    document: &Document,
-    directory: &Path,
-    options: &Options,
-) -> Result<Report, Error> {
+pub fn check(document: &Document, directory: &Path, options: &Options) -> Result<Report, Error> {
     Ok(build(document, directory, options, true)?.0)
 }
 
@@ -423,49 +427,92 @@ fn build(
     options: &Options,
     checking: bool,
 ) -> Result<(Report, Vec<(PathBuf, Contents)>), Error> {
-    for (_,entity,layer) in map_model::node::point_entities_by_layer(document.tree_world()) {
-        if !document.tree_world().layers[layer].omit_from_export && entity.property("_heron_model").is_some() && document.imported_model(entity).is_none() {
-            return Err(Error::Map("Imported model is unavailable or has invalid transforms".into()));
+    for (_, entity, layer) in map_model::node::point_entities_by_layer(document.tree_world()) {
+        if !document.tree_world().layers[layer].omit_from_export
+            && entity.property("_heron_model").is_some()
+            && document.imported_model(entity).is_none()
+        {
+            return Err(Error::Map(
+                "Imported model is unavailable or has invalid transforms".into(),
+            ));
         }
     }
     let has_animation = map_model::node::entities_with_ids(document.tree_world())
-        .iter().any(|(_, entity)| entity.property("animation_keys").is_some());
+        .iter()
+        .any(|(_, entity)| entity.property("animation_keys").is_some());
     const ANIMATION_WARNING: &str = "This export target does not generate a keyframe playback controller. Godot, raylib, Defold, Bevy, Three.js, Flax, Unity, Stride, GDevelop and Cocos Creator exports support keyframe playback.";
     if matches!(options.target, Target::Gltf | Target::Glb) {
         let (mut report, files) = gltf_export::build(document, directory, options)?;
-        if has_animation { report.warnings.push(ANIMATION_WARNING.into()); }
+        if has_animation {
+            report.warnings.push(ANIMATION_WARNING.into());
+        }
         return Ok((report, files));
     }
     // The document as a `.map`, which is what the builder reads. Writing it out and
     // parsing it back is a round trip the map I/O tests already cover.
     let mut settings = options.settings(directory);
-    let (text, mut paint_files) = paint_export::prepare(document, directory, options, &mut settings)?;
+    let (text, mut paint_files) =
+        paint_export::prepare(document, directory, options, &mut settings)?;
     let mut map = scene_export::map::parse(&text, &options.name)
         .map_err(|why| Error::Map(why.to_string()))?;
 
-    let painted_materials = settings.generated_materials.keys().cloned().collect::<std::collections::HashSet<_>>();
-    crate::imported_export::prepare(document,&mut map,&mut settings)?;
+    let painted_materials = settings
+        .generated_materials
+        .keys()
+        .cloned()
+        .collect::<std::collections::HashSet<_>>();
+    crate::imported_export::prepare(document, &mut map, &mut settings)?;
     // Imported skins are registered after face paint. Package them beside the
     // other generated images and use the same project-relative resource paths.
     let root = settings.project_root.as_deref().unwrap_or(directory);
     for (name, material) in &mut settings.generated_materials {
-        if painted_materials.contains(name) { continue; }
-        let path = directory.join(format!("{}_paint",options.name)).join(format!("{name}.png"));
-        material.path = scene_export::materials::fs_to_res(root,&path)
-            .ok_or_else(|| Error::Map("export directory must be inside the chosen engine project".into()))?;
-        paint_files.push((path,Contents::Bytes(material.png.clone())));
-        if let Some(pbr) = &mut material.pbr { for image in &mut pbr.images {
-            let path=directory.join(format!("{}_paint",options.name)).join(format!("{name}_{}.png",image.slot));
-            image.path=scene_export::materials::fs_to_res(root,&path).ok_or_else(||Error::Map("PBR image is outside project".into()))?;
-            paint_files.push((path,Contents::Bytes(if options.target==Target::Godot {image.godot_png.as_ref().unwrap_or(&image.png).to_vec()} else {image.png.to_vec()})));
-        }}
+        if painted_materials.contains(name) {
+            continue;
+        }
+        let path = directory
+            .join(format!("{}_paint", options.name))
+            .join(format!("{name}.png"));
+        material.path = scene_export::materials::fs_to_res(root, &path).ok_or_else(|| {
+            Error::Map("export directory must be inside the chosen engine project".into())
+        })?;
+        paint_files.push((path, Contents::Bytes(material.png.clone())));
+        if let Some(pbr) = &mut material.pbr {
+            for image in &mut pbr.images {
+                let path = directory
+                    .join(format!("{}_paint", options.name))
+                    .join(format!("{name}_{}.png", image.slot));
+                image.path = scene_export::materials::fs_to_res(root, &path)
+                    .ok_or_else(|| Error::Map("PBR image is outside project".into()))?;
+                paint_files.push((
+                    path,
+                    Contents::Bytes(if options.target == Target::Godot {
+                        image.godot_png.as_ref().unwrap_or(&image.png).to_vec()
+                    } else {
+                        image.png.to_vec()
+                    }),
+                ));
+            }
+        }
     }
     let (mut classes, class_warnings) = entity_classes(document);
-    crate::export_bindings::apply(&map,&mut classes,&options.entities).map_err(Error::Map)?;
+    crate::export_bindings::apply(&map, &mut classes, &options.entities).map_err(Error::Map)?;
     settings.check_geometry = checking;
 
     let mut report = Report::default();
-    if !matches!(options.target, Target::Godot | Target::Raylib | Target::Defold | Target::Bevy | Target::Unity | Target::ThreeJs | Target::Flax | Target::Stride | Target::GDevelop | Target::Cocos) && has_animation {
+    if !matches!(
+        options.target,
+        Target::Godot
+            | Target::Raylib
+            | Target::Defold
+            | Target::Bevy
+            | Target::Unity
+            | Target::ThreeJs
+            | Target::Flax
+            | Target::Stride
+            | Target::GDevelop
+            | Target::Cocos
+    ) && has_animation
+    {
         report.warnings.push(ANIMATION_WARNING.into());
     }
     let mut files: Vec<(PathBuf, Contents)> = paint_files;
@@ -481,24 +528,56 @@ fn build(
                     mesh_dir: options.name.clone(),
                 },
             );
-            crate::godot_animation::attach(&mut built.scene, settings.scale_factor, &mut built.warnings);
+            crate::godot_animation::attach(
+                &mut built.scene,
+                settings.scale_factor,
+                &mut built.warnings,
+            );
             // The sky reads only worldspawn, which the scene builder does not keep as a
             // level entity, so it is handed over on its own.
-            let mut world = scene_export::level::Entity { name: "worldspawn".into(), classname: "worldspawn".into(), ..Default::default() };
-            if let Some(entity) = map.entities.first().filter(|e| e.properties.get("classname").is_some_and(|c| c == "worldspawn")) {
+            let mut world = scene_export::level::Entity {
+                name: "worldspawn".into(),
+                classname: "worldspawn".into(),
+                ..Default::default()
+            };
+            if let Some(entity) = map.entities.first().filter(|e| {
+                e.properties
+                    .get("classname")
+                    .is_some_and(|c| c == "worldspawn")
+            }) {
                 for (key, value) in &entity.properties {
-                    world.properties.insert(key.clone(), scene_export::level::Value::String(value.clone()));
+                    world.properties.insert(
+                        key.clone(),
+                        scene_export::level::Value::String(value.clone()),
+                    );
                 }
             }
-            let sky = map_sky(document, &scene_export::level::Level { format: 2, generator: String::new(), name: options.name.clone(), scale: options.scale, textures: Vec::new(), entities: vec![world] });
+            let sky = map_sky(
+                document,
+                &scene_export::level::Level {
+                    format: 2,
+                    generator: String::new(),
+                    name: options.name.clone(),
+                    scale: options.scale,
+                    textures: Vec::new(),
+                    entities: vec![world],
+                },
+            );
             let panorama = directory.join(&options.name).join("sky.hdr");
             let root = settings.project_root.as_deref().unwrap_or(directory);
-            if let Some(res) = scene_export::materials::fs_to_res(root, &panorama).filter(|_| options.sky) {
+            if let Some(res) =
+                scene_export::materials::fs_to_res(root, &panorama).filter(|_| options.sky)
+            {
                 writer::godot_sky::attach(&mut built.scene, &sky, &res);
                 files.push((panorama, Contents::Bytes(writer::godot_sky::panorama(&sky))));
             }
             if writer::godot_water::used(&built.scene) {
-                files.push((directory.join(&options.name).join(writer::godot_water::VIEW_FILE), Contents::Text(writer::godot_water::VIEW_SCRIPT.into())));
+                files.push((
+                    directory
+                        .join(&options.name)
+                        .join(writer::godot_water::VIEW_FILE),
+                    Contents::Text(writer::godot_water::VIEW_SCRIPT.into()),
+                ));
             }
             files.push((
                 directory.join(format!("{}.tscn", options.name)),
@@ -513,9 +592,8 @@ fn build(
             }
             report.warnings = built.warnings.clone();
             report.triangles = built.stats.triangles;
-            report.saved_faces = built.stats.buried_faces
-                + built.stats.pressed_faces
-                + built.stats.merged_faces;
+            report.saved_faces =
+                built.stats.buried_faces + built.stats.pressed_faces + built.stats.merged_faces;
         }
 
         Target::Obj => {
@@ -541,10 +619,16 @@ fn build(
                     selection_only: false,
                     y_up: true,
                 },
-                1./options.scale,
+                1. / options.scale,
             );
             report.triangles = written.triangles;
-            return Ok((report, obj_files.into_iter().map(|(path, contents)| (path, Contents::Bytes(contents))).collect()));
+            return Ok((
+                report,
+                obj_files
+                    .into_iter()
+                    .map(|(path, contents)| (path, Contents::Bytes(contents)))
+                    .collect(),
+            ));
         }
 
         target => {
@@ -581,7 +665,13 @@ fn build(
                 // then draws the trigger.
                 mesh_collision: !matches!(
                     target,
-                    Target::Defold | Target::Unity | Target::ThreeJs | Target::Cocos | Target::Flax | Target::Stride | Target::GDevelop
+                    Target::Defold
+                        | Target::Unity
+                        | Target::ThreeJs
+                        | Target::Cocos
+                        | Target::Flax
+                        | Target::Stride
+                        | Target::GDevelop
                 ),
                 convex_collision: matches!(target, Target::Defold),
                 mesh_format: if target == Target::Unity {
@@ -591,40 +681,102 @@ fn build(
                 },
             };
             let mut built = builder::build_level(&map, &classes, &settings, &level_options);
-            if matches!(target, Target::Defold | Target::Bevy | Target::Unity | Target::ThreeJs | Target::Flax | Target::Stride | Target::GDevelop | Target::Cocos) {crate::portable_animation::prepare(&mut built.level,&mut report.warnings);}
+            if matches!(
+                target,
+                Target::Defold
+                    | Target::Bevy
+                    | Target::Unity
+                    | Target::ThreeJs
+                    | Target::Flax
+                    | Target::Stride
+                    | Target::GDevelop
+                    | Target::Cocos
+            ) {
+                crate::portable_animation::prepare(&mut built.level, &mut report.warnings);
+            }
 
             crate::portable_animation::prepare_triggers(&mut built.level);
             let unity_mtl = format!("{}_paint.mtl", options.name);
             for mesh in &built.meshes {
                 let bytes = if target == Target::Unity && mesh.file_name.ends_with(".obj") {
-                    let mut bytes = if settings.generated_materials.is_empty() { Vec::new() } else { format!("mtllib {unity_mtl}\n").into_bytes() };
-                    bytes.extend_from_slice(String::from_utf8_lossy(&mesh.bytes).replace("\no ", "\ng ").as_bytes());
+                    let mut bytes = if settings.generated_materials.is_empty() {
+                        Vec::new()
+                    } else {
+                        format!("mtllib {unity_mtl}\n").into_bytes()
+                    };
+                    bytes.extend_from_slice(
+                        String::from_utf8_lossy(&mesh.bytes)
+                            .replace("\no ", "\ng ")
+                            .as_bytes(),
+                    );
                     bytes
-                } else { mesh.bytes.clone() };
-                files.push((directory.join(&options.name).join(&mesh.file_name), Contents::Bytes(bytes)));
+                } else {
+                    mesh.bytes.clone()
+                };
+                files.push((
+                    directory.join(&options.name).join(&mesh.file_name),
+                    Contents::Bytes(bytes),
+                ));
             }
             if target == Target::Unity && !settings.generated_materials.is_empty() {
                 let mtl = paint_mtl(&settings, &format!("../{}_paint", options.name));
-                files.push((directory.join(&options.name).join(unity_mtl), Contents::Text(mtl)));
+                files.push((
+                    directory.join(&options.name).join(unity_mtl),
+                    Contents::Text(mtl),
+                ));
             }
 
             match target {
                 Target::ThreeJs | Target::Bevy => {
-                    if target==Target::Bevy {
-                        files.push((directory.join("heron_water_render.rs"),Contents::Text(include_str!("../../scene_export/src/writer/bevy_water_render.rs.txt").into())));
-                        files.push((directory.join("heron_water.rs"),Contents::Text(include_str!("../../scene_export/src/writer/bevy_water.rs.txt").into())));
-                        files.push((directory.join("heron_entities.rs"),Contents::Text(include_str!("../../scene_export/src/writer/bevy_entities.rs.txt").into())));
-                        files.push((directory.join("heron_animation.rs"),Contents::Text(include_str!("../../scene_export/src/writer/bevy_animation.rs.txt").into())));
+                    if target == Target::Bevy {
+                        files.push((
+                            directory.join("heron_water_render.rs"),
+                            Contents::Text(
+                                include_str!(
+                                    "../../scene_export/src/writer/bevy_water_render.rs.txt"
+                                )
+                                .into(),
+                            ),
+                        ));
+                        files.push((
+                            directory.join("heron_water.rs"),
+                            Contents::Text(
+                                include_str!("../../scene_export/src/writer/bevy_water.rs.txt")
+                                    .into(),
+                            ),
+                        ));
+                        files.push((
+                            directory.join("heron_entities.rs"),
+                            Contents::Text(
+                                include_str!("../../scene_export/src/writer/bevy_entities.rs.txt")
+                                    .into(),
+                            ),
+                        ));
+                        files.push((
+                            directory.join("heron_animation.rs"),
+                            Contents::Text(
+                                include_str!("../../scene_export/src/writer/bevy_animation.rs.txt")
+                                    .into(),
+                            ),
+                        ));
                         files.push((directory.join("heron_animation_bevy.md"),Contents::Text("# Bevy animation\n\nCopy heron_animation.rs into src/, declare mod heron_animation, and add HeronAnimationPlugin to your Bevy 0.19 app. Requires serde with derive and serde_json. For each exported entity, read properties._heron_animation.value (a JSON string in the tagged property map) and attach HeronAnimation::from_json(data)? to the SAME root as the rest Transform and its mesh/collision children. The plugin updates that Transform in Update before transform propagation. The root must use the exported parent coordinate frame; keep scene-wide transforms on a common parent.\n\nplay(name), pause(), resume(), seek(seconds), stop() control playback. Autoplay respects start_on. stop restores the rest pose. For Avian with its default FixedPostUpdate schedule, add HeronAnimationFixedPlugin instead and run support carrying after HeronAnimationSet in FixedPreUpdate. Use a kinematic body, never a dynamic body. Other physics adapters must synchronize animation with their simulation schedule. Exported func_button, trigger_once and trigger_multiple links are stored in _heron_trigger. Attach HeronAnimationName(entity.name) to animated roots, HeronAnimationTrigger::from_json(data)? to trigger roots, and HeronActivator to the player root. The plugin tests entry into the exported convex volumes. Call trigger.activate() from interaction code for button presses. Once-only behavior and wait cooldowns are shared with the other runtimes.\n".into())));
                     }
                     let sky = options.sky.then(|| map_sky(document, &built.level));
                     let mut level_json = writer::three::write(&built.level, &built.collision);
                     if let Some(sky) = &sky {
-                        let mut value: serde_json::Value = serde_json::from_str(&level_json).expect("level JSON");
+                        let mut value: serde_json::Value =
+                            serde_json::from_str(&level_json).expect("level JSON");
                         if target == Target::ThreeJs {
                             let panorama = format!("{}/sky.hdr", options.name);
                             value["environment"] = writer::three::environment(sky, Some(&panorama));
-                            files.push((directory.join(panorama), Contents::Bytes(sky.panorama_hdr(1024, 512, writer::sky::three_panorama_direction))));
+                            files.push((
+                                directory.join(panorama),
+                                Contents::Bytes(sky.panorama_hdr(
+                                    1024,
+                                    512,
+                                    writer::sky::three_panorama_direction,
+                                )),
+                            ));
                         } else {
                             // Bevy reads KTX2 with its 3D features; the cube is named relative to
                             // the level file, like the meshes.
@@ -634,18 +786,41 @@ fn build(
                             value["environment"] = environment;
                             // Bevy samples its cubes with Z negated (skybox.wgsl), so the faces hold the
                             // mirrored sky.
-                            files.push((directory.join(cubemap), Contents::Bytes(sky.cube_ktx2(256, |face, u, v| {
-                                let d = writer::sky::cube_direction(face, u, v);
-                                [d[0], d[1], -d[2]]
-                            }))));
-                            files.push((directory.join("heron_sky.rs"), Contents::Text(include_str!("../../scene_export/src/writer/bevy_sky.rs.txt").into())));
+                            files.push((
+                                directory.join(cubemap),
+                                Contents::Bytes(sky.cube_ktx2(256, |face, u, v| {
+                                    let d = writer::sky::cube_direction(face, u, v);
+                                    [d[0], d[1], -d[2]]
+                                })),
+                            ));
+                            files.push((
+                                directory.join("heron_sky.rs"),
+                                Contents::Text(
+                                    include_str!("../../scene_export/src/writer/bevy_sky.rs.txt")
+                                        .into(),
+                                ),
+                            ));
                         }
                         level_json = serde_json::to_string_pretty(&value).expect("level JSON");
                     }
-                    files.push((directory.join(format!("{}.json", options.name)), Contents::Text(level_json)));
+                    files.push((
+                        directory.join(format!("{}.json", options.name)),
+                        Contents::Text(level_json),
+                    ));
                     if target == Target::ThreeJs {
-                        files.push((directory.join("heron_water.js"),Contents::Text(include_str!("../../scene_export/src/writer/three_water.js").into())));
-                        files.push((directory.join("heron_animation.js"), Contents::Text(include_str!("../../scene_export/src/writer/three_animation.js").into())));
+                        files.push((
+                            directory.join("heron_water.js"),
+                            Contents::Text(
+                                include_str!("../../scene_export/src/writer/three_water.js").into(),
+                            ),
+                        ));
+                        files.push((
+                            directory.join("heron_animation.js"),
+                            Contents::Text(
+                                include_str!("../../scene_export/src/writer/three_animation.js")
+                                    .into(),
+                            ),
+                        ));
                         let mut textures = std::collections::BTreeMap::new();
                         for texture in &built.level.textures {
                             let Some(image) = &texture.image else {
@@ -675,8 +850,11 @@ fn build(
                                     continue;
                                 }
                             };
-                            let bytes = settings.generated_materials.get(&texture.name)
-                                .map(|image| Ok(image.png.clone())).unwrap_or_else(|| crate::files::read(&path));
+                            let bytes = settings
+                                .generated_materials
+                                .get(&texture.name)
+                                .map(|image| Ok(image.png.clone()))
+                                .unwrap_or_else(|| crate::files::read(&path));
                             match bytes {
                                 Ok(bytes) => {
                                     textures.insert(
@@ -705,17 +883,38 @@ fn build(
                     }
                 }
                 Target::Raylib => {
-                    let header=format!("{}_animation.h",options.name);
-                    files.push((directory.join(&header),Contents::Text(crate::raylib_animation::write(&built.level,&mut report.warnings))));
+                    let header = format!("{}_animation.h", options.name);
+                    files.push((
+                        directory.join(&header),
+                        Contents::Text(crate::raylib_animation::write(
+                            &built.level,
+                            &mut report.warnings,
+                        )),
+                    ));
                     // raylib draws a texture's colours as they are, so its sky is baked as the
                     // view shows it, exposure and tone map included.
-                    let sky=options.sky.then(||map_sky(document,&built.level));
-                    let sky_path=format!("{}/sky.png",options.name);
-                    if let Some(sky)=&sky {files.push((directory.join(&sky_path),Contents::Bytes(sky.display_strip(256,writer::sky::cube_direction))));}
-                    let water=crate::raylib_water::write(&built.level);
-                    let water_header=format!("{}_water.h",options.name);
-                    if let Some(text)=&water {files.push((directory.join(&water_header),Contents::Text(text.clone())));}
-                    files.push((directory.join(format!("{}_preview.c",options.name)),Contents::Text(crate::raylib_animation::preview(&built.level,&header,sky.as_ref().map(|_|sky_path.as_str()),water.as_ref().map(|_|water_header.as_str())))));
+                    let sky = options.sky.then(|| map_sky(document, &built.level));
+                    let sky_path = format!("{}/sky.png", options.name);
+                    if let Some(sky) = &sky {
+                        files.push((
+                            directory.join(&sky_path),
+                            Contents::Bytes(sky.display_strip(256, writer::sky::cube_direction)),
+                        ));
+                    }
+                    let water = crate::raylib_water::write(&built.level);
+                    let water_header = format!("{}_water.h", options.name);
+                    if let Some(text) = &water {
+                        files.push((directory.join(&water_header), Contents::Text(text.clone())));
+                    }
+                    files.push((
+                        directory.join(format!("{}_preview.c", options.name)),
+                        Contents::Text(crate::raylib_animation::preview(
+                            &built.level,
+                            &header,
+                            sky.as_ref().map(|_| sky_path.as_str()),
+                            water.as_ref().map(|_| water_header.as_str()),
+                        )),
+                    ));
                     files.push((directory.join(format!("{}_raylib.md",options.name)),Contents::Text(format!(
                         "# Raylib animation export\n\nBuild with raylib 5+ installed:\n\n```sh\ncc -std=c99 -O2 \"{}_preview.c\" -o preview $(pkg-config --cflags --libs raylib) -lm\n./preview\n```\n\nRun from this exported directory. SPACE pauses, R plays/restarts all default clips (including disabled autoplay), N selects the next named clip. This is a free-camera visual preview, without gameplay or physics.\n\nInclude `{header}` in your game. HbInit initializes each HbPlayer and respects start_on. HbUpdate advances seconds. HbPlay selects a named clip; HbSeek, HbPause, HbResume, HbStop control playback. HbStop restores rest geometry; once holds its final pose. hb_animations[a].entity is the entity index in the .level/.json. HbMatrix yields the animation transform to apply AFTER the entity rest transform. HbPoint transforms WORLD engine-space vertices; use the same transform for collision vertices/hulls and update your physics body's pose/broadphase each frame. Never transform the previous frame's vertices again.\n\nLinear, Hold and Bezier curves, pivots, once/loop/ping-pong, and named clips are included. Group members in one animated brush entity share playback. Exported func_button, trigger_once and trigger_multiple targets are included. Keep HbTriggerState states[HB_TRIGGER_COUNT+1] = {{0}} and call HbCheckTriggers(states, players, player_position, seconds) each frame. The preview uses its camera position. HbActivateTrigger handles explicit button presses, wait cooldowns and trigger_once. HbActivateAnimation toggles named open/close clips or restarts the selected clip.\n\nWith Sky and sun on, `{name}/sky.png` is the map's sky as the editor's view shows it, tone mapped, in raylib's CUBEMAP_LAYOUT_LINE_VERTICAL for LoadTextureCubemap; sample it with the world direction, as the preview does. The level JSON's `environment` holds the sun's direction (to_sun), colour and intensity, the ambient intensity and any fog.\n\nWith water volumes, `{name}_water.h` holds them as C data. HbWaterFind(point, &depth) gives the volume a world point is in (higher water_priority wins, then the deeper) and HbWaterSample its depth below the surface; HbWaterVelocity(water, velocity, walk, rise, dive, dt, out) is the swim velocity. The volumes' collision is marked sensor. Included after raylib.h, HbWaterLoadShader, HbWaterView and HbWaterDrawModel draw the baseline surface (waving, see-through, after the opaque models) and fog the view under water, as the preview does.\n",options.name,name=options.name))));
                     files.push((
@@ -726,25 +925,37 @@ fn build(
                     // Keep a lossless sidecar for custom game integrations.
                     let mut level_json = writer::three::write(&built.level, &built.collision);
                     if let Some(sky) = &sky {
-                        let mut value: serde_json::Value = serde_json::from_str(&level_json).expect("level JSON");
+                        let mut value: serde_json::Value =
+                            serde_json::from_str(&level_json).expect("level JSON");
                         value["environment"] = writer::three::environment(sky, None);
                         value["environment"]["cubemap"] = serde_json::json!(sky_path);
                         level_json = serde_json::to_string_pretty(&value).expect("level JSON");
                     }
-                    files.push((directory.join(format!("{}.json", options.name)), Contents::Text(level_json)));
+                    files.push((
+                        directory.join(format!("{}.json", options.name)),
+                        Contents::Text(level_json),
+                    ));
                 }
                 Target::Defold => {
                     writer::defold::validate(&built.level).map_err(Error::Map)?;
                     let mut defold = writer::defold::DefoldOptions {
                         asset_dir: if options.asset_dir.is_empty() {
-                            defold_asset_dir(directory, &options.name, settings.project_root.as_deref())
+                            defold_asset_dir(
+                                directory,
+                                &options.name,
+                                settings.project_root.as_deref(),
+                            )
                         } else {
                             options.asset_dir.clone()
                         },
                         ..writer::defold::DefoldOptions::default()
                     };
-                    if !options.model_material.is_empty() { defold.model_material = options.model_material.clone(); }
-                    if !options.model_sampler.is_empty() { defold.model_sampler = options.model_sampler.clone(); }
+                    if !options.model_material.is_empty() {
+                        defold.model_material = options.model_material.clone();
+                    }
+                    if !options.model_sampler.is_empty() {
+                        defold.model_sampler = options.model_sampler.clone();
+                    }
                     defold.sky = options.sky.then(|| map_sky(document, &built.level));
                     for file in writer::defold::write(&built.level, &built.collision, &defold) {
                         files.push((
@@ -761,66 +972,115 @@ fn build(
                 Target::Unity => {
                     writer::unity::validate(&built.level).map_err(Error::Map)?;
                     let mut unity = writer::unity::UnityOptions::default();
-                    if let Some(assets)=directory.ancestors().find(|path|path.file_name().is_some_and(|name|name=="Assets")) {
-                        if let Some(project)=assets.parent(){unity.assets_hint=directory.strip_prefix(project).unwrap_or(directory).to_string_lossy().replace('\\',"/");}
+                    if let Some(assets) = directory
+                        .ancestors()
+                        .find(|path| path.file_name().is_some_and(|name| name == "Assets"))
+                    {
+                        if let Some(project) = assets.parent() {
+                            unity.assets_hint = directory
+                                .strip_prefix(project)
+                                .unwrap_or(directory)
+                                .to_string_lossy()
+                                .replace('\\', "/");
+                        }
                     }
-                    for file in writer::unity::write_with_materials(&built.level, &built.collision, &unity, &settings.generated_materials) {
+                    for file in writer::unity::write_with_materials(
+                        &built.level,
+                        &built.collision,
+                        &unity,
+                        &settings.generated_materials,
+                    ) {
                         files.push((directory.join(&file.path), Contents::Text(file.contents)));
                     }
                 }
                 Target::Unreal => {
                     let mut unreal = writer::unreal::UnrealOptions::for_level(&options.name);
-                    if !options.content_dir.is_empty() { unreal.content_dir = options.content_dir.clone(); }
-                    files.push((directory.join(format!("{}.json", options.name)), Contents::Text(built.level.to_json())));
+                    if !options.content_dir.is_empty() {
+                        unreal.content_dir = options.content_dir.clone();
+                    }
+                    files.push((
+                        directory.join(format!("{}.json", options.name)),
+                        Contents::Text(built.level.to_json()),
+                    ));
                     files.push((
                         directory.join(format!("import_{}.py", options.name)),
-                        Contents::Text(writer::unreal::write(
-                            &built.level,
-                            &unreal,
-                        )),
+                        Contents::Text(writer::unreal::write(&built.level, &unreal)),
                     ));
                 }
                 Target::Flax => {
                     writer::flax::validate(&built.level).map_err(Error::Map)?;
                     let mut flax = writer::flax::FlaxOptions::for_level(&options.name);
-                    if !options.content_dir.is_empty() { flax.content_dir = options.content_dir.clone(); }
-                    for file in writer::flax::write_with_collision(
-                        &built.level,
-                        &flax,
-                        &built.collision,
-                    ) {
+                    if !options.content_dir.is_empty() {
+                        flax.content_dir = options.content_dir.clone();
+                    }
+                    for file in
+                        writer::flax::write_with_collision(&built.level, &flax, &built.collision)
+                    {
                         files.push((directory.join(&file.path), Contents::Text(file.contents)));
                     }
                 }
                 Target::Cocos => {
-                    let cocos=writer::cocos::CocosOptions{sky:options.sky.then(||map_sky(document,&built.level))};
-                    for file in writer::cocos::write(&built.level,&built.collision,&cocos) {
+                    let cocos = writer::cocos::CocosOptions {
+                        sky: options.sky.then(|| map_sky(document, &built.level)),
+                    };
+                    for file in writer::cocos::write(&built.level, &built.collision, &cocos) {
                         files.push((directory.join(&file.path), Contents::Bytes(file.contents)));
                     }
                 }
                 Target::GDevelop => {
-                    let meshes:Vec<_>=built.meshes.iter().filter(|mesh|mesh.file_name.ends_with(".glb")).map(|mesh|writer::gdevelop::GDevelopMesh{file_name:&mesh.file_name,glb:&mesh.bytes}).collect();
+                    let meshes: Vec<_> = built
+                        .meshes
+                        .iter()
+                        .filter(|mesh| mesh.file_name.ends_with(".glb"))
+                        .map(|mesh| writer::gdevelop::GDevelopMesh {
+                            file_name: &mesh.file_name,
+                            glb: &mesh.bytes,
+                        })
+                        .collect();
                     // The scene goes into the project already in the export folder, if any.
-                    let existing=std::fs::read_to_string(directory.join("game.json")).ok();
-                    let gdevelop=writer::gdevelop::GDevelopOptions{sky:options.sky.then(||map_sky(document,&built.level))};
-                    for file in writer::gdevelop::write(&built.level,&built.collision,&gdevelop,&meshes,existing.as_deref()).map_err(Error::Map)? {
-                        files.push((directory.join(file.path),Contents::Bytes(file.contents)));
+                    let existing = std::fs::read_to_string(directory.join("game.json")).ok();
+                    let gdevelop = writer::gdevelop::GDevelopOptions {
+                        sky: options.sky.then(|| map_sky(document, &built.level)),
+                    };
+                    for file in writer::gdevelop::write(
+                        &built.level,
+                        &built.collision,
+                        &gdevelop,
+                        &meshes,
+                        existing.as_deref(),
+                    )
+                    .map_err(Error::Map)?
+                    {
+                        files.push((directory.join(file.path), Contents::Bytes(file.contents)));
                     }
                 }
                 Target::Stride => {
                     writer::stride::validate(&built.level).map_err(Error::Map)?;
-                    let mut stride=writer::stride::StrideOptions::for_level(&options.name);
-                    stride.sky=options.sky.then(||map_sky(document,&built.level));
-                    let package=stride_package(&directory.join(&options.name));
-                    if let Some((_,_,url))=&package {stride.content_dir=url.clone();}
-                    if !options.content_dir.is_empty(){
-                        if package.as_ref().is_some_and(|(_,_,url)|url.trim_matches('/')!=options.content_dir.trim_matches('/')) {
+                    let mut stride = writer::stride::StrideOptions::for_level(&options.name);
+                    stride.sky = options.sky.then(|| map_sky(document, &built.level));
+                    let package = stride_package(&directory.join(&options.name));
+                    if let Some((_, _, url)) = &package {
+                        stride.content_dir = url.clone();
+                    }
+                    if !options.content_dir.is_empty() {
+                        if package.as_ref().is_some_and(|(_, _, url)| {
+                            url.trim_matches('/') != options.content_dir.trim_matches('/')
+                        }) {
                             report.warnings.push(format!("Stride: the content directory {} does not match where the level lands in the package ({}); models will not load by URL.",options.content_dir,package.as_ref().unwrap().2));
                         }
-                        stride.content_dir=options.content_dir.clone();
+                        stride.content_dir = options.content_dir.clone();
                     }
-                    let meshes:Vec<_>=built.meshes.iter().filter(|mesh|mesh.file_name.ends_with(".glb")).map(|mesh|writer::stride::StrideMesh{file_name:&mesh.file_name,glb:&mesh.bytes}).collect();
-                    let stride_files=writer::stride::write(&built.level,&built.collision,&stride,&meshes);
+                    let meshes: Vec<_> = built
+                        .meshes
+                        .iter()
+                        .filter(|mesh| mesh.file_name.ends_with(".glb"))
+                        .map(|mesh| writer::stride::StrideMesh {
+                            file_name: &mesh.file_name,
+                            glb: &mesh.bytes,
+                        })
+                        .collect();
+                    let stride_files =
+                        writer::stride::write(&built.level, &built.collision, &stride, &meshes);
                     match &package {
                         Some((path,text,_)) => {
                             let roots=writer::stride::root_assets(&stride_files,&stride);
@@ -829,21 +1089,27 @@ fn build(
                         }
                         None => report.warnings.push("Stride: no .sdpkg package contains the export directory. Export into a folder under the game package's Assets folder, or add the generated .sdm3d models to the package's root assets yourself.".into()),
                     }
-                    for file in stride_files {files.push((directory.join(file.path),Contents::Bytes(file.contents)));}
+                    for file in stride_files {
+                        files.push((directory.join(file.path), Contents::Bytes(file.contents)));
+                    }
                 }
-                Target::Godot | Target::Obj | Target::Gltf | Target::Glb => unreachable!("both are handled above"),
+                Target::Godot | Target::Obj | Target::Gltf | Target::Glb => {
+                    unreachable!("both are handled above")
+                }
             }
 
             report.warnings.extend(built.warnings.clone());
             report.triangles = built.stats.triangles;
-            report.saved_faces = built.stats.buried_faces
-                + built.stats.pressed_faces
-                + built.stats.merged_faces;
+            report.saved_faces =
+                built.stats.buried_faces + built.stats.pressed_faces + built.stats.merged_faces;
         }
     }
 
     if matches!(options.target, Target::Defold | Target::Raylib)
-        && settings.generated_materials.values().any(|m|m.surface.is_some())
+        && settings
+            .generated_materials
+            .values()
+            .any(|m| m.surface.is_some())
     {
         report.warnings.push("PBR surface settings are stored in GLB and level metadata. This target's default sample shader does not render roughness, metallic or emission; use a compatible shader.".into());
     }
@@ -854,8 +1120,12 @@ fn build(
 /// The sky and sun the map is lit with: its first render camera's, which a map saves,
 /// or the editor's own when it has no camera, with the sky and fog its worldspawn sets.
 pub fn map_sky(document: &Document, level: &scene_export::level::Level) -> writer::sky::Sky {
-    let render = crate::render_camera::cameras(document).into_iter().next().map(|camera| camera.2)
-        .unwrap_or_default().render();
+    let render = crate::render_camera::cameras(document)
+        .into_iter()
+        .next()
+        .map(|camera| camera.2)
+        .unwrap_or_default()
+        .render();
     writer::sky::Sky {
         sky: render.sky_color,
         horizon: render.horizon_color,
@@ -875,18 +1145,42 @@ pub fn map_sky(document: &Document, level: &scene_export::level::Level) -> write
 /// content URL `folder` has inside one of its asset folders. None when no package above
 /// `folder` lists an asset folder containing it.
 fn stride_package(folder: &Path) -> Option<(PathBuf, String, String)> {
-    let folder = folder.parent()?.canonicalize().ok()?.join(folder.file_name()?);
+    let folder = folder
+        .parent()?
+        .canonicalize()
+        .ok()?
+        .join(folder.file_name()?);
     for directory in folder.ancestors().skip(1) {
-        let Ok(entries) = std::fs::read_dir(directory) else { continue };
+        let Ok(entries) = std::fs::read_dir(directory) else {
+            continue;
+        };
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) != Some("sdpkg") { continue }
-            let Ok(text) = std::fs::read_to_string(&path) else { continue };
+            if path.extension().and_then(|e| e.to_str()) != Some("sdpkg") {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
             for line in text.lines() {
-                let Some(asset_folder) = line.trim().strip_prefix("-   Path: !dir ").or_else(|| line.trim().strip_prefix("- Path: !dir ")) else { continue };
-                let Ok(relative) = folder.strip_prefix(directory.join(asset_folder.trim())) else { continue };
-                let url = relative.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
-                if !url.is_empty() { return Some((path, text, url)) }
+                let Some(asset_folder) = line
+                    .trim()
+                    .strip_prefix("-   Path: !dir ")
+                    .or_else(|| line.trim().strip_prefix("- Path: !dir "))
+                else {
+                    continue;
+                };
+                let Ok(relative) = folder.strip_prefix(directory.join(asset_folder.trim())) else {
+                    continue;
+                };
+                let url = relative
+                    .components()
+                    .map(|c| c.as_os_str().to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join("/");
+                if !url.is_empty() {
+                    return Some((path, text, url));
+                }
             }
         }
     }
@@ -897,10 +1191,22 @@ pub fn paint_mtl(settings: &Settings, image_directory: &str) -> String {
     use std::fmt::Write;
     let mut mtl = String::from("# Heron Brush face paints\n");
     for (name, material) in &settings.generated_materials {
-        let _ = writeln!(mtl, "newmtl {name}\nKd 1 1 1\nmap_Kd {image_directory}/{name}.png");
-        if let Some([roughness,metallic,emission])=material.surface {
-            let _=writeln!(mtl,"Pr {roughness}\nPm {metallic}\nNs {}",(2.0/roughness.max(0.05).powi(4)-2.0).min(1000.0));
-            if emission>0.0 {let _=writeln!(mtl,"Ke {emission} {emission} {emission}\nmap_Ke {image_directory}/{name}.png");}
+        let _ = writeln!(
+            mtl,
+            "newmtl {name}\nKd 1 1 1\nmap_Kd {image_directory}/{name}.png"
+        );
+        if let Some([roughness, metallic, emission]) = material.surface {
+            let _ = writeln!(
+                mtl,
+                "Pr {roughness}\nPm {metallic}\nNs {}",
+                (2.0 / roughness.max(0.05).powi(4) - 2.0).min(1000.0)
+            );
+            if emission > 0.0 {
+                let _ = writeln!(
+                    mtl,
+                    "Ke {emission} {emission} {emission}\nmap_Ke {image_directory}/{name}.png"
+                );
+            }
         }
         mtl.push('\n');
     }
@@ -923,8 +1229,13 @@ pub enum Contents {
 /// An engine qualifies when it has been exported once (which is what says where to
 /// write) and its switch is on. A failure is reported and the others still go: one
 /// engine's project having moved should not stop the rest.
-pub fn export_on_save(document: &Document, settings: &crate::export_settings::Settings) -> Vec<String> {
-    if let Err(error)=settings.validate(){return vec![error]}
+pub fn export_on_save(
+    document: &Document,
+    settings: &crate::export_settings::Settings,
+) -> Vec<String> {
+    if let Err(error) = settings.validate() {
+        return vec![error];
+    }
     let mut said = Vec::new();
     for target in Target::ALL {
         let mut options = settings.for_target(target);
@@ -960,8 +1271,12 @@ pub fn export_on_save(document: &Document, settings: &crate::export_settings::Se
 /// `/<name>`, which is right when the level is written at the top of the project.
 fn defold_asset_dir(directory: &Path, name: &str, project_root: Option<&Path>) -> String {
     let meshes = directory.join(name);
-    let from_root = project_root
-        .and_then(|root| scene_export::materials::make_absolute(&meshes)?.strip_prefix(root).ok().map(Path::to_path_buf));
+    let from_root = project_root.and_then(|root| {
+        scene_export::materials::make_absolute(&meshes)?
+            .strip_prefix(root)
+            .ok()
+            .map(Path::to_path_buf)
+    });
     match from_root {
         Some(relative) => format!("/{}", relative.to_string_lossy().replace('\\', "/")),
         None => format!("/{name}"),
@@ -1010,9 +1325,12 @@ pub fn entity_classes(
     scene_export::indexmap::IndexMap<String, scene_export::fgd::EntityClass>,
     Vec<String>,
 ) {
-    if let Some(classes) = &document.export_classes_override { return classes.clone(); }
-    let mut common = scene_export::fgd::parse(crate::builtin_entities::SOURCE, "<built-in HERON_BRUSH>")
-        .expect("bundled HERON_BRUSH export FGD must be valid");
+    if let Some(classes) = &document.export_classes_override {
+        return classes.clone();
+    }
+    let mut common =
+        scene_export::fgd::parse(crate::builtin_entities::SOURCE, "<built-in HERON_BRUSH>")
+            .expect("bundled HERON_BRUSH export FGD must be valid");
     if let Some(path) = document.definitions_path() {
         match scene_export::fgd::parse_file(path) {
             Ok(project) => {
@@ -1046,130 +1364,272 @@ mod tests {
         document
     }
 
-
-
     #[test]
     fn hidden_faces_roundtrip_export_one_quad_and_keep_collision() {
-        let mut doc=one_cube();doc.select_all();
-        let before=doc.to_map_text();let bounds=doc.selection_bounds();
-        let mut index=0;
-        doc.edit_faces(|face| {face.export_hidden=index!=0;index+=1;});
+        let mut doc = one_cube();
+        doc.select_all();
+        let before = doc.to_map_text();
+        let bounds = doc.selection_bounds();
+        let mut index = 0;
+        doc.edit_faces(|face| {
+            face.export_hidden = index != 0;
+            index += 1;
+        });
         // Hidden metadata must coexist with both shared paint and per-face PBR comments.
-        doc.set_face_color(Some(map_model::brush_face::FaceColor::solid(map_model::brush_face::Rgb::new(80,120,160))));
-        doc.set_surface_material(Some(map_model::brush_face::SurfaceMaterial{roughness:40,metallic:10,emission:0}));
-        let painted=doc.to_map_text();
-        let paint_map=map_model::io::map_reader::read_map(&painted,None).unwrap();
-        assert_eq!(map_model::io::map_writer::write_map(&paint_map),painted);
-        doc.undo();doc.undo();
-        let hidden=doc.to_map_text();assert!(hidden.contains("export_hidden"));
-        let parsed=map_model::io::map_reader::read_map(&hidden,None).unwrap();
-        assert_eq!(parsed.entities[0].brushes[0].faces.iter().filter(|f|f.export_hidden).count(),5);
-        assert_eq!(map_model::io::map_writer::write_map(&parsed),hidden);
-        assert_eq!(doc.selection_bounds(),bounds);
-        doc.undo();assert_eq!(doc.to_map_text(),before);doc.redo();assert_eq!(doc.to_map_text(),hidden);
+        doc.set_face_color(Some(map_model::brush_face::FaceColor::solid(
+            map_model::brush_face::Rgb::new(80, 120, 160),
+        )));
+        doc.set_surface_material(Some(map_model::brush_face::SurfaceMaterial {
+            roughness: 40,
+            metallic: 10,
+            emission: 0,
+        }));
+        let painted = doc.to_map_text();
+        let paint_map = map_model::io::map_reader::read_map(&painted, None).unwrap();
+        assert_eq!(map_model::io::map_writer::write_map(&paint_map), painted);
+        doc.undo();
+        doc.undo();
+        let hidden = doc.to_map_text();
+        assert!(hidden.contains("export_hidden"));
+        let parsed = map_model::io::map_reader::read_map(&hidden, None).unwrap();
+        assert_eq!(
+            parsed.entities[0].brushes[0]
+                .faces
+                .iter()
+                .filter(|f| f.export_hidden)
+                .count(),
+            5
+        );
+        assert_eq!(map_model::io::map_writer::write_map(&parsed), hidden);
+        assert_eq!(doc.selection_bounds(), bounds);
+        doc.undo();
+        assert_eq!(doc.to_map_text(), before);
+        doc.redo();
+        assert_eq!(doc.to_map_text(), hidden);
         for target in Target::ALL {
-            let scratch=Scratch::new(&format!("hidden-face-{target:?}"));
-            let options=Options{target,name:"single_face".into(),..Options::default()};
-            let report=export(&doc,&scratch.0,&options).unwrap();
-            assert_eq!(report.triangles,2,"{target:?}");
-            assert_eq!(doc.to_map_text(),hidden);
+            let scratch = Scratch::new(&format!("hidden-face-{target:?}"));
+            let options = Options {
+                target,
+                name: "single_face".into(),
+                ..Options::default()
+            };
+            let report = export(&doc, &scratch.0, &options).unwrap();
+            assert_eq!(report.triangles, 2, "{target:?}");
+            assert_eq!(doc.to_map_text(), hidden);
         }
-        let scratch=Scratch::new("hidden-collision");
-        let mut settings=scene_export::settings::Settings::default();
-        let (text,_)=paint_export::prepare(&doc,&scratch.0,&Options::default(),&mut settings).unwrap();
-        let map=scene_export::map::parse(&text,"test").unwrap();
-        for collision in [scene_export::settings::CollisionKind::Convex,scene_export::settings::CollisionKind::Concave] {
-            let geometry=scene_export::geometry::build_solid(&map.entities[0],&settings,scene_export::geometry::SolidOptions{collision,..Default::default()},&scene_export::geometry::TextureSizes::new(32.0));
-            if collision==scene_export::settings::CollisionKind::Convex {assert_eq!(geometry.convex_hulls.len(),1);assert_eq!(geometry.convex_hulls[0].len(),8);}
-            else {assert_eq!(geometry.concave_triangles.len(),36);}
+        let scratch = Scratch::new("hidden-collision");
+        let mut settings = scene_export::settings::Settings::default();
+        let (text, _) =
+            paint_export::prepare(&doc, &scratch.0, &Options::default(), &mut settings).unwrap();
+        let map = scene_export::map::parse(&text, "test").unwrap();
+        for collision in [
+            scene_export::settings::CollisionKind::Convex,
+            scene_export::settings::CollisionKind::Concave,
+        ] {
+            let geometry = scene_export::geometry::build_solid(
+                &map.entities[0],
+                &settings,
+                scene_export::geometry::SolidOptions {
+                    collision,
+                    ..Default::default()
+                },
+                &scene_export::geometry::TextureSizes::new(32.0),
+            );
+            if collision == scene_export::settings::CollisionKind::Convex {
+                assert_eq!(geometry.convex_hulls.len(), 1);
+                assert_eq!(geometry.convex_hulls[0].len(), 8);
+            } else {
+                assert_eq!(geometry.concave_triangles.len(), 36);
+            }
         }
     }
 
     #[test]
     fn surface_material_obj_keeps_distinct_mtl_settings() {
-        use map_model::brush_face::{SurfaceMaterial,FaceColor,Rgb};
-        let mut doc=one_cube();doc.select_all();
-        doc.set_face_color(Some(FaceColor::solid(Rgb::new(100,120,150))));
-        let id=*doc.selection_ids().iter().next().unwrap();
-        doc.set_surface_material_on(&[crate::document::FaceRef{node:id,face:0}],Some(SurfaceMaterial{roughness:20,metallic:80,emission:250}));
-        let scratch=Scratch::new("surface-mtl");
-        export(&doc,&scratch.0,&Options{target:Target::Obj,name:"surface".into(),..Default::default()}).unwrap();
-        let mtl=std::fs::read_to_string(scratch.0.join("surface.mtl")).unwrap();
-        assert_eq!(mtl.matches("newmtl ").count(),2);
-        assert!(mtl.contains("Pr 0.2"));assert!(mtl.contains("Pm 0.8"));assert!(mtl.contains("Ke 2.5 2.5 2.5"));
+        use map_model::brush_face::{FaceColor, Rgb, SurfaceMaterial};
+        let mut doc = one_cube();
+        doc.select_all();
+        doc.set_face_color(Some(FaceColor::solid(Rgb::new(100, 120, 150))));
+        let id = *doc.selection_ids().iter().next().unwrap();
+        doc.set_surface_material_on(
+            &[crate::document::FaceRef { node: id, face: 0 }],
+            Some(SurfaceMaterial {
+                roughness: 20,
+                metallic: 80,
+                emission: 250,
+            }),
+        );
+        let scratch = Scratch::new("surface-mtl");
+        export(
+            &doc,
+            &scratch.0,
+            &Options {
+                target: Target::Obj,
+                name: "surface".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let mtl = std::fs::read_to_string(scratch.0.join("surface.mtl")).unwrap();
+        assert_eq!(mtl.matches("newmtl ").count(), 2);
+        assert!(mtl.contains("Pr 0.2"));
+        assert!(mtl.contains("Pm 0.8"));
+        assert!(mtl.contains("Ke 2.5 2.5 2.5"));
     }
     #[test]
     fn surface_material_exports_to_godot_unity_and_portable_level() {
-        use map_model::brush_face::{SurfaceMaterial,FaceColor,Rgb};
-        let mut doc=one_cube(); doc.select_all();
-        doc.set_face_color(Some(FaceColor::solid(Rgb::new(200,100,20))));
-        let id=*doc.selection_ids().iter().next().unwrap();
-        doc.set_surface_material_on(&[crate::document::FaceRef{node:id,face:0}],Some(SurfaceMaterial{roughness:20,metallic:80,emission:250}));
-        let before=doc.to_map_text();
-        for target in [Target::Godot,Target::Unity,Target::Bevy,Target::ThreeJs,Target::Defold,Target::Flax,Target::Raylib,Target::Unreal] {
-            let scratch=Scratch::new(&format!("surface-{target:?}"));
-            let options=Options{target,name:"surface".into(),..Options::default()};
-            let report=export(&doc,&scratch.0,&options).unwrap();
-            assert_eq!(report.triangles,12);
-            assert_eq!(doc.to_map_text(),before);
-            let texts=report.files.iter().filter_map(|p| std::fs::read_to_string(p).ok()).collect::<Vec<_>>().join("\n");
-            if target==Target::Godot {
+        use map_model::brush_face::{FaceColor, Rgb, SurfaceMaterial};
+        let mut doc = one_cube();
+        doc.select_all();
+        doc.set_face_color(Some(FaceColor::solid(Rgb::new(200, 100, 20))));
+        let id = *doc.selection_ids().iter().next().unwrap();
+        doc.set_surface_material_on(
+            &[crate::document::FaceRef { node: id, face: 0 }],
+            Some(SurfaceMaterial {
+                roughness: 20,
+                metallic: 80,
+                emission: 250,
+            }),
+        );
+        let before = doc.to_map_text();
+        for target in [
+            Target::Godot,
+            Target::Unity,
+            Target::Bevy,
+            Target::ThreeJs,
+            Target::Defold,
+            Target::Flax,
+            Target::Raylib,
+            Target::Unreal,
+        ] {
+            let scratch = Scratch::new(&format!("surface-{target:?}"));
+            let options = Options {
+                target,
+                name: "surface".into(),
+                ..Options::default()
+            };
+            let report = export(&doc, &scratch.0, &options).unwrap();
+            assert_eq!(report.triangles, 12);
+            assert_eq!(doc.to_map_text(), before);
+            let texts = report
+                .files
+                .iter()
+                .filter_map(|p| std::fs::read_to_string(p).ok())
+                .collect::<Vec<_>>()
+                .join("\n");
+            if target == Target::Godot {
                 assert!(texts.contains("roughness = 0.2"));
                 assert!(texts.contains("metallic = 0.8"));
                 assert!(texts.contains("emission_energy_multiplier = 2.5"));
-            } else if target==Target::Unity {
+            } else if target == Target::Unity {
                 assert!(texts.contains("0.200000f, 0.800000f, 2.500000f"));
                 assert!(texts.contains("1f - roughness"));
             } else {
-                assert!(texts.contains("\"surface\": ["),"{target:?} loses PBR metadata");
+                assert!(
+                    texts.contains("\"surface\": ["),
+                    "{target:?} loses PBR metadata"
+                );
             }
-            assert_eq!(report.files.iter().filter(|p|p.extension().is_some_and(|s|s=="png") && !p.file_name().is_some_and(|n|n.to_string_lossy().starts_with("sky"))).count(),2,"different surfaces must not share one material: {target:?}");
+            assert_eq!(
+                report
+                    .files
+                    .iter()
+                    .filter(|p| p.extension().is_some_and(|s| s == "png")
+                        && !p
+                            .file_name()
+                            .is_some_and(|n| n.to_string_lossy().starts_with("sky")))
+                    .count(),
+                2,
+                "different surfaces must not share one material: {target:?}"
+            );
         }
     }
     #[test]
     fn every_engine_preserves_mixed_face_paints_and_emits_complete_materials() {
-        use map_model::brush_face::{FaceColor, Rgb};
         use crate::document::FaceRef;
+        use map_model::brush_face::{FaceColor, Rgb};
         let mut document = one_cube();
         document.select_all();
         let id = *document.selection_ids().iter().next().unwrap();
         document.set_face_color(Some(FaceColor::solid(Rgb::new(230, 40, 20))));
-        document.set_face_color_on(&[FaceRef { node: id, face: 0 }], Some(FaceColor::solid(Rgb::new(20, 40, 230))));
-        document.set_face_color_on(&[FaceRef { node: id, face: 1 }], Some(FaceColor::gradient(Rgb::new(230, 40, 20), Rgb::new(20, 230, 40), 90.0)));
+        document.set_face_color_on(
+            &[FaceRef { node: id, face: 0 }],
+            Some(FaceColor::solid(Rgb::new(20, 40, 230))),
+        );
+        document.set_face_color_on(
+            &[FaceRef { node: id, face: 1 }],
+            Some(FaceColor::gradient(
+                Rgb::new(230, 40, 20),
+                Rgb::new(20, 230, 40),
+                90.0,
+            )),
+        );
         let before = document.to_map_text();
         for target in Target::ALL {
             let scratch = Scratch::new(&format!("face-paints-{target:?}"));
-            let options = Options { target, name: "painted".into(), ..Options::default() };
+            let options = Options {
+                target,
+                name: "painted".into(),
+                ..Options::default()
+            };
             // Checking must not create files, including generated textures.
             check(&document, &scratch.0, &options).unwrap();
             assert_eq!(std::fs::read_dir(&scratch.0).unwrap().count(), 0);
             let report = export(&document, &scratch.0, &options).unwrap();
             assert_eq!(report.triangles, 12, "{target:?}");
-            assert!(!report.warnings.iter().any(|w| w.contains("bbpaint_") && w.contains("no texture")), "{:?}", report.warnings);
-            assert_eq!(document.to_map_text(), before, "export must not alter face paint in the editor");
-            if matches!(target, Target::Gltf | Target::Glb) { continue; }
+            assert!(
+                !report
+                    .warnings
+                    .iter()
+                    .any(|w| w.contains("bbpaint_") && w.contains("no texture")),
+                "{:?}",
+                report.warnings
+            );
+            assert_eq!(
+                document.to_map_text(),
+                before,
+                "export must not alter face paint in the editor"
+            );
+            if matches!(target, Target::Gltf | Target::Glb) {
+                continue;
+            }
             // Stride also writes each GLB's images beside its texture assets.
-            let stride_copy = |p: &std::path::Path| (target == Target::Stride && p.parent().and_then(|d| d.file_name()).is_some_and(|d| d == "Textures"))
+            let stride_copy = |p: &std::path::Path| {
+                (target == Target::Stride && p.parent().and_then(|d| d.file_name()).is_some_and(|d| d == "Textures"))
                 // The sky is images of its own.
-                || p.file_name().is_some_and(|n| n.to_string_lossy().starts_with("sky"));
-            let pngs: Vec<_> = report.files.iter().filter(|p| p.extension().is_some_and(|e| e == "png") && !stride_copy(p)).collect();
-            assert_eq!(pngs.len(), 3, "same solid colour must share one image: {target:?}");
+                || p.file_name().is_some_and(|n| n.to_string_lossy().starts_with("sky"))
+            };
+            let pngs: Vec<_> = report
+                .files
+                .iter()
+                .filter(|p| p.extension().is_some_and(|e| e == "png") && !stride_copy(p))
+                .collect();
+            assert_eq!(
+                pngs.len(),
+                3,
+                "same solid colour must share one image: {target:?}"
+            );
             let mut solids = Vec::new();
             for path in pngs {
                 let image = image::open(path).unwrap().to_rgba8();
-                if image.width() == 1 { solids.push(image.get_pixel(0,0).0); }
-                else {
-                    assert_eq!(image.get_pixel(0,0).0, [230,40,20,255]);
-                    assert_eq!(image.get_pixel(0,image.height()-1).0, [20,230,40,255]);
+                if image.width() == 1 {
+                    solids.push(image.get_pixel(0, 0).0);
+                } else {
+                    assert_eq!(image.get_pixel(0, 0).0, [230, 40, 20, 255]);
+                    assert_eq!(image.get_pixel(0, image.height() - 1).0, [20, 230, 40, 255]);
                 }
             }
-            assert!(solids.contains(&[230,40,20,255]) && solids.contains(&[20,40,230,255]));
+            assert!(solids.contains(&[230, 40, 20, 255]) && solids.contains(&[20, 40, 230, 255]));
             if target == Target::Godot {
                 let scene = std::fs::read_to_string(scratch.0.join("painted.tscn")).unwrap();
                 assert_eq!(scene.matches("albedo_texture =").count(), 3);
             }
             if matches!(target, Target::Unity | Target::Obj) {
-                let mtls: Vec<_> = report.files.iter().filter(|p| p.extension().is_some_and(|e| e == "mtl")).collect();
+                let mtls: Vec<_> = report
+                    .files
+                    .iter()
+                    .filter(|p| p.extension().is_some_and(|e| e == "mtl"))
+                    .collect();
                 assert!(!mtls.is_empty());
                 for mtl in mtls {
                     let text = std::fs::read_to_string(mtl).unwrap();
@@ -1179,23 +1639,36 @@ mod tests {
                     }
                 }
             } else {
-                let glbs: Vec<_> = report.files.iter().filter(|p| p.extension().is_some_and(|e| e == "glb")).collect();
-                if target != Target::Godot { assert!(!glbs.is_empty(), "{target:?}"); }
+                let glbs: Vec<_> = report
+                    .files
+                    .iter()
+                    .filter(|p| p.extension().is_some_and(|e| e == "glb"))
+                    .collect();
+                if target != Target::Godot {
+                    assert!(!glbs.is_empty(), "{target:?}");
+                }
                 for path in glbs {
                     let bytes = std::fs::read(path).unwrap();
                     let size = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
-                    let json: serde_json::Value = serde_json::from_slice(&bytes[20..20+size]).unwrap();
-                    if json.get("materials").is_none() { continue; } // separate collision mesh
+                    let json: serde_json::Value =
+                        serde_json::from_slice(&bytes[20..20 + size]).unwrap();
+                    if json.get("materials").is_none() {
+                        continue;
+                    } // separate collision mesh
                     assert_eq!(json["images"].as_array().unwrap().len(), 3, "{target:?}");
                     let binary = 20 + size + 8;
                     for image in json["images"].as_array().unwrap() {
-                        let view = &json["bufferViews"][image["bufferView"].as_u64().unwrap() as usize];
+                        let view =
+                            &json["bufferViews"][image["bufferView"].as_u64().unwrap() as usize];
                         let start = binary + view["byteOffset"].as_u64().unwrap() as usize;
                         let size = view["byteLength"].as_u64().unwrap() as usize;
-                        image::load_from_memory(&bytes[start..start+size]).unwrap();
+                        image::load_from_memory(&bytes[start..start + size]).unwrap();
                     }
                     for material in json["materials"].as_array().unwrap() {
-                        assert!(material["pbrMetallicRoughness"]["baseColorTexture"]["index"].is_number());
+                        assert!(
+                            material["pbrMetallicRoughness"]["baseColorTexture"]["index"]
+                                .is_number()
+                        );
                     }
                 }
             }
@@ -1210,10 +1683,19 @@ mod tests {
         let png = |rgba: [u8; 4]| crate::assets::encode_png(2, 2, &rgba.repeat(4)).unwrap();
         std::fs::write(textures.join("stone.png"), png([90, 90, 90, 255])).unwrap();
         // A DirectX map: green grows downwards, so glTF wants it inverted.
-        std::fs::write(textures.join("stone_normal_dx.png"), png([140, 200, 250, 255])).unwrap();
+        std::fs::write(
+            textures.join("stone_normal_dx.png"),
+            png([140, 200, 250, 255]),
+        )
+        .unwrap();
         let mut document = one_cube();
         document.load_materials(&textures).unwrap();
-        assert!(document.materials().get("stone").unwrap().normal_map.is_some());
+        assert!(document
+            .materials()
+            .get("stone")
+            .unwrap()
+            .normal_map
+            .is_some());
 
         for target in [Target::Bevy, Target::Glb] {
             let out = scratch.0.join(format!("{target:?}"));
@@ -1226,22 +1708,36 @@ mod tests {
             };
             let report = export(&document, &out, &options).unwrap();
             let mut checked = 0;
-            for path in report.files.iter().filter(|p| p.extension().is_some_and(|e| e == "glb")) {
+            for path in report
+                .files
+                .iter()
+                .filter(|p| p.extension().is_some_and(|e| e == "glb"))
+            {
                 let bytes = std::fs::read(path).unwrap();
                 let size = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
-                let json: serde_json::Value = serde_json::from_slice(&bytes[20..20 + size]).unwrap();
-                let Some(material) = json["materials"].as_array().and_then(|m| m.first()) else { continue };
-                let texture = material["normalTexture"]["index"].as_u64().expect("normalTexture") as usize;
-                let image = &json["images"][json["textures"][texture]["source"].as_u64().unwrap() as usize];
+                let json: serde_json::Value =
+                    serde_json::from_slice(&bytes[20..20 + size]).unwrap();
+                let Some(material) = json["materials"].as_array().and_then(|m| m.first()) else {
+                    continue;
+                };
+                let texture = material["normalTexture"]["index"]
+                    .as_u64()
+                    .expect("normalTexture") as usize;
+                let image =
+                    &json["images"][json["textures"][texture]["source"].as_u64().unwrap() as usize];
                 let view = &json["bufferViews"][image["bufferView"].as_u64().unwrap() as usize];
                 let start = 28 + size + view["byteOffset"].as_u64().unwrap() as usize;
                 let end = start + view["byteLength"].as_u64().unwrap() as usize;
-                let decoded = image::load_from_memory(&bytes[start..end]).unwrap().to_rgba8();
+                let decoded = image::load_from_memory(&bytes[start..end])
+                    .unwrap()
+                    .to_rgba8();
                 assert_eq!(decoded.get_pixel(0, 0).0, [140, 55, 250, 255], "{target:?}");
                 for primitive in json["meshes"][0]["primitives"].as_array().unwrap() {
                     let attributes = &primitive["attributes"];
-                    let tangent = &json["accessors"][attributes["TANGENT"].as_u64().expect("TANGENT") as usize];
-                    let position = &json["accessors"][attributes["POSITION"].as_u64().unwrap() as usize];
+                    let tangent = &json["accessors"]
+                        [attributes["TANGENT"].as_u64().expect("TANGENT") as usize];
+                    let position =
+                        &json["accessors"][attributes["POSITION"].as_u64().unwrap() as usize];
                     assert_eq!(tangent["type"], "VEC4");
                     assert_eq!(tangent["count"], position["count"], "{target:?}");
                 }
@@ -1308,7 +1804,8 @@ mod tests {
             if target == Target::Raylib {
                 let metadata: serde_json::Value = serde_json::from_str(
                     &std::fs::read_to_string(directory.join("arena.json")).unwrap(),
-                ).unwrap();
+                )
+                .unwrap();
                 assert_eq!(metadata["format"], 2);
                 assert!(!metadata["entities"].as_array().unwrap().is_empty());
             }
@@ -1322,9 +1819,13 @@ mod tests {
         let (_, directory, _scratch) = export_cube(Target::Flax, "flax-inline-collision");
         let level: serde_json::Value = serde_json::from_str(
             &std::fs::read_to_string(directory.join("arena.level.json")).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
         let world = &level["entities"][0];
-        assert!(!world["collision"]["triangles"].as_array().unwrap().is_empty());
+        assert!(!world["collision"]["triangles"]
+            .as_array()
+            .unwrap()
+            .is_empty());
         let bytes = std::fs::read(directory.join(world["mesh"].as_str().unwrap())).unwrap();
         let json_length = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
         let gltf: serde_json::Value = serde_json::from_slice(&bytes[20..20 + json_length]).unwrap();
@@ -1332,60 +1833,142 @@ mod tests {
     }
 
     #[test]
-    fn stride_exports_visual_assets_inline_collision_and_native_model_assets(){
-        let (report,directory,_scratch)=export_cube(Target::Stride,"stride-preparation");
-        assert!(report.warnings.iter().any(|warning|warning.contains("no .sdpkg package")),"{:?}",report.warnings);
-        let level:serde_json::Value=serde_json::from_str(&std::fs::read_to_string(directory.join("arena.json")).unwrap()).unwrap();
-        let world=&level["entities"][0];assert!(!world["collision"]["triangles"].as_array().unwrap().is_empty());
-        let bytes=std::fs::read(directory.join(world["mesh"].as_str().unwrap())).unwrap();
-        let length=u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
-        let glb:serde_json::Value=serde_json::from_slice(&bytes[20..20+length]).unwrap();
-        assert_eq!(glb["meshes"].as_array().unwrap().len(),1,"no duplicate collision mesh in visual GLB");
-        for file in ["arena/HeronBrushStrideLevel.cs","arena/HeronBrushStrideRuntime.cs","arena/HeronBrushStridePhysics.cs","arena/worldspawn.sdm3d","arena/Sky/Skybox.sdsky","arena/Sky/Sky.dds","STRIDE-README.md"]{
-            assert!(directory.join(file).is_file(),"{file}");
+    fn stride_exports_visual_assets_inline_collision_and_native_model_assets() {
+        let (report, directory, _scratch) = export_cube(Target::Stride, "stride-preparation");
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("no .sdpkg package")),
+            "{:?}",
+            report.warnings
+        );
+        let level: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(directory.join("arena.json")).unwrap())
+                .unwrap();
+        let world = &level["entities"][0];
+        assert!(!world["collision"]["triangles"]
+            .as_array()
+            .unwrap()
+            .is_empty());
+        let bytes = std::fs::read(directory.join(world["mesh"].as_str().unwrap())).unwrap();
+        let length = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
+        let glb: serde_json::Value = serde_json::from_slice(&bytes[20..20 + length]).unwrap();
+        assert_eq!(
+            glb["meshes"].as_array().unwrap().len(),
+            1,
+            "no duplicate collision mesh in visual GLB"
+        );
+        for file in [
+            "arena/HeronBrushStrideLevel.cs",
+            "arena/HeronBrushStrideRuntime.cs",
+            "arena/HeronBrushStridePhysics.cs",
+            "arena/worldspawn.sdm3d",
+            "arena/Sky/Skybox.sdsky",
+            "arena/Sky/Sky.dds",
+            "STRIDE-README.md",
+        ] {
+            assert!(directory.join(file).is_file(), "{file}");
         }
     }
     #[test]
-    fn bevy_and_three_name_their_sky_in_the_level_environment(){
-        for (target,file) in [(Target::Bevy,"arena/sky.ktx2"),(Target::ThreeJs,"arena/sky.hdr")]{
-            let (_,directory,_scratch)=export_cube(target,"portable-sky");
-            let level:serde_json::Value=serde_json::from_str(&std::fs::read_to_string(directory.join("arena.json")).unwrap()).unwrap();
-            let environment=&level["environment"];
-            assert!(environment["to_sun"].as_array().is_some_and(|v|v.len()==3),"{target:?}");
-            assert!(directory.join(file).is_file(),"{target:?}");
-            assert_eq!(environment[if target==Target::Bevy {"cubemap"} else {"panorama"}],file);
+    fn bevy_and_three_name_their_sky_in_the_level_environment() {
+        for (target, file) in [
+            (Target::Bevy, "arena/sky.ktx2"),
+            (Target::ThreeJs, "arena/sky.hdr"),
+        ] {
+            let (_, directory, _scratch) = export_cube(target, "portable-sky");
+            let level: serde_json::Value = serde_json::from_str(
+                &std::fs::read_to_string(directory.join("arena.json")).unwrap(),
+            )
+            .unwrap();
+            let environment = &level["environment"];
+            assert!(
+                environment["to_sun"]
+                    .as_array()
+                    .is_some_and(|v| v.len() == 3),
+                "{target:?}"
+            );
+            assert!(directory.join(file).is_file(), "{target:?}");
+            assert_eq!(
+                environment[if target == Target::Bevy {
+                    "cubemap"
+                } else {
+                    "panorama"
+                }],
+                file
+            );
         }
-        let (_,directory,_scratch)=export_cube(Target::Bevy,"bevy-sky-module");
-        assert!(std::fs::read_to_string(directory.join("heron_sky.rs")).unwrap().contains("pub struct HeronSky"));
+        let (_, directory, _scratch) = export_cube(Target::Bevy, "bevy-sky-module");
+        assert!(std::fs::read_to_string(directory.join("heron_sky.rs"))
+            .unwrap()
+            .contains("pub struct HeronSky"));
     }
     #[test]
-    fn godot_exports_the_sky_as_a_world_environment_unless_asked_not_to(){
-        let (_,directory,_scratch)=export_cube(Target::Godot,"godot-sky");
-        let scene=std::fs::read_to_string(directory.join("arena.tscn")).unwrap();
-        assert!(scene.contains(r#"[node name="HeronEnvironment" type="WorldEnvironment" parent="."]"#),"{scene}");
-        assert!(scene.contains("res://arena/sky.hdr"),"{scene}");
-        assert!(std::fs::read(directory.join("arena/sky.hdr")).unwrap().starts_with(b"#?RADIANCE"));
-        let scratch=Scratch::new("godot-no-sky");
-        export(&one_cube(),&scratch.0,&Options{target:Target::Godot,name:"arena".into(),sky:false,..Options::default()}).unwrap();
-        assert!(!std::fs::read_to_string(scratch.0.join("arena.tscn")).unwrap().contains("WorldEnvironment"));
+    fn godot_exports_the_sky_as_a_world_environment_unless_asked_not_to() {
+        let (_, directory, _scratch) = export_cube(Target::Godot, "godot-sky");
+        let scene = std::fs::read_to_string(directory.join("arena.tscn")).unwrap();
+        assert!(
+            scene.contains(r#"[node name="HeronEnvironment" type="WorldEnvironment" parent="."]"#),
+            "{scene}"
+        );
+        assert!(scene.contains("res://arena/sky.hdr"), "{scene}");
+        assert!(std::fs::read(directory.join("arena/sky.hdr"))
+            .unwrap()
+            .starts_with(b"#?RADIANCE"));
+        let scratch = Scratch::new("godot-no-sky");
+        export(
+            &one_cube(),
+            &scratch.0,
+            &Options {
+                target: Target::Godot,
+                name: "arena".into(),
+                sky: false,
+                ..Options::default()
+            },
+        )
+        .unwrap();
+        assert!(!std::fs::read_to_string(scratch.0.join("arena.tscn"))
+            .unwrap()
+            .contains("WorldEnvironment"));
         assert!(!scratch.0.join("arena/sky.hdr").exists());
     }
     #[test]
-    fn stride_export_inside_a_package_takes_its_content_url_and_root_assets(){
-        let scratch=Scratch::new("stride-package");
-        let package=scratch.0.join("Game");
+    fn stride_export_inside_a_package_takes_its_content_url_and_root_assets() {
+        let scratch = Scratch::new("stride-package");
+        let package = scratch.0.join("Game");
         std::fs::create_dir_all(package.join("Assets")).unwrap();
         std::fs::write(package.join("Game.sdpkg"),"!Package\nAssetFolders:\n    -   Path: !dir Assets\nRootAssets:\n    - AAAA:MainScene\n").unwrap();
-        let options=Options{target:Target::Stride,name:"arena".into(),..Options::default()};
-        let directory=package.join("Assets/Maps");
-        let report=export(&one_cube(),&directory,&options).unwrap();
-        assert!(!report.warnings.iter().any(|w|w.contains("Stride:")),"{:?}",report.warnings);
-        let text=std::fs::read_to_string(package.join("Game.sdpkg")).unwrap();
-        let id=scene_export::writer::stride::asset_id("Maps/arena/worldspawn");
-        assert!(text.contains("    - AAAA:MainScene\n")&&text.contains(&format!("    - {id}:Maps/arena/worldspawn\n")),"{text}");
-        assert!(std::fs::read_to_string(directory.join("arena/HeronBrushStrideLevel.cs")).unwrap().contains("\"Maps/arena/worldspawn\""));
-        export(&one_cube(),&directory,&options).unwrap();
-        assert_eq!(std::fs::read_to_string(package.join("Game.sdpkg")).unwrap(),text,"re-export leaves the package as it was");
+        let options = Options {
+            target: Target::Stride,
+            name: "arena".into(),
+            ..Options::default()
+        };
+        let directory = package.join("Assets/Maps");
+        let report = export(&one_cube(), &directory, &options).unwrap();
+        assert!(
+            !report.warnings.iter().any(|w| w.contains("Stride:")),
+            "{:?}",
+            report.warnings
+        );
+        let text = std::fs::read_to_string(package.join("Game.sdpkg")).unwrap();
+        let id = scene_export::writer::stride::asset_id("Maps/arena/worldspawn");
+        assert!(
+            text.contains("    - AAAA:MainScene\n")
+                && text.contains(&format!("    - {id}:Maps/arena/worldspawn\n")),
+            "{text}"
+        );
+        assert!(
+            std::fs::read_to_string(directory.join("arena/HeronBrushStrideLevel.cs"))
+                .unwrap()
+                .contains("\"Maps/arena/worldspawn\"")
+        );
+        export(&one_cube(), &directory, &options).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(package.join("Game.sdpkg")).unwrap(),
+            text,
+            "re-export leaves the package as it was"
+        );
     }
     #[test]
     fn three_exports_a_playable_html_with_embedded_glb() {
@@ -1418,14 +2001,21 @@ mod tests {
             .unwrap();
         let data: serde_json::Value = serde_json::from_str(json).unwrap();
         let embedded = data["meshes"]["arena/worldspawn.glb"].as_str().unwrap();
-        let preview=data_encoding::BASE64.decode(embedded.as_bytes()).unwrap();
-        let original=std::fs::read(directory.join("arena/worldspawn.glb")).unwrap();
-        assert!(preview.len()<original.len(),"albedo is stored once in the HTML texture table");
-        let json_of=|bytes:&[u8]| {let length=u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;serde_json::from_slice::<serde_json::Value>(&bytes[20..20+length]).unwrap()};
-        let compact=json_of(&preview);let complete=json_of(&original);
-        assert_eq!(compact["meshes"],complete["meshes"]);
-        assert_eq!(compact["accessors"],complete["accessors"]);
-        assert_eq!(compact["images"].as_array().unwrap().len(),0);
+        let preview = data_encoding::BASE64.decode(embedded.as_bytes()).unwrap();
+        let original = std::fs::read(directory.join("arena/worldspawn.glb")).unwrap();
+        assert!(
+            preview.len() < original.len(),
+            "albedo is stored once in the HTML texture table"
+        );
+        let json_of = |bytes: &[u8]| {
+            let length = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
+            serde_json::from_slice::<serde_json::Value>(&bytes[20..20 + length]).unwrap()
+        };
+        let compact = json_of(&preview);
+        let complete = json_of(&original);
+        assert_eq!(compact["meshes"], complete["meshes"]);
+        assert_eq!(compact["accessors"], complete["accessors"]);
+        assert_eq!(compact["images"].as_array().unwrap().len(), 0);
         assert!(!complete["images"].as_array().unwrap().is_empty());
         assert!(data["level"]["entities"][0]["collision"].is_object());
         let image = data["textures"]["stone"].as_str().expect("embedded albedo");
@@ -1516,8 +2106,8 @@ mod tests {
             "the fgd was not read: {:?}",
             report.warnings
         );
-        let written = std::fs::read_to_string(scratch.0.join("classes.json"))
-            .expect("the level is there");
+        let written =
+            std::fs::read_to_string(scratch.0.join("classes.json")).expect("the level is there");
         assert!(written.contains("worldspawn"), "{written}");
     }
 
@@ -1543,7 +2133,11 @@ mod tests {
         let settings = crate::export_settings::Settings::load_from(&store);
 
         let said = export_on_save(&one_cube(), &settings);
-        assert_eq!(said.len(), 1, "only the engine with the switch on: {said:?}");
+        assert_eq!(
+            said.len(),
+            1,
+            "only the engine with the switch on: {said:?}"
+        );
         assert!(said[0].starts_with("Godot"), "{said:?}");
         assert!(out.join("level.tscn").is_file(), "the scene was written");
 
@@ -1592,7 +2186,10 @@ mod tests {
             report.warnings
         );
         assert!(
-            std::fs::read_dir(&dir).expect("the folder is there").next().is_none(),
+            std::fs::read_dir(&dir)
+                .expect("the folder is there")
+                .next()
+                .is_none(),
             "the folder is still empty"
         );
 
@@ -1705,12 +2302,19 @@ mod tests {
         // The meshes land in `<destination>/<name>`, and Defold names them from the
         // project root, so the path is that folder seen from there.
         assert_eq!(
-            defold_asset_dir(Path::new("/home/somebody/game/main/levels"), "arena", Some(root)),
+            defold_asset_dir(
+                Path::new("/home/somebody/game/main/levels"),
+                "arena",
+                Some(root)
+            ),
             "/main/levels/arena"
         );
         // Written at the top of the project.
         assert_eq!(defold_asset_dir(root, "arena", Some(root)), "/arena");
         // No project to be relative to: the best guess is the top of one.
-        assert_eq!(defold_asset_dir(Path::new("/tmp/out"), "arena", None), "/arena");
+        assert_eq!(
+            defold_asset_dir(Path::new("/tmp/out"), "arena", None),
+            "/arena"
+        );
     }
 }

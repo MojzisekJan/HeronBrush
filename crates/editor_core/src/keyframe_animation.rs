@@ -117,7 +117,11 @@ impl Track {
                 _ => Vec3d::new(c * v.x() - s * v.y(), s * v.x() + c * v.y(), v.z()),
             };
         }
-        if normal { v } else { v + pivot + offset }
+        if normal {
+            v
+        } else {
+            v + pivot + offset
+        }
     }
 }
 #[cfg(test)]

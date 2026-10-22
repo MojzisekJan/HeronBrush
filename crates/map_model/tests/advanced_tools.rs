@@ -44,7 +44,14 @@ fn directional_hollow_keeps_the_requested_boundary_and_can_open_a_lid() {
             .fold(f64::NEG_INFINITY, f64::max);
         assert!((max - outer * 0.5).abs() < 1e-6);
     }
-    assert!(hollow::shell(&brush,&Bbox3d::from_scalars(-32.0,32.0),8.0,Direction::Outward,&[]).is_err());
+    assert!(hollow::shell(
+        &brush,
+        &Bbox3d::from_scalars(-32.0, 32.0),
+        8.0,
+        Direction::Outward,
+        &[]
+    )
+    .is_err());
     let lid = brush
         .faces()
         .iter()
@@ -93,7 +100,9 @@ fn connected_bevel_preserves_shared_edges_and_is_order_independent() {
         a.geometry().check_invariant().unwrap();
     }
     assert!(brush.bevel_face_region(&[x, z], 40.0, 0.0).is_err());
-    assert!(brush.bevel_face_region(&(0..brush.faces().len()).collect::<Vec<_>>(),4.0,0.0).is_err());
+    assert!(brush
+        .bevel_face_region(&(0..brush.faces().len()).collect::<Vec<_>>(), 4.0, 0.0)
+        .is_err());
 }
 #[test]
 fn stair_turns_landings_and_slabs_are_connected_disjoint_and_fit_bounds() {

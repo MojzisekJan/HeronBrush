@@ -226,10 +226,9 @@ impl Value {
         match &*self.0 {
             ValueData::Boolean(b) => match to_type {
                 Boolean => Ok(self.clone()),
-                String => Ok(ctx.trace_to_value(
-                    Value::string(if *b { "true" } else { "false" }),
-                    self,
-                )),
+                String => {
+                    Ok(ctx.trace_to_value(Value::string(if *b { "true" } else { "false" }), self))
+                }
                 Number => Ok(ctx.trace_to_value(Value::number(if *b { 1.0 } else { 0.0 }), self)),
                 _ => Err(err()),
             },
@@ -309,8 +308,11 @@ impl Value {
                     out.push_str("[]");
                     return;
                 }
-                let child_indent =
-                    if multiline { format!("{indent}\t") } else { String::new() };
+                let child_indent = if multiline {
+                    format!("{indent}\t")
+                } else {
+                    String::new()
+                };
                 out.push('[');
                 if multiline {
                     out.push('\n');
@@ -338,8 +340,11 @@ impl Value {
                     out.push_str("{}");
                     return;
                 }
-                let child_indent =
-                    if multiline { format!("{indent}\t") } else { String::new() };
+                let child_indent = if multiline {
+                    format!("{indent}\t")
+                } else {
+                    String::new()
+                };
                 out.push('{');
                 out.push_str(if multiline { "\n" } else { " " });
                 for (i, (key, value)) in m.iter().enumerate() {
@@ -567,7 +572,11 @@ pub(crate) fn index_error_loc_index(
 ) -> ElError {
     evaluation_error_loc(
         loc,
-        &format!("{} is not a compatible index for '{}'", index, indexable.describe()),
+        &format!(
+            "{} is not a compatible index for '{}'",
+            index,
+            indexable.describe()
+        ),
     )
 }
 
@@ -578,7 +587,11 @@ pub(crate) fn index_error_loc_key(
 ) -> ElError {
     evaluation_error_loc(
         loc,
-        &format!("'{}' is not a compatible index for '{}'", key, indexable.describe()),
+        &format!(
+            "'{}' is not a compatible index for '{}'",
+            key,
+            indexable.describe()
+        ),
     )
 }
 
@@ -598,7 +611,10 @@ pub(crate) fn index_out_of_bounds_loc_key(
     indexable: &Value,
     key: &str,
 ) -> ElError {
-    evaluation_error_loc(loc, &format!("'{}' not found in '{}'", key, indexable.describe()))
+    evaluation_error_loc(
+        loc,
+        &format!("'{}' not found in '{}'", key, indexable.describe()),
+    )
 }
 
 // --- number formatting ------------------------------------------------------------

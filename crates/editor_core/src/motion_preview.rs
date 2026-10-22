@@ -1,7 +1,7 @@
 //! Non-destructive preview of continuously moving brush entities.
 use geometry_math::{
     bbox::Bbox3d,
-    vec::{Vec3d, cross, dot, normalize},
+    vec::{cross, dot, normalize, Vec3d},
 };
 use map_model::node::{EntityNode, Node, NodeId, NodeKind, World};
 use render::Triangle;
@@ -9,8 +9,20 @@ use std::{collections::HashMap, ops::Range};
 
 #[derive(Clone, Debug)]
 pub enum Motion {
-    Playback {pivot:Vec3d,authored:std::sync::Arc<crate::keyframe_animation::Track>,track:std::sync::Arc<crate::keyframe_animation::Track>,offset:f64,epoch:f64,playing:bool,posed:bool},
-    Keyframes { autoplay:bool, pivot:Vec3d, track:std::sync::Arc<crate::keyframe_animation::Track> },
+    Playback {
+        pivot: Vec3d,
+        authored: std::sync::Arc<crate::keyframe_animation::Track>,
+        track: std::sync::Arc<crate::keyframe_animation::Track>,
+        offset: f64,
+        epoch: f64,
+        playing: bool,
+        posed: bool,
+    },
+    Keyframes {
+        autoplay: bool,
+        pivot: Vec3d,
+        track: std::sync::Arc<crate::keyframe_animation::Track>,
+    },
     Rotate {
         pivot: Vec3d,
         axis: Vec3d,
@@ -29,28 +41,84 @@ impl Motion {
     pub fn cycle(&self) -> Option<f64> {
         let length = |track: &crate::keyframe_animation::Track| {
             let duration = track.keys.last()?.time;
-            Some(if track.mode == "pingpong" { duration * 2.0 } else { duration })
+            Some(if track.mode == "pingpong" {
+                duration * 2.0
+            } else {
+                duration
+            })
         };
         let seconds = match self {
-            Self::Playback { track, playing: true, posed: true, .. } => length(track)?,
-            Self::Keyframes { autoplay: true, track, .. } => length(track)?,
+            Self::Playback {
+                track,
+                playing: true,
+                posed: true,
+                ..
+            } => length(track)?,
+            Self::Keyframes {
+                autoplay: true,
+                track,
+                ..
+            } => length(track)?,
             Self::Rotate { speed, .. } => 360.0 / speed.abs(),
-            Self::Shuttle { travel, speed, wait, .. } if *speed != 0.0 => 2.0 * (travel.abs() / speed.abs() + wait),
+            Self::Shuttle {
+                travel,
+                speed,
+                wait,
+                ..
+            } if *speed != 0.0 => 2.0 * (travel.abs() / speed.abs() + wait),
             _ => return None,
         };
         (seconds.is_finite() && seconds > 0.0).then_some(seconds)
     }
     pub fn transform(&self, point: Vec3d, time: f64, normal: bool) -> Vec3d {
         match self.clone() {
-            Self::Playback{pivot,track,offset,epoch,playing,posed,..}=>if posed{track.transform(point,pivot,offset+if playing{(time-epoch).max(0.0)}else{0.0},normal)}else{point},
-            Self::Keyframes {pivot,track,autoplay} => if autoplay {track.transform(point,pivot,time,normal)}else{point},
+            Self::Playback {
+                pivot,
+                track,
+                offset,
+                epoch,
+                playing,
+                posed,
+                ..
+            } => {
+                if posed {
+                    track.transform(
+                        point,
+                        pivot,
+                        offset
+                            + if playing {
+                                (time - epoch).max(0.0)
+                            } else {
+                                0.0
+                            },
+                        normal,
+                    )
+                } else {
+                    point
+                }
+            }
+            Self::Keyframes {
+                pivot,
+                track,
+                autoplay,
+            } => {
+                if autoplay {
+                    track.transform(point, pivot, time, normal)
+                } else {
+                    point
+                }
+            }
             Self::Rotate { pivot, axis, speed } => {
                 let angle = (speed * time).rem_euclid(360.0).to_radians();
                 let v = if normal { point } else { point - pivot };
                 let rotated = v * angle.cos()
                     + cross(axis, v) * angle.sin()
                     + axis * dot(axis, v) * (1.0 - angle.cos());
-                if normal { rotated } else { rotated + pivot }
+                if normal {
+                    rotated
+                } else {
+                    rotated + pivot
+                }
             }
             Self::Shuttle {
                 direction,
@@ -100,15 +168,20 @@ impl Mesh {
 /// (`scrubbed`, keyframes clamped to the track) or playback.
 pub fn pose(triangles: &mut [Triangle], motion: &Motion, time: f64, scrubbed: bool) {
     let transform = |p, normal| match motion {
-        Motion::Keyframes { pivot, track, .. } | Motion::Playback { pivot, authored: track, .. } if scrubbed => {
-            track.transform_clamped(p, *pivot, time, normal)
-        }
+        Motion::Keyframes { pivot, track, .. }
+        | Motion::Playback {
+            pivot,
+            authored: track,
+            ..
+        } if scrubbed => track.transform_clamped(p, *pivot, time, normal),
         _ => motion.transform(p, time, normal),
     };
     for triangle in triangles {
         triangle.positions = triangle.positions.map(|p| transform(p, false));
         triangle.normal = transform(triangle.normal, true);
-        triangle.corner_normals = triangle.corner_normals.map(|normals| normals.map(|n| transform(n, true)));
+        triangle.corner_normals = triangle
+            .corner_normals
+            .map(|normals| normals.map(|n| transform(n, true)));
     }
 }
 fn number(entity: &EntityNode, key: &str, default: f64) -> f64 {
@@ -141,13 +214,30 @@ fn collect_brushes<'a>(nodes: &'a [Node], output: &mut Vec<(NodeId, &'a map_mode
 }
 fn entity_motion(entity: &EntityNode) -> Option<Motion> {
     if let Some(text) = entity.property("animation_keys") {
-        let track = crate::keyframe_animation::Track::from_properties(text, entity.property("animation_mode").unwrap_or("loop"), entity.property("animation_curves")).ok()?;
-        let mut parts=Vec::new(); collect_brushes(&entity.children,&mut parts);
-        let center=Bbox3d::merge_all(parts.iter().flat_map(|(_,b)| [b.bounds().min,b.bounds().max])).map(|b| b.center())?;
-        let pivot=vector(entity,"animation_pivot",center);
-        return Some(Motion::Keyframes{autoplay:number(entity,"start_on",1.0)!=0.0,pivot,track:std::sync::Arc::new(track)});
+        let track = crate::keyframe_animation::Track::from_properties(
+            text,
+            entity.property("animation_mode").unwrap_or("loop"),
+            entity.property("animation_curves"),
+        )
+        .ok()?;
+        let mut parts = Vec::new();
+        collect_brushes(&entity.children, &mut parts);
+        let center = Bbox3d::merge_all(
+            parts
+                .iter()
+                .flat_map(|(_, b)| [b.bounds().min, b.bounds().max]),
+        )
+        .map(|b| b.center())?;
+        let pivot = vector(entity, "animation_pivot", center);
+        return Some(Motion::Keyframes {
+            autoplay: number(entity, "start_on", 1.0) != 0.0,
+            pivot,
+            track: std::sync::Arc::new(track),
+        });
     }
-    if number(entity,"start_on",1.0)==0.0 {return None;}
+    if number(entity, "start_on", 1.0) == 0.0 {
+        return None;
+    }
     match entity.classname()? {
         "func_rotate" => {
             let axis = vector(entity, "axis", Vec3d::new(0.0, 0.0, 1.0));
@@ -291,7 +381,13 @@ mod tests {
 mod asset_tests {
     #[test]
     fn animated_assets_move_only_their_moving_parts_without_changing_the_map() {
-        for name in ["fan", "windmill", "radar", "gear_machine", "industrial_piston"] {
+        for name in [
+            "fan",
+            "windmill",
+            "radar",
+            "gear_machine",
+            "industrial_piston",
+        ] {
             let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join(format!("../../assets/{name}.map"));
             let document = crate::document::Document::open(path, Default::default()).unwrap();
@@ -303,9 +399,15 @@ mod asset_tests {
                     let pose = mesh.at(time);
                     for (range, _) in &mesh.motions {
                         for index in range.clone() {
-                            for (before, after) in mesh.triangles[index].positions.into_iter().zip(pose[index].positions) {
+                            for (before, after) in mesh.triangles[index]
+                                .positions
+                                .into_iter()
+                                .zip(pose[index].positions)
+                            {
                                 let expected = geometry_math::vec::Vec3d::new(distance, 0.0, 0.0);
-                                assert!(geometry_math::vec::length(after - before - expected) < 1e-9);
+                                assert!(
+                                    geometry_math::vec::length(after - before - expected) < 1e-9
+                                );
                             }
                         }
                     }

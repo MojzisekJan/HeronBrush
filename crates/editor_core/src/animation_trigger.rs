@@ -248,9 +248,10 @@ impl Document {
             .get(&source)
             .is_some_and(|last| config.once || now - *last < config.wait)
         {
-            return Err(
-                translation_key("Trigger is waiting or has already fired; reset the preview to try again").into(),
-            );
+            return Err(translation_key(
+                "Trigger is waiting or has already fired; reset the preview to try again",
+            )
+            .into());
         }
         let base = crate::motion_preview::motions(self.tree_world());
         let mut changes = Vec::new();
@@ -456,13 +457,11 @@ pub mod tests {
         d.redo();
         assert_eq!(saved, d.to_map_text());
         d.set_entity_property(target, "targetname", "renamed");
-        assert!(
-            Config::read(&d, source)
-                .unwrap()
-                .targets(&d)
-                .unwrap_err()
-                .contains("Missing target")
-        );
+        assert!(Config::read(&d, source)
+            .unwrap()
+            .targets(&d)
+            .unwrap_err()
+            .contains("Missing target"));
     }
     #[test]
     fn preview_play_pause_resume_stop_and_once_never_edit_the_map() {

@@ -235,7 +235,10 @@ const MAX_SHORT_VERTICES: usize = u16::MAX as usize;
 /// reference at most [`MAX_SHORT_VERTICES`] vertices. Each piece is the source
 /// vertex ids it uses (None: all of them, in order, the usual single piece) and
 /// its triangle list remapped onto those.
-fn split_for_short_indices(vertex_count: usize, indices: Vec<u32>) -> Vec<(Option<Vec<u32>>, Vec<u32>)> {
+fn split_for_short_indices(
+    vertex_count: usize,
+    indices: Vec<u32>,
+) -> Vec<(Option<Vec<u32>>, Vec<u32>)> {
     if vertex_count <= MAX_SHORT_VERTICES {
         return vec![(None, indices)];
     }
@@ -244,12 +247,18 @@ fn split_for_short_indices(vertex_count: usize, indices: Vec<u32>) -> Vec<(Optio
     let mut source: Vec<u32> = Vec::new();
     let mut remapped: Vec<u32> = Vec::new();
     for tri in indices.chunks_exact(3) {
-        let fresh = tri.iter().filter(|&&v| local[v as usize] == u32::MAX).count();
+        let fresh = tri
+            .iter()
+            .filter(|&&v| local[v as usize] == u32::MAX)
+            .count();
         if source.len() + fresh > MAX_SHORT_VERTICES {
             for &v in &source {
                 local[v as usize] = u32::MAX;
             }
-            pieces.push((Some(std::mem::take(&mut source)), std::mem::take(&mut remapped)));
+            pieces.push((
+                Some(std::mem::take(&mut source)),
+                std::mem::take(&mut remapped),
+            ));
         }
         for &v in tri {
             if local[v as usize] == u32::MAX {
@@ -330,7 +339,11 @@ pub fn write(mesh: &Mesh, collision: &Collision, name: &str, options: GltfOption
                     max[i] = max[i].max(p[i]);
                 }
                 positions.extend_from_slice(&p);
-                normals.extend_from_slice(&[v.normal.x as f32, v.normal.y as f32, v.normal.z as f32]);
+                normals.extend_from_slice(&[
+                    v.normal.x as f32,
+                    v.normal.y as f32,
+                    v.normal.z as f32,
+                ]);
                 let uv_v = if options.flip_uv_v {
                     1.0 - v.uv.y
                 } else {
@@ -340,7 +353,9 @@ pub fn write(mesh: &Mesh, collision: &Collision, name: &str, options: GltfOption
             };
             match &source {
                 None => surface.vertices.iter().for_each(&mut emit),
-                Some(ids) => ids.iter().for_each(|&i| emit(&surface.vertices[i as usize])),
+                Some(ids) => ids
+                    .iter()
+                    .for_each(|&i| emit(&surface.vertices[i as usize])),
             }
 
             let position_view = blob.push_floats(&positions);
@@ -574,7 +589,7 @@ pub(crate) fn prepare_albedos(
     library: &crate::materials::MaterialLibrary,
     settings: &crate::settings::Settings,
 ) -> (IndexMap<String, AlbedoImage>, Vec<String>) {
-    use crate::materials::{Material, res_to_fs};
+    use crate::materials::{res_to_fs, Material};
     let mut result = IndexMap::new();
     let mut warnings = Vec::new();
     let mut files = std::collections::HashMap::<std::path::PathBuf, Option<AlbedoImage>>::new();
@@ -617,7 +632,13 @@ pub(crate) fn prepare_albedos(
             Some(AlbedoImage { bytes: bytes.into(), mime, clamp: false, alpha, surface: None, normal: None, pbr: None })
         });
         if let Some(image) = image {
-            result.insert(name.clone(), AlbedoImage { normal, ..image.clone() });
+            result.insert(
+                name.clone(),
+                AlbedoImage {
+                    normal,
+                    ..image.clone()
+                },
+            );
         }
     }
     (result, warnings)
@@ -662,7 +683,11 @@ pub fn tangents(
     let sub = |a: [f32; 3], b: [f32; 3]| [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
     let dot = |a: [f32; 3], b: [f32; 3]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
     let cross = |a: [f32; 3], b: [f32; 3]| {
-        [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+        [
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+        ]
     };
     let n = positions.len();
     let mut along_u = vec![[0.0f32; 3]; n];
@@ -672,7 +697,10 @@ pub fn tangents(
         if a >= n || b >= n || c >= n || a >= uvs.len() || b >= uvs.len() || c >= uvs.len() {
             continue;
         }
-        let (e1, e2) = (sub(positions[b], positions[a]), sub(positions[c], positions[a]));
+        let (e1, e2) = (
+            sub(positions[b], positions[a]),
+            sub(positions[c], positions[a]),
+        );
         let (du1, dv1) = (uvs[b][0] - uvs[a][0], uvs[b][1] - uvs[a][1]);
         let (du2, dv2) = (uvs[c][0] - uvs[a][0], uvs[c][1] - uvs[a][1]);
         let det = du1 * dv2 - du2 * dv1;
@@ -696,13 +724,25 @@ pub fn tangents(
             let mut length = dot(t, t).sqrt();
             if length < 1e-12 {
                 // No gradient: any direction perpendicular to the normal.
-                let other = if normal[0].abs() < 0.9 { [1.0, 0.0, 0.0] } else { [0.0, 1.0, 0.0] };
+                let other = if normal[0].abs() < 0.9 {
+                    [1.0, 0.0, 0.0]
+                } else {
+                    [0.0, 1.0, 0.0]
+                };
                 t = cross(other, normal);
                 length = dot(t, t).sqrt().max(1e-12);
             }
             let t = t.map(|c| c / length);
-            let up = if flip_v { along_v[i] } else { along_v[i].map(|c| -c) };
-            let w = if dot(cross(normal, t), up) < 0.0 { -1.0 } else { 1.0 };
+            let up = if flip_v {
+                along_v[i]
+            } else {
+                along_v[i].map(|c| -c)
+            };
+            let w = if dot(cross(normal, t), up) < 0.0 {
+                -1.0
+            } else {
+                1.0
+            };
             [t[0], t[1], t[2], w]
         })
         .collect()
@@ -711,7 +751,11 @@ pub fn tangents(
 /// Reads accessor `index` of `doc` out of `binary` as `width` floats per element
 /// (or as indices, for a SCALAR unsigned accessor). Only the tightly packed
 /// accessors this writer produces are understood.
-fn read_accessor(doc: &serde_json::Value, binary: &[u8], index: usize) -> Option<(Vec<f32>, Vec<u32>)> {
+fn read_accessor(
+    doc: &serde_json::Value,
+    binary: &[u8],
+    index: usize,
+) -> Option<(Vec<f32>, Vec<u32>)> {
     let accessor = &doc["accessors"][index];
     let view = &doc["bufferViews"][accessor["bufferView"].as_u64()? as usize];
     let start = view["byteOffset"].as_u64().unwrap_or(0) as usize
@@ -728,9 +772,33 @@ fn read_accessor(doc: &serde_json::Value, binary: &[u8], index: usize) -> Option
     let size = if component == UNSIGNED_SHORT { 2 } else { 4 };
     let bytes = binary.get(start..start + count * width * size)?;
     Some(match component {
-        FLOAT => (bytes.as_chunks::<4>().0.iter().map(|b| f32::from_le_bytes(*b)).collect(), Vec::new()),
-        UNSIGNED_INT => (Vec::new(), bytes.as_chunks::<4>().0.iter().map(|b| u32::from_le_bytes(*b)).collect()),
-        UNSIGNED_SHORT => (Vec::new(), bytes.as_chunks::<2>().0.iter().map(|b| u16::from_le_bytes(*b) as u32).collect()),
+        FLOAT => (
+            bytes
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|b| f32::from_le_bytes(*b))
+                .collect(),
+            Vec::new(),
+        ),
+        UNSIGNED_INT => (
+            Vec::new(),
+            bytes
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|b| u32::from_le_bytes(*b))
+                .collect(),
+        ),
+        UNSIGNED_SHORT => (
+            Vec::new(),
+            bytes
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|b| u16::from_le_bytes(*b) as u32)
+                .collect(),
+        ),
         _ => return None,
     })
 }
@@ -739,7 +807,11 @@ fn read_accessor(doc: &serde_json::Value, binary: &[u8], index: usize) -> Option
 /// need no custom level loader. The source GLB is our own geometry-only writer
 /// output, with no images yet. A primitive whose material gains a normal map
 /// also gains a `TANGENT` attribute; `flip_uv_v` is the writer's V convention.
-pub(crate) fn embed_materials(glb: &mut Glb, albedos: &IndexMap<String, AlbedoImage>, flip_uv_v: bool) {
+pub(crate) fn embed_materials(
+    glb: &mut Glb,
+    albedos: &IndexMap<String, AlbedoImage>,
+    flip_uv_v: bool,
+) {
     if albedos.is_empty() {
         return;
     }
@@ -754,24 +826,33 @@ pub(crate) fn embed_materials(glb: &mut Glb, albedos: &IndexMap<String, AlbedoIm
     let mut image_indices = std::collections::HashMap::<std::sync::Arc<[u8]>, usize>::new();
     let mut texture_indices = std::collections::HashMap::<(usize, bool), usize>::new();
     let mut normal_mapped = std::collections::HashSet::<usize>::new();
-    let mut texture = |bytes: &std::sync::Arc<[u8]>, mime: &'static str, clamp: bool,
-                       doc: &mut serde_json::Value, binary: &mut Vec<u8>| {
+    let mut texture = |bytes: &std::sync::Arc<[u8]>,
+                       mime: &'static str,
+                       clamp: bool,
+                       doc: &mut serde_json::Value,
+                       binary: &mut Vec<u8>| {
         let image_index = *image_indices.entry(bytes.clone()).or_insert_with(|| {
-            while !binary.len().is_multiple_of(4) { binary.push(0); }
+            while !binary.len().is_multiple_of(4) {
+                binary.push(0);
+            }
             let offset = binary.len();
             binary.extend_from_slice(bytes);
             let views = doc["bufferViews"].as_array_mut().unwrap();
             let view = views.len();
-            views.push(serde_json::json!({"buffer":0,"byteOffset":offset,"byteLength":bytes.len()}));
+            views
+                .push(serde_json::json!({"buffer":0,"byteOffset":offset,"byteLength":bytes.len()}));
             let image_index = images.len();
             images.push(serde_json::json!({"bufferView":view,"mimeType":mime}));
             image_index
         });
-        *texture_indices.entry((image_index, clamp)).or_insert_with(|| {
-            let texture_index = textures.len();
-            textures.push(serde_json::json!({"source":image_index,"sampler":usize::from(clamp)}));
-            texture_index
-        })
+        *texture_indices
+            .entry((image_index, clamp))
+            .or_insert_with(|| {
+                let texture_index = textures.len();
+                textures
+                    .push(serde_json::json!({"source":image_index,"sampler":usize::from(clamp)}));
+                texture_index
+            })
     };
     for index in 0..doc["materials"].as_array().map_or(0, |v| v.len()) {
         let Some(name) = doc["materials"][index]["name"].as_str() else {
@@ -787,8 +868,9 @@ pub(crate) fn embed_materials(glb: &mut Glb, albedos: &IndexMap<String, AlbedoIm
         let emission = image.surface.map_or(0.0, |s| s[2]);
         if emission > 0.0 {
             doc["materials"][index]["emissiveTexture"] = serde_json::json!({"index":texture_index});
-            doc["materials"][index]["emissiveFactor"] = serde_json::json!([1.0,1.0,1.0]);
-            doc["materials"][index]["extensions"]["KHR_materials_emissive_strength"] = serde_json::json!({"emissiveStrength":emission});
+            doc["materials"][index]["emissiveFactor"] = serde_json::json!([1.0, 1.0, 1.0]);
+            doc["materials"][index]["extensions"]["KHR_materials_emissive_strength"] =
+                serde_json::json!({"emissiveStrength":emission});
             doc["extensionsUsed"] = serde_json::json!(["KHR_materials_emissive_strength"]);
         }
         if image.alpha {
@@ -799,11 +881,11 @@ pub(crate) fn embed_materials(glb: &mut Glb, albedos: &IndexMap<String, AlbedoIm
             doc["materials"][index]["normalTexture"] = serde_json::json!({"index":normal_index});
             normal_mapped.insert(index);
         }
-        if let Some(pbr)=&image.pbr {
-            let mat=&mut doc["materials"][index];
-            mat["pbrMetallicRoughness"]["roughnessFactor"]=serde_json::json!(pbr.roughness);
-            mat["pbrMetallicRoughness"]["metallicFactor"]=serde_json::json!(pbr.metallic);
-            mat["emissiveFactor"]=serde_json::json!(pbr.emissive_factor);
+        if let Some(pbr) = &image.pbr {
+            let mat = &mut doc["materials"][index];
+            mat["pbrMetallicRoughness"]["roughnessFactor"] = serde_json::json!(pbr.roughness);
+            mat["pbrMetallicRoughness"]["metallicFactor"] = serde_json::json!(pbr.metallic);
+            mat["emissiveFactor"] = serde_json::json!(pbr.emissive_factor);
             // Pixel alpha alone cannot distinguish opaque, cutout and blended
             // source materials. Explicit imported rules override that fallback.
             mat["alphaMode"] = serde_json::json!(match pbr.alpha_mode {
@@ -816,14 +898,24 @@ pub(crate) fn embed_materials(glb: &mut Glb, albedos: &IndexMap<String, AlbedoIm
             }
             mat["doubleSided"] = serde_json::json!(pbr.double_sided);
             for map in &pbr.images {
-                let id=texture(&map.png,"image/png",image.clamp,&mut doc,&mut binary);
-                let mat=&mut doc["materials"][index];
+                let id = texture(&map.png, "image/png", image.clamp, &mut doc, &mut binary);
+                let mat = &mut doc["materials"][index];
                 match map.slot {
-                    "normal"=>{mat["normalTexture"]=serde_json::json!({"index":id,"scale":pbr.normal_scale});normal_mapped.insert(index);},
-                    "mr"=>mat["pbrMetallicRoughness"]["metallicRoughnessTexture"]=serde_json::json!({"index":id}),
-                    "ao"=>mat["occlusionTexture"]=serde_json::json!({"index":id,"strength":pbr.occlusion_strength}),
-                    "emissive"=>mat["emissiveTexture"]=serde_json::json!({"index":id}),
-                    _=>{},
+                    "normal" => {
+                        mat["normalTexture"] =
+                            serde_json::json!({"index":id,"scale":pbr.normal_scale});
+                        normal_mapped.insert(index);
+                    }
+                    "mr" => {
+                        mat["pbrMetallicRoughness"]["metallicRoughnessTexture"] =
+                            serde_json::json!({"index":id})
+                    }
+                    "ao" => {
+                        mat["occlusionTexture"] =
+                            serde_json::json!({"index":id,"strength":pbr.occlusion_strength})
+                    }
+                    "emissive" => mat["emissiveTexture"] = serde_json::json!({"index":id}),
+                    _ => {}
                 }
             }
         }
@@ -835,29 +927,49 @@ pub(crate) fn embed_materials(glb: &mut Glb, albedos: &IndexMap<String, AlbedoIm
     // Tangents for every primitive wearing a normal-mapped material.
     let mut added = Vec::new();
     for (mesh, primitives) in doc["meshes"].as_array().into_iter().flatten().enumerate() {
-        for (p, primitive) in primitives["primitives"].as_array().into_iter().flatten().enumerate() {
-            let wears_normal = primitive["material"].as_u64().is_some_and(|m| normal_mapped.contains(&(m as usize)));
+        for (p, primitive) in primitives["primitives"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .enumerate()
+        {
+            let wears_normal = primitive["material"]
+                .as_u64()
+                .is_some_and(|m| normal_mapped.contains(&(m as usize)));
             if !wears_normal || primitive["attributes"].get("TANGENT").is_some() {
                 continue;
             }
             let attribute = |key: &str| primitive["attributes"][key].as_u64().map(|i| i as usize);
             let (Some(position), Some(normal), Some(uv), Some(indices)) = (
-                attribute("POSITION"), attribute("NORMAL"), attribute("TEXCOORD_0"),
+                attribute("POSITION"),
+                attribute("NORMAL"),
+                attribute("TEXCOORD_0"),
                 primitive["indices"].as_u64().map(|i| i as usize),
-            ) else { continue; };
+            ) else {
+                continue;
+            };
             let (Some((positions, _)), Some((normals, _)), Some((uvs, _)), Some((_, indices))) = (
-                read_accessor(&doc, &binary, position), read_accessor(&doc, &binary, normal),
-                read_accessor(&doc, &binary, uv), read_accessor(&doc, &binary, indices),
-            ) else { continue; };
+                read_accessor(&doc, &binary, position),
+                read_accessor(&doc, &binary, normal),
+                read_accessor(&doc, &binary, uv),
+                read_accessor(&doc, &binary, indices),
+            ) else {
+                continue;
+            };
             let tangents = tangents(
-                positions.as_chunks::<3>().0, normals.as_chunks::<3>().0, uvs.as_chunks::<2>().0,
-                &indices, flip_uv_v,
+                positions.as_chunks::<3>().0,
+                normals.as_chunks::<3>().0,
+                uvs.as_chunks::<2>().0,
+                &indices,
+                flip_uv_v,
             );
             added.push((mesh, p, tangents));
         }
     }
     for (mesh, p, tangents) in added {
-        while !binary.len().is_multiple_of(4) { binary.push(0); }
+        while !binary.len().is_multiple_of(4) {
+            binary.push(0);
+        }
         let offset = binary.len();
         for t in &tangents {
             for c in t {
@@ -1042,22 +1154,34 @@ mod tests {
         let json = json_of(&glb);
         let primitives = json["meshes"][0]["primitives"].as_array().unwrap();
         assert_eq!(primitives.len(), 2);
-        assert_eq!(glb.textures, vec!["big", "big"], "one surface entry per primitive");
-        assert_eq!(json["materials"].as_array().unwrap().len(), 1, "pieces share the material");
+        assert_eq!(
+            glb.textures,
+            vec!["big", "big"],
+            "one surface entry per primitive"
+        );
+        assert_eq!(
+            json["materials"].as_array().unwrap().len(),
+            1,
+            "pieces share the material"
+        );
 
         let json_length = u32::from_le_bytes(glb.bytes[12..16].try_into().unwrap()) as usize;
         let bin = &glb.bytes[20 + json_length + 8..];
         let mut drawn = 0;
         for primitive in primitives {
             let indices = &json["accessors"][primitive["indices"].as_u64().unwrap() as usize];
-            let positions = &json["accessors"][primitive["attributes"]["POSITION"].as_u64().unwrap() as usize];
+            let positions =
+                &json["accessors"][primitive["attributes"]["POSITION"].as_u64().unwrap() as usize];
             assert_eq!(indices["componentType"], UNSIGNED_SHORT);
             let vertex_count = positions["count"].as_u64().unwrap() as usize;
             assert!(vertex_count <= MAX_SHORT_VERTICES);
             let view = &json["bufferViews"][indices["bufferView"].as_u64().unwrap() as usize];
             let offset = view["byteOffset"].as_u64().unwrap() as usize;
             let count = indices["count"].as_u64().unwrap() as usize;
-            let position_offset = json["bufferViews"][positions["bufferView"].as_u64().unwrap() as usize]["byteOffset"].as_u64().unwrap() as usize;
+            let position_offset = json["bufferViews"]
+                [positions["bufferView"].as_u64().unwrap() as usize]["byteOffset"]
+                .as_u64()
+                .unwrap() as usize;
             assert_eq!(position_offset % 4, 0);
             for t in 0..count / 3 {
                 let corner = |k: usize| {
@@ -1092,7 +1216,10 @@ mod tests {
             rebuilt.extend(local.iter().map(|&l| source[l as usize]));
         }
         assert_eq!(rebuilt, indices);
-        assert!(matches!(split_for_short_indices(3, vec![0, 1, 2]).as_slice(), [(None, _)]));
+        assert!(matches!(
+            split_for_short_indices(3, vec![0, 1, 2]).as_slice(),
+            [(None, _)]
+        ));
     }
 
     #[test]
@@ -1100,7 +1227,11 @@ mod tests {
         let mut blob = Blob::new(0);
         let (_, small) = blob.push_indices(&[0, 1, 2]);
         assert_eq!(small, UNSIGNED_SHORT);
-        assert_eq!(blob.bytes.len() % 4, 0, "the next float view must start 4-byte aligned");
+        assert_eq!(
+            blob.bytes.len() % 4,
+            0,
+            "the next float view must start 4-byte aligned"
+        );
         let (_, large) = blob.push_indices(&[0, 70_000, 2]);
         assert_eq!(large, UNSIGNED_INT);
     }
@@ -1113,7 +1244,10 @@ mod tests {
         let offset = doc["bufferViews"][view]["byteOffset"].as_u64().unwrap() as usize;
         let json_length = u32::from_le_bytes(glb.bytes[12..16].try_into().unwrap()) as usize;
         let bin = &glb.bytes[20 + json_length + 8..];
-        assert_eq!(doc["accessors"][3]["componentType"], UNSIGNED_SHORT, "small meshes use 16-bit indices");
+        assert_eq!(
+            doc["accessors"][3]["componentType"], UNSIGNED_SHORT,
+            "small meshes use 16-bit indices"
+        );
         let read = |i: usize| {
             u16::from_le_bytes(bin[offset + i * 2..offset + i * 2 + 2].try_into().unwrap())
         };
@@ -1132,7 +1266,11 @@ mod tests {
         let flipped_bin = &flipped.bytes
             [20 + u32::from_le_bytes(flipped.bytes[12..16].try_into().unwrap()) as usize + 8..];
         let read = |i: usize| {
-            u16::from_le_bytes(flipped_bin[offset + i * 2..offset + i * 2 + 2].try_into().unwrap())
+            u16::from_le_bytes(
+                flipped_bin[offset + i * 2..offset + i * 2 + 2]
+                    .try_into()
+                    .unwrap(),
+            )
         };
         assert_eq!([read(0), read(1), read(2)], [0, 1, 2]);
     }
@@ -1170,7 +1308,11 @@ mod tests {
             .as_u64()
             .unwrap() as usize;
         let read_index = |i: usize| {
-            u16::from_le_bytes(bin[index_offset + i * 2..index_offset + i * 2 + 2].try_into().unwrap()) as usize
+            u16::from_le_bytes(
+                bin[index_offset + i * 2..index_offset + i * 2 + 2]
+                    .try_into()
+                    .unwrap(),
+            ) as usize
         };
 
         let (a, b, c) = (
@@ -1306,7 +1448,10 @@ mod tests {
         // Detection follows the bytes, not the filename extension.
         std::fs::write(root.join("stone.dat"), &png).unwrap();
         std::fs::write(root.join("unsupported.webp"), b"RIFFxxxxWEBP").unwrap();
-        let settings = crate::settings::Settings { project_root: Some(root.clone()), ..Default::default() };
+        let settings = crate::settings::Settings {
+            project_root: Some(root.clone()),
+            ..Default::default()
+        };
         let mut library = MaterialLibrary::default();
         for name in ["stone", "stone_alias", "paint", "custom", "unsupported"] {
             library.materials.insert(
@@ -1330,8 +1475,9 @@ mod tests {
         }
         library.generated.insert(
             "paint".into(),
-            GeneratedMaterial { pbr: None,
-                surface: Some([0.2,0.8,2.5]),
+            GeneratedMaterial {
+                pbr: None,
+                surface: Some([0.2, 0.8, 2.5]),
                 path: "res://paint.png".into(),
                 width: 1,
                 height: 1,
@@ -1341,7 +1487,7 @@ mod tests {
             },
         );
         let (images, warnings) = prepare_albedos(&library, &settings);
-        assert_eq!(images["paint"].surface, Some([0.2,0.8,2.5]));
+        assert_eq!(images["paint"].surface, Some([0.2, 0.8, 2.5]));
         assert_eq!(warnings.len(), 1);
         assert!(warnings[0].contains("PNG or JPEG"));
         assert_eq!(images.len(), 3);
@@ -1363,9 +1509,22 @@ mod tests {
         assert_eq!(doc["images"].as_array().unwrap().len(), 1); // identical bytes deduplicated
         assert_eq!(doc["images"][0]["mimeType"], "image/png");
         let paint = &doc["materials"][2];
-        assert!((paint["pbrMetallicRoughness"]["roughnessFactor"].as_f64().unwrap()-0.2).abs()<1e-6);
-        assert_eq!(paint["extensions"]["KHR_materials_emissive_strength"]["emissiveStrength"],2.5);
-        assert_eq!(paint["emissiveTexture"]["index"],paint["pbrMetallicRoughness"]["baseColorTexture"]["index"]);
+        assert!(
+            (paint["pbrMetallicRoughness"]["roughnessFactor"]
+                .as_f64()
+                .unwrap()
+                - 0.2)
+                .abs()
+                < 1e-6
+        );
+        assert_eq!(
+            paint["extensions"]["KHR_materials_emissive_strength"]["emissiveStrength"],
+            2.5
+        );
+        assert_eq!(
+            paint["emissiveTexture"]["index"],
+            paint["pbrMetallicRoughness"]["baseColorTexture"]["index"]
+        );
         assert_eq!(doc["textures"].as_array().unwrap().len(), 2); // repeat and clamp
         for (index, expected_wrap) in [(0, 10497), (1, 10497), (2, 33071)] {
             let material = &doc["materials"][index];
@@ -1377,11 +1536,9 @@ mod tests {
             assert!(material.get("alphaMode").is_none()); // opaque RGBA must stay opaque
         }
         for index in [3, 4] {
-            assert!(
-                doc["materials"][index]
-                    .get("pbrMetallicRoughness")
-                    .is_none()
-            );
+            assert!(doc["materials"][index]
+                .get("pbrMetallicRoughness")
+                .is_none());
         }
         let view = doc["images"][0]["bufferView"].as_u64().unwrap() as usize;
         let offset = doc["bufferViews"][view]["byteOffset"].as_u64().unwrap() as usize;
@@ -1402,20 +1559,45 @@ mod tests {
     fn tangents_follow_u_and_their_sign_puts_the_bitangent_image_up() {
         let mesh = quad();
         let s = &mesh.surfaces[0];
-        let positions: Vec<[f32; 3]> = s.vertices.iter().map(|v| [v.position.x as f32, v.position.y as f32, v.position.z as f32]).collect();
-        let normals: Vec<[f32; 3]> = s.vertices.iter().map(|v| [v.normal.x as f32, v.normal.y as f32, v.normal.z as f32]).collect();
-        let uvs: Vec<[f32; 2]> = s.vertices.iter().map(|v| [v.uv.x as f32, v.uv.y as f32]).collect();
+        let positions: Vec<[f32; 3]> = s
+            .vertices
+            .iter()
+            .map(|v| {
+                [
+                    v.position.x as f32,
+                    v.position.y as f32,
+                    v.position.z as f32,
+                ]
+            })
+            .collect();
+        let normals: Vec<[f32; 3]> = s
+            .vertices
+            .iter()
+            .map(|v| [v.normal.x as f32, v.normal.y as f32, v.normal.z as f32])
+            .collect();
+        let uvs: Vec<[f32; 2]> = s
+            .vertices
+            .iter()
+            .map(|v| [v.uv.x as f32, v.uv.y as f32])
+            .collect();
         // +U runs along +X and +V along +Z on this +Y quad, so image-up is -Z,
         // which is cross(normal, tangent) = cross(+Y, +X): w = +1.
         for t in tangents(&positions, &normals, &uvs, &s.indices, false) {
-            assert!((t[0] - 1.0).abs() < 1e-6 && t[1].abs() < 1e-6 && t[2].abs() < 1e-6, "{t:?}");
+            assert!(
+                (t[0] - 1.0).abs() < 1e-6 && t[1].abs() < 1e-6 && t[2].abs() < 1e-6,
+                "{t:?}"
+            );
             assert_eq!(t[3], 1.0);
         }
         // V written from the bottom shows the same picture on the same face, so the
         // frame must not change; reading the gradient the other way round would flip w.
         let flipped: Vec<[f32; 2]> = uvs.iter().map(|uv| [uv[0], 1.0 - uv[1]]).collect();
-        assert!(tangents(&positions, &normals, &flipped, &s.indices, true).iter().all(|t| t[3] == 1.0));
-        assert!(tangents(&positions, &normals, &flipped, &s.indices, false).iter().all(|t| t[3] == -1.0));
+        assert!(tangents(&positions, &normals, &flipped, &s.indices, true)
+            .iter()
+            .all(|t| t[3] == 1.0));
+        assert!(tangents(&positions, &normals, &flipped, &s.indices, false)
+            .iter()
+            .all(|t| t[3] == -1.0));
     }
 
     #[test]
@@ -1427,18 +1609,39 @@ mod tests {
             let mut encoder = png::Encoder::new(&mut bytes, 1, 1);
             encoder.set_color(png::ColorType::Rgba);
             encoder.set_depth(png::BitDepth::Eight);
-            encoder.write_header().unwrap().write_image_data(&[128, 128, 255, 255]).unwrap();
+            encoder
+                .write_header()
+                .unwrap()
+                .write_image_data(&[128, 128, 255, 255])
+                .unwrap();
             bytes.into()
         };
         let mut settings = crate::settings::Settings::default();
-        settings.normal_maps.insert("tiled".into(), normal_png.clone());
+        settings
+            .normal_maps
+            .insert("tiled".into(), normal_png.clone());
         let mut library = MaterialLibrary::default();
         for (name, repeat) in [("tiled", true), ("paint", false)] {
-            library.materials.insert(name.into(), Material::FromTextures { albedo: format!("res://{name}.png"), maps: Vec::new() });
-            library.generated.insert(name.into(), GeneratedMaterial { pbr: None,
-                path: format!("res://{name}.png"), width: 1, height: 1, png: png.clone(),
-                alpha: false, surface: Some([0.4, 0.6, 0.0]), repeat,
-            });
+            library.materials.insert(
+                name.into(),
+                Material::FromTextures {
+                    albedo: format!("res://{name}.png"),
+                    maps: Vec::new(),
+                },
+            );
+            library.generated.insert(
+                name.into(),
+                GeneratedMaterial {
+                    pbr: None,
+                    path: format!("res://{name}.png"),
+                    width: 1,
+                    height: 1,
+                    png: png.clone(),
+                    alpha: false,
+                    surface: Some([0.4, 0.6, 0.0]),
+                    repeat,
+                },
+            );
         }
         let (images, _) = prepare_albedos(&library, &settings);
         let mut mesh = quad();
@@ -1454,22 +1657,44 @@ mod tests {
             doc["textures"][texture]["sampler"].as_u64().unwrap()
         };
         let tiled = &doc["materials"][0];
-        assert_eq!(sampler(&tiled["pbrMetallicRoughness"], "baseColorTexture"), 0, "texture faces with a surface material tile");
+        assert_eq!(
+            sampler(&tiled["pbrMetallicRoughness"], "baseColorTexture"),
+            0,
+            "texture faces with a surface material tile"
+        );
         assert_eq!(sampler(tiled, "normalTexture"), 0);
-        assert_eq!(sampler(&doc["materials"][1]["pbrMetallicRoughness"], "baseColorTexture"), 1, "baked paint clamps");
+        assert_eq!(
+            sampler(
+                &doc["materials"][1]["pbrMetallicRoughness"],
+                "baseColorTexture"
+            ),
+            1,
+            "baked paint clamps"
+        );
         assert!(doc["materials"][1].get("normalTexture").is_none());
         let primitives = doc["meshes"][0]["primitives"].as_array().unwrap();
         let tangent = primitives[0]["attributes"]["TANGENT"].as_u64().unwrap() as usize;
         assert!(primitives[1]["attributes"].get("TANGENT").is_none());
         let accessor = &doc["accessors"][tangent];
         assert_eq!(accessor["type"], "VEC4");
-        assert_eq!(accessor["count"], doc["accessors"][primitives[0]["attributes"]["POSITION"].as_u64().unwrap() as usize]["count"]);
+        assert_eq!(
+            accessor["count"],
+            doc["accessors"][primitives[0]["attributes"]["POSITION"].as_u64().unwrap() as usize]
+                ["count"]
+        );
         let json_size = u32::from_le_bytes(glb.bytes[12..16].try_into().unwrap()) as usize;
         let (values, _) = read_accessor(&doc, &glb.bytes[28 + json_size..], tangent).unwrap();
         assert_eq!(&values[..4], &[1.0, 0.0, 0.0, 1.0]);
-        let image = doc["textures"][tiled["normalTexture"]["index"].as_u64().unwrap() as usize]["source"].as_u64().unwrap() as usize;
-        let view = &doc["bufferViews"][doc["images"][image]["bufferView"].as_u64().unwrap() as usize];
+        let image = doc["textures"][tiled["normalTexture"]["index"].as_u64().unwrap() as usize]
+            ["source"]
+            .as_u64()
+            .unwrap() as usize;
+        let view =
+            &doc["bufferViews"][doc["images"][image]["bufferView"].as_u64().unwrap() as usize];
         let offset = view["byteOffset"].as_u64().unwrap() as usize;
-        assert_eq!(&glb.bytes[28 + json_size + offset..28 + json_size + offset + normal_png.len()], &normal_png[..]);
+        assert_eq!(
+            &glb.bytes[28 + json_size + offset..28 + json_size + offset + normal_png.len()],
+            &normal_png[..]
+        );
     }
 }

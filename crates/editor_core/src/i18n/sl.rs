@@ -17,11 +17,17 @@ pub(super) const NOUNS: [(&str, &[&str]); 13] = [
     ("file", &["datoteka", "datoteki", "datoteke", "datotek"]),
     ("group", &["skupina", "skupini", "skupine", "skupin"]),
     ("issue", &["težava", "težavi", "težave", "težav"]),
-    ("material", &["material", "materiala", "materiali", "materialov"]),
+    (
+        "material",
+        &["material", "materiala", "materiali", "materialov"],
+    ),
     ("object", &["objekt", "objekta", "objekti", "objektov"]),
     ("patch", &["patch", "patcha", "patchi", "patchev"]),
     ("point", &["točka", "točki", "točke", "točk"]),
-    ("triangle", &["trikotnik", "trikotnika", "trikotniki", "trikotnikov"]),
+    (
+        "triangle",
+        &["trikotnik", "trikotnika", "trikotniki", "trikotnikov"],
+    ),
     ("vertex", &["oglišče", "oglišči", "oglišča", "oglišč"]),
 ];
 

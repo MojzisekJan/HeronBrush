@@ -17,7 +17,11 @@ use eframe::egui;
 use std::collections::BTreeSet;
 
 const MODES: [&str; 3] = ["once", "loop", "pingpong"];
-const INTERPOLATIONS: [Interpolation; 3] = [Interpolation::Linear, Interpolation::Hold, Interpolation::Bezier];
+const INTERPOLATIONS: [Interpolation; 3] = [
+    Interpolation::Linear,
+    Interpolation::Hold,
+    Interpolation::Bezier,
+];
 
 pub struct AnimationPage {
     pub open: bool,
@@ -74,13 +78,24 @@ impl Default for AnimationPage {
 
 /// A raised button sized to its label.
 fn button(ui: &mut egui::Ui, label: &str, enabled: bool) -> egui::Response {
-    let width = ui.fonts_mut(|f| f.layout_no_wrap(label.to_string(), theme::body(), theme::fg()).size().x) + 24.0;
+    let width = ui.fonts_mut(|f| {
+        f.layout_no_wrap(label.to_string(), theme::body(), theme::fg())
+            .size()
+            .x
+    }) + 24.0;
     theme::button(ui, label, width.max(40.0), enabled)
 }
 /// A toggle button: accent-filled while on.
 fn toggle(ui: &mut egui::Ui, label: &str, on: &mut bool) -> egui::Response {
-    let width = ui.fonts_mut(|f| f.layout_no_wrap(label.to_string(), theme::body(), theme::fg()).size().x) + 24.0;
-    let (rect, mut response) = ui.allocate_exact_size(egui::vec2(width.max(40.0), widgets::ROW_HEIGHT), egui::Sense::click());
+    let width = ui.fonts_mut(|f| {
+        f.layout_no_wrap(label.to_string(), theme::body(), theme::fg())
+            .size()
+            .x
+    }) + 24.0;
+    let (rect, mut response) = ui.allocate_exact_size(
+        egui::vec2(width.max(40.0), widgets::ROW_HEIGHT),
+        egui::Sense::click(),
+    );
     if response.clicked() {
         *on = !*on;
         response.mark_changed();
@@ -89,10 +104,19 @@ fn toggle(ui: &mut egui::Ui, label: &str, on: &mut bool) -> egui::Response {
     response
 }
 /// A square button with a painted icon, for glyphs the UI font lacks.
-fn icon_button(ui: &mut egui::Ui, tooltip: &str, paint: impl Fn(&egui::Painter, egui::Rect, egui::Stroke)) -> egui::Response {
-    let (rect, response) = ui.allocate_exact_size(egui::vec2(40.0, widgets::ROW_HEIGHT), egui::Sense::click());
+fn icon_button(
+    ui: &mut egui::Ui,
+    tooltip: &str,
+    paint: impl Fn(&egui::Painter, egui::Rect, egui::Stroke),
+) -> egui::Response {
+    let (rect, response) =
+        ui.allocate_exact_size(egui::vec2(40.0, widgets::ROW_HEIGHT), egui::Sense::click());
     theme::paint_button(ui, rect, &response, "", true, false);
-    paint(ui.painter(), egui::Rect::from_center_size(rect.center(), egui::vec2(14.0, 14.0)), egui::Stroke::new(1.5, theme::fg()));
+    paint(
+        ui.painter(),
+        egui::Rect::from_center_size(rect.center(), egui::vec2(14.0, 14.0)),
+        egui::Stroke::new(1.5, theme::fg()),
+    );
     response.on_hover_text(tooltip)
 }
 fn dim(ui: &mut egui::Ui, text: &str) {
@@ -121,16 +145,27 @@ impl AnimationPage {
             }
             Ok(draft) => {
                 let name = draft.name(&document);
-                let keep = self.draft.as_ref().is_some_and(|old| old.same_selection(&document));
+                let keep = self
+                    .draft
+                    .as_ref()
+                    .is_some_and(|old| old.same_selection(&document));
                 match (&mut self.state, keep) {
                     (Some(state), true) => {
-                        state.reload(draft.clip.clone(), draft.mode.clone(), draft.pivot, name != self.name);
+                        state.reload(
+                            draft.clip.clone(),
+                            draft.mode.clone(),
+                            draft.pivot,
+                            name != self.name,
+                        );
                     }
                     _ => {
-                        let mut state = State::new(draft.clip.clone(), draft.mode.clone(), draft.pivot);
+                        let mut state =
+                            State::new(draft.clip.clone(), draft.mode.clone(), draft.pivot);
                         let f = *editor.filters.borrow();
                         if let Some(frame) = f.animation_frame {
-                            state.frame = (frame as f64 / f.animation_fps.max(1) as f64).min(state.clip.duration) * state.clip.fps as f64;
+                            state.frame = (frame as f64 / f.animation_fps.max(1) as f64)
+                                .min(state.clip.duration)
+                                * state.clip.fps as f64;
                         }
                         self.state = Some(state);
                         self.playing = false;
@@ -210,7 +245,8 @@ impl AnimationPage {
             self.seek(editor);
         } else if let Some((frame, fps)) = seek {
             state.cancel();
-            state.frame = (frame as f64 / fps.max(1) as f64).min(state.clip.duration) * state.clip.fps as f64;
+            state.frame =
+                (frame as f64 / fps.max(1) as f64).min(state.clip.duration) * state.clip.fps as f64;
             self.playing = false;
         }
     }
@@ -232,7 +268,10 @@ impl AnimationPage {
     /// Advances playback by the time since the last frame, as the clip's mode says.
     fn tick(&mut self, ctx: &egui::Context, editor: &Editor) {
         let now = web_time::Instant::now();
-        let seconds = self.last.replace(now).map_or(0.0, |last| now.duration_since(last).as_secs_f64());
+        let seconds = self
+            .last
+            .replace(now)
+            .map_or(0.0, |last| now.duration_since(last).as_secs_f64());
         self.advance(seconds, editor);
         if self.playing {
             ctx.request_repaint_after(web_time::Duration::from_millis(16));
@@ -257,7 +296,10 @@ impl AnimationPage {
     fn set_auto_key(&mut self, on: bool, editor: &Editor) {
         if on {
             self.playing = false;
-            let blank = self.draft.as_ref().is_some_and(|d| d.blank(&editor.document.borrow()));
+            let blank = self
+                .draft
+                .as_ref()
+                .is_some_and(|d| d.blank(&editor.document.borrow()));
             if blank {
                 if let Some(state) = &mut self.state {
                     state.clip.tracks = std::array::from_fn(|_| Vec::new());
@@ -334,7 +376,9 @@ impl AnimationPage {
             0 => 0.0,
             2 => state.clip.duration,
             -1 => keys().filter(|t| *t < time - 1e-6).fold(0.0, f64::max),
-            _ => keys().filter(|t| *t > time + 1e-6).fold(state.clip.duration, f64::min),
+            _ => keys()
+                .filter(|t| *t > time + 1e-6)
+                .fold(state.clip.duration, f64::min),
         };
         state.frame = target * state.clip.fps as f64;
         self.seek(editor);
@@ -369,7 +413,12 @@ impl AnimationPage {
                 self.remove(editor);
             }
             egui::Event::Paste(_) => self.paste(editor),
-            egui::Event::Key { key, pressed: true, modifiers, .. } => {
+            egui::Event::Key {
+                key,
+                pressed: true,
+                modifiers,
+                ..
+            } => {
                 let command = modifiers.command || modifiers.ctrl;
                 match key {
                     egui::Key::Z if command => {
@@ -394,7 +443,11 @@ impl AnimationPage {
                     egui::Key::Delete | egui::Key::Backspace => self.remove(editor),
                     egui::Key::ArrowLeft | egui::Key::ArrowRight if !command => {
                         if let Some(state) = &mut self.state {
-                            let step = if *key == egui::Key::ArrowLeft { -1.0 } else { 1.0 };
+                            let step = if *key == egui::Key::ArrowLeft {
+                                -1.0
+                            } else {
+                                1.0
+                            };
                             state.frame = (state.frame + step).clamp(0.0, state.end_frame());
                         }
                         self.seek(editor);
@@ -443,19 +496,28 @@ impl AnimationPage {
         let mut detach = false;
         let docked = panel.is_some();
         let visible = if let Some(ui) = panel {
-            egui::Frame::new().fill(theme::bg()).inner_margin(egui::Margin::symmetric(8, 6)).show(ui, |ui| {
-                ui.set_min_size(ui.available_size());
-                self.body(ui, editor, true, &mut close, &mut detach);
-            });
+            egui::Frame::new()
+                .fill(theme::bg())
+                .inner_margin(egui::Margin::symmetric(8, 6))
+                .show(ui, |ui| {
+                    ui.set_min_size(ui.available_size());
+                    self.body(ui, editor, true, &mut close, &mut detach);
+                });
             true
         } else {
-            dialog::show(ctx, "animation", tr("Keyframe animation"), [1100.0, 560.0], |ui, part| {
-                if part == dialog::Part::Actions {
-                    close |= dialog::button(ui, tr("Close"), true).clicked();
-                } else {
-                    self.body(ui, editor, false, &mut close, &mut detach);
-                }
-            })
+            dialog::show(
+                ctx,
+                "animation",
+                tr("Keyframe animation"),
+                [1100.0, 560.0],
+                |ui, part| {
+                    if part == dialog::Part::Actions {
+                        close |= dialog::button(ui, tr("Close"), true).clicked();
+                    } else {
+                        self.body(ui, editor, false, &mut close, &mut detach);
+                    }
+                },
+            )
         };
         if detach {
             self.detached = docked;
@@ -477,10 +539,20 @@ impl AnimationPage {
         }
     }
 
-    fn body(&mut self, ui: &mut egui::Ui, editor: &Editor, docked: bool, close: &mut bool, detach: &mut bool) {
+    fn body(
+        &mut self,
+        ui: &mut egui::Ui,
+        editor: &Editor,
+        docked: bool,
+        close: &mut bool,
+        detach: &mut bool,
+    ) {
         // Keys reach the panel itself while the timeline has focus; otherwise the window
         // passes them on through `key_event`.
-        if self.timeline.focused && ui.ctx().egui_wants_keyboard_input() && !ui.ctx().text_edit_focused() {
+        if self.timeline.focused
+            && ui.ctx().egui_wants_keyboard_input()
+            && !ui.ctx().text_edit_focused()
+        {
             for event in ui.input(|i| i.events.clone()) {
                 self.key_event(&event, editor);
             }
@@ -493,7 +565,11 @@ impl AnimationPage {
             let f = *editor.filters.borrow();
             let editing = f.animation_frame.is_some();
             let label = editor_core::animation_mode::label(&f);
-            ui.label(egui::RichText::new(label).color(if editing { theme::warning() } else { theme::dim() }));
+            ui.label(egui::RichText::new(label).color(if editing {
+                theme::warning()
+            } else {
+                theme::dim()
+            }));
             if self.state.is_some() {
                 ui.add_space(12.0);
                 self.library_row(ui, editor);
@@ -509,19 +585,33 @@ impl AnimationPage {
                     {
                         *close = true;
                     }
-                    if icon_button(ui, tr("Animation editor in separate window"), |p, r, stroke| {
-                        let back = egui::Rect::from_min_max(r.min + egui::vec2(4.0, 0.0), r.max - egui::vec2(0.0, 4.0));
-                        let front = egui::Rect::from_min_max(r.min + egui::vec2(0.0, 4.0), r.max - egui::vec2(4.0, 0.0));
-                        p.rect_stroke(back, 1.0, stroke, egui::StrokeKind::Middle);
-                        p.rect_filled(front, 1.0, theme::button_fill());
-                        p.rect_stroke(front, 1.0, stroke, egui::StrokeKind::Middle);
-                    })
+                    if icon_button(
+                        ui,
+                        tr("Animation editor in separate window"),
+                        |p, r, stroke| {
+                            let back = egui::Rect::from_min_max(
+                                r.min + egui::vec2(4.0, 0.0),
+                                r.max - egui::vec2(0.0, 4.0),
+                            );
+                            let front = egui::Rect::from_min_max(
+                                r.min + egui::vec2(0.0, 4.0),
+                                r.max - egui::vec2(4.0, 0.0),
+                            );
+                            p.rect_stroke(back, 1.0, stroke, egui::StrokeKind::Middle);
+                            p.rect_filled(front, 1.0, theme::button_fill());
+                            p.rect_stroke(front, 1.0, stroke, egui::StrokeKind::Middle);
+                        },
+                    )
                     .clicked()
                     {
                         *detach = true;
                     }
                 }
-                let mode = tr(if editing { "Edit map" } else { "Edit animation" });
+                let mode = tr(if editing {
+                    "Edit map"
+                } else {
+                    "Edit animation"
+                });
                 if button(ui, mode, self.state.is_some()).clicked() {
                     if editing {
                         self.leave_animation_mode(editor);
@@ -536,31 +626,48 @@ impl AnimationPage {
             return;
         }
         let top = total - ui.available_height();
-        egui::ScrollArea::vertical().id_salt("animation-body").auto_shrink([false, false]).show(ui, |ui| {
-            // Playback, timing and the key commands share one row, wrapping when narrow.
-            ui.horizontal_wrapped(|ui| {
-                self.transport_row(ui, editor);
-                ui.add_space(8.0);
-                self.tools_row(ui, editor);
-            });
-            // The timeline takes what the rows above and the options row below leave.
-            let above = ui.min_rect().height();
-            let timeline_height = (total - top - above - (widgets::ROW_HEIGHT + 2.0 * ui.spacing().item_spacing.y) - 4.0).max(7.0 * (widgets::ROW_HEIGHT + 4.0) + 30.0);
-            ui.horizontal_top(|ui| {
-                let width = (ui.available_width() - 256.0).max(240.0);
-                ui.allocate_ui(egui::vec2(width, timeline_height), |ui| self.timeline(ui, editor, timeline_height));
-                let (line, _) = ui.allocate_exact_size(egui::vec2(9.0, timeline_height), egui::Sense::hover());
-                ui.painter().vline(line.center().x, line.y_range(), egui::Stroke::new(1.0, theme::grid()));
-                ui.vertical(|ui| {
-                    ui.set_width(240.0);
-                    self.inspector(ui);
+        egui::ScrollArea::vertical()
+            .id_salt("animation-body")
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                // Playback, timing and the key commands share one row, wrapping when narrow.
+                ui.horizontal_wrapped(|ui| {
+                    self.transport_row(ui, editor);
+                    ui.add_space(8.0);
+                    self.tools_row(ui, editor);
                 });
+                // The timeline takes what the rows above and the options row below leave.
+                let above = ui.min_rect().height();
+                let timeline_height = (total
+                    - top
+                    - above
+                    - (widgets::ROW_HEIGHT + 2.0 * ui.spacing().item_spacing.y)
+                    - 4.0)
+                    .max(7.0 * (widgets::ROW_HEIGHT + 4.0) + 30.0);
+                ui.horizontal_top(|ui| {
+                    let width = (ui.available_width() - 256.0).max(240.0);
+                    ui.allocate_ui(egui::vec2(width, timeline_height), |ui| {
+                        self.timeline(ui, editor, timeline_height)
+                    });
+                    let (line, _) = ui.allocate_exact_size(
+                        egui::vec2(9.0, timeline_height),
+                        egui::Sense::hover(),
+                    );
+                    ui.painter().vline(
+                        line.center().x,
+                        line.y_range(),
+                        egui::Stroke::new(1.0, theme::grid()),
+                    );
+                    ui.vertical(|ui| {
+                        ui.set_width(240.0);
+                        self.inspector(ui);
+                    });
+                });
+                self.options_row(ui, editor);
+                if !self.status.is_empty() {
+                    dim(ui, &self.status);
+                }
             });
-            self.options_row(ui, editor);
-            if !self.status.is_empty() {
-                dim(ui, &self.status);
-            }
-        });
     }
 
     /// The named clips, in the header: the choice, and beside it a popover to save as,
@@ -574,13 +681,20 @@ impl AnimationPage {
                     let autoplay = map_model::node::entities_with_ids(d.tree_world())
                         .iter()
                         .any(|(n, e)| *n == id && e.property("start_on") != Some("0"));
-                    (library.clips.keys().cloned().collect::<Vec<_>>(), current, autoplay)
+                    (
+                        library.clips.keys().cloned().collect::<Vec<_>>(),
+                        current,
+                        autoplay,
+                    )
                 }
                 _ => (Vec::new(), String::new(), false),
             }
         };
         let mut action: Option<(&str, String)> = None;
-        let mut index = names.iter().position(|n| *n == current).unwrap_or(usize::MAX);
+        let mut index = names
+            .iter()
+            .position(|n| *n == current)
+            .unwrap_or(usize::MAX);
         let choices: Vec<&str> = names.iter().map(String::as_str).collect();
         if widgets::dropdown(ui, "animation-library", &mut index, &choices, 160.0) {
             if let Some(name) = names.get(index) {
@@ -591,9 +705,20 @@ impl AnimationPage {
             // A stack of clips.
             for (i, inset) in [(0.0, 0.0), (1.0, 2.0), (2.0, 4.0)] {
                 let y = r.top() + 3.0 + i * 4.5;
-                p.line_segment([egui::pos2(r.left() + inset, y), egui::pos2(r.right() - inset, y)], stroke);
+                p.line_segment(
+                    [
+                        egui::pos2(r.left() + inset, y),
+                        egui::pos2(r.right() - inset, y),
+                    ],
+                    stroke,
+                );
             }
-            p.rect_stroke(egui::Rect::from_min_max(egui::pos2(r.left(), r.top() + 12.0), r.max), 1.5, stroke, egui::StrokeKind::Middle);
+            p.rect_stroke(
+                egui::Rect::from_min_max(egui::pos2(r.left(), r.top() + 12.0), r.max),
+                1.5,
+                stroke,
+                egui::StrokeKind::Middle,
+            );
         });
         egui::Popup::from_toggle_button_response(&more).close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside).show(|ui| {
             egui::Frame::new().inner_margin(4).show(ui, |ui| {
@@ -652,11 +777,17 @@ impl AnimationPage {
             if button(ui, "|◀", true).on_hover_text(tr("Start")).clicked() {
                 step = Some(0);
             }
-            if button(ui, "◀|", true).on_hover_text(tr("Previous key")).clicked() {
+            if button(ui, "◀|", true)
+                .on_hover_text(tr("Previous key"))
+                .clicked()
+            {
                 step = Some(-1);
             }
             toggle(ui, "▶", &mut play).on_hover_text(tr("Playback"));
-            if button(ui, "|▶", true).on_hover_text(tr("Next key")).clicked() {
+            if button(ui, "|▶", true)
+                .on_hover_text(tr("Next key"))
+                .clicked()
+            {
                 step = Some(1);
             }
             if button(ui, "▶|", true).on_hover_text(tr("End")).clicked() {
@@ -681,7 +812,13 @@ impl AnimationPage {
                 state.set_duration(duration);
             }
             let mut mode = MODES.iter().position(|m| *m == state.mode).unwrap_or(1);
-            if widgets::dropdown(ui, "animation-mode", &mut mode, &[tr("Once"), tr("Loop"), tr("Ping-pong")], 112.0) {
+            if widgets::dropdown(
+                ui,
+                "animation-mode",
+                &mut mode,
+                &[tr("Once"), tr("Loop"), tr("Ping-pong")],
+                112.0,
+            ) {
                 state.mode = MODES[mode].into();
             }
         }
@@ -719,7 +856,9 @@ impl AnimationPage {
                 if curves {
                     let active = state.active;
                     let clip = &state.clip;
-                    state.selected.retain(|id| clip.key(*id).is_some_and(|(c, _)| c == active));
+                    state
+                        .selected
+                        .retain(|id| clip.key(*id).is_some_and(|(c, _)| c == active));
                 } else {
                     state.group_selection();
                 }
@@ -747,30 +886,59 @@ impl AnimationPage {
                 .show(|ui| {
                     // The popover's content keeps off its edge, as the dialogs' does.
                     egui::Frame::new().inner_margin(4).show(ui, |ui| {
-                    // The clipboard of keys, which Cmd+C, Cmd+V and Cmd+D also reach.
-                    ui.horizontal(|ui| {
-                        for (label, what) in [(tr("Copy"), Do::Copy), (tr("Paste"), Do::Paste), (tr("Duplicate"), Do::Duplicate)] {
-                            if button(ui, label, true).clicked() {
-                                command = Some(what);
-                                egui::Popup::close_all(ui.ctx());
+                        // The clipboard of keys, which Cmd+C, Cmd+V and Cmd+D also reach.
+                        ui.horizontal(|ui| {
+                            for (label, what) in [
+                                (tr("Copy"), Do::Copy),
+                                (tr("Paste"), Do::Paste),
+                                (tr("Duplicate"), Do::Duplicate),
+                            ] {
+                                if button(ui, label, true).clicked() {
+                                    command = Some(what);
+                                    egui::Popup::close_all(ui.ctx());
+                                }
                             }
+                        });
+                        ui.separator();
+                        egui::Grid::new("animation-retime")
+                            .num_columns(2)
+                            .spacing([8.0, 6.0])
+                            .show(ui, |ui| {
+                                ui.label(tr("Time scale"));
+                                widgets::spin_width(
+                                    ui,
+                                    &mut self.retime_scale,
+                                    0.001..=1000.0,
+                                    0.1,
+                                    3,
+                                    130.0,
+                                );
+                                ui.end_row();
+                                ui.label(tr("Offset (frames)"));
+                                widgets::spin_width(
+                                    ui,
+                                    &mut self.retime_offset,
+                                    -12_000_000.0..=12_000_000.0,
+                                    1.0,
+                                    2,
+                                    130.0,
+                                );
+                                ui.end_row();
+                            });
+                        crate::widgets::checkbox(
+                            ui,
+                            &mut self.retime_from_cursor,
+                            tr("Scale from playhead"),
+                        );
+                        crate::widgets::checkbox(
+                            ui,
+                            &mut self.retime_extend,
+                            tr("Extend duration"),
+                        );
+                        if button(ui, tr("Retime selection"), true).clicked() {
+                            command = Some(Do::Retime);
+                            egui::Popup::close_all(ui.ctx());
                         }
-                    });
-                    ui.separator();
-                    egui::Grid::new("animation-retime").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
-                        ui.label(tr("Time scale"));
-                        widgets::spin_width(ui, &mut self.retime_scale, 0.001..=1000.0, 0.1, 3, 130.0);
-                        ui.end_row();
-                        ui.label(tr("Offset (frames)"));
-                        widgets::spin_width(ui, &mut self.retime_offset, -12_000_000.0..=12_000_000.0, 1.0, 2, 130.0);
-                        ui.end_row();
-                    });
-                    crate::widgets::checkbox(ui, &mut self.retime_from_cursor, tr("Scale from playhead"));
-                    crate::widgets::checkbox(ui, &mut self.retime_extend, tr("Extend duration"));
-                    if button(ui, tr("Retime selection"), true).clicked() {
-                        command = Some(Do::Retime);
-                        egui::Popup::close_all(ui.ctx());
-                    }
                     });
                 });
         }
@@ -786,10 +954,15 @@ impl AnimationPage {
                 let pivot = if self.retime_from_cursor {
                     state.playhead_time()
                 } else {
-                    ids.iter().filter_map(|id| state.clip.key(*id).map(|(_, k)| k.time)).fold(f64::INFINITY, f64::min)
+                    ids.iter()
+                        .filter_map(|id| state.clip.key(*id).map(|(_, k)| k.time))
+                        .fold(f64::INFINITY, f64::min)
                 };
                 let offset = self.retime_offset / state.clip.fps as f64;
-                match state.clip.retime(&ids, self.retime_scale, pivot, offset, self.retime_extend) {
+                match state
+                    .clip
+                    .retime(&ids, self.retime_scale, pivot, offset, self.retime_extend)
+                {
                     Ok(()) => self.commit(editor, false),
                     Err(error) => self.status = tr_text(&error),
                 }
@@ -805,7 +978,11 @@ impl AnimationPage {
         let fps = state.clip.fps as f64;
         let position_time = state.position_time();
         let single = if state.selected.len() == 1 {
-            state.selected.first().and_then(|id| state.clip.key(*id)).map(|(c, k)| (c, k.clone()))
+            state
+                .selected
+                .first()
+                .and_then(|id| state.clip.key(*id))
+                .map(|(c, k)| (c, k.clone()))
         } else {
             None
         };
@@ -838,7 +1015,9 @@ impl AnimationPage {
             let mut frame = key_time.map_or(0.0, |t| t * fps);
             row(ui, tr("Frame"), &mut |ui| {
                 ui.add_enabled_ui(key_time.is_some(), |ui| {
-                    if widgets::spin_width(ui, &mut frame, 0.0..=12_000_000.0, 1.0, 2, field).changed() {
+                    if widgets::spin_width(ui, &mut frame, 0.0..=12_000_000.0, 1.0, 2, field)
+                        .changed()
+                    {
                         if let Some(time) = key_time {
                             let ids = state.selected.clone();
                             if let Err(e) = state.clip.move_keys(&ids, frame / fps - time, 0.0) {
@@ -852,7 +1031,9 @@ impl AnimationPage {
                 let mut value = single.as_ref().map_or(0.0, |(_, k)| k.value);
                 row(ui, tr("Value"), &mut |ui| {
                     ui.add_enabled_ui(single.is_some(), |ui| {
-                        if widgets::spin_width(ui, &mut value, -100000.0..=100000.0, 1.0, 3, field).changed() {
+                        if widgets::spin_width(ui, &mut value, -100000.0..=100000.0, 1.0, 3, field)
+                            .changed()
+                        {
                             if let Some((_, key)) = &single {
                                 let ids = state.selected.clone();
                                 if let Err(e) = state.clip.move_keys(&ids, 0.0, value - key.value) {
@@ -868,8 +1049,18 @@ impl AnimationPage {
                     let mut value = state.clip.sample(axis, at);
                     row(ui, ["X", "Y", "Z"][axis], &mut |ui| {
                         ui.add_enabled_ui(position_time.is_some(), |ui| {
-                            if widgets::spin_width(ui, &mut value, -100000.0..=100000.0, 1.0, 3, field).changed() {
-                                let mut position: [f64; 3] = std::array::from_fn(|c| state.clip.sample(c, at));
+                            if widgets::spin_width(
+                                ui,
+                                &mut value,
+                                -100000.0..=100000.0,
+                                1.0,
+                                3,
+                                field,
+                            )
+                            .changed()
+                            {
+                                let mut position: [f64; 3] =
+                                    std::array::from_fn(|c| state.clip.sample(c, at));
                                 position[axis] = value;
                                 match state.clip.insert_position(at, position) {
                                     Ok(ids) => state.selected = ids,
@@ -881,12 +1072,23 @@ impl AnimationPage {
                 }
             }
             // One interpolation for every selected key; blank when they differ.
-            let mut modes = state.selected.iter().filter_map(|id| state.clip.key(*id).map(|(_, k)| k.interpolation));
+            let mut modes = state
+                .selected
+                .iter()
+                .filter_map(|id| state.clip.key(*id).map(|(_, k)| k.interpolation));
             let shared = modes.next().filter(|first| modes.all(|m| m == *first));
-            let mut index = shared.and_then(|m| INTERPOLATIONS.iter().position(|i| *i == m)).unwrap_or(usize::MAX);
+            let mut index = shared
+                .and_then(|m| INTERPOLATIONS.iter().position(|i| *i == m))
+                .unwrap_or(usize::MAX);
             ui.horizontal(|ui| {
                 ui.add_sized([label_width, widgets::ROW_HEIGHT], egui::Label::new(""));
-                if widgets::dropdown(ui, "animation-interpolation", &mut index, &[tr("Linear"), tr("Hold"), tr("Bezier")], field) {
+                if widgets::dropdown(
+                    ui,
+                    "animation-interpolation",
+                    &mut index,
+                    &[tr("Linear"), tr("Hold"), tr("Bezier")],
+                    field,
+                ) {
                     for id in state.selected.clone() {
                         if let Some(key) = state.clip.key_mut(id) {
                             key.interpolation = INTERPOLATIONS[index.min(2)];
@@ -901,17 +1103,35 @@ impl AnimationPage {
                         let index = keys.iter().position(|k| k.id == key.id).unwrap_or(0);
                         (
                             index > 0 && keys[index - 1].interpolation == Interpolation::Bezier,
-                            key.interpolation == Interpolation::Bezier && keys.last().is_some_and(|k| k.id != key.id),
+                            key.interpolation == Interpolation::Bezier
+                                && keys.last().is_some_and(|k| k.id != key.id),
                         )
                     }
                     None => (false, false),
                 };
-                for (label, incoming, on) in [(tr("Incoming slope"), true, incoming_on), (tr("Outgoing slope"), false, outgoing_on)] {
-                    let mut slope = single.as_ref().map_or(0.0, |(_, k)| if incoming { k.incoming } else { k.outgoing });
+                for (label, incoming, on) in [
+                    (tr("Incoming slope"), true, incoming_on),
+                    (tr("Outgoing slope"), false, outgoing_on),
+                ] {
+                    let mut slope =
+                        single
+                            .as_ref()
+                            .map_or(0.0, |(_, k)| if incoming { k.incoming } else { k.outgoing });
                     ui.label(label);
                     ui.add_enabled_ui(on, |ui| {
-                        if widgets::spin_width(ui, &mut slope, -1e9..=1e9, 0.1, 3, label_width + field + 8.0).changed() {
-                            if let Some(key) = single.as_ref().and_then(|(_, k)| state.clip.key_mut(k.id)) {
+                        if widgets::spin_width(
+                            ui,
+                            &mut slope,
+                            -1e9..=1e9,
+                            0.1,
+                            3,
+                            label_width + field + 8.0,
+                        )
+                        .changed()
+                        {
+                            if let Some(key) =
+                                single.as_ref().and_then(|(_, k)| state.clip.key_mut(k.id))
+                            {
                                 if incoming {
                                     key.incoming = slope;
                                 } else {
@@ -941,7 +1161,11 @@ impl AnimationPage {
             if crate::widgets::checkbox(ui, &mut onion, tr("Onion skinning")).changed() {
                 onion_changed = true;
             }
-            let mut count = if f.onion_frames > 0 { f.onion_frames } else { self.onion_count } as f64;
+            let mut count = if f.onion_frames > 0 {
+                f.onion_frames
+            } else {
+                self.onion_count
+            } as f64;
             if widgets::spin_width(ui, &mut count, 1.0..=4.0, 1.0, 0, 100.0).changed() {
                 onion_changed = true;
             }
@@ -961,12 +1185,25 @@ impl AnimationPage {
             ui.label(tr("Pivot"));
             for axis in 0..3 {
                 ui.label(["X", "Y", "Z"][axis]);
-                widgets::spin_width(ui, &mut state.pivot[axis], -100000.0..=100000.0, 1.0, 2, 120.0);
+                widgets::spin_width(
+                    ui,
+                    &mut state.pivot[axis],
+                    -100000.0..=100000.0,
+                    1.0,
+                    2,
+                    120.0,
+                );
             }
             ui.add_space(12.0);
             crate::widgets::checkbox(ui, &mut auto, tr("Auto key"));
             let mut f = editor.filters.borrow_mut();
-            let mut pose = if f.animation_edit_pivot { 2 } else if f.animation_rotate { 1 } else { 0 };
+            let mut pose = if f.animation_edit_pivot {
+                2
+            } else if f.animation_rotate {
+                1
+            } else {
+                0
+            };
             let before = pose;
             crate::widgets::radio_value(ui, &mut pose, 0, tr("Translate"));
             crate::widgets::radio_value(ui, &mut pose, 1, tr("Rotate"));
@@ -989,32 +1226,59 @@ impl AnimationPage {
         let state = self.state.as_mut().unwrap();
         let style = timeline_style();
         state.geometry = style.geometry;
-        let (rect, response) = ui.allocate_exact_size(egui::vec2(ui.available_width(), height), egui::Sense::click_and_drag());
+        let (rect, response) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), height),
+            egui::Sense::click_and_drag(),
+        );
         let size = (rect.width() as f64, rect.height() as f64);
         let old_frame = state.frame;
         let pointer = ui.input(|i| i.pointer.interact_pos());
         let mut commit = false;
         if response.contains_pointer() {
-            for (button, code) in [(egui::PointerButton::Primary, 1), (egui::PointerButton::Middle, 2)] {
+            for (button, code) in [
+                (egui::PointerButton::Primary, 1),
+                (egui::PointerButton::Middle, 2),
+            ] {
                 if ui.input(|i| i.pointer.button_pressed(button)) {
                     if let Some(at) = ui.input(|i| i.pointer.press_origin()).or(pointer) {
                         self.timeline.pointer = Some(at);
                         response.request_focus();
-                        let extend = ui.input(|i| i.modifiers.shift || i.modifiers.ctrl || i.modifiers.command);
-                        state.begin(code, (at.x - rect.left()) as f64, (at.y - rect.top()) as f64, size.0, size.1, extend);
+                        let extend = ui.input(|i| {
+                            i.modifiers.shift || i.modifiers.ctrl || i.modifiers.command
+                        });
+                        state.begin(
+                            code,
+                            (at.x - rect.left()) as f64,
+                            (at.y - rect.top()) as f64,
+                            size.0,
+                            size.1,
+                            extend,
+                        );
                     }
                 }
             }
-            let (scroll, control) = ui.input(|i| (i.smooth_scroll_delta, i.modifiers.ctrl || i.modifiers.command));
+            let (scroll, control) = ui.input(|i| {
+                (
+                    i.smooth_scroll_delta,
+                    i.modifiers.ctrl || i.modifiers.command,
+                )
+            });
             if scroll != egui::Vec2::ZERO {
                 state.scroll(-scroll.x as f64 / 40.0, -scroll.y as f64 / 40.0, control);
                 ui.input_mut(|i| i.smooth_scroll_delta = egui::Vec2::ZERO);
             }
         }
         if let (Some(from), Some(at)) = (self.timeline.pointer, pointer) {
-            state.update((at.x - from.x) as f64, (at.y - from.y) as f64, size.0, size.1);
+            state.update(
+                (at.x - from.x) as f64,
+                (at.y - from.y) as f64,
+                size.0,
+                size.1,
+            );
         }
-        if self.timeline.pointer.is_some() && ui.input(|i| i.pointer.any_released() || !i.pointer.any_down()) {
+        if self.timeline.pointer.is_some()
+            && ui.input(|i| i.pointer.any_released() || !i.pointer.any_down())
+        {
             commit |= state.end();
             self.timeline.pointer = None;
         }
@@ -1024,7 +1288,12 @@ impl AnimationPage {
         }
         if response.double_clicked() {
             if let Some(at) = pointer {
-                match state.double_click((at.x - rect.left()) as f64, (at.y - rect.top()) as f64, size.0, size.1) {
+                match state.double_click(
+                    (at.x - rect.left()) as f64,
+                    (at.y - rect.top()) as f64,
+                    size.0,
+                    size.1,
+                ) {
                     Ok(changed) => commit |= changed,
                     Err(error) => self.status = tr_text(&error),
                 }
@@ -1032,10 +1301,22 @@ impl AnimationPage {
         }
         self.timeline.focused = response.has_focus();
         let painter = ui.painter_at(rect);
-        state.draw_styled(&mut crate::egui_canvas::EguiCanvas::new(&painter, rect), size.0, size.1, &style);
-        painter.rect_stroke(rect, 0.0, egui::Stroke::new(1.0, theme::border()), egui::StrokeKind::Inside);
+        state.draw_styled(
+            &mut crate::egui_canvas::EguiCanvas::new(&painter, rect),
+            size.0,
+            size.1,
+            &style,
+        );
+        painter.rect_stroke(
+            rect,
+            0.0,
+            egui::Stroke::new(1.0, theme::border()),
+            egui::StrokeKind::Inside,
+        );
         let moved = state.frame != old_frame;
-        response.on_hover_text(tr("Drag keys; Shift selects more. Double-click inserts a key. Ctrl+wheel zooms."));
+        response.on_hover_text(tr(
+            "Drag keys; Shift selects more. Double-click inserts a key. Ctrl+wheel zooms.",
+        ));
         if moved {
             self.seek(editor);
         }
@@ -1059,7 +1340,15 @@ fn timeline_style() -> TimelineStyle {
     let accent = theme::accent();
     let axes = [theme::axis(0), theme::axis(1), theme::axis(2)].map(rgba);
     TimelineStyle {
-        geometry: TimelineGeometry { left: 152.0, top: 24.0, pad: 12.0, right: 16.0, bottom: 0.0, curve_top: 16.0, curve_bottom: 14.0 },
+        geometry: TimelineGeometry {
+            left: 152.0,
+            top: 24.0,
+            pad: 12.0,
+            right: 16.0,
+            bottom: 0.0,
+            curve_top: 16.0,
+            curve_bottom: 14.0,
+        },
         background: rgba(theme::well()),
         label_background: Some(rgba(theme::bg())),
         ruler_background: Some(rgba(theme::base())),
@@ -1092,10 +1381,18 @@ fn timeline_style() -> TimelineStyle {
         curve_colours: [axes[0], axes[1], axes[2], axes[0], axes[1], axes[2]],
         curve_width: 1.5,
         handle: rgba(theme::dim()),
-        position_key: Some(rgba(if dark { egui::Color32::from_rgb(0xc9, 0xcd, 0xd3) } else { egui::Color32::from_rgb(0x5b, 0x61, 0x6a) })),
+        position_key: Some(rgba(if dark {
+            egui::Color32::from_rgb(0xc9, 0xcd, 0xd3)
+        } else {
+            egui::Color32::from_rgb(0x5b, 0x61, 0x6a)
+        })),
         key_size: 6.0,
         key_selected: rgba(theme::accent_hover()),
-        key_outline: Some(rgba(if dark { theme::base() } else { egui::Color32::WHITE })),
+        key_outline: Some(rgba(if dark {
+            theme::base()
+        } else {
+            egui::Color32::WHITE
+        })),
         key_selected_outline: Some(if dark { [1.0; 4] } else { rgba(fg) }),
         selection_fill: alpha(accent, 0.14),
         selection_stroke: alpha(accent, 0.8),
@@ -1106,13 +1403,23 @@ fn timeline_style() -> TimelineStyle {
 }
 
 /// The clip library's actions on the entity's named clips.
-fn library_action(d: &mut editor_core::document::Document, entity: Option<map_model::node::NodeId>, action: &str, name: &str) -> Result<(), String> {
+fn library_action(
+    d: &mut editor_core::document::Document,
+    entity: Option<map_model::node::NodeId>,
+    action: &str,
+    name: &str,
+) -> Result<(), String> {
     use editor_core::animation_curves::Clip;
     if d.in_transaction() {
         return Err(tr("Finish the current drag first").into());
     }
     if action == "door" || action == "translate" {
-        let mut clip = Clip { version: 1, duration: 1.0, fps: 30, tracks: std::array::from_fn(|_| vec![]) };
+        let mut clip = Clip {
+            version: 1,
+            duration: 1.0,
+            fps: 30,
+            tracks: std::array::from_fn(|_| vec![]),
+        };
         let door = action == "door";
         let channel = if door { 5 } else { 0 };
         clip.insert(channel, 0.0, 0.0)?;
@@ -1128,11 +1435,20 @@ fn library_action(d: &mut editor_core::document::Document, entity: Option<map_mo
             library.clips.extend(Library::door(clip).clips);
             "open"
         } else {
-            library.clips.insert("translate".into(), Entry { clip, mode: "pingpong".into() });
+            library.clips.insert(
+                "translate".into(),
+                Entry {
+                    clip,
+                    mode: "pingpong".into(),
+                },
+            );
             "translate"
         };
         library.validate()?;
-        let centre = d.selection_bounds().ok_or(tr("Select brushes first"))?.center();
+        let centre = d
+            .selection_bounds()
+            .ok_or(tr("Select brushes first"))?
+            .center();
         d.run_as_one_edit(|d| {
             if let Some(id) = entity.or_else(|| d.create_brush_entity("func_animate")) {
                 library.write(d, id, selected);
@@ -1141,7 +1457,11 @@ fn library_action(d: &mut editor_core::document::Document, entity: Option<map_mo
                     .iter()
                     .any(|(n, e)| *n == id && e.property("animation_pivot").is_some());
                 if !has_pivot {
-                    d.set_entity_property(id, "animation_pivot", &format!("{} {} {}", centre.x(), centre.y(), centre.z()));
+                    d.set_entity_property(
+                        id,
+                        "animation_pivot",
+                        &format!("{} {} {}", centre.x(), centre.y(), centre.z()),
+                    );
                 }
             }
         });
@@ -1164,10 +1484,18 @@ fn library_action(d: &mut editor_core::document::Document, entity: Option<map_mo
 fn smooth_keys(clip: &mut editor_core::animation_curves::Clip, selected: &BTreeSet<u64>) {
     for keys in &mut clip.tracks {
         let old = keys.clone();
-        for (i, key) in keys.iter_mut().enumerate().filter(|(_, k)| selected.contains(&k.id)) {
+        for (i, key) in keys
+            .iter_mut()
+            .enumerate()
+            .filter(|(_, k)| selected.contains(&k.id))
+        {
             let a = &old[i.saturating_sub(1)];
             let b = &old[(i + 1).min(old.len() - 1)];
-            let slope = if b.time > a.time { (b.value - a.value) / (b.time - a.time) } else { 0.0 };
+            let slope = if b.time > a.time {
+                (b.value - a.value) / (b.time - a.time)
+            } else {
+                0.0
+            };
             key.incoming = slope;
             key.outgoing = slope;
             key.interpolation = Interpolation::Bezier;
@@ -1196,13 +1524,25 @@ mod tests {
         let mut draft = Draft::read(&editor.document.borrow()).unwrap();
         draft.clip.insert_position(1.0, [64.0, 0.0, 0.0]).unwrap();
         draft.commit(&mut editor.document.borrow_mut()).unwrap();
-        let mut page = AnimationPage { open: true, ..Default::default() };
+        let mut page = AnimationPage {
+            open: true,
+            ..Default::default()
+        };
         page.sync(&editor);
         assert!(page.state.is_some());
         (ctx, editor, page)
     }
     fn key(key: egui::Key, command: bool) -> egui::Event {
-        egui::Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers { ctrl: command, ..Default::default() } }
+        egui::Event::Key {
+            key,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers {
+                ctrl: command,
+                ..Default::default()
+            },
+        }
     }
     #[test]
     fn delete_is_undoable_and_does_not_delete_brushes() {
@@ -1213,7 +1553,10 @@ mod tests {
         editor.filters.borrow_mut().animation_frame = Some(0);
         assert!(page.key_event(&key(egui::Key::Delete, false), &editor));
         assert!(page.state.as_ref().unwrap().clip.tracks[0].len() == 1);
-        assert_eq!(map_model::node::brushes(editor.document.borrow().tree_world()).len(), count);
+        assert_eq!(
+            map_model::node::brushes(editor.document.borrow().tree_world()).len(),
+            count
+        );
         editor.document.borrow_mut().undo();
         assert_eq!(editor.document.borrow().to_map_text(), before);
         editor.filters.borrow_mut().animation_frame = None;
@@ -1230,13 +1573,21 @@ mod tests {
         assert_eq!(page.state.as_ref().unwrap().frame, 60.0);
         assert_eq!(editor.filters.borrow().animation_frame, Some(60));
         page.set_playing(true, &editor);
-        assert_eq!(page.state.as_ref().unwrap().frame, 0.0, "play at the end restarts");
+        assert_eq!(
+            page.state.as_ref().unwrap().frame,
+            0.0,
+            "play at the end restarts"
+        );
         page.state.as_mut().unwrap().mode = "pingpong".into();
         page.advance(2.5, &editor);
         assert_eq!(page.state.as_ref().unwrap().frame, 60.0);
         page.advance(0.5, &editor);
         assert!(page.playing);
-        assert_eq!(page.state.as_ref().unwrap().frame, 45.0, "ping-pong comes back");
+        assert_eq!(
+            page.state.as_ref().unwrap().frame,
+            45.0,
+            "ping-pong comes back"
+        );
         page.state.as_mut().unwrap().mode = "loop".into();
         page.state.as_mut().unwrap().frame = 55.0;
         page.direction = 1.0;
@@ -1249,7 +1600,11 @@ mod tests {
         let before = editor.document.borrow().to_map_text();
         assert_eq!(editor.filters.borrow().animation_frame, None);
         page.transport(1, &editor);
-        assert_eq!(editor.filters.borrow().animation_frame, Some(30), "next key seeks");
+        assert_eq!(
+            editor.filters.borrow().animation_frame,
+            Some(30),
+            "next key seeks"
+        );
         page.leave_animation_mode(&editor);
         page.transport(2, &editor);
         assert_eq!(editor.filters.borrow().animation_frame, Some(60));
@@ -1276,7 +1631,12 @@ mod tests {
         assert!(page.key_event(&key(egui::Key::D, true), &editor));
         let clip = Draft::read(&editor.document.borrow()).unwrap().clip;
         for axis in 0..3 {
-            assert!(clip.tracks[axis].iter().any(|k| (k.time - 1.5).abs() < 1e-9), "axis {axis}");
+            assert!(
+                clip.tracks[axis]
+                    .iter()
+                    .any(|k| (k.time - 1.5).abs() < 1e-9),
+                "axis {axis}"
+            );
         }
         assert_eq!(clip.sample(0, 1.5), 64.0);
         assert_eq!(page.state.as_ref().unwrap().selected.len(), 3);
@@ -1317,7 +1677,12 @@ mod tests {
         page.playing = true;
         page.set_auto_key(true, &editor);
         let f = *editor.filters.borrow();
-        assert!(!page.playing && f.animation_auto_key && f.onion_frames > 0 && f.animation_frame.is_some());
+        assert!(
+            !page.playing
+                && f.animation_auto_key
+                && f.onion_frames > 0
+                && f.animation_frame.is_some()
+        );
         page.set_auto_key(false, &editor);
         page.state.as_mut().unwrap().frame = 15.0;
         page.add_key(&editor);
@@ -1346,21 +1711,40 @@ mod tests {
         let mut at = egui::Pos2::ZERO;
         for step in 0..3 {
             let mut input = egui::RawInput {
-                screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(600.0, 260.0))),
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(600.0, 260.0),
+                )),
                 ..Default::default()
             };
             if step > 0 {
                 input.events.push(egui::Event::PointerMoved(at));
-                input.events.push(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed: step == 1, modifiers: Default::default() });
+                input.events.push(egui::Event::PointerButton {
+                    pos: at,
+                    button: egui::PointerButton::Primary,
+                    pressed: step == 1,
+                    modifiers: Default::default(),
+                });
             }
             let mut output = ctx.run_ui(input, |ui| {
                 let g = timeline_style().geometry;
-                at = ui.cursor().min + egui::vec2((g.left + g.pad + (ui.available_width() as f64 - g.left - g.pad - g.right) * 0.5) as f32, 12.0);
+                at = ui.cursor().min
+                    + egui::vec2(
+                        (g.left
+                            + g.pad
+                            + (ui.available_width() as f64 - g.left - g.pad - g.right) * 0.5)
+                            as f32,
+                        12.0,
+                    );
                 page.timeline(ui, &editor, 220.0);
             });
             output.textures_delta.clear();
         }
         assert_eq!(page.state.as_ref().unwrap().frame, 60.0);
-        assert_eq!(editor.filters.borrow().animation_frame, Some(60), "scrubbing previews");
+        assert_eq!(
+            editor.filters.borrow().animation_frame,
+            Some(60),
+            "scrubbing previews"
+        );
     }
 }

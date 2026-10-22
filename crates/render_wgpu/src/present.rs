@@ -22,18 +22,40 @@ impl Blitter {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
                     count: None,
                 },
-                wgpu::BindGroupLayoutEntry { binding: 1, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
             ],
         });
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor { label: Some("render_wgpu blit"), bind_group_layouts: &[Some(&layout)], immediate_size: 0 });
-        let fragment = if target_format.is_srgb() { "fs_blit_linear" } else { "fs_blit_gamma" };
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("render_wgpu blit"),
+            bind_group_layouts: &[Some(&layout)],
+            immediate_size: 0,
+        });
+        let fragment = if target_format.is_srgb() {
+            "fs_blit_linear"
+        } else {
+            "fs_blit_gamma"
+        };
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("render_wgpu blit"),
             layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState { module: &module, entry_point: Some("vs_blit"), compilation_options: Default::default(), buffers: &[] },
+            vertex: wgpu::VertexState {
+                module: &module,
+                entry_point: Some("vs_blit"),
+                compilation_options: Default::default(),
+                buffers: &[],
+            },
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
@@ -41,7 +63,11 @@ impl Blitter {
                 module: &module,
                 entry_point: Some(fragment),
                 compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState { format: target_format, blend: None, write_mask: wgpu::ColorWrites::ALL })],
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: target_format,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
             }),
             multiview_mask: None,
             cache: None,
@@ -52,7 +78,11 @@ impl Blitter {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
-        Self { pipeline, layout, sampler }
+        Self {
+            pipeline,
+            layout,
+            sampler,
+        }
     }
 
     /// A bind group showing `picture`; keep it for as long as the picture's texture lives.
@@ -61,8 +91,14 @@ impl Blitter {
             label: Some("render_wgpu blit"),
             layout: &self.layout,
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(picture) },
-                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(&self.sampler) },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(picture),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
             ],
         })
     }

@@ -75,12 +75,17 @@ impl Clip {
             || !(0.001..=100000.0).contains(&self.duration)
             || !(1..=120).contains(&self.fps)
         {
-            return Err(crate::i18n::translation_key("Invalid animation version, duration or FPS.").into());
+            return Err(crate::i18n::translation_key(
+                "Invalid animation version, duration or FPS.",
+            )
+            .into());
         }
         let mut ids = BTreeSet::new();
         for track in &self.tracks {
             if track.len() > 256 {
-                return Err(crate::i18n::translation_key("A track can contain at most 256 keys.").into());
+                return Err(
+                    crate::i18n::translation_key("A track can contain at most 256 keys.").into(),
+                );
             }
             for (index, key) in track.iter().enumerate() {
                 if key.id == 0
@@ -162,7 +167,9 @@ impl Clip {
             return Ok(key.id);
         }
         if self.tracks[channel].len() >= 256 {
-            return Err(crate::i18n::translation_key("A track can contain at most 256 keys.").into());
+            return Err(
+                crate::i18n::translation_key("A track can contain at most 256 keys.").into(),
+            );
         }
         let id = self
             .tracks
@@ -185,14 +192,22 @@ impl Clip {
         Ok(id)
     }
     /// One position key always records all three coordinates, atomically.
-    pub fn insert_position(&mut self, time:f64, position:[f64;3]) -> Result<BTreeSet<u64>,String> {
-        let mut draft=self.clone();
-        let mut ids=BTreeSet::new();
-        for (channel,value) in position.into_iter().enumerate() {
-            if draft.tracks[channel].is_empty() && time>0.0 {draft.insert(channel,0.0,0.0)?;}
-            ids.insert(draft.insert(channel,time,value)?);
+    pub fn insert_position(
+        &mut self,
+        time: f64,
+        position: [f64; 3],
+    ) -> Result<BTreeSet<u64>, String> {
+        let mut draft = self.clone();
+        let mut ids = BTreeSet::new();
+        for (channel, value) in position.into_iter().enumerate() {
+            if draft.tracks[channel].is_empty() && time > 0.0 {
+                draft.insert(channel, 0.0, 0.0)?;
+            }
+            ids.insert(draft.insert(channel, time, value)?);
         }
-        draft.validate()?;*self=draft;Ok(ids)
+        draft.validate()?;
+        *self = draft;
+        Ok(ids)
     }
     /// Atomic movement: refuse collisions rather than deleting an unselected key.
     pub fn move_keys(&mut self, ids: &BTreeSet<u64>, dt: f64, dv: f64) -> Result<(), String> {
@@ -214,12 +229,22 @@ impl Clip {
         Ok(())
     }
     /// Retime selected keys without changing their order or normalized curve shape.
-    pub fn retime(&mut self, ids: &BTreeSet<u64>, scale: f64, pivot: f64, offset: f64, extend: bool) -> Result<(), String> {
+    pub fn retime(
+        &mut self,
+        ids: &BTreeSet<u64>,
+        scale: f64,
+        pivot: f64,
+        offset: f64,
+        extend: bool,
+    ) -> Result<(), String> {
         if ids.is_empty() || ids.iter().any(|id| self.key(*id).is_none()) {
             return Err(crate::i18n::translation_key("Select existing keys to retime.").into());
         }
         if !scale.is_finite() || scale <= 0.0 || !pivot.is_finite() || !offset.is_finite() {
-            return Err(crate::i18n::translation_key("Time scale must be positive and all values finite.").into());
+            return Err(crate::i18n::translation_key(
+                "Time scale must be positive and all values finite.",
+            )
+            .into());
         }
         let mut next = self.clone();
         for (old, track) in self.tracks.iter().zip(&mut next.tracks) {
@@ -227,15 +252,25 @@ impl Clip {
                 key.time = pivot + (key.time - pivot) * scale + offset;
             }
             for i in 0..track.len().saturating_sub(1) {
-                let span = track[i+1].time - track[i].time;
-                if span < 1e-6 { return Err(crate::i18n::translation_key("Retiming would cross or overlap another key.").into()); }
-                let ratio = (old[i+1].time - old[i].time) / span;
+                let span = track[i + 1].time - track[i].time;
+                if span < 1e-6 {
+                    return Err(crate::i18n::translation_key(
+                        "Retiming would cross or overlap another key.",
+                    )
+                    .into());
+                }
+                let ratio = (old[i + 1].time - old[i].time) / span;
                 track[i].outgoing = old[i].outgoing * ratio;
-                track[i+1].incoming = old[i+1].incoming * ratio;
+                track[i + 1].incoming = old[i + 1].incoming * ratio;
             }
         }
         if extend {
-            next.duration = next.tracks.iter().flatten().map(|k| k.time).fold(next.duration, f64::max);
+            next.duration = next
+                .tracks
+                .iter()
+                .flatten()
+                .map(|k| k.time)
+                .fold(next.duration, f64::max);
         }
         next.validate()?;
         *self = next;
@@ -277,7 +312,10 @@ impl Clip {
                     .iter()
                     .any(|k| (k.time - new_time).abs() < 1e-6)
             {
-                return Err(crate::i18n::translation_key("A key already exists at the paste position.").into());
+                return Err(crate::i18n::translation_key(
+                    "A key already exists at the paste position.",
+                )
+                .into());
             }
             let id = next.insert(*channel, new_time, key.value)?;
             let pasted = next.key_mut(id).unwrap();
@@ -324,21 +362,29 @@ mod tests {
         assert_eq!(c.duration, 4.5);
         for i in 0..=100 {
             let t = i as f64 / 50.0;
-            assert!((original.sample(0,t)-c.sample(0,t*2.0+0.5)).abs()<1e-9);
+            assert!((original.sample(0, t) - c.sample(0, t * 2.0 + 0.5)).abs() < 1e-9);
         }
         assert_eq!(Clip::parse(&c.json()).unwrap(), c);
         let before = c.clone();
         let first = BTreeSet::from([c.tracks[0][0].id]);
-        for (scale, offset) in [(1.0,4.0),(1.0,5.0),(1.0,-1.0),(0.0,0.0),(f64::NAN,0.0)] {
+        for (scale, offset) in [
+            (1.0, 4.0),
+            (1.0, 5.0),
+            (1.0, -1.0),
+            (0.0, 0.0),
+            (f64::NAN, 0.0),
+        ] {
             assert!(c.retime(&first, scale, 0.0, offset, false).is_err());
-            assert_eq!(c,before);
+            assert_eq!(c, before);
         }
-        assert!(c.retime(&BTreeSet::from([999999]),1.0,0.0,0.0,false).is_err());
-        c.retime(&first,1.0,0.0,0.25,false).unwrap();
+        assert!(c
+            .retime(&BTreeSet::from([999999]), 1.0, 0.0, 0.0, false)
+            .is_err());
+        c.retime(&first, 1.0, 0.0, 0.25, false).unwrap();
         // Even an unselected neighbour's incoming tangent follows its new segment length.
         for i in 0..=100 {
             let u = i as f64 / 100.0;
-            assert!((before.sample(0,0.5+4.0*u)-c.sample(0,0.75+3.75*u)).abs()<1e-9);
+            assert!((before.sample(0, 0.5 + 4.0 * u) - c.sample(0, 0.75 + 3.75 * u)).abs() < 1e-9);
         }
     }
     #[test]
@@ -353,12 +399,12 @@ mod tests {
         c.tracks[5][0].interpolation = Interpolation::Bezier;
         assert!((c.sample(5, 0.5) - 56.25).abs() < 1e-8);
         assert_eq!(Clip::parse(&c.json()).unwrap(), c);
-        let track=crate::keyframe_animation::Track::from_properties("", "loop", Some(&c.json())).unwrap();
-        assert!((track.pose(0.5).1.z()-56.25).abs()<1e-8);
-        let origin=geometry_math::vec::Vec3d::new(0.0,0.0,0.0);
-        let end=track.transform_clamped(origin,origin,2.0,false);
-        assert!((end.x()-10.0).abs()<1e-8 && (end.y()-20.0).abs()<1e-8);
-
+        let track =
+            crate::keyframe_animation::Track::from_properties("", "loop", Some(&c.json())).unwrap();
+        assert!((track.pose(0.5).1.z() - 56.25).abs() < 1e-8);
+        let origin = geometry_math::vec::Vec3d::new(0.0, 0.0, 0.0);
+        let end = track.transform_clamped(origin, origin, 2.0, false);
+        assert!((end.x() - 10.0).abs() < 1e-8 && (end.y() - 20.0).abs() < 1e-8);
     }
     #[test]
     fn atomic_move_paste_and_validation() {

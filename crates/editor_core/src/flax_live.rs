@@ -1,7 +1,7 @@
 //! Flax live snapshots and installation of the editor-side scene importer.
 use crate::{
     export::Options,
-    godot_live::{Prepared, atomic_write},
+    godot_live::{atomic_write, Prepared},
 };
 use std::path::{Path, PathBuf};
 pub const FOLDER: &str = "Content/HeronBrushLive";
@@ -58,7 +58,10 @@ fn module(root: &Path) -> Result<PathBuf, String> {
 }
 fn addon() -> Vec<(&'static str, Vec<u8>)> {
     vec![
-        ("HeronBrushLevelRoot.cs",include_bytes!("../../scene_export/src/writer/flax_level_root.cs").to_vec()),
+        (
+            "HeronBrushLevelRoot.cs",
+            include_bytes!("../../scene_export/src/writer/flax_level_root.cs").to_vec(),
+        ),
         (
             "HeronBrushLiveBuilder.cs",
             scene_export::writer::flax::live_importer().into_bytes(),
@@ -114,7 +117,7 @@ pub fn prepare(
     root: &Path,
 ) -> Result<Prepared, String> {
     let map = scene_export::map::parse(text, "preview").map_err(|e| e.to_string())?;
-    let classes=crate::export_bindings::classes(&map,classes,&options.entities)?;
+    let classes = crate::export_bindings::classes(&map, classes, &options.entities)?;
     let mut built = scene_export::builder::build_level(
         &map,
         &classes,

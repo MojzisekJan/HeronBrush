@@ -14,13 +14,13 @@ use std::hint::black_box;
 
 use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 
+use geometry_math::bbox::Bbox3d;
+use geometry_math::vec::Vec3d;
 use map_model::brush::Brush;
 use map_model::io::map_reader::read_map;
 use map_model::node::build_tree;
 use map_model::polyhedron::Polyhedron;
 use map_model::shapes::{create_cuboid, create_cylinder, CircleShape};
-use geometry_math::bbox::Bbox3d;
-use geometry_math::vec::Vec3d;
 
 const DRAGON: &str = include_str!("../../../assets/dragon.map");
 
@@ -52,7 +52,9 @@ fn hull_bench(c: &mut Criterion) {
     // A point cloud the size a convex merge of a few brushes gives the hull.
     let mut seed = 0x1234_5678_u64;
     let mut rand = || {
-        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         ((seed >> 33) as f64 / u32::MAX as f64) * 2.0 - 1.0
     };
     let cloud: Vec<Vec3d> = (0..96)
@@ -69,7 +71,10 @@ fn csg_bench(c: &mut Criterion) {
     let target = create_cuboid(&bounds, &Bbox3d::from_scalars(-64.0, 64.0), "stone").unwrap();
     let tool = create_cuboid(
         &bounds,
-        &Bbox3d::new(Vec3d::new(-16.0, -16.0, -16.0), Vec3d::new(80.0, 80.0, 80.0)),
+        &Bbox3d::new(
+            Vec3d::new(-16.0, -16.0, -16.0),
+            Vec3d::new(80.0, 80.0, 80.0),
+        ),
         "stone",
     )
     .unwrap();
@@ -103,10 +108,17 @@ fn shapes_bench(c: &mut Criterion) {
 fn map_text_roundtrip(c: &mut Criterion) {
     let map = read_map(DRAGON, None).expect("the dragon parses");
     let tree = build_tree(&map, &world());
-    let brushes: Vec<Brush> = map_model::node::brushes(&tree.world).into_iter().cloned().collect();
+    let brushes: Vec<Brush> = map_model::node::brushes(&tree.world)
+        .into_iter()
+        .cloned()
+        .collect();
     c.bench_function("write_then_read_dragon_brushes", |b| {
         b.iter(|| {
-            let flat = map_model::node::flatten_tree(&tree.world, map_model::map_format::MapFormat::Standard, None);
+            let flat = map_model::node::flatten_tree(
+                &tree.world,
+                map_model::map_format::MapFormat::Standard,
+                None,
+            );
             let text = map_model::io::map_writer::write_map(&flat);
             black_box(read_map(&text, None).expect("round-trips"));
             black_box(brushes.len())
@@ -121,7 +133,11 @@ fn map_text_roundtrip(c: &mut Criterion) {
 fn write_map_bench(c: &mut Criterion) {
     let map = read_map(DRAGON, None).expect("the dragon parses");
     let tree = build_tree(&map, &world());
-    let flat = map_model::node::flatten_tree(&tree.world, map_model::map_format::MapFormat::Standard, None);
+    let flat = map_model::node::flatten_tree(
+        &tree.world,
+        map_model::map_format::MapFormat::Standard,
+        None,
+    );
     let bytes = map_model::io::map_writer::write_map(&flat).len();
 
     let mut group = c.benchmark_group("write_map");

@@ -4,14 +4,23 @@ use map_model::brush::Brush;
 use map_model::material::MaterialCollection;
 
 /// [`Document::material_size`] from the collection alone, for work spread over threads.
-pub(super) fn material_size_in(materials: &MaterialCollection, name: &str) -> geometry_math::vec::Vec2f {
+pub(super) fn material_size_in(
+    materials: &MaterialCollection,
+    name: &str,
+) -> geometry_math::vec::Vec2f {
     match materials.get(name) {
-        Some(material) => geometry_math::vec::Vec2f::new(material.width.max(1) as f32, material.height.max(1) as f32),
+        Some(material) => geometry_math::vec::Vec2f::new(
+            material.width.max(1) as f32,
+            material.height.max(1) as f32,
+        ),
         None => geometry_math::vec::Vec2f::new(1.0, 1.0),
     }
 }
 
-use super::{Axis, Document, Edit, HashSet, Mat4x4d, Node, NodeId, NodeKind, Repeatable, Vec3d, brush_node, entity_node, mat_ext, node, patch_node, scalar};
+use super::{
+    brush_node, entity_node, mat_ext, node, patch_node, scalar, Axis, Document, Edit, HashSet,
+    Mat4x4d, Node, NodeId, NodeKind, Repeatable, Vec3d,
+};
 
 impl Document {
     /// Moves everything selected by the given delta.
@@ -30,9 +39,14 @@ impl Document {
         let translation = mat_ext::translation_matrix(delta);
         let (mut before, mut after): (Vec<Node>, Vec<Node>) =
             self.transformed_entities(&translation).into_iter().unzip();
-        let (world_bounds, lock, materials) = (self.world_bounds, self.alignment_lock(), &self.materials);
+        let (world_bounds, lock, materials) =
+            (self.world_bounds, self.alignment_lock(), &self.materials);
         let Some(moved) = self.map_selected_brushes(|brush| {
-            brush.translate_with_alignment(&world_bounds, delta, lock, |name| material_size_in(materials, name)).ok()
+            brush
+                .translate_with_alignment(&world_bounds, delta, lock, |name| {
+                    material_size_in(materials, name)
+                })
+                .ok()
         }) else {
             return false;
         };
@@ -66,18 +80,32 @@ impl Document {
             .filter(|(id, _)| self.selection.contains(id))
             .collect();
         let changed: Option<Vec<Brush>> = if selected.len() >= 256 {
-            selected.par_iter().map(|(_, brush)| change(brush)).collect()
+            selected
+                .par_iter()
+                .map(|(_, brush)| change(brush))
+                .collect()
         } else {
             selected.iter().map(|(_, brush)| change(brush)).collect()
         };
-        Some(selected.into_iter().zip(changed?).map(|((id, was), now)| (id, was, now)).collect())
+        Some(
+            selected
+                .into_iter()
+                .zip(changed?)
+                .map(|((id, was), now)| (id, was, now))
+                .collect(),
+        )
     }
 
     /// Adds brush changes to an edit's two lists. Inside a transaction only the new
     /// state is applied and nothing is recorded (the commit compares with the state the
     /// transaction began from), so the old brushes are not copied: on a drag of thousands
     /// of brushes that copy was half the cost of every pointer move.
-    fn push_brush_changes(&self, changes: Vec<(NodeId, &Brush, Brush)>, before: &mut Vec<Node>, after: &mut Vec<Node>) {
+    fn push_brush_changes(
+        &self,
+        changes: Vec<(NodeId, &Brush, Brush)>,
+        before: &mut Vec<Node>,
+        after: &mut Vec<Node>,
+    ) {
         let record = self.transaction.is_none();
         for (id, was, now) in changes {
             if record {
@@ -197,9 +225,14 @@ impl Document {
         let (mut before, mut after): (Vec<Node>, Vec<Node>) =
             self.transformed_entities(transform).into_iter().unzip();
 
-        let (world_bounds, lock, materials) = (self.world_bounds, self.alignment_lock(), &self.materials);
+        let (world_bounds, lock, materials) =
+            (self.world_bounds, self.alignment_lock(), &self.materials);
         let Some(transformed) = self.map_selected_brushes(|brush| {
-            brush.transform_with_alignment(&world_bounds, transform, lock, |name| material_size_in(materials, name)).ok()
+            brush
+                .transform_with_alignment(&world_bounds, transform, lock, |name| {
+                    material_size_in(materials, name)
+                })
+                .ok()
         }) else {
             return false;
         };
@@ -265,15 +298,24 @@ impl Document {
     ///
     /// Creates duplicates at their final positions so duplication and movement form one undo step.
     pub fn duplicate_selection_by(&mut self, delta: Vec3d) -> usize {
-        if !delta.v.iter().all(|v| v.is_finite()) { return 0; }
-        let roots: HashSet<NodeId> = self.selection.iter().map(|id| {
-            node::outermost_group_of(&self.tree.world, *id, self.open_group).unwrap_or(*id)
-        }).collect();
+        if !delta.v.iter().all(|v| v.is_finite()) {
+            return 0;
+        }
+        let roots: HashSet<NodeId> = self
+            .selection
+            .iter()
+            .map(|id| {
+                node::outermost_group_of(&self.tree.world, *id, self.open_group).unwrap_or(*id)
+            })
+            .collect();
         let mut selected = HashSet::new();
 
-        fn copy_node(document: &Document, source: &Node, delta: Vec3d,
-            selected: &mut HashSet<NodeId>) -> Option<Node>
-        {
+        fn copy_node(
+            document: &Document,
+            source: &Node,
+            delta: Vec3d,
+            selected: &mut HashSet<NodeId>,
+        ) -> Option<Node> {
             let mut copy = Node::new(source.kind.clone());
             match &mut copy.kind {
                 NodeKind::Brush(brush) => {
@@ -283,18 +325,25 @@ impl Document {
                 NodeKind::Patch(patch) => {
                     for point in &mut patch.control_points {
                         point.position += delta;
-                        if !document.world_bounds.contains_point(point.position) { return None; }
+                        if !document.world_bounds.contains_point(point.position) {
+                            return None;
+                        }
                     }
                     selected.insert(copy.id);
                 }
                 NodeKind::Entity(entity) => {
                     if let Some(origin) = entity.origin() {
                         let moved = origin + delta;
-                        if !document.world_bounds.contains_point(moved) { return None; }
+                        if !document.world_bounds.contains_point(moved) {
+                            return None;
+                        }
                         entity.set_origin(moved);
                     }
-                    entity.children = entity.children.iter()
-                        .map(|child| copy_node(document, child, delta, selected)).collect::<Option<_>>()?;
+                    entity.children = entity
+                        .children
+                        .iter()
+                        .map(|child| copy_node(document, child, delta, selected))
+                        .collect::<Option<_>>()?;
                     selected.insert(copy.id);
                 }
                 NodeKind::Group(group) => {
@@ -303,17 +352,24 @@ impl Document {
                     // have their own explicit command.
                     group.linked_group_id = None;
                     group.transformation = None;
-                    group.children = group.children.iter()
-                        .map(|child| copy_node(document, child, delta, selected)).collect::<Option<_>>()?;
+                    group.children = group
+                        .children
+                        .iter()
+                        .map(|child| copy_node(document, child, delta, selected))
+                        .collect::<Option<_>>()?;
                 }
                 NodeKind::Layer(_) => return None,
             }
             Some(copy)
         }
 
-        fn duplicate_children(document: &Document, source: &Node, roots: &HashSet<NodeId>,
-            delta: Vec3d, selected: &mut HashSet<NodeId>) -> Option<Option<Node>>
-        {
+        fn duplicate_children(
+            document: &Document,
+            source: &Node,
+            roots: &HashSet<NodeId>,
+            delta: Vec3d,
+            selected: &mut HashSet<NodeId>,
+        ) -> Option<Option<Node>> {
             let children = match &source.kind {
                 NodeKind::Group(g) => &g.children,
                 NodeKind::Entity(e) => &e.children,
@@ -327,14 +383,18 @@ impl Document {
                     updated.push(child.clone());
                     updated.push(copy_node(document, child, delta, selected)?);
                     changed = true;
-                } else if let Some(replacement) = duplicate_children(document, child, roots, delta, selected)? {
+                } else if let Some(replacement) =
+                    duplicate_children(document, child, roots, delta, selected)?
+                {
                     updated.push(replacement);
                     changed = true;
                 } else {
                     updated.push(child.clone());
                 }
             }
-            if !changed { return Some(None); }
+            if !changed {
+                return Some(None);
+            }
             let mut replacement = source.clone();
             match &mut replacement.kind {
                 NodeKind::Group(g) => g.children = updated,
@@ -350,22 +410,42 @@ impl Document {
             let mut additions = Vec::new();
             for source in &source_layer.children {
                 if roots.contains(&source.id) {
-                    let Some(copy) = copy_node(self, source, delta, &mut selected) else { return 0; };
+                    let Some(copy) = copy_node(self, source, delta, &mut selected) else {
+                        return 0;
+                    };
                     additions.push(copy);
                 } else {
-                    let Some(changed) = duplicate_children(self, source, &roots, delta, &mut selected) else { return 0; };
+                    let Some(changed) =
+                        duplicate_children(self, source, &roots, delta, &mut selected)
+                    else {
+                        return 0;
+                    };
                     if let Some(after) = changed {
-                        edits.push(Edit::Changed { before: vec![source.clone()], after: vec![after] });
+                        edits.push(Edit::Changed {
+                            before: vec![source.clone()],
+                            after: vec![after],
+                        });
                     }
                 }
             }
-            if !additions.is_empty() { edits.push(Edit::Added { layer, nodes: additions }); }
+            if !additions.is_empty() {
+                edits.push(Edit::Added {
+                    layer,
+                    nodes: additions,
+                });
+            }
         }
-        if edits.is_empty() { return 0; }
+        if edits.is_empty() {
+            return 0;
+        }
         let count = selected.len();
         self.selection = selected;
         self.face_selection.clear();
-        let edit = if edits.len() == 1 { edits.pop().unwrap() } else { Edit::Batch(edits) };
+        let edit = if edits.len() == 1 {
+            edits.pop().unwrap()
+        } else {
+            Edit::Batch(edits)
+        };
         self.apply_and_record(edit);
         self.remember_repeatable(Repeatable::Duplicate(delta));
         count

@@ -14,7 +14,10 @@
 use std::sync::Arc;
 use web_time::{Duration, Instant};
 
-use crate::{file_dialog::FileDialog, colour_picker, dialog, editor::Editor, form, theme, view3d::Gpu, view3d::ProcAddress, widgets};
+use crate::{
+    colour_picker, dialog, editor::Editor, file_dialog::FileDialog, form, theme, view3d::Gpu,
+    view3d::ProcAddress, widgets,
+};
 use editor_core::{
     camera3d::Camera3d,
     i18n::{tr, translation_key},
@@ -25,11 +28,18 @@ use glow::HasContext;
 use map_model::node::NodeId;
 
 /// The output presets: a name, a width and a height.
-pub const OUTPUT_PRESETS: [(&str, i32, i32); 3] =
-    [(translation_key("Full HD"), 1920, 1080), (translation_key("Square"), 1080, 1080), (translation_key("Portrait"), 1080, 1920)];
+pub const OUTPUT_PRESETS: [(&str, i32, i32); 3] = [
+    (translation_key("Full HD"), 1920, 1080),
+    (translation_key("Square"), 1080, 1080),
+    (translation_key("Portrait"), 1080, 1920),
+];
 
 /// The lighting presets, in the order [`Lighting::preset`] numbers them.
-const LIGHTING_PRESETS: [&str; 3] = [translation_key("Daylight"), translation_key("Sunset"), translation_key("Overcast")];
+const LIGHTING_PRESETS: [&str; 3] = [
+    translation_key("Daylight"),
+    translation_key("Sunset"),
+    translation_key("Overcast"),
+];
 
 /// The window's numbers, in the order they are shown: a label, the lowest and highest value, and the
 /// step. 0–5 are the camera, 6–9 the output and lens, 10–16 the lighting, 17–19 the depth
@@ -52,15 +62,30 @@ pub const NUMBERS: [(&str, f64, f64, f64); 22] = [
     (translation_key("Ambient intensity"), 0., 3., 0.05),
     (translation_key("Shadow softness"), 0., 4., 0.1),
     (translation_key("AO strength"), 0., 3., 0.1),
-    (translation_key("Focus distance (units)"), 1., 1_000_000., 16.),
+    (
+        translation_key("Focus distance (units)"),
+        1.,
+        1_000_000.,
+        16.,
+    ),
     (translation_key("Sharp range (units)"), 0., 1_000_000., 16.),
     (translation_key("Blur radius (1080p px)"), 0., 24., 0.5),
     (translation_key("Length (seconds)"), 0.1, 120., 0.5),
-    (translation_key("Frames per second"), 1., render_camera::MAX_VIDEO_FPS as f64, 1.),
+    (
+        translation_key("Frames per second"),
+        1.,
+        render_camera::MAX_VIDEO_FPS as f64,
+        1.,
+    ),
 ];
 
 /// The colour rows of the Lighting section.
-const COLOURS: [&str; 4] = [translation_key("Sky colour"), translation_key("Horizon colour"), translation_key("Ground colour"), translation_key("Sun colour")];
+const COLOURS: [&str; 4] = [
+    translation_key("Sky colour"),
+    translation_key("Horizon colour"),
+    translation_key("Ground colour"),
+    translation_key("Sun colour"),
+];
 
 /// How often the window looks for edits made to its camera elsewhere.
 const POLL: Duration = Duration::from_millis(40);
@@ -139,7 +164,10 @@ impl WgpuPreview {
         Self {
             device: state.device.clone(),
             renderer: render_wgpu::Renderer::new(&state.device, &state.queue),
-            blitter: Arc::new(render_wgpu::present::Blitter::new(&state.device, state.target_format)),
+            blitter: Arc::new(render_wgpu::present::Blitter::new(
+                &state.device,
+                state.target_format,
+            )),
             picture: None,
         }
     }
@@ -160,7 +188,9 @@ impl WgpuPreview {
 
     /// Keeps the blit bind group pointing at the current output.
     fn track_output(&mut self) {
-        let Some(texture) = self.renderer.output() else { return };
+        let Some(texture) = self.renderer.output() else {
+            return;
+        };
         let size = (texture.width(), texture.height());
         if self.picture.as_ref().map(|(s, _)| *s) != Some(size) {
             let view = self.renderer.output_view().expect("rendered");
@@ -232,7 +262,9 @@ impl RenderPage {
         self.navigation = Navigation::default();
         self.frame = false;
         self.drawn = None;
-        self.status = tr("Position the 3D view, then place a camera. Settings are saved with the map.").to_string();
+        self.status =
+            tr("Position the 3D view, then place a camera. Settings are saved with the map.")
+                .to_string();
         self.progress = (0.0, tr("Ready").to_string());
         self.open = true;
     }
@@ -240,7 +272,12 @@ impl RenderPage {
     /// Puts a saved camera and its settings in the form.
     fn load(&mut self, camera: Camera3d, settings: &Settings) {
         self.settings = with_lighting(settings.clone());
-        self.camera = Camera3d { position: camera.position, yaw: camera.yaw, pitch: camera.pitch, ..Camera3d::default() };
+        self.camera = Camera3d {
+            position: camera.position,
+            yaw: camera.yaw,
+            pitch: camera.pitch,
+            ..Camera3d::default()
+        };
         self.settings.far = camera.far;
     }
 
@@ -259,7 +296,10 @@ impl RenderPage {
         let camera = Camera3d {
             position: self.camera.position,
             yaw: self.camera.yaw,
-            pitch: self.camera.pitch.clamp(-89f64.to_radians(), 89f64.to_radians()),
+            pitch: self
+                .camera
+                .pitch
+                .clamp(-89f64.to_radians(), 89f64.to_radians()),
             far: settings.far,
             fov_degrees: settings.fov,
             ..Camera3d::default()
@@ -275,8 +315,11 @@ impl RenderPage {
     /// The saved camera the window works on: the selected one, the one it last loaded, or
     /// the first.
     fn chosen(&self, editor: &Editor) -> Option<Seen> {
-        render_camera::chosen(&editor.document.borrow(), self.last_seen.as_ref().map(|seen| seen.0))
-            .map(|(id, camera, settings)| (id, render_camera::pose(camera), settings))
+        render_camera::chosen(
+            &editor.document.borrow(),
+            self.last_seen.as_ref().map(|seen| seen.0),
+        )
+        .map(|(id, camera, settings)| (id, render_camera::pose(camera), settings))
     }
 
     /// Frees the renderer and the preview. The GL context must be current.
@@ -345,7 +388,13 @@ impl RenderPage {
 
     /// The preview or the next render sample, on wgpu.
     #[cfg(feature = "wgpu")]
-    fn tick_wgpu(&mut self, ctx: &egui::Context, editor: &Editor, state: &eframe::egui_wgpu::RenderState, wanted: (i32, i32)) {
+    fn tick_wgpu(
+        &mut self,
+        ctx: &egui::Context,
+        editor: &Editor,
+        state: &eframe::egui_wgpu::RenderState,
+        wanted: (i32, i32),
+    ) {
         let content = {
             let document = editor.document.borrow();
             (document.generation(), document.content_revision())
@@ -370,13 +419,24 @@ impl RenderPage {
         };
         if let Some(job) = &mut self.job {
             if job.completed == 0 {
-                preview.upload(&document, job.video.as_ref().map(render_camera::Video::time));
+                preview.upload(
+                    &document,
+                    job.video.as_ref().map(render_camera::Video::time),
+                );
                 // A posed scene is not the one the preview shows.
                 self.uploaded = job.video.is_none().then_some(content);
             }
-            let size = (job.settings.width.max(16) as u32, job.settings.height.max(16) as u32);
+            let size = (
+                job.settings.width.max(16) as u32,
+                job.settings.height.max(16) as u32,
+            );
             let render_settings = job.settings.render();
-            preview.renderer.accumulate(&view(&job.camera, size, &render_settings, Some(job.completed)));
+            preview.renderer.accumulate(&view(
+                &job.camera,
+                size,
+                &render_settings,
+                Some(job.completed),
+            ));
             preview.track_output();
             let finished = job.advance();
             self.progress = progress(job);
@@ -384,7 +444,12 @@ impl RenderPage {
                 // `write_png` and `Video::push` take rows bottom first, as GL reads them.
                 let pixels = preview.renderer.read_output().map(|(width, _, pixels)| {
                     let row = width as usize * 4;
-                    pixels.chunks_exact(row).rev().flatten().copied().collect::<Vec<u8>>()
+                    pixels
+                        .chunks_exact(row)
+                        .rev()
+                        .flatten()
+                        .copied()
+                        .collect::<Vec<u8>>()
                 });
                 let done = match pixels {
                     Some(pixels) => finish_frame(job, &pixels),
@@ -406,7 +471,12 @@ impl RenderPage {
             }
             let mut render_settings = settings.render();
             render_settings.accumulate = false;
-            preview.renderer.render(&view(&camera, (wanted.0.max(1) as u32, wanted.1.max(1) as u32), &render_settings, None));
+            preview.renderer.render(&view(
+                &camera,
+                (wanted.0.max(1) as u32, wanted.1.max(1) as u32),
+                &render_settings,
+                None,
+            ));
             preview.track_output();
             self.drawn = Some(key);
             ctx.request_repaint();
@@ -414,7 +484,13 @@ impl RenderPage {
     }
 
     /// The preview or the next render sample, on GL.
-    fn tick_gl(&mut self, ctx: &egui::Context, editor: &Editor, proc_address: &ProcAddress, wanted: (i32, i32)) {
+    fn tick_gl(
+        &mut self,
+        ctx: &egui::Context,
+        editor: &Editor,
+        proc_address: &ProcAddress,
+        wanted: (i32, i32),
+    ) {
         if self.renderer.is_none() {
             let make = || unsafe { crate::gl_glue::context(proc_address) };
             match render::Renderer::new(make(), editor_core::render_settings::from_preferences()) {
@@ -439,7 +515,11 @@ impl RenderPage {
         };
         let key = self.preview_key(content);
         let (camera, settings) = self.read();
-        let (Some(gl), Some(target), Some(renderer)) = (&self.gl, &self.preview, &mut self.renderer) else { return };
+        let (Some(gl), Some(target), Some(renderer)) =
+            (&self.gl, &self.preview, &mut self.renderer)
+        else {
+            return;
+        };
         let document = editor.document.borrow();
         // In WebGL the bound framebuffer may be egui's, which this context cannot name;
         // egui draws to the canvas there.
@@ -451,12 +531,21 @@ impl RenderPage {
         if let Some(job) = &mut self.job {
             if job.completed == 0 {
                 renderer.upload_materials(document.materials().materials());
-                renderer.upload(&document.render_triangles_at(job.video.as_ref().map(render_camera::Video::time)));
+                renderer.upload(
+                    &document
+                        .render_triangles_at(job.video.as_ref().map(render_camera::Video::time)),
+                );
                 renderer.set_settings(job.settings.render());
                 // A posed scene is not the one the preview shows.
                 self.uploaded = job.video.is_none().then_some(content);
             }
-            let result = renderer.capture_step(&job.camera, job.settings.width, job.settings.height, job.completed == 0, target.size);
+            let result = renderer.capture_step(
+                &job.camera,
+                job.settings.width,
+                job.settings.height,
+                job.completed == 0,
+                target.size,
+            );
             let done = match result {
                 Ok(pixels) => {
                     let finished = job.advance();
@@ -502,8 +591,15 @@ impl RenderPage {
     fn preview_key(&self, content: (u64, u64)) -> String {
         let (camera, settings) = self.read();
         // The wgpu-only view settings are not in the render settings.
-        let extra = (editor_core::render_settings::tone_mapper(), editor_core::render_settings::entity_lights());
-        format!("{:?}{settings:?}{:?}{content:?}{extra:?}", render_camera::pose(camera), self.wanted)
+        let extra = (
+            editor_core::render_settings::tone_mapper(),
+            editor_core::render_settings::entity_lights(),
+        );
+        format!(
+            "{:?}{settings:?}{:?}{content:?}{extra:?}",
+            render_camera::pose(camera),
+            self.wanted
+        )
     }
 
     fn resize(&mut self, (width, height): (i32, i32)) {
@@ -516,7 +612,11 @@ impl RenderPage {
             }
         }
         unsafe {
-            let (Ok(framebuffer), Ok(color), Ok(depth)) = (gl.create_framebuffer(), gl.create_renderbuffer(), gl.create_renderbuffer()) else {
+            let (Ok(framebuffer), Ok(color), Ok(depth)) = (
+                gl.create_framebuffer(),
+                gl.create_renderbuffer(),
+                gl.create_renderbuffer(),
+            ) else {
                 self.status = tr("Render failed").to_string();
                 return;
             };
@@ -527,15 +627,31 @@ impl RenderPage {
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(framebuffer));
             gl.bind_renderbuffer(glow::RENDERBUFFER, Some(color));
             gl.renderbuffer_storage(glow::RENDERBUFFER, glow::RGBA8, width, height);
-            gl.framebuffer_renderbuffer(glow::FRAMEBUFFER, glow::COLOR_ATTACHMENT0, glow::RENDERBUFFER, Some(color));
+            gl.framebuffer_renderbuffer(
+                glow::FRAMEBUFFER,
+                glow::COLOR_ATTACHMENT0,
+                glow::RENDERBUFFER,
+                Some(color),
+            );
             gl.bind_renderbuffer(glow::RENDERBUFFER, Some(depth));
             gl.renderbuffer_storage(glow::RENDERBUFFER, glow::DEPTH_COMPONENT24, width, height);
-            gl.framebuffer_renderbuffer(glow::FRAMEBUFFER, glow::DEPTH_ATTACHMENT, glow::RENDERBUFFER, Some(depth));
-            let complete = gl.check_framebuffer_status(glow::FRAMEBUFFER) == glow::FRAMEBUFFER_COMPLETE;
+            gl.framebuffer_renderbuffer(
+                glow::FRAMEBUFFER,
+                glow::DEPTH_ATTACHMENT,
+                glow::RENDERBUFFER,
+                Some(depth),
+            );
+            let complete =
+                gl.check_framebuffer_status(glow::FRAMEBUFFER) == glow::FRAMEBUFFER_COMPLETE;
             gl.bind_renderbuffer(glow::RENDERBUFFER, None);
             gl.bind_framebuffer(glow::FRAMEBUFFER, previous);
             if complete {
-                self.preview = Some(Target { framebuffer, color, depth, size: (width, height) });
+                self.preview = Some(Target {
+                    framebuffer,
+                    color,
+                    depth,
+                    size: (width, height),
+                });
             } else {
                 gl.delete_framebuffer(framebuffer);
                 gl.delete_renderbuffer(color);
@@ -550,7 +666,9 @@ impl RenderPage {
     fn follow(&mut self, editor: &Editor) {
         if self.navigation.target.is_some() {
             let id = self.navigation.target.expect("checked");
-            let saved = render_camera::cameras(&editor.document.borrow()).into_iter().find(|camera| camera.0 == id);
+            let saved = render_camera::cameras(&editor.document.borrow())
+                .into_iter()
+                .find(|camera| camera.0 == id);
             let Some((id, saved_camera, saved_settings)) = saved else {
                 self.navigation = Navigation::default();
                 self.frame = false;
@@ -558,7 +676,11 @@ impl RenderPage {
                 self.status = tr("Camera removed. Navigation link stopped.").to_string();
                 return;
             };
-            let key = (id, render_camera::pose(saved_camera), saved_settings.clone());
+            let key = (
+                id,
+                render_camera::pose(saved_camera),
+                saved_settings.clone(),
+            );
             if !self.navigation.dirty && self.last_seen.as_ref() != Some(&key) {
                 *editor.camera.borrow_mut() = saved_camera;
                 self.load(saved_camera, &saved_settings);
@@ -578,9 +700,17 @@ impl RenderPage {
                 self.camera.yaw = camera.yaw;
                 self.camera.pitch = camera.pitch;
             }
-            let rested = self.navigation.last_move.is_some_and(|at| at.elapsed() >= Duration::from_millis(350));
+            let rested = self
+                .navigation
+                .last_move
+                .is_some_and(|at| at.elapsed() >= Duration::from_millis(350));
             if self.navigation.dirty && rested && !editor.document.borrow().in_transaction() {
-                render_camera::save_target(&mut editor.document.borrow_mut(), Some(id), camera, &settings);
+                render_camera::save_target(
+                    &mut editor.document.borrow_mut(),
+                    Some(id),
+                    camera,
+                    &settings,
+                );
                 self.navigation.dirty = false;
                 self.last_seen = Some((id, pose, settings.clone()));
             }
@@ -588,8 +718,13 @@ impl RenderPage {
                 render_camera::set_frame(&editor.camera, Some(&settings));
             }
         } else {
-            let saved = render_camera::chosen(&editor.document.borrow(), self.last_seen.as_ref().map(|seen| seen.0));
-            let key = saved.as_ref().map(|(id, camera, settings)| (*id, render_camera::pose(*camera), settings.clone()));
+            let saved = render_camera::chosen(
+                &editor.document.borrow(),
+                self.last_seen.as_ref().map(|seen| seen.0),
+            );
+            let key = saved.as_ref().map(|(id, camera, settings)| {
+                (*id, render_camera::pose(*camera), settings.clone())
+            });
             if self.last_seen != key {
                 if let Some((_, camera, settings)) = saved {
                     self.load(camera, &settings);
@@ -607,15 +742,26 @@ impl RenderPage {
 
     /// Stops the 3D view driving the camera, writing where it was left to the map first.
     pub fn finish_navigation(&mut self, editor: &Editor) {
-        let Some(id) = self.navigation.target else { return };
+        let Some(id) = self.navigation.target else {
+            return;
+        };
         let view = *editor.camera.borrow();
-        let moved = self.navigation.dirty || self.navigation.pose != Some(render_camera::pose(view));
-        if moved && render_camera::exists(&editor.document.borrow(), id) && !editor.document.borrow().in_transaction() {
+        let moved =
+            self.navigation.dirty || self.navigation.pose != Some(render_camera::pose(view));
+        if moved
+            && render_camera::exists(&editor.document.borrow(), id)
+            && !editor.document.borrow().in_transaction()
+        {
             let (mut camera, settings) = self.read();
             camera.position = view.position;
             camera.yaw = view.yaw;
             camera.pitch = view.pitch;
-            render_camera::save_target(&mut editor.document.borrow_mut(), Some(id), camera, &settings);
+            render_camera::save_target(
+                &mut editor.document.borrow_mut(),
+                Some(id),
+                camera,
+                &settings,
+            );
             self.last_seen = Some((id, render_camera::pose(camera), settings));
         }
         self.navigation = Navigation::default();
@@ -625,8 +771,17 @@ impl RenderPage {
     fn save(&mut self, editor: &Editor) -> NodeId {
         let (camera, settings) = self.read();
         let target = self.chosen(editor).map(|seen| seen.0);
-        let id = render_camera::save_target(&mut editor.document.borrow_mut(), target, camera, &settings);
-        self.last_seen = self.last_seen.take().filter(|seen| seen.0 == id).or(Some((id, render_camera::pose(camera), settings)));
+        let id = render_camera::save_target(
+            &mut editor.document.borrow_mut(),
+            target,
+            camera,
+            &settings,
+        );
+        self.last_seen = self.last_seen.take().filter(|seen| seen.0 == id).or(Some((
+            id,
+            render_camera::pose(camera),
+            settings,
+        )));
         id
     }
 
@@ -636,22 +791,37 @@ impl RenderPage {
         }
         let embedded = ctx.embed_viewports();
         let mut close = false;
-        self.open = dialog::show(ctx, "render-camera", tr("Render image"), [1040.0, 700.0], |ui, part| {
-            if part == dialog::Part::Actions {
-                close = dialog::button(ui, tr("Close"), true).clicked();
-                return;
-            }
-            let full = form::body_rect(ui, embedded);
-            let left = egui::Rect::from_min_size(full.min, egui::vec2(370.0_f32.min(full.width() * 0.45), full.height()));
-            let right = egui::Rect::from_min_max(egui::pos2(left.right() + 16.0, full.top()), full.max);
-            let mut controls = form::region(ui, left);
-            egui::ScrollArea::vertical().id_salt("render-controls").auto_shrink([false, false]).show(&mut controls, |ui| {
-                ui.set_max_width(ui.available_width() - 10.0);
-                ui.add_enabled_ui(self.job.is_none() && !self.stale(editor), |ui| self.controls(ui, editor));
-            });
-            let mut output = form::region(ui, right);
-            self.output(&mut output, editor);
-        }) && !close;
+        self.open = dialog::show(
+            ctx,
+            "render-camera",
+            tr("Render image"),
+            [1040.0, 700.0],
+            |ui, part| {
+                if part == dialog::Part::Actions {
+                    close = dialog::button(ui, tr("Close"), true).clicked();
+                    return;
+                }
+                let full = form::body_rect(ui, embedded);
+                let left = egui::Rect::from_min_size(
+                    full.min,
+                    egui::vec2(370.0_f32.min(full.width() * 0.45), full.height()),
+                );
+                let right =
+                    egui::Rect::from_min_max(egui::pos2(left.right() + 16.0, full.top()), full.max);
+                let mut controls = form::region(ui, left);
+                egui::ScrollArea::vertical()
+                    .id_salt("render-controls")
+                    .auto_shrink([false, false])
+                    .show(&mut controls, |ui| {
+                        ui.set_max_width(ui.available_width() - 10.0);
+                        ui.add_enabled_ui(self.job.is_none() && !self.stale(editor), |ui| {
+                            self.controls(ui, editor)
+                        });
+                    });
+                let mut output = form::region(ui, right);
+                self.output(&mut output, editor);
+            },
+        ) && !close;
         if !self.open {
             self.job = None;
             self.finish_navigation(editor);
@@ -663,14 +833,19 @@ impl RenderPage {
     fn controls(&mut self, ui: &mut egui::Ui, editor: &Editor) {
         let width = ui.available_width();
         let button = |ui: &mut egui::Ui, label: &str| theme::button(ui, label, width, true);
-        if button(ui, tr("Place camera from 3D view")).on_hover_text("Ctrl+Alt+Num0 / Ctrl+Alt+0").clicked() {
+        if button(ui, tr("Place camera from 3D view"))
+            .on_hover_text("Ctrl+Alt+Num0 / Ctrl+Alt+0")
+            .clicked()
+        {
             self.view(*editor.camera.borrow());
             self.save(editor);
-            self.status = tr("Camera saved in the map. Save the map to keep it on disk.").to_string();
+            self.status =
+                tr("Camera saved in the map. Save the map to keep it on disk.").to_string();
         }
         if button(ui, tr("Save camera and settings")).clicked() {
             self.save(editor);
-            self.status = tr("Camera saved in the map. Save the map to keep it on disk.").to_string();
+            self.status =
+                tr("Camera saved in the map. Save the map to keep it on disk.").to_string();
         }
         if button(ui, tr("Select camera in map")).clicked() {
             if let Some((id, ..)) = self.chosen(editor) {
@@ -698,7 +873,11 @@ impl RenderPage {
             if linked {
                 let (camera, settings) = self.read();
                 let id = self.save(editor);
-                self.navigation = Navigation { target: Some(id), pose: Some(render_camera::pose(camera)), ..Default::default() };
+                self.navigation = Navigation {
+                    target: Some(id),
+                    pose: Some(render_camera::pose(camera)),
+                    ..Default::default()
+                };
                 self.last_seen = Some((id, render_camera::pose(camera), settings.clone()));
                 *editor.camera.borrow_mut() = camera;
                 self.frame = true;
@@ -722,16 +901,27 @@ impl RenderPage {
             }
         });
         ui.add_space(8.0);
-        let sections = [translation_key("Camera position"), translation_key("Output and lens"), translation_key("Lighting"), translation_key("Depth of field"), translation_key("Animation")];
+        let sections = [
+            translation_key("Camera position"),
+            translation_key("Output and lens"),
+            translation_key("Lighting"),
+            translation_key("Depth of field"),
+            translation_key("Animation"),
+        ];
         for (index, title) in sections.into_iter().enumerate() {
             widgets::card(ui, "", None, |ui| {
                 ui.spacing_mut().item_spacing.y = 3.0;
-                form::fold(ui, title, tr(title), index == 1, |ui| self.section(ui, index, editor));
+                form::fold(ui, title, tr(title), index == 1, |ui| {
+                    self.section(ui, index, editor)
+                });
             });
             ui.add_space(6.0);
         }
         if theme::button(ui, tr("Load camera from map"), width, true).clicked() {
-            if let Some((id, camera, settings)) = render_camera::chosen(&editor.document.borrow(), self.last_seen.as_ref().map(|seen| seen.0)) {
+            if let Some((id, camera, settings)) = render_camera::chosen(
+                &editor.document.borrow(),
+                self.last_seen.as_ref().map(|seen| seen.0),
+            ) {
                 self.load(camera, &settings);
                 self.last_seen = Some((id, render_camera::pose(camera), settings));
             }
@@ -750,24 +940,46 @@ impl RenderPage {
             1 => numbers(self, ui, 6..10),
             2 => {
                 numbers(self, ui, 10..17);
-                let lighting = self.settings.lighting.get_or_insert_with(|| Lighting::from_render(&editor_core::render_settings::from_preferences()));
-                for (label, colour) in COLOURS.iter().zip([&mut lighting.sky, &mut lighting.horizon, &mut lighting.ground, &mut lighting.sun]) {
+                let lighting = self.settings.lighting.get_or_insert_with(|| {
+                    Lighting::from_render(&editor_core::render_settings::from_preferences())
+                });
+                for (label, colour) in COLOURS.iter().zip([
+                    &mut lighting.sky,
+                    &mut lighting.horizon,
+                    &mut lighting.ground,
+                    &mut lighting.sun,
+                ]) {
                     widgets::row(ui, tr(label), None, |ui| {
                         let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
                         let mut rgb = [byte(colour[0]), byte(colour[1]), byte(colour[2])];
-                        if colour_picker::button(ui, ui.id().with(*label), &mut rgb, None).changed() {
+                        if colour_picker::button(ui, ui.id().with(*label), &mut rgb, None).changed()
+                        {
                             *colour = rgb.map(|c| f32::from(c) / 255.0);
                         }
-                        ui.label(egui::RichText::new(colour_picker::hex(rgb, None)).font(egui::FontId::monospace(theme::text_size() * 0.92)).color(theme::dim()));
+                        ui.label(
+                            egui::RichText::new(colour_picker::hex(rgb, None))
+                                .font(egui::FontId::monospace(theme::text_size() * 0.92))
+                                .color(theme::dim()),
+                        );
                     });
                 }
-                form::switch_row(ui, tr("Procedural sky"), None, &mut self.settings.procedural_sky);
+                form::switch_row(
+                    ui,
+                    tr("Procedural sky"),
+                    None,
+                    &mut self.settings.procedural_sky,
+                );
                 form::switch_row(ui, tr("Shadows"), None, &mut self.settings.shadows);
                 form::switch_row(ui, tr("Ambient occlusion"), None, &mut self.settings.ao);
                 form::switch_row(ui, tr("Bloom"), None, &mut self.settings.bloom);
             }
             3 => {
-                form::switch_row(ui, tr("Enable depth of field"), None, &mut self.settings.depth_of_field);
+                form::switch_row(
+                    ui,
+                    tr("Enable depth of field"),
+                    None,
+                    &mut self.settings.depth_of_field,
+                );
                 numbers(self, ui, 17..20);
                 let width = ui.available_width();
                 if theme::button(ui, tr("Focus on selection"), width, true).clicked() {
@@ -781,9 +993,12 @@ impl RenderPage {
                     match render_camera::animation_length(&editor.document.borrow()) {
                         Some(seconds) => {
                             self.settings.video_seconds = seconds.clamp(0.1, 120.);
-                            self.status = tr("Length set to the longest animation in the map.").to_string();
+                            self.status =
+                                tr("Length set to the longest animation in the map.").to_string();
                         }
-                        None => self.status = tr("Nothing in the map plays on its own.").to_string(),
+                        None => {
+                            self.status = tr("Nothing in the map plays on its own.").to_string()
+                        }
                     }
                 }
             }
@@ -793,7 +1008,13 @@ impl RenderPage {
     /// One of [`NUMBERS`]' rows.
     fn number_row(&mut self, ui: &mut egui::Ui, index: usize) {
         let (label, min, max, step) = NUMBERS[index];
-        let decimals = if step < 0.1 { 2 } else if step < 1.0 { 1 } else { 0 };
+        let decimals = if step < 0.1 {
+            2
+        } else if step < 1.0 {
+            1
+        } else {
+            0
+        };
         let mut value = self.number(index).clamp(min, max);
         widgets::row(ui, tr(label), None, |ui| {
             let width = ui.available_width().min(150.0);
@@ -805,7 +1026,10 @@ impl RenderPage {
 
     fn number(&self, index: usize) -> f64 {
         let s = &self.settings;
-        let lighting = s.lighting.clone().unwrap_or_else(|| Lighting::from_render(&s.render()));
+        let lighting = s
+            .lighting
+            .clone()
+            .unwrap_or_else(|| Lighting::from_render(&s.render()));
         match index {
             0 => self.camera.position.x(),
             1 => self.camera.position.y(),
@@ -851,7 +1075,9 @@ impl RenderPage {
             12 => s.sun_azimuth = value as f32,
             13..=16 => {
                 let render = s.render();
-                let lighting = s.lighting.get_or_insert_with(|| Lighting::from_render(&render));
+                let lighting = s
+                    .lighting
+                    .get_or_insert_with(|| Lighting::from_render(&render));
                 let slot = match index {
                     13 => &mut lighting.sun_intensity,
                     14 => &mut lighting.ambient_intensity,
@@ -875,7 +1101,8 @@ impl RenderPage {
             self.status = tr("Select an object in the map to focus on it.").to_string();
             return;
         };
-        let distance = geometry_math::vec::dot(bounds.center() - camera.position, camera.direction());
+        let distance =
+            geometry_math::vec::dot(bounds.center() - camera.position, camera.direction());
         if distance > camera.near {
             self.settings.focus_distance = distance as f32;
             self.settings.depth_of_field = true;
@@ -890,14 +1117,32 @@ impl RenderPage {
         let stale = self.stale(editor);
         let area = ui.max_rect();
         let below = 4.0 * theme::CONTROL_HEIGHT + 22.0 + 5.0 * 8.0 + 36.0;
-        let space = egui::Rect::from_min_size(area.min, egui::vec2(area.width(), (area.height() - below).max(120.0)));
-        let aspect = (f64::from(self.settings.width.max(1)) / f64::from(self.settings.height.max(1))) as f32;
-        let size = if space.width() / space.height() > aspect { egui::vec2(space.height() * aspect, space.height()) } else { egui::vec2(space.width(), space.width() / aspect) };
-        let rect = egui::Rect::from_center_size(egui::pos2(space.center().x, space.top() + size.y / 2.0), size);
-        ui.allocate_rect(egui::Rect::from_min_max(space.min, egui::pos2(space.max.x, rect.max.y)), egui::Sense::hover());
-        ui.painter().rect_filled(rect, egui::CornerRadius::ZERO, theme::base());
+        let space = egui::Rect::from_min_size(
+            area.min,
+            egui::vec2(area.width(), (area.height() - below).max(120.0)),
+        );
+        let aspect =
+            (f64::from(self.settings.width.max(1)) / f64::from(self.settings.height.max(1))) as f32;
+        let size = if space.width() / space.height() > aspect {
+            egui::vec2(space.height() * aspect, space.height())
+        } else {
+            egui::vec2(space.width(), space.width() / aspect)
+        };
+        let rect = egui::Rect::from_center_size(
+            egui::pos2(space.center().x, space.top() + size.y / 2.0),
+            size,
+        );
+        ui.allocate_rect(
+            egui::Rect::from_min_max(space.min, egui::pos2(space.max.x, rect.max.y)),
+            egui::Sense::hover(),
+        );
+        ui.painter()
+            .rect_filled(rect, egui::CornerRadius::ZERO, theme::base());
         let ppp = ui.ctx().pixels_per_point();
-        let pixels = ((rect.width() * ppp).round().max(16.0) as i32, (rect.height() * ppp).round().max(16.0) as i32);
+        let pixels = (
+            (rect.width() * ppp).round().max(16.0) as i32,
+            (rect.height() * ppp).round().max(16.0) as i32,
+        );
         if self.wanted != Some(pixels) {
             self.wanted = Some(pixels);
             ui.ctx().request_repaint();
@@ -909,8 +1154,13 @@ impl RenderPage {
             let key = std::rc::Rc::as_ptr(gl) as usize as u64;
             crate::gl_glue::publish(key, gl, target.framebuffer);
             let (width, height) = target.size;
-            let callback = egui_glow::CallbackFn::new(move |info, _| crate::gl_glue::blit(key, width, height, info.viewport_in_pixels()));
-            ui.painter().add(egui::PaintCallback { rect, callback: Arc::new(callback) });
+            let callback = egui_glow::CallbackFn::new(move |info, _| {
+                crate::gl_glue::blit(key, width, height, info.viewport_in_pixels())
+            });
+            ui.painter().add(egui::PaintCallback {
+                rect,
+                callback: Arc::new(callback),
+            });
         }
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(target) = &self.preview {
@@ -922,7 +1172,8 @@ impl RenderPage {
                 let viewport = info.viewport_in_pixels();
                 unsafe {
                     let previous = gl.get_parameter_i32(eframe::glow::READ_FRAMEBUFFER_BINDING);
-                    let source = crate::gl_glue::eframe_framebuffer(source).expect("framebuffer names are non-zero");
+                    let source = crate::gl_glue::eframe_framebuffer(source)
+                        .expect("framebuffer names are non-zero");
                     gl.bind_framebuffer(eframe::glow::READ_FRAMEBUFFER, Some(source));
                     gl.blit_framebuffer(
                         0,
@@ -936,26 +1187,54 @@ impl RenderPage {
                         eframe::glow::COLOR_BUFFER_BIT,
                         eframe::glow::LINEAR,
                     );
-                    gl.bind_framebuffer(eframe::glow::READ_FRAMEBUFFER, crate::gl_glue::eframe_framebuffer(previous));
+                    gl.bind_framebuffer(
+                        eframe::glow::READ_FRAMEBUFFER,
+                        crate::gl_glue::eframe_framebuffer(previous),
+                    );
                 }
             });
-            ui.painter().add(egui::PaintCallback { rect, callback: Arc::new(callback) });
+            ui.painter().add(egui::PaintCallback {
+                rect,
+                callback: Arc::new(callback),
+            });
         }
         #[cfg(feature = "wgpu")]
         if let Some(preview) = &self.wgpu {
             if let Some((_, picture)) = &preview.picture {
-                ui.painter().add(eframe::egui_wgpu::Callback::new_paint_callback(rect, crate::view3d_wgpu::Blit::new(Arc::clone(&preview.blitter), picture.clone())));
+                ui.painter()
+                    .add(eframe::egui_wgpu::Callback::new_paint_callback(
+                        rect,
+                        crate::view3d_wgpu::Blit::new(
+                            Arc::clone(&preview.blitter),
+                            picture.clone(),
+                        ),
+                    ));
             }
         }
-        ui.painter().rect_stroke(rect, egui::CornerRadius::ZERO, egui::Stroke::new(1.0, theme::border()), egui::StrokeKind::Outside);
+        ui.painter().rect_stroke(
+            rect,
+            egui::CornerRadius::ZERO,
+            egui::Stroke::new(1.0, theme::border()),
+            egui::StrokeKind::Outside,
+        );
         ui.add_space(10.0);
-        let status = if stale { tr("The map changed. Close and reopen this render window.") } else { self.status.as_str() };
+        let status = if stale {
+            tr("The map changed. Close and reopen this render window.")
+        } else {
+            self.status.as_str()
+        };
         form::text(ui, status);
         ui.add_space(8.0);
         let width = ui.available_width();
-        let png = form::accent_button_width(ui, tr("Render PNG"), width, self.job.is_none() && !stale).clicked();
+        let png =
+            form::accent_button_width(ui, tr("Render PNG"), width, self.job.is_none() && !stale)
+                .clicked();
         ui.add_space(4.0);
-        let gif = theme::button(ui, tr("Render GIF"), width, self.job.is_none() && !stale).on_hover_text(tr("Plays the map's animations from the start, as the 3D view's preview does.")).clicked();
+        let gif = theme::button(ui, tr("Render GIF"), width, self.job.is_none() && !stale)
+            .on_hover_text(tr(
+                "Plays the map's animations from the start, as the 3D view's preview does.",
+            ))
+            .clicked();
         self.render(editor, png, gif);
         ui.add_space(4.0);
         form::progress(ui, self.progress.0, &self.progress.1);
@@ -974,8 +1253,18 @@ impl RenderPage {
     /// `png` and `gif` ask where; the render starts on the frame the answer comes, so this
     /// is called every frame the window shows.
     fn render(&mut self, editor: &Editor, png: bool, gif: bool) {
-        let still = FileDialog::new().id("render-png").set_title(tr("Render PNG")).add_filter("PNG image", &["png"]).set_file_name("render.png").save_file(png);
-        let animated = FileDialog::new().id("render-gif").set_title(tr("Render GIF")).add_filter("GIF image", &["gif"]).set_file_name("render.gif").save_file(gif);
+        let still = FileDialog::new()
+            .id("render-png")
+            .set_title(tr("Render PNG"))
+            .add_filter("PNG image", &["png"])
+            .set_file_name("render.png")
+            .save_file(png);
+        let animated = FileDialog::new()
+            .id("render-gif")
+            .set_title(tr("Render GIF"))
+            .add_filter("GIF image", &["gif"])
+            .set_file_name("render.gif")
+            .save_file(gif);
         let (path, animated) = match (still, animated) {
             (Some(path), _) => (path, false),
             (None, Some(path)) => (path, true),
@@ -1000,7 +1289,13 @@ impl RenderPage {
         self.save(editor);
         self.status = tr("Rendering").to_string();
         self.progress = (0.0, tr("Rendering").to_string());
-        self.job = Some(Job { path, camera, settings, completed: 0, video });
+        self.job = Some(Job {
+            path,
+            camera,
+            settings,
+            completed: 0,
+            video,
+        });
     }
 }
 
@@ -1010,9 +1305,20 @@ fn progress(job: &Job) -> (f32, String) {
         Some(video) => {
             let samples = video.frames * job.settings.samples;
             let done = video.frame * job.settings.samples + job.completed;
-            (done as f32 / samples as f32, format!("{} {} / {}", tr("Frame"), (video.frame + 1).min(video.frames), video.frames))
+            (
+                done as f32 / samples as f32,
+                format!(
+                    "{} {} / {}",
+                    tr("Frame"),
+                    (video.frame + 1).min(video.frames),
+                    video.frames
+                ),
+            )
         }
-        None => (job.completed as f32 / job.settings.samples as f32, format!("{} / {}", job.completed, job.settings.samples)),
+        None => (
+            job.completed as f32 / job.settings.samples as f32,
+            format!("{} / {}", job.completed, job.settings.samples),
+        ),
     }
 }
 
@@ -1021,12 +1327,22 @@ fn progress(job: &Job) -> (f32, String) {
 /// over, `None` while more frames are to come.
 fn finish_frame(job: &mut Job, pixels: &[u8]) -> Option<String> {
     let (width, height) = (job.settings.width, job.settings.height);
-    let saved = |path: &std::path::Path| format!("{}: {} ({} × {})", tr("Saved"), path.display(), width, height);
+    let saved = |path: &std::path::Path| {
+        format!(
+            "{}: {} ({} × {})",
+            tr("Saved"),
+            path.display(),
+            width,
+            height
+        )
+    };
     let Some(video) = &mut job.video else {
-        return Some(match render_camera::write_png(&job.path, width, height, pixels) {
-            Ok(()) => saved(&job.path),
-            Err(error) => format!("{}: {error}", tr("Render failed")),
-        });
+        return Some(
+            match render_camera::write_png(&job.path, width, height, pixels) {
+                Ok(()) => saved(&job.path),
+                Err(error) => format!("{}: {error}", tr("Render failed")),
+            },
+        );
     };
     match video.push(pixels) {
         Ok(false) => {
@@ -1059,7 +1375,13 @@ mod tests {
         assert_eq!((settings.width, settings.height), (1080, 1080));
         apply_output_preset(&mut settings, 0);
         assert_eq!((settings.width, settings.height), (1920, 1080));
-        let range = |label: &str| NUMBERS.iter().find(|(name, ..)| *name == label).map(|(_, min, max, _)| (*min, *max)).unwrap();
+        let range = |label: &str| {
+            NUMBERS
+                .iter()
+                .find(|(name, ..)| *name == label)
+                .map(|(_, min, max, _)| (*min, *max))
+                .unwrap()
+        };
         assert_eq!(range("Vertical field of view"), (10., 120.));
         assert_eq!(range("Exposure"), (0.1, 5.));
         assert_eq!(range("Sun elevation"), (0., 90.));
@@ -1067,12 +1389,24 @@ mod tests {
         // Every range is one the stored settings keep, so nothing typed is lost on save.
         let mut page = RenderPage::default();
         // The azimuth wraps round, so 360 reads back as 0.
-        for (index, (_, min, max, _)) in NUMBERS.iter().enumerate().skip(5).filter(|(index, _)| *index != 12) {
+        for (index, (_, min, max, _)) in NUMBERS
+            .iter()
+            .enumerate()
+            .skip(5)
+            .filter(|(index, _)| *index != 12)
+        {
             for value in [*min, *max] {
                 page.set_number(index, value);
                 let (_, saved) = page.read();
-                let read = RenderPage { settings: saved, ..RenderPage::default() };
-                assert!((read.number(index) - value).abs() < 1e-3, "{} at {value}", NUMBERS[index].0);
+                let read = RenderPage {
+                    settings: saved,
+                    ..RenderPage::default()
+                };
+                assert!(
+                    (read.number(index) - value).abs() < 1e-3,
+                    "{} at {value}",
+                    NUMBERS[index].0
+                );
             }
         }
     }
@@ -1088,13 +1422,21 @@ mod tests {
         editor.camera.borrow_mut().position = geometry_math::vec::Vec3d::new(64., 32., 16.);
         page.view(*editor.camera.borrow());
         let id = page.save(&editor);
-        let (_, saved, _) = render_camera::cameras(&editor.document.borrow()).into_iter().find(|c| c.0 == id).unwrap();
+        let (_, saved, _) = render_camera::cameras(&editor.document.borrow())
+            .into_iter()
+            .find(|c| c.0 == id)
+            .unwrap();
         assert_eq!(saved.position.x(), 64.);
         // Moved by something else: the window picks it up.
         let mut moved = saved;
         moved.position = geometry_math::vec::Vec3d::new(128., 32., 16.);
         let (_, settings) = page.read();
-        render_camera::save_target(&mut editor.document.borrow_mut(), Some(id), moved, &settings);
+        render_camera::save_target(
+            &mut editor.document.borrow_mut(),
+            Some(id),
+            moved,
+            &settings,
+        );
         page.follow(&editor);
         assert_eq!(page.camera.position.x(), 128.);
         assert!(!page.stale(&editor));

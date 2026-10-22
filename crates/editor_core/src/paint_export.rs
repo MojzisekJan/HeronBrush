@@ -1,12 +1,12 @@
 //! Bake face paint to portable albedo images without changing the editor document.
 use super::{Contents, Error, Options};
 use crate::document::Document;
+use geometry_math::vec::{Vec2f, Vec3d};
 use map_model::brush_face::{BrushFace, FaceColor};
 use map_model::material::Material;
 use std::collections::HashMap;
 use std::hash::Hasher;
 use std::path::{Path, PathBuf};
-use geometry_math::vec::{Vec2f, Vec3d};
 
 pub struct BakedFace {
     pub width: u32,
@@ -24,15 +24,12 @@ impl BakedFace {
         )
     }
     pub fn png(&self) -> Result<Vec<u8>, std::io::Error> {
-        crate::assets::encode_png(self.width, self.height, &self.pixels).map_err(std::io::Error::other)
+        crate::assets::encode_png(self.width, self.height, &self.pixels)
+            .map_err(std::io::Error::other)
     }
 }
 
-pub fn bake(
-    face: &BrushFace,
-    polygon: &[Vec3d],
-    material: Option<&Material>,
-) -> Option<BakedFace> {
+pub fn bake(face: &BrushFace, polygon: &[Vec3d], material: Option<&Material>) -> Option<BakedFace> {
     let paint = face.paint()?;
     if let FaceColor::Solid { color, alpha: 255 } = paint {
         let rgb = color.to_f32();
@@ -101,9 +98,7 @@ pub fn bake(
                 .unwrap_or(&[255, 255, 255, 255]);
             for c in 0..3 {
                 pixels.push(
-                    (color[c] * 255.0 * alpha
-                        + base[c] as f32 * (1.0 - alpha))
-                        .round() as u8,
+                    (color[c] * 255.0 * alpha + base[c] as f32 * (1.0 - alpha)).round() as u8,
                 );
             }
             pixels.push((255.0 * alpha + base[3] as f32 * (1.0 - alpha)).round() as u8);
@@ -133,51 +128,168 @@ pub fn image_name(png: &[u8]) -> String {
 pub(crate) fn normal_png(material: &Material) -> Option<std::sync::Arc<[u8]>> {
     let map = material.normal_map.as_ref()?;
     let pixels = map.pixels()?;
-    let key=format!("normal/{:?}/{}/{}/{}/{:?}",map.path,map.width,map.height,map.flip_y,std::sync::Arc::as_ptr(&pixels) as *const u8 as usize);
-    if let Some(png)=IMAGES.with(|cache|cache.borrow().entries.get(&key).map(|e|e.image.png.clone())) {return Some(png.into());}
-    let mut rgba=pixels[..(map.width*map.height*4) as usize].to_vec();
-    for pixel in rgba.chunks_exact_mut(4) {if map.flip_y {pixel[1]=255-pixel[1];}pixel[3]=255;}
-    let png=crate::assets::encode_png(map.width,map.height,&rgba).ok()?;
-    let size=png.len()+pixels.len()+key.len();
+    let key = format!(
+        "normal/{:?}/{}/{}/{}/{:?}",
+        map.path,
+        map.width,
+        map.height,
+        map.flip_y,
+        std::sync::Arc::as_ptr(&pixels) as *const u8 as usize
+    );
+    if let Some(png) = IMAGES.with(|cache| {
+        cache
+            .borrow()
+            .entries
+            .get(&key)
+            .map(|e| e.image.png.clone())
+    }) {
+        return Some(png.into());
+    }
+    let mut rgba = pixels[..(map.width * map.height * 4) as usize].to_vec();
+    for pixel in rgba.chunks_exact_mut(4) {
+        if map.flip_y {
+            pixel[1] = 255 - pixel[1];
+        }
+        pixel[3] = 255;
+    }
+    let png = crate::assets::encode_png(map.width, map.height, &rgba).ok()?;
+    let size = png.len() + pixels.len() + key.len();
     IMAGES.with(|cache| {
-        let mut cache=cache.borrow_mut();const LIMIT:usize=64*1024*1024;
-        if size<=LIMIT {
-            if cache.bytes+size>LIMIT {cache.entries.clear();cache.bytes=0;}
-            cache.bytes+=size;
-            cache.entries.insert(key,CachedImage {image:PreparedImage {width:map.width,height:map.height,scale:[1.0;2],offset:[0.0;2],alpha:false,png:png.clone()},_pixels:Some(pixels)});
+        let mut cache = cache.borrow_mut();
+        const LIMIT: usize = 64 * 1024 * 1024;
+        if size <= LIMIT {
+            if cache.bytes + size > LIMIT {
+                cache.entries.clear();
+                cache.bytes = 0;
+            }
+            cache.bytes += size;
+            cache.entries.insert(
+                key,
+                CachedImage {
+                    image: PreparedImage {
+                        width: map.width,
+                        height: map.height,
+                        scale: [1.0; 2],
+                        offset: [0.0; 2],
+                        alpha: false,
+                        png: png.clone(),
+                    },
+                    _pixels: Some(pixels),
+                },
+            );
         }
     });
     Some(png.into())
 }
 
 #[derive(Clone)]
-struct PreparedImage { width:u32, height:u32, scale:[f32;2], offset:[f32;2], alpha:bool, png:Vec<u8> }
-struct CachedImage { image:PreparedImage, _pixels:Option<std::sync::Arc<[u8]>> }
+struct PreparedImage {
+    width: u32,
+    height: u32,
+    scale: [f32; 2],
+    offset: [f32; 2],
+    alpha: bool,
+    png: Vec<u8>,
+}
+struct CachedImage {
+    image: PreparedImage,
+    _pixels: Option<std::sync::Arc<[u8]>>,
+}
 #[derive(Default)]
-struct ImageCache { epoch:Option<(u64,u64)>, bytes:usize, entries:HashMap<String,CachedImage> }
+struct ImageCache {
+    epoch: Option<(u64, u64)>,
+    bytes: usize,
+    entries: HashMap<String, CachedImage>,
+}
 thread_local! { static IMAGES: std::cell::RefCell<ImageCache> = std::cell::RefCell::new(ImageCache::default()); }
-fn prepare_image(face:&BrushFace, polygon:Option<&[Vec3d]>, material:Option<&Material>) -> Result<PreparedImage,std::io::Error> {
-    let needs_base=face.color.as_deref().is_none_or(|paint|paint.alpha()<255);
-    let material=if needs_base {material} else {None};
-    let pixels=material.and_then(Material::pixels);
-    let polygon_key=if matches!(face.color.as_deref(),Some(FaceColor::Solid {alpha:255,..})) {None} else {polygon};
-    let pixel_id=pixels.as_ref().map(|p|std::sync::Arc::as_ptr(p) as *const u8 as usize);
-    let key=format!("{:?}/{:?}/{:?}/{:?}",face.color,material.map(|m|(&m.path,m.width,m.height)),pixel_id,
-        polygon_key.map(|points|points.iter().map(|p|face.uv_coords(*p)).collect::<Vec<_>>()));
-    if let Some(image)=IMAGES.with(|cache|cache.borrow().entries.get(&key).map(|e|e.image.clone())) {return Ok(image);}
-    let baked=if face.color.is_none() {
-        material.and_then(|m|Some(BakedFace {width:m.width,height:m.height,pixels:pixels.as_ref()?[..(m.width*m.height*4) as usize].to_vec(),scale:[1.0,1.0],offset:[0.0,0.0]}))
-            .unwrap_or(BakedFace {width:1,height:1,pixels:vec![190,190,190,255],scale:[0.0;2],offset:[0.5;2]})
-    } else {bake(face,polygon.ok_or_else(||std::io::Error::other("painted face has no polygon"))?,material).ok_or_else(||std::io::Error::other("could not bake face paint"))?};
-    let image=PreparedImage {width:baked.width,height:baked.height,scale:baked.scale,offset:baked.offset,
-        alpha:baked.pixels.chunks_exact(4).any(|p|p[3]<255),png:baked.png()?};
-    let size=image.png.len()+pixels.as_ref().map_or(0,|p|p.len())+key.len();
+fn prepare_image(
+    face: &BrushFace,
+    polygon: Option<&[Vec3d]>,
+    material: Option<&Material>,
+) -> Result<PreparedImage, std::io::Error> {
+    let needs_base = face
+        .color
+        .as_deref()
+        .is_none_or(|paint| paint.alpha() < 255);
+    let material = if needs_base { material } else { None };
+    let pixels = material.and_then(Material::pixels);
+    let polygon_key = if matches!(
+        face.color.as_deref(),
+        Some(FaceColor::Solid { alpha: 255, .. })
+    ) {
+        None
+    } else {
+        polygon
+    };
+    let pixel_id = pixels
+        .as_ref()
+        .map(|p| std::sync::Arc::as_ptr(p) as *const u8 as usize);
+    let key = format!(
+        "{:?}/{:?}/{:?}/{:?}",
+        face.color,
+        material.map(|m| (&m.path, m.width, m.height)),
+        pixel_id,
+        polygon_key.map(|points| points
+            .iter()
+            .map(|p| face.uv_coords(*p))
+            .collect::<Vec<_>>())
+    );
+    if let Some(image) =
+        IMAGES.with(|cache| cache.borrow().entries.get(&key).map(|e| e.image.clone()))
+    {
+        return Ok(image);
+    }
+    let baked = if face.color.is_none() {
+        material
+            .and_then(|m| {
+                Some(BakedFace {
+                    width: m.width,
+                    height: m.height,
+                    pixels: pixels.as_ref()?[..(m.width * m.height * 4) as usize].to_vec(),
+                    scale: [1.0, 1.0],
+                    offset: [0.0, 0.0],
+                })
+            })
+            .unwrap_or(BakedFace {
+                width: 1,
+                height: 1,
+                pixels: vec![190, 190, 190, 255],
+                scale: [0.0; 2],
+                offset: [0.5; 2],
+            })
+    } else {
+        bake(
+            face,
+            polygon.ok_or_else(|| std::io::Error::other("painted face has no polygon"))?,
+            material,
+        )
+        .ok_or_else(|| std::io::Error::other("could not bake face paint"))?
+    };
+    let image = PreparedImage {
+        width: baked.width,
+        height: baked.height,
+        scale: baked.scale,
+        offset: baked.offset,
+        alpha: baked.pixels.chunks_exact(4).any(|p| p[3] < 255),
+        png: baked.png()?,
+    };
+    let size = image.png.len() + pixels.as_ref().map_or(0, |p| p.len()) + key.len();
     IMAGES.with(|cache| {
-        let mut cache=cache.borrow_mut();
-        const LIMIT:usize=64*1024*1024;
+        let mut cache = cache.borrow_mut();
+        const LIMIT: usize = 64 * 1024 * 1024;
         if size <= LIMIT {
-            if cache.bytes+size>LIMIT {cache.entries.clear();cache.bytes=0;}
-            cache.bytes+=size;cache.entries.insert(key,CachedImage {image:image.clone(),_pixels:pixels});
+            if cache.bytes + size > LIMIT {
+                cache.entries.clear();
+                cache.bytes = 0;
+            }
+            cache.bytes += size;
+            cache.entries.insert(
+                key,
+                CachedImage {
+                    image: image.clone(),
+                    _pixels: pixels,
+                },
+            );
         }
     });
     Ok(image)
@@ -190,8 +302,13 @@ pub fn prepare(
     settings: &mut scene_export::settings::Settings,
 ) -> Result<(String, Vec<(PathBuf, Contents)>), Error> {
     IMAGES.with(|cache| {
-        let mut cache=cache.borrow_mut();let epoch=(document.generation(),document.materials_revision());
-        if cache.epoch!=Some(epoch) {cache.entries.clear();cache.bytes=0;cache.epoch=Some(epoch);}
+        let mut cache = cache.borrow_mut();
+        let epoch = (document.generation(), document.materials_revision());
+        if cache.epoch != Some(epoch) {
+            cache.entries.clear();
+            cache.bytes = 0;
+            cache.epoch = Some(epoch);
+        }
     });
     prepare_text(
         &document.to_map_text(),
@@ -218,46 +335,90 @@ pub fn prepare_text(
     let mut map =
         map_model::io::map_reader::read_map(&text, None).map_err(|e| Error::Map(e.to_string()))?;
     // Reuse the exporter's skip-face handling without changing the saved material.
-    let mut hidden=false;
-    for face in map.entities.iter_mut().flat_map(|e|&mut e.brushes).flat_map(|b|&mut b.faces) {
-        if face.export_hidden {face.material_name=scene_export::settings::EXPORT_HIDDEN_TEXTURE.into();face.color=None;face.surface_material=None;hidden=true;}
+    let mut hidden = false;
+    for face in map
+        .entities
+        .iter_mut()
+        .flat_map(|e| &mut e.brushes)
+        .flat_map(|b| &mut b.faces)
+    {
+        if face.export_hidden {
+            face.material_name = scene_export::settings::EXPORT_HIDDEN_TEXTURE.into();
+            face.color = None;
+            face.surface_material = None;
+            hidden = true;
+        }
     }
-    let text=if hidden {map_model::io::map_writer::write_map(&map)} else {text};
+    let text = if hidden {
+        map_model::io::map_writer::write_map(&map)
+    } else {
+        text
+    };
     let mut files = Vec::new();
     // The editor's companion normal maps, for the GLB writers to embed.
-    let names = map.entities.iter().flat_map(|e| e.brushes.iter().flat_map(|b| b.faces.iter().map(|f| f.material_name.as_str()))
-        .chain(e.patches.iter().map(|p| p.material_name.as_str())));
+    let names = map.entities.iter().flat_map(|e| {
+        e.brushes
+            .iter()
+            .flat_map(|b| b.faces.iter().map(|f| f.material_name.as_str()))
+            .chain(e.patches.iter().map(|p| p.material_name.as_str()))
+    });
     for name in names {
         // Game/mod winners can live in archives or outside the exporter's own search
         // roots. Export the same pixels the editor used, including on native platforms.
-        if !settings.is_tool_texture(name) && !settings.generated_materials.contains_key(name)
-            && (cfg!(target_arch="wasm32") || materials.get(name).is_some_and(Material::is_game_asset)) {
+        if !settings.is_tool_texture(name)
+            && !settings.generated_materials.contains_key(name)
+            && (cfg!(target_arch = "wasm32")
+                || materials.get(name).is_some_and(Material::is_game_asset))
+        {
             if let Some(material) = materials.get(name) {
                 if let Some(pixels) = material.pixels() {
-                    let png = crate::assets::encode_png(material.width, material.height, &pixels).map_err(Error::Map)?;
-                    let path=directory.join(format!("{}_paint",options.name)).join(format!("{name}.png"));
-                    let resource=scene_export::materials::fs_to_res(settings.project_root.as_deref().unwrap_or(directory),&path)
-                        .ok_or_else(||Error::Map("export texture must be inside the chosen engine project".into()))?;
-                    files.push((path,Contents::Bytes(png.clone())));
-                    settings.generated_materials.insert(name.to_owned(), scene_export::materials::GeneratedMaterial { pbr: None,
-                        path: resource, width: material.width, height: material.height,
-                        png, alpha: pixels.chunks_exact(4).any(|pixel| pixel[3] != 255), surface: None, repeat: true,
-                    });
+                    let png = crate::assets::encode_png(material.width, material.height, &pixels)
+                        .map_err(Error::Map)?;
+                    let path = directory
+                        .join(format!("{}_paint", options.name))
+                        .join(format!("{name}.png"));
+                    let resource = scene_export::materials::fs_to_res(
+                        settings.project_root.as_deref().unwrap_or(directory),
+                        &path,
+                    )
+                    .ok_or_else(|| {
+                        Error::Map("export texture must be inside the chosen engine project".into())
+                    })?;
+                    files.push((path, Contents::Bytes(png.clone())));
+                    settings.generated_materials.insert(
+                        name.to_owned(),
+                        scene_export::materials::GeneratedMaterial {
+                            pbr: None,
+                            path: resource,
+                            width: material.width,
+                            height: material.height,
+                            png,
+                            alpha: pixels.chunks_exact(4).any(|pixel| pixel[3] != 255),
+                            surface: None,
+                            repeat: true,
+                        },
+                    );
                 }
             }
         }
-        if settings.normal_maps.contains_key(name) || settings.is_tool_texture(name) { continue; }
+        if settings.normal_maps.contains_key(name) || settings.is_tool_texture(name) {
+            continue;
+        }
         if let Some(png) = materials.get(name).and_then(normal_png) {
             settings.normal_maps.insert(name.to_string(), png);
         }
     }
     let unity = options.target == super::Target::Unity;
-    if !unity && !map
-        .entities
-        .iter()
-        .flat_map(|e| &e.brushes)
-        .flat_map(|b| &b.faces)
-        .any(|f| (f.color.is_some() || f.surface_material.is_some()) && !settings.is_tool_texture(&f.material_name))
+    if !unity
+        && !map
+            .entities
+            .iter()
+            .flat_map(|e| &e.brushes)
+            .flat_map(|b| &b.faces)
+            .any(|f| {
+                (f.color.is_some() || f.surface_material.is_some())
+                    && !settings.is_tool_texture(&f.material_name)
+            })
     {
         return Ok((text, files));
     }
@@ -266,15 +427,16 @@ pub fn prepare_text(
     // rotated/sloping faces. This conversion is only for the temporary export map.
     for entity in &mut map.entities {
         for source in &mut entity.brushes {
-            let needs_geometry = source
-                .faces
-                .iter()
-                .any(|f| (f.color.is_some() || f.surface_material.is_some()) && !settings.is_tool_texture(&f.material_name));
+            let needs_geometry = source.faces.iter().any(|f| {
+                (f.color.is_some() || f.surface_material.is_some())
+                    && !settings.is_tool_texture(&f.material_name)
+            });
             let geometry = if needs_geometry {
                 Some(
-                    map_model::brush::Brush::from_faces(world_bounds, source.faces.clone()).map_err(
-                        |e| Error::Map(format!("could not prepare painted brush: {e:?}")),
-                    )?,
+                    map_model::brush::Brush::from_faces(world_bounds, source.faces.clone())
+                        .map_err(|e| {
+                            Error::Map(format!("could not prepare painted brush: {e:?}"))
+                        })?,
                 )
             } else {
                 None
@@ -287,21 +449,41 @@ pub fn prepare_text(
                     u_axis: u,
                     v_axis: v,
                 };
-                if settings.is_tool_texture(&face.material_name) || (face.color.is_none() && face.surface_material.is_none() && (!unity || materials.get(&face.material_name).is_none())) {
+                if settings.is_tool_texture(&face.material_name)
+                    || (face.color.is_none()
+                        && face.surface_material.is_none()
+                        && (!unity || materials.get(&face.material_name).is_none()))
+                {
                     continue;
                 }
                 let material = materials.get(&face.material_name);
                 let polygon = if face.color.is_some() {
-                    let geometry=geometry.as_ref().expect("painted brush geometry");
-                    let index=geometry.faces().iter().position(|candidate|candidate.plane==face.plane).ok_or_else(||Error::Map("painted face missing from brush geometry".into()))?;
-                    Some(geometry.face_polygon(index).ok_or_else(||Error::Map("painted face has no polygon".into()))?)
-                } else {None};
-                let image=prepare_image(face,polygon.as_deref(),material).map_err(|e|Error::Write(directory.to_path_buf(),e))?;
-                let png=image.png.clone();
+                    let geometry = geometry.as_ref().expect("painted brush geometry");
+                    let index = geometry
+                        .faces()
+                        .iter()
+                        .position(|candidate| candidate.plane == face.plane)
+                        .ok_or_else(|| {
+                            Error::Map("painted face missing from brush geometry".into())
+                        })?;
+                    Some(
+                        geometry
+                            .face_polygon(index)
+                            .ok_or_else(|| Error::Map("painted face has no polygon".into()))?,
+                    )
+                } else {
+                    None
+                };
+                let image = prepare_image(face, polygon.as_deref(), material)
+                    .map_err(|e| Error::Write(directory.to_path_buf(), e))?;
+                let png = image.png.clone();
                 let mut key = png.clone();
                 if let Some(s) = face.surface_material {
-                    key.extend([1, s.roughness, s.metallic]); key.extend(s.emission.to_le_bytes());
-                } else { key.push(0); }
+                    key.extend([1, s.roughness, s.metallic]);
+                    key.extend(s.emission.to_le_bytes());
+                } else {
+                    key.push(0);
+                }
                 let name = if let Some(name) = cache.get(&key) {
                     name.clone()
                 } else {
@@ -313,14 +495,16 @@ pub fn prepare_text(
                         .join(format!("{}_paint", options.name))
                         .join(format!("{name}.png"));
                     let root = settings.project_root.as_deref().unwrap_or(directory);
-                    let resource = scene_export::materials::fs_to_res(root, &path).ok_or_else(|| {
-                        Error::Map(
-                            "export directory must be inside the chosen engine project".into(),
-                        )
-                    })?;
+                    let resource =
+                        scene_export::materials::fs_to_res(root, &path).ok_or_else(|| {
+                            Error::Map(
+                                "export directory must be inside the chosen engine project".into(),
+                            )
+                        })?;
                     settings.generated_materials.insert(
                         name.clone(),
-                        scene_export::materials::GeneratedMaterial { pbr: None,
+                        scene_export::materials::GeneratedMaterial {
+                            pbr: None,
                             path: resource,
                             width: image.width,
                             height: image.height,
@@ -331,7 +515,10 @@ pub fn prepare_text(
                             repeat: face.color.is_none() && material.is_some(),
                         },
                     );
-                    if let Some(png) = material.filter(|_| face.color.is_none()).and_then(normal_png) {
+                    if let Some(png) = material
+                        .filter(|_| face.color.is_none())
+                        .and_then(normal_png)
+                    {
                         settings.normal_maps.insert(name.clone(), png);
                     }
                     files.push((path, Contents::Bytes(png.clone())));
@@ -362,8 +549,8 @@ pub fn prepare_text(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use map_model::brush_face::Rgb;
     use geometry_math::bbox::Bbox3d;
+    use map_model::brush_face::Rgb;
 
     #[test]
     fn baked_uvs_match_rotated_faces_and_unpainted_mapping_survives() {
@@ -397,8 +584,9 @@ mod tests {
             let target = faces
                 .iter()
                 .min_by(|a, b| {
-                    geometry_math::vec::length(a.plane.normal - face.plane.normal)
-                        .total_cmp(&geometry_math::vec::length(b.plane.normal - face.plane.normal))
+                    geometry_math::vec::length(a.plane.normal - face.plane.normal).total_cmp(
+                        &geometry_math::vec::length(b.plane.normal - face.plane.normal),
+                    )
                 })
                 .unwrap();
             let polygon = original.face_polygon(i).unwrap();
@@ -444,7 +632,9 @@ mod tests {
         let image = bake(&face, &face.points, Some(&base)).unwrap();
         assert!(image
             .pixels
-            .as_chunks::<4>().0.iter()
+            .as_chunks::<4>()
+            .0
+            .iter()
             .all(|p| *p == [128, 0, 127, 255]));
         let mut document = Document::new(crate::world::WorldBounds::default());
         let brush = map_model::shapes::create_cuboid(
@@ -475,16 +665,47 @@ mod cache_tests {
     use super::*;
     #[test]
     fn image_cache_matches_uncached_pixels_and_does_not_reuse_replaced_material() {
-        let world=geometry_math::bbox::Bbox3d::from_scalars(-4096.0,4096.0);
-        let brush=map_model::shapes::create_cuboid(&world,&geometry_math::bbox::Bbox3d::from_scalars(-32.0,32.0),"stone").unwrap();
-        let mut face=brush.faces()[0].clone();face.set_paint(Some(FaceColor::solid(map_model::brush_face::Rgb::new(20,200,80)).with_alpha(128)));
-        let polygon=brush.face_polygon(0).unwrap();
-        let red=Material::rgba("stone".into(),"/tmp/cache-material.png".into(),1,1,vec![255,0,0,255]);
-        let blue=Material::rgba("stone".into(),"/tmp/cache-material.png".into(),1,1,vec![0,0,255,255]);
-        let first=prepare_image(&face,Some(&polygon),Some(&red)).unwrap();
-        let repeated=prepare_image(&face,Some(&polygon),Some(&red)).unwrap();
-        assert_eq!(first.png,repeated.png);
-        assert_eq!(image::load_from_memory(&first.png).unwrap().to_rgba8().as_raw(),&bake(&face,&polygon,Some(&red)).unwrap().pixels);
-        assert_ne!(first.png,prepare_image(&face,Some(&polygon),Some(&blue)).unwrap().png);
+        let world = geometry_math::bbox::Bbox3d::from_scalars(-4096.0, 4096.0);
+        let brush = map_model::shapes::create_cuboid(
+            &world,
+            &geometry_math::bbox::Bbox3d::from_scalars(-32.0, 32.0),
+            "stone",
+        )
+        .unwrap();
+        let mut face = brush.faces()[0].clone();
+        face.set_paint(Some(
+            FaceColor::solid(map_model::brush_face::Rgb::new(20, 200, 80)).with_alpha(128),
+        ));
+        let polygon = brush.face_polygon(0).unwrap();
+        let red = Material::rgba(
+            "stone".into(),
+            "/tmp/cache-material.png".into(),
+            1,
+            1,
+            vec![255, 0, 0, 255],
+        );
+        let blue = Material::rgba(
+            "stone".into(),
+            "/tmp/cache-material.png".into(),
+            1,
+            1,
+            vec![0, 0, 255, 255],
+        );
+        let first = prepare_image(&face, Some(&polygon), Some(&red)).unwrap();
+        let repeated = prepare_image(&face, Some(&polygon), Some(&red)).unwrap();
+        assert_eq!(first.png, repeated.png);
+        assert_eq!(
+            image::load_from_memory(&first.png)
+                .unwrap()
+                .to_rgba8()
+                .as_raw(),
+            &bake(&face, &polygon, Some(&red)).unwrap().pixels
+        );
+        assert_ne!(
+            first.png,
+            prepare_image(&face, Some(&polygon), Some(&blue))
+                .unwrap()
+                .png
+        );
     }
 }

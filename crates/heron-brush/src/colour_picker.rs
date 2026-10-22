@@ -11,8 +11,8 @@
 //! 0 to 1. [`open`] opens a button's picker from elsewhere (the gradient rail does this
 //! when a stop marker is clicked).
 
-use eframe::egui::{self, Color32, CornerRadius, Id, Mesh, Pos2, Rect, Sense, Stroke, Ui};
 use editor_core::i18n::tr;
+use eframe::egui::{self, Color32, CornerRadius, Id, Mesh, Pos2, Rect, Sense, Stroke, Ui};
 
 use crate::theme;
 
@@ -68,7 +68,11 @@ pub fn parse_hex(text: &str) -> Option<([u8; 3], Option<f32>)> {
     }
     let byte = |i: usize| u8::from_str_radix(&text[i..i + 2], 16).ok();
     let rgb = [byte(0)?, byte(2)?, byte(4)?];
-    let alpha = if text.len() == 8 { Some(f32::from(byte(6)?) / 255.0) } else { None };
+    let alpha = if text.len() == 8 {
+        Some(f32::from(byte(6)?) / 255.0)
+    } else {
+        None
+    };
     Some((rgb, alpha))
 }
 
@@ -99,12 +103,21 @@ pub fn checkerboard(painter: &egui::Painter, rect: Rect, cell: f32) {
 
 /// Fills `rect` with colours from `at`, sampled on a `cols` × `rows` grid of points given
 /// as 0-to-1 coordinates across the rect, and blended between them.
-pub fn paint_ramp(painter: &egui::Painter, rect: Rect, cols: usize, rows: usize, at: impl Fn(f32, f32) -> Color32) {
+pub fn paint_ramp(
+    painter: &egui::Painter,
+    rect: Rect,
+    cols: usize,
+    rows: usize,
+    at: impl Fn(f32, f32) -> Color32,
+) {
     let mut mesh = Mesh::default();
     for j in 0..=rows {
         for i in 0..=cols {
             let (u, v) = (i as f32 / cols as f32, j as f32 / rows as f32);
-            mesh.colored_vertex(rect.min + egui::vec2(u * rect.width(), v * rect.height()), at(u, v));
+            mesh.colored_vertex(
+                rect.min + egui::vec2(u * rect.width(), v * rect.height()),
+                at(u, v),
+            );
         }
     }
     let stride = cols as u32 + 1;
@@ -148,26 +161,48 @@ struct State {
 /// A swatch button that opens the picker. Edits `rgb`, and `alpha` (0 to 1) when given:
 /// a panel passes its own opacity here so the picker's slider and the panel's agree.
 /// The response is `changed()` when the user changed the colour or the alpha.
-pub fn button(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], mut alpha: Option<&mut f32>) -> egui::Response {
+pub fn button(
+    ui: &mut Ui,
+    id: Id,
+    rgb: &mut [u8; 3],
+    mut alpha: Option<&mut f32>,
+) -> egui::Response {
     let size = egui::vec2(36.0, 24.0);
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
-    let mut response = ui.interact(rect, id, Sense::click()).on_hover_text(tr("Colour"));
+    let mut response = ui
+        .interact(rect, id, Sense::click())
+        .on_hover_text(tr("Colour"));
     if ui.is_rect_visible(rect) {
         let painter = ui.painter_at(rect);
         let inner = rect.shrink(1.0);
         checkerboard(&painter, inner, 6.0);
         let a = alpha.as_deref().copied().unwrap_or(1.0);
         painter.rect_filled(inner, 0.0, colour(to_f32(*rgb), a));
-        let stroke = if response.hovered() && ui.is_enabled() { theme::fg().gamma_multiply(0.6) } else { theme::grid() };
-        ui.painter().rect_stroke(rect, CornerRadius::same(3), Stroke::new(1.0, stroke), egui::StrokeKind::Inside);
+        let stroke = if response.hovered() && ui.is_enabled() {
+            theme::fg().gamma_multiply(0.6)
+        } else {
+            theme::grid()
+        };
+        ui.painter().rect_stroke(
+            rect,
+            CornerRadius::same(3),
+            Stroke::new(1.0, stroke),
+            egui::StrokeKind::Inside,
+        );
         if !ui.is_enabled() {
-            ui.painter().rect_filled(rect, CornerRadius::same(3), theme::bg().gamma_multiply(0.6));
+            ui.painter()
+                .rect_filled(rect, CornerRadius::same(3), theme::bg().gamma_multiply(0.6));
         }
     }
     let shown = egui::Popup::from_toggle_button_response(&response)
         .id(popup_id(id))
         .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
-        .show(|ui| egui::Frame::new().inner_margin(egui::Margin::same(6)).show(ui, |ui| contents(ui, id, rgb, alpha.as_deref_mut())).inner);
+        .show(|ui| {
+            egui::Frame::new()
+                .inner_margin(egui::Margin::same(6))
+                .show(ui, |ui| contents(ui, id, rgb, alpha.as_deref_mut()))
+                .inner
+        });
     if shown.is_some_and(|inner| inner.inner) {
         response.mark_changed();
     }
@@ -175,7 +210,12 @@ pub fn button(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], mut alpha: Option<&mut f32
 }
 
 /// The picker itself, for a popup of the caller's own. Returns whether the colour changed.
-pub(crate) fn contents(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], mut alpha: Option<&mut f32>) -> bool {
+pub(crate) fn contents(
+    ui: &mut Ui,
+    id: Id,
+    rgb: &mut [u8; 3],
+    mut alpha: Option<&mut f32>,
+) -> bool {
     let state_id = id.with("picker-state");
     let mut state: State = ui.data(|d| d.get_temp(state_id)).unwrap_or_default();
     // Follow a colour changed from outside, keeping the hue of a grey and the saturation
@@ -184,7 +224,11 @@ pub(crate) fn contents(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], mut alpha: Option
         let (h, s, v) = hsv_from_rgb(to_f32(*rgb));
         let (old_h, old_s, _) = state.hsv;
         let known = state.known;
-        state.hsv = (if s < 1e-6 && known { old_h } else { h }, if v < 1e-6 && known { old_s } else { s }, v);
+        state.hsv = (
+            if s < 1e-6 && known { old_h } else { h },
+            if v < 1e-6 && known { old_s } else { s },
+            v,
+        );
         state.rgb = *rgb;
         state.known = true;
     }
@@ -199,8 +243,12 @@ pub(crate) fn contents(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], mut alpha: Option
     // The square and the hue strip.
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = spacing;
-        let (square, response) = ui.allocate_exact_size(egui::vec2(220.0, 160.0), Sense::click_and_drag());
-        if let Some(p) = response.interact_pointer_pos().filter(|_| response.is_pointer_button_down_on()) {
+        let (square, response) =
+            ui.allocate_exact_size(egui::vec2(220.0, 160.0), Sense::click_and_drag());
+        if let Some(p) = response
+            .interact_pointer_pos()
+            .filter(|_| response.is_pointer_button_down_on())
+        {
             s = ((p.x - square.left()) / square.width()).clamp(0.0, 1.0);
             v = (1.0 - (p.y - square.top()) / square.height()).clamp(0.0, 1.0);
             hsv_changed = true;
@@ -215,23 +263,46 @@ pub(crate) fn contents(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], mut alpha: Option
         mesh.add_triangle(0, 1, 2);
         mesh.add_triangle(0, 2, 3);
         painter.add(mesh);
-        let at = Pos2::new(square.left() + s * square.width(), square.top() + (1.0 - v) * square.height());
+        let at = Pos2::new(
+            square.left() + s * square.width(),
+            square.top() + (1.0 - v) * square.height(),
+        );
         painter.circle_stroke(at, 5.0, Stroke::new(3.0, Color32::BLACK));
         painter.circle_stroke(at, 5.0, Stroke::new(1.0, Color32::WHITE));
 
-        let (strip, response) = ui.allocate_exact_size(egui::vec2(16.0, 160.0), Sense::click_and_drag());
+        let (strip, response) =
+            ui.allocate_exact_size(egui::vec2(16.0, 160.0), Sense::click_and_drag());
         let response = response.on_hover_text("H (°)");
-        if let Some(p) = response.interact_pointer_pos().filter(|_| response.is_pointer_button_down_on()) {
+        if let Some(p) = response
+            .interact_pointer_pos()
+            .filter(|_| response.is_pointer_button_down_on())
+        {
             h = ((p.y - strip.top()) / strip.height()).clamp(0.0, 1.0) * 359.9;
             hsv_changed = true;
         }
-        paint_ramp(ui.painter(), strip, 1, 12, |_, t| colour(rgb_from_hsv(t * 360.0, 1.0, 1.0), 1.0));
+        paint_ramp(ui.painter(), strip, 1, 12, |_, t| {
+            colour(rgb_from_hsv(t * 360.0, 1.0, 1.0), 1.0)
+        });
         // The thumb wears the colour being picked.
         let y = strip.top() + h / 360.0 * strip.height();
-        let thumb = Rect::from_center_size(Pos2::new(strip.center().x, y), egui::vec2(strip.width() + 6.0, 8.0));
-        ui.painter().rect_filled(thumb, CornerRadius::same(2), colour(to_f32(*rgb), 1.0));
-        ui.painter().rect_stroke(thumb, CornerRadius::same(2), Stroke::new(1.0, Color32::BLACK), egui::StrokeKind::Outside);
-        ui.painter().rect_stroke(thumb.shrink(1.0), CornerRadius::same(2), Stroke::new(1.0, Color32::WHITE), egui::StrokeKind::Inside);
+        let thumb = Rect::from_center_size(
+            Pos2::new(strip.center().x, y),
+            egui::vec2(strip.width() + 6.0, 8.0),
+        );
+        ui.painter()
+            .rect_filled(thumb, CornerRadius::same(2), colour(to_f32(*rgb), 1.0));
+        ui.painter().rect_stroke(
+            thumb,
+            CornerRadius::same(2),
+            Stroke::new(1.0, Color32::BLACK),
+            egui::StrokeKind::Outside,
+        );
+        ui.painter().rect_stroke(
+            thumb.shrink(1.0),
+            CornerRadius::same(2),
+            Stroke::new(1.0, Color32::WHITE),
+            egui::StrokeKind::Inside,
+        );
     });
     if hsv_changed {
         *rgb = to_u8(rgb_from_hsv(h, s, v));
@@ -243,18 +314,32 @@ pub(crate) fn contents(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], mut alpha: Option
     let opacity_label = tr("Opacity");
     let label_width = ["R", "G", "B", opacity_label]
         .iter()
-        .map(|l| ui.painter().layout_no_wrap(l.to_string(), theme::body(), theme::fg()).size().x)
+        .map(|l| {
+            ui.painter()
+                .layout_no_wrap(l.to_string(), theme::body(), theme::fg())
+                .size()
+                .x
+        })
         .fold(0.0, f32::max)
         + spacing;
     let track_width = 220.0 + spacing + 16.0 - label_width - 56.0 - 2.0 * spacing;
     let mut channels_changed = false;
     for (index, label) in ["R", "G", "B"].into_iter().enumerate() {
         let mut value = rgb[index];
-        let changed = channel_row(ui, label, None, label_width, track_width, &mut value, 0.0..=255.0, |t| {
-            let mut c = to_f32(*rgb);
-            c[index] = t;
-            colour(c, 1.0)
-        });
+        let changed = channel_row(
+            ui,
+            label,
+            None,
+            label_width,
+            track_width,
+            &mut value,
+            0.0..=255.0,
+            |t| {
+                let mut c = to_f32(*rgb);
+                c[index] = t;
+                colour(c, 1.0)
+            },
+        );
         if changed {
             rgb[index] = value;
             channels_changed = true;
@@ -263,13 +348,26 @@ pub(crate) fn contents(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], mut alpha: Option
     if let Some(alpha) = alpha.as_deref_mut() {
         let mut percent = (*alpha * 100.0).round().clamp(0.0, 100.0) as u8;
         let solid = to_f32(*rgb);
-        if channel_row(ui, opacity_label, Some(opacity_label), label_width, track_width, &mut percent, 0.0..=100.0, |t| colour(solid, t)) {
+        if channel_row(
+            ui,
+            opacity_label,
+            Some(opacity_label),
+            label_width,
+            track_width,
+            &mut percent,
+            0.0..=100.0,
+            |t| colour(solid, t),
+        ) {
             *alpha = f32::from(percent) / 100.0;
         }
     }
     if channels_changed {
         let (nh, ns, nv) = hsv_from_rgb(to_f32(*rgb));
-        state.hsv = (if ns < 1e-6 { h } else { nh }, if nv < 1e-6 { s } else { ns }, nv);
+        state.hsv = (
+            if ns < 1e-6 { h } else { nh },
+            if nv < 1e-6 { s } else { ns },
+            nv,
+        );
         state.rgb = *rgb;
     }
 
@@ -278,7 +376,11 @@ pub(crate) fn contents(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], mut alpha: Option
         let current = hex(*rgb, alpha.as_deref().copied());
         let text_id = id.with("hex");
         let focused = ui.memory(|m| m.has_focus(text_id));
-        let mut text = if focused { state.text.clone().unwrap_or_else(|| current.clone()) } else { current.clone() };
+        let mut text = if focused {
+            state.text.clone().unwrap_or_else(|| current.clone())
+        } else {
+            current.clone()
+        };
         let valid = parse_hex(&text).is_some();
         let mut edit = egui::TextEdit::singleline(&mut text)
             .id(text_id)
@@ -294,7 +396,12 @@ pub(crate) fn contents(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], mut alpha: Option
         }
         let response = ui.add(edit);
         if !valid {
-            ui.painter().rect_stroke(response.rect, CornerRadius::same(3), Stroke::new(1.0, ui.visuals().error_fg_color), egui::StrokeKind::Inside);
+            ui.painter().rect_stroke(
+                response.rect,
+                CornerRadius::same(3),
+                Stroke::new(1.0, ui.visuals().error_fg_color),
+                egui::StrokeKind::Inside,
+            );
         }
         if response.changed() {
             if let Some((parsed, parsed_alpha)) = parse_hex(&text) {
@@ -308,7 +415,9 @@ pub(crate) fn contents(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], mut alpha: Option
             }
         }
         state.text = response.has_focus().then_some(text);
-        let copy = ui.add(egui::Button::new("").min_size(egui::vec2(36.0, response.rect.height()))).on_hover_text(tr("Copy"));
+        let copy = ui
+            .add(egui::Button::new("").min_size(egui::vec2(36.0, response.rect.height())))
+            .on_hover_text(tr("Copy"));
         copy_icon(ui.painter(), copy.rect, theme::fg());
         if copy.clicked() {
             ui.ctx().copy_text(current);
@@ -335,17 +444,31 @@ fn channel_row(
     let max = *range.end();
     let mut changed = false;
     ui.horizontal(|ui| {
-        let (label_rect, label_response) = ui.allocate_exact_size(egui::vec2(label_width, 20.0), Sense::hover());
-        crate::theme::text(ui.painter(), label_rect.left_center(), egui::Align2::LEFT_CENTER, label, theme::body(), theme::dim());
+        let (label_rect, label_response) =
+            ui.allocate_exact_size(egui::vec2(label_width, 20.0), Sense::hover());
+        crate::theme::text(
+            ui.painter(),
+            label_rect.left_center(),
+            egui::Align2::LEFT_CENTER,
+            label,
+            theme::body(),
+            theme::dim(),
+        );
         if let Some(tip) = tooltip {
             label_response.on_hover_text(tip);
         }
-        let (track, response) = ui.allocate_exact_size(egui::vec2(track_width.max(40.0), 20.0), Sense::click_and_drag());
+        let (track, response) = ui.allocate_exact_size(
+            egui::vec2(track_width.max(40.0), 20.0),
+            Sense::click_and_drag(),
+        );
         let response = match tooltip {
             Some(tip) => response.on_hover_text(tip),
             None => response,
         };
-        if let Some(p) = response.interact_pointer_pos().filter(|_| response.is_pointer_button_down_on()) {
+        if let Some(p) = response
+            .interact_pointer_pos()
+            .filter(|_| response.is_pointer_button_down_on())
+        {
             let t = ((p.x - track.left()) / track.width()).clamp(0.0, 1.0);
             let new = (t * max).round() as u8;
             if new != *value {
@@ -356,13 +479,30 @@ fn channel_row(
         let bar = Rect::from_center_size(track.center(), egui::vec2(track.width(), 10.0));
         checkerboard(&ui.painter_at(bar), bar, 5.0);
         paint_ramp(ui.painter(), bar, 16, 1, |t, _| ramp(t));
-        ui.painter().rect_stroke(bar, CornerRadius::same(2), Stroke::new(1.0, theme::grid()), egui::StrokeKind::Outside);
+        ui.painter().rect_stroke(
+            bar,
+            CornerRadius::same(2),
+            Stroke::new(1.0, theme::grid()),
+            egui::StrokeKind::Outside,
+        );
         let x = bar.left() + f32::from(*value) / max * bar.width();
         let thumb = Rect::from_center_size(Pos2::new(x, bar.center().y), egui::vec2(6.0, 16.0));
-        ui.painter().rect_filled(thumb, CornerRadius::same(2), Color32::WHITE);
-        ui.painter().rect_stroke(thumb, CornerRadius::same(2), Stroke::new(1.0, Color32::BLACK), egui::StrokeKind::Outside);
+        ui.painter()
+            .rect_filled(thumb, CornerRadius::same(2), Color32::WHITE);
+        ui.painter().rect_stroke(
+            thumb,
+            CornerRadius::same(2),
+            Stroke::new(1.0, Color32::BLACK),
+            egui::StrokeKind::Outside,
+        );
         let mut number = f32::from(*value);
-        let number_response = ui.add_sized(egui::vec2(56.0, 24.0), egui::DragValue::new(&mut number).range(range.clone()).speed(1.0).fixed_decimals(0));
+        let number_response = ui.add_sized(
+            egui::vec2(56.0, 24.0),
+            egui::DragValue::new(&mut number)
+                .range(range.clone())
+                .speed(1.0)
+                .fixed_decimals(0),
+        );
         if number_response.changed() {
             *value = number.round().clamp(0.0, max) as u8;
             changed = true;
@@ -377,9 +517,19 @@ fn copy_icon(painter: &egui::Painter, rect: Rect, color: Color32) {
     let stroke = Stroke::new(1.4, color);
     let back = Rect::from_min_size(c + egui::vec2(-6.0, -6.0), egui::vec2(9.0, 10.0));
     let front = back.translate(egui::vec2(3.0, 3.0));
-    painter.rect_stroke(back, CornerRadius::same(1), stroke, egui::StrokeKind::Middle);
+    painter.rect_stroke(
+        back,
+        CornerRadius::same(1),
+        stroke,
+        egui::StrokeKind::Middle,
+    );
     painter.rect_filled(front, CornerRadius::same(1), theme::button_fill());
-    painter.rect_stroke(front, CornerRadius::same(1), stroke, egui::StrokeKind::Middle);
+    painter.rect_stroke(
+        front,
+        CornerRadius::same(1),
+        stroke,
+        egui::StrokeKind::Middle,
+    );
 }
 
 #[cfg(test)]
@@ -410,7 +560,10 @@ mod tests {
         let mut alpha = 0.5f32;
         let frame = |events: Vec<egui::Event>, rgb: &mut [u8; 3], alpha: &mut f32| {
             let mut changed = false;
-            let raw = egui::RawInput { events, ..Default::default() };
+            let raw = egui::RawInput {
+                events,
+                ..Default::default()
+            };
             let mut output = ctx.run_ui(raw, |ui| {
                 changed = button(ui, id, rgb, Some(alpha)).changed();
             });
@@ -419,7 +572,10 @@ mod tests {
         };
         assert!(!frame(vec![], &mut rgb, &mut alpha));
         open(&ctx, id);
-        assert!(!frame(vec![], &mut rgb, &mut alpha), "showing the picker changes nothing");
+        assert!(
+            !frame(vec![], &mut rgb, &mut alpha),
+            "showing the picker changes nothing"
+        );
         assert!(egui::Popup::is_id_open(&ctx, popup_id(id)));
         assert_eq!((rgb, alpha), ([10, 20, 30], 0.5));
         ctx.memory_mut(|m| m.request_focus(id.with("hex")));
@@ -431,12 +587,26 @@ mod tests {
             repeat: false,
             modifiers: egui::Modifiers::COMMAND,
         };
-        let changed = frame(vec![select_all, egui::Event::Text("#FF000040".into())], &mut rgb, &mut alpha);
+        let changed = frame(
+            vec![select_all, egui::Event::Text("#FF000040".into())],
+            &mut rgb,
+            &mut alpha,
+        );
         assert!(changed);
         assert_eq!(rgb, [255, 0, 0]);
         assert!((alpha - 64.0 / 255.0).abs() < 1e-6);
         // Half a code is an error, not a colour.
-        let changed = frame(vec![egui::Event::Key { key: egui::Key::Backspace, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers::NONE }], &mut rgb, &mut alpha);
+        let changed = frame(
+            vec![egui::Event::Key {
+                key: egui::Key::Backspace,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            &mut rgb,
+            &mut alpha,
+        );
         assert!(!changed);
         assert_eq!(rgb, [255, 0, 0]);
     }

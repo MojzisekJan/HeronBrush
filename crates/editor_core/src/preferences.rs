@@ -21,9 +21,17 @@ fn bundled_asset_directory() -> String {
     install_directory()
         .map(|dir| dir.join("assets"))
         .filter(|assets| crate::files::is_dir(assets))
-        .or_else(|| Some(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets")).filter(|assets| assets.is_dir()))
+        .or_else(|| {
+            Some(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets"))
+                .filter(|assets| assets.is_dir())
+        })
         // The web build's folders are on no disk, so there is nothing to canonicalize.
-        .and_then(|assets| assets.canonicalize().ok().or(cfg!(target_arch = "wasm32").then_some(assets)))
+        .and_then(|assets| {
+            assets
+                .canonicalize()
+                .ok()
+                .or(cfg!(target_arch = "wasm32").then_some(assets))
+        })
         .map(|assets| assets.to_string_lossy().into_owned())
         .unwrap_or_default()
 }
@@ -46,16 +54,24 @@ static PLATFORM_DIRECTORIES: std::sync::OnceLock<PlatformDirectories> = std::syn
 /// [`user_config_dir`]; `install` replaces the executable's folder, where `assets` and
 /// `games` are looked for. Call it before anything else here; later calls are ignored.
 pub fn set_platform_directories(config: PathBuf, install: PathBuf) {
-    let _ = PLATFORM_DIRECTORIES.set(PlatformDirectories { config: Some(config), install: Some(install) });
+    let _ = PLATFORM_DIRECTORIES.set(PlatformDirectories {
+        config: Some(config),
+        install: Some(install),
+    });
 }
 
 /// The folder a package ships its data in (`assets`, `games`): the one
 /// [`set_platform_directories`] named, else the executable's.
 pub fn install_directory() -> Option<PathBuf> {
-    if let Some(dir) = PLATFORM_DIRECTORIES.get().and_then(|dirs| dirs.install.clone()) {
+    if let Some(dir) = PLATFORM_DIRECTORIES
+        .get()
+        .and_then(|dirs| dirs.install.clone())
+    {
         return Some(dir);
     }
-    std::env::current_exe().ok().and_then(|exe| exe.parent().map(Path::to_path_buf))
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(Path::to_path_buf))
 }
 
 /// A colour, as four channels from zero to one.
@@ -218,7 +234,12 @@ pub enum ToneMapper {
 
 impl ToneMapper {
     /// Every choice, in the order a chooser lists them.
-    pub const ALL: [ToneMapper; 4] = [ToneMapper::Agx, ToneMapper::KhronosNeutral, ToneMapper::TonyMcMapface, ToneMapper::Aces];
+    pub const ALL: [ToneMapper; 4] = [
+        ToneMapper::Agx,
+        ToneMapper::KhronosNeutral,
+        ToneMapper::TonyMcMapface,
+        ToneMapper::Aces,
+    ];
 
     /// The name a chooser shows: proper names, the same in every language.
     pub fn name(self) -> &'static str {
@@ -837,7 +858,9 @@ impl Preferences {
             }
         }
         preferences.upgrade(version);
-        if preferences.game == "Generic" { preferences.game = "heron_brush".into(); }
+        if preferences.game == "Generic" {
+            preferences.game = "heron_brush".into();
+        }
         preferences
     }
 
@@ -884,7 +907,10 @@ impl Preferences {
         if let Some(directory) = path.parent() {
             crate::files::create_dir_all(directory)?;
         }
-        crate::files::write(path, format!("{STORE_VERSION_KEY}={STORE_VERSION}\n{}", self.write()))
+        crate::files::write(
+            path,
+            format!("{STORE_VERSION_KEY}={STORE_VERSION}\n{}", self.write()),
+        )
     }
 
     /// Where the store lives.
@@ -905,7 +931,10 @@ pub fn config_dir() -> PathBuf {
 /// `$XDG_CONFIG_HOME` or `~/.config` everywhere else, macOS included, which is where
 /// every release so far has kept its profile. [`set_platform_directories`] overrides it.
 pub fn user_config_dir() -> PathBuf {
-    if let Some(dir) = PLATFORM_DIRECTORIES.get().and_then(|dirs| dirs.config.clone()) {
+    if let Some(dir) = PLATFORM_DIRECTORIES
+        .get()
+        .and_then(|dirs| dirs.config.clone())
+    {
         return dir;
     }
     #[cfg(windows)]
@@ -1043,7 +1072,10 @@ mod tests {
         assert_eq!(loaded.sky_color, defaults.sky_color);
         assert_eq!(loaded.horizon_color, defaults.horizon_color);
         assert_eq!(loaded.asset_library, defaults.asset_library);
-        assert!(!loaded.asset_library.is_empty(), "the repository's assets are found");
+        assert!(
+            !loaded.asset_library.is_empty(),
+            "the repository's assets are found"
+        );
         // A colour the user chose is theirs.
         assert_eq!(loaded.ground_color, Color::rgb(0.2, 0.2, 0.2));
     }
@@ -1057,7 +1089,10 @@ mod tests {
         assert!(pref(|p| p.edge_color).is_dark(), "dark edges over it");
 
         follow_color_scheme(true);
-        assert_eq!(pref(|p| p.background_color), Preferences::default().background_color);
+        assert_eq!(
+            pref(|p| p.background_color),
+            Preferences::default().background_color
+        );
         assert_eq!(pref(|p| p.edge_color), Preferences::default().edge_color);
     }
 
@@ -1076,7 +1111,11 @@ mod tests {
         for language in crate::i18n::Language::all() {
             let mut text = String::new();
             Stored::write(&language, &mut text);
-            assert_eq!(<crate::i18n::Language as Stored>::parse(&text), Some(language), "{text}");
+            assert_eq!(
+                <crate::i18n::Language as Stored>::parse(&text),
+                Some(language),
+                "{text}"
+            );
         }
         // What earlier versions wrote still reads back as what it was.
         for (text, language) in [
@@ -1096,7 +1135,11 @@ mod tests {
             ("turkish", crate::i18n::Language::Turkish),
             ("indonesian", crate::i18n::Language::Indonesian),
         ] {
-            assert_eq!(<crate::i18n::Language as Stored>::parse(text), Some(language), "{text}");
+            assert_eq!(
+                <crate::i18n::Language as Stored>::parse(text),
+                Some(language),
+                "{text}"
+            );
         }
     }
 

@@ -96,11 +96,7 @@ impl<T: Num, const S: usize> AbstractLine<T, S> for Line<T, S> {
 /// same infinite line but anchored at different points are not equal here. Use
 /// [`Line::make_canonical`] on both first to compare the lines themselves.
 #[inline]
-pub fn is_equal<T: Num, const S: usize>(
-    lhs: &Line<T, S>,
-    rhs: &Line<T, S>,
-    epsilon: T,
-) -> bool {
+pub fn is_equal<T: Num, const S: usize>(lhs: &Line<T, S>, rhs: &Line<T, S>, epsilon: T) -> bool {
     vec::is_equal(&lhs.point, &rhs.point, epsilon)
         && vec::is_equal(&lhs.direction, &rhs.direction, epsilon)
 }

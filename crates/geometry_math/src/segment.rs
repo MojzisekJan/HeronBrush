@@ -90,8 +90,7 @@ impl<T: Float, const S: usize> Segment<T, S> {
         let f = self.distance_to_projected_point(point);
         // Reject points whose projection falls off either end before doing the more
         // expensive perpendicular distance check.
-        if f < -max_distance || f * f > self.squared_length() + max_distance * max_distance
-        {
+        if f < -max_distance || f * f > self.squared_length() + max_distance * max_distance {
             return false;
         }
         let projected = self.point_at_distance(f);

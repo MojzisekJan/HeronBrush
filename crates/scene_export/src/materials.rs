@@ -43,7 +43,11 @@ pub struct PbrImage {
 }
 /// Source transparency rules, independent of the albedo image contents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AlphaMode { Opaque, Mask, Blend }
+pub enum AlphaMode {
+    Opaque,
+    Mask,
+    Blend,
+}
 
 #[derive(Debug, Clone)]
 pub struct GeneratedPbr {
@@ -52,7 +56,7 @@ pub struct GeneratedPbr {
     pub double_sided: bool,
     pub roughness: f32,
     pub metallic: f32,
-    pub emissive_factor: [f32;3],
+    pub emissive_factor: [f32; 3],
     pub normal_scale: f32,
     pub occlusion_strength: f32,
     pub images: Vec<PbrImage>,
@@ -205,7 +209,19 @@ pub fn find_root_marked_by(start: &Path, markers: &[&str]) -> Option<PathBuf> {
             match marker.strip_suffix('/') {
                 Some(name) if dir.join(name).is_dir() => return Some(dir),
                 None if dir.join(marker).is_file() => return Some(dir),
-                None if marker.starts_with('.') && std::fs::read_dir(&dir).ok().is_some_and(|entries|entries.flatten().any(|entry|entry.path().is_file()&&entry.path().extension().is_some_and(|extension|extension==&marker[1..]))) => return Some(dir),
+                None if marker.starts_with('.')
+                    && std::fs::read_dir(&dir).ok().is_some_and(|entries| {
+                        entries.flatten().any(|entry| {
+                            entry.path().is_file()
+                                && entry
+                                    .path()
+                                    .extension()
+                                    .is_some_and(|extension| extension == &marker[1..])
+                        })
+                    }) =>
+                {
+                    return Some(dir)
+                }
                 _ => {}
             }
         }
@@ -256,18 +272,32 @@ pub fn build(
         ..Default::default()
     };
 
-    let remaining: Vec<String> = textures.iter().filter_map(|name| {
-        if let Some(generated) = settings.generated_materials.get(name) {
-            library.generated.insert(name.clone(), generated.clone());
-            library.materials.insert(name.clone(), Material::FromTextures {
-                albedo: generated.path.clone(), maps: Vec::new(),
-            });
-            library.sizes.insert(name, Vec2::new(generated.width as f64, generated.height as f64));
-            None
-        } else { Some(name.clone()) }
-    }).collect();
+    let remaining: Vec<String> = textures
+        .iter()
+        .filter_map(|name| {
+            if let Some(generated) = settings.generated_materials.get(name) {
+                library.generated.insert(name.clone(), generated.clone());
+                library.materials.insert(
+                    name.clone(),
+                    Material::FromTextures {
+                        albedo: generated.path.clone(),
+                        maps: Vec::new(),
+                    },
+                );
+                library.sizes.insert(
+                    name,
+                    Vec2::new(generated.width as f64, generated.height as f64),
+                );
+                None
+            } else {
+                Some(name.clone())
+            }
+        })
+        .collect();
     let textures = remaining.as_slice();
-    if textures.is_empty() { return library; }
+    if textures.is_empty() {
+        return library;
+    }
 
     let Some(root) = settings.project_root.as_deref() else {
         library.warnings.push(

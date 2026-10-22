@@ -1,12 +1,12 @@
 //! Tests for transforming a brush.
 
-use map_model::brush::Brush;
-use map_model::shapes;
 use geometry_math::bbox::Bbox3d;
 use geometry_math::mat_ext;
 use geometry_math::scalar;
 use geometry_math::util::Axis;
 use geometry_math::vec::Vec3d;
+use map_model::brush::Brush;
+use map_model::shapes;
 
 fn world_bounds() -> Bbox3d {
     Bbox3d::from_scalars(-16384.0, 16384.0)
@@ -16,7 +16,10 @@ fn world_bounds() -> Bbox3d {
 fn oblong() -> Brush {
     shapes::create_cuboid(
         &world_bounds(),
-        &Bbox3d::new(Vec3d::new(-64.0, -16.0, -16.0), Vec3d::new(64.0, 16.0, 16.0)),
+        &Bbox3d::new(
+            Vec3d::new(-64.0, -16.0, -16.0),
+            Vec3d::new(64.0, 16.0, 16.0),
+        ),
         "stone",
     )
     .expect("a box")
@@ -30,7 +33,9 @@ fn translating_by_a_matrix_matches_translating_by_a_delta() {
     let by_matrix = brush
         .transform(&world_bounds(), &mat_ext::translation_matrix(delta))
         .expect("still a box");
-    let by_delta = brush.translate(&world_bounds(), delta).expect("still a box");
+    let by_delta = brush
+        .translate(&world_bounds(), delta)
+        .expect("still a box");
 
     geometry_math::assert_approx_eq!(by_matrix.bounds().min, by_delta.bounds().min, 1e-6);
     geometry_math::assert_approx_eq!(by_matrix.bounds().max, by_delta.bounds().max, 1e-6);
@@ -39,12 +44,12 @@ fn translating_by_a_matrix_matches_translating_by_a_delta() {
 #[test]
 fn rotating_a_quarter_turn_swaps_two_of_the_extents() {
     let brush = oblong();
-    let rotation = mat_ext::rotation_matrix_about_axis(
-        Vec3d::new(0.0, 0.0, 1.0),
-        scalar::to_radians(90.0),
-    );
+    let rotation =
+        mat_ext::rotation_matrix_about_axis(Vec3d::new(0.0, 0.0, 1.0), scalar::to_radians(90.0));
 
-    let turned = brush.transform(&world_bounds(), &rotation).expect("still a box");
+    let turned = brush
+        .transform(&world_bounds(), &rotation)
+        .expect("still a box");
     turned.geometry().check_invariant().expect("a valid mesh");
 
     // What was 128 long in X is now 128 long in Y.
@@ -57,10 +62,8 @@ fn rotating_a_quarter_turn_swaps_two_of_the_extents() {
 #[test]
 fn rotating_four_quarter_turns_returns_the_brush_to_where_it_was() {
     let brush = oblong();
-    let rotation = mat_ext::rotation_matrix_about_axis(
-        Vec3d::new(0.0, 1.0, 0.0),
-        scalar::to_radians(90.0),
-    );
+    let rotation =
+        mat_ext::rotation_matrix_about_axis(Vec3d::new(0.0, 1.0, 0.0), scalar::to_radians(90.0));
 
     let mut turned = brush.clone();
     for _ in 0..4 {
@@ -80,7 +83,9 @@ fn mirroring_keeps_the_normals_pointing_outwards() {
     let brush = oblong();
     let mirror = mat_ext::mirror_matrix::<f64>(Axis::X);
 
-    let mirrored = brush.transform(&world_bounds(), &mirror).expect("still a box");
+    let mirrored = brush
+        .transform(&world_bounds(), &mirror)
+        .expect("still a box");
     mirrored.geometry().check_invariant().expect("a valid mesh");
 
     let center = mirrored.bounds().center();
@@ -212,12 +217,17 @@ fn a_turned_or_scaled_brush_is_what_rebuilding_it_would_give() {
     let world = geometry_math::bbox::Bbox3d::from_scalars(-16384.0, 16384.0);
     let brush = map_model::shapes::create_cuboid(
         &world,
-        &geometry_math::bbox::Bbox3d::new(Vec3d::new(-16.0, -8.0, -4.0), Vec3d::new(16.0, 8.0, 4.0)),
+        &geometry_math::bbox::Bbox3d::new(
+            Vec3d::new(-16.0, -8.0, -4.0),
+            Vec3d::new(16.0, 8.0, 4.0),
+        ),
         "stone",
     )
     .expect("a box");
 
-    let turn = |axis: Vec3d, radians: f64| geometry_math::mat_ext::rotation_matrix_about_axis(axis, radians);
+    let turn = |axis: Vec3d, radians: f64| {
+        geometry_math::mat_ext::rotation_matrix_about_axis(axis, radians)
+    };
     let transforms = [
         turn(Vec3d::new(0.0, 0.0, 1.0), 0.4),
         turn(Vec3d::new(1.0, 2.0, 3.0), 1.1),
@@ -266,7 +276,10 @@ fn a_translated_brush_is_what_rebuilding_it_would_give() {
     let world = geometry_math::bbox::Bbox3d::from_scalars(-16384.0, 16384.0);
     let brush = map_model::shapes::create_cuboid(
         &world,
-        &geometry_math::bbox::Bbox3d::new(Vec3d::new(-16.0, -8.0, -4.0), Vec3d::new(16.0, 8.0, 4.0)),
+        &geometry_math::bbox::Bbox3d::new(
+            Vec3d::new(-16.0, -8.0, -4.0),
+            Vec3d::new(16.0, 8.0, 4.0),
+        ),
         "stone",
     )
     .expect("a box");
@@ -279,7 +292,9 @@ fn a_translated_brush_is_what_rebuilding_it_would_give() {
         for lock in [false, true] {
             let shift = geometry_math::mat_ext::translation_matrix(by);
             let quick = brush
-                .transform_with_alignment(&world, &shift, lock, |_| geometry_math::vec::Vec2f::new(64.0, 64.0))
+                .transform_with_alignment(&world, &shift, lock, |_| {
+                    geometry_math::vec::Vec2f::new(64.0, 64.0)
+                })
                 .expect("it moves");
 
             // The long way round: the same faces, put back through the plane intersection.
@@ -289,8 +304,13 @@ fn a_translated_brush_is_what_rebuilding_it_would_give() {
             assert!(same_corners(&quick, &slow), "the two disagree");
 
             // And it really moved.
-            let moved = geometry_math::vec::distance(quick.bounds().center(), brush.bounds().center() + by);
-            assert!(moved < 1e-9, "by {by:?}: it landed at {:?}", quick.bounds().center());
+            let moved =
+                geometry_math::vec::distance(quick.bounds().center(), brush.bounds().center() + by);
+            assert!(
+                moved < 1e-9,
+                "by {by:?}: it landed at {:?}",
+                quick.bounds().center()
+            );
         }
     }
 }
@@ -308,19 +328,19 @@ fn a_thin_brush_can_be_moved_a_long_way() {
     // As thin as a wedge of the monkey's shell, and as wide.
     let thin = map_model::shapes::create_cuboid(
         &world,
-        &geometry_math::bbox::Bbox3d::new(Vec3d::new(-64.0, -64.0, 0.0), Vec3d::new(64.0, 64.0, 4.0)),
+        &geometry_math::bbox::Bbox3d::new(
+            Vec3d::new(-64.0, -64.0, 0.0),
+            Vec3d::new(64.0, 64.0, 4.0),
+        ),
         "stone",
     )
     .expect("a slab");
 
     for far in [16.0, 256.0, 1024.0, 8192.0, 16000.0] {
         let moved = thin
-            .translate_with_alignment(
-                &world,
-                Vec3d::new(far, 0.0, 0.0),
-                true,
-                |_| geometry_math::vec::Vec2f::new(64.0, 64.0),
-            )
+            .translate_with_alignment(&world, Vec3d::new(far, 0.0, 0.0), true, |_| {
+                geometry_math::vec::Vec2f::new(64.0, 64.0)
+            })
             .unwrap_or_else(|why| panic!("a move of {far} was refused: {why}"));
 
         // It arrived, and it is still four units thick.
@@ -340,7 +360,10 @@ fn a_moved_brush_is_what_rebuilding_it_would_give() {
     let world = geometry_math::bbox::Bbox3d::from_scalars(-16384.0, 16384.0);
     let brush = map_model::shapes::create_cuboid(
         &world,
-        &geometry_math::bbox::Bbox3d::new(Vec3d::new(-16.0, -8.0, -4.0), Vec3d::new(16.0, 8.0, 4.0)),
+        &geometry_math::bbox::Bbox3d::new(
+            Vec3d::new(-16.0, -8.0, -4.0),
+            Vec3d::new(16.0, 8.0, 4.0),
+        ),
         "stone",
     )
     .expect("a box");
@@ -348,7 +371,9 @@ fn a_moved_brush_is_what_rebuilding_it_would_give() {
     for by in [Vec3d::new(64.0, 0.0, 0.0), Vec3d::new(-13.0, 7.0, 129.0)] {
         for lock in [false, true] {
             let quick = brush
-                .translate_with_alignment(&world, by, lock, |_| geometry_math::vec::Vec2f::new(64.0, 64.0))
+                .translate_with_alignment(&world, by, lock, |_| {
+                    geometry_math::vec::Vec2f::new(64.0, 64.0)
+                })
                 .expect("it moves");
             let slow = map_model::brush::Brush::from_faces(&world, quick.faces().to_vec())
                 .expect("it rebuilds");
@@ -357,4 +382,3 @@ fn a_moved_brush_is_what_rebuilding_it_would_give() {
         }
     }
 }
-

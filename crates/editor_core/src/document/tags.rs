@@ -1,14 +1,18 @@
 //! Document operations for tags.
 
-use super::{Document, HashSet, NodeId, TagFlagField, TagOutcome, flags_match, node};
+use super::{flags_match, node, Document, HashSet, NodeId, TagFlagField, TagOutcome};
 
 impl Document {
     /// Takes the tags the game configuration lists.
     pub fn set_tags(&mut self, brush: Vec<crate::games::Tag>, face: Vec<crate::games::Tag>) {
         self.brush_tags = brush;
         self.face_tags = face;
-        self.hidden_tags
-            .retain(|name| self.brush_tags.iter().chain(&self.face_tags).any(|tag| &tag.name == name));
+        self.hidden_tags.retain(|name| {
+            self.brush_tags
+                .iter()
+                .chain(&self.face_tags)
+                .any(|tag| &tag.name == name)
+        });
         self.mark_changed();
     }
 
@@ -77,7 +81,12 @@ impl Document {
         if !self.format.has_surface_attributes() {
             return None;
         }
-        let bits = tag.pattern.trim().parse::<i32>().ok().filter(|bits| *bits != 0)?;
+        let bits = tag
+            .pattern
+            .trim()
+            .parse::<i32>()
+            .ok()
+            .filter(|bits| *bits != 0)?;
         Some((field, bits))
     }
 
@@ -122,7 +131,10 @@ impl Document {
                     }
                 });
                 if matches.len() > 1 {
-                    TagOutcome::Ambiguous { used: material, changed }
+                    TagOutcome::Ambiguous {
+                        used: material,
+                        changed,
+                    }
                 } else {
                     TagOutcome::Changed(changed)
                 }
@@ -187,7 +199,8 @@ impl Document {
     /// entity a brush belongs to, and finding that entity means walking the tree, which is
     /// not something to do once per brush of a large map.
     fn brushes_tagged(&self, wanted: impl Fn(&crate::games::Tag) -> bool) -> HashSet<NodeId> {
-        let tags: Vec<&crate::games::Tag> = self.brush_tags.iter().filter(|tag| wanted(tag)).collect();
+        let tags: Vec<&crate::games::Tag> =
+            self.brush_tags.iter().filter(|tag| wanted(tag)).collect();
         if tags.is_empty() {
             return HashSet::new();
         }
@@ -251,13 +264,24 @@ impl Document {
 /// `surfaceparm` of the shader its material came from (`SurfaceParmTagMatcher`). A
 /// material that is a plain image has no parms and so carries no such tag. Free of the
 /// document, so the views can ask it while building brushes on many threads.
-pub(super) fn face_carries(tag: &crate::games::Tag, face: &map_model::brush_face::BrushFace, materials: &map_model::material::MaterialCollection) -> bool {
+pub(super) fn face_carries(
+    tag: &crate::games::Tag,
+    face: &map_model::brush_face::BrushFace,
+    materials: &map_model::material::MaterialCollection,
+) -> bool {
     match tag.rule {
         crate::games::TagRule::Material => tag.matches_name(&face.material_name),
-        crate::games::TagRule::ContentFlag | crate::games::TagRule::SurfaceFlag => flags_match(tag, face),
-        crate::games::TagRule::SurfaceParm => materials
-            .get(&face.material_name)
-            .is_some_and(|material| material.surface_parms.iter().any(|parm| tag.matches_name(parm))),
+        crate::games::TagRule::ContentFlag | crate::games::TagRule::SurfaceFlag => {
+            flags_match(tag, face)
+        }
+        crate::games::TagRule::SurfaceParm => {
+            materials.get(&face.material_name).is_some_and(|material| {
+                material
+                    .surface_parms
+                    .iter()
+                    .any(|parm| tag.matches_name(parm))
+            })
+        }
         _ => false,
     }
 }

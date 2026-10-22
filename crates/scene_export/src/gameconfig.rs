@@ -92,7 +92,10 @@ pub fn parse(text: &str, path: &str) -> Result<GameConfig, GameConfigError> {
     })?;
 
     let mut config = GameConfig {
-        search_path: root.pointer("/filesystem/searchpath").and_then(Value::as_str).map(str::to_owned),
+        search_path: root
+            .pointer("/filesystem/searchpath")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
         icon: root.get("icon").and_then(Value::as_str).map(str::to_string),
         version: root.get("version").and_then(Value::as_i64).unwrap_or(0),
         name: root
@@ -143,10 +146,16 @@ pub fn parse(text: &str, path: &str) -> Result<GameConfig, GameConfigError> {
     config.content_flags = parse_flag_names(root.pointer("/faceattribs/contentflags"));
 
     if let Some(tags) = root.get("tags") {
-        config.brush_tags =
-            parse_tags(tags.get("brush"), &config.surface_flags, &config.content_flags);
-        config.face_tags =
-            parse_tags(tags.get("brushface"), &config.surface_flags, &config.content_flags);
+        config.brush_tags = parse_tags(
+            tags.get("brush"),
+            &config.surface_flags,
+            &config.content_flags,
+        );
+        config.face_tags = parse_tags(
+            tags.get("brushface"),
+            &config.surface_flags,
+            &config.content_flags,
+        );
     }
 
     if let Some(scale) = root.pointer("/faceattribs/defaults/scale") {
@@ -401,12 +410,20 @@ mod tests {
         .unwrap();
 
         let by_name = |name: &str| {
-            cfg.face_tags.iter().find(|t| t.name == name).unwrap().pattern.clone()
+            cfg.face_tags
+                .iter()
+                .find(|t| t.name == name)
+                .unwrap()
+                .pattern
+                .clone()
         };
         // `detail` is content bit 27.
         assert_eq!(by_name("Detail"), (1 << 27).to_string());
         // lava|slime|water are bits 3, 4, 5.
-        assert_eq!(by_name("Liquid"), ((1 << 3) | (1 << 4) | (1 << 5)).to_string());
+        assert_eq!(
+            by_name("Liquid"),
+            ((1 << 3) | (1 << 4) | (1 << 5)).to_string()
+        );
         // `hint` is surface bit 8.
         assert_eq!(by_name("Hint"), (1 << 8).to_string());
     }

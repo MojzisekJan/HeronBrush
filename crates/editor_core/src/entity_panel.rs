@@ -12,7 +12,10 @@ pub fn merge_entities<'a>(
     mut entities: impl Iterator<Item = &'a map_model::node::EntityNode> + Clone,
 ) -> map_model::node::EntityNode {
     let Some(first) = entities.next() else {
-        return map_model::node::EntityNode { properties: Vec::new(), children: Vec::new() };
+        return map_model::node::EntityNode {
+            properties: Vec::new(),
+            children: Vec::new(),
+        };
     };
     let rest: Vec<&map_model::node::EntityNode> = entities.collect();
 
@@ -22,11 +25,21 @@ pub fn merge_entities<'a>(
         .filter(|(key, _)| rest.iter().all(|e| e.property(key).is_some()))
         .map(|(key, value)| {
             let shared = rest.iter().all(|e| e.property(key) == Some(value.as_str()));
-            (key.clone(), if shared { value.clone() } else { MULTIPLE_VALUES.to_string() })
+            (
+                key.clone(),
+                if shared {
+                    value.clone()
+                } else {
+                    MULTIPLE_VALUES.to_string()
+                },
+            )
         })
         .collect();
 
-    map_model::node::EntityNode { properties, children: first.children.clone() }
+    map_model::node::EntityNode {
+        properties,
+        children: first.children.clone(),
+    }
 }
 
 /// The dropdown contents for a `choices` property: a label and a value per entry, and
@@ -47,13 +60,20 @@ pub fn choice_menu(choices: &[Choice], value: &str) -> ChoiceMenu {
         .collect();
     let mut values: Vec<String> = choices.iter().map(|c| c.value.clone()).collect();
 
-    let selected = choices.iter().position(|c| c.value == value).unwrap_or_else(|| {
-        labels.push(format!("{value} — (not a listed choice)"));
-        values.push(value.to_string());
-        values.len() - 1
-    });
+    let selected = choices
+        .iter()
+        .position(|c| c.value == value)
+        .unwrap_or_else(|| {
+            labels.push(format!("{value} — (not a listed choice)"));
+            values.push(value.to_string());
+            values.len() - 1
+        });
 
-    ChoiceMenu { labels, values, selected }
+    ChoiceMenu {
+        labels,
+        values,
+        selected,
+    }
 }
 
 /// A colour written as three numbers, as the map format holds one.
@@ -89,8 +109,14 @@ mod tests {
     #[test]
     fn a_choice_menu_keeps_a_value_the_class_does_not_list() {
         let choices = vec![
-            Choice { value: "0".to_string(), description: "Off".to_string() },
-            Choice { value: "1".to_string(), description: "On".to_string() },
+            Choice {
+                value: "0".to_string(),
+                description: "Off".to_string(),
+            },
+            Choice {
+                value: "1".to_string(),
+                description: "On".to_string(),
+            },
         ];
 
         // A listed value selects its own entry, and adds nothing.

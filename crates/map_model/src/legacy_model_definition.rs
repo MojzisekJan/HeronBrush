@@ -55,7 +55,12 @@ struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     fn new(src: &'a str, line: usize) -> Self {
-        Self { src, pos: 0, line, col: 1 }
+        Self {
+            src,
+            pos: 0,
+            line,
+            col: 1,
+        }
     }
 
     fn cur(&self) -> Option<char> {
@@ -118,10 +123,7 @@ impl<'a> Lexer<'a> {
                         self.advance();
                     }
                     if self.pos == start {
-                        return Err(prefix(
-                            location,
-                            &format!("unexpected character `{c}`"),
-                        ));
+                        return Err(prefix(location, &format!("unexpected character `{c}`")));
                     }
                     let text = &self.src[start..self.pos];
                     return Ok(match text.parse::<i64>() {
@@ -146,7 +148,10 @@ struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn new(src: &'a str, line: usize) -> Self {
-        Self { lexer: Lexer::new(src, line), peeked: None }
+        Self {
+            lexer: Lexer::new(src, line),
+            peeked: None,
+        }
     }
 
     fn peek(&mut self) -> Result<(Tok, FileLocation), String> {
@@ -209,12 +214,18 @@ impl<'a> Parser<'a> {
         if trailing != Tok::Eof {
             return Err(prefix(
                 location,
-                &format!("unexpected {} after the model definition", trailing.describe()),
+                &format!(
+                    "unexpected {} after the model definition",
+                    trailing.describe()
+                ),
             ));
         }
 
         cases.reverse();
-        Ok(ExpressionNode::new(ExpressionKind::Switch(cases), Some(start)))
+        Ok(ExpressionNode::new(
+            ExpressionKind::Switch(cases),
+            Some(start),
+        ))
     }
 
     /// `parseStaticModelDefinition`: `"path" [skin [frame]] [key = value]`.
@@ -243,10 +254,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let model = ExpressionNode::new(
-            ExpressionKind::Literal(Value::map(map)),
-            Some(start),
-        );
+        let model = ExpressionNode::new(ExpressionKind::Literal(Value::map(map)), Some(start));
 
         let Tok::Word(key) = self.peek()?.0 else {
             return Ok(model);
@@ -272,14 +280,8 @@ impl<'a> Parser<'a> {
         let premise = ExpressionNode::new(
             ExpressionKind::Binary {
                 operation: BinaryOperation::Equal,
-                left: ExpressionNode::new(
-                    ExpressionKind::Variable(key),
-                    Some(key_location),
-                ),
-                right: ExpressionNode::new(
-                    ExpressionKind::Literal(value),
-                    Some(value_location),
-                ),
+                left: ExpressionNode::new(ExpressionKind::Variable(key), Some(key_location)),
+                right: ExpressionNode::new(ExpressionKind::Literal(value), Some(value_location)),
             },
             Some(key_location),
         );
@@ -314,7 +316,10 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(ExpressionNode::new(ExpressionKind::Map(map), Some(location)))
+        Ok(ExpressionNode::new(
+            ExpressionKind::Map(map),
+            Some(location),
+        ))
     }
 
     /// `parseNamedValue`: `name = "property"`, yielding a reference to that property.
@@ -335,7 +340,10 @@ impl<'a> Parser<'a> {
         let Tok::Str(property) = value else {
             return Err(prefix(
                 value_location,
-                &format!("expected a quoted property name, but got {}", value.describe()),
+                &format!(
+                    "expected a quoted property name, but got {}",
+                    value.describe()
+                ),
             ));
         };
         Ok(ExpressionNode::new(
@@ -346,9 +354,6 @@ impl<'a> Parser<'a> {
 }
 
 /// Parses legacy model syntax, using `line` as its diagnostic source location.
-pub fn parse_legacy_model_definition(
-    text: &str,
-    line: usize,
-) -> Result<ExpressionNode, String> {
+pub fn parse_legacy_model_definition(text: &str, line: usize) -> Result<ExpressionNode, String> {
     Parser::new(text, line).parse()
 }

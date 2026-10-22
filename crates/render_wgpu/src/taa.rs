@@ -94,7 +94,14 @@ impl TaaState {
     /// Plans a frame with the camera's unjittered `view_proj`. `continuing` says nothing
     /// changed but the frame count; `antialiasing` whether a moving camera is filtered;
     /// `target` the samples a still view converges at.
-    pub fn begin(&mut self, view_proj: &[[f32; 4]; 4], continuing: bool, antialiasing: bool, target: u32, scene: SceneChange) -> TaaFrame {
+    pub fn begin(
+        &mut self,
+        view_proj: &[[f32; 4]; 4],
+        continuing: bool,
+        antialiasing: bool,
+        target: u32,
+        scene: SceneChange,
+    ) -> TaaFrame {
         let moved = self.samples > 0 && self.view_proj != *view_proj;
         let mut plain = false;
         if moved {
@@ -110,7 +117,11 @@ impl TaaState {
             self.samples = self.samples.min(CHANGED_SAMPLES);
         }
         self.target = target;
-        let previous = if self.samples > 0 { self.view_proj } else { *view_proj };
+        let previous = if self.samples > 0 {
+            self.view_proj
+        } else {
+            *view_proj
+        };
         let still = self.samples > 0 && !moved;
         // A change of shading alone under a still camera repeats the last jitter (see the
         // module notes). Never when geometry changed: the prepass is drawn anyway, and
@@ -124,7 +135,11 @@ impl TaaState {
             weight: 1.0 / (self.samples + 1) as f32,
             // A still camera's samples differ only by the jitter: a wide box lets them
             // average to the supersampled picture; a moving one clips tightly.
-            spread: if still && continuing && scene == SceneChange::None { 2.5 } else { 1.25 },
+            spread: if still && continuing && scene == SceneChange::None {
+                2.5
+            } else {
+                1.25
+            },
             jitter: (!plain).then_some(index % JITTER_PERIOD + 1),
             noise: index % JITTER_PERIOD,
             previous,
@@ -178,44 +193,97 @@ pub(crate) struct TaaTargets {
 }
 
 impl TaaTargets {
-    pub fn new(device: &wgpu::Device, (width, height): (u32, u32), taa_layout: &wgpu::BindGroupLayout, resolve_layout: &wgpu::BindGroupLayout, bloom_layout: &wgpu::BindGroupLayout, s: Sources<'_>) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        (width, height): (u32, u32),
+        taa_layout: &wgpu::BindGroupLayout,
+        resolve_layout: &wgpu::BindGroupLayout,
+        bloom_layout: &wgpu::BindGroupLayout,
+        s: Sources<'_>,
+    ) -> Self {
         let make = |label: &str, format: wgpu::TextureFormat| {
             device
                 .create_texture(&wgpu::TextureDescriptor {
                     label: Some(label),
-                    size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+                    size: wgpu::Extent3d {
+                        width,
+                        height,
+                        depth_or_array_layers: 1,
+                    },
                     mip_level_count: 1,
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format,
-                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                        | wgpu::TextureUsages::TEXTURE_BINDING,
                     view_formats: &[],
                 })
                 .create_view(&wgpu::TextureViewDescriptor::default())
         };
-        let views = [0, 1].map(|_| make("render_wgpu taa history", wgpu::TextureFormat::Rgba16Float));
+        let views =
+            [0, 1].map(|_| make("render_wgpu taa history", wgpu::TextureFormat::Rgba16Float));
         let meta = [0, 1].map(|_| make("render_wgpu taa history depth and samples", META_FORMAT));
         use wgpu::BindingResource::{Sampler, TextureView};
-        let group = |label: &str, layout: &wgpu::BindGroupLayout, entries: &[(u32, wgpu::BindingResource<'_>)]| {
-            let entries: Vec<wgpu::BindGroupEntry<'_>> = entries.iter().map(|(binding, resource)| wgpu::BindGroupEntry { binding: *binding, resource: resource.clone() }).collect();
-            device.create_bind_group(&wgpu::BindGroupDescriptor { label: Some(label), layout, entries: &entries })
+        let group = |label: &str,
+                     layout: &wgpu::BindGroupLayout,
+                     entries: &[(u32, wgpu::BindingResource<'_>)]| {
+            let entries: Vec<wgpu::BindGroupEntry<'_>> = entries
+                .iter()
+                .map(|(binding, resource)| wgpu::BindGroupEntry {
+                    binding: *binding,
+                    resource: resource.clone(),
+                })
+                .collect();
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some(label),
+                layout,
+                entries: &entries,
+            })
         };
         let taa_groups = [0, 1].map(|i| {
             group(
                 "render_wgpu taa",
                 taa_layout,
-                &[(0, TextureView(s.hdr)), (1, TextureView(s.ssr)), (2, TextureView(s.depth)), (3, TextureView(&views[i])), (4, Sampler(s.sampler)), (5, TextureView(s.motion)), (6, TextureView(&meta[i]))],
+                &[
+                    (0, TextureView(s.hdr)),
+                    (1, TextureView(s.ssr)),
+                    (2, TextureView(s.depth)),
+                    (3, TextureView(&views[i])),
+                    (4, Sampler(s.sampler)),
+                    (5, TextureView(s.motion)),
+                    (6, TextureView(&meta[i])),
+                ],
             )
         });
         let resolve_groups = [0, 1].map(|i| {
             group(
                 "render_wgpu resolve (taa)",
                 resolve_layout,
-                &[(0, TextureView(&views[i])), (1, TextureView(s.ids)), (2, TextureView(s.depth)), (3, TextureView(s.bloom)), (4, TextureView(s.tony)), (5, Sampler(s.sampler)), (9, TextureView(s.ssr))],
+                &[
+                    (0, TextureView(&views[i])),
+                    (1, TextureView(s.ids)),
+                    (2, TextureView(s.depth)),
+                    (3, TextureView(s.bloom)),
+                    (4, TextureView(s.tony)),
+                    (5, Sampler(s.sampler)),
+                    (9, TextureView(s.ssr)),
+                ],
             )
         });
-        let bloom_groups = [0, 1].map(|i| group("render_wgpu bloom source (taa)", bloom_layout, &[(0, TextureView(&views[i])), (1, Sampler(s.sampler))]));
-        Self { views, meta, taa_groups, resolve_groups, bloom_groups }
+        let bloom_groups = [0, 1].map(|i| {
+            group(
+                "render_wgpu bloom source (taa)",
+                bloom_layout,
+                &[(0, TextureView(&views[i])), (1, Sampler(s.sampler))],
+            )
+        });
+        Self {
+            views,
+            meta,
+            taa_groups,
+            resolve_groups,
+            bloom_groups,
+        }
     }
 }
 
@@ -224,7 +292,12 @@ mod tests {
     use super::*;
 
     fn matrix(x: f32) -> [[f32; 4]; 4] {
-        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [x, 0.0, 0.0, 1.0]]
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [x, 0.0, 0.0, 1.0],
+        ]
     }
 
     #[test]
@@ -279,13 +352,21 @@ mod tests {
         for _ in 0..20 {
             // As the host draws an animation: nothing it knows of changed, objects moved.
             let frame = taa.begin(&matrix(0.0), false, true, 64, SceneChange::Moving);
-            assert!(frame.weight >= 1.0 / 17.0 - 1e-6 && frame.weight < 0.1, "{}", frame.weight);
+            assert!(
+                frame.weight >= 1.0 / 17.0 - 1e-6 && frame.weight < 0.1,
+                "{}",
+                frame.weight
+            );
             jitters.push(frame.jitter.expect("jittered"));
             taa.finish(frame);
             assert!(!taa.converged());
         }
         jitters.dedup();
-        assert_eq!(jitters.len(), 20, "an animation froze the jitter: {jitters:?}");
+        assert_eq!(
+            jitters.len(),
+            20,
+            "an animation froze the jitter: {jitters:?}"
+        );
         // An edit without motion vectors keeps four samples but does not repeat the jitter.
         let changed = taa.begin(&matrix(0.0), false, true, 64, SceneChange::Changed);
         assert!((changed.weight - 0.2).abs() < 1e-6);

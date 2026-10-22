@@ -149,7 +149,8 @@ pub fn project_material_directory(map: &std::path::Path) -> Option<PathBuf> {
         return Some(local);
     }
     let maps = directory.ancestors().find(|dir| {
-        dir.file_name().is_some_and(|name| name.eq_ignore_ascii_case("maps"))
+        dir.file_name()
+            .is_some_and(|name| name.eq_ignore_ascii_case("maps"))
     })?;
     let textures = maps.parent()?.join("textures");
     crate::files::is_dir(&textures).then_some(textures)
@@ -201,12 +202,17 @@ mod tests {
         let previous = crate::preferences::pref(Clone::clone);
         for library_enabled in [true, false] {
             let mut preferences = crate::preferences::Preferences::default();
-            if !library_enabled { preferences.asset_library.clear(); }
+            if !library_enabled {
+                preferences.asset_library.clear();
+            }
             crate::preferences::set_current(preferences);
             let loaded = load(None, None, None);
             assert!(loaded.document.path.is_none());
             assert!(!loaded.document.is_modified());
-            assert!(loaded.document.to_map_text().contains("info_player_start"), "must load the starting room");
+            assert!(
+                loaded.document.to_map_text().contains("info_player_start"),
+                "must load the starting room"
+            );
             let issues = crate::validation::validate(&loaded.document);
             assert!(issues.is_empty(), "new map issues: {issues:?}");
         }
@@ -215,7 +221,9 @@ mod tests {
 
     #[test]
     fn opening_a_map_discovers_portable_project_textures_and_normals() {
-        let root = Fixture(std::env::temp_dir().join(format!("heron-project-textures-{}", std::process::id())));
+        let root = Fixture(
+            std::env::temp_dir().join(format!("heron-project-textures-{}", std::process::id())),
+        );
         let maps = root.0.join("maps/district");
         let textures = root.0.join("textures/stone");
         std::fs::create_dir_all(&maps).unwrap();
@@ -223,11 +231,18 @@ mod tests {
         let map = maps.join("tower.map");
         std::fs::write(&map, "{\n\"classname\" \"worldspawn\"\n}\n").unwrap();
         image::RgbaImage::from_pixel(2, 2, image::Rgba([120, 110, 100, 255]))
-            .save(textures.join("wall.png")).unwrap();
+            .save(textures.join("wall.png"))
+            .unwrap();
         image::RgbaImage::from_pixel(2, 2, image::Rgba([128, 128, 255, 255]))
-            .save(textures.join("wall_normal.png")).unwrap();
+            .save(textures.join("wall_normal.png"))
+            .unwrap();
         let opened = Document::open(&map, WorldBounds::default()).unwrap();
-        assert!(opened.materials().get("stone/wall").unwrap().normal_map.is_some());
+        assert!(opened
+            .materials()
+            .get("stone/wall")
+            .unwrap()
+            .normal_map
+            .is_some());
         assert!(!opened.is_modified());
         let saved = root.0.join("documents/saved.map");
         std::fs::create_dir_all(saved.parent().unwrap()).unwrap();
@@ -238,11 +253,20 @@ mod tests {
         assert!(!text.lines().next().unwrap().contains(".local"));
         let moved = root.0.with_extension("relocated");
         std::fs::rename(&root.0, &moved).unwrap();
-        let reopened = Document::open(moved.join("documents/saved.map"), WorldBounds::default()).unwrap();
-        assert!(reopened.materials().get("stone/wall").unwrap().normal_map.is_some());
+        let reopened =
+            Document::open(moved.join("documents/saved.map"), WorldBounds::default()).unwrap();
+        assert!(reopened
+            .materials()
+            .get("stone/wall")
+            .unwrap()
+            .normal_map
+            .is_some());
         std::fs::rename(&moved, &root.0).unwrap();
         let loaded = load(Some(map.clone()), None, None);
-        assert_eq!(loaded.sources.materials.map(|p| p.canonicalize().unwrap()), Some(root.0.join("textures").canonicalize().unwrap()));
+        assert_eq!(
+            loaded.sources.materials.map(|p| p.canonicalize().unwrap()),
+            Some(root.0.join("textures").canonicalize().unwrap())
+        );
         let local = maps.join("textures");
         std::fs::create_dir_all(&local).unwrap();
         assert_eq!(project_material_directory(&map), Some(local));

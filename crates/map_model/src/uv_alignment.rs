@@ -245,7 +245,11 @@ fn measure_angle(face: &BrushFace, point: Vec2f) -> f32 {
         crate::uv::UvCoordSystem::Paraxial => {
             let turned = turn(point, -rotation);
             let angle = vec::measure_angle_3d(
-                vec::normalize(Vec3d::new(f64::from(turned.x()), f64::from(turned.y()), 0.0)),
+                vec::normalize(Vec3d::new(
+                    f64::from(turned.x()),
+                    f64::from(turned.y()),
+                    0.0,
+                )),
                 Vec3d::new(1.0, 0.0, 0.0),
                 Vec3d::new(0.0, 0.0, 1.0),
             );
@@ -347,12 +351,7 @@ pub fn is_justified(
 }
 
 /// Whether the material is already scaled to fit the face along this axis, `isFitted`.
-pub fn is_fitted(
-    face: &BrushFace,
-    polygon: &[Vec3d],
-    material_size: Vec2f,
-    axis: UvAxis,
-) -> bool {
+pub fn is_fitted(face: &BrushFace, polygon: &[Vec3d], material_size: Vec2f, axis: UvAxis) -> bool {
     let Some(wanted) = fit(
         face,
         polygon,
@@ -530,16 +529,39 @@ mod tests {
     fn justifying_puts_the_materials_edge_on_the_faces_edge() {
         let (mut face, polygon) = front_face(parallel());
         face.uv_attributes.offset = Vec2f::new(7.0, 11.0);
-        assert!(!is_justified(&face, &polygon, SIXTY_FOUR, UvAxis::U, UvSign::Plus));
+        assert!(!is_justified(
+            &face,
+            &polygon,
+            SIXTY_FOUR,
+            UvAxis::U,
+            UvSign::Plus
+        ));
 
-        let offset =
-            justify(&face, &polygon, SIXTY_FOUR, UvAxis::U, UvSign::Plus, UvPolicy::Best)
-                .expect("an offset");
+        let offset = justify(
+            &face,
+            &polygon,
+            SIXTY_FOUR,
+            UvAxis::U,
+            UvSign::Plus,
+            UvPolicy::Best,
+        )
+        .expect("an offset");
         face.uv_attributes.offset = Vec2f::new(offset, face.uv_attributes.offset.y());
-        assert!(is_justified(&face, &polygon, SIXTY_FOUR, UvAxis::U, UvSign::Plus));
+        assert!(is_justified(
+            &face,
+            &polygon,
+            SIXTY_FOUR,
+            UvAxis::U,
+            UvSign::Plus
+        ));
 
         // And the far corner of the face now sits on a whole multiple of the material.
-        let at = to_uv(&face, Vec3d::new(32.0, -32.0, 32.0), face.uv_attributes.offset, face.uv_attributes.scale);
+        let at = to_uv(
+            &face,
+            Vec3d::new(32.0, -32.0, 32.0),
+            face.uv_attributes.offset,
+            face.uv_attributes.scale,
+        );
         assert!(
             (normalize_offset(at.x(), 64.0)).abs() < 0.01,
             "the corner is at {at:?}"
@@ -597,7 +619,10 @@ mod tests {
         // The sheet is not squashed onto the face: a whole number of copies still covers
         // it, which at scale 1 it already does (two half-copies is not it -- 0.5 is).
         assert!(scale > 0.0);
-        assert!((scale - 0.5).abs() < 1e-5 || (scale - 1.0).abs() < 1e-5, "{scale}");
+        assert!(
+            (scale - 0.5).abs() < 1e-5 || (scale - 1.0).abs() < 1e-5,
+            "{scale}"
+        );
     }
 
     #[test]
@@ -636,10 +661,24 @@ mod tests {
         let size = Vec2f::new(16.0, 64.0);
         face.uv_attributes.scale = Vec2f::new(1.0, 1.0);
 
-        let next = fit(&face, &polygon, size, UvAxis::U, UvPolicy::Next, UvFitMode::FitToFace)
-            .expect("a scale");
-        let prev = fit(&face, &polygon, size, UvAxis::U, UvPolicy::Prev, UvFitMode::FitToFace)
-            .expect("a scale");
+        let next = fit(
+            &face,
+            &polygon,
+            size,
+            UvAxis::U,
+            UvPolicy::Next,
+            UvFitMode::FitToFace,
+        )
+        .expect("a scale");
+        let prev = fit(
+            &face,
+            &polygon,
+            size,
+            UvAxis::U,
+            UvPolicy::Prev,
+            UvFitMode::FitToFace,
+        )
+        .expect("a scale");
         assert!(next != prev, "next and previous give the same answer");
         // Four copies now. The factor a step moves is how much of the face one copy
         // covers, so "next" is a larger copy and therefore fewer of them: three, and
@@ -662,8 +701,8 @@ mod tests {
         .expect("an offset");
         face.uv_attributes.offset = Vec2f::new(offset, 0.0);
 
-        let anchor = anchor_vertex(&face, &polygon, SIXTY_FOUR, UvAxis::U, UvSign::Plus)
-            .expect("a vertex");
+        let anchor =
+            anchor_vertex(&face, &polygon, SIXTY_FOUR, UvAxis::U, UvSign::Plus).expect("a vertex");
         assert_eq!(anchor.x(), 32.0, "the far corner along U");
     }
 
@@ -673,11 +712,25 @@ mod tests {
         let point = vec![Vec3d::zero()];
         assert_eq!(align(&face, &point, UvPolicy::Best), None);
         assert_eq!(
-            justify(&face, &point, SIXTY_FOUR, UvAxis::U, UvSign::Plus, UvPolicy::Best),
+            justify(
+                &face,
+                &point,
+                SIXTY_FOUR,
+                UvAxis::U,
+                UvSign::Plus,
+                UvPolicy::Best
+            ),
             None
         );
         assert_eq!(
-            fit(&face, &point, SIXTY_FOUR, UvAxis::U, UvPolicy::Best, UvFitMode::FitToFace),
+            fit(
+                &face,
+                &point,
+                SIXTY_FOUR,
+                UvAxis::U,
+                UvPolicy::Best,
+                UvFitMode::FitToFace
+            ),
             None
         );
     }

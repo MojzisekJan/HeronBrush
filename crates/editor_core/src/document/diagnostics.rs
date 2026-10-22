@@ -1,5 +1,5 @@
 //! Explicit corrections of findings, scoped to their object and one Undo step.
-use super::{Document, Edit, Node, NodeKind, brush_node, node};
+use super::{brush_node, node, Document, Edit, Node, NodeKind};
 use crate::validation::Issue;
 impl Document {
     pub fn issue_fix_label(&self, issue: &Issue) -> Option<&'static str> {
@@ -108,11 +108,9 @@ mod tests {
             .unwrap();
         assert!(doc.fix_issue(&issue).unwrap());
         assert_eq!(doc.selection_ids(), &selected);
-        assert!(
-            !crate::validation::validate(&doc)
-                .iter()
-                .any(|i| i.kind == "invalid UV scale")
-        );
+        assert!(!crate::validation::validate(&doc)
+            .iter()
+            .any(|i| i.kind == "invalid UV scale"));
         assert!(doc.fix_issue(&issue).is_err());
         doc.undo();
         assert_eq!(doc.to_map_text(), before);
@@ -130,11 +128,9 @@ mod tests {
             .unwrap();
         doc.fix_issue(&issue).unwrap();
         assert!(doc.to_map_text().contains("keep"));
-        assert!(
-            !crate::validation::validate(&doc)
-                .iter()
-                .any(|i| i.kind == "empty property key")
-        );
+        assert!(!crate::validation::validate(&doc)
+            .iter()
+            .any(|i| i.kind == "empty property key"));
         doc.undo();
         assert_eq!(doc.to_map_text(), before);
     }

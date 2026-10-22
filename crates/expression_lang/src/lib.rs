@@ -32,7 +32,8 @@ pub use expression::{BinaryOperation, ExpressionKind, ExpressionNode, UnaryOpera
 pub use interpolate::interpolate;
 pub use parser::{parse_expression, ParseMode, Parser, TokenizerState};
 pub use types::{
-    ParseValueTypeError, type_name, BoundedRange, LeftBoundedRange, Range, RightBoundedRange, ValueType,
+    type_name, BoundedRange, LeftBoundedRange, ParseValueTypeError, Range, RightBoundedRange,
+    ValueType,
 };
 pub use value::Value;
 
@@ -52,7 +53,10 @@ pub struct FileLocation {
 impl FileLocation {
     /// A location with a line and a column.
     pub fn new(line: usize, column: usize) -> Self {
-        Self { line, column: Some(column) }
+        Self {
+            line,
+            column: Some(column),
+        }
     }
 }
 

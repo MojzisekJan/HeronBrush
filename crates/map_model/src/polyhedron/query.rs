@@ -154,7 +154,9 @@ impl<T: Float> Polyhedron<T> {
             }
             // The twin runs the other way, so it starts where this one ends.
             if self.half_edge(twin).origin != self.destination(id) {
-                return Err(format!("half-edge {index}: its twin does not run back along it"));
+                return Err(format!(
+                    "half-edge {index}: its twin does not run back along it"
+                ));
             }
         }
 
@@ -166,13 +168,14 @@ impl<T: Float> Polyhedron<T> {
             }
             for half_edge in &half_edges {
                 if self.half_edge(*half_edge).face != id {
-                    return Err(format!("face {index}: a boundary half-edge belongs elsewhere"));
+                    return Err(format!(
+                        "face {index}: a boundary half-edge belongs elsewhere"
+                    ));
                 }
             }
             // Every vertex of a face must lie on that face's plane.
             for position in self.face_positions(id) {
-                if face.plane.point_status(position, T::POINT_STATUS_EPSILON)
-                    != PlaneStatus::Inside
+                if face.plane.point_status(position, T::POINT_STATUS_EPSILON) != PlaneStatus::Inside
                 {
                     return Err(format!("face {index}: a vertex is off its plane"));
                 }
@@ -182,7 +185,9 @@ impl<T: Float> Polyhedron<T> {
         for (index, vertex) in self.vertices.iter().enumerate() {
             let id = VertexId::from_index(index);
             if self.half_edge(vertex.leaving).origin != id {
-                return Err(format!("vertex {index}: its leaving half-edge starts elsewhere"));
+                return Err(format!(
+                    "vertex {index}: its leaving half-edge starts elsewhere"
+                ));
             }
             if self.vertex_half_edges(id).len() < 3 {
                 return Err(format!("vertex {index}: fewer than 3 edges meet here"));

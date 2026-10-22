@@ -12,19 +12,19 @@
 use std::io::{BufRead, Write};
 use std::rc::Rc;
 
-use serde_json::{json, Value};
 use geometry_math::bbox::Bbox3d;
 use geometry_math::vec::Vec3d;
+use serde_json::{json, Value};
 
 use crate::collab::{Session, SessionEvent};
 use crate::document::{Document, FaceRef};
 use crate::history::Edit;
 use crate::world::WorldBounds;
 
-#[path = "mcp_extensions.rs"]
-mod extensions;
 #[path = "mcp_animation.rs"]
 mod animation;
+#[path = "mcp_extensions.rs"]
+mod extensions;
 #[path = "mcp_settings.rs"]
 mod settings;
 
@@ -47,7 +47,7 @@ pub enum FrontendState {
 pub struct Collab {
     pub settings_path: Option<std::path::PathBuf>,
     pub settings_changed: bool,
-    pub animation_preview: Option<(u32,u32)>,
+    pub animation_preview: Option<(u32, u32)>,
     pub trigger_preview: Option<bool>,
     session: Option<Rc<Session>>,
     pending_host: Option<crate::collab::session::SessionInbox>,
@@ -68,7 +68,9 @@ impl Collab {
         self.check_pending_host(document);
         self.absorb(document);
     }
-    pub fn frontend_status(&self) -> String { session_status(self) }
+    pub fn frontend_status(&self) -> String {
+        session_status(self)
+    }
     /// Where a frontend's session stands, for its window and its header indicator.
     pub fn frontend_state(&self) -> FrontendState {
         match &self.session {
@@ -79,7 +81,9 @@ impl Collab {
             None => FrontendState::Idle,
         }
     }
-    pub fn frontend_active(&self) -> bool { self.session.is_some() || self.pending_host.is_some() }
+    pub fn frontend_active(&self) -> bool {
+        self.session.is_some() || self.pending_host.is_some()
+    }
     /// For a header indicator: whether this end hosts, and how many are linked. A host
     /// still waiting for its first guest counts as hosting with none.
     pub fn frontend_session(&self) -> Option<(bool, usize)> {
@@ -88,14 +92,28 @@ impl Collab {
             None => self.pending_host.as_ref().map(|_| (true, 0)),
         }
     }
-    pub fn host_frontend(&mut self, name: String, token: String, inbox: crate::collab::session::SessionInbox) -> Result<String, String> {
-        if self.frontend_active() { return Err("Leave the current session first".into()); }
+    pub fn host_frontend(
+        &mut self,
+        name: String,
+        token: String,
+        inbox: crate::collab::session::SessionInbox,
+    ) -> Result<String, String> {
+        if self.frontend_active() {
+            return Err("Leave the current session first".into());
+        }
         self.my_name = name;
         self.pending_host = Some(inbox);
         Ok(token)
     }
-    pub fn join_frontend(&mut self, document: &mut Document, name: String, session: Session) -> Result<(), String> {
-        if self.frontend_active() { return Err("Leave the current session first".into()); }
+    pub fn join_frontend(
+        &mut self,
+        document: &mut Document,
+        name: String,
+        session: Session,
+    ) -> Result<(), String> {
+        if self.frontend_active() {
+            return Err("Leave the current session first".into());
+        }
         self.my_name = name;
         self.adopt(document, session);
         Ok(())
@@ -119,7 +137,9 @@ impl Collab {
 
     /// Wires `document`'s edit hook to a freshly made session, sends our name, stores it.
     fn adopt(&mut self, document: &mut Document, session: Session) {
-        if session.is_host() { self.outage_edits.borrow_mut().clear(); }
+        if session.is_host() {
+            self.outage_edits.borrow_mut().clear();
+        }
         self.outage_active = false;
         let session = Rc::new(session);
         if !self.my_name.is_empty() {
@@ -188,7 +208,9 @@ impl Collab {
         }
         if left {
             self.outage_active = true;
-            self.outage_edits.borrow_mut().extend(session.take_unacknowledged());
+            self.outage_edits
+                .borrow_mut()
+                .extend(session.take_unacknowledged());
             let held = self.outage_edits.clone();
             document.set_on_edit(Rc::new(move |edit| held.borrow_mut().push(edit.clone())));
             document.clear_peers();
@@ -597,17 +619,42 @@ pub(crate) fn call_tool(
     name: &str,
     args: &Value,
 ) -> Result<String, String> {
-    if document.in_transaction() { return Err("The editor is finishing an interactive drag; retry after the mouse is released.".into()); }
+    if document.in_transaction() {
+        return Err(
+            "The editor is finishing an interactive drag; retry after the mouse is released."
+                .into(),
+        );
+    }
     let definition = tool_definitions()
         .into_iter()
         .find(|tool| tool["name"] == name)
         .ok_or_else(|| format!("no such tool: {name}"))?;
     extensions::validate(args, &definition["inputSchema"], "arguments")?;
-    if matches!(name, "get_editor_settings" | "set_editor_settings") { return settings::call(collab, name, args); }
-    if matches!(name,"configure_animation_trigger"|"get_animation_trigger"|"preview_animation_trigger"|"animation_library"|"connect_animation_button"|"set_animation_pivot"|"key_animation_pose"|"retime_animation"|"get_animation"|"set_animation"|"apply_animation_recipe"|"sample_animation"){return animation::call(document,collab,name,args);}
+    if matches!(name, "get_editor_settings" | "set_editor_settings") {
+        return settings::call(collab, name, args);
+    }
+    if matches!(
+        name,
+        "configure_animation_trigger"
+            | "get_animation_trigger"
+            | "preview_animation_trigger"
+            | "animation_library"
+            | "connect_animation_button"
+            | "set_animation_pivot"
+            | "key_animation_pose"
+            | "retime_animation"
+            | "get_animation"
+            | "set_animation"
+            | "apply_animation_recipe"
+            | "sample_animation"
+    ) {
+        return animation::call(document, collab, name, args);
+    }
     match name {
         "new_map" => {
-            if collab.is_live() { return Err("leave the shared session before creating another map".into()); }
+            if collab.is_live() {
+                return Err("leave the shared session before creating another map".into());
+            }
             collab.outage_edits.borrow_mut().clear();
             if collab.outage_active {
                 document.clear_on_edit();
@@ -637,7 +684,9 @@ pub(crate) fn call_tool(
         }
         "session_status" => Ok(session_status(collab)),
         "open_map" => {
-            if collab.is_live() { return Err("leave the shared session before opening another map".into()); }
+            if collab.is_live() {
+                return Err("leave the shared session before opening another map".into());
+            }
             let path = string_or(args, "path", "");
             if path.is_empty() {
                 return Err("`path` is required".into());
@@ -689,17 +738,25 @@ pub(crate) fn call_tool(
         }
         "select" => select(document, args),
         "set_face_color" => set_face_color(document, args),
-        "omit_covered_faces" => Ok(format!("Omitted {} fully covered static faces",document.omit_covered_faces())),
+        "omit_covered_faces" => Ok(format!(
+            "Omitted {} fully covered static faces",
+            document.omit_covered_faces()
+        )),
         "set_face_export_hidden" => {
-            let hidden=args["hidden"].as_bool().ok_or("hidden must be a boolean")?;
-            match (args.get("brush"),args.get("face")) {
-                (Some(brush),Some(face))=> {
-                    let reference=FaceRef{node:map_model::node::NodeId(extensions::node_id(brush)?),face:face.as_u64().ok_or("invalid face")? as usize};
-                    if document.face_at(reference).is_none(){return Err("no such brush face".into());}
-                    document.set_export_hidden_on(&[reference],hidden);
+            let hidden = args["hidden"].as_bool().ok_or("hidden must be a boolean")?;
+            match (args.get("brush"), args.get("face")) {
+                (Some(brush), Some(face)) => {
+                    let reference = FaceRef {
+                        node: map_model::node::NodeId(extensions::node_id(brush)?),
+                        face: face.as_u64().ok_or("invalid face")? as usize,
+                    };
+                    if document.face_at(reference).is_none() {
+                        return Err("no such brush face".into());
+                    }
+                    document.set_export_hidden_on(&[reference], hidden);
                 }
-                (None,None)=>document.edit_faces(|face|face.export_hidden=hidden),
-                _=>return Err("provide both brush and face".into()),
+                (None, None) => document.edit_faces(|face| face.export_hidden = hidden),
+                _ => return Err("provide both brush and face".into()),
             }
             Ok("Updated face export visibility; collision is preserved.".into())
         }
@@ -744,22 +801,45 @@ pub(crate) fn call_tool(
             document.subtract_selection()
         )),
         "join_corner" => {
-            if args["expected_revision"].as_u64().is_some_and(|r|r!=document.revision()) {return Err("Map or selection changed; request another preview.".into());}
-            let read_rounding = |name: &str| -> Result<Option<(f64,usize)>,String> {
-                let Some(value)=args.get(name) else { return Ok(None); };
-                let radius=value["radius"].as_f64().ok_or_else(||format!("{name}.radius must be a number"))?;
-                let segments=match value.get("segments") {
-                    None=>8,
-                    Some(value)=>value.as_u64().filter(|v|(1..=64).contains(v)).ok_or_else(||format!("{name}.segments must be from 1 to 64"))? as usize,
+            if args["expected_revision"]
+                .as_u64()
+                .is_some_and(|r| r != document.revision())
+            {
+                return Err("Map or selection changed; request another preview.".into());
+            }
+            let read_rounding = |name: &str| -> Result<Option<(f64, usize)>, String> {
+                let Some(value) = args.get(name) else {
+                    return Ok(None);
                 };
-                Ok(Some((radius,segments)))
+                let radius = value["radius"]
+                    .as_f64()
+                    .ok_or_else(|| format!("{name}.radius must be a number"))?;
+                let segments = match value.get("segments") {
+                    None => 8,
+                    Some(value) => value
+                        .as_u64()
+                        .filter(|v| (1..=64).contains(v))
+                        .ok_or_else(|| format!("{name}.segments must be from 1 to 64"))?
+                        as usize,
+                };
+                Ok(Some((radius, segments)))
             };
-            let rounding=crate::corner_join::Rounding { outer:read_rounding("outer")?,inner:read_rounding("inner")?,concentric:args["concentric"].as_bool().unwrap_or(false),wedges:args["wedges"].as_bool().unwrap_or(false),preserve_thickness:args["preserve_thickness"].as_bool().unwrap_or(false) };
-            let draft=document.preview_corner_join_options(rounding)?;
-            let [a,b]=draft.join.before.each_ref().map(|brush|brush.bounds());
-            let overlap=(0..3).map(|axis|a.max[axis].min(b.max[axis])-a.min[axis].max(b.min[axis])).product::<f64>();
-            let dry=args["dry_run"].as_bool().unwrap_or(true);
-            if !dry {document.join_corner_options(draft.revision,rounding)?;}
+            let rounding = crate::corner_join::Rounding {
+                outer: read_rounding("outer")?,
+                inner: read_rounding("inner")?,
+                concentric: args["concentric"].as_bool().unwrap_or(false),
+                wedges: args["wedges"].as_bool().unwrap_or(false),
+                preserve_thickness: args["preserve_thickness"].as_bool().unwrap_or(false),
+            };
+            let draft = document.preview_corner_join_options(rounding)?;
+            let [a, b] = draft.join.before.each_ref().map(|brush| brush.bounds());
+            let overlap = (0..3)
+                .map(|axis| a.max[axis].min(b.max[axis]) - a.min[axis].max(b.min[axis]))
+                .product::<f64>();
+            let dry = args["dry_run"].as_bool().unwrap_or(true);
+            if !dry {
+                document.join_corner_options(draft.revision, rounding)?;
+            }
             Ok(json!({"dry_run":dry,"revision":document.revision(),"brush_ids":draft.ids.map(|id|id.0.to_string()),"brush_count":2+draft.join.added.len(),"added_brushes":draft.join.added.len(),"plane":{"normal":draft.join.plane.normal.v,"distance":draft.join.plane.distance},"removed_overlap_volume":overlap,"removed_volume":draft.join.removed_volume,"added_volume":draft.join.added.iter().map(|brush|brush.volume()).sum::<f64>()}).to_string())
         }
         "csg_merge" => {
@@ -778,20 +858,28 @@ pub(crate) fn call_tool(
         }
         "hollow" => {
             let thickness = f64_or(args, "thickness", 16.0);
-            Ok(format!(
-                "hollowed {} brushes",
-                {
-                    let direction=match string_or(args,"direction","inward") {
-                        "inward"=>map_model::hollow::Direction::Inward,
-                        "outward"=>map_model::hollow::Direction::Outward,
-                        "centered"=>map_model::hollow::Direction::Centered,
-                        _=>return Err("direction must be inward, outward or centered".into()),
-                    };
-                    let faces=if args["open_selected_faces"].as_bool().unwrap_or(false) {document.selected_faces()} else {Vec::new()};
-                    if args["open_selected_faces"].as_bool().unwrap_or(false) && faces.is_empty() {return Err("Select the faces to open first.".into());}
-                    document.hollow_selection_options(thickness,direction,&faces,args["join_convex"].as_bool().unwrap_or(false))?
+            Ok(format!("hollowed {} brushes", {
+                let direction = match string_or(args, "direction", "inward") {
+                    "inward" => map_model::hollow::Direction::Inward,
+                    "outward" => map_model::hollow::Direction::Outward,
+                    "centered" => map_model::hollow::Direction::Centered,
+                    _ => return Err("direction must be inward, outward or centered".into()),
+                };
+                let faces = if args["open_selected_faces"].as_bool().unwrap_or(false) {
+                    document.selected_faces()
+                } else {
+                    Vec::new()
+                };
+                if args["open_selected_faces"].as_bool().unwrap_or(false) && faces.is_empty() {
+                    return Err("Select the faces to open first.".into());
                 }
-            ))
+                document.hollow_selection_options(
+                    thickness,
+                    direction,
+                    &faces,
+                    args["join_convex"].as_bool().unwrap_or(false),
+                )?
+            }))
         }
         "group_selection" => {
             let group_name = string_or(args, "name", "Group");
@@ -819,11 +907,18 @@ pub(crate) fn call_tool(
         "describe_brush" => describe_brush(document, args),
         // What the person selected in the window, for "change this".
         "get_selection" => {
-            let mut ids: Vec<String> = document.selection_ids().iter().map(|id| id.0.to_string()).collect();
+            let mut ids: Vec<String> = document
+                .selection_ids()
+                .iter()
+                .map(|id| id.0.to_string())
+                .collect();
             ids.sort();
             Ok(json!({ "count": ids.len(), "ids": ids }).to_string())
         }
-        "describe_selection" => Ok(serde_json::to_string_pretty(&crate::selection_report::describe(document)).unwrap_or_default()),
+        "describe_selection" => Ok(serde_json::to_string_pretty(
+            &crate::selection_report::describe(document),
+        )
+        .unwrap_or_default()),
         "entity_graph" => {
             let graph = document.entity_graph();
             let nodes: Vec<Value> = graph.nodes.iter().map(|n| json!({
@@ -833,12 +928,21 @@ pub(crate) fn call_tool(
             let edges: Vec<Value> = graph.edges.iter().map(|e| json!({
                 "from": e.from.0.to_string(), "to": e.to.0.to_string(), "key": e.key, "value": e.value,
             })).collect();
-            Ok(serde_json::to_string_pretty(&json!({ "nodes": nodes, "edges": edges })).unwrap_or_default())
+            Ok(
+                serde_json::to_string_pretty(&json!({ "nodes": nodes, "edges": edges }))
+                    .unwrap_or_default(),
+            )
         }
         "link_entities" => {
-            let from = map_model::node::NodeId(extensions::node_id(args.get("from").ok_or("`from` is required")?)?);
-            let to = map_model::node::NodeId(extensions::node_id(args.get("to").ok_or("`to` is required")?)?);
-            document.link_entities(from, to).map(|name| format!("linked: it now aims at \"{name}\""))
+            let from = map_model::node::NodeId(extensions::node_id(
+                args.get("from").ok_or("`from` is required")?,
+            )?);
+            let to = map_model::node::NodeId(extensions::node_id(
+                args.get("to").ok_or("`to` is required")?,
+            )?);
+            document
+                .link_entities(from, to)
+                .map(|name| format!("linked: it now aims at \"{name}\""))
         }
         "load_definitions" => {
             let path = string_or(args, "path", "");
@@ -912,7 +1016,7 @@ pub(crate) fn call_tool(
         }
         "export" => extensions::export(document, args, false),
         "check_export" => extensions::export(document, args, true),
-        "get_export_settings" => extensions::export_settings(document,args),
+        "get_export_settings" => extensions::export_settings(document, args),
         "list_plugins" => extensions::list_plugins(),
         "run_plugin" => extensions::run_plugin(document, args),
         "duplicate_selection" => {
@@ -970,8 +1074,8 @@ fn host_session(
         }
         "tcp" => {
             let port = args.get("port").and_then(Value::as_u64).unwrap_or(27960) as u16;
-            let (_, session_rx) = Session::host_on_this_network(port)
-                .map_err(|error| error.to_string())?;
+            let (_, session_rx) =
+                Session::host_on_this_network(port).map_err(|error| error.to_string())?;
             collab.pending_host = Some(session_rx);
             Ok(format!(
                 "hosting on TCP port {port}. The other person joins with this machine's \
@@ -1079,7 +1183,10 @@ fn add_shape(document: &mut Document, args: &Value) -> Result<String, String> {
     let kind_name = string_or(args, "kind", "cuboid").to_ascii_lowercase();
     let min = vec3(args, "min")?;
     let max = vec3(args, "max")?;
-    let bounds = Bbox3d::new(geometry_math::vec::min(min, max), geometry_math::vec::max(min, max));
+    let bounds = Bbox3d::new(
+        geometry_math::vec::min(min, max),
+        geometry_math::vec::max(min, max),
+    );
     let material = string_or(args, "material", map_model::shapes::DEFAULT_MATERIAL);
     let world = document.world_bounds();
 
@@ -1091,8 +1198,10 @@ fn add_shape(document: &mut Document, args: &Value) -> Result<String, String> {
         } else {
             geometry_math::util::Axis::X
         };
-        vec![map_model::shapes::create_wedge(&world, &bounds, axis, material)
-            .map_err(|error| format!("could not build the shape: {error}"))?]
+        vec![
+            map_model::shapes::create_wedge(&world, &bounds, axis, material)
+                .map_err(|error| format!("could not build the shape: {error}"))?,
+        ]
     } else {
         let kind = match kind_name.as_str() {
             "cuboid" | "box" => ShapeKind::Cuboid,
@@ -1111,27 +1220,43 @@ fn add_shape(document: &mut Document, args: &Value) -> Result<String, String> {
             ..ShapeParameters::default()
         };
         parameters.axis = axis_arg(args)?;
-        if kind==ShapeKind::Stairs {
+        if kind == ShapeKind::Stairs {
             use crate::shape_tool::StairDirection;
-            let axis=if args.get("axis").is_some() {parameters.axis} else {geometry_math::util::Axis::X};
-            let ascending=args["ascending"].as_bool().unwrap_or(true);
-            parameters.stair_direction=match (axis,ascending) {
-                (geometry_math::util::Axis::X,true)=>StairDirection::PosX,
-                (geometry_math::util::Axis::X,false)=>StairDirection::NegX,
-                (geometry_math::util::Axis::Y,true)=>StairDirection::PosY,
-                (geometry_math::util::Axis::Y,false)=>StairDirection::NegY,
-                _=>return Err("Stairs run along x or y.".into()),
+            let axis = if args.get("axis").is_some() {
+                parameters.axis
+            } else {
+                geometry_math::util::Axis::X
+            };
+            let ascending = args["ascending"].as_bool().unwrap_or(true);
+            parameters.stair_direction = match (axis, ascending) {
+                (geometry_math::util::Axis::X, true) => StairDirection::PosX,
+                (geometry_math::util::Axis::X, false) => StairDirection::NegX,
+                (geometry_math::util::Axis::Y, true) => StairDirection::PosY,
+                (geometry_math::util::Axis::Y, false) => StairDirection::NegY,
+                _ => return Err("Stairs run along x or y.".into()),
             };
         }
-        if let Some(value)=args.get("accuracy") {
-            if kind==ShapeKind::HollowSphere { return Err("hollow_sphere uses brushes (20 to 320, in steps of four), not accuracy".into()); }
-            parameters.accuracy=value.as_u64().filter(|n|*n<=4)
-                .ok_or("accuracy is outside the supported range")? as usize;
+        if let Some(value) = args.get("accuracy") {
+            if kind == ShapeKind::HollowSphere {
+                return Err(
+                    "hollow_sphere uses brushes (20 to 320, in steps of four), not accuracy".into(),
+                );
+            }
+            parameters.accuracy = value
+                .as_u64()
+                .filter(|n| *n <= 4)
+                .ok_or("accuracy is outside the supported range")?
+                as usize;
         }
         if let Some(value) = args.get("brushes") {
-            if kind != ShapeKind::HollowSphere { return Err("brushes is only supported for hollow_sphere".into()); }
-            parameters.sphere_brushes = value.as_u64().filter(|n|(20..=320).contains(n) && n%4==0)
-                .ok_or("brushes must be a multiple of four from 20 to 320")? as usize;
+            if kind != ShapeKind::HollowSphere {
+                return Err("brushes is only supported for hollow_sphere".into());
+            }
+            parameters.sphere_brushes = value
+                .as_u64()
+                .filter(|n| (20..=320).contains(n) && n % 4 == 0)
+                .ok_or("brushes must be a multiple of four from 20 to 320")?
+                as usize;
         }
         if let Some(sides) = args.get("sides").and_then(Value::as_u64) {
             parameters.num_sides = (sides as usize).max(3);
@@ -1139,16 +1264,22 @@ fn add_shape(document: &mut Document, args: &Value) -> Result<String, String> {
         if let Some(step) = args.get("step_height").and_then(Value::as_f64) {
             parameters.step_height = step;
         }
-        parameters.stairs.layout=match string_or(args,"stair_layout","straight") {
-            "straight"=>map_model::shapes::StairLayout::Straight,
-            "left"=>map_model::shapes::StairLayout::Left,
-            "right"=>map_model::shapes::StairLayout::Right,
-            "return"=>map_model::shapes::StairLayout::Return,
-            _=>return Err("stair_layout must be straight, left, right or return".into()),
+        parameters.stairs.layout = match string_or(args, "stair_layout", "straight") {
+            "straight" => map_model::shapes::StairLayout::Straight,
+            "left" => map_model::shapes::StairLayout::Left,
+            "right" => map_model::shapes::StairLayout::Right,
+            "return" => map_model::shapes::StairLayout::Return,
+            _ => return Err("stair_layout must be straight, left, right or return".into()),
         };
-        if let Some(v)=args["landing"].as_f64() {parameters.stairs.landing=v;}
-        if let Some(v)=args["flight_width"].as_f64() {parameters.stairs.width=v;}
-        if let Some(v)=args["slab_thickness"].as_f64() {parameters.stairs.slab=v;}
+        if let Some(v) = args["landing"].as_f64() {
+            parameters.stairs.landing = v;
+        }
+        if let Some(v) = args["flight_width"].as_f64() {
+            parameters.stairs.width = v;
+        }
+        if let Some(v) = args["slab_thickness"].as_f64() {
+            parameters.stairs.slab = v;
+        }
         parameters.hollow = args.get("hollow").and_then(Value::as_bool).unwrap_or(false);
         if let Some(thickness) = args.get("thickness").and_then(Value::as_f64) {
             parameters.thickness = thickness;
@@ -1213,7 +1344,9 @@ fn select(document: &mut Document, args: &Value) -> Result<String, String> {
             let mut chosen = std::collections::BTreeSet::new();
             for id in ids {
                 let id = extensions::node_id(id)?;
-                if map_model::node::find_node(document.tree_world(), map_model::node::NodeId(id)).is_none() {
+                if map_model::node::find_node(document.tree_world(), map_model::node::NodeId(id))
+                    .is_none()
+                {
                     return Err(format!("no object with id {id}"));
                 }
                 chosen.insert(id);
@@ -1229,26 +1362,39 @@ fn select(document: &mut Document, args: &Value) -> Result<String, String> {
 }
 
 fn set_surface_material(document: &mut Document, args: &Value) -> Result<String, String> {
-    let value = if args.get("reset").and_then(Value::as_bool).unwrap_or(false) { None } else {
-        let factor = |name, default, max| -> Result<f64,String> {
-            let v = args.get(name).map(|v|v.as_f64().ok_or_else(||format!("{name} must be a number"))).transpose()?.unwrap_or(default);
-            if !v.is_finite() || v < 0.0 || v > max { return Err(format!("{name} must be between 0 and {max}")); }
+    let value = if args.get("reset").and_then(Value::as_bool).unwrap_or(false) {
+        None
+    } else {
+        let factor = |name, default, max| -> Result<f64, String> {
+            let v = args
+                .get(name)
+                .map(|v| v.as_f64().ok_or_else(|| format!("{name} must be a number")))
+                .transpose()?
+                .unwrap_or(default);
+            if !v.is_finite() || v < 0.0 || v > max {
+                return Err(format!("{name} must be between 0 and {max}"));
+            }
             Ok(v)
         };
         Some(map_model::brush_face::SurfaceMaterial {
-            roughness:(factor("roughness",0.65,1.0)?*100.0).round() as u8,
-            metallic:(factor("metallic",0.0,1.0)?*100.0).round() as u8,
-            emission:(factor("emission",0.0,8.0)?*100.0).round() as u16,
+            roughness: (factor("roughness", 0.65, 1.0)? * 100.0).round() as u8,
+            metallic: (factor("metallic", 0.0, 1.0)? * 100.0).round() as u8,
+            emission: (factor("emission", 0.0, 8.0)? * 100.0).round() as u16,
         })
     };
-    let changed=match (args.get("brush"),args.get("face")) {
-        (Some(brush),Some(face)) => {
-            let reference=FaceRef {node:map_model::node::NodeId(extensions::node_id(brush)?),face:face.as_u64().ok_or("invalid face")? as usize};
-            if document.face_at(reference).is_none() { return Err("no such brush face".into()); }
-            document.set_surface_material_on(&[reference],value)
+    let changed = match (args.get("brush"), args.get("face")) {
+        (Some(brush), Some(face)) => {
+            let reference = FaceRef {
+                node: map_model::node::NodeId(extensions::node_id(brush)?),
+                face: face.as_u64().ok_or("invalid face")? as usize,
+            };
+            if document.face_at(reference).is_none() {
+                return Err("no such brush face".into());
+            }
+            document.set_surface_material_on(&[reference], value)
         }
-        (None,None)=>document.set_surface_material(value),
-        _=>return Err("provide both brush and face".into()),
+        (None, None) => document.set_surface_material(value),
+        _ => return Err("provide both brush and face".into()),
     };
     Ok(format!("updated {changed} faces"))
 }
@@ -1260,15 +1406,29 @@ fn set_face_color(document: &mut Document, args: &Value) -> Result<String, Strin
     }
     let color = if let Some(gradient) = args.get("gradient") {
         let angle = f64_or(gradient, "angle", 0.0) as f32;
-        if !angle.is_finite() { return Err("gradient angle must be finite".into()); }
-        let kind = gradient.get("type").and_then(Value::as_str).unwrap_or("linear");
-        if kind != "linear" && kind != "radial" { return Err("gradient type must be linear or radial".into()); }
+        if !angle.is_finite() {
+            return Err("gradient angle must be finite".into());
+        }
+        let kind = gradient
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or("linear");
+        if kind != "linear" && kind != "radial" {
+            return Err("gradient type must be linear or radial".into());
+        }
         let point = |name: &str| -> Result<Option<[f32; 2]>, String> {
-            let Some(value) = gradient.get(name) else { return Ok(None) };
-            let pair = value.as_array().filter(|a| a.len() == 2).ok_or(format!("{name} must be [u, v]"))?;
+            let Some(value) = gradient.get(name) else {
+                return Ok(None);
+            };
+            let pair = value
+                .as_array()
+                .filter(|a| a.len() == 2)
+                .ok_or(format!("{name} must be [u, v]"))?;
             let p = [pair[0].as_f64(), pair[1].as_f64()];
             match p {
-                [Some(u), Some(v)] if u.is_finite() && v.is_finite() => Ok(Some([u as f32, v as f32])),
+                [Some(u), Some(v)] if u.is_finite() && v.is_finite() => {
+                    Ok(Some([u as f32, v as f32]))
+                }
                 _ => Err(format!("{name} must be two finite numbers")),
             }
         };
@@ -1280,18 +1440,53 @@ fn set_face_color(document: &mut Document, args: &Value) -> Result<String, Strin
         if let Some(values) = gradient.get("stops") {
             use map_model::brush_face::{ColorStop, GradientStops};
             let values = values.as_array().ok_or("stops must be an array")?;
-            let stops = values.iter().map(|value| Ok(ColorStop {
-                position: value.get("position").and_then(Value::as_f64).ok_or("stop position is required")? as f32,
-                color: rgb(value, "color")?,
-            })).collect::<Result<Vec<_>, String>>()?;
-            Some(FaceColor::MultiGradient { stops: GradientStops::new(&stops).ok_or("provide 2 to 8 stops with positions between 0 and 1")?, radial: kind == "radial", angle, alpha: 255, ends })
+            let stops = values
+                .iter()
+                .map(|value| {
+                    Ok(ColorStop {
+                        position: value
+                            .get("position")
+                            .and_then(Value::as_f64)
+                            .ok_or("stop position is required")?
+                            as f32,
+                        color: rgb(value, "color")?,
+                    })
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Some(FaceColor::MultiGradient {
+                stops: GradientStops::new(&stops)
+                    .ok_or("provide 2 to 8 stops with positions between 0 and 1")?,
+                radial: kind == "radial",
+                angle,
+                alpha: 255,
+                ends,
+            })
         } else if kind == "radial" || ends.is_some() {
             use map_model::brush_face::{ColorStop, GradientStops};
-            Some(FaceColor::MultiGradient { stops: GradientStops::new(&[
-                ColorStop { position: 0.0, color: rgb(gradient, "from")? },
-                ColorStop { position: 1.0, color: rgb(gradient, "to")? },
-            ]).unwrap(), radial: kind == "radial", angle, alpha: 255, ends })
-        } else { Some(FaceColor::gradient(rgb(gradient, "from")?, rgb(gradient, "to")?, angle)) }
+            Some(FaceColor::MultiGradient {
+                stops: GradientStops::new(&[
+                    ColorStop {
+                        position: 0.0,
+                        color: rgb(gradient, "from")?,
+                    },
+                    ColorStop {
+                        position: 1.0,
+                        color: rgb(gradient, "to")?,
+                    },
+                ])
+                .unwrap(),
+                radial: kind == "radial",
+                angle,
+                alpha: 255,
+                ends,
+            })
+        } else {
+            Some(FaceColor::gradient(
+                rgb(gradient, "from")?,
+                rgb(gradient, "to")?,
+                angle,
+            ))
+        }
     } else if args.get("color").is_some() {
         Some(FaceColor::solid(rgb(args, "color")?))
     } else {
@@ -1671,40 +1866,74 @@ mod tests {
     #[test]
     fn the_selection_is_read_and_described() {
         let mut document = Document::new(WorldBounds::default());
-        let empty: Value = serde_json::from_str(&call(&mut document, "get_selection", &json!({})).unwrap()).unwrap();
+        let empty: Value =
+            serde_json::from_str(&call(&mut document, "get_selection", &json!({})).unwrap())
+                .unwrap();
         assert_eq!(empty["count"], 0);
-        call(&mut document, "add_shape", &json!({"kind":"cuboid","min":[0,0,0],"max":[64,32,128]})).unwrap();
-        let read: Value = serde_json::from_str(&call(&mut document, "get_selection", &json!({})).unwrap()).unwrap();
+        call(
+            &mut document,
+            "add_shape",
+            &json!({"kind":"cuboid","min":[0,0,0],"max":[64,32,128]}),
+        )
+        .unwrap();
+        let read: Value =
+            serde_json::from_str(&call(&mut document, "get_selection", &json!({})).unwrap())
+                .unwrap();
         assert_eq!(read["count"], 1);
         let id = read["ids"][0].as_str().unwrap().to_string();
-        let described: Value = serde_json::from_str(&call(&mut document, "describe_selection", &json!({})).unwrap()).unwrap();
+        let described: Value =
+            serde_json::from_str(&call(&mut document, "describe_selection", &json!({})).unwrap())
+                .unwrap();
         let brush = &described["brushes"][0];
         assert_eq!(brush["id"], id);
         assert_eq!(brush["size"], json!([64.0, 32.0, 128.0]));
         assert_eq!(brush["entity"]["classname"], "worldspawn");
         assert_eq!(brush["faces"], 6);
         let text = crate::selection_report::text(&document);
-        assert!(text.contains(&format!("brush {id}")) && text.contains("64 x 32 x 128"), "{text}");
+        assert!(
+            text.contains(&format!("brush {id}")) && text.contains("64 x 32 x 128"),
+            "{text}"
+        );
     }
 
     #[test]
     fn multicolor_gradient_can_be_painted_described_and_undone() {
         let mut document = Document::new(WorldBounds::default());
-        call(&mut document, "add_shape", &json!({"kind":"cuboid","min":[0,0,0],"max":[64,64,64]})).unwrap();
+        call(
+            &mut document,
+            "add_shape",
+            &json!({"kind":"cuboid","min":[0,0,0],"max":[64,64,64]}),
+        )
+        .unwrap();
         let original = document.preview_mesh(&Default::default());
         for kind in ["linear", "radial"] {
             call(&mut document, "set_face_color", &json!({"gradient":{"type":kind,"angle":25,
                 "stops":[{"position":0,"color":[255,0,0]},{"position":0.5,"color":[0,255,0]},{"position":1,"color":[0,0,255]}]},"alpha":123})).unwrap();
             let mesh = document.preview_mesh(&Default::default());
-            assert!(mesh.triangles.iter().all(|t| t.corner_colors.is_some() && (t.alpha-123.0/255.0).abs()<1e-6));
+            assert!(mesh
+                .triangles
+                .iter()
+                .all(|t| t.corner_colors.is_some() && (t.alpha - 123.0 / 255.0).abs() < 1e-6));
             let id = document.selectable_brushes()[0].0;
-            let result = call(&mut document, "describe_brush", &json!({"brush":id.0.to_string()})).unwrap();
+            let result = call(
+                &mut document,
+                "describe_brush",
+                &json!({"brush":id.0.to_string()}),
+            )
+            .unwrap();
             let value: Value = serde_json::from_str(&result).unwrap();
-            assert_eq!(value["faces"][0]["paint"]["gradient"]["type"],kind);
+            assert_eq!(value["faces"][0]["paint"]["gradient"]["type"], kind);
             document.clear_selection();
-            assert!(document.preview_mesh(&Default::default()).triangles.iter().all(|t| !t.selected));
+            assert!(document
+                .preview_mesh(&Default::default())
+                .triangles
+                .iter()
+                .all(|t| !t.selected));
             document.undo();
-            assert_eq!(document.preview_mesh(&Default::default()).triangles.len(),original.triangles.len());
+            assert_eq!(
+                document.preview_mesh(&Default::default()).triangles.len(),
+                original.triangles.len()
+            );
             document.select_all();
         }
     }
@@ -1819,8 +2048,17 @@ mod tests {
         let classes: Value = serde_json::from_str(&listed).expect("the list is JSON");
         let classes = classes.as_array().expect("an array");
         assert!(classes.len() > 2);
-        assert_eq!(classes.iter().find(|c| c["classname"] == "light").unwrap()["kind"], "point");
-        assert_eq!(classes.iter().find(|c| c["classname"] == "func_door").unwrap()["kind"], "brush");
+        assert_eq!(
+            classes.iter().find(|c| c["classname"] == "light").unwrap()["kind"],
+            "point"
+        );
+        assert_eq!(
+            classes
+                .iter()
+                .find(|c| c["classname"] == "func_door")
+                .unwrap()["kind"],
+            "brush"
+        );
         assert!(classes.iter().any(|c| c["classname"] == "trigger_multiple"));
 
         let one = call(
@@ -2020,40 +2258,99 @@ mod corner_join_tests {
     use super::*;
     #[test]
     fn corner_mcp_defaults_to_preview_and_checks_revision() {
-        let mut d=Document::new(Default::default());let mut c=Collab::default();
-        for max in [[128,16,8],[24,96,8]] {call_tool(&mut d,&mut c,"add_shape",&json!({"kind":"cuboid","min":[0,0,0],"max":max})).unwrap();}
-        d.select_all();let before=d.to_map_text();let rev=d.revision();
-        let preview=call_tool(&mut d,&mut c,"join_corner",&json!({})).unwrap();
-        assert_eq!(serde_json::from_str::<Value>(&preview).unwrap()["dry_run"],true);assert_eq!(d.to_map_text(),before);
-        call_tool(&mut d,&mut c,"join_corner",&json!({"dry_run":false,"expected_revision":rev})).unwrap();
-        let after=d.to_map_text();assert_ne!(before,after);
-        assert!(call_tool(&mut d,&mut c,"join_corner",&json!({"dry_run":false,"expected_revision":rev})).is_err());
-        assert_eq!(d.to_map_text(),after);d.undo();assert_eq!(d.to_map_text(),before);
+        let mut d = Document::new(Default::default());
+        let mut c = Collab::default();
+        for max in [[128, 16, 8], [24, 96, 8]] {
+            call_tool(
+                &mut d,
+                &mut c,
+                "add_shape",
+                &json!({"kind":"cuboid","min":[0,0,0],"max":max}),
+            )
+            .unwrap();
+        }
+        d.select_all();
+        let before = d.to_map_text();
+        let rev = d.revision();
+        let preview = call_tool(&mut d, &mut c, "join_corner", &json!({})).unwrap();
+        assert_eq!(
+            serde_json::from_str::<Value>(&preview).unwrap()["dry_run"],
+            true
+        );
+        assert_eq!(d.to_map_text(), before);
+        call_tool(
+            &mut d,
+            &mut c,
+            "join_corner",
+            &json!({"dry_run":false,"expected_revision":rev}),
+        )
+        .unwrap();
+        let after = d.to_map_text();
+        assert_ne!(before, after);
+        assert!(call_tool(
+            &mut d,
+            &mut c,
+            "join_corner",
+            &json!({"dry_run":false,"expected_revision":rev})
+        )
+        .is_err());
+        assert_eq!(d.to_map_text(), after);
+        d.undo();
+        assert_eq!(d.to_map_text(), before);
     }
     #[test]
     fn corner_mcp_inner_concentric_and_wedge_rounding_are_atomic() {
-        for (wedges,preserve_thickness) in [(false,false),(true,false),(true,true)] {
-        let mut d=Document::new(Default::default()); let mut c=Collab::default();
-        let dimensions=if wedges {[[128,8,8],[24,96,8]]} else {[[128,16,8],[16,96,8]]};
-        for max in dimensions {call_tool(&mut d,&mut c,"add_shape",&json!({"kind":"cuboid","min":[0,0,0],"max":max})).unwrap();}
-        d.select_all(); let before=d.to_map_text(); let revision=d.revision();
-        let options=json!({"outer":{"radius":8},"inner":{"radius":48,"segments":8},"concentric":!wedges,"wedges":wedges,"preserve_thickness":preserve_thickness});
-        let response=call_tool(&mut d,&mut c,"join_corner",&options).unwrap();
-        let response:Value=serde_json::from_str(&response).unwrap();
-        assert_eq!(response["brush_count"],10); assert_eq!(response["added_brushes"],8);
-        assert!((response["removed_overlap_volume"].as_f64().unwrap()-if wedges {1536.0} else {2048.0}).abs()<1e-5);
-        assert!(response["removed_volume"].as_f64().unwrap()>2048.0);
-        assert!(response["added_volume"].as_f64().unwrap()>0.0);
-        assert_eq!(before,d.to_map_text());
-        let mut apply=options;apply["dry_run"]=json!(false);apply["expected_revision"]=json!(revision);
-        call_tool(&mut d,&mut c,"join_corner",&apply).unwrap();
-        assert_eq!(brush_list(&d).len(),10);
-        d.undo();assert_eq!(before,d.to_map_text());
-        assert!(call_tool(&mut d,&mut c,"join_corner",&json!({"inner":{"radius":8,"segments":0}})).is_err());
-        assert_eq!(before,d.to_map_text());
+        for (wedges, preserve_thickness) in [(false, false), (true, false), (true, true)] {
+            let mut d = Document::new(Default::default());
+            let mut c = Collab::default();
+            let dimensions = if wedges {
+                [[128, 8, 8], [24, 96, 8]]
+            } else {
+                [[128, 16, 8], [16, 96, 8]]
+            };
+            for max in dimensions {
+                call_tool(
+                    &mut d,
+                    &mut c,
+                    "add_shape",
+                    &json!({"kind":"cuboid","min":[0,0,0],"max":max}),
+                )
+                .unwrap();
+            }
+            d.select_all();
+            let before = d.to_map_text();
+            let revision = d.revision();
+            let options = json!({"outer":{"radius":8},"inner":{"radius":48,"segments":8},"concentric":!wedges,"wedges":wedges,"preserve_thickness":preserve_thickness});
+            let response = call_tool(&mut d, &mut c, "join_corner", &options).unwrap();
+            let response: Value = serde_json::from_str(&response).unwrap();
+            assert_eq!(response["brush_count"], 10);
+            assert_eq!(response["added_brushes"], 8);
+            assert!(
+                (response["removed_overlap_volume"].as_f64().unwrap()
+                    - if wedges { 1536.0 } else { 2048.0 })
+                .abs()
+                    < 1e-5
+            );
+            assert!(response["removed_volume"].as_f64().unwrap() > 2048.0);
+            assert!(response["added_volume"].as_f64().unwrap() > 0.0);
+            assert_eq!(before, d.to_map_text());
+            let mut apply = options;
+            apply["dry_run"] = json!(false);
+            apply["expected_revision"] = json!(revision);
+            call_tool(&mut d, &mut c, "join_corner", &apply).unwrap();
+            assert_eq!(brush_list(&d).len(), 10);
+            d.undo();
+            assert_eq!(before, d.to_map_text());
+            assert!(call_tool(
+                &mut d,
+                &mut c,
+                "join_corner",
+                &json!({"inner":{"radius":8,"segments":0}})
+            )
+            .is_err());
+            assert_eq!(before, d.to_map_text());
         }
     }
-
 }
 
 #[cfg(test)]
@@ -2061,29 +2358,47 @@ mod hollow_sphere_tests {
     use super::*;
     #[test]
     fn hollow_sphere_insert_save_and_undo_are_atomic() {
-        let mut document=Document::new(Default::default());
-        let mut collab=Collab::default();
-        let before=document.to_map_text();
-        let args=json!({"kind":"hollow_sphere","min":[-64,-64,-64],"max":[64,64,64],"thickness":8,"brushes":84});
-        call_tool(&mut document,&mut collab,"add_shape",&args).unwrap();
-        assert_eq!(map_model::node::brushes(document.tree_world()).len(),84);
-        assert_eq!(document.selection_ids().len(),84);
-        let after=document.to_map_text();
-        let map=map_model::io::map_reader::read_map(&after,None).unwrap();
-        let format=map.format;
-        let tree=map_model::node::build_tree_owned(map,&document.world_bounds());
-        let reopened=Document::from_world(tree.world,Default::default(),format,None);
-        assert_eq!(map_model::node::brushes(reopened.tree_world()).len(),84);
-        assert!(map_model::node::brushes(reopened.tree_world()).iter().all(|b|!b.contains_point(Vec3d::zero())));
-        let volume=|d:&Document|map_model::node::brushes(d.tree_world()).iter().map(|b|b.volume()).sum::<f64>();
-        assert!((volume(&document)-volume(&reopened)).abs()<1e-5);
-        document.undo();assert_eq!(document.to_map_text(),before);
-        document.redo();assert_eq!(document.to_map_text(),after);
-        for invalid in [json!({"thickness":64}),json!({"brushes":21}),json!({"brushes":324}),json!({"brushes":-1}),json!({"brushes":20.5}),json!({"accuracy":1})] {
-            let mut args=args.clone();
-            for (key,value) in invalid.as_object().unwrap() {args[key]=value.clone();}
-            assert!(call_tool(&mut document,&mut collab,"add_shape",&args).is_err());
-            assert_eq!(document.to_map_text(),after);
+        let mut document = Document::new(Default::default());
+        let mut collab = Collab::default();
+        let before = document.to_map_text();
+        let args = json!({"kind":"hollow_sphere","min":[-64,-64,-64],"max":[64,64,64],"thickness":8,"brushes":84});
+        call_tool(&mut document, &mut collab, "add_shape", &args).unwrap();
+        assert_eq!(map_model::node::brushes(document.tree_world()).len(), 84);
+        assert_eq!(document.selection_ids().len(), 84);
+        let after = document.to_map_text();
+        let map = map_model::io::map_reader::read_map(&after, None).unwrap();
+        let format = map.format;
+        let tree = map_model::node::build_tree_owned(map, &document.world_bounds());
+        let reopened = Document::from_world(tree.world, Default::default(), format, None);
+        assert_eq!(map_model::node::brushes(reopened.tree_world()).len(), 84);
+        assert!(map_model::node::brushes(reopened.tree_world())
+            .iter()
+            .all(|b| !b.contains_point(Vec3d::zero())));
+        let volume = |d: &Document| {
+            map_model::node::brushes(d.tree_world())
+                .iter()
+                .map(|b| b.volume())
+                .sum::<f64>()
+        };
+        assert!((volume(&document) - volume(&reopened)).abs() < 1e-5);
+        document.undo();
+        assert_eq!(document.to_map_text(), before);
+        document.redo();
+        assert_eq!(document.to_map_text(), after);
+        for invalid in [
+            json!({"thickness":64}),
+            json!({"brushes":21}),
+            json!({"brushes":324}),
+            json!({"brushes":-1}),
+            json!({"brushes":20.5}),
+            json!({"accuracy":1}),
+        ] {
+            let mut args = args.clone();
+            for (key, value) in invalid.as_object().unwrap() {
+                args[key] = value.clone();
+            }
+            assert!(call_tool(&mut document, &mut collab, "add_shape", &args).is_err());
+            assert_eq!(document.to_map_text(), after);
         }
     }
 }
@@ -2093,17 +2408,50 @@ mod geometry_upgrade_tests {
     use super::*;
     #[test]
     fn advanced_stairs_and_directional_hollow_use_their_mcp_options() {
-        let mut document=Document::new(Default::default());let mut collab=Collab::default();
+        let mut document = Document::new(Default::default());
+        let mut collab = Collab::default();
         call_tool(&mut document,&mut collab,"add_shape",&json!({"kind":"stairs","min":[0,0,0],"max":[128,160,64],"step_height":8,"axis":"y","ascending":false,"stair_layout":"left","flight_width":16,"slab_thickness":4})).unwrap();
-        let brushes=map_model::node::brushes(document.tree_world());assert_eq!(brushes.len(),9);
-        assert!((brushes[0].bounds().max[1]-160.0).abs()<1e-6);assert!((brushes[0].bounds().max[0]-16.0).abs()<1e-6);
-        document.undo();assert!(map_model::node::brushes(document.tree_world()).is_empty());
-        call_tool(&mut document,&mut collab,"add_shape",&json!({"kind":"cuboid","min":[0,0,0],"max":[64,64,64]})).unwrap();
-        let before=document.to_map_text();
-        assert!(call_tool(&mut document,&mut collab,"hollow",&json!({"thickness":8,"open_selected_faces":true})).is_err());assert_eq!(document.to_map_text(),before);
-        call_tool(&mut document,&mut collab,"hollow",&json!({"thickness":8,"direction":"centered"})).unwrap();
-        let brushes=map_model::node::brushes(document.tree_world());assert_eq!(brushes.len(),6);
-        assert!((brushes.iter().map(|b|b.bounds().max[0]).fold(f64::NEG_INFINITY,f64::max)-68.0).abs()<1e-6);
-        document.undo();assert_eq!(document.to_map_text(),before);
+        let brushes = map_model::node::brushes(document.tree_world());
+        assert_eq!(brushes.len(), 9);
+        assert!((brushes[0].bounds().max[1] - 160.0).abs() < 1e-6);
+        assert!((brushes[0].bounds().max[0] - 16.0).abs() < 1e-6);
+        document.undo();
+        assert!(map_model::node::brushes(document.tree_world()).is_empty());
+        call_tool(
+            &mut document,
+            &mut collab,
+            "add_shape",
+            &json!({"kind":"cuboid","min":[0,0,0],"max":[64,64,64]}),
+        )
+        .unwrap();
+        let before = document.to_map_text();
+        assert!(call_tool(
+            &mut document,
+            &mut collab,
+            "hollow",
+            &json!({"thickness":8,"open_selected_faces":true})
+        )
+        .is_err());
+        assert_eq!(document.to_map_text(), before);
+        call_tool(
+            &mut document,
+            &mut collab,
+            "hollow",
+            &json!({"thickness":8,"direction":"centered"}),
+        )
+        .unwrap();
+        let brushes = map_model::node::brushes(document.tree_world());
+        assert_eq!(brushes.len(), 6);
+        assert!(
+            (brushes
+                .iter()
+                .map(|b| b.bounds().max[0])
+                .fold(f64::NEG_INFINITY, f64::max)
+                - 68.0)
+                .abs()
+                < 1e-6
+        );
+        document.undo();
+        assert_eq!(document.to_map_text(), before);
     }
 }

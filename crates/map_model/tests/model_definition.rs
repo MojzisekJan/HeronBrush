@@ -2,15 +2,19 @@
 #![allow(clippy::type_complexity)]
 
 use expression_lang::{parse_expression, NullVariableStore, ParseMode, Value, VariableTable};
-use map_model::model_definition::{parse_model_definition, ModelDefinition, ModelSpecification};
 use geometry_math::vec::Vec3d;
+use map_model::model_definition::{parse_model_definition, ModelDefinition, ModelSpecification};
 
 fn make(expression: &str) -> ModelDefinition {
     parse_model_definition(expression).unwrap_or_else(|e| panic!("{expression:?}: {e}"))
 }
 
 fn spec(path: &str, skin: usize, frame: usize) -> ModelSpecification {
-    ModelSpecification { path: path.into(), skin_index: skin, frame_index: frame }
+    ModelSpecification {
+        path: path.into(),
+        skin_index: skin,
+        frame_index: frame,
+    }
 }
 
 fn table(pairs: &[(&str, Value)]) -> VariableTable {
@@ -35,7 +39,11 @@ fn append() {
 #[test]
 fn model_specification() {
     let cases: Vec<(&str, Vec<(&str, Value)>, ModelSpecification)> = vec![
-        (r#""maps/b_shell0.bsp""#, vec![], spec("maps/b_shell0.bsp", 0, 0)),
+        (
+            r#""maps/b_shell0.bsp""#,
+            vec![],
+            spec("maps/b_shell0.bsp", 0, 0),
+        ),
         (
             r#"{ path: "maps/b_shell0.bsp", skin: 1, frame: 2 }"#,
             vec![],
@@ -84,7 +92,10 @@ fn default_model_specification() {
             "{{\n spawnflags == 1 -> \"maps/b_shell0.bsp\",\n \"maps/b_shell1.bsp\"\n}}",
             spec("maps/b_shell1.bsp", 0, 0),
         ),
-        ("{path: model, skin: skin, frame: frame}", ModelSpecification::default()),
+        (
+            "{path: model, skin: skin, frame: frame}",
+            ModelSpecification::default(),
+        ),
         (r#"{ path: 123, skin: 1, frame: 2 }"#, spec("", 1, 2)),
         (
             "{ \n path: \"maps/b_shell0.bsp\", \n scale : radius * 64 }",
@@ -106,8 +117,16 @@ fn default_model_specification() {
 fn scale() {
     let cases: Vec<(&str, Option<&str>, Vec3d)> = vec![
         (r#""maps/b_shell0.bsp""#, None, Vec3d::new(1.0, 1.0, 1.0)),
-        (r#""maps/b_shell0.bsp""#, Some("2"), Vec3d::new(2.0, 2.0, 2.0)),
-        (r#""maps/b_shell0.bsp""#, Some("modelscale"), Vec3d::new(4.0, 4.0, 4.0)),
+        (
+            r#""maps/b_shell0.bsp""#,
+            Some("2"),
+            Vec3d::new(2.0, 2.0, 2.0),
+        ),
+        (
+            r#""maps/b_shell0.bsp""#,
+            Some("modelscale"),
+            Vec3d::new(4.0, 4.0, 4.0),
+        ),
         (
             r#"{ path: "maps/b_shell0.bsp", skin: 1, frame: 2, scale: 1.5 }"#,
             None,
@@ -152,8 +171,8 @@ fn scale() {
 
     for (expression, default_scale, expected) in cases {
         let definition = make(expression);
-        let default_expression = default_scale
-            .map(|s| parse_expression(ParseMode::Strict, s).unwrap());
+        let default_expression =
+            default_scale.map(|s| parse_expression(ParseMode::Strict, s).unwrap());
         let got = definition
             .scale(&variables, default_expression.as_ref())
             .unwrap_or_else(|e| panic!("{expression:?}: {e}"));

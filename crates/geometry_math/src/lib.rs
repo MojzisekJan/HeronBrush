@@ -10,8 +10,8 @@
 
 #![forbid(unsafe_code)]
 
-pub mod approx;
 pub mod abstract_line;
+pub mod approx;
 pub mod bbox;
 pub mod bezier_surface;
 pub mod convex_hull;

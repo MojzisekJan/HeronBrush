@@ -65,11 +65,9 @@ pub fn str_contains(haystack: &str, needle: &str, case: CaseSensitivity) -> bool
     match case {
         CaseSensitivity::Sensitive => haystack.contains(needle),
         CaseSensitivity::Insensitive => {
-            let haystack: Vec<char> =
-                haystack.chars().map(|c| c.to_ascii_lowercase()).collect();
+            let haystack: Vec<char> = haystack.chars().map(|c| c.to_ascii_lowercase()).collect();
             let needle: Vec<char> = needle.chars().map(|c| c.to_ascii_lowercase()).collect();
-            needle.len() <= haystack.len()
-                && haystack.windows(needle.len()).any(|w| w == needle)
+            needle.len() <= haystack.len() && haystack.windows(needle.len()).any(|w| w == needle)
         }
     }
 }

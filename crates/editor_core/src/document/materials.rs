@@ -1,19 +1,40 @@
 //! Document operations for materials.
 
-use super::{Brush, Document, Edit, FaceRef, HashMap, MaterialCollection, MaterialSource, NodeId, Path, PathBuf, Vec2f, brush_node, node};
+use super::{
+    brush_node, node, Brush, Document, Edit, FaceRef, HashMap, MaterialCollection, MaterialSource,
+    NodeId, Path, PathBuf, Vec2f,
+};
 
 /// Editor helper textures are embedded so maps never depend on a project copy.
 pub(super) fn add_special_materials(collection: &mut MaterialCollection) {
     use map_model::material::Material;
     for (name, bytes) in [
-        ("skip", include_bytes!("../../../../assets/textures/special/skip.png").as_slice()),
-        ("clip", include_bytes!("../../../../assets/textures/special/clip.png").as_slice()),
-        ("origin", include_bytes!("../../../../assets/textures/special/origin.png").as_slice()),
+        (
+            "skip",
+            include_bytes!("../../../../assets/textures/special/skip.png").as_slice(),
+        ),
+        (
+            "clip",
+            include_bytes!("../../../../assets/textures/special/clip.png").as_slice(),
+        ),
+        (
+            "origin",
+            include_bytes!("../../../../assets/textures/special/origin.png").as_slice(),
+        ),
     ] {
-        if collection.get(name).is_some() { continue; }
-        let image = image::load_from_memory(bytes).expect("embedded helper texture").to_rgba8();
-        collection.insert(Material::rgba(name.into(), PathBuf::from(format!("builtin/special/{name}.png")),
-            image.width(), image.height(), image.into_raw()));
+        if collection.get(name).is_some() {
+            continue;
+        }
+        let image = image::load_from_memory(bytes)
+            .expect("embedded helper texture")
+            .to_rgba8();
+        collection.insert(Material::rgba(
+            name.into(),
+            PathBuf::from(format!("builtin/special/{name}.png")),
+            image.width(),
+            image.height(),
+            image.into_raw(),
+        ));
     }
 }
 
@@ -35,42 +56,87 @@ pub(super) fn initial_materials() -> MaterialCollection {
 impl Document {
     /// Remounts game and mod resources and invalidates model/material caches together.
     pub fn reload_game_assets(&mut self) {
-        self.game_asset_key=None;
+        self.game_asset_key = None;
         self.load_entity_models();
     }
 
     /// Current mount/texture diagnostics, without rescanning the game directory.
-    pub fn game_asset_warnings(&self) -> &[String] { &self.game_asset_warnings }
-
-    pub(super) fn sync_game_assets(&mut self) -> bool {
-        let key=crate::preferences::pref(|p|(p.game.clone(),p.game_path.clone(),p.game_mods.clone()));
-        if self.game_asset_key.as_ref()==Some(&key) {return false;}
-        let path=PathBuf::from(&key.1);
-        let game=(!path.as_os_str().is_empty()).then(crate::games::current).flatten();
-        let roots=game.as_ref().map(|game|game.asset_roots(&path,&key.2)).unwrap_or_else(|| {
-            if path.as_os_str().is_empty() {Vec::new()} else {
-                let mut roots=vec![path.clone()];
-                roots.extend(key.2.split(';').map(str::trim).filter(|s|!s.is_empty()).map(|s|path.join(s)));
-                roots
-            }
-        });
-        let assets=std::sync::Arc::new(map_model::asset_fs::AssetFileSystem::mount(&roots));
-        let palette_name=game.as_ref().and_then(|g|g.materials_palette.as_deref()).unwrap_or("pics/colormap.pcx");
-        let fallback=game.as_ref().and_then(|game| {
-            let name=game.materials_palette.as_deref()?;
-            [game.directory.join(name),game.directory.join(Path::new(name).file_name()?)].into_iter()
-                .find_map(|path| file_store::read(&path).ok().and_then(|bytes| map_model::wal::palette(&bytes,name).ok()).map(std::sync::Arc::new))
-        });
-        let collection=MaterialCollection::load_assets_with_palette(&assets,game.as_ref().and_then(|g|g.materials_root.as_deref()).unwrap_or("textures"),palette_name,fallback);
-        self.game_asset_warnings=assets.warnings().iter().chain(collection.warnings()).cloned().collect();
-        for warning in &self.game_asset_warnings {crate::complain!("game assets: {warning}");}
-        self.game_materials=collection.into_materials();
-        self.model_store=crate::entity_models::ModelStore::with_assets(path,assets);
-        self.models.clear();self.sprites.clear();
-        self.game_asset_key=Some(key);
-        true
+    pub fn game_asset_warnings(&self) -> &[String] {
+        &self.game_asset_warnings
     }
 
+    pub(super) fn sync_game_assets(&mut self) -> bool {
+        let key = crate::preferences::pref(|p| {
+            (p.game.clone(), p.game_path.clone(), p.game_mods.clone())
+        });
+        if self.game_asset_key.as_ref() == Some(&key) {
+            return false;
+        }
+        let path = PathBuf::from(&key.1);
+        let game = (!path.as_os_str().is_empty())
+            .then(crate::games::current)
+            .flatten();
+        let roots = game
+            .as_ref()
+            .map(|game| game.asset_roots(&path, &key.2))
+            .unwrap_or_else(|| {
+                if path.as_os_str().is_empty() {
+                    Vec::new()
+                } else {
+                    let mut roots = vec![path.clone()];
+                    roots.extend(
+                        key.2
+                            .split(';')
+                            .map(str::trim)
+                            .filter(|s| !s.is_empty())
+                            .map(|s| path.join(s)),
+                    );
+                    roots
+                }
+            });
+        let assets = std::sync::Arc::new(map_model::asset_fs::AssetFileSystem::mount(&roots));
+        let palette_name = game
+            .as_ref()
+            .and_then(|g| g.materials_palette.as_deref())
+            .unwrap_or("pics/colormap.pcx");
+        let fallback = game.as_ref().and_then(|game| {
+            let name = game.materials_palette.as_deref()?;
+            [
+                game.directory.join(name),
+                game.directory.join(Path::new(name).file_name()?),
+            ]
+            .into_iter()
+            .find_map(|path| {
+                file_store::read(&path)
+                    .ok()
+                    .and_then(|bytes| map_model::wal::palette(&bytes, name).ok())
+                    .map(std::sync::Arc::new)
+            })
+        });
+        let collection = MaterialCollection::load_assets_with_palette(
+            &assets,
+            game.as_ref()
+                .and_then(|g| g.materials_root.as_deref())
+                .unwrap_or("textures"),
+            palette_name,
+            fallback,
+        );
+        self.game_asset_warnings = assets
+            .warnings()
+            .iter()
+            .chain(collection.warnings())
+            .cloned()
+            .collect();
+        for warning in &self.game_asset_warnings {
+            crate::complain!("game assets: {warning}");
+        }
+        self.game_materials = collection.into_materials();
+        self.model_store = crate::entity_models::ModelStore::with_assets(path, assets);
+        self.models.clear();
+        self.sprites.clear();
+        self.game_asset_key = Some(key);
+        true
+    }
 
     /// Adds the textures in a Quake `.wad` to the material collection.
     ///
@@ -99,15 +165,16 @@ impl Document {
 
         let palette = [
             path.with_file_name("palette.lmp"),
-            PathBuf::from(crate::preferences::pref(|p| p.game_path.clone()))
-                .join("palette.lmp"),
+            PathBuf::from(crate::preferences::pref(|p| p.game_path.clone())).join("palette.lmp"),
         ]
         .into_iter()
         .find(|candidate| crate::files::is_file(candidate))
         .and_then(|candidate| scene_export::wad::read_palette(&candidate).ok())
         .or_else(|| {
-            let assets=self.model_store.shared_assets()?;
-            let bytes=assets.read("gfx/palette.lmp").or_else(||assets.read("palette.lmp"))?;
+            let assets = self.model_store.shared_assets()?;
+            let bytes = assets
+                .read("gfx/palette.lmp")
+                .or_else(|| assets.read("palette.lmp"))?;
             bytes.as_slice().try_into().ok()
         });
 
@@ -157,8 +224,17 @@ impl Document {
             let written = PathBuf::from(name);
             let file_name = written.file_name().map(PathBuf::from);
             if !written.is_absolute() {
-                if let Some(asset)=self.model_store.shared_assets().and_then(|fs| fs.resolve(name).or_else(||file_name.as_ref().and_then(|file|fs.resolve(&file.to_string_lossy())))) {
-                    if !asset.is_archived() {paths.push(asset.origin.clone());continue;}
+                if let Some(asset) = self.model_store.shared_assets().and_then(|fs| {
+                    fs.resolve(name).or_else(|| {
+                        file_name
+                            .as_ref()
+                            .and_then(|file| fs.resolve(&file.to_string_lossy()))
+                    })
+                }) {
+                    if !asset.is_archived() {
+                        paths.push(asset.origin.clone());
+                        continue;
+                    }
                 }
             }
             let candidates = [
@@ -197,8 +273,15 @@ impl Document {
     }
 
     /// Asset textures are defaults; explicit project material sources keep precedence.
-    pub fn load_asset_materials(&mut self, path: &Path) -> Result<Vec<String>, map_model::material::MaterialError> {
-        if self.material_sources.iter().any(|source| source.path() == path) {
+    pub fn load_asset_materials(
+        &mut self,
+        path: &Path,
+    ) -> Result<Vec<String>, map_model::material::MaterialError> {
+        if self
+            .material_sources
+            .iter()
+            .any(|source| source.path() == path)
+        {
             return Ok(Vec::new());
         }
         let current = self.current_material.clone();
@@ -207,11 +290,18 @@ impl Document {
         result
     }
 
-    fn load_material_folder(&mut self, path: &Path, defaults: bool) -> Result<Vec<String>, map_model::material::MaterialError> {
+    fn load_material_folder(
+        &mut self,
+        path: &Path,
+        defaults: bool,
+    ) -> Result<Vec<String>, map_model::material::MaterialError> {
         let resolved = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
         let path = resolved.as_path();
-        if defaults { self.material_defaults.insert(resolved.clone()); }
-        else { self.material_defaults.remove(path); }
+        if defaults {
+            self.material_defaults.insert(resolved.clone());
+        } else {
+            self.material_defaults.remove(path);
+        }
         // Loaded once here so a folder that cannot be read is an error before anything
         // is changed, rather than an empty collection afterwards.
         let mut collection = MaterialCollection::load_directory(path)?;
@@ -220,11 +310,13 @@ impl Document {
         // as images; a directory with no `scripts` in it is left alone.
         warnings.extend(collection.load_shaders(path));
 
-        self.material_sources
-            .retain(|source| source.path() != path);
+        self.material_sources.retain(|source| source.path() != path);
         let source = MaterialSource::Folder(path.to_path_buf());
-        if defaults { self.material_sources.insert(0, source); }
-        else { self.material_sources.push(source); }
+        if defaults {
+            self.material_sources.insert(0, source);
+        } else {
+            self.material_sources.push(source);
+        }
         // The folder was read just above; reading it again for the rebuild doubled the
         // time a big texture folder took to load.
         self.rebuild_materials_with(Some((path.to_path_buf(), collection)));
@@ -267,31 +359,51 @@ impl Document {
         // the next time those files are read.
         self.save_material_info();
         let mut previous: HashMap<String, map_model::material::Material> =
-            std::mem::take(&mut self.materials).into_materials().into_iter().map(|material| (material.name.clone(), material)).collect();
-        let mut game_inserted=false;
+            std::mem::take(&mut self.materials)
+                .into_materials()
+                .into_iter()
+                .map(|material| (material.name.clone(), material))
+                .collect();
+        let mut game_inserted = false;
         let mut folders = std::mem::take(&mut self.material_folders);
         for source in self.material_sources.clone() {
             if !game_inserted && !self.material_defaults.contains(source.path()) {
-                for material in &self.game_materials { self.materials.insert(material.clone()); }
-                game_inserted=true;
+                for material in &self.game_materials {
+                    self.materials.insert(material.clone());
+                }
+                game_inserted = true;
             }
             match source {
                 MaterialSource::Folder(path) => {
                     let stamp = folder_stamp(&path);
-                    let materials: Vec<map_model::material::Material> = match loaded.take_if(|(at, _)| *at == path) {
-                        Some((_, collection)) => collection.into_materials(),
-                        None => match folders.get(&path).filter(|(was, _)| *was == stamp).and_then(|(_, names)| take_named(&mut previous, names, &path)) {
-                            Some(kept) => kept,
-                            None => MaterialCollection::load_directory(&path)
-                                .ok()
-                                .map(|mut collection| {
-                                    collection.load_shaders(&path);
-                                    collection.into_materials()
-                                })
-                                .unwrap_or_default(),
-                        },
-                    };
-                    folders.insert(path.clone(), (stamp, materials.iter().map(|material| material.name.clone()).collect()));
+                    let materials: Vec<map_model::material::Material> =
+                        match loaded.take_if(|(at, _)| *at == path) {
+                            Some((_, collection)) => collection.into_materials(),
+                            None => match folders
+                                .get(&path)
+                                .filter(|(was, _)| *was == stamp)
+                                .and_then(|(_, names)| take_named(&mut previous, names, &path))
+                            {
+                                Some(kept) => kept,
+                                None => MaterialCollection::load_directory(&path)
+                                    .ok()
+                                    .map(|mut collection| {
+                                        collection.load_shaders(&path);
+                                        collection.into_materials()
+                                    })
+                                    .unwrap_or_default(),
+                            },
+                        };
+                    folders.insert(
+                        path.clone(),
+                        (
+                            stamp,
+                            materials
+                                .iter()
+                                .map(|material| material.name.clone())
+                                .collect(),
+                        ),
+                    );
                     for material in materials {
                         self.materials.insert(material);
                     }
@@ -302,9 +414,17 @@ impl Document {
             }
         }
 
-        if !game_inserted { for material in &self.game_materials {self.materials.insert(material.clone());} }
+        if !game_inserted {
+            for material in &self.game_materials {
+                self.materials.insert(material.clone());
+            }
+        }
         drop(previous);
-        folders.retain(|path, _| self.material_sources.iter().any(|source| matches!(source, MaterialSource::Folder(at) if at == path)));
+        folders.retain(|path, _| {
+            self.material_sources
+                .iter()
+                .any(|source| matches!(source, MaterialSource::Folder(at) if at == path))
+        });
         self.material_folders = folders;
 
         // The collection was emptied, so the models' skins have to go back into it.
@@ -334,8 +454,15 @@ impl Document {
     /// average colour) to the cache in the configuration directory. Called when the
     /// collection is replaced, and by a frontend when it closes.
     pub fn save_material_info(&self) {
-        let Some(file) = material_info_file() else { return };
-        if !self.materials.materials().iter().any(|m| m.is_lazy() && m.info().is_some()) {
+        let Some(file) = material_info_file() else {
+            return;
+        };
+        if !self
+            .materials
+            .materials()
+            .iter()
+            .any(|m| m.is_lazy() && m.info().is_some())
+        {
             return;
         }
         let mut cache = map_model::material::InfoCache::load(&file);
@@ -353,10 +480,11 @@ impl Document {
                 .get(name)
                 .map(|material| Vec2f::new(material.width as f32, material.height as f32))
         };
-        let resolved: Vec<(NodeId, map_model::brush::Brush)> = node::brushes_with_ids(&self.tree.world)
-            .into_iter()
-            .filter_map(|(id, brush)| brush.resolved_primitive_uv(size_of).map(|b| (id, b)))
-            .collect();
+        let resolved: Vec<(NodeId, map_model::brush::Brush)> =
+            node::brushes_with_ids(&self.tree.world)
+                .into_iter()
+                .filter_map(|(id, brush)| brush.resolved_primitive_uv(size_of).map(|b| (id, b)))
+                .collect();
         for (id, brush) in resolved {
             node::replace_brush(&mut self.tree.world, id, brush);
         }
@@ -393,9 +521,11 @@ impl Document {
     pub fn apply_current_material(&mut self) -> usize {
         let mut faces = self.selected_edit_faces();
         if faces.is_empty() {
-            for (id,brush) in node::brushes_with_ids(&self.tree.world) {
+            for (id, brush) in node::brushes_with_ids(&self.tree.world) {
                 if self.selection.contains(&id) {
-                    faces.extend((0..brush.geometry().face_count()).map(|face|FaceRef {node:id,face}));
+                    faces.extend(
+                        (0..brush.geometry().face_count()).map(|face| FaceRef { node: id, face }),
+                    );
                 }
             }
         }
@@ -405,8 +535,10 @@ impl Document {
     /// Assign the current material to face-tool handles without expanding to their brush.
     pub fn apply_current_material_on(&mut self, faces: &[FaceRef]) -> usize {
         let name = self.current_material.clone();
-        self.edit_faces_on(faces,|face| {
-            if face.material_name == name && face.color.is_none() { return false; }
+        self.edit_faces_on(faces, |face| {
+            if face.material_name == name && face.color.is_none() {
+                return false;
+            }
             face.material_name = name.clone().into();
             face.set_paint(None);
             true
@@ -418,24 +550,42 @@ impl Document {
     /// Assigns the material name without changing UV mapping. The operation is one undo step and
     /// returns whether any face changed.
     pub fn begin_material_stroke(&self) -> super::MaterialStroke {
-        super::MaterialStroke { material:self.current_material.clone(), visited:Default::default(),
-            mark:self.history.undo_len(), revision:self.revision() }
+        super::MaterialStroke {
+            material: self.current_material.clone(),
+            visited: Default::default(),
+            mark: self.history.undo_len(),
+            revision: self.revision(),
+        }
     }
 
     /// Paint only newly crossed faces, coalescing this gesture without older edits.
-    pub fn paint_material_stroke(&mut self, faces:&[FaceRef], stroke:&mut super::MaterialStroke) -> usize {
-        if self.revision()!=stroke.revision { return 0; }
-        let targets:Vec<_>=faces.iter().copied().filter(|face|stroke.visited.insert(*face)).collect();
-        let before_len=self.history.undo_len();
-        let changed=self.edit_faces_on(&targets,|face| {
-            if face.material_name==stroke.material && face.color.is_none() { return false; }
-            face.material_name=stroke.material.clone().into();face.set_paint(None);true
+    pub fn paint_material_stroke(
+        &mut self,
+        faces: &[FaceRef],
+        stroke: &mut super::MaterialStroke,
+    ) -> usize {
+        if self.revision() != stroke.revision {
+            return 0;
+        }
+        let targets: Vec<_> = faces
+            .iter()
+            .copied()
+            .filter(|face| stroke.visited.insert(*face))
+            .collect();
+        let before_len = self.history.undo_len();
+        let changed = self.edit_faces_on(&targets, |face| {
+            if face.material_name == stroke.material && face.color.is_none() {
+                return false;
+            }
+            face.material_name = stroke.material.clone().into();
+            face.set_paint(None);
+            true
         });
-        if changed>0 {
-            let evicted=(before_len+1).saturating_sub(self.history.undo_len());
-            stroke.mark=stroke.mark.saturating_sub(evicted);
+        if changed > 0 {
+            let evicted = (before_len + 1).saturating_sub(self.history.undo_len());
+            stroke.mark = stroke.mark.saturating_sub(evicted);
             self.history.coalesce_since(stroke.mark);
-            stroke.revision=self.revision();
+            stroke.revision = self.revision();
         }
         changed
     }
@@ -495,7 +645,12 @@ impl Document {
     pub fn materials_in_use(&self) -> Vec<String> {
         let mut names: Vec<String> = node::brushes_with_ids(&self.tree.world)
             .into_iter()
-            .flat_map(|(_, brush)| brush.faces().iter().map(|face| face.material_name.to_string()))
+            .flat_map(|(_, brush)| {
+                brush
+                    .faces()
+                    .iter()
+                    .map(|face| face.material_name.to_string())
+            })
             .collect();
         names.sort();
         names.dedup();
@@ -514,7 +669,10 @@ impl Document {
         let mut count = 0;
         for (id, brush) in node::brushes_with_ids(&self.tree.world) {
             for index in 0..brush.geometry().face_count() {
-                let face = FaceRef { node: id, face: index };
+                let face = FaceRef {
+                    node: id,
+                    face: index,
+                };
                 if !self.face_in_replace_scope(scoped, face) {
                     continue;
                 }
@@ -623,13 +781,18 @@ impl Document {
 const MATERIAL_PATHS: &str = "// heron material-sources ";
 
 fn absolute_material_path(path: &Path) -> PathBuf {
-    let absolute = if path.is_absolute() { path.to_path_buf() }
-        else { std::env::current_dir().unwrap_or_default().join(path) };
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir().unwrap_or_default().join(path)
+    };
     let mut clean = PathBuf::new();
     for part in absolute.components() {
         match part {
-            std::path::Component::CurDir => {},
-            std::path::Component::ParentDir => { clean.pop(); },
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                clean.pop();
+            }
             part => clean.push(part.as_os_str()),
         }
     }
@@ -640,56 +803,106 @@ fn relative_material_path(path: &Path, map: &Path) -> String {
     // Both sides resolved through symlinks, as material sources are when they load: on
     // macOS `/var` and `/tmp` are links into `/private`, and comparing a resolved source
     // with an unresolved map folder left no shared prefix and an absolute path.
-    let resolve = |p: &Path| p.canonicalize().unwrap_or_else(|_| absolute_material_path(p));
+    let resolve = |p: &Path| {
+        p.canonicalize()
+            .unwrap_or_else(|_| absolute_material_path(p))
+    };
     let path = resolve(path);
     let base = resolve(map.parent().unwrap_or(Path::new(".")));
     let a: Vec<_> = path.components().collect();
     let b: Vec<_> = base.components().collect();
-    let shared = a.iter().zip(&b).take_while(|(x,y)| x==y).count();
-    if shared == 0 { return path.to_string_lossy().replace('\\', "/"); }
+    let shared = a.iter().zip(&b).take_while(|(x, y)| x == y).count();
+    if shared == 0 {
+        return path.to_string_lossy().replace('\\', "/");
+    }
     let mut relative = PathBuf::new();
-    for _ in shared..b.len() { relative.push(".."); }
-    for part in &a[shared..] { relative.push(part.as_os_str()); }
-    if relative.as_os_str().is_empty() { relative.push("."); }
+    for _ in shared..b.len() {
+        relative.push("..");
+    }
+    for part in &a[shared..] {
+        relative.push(part.as_os_str());
+    }
+    if relative.as_os_str().is_empty() {
+        relative.push(".");
+    }
     relative.to_string_lossy().replace('\\', "/")
 }
 
 impl Document {
     /// Persist editor resource references as a comment, without changing engine entities.
     pub(super) fn saved_material_paths(&self, map: &Path) -> String {
-        let paths: Vec<_> = self.material_sources.iter()
+        let paths: Vec<_> = self
+            .material_sources
+            .iter()
             .filter(|source| !self.material_defaults.contains(source.path()))
-            .map(|source| (match source { MaterialSource::Folder(_) => "folder", MaterialSource::Package(_) => "wad" },
-                relative_material_path(source.path(), map))).collect();
-        format!("{MATERIAL_PATHS}{}\n", serde_json::to_string(&paths).expect("string resource paths serialize"))
+            .map(|source| {
+                (
+                    match source {
+                        MaterialSource::Folder(_) => "folder",
+                        MaterialSource::Package(_) => "wad",
+                    },
+                    relative_material_path(source.path(), map),
+                )
+            })
+            .collect();
+        format!(
+            "{MATERIAL_PATHS}{}\n",
+            serde_json::to_string(&paths).expect("string resource paths serialize")
+        )
     }
 
     pub fn project_material_folder(&self) -> Option<PathBuf> {
-        self.material_sources.iter().rev().find_map(|source| match source {
-            MaterialSource::Folder(path) if !self.material_defaults.contains(path) => Some(path.clone()),
-            _ => None,
-        })
+        self.material_sources
+            .iter()
+            .rev()
+            .find_map(|source| match source {
+                MaterialSource::Folder(path) if !self.material_defaults.contains(path) => {
+                    Some(path.clone())
+                }
+                _ => None,
+            })
     }
 
     pub(super) fn restore_material_paths(&mut self, source: &str, map: &Path) -> bool {
-        let Some(line) = source.lines().find_map(|line| line.strip_prefix(MATERIAL_PATHS)) else { return false; };
-        let paths = match serde_json::from_str::<Vec<(String,String)>>(line) {
+        let Some(line) = source
+            .lines()
+            .find_map(|line| line.strip_prefix(MATERIAL_PATHS))
+        else {
+            return false;
+        };
+        let paths = match serde_json::from_str::<Vec<(String, String)>>(line) {
             Ok(paths) => paths,
-            Err(error) => { crate::complain!("material paths: {error}"); return false; }
+            Err(error) => {
+                crate::complain!("material paths: {error}");
+                return false;
+            }
         };
         for (kind, name) in paths {
             let path = absolute_material_path(&map.parent().unwrap_or(Path::new(".")).join(name));
             let result = match kind.as_str() {
-                "folder" => self.load_materials(&path).map_err(|error| error.to_string()),
+                "folder" => self
+                    .load_materials(&path)
+                    .map_err(|error| error.to_string()),
                 "wad" => self.load_wad(&path),
-                _ => { crate::complain!("unknown material source: {kind}"); continue; },
+                _ => {
+                    crate::complain!("unknown material source: {kind}");
+                    continue;
+                }
             };
             match result {
-                Ok(warnings) => for warning in warnings { crate::complain!("materials: {warning}"); },
+                Ok(warnings) => {
+                    for warning in warnings {
+                        crate::complain!("materials: {warning}");
+                    }
+                }
                 Err(error) => {
                     crate::complain!("{}: {error}", path.display());
                     // Keep missing references so a save does not erase the user's settings.
-                    self.material_sources.push(if kind=="folder" { MaterialSource::Folder(path) } else { MaterialSource::Package(path) });
+                    self.material_sources.push(if kind == "folder" {
+                        MaterialSource::Folder(path)
+                    } else {
+                        MaterialSource::Package(path)
+                    });
                 }
             }
         }
@@ -702,7 +915,9 @@ impl Document {
 fn folder_stamp(folder: &Path) -> u64 {
     use std::hash::{Hash, Hasher};
     fn walk(dir: &Path, out: &mut Vec<(PathBuf, u64, Option<std::time::SystemTime>)>) {
-        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
         for entry in entries.flatten() {
             let path = entry.path();
             match entry.metadata() {
@@ -723,10 +938,23 @@ fn folder_stamp(folder: &Path) -> u64 {
 /// Takes the materials named `names` out of `previous`, provided every one of them is
 /// there and came from `folder` (a later folder may have replaced one); otherwise takes
 /// nothing and returns `None`, and the folder is read again.
-fn take_named(previous: &mut HashMap<String, map_model::material::Material>, names: &[String], folder: &Path) -> Option<Vec<map_model::material::Material>> {
-    let all_there = names.iter().all(|name| previous.get(name).is_some_and(|material| material.path.starts_with(folder)));
+fn take_named(
+    previous: &mut HashMap<String, map_model::material::Material>,
+    names: &[String],
+    folder: &Path,
+) -> Option<Vec<map_model::material::Material>> {
+    let all_there = names.iter().all(|name| {
+        previous
+            .get(name)
+            .is_some_and(|material| material.path.starts_with(folder))
+    });
     if !all_there {
         return None;
     }
-    Some(names.iter().filter_map(|name| previous.remove(name)).collect())
+    Some(
+        names
+            .iter()
+            .filter_map(|name| previous.remove(name))
+            .collect(),
+    )
 }

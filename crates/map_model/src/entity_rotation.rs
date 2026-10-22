@@ -326,16 +326,14 @@ pub fn apply_rotation(
     match info.kind {
         RotationType::None => None,
         RotationType::Angle => {
-            let direction =
-                vec::normalize(*transformation * rotation * Vec3d::new(1.0, 0.0, 0.0));
+            let direction = vec::normalize(*transformation * rotation * Vec3d::new(1.0, 0.0, 0.0));
             Some((
                 info.property_key.clone(),
                 write_number(direction_angle(direction)),
             ))
         }
         RotationType::AngleUpDown => {
-            let direction =
-                vec::normalize(*transformation * rotation * Vec3d::new(1.0, 0.0, 0.0));
+            let direction = vec::normalize(*transformation * rotation * Vec3d::new(1.0, 0.0, 0.0));
             if direction.z() > 0.9 {
                 return Some((info.property_key.clone(), "-1".to_string()));
             }
@@ -515,8 +513,8 @@ mod tests {
         let info = rotation_info(&props, &facts("misc_model", true, &[]));
         assert_eq!(info.kind, RotationType::EulerPositivePitchDown);
 
-        let (key, value) = apply_rotation(&props, &info, &Mat4x4d::identity())
-            .expect("the facing is kept");
+        let (key, value) =
+            apply_rotation(&props, &info, &Mat4x4d::identity()).expect("the facing is kept");
         assert_eq!(key, "angles");
         // Unchanged by an identity transformation, up to the rounding the writer does.
         let parsed = angles(&properties(&[("angles", &value)]), "angles");

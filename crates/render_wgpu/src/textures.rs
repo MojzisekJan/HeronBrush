@@ -43,26 +43,61 @@ pub(crate) struct Decoded {
 impl Decoded {
     /// GPU bytes the texture will take.
     pub fn bytes(&self) -> u64 {
-        let size = |mips: &Vec<Mip>| mips.iter().map(|(_, _, data)| data.len() as u64).sum::<u64>();
-        self.albedo.as_ref().map_or(0, size) + self.normal.as_ref().map_or(0, |(mips, _)| size(mips)) + self.pbr.as_ref().map_or(0,|(orm,e)|size(orm)+size(e))
+        let size = |mips: &Vec<Mip>| {
+            mips.iter()
+                .map(|(_, _, data)| data.len() as u64)
+                .sum::<u64>()
+        };
+        self.albedo.as_ref().map_or(0, size)
+            + self.normal.as_ref().map_or(0, |(mips, _)| size(mips))
+            + self.pbr.as_ref().map_or(0, |(orm, e)| size(orm) + size(e))
     }
 }
 
 /// Decodes and mips `material` (on whatever thread calls it).
 pub(crate) fn decode(generation: u64, index: usize, material: &Material) -> Decoded {
     let expected = (material.width as usize) * (material.height as usize) * 4;
-    let albedo = material.pixels().filter(|_| expected > 0).map(|pixels| mip_chain(material.width, material.height, &pixels[..expected], true));
-    let normal = material.normal_map.as_ref().filter(|n| n.width > 0 && n.height > 0).and_then(|n| {
-        let pixels = n.pixels()?;
-        Some((mip_chain(n.width, n.height, &pixels[..(n.width * n.height * 4) as usize], false), n.flip_y))
+    let albedo = material
+        .pixels()
+        .filter(|_| expected > 0)
+        .map(|pixels| mip_chain(material.width, material.height, &pixels[..expected], true));
+    let normal = material
+        .normal_map
+        .as_ref()
+        .filter(|n| n.width > 0 && n.height > 0)
+        .and_then(|n| {
+            let pixels = n.pixels()?;
+            Some((
+                mip_chain(
+                    n.width,
+                    n.height,
+                    &pixels[..(n.width * n.height * 4) as usize],
+                    false,
+                ),
+                n.flip_y,
+            ))
+        });
+    let pbr = material.model_pbr.as_ref().map(|p| {
+        let orm = p.preview_orm();
+        let white = map_model::entity_model::Skin {
+            width: 1,
+            height: 1,
+            pixels: vec![255; 4],
+        };
+        let e = p.emissive.as_deref().unwrap_or(&white);
+        (
+            mip_chain(orm.width, orm.height, &orm.pixels, false),
+            mip_chain(e.width, e.height, &e.pixels, true),
+        )
     });
-    let pbr=material.model_pbr.as_ref().map(|p| {
-        let orm=p.preview_orm();
-        let white=map_model::entity_model::Skin {width:1,height:1,pixels:vec![255;4]};
-        let e=p.emissive.as_deref().unwrap_or(&white);
-        (mip_chain(orm.width,orm.height,&orm.pixels,false),mip_chain(e.width,e.height,&e.pixels,true))
-    });
-    Decoded { generation, index, albedo, normal, pbr, info: material.info() }
+    Decoded {
+        generation,
+        index,
+        albedo,
+        normal,
+        pbr,
+        info: material.info(),
+    }
 }
 
 /// The worker threads and the queues to and from them.
@@ -76,7 +111,11 @@ pub(crate) struct Workers {
     /// The browser has no threads: there the queue, the way back and when the frame
     /// thread last stopped decoding, for [`Workers::next`] to decode a few each frame.
     #[cfg(target_arch = "wasm32")]
-    inline: (mpsc::Receiver<Job>, mpsc::Sender<Decoded>, std::cell::Cell<Option<web_time::Instant>>),
+    inline: (
+        mpsc::Receiver<Job>,
+        mpsc::Sender<Decoded>,
+        std::cell::Cell<Option<web_time::Instant>>,
+    ),
 }
 
 impl Workers {
@@ -87,35 +126,61 @@ impl Workers {
         let (done, results) = mpsc::channel::<Decoded>();
         #[cfg(target_arch = "wasm32")]
         {
-            Workers { jobs: Some(jobs), results, backlog: VecDeque::new(), in_flight: 0, inline: (inbox, done, std::cell::Cell::new(None)) }
+            Workers {
+                jobs: Some(jobs),
+                results,
+                backlog: VecDeque::new(),
+                in_flight: 0,
+                inline: (inbox, done, std::cell::Cell::new(None)),
+            }
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
             let inbox = Arc::new(Mutex::new(inbox));
-            let threads = std::thread::available_parallelism().map_or(2, |n| n.get()).saturating_sub(2).clamp(1, 4);
+            let threads = std::thread::available_parallelism()
+                .map_or(2, |n| n.get())
+                .saturating_sub(2)
+                .clamp(1, 4);
             for n in 0..threads {
                 let inbox = inbox.clone();
                 let done = done.clone();
-                let _ = std::thread::Builder::new().name(format!("texture decode {n}")).spawn(move || loop {
-                    // The lock is held only to take a job, not while decoding it.
-                    let job = match inbox.lock() {
-                        Ok(inbox) => inbox.recv(),
-                        Err(_) => return,
-                    };
-                    let Ok(job) = job else { return };
-                    if done.send(decode(job.generation, job.index, &job.material)).is_err() {
-                        return;
-                    }
-                });
+                let _ = std::thread::Builder::new()
+                    .name(format!("texture decode {n}"))
+                    .spawn(move || loop {
+                        // The lock is held only to take a job, not while decoding it.
+                        let job = match inbox.lock() {
+                            Ok(inbox) => inbox.recv(),
+                            Err(_) => return,
+                        };
+                        let Ok(job) = job else { return };
+                        if done
+                            .send(decode(job.generation, job.index, &job.material))
+                            .is_err()
+                        {
+                            return;
+                        }
+                    });
             }
-            Workers { jobs: Some(jobs), results, backlog: VecDeque::new(), in_flight: 0 }
+            Workers {
+                jobs: Some(jobs),
+                results,
+                backlog: VecDeque::new(),
+                in_flight: 0,
+            }
         }
     }
 
     /// Queues `material` for decoding.
     pub fn request(&mut self, generation: u64, index: usize, material: Material) {
         if let Some(jobs) = &self.jobs {
-            if jobs.send(Job { generation, index, material }).is_ok() {
+            if jobs
+                .send(Job {
+                    generation,
+                    index,
+                    material,
+                })
+                .is_ok()
+            {
                 self.in_flight += 1;
             }
         }
@@ -163,7 +228,15 @@ impl Drop for Workers {
 pub(crate) fn mip_chain(width: u32, height: u32, pixels: &[u8], srgb: bool) -> Vec<Mip> {
     use map_model::material::{linear_to_srgb, srgb_to_linear};
     let mut out = vec![(width, height, pixels.to_vec())];
-    let lut: Vec<f32> = (0..=255u8).map(|c| if srgb { srgb_to_linear(c) } else { f32::from(c) / 255.0 }).collect();
+    let lut: Vec<f32> = (0..=255u8)
+        .map(|c| {
+            if srgb {
+                srgb_to_linear(c)
+            } else {
+                f32::from(c) / 255.0
+            }
+        })
+        .collect();
     while let Some((w, h, data)) = out.last() {
         if *w == 1 && *h == 1 {
             break;
@@ -185,7 +258,11 @@ pub(crate) fn mip_chain(width: u32, height: u32, pixels: &[u8], srgb: bool) -> V
                 }
                 let o = ((y * nw + x) * 4) as usize;
                 for c in 0..3 {
-                    next[o + c] = if srgb { linear_to_srgb(sum[c] / 4.0) } else { (sum[c] / 4.0 * 255.0 + 0.5) as u8 };
+                    next[o + c] = if srgb {
+                        linear_to_srgb(sum[c] / 4.0)
+                    } else {
+                        (sum[c] / 4.0 * 255.0 + 0.5) as u8
+                    };
                 }
                 next[o + 3] = (sum[3] / 4.0 * 255.0 + 0.5) as u8;
             }
@@ -202,7 +279,9 @@ mod tests {
     #[test]
     fn mips_average_in_linear_light() {
         // Black and white texels average to linear grey 0.5, sRGB 188 -- not 128.
-        let pixels = [0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 255, 255, 255, 255, 255];
+        let pixels = [
+            0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 255, 255, 255, 255, 255,
+        ];
         let mips = mip_chain(2, 2, &pixels, true);
         assert_eq!(mips.len(), 2);
         assert_eq!(&mips[1].2[..], &[188, 188, 188, 255]);
@@ -213,7 +292,17 @@ mod tests {
     #[test]
     fn a_worker_decodes_what_it_is_asked() {
         let mut workers = Workers::new();
-        workers.request(7, 3, Material::rgba("red".into(), "red.png".into(), 2, 2, vec![255, 0, 0, 255].repeat(4)));
+        workers.request(
+            7,
+            3,
+            Material::rgba(
+                "red".into(),
+                "red.png".into(),
+                2,
+                2,
+                vec![255, 0, 0, 255].repeat(4),
+            ),
+        );
         let start = web_time::Instant::now();
         let done = loop {
             if let Some(done) = workers.next() {

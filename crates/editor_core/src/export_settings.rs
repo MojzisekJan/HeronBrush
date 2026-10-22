@@ -31,24 +31,47 @@ pub fn default_path() -> PathBuf {
 /// The nearest project profile, or a new profile at the nearest engine/project
 /// root. Saved maps never inherit another project's last output directory.
 pub fn project_path(map: &Path) -> PathBuf {
-    let absolute=if map.is_absolute(){map.to_path_buf()}else{std::env::current_dir().unwrap_or_default().join(map)};
-    let parent=absolute.parent().unwrap_or(Path::new("."));
+    let absolute = if map.is_absolute() {
+        map.to_path_buf()
+    } else {
+        std::env::current_dir().unwrap_or_default().join(map)
+    };
+    let parent = absolute.parent().unwrap_or(Path::new("."));
     for folder in parent.ancestors() {
-        let profile=folder.join(".heron-brush/exports.json");
-        if crate::files::is_file(&profile){return profile}
+        let profile = folder.join(".heron-brush/exports.json");
+        if crate::files::is_file(&profile) {
+            return profile;
+        }
     }
     for folder in parent.ancestors() {
-        if ["project.godot","game.project","Cargo.toml","package.json","ProjectSettings/ProjectVersion.txt"].iter().any(|name|crate::files::is_file(&folder.join(name)))
-            || crate::files::read_dir(folder).ok().is_some_and(|entries|entries.iter().any(|path|path.extension().is_some_and(|e|e=="flaxproj" || e=="sdpkg" || e=="sln"))) {
-            return folder.join(".heron-brush/exports.json")
+        if [
+            "project.godot",
+            "game.project",
+            "Cargo.toml",
+            "package.json",
+            "ProjectSettings/ProjectVersion.txt",
+        ]
+        .iter()
+        .any(|name| crate::files::is_file(&folder.join(name)))
+            || crate::files::read_dir(folder).ok().is_some_and(|entries| {
+                entries.iter().any(|path| {
+                    path.extension()
+                        .is_some_and(|e| e == "flaxproj" || e == "sdpkg" || e == "sln")
+                })
+            })
+        {
+            return folder.join(".heron-brush/exports.json");
         }
     }
     parent.join(".heron-brush/exports.json")
 }
 
-#[derive(serde::Serialize,serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
-struct ProjectProfile {version:u32,targets:std::collections::BTreeMap<String,serde_json::Value>}
+struct ProjectProfile {
+    version: u32,
+    targets: std::collections::BTreeMap<String, serde_json::Value>,
+}
 
 /// The name an engine is written under, which is what its line begins with.
 fn key(target: Target) -> &'static str {
@@ -79,9 +102,14 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn validate(&self) -> Result<(),String> {self.error.clone().map_or(Ok(()),Err)}
+    pub fn validate(&self) -> Result<(), String> {
+        self.error.clone().map_or(Ok(()), Err)
+    }
     pub fn for_map(map: Option<&Path>) -> Self {
-        match map {Some(map)=>Self::load_from(&project_path(map)),None=>Self::load()}
+        match map {
+            Some(map) => Self::load_from(&project_path(map)),
+            None => Self::load(),
+        }
     }
     /// Reads the settings, or the defaults where there is nothing to read.
     pub fn load() -> Self {
@@ -94,29 +122,81 @@ impl Settings {
     pub fn load_from(store: &Path) -> Self {
         let mut settings = Settings::default();
         let text = match crate::files::read_to_string(store) {
-            Ok(text)=>text,
-            Err(error)=>{if error.kind()!=std::io::ErrorKind::NotFound{settings.error=Some(format!("cannot read export settings {}: {error}",store.display()));}return settings;}
+            Ok(text) => text,
+            Err(error) => {
+                if error.kind() != std::io::ErrorKind::NotFound {
+                    settings.error = Some(format!(
+                        "cannot read export settings {}: {error}",
+                        store.display()
+                    ));
+                }
+                return settings;
+            }
         };
 
-        if store.file_name().is_some_and(|name|name=="exports.json") {
-            let profile:ProjectProfile=match serde_json::from_str(&text) {Ok(profile)=>profile,Err(error)=>{settings.error=Some(format!("invalid export profile {}: {error}",store.display()));return settings}};
-            if profile.version!=1 {settings.error=Some(format!("unsupported export profile version {}",profile.version));return settings}
-            let root=store.parent().and_then(Path::parent).unwrap_or(Path::new("."));
-            for (name,overrides) in profile.targets {
-                let Some(target)=Target::ALL.into_iter().find(|target|key(*target)==name) else {settings.error=Some(format!("unknown export profile target {name}"));return settings};
-                let mut merged=serde_json::to_value(default_for(target)).expect("export defaults serialize");
-                let Some(overrides)=overrides.as_object() else{settings.error=Some(format!("{name} export profile must be an object"));return settings};
-                for (key,value) in overrides {merged[key]=value.clone();}
-                let mut options:Options=match serde_json::from_value(merged){Ok(options)=>options,Err(error)=>{settings.error=Some(format!("invalid {name} export profile: {error}"));return settings}};
-                if !options.scale.is_finite() || options.scale<=0. || options.trigger_layer>32 || !options.lightmap_texel_size.is_finite() || options.lightmap_texel_size<=0. {
-                    settings.error=Some(format!("invalid numeric settings in {name} export profile"));return settings
+        if store.file_name().is_some_and(|name| name == "exports.json") {
+            let profile: ProjectProfile = match serde_json::from_str(&text) {
+                Ok(profile) => profile,
+                Err(error) => {
+                    settings.error = Some(format!(
+                        "invalid export profile {}: {error}",
+                        store.display()
+                    ));
+                    return settings;
                 }
-                for path in [&mut options.directory,&mut options.project_dir] {
-                    if !path.is_empty() && Path::new(path).is_relative(){*path=root.join(&*path).to_string_lossy().into_owned();}
-                }
-                options.target=target;settings.per_engine.insert(key(target),options);
+            };
+            if profile.version != 1 {
+                settings.error = Some(format!(
+                    "unsupported export profile version {}",
+                    profile.version
+                ));
+                return settings;
             }
-            return settings
+            let root = store
+                .parent()
+                .and_then(Path::parent)
+                .unwrap_or(Path::new("."));
+            for (name, overrides) in profile.targets {
+                let Some(target) = Target::ALL.into_iter().find(|target| key(*target) == name)
+                else {
+                    settings.error = Some(format!("unknown export profile target {name}"));
+                    return settings;
+                };
+                let mut merged =
+                    serde_json::to_value(default_for(target)).expect("export defaults serialize");
+                let Some(overrides) = overrides.as_object() else {
+                    settings.error = Some(format!("{name} export profile must be an object"));
+                    return settings;
+                };
+                for (key, value) in overrides {
+                    merged[key] = value.clone();
+                }
+                let mut options: Options = match serde_json::from_value(merged) {
+                    Ok(options) => options,
+                    Err(error) => {
+                        settings.error = Some(format!("invalid {name} export profile: {error}"));
+                        return settings;
+                    }
+                };
+                if !options.scale.is_finite()
+                    || options.scale <= 0.
+                    || options.trigger_layer > 32
+                    || !options.lightmap_texel_size.is_finite()
+                    || options.lightmap_texel_size <= 0.
+                {
+                    settings.error =
+                        Some(format!("invalid numeric settings in {name} export profile"));
+                    return settings;
+                }
+                for path in [&mut options.directory, &mut options.project_dir] {
+                    if !path.is_empty() && Path::new(path).is_relative() {
+                        *path = root.join(&*path).to_string_lossy().into_owned();
+                    }
+                }
+                options.target = target;
+                settings.per_engine.insert(key(target), options);
+            }
+            return settings;
         }
 
         for line in text.lines() {
@@ -173,23 +253,47 @@ impl Settings {
         if let Some(directory) = path.parent() {
             crate::files::create_dir_all(directory)?;
         }
-        if path.file_name().is_some_and(|name|name=="exports.json") {
-            let root=path.parent().and_then(Path::parent).unwrap_or(Path::new("."));
-            let mut targets=std::collections::BTreeMap::new();
+        if path.file_name().is_some_and(|name| name == "exports.json") {
+            let root = path
+                .parent()
+                .and_then(Path::parent)
+                .unwrap_or(Path::new("."));
+            let mut targets = std::collections::BTreeMap::new();
             for target in Target::ALL {
-                if !self.per_engine.contains_key(key(target)){continue}
-                let mut options=self.for_target(target);
-                for value in [&mut options.directory,&mut options.project_dir] {
-                    if let Ok(relative)=Path::new(value).strip_prefix(root){*value=if relative.as_os_str().is_empty(){".".into()}else{relative.to_string_lossy().replace('\\',"/")};}
+                if !self.per_engine.contains_key(key(target)) {
+                    continue;
                 }
-                targets.insert(key(target).into(),serde_json::to_value(options).map_err(std::io::Error::other)?);
+                let mut options = self.for_target(target);
+                for value in [&mut options.directory, &mut options.project_dir] {
+                    if let Ok(relative) = Path::new(value).strip_prefix(root) {
+                        *value = if relative.as_os_str().is_empty() {
+                            ".".into()
+                        } else {
+                            relative.to_string_lossy().replace('\\', "/")
+                        };
+                    }
+                }
+                targets.insert(
+                    key(target).into(),
+                    serde_json::to_value(options).map_err(std::io::Error::other)?,
+                );
             }
-            let bytes=serde_json::to_vec_pretty(&ProjectProfile{version:1,targets}).map_err(std::io::Error::other)?;
+            let bytes = serde_json::to_vec_pretty(&ProjectProfile {
+                version: 1,
+                targets,
+            })
+            .map_err(std::io::Error::other)?;
             #[cfg(not(target_arch = "wasm32"))]
-            { crate::godot_live::atomic_write(path,&bytes) }
+            {
+                crate::godot_live::atomic_write(path, &bytes)
+            }
             #[cfg(target_arch = "wasm32")]
-            { crate::files::write(path, bytes) }
-        }else{crate::files::write(path, self.to_text().as_bytes())}
+            {
+                crate::files::write(path, bytes)
+            }
+        } else {
+            crate::files::write(path, self.to_text().as_bytes())
+        }
     }
 
     /// Every engine's settings as the text of the file.
@@ -212,7 +316,10 @@ impl Settings {
                 ("cull", switch(options.cull_hidden).to_string()),
                 ("merge_faces", switch(options.merge_faces).to_string()),
                 ("static_cells", switch(options.static_cells).to_string()),
-                ("merge_collision", switch(options.merge_collision).to_string()),
+                (
+                    "merge_collision",
+                    switch(options.merge_collision).to_string(),
+                ),
                 ("sky", switch(options.sky).to_string()),
                 ("textures", text(&options.texture_dir)),
                 ("materials", text(&options.material_dir)),
@@ -242,9 +349,12 @@ impl Settings {
                 line.push_str(&format!("{field}={value} "));
             }
             if !options.entities.is_empty() {
-                let bytes=serde_json::to_vec(&options.entities).expect("serializable entity rules");
+                let bytes =
+                    serde_json::to_vec(&options.entities).expect("serializable entity rules");
                 line.push_str("entities_hex=");
-                for byte in bytes {line.push_str(&format!("{byte:02x}"));}
+                for byte in bytes {
+                    line.push_str(&format!("{byte:02x}"));
+                }
                 line.push(' ');
             }
             out.push_str(line.trim_end());
@@ -275,9 +385,19 @@ fn read_named(target: Target, values: &str) -> Option<Options> {
             "merge_faces" => options.merge_faces = on(),
             "static_cells" => options.static_cells = on(),
             "entities_hex" => {
-                if value.len()%2!=0{return None}
-                let bytes=value.as_bytes().chunks_exact(2).map(|pair|std::str::from_utf8(pair).ok().and_then(|pair|u8::from_str_radix(pair,16).ok())).collect::<Option<Vec<_>>>()?;
-                options.entities=serde_json::from_slice(&bytes).ok()?;
+                if value.len() % 2 != 0 {
+                    return None;
+                }
+                let bytes = value
+                    .as_bytes()
+                    .chunks_exact(2)
+                    .map(|pair| {
+                        std::str::from_utf8(pair)
+                            .ok()
+                            .and_then(|pair| u8::from_str_radix(pair, 16).ok())
+                    })
+                    .collect::<Option<Vec<_>>>()?;
+                options.entities = serde_json::from_slice(&bytes).ok()?;
             }
             "merge_collision" => options.merge_collision = on(),
             "textures" => options.texture_dir = text(),
@@ -349,7 +469,10 @@ fn read_positional(target: Target, values: &str) -> Option<Options> {
 /// units to a metre for Godot and Defold, whose importers expect it, and the same for the
 /// rest since a level built at one scale should not change size by being written twice.
 fn default_for(target: Target) -> Options {
-    let mut options = Options { target, ..Options::default() };
+    let mut options = Options {
+        target,
+        ..Options::default()
+    };
     if matches!(target, Target::Gltf | Target::Glb) {
         options.collision = false;
         options.cull_hidden = false;
@@ -366,20 +489,49 @@ mod tests {
 
     #[test]
     fn project_profiles_relocate_paths_and_keep_projects_isolated() {
-        let base=std::env::temp_dir().join(format!("heron-profile-relocation-{}",std::process::id()));
-        let first=base.join("first");let second=base.join("second");
-        std::fs::create_dir_all(first.join("maps/nested")).unwrap();std::fs::create_dir_all(second.join("maps")).unwrap();
-        std::fs::write(first.join("project.godot"),"").unwrap();std::fs::write(second.join("project.godot"),"").unwrap();
-        let map=first.join("maps/nested/arena.map");let path=project_path(&map);
-        let mut settings=Settings::default();settings.set_in(Target::Godot,Options{target:Target::Godot,scale:64.,directory:first.join("generated/maps").to_string_lossy().into_owned(),project_dir:first.to_string_lossy().into_owned(),export_on_save:true,..Default::default()},&path);
-        let text=std::fs::read_to_string(&path).unwrap();assert!(!text.contains(first.to_str().unwrap()));
-        assert_eq!(project_path(&map),path);
-        std::fs::create_dir_all(second.join(".heron-brush")).unwrap();std::fs::copy(&path,second.join(".heron-brush/exports.json")).unwrap();
-        let loaded=Settings::for_map(Some(&second.join("maps/arena.map")));loaded.validate().unwrap();
-        let options=loaded.for_target(Target::Godot);assert_eq!(options.scale,64.);assert!(options.directory.starts_with(second.to_str().unwrap()));assert!(options.export_on_save);
+        let base =
+            std::env::temp_dir().join(format!("heron-profile-relocation-{}", std::process::id()));
+        let first = base.join("first");
+        let second = base.join("second");
+        std::fs::create_dir_all(first.join("maps/nested")).unwrap();
+        std::fs::create_dir_all(second.join("maps")).unwrap();
+        std::fs::write(first.join("project.godot"), "").unwrap();
+        std::fs::write(second.join("project.godot"), "").unwrap();
+        let map = first.join("maps/nested/arena.map");
+        let path = project_path(&map);
+        let mut settings = Settings::default();
+        settings.set_in(
+            Target::Godot,
+            Options {
+                target: Target::Godot,
+                scale: 64.,
+                directory: first.join("generated/maps").to_string_lossy().into_owned(),
+                project_dir: first.to_string_lossy().into_owned(),
+                export_on_save: true,
+                ..Default::default()
+            },
+            &path,
+        );
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(!text.contains(first.to_str().unwrap()));
+        assert_eq!(project_path(&map), path);
+        std::fs::create_dir_all(second.join(".heron-brush")).unwrap();
+        std::fs::copy(&path, second.join(".heron-brush/exports.json")).unwrap();
+        let loaded = Settings::for_map(Some(&second.join("maps/arena.map")));
+        loaded.validate().unwrap();
+        let options = loaded.for_target(Target::Godot);
+        assert_eq!(options.scale, 64.);
+        assert!(options.directory.starts_with(second.to_str().unwrap()));
+        assert!(options.export_on_save);
         assert!(!loaded.for_target(Target::Bevy).export_on_save);
-        std::fs::write(second.join(".heron-brush/exports.json"),"{\"version\":999,\"targets\":{}}").unwrap();
-        assert!(Settings::for_map(Some(&second.join("maps/arena.map"))).validate().is_err());
+        std::fs::write(
+            second.join(".heron-brush/exports.json"),
+            "{\"version\":999,\"targets\":{}}",
+        )
+        .unwrap();
+        assert!(Settings::for_map(Some(&second.join("maps/arena.map")))
+            .validate()
+            .is_err());
         std::fs::remove_dir_all(base).unwrap();
     }
 
@@ -461,7 +613,8 @@ mod tests {
 
     #[test]
     fn every_setting_survives_being_written_and_read_back() {
-        let store = std::env::temp_dir().join(format!("heron-settings-named-{}", std::process::id()));
+        let store =
+            std::env::temp_dir().join(format!("heron-settings-named-{}", std::process::id()));
         let mut settings = Settings::default();
         let written = Options {
             entities: Default::default(),
@@ -495,9 +648,25 @@ mod tests {
             directory: "/home/somebody/My Game/maps".to_string(),
             export_on_save: true,
         };
-        settings.per_engine.insert(key(Target::Godot), written.clone());
-        settings.per_engine.get_mut(key(Target::Godot)).unwrap().entities.insert("beacon".into(),crate::export_bindings::Rule{build:Default::default(),defaults:std::collections::BTreeMap::from([("label".into(),serde_json::json!("literal \\s and spaces"))])});
-        let written=settings.for_target(Target::Godot);
+        settings
+            .per_engine
+            .insert(key(Target::Godot), written.clone());
+        settings
+            .per_engine
+            .get_mut(key(Target::Godot))
+            .unwrap()
+            .entities
+            .insert(
+                "beacon".into(),
+                crate::export_bindings::Rule {
+                    build: Default::default(),
+                    defaults: std::collections::BTreeMap::from([(
+                        "label".into(),
+                        serde_json::json!("literal \\s and spaces"),
+                    )]),
+                },
+            );
+        let written = settings.for_target(Target::Godot);
 
         let text = settings.to_text();
         std::fs::write(&store, &text).expect("the file is written");
@@ -508,8 +677,8 @@ mod tests {
         assert_eq!(back.sky, written.sky);
         assert_eq!(back.cull_hidden, written.cull_hidden);
         assert_eq!(back.merge_faces, written.merge_faces);
-        assert_eq!(back.static_cells,written.static_cells);
-        assert_eq!(back.entities,written.entities);
+        assert_eq!(back.static_cells, written.static_cells);
+        assert_eq!(back.entities, written.entities);
         assert_eq!(back.merge_collision, written.merge_collision);
         assert_eq!(back.texture_dir, written.texture_dir);
         assert_eq!(back.material_dir, written.material_dir);
@@ -520,7 +689,10 @@ mod tests {
         assert_eq!(back.content_dir, written.content_dir);
         assert_eq!(back.model_material, written.model_material);
         assert_eq!(back.model_sampler, written.model_sampler);
-        assert_eq!(back.project_dir, written.project_dir, "a path with a space in it");
+        assert_eq!(
+            back.project_dir, written.project_dir,
+            "a path with a space in it"
+        );
         assert_eq!(back.trigger_layer, written.trigger_layer);
         assert_eq!(back.lightmap_uv2, written.lightmap_uv2);
         assert_eq!(back.lightmap_texel_size, written.lightmap_texel_size);
@@ -528,7 +700,10 @@ mod tests {
         assert_eq!(back.group_hierarchy, written.group_hierarchy);
         assert_eq!(back.flip_faces, written.flip_faces);
         assert_eq!(back.flip_uv_v, written.flip_uv_v);
-        assert_eq!(back.directory, written.directory, "a path with a space in it");
+        assert_eq!(
+            back.directory, written.directory,
+            "a path with a space in it"
+        );
         assert_eq!(back.export_on_save, written.export_on_save);
 
         let _ = std::fs::remove_file(&store);
@@ -536,7 +711,8 @@ mod tests {
 
     #[test]
     fn a_key_from_a_newer_build_is_stepped_over() {
-        let store = std::env::temp_dir().join(format!("heron-settings-newer-{}", std::process::id()));
+        let store =
+            std::env::temp_dir().join(format!("heron-settings-newer-{}", std::process::id()));
         std::fs::write(&store, "godot=scale=64 something_new=yes cull=0\n").expect("written");
 
         let godot = Settings::load_from(&store).for_target(Target::Godot);

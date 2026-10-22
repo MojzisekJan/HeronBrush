@@ -37,13 +37,13 @@
 //! [`BuildError::DuplicateDirectedEdge`].
 
 mod build;
-mod hull;
 mod clip;
+mod hull;
 mod query;
 
 pub use build::BuildError;
-pub use hull::HullError;
 pub use clip::{ClipError, ClipResult, FromPlanes};
+pub use hull::HullError;
 
 use geometry_math::bbox::Bbox;
 use geometry_math::plane::Plane;
@@ -157,7 +157,11 @@ impl<T: Float> Polyhedron<T> {
     /// `plane_of_face` is asked for each face in turn. A transformation that mirrors or
     /// flattens the solid is not for this: the winding turns inside out or the volume
     /// goes, and either way the arrangement is not the one it had.
-    pub fn transform(&mut self, matrix: &geometry_math::mat::Matrix<T, 4, 4>, plane_of_face: impl Fn(usize) -> Plane<T, 3>) {
+    pub fn transform(
+        &mut self,
+        matrix: &geometry_math::mat::Matrix<T, 4, 4>,
+        plane_of_face: impl Fn(usize) -> Plane<T, 3>,
+    ) {
         for vertex in &mut self.vertices {
             vertex.position = *matrix * vertex.position;
         }

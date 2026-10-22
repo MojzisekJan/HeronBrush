@@ -46,7 +46,9 @@ impl ManualPage {
             let mut settings_changed = false;
             ui.horizontal(|ui| {
                 ui.set_min_height(widgets::ROW_HEIGHT);
-                settings_changed |= widgets::switch(ui, &mut contents).on_hover_text(tr("Show or hide contents")).changed();
+                settings_changed |= widgets::switch(ui, &mut contents)
+                    .on_hover_text(tr("Show or hide contents"))
+                    .changed();
                 ui.label(tr("Contents"));
                 widgets::toolbar_gap(ui);
                 ui.label(egui::RichText::new(tr("Text size")).color(theme::dim()));
@@ -59,7 +61,10 @@ impl ManualPage {
                 // Every language with a manual, English first, each named in itself.
                 let languages: Vec<Language> = manual::languages().collect();
                 let names: Vec<&str> = languages.iter().map(|l| l.name()).collect();
-                let mut index = languages.iter().position(|l| *l == self.language).unwrap_or(0);
+                let mut index = languages
+                    .iter()
+                    .position(|l| *l == self.language)
+                    .unwrap_or(0);
                 if widgets::dropdown(ui, "manual-language", &mut index, &names, 150.0) {
                     self.language = languages[index];
                     self.chapters = chapters(self.language);
@@ -85,7 +90,9 @@ impl ManualPage {
                 if !contents {
                     contents = true;
                     preferences::edit(|p| p.manual_show_contents = true);
-                    if let Err(error) = preferences::current().save(&preferences::Preferences::default_path()) {
+                    if let Err(error) =
+                        preferences::current().save(&preferences::Preferences::default_path())
+                    {
                         editor_core::complain!("{error}");
                     }
                 }
@@ -120,19 +127,41 @@ impl ManualPage {
                         .max_width(sidebar)
                         .show(ui, |ui| {
                             ui.vertical(|ui| {
-                            ui.set_width(sidebar);
-                            ui.spacing_mut().item_spacing.y = 2.0;
-                            for index in shown {
-                                if form::sidebar_item(ui, &self.chapters[index].title, self.selected == index, None, 30.0).clicked() {
-                                    self.selected = index;
+                                ui.set_width(sidebar);
+                                ui.spacing_mut().item_spacing.y = 2.0;
+                                for index in shown {
+                                    if form::sidebar_item(
+                                        ui,
+                                        &self.chapters[index].title,
+                                        self.selected == index,
+                                        None,
+                                        30.0,
+                                    )
+                                    .clicked()
+                                    {
+                                        self.selected = index;
+                                    }
                                 }
-                            }
                             });
                         });
                     // The sidebar's edge, which drags its width.
-                    let (edge, response) = ui.allocate_exact_size(egui::vec2(9.0, ui.available_height()), egui::Sense::drag());
+                    let (edge, response) = ui.allocate_exact_size(
+                        egui::vec2(9.0, ui.available_height()),
+                        egui::Sense::drag(),
+                    );
                     let active = response.hovered() || response.dragged();
-                    ui.painter().vline(edge.center().x, edge.y_range(), egui::Stroke::new(1.0, if active { crate::theme::accent() } else { crate::theme::border() }));
+                    ui.painter().vline(
+                        edge.center().x,
+                        edge.y_range(),
+                        egui::Stroke::new(
+                            1.0,
+                            if active {
+                                crate::theme::accent()
+                            } else {
+                                crate::theme::border()
+                            },
+                        ),
+                    );
                     if active {
                         ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
                     }
@@ -148,37 +177,39 @@ impl ManualPage {
                 if old != self.selected {
                     scroll = scroll.vertical_scroll_offset(0.0);
                 }
-                scroll.show(ui, |ui| {ui.vertical(|ui|{
-                    ui.set_width(ui.available_width());
-                    let chapter = &self.chapters[self.selected];
-                    ui.label(
-                        egui::RichText::new(&chapter.title)
-                            .size(size * 1.5)
-                            .strong(),
-                    );
-                    ui.add_space(size);
-                    let mut code = false;
-                    for line in chapter.body.lines() {
-                        if line.starts_with("```") {
-                            code = !code;
-                            continue;
+                scroll.show(ui, |ui| {
+                    ui.vertical(|ui| {
+                        ui.set_width(ui.available_width());
+                        let chapter = &self.chapters[self.selected];
+                        ui.label(
+                            egui::RichText::new(&chapter.title)
+                                .size(size * 1.5)
+                                .strong(),
+                        );
+                        ui.add_space(size);
+                        let mut code = false;
+                        for line in chapter.body.lines() {
+                            if line.starts_with("```") {
+                                code = !code;
+                                continue;
+                            }
+                            if code {
+                                ui.label(egui::RichText::new(line).monospace().size(size));
+                            } else if let Some(heading) = line.strip_prefix("## ") {
+                                ui.add_space(size * 0.5);
+                                ui.label(egui::RichText::new(heading).size(size * 1.15).strong());
+                            } else if line.is_empty() {
+                                ui.add_space(size * 0.5);
+                            } else {
+                                let text = line
+                                    .strip_prefix("- ")
+                                    .map(|s| format!("• {s}"))
+                                    .unwrap_or_else(|| line.to_owned());
+                                ui.label(inline(ui.style(), &text, size));
+                            }
                         }
-                        if code {
-                            ui.label(egui::RichText::new(line).monospace().size(size));
-                        } else if let Some(heading) = line.strip_prefix("## ") {
-                            ui.add_space(size * 0.5);
-                            ui.label(egui::RichText::new(heading).size(size * 1.15).strong());
-                        } else if line.is_empty() {
-                            ui.add_space(size * 0.5);
-                        } else {
-                            let text = line
-                                .strip_prefix("- ")
-                                .map(|s| format!("• {s}"))
-                                .unwrap_or_else(|| line.to_owned());
-                            ui.label(inline(ui.style(), &text, size));
-                        }
-                    }
-                });});
+                    });
+                });
             });
         }) && !close;
     }
@@ -255,7 +286,10 @@ mod tests {
                 (".", Span::Plain),
             ]
         );
-        assert_eq!(spans("2 ** 3 and a lone `"), vec![("2 ** 3 and a lone `", Span::Plain)]);
+        assert_eq!(
+            spans("2 ** 3 and a lone `"),
+            vec![("2 ** 3 and a lone `", Span::Plain)]
+        );
         assert_eq!(spans("Ctrl+Z"), vec![("Ctrl+Z", Span::Plain)]);
     }
     #[test]

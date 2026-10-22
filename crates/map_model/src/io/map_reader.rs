@@ -12,7 +12,7 @@ use std::fmt;
 
 use geometry_math::vec::{Vec2f, Vec3d};
 
-use super::tokenizer::{Tokenizer, SpannedToken, Token, TokenizeError};
+use super::tokenizer::{SpannedToken, Token, TokenizeError, Tokenizer};
 use crate::brush_face::{BrushFace, FaceColor, MaterialName, Rgb};
 use crate::map_format::MapFormat;
 use crate::uv::{SurfaceAttributes, UvAttributes, UvCoordSystem};
@@ -207,7 +207,9 @@ fn parse_node_id(comment: &str) -> Option<u64> {
 /// writes.
 fn parse_face_color(comment: &str) -> Option<FaceColor> {
     // Surface metadata shares the comment but is not part of the colour payload.
-    let mut words = comment.split_whitespace().take_while(|word| !matches!(*word, "pbr" | "export_hidden" | "primitive_uv"));
+    let mut words = comment
+        .split_whitespace()
+        .take_while(|word| !matches!(*word, "pbr" | "export_hidden" | "primitive_uv"));
     if words.next()? != METADATA_MARKER {
         return None;
     }
@@ -215,13 +217,23 @@ fn parse_face_color(comment: &str) -> Option<FaceColor> {
     if kind == "linear" || kind == "radial" {
         use crate::brush_face::{ColorStop, GradientStops};
         let angle: f32 = words.next()?.parse().ok()?;
-        if !angle.is_finite() { return None; }
+        if !angle.is_finite() {
+            return None;
+        }
         let count: usize = words.next()?.parse().ok()?;
-        if !(2..=8).contains(&count) { return None; }
+        if !(2..=8).contains(&count) {
+            return None;
+        }
         let mut stops = Vec::new();
         for _ in 0..count {
-            stops.push(ColorStop { position: words.next()?.parse().ok()?, color: Rgb::new(
-                words.next()?.parse().ok()?, words.next()?.parse().ok()?, words.next()?.parse().ok()?) });
+            stops.push(ColorStop {
+                position: words.next()?.parse().ok()?,
+                color: Rgb::new(
+                    words.next()?.parse().ok()?,
+                    words.next()?.parse().ok()?,
+                    words.next()?.parse().ok()?,
+                ),
+            });
         }
         let mut next = words.next();
         // Where the gradient runs, when it was placed on the face rather than fitted to it.
@@ -231,22 +243,30 @@ fn parse_face_color(comment: &str) -> Option<FaceColor> {
                 let p: [f32; 2] = [words.next()?.parse().ok()?, words.next()?.parse().ok()?];
                 p.iter().all(|v| v.is_finite()).then_some(p)
             };
-            ends = Some(crate::brush_face::GradientEnds { start: point()?, end: point()? });
+            ends = Some(crate::brush_face::GradientEnds {
+                start: point()?,
+                end: point()?,
+            });
             next = words.next();
         }
-        let alpha = match next { Some(word) => word.parse().ok()?, None => 255 };
-        if words.next().is_some() { return None; }
-        return Some(FaceColor::MultiGradient { stops: GradientStops::new(&stops)?, radial: kind == "radial", angle, alpha, ends });
+        let alpha = match next {
+            Some(word) => word.parse().ok()?,
+            None => 255,
+        };
+        if words.next().is_some() {
+            return None;
+        }
+        return Some(FaceColor::MultiGradient {
+            stops: GradientStops::new(&stops)?,
+            radial: kind == "radial",
+            angle,
+            alpha,
+            ends,
+        });
     }
 
     let mut number = || words.next().and_then(|word| word.parse::<f32>().ok());
-    let mut rgb = || {
-        Some(Rgb::new(
-            number()? as u8,
-            number()? as u8,
-            number()? as u8,
-        ))
-    };
+    let mut rgb = || Some(Rgb::new(number()? as u8, number()? as u8, number()? as u8));
 
     let base = match kind {
         "color" => FaceColor::solid(rgb()?),
@@ -262,13 +282,17 @@ fn parse_face_color(comment: &str) -> Option<FaceColor> {
 
 fn parse_primitive_uv(comment: &str) -> Option<Box<[[f64; 3]; 2]>> {
     let mut words = comment.split_whitespace();
-    if words.next()? != METADATA_MARKER { return None; }
+    if words.next()? != METADATA_MARKER {
+        return None;
+    }
     let mut values = words.skip_while(|word| *word != "primitive_uv");
     values.next()?;
     let mut matrix = [[0.; 3]; 2];
     for value in matrix.iter_mut().flatten() {
         let parsed: f64 = values.next()?.parse().ok()?;
-        if !parsed.is_finite() { return None; }
+        if !parsed.is_finite() {
+            return None;
+        }
         *value = parsed;
     }
     Some(Box::new(matrix))
@@ -283,7 +307,9 @@ fn parse_primitive_uv(comment: &str) -> Option<Box<[[f64; 3]; 2]>> {
 pub fn read_map(source: &str, format: Option<MapFormat>) -> Result<MapFile, ReadError> {
     // idTech4 uses literal strings, including backslashes before closing quotes.
     // Select its lexer before tokenization so such strings are not mis-tokenized.
-    let literal_strings = source.lines().map(str::trim)
+    let literal_strings = source
+        .lines()
+        .map(str::trim)
         .find(|line| !line.is_empty() && !line.starts_with("//"))
         .is_some_and(|line| line.split_whitespace().next() == Some("Version"));
     let mut reader = Reader::new(source, format, literal_strings);
@@ -291,8 +317,13 @@ pub fn read_map(source: &str, format: Option<MapFormat>) -> Result<MapFile, Read
     // The eager lexer reported lexical errors before syntax errors, even later in
     // the file. Drain only on failure to preserve that diagnostic precedence.
     let mut cursor = reader.tokens.into_inner();
-    if result.is_err() { cursor.finish(); }
-    match cursor.error { Some(error) => Err(error.into()), None => result }
+    if result.is_err() {
+        cursor.finish();
+    }
+    match cursor.error {
+        Some(error) => Err(error.into()),
+        None => result,
+    }
 }
 
 struct TokenCursor<'a> {
@@ -306,9 +337,15 @@ impl<'a> TokenCursor<'a> {
     fn peek(&mut self, offset: usize) -> Option<SpannedToken<'a>> {
         while self.pending.len() <= offset && !self.ended {
             match self.lexer.next_token() {
-                Ok(Some(token)) => { self.last_line = token.line; self.pending.push_back(token); }
+                Ok(Some(token)) => {
+                    self.last_line = token.line;
+                    self.pending.push_back(token);
+                }
                 Ok(None) => self.ended = true,
-                Err(error) => { self.error = Some(error); self.ended = true; }
+                Err(error) => {
+                    self.error = Some(error);
+                    self.ended = true;
+                }
             }
         }
         self.pending.get(offset).copied()
@@ -320,7 +357,6 @@ impl<'a> TokenCursor<'a> {
             self.pending.clear();
         }
     }
-
 }
 
 struct Reader<'a> {
@@ -344,7 +380,9 @@ impl<'a> Reader<'a> {
             tokens: std::cell::RefCell::new(TokenCursor {
                 lexer: Tokenizer::new(source).with_literal_strings(literal_strings),
                 pending: std::collections::VecDeque::with_capacity(3),
-                last_line: 1, error: None, ended: false,
+                last_line: 1,
+                error: None,
+                ended: false,
             }),
             format,
             game: None,
@@ -358,7 +396,11 @@ impl<'a> Reader<'a> {
     }
 
     fn string(&self, raw: &'a str) -> std::borrow::Cow<'a, str> {
-        if self.literal_strings { std::borrow::Cow::Borrowed(raw) } else { super::tokenizer::unescape(raw) }
+        if self.literal_strings {
+            std::borrow::Cow::Borrowed(raw)
+        } else {
+            super::tokenizer::unescape(raw)
+        }
     }
 
     fn peek(&self) -> Option<SpannedToken<'a>> {
@@ -366,7 +408,9 @@ impl<'a> Reader<'a> {
     }
 
     fn line(&self) -> usize {
-        self.peek().map(|t| t.line).unwrap_or_else(|| self.tokens.borrow().last_line)
+        self.peek()
+            .map(|t| t.line)
+            .unwrap_or_else(|| self.tokens.borrow().last_line)
     }
 
     fn error<T>(&self, message: impl Into<String>) -> Result<T, ReadError> {
@@ -455,9 +499,13 @@ impl<'a> Reader<'a> {
         if self.literal_strings {
             let line = self.line();
             self.advance(); // Version, detected before tokenization.
-            if self.line() != line { return self.error("Doom 3 Version requires a number on the same line"); }
+            if self.line() != line {
+                return self.error("Doom 3 Version requires a number on the same line");
+            }
             let version = self.expect_number()?;
-            if version != 2.0 { return self.error(format!("unsupported Doom 3 map version {version}")); }
+            if version != 2.0 {
+                return self.error(format!("unsupported Doom 3 map version {version}"));
+            }
             self.read_header_comments();
         }
 
@@ -515,14 +563,21 @@ impl<'a> Reader<'a> {
     /// Reads the `// Game:` and `// Format:` comments a `.map` file may carry at the top.
     fn read_header_comments(&mut self) {
         while matches!(self.peek().map(|t| t.token), Some(Token::Comment(_))) {
-            let Some(SpannedToken { token: Token::Comment(text), line, .. }) = self.advance()
+            let Some(SpannedToken {
+                token: Token::Comment(text),
+                line,
+                ..
+            }) = self.advance()
             else {
                 unreachable!("the peek said it was a comment")
             };
             let text = text.trim();
             if let Some(game) = text.strip_prefix("Game:") {
                 self.game = Some(game.trim().to_string());
-            } else if let Some(version) = text.strip_prefix(METADATA_MARKER).and_then(|rest| rest.strip_prefix(" format ")) {
+            } else if let Some(version) = text
+                .strip_prefix(METADATA_MARKER)
+                .and_then(|rest| rest.strip_prefix(" format "))
+            {
                 match version.trim().parse::<u32>() {
                     Ok(version) => {
                         self.notes_version = Some(version);
@@ -552,35 +607,91 @@ impl<'a> Reader<'a> {
     }
 
     fn restore_local_planes(&mut self, entity: &mut Entity) -> Result<(), ReadError> {
-        if self.local_plane_lines.is_empty() { return Ok(()); }
-        let has_local = entity.brushes.iter().flat_map(|b| &b.faces).any(|f| self.local_plane_lines.contains(&f.line));
-        if !has_local { return Ok(()); }
-        if entity.properties.iter().rev().find(|(key,_)| key.eq_ignore_ascii_case("classname"))
-            .is_some_and(|(_,value)| value.eq_ignore_ascii_case("worldspawn")) { return Ok(()); }
-        let origin = entity.properties.iter().rev().find(|(key,_)| key.eq_ignore_ascii_case("origin"))
-            .map(|(_,value)| value.as_str()).unwrap_or("0 0 0");
-        let mut parts = origin.split_whitespace();
-        let mut xyz = [0.;3];
-        for value in &mut xyz {
-            *value = parts.next().and_then(|v| v.parse::<f64>().ok()).filter(|v| v.is_finite())
-                .ok_or_else(|| ReadError::Parse { message: "invalid origin for Doom 3 brush entity".into(), line: entity.line })?;
+        if self.local_plane_lines.is_empty() {
+            return Ok(());
         }
-        if parts.next().is_some() { return self.error("invalid origin for Doom 3 brush entity"); }
-        let origin = Vec3d::new(xyz[0],xyz[1],xyz[2]);
-        let rotated = entity.properties.iter().any(|(key,value)| {
+        let has_local = entity
+            .brushes
+            .iter()
+            .flat_map(|b| &b.faces)
+            .any(|f| self.local_plane_lines.contains(&f.line));
+        if !has_local {
+            return Ok(());
+        }
+        if entity
+            .properties
+            .iter()
+            .rev()
+            .find(|(key, _)| key.eq_ignore_ascii_case("classname"))
+            .is_some_and(|(_, value)| value.eq_ignore_ascii_case("worldspawn"))
+        {
+            return Ok(());
+        }
+        let origin = entity
+            .properties
+            .iter()
+            .rev()
+            .find(|(key, _)| key.eq_ignore_ascii_case("origin"))
+            .map(|(_, value)| value.as_str())
+            .unwrap_or("0 0 0");
+        let mut parts = origin.split_whitespace();
+        let mut xyz = [0.; 3];
+        for value in &mut xyz {
+            *value = parts
+                .next()
+                .and_then(|v| v.parse::<f64>().ok())
+                .filter(|v| v.is_finite())
+                .ok_or_else(|| ReadError::Parse {
+                    message: "invalid origin for Doom 3 brush entity".into(),
+                    line: entity.line,
+                })?;
+        }
+        if parts.next().is_some() {
+            return self.error("invalid origin for Doom 3 brush entity");
+        }
+        let origin = Vec3d::new(xyz[0], xyz[1], xyz[2]);
+        let rotated = entity.properties.iter().any(|(key, value)| {
             if key.eq_ignore_ascii_case("rotation") {
-                let values: Result<Vec<f64>,_> = value.split_whitespace().map(str::parse).collect();
-                return match values { Ok(values) => values.len() != 9 || values.iter().zip([1.,0.,0.,0.,1.,0.,0.,0.,1.]).any(|(a,b)| !a.is_finite() || (a-b).abs() > 1e-9), Err(_) => true };
+                let values: Result<Vec<f64>, _> =
+                    value.split_whitespace().map(str::parse).collect();
+                return match values {
+                    Ok(values) => {
+                        values.len() != 9
+                            || values
+                                .iter()
+                                .zip([1., 0., 0., 0., 1., 0., 0., 0., 1.])
+                                .any(|(a, b)| !a.is_finite() || (a - b).abs() > 1e-9)
+                    }
+                    Err(_) => true,
+                };
             }
-            (key.eq_ignore_ascii_case("angle") || key.eq_ignore_ascii_case("angles")) && value.split_whitespace().any(|v| v.parse::<f64>().ok() != Some(0.))
+            (key.eq_ignore_ascii_case("angle") || key.eq_ignore_ascii_case("angles"))
+                && value
+                    .split_whitespace()
+                    .any(|v| v.parse::<f64>().ok() != Some(0.))
         });
-        if rotated { self.warn("Doom 3 brush-entity rotation is preserved as properties but is not applied to the preview", entity.line); }
+        if rotated {
+            self.warn("Doom 3 brush-entity rotation is preserved as properties but is not applied to the preview", entity.line);
+        }
         for face in entity.brushes.iter_mut().flat_map(|b| &mut b.faces) {
-            if !self.local_plane_lines.contains(&face.line) { continue; }
-            let plane = geometry_math::plane::Plane3d { normal: face.plane.normal, distance: face.plane.distance + geometry_math::vec::dot(face.plane.normal, origin) };
+            if !self.local_plane_lines.contains(&face.line) {
+                continue;
+            }
+            let plane = geometry_math::plane::Plane3d {
+                normal: face.plane.normal,
+                distance: face.plane.distance + geometry_math::vec::dot(face.plane.normal, origin),
+            };
             face.points = face.points.map(|p| p + origin);
-            if !plane.distance.is_finite() || face.points.iter().any(|p| (0..3).any(|i| !p[i].is_finite())) {
-                return Err(ReadError::Parse { message: "Doom 3 entity origin exceeds finite geometry bounds".into(), line: face.line });
+            if !plane.distance.is_finite()
+                || face
+                    .points
+                    .iter()
+                    .any(|p| (0..3).any(|i| !p[i].is_finite()))
+            {
+                return Err(ReadError::Parse {
+                    message: "Doom 3 entity origin exceeds finite geometry bounds".into(),
+                    line: face.line,
+                });
             }
             face.plane = plane;
             // texMat stays unchanged: Doom 3's GetTextureVectors adds the
@@ -610,14 +721,26 @@ impl<'a> Reader<'a> {
                     return Ok(entity);
                 }
                 Some(Token::String(_)) => {
-                    let Some(SpannedToken { token: Token::String(key), .. }) = self.advance()
+                    let Some(SpannedToken {
+                        token: Token::String(key),
+                        ..
+                    }) = self.advance()
                     else {
                         unreachable!("the peek said it was a string")
                     };
                     let key = self.string(key).into_owned();
-                    if self.literal_strings && (key.eq_ignore_ascii_case("origin") || key.eq_ignore_ascii_case("classname"))
-                        && entity.brushes.iter().flat_map(|b| &b.faces).any(|f| self.local_plane_lines.contains(&f.line))
-                    { return self.error("Doom 3 origin and classname must precede local brush blocks"); }
+                    if self.literal_strings
+                        && (key.eq_ignore_ascii_case("origin")
+                            || key.eq_ignore_ascii_case("classname"))
+                        && entity
+                            .brushes
+                            .iter()
+                            .flat_map(|b| &b.faces)
+                            .any(|f| self.local_plane_lines.contains(&f.line))
+                    {
+                        return self
+                            .error("Doom 3 origin and classname must precede local brush blocks");
+                    }
                     match self.advance() {
                         Some(SpannedToken {
                             token: Token::String(value),
@@ -656,7 +779,10 @@ impl<'a> Reader<'a> {
                     }
                 },
                 Some(Token::Comment(_)) => {
-                    let Some(SpannedToken { token: Token::Comment(text), .. }) = self.advance()
+                    let Some(SpannedToken {
+                        token: Token::Comment(text),
+                        ..
+                    }) = self.advance()
                     else {
                         unreachable!("the peek said it was a comment");
                     };
@@ -671,9 +797,7 @@ impl<'a> Reader<'a> {
                 }
                 Some(_) => {
                     let other = self.advance().expect("the peek found a token").token;
-                    return self.error(format!(
-                        "expected a property or a brush, found `{other}`"
-                    ));
+                    return self.error(format!("expected a property or a brush, found `{other}`"));
                 }
             }
         }
@@ -686,7 +810,11 @@ impl<'a> Reader<'a> {
         // A brush body starts with `(`; anything else is a keyword naming what kind of
         // block this is.
         if matches!(self.peek().map(|t| t.token), Some(Token::Word(_))) {
-            let Some(SpannedToken { token: Token::Word(keyword), .. }) = self.advance() else {
+            let Some(SpannedToken {
+                token: Token::Word(keyword),
+                ..
+            }) = self.advance()
+            else {
                 unreachable!("the peek said it was a word")
             };
             return match keyword {
@@ -698,7 +826,9 @@ impl<'a> Reader<'a> {
                 // `brushDef3` also gives the plane
                 // outright rather than three points on it.
                 "brushDef" => Ok(BrushOrPatch::Brush(self.read_primitive_brush(line, false)?)),
-                "brushDef2" | "brushDef3" => Ok(BrushOrPatch::Brush(self.read_primitive_brush(line, true)?)),
+                "brushDef2" | "brushDef3" => {
+                    Ok(BrushOrPatch::Brush(self.read_primitive_brush(line, true)?))
+                }
                 other => self.error(format!("unknown block type `{other}`")),
             };
         }
@@ -713,7 +843,11 @@ impl<'a> Reader<'a> {
                 None => return self.error("unterminated brush"),
                 Some(Token::CloseBrace) => {
                     self.advance();
-                    return Ok(Brush { faces, id: None, line });
+                    return Ok(Brush {
+                        faces,
+                        id: None,
+                        line,
+                    });
                 }
                 Some(Token::Comment(_)) => {
                     self.advance();
@@ -756,7 +890,11 @@ impl<'a> Reader<'a> {
                 line,
             );
         }
-        Ok(Brush { faces, id: None, line })
+        Ok(Brush {
+            faces,
+            id: None,
+            line,
+        })
     }
 
     /// Reads one `brushDef` / `brushDef3` face: the plane (three points, or a
@@ -767,7 +905,9 @@ impl<'a> Reader<'a> {
     fn read_primitive_face(&mut self, doom3: bool) -> Result<BrushFace, ReadError> {
         let line = self.line();
 
-        if doom3 { self.local_plane_lines.insert(line); }
+        if doom3 {
+            self.local_plane_lines.insert(line);
+        }
         let points = if doom3 {
             self.expect(&Token::OpenParen)?;
             let normal = Vec3d::new(
@@ -877,36 +1017,73 @@ impl<'a> Reader<'a> {
         })
     }
 
-    fn read_face_notes(&mut self, line: usize) -> (Option<FaceColor>, Option<crate::brush_face::SurfaceMaterial>, bool, Option<Box<[[f64; 3]; 2]>>) {
+    fn read_face_notes(
+        &mut self,
+        line: usize,
+    ) -> (
+        Option<FaceColor>,
+        Option<crate::brush_face::SurfaceMaterial>,
+        bool,
+        Option<Box<[[f64; 3]; 2]>>,
+    ) {
         // A colour is written as a comment on the face's own line, so that a file with
         // colours in it is still a plain `.map`. Only a comment on that line and carrying
         // the editor's own marker is one; anything else is somebody's note.
-        let export_hidden=self.peek().filter(|token|token.line==line).is_some_and(|token| {
-            let Token::Comment(text)=token.token else{return false;};
-            let mut words=text.split_whitespace();
-            words.next()==Some(METADATA_MARKER) && words.any(|word|word=="export_hidden")
-        });
-        let surface_material = self.peek().filter(|token| token.line == line).and_then(|token| {
-            let Token::Comment(text) = token.token else { return None; };
-            let mut tokens = text.split_whitespace();
-            if tokens.next()? != METADATA_MARKER { return None; }
-            let mut words = tokens.skip_while(|word| *word != "pbr");
-            words.next()?;
-            let roughness = words.next()?.parse::<u8>().ok()?.min(100);
-            let metallic = words.next()?.parse::<u8>().ok()?.min(100);
-            let emission = words.next().and_then(|v| v.parse::<u16>().ok()).unwrap_or(0).min(800);
-            Some(crate::brush_face::SurfaceMaterial { roughness, metallic, emission })
-        });
-        let primitive_uv = self.peek().filter(|token| token.line == line).and_then(|token| {
-            let Token::Comment(text) = token.token else { return None; };
-            parse_primitive_uv(text)
-        });
+        let export_hidden = self
+            .peek()
+            .filter(|token| token.line == line)
+            .is_some_and(|token| {
+                let Token::Comment(text) = token.token else {
+                    return false;
+                };
+                let mut words = text.split_whitespace();
+                words.next() == Some(METADATA_MARKER) && words.any(|word| word == "export_hidden")
+            });
+        let surface_material = self
+            .peek()
+            .filter(|token| token.line == line)
+            .and_then(|token| {
+                let Token::Comment(text) = token.token else {
+                    return None;
+                };
+                let mut tokens = text.split_whitespace();
+                if tokens.next()? != METADATA_MARKER {
+                    return None;
+                }
+                let mut words = tokens.skip_while(|word| *word != "pbr");
+                words.next()?;
+                let roughness = words.next()?.parse::<u8>().ok()?.min(100);
+                let metallic = words.next()?.parse::<u8>().ok()?.min(100);
+                let emission = words
+                    .next()
+                    .and_then(|v| v.parse::<u16>().ok())
+                    .unwrap_or(0)
+                    .min(800);
+                Some(crate::brush_face::SurfaceMaterial {
+                    roughness,
+                    metallic,
+                    emission,
+                })
+            });
+        let primitive_uv = self
+            .peek()
+            .filter(|token| token.line == line)
+            .and_then(|token| {
+                let Token::Comment(text) = token.token else {
+                    return None;
+                };
+                parse_primitive_uv(text)
+            });
         if primitive_uv.is_some() && !self.warned_about_primitive_uv {
             self.warned_about_primitive_uv = true;
             self.warn("brush-primitive UV matrices are preserved; texturing uses placeholder alignment until material dimensions are available", line);
         }
         let color = self.read_face_color(line);
-        if (surface_material.is_some() || export_hidden || primitive_uv.is_some()) && color.is_none() { self.advance(); }
+        if (surface_material.is_some() || export_hidden || primitive_uv.is_some())
+            && color.is_none()
+        {
+            self.advance();
+        }
 
         (color, surface_material, export_hidden, primitive_uv)
     }
@@ -990,9 +1167,7 @@ impl<'a> Reader<'a> {
     /// It is optional even within a format that allows it, so this looks ahead rather
     /// than committing: three numbers in a row can only be the trio, since the next thing
     /// otherwise is a `(` starting the next face or a `}` ending the brush.
-    fn read_optional_surface_attributes(
-        &mut self,
-    ) -> Result<Option<SurfaceAttributes>, ReadError> {
+    fn read_optional_surface_attributes(&mut self) -> Result<Option<SurfaceAttributes>, ReadError> {
         let all_numbers = (0..3).all(|offset| {
             matches!(
                 self.tokens.borrow_mut().peek(offset).map(|t| t.token),
@@ -1078,7 +1253,6 @@ impl<'a> Reader<'a> {
             line,
         })
     }
-
 }
 
 /// What a brace-delimited block inside an entity turned out to be.
@@ -1125,10 +1299,12 @@ fn points_on_plane(normal: Vec3d, distance: f64) -> Option<[Vec3d; 3]> {
 /// Whether any brush face carried the `content surface value` trio.
 fn any_face_has_surface_attributes(entities: &[Entity]) -> bool {
     entities.iter().any(|entity| {
-        entity
-            .brushes
-            .iter()
-            .any(|brush| brush.faces.iter().any(|face| face.surface_attributes.is_some()))
+        entity.brushes.iter().any(|brush| {
+            brush
+                .faces
+                .iter()
+                .any(|face| face.surface_attributes.is_some())
+        })
     })
 }
 
@@ -1174,16 +1350,22 @@ mod streaming_tests {
             let expected = super::super::tokenizer::tokenize(source).unwrap_err();
             assert_eq!(read_map(source, None), Err(ReadError::Tokenize(expected)));
         }
-        assert!(matches!(read_map("unexpected", None), Err(ReadError::Parse { line: 1, .. })));
+        assert!(matches!(
+            read_map("unexpected", None),
+            Err(ReadError::Parse { line: 1, .. })
+        ));
     }
 
     #[test]
     fn streaming_matches_eager_tokens_and_spans_in_both_string_modes() {
-        let source = "// header\n{ \"name\" \"žluťoučký\" ( 1 -2 .5 ) [ 0 1 0 ] /* ignored */ stone }";
+        let source =
+            "// header\n{ \"name\" \"žluťoučký\" ( 1 -2 .5 ) [ 0 1 0 ] /* ignored */ stone }";
         for literal in [false, true] {
             let mut lexer = Tokenizer::new(source).with_literal_strings(literal);
             let mut expected = Vec::new();
-            while let Some(token) = lexer.next_token().unwrap() { expected.push(token); }
+            while let Some(token) = lexer.next_token().unwrap() {
+                expected.push(token);
+            }
             let reader = Reader::new(source, None, literal);
             let mut cursor = reader.tokens.into_inner();
             for token in expected {

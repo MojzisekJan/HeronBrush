@@ -47,10 +47,7 @@ mod tests {
     #[test]
     fn half_extent_is_what_was_given() {
         assert_eq!(WorldBounds::new(100.0).half_extent(), 100.0);
-        assert_eq!(
-            WorldBounds::default().half_extent(),
-            DEFAULT_HALF_EXTENT
-        );
+        assert_eq!(WorldBounds::default().half_extent(), DEFAULT_HALF_EXTENT);
     }
 
     #[test]

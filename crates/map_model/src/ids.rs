@@ -39,7 +39,10 @@ impl IdSource {
     /// A source with the given session prefix. For tests, and for a session that wants a
     /// prefix it chose itself.
     pub fn with_prefix(prefix: u32) -> Self {
-        Self { prefix: u64::from(prefix) << 32, next: AtomicU64::new(1) }
+        Self {
+            prefix: u64::from(prefix) << 32,
+            next: AtomicU64::new(1),
+        }
     }
 
     /// The session prefix.
@@ -105,6 +108,9 @@ mod tests {
     #[test]
     fn a_prefixed_id_does_not_look_like_a_small_file_id() {
         let id: u64 = IdSource::new().fresh().parse().unwrap();
-        assert!(id > u64::from(u32::MAX), "{id} should be well past any hand-written id");
+        assert!(
+            id > u64::from(u32::MAX),
+            "{id} should be well past any hand-written id"
+        );
     }
 }

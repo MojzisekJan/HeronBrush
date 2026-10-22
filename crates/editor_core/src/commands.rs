@@ -6,16 +6,20 @@ use std::{cell::RefCell, rc::Rc};
 
 use geometry_math::{util::Axis, vec::Vec3d};
 
-use crate::{assemble_tool, camera2d, camera3d, clip_tool, fillet_tool, grid, handle_tool, preferences, render_camera, rotate_tool, shape_tool, tool, view2d};
-use crate::{camera2d::ViewPlane, document::Document, grid::Grid, world::WorldBounds};
 use crate::document_setup::Sources;
 use crate::input::{Key, Modifiers};
+use crate::{
+    assemble_tool, camera2d, camera3d, clip_tool, fillet_tool, grid, handle_tool, preferences,
+    render_camera, rotate_tool, shape_tool, tool, view2d,
+};
+use crate::{camera2d::ViewPlane, document::Document, grid::Grid, world::WorldBounds};
 
 /// The size a material fit assumes when the material itself is not loaded.
 ///
 /// 64 by 64 is the usual size in a Quake-lineage material set, so fitting against it puts
 /// the mapping in the right range for a real material to be swapped in later.
-pub const DEFAULT_MATERIAL_SIZE: geometry_math::vec::Vec2f = geometry_math::vec::Vec2f::new(64.0, 64.0);
+pub const DEFAULT_MATERIAL_SIZE: geometry_math::vec::Vec2f =
+    geometry_math::vec::Vec2f::new(64.0, 64.0);
 
 /// Says what an undo or redo did.
 pub fn report(result: Option<String>, action: &str) {
@@ -36,7 +40,9 @@ pub trait Window {
     /// How large the `index`th flat view is, in the order of the shared cameras.
     fn flat_view_size(&self, index: usize) -> Option<(f64, f64)>;
     /// Last visible 3D viewport size; hidden views use a square fallback.
-    fn perspective_view_size(&self) -> Option<(f64, f64)> { None }
+    fn perspective_view_size(&self) -> Option<(f64, f64)> {
+        None
+    }
     /// Which view has the keyboard: 0 is the 3D view.
     fn focused_view(&self) -> Option<usize>;
     /// `Cycle map view`, Space: a pane that shows one view at a time moves to the next.
@@ -92,19 +98,46 @@ impl Commands {
     /// `hardware_digit` is the digit printed on the physical key, if it is one.
     pub fn key_pressed(&self, key: Key, hardware_digit: Option<u32>, modifiers: Modifiers) -> bool {
         #[allow(unused_variables)]
-        let (key, modifiers) = crate::keymap::translate(preferences::pref(|p| p.keymap), key, modifiers);
+        let (key, modifiers) =
+            crate::keymap::translate(preferences::pref(|p| p.keymap), key, modifiers);
         self.key_pressed_canonical(key, hardware_digit, modifiers)
     }
 
     /// Dispatches an explicitly configured command without translating the preset twice.
-    pub fn key_pressed_canonical(&self, key: Key, hardware_digit: Option<u32>, modifiers: Modifiers) -> bool {
+    pub fn key_pressed_canonical(
+        &self,
+        key: Key,
+        hardware_digit: Option<u32>,
+        modifiers: Modifiers,
+    ) -> bool {
         #[allow(unused_variables)]
-        let Self { grid, document, tool, clip, assemble, handles, rotate, shape_parameters, cameras, bounds, paste_target, active_plane, fillet, camera_3d, sources, window } = self;
+        let Self {
+            grid,
+            document,
+            tool,
+            clip,
+            assemble,
+            handles,
+            rotate,
+            shape_parameters,
+            cameras,
+            bounds,
+            paste_target,
+            active_plane,
+            fillet,
+            camera_3d,
+            sources,
+            window,
+        } = self;
 
         // Which digit the number row was pressed at, whatever the layout puts there.
         let digit = crate::input::digit(key, hardware_digit);
         let (ctrl, shift, alt) = (modifiers.control, modifiers.shift, modifiers.alt);
-        if ctrl && alt && !shift && (digit == Some(0) || matches!(key, Key::Keypad(0) | Key::Insert)) {
+        if ctrl
+            && alt
+            && !shift
+            && (digit == Some(0) || matches!(key, Key::Keypad(0) | Key::Insert))
+        {
             render_camera::align_to_view(&mut document.borrow_mut(), &camera_3d);
             window.refresh_inspector();
             window.refresh_toolbar();
@@ -168,7 +201,9 @@ impl Commands {
                         return false;
                     };
                     let (width, height) = window.perspective_view_size().unwrap_or((1.0, 1.0));
-                    camera_3d.borrow_mut().frame_in_viewport(&selection, width, height);
+                    camera_3d
+                        .borrow_mut()
+                        .frame_in_viewport(&selection, width, height);
                     for (index, state) in cameras.borrow().iter().enumerate() {
                         let mut state = state.borrow_mut();
                         let plane = state.camera.plane;
@@ -217,7 +252,9 @@ impl Commands {
                     match materials {
                         Some(path) => {
                             match document.borrow_mut().load_materials(&path) {
-                                Ok(_) => crate::say!("reloaded the materials in {}", path.display()),
+                                Ok(_) => {
+                                    crate::say!("reloaded the materials in {}", path.display())
+                                }
                                 Err(error) => crate::complain!("{}: {error}", path.display()),
                             }
                             window.redraw();
@@ -281,7 +318,11 @@ impl Commands {
                     let did = document.borrow_mut().select_touching();
                     crate::say!(
                         "select touching: {}",
-                        if did { "done" } else { "select only brushes first" }
+                        if did {
+                            "done"
+                        } else {
+                            "select only brushes first"
+                        }
                     );
                 }
                 Key::Letter('e') if ctrl && shift => {
@@ -291,14 +332,22 @@ impl Commands {
                     };
                     crate::say!(
                         "select tall: {}",
-                        if did { "done" } else { "hover a flat view with only brushes selected" }
+                        if did {
+                            "done"
+                        } else {
+                            "hover a flat view with only brushes selected"
+                        }
                     );
                 }
                 Key::Letter('e') if ctrl => {
                     let did = document.borrow_mut().select_inside();
                     crate::say!(
                         "select inside: {}",
-                        if did { "done" } else { "select only brushes first" }
+                        if did {
+                            "done"
+                        } else {
+                            "select only brushes first"
+                        }
                     );
                 }
                 // With a handle tool active, select-all means its handles rather than the
@@ -329,7 +378,14 @@ impl Commands {
                     window.refresh_inspector();
                 }
                 Key::Escape if shift => {
-                    set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Select);
+                    set_tool(
+                        &tool,
+                        &clip,
+                        &handles,
+                        &rotate,
+                        &assemble,
+                        tool::Tool::Select,
+                    );
                 }
                 Key::Escape if document.borrow().in_transaction() => {
                     document.borrow_mut().cancel_transaction();
@@ -342,22 +398,21 @@ impl Commands {
                     // The assemble tool takes back a point before it gives up the tool.
                     let cancelled_assemble = *tool.borrow() == tool::Tool::Assemble
                         && assemble.borrow_mut().remove_last_point();
-                    let cancelled_clip = !cancelled_assemble
-                        && *tool.borrow() == tool::Tool::Clip
-                        && {
-                        let mut clip = clip.borrow_mut();
-                        if clip.is_dragging() {
-                            clip.cancel_drag_point();
-                            true
-                        } else if clip.remove_last_point() {
-                            if !clip.has_points() {
-                                clip.reset();
+                    let cancelled_clip =
+                        !cancelled_assemble && *tool.borrow() == tool::Tool::Clip && {
+                            let mut clip = clip.borrow_mut();
+                            if clip.is_dragging() {
+                                clip.cancel_drag_point();
+                                true
+                            } else if clip.remove_last_point() {
+                                if !clip.has_points() {
+                                    clip.reset();
+                                }
+                                true
+                            } else {
+                                false
                             }
-                            true
-                        } else {
-                            false
-                        }
-                    };
+                        };
                     // `NodeHandleToolSelectPartBase::cancel`: with a handle tool in hand
                     // the first Escape drops what is picked, and only the next one leaves
                     // the tool.
@@ -398,10 +453,7 @@ impl Commands {
                 // Return commits the pinned fillet preview, or edges/vertices picked
                 // with their respective tools.
                 Key::Enter
-                    if !matches!(
-                        *tool.borrow(),
-                        tool::Tool::Assemble | tool::Tool::Clip
-                    ) =>
+                    if !matches!(*tool.borrow(), tool::Tool::Assemble | tool::Tool::Clip) =>
                 {
                     let outcome = crate::fillet_tool::apply(
                         &document,
@@ -446,21 +498,45 @@ impl Commands {
                         }
                     }
                 }
-                Key::Letter('n') if !ctrl => {
-                    set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Assemble)
-                }
+                Key::Letter('n') if !ctrl => set_tool(
+                    &tool,
+                    &clip,
+                    &handles,
+                    &rotate,
+                    &assemble,
+                    tool::Tool::Assemble,
+                ),
                 // Tool shortcuts: B draws brushes, E selects edges, and Y activates sweep.
-                Key::Letter('y') if !ctrl && !shift && !alt => {
-                    set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Sweep)
-                }
-                Key::Letter('b') if !ctrl => {
-                    set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Brush)
-                }
+                Key::Letter('y') if !ctrl && !shift && !alt => set_tool(
+                    &tool,
+                    &clip,
+                    &handles,
+                    &rotate,
+                    &assemble,
+                    tool::Tool::Sweep,
+                ),
+                Key::Letter('b') if !ctrl => set_tool(
+                    &tool,
+                    &clip,
+                    &handles,
+                    &rotate,
+                    &assemble,
+                    tool::Tool::Brush,
+                ),
                 Key::Letter('e') if !ctrl && !shift && !alt => {
                     set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Edge)
                 }
-                Key::Letter('c') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Clip),
-                Key::Letter('v') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Vertex),
+                Key::Letter('c') if !ctrl => {
+                    set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Clip)
+                }
+                Key::Letter('v') if !ctrl => set_tool(
+                    &tool,
+                    &clip,
+                    &handles,
+                    &rotate,
+                    &assemble,
+                    tool::Tool::Vertex,
+                ),
                 // Tab is Blender's mode key: with a brush in hand it steps around the
                 // ring whole brush -> vertices -> edges -> faces -> whole brush, so one
                 // key reaches every way of editing what is selected.
@@ -493,10 +569,26 @@ impl Commands {
                     );
                     window.refresh_inspector();
                 }
-                Key::Letter('p') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::ControlPoint),
-                Key::Letter('f') if !ctrl && !shift => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Face),
+                Key::Letter('p') if !ctrl => set_tool(
+                    &tool,
+                    &clip,
+                    &handles,
+                    &rotate,
+                    &assemble,
+                    tool::Tool::ControlPoint,
+                ),
+                Key::Letter('f') if !ctrl && !shift => {
+                    set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Face)
+                }
                 Key::Letter('r') if !ctrl && !shift => {
-                    set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Rotate);
+                    set_tool(
+                        &tool,
+                        &clip,
+                        &handles,
+                        &rotate,
+                        &assemble,
+                        tool::Tool::Rotate,
+                    );
                     // `RotateTool::doActivate` resets the centre, so the ring is around
                     // the selection from the first frame rather than only once a flat
                     // view has drawn and set it.
@@ -506,11 +598,46 @@ impl Commands {
                             .reset_center(&document.borrow(), &grid_now);
                     }
                 }
-                Key::Letter('t') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Scale),
-                Key::Letter('g') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Shear),
-                Key::Letter('k') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Paint),
-                Key::Letter('j') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Sculpt),
-                Key::Letter('o') if !ctrl => set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Fillet),
+                Key::Letter('t') if !ctrl => set_tool(
+                    &tool,
+                    &clip,
+                    &handles,
+                    &rotate,
+                    &assemble,
+                    tool::Tool::Scale,
+                ),
+                Key::Letter('g') if !ctrl => set_tool(
+                    &tool,
+                    &clip,
+                    &handles,
+                    &rotate,
+                    &assemble,
+                    tool::Tool::Shear,
+                ),
+                Key::Letter('k') if !ctrl => set_tool(
+                    &tool,
+                    &clip,
+                    &handles,
+                    &rotate,
+                    &assemble,
+                    tool::Tool::Paint,
+                ),
+                Key::Letter('j') if !ctrl => set_tool(
+                    &tool,
+                    &clip,
+                    &handles,
+                    &rotate,
+                    &assemble,
+                    tool::Tool::Sculpt,
+                ),
+                Key::Letter('o') if !ctrl => set_tool(
+                    &tool,
+                    &clip,
+                    &handles,
+                    &rotate,
+                    &assemble,
+                    tool::Tool::Fillet,
+                ),
                 Key::Letter('z') if ctrl && shift => report(document.borrow_mut().redo(), "redo"),
                 Key::Letter('z') if ctrl => report(document.borrow_mut().undo(), "undo"),
                 Key::Letter('y') if ctrl => report(document.borrow_mut().redo(), "redo"),
@@ -534,7 +661,10 @@ impl Commands {
                 }
                 Key::Letter('l') if ctrl => {
                     let ok = document.borrow_mut().intersect_selection();
-                    crate::say!("intersect: {}", if ok { "done" } else { "nothing in common" });
+                    crate::say!(
+                        "intersect: {}",
+                        if ok { "done" } else { "nothing in common" }
+                    );
                 }
                 // Material alignment on every face of the selection, until faces can be
                 // selected on their own.
@@ -565,12 +695,7 @@ impl Commands {
                 Key::Letter('r') if ctrl => repeat_last_commands(document, &**window),
                 // Directional keys edit UVs for face selections and transform objects otherwise.
                 // See [`arrow_key`].
-                Key::Left
-                | Key::Right
-                | Key::Up
-                | Key::Down
-                | Key::PageUp
-                | Key::PageDown
+                Key::Left | Key::Right | Key::Up | Key::Down | Key::PageUp | Key::PageDown
                     if arrow_key(
                         &document,
                         &grid_now,
@@ -581,7 +706,11 @@ impl Commands {
                             _ => active_plane.borrow().map(Pressed::Flat),
                         },
                         key,
-                        Modifiers { control: ctrl, shift, alt },
+                        Modifiers {
+                            control: ctrl,
+                            shift,
+                            alt,
+                        },
                         *tool.borrow(),
                         &handles,
                         &rotate,
@@ -699,7 +828,11 @@ impl Commands {
                         // Across the screen, or up and down it.
                         let along = move_direction(
                             pressed,
-                            if alt { Direction::Forward } else { Direction::Right },
+                            if alt {
+                                Direction::Forward
+                            } else {
+                                Direction::Right
+                            },
                         );
                         flip(&document, axis_of(along));
                     }
@@ -707,9 +840,7 @@ impl Commands {
                 // Rotate a quarter turn about each axis, and mirror along it.
                 Key::Letter('x') if ctrl && shift => flip(&document, Axis::X),
                 Key::Letter('y') if ctrl && shift => flip(&document, Axis::Y),
-                Key::Letter('z') if ctrl && shift && modifiers.alt => {
-                    flip(&document, Axis::Z)
-                }
+                Key::Letter('z') if ctrl && shift && modifiers.alt => flip(&document, Axis::Z),
                 // Insert places a point entity at the selection centre, or at the origin when
                 // nothing is selected.
                 Key::Insert => {
@@ -996,7 +1127,6 @@ pub fn arrow_key(
     handles: &Rc<RefCell<handle_tool::HandleManager>>,
     rotate: &Rc<RefCell<rotate_tool::RotateTool>>,
 ) -> bool {
-
     let direction = match key {
         Key::Left => Direction::Left,
         Key::Right => Direction::Right,
@@ -1167,7 +1297,10 @@ pub fn rotate_by_quarter_turn(document: &Rc<RefCell<Document>>, axis: Axis, back
     let mut axis_vector = Vec3d::zero();
     axis_vector[axis.index()] = 1.0;
 
-    if !document.borrow_mut().rotate_selection(axis_vector, direction) {
+    if !document
+        .borrow_mut()
+        .rotate_selection(axis_vector, direction)
+    {
         crate::say!("nothing to rotate");
     }
 }

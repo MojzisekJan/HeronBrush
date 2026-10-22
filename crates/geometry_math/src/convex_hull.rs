@@ -12,8 +12,7 @@ use crate::vec::{self, Vector};
 ///
 /// Returns 1 for left, -1 for right and 0 when the three are colinear.
 fn is_left<T: Float>(p1: Vector<T, 3>, p2: Vector<T, 3>, p3: Vector<T, 3>) -> i32 {
-    let result = (p2.x() - p1.x()) * (p3.y() - p1.y())
-        - (p3.x() - p1.x()) * (p2.y() - p1.y());
+    let result = (p2.x() - p1.x()) * (p3.y() - p1.y()) - (p3.x() - p1.x()) * (p2.y() - p1.y());
     if result < T::ZERO {
         -1
     } else if result > T::ZERO {

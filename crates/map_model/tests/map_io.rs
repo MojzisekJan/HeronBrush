@@ -3,11 +3,11 @@
 //! The sample below is the shape an editor-written file takes, matching the example
 //! in the engine's own format notes.
 
+use geometry_math::vec::{Vec2f, Vec3d};
 use map_model::io::map_reader::{read_map, MapFile};
 use map_model::io::map_writer::write_map;
 use map_model::map_format::MapFormat;
 use map_model::uv::UvCoordSystem;
-use geometry_math::vec::{Vec2f, Vec3d};
 
 const VALVE_SAMPLE: &str = r#"// Game: heron_brush-fps
 // Format: Valve
@@ -163,10 +163,7 @@ fn a_surface_flag_trio_with_no_header_makes_it_a_quake2_dialect() {
     assert_eq!(map.format, MapFormat::Quake2);
 
     // With bracketed UV axes it is the Valve flavour of Quake 2 instead.
-    let valve = source.replace(
-        "stone 0 0 0 1 1",
-        "stone [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1",
-    );
+    let valve = source.replace("stone 0 0 0 1 1", "stone [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1");
     let map = read_map(&valve, None).expect("it parses");
     assert_eq!(map.format, MapFormat::Quake2Valve);
 }
@@ -189,9 +186,9 @@ fn the_brush_faces_have_outward_normals() {
 
 #[test]
 fn a_brush_read_from_a_file_builds_a_polyhedron() {
-    use map_model::polyhedron::Polyhedron;
     use geometry_math::bbox::Bbox3d;
     use geometry_math::scalar::Float;
+    use map_model::polyhedron::Polyhedron;
 
     let map = read(VALVE_SAMPLE);
     let planes: Vec<_> = map.entities[0].brushes[0]
@@ -269,7 +266,10 @@ brushDef
         // Until it is resolved, the face wears the default paraxial alignment but keeps
         // the matrix it was written with.
         assert_eq!(faces[0].uv_coord_system, UvCoordSystem::Paraxial);
-        assert_eq!(faces[0].uv_attributes, map_model::uv::UvAttributes::default());
+        assert_eq!(
+            faces[0].uv_attributes,
+            map_model::uv::UvAttributes::default()
+        );
         assert_eq!(
             faces[0].primitive_uv,
             Some(Box::new([[0.0078125, 0.0, 0.0], [0.0, 0.0078125, 0.0]]))
@@ -278,7 +278,11 @@ brushDef
 
     // One warning, whatever the brush count, and it names the format.
     assert_eq!(map.warnings.len(), 1);
-    assert!(map.warnings[0].message.contains("brushDef"), "{:?}", map.warnings[0]);
+    assert!(
+        map.warnings[0].message.contains("brushDef"),
+        "{:?}",
+        map.warnings[0]
+    );
 
     // Resolving with the material's pixel size turns the matrix into parallel UV axes.
     // The `+X` face (index 5) has normal (1,0,0); its axis base is world +Y and world -Z,
@@ -329,7 +333,11 @@ brushDef3
     // z = 16 -- which is what the synthesized points have to carry.
     let up = faces[5].plane;
     geometry_math::assert_approx_eq!(up.normal, Vec3d::new(0.0, 0.0, 1.0), 1e-9);
-    assert!((up.distance - 16.0).abs() < 1e-9, "z = 16, got {}", up.distance);
+    assert!(
+        (up.distance - 16.0).abs() < 1e-9,
+        "z = 16, got {}",
+        up.distance
+    );
 
     build_cube_and_check(faces, -16.0, 16.0);
 }
@@ -337,9 +345,9 @@ brushDef3
 /// Clips the world box by the given faces' planes and checks it comes out as the cube
 /// from `lo` to `hi`.
 fn build_cube_and_check(faces: &[map_model::brush_face::BrushFace], lo: f64, hi: f64) {
-    use map_model::polyhedron::Polyhedron;
     use geometry_math::bbox::Bbox3d;
     use geometry_math::scalar::Float;
+    use map_model::polyhedron::Polyhedron;
 
     let planes: Vec<_> = faces.iter().map(|f| f.plane).collect();
     let world = Bbox3d::from_scalars(-16384.0, 16384.0);
@@ -430,7 +438,10 @@ fn coordinates_are_written_in_the_editors_own_frame() {
 #[test]
 fn whole_numbers_are_written_without_a_decimal_point() {
     let written = write_map(&read(STANDARD_SAMPLE));
-    assert!(!written.contains("-64.0"), "wrote a needless decimal:\n{written}");
+    assert!(
+        !written.contains("-64.0"),
+        "wrote a needless decimal:\n{written}"
+    );
     assert!(written.contains("( -64 -64 -16 )"), "{written}");
 }
 
@@ -455,9 +466,13 @@ fn an_unterminated_entity_is_an_error() {
 
 #[test]
 fn a_face_with_colinear_points_is_an_error() {
-    let source = "{\n\"classname\" \"worldspawn\"\n{\n( 0 0 0 ) ( 1 0 0 ) ( 2 0 0 ) stone 0 0 0 1 1\n}\n}\n";
+    let source =
+        "{\n\"classname\" \"worldspawn\"\n{\n( 0 0 0 ) ( 1 0 0 ) ( 2 0 0 ) stone 0 0 0 1 1\n}\n}\n";
     let error = read_map(source, None).expect_err("the points are colinear");
-    assert!(error.to_string().contains("do not define a plane"), "{error}");
+    assert!(
+        error.to_string().contains("do not define a plane"),
+        "{error}"
+    );
 }
 
 #[test]
@@ -472,13 +487,22 @@ fn multistop_gradients_with_surface_material_survive_roundtrip() {
     for kind in ["linear", "radial"] {
         for alpha in ["", " 173"] {
             let comment = format!(" // heron_brush {kind} 30 3 0 204 255 232 0.5 65 190 181 1 25 126 126{alpha} pbr 32 70 12");
-            let source = VALVE_SAMPLE.lines().map(|line| {
-                if line.starts_with('(') { format!("{line}{comment}\n") } else { format!("{line}\n") }
-            }).collect::<String>();
+            let source = VALVE_SAMPLE
+                .lines()
+                .map(|line| {
+                    if line.starts_with('(') {
+                        format!("{line}{comment}\n")
+                    } else {
+                        format!("{line}\n")
+                    }
+                })
+                .collect::<String>();
             let map = read_map(&source, None).unwrap();
             let face = &map.entities[0].brushes[0].faces[0];
-            assert!(matches!(face.paint(), Some(FaceColor::MultiGradient { radial, alpha: a, .. })
-                if radial == (kind == "radial") && a == if alpha.is_empty() {255} else {173}));
+            assert!(
+                matches!(face.paint(), Some(FaceColor::MultiGradient { radial, alpha: a, .. })
+                if radial == (kind == "radial") && a == if alpha.is_empty() {255} else {173})
+            );
             assert_eq!(face.surface_material.unwrap().metallic, 70);
             let reopened = read_map(&write_map(&map), None).unwrap();
             let after = &reopened.entities[0].brushes[0].faces[0];
@@ -490,22 +514,63 @@ fn multistop_gradients_with_surface_material_survive_roundtrip() {
 
 #[test]
 fn pending_primitive_matrices_survive_all_map_dialects_and_face_metadata() {
-    use map_model::brush_face::{FaceColor, Rgb, SurfaceMaterial, ColorStop, GradientStops, GradientEnds};
-    let matrix = [[1. / 127., -0.03125, 0.1234567890123456], [0.0625, 1. / 61., -3.75]];
+    use map_model::brush_face::{
+        ColorStop, FaceColor, GradientEnds, GradientStops, Rgb, SurfaceMaterial,
+    };
+    let matrix = [
+        [1. / 127., -0.03125, 0.1234567890123456],
+        [0.0625, 1. / 61., -3.75],
+    ];
     let stops = GradientStops::new(&[
-        ColorStop { position: 0., color: Rgb::new(10, 20, 30) },
-        ColorStop { position: 1., color: Rgb::new(50, 60, 70) },
-    ]).unwrap();
-    for format in [MapFormat::Standard, MapFormat::Valve, MapFormat::Quake2, MapFormat::Quake2Valve] {
-        for paint in [None, Some(FaceColor::solid(Rgb::new(10, 20, 30))), Some(FaceColor::MultiGradient { stops, radial: false, angle: 37., alpha: 123, ends: None }),
-            Some(FaceColor::MultiGradient { stops, radial: true, angle: 0., alpha: 255, ends: Some(GradientEnds { start: [0.25, 0.5], end: [1.125, -0.375] }) })] {
+        ColorStop {
+            position: 0.,
+            color: Rgb::new(10, 20, 30),
+        },
+        ColorStop {
+            position: 1.,
+            color: Rgb::new(50, 60, 70),
+        },
+    ])
+    .unwrap();
+    for format in [
+        MapFormat::Standard,
+        MapFormat::Valve,
+        MapFormat::Quake2,
+        MapFormat::Quake2Valve,
+    ] {
+        for paint in [
+            None,
+            Some(FaceColor::solid(Rgb::new(10, 20, 30))),
+            Some(FaceColor::MultiGradient {
+                stops,
+                radial: false,
+                angle: 37.,
+                alpha: 123,
+                ends: None,
+            }),
+            Some(FaceColor::MultiGradient {
+                stops,
+                radial: true,
+                angle: 0.,
+                alpha: 255,
+                ends: Some(GradientEnds {
+                    start: [0.25, 0.5],
+                    end: [1.125, -0.375],
+                }),
+            }),
+        ] {
             for pbr in [false, true] {
                 for hidden in [false, true] {
-                    let mut map = read(STANDARD_SAMPLE); map.format = format;
+                    let mut map = read(STANDARD_SAMPLE);
+                    map.format = format;
                     let face = &mut map.entities[0].brushes[0].faces[0];
                     face.primitive_uv = Some(Box::new(matrix));
                     face.set_paint(paint);
-                    face.surface_material = pbr.then_some(SurfaceMaterial { roughness: 45, metallic: 20, emission: 80 });
+                    face.surface_material = pbr.then_some(SurfaceMaterial {
+                        roughness: 45,
+                        metallic: 20,
+                        emission: 80,
+                    });
                     face.export_hidden = hidden;
                     let expected = face.clone();
                     let written = write_map(&map);
@@ -514,8 +579,10 @@ fn pending_primitive_matrices_survive_all_map_dialects_and_face_metadata() {
                     let actual = &reopened.entities[0].brushes[0].faces[0];
                     assert_eq!(actual, &expected, "{format:?}, {paint:?}, {pbr}, {hidden}");
                     assert_eq!(write_map(&reopened), written, "saving twice is stable");
-                    let mut before = expected; before.resolve_primitive_uv(Vec2f::new(128., 64.));
-                    let mut after = actual.clone(); after.resolve_primitive_uv(Vec2f::new(128., 64.));
+                    let mut before = expected;
+                    before.resolve_primitive_uv(Vec2f::new(128., 64.));
+                    let mut after = actual.clone();
+                    after.resolve_primitive_uv(Vec2f::new(128., 64.));
                     assert_eq!(after, before, "later material discovery keeps the mapping");
                 }
             }
@@ -525,20 +592,42 @@ fn pending_primitive_matrices_survive_all_map_dialects_and_face_metadata() {
 
 #[test]
 fn malformed_or_foreign_pending_matrix_comments_do_not_override_face_uv() {
-    for text in ["other_editor primitive_uv 1 0 0 0 1 0", "heron_brush primitive_uv 1 0 0", "heron_brush primitive_uv NaN 0 0 0 1 0", "heron_brush primitive_uv 1e999 0 0 0 1 0"] {
-        let source = STANDARD_SAMPLE.replacen("stone 0 0 0 1 1\n", &format!("stone 0 0 0 1 1 // {text}\n"), 1);
+    for text in [
+        "other_editor primitive_uv 1 0 0 0 1 0",
+        "heron_brush primitive_uv 1 0 0",
+        "heron_brush primitive_uv NaN 0 0 0 1 0",
+        "heron_brush primitive_uv 1e999 0 0 0 1 0",
+    ] {
+        let source = STANDARD_SAMPLE.replacen(
+            "stone 0 0 0 1 1\n",
+            &format!("stone 0 0 0 1 1 // {text}\n"),
+            1,
+        );
         let parsed = read(&source);
-        assert!(parsed.entities[0].brushes[0].faces[0].primitive_uv.is_none());
-        assert_eq!(parsed.entities[0].brushes[0].faces[0].uv_attributes, Default::default());
+        assert!(parsed.entities[0].brushes[0].faces[0]
+            .primitive_uv
+            .is_none());
+        assert_eq!(
+            parsed.entities[0].brushes[0].faces[0].uv_attributes,
+            Default::default()
+        );
     }
 }
 
 fn doom3_version_two_cube(class: &str, origin: &str) -> String {
     let mut out = format!("Version 2\n// Game: custom-doom3\n{{\n\"classname\" \"{class}\"\n\"origin\" \"{origin}\"\n{{\nbrushDef3\n{{\n");
-    for plane in ["-1 0 0 -16", "1 0 0 -16", "0 -1 0 -16", "0 1 0 -16", "0 0 -1 -16", "0 0 2 -32"] {
+    for plane in [
+        "-1 0 0 -16",
+        "1 0 0 -16",
+        "0 -1 0 -16",
+        "0 1 0 -16",
+        "0 0 -1 -16",
+        "0 0 2 -32",
+    ] {
         out.push_str(&format!("( {plane} ) ( ( 0.0078125 0 0.25 ) ( 0 0.015625 -0.125 ) ) \"textures/base/stone\" 0 0 0\n"));
     }
-    out.push_str("}\n}\n}\n"); out
+    out.push_str("}\n}\n}\n");
+    out
 }
 
 #[test]
@@ -546,76 +635,140 @@ fn doom3_version_two_reads_scaled_planes_local_origin_and_world_space_uvs() {
     use geometry_math::{bbox::Bbox3d, scalar::Float, vec};
     let source = doom3_version_two_cube("func_static", "128 64 32");
     let mut map = read(&source);
-    assert_eq!(map.game.as_deref(),Some("custom-doom3"));
+    assert_eq!(map.game.as_deref(), Some("custom-doom3"));
     let faces = &mut map.entities[0].brushes[0].faces;
     let planes: Vec<_> = faces.iter().map(|f| f.plane).collect();
-    let built = map_model::polyhedron::Polyhedron::from_planes(&Bbox3d::from_scalars(-16384.,16384.),&planes,f64::ALMOST_ZERO).unwrap();
+    let built = map_model::polyhedron::Polyhedron::from_planes(
+        &Bbox3d::from_scalars(-16384., 16384.),
+        &planes,
+        f64::ALMOST_ZERO,
+    )
+    .unwrap();
     let bounds = built.polyhedron().unwrap().bounds();
-    geometry_math::assert_approx_eq!(bounds.min,Vec3d::new(112.,48.,16.),1e-9);
-    geometry_math::assert_approx_eq!(bounds.max,Vec3d::new(144.,80.,48.),1e-9);
+    geometry_math::assert_approx_eq!(bounds.min, Vec3d::new(112., 48., 16.), 1e-9);
+    geometry_math::assert_approx_eq!(bounds.max, Vec3d::new(144., 80., 48.), 1e-9);
     for face in faces {
-        let (s,t) = map_model::uv::primitive_axis_base(face.normal());
+        let (s, t) = map_model::uv::primitive_axis_base(face.normal());
         let point = face.points[0];
-        let local = point - Vec3d::new(128.,64.,32.);
-        let origin = Vec3d::new(128.,64.,32.);
+        let local = point - Vec3d::new(128., 64., 32.);
+        let origin = Vec3d::new(128., 64., 32.);
         // Doom 3 evaluates local geometry with an origin contribution in texVec.w.
-        let expected = Vec2f::new(((vec::dot(s,local)+vec::dot(s,origin))/128.+0.25) as f32 *128., ((vec::dot(t,local)+vec::dot(t,origin))/64.-0.125) as f32 *64.);
-        face.resolve_primitive_uv(Vec2f::new(128.,64.));
-        geometry_math::assert_approx_eq!(face.uv_coords(point),expected,1e-4);
+        let expected = Vec2f::new(
+            ((vec::dot(s, local) + vec::dot(s, origin)) / 128. + 0.25) as f32 * 128.,
+            ((vec::dot(t, local) + vec::dot(t, origin)) / 64. - 0.125) as f32 * 64.,
+        );
+        face.resolve_primitive_uv(Vec2f::new(128., 64.));
+        geometry_math::assert_approx_eq!(face.uv_coords(point), expected, 1e-4);
     }
-    let world = read(&doom3_version_two_cube("worldspawn","128 64 32"));
-    build_cube_and_check(&world.entities[0].brushes[0].faces,-16.,16.);
-    let alias = read(&source.replace("brushDef3","brushDef2"));
-    assert_eq!(alias.entities[0].brushes[0].faces[5].plane.distance,48.);
+    let world = read(&doom3_version_two_cube("worldspawn", "128 64 32"));
+    build_cube_and_check(&world.entities[0].brushes[0].faces, -16., 16.);
+    let alias = read(&source.replace("brushDef3", "brushDef2"));
+    assert_eq!(alias.entities[0].brushes[0].faces[5].plane.distance, 48.);
 }
 
 #[test]
 fn doom3_version_two_preserves_literal_strings_through_internal_save() {
-    let source = doom3_version_two_cube("worldspawn","0 0 0").replacen("\"origin\"", "\"path\" \"C:\\\\assets\\\"\n\"origin\"",1);
+    let source = doom3_version_two_cube("worldspawn", "0 0 0").replacen(
+        "\"origin\"",
+        "\"path\" \"C:\\\\assets\\\"\n\"origin\"",
+        1,
+    );
     let map = read(&source);
-    assert_eq!(map.entities[0].property("path"),Some("C:\\\\assets\\"));
+    assert_eq!(map.entities[0].property("path"), Some("C:\\\\assets\\"));
     let reopened = read(&write_map(&map));
-    assert_eq!(reopened.entities[0].property("path"),map.entities[0].property("path"));
-    assert_eq!(reopened.entities[0].brushes[0].faces,map.entities[0].brushes[0].faces);
+    assert_eq!(
+        reopened.entities[0].property("path"),
+        map.entities[0].property("path")
+    );
+    assert_eq!(
+        reopened.entities[0].brushes[0].faces,
+        map.entities[0].brushes[0].faces
+    );
 }
 
 #[test]
 fn doom3_version_origin_and_plane_errors_are_explicit() {
-    let source = doom3_version_two_cube("func_static","128 64 32");
-    for version in ["1","3","NaN"] { assert!(read_map(&source.replacen("Version 2",&format!("Version {version}"),1),None).is_err()); }
-    assert!(read_map(&source.replacen("Version 2","Version\n2",1),None).is_err());
-    for origin in ["1 2","1 2 3 4","NaN 0 0","1e999 0 0"] { assert!(read_map(&source.replace("128 64 32",origin),None).is_err()); }
-    for plane in ["0 0 0 -32","0 0 1 NaN","NaN 0 1 0"] { assert!(read_map(&source.replace("0 0 2 -32",plane),None).is_err()); }
-    let late = source.replacen("\"origin\" \"128 64 32\"\n","",1);
+    let source = doom3_version_two_cube("func_static", "128 64 32");
+    for version in ["1", "3", "NaN"] {
+        assert!(read_map(
+            &source.replacen("Version 2", &format!("Version {version}"), 1),
+            None
+        )
+        .is_err());
+    }
+    assert!(read_map(&source.replacen("Version 2", "Version\n2", 1), None).is_err());
+    for origin in ["1 2", "1 2 3 4", "NaN 0 0", "1e999 0 0"] {
+        assert!(read_map(&source.replace("128 64 32", origin), None).is_err());
+    }
+    for plane in ["0 0 0 -32", "0 0 1 NaN", "NaN 0 1 0"] {
+        assert!(read_map(&source.replace("0 0 2 -32", plane), None).is_err());
+    }
+    let late = source.replacen("\"origin\" \"128 64 32\"\n", "", 1);
     let at = late.rfind('}').unwrap();
-    let late = format!("{}\"origin\" \"128 64 32\"\n{}",&late[..at],&late[at..]);
-    assert!(read_map(&late,None).unwrap_err().to_string().contains("must precede"));
-    let rotated = source.replacen("\"origin\"", "\"rotation\" \"0 -1 0 1 0 0 0 0 1\"\n\"origin\"",1);
-    assert!(read(&rotated).warnings.iter().any(|w|w.message.contains("rotation")));
+    let late = format!("{}\"origin\" \"128 64 32\"\n{}", &late[..at], &late[at..]);
+    assert!(read_map(&late, None)
+        .unwrap_err()
+        .to_string()
+        .contains("must precede"));
+    let rotated = source.replacen(
+        "\"origin\"",
+        "\"rotation\" \"0 -1 0 1 0 0 0 0 1\"\n\"origin\"",
+        1,
+    );
+    assert!(read(&rotated)
+        .warnings
+        .iter()
+        .any(|w| w.message.contains("rotation")));
 }
 
 #[test]
 fn doom3_native_writer_round_trips_local_planes_pending_uv_and_literal_strings() {
-    let world = read(&doom3_version_two_cube("worldspawn","128 64 32").replace("classname","ClassName"));
-    let world_written = map_model::io::map_writer::write_doom3_map(&world,&mut |_|None).unwrap();
-    build_cube_and_check(&read(&world_written).entities[0].brushes[0].faces,-16.,16.);
-    let source = doom3_version_two_cube("func_static","128 64 32");
+    let world =
+        read(&doom3_version_two_cube("worldspawn", "128 64 32").replace("classname", "ClassName"));
+    let world_written = map_model::io::map_writer::write_doom3_map(&world, &mut |_| None).unwrap();
+    build_cube_and_check(
+        &read(&world_written).entities[0].brushes[0].faces,
+        -16.,
+        16.,
+    );
+    let source = doom3_version_two_cube("func_static", "128 64 32");
     let mut map = read(&source);
-    map.entities[0].properties.push(("path".into(),"C:\\\\assets\\".into()));
-    let written = map_model::io::map_writer::write_doom3_map(&map,&mut |_|panic!("pending matrices already normalized")).unwrap();
+    map.entities[0]
+        .properties
+        .push(("path".into(), "C:\\\\assets\\".into()));
+    let written = map_model::io::map_writer::write_doom3_map(&map, &mut |_| {
+        panic!("pending matrices already normalized")
+    })
+    .unwrap();
     assert!(written.starts_with("Version 2\n"));
     assert!(written.contains("\nbrushDef3\n"));
     assert!(!written.contains("primitive_uv"));
     let reopened = read(&written);
-    assert_eq!(reopened.entities[0].properties,map.entities[0].properties);
-    for (a,b) in map.entities[0].brushes[0].faces.iter().zip(&reopened.entities[0].brushes[0].faces) {
-        geometry_math::assert_approx_eq!(a.plane.normal,b.plane.normal,1e-9);
-        assert!((a.plane.distance-b.plane.distance).abs()<1e-9);
-        assert_eq!(a.primitive_uv,b.primitive_uv);
+    assert_eq!(reopened.entities[0].properties, map.entities[0].properties);
+    for (a, b) in map.entities[0].brushes[0]
+        .faces
+        .iter()
+        .zip(&reopened.entities[0].brushes[0].faces)
+    {
+        geometry_math::assert_approx_eq!(a.plane.normal, b.plane.normal, 1e-9);
+        assert!((a.plane.distance - b.plane.distance).abs() < 1e-9);
+        assert_eq!(a.primitive_uv, b.primitive_uv);
     }
-    map.entities[0].properties.push(("rotation".into(),"0 -1 0 1 0 0 0 0 1".into()));
-    assert!(map_model::io::map_writer::write_doom3_map(&map,&mut |_|None).unwrap_err().contains("rotation"));
+    map.entities[0]
+        .properties
+        .push(("rotation".into(), "0 -1 0 1 0 0 0 0 1".into()));
+    assert!(
+        map_model::io::map_writer::write_doom3_map(&map, &mut |_| None)
+            .unwrap_err()
+            .contains("rotation")
+    );
     map.entities[0].properties.pop();
-    map.entities[0].properties.push(("bad".into(),"embedded \"quote".into()));
-    assert!(map_model::io::map_writer::write_doom3_map(&map,&mut |_|None).unwrap_err().contains("strings"));
+    map.entities[0]
+        .properties
+        .push(("bad".into(), "embedded \"quote".into()));
+    assert!(
+        map_model::io::map_writer::write_doom3_map(&map, &mut |_| None)
+            .unwrap_err()
+            .contains("strings")
+    );
 }

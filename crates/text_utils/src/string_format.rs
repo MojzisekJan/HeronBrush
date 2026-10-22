@@ -218,7 +218,10 @@ mod tests {
 
     #[test]
     fn escape_if_necessary_leaves_existing_escapes_alone() {
-        assert_eq!(str_escape_if_necessary("a\\\"b", "\"", ESCAPE_CHAR), "a\\\"b");
+        assert_eq!(
+            str_escape_if_necessary("a\\\"b", "\"", ESCAPE_CHAR),
+            "a\\\"b"
+        );
         assert_eq!(str_escape_if_necessary("a\"b", "\"", ESCAPE_CHAR), "a\\\"b");
     }
 

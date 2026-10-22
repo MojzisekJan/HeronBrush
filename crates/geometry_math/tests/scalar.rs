@@ -561,18 +561,36 @@ fn next_greater() {
 fn solve_quadratic() {
     let eps = f64::ALMOST_ZERO;
 
-    check_solution(&[2.0, -8.0], scalar::solve_quadratic(1.0, 6.0, -16.0, eps).as_slice());
-    check_solution(&[-1.0, -9.0], scalar::solve_quadratic(1.0, 10.0, 9.0, eps).as_slice());
-    check_solution(&[7.0, -4.0], scalar::solve_quadratic(0.5, -1.5, -14.0, eps).as_slice());
-    check_solution(&[2.0], scalar::solve_quadratic(1.0, -4.0, 4.0, eps).as_slice());
-    check_solution(&[], scalar::solve_quadratic(1.0, 12.0, 37.0, eps).as_slice());
+    check_solution(
+        &[2.0, -8.0],
+        scalar::solve_quadratic(1.0, 6.0, -16.0, eps).as_slice(),
+    );
+    check_solution(
+        &[-1.0, -9.0],
+        scalar::solve_quadratic(1.0, 10.0, 9.0, eps).as_slice(),
+    );
+    check_solution(
+        &[7.0, -4.0],
+        scalar::solve_quadratic(0.5, -1.5, -14.0, eps).as_slice(),
+    );
+    check_solution(
+        &[2.0],
+        scalar::solve_quadratic(1.0, -4.0, 4.0, eps).as_slice(),
+    );
+    check_solution(
+        &[],
+        scalar::solve_quadratic(1.0, 12.0, 37.0, eps).as_slice(),
+    );
 }
 
 #[test]
 fn solve_cubic() {
     let eps = f64::ALMOST_ZERO;
 
-    check_solution(&[-2.0], scalar::solve_cubic(1.0, 0.0, -2.0, 4.0, eps).as_slice());
+    check_solution(
+        &[-2.0],
+        scalar::solve_cubic(1.0, 0.0, -2.0, 4.0, eps).as_slice(),
+    );
     check_solution(
         &[7.0 / 9.0],
         scalar::solve_cubic(9.0, -43.0, 145.0, -91.0, eps).as_slice(),
@@ -597,8 +615,14 @@ fn solve_cubic() {
 fn solve_quartic() {
     let eps = f64::ALMOST_ZERO;
 
-    check_solution(&[], scalar::solve_quartic(1.0, 1.0, 1.0, 1.0, 1.0, eps).as_slice());
-    check_solution(&[], scalar::solve_quartic(1.0, -1.0, 1.0, -1.0, 1.0, eps).as_slice());
+    check_solution(
+        &[],
+        scalar::solve_quartic(1.0, 1.0, 1.0, 1.0, 1.0, eps).as_slice(),
+    );
+    check_solution(
+        &[],
+        scalar::solve_quartic(1.0, -1.0, 1.0, -1.0, 1.0, eps).as_slice(),
+    );
     check_solution(
         &[
             -0.203258341626567109,

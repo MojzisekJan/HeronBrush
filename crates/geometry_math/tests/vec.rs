@@ -180,16 +180,43 @@ fn find_abs_max_component() {
 #[test]
 fn get_abs_max_component_axis() {
     let v = Vec3f::new;
-    assert_eq!(v(1.0, 0.0, 0.0).get_abs_max_component_axis(0), v(1.0, 0.0, 0.0));
-    assert_eq!(v(-1.0, 0.0, 0.0).get_abs_max_component_axis(0), v(-1.0, 0.0, 0.0));
-    assert_eq!(v(0.0, 1.0, 0.0).get_abs_max_component_axis(0), v(0.0, 1.0, 0.0));
-    assert_eq!(v(0.0, -1.0, 0.0).get_abs_max_component_axis(0), v(0.0, -1.0, 0.0));
-    assert_eq!(v(0.0, 0.0, 1.0).get_abs_max_component_axis(0), v(0.0, 0.0, 1.0));
-    assert_eq!(v(0.0, 0.0, -1.0).get_abs_max_component_axis(0), v(0.0, 0.0, -1.0));
+    assert_eq!(
+        v(1.0, 0.0, 0.0).get_abs_max_component_axis(0),
+        v(1.0, 0.0, 0.0)
+    );
+    assert_eq!(
+        v(-1.0, 0.0, 0.0).get_abs_max_component_axis(0),
+        v(-1.0, 0.0, 0.0)
+    );
+    assert_eq!(
+        v(0.0, 1.0, 0.0).get_abs_max_component_axis(0),
+        v(0.0, 1.0, 0.0)
+    );
+    assert_eq!(
+        v(0.0, -1.0, 0.0).get_abs_max_component_axis(0),
+        v(0.0, -1.0, 0.0)
+    );
+    assert_eq!(
+        v(0.0, 0.0, 1.0).get_abs_max_component_axis(0),
+        v(0.0, 0.0, 1.0)
+    );
+    assert_eq!(
+        v(0.0, 0.0, -1.0).get_abs_max_component_axis(0),
+        v(0.0, 0.0, -1.0)
+    );
 
-    assert_eq!(v(3.0, -1.0, 2.0).get_abs_max_component_axis(0), v(1.0, 0.0, 0.0));
-    assert_eq!(v(3.0, -1.0, 2.0).get_abs_max_component_axis(1), v(0.0, 0.0, 1.0));
-    assert_eq!(v(3.0, -1.0, 2.0).get_abs_max_component_axis(2), v(0.0, -1.0, 0.0));
+    assert_eq!(
+        v(3.0, -1.0, 2.0).get_abs_max_component_axis(0),
+        v(1.0, 0.0, 0.0)
+    );
+    assert_eq!(
+        v(3.0, -1.0, 2.0).get_abs_max_component_axis(1),
+        v(0.0, 0.0, 1.0)
+    );
+    assert_eq!(
+        v(3.0, -1.0, 2.0).get_abs_max_component_axis(2),
+        v(0.0, -1.0, 0.0)
+    );
 }
 
 #[test]
@@ -239,12 +266,27 @@ fn arithmetic_operators() {
 #[test]
 fn min() {
     let v = Vec3f::new;
-    assert_eq!(vec::min(v(2.0, 2.0, 2.0), v(3.0, 3.0, 3.0)), v(2.0, 2.0, 2.0));
-    assert_eq!(vec::min(v(-2.0, -2.0, -2.0), v(-1.0, -1.0, -1.0)), v(-2.0, -2.0, -2.0));
-    assert_eq!(vec::min(v(2.0, 2.0, 2.0), v(1.0, 3.0, 1.0)), v(1.0, 2.0, 1.0));
-    assert_eq!(vec::min(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)), v(-2.0, -3.0, -2.0));
     assert_eq!(
-        vec::min(vec::min(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)), v(-1.0, -3.0, -4.0)),
+        vec::min(v(2.0, 2.0, 2.0), v(3.0, 3.0, 3.0)),
+        v(2.0, 2.0, 2.0)
+    );
+    assert_eq!(
+        vec::min(v(-2.0, -2.0, -2.0), v(-1.0, -1.0, -1.0)),
+        v(-2.0, -2.0, -2.0)
+    );
+    assert_eq!(
+        vec::min(v(2.0, 2.0, 2.0), v(1.0, 3.0, 1.0)),
+        v(1.0, 2.0, 1.0)
+    );
+    assert_eq!(
+        vec::min(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)),
+        v(-2.0, -3.0, -2.0)
+    );
+    assert_eq!(
+        vec::min(
+            vec::min(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)),
+            v(-1.0, -3.0, -4.0)
+        ),
         v(-2.0, -3.0, -4.0)
     );
 }
@@ -252,12 +294,27 @@ fn min() {
 #[test]
 fn max() {
     let v = Vec3f::new;
-    assert_eq!(vec::max(v(2.0, 2.0, 2.0), v(3.0, 3.0, 3.0)), v(3.0, 3.0, 3.0));
-    assert_eq!(vec::max(v(-2.0, -2.0, -2.0), v(-1.0, -1.0, -1.0)), v(-1.0, -1.0, -1.0));
-    assert_eq!(vec::max(v(2.0, 2.0, 2.0), v(1.0, 3.0, 1.0)), v(2.0, 3.0, 2.0));
-    assert_eq!(vec::max(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)), v(-1.0, -2.0, -1.0));
     assert_eq!(
-        vec::max(vec::max(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)), v(4.0, -4.0, 1.0)),
+        vec::max(v(2.0, 2.0, 2.0), v(3.0, 3.0, 3.0)),
+        v(3.0, 3.0, 3.0)
+    );
+    assert_eq!(
+        vec::max(v(-2.0, -2.0, -2.0), v(-1.0, -1.0, -1.0)),
+        v(-1.0, -1.0, -1.0)
+    );
+    assert_eq!(
+        vec::max(v(2.0, 2.0, 2.0), v(1.0, 3.0, 1.0)),
+        v(2.0, 3.0, 2.0)
+    );
+    assert_eq!(
+        vec::max(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)),
+        v(-1.0, -2.0, -1.0)
+    );
+    assert_eq!(
+        vec::max(
+            vec::max(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)),
+            v(4.0, -4.0, 1.0)
+        ),
         v(4.0, -2.0, 1.0)
     );
 }
@@ -265,10 +322,22 @@ fn max() {
 #[test]
 fn abs_min() {
     let v = Vec3f::new;
-    assert_eq!(vec::abs_min(v(2.0, 2.0, 2.0), v(3.0, 3.0, 3.0)), v(2.0, 2.0, 2.0));
-    assert_eq!(vec::abs_min(v(-2.0, -2.0, -2.0), v(-1.0, -1.0, -1.0)), v(-1.0, -1.0, -1.0));
-    assert_eq!(vec::abs_min(v(2.0, 2.0, 2.0), v(1.0, 3.0, 1.0)), v(1.0, 2.0, 1.0));
-    assert_eq!(vec::abs_min(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)), v(-1.0, -2.0, -1.0));
+    assert_eq!(
+        vec::abs_min(v(2.0, 2.0, 2.0), v(3.0, 3.0, 3.0)),
+        v(2.0, 2.0, 2.0)
+    );
+    assert_eq!(
+        vec::abs_min(v(-2.0, -2.0, -2.0), v(-1.0, -1.0, -1.0)),
+        v(-1.0, -1.0, -1.0)
+    );
+    assert_eq!(
+        vec::abs_min(v(2.0, 2.0, 2.0), v(1.0, 3.0, 1.0)),
+        v(1.0, 2.0, 1.0)
+    );
+    assert_eq!(
+        vec::abs_min(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)),
+        v(-1.0, -2.0, -1.0)
+    );
     assert_eq!(
         vec::abs_min(
             vec::abs_min(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)),
@@ -281,10 +350,22 @@ fn abs_min() {
 #[test]
 fn abs_max() {
     let v = Vec3f::new;
-    assert_eq!(vec::abs_max(v(2.0, 2.0, 2.0), v(3.0, 3.0, 3.0)), v(3.0, 3.0, 3.0));
-    assert_eq!(vec::abs_max(v(-2.0, -2.0, -2.0), v(-1.0, -1.0, -1.0)), v(-2.0, -2.0, -2.0));
-    assert_eq!(vec::abs_max(v(2.0, 2.0, 2.0), v(1.0, 3.0, 1.0)), v(2.0, 3.0, 2.0));
-    assert_eq!(vec::abs_max(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)), v(-2.0, -3.0, -2.0));
+    assert_eq!(
+        vec::abs_max(v(2.0, 2.0, 2.0), v(3.0, 3.0, 3.0)),
+        v(3.0, 3.0, 3.0)
+    );
+    assert_eq!(
+        vec::abs_max(v(-2.0, -2.0, -2.0), v(-1.0, -1.0, -1.0)),
+        v(-2.0, -2.0, -2.0)
+    );
+    assert_eq!(
+        vec::abs_max(v(2.0, 2.0, 2.0), v(1.0, 3.0, 1.0)),
+        v(2.0, 3.0, 2.0)
+    );
+    assert_eq!(
+        vec::abs_max(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)),
+        v(-2.0, -3.0, -2.0)
+    );
     assert_eq!(
         vec::abs_max(
             vec::abs_max(v(-2.0, -2.0, -2.0), v(-1.0, -3.0, -1.0)),
@@ -325,7 +406,10 @@ fn smoothstep() {
     let v = Vec3d::new;
     let e0 = v(0.0, 0.0, 0.0);
     let e1 = v(1.0, 1.0, 1.0);
-    assert_eq!(vec::smoothstep(e0, e1, v(-1.0, -1.0, -1.0)), v(0.0, 0.0, 0.0));
+    assert_eq!(
+        vec::smoothstep(e0, e1, v(-1.0, -1.0, -1.0)),
+        v(0.0, 0.0, 0.0)
+    );
     assert_eq!(vec::smoothstep(e0, e1, v(0.0, 0.0, 0.0)), v(0.0, 0.0, 0.0));
     assert_eq!(vec::smoothstep(e0, e1, v(1.0, 1.0, 1.0)), v(1.0, 1.0, 1.0));
     assert_eq!(vec::smoothstep(e0, e1, v(2.0, 2.0, 2.0)), v(1.0, 1.0, 1.0));
@@ -340,7 +424,10 @@ fn smoothstep() {
 #[test]
 fn dot() {
     assert_approx_eq!(
-        vec::dot(Vec3f::new(2.3, 8.7878, -2323.0), Vec3f::new(4.333, -2.0, 322.0)),
+        vec::dot(
+            Vec3f::new(2.3, 8.7878, -2323.0),
+            Vec3f::new(4.333, -2.0, 322.0)
+        ),
         -748013.6097f32,
         1.0
     );
@@ -363,7 +450,10 @@ fn cross() {
         vec::cross(Vec3f::zero(), v(2.0, 34.233, -10003.0002)),
         Vec3f::zero()
     );
-    assert_eq!(vec::cross(v(1.0, 0.0, 0.0), v(0.0, 1.0, 0.0)), v(0.0, 0.0, 1.0));
+    assert_eq!(
+        vec::cross(v(1.0, 0.0, 0.0), v(0.0, 1.0, 0.0)),
+        v(0.0, 0.0, 1.0)
+    );
     assert_approx_eq!(
         vec::cross(v(12.302, -0.0017, 79898.3), v(2.0, 34.233, -10003.0002)),
         v(-2735141.499, 282853.508, 421.138),
@@ -520,8 +610,14 @@ fn fract() {
 #[test]
 fn mod_() {
     let v = Vec3d::new;
-    assert_approx_eq!(vec::mod_(v(1.0, 1.0, 1.0), v(1.0, 1.0, 1.0)), v(0.0, 0.0, 0.0));
-    assert_approx_eq!(vec::mod_(v(2.0, -1.0, 0.0), v(1.0, 1.0, 1.0)), v(0.0, 0.0, 0.0));
+    assert_approx_eq!(
+        vec::mod_(v(1.0, 1.0, 1.0), v(1.0, 1.0, 1.0)),
+        v(0.0, 0.0, 0.0)
+    );
+    assert_approx_eq!(
+        vec::mod_(v(2.0, -1.0, 0.0), v(1.0, 1.0, 1.0)),
+        v(0.0, 0.0, 0.0)
+    );
     assert_approx_eq!(
         vec::mod_(v(6.5, -6.5, 6.5), v(2.0, 2.0, -2.0)),
         v(0.5, -0.5, 0.5)
@@ -538,10 +634,7 @@ fn squared_distance() {
         vec::squared_distance(v1, Vec3f::zero()),
         vec::squared_length(v1)
     );
-    assert_approx_eq!(
-        vec::squared_distance(v1, v2),
-        vec::squared_length(v1 - v2)
-    );
+    assert_approx_eq!(vec::squared_distance(v1, v2), vec::squared_length(v1 - v2));
 }
 
 #[test]
@@ -574,8 +667,18 @@ fn to_cartesian_coords() {
 fn is_colinear() {
     let v = Vec3d::new;
     let eps = f64::COLINEAR_EPSILON;
-    assert!(vec::is_colinear(Vec3d::zero(), Vec3d::zero(), Vec3d::zero(), eps));
-    assert!(vec::is_colinear(Vec3d::one(), Vec3d::one(), Vec3d::one(), eps));
+    assert!(vec::is_colinear(
+        Vec3d::zero(),
+        Vec3d::zero(),
+        Vec3d::zero(),
+        eps
+    ));
+    assert!(vec::is_colinear(
+        Vec3d::one(),
+        Vec3d::one(),
+        Vec3d::one(),
+        eps
+    ));
     assert!(vec::is_colinear(
         v(0.0, 0.0, 0.0),
         v(0.0, 0.0, 1.0),
@@ -670,9 +773,18 @@ fn snap_down() {
     assert_eq!(vec::snap_down(v(-0.4, -0.5, -0.6), one), Vec3f::zero());
     assert_eq!(vec::snap_down(v(1.4, 1.5, 1.6), one), one);
     assert_eq!(vec::snap_down(v(-1.4, -1.5, -1.6), one), -one);
-    assert_eq!(vec::snap_down(v(1.4, 1.5, 1.6), v(2.0, 2.0, 2.0)), Vec3f::zero());
-    assert_eq!(vec::snap_down(v(-1.4, -1.5, -1.6), v(2.0, 2.0, 2.0)), Vec3f::zero());
-    assert_eq!(vec::snap_down(v(1.4, 1.5, 1.6), v(2.0, 1.0, 1.0)), v(0.0, 1.0, 1.0));
+    assert_eq!(
+        vec::snap_down(v(1.4, 1.5, 1.6), v(2.0, 2.0, 2.0)),
+        Vec3f::zero()
+    );
+    assert_eq!(
+        vec::snap_down(v(-1.4, -1.5, -1.6), v(2.0, 2.0, 2.0)),
+        Vec3f::zero()
+    );
+    assert_eq!(
+        vec::snap_down(v(1.4, 1.5, 1.6), v(2.0, 1.0, 1.0)),
+        v(0.0, 1.0, 1.0)
+    );
     assert_eq!(
         vec::snap_down(v(-1.4, -1.5, -1.6), v(2.0, 1.0, 1.0)),
         v(0.0, -1.0, -1.0)
@@ -688,12 +800,18 @@ fn snap_up() {
     assert_eq!(vec::snap_up(v(-0.4, -0.5, -0.6), one), -one);
     assert_eq!(vec::snap_up(v(1.4, 1.5, 1.6), one), v(2.0, 2.0, 2.0));
     assert_eq!(vec::snap_up(v(-1.4, -1.5, -1.6), one), v(-2.0, -2.0, -2.0));
-    assert_eq!(vec::snap_up(v(1.4, 1.5, 1.6), v(3.0, 3.0, 3.0)), v(3.0, 3.0, 3.0));
+    assert_eq!(
+        vec::snap_up(v(1.4, 1.5, 1.6), v(3.0, 3.0, 3.0)),
+        v(3.0, 3.0, 3.0)
+    );
     assert_eq!(
         vec::snap_up(v(-1.4, -1.5, -1.6), v(3.0, 3.0, 3.0)),
         v(-3.0, -3.0, -3.0)
     );
-    assert_eq!(vec::snap_up(v(1.4, 1.5, 1.6), v(3.0, 1.0, 1.0)), v(3.0, 2.0, 2.0));
+    assert_eq!(
+        vec::snap_up(v(1.4, 1.5, 1.6), v(3.0, 1.0, 1.0)),
+        v(3.0, 2.0, 2.0)
+    );
     assert_eq!(
         vec::snap_up(v(-1.4, -1.5, -1.6), v(3.0, 1.0, 1.0)),
         v(-3.0, -2.0, -2.0)
@@ -727,11 +845,31 @@ fn correct() {
 #[test]
 fn is_between() {
     let v = Vec3f::new;
-    assert!(vec::is_between(v(1.0, 0.0, 0.0), v(0.0, 0.0, 0.0), v(2.0, 0.0, 0.0)));
-    assert!(vec::is_between(v(1.0, 0.0, 0.0), v(2.0, 0.0, 0.0), v(0.0, 0.0, 0.0)));
-    assert!(vec::is_between(v(1.0, 0.0, 0.0), v(1.0, 0.0, 0.0), v(0.0, 0.0, 0.0)));
-    assert!(vec::is_between(v(0.0, 0.0, 0.0), v(1.0, 0.0, 0.0), v(0.0, 0.0, 0.0)));
-    assert!(!vec::is_between(v(2.0, 0.0, 0.0), v(1.0, 0.0, 0.0), v(0.0, 0.0, 0.0)));
+    assert!(vec::is_between(
+        v(1.0, 0.0, 0.0),
+        v(0.0, 0.0, 0.0),
+        v(2.0, 0.0, 0.0)
+    ));
+    assert!(vec::is_between(
+        v(1.0, 0.0, 0.0),
+        v(2.0, 0.0, 0.0),
+        v(0.0, 0.0, 0.0)
+    ));
+    assert!(vec::is_between(
+        v(1.0, 0.0, 0.0),
+        v(1.0, 0.0, 0.0),
+        v(0.0, 0.0, 0.0)
+    ));
+    assert!(vec::is_between(
+        v(0.0, 0.0, 0.0),
+        v(1.0, 0.0, 0.0),
+        v(0.0, 0.0, 0.0)
+    ));
+    assert!(!vec::is_between(
+        v(2.0, 0.0, 0.0),
+        v(1.0, 0.0, 0.0),
+        v(0.0, 0.0, 0.0)
+    ));
 }
 
 #[test]

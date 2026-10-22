@@ -6,7 +6,9 @@
 use std::collections::{HashMap, HashSet};
 
 use bytemuck::{Pod, Zeroable};
-use editor_core::render_scene::{flags_of, triangle_flags, ObjectKey, ObjectState, SceneLight, SceneSink};
+use editor_core::render_scene::{
+    flags_of, triangle_flags, ObjectKey, ObjectState, SceneLight, SceneSink,
+};
 use map_model::brush_face::SurfaceMaterial;
 use map_model::material::{Alpha, Material};
 use render::Triangle;
@@ -52,8 +54,8 @@ pub struct MaterialGpu {
     alpha_mode: u32,
     flags: u32,
     factors: [f32; 4],
-    model_params: [f32;4],
-    model_emissive: [f32;4],
+    model_params: [f32; 4],
+    model_emissive: [f32; 4],
 }
 
 /// Which pass a run of triangles belongs to.
@@ -359,9 +361,25 @@ impl RenderScene {
             ..Default::default()
         });
         // Straight up in tangent space: what a material without a normal map samples.
-        let flat_normal = upload_mips(device, queue, wgpu::TextureFormat::Rgba8Unorm, textures::mip_chain(1, 1, &[128, 128, 255, 255], false), "flat normal")
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let white = make_texture(device, queue, &texture_layout, &sampler, &flat_normal, textures::mip_chain(1, 1, &[255, 255, 255, 255], true), None, None, "white");
+        let flat_normal = upload_mips(
+            device,
+            queue,
+            wgpu::TextureFormat::Rgba8Unorm,
+            textures::mip_chain(1, 1, &[128, 128, 255, 255], false),
+            "flat normal",
+        )
+        .create_view(&wgpu::TextureViewDescriptor::default());
+        let white = make_texture(
+            device,
+            queue,
+            &texture_layout,
+            &sampler,
+            &flat_normal,
+            textures::mip_chain(1, 1, &[255, 255, 255, 255], true),
+            None,
+            None,
+            "white",
+        );
         let mut scene = Self {
             device: device.clone(),
             queue: queue.clone(),
@@ -417,8 +435,22 @@ impl RenderScene {
         self.instance_base = vec![None, None];
         self.instance_surface = vec![None, None];
         self.material_table = vec![
-            MaterialGpu { size: [1.0, 1.0], alpha_mode: 0, flags: 0, factors: [0.0; 4], model_params: [1.,0.,0.5,0.], model_emissive:[0.;4] },
-            MaterialGpu { size: [1.0, 1.0], alpha_mode: 2, flags: MATERIAL_SKIP, factors: [0.0; 4], model_params: [1.,0.,0.5,0.], model_emissive:[0.;4] },
+            MaterialGpu {
+                size: [1.0, 1.0],
+                alpha_mode: 0,
+                flags: 0,
+                factors: [0.0; 4],
+                model_params: [1., 0., 0.5, 0.],
+                model_emissive: [0.; 4],
+            },
+            MaterialGpu {
+                size: [1.0, 1.0],
+                alpha_mode: 2,
+                flags: MATERIAL_SKIP,
+                factors: [0.0; 4],
+                model_params: [1., 0., 0.5, 0.],
+                model_emissive: [0.; 4],
+            },
         ];
         self.material_table_dirty = true;
     }
@@ -437,7 +469,8 @@ impl RenderScene {
             return *slot;
         }
         let slot = self.material_table.len() as u32;
-        self.material_table.push(self.material_entry(material, triangle.surface_material));
+        self.material_table
+            .push(self.material_entry(material, triangle.surface_material));
         self.instance_base.push(material);
         self.instance_surface.push(triangle.surface_material);
         self.instances.insert(key, slot);
@@ -447,16 +480,24 @@ impl RenderScene {
 
     /// The material-table entry of an instance, from what is known of its base material
     /// now: its size and alpha, its normal map and whether its texture is resident.
-    fn material_entry(&self, material: Option<usize>, surface: Option<SurfaceMaterial>) -> MaterialGpu {
+    fn material_entry(
+        &self,
+        material: Option<usize>,
+        surface: Option<SurfaceMaterial>,
+    ) -> MaterialGpu {
         let material = material.filter(|m| *m < self.materials.len());
-        let resident = material.is_none_or(|m| matches!(self.textures.get(m), Some(Residency::Resident(..))));
+        let resident =
+            material.is_none_or(|m| matches!(self.textures.get(m), Some(Residency::Resident(..))));
         let (size, alpha_mode) = match material {
             // A texture that is not there cannot cut or blend anything.
-            Some(m) if resident => (self.material_sizes[m], match self.material_alpha[m] {
-                Alpha::Opaque => 0,
-                Alpha::Masked => 1,
-                Alpha::Blended => 2,
-            }),
+            Some(m) if resident => (
+                self.material_sizes[m],
+                match self.material_alpha[m] {
+                    Alpha::Opaque => 0,
+                    Alpha::Masked => 1,
+                    Alpha::Blended => 2,
+                },
+            ),
             Some(m) => (self.material_sizes[m], 0),
             None => ((1.0, 1.0), 0),
         };
@@ -467,43 +508,77 @@ impl RenderScene {
             }
             None => (0, [0.0; 4]),
         };
-        if let Some(flip_y) = material.and_then(|m| self.material_normals[m]).filter(|_| resident) {
+        if let Some(flip_y) = material
+            .and_then(|m| self.material_normals[m])
+            .filter(|_| resident)
+        {
             flags |= MATERIAL_NORMAL_MAP | if flip_y { MATERIAL_NORMAL_FLIP_Y } else { 0 };
         }
         if let Some(m) = material.filter(|_| !resident) {
             flags |= MATERIAL_PENDING;
             factors[3] = f32::from_bits(self.material_average[m]);
         }
-        let mut model_params=[1.,0.,0.5,0.];
-        let mut model_emissive=[0.;4];
-        if let Some(pbr)=material.and_then(|m|self.materials[m].model_pbr.as_ref()) {
-            if resident {flags |= MATERIAL_MODEL_PBR;}
-            if surface.is_none() {flags|=MATERIAL_OWN_FACTORS;factors[0]=pbr.roughness;factors[1]=pbr.metallic;}
-            model_params=[pbr.normal_scale,pbr.occlusion_strength,pbr.alpha_cutoff,if pbr.double_sided {2.} else {1.}];
-            if resident {model_emissive[..3].copy_from_slice(&pbr.emissive_factor);}
+        let mut model_params = [1., 0., 0.5, 0.];
+        let mut model_emissive = [0.; 4];
+        if let Some(pbr) = material.and_then(|m| self.materials[m].model_pbr.as_ref()) {
+            if resident {
+                flags |= MATERIAL_MODEL_PBR;
+            }
+            if surface.is_none() {
+                flags |= MATERIAL_OWN_FACTORS;
+                factors[0] = pbr.roughness;
+                factors[1] = pbr.metallic;
+            }
+            model_params = [
+                pbr.normal_scale,
+                pbr.occlusion_strength,
+                pbr.alpha_cutoff,
+                if pbr.double_sided { 2. } else { 1. },
+            ];
+            if resident {
+                model_emissive[..3].copy_from_slice(&pbr.emissive_factor);
+            }
         }
-        MaterialGpu { size: [size.0, size.1], alpha_mode, flags, factors, model_params, model_emissive }
+        MaterialGpu {
+            size: [size.0, size.1],
+            alpha_mode,
+            flags,
+            factors,
+            model_params,
+            model_emissive,
+        }
     }
 
     /// Writes again the table entries of every instance of base material `material`.
     fn refresh_instances(&mut self, material: usize) {
         for slot in 0..self.instance_base.len() {
             if self.instance_base[slot] == Some(material) {
-                self.material_table[slot] = self.material_entry(Some(material), self.instance_surface[slot]);
+                self.material_table[slot] =
+                    self.material_entry(Some(material), self.instance_surface[slot]);
                 self.material_table_dirty = true;
             }
         }
     }
 
     pub(crate) fn single_sided(&self, slot: u32) -> bool {
-        self.material_table.get(slot as usize).is_some_and(|material| material.model_params[3] == 1.0)
+        self.material_table
+            .get(slot as usize)
+            .is_some_and(|material| material.model_params[3] == 1.0)
     }
 
     /// Whether the material of an instance slot has a normal map: from the collection's
     /// metadata, not the texture's residency, so a chunk's draw order does not change as
     /// textures stream in and out.
     fn normal_mapped(&self, slot: u32) -> bool {
-        self.instance_base.get(slot as usize).copied().flatten().is_some_and(|m| self.materials.get(m).is_some_and(|m| m.normal_map.is_some()))
+        self.instance_base
+            .get(slot as usize)
+            .copied()
+            .flatten()
+            .is_some_and(|m| {
+                self.materials
+                    .get(m)
+                    .is_some_and(|m| m.normal_map.is_some())
+            })
     }
 
     /// The pass a batch is drawn in, from what is known of its material now.
@@ -511,7 +586,13 @@ impl RenderScene {
         if slot == SLOT_SKIP {
             return Phase::Blended;
         }
-        let alpha = self.instance_base.get(slot as usize).copied().flatten().and_then(|m| self.material_alpha.get(m).copied()).unwrap_or(Alpha::Opaque);
+        let alpha = self
+            .instance_base
+            .get(slot as usize)
+            .copied()
+            .flatten()
+            .and_then(|m| self.material_alpha.get(m).copied())
+            .unwrap_or(Alpha::Opaque);
         if alpha == Alpha::Blended || translucent {
             Phase::Blended
         } else if alpha == Alpha::Masked {
@@ -553,7 +634,9 @@ impl RenderScene {
     }
 
     fn write_state(&mut self, slot: u32, state: ObjectState) {
-        let flags = u32::from(state.selected) | (u32::from(state.locked) << 1) | (u32::from(state.hidden) << 2);
+        let flags = u32::from(state.selected)
+            | (u32::from(state.locked) << 1)
+            | (u32::from(state.hidden) << 2);
         let entry = &mut self.object_table[slot as usize];
         if (entry.flags ^ flags) & 4 != 0 {
             self.hidden_generation += 1;
@@ -599,7 +682,12 @@ impl RenderScene {
     /// chunks are rebuilt by the caller.
     fn stop_moving(&mut self, all: bool) {
         let epoch = self.sync_epoch;
-        let stopped: Vec<ObjectKey> = self.moving.iter().filter(|k| all || self.objects.get(k).is_none_or(|o| o.moved != epoch)).copied().collect();
+        let stopped: Vec<ObjectKey> = self
+            .moving
+            .iter()
+            .filter(|k| all || self.objects.get(k).is_none_or(|o| o.moved != epoch))
+            .copied()
+            .collect();
         for key in stopped {
             self.moving.remove(&key);
             if let Some(object) = self.objects.get_mut(&key) {
@@ -622,7 +710,12 @@ impl RenderScene {
     }
 
     fn rebuild_dirty(&mut self, stats: &mut UploadStats) {
-        let dirty: Vec<ChunkKey> = self.chunks.iter().filter(|(_, c)| c.dirty).map(|(k, _)| *k).collect();
+        let dirty: Vec<ChunkKey> = self
+            .chunks
+            .iter()
+            .filter(|(_, c)| c.dirty)
+            .map(|(k, _)| *k)
+            .collect();
         for key in dirty {
             if self.chunks.get(&key).is_some_and(|c| c.objects.is_empty()) {
                 self.chunks.remove(&key);
@@ -634,23 +727,37 @@ impl RenderScene {
     }
 
     fn rebuild_chunk(&mut self, key: ChunkKey) -> usize {
-        let Some(chunk) = self.chunks.get(&key) else { return 0 };
+        let Some(chunk) = self.chunks.get(&key) else {
+            return 0;
+        };
         let mut vertices: Vec<Vertex> = Vec::new();
-        let moving = chunk.objects.iter().any(|k| self.objects.get(k).is_some_and(|o| o.previous.is_some()));
+        let moving = chunk
+            .objects
+            .iter()
+            .any(|k| self.objects.get(k).is_some_and(|o| o.previous.is_some()));
         let mut previous: Vec<Vertex> = Vec::new();
         // Sort material-independent opaque prepass draws together. Imported face rules
         // need their own material slot even when they have no normal map.
-        let mut grouped: std::collections::BTreeMap<(Phase, bool, u32), Vec<u32>> = std::collections::BTreeMap::new();
+        let mut grouped: std::collections::BTreeMap<(Phase, bool, u32), Vec<u32>> =
+            std::collections::BTreeMap::new();
         let phase_of = |(translucent, slot): (bool, u32)| {
-            let imported_faces = self.material_table.get(slot as usize)
+            let imported_faces = self
+                .material_table
+                .get(slot as usize)
                 .is_some_and(|material| material.model_params[3] != 0.0);
-            (self.phase_of(translucent, slot), self.normal_mapped(slot) || imported_faces, slot)
+            (
+                self.phase_of(translucent, slot),
+                self.normal_mapped(slot) || imported_faces,
+                slot,
+            )
         };
         let mut wire: Vec<u32> = Vec::new();
         let mut lo = [f32::MAX; 3];
         let mut hi = [f32::MIN; 3];
         for object_key in &chunk.objects {
-            let Some(object) = self.objects.get(object_key) else { continue };
+            let Some(object) = self.objects.get(object_key) else {
+                continue;
+            };
             let base = vertices.len() as u32;
             for v in &object.vertices {
                 for axis in 0..3 {
@@ -661,7 +768,13 @@ impl RenderScene {
             vertices.extend_from_slice(&object.vertices);
             if moving {
                 match &object.previous {
-                    Some(positions) => previous.extend(object.vertices.iter().zip(positions).map(|(v, p)| Vertex { position: *p, ..*v })),
+                    Some(positions) => previous.extend(
+                        object
+                            .vertices
+                            .iter()
+                            .zip(positions)
+                            .map(|(v, p)| Vertex { position: *p, ..*v }),
+                    ),
                     None => previous.extend_from_slice(&object.vertices),
                 }
             }
@@ -682,23 +795,66 @@ impl RenderScene {
             indices.extend_from_slice(&list);
             let end = indices.len() as u32;
             if phase == Phase::Opaque {
-                opaque = if opaque.is_empty() { start..end } else { opaque.start..end };
+                opaque = if opaque.is_empty() {
+                    start..end
+                } else {
+                    opaque.start..end
+                };
                 if !prepass_material {
-                    plain = if plain.is_empty() { start..end } else { plain.start..end };
+                    plain = if plain.is_empty() {
+                        start..end
+                    } else {
+                        plain.start..end
+                    };
                 }
             }
-            draws.push(Draw { phase, material, indices: start..end, prepass_material });
+            draws.push(Draw {
+                phase,
+                material,
+                indices: start..end,
+                prepass_material,
+            });
         }
-        let single_sided_opaque = draws.iter().any(|draw| draw.phase == Phase::Opaque && self.single_sided(draw.material));
+        let single_sided_opaque = draws
+            .iter()
+            .any(|draw| draw.phase == Phase::Opaque && self.single_sided(draw.material));
         let device = self.device.clone();
         let queue = self.queue.clone();
         let chunk = self.chunks.get_mut(&key).expect("present");
         let mut bytes = 0;
-        bytes += upload(&device, &queue, &mut chunk.vertex_buffer, bytemuck::cast_slice(&vertices), wgpu::BufferUsages::VERTEX, "chunk vertices");
-        bytes += upload(&device, &queue, &mut chunk.index_buffer, bytemuck::cast_slice(&indices), wgpu::BufferUsages::INDEX, "chunk indices");
-        bytes += upload(&device, &queue, &mut chunk.wire_buffer, bytemuck::cast_slice(&wire), wgpu::BufferUsages::INDEX, "chunk wire");
+        bytes += upload(
+            &device,
+            &queue,
+            &mut chunk.vertex_buffer,
+            bytemuck::cast_slice(&vertices),
+            wgpu::BufferUsages::VERTEX,
+            "chunk vertices",
+        );
+        bytes += upload(
+            &device,
+            &queue,
+            &mut chunk.index_buffer,
+            bytemuck::cast_slice(&indices),
+            wgpu::BufferUsages::INDEX,
+            "chunk indices",
+        );
+        bytes += upload(
+            &device,
+            &queue,
+            &mut chunk.wire_buffer,
+            bytemuck::cast_slice(&wire),
+            wgpu::BufferUsages::INDEX,
+            "chunk wire",
+        );
         if moving {
-            bytes += upload(&device, &queue, &mut chunk.previous_buffer, bytemuck::cast_slice(&previous), wgpu::BufferUsages::VERTEX, "chunk previous vertices");
+            bytes += upload(
+                &device,
+                &queue,
+                &mut chunk.previous_buffer,
+                bytemuck::cast_slice(&previous),
+                wgpu::BufferUsages::VERTEX,
+                "chunk previous vertices",
+            );
         } else {
             chunk.previous_buffer = None;
         }
@@ -716,7 +872,14 @@ impl RenderScene {
 }
 
 /// Writes `data` into `buffer`, growing it (by half again) when it does not fit.
-fn upload(device: &wgpu::Device, queue: &wgpu::Queue, buffer: &mut Option<wgpu::Buffer>, data: &[u8], usage: wgpu::BufferUsages, label: &str) -> usize {
+fn upload(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    buffer: &mut Option<wgpu::Buffer>,
+    data: &[u8],
+    usage: wgpu::BufferUsages,
+    label: &str,
+) -> usize {
     if data.is_empty() {
         return 0;
     }
@@ -740,11 +903,21 @@ fn upload(device: &wgpu::Device, queue: &wgpu::Queue, buffer: &mut Option<wgpu::
     data.len()
 }
 
-fn upload_mips(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::TextureFormat, mips: Vec<(u32, u32, Vec<u8>)>, label: &str) -> wgpu::Texture {
+fn upload_mips(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    format: wgpu::TextureFormat,
+    mips: Vec<(u32, u32, Vec<u8>)>,
+    label: &str,
+) -> wgpu::Texture {
     let (width, height) = (mips[0].0, mips[0].1);
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some(label),
-        size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
         mip_level_count: mips.len() as u32,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
@@ -754,10 +927,23 @@ fn upload_mips(device: &wgpu::Device, queue: &wgpu::Queue, format: wgpu::Texture
     });
     for (level, (w, h, data)) in mips.iter().enumerate() {
         queue.write_texture(
-            wgpu::TexelCopyTextureInfo { texture: &texture, mip_level: level as u32, origin: wgpu::Origin3d::ZERO, aspect: wgpu::TextureAspect::All },
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: level as u32,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
             data,
-            wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(4 * w), rows_per_image: Some(*h) },
-            wgpu::Extent3d { width: *w, height: *h, depth_or_array_layers: 1 },
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * w),
+                rows_per_image: Some(*h),
+            },
+            wgpu::Extent3d {
+                width: *w,
+                height: *h,
+                depth_or_array_layers: 1,
+            },
         );
     }
     texture
@@ -771,31 +957,86 @@ fn make_texture(
     flat_normal: &wgpu::TextureView,
     albedo: Vec<Mip>,
     normal: Option<Vec<Mip>>,
-    pbr: Option<(Vec<Mip>,Vec<Mip>)>,
+    pbr: Option<(Vec<Mip>, Vec<Mip>)>,
     label: &str,
 ) -> MaterialTexture {
-    let texture = upload_mips(device, queue, wgpu::TextureFormat::Rgba8UnormSrgb, albedo, label);
+    let texture = upload_mips(
+        device,
+        queue,
+        wgpu::TextureFormat::Rgba8UnormSrgb,
+        albedo,
+        label,
+    );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     // Normal maps are linear data: their mips are plain averages, not sRGB-weighted.
-    let normal = normal.map(|mips| upload_mips(device, queue, wgpu::TextureFormat::Rgba8Unorm, mips, label));
-    let normal_view = normal.as_ref().map(|t| t.create_view(&wgpu::TextureViewDescriptor::default()));
-    let (orm,emissive) = if let Some((orm,e))=pbr {
-        (Some(upload_mips(device,queue,wgpu::TextureFormat::Rgba8Unorm,orm,label)),Some(upload_mips(device,queue,wgpu::TextureFormat::Rgba8UnormSrgb,e,label)))
-    } else {(None,None)};
-    let orm_view=orm.as_ref().map(|t|t.create_view(&Default::default()));
-    let emissive_view=emissive.as_ref().map(|t|t.create_view(&Default::default()));
+    let normal =
+        normal.map(|mips| upload_mips(device, queue, wgpu::TextureFormat::Rgba8Unorm, mips, label));
+    let normal_view = normal
+        .as_ref()
+        .map(|t| t.create_view(&wgpu::TextureViewDescriptor::default()));
+    let (orm, emissive) = if let Some((orm, e)) = pbr {
+        (
+            Some(upload_mips(
+                device,
+                queue,
+                wgpu::TextureFormat::Rgba8Unorm,
+                orm,
+                label,
+            )),
+            Some(upload_mips(
+                device,
+                queue,
+                wgpu::TextureFormat::Rgba8UnormSrgb,
+                e,
+                label,
+            )),
+        )
+    } else {
+        (None, None)
+    };
+    let orm_view = orm.as_ref().map(|t| t.create_view(&Default::default()));
+    let emissive_view = emissive
+        .as_ref()
+        .map(|t| t.create_view(&Default::default()));
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some(label),
         layout,
         entries: &[
-            wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(&view) },
-            wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(sampler) },
-            wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(normal_view.as_ref().unwrap_or(flat_normal)) },
-            wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::TextureView(orm_view.as_ref().unwrap_or(flat_normal)) },
-            wgpu::BindGroupEntry { binding: 4, resource: wgpu::BindingResource::TextureView(emissive_view.as_ref().unwrap_or(flat_normal)) },
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(sampler),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::TextureView(
+                    normal_view.as_ref().unwrap_or(flat_normal),
+                ),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: wgpu::BindingResource::TextureView(
+                    orm_view.as_ref().unwrap_or(flat_normal),
+                ),
+            },
+            wgpu::BindGroupEntry {
+                binding: 4,
+                resource: wgpu::BindingResource::TextureView(
+                    emissive_view.as_ref().unwrap_or(flat_normal),
+                ),
+            },
         ],
     });
-    MaterialTexture { bind_group, _texture: texture, _normal: normal, _orm:orm, _emissive:emissive }
+    MaterialTexture {
+        bind_group,
+        _texture: texture,
+        _normal: normal,
+        _orm: orm,
+        _emissive: emissive,
+    }
 }
 
 fn pack_normal(n: geometry_math::vec::Vec3d) -> [i8; 4] {
@@ -812,10 +1053,16 @@ impl SceneSink for RenderScene {
     fn set_materials(&mut self, materials: &[Material]) {
         // Nothing is decoded here: textures are streamed in as draws ask for them.
         self.materials = materials.to_vec();
-        self.material_sizes = materials.iter().map(|m| (m.width.max(1) as f32, m.height.max(1) as f32)).collect();
+        self.material_sizes = materials
+            .iter()
+            .map(|m| (m.width.max(1) as f32, m.height.max(1) as f32))
+            .collect();
         self.material_alpha = materials.iter().map(Material::alpha).collect();
         self.material_normals = vec![None; materials.len()];
-        self.material_average = materials.iter().map(|m| u32::from_le_bytes(m.average_color().unwrap_or(PLACEHOLDER))).collect();
+        self.material_average = materials
+            .iter()
+            .map(|m| u32::from_le_bytes(m.average_color().unwrap_or(PLACEHOLDER)))
+            .collect();
         self.textures = materials.iter().map(|_| Residency::Pending).collect();
         self.last_used = vec![0; materials.len()];
         self.resident_bytes = 0;
@@ -828,10 +1075,13 @@ impl SceneSink for RenderScene {
         // Existing vertices and batches reference these slots. Preserve their
         // identities and refresh the entries when a collection is replaced.
         for slot in 2..self.material_table.len() {
-            self.material_table[slot] = self.material_entry(self.instance_base[slot], self.instance_surface[slot]);
+            self.material_table[slot] =
+                self.material_entry(self.instance_base[slot], self.instance_surface[slot]);
         }
         self.material_table_dirty = true;
-        for chunk in self.chunks.values_mut() { chunk.dirty = true; }
+        for chunk in self.chunks.values_mut() {
+            chunk.dirty = true;
+        }
     }
 
     fn clear(&mut self) {
@@ -850,7 +1100,13 @@ impl SceneSink for RenderScene {
             self.geometry_generation += 1;
             self.moving.remove(&key);
             self.free_slots.push(object.slot);
-            self.write_state(object.slot, ObjectState { hidden: true, ..Default::default() });
+            self.write_state(
+                object.slot,
+                ObjectState {
+                    hidden: true,
+                    ..Default::default()
+                },
+            );
             let chunk = self.mark_chunk(object.chunk);
             chunk.objects.remove(&key);
         }
@@ -875,8 +1131,12 @@ impl SceneSink for RenderScene {
         for triangle in triangles {
             let material = self.instance(triangle);
             let translucent = triangle.alpha < 0.999;
-            let flags = flags_of(triangle, state.selected) & (triangle_flags::FACE_SELECTED | triangle_flags::NO_TINT | triangle_flags::SKIP);
-            let batch = match batches.iter_mut().position(|(k, _)| *k == (translucent, material)) {
+            let flags = flags_of(triangle, state.selected)
+                & (triangle_flags::FACE_SELECTED | triangle_flags::NO_TINT | triangle_flags::SKIP);
+            let batch = match batches
+                .iter_mut()
+                .position(|(k, _)| *k == (translucent, material))
+            {
                 Some(i) => i,
                 None => {
                     batches.push(((translucent, material), Vec::new()));
@@ -893,7 +1153,11 @@ impl SceneSink for RenderScene {
                 let uv = triangle.uv[corner];
                 let vertex = Vertex {
                     position: [p.x() as f32, p.y() as f32, p.z() as f32],
-                    normal: pack_normal(triangle.corner_normals.map_or(triangle.normal, |n| n[corner])),
+                    normal: pack_normal(
+                        triangle
+                            .corner_normals
+                            .map_or(triangle.normal, |n| n[corner]),
+                    ),
                     uv: [uv.x(), uv.y()],
                     color: pack_color(color, triangle.alpha),
                     object: slot | (flags << 24),
@@ -906,22 +1170,52 @@ impl SceneSink for RenderScene {
                 batches[batch].1.push(index);
             }
         }
-        let center = if triangles.is_empty() { [0.0; 3] } else { [(lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0, (lo[2] + hi[2]) / 2.0] };
-        let chunk = ((center[0] / CHUNK_SIZE).floor() as i32, (center[1] / CHUNK_SIZE).floor() as i32, (center[2] / CHUNK_SIZE).floor() as i32);
+        let center = if triangles.is_empty() {
+            [0.0; 3]
+        } else {
+            [
+                (lo[0] + hi[0]) / 2.0,
+                (lo[1] + hi[1]) / 2.0,
+                (lo[2] + hi[2]) / 2.0,
+            ]
+        };
+        let chunk = (
+            (center[0] / CHUNK_SIZE).floor() as i32,
+            (center[1] / CHUNK_SIZE).floor() as i32,
+            (center[2] / CHUNK_SIZE).floor() as i32,
+        );
         self.mark_chunk(chunk).objects.insert(key);
         // The same mesh somewhere else (same vertices, same triangles; positions apart):
         // the object moved, and its old positions give the prepass motion vectors.
-        let previous = self.objects.get(&key).filter(|old| old.vertices.len() == vertices.len() && old.batches == batches).and_then(|old| {
-            let moved = old.vertices.iter().zip(&vertices).any(|(a, b)| a.position != b.position);
-            moved.then(|| old.vertices.iter().map(|v| v.position).collect::<Vec<_>>())
-        });
+        let previous = self
+            .objects
+            .get(&key)
+            .filter(|old| old.vertices.len() == vertices.len() && old.batches == batches)
+            .and_then(|old| {
+                let moved = old
+                    .vertices
+                    .iter()
+                    .zip(&vertices)
+                    .any(|(a, b)| a.position != b.position);
+                moved.then(|| old.vertices.iter().map(|v| v.position).collect::<Vec<_>>())
+            });
         if previous.is_some() {
             self.moving.insert(key);
         } else {
             self.moving.remove(&key);
         }
         let moved = self.sync_epoch;
-        self.objects.insert(key, Object { slot, chunk, vertices, batches, previous, moved });
+        self.objects.insert(
+            key,
+            Object {
+                slot,
+                chunk,
+                vertices,
+                batches,
+                previous,
+                moved,
+            },
+        );
     }
 
     fn set_state(&mut self, key: ObjectKey, state: ObjectState) {
@@ -937,7 +1231,12 @@ impl SceneSink for RenderScene {
         let mut data: Vec<SpriteGpu> = Vec::with_capacity(sorted.len());
         for (index, sprite) in sorted.iter().enumerate() {
             let p = sprite.position;
-            data.push(SpriteGpu { position: [p.x() as f32, p.y() as f32, p.z() as f32], half_width: sprite.half_width, half_height: sprite.half_height, pad: [0.0; 3] });
+            data.push(SpriteGpu {
+                position: [p.x() as f32, p.y() as f32, p.z() as f32],
+                half_width: sprite.half_width,
+                half_height: sprite.half_height,
+                pad: [0.0; 3],
+            });
             let index = index as u32;
             match self.sprite_draws.last_mut() {
                 Some((material, range)) if *material == sprite.material => range.end = index + 1,
@@ -945,7 +1244,14 @@ impl SceneSink for RenderScene {
             }
         }
         let (device, queue) = (self.device.clone(), self.queue.clone());
-        upload(&device, &queue, &mut self.sprite_buffer, bytemuck::cast_slice(&data), wgpu::BufferUsages::VERTEX, "sprites");
+        upload(
+            &device,
+            &queue,
+            &mut self.sprite_buffer,
+            bytemuck::cast_slice(&data),
+            wgpu::BufferUsages::VERTEX,
+            "sprites",
+        );
     }
 
     fn set_lights(&mut self, lights: &[SceneLight]) {
@@ -971,8 +1277,16 @@ impl RenderScene {
         // The object table: grow (and rewrite whole) or write the dirty slots in runs.
         let needed = (self.object_table.len() * std::mem::size_of::<ObjectGpu>()) as u64;
         if needed > self.object_buffer.size() {
-            self.object_buffer = storage_buffer(&self.device, "render_wgpu objects", (needed + needed / 2).next_multiple_of(256));
-            self.queue.write_buffer(&self.object_buffer, 0, bytemuck::cast_slice(&self.object_table));
+            self.object_buffer = storage_buffer(
+                &self.device,
+                "render_wgpu objects",
+                (needed + needed / 2).next_multiple_of(256),
+            );
+            self.queue.write_buffer(
+                &self.object_buffer,
+                0,
+                bytemuck::cast_slice(&self.object_table),
+            );
             self.buffers_generation += 1;
             stats.object_slots = self.object_table.len();
             self.dirty_slots.clear();
@@ -988,7 +1302,11 @@ impl RenderScene {
                     end += 1;
                 }
                 let slice = &self.object_table[start as usize..=end as usize];
-                self.queue.write_buffer(&self.object_buffer, u64::from(start) * 16, bytemuck::cast_slice(slice));
+                self.queue.write_buffer(
+                    &self.object_buffer,
+                    u64::from(start) * 16,
+                    bytemuck::cast_slice(slice),
+                );
                 i += 1;
             }
             stats.object_slots = self.dirty_slots.len();
@@ -997,10 +1315,18 @@ impl RenderScene {
         if self.material_table_dirty {
             let needed = (self.material_table.len() * std::mem::size_of::<MaterialGpu>()) as u64;
             if needed > self.material_buffer.size() {
-                self.material_buffer = storage_buffer(&self.device, "render_wgpu materials", (needed * 2).next_multiple_of(256));
+                self.material_buffer = storage_buffer(
+                    &self.device,
+                    "render_wgpu materials",
+                    (needed * 2).next_multiple_of(256),
+                );
                 self.buffers_generation += 1;
             }
-            self.queue.write_buffer(&self.material_buffer, 0, bytemuck::cast_slice(&self.material_table));
+            self.queue.write_buffer(
+                &self.material_buffer,
+                0,
+                bytemuck::cast_slice(&self.material_table),
+            );
             self.material_table_dirty = false;
         }
         self.stats = stats;
@@ -1019,7 +1345,12 @@ impl RenderScene {
     pub(crate) fn materials_of<'a>(&self, chunks: impl Iterator<Item = &'a Chunk>) -> Vec<usize> {
         let mut used: Vec<usize> = chunks
             .flat_map(|chunk| chunk.draws.iter())
-            .filter_map(|draw| self.instance_base.get(draw.material as usize).copied().flatten())
+            .filter_map(|draw| {
+                self.instance_base
+                    .get(draw.material as usize)
+                    .copied()
+                    .flatten()
+            })
             .chain(self.sprite_draws.iter().map(|(material, _)| *material))
             .collect();
         used.sort_unstable();
@@ -1035,7 +1366,9 @@ impl RenderScene {
         self.frame += 1;
         let mut stats = TextureStats::default();
         for &m in used {
-            let Some(state) = self.textures.get(m) else { continue };
+            let Some(state) = self.textures.get(m) else {
+                continue;
+            };
             self.last_used[m] = self.frame;
             if matches!(state, Residency::Pending) {
                 let workers = self.workers.get_or_insert_with(Workers::new);
@@ -1045,8 +1378,12 @@ impl RenderScene {
         }
         let mut changed = false;
         while stats.uploaded_bytes < UPLOAD_BUDGET {
-            let Some(done) = self.workers.as_mut().and_then(Workers::next) else { break };
-            if done.generation != self.texture_epoch || !matches!(self.textures.get(done.index), Some(Residency::Queued)) {
+            let Some(done) = self.workers.as_mut().and_then(Workers::next) else {
+                break;
+            };
+            if done.generation != self.texture_epoch
+                || !matches!(self.textures.get(done.index), Some(Residency::Queued))
+            {
                 continue;
             }
             stats.uploaded_bytes += done.bytes();
@@ -1054,9 +1391,17 @@ impl RenderScene {
             changed |= self.make_resident(done);
         }
         changed |= self.evict(&mut stats);
-        stats.resident = self.textures.iter().filter(|t| matches!(t, Residency::Resident(..))).count();
+        stats.resident = self
+            .textures
+            .iter()
+            .filter(|t| matches!(t, Residency::Resident(..)))
+            .count();
         stats.resident_bytes = self.resident_bytes;
-        stats.waiting = self.textures.iter().filter(|t| matches!(t, Residency::Queued)).count();
+        stats.waiting = self
+            .textures
+            .iter()
+            .filter(|t| matches!(t, Residency::Queued))
+            .count();
         self.texture_stats = stats;
         if changed {
             self.textures_generation += 1;
@@ -1072,7 +1417,12 @@ impl RenderScene {
 
     /// Whether any of `used` is not resident yet (and has not failed).
     pub(crate) fn any_missing(&self, used: &[usize]) -> bool {
-        used.iter().any(|m| matches!(self.textures.get(*m), Some(Residency::Pending | Residency::Queued)))
+        used.iter().any(|m| {
+            matches!(
+                self.textures.get(*m),
+                Some(Residency::Pending | Residency::Queued)
+            )
+        })
     }
 
     /// Puts a finished decode on the GPU. Returns whether anything drawn changed.
@@ -1084,18 +1434,33 @@ impl RenderScene {
             return false;
         };
         let flip = done.normal.as_ref().map(|(_, flip)| *flip);
-        let texture = make_texture(&self.device, &self.queue, &self.texture_layout, &self.sampler, &self.flat_normal, albedo, done.normal.map(|(mips, _)| mips), done.pbr, &self.materials[m].name);
+        let texture = make_texture(
+            &self.device,
+            &self.queue,
+            &self.texture_layout,
+            &self.sampler,
+            &self.flat_normal,
+            albedo,
+            done.normal.map(|(mips, _)| mips),
+            done.pbr,
+            &self.materials[m].name,
+        );
         self.textures[m] = Residency::Resident(texture, bytes);
         self.resident_bytes += bytes;
         self.material_normals[m] = flip;
         if let Some(info) = done.info {
             self.material_average[m] = u32::from_le_bytes(info.average);
-            let alpha = self.materials[m].model_pbr.as_ref().map_or(info.alpha, |pbr| pbr.alpha_mode);
+            let alpha = self.materials[m]
+                .model_pbr
+                .as_ref()
+                .map_or(info.alpha, |pbr| pbr.alpha_mode);
             if self.material_alpha[m] != alpha {
                 // It cuts or blends after all: its draws move pass, so the chunks that
                 // hold them are built again (from the vertices they keep).
                 self.material_alpha[m] = alpha;
-                let slots: HashSet<u32> = (0..self.instance_base.len() as u32).filter(|s| self.instance_base[*s as usize] == Some(m)).collect();
+                let slots: HashSet<u32> = (0..self.instance_base.len() as u32)
+                    .filter(|s| self.instance_base[*s as usize] == Some(m))
+                    .collect();
                 for chunk in self.chunks.values_mut() {
                     if chunk.draws.iter().any(|d| slots.contains(&d.material)) {
                         chunk.dirty = true;
@@ -1118,7 +1483,9 @@ impl RenderScene {
             .textures
             .iter()
             .enumerate()
-            .filter(|(m, t)| matches!(t, Residency::Resident(..)) && self.last_used[*m] < self.frame)
+            .filter(|(m, t)| {
+                matches!(t, Residency::Resident(..)) && self.last_used[*m] < self.frame
+            })
             .map(|(m, _)| (self.last_used[m], m))
             .collect();
         candidates.sort_unstable();
@@ -1127,7 +1494,9 @@ impl RenderScene {
             if self.resident_bytes <= self.texture_budget {
                 break;
             }
-            if let Residency::Resident(_, bytes) = std::mem::replace(&mut self.textures[m], Residency::Pending) {
+            if let Residency::Resident(_, bytes) =
+                std::mem::replace(&mut self.textures[m], Residency::Pending)
+            {
                 self.resident_bytes -= bytes;
             }
             self.material_normals[m] = None;
@@ -1143,20 +1512,39 @@ impl RenderScene {
     /// their first frame. Ignores the memory budget.
     pub fn load_textures_now(&mut self) {
         let used = self.materials_of(self.chunks.values());
-        let wanted: Vec<usize> = used.into_iter().filter(|m| !matches!(self.textures.get(*m), Some(Residency::Resident(..)) | Some(Residency::Failed) | None)).collect();
+        let wanted: Vec<usize> = used
+            .into_iter()
+            .filter(|m| {
+                !matches!(
+                    self.textures.get(*m),
+                    Some(Residency::Resident(..)) | Some(Residency::Failed) | None
+                )
+            })
+            .collect();
         if wanted.is_empty() {
             return;
         }
         let epoch = self.texture_epoch;
-        let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).min(wanted.len()).max(1);
+        let threads = std::thread::available_parallelism()
+            .map_or(1, |n| n.get())
+            .min(wanted.len())
+            .max(1);
         let chunk = wanted.len().div_ceil(threads);
         let materials = &self.materials;
         let decoded: Vec<Decoded> = std::thread::scope(|scope| {
             let jobs: Vec<_> = wanted
                 .chunks(chunk)
-                .map(|part| scope.spawn(move || part.iter().map(|m| textures::decode(epoch, *m, &materials[*m])).collect::<Vec<_>>()))
+                .map(|part| {
+                    scope.spawn(move || {
+                        part.iter()
+                            .map(|m| textures::decode(epoch, *m, &materials[*m]))
+                            .collect::<Vec<_>>()
+                    })
+                })
                 .collect();
-            jobs.into_iter().flat_map(|job| job.join().unwrap_or_default()).collect()
+            jobs.into_iter()
+                .flat_map(|job| job.join().unwrap_or_default())
+                .collect()
         });
         for done in decoded {
             self.make_resident(done);

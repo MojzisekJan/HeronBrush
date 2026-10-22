@@ -2,19 +2,22 @@
 //!
 //! Grid snapping supports distinct rounding, inward and outward operations. Editing tools share
 //! these rules so negative coordinates and boundary cases behave consistently.
-#![allow(dead_code, reason = "shared grid operations include helpers used only by specialised tools")]
+#![allow(
+    dead_code,
+    reason = "shared grid operations include helpers used only by specialised tools"
+)]
 //!
 //! The editor stores the grid size as a power of two exponent rather than a length, so
 //! that halving and doubling it are single increments and every grid line always falls on
 //! a representable coordinate.
 
-use geometry_math::scalar::{self, Float};
-use map_model::brush::Brush;
-use map_model::polyhedron::FaceId;
 use geometry_math::abstract_line::AbstractLine;
 use geometry_math::line::Line3d;
 use geometry_math::plane::Plane3d;
+use geometry_math::scalar::{self, Float};
 use geometry_math::vec::Vec3d;
+use map_model::brush::Brush;
+use map_model::polyhedron::FaceId;
 
 /// The smallest grid exponent the editor offers, i.e. a grid of 2^-3 = 0.125 units.
 pub const MIN_SIZE: i32 = -3;
@@ -234,7 +237,8 @@ impl Grid {
         bounds: &geometry_math::bbox::Bbox3d,
         ray: &geometry_math::ray::Ray3d,
     ) -> Vec3d {
-        let Some(distance) = geometry_math::intersection::intersect_ray_plane(ray, target_plane) else {
+        let Some(distance) = geometry_math::intersection::intersect_ray_plane(ray, target_plane)
+        else {
             return Vec3d::zero();
         };
         let hit = ray.origin + ray.direction * distance;
@@ -377,8 +381,7 @@ impl Grid {
                 // Back into a distance along the face's normal, keeping whichever changes
                 // the asked-for move least.
                 let snapped_for_edge = snapped_on_edge * projection;
-                if (snapped_for_edge - move_distance).abs() < (snapped - move_distance).abs()
-                {
+                if (snapped_for_edge - move_distance).abs() < (snapped - move_distance).abs() {
                     snapped = snapped_for_edge;
                 }
             }
@@ -747,8 +750,10 @@ mod tests {
 
         #[test]
         fn a_box_dropped_on_a_ceiling_hangs_from_it() {
-            let ceiling =
-                Plane3d::from_anchor_and_normal(Vec3d::new(0.0, 0.0, 512.0), Vec3d::new(0.0, 0.0, -1.0));
+            let ceiling = Plane3d::from_anchor_and_normal(
+                Vec3d::new(0.0, 0.0, 512.0),
+                Vec3d::new(0.0, 0.0, -1.0),
+            );
             let ray = ray_from_to(
                 Vec3d::new(50.0, 50.0, 200.0),
                 Vec3d::new(1016.0, 1016.0, 512.0),
@@ -765,8 +770,10 @@ mod tests {
         fn a_platform_off_the_grid_keeps_the_box_on_its_surface() {
             // The height is not a grid multiple, and the box still sits on the platform
             // rather than being snapped down through it.
-            let platform =
-                Plane3d::from_anchor_and_normal(Vec3d::new(0.0, 0.0, 4.0), Vec3d::new(0.0, 0.0, 1.0));
+            let platform = Plane3d::from_anchor_and_normal(
+                Vec3d::new(0.0, 0.0, 4.0),
+                Vec3d::new(0.0, 0.0, 1.0),
+            );
             let ray = ray_from_to(Vec3d::new(0.0, 0.0, 200.0), Vec3d::new(17.0, 17.0, 4.0));
             let delta = grid16().move_delta_for_bounds(&platform, &box_of_odd_size(), &ray);
             assert!(close(delta, Vec3d::new(16.0, 16.0, 4.0)), "{delta:?}");

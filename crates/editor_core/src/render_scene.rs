@@ -195,11 +195,26 @@ impl SceneTracker {
 
     /// Brings `sink` up to date with what `document` shows under `filters`, with the
     /// clip tool's preview when `clip` is given. Returns whether anything was sent.
-    pub fn sync(&mut self, document: &Document, filters: &ViewFilters, clip: Option<&ClipTool>, pose: Pose, sink: &mut dyn SceneSink) -> bool {
+    pub fn sync(
+        &mut self,
+        document: &Document,
+        filters: &ViewFilters,
+        clip: Option<&ClipTool>,
+        pose: Pose,
+        sink: &mut dyn SceneSink,
+    ) -> bool {
         self.sync_tool_preview(document, filters, clip, None, pose, sink)
     }
 
-    pub fn sync_tool_preview(&mut self, document: &Document, filters: &ViewFilters, clip: Option<&ClipTool>, fillet: Option<&std::rc::Rc<crate::fillet_tool::SurfacePreview>>, pose: Pose, sink: &mut dyn SceneSink) -> bool {
+    pub fn sync_tool_preview(
+        &mut self,
+        document: &Document,
+        filters: &ViewFilters,
+        clip: Option<&ClipTool>,
+        fillet: Option<&std::rc::Rc<crate::fillet_tool::SurfacePreview>>,
+        pose: Pose,
+        sink: &mut dyn SceneSink,
+    ) -> bool {
         self.stats = SyncStats::default();
         let filters = filters.geometry_only();
         let generation = document.generation();
@@ -214,9 +229,16 @@ impl SceneTracker {
         }
         let revision = document.revision();
         let content = document.content_revision();
-        if !full && self.revision == Some(revision) && self.pose == Some(pose) && !matches!(pose, Pose::Playing(_)) {
+        if !full
+            && self.revision == Some(revision)
+            && self.pose == Some(pose)
+            && !matches!(pose, Pose::Playing(_))
+        {
             // The clip preview is not part of the revision: let the surfaces say.
-            let clip_moved = document.with_tool_preview_surfaces(&filters, clip, fillet, |surfaces| Some(surfaces.epoch()) != self.epoch);
+            let clip_moved =
+                document.with_tool_preview_surfaces(&filters, clip, fillet, |surfaces| {
+                    Some(surfaces.epoch()) != self.epoch
+                });
             if !clip_moved {
                 return false;
             }
@@ -246,8 +268,14 @@ impl SceneTracker {
                     for &id in surfaces.order() {
                         self.visit(surfaces, id, selection, sink);
                     }
-                    let drawn: HashSet<ObjectKey> = surfaces.order().iter().map(|id| key_of(*id)).collect();
-                    let gone: Vec<ObjectKey> = self.objects.keys().filter(|key| !drawn.contains(key)).copied().collect();
+                    let drawn: HashSet<ObjectKey> =
+                        surfaces.order().iter().map(|id| key_of(*id)).collect();
+                    let gone: Vec<ObjectKey> = self
+                        .objects
+                        .keys()
+                        .filter(|key| !drawn.contains(key))
+                        .copied()
+                        .collect();
                     for key in gone {
                         self.objects.remove(&key);
                         self.posed.remove(&key);
@@ -269,12 +297,25 @@ impl SceneTracker {
                 Pose::Frame(time) | Pose::Playing(time) if pose_moved => {
                     let scrubbed = matches!(pose, Pose::Frame(_));
                     for (id, motion) in surfaces.motions() {
-                        let Some(surface) = surfaces.get(*id) else { continue };
+                        let Some(surface) = surfaces.get(*id) else {
+                            continue;
+                        };
                         let mut triangles = surface.triangles.clone();
                         crate::motion_preview::pose(&mut triangles, motion, time, scrubbed);
-                        let state = ObjectState { selected: selection.contains(id), locked: surface.locked, hidden: false };
+                        let state = ObjectState {
+                            selected: selection.contains(id),
+                            locked: surface.locked,
+                            hidden: false,
+                        };
                         let key = key_of(*id);
-                        self.objects.insert(key, Sent { stamp: 0, flags: hash_flags(&triangles, state.selected), state });
+                        self.objects.insert(
+                            key,
+                            Sent {
+                                stamp: 0,
+                                flags: hash_flags(&triangles, state.selected),
+                                state,
+                            },
+                        );
                         self.posed.insert(key);
                         sink.upsert(key, &triangles, state);
                         self.stats.upserted += 1;
@@ -288,7 +329,11 @@ impl SceneTracker {
         if full || self.content != Some(content) {
             // As the GL path uploads them: with the geometry, and only with entity models
             // on. Not per animation frame or selection click: neither moves an entity.
-            sink.set_sprites(&if filters.show_point_entity_models { document.sprites() } else { Vec::new() });
+            sink.set_sprites(&if filters.show_point_entity_models {
+                document.sprites()
+            } else {
+                Vec::new()
+            });
             sink.set_lights(&document.scene_lights());
         }
         sink.finish();
@@ -302,7 +347,13 @@ impl SceneTracker {
     }
 
     /// Sends what changed about one node: its triangles, its state, or that it is gone.
-    fn visit(&mut self, surfaces: &SurfaceCache, id: map_model::node::NodeId, selection: &HashSet<map_model::node::NodeId>, sink: &mut dyn SceneSink) {
+    fn visit(
+        &mut self,
+        surfaces: &SurfaceCache,
+        id: map_model::node::NodeId,
+        selection: &HashSet<map_model::node::NodeId>,
+        sink: &mut dyn SceneSink,
+    ) {
         let key = key_of(id);
         let Some(surface) = surfaces.get(id) else {
             if self.objects.remove(&key).is_some() {
@@ -316,7 +367,11 @@ impl SceneTracker {
             // The animation preview sends this one; the rest pose puts it back.
             return;
         }
-        let state = ObjectState { selected: selection.contains(&id), locked: surface.locked, hidden: false };
+        let state = ObjectState {
+            selected: selection.contains(&id),
+            locked: surface.locked,
+            hidden: false,
+        };
         let flags = hash_flags(&surface.triangles, state.selected);
         match self.objects.get_mut(&key) {
             Some(sent) if sent.stamp == surface.stamp && sent.flags == flags => {
@@ -327,7 +382,14 @@ impl SceneTracker {
                 }
             }
             _ => {
-                self.objects.insert(key, Sent { stamp: surface.stamp, flags, state });
+                self.objects.insert(
+                    key,
+                    Sent {
+                        stamp: surface.stamp,
+                        flags,
+                        state,
+                    },
+                );
                 sink.upsert(key, &surface.triangles, state);
                 self.stats.upserted += 1;
                 self.stats.triangles += surface.triangles.len();
@@ -369,29 +431,46 @@ impl Scene3d {
     /// Whether an animation preview is playing, which wants a frame every frame.
     pub fn playing(&self) -> bool {
         let filters = self.filters.borrow();
-        filters.animation_frame.is_none() && filters.preview_motion && !self.preview_mesh.borrow().motions.is_empty()
+        filters.animation_frame.is_none()
+            && filters.preview_motion
+            && !self.preview_mesh.borrow().motions.is_empty()
     }
 
     /// [`Scene3d::render_kept`] for a retained renderer: syncs `sink` through `tracker`
     /// and builds the overlay, for a frame `width` by `height` logical pixels at `scale`.
     /// Leaves the drawing to the caller.
-    pub fn prepare_frame(&self, tracker: &mut SceneTracker, sink: &mut dyn SceneSink, width: f64, height: f64, scale: i32) -> PreparedFrame {
+    pub fn prepare_frame(
+        &self,
+        tracker: &mut SceneTracker,
+        sink: &mut dyn SceneSink,
+        width: f64,
+        height: f64,
+        scale: i32,
+    ) -> PreparedFrame {
         let settings = self.begin_frame(width, height);
         let document = self.document.borrow();
         let filters = *self.filters.borrow();
-        let clip_state = (*self.tool.borrow() == crate::tool::Tool::Clip).then(|| self.clip.borrow().clone());
+        let clip_state =
+            (*self.tool.borrow() == crate::tool::Tool::Clip).then(|| self.clip.borrow().clone());
 
         let key = (document.generation(), document.revision());
         if tracker.revision != Some(key.1) || tracker.generation != Some(key.0) {
             *self.preview_motions.borrow_mut() = document.preview_motions();
             // Only whether there are any is read on this path ([`Scene3d::playing`]); the
             // GL path's triangle ranges do not exist here.
-            let motions = document.with_preview_surfaces(&filters, clip_state.as_ref(), |surfaces| {
-                surfaces.motions().values().map(|motion| (0..0, motion.clone())).collect()
-            });
+            let motions =
+                document.with_preview_surfaces(&filters, clip_state.as_ref(), |surfaces| {
+                    surfaces
+                        .motions()
+                        .values()
+                        .map(|motion| (0..0, motion.clone()))
+                        .collect()
+                });
             self.preview_mesh.borrow_mut().motions = motions;
         }
-        let playing = filters.animation_frame.is_none() && filters.preview_motion && !self.preview_mesh.borrow().motions.is_empty();
+        let playing = filters.animation_frame.is_none()
+            && filters.preview_motion
+            && !self.preview_mesh.borrow().motions.is_empty();
         document.animation_preview_time(playing);
         let pose = if let Some(frame) = filters.animation_frame {
             Pose::Frame(f64::from(frame) / f64::from(filters.animation_fps.max(1)))
@@ -400,20 +479,49 @@ impl Scene3d {
         } else {
             Pose::Rest
         };
-        let fillet_preview = self.fillet_surface_preview(&document,width,height);
-        tracker.sync_tool_preview(&document, &filters, clip_state.as_ref(), fillet_preview.as_ref(), pose, sink);
+        let fillet_preview = self.fillet_surface_preview(&document, width, height);
+        tracker.sync_tool_preview(
+            &document,
+            &filters,
+            clip_state.as_ref(),
+            fillet_preview.as_ref(),
+            pose,
+            sink,
+        );
 
         let mut overlay = self.build_overlay(&document, width, height, playing);
         if playing {
             overlay.points.clear();
             overlay.guides.clear();
         }
-        let (w, h) = ((width * f64::from(scale)).round() as i32, (height * f64::from(scale)).round() as i32);
-        let mut frame_key = crate::view3d::frame_key(&self.camera.borrow(), key, &filters, w, h, &overlay.points, &overlay.guides);
+        let (w, h) = (
+            (width * f64::from(scale)).round() as i32,
+            (height * f64::from(scale)).round() as i32,
+        );
+        let mut frame_key = crate::view3d::frame_key(
+            &self.camera.borrow(),
+            key,
+            &filters,
+            w,
+            h,
+            &overlay.points,
+            &overlay.guides,
+        );
         // Include temporary surface changes even when map revision and guide lines match.
-        if let Some(epoch) = tracker.epoch { frame_key ^= epoch.rotate_left(29); }
-        let picture_key = crate::view3d::picture_key(frame_key, &settings, document.materials_revision());
-        PreparedFrame { settings, overlay, wireframe: filters.wireframe, playing, frame_key, picture_key, world_bounds: document.world_bounds() }
+        if let Some(epoch) = tracker.epoch {
+            frame_key ^= epoch.rotate_left(29);
+        }
+        let picture_key =
+            crate::view3d::picture_key(frame_key, &settings, document.materials_revision());
+        PreparedFrame {
+            settings,
+            overlay,
+            wireframe: filters.wireframe,
+            playing,
+            frame_key,
+            picture_key,
+            world_bounds: document.world_bounds(),
+        }
     }
 }
 
@@ -448,7 +556,13 @@ mod tests {
     fn two_brushes() -> Document {
         let mut document = Document::new(crate::world::WorldBounds::default());
         for (min, max) in [([0, 0, 0], [64, 64, 64]), ([128, 0, 0], [192, 64, 64])] {
-            crate::mcp::call_tool(&mut document, &mut crate::mcp::Collab::default(), "add_shape", &serde_json::json!({"kind":"cuboid","min":min,"max":max})).unwrap();
+            crate::mcp::call_tool(
+                &mut document,
+                &mut crate::mcp::Collab::default(),
+                "add_shape",
+                &serde_json::json!({"kind":"cuboid","min":min,"max":max}),
+            )
+            .unwrap();
         }
         document.clear_selection();
         document
@@ -459,11 +573,23 @@ mod tests {
         let document = two_brushes();
         let mut tracker = SceneTracker::new();
         let mut log = Log::default();
-        assert!(tracker.sync(&document, &ViewFilters::default(), None, Pose::Rest, &mut log));
+        assert!(tracker.sync(
+            &document,
+            &ViewFilters::default(),
+            None,
+            Pose::Rest,
+            &mut log
+        ));
         assert_eq!(log.cleared, 1);
         assert_eq!(log.upserts.len(), 2);
         let mut again = Log::default();
-        assert!(!tracker.sync(&document, &ViewFilters::default(), None, Pose::Rest, &mut again));
+        assert!(!tracker.sync(
+            &document,
+            &ViewFilters::default(),
+            None,
+            Pose::Rest,
+            &mut again
+        ));
         assert!(again.upserts.is_empty() && again.states.is_empty());
     }
 
@@ -471,11 +597,23 @@ mod tests {
     fn selecting_a_brush_sends_only_its_state() {
         let mut document = two_brushes();
         let mut tracker = SceneTracker::new();
-        tracker.sync(&document, &ViewFilters::default(), None, Pose::Rest, &mut Log::default());
+        tracker.sync(
+            &document,
+            &ViewFilters::default(),
+            None,
+            Pose::Rest,
+            &mut Log::default(),
+        );
         let id = document.selectable_brushes()[0].0;
         document.select_only(id);
         let mut log = Log::default();
-        tracker.sync(&document, &ViewFilters::default(), None, Pose::Rest, &mut log);
+        tracker.sync(
+            &document,
+            &ViewFilters::default(),
+            None,
+            Pose::Rest,
+            &mut log,
+        );
         assert_eq!(log.cleared, 0);
         assert!(log.upserts.is_empty(), "{:?}", log.upserts);
         assert_eq!(log.states.len(), 1);
@@ -486,12 +624,24 @@ mod tests {
     fn moving_a_brush_resends_only_that_brush() {
         let mut document = two_brushes();
         let mut tracker = SceneTracker::new();
-        tracker.sync(&document, &ViewFilters::default(), None, Pose::Rest, &mut Log::default());
+        tracker.sync(
+            &document,
+            &ViewFilters::default(),
+            None,
+            Pose::Rest,
+            &mut Log::default(),
+        );
         let id = document.selectable_brushes()[0].0;
         document.select_only(id);
         document.translate_selection(geometry_math::vec::Vec3d::new(16.0, 0.0, 0.0));
         let mut log = Log::default();
-        tracker.sync(&document, &ViewFilters::default(), None, Pose::Rest, &mut log);
+        tracker.sync(
+            &document,
+            &ViewFilters::default(),
+            None,
+            Pose::Rest,
+            &mut log,
+        );
         assert_eq!(log.cleared, 0);
         assert_eq!(log.upserts.len(), 1);
         assert!(log.removes.is_empty());
@@ -543,24 +693,66 @@ mod tests {
         document.select_only(id);
         let filters = ViewFilters::default();
         let mut tracker = SceneTracker::new();
-        tracker.sync(&document,&filters,None,Pose::Rest,&mut Log::default());
+        tracker.sync(&document, &filters, None, Pose::Rest, &mut Log::default());
         let edge = document.brush(id).unwrap().edge_positions()[0];
         let mut cache = crate::fillet_tool::PreviewCache::default();
         let settings = crate::fillet_tool::FilletParameters::default();
-        let preview = cache.get(&document,vec![edge],settings).unwrap();
-        assert!(std::rc::Rc::ptr_eq(&preview,&cache.get(&document,vec![edge],settings).unwrap()));
+        let preview = cache.get(&document, vec![edge], settings).unwrap();
+        assert!(std::rc::Rc::ptr_eq(
+            &preview,
+            &cache.get(&document, vec![edge], settings).unwrap()
+        ));
         let mut log = Log::default();
-        assert!(tracker.sync_tool_preview(&document,&filters,None,Some(&preview),Pose::Rest,&mut log));
-        assert_eq!((log.cleared,log.upserts.len()),(0,1));
-        assert!(!tracker.sync_tool_preview(&document,&filters,None,Some(&preview),Pose::Rest,&mut Log::default()));
-        let revised = cache.get(&document,vec![edge],crate::fillet_tool::FilletParameters {radius:12.0,..settings}).unwrap();
+        assert!(tracker.sync_tool_preview(
+            &document,
+            &filters,
+            None,
+            Some(&preview),
+            Pose::Rest,
+            &mut log
+        ));
+        assert_eq!((log.cleared, log.upserts.len()), (0, 1));
+        assert!(!tracker.sync_tool_preview(
+            &document,
+            &filters,
+            None,
+            Some(&preview),
+            Pose::Rest,
+            &mut Log::default()
+        ));
+        let revised = cache
+            .get(
+                &document,
+                vec![edge],
+                crate::fillet_tool::FilletParameters {
+                    radius: 12.0,
+                    ..settings
+                },
+            )
+            .unwrap();
         let mut log = Log::default();
-        assert!(tracker.sync_tool_preview(&document,&filters,None,Some(&revised),Pose::Rest,&mut log));
-        assert_eq!(log.upserts.len(),1);
+        assert!(tracker.sync_tool_preview(
+            &document,
+            &filters,
+            None,
+            Some(&revised),
+            Pose::Rest,
+            &mut log
+        ));
+        assert_eq!(log.upserts.len(), 1);
         let mut log = Log::default();
-        assert!(tracker.sync(&document,&filters,None,Pose::Rest,&mut log));
-        assert_eq!(log.upserts.len(),1);
-        assert!(cache.get(&document,vec![edge],crate::fillet_tool::FilletParameters {radius:10000.0,..settings}).is_none());
+        assert!(tracker.sync(&document, &filters, None, Pose::Rest, &mut log));
+        assert_eq!(log.upserts.len(), 1);
+        assert!(cache
+            .get(
+                &document,
+                vec![edge],
+                crate::fillet_tool::FilletParameters {
+                    radius: 10000.0,
+                    ..settings
+                }
+            )
+            .is_none());
     }
 
     #[test]

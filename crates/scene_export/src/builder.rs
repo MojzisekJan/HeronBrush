@@ -89,10 +89,11 @@ struct Recipe {
 fn resolve_recipe(entity: &Entity, class: Option<&EntityClass>, settings: &Settings) -> Recipe {
     let classname = entity.classname();
     let external = !entity.external_surfaces.is_empty();
-    let is_solid = external || match class {
-        Some(c) => c.kind == ClassKind::Solid,
-        None => !entity.brushes.is_empty() || !entity.patches.is_empty(),
-    };
+    let is_solid = external
+        || match class {
+            Some(c) => c.kind == ClassKind::Solid,
+            None => !entity.brushes.is_empty() || !entity.patches.is_empty(),
+        };
 
     let node_class = default_node_class(classname, is_solid && !external, settings);
     let mut recipe = Recipe {
@@ -328,33 +329,73 @@ fn prepare(
 
     // Keep collision/logic entities independent. World brushes in a cell share
     // the existing per-material mesh builder and are culled as a local chunk.
-    if settings.static_cell_size.is_finite() && settings.static_cell_size>0.0 && entities.first().is_some_and(|e|e.classname()=="worldspawn") {
-        let size=settings.static_cell_size;
-        let cull=entities[0].get(&settings.cull_interior_property).map(|v|v!="0"&&!v.is_empty()&&!v.eq_ignore_ascii_case("false")).unwrap_or(settings.cull_hidden);
+    if settings.static_cell_size.is_finite()
+        && settings.static_cell_size > 0.0
+        && entities
+            .first()
+            .is_some_and(|e| e.classname() == "worldspawn")
+    {
+        let size = settings.static_cell_size;
+        let cull = entities[0]
+            .get(&settings.cull_interior_property)
+            .map(|v| v != "0" && !v.is_empty() && !v.eq_ignore_ascii_case("false"))
+            .unwrap_or(settings.cull_hidden);
         if cull {
-            for (brush,face) in crate::hidden::covered_faces(&entities[0].brushes, |t| settings.is_tool_texture(t)) {
+            for (brush, face) in
+                crate::hidden::covered_faces(&entities[0].brushes, |t| settings.is_tool_texture(t))
+            {
                 if !settings.is_tool_texture(&entities[0].brushes[brush].faces[face].texture) {
-                    entities[0].brushes[brush].faces[face].texture=settings.skip_texture.clone();stats.buried_faces+=1;
+                    entities[0].brushes[brush].faces[face].texture = settings.skip_texture.clone();
+                    stats.buried_faces += 1;
                 }
             }
         }
-        let mut cells:std::collections::BTreeMap<[i64;3],Vec<crate::map::Brush>>=Default::default();
+        let mut cells: std::collections::BTreeMap<[i64; 3], Vec<crate::map::Brush>> =
+            Default::default();
         for brush in std::mem::take(&mut entities[0].brushes) {
-            let points=crate::overlap::corners_of(&brush.planes());
-            let centre=if points.is_empty(){crate::math::Vec3::ZERO}else{points.iter().copied().sum::<crate::math::Vec3>()/points.len() as f64};
-            let key=[(centre.x/size).floor() as i64,(centre.y/size).floor() as i64,(centre.z/size).floor() as i64];
+            let points = crate::overlap::corners_of(&brush.planes());
+            let centre = if points.is_empty() {
+                crate::math::Vec3::ZERO
+            } else {
+                points.iter().copied().sum::<crate::math::Vec3>() / points.len() as f64
+            };
+            let key = [
+                (centre.x / size).floor() as i64,
+                (centre.y / size).floor() as i64,
+                (centre.z / size).floor() as i64,
+            ];
             cells.entry(key).or_default().push(brush);
         }
-        if cells.len()<=1 {entities[0].brushes=cells.into_values().flatten().collect();}
-        else {
-            for (cell,brushes) in cells {
-                let mut entity=entities[0].clone();entity.brushes=brushes;entity.patches.clear();
-                entity.properties.retain(|k,_|k=="classname" || k==&settings.smoothing_property || k==&settings.smoothing_angle_property || k==&settings.vertex_merge_property || k==&settings.cull_interior_property);
-                entity.properties.insert("classname".into(),"func_static".into());
-                entity.properties.insert("_tb_name".into(),format!("world_{}_{}_{}",cell[0],cell[1],cell[2]));
-                let mut recipe=recipes[0].clone();recipe.name_property=Some("_tb_name".into());
-                recipe.script=None;recipe.instance=None;recipe.groups.clear();recipe.connect.clear();recipe.auto=false;
-                entities.push(entity);recipes.push(recipe);
+        if cells.len() <= 1 {
+            entities[0].brushes = cells.into_values().flatten().collect();
+        } else {
+            for (cell, brushes) in cells {
+                let mut entity = entities[0].clone();
+                entity.brushes = brushes;
+                entity.patches.clear();
+                entity.properties.retain(|k, _| {
+                    k == "classname"
+                        || k == &settings.smoothing_property
+                        || k == &settings.smoothing_angle_property
+                        || k == &settings.vertex_merge_property
+                        || k == &settings.cull_interior_property
+                });
+                entity
+                    .properties
+                    .insert("classname".into(), "func_static".into());
+                entity.properties.insert(
+                    "_tb_name".into(),
+                    format!("world_{}_{}_{}", cell[0], cell[1], cell[2]),
+                );
+                let mut recipe = recipes[0].clone();
+                recipe.name_property = Some("_tb_name".into());
+                recipe.script = None;
+                recipe.instance = None;
+                recipe.groups.clear();
+                recipe.connect.clear();
+                recipe.auto = false;
+                entities.push(entity);
+                recipes.push(recipe);
             }
         }
     }
@@ -370,7 +411,9 @@ fn prepare(
                 }
             }
         }
-        for surface in &entity.external_surfaces { texture_names.insert(surface.texture.clone()); }
+        for surface in &entity.external_surfaces {
+            texture_names.insert(surface.texture.clone());
+        }
         for patch in &entity.patches {
             if !settings.is_tool_texture(&patch.texture) {
                 texture_names.insert(patch.texture.clone());
@@ -431,7 +474,8 @@ pub fn build(
             }
             let mut node = Node::new(group.name.clone(), "Node3D");
             if group.kind == GroupKind::Layer {
-                node.meta.push(("heron_brush_layer".into(), GdValue::Int(group.id)));
+                node.meta
+                    .push(("heron_brush_layer".into(), GdValue::Int(group.id)));
             }
             group_nodes.insert(group.id, node);
         }
@@ -521,21 +565,33 @@ pub fn build(
 
     root.make_names_unique();
 
-    let aliases = crate::instancing::aliases(meshes.iter().map(|m| (m.file_name.as_str(),m.contents.as_bytes())));
+    let aliases = crate::instancing::aliases(
+        meshes
+            .iter()
+            .map(|m| (m.file_name.as_str(), m.contents.as_bytes())),
+    );
     meshes.retain(|m| !aliases.contains_key(&m.file_name));
-    fn redirect(node: &mut Node, aliases: &std::collections::HashMap<String,String>, mesh_dir: &str) {
-        for (_,value) in &mut node.properties {
+    fn redirect(
+        node: &mut Node,
+        aliases: &std::collections::HashMap<String, String>,
+        mesh_dir: &str,
+    ) {
+        for (_, value) in &mut node.properties {
             if let GdValue::ExtResource { path, ty } = value {
-                if let Some((dir,file)) = path.rsplit_once('/') {
+                if let Some((dir, file)) = path.rsplit_once('/') {
                     if ty == "ArrayMesh" && dir == mesh_dir {
-                        if let Some(original) = aliases.get(file) { *path = format!("{dir}/{original}"); }
+                        if let Some(original) = aliases.get(file) {
+                            *path = format!("{dir}/{original}");
+                        }
                     }
                 }
             }
         }
-        for child in &mut node.children { redirect(child,aliases,mesh_dir); }
+        for child in &mut node.children {
+            redirect(child, aliases, mesh_dir);
+        }
     }
-    redirect(&mut root,&aliases,&options.mesh_dir);
+    redirect(&mut root, &aliases, &options.mesh_dir);
 
     BuildResult {
         scene: Scene {
@@ -710,7 +766,11 @@ fn build_entity_node(
     let recipe = if water {
         water_recipe = Recipe {
             node_class: "Area3D".into(),
-            collision: if recipe.collision == CollisionKind::None { CollisionKind::None } else { CollisionKind::Convex },
+            collision: if recipe.collision == CollisionKind::None {
+                CollisionKind::None
+            } else {
+                CollisionKind::Convex
+            },
             ..recipe.clone()
         };
         &water_recipe
@@ -724,7 +784,11 @@ fn build_entity_node(
 
     let mut merged = merge_properties(entity, class);
 
-    if recipe.is_solid && !(entity.brushes.is_empty() && entity.patches.is_empty() && entity.external_surfaces.is_empty()) {
+    if recipe.is_solid
+        && !(entity.brushes.is_empty()
+            && entity.patches.is_empty()
+            && entity.external_surfaces.is_empty())
+    {
         // Occluders off unless the map asks. They are drawn on the processor
         // every frame, and on an open level they cost without saving, so it is
         // the mapper's call and not a default.
@@ -766,35 +830,78 @@ fn build_entity_node(
 
         let shared = if recipe.origin == OriginKind::Brush && !recipe.occluder {
             crate::instancing::apply(entity, &mut geo, settings.scale_factor)
-        } else { None };
+        } else {
+            None
+        };
         let transform = shared.unwrap_or_else(|| level::Transform {
-            translation: (math::to_godot(geo.origin)*settings.scale_factor).to_array(), ..Default::default()
+            translation: (math::to_godot(geo.origin) * settings.scale_factor).to_array(),
+            ..Default::default()
         });
-        set_transform(&mut node, Vec3::from_array(transform.translation), Vec3::from_array(transform.rotation_yxz), Vec3::from_array(transform.scale));
+        set_transform(
+            &mut node,
+            Vec3::from_array(transform.translation),
+            Vec3::from_array(transform.rotation_yxz),
+            Vec3::from_array(transform.scale),
+        );
 
-        let water = water.then(|| crate::water::build(entity, &level::Entity { transform: transform.clone(), ..Default::default() }, settings.scale_factor)).flatten();
+        let water = water
+            .then(|| {
+                crate::water::build(
+                    entity,
+                    &level::Entity {
+                        transform: transform.clone(),
+                        ..Default::default()
+                    },
+                    settings.scale_factor,
+                )
+            })
+            .flatten();
         if crate::water::enabled(entity) && recipe.instance.is_none() && water.is_none() {
-            warnings.push(format!("Water {node_name}: no valid closed brush volume; water runtime omitted"));
+            warnings.push(format!(
+                "Water {node_name}: no valid closed brush volume; water runtime omitted"
+            ));
         }
         // The baseline draws the volume's upward faces; the sensor keeps every brush.
         let baseline = water.as_ref().filter(|water| water.surface_material);
         if baseline.is_some() {
             for surface in &mut geo.mesh.surfaces {
-                surface.indices = surface.indices.chunks_exact(3).filter(|triangle| triangle.iter().all(|i| surface.vertices[*i as usize].normal.y > 0.5)).flatten().copied().collect();
+                surface.indices = surface
+                    .indices
+                    .chunks_exact(3)
+                    .filter(|triangle| {
+                        triangle
+                            .iter()
+                            .all(|i| surface.vertices[*i as usize].normal.y > 0.5)
+                    })
+                    .flatten()
+                    .copied()
+                    .collect();
             }
-            geo.mesh.surfaces.retain(|surface| !surface.indices.is_empty());
+            geo.mesh
+                .surfaces
+                .retain(|surface| !surface.indices.is_empty());
         }
 
         if !geo.mesh.is_empty() {
             // Godot's meshes stop at 256 surfaces and drop the rest, which a solid with
             // a gradient painted on every face can pass. Such a solid becomes several
             // meshes, the first still called `mesh`.
-            let parts = geo.mesh.surfaces.chunks(GODOT_MAX_SURFACES).collect::<Vec<_>>();
+            let parts = geo
+                .mesh
+                .surfaces
+                .chunks(GODOT_MAX_SURFACES)
+                .collect::<Vec<_>>();
             for (part, surfaces) in parts.iter().enumerate() {
-                let suffix = if part == 0 { String::new() } else { format!("_{}", part + 1) };
+                let suffix = if part == 0 {
+                    String::new()
+                } else {
+                    format!("_{}", part + 1)
+                };
                 let file_name = format!("{node_name}{suffix}.obj");
                 let contents = crate::writer::obj::write(
-                    &geometry::Mesh { surfaces: surfaces.to_vec() },
+                    &geometry::Mesh {
+                        surfaces: surfaces.to_vec(),
+                    },
                     &options.scene_name,
                     ObjOptions {
                         flip_faces: settings.flip_faces,
@@ -821,7 +928,8 @@ fn build_entity_node(
                             _ => None,
                         };
                         let id = format!("HeronWater_{node_name}{suffix}_{i}");
-                        let material = crate::writer::godot_water::material(id, water, albedo, sub_resources);
+                        let material =
+                            crate::writer::godot_water::material(id, water, albedo, sub_resources);
                         mesh_node.set(format!("surface_material_override/{i}"), material);
                     } else if let Some(material) = material_refs.get(&surface.texture) {
                         mesh_node.set(format!("surface_material_override/{i}"), material.clone());
@@ -1231,33 +1339,74 @@ fn build_material_resources(
                         properties.push(("metallic".into(), GdValue::Float(metallic as f64)));
                         if emission > 0.0 {
                             properties.push(("emission_enabled".into(), GdValue::Bool(true)));
-                            properties.push(("emission".into(), GdValue::Color(1.0,1.0,1.0,1.0)));
-                            properties.push(("emission_energy_multiplier".into(), GdValue::Float(emission as f64)));
-                            properties.push(("emission_texture".into(), GdValue::ExtResource { ty: "Texture2D".into(), path: albedo.clone() }));
+                            properties
+                                .push(("emission".into(), GdValue::Color(1.0, 1.0, 1.0, 1.0)));
+                            properties.push((
+                                "emission_energy_multiplier".into(),
+                                GdValue::Float(emission as f64),
+                            ));
+                            properties.push((
+                                "emission_texture".into(),
+                                GdValue::ExtResource {
+                                    ty: "Texture2D".into(),
+                                    path: albedo.clone(),
+                                },
+                            ));
                         }
                     }
                     properties.push(("texture_repeat".into(), GdValue::Bool(image.repeat)));
-                    if let Some(pbr)=&image.pbr {
-                        properties.push(("roughness".into(),GdValue::Float(pbr.roughness as f64)));
-                        properties.push(("metallic".into(),GdValue::Float(pbr.metallic as f64)));
-                        properties.push(("normal_scale".into(),GdValue::Float(pbr.normal_scale as f64)));
-                        properties.push(("ao_light_affect".into(),GdValue::Float(0.0)));
+                    if let Some(pbr) = &image.pbr {
+                        properties.push(("roughness".into(), GdValue::Float(pbr.roughness as f64)));
+                        properties.push(("metallic".into(), GdValue::Float(pbr.metallic as f64)));
+                        properties.push((
+                            "normal_scale".into(),
+                            GdValue::Float(pbr.normal_scale as f64),
+                        ));
+                        properties.push(("ao_light_affect".into(), GdValue::Float(0.0)));
                         // Baking only occlusion strength into a Godot companion is handled by the editor.
-                        let e=pbr.emissive_factor.map(|c| {
-                            let c=c as f64;
-                            if c<=0.0031308 {c*12.92} else {1.055*c.powf(1.0/2.4)-0.055}
+                        let e = pbr.emissive_factor.map(|c| {
+                            let c = c as f64;
+                            if c <= 0.0031308 {
+                                c * 12.92
+                            } else {
+                                1.055 * c.powf(1.0 / 2.4) - 0.055
+                            }
                         });
-                        properties.push(("emission_enabled".into(),GdValue::Bool(e.iter().any(|v|*v>0.))));
-                        properties.push(("emission".into(),GdValue::Color(e[0] as f64,e[1] as f64,e[2] as f64,1.)));
-                        properties.push(("emission_operator".into(),GdValue::Int(1)));
+                        properties.push((
+                            "emission_enabled".into(),
+                            GdValue::Bool(e.iter().any(|v| *v > 0.)),
+                        ));
+                        properties.push((
+                            "emission".into(),
+                            GdValue::Color(e[0] as f64, e[1] as f64, e[2] as f64, 1.),
+                        ));
+                        properties.push(("emission_operator".into(), GdValue::Int(1)));
                         for image in &pbr.images {
-                            let texture=GdValue::ExtResource {ty:"Texture2D".into(),path:image.path.clone()};
+                            let texture = GdValue::ExtResource {
+                                ty: "Texture2D".into(),
+                                path: image.path.clone(),
+                            };
                             match image.slot {
-                                "normal"=>{properties.push(("normal_enabled".into(),GdValue::Bool(true)));properties.push(("normal_texture".into(),texture));},
-                                "mr"=>{properties.push(("roughness_texture".into(),texture.clone()));properties.push(("metallic_texture".into(),texture));properties.push(("roughness_texture_channel".into(),GdValue::Int(1)));properties.push(("metallic_texture_channel".into(),GdValue::Int(2)));},
-                                "ao"=>{properties.push(("ao_enabled".into(),GdValue::Bool(true)));properties.push(("ao_texture".into(),texture));},
-                                "emissive"=>properties.push(("emission_texture".into(),texture)),
-                                _=>{},
+                                "normal" => {
+                                    properties.push(("normal_enabled".into(), GdValue::Bool(true)));
+                                    properties.push(("normal_texture".into(), texture));
+                                }
+                                "mr" => {
+                                    properties.push(("roughness_texture".into(), texture.clone()));
+                                    properties.push(("metallic_texture".into(), texture));
+                                    properties.push((
+                                        "roughness_texture_channel".into(),
+                                        GdValue::Int(1),
+                                    ));
+                                    properties
+                                        .push(("metallic_texture_channel".into(), GdValue::Int(2)));
+                                }
+                                "ao" => {
+                                    properties.push(("ao_enabled".into(), GdValue::Bool(true)));
+                                    properties.push(("ao_texture".into(), texture));
+                                }
+                                "emissive" => properties.push(("emission_texture".into(), texture)),
+                                _ => {}
                             }
                         }
                     }
@@ -1269,9 +1418,15 @@ fn build_material_resources(
                         };
                         properties.push(("transparency".into(), GdValue::Int(transparency)));
                         if pbr.alpha_mode == crate::materials::AlphaMode::Mask {
-                            properties.push(("alpha_scissor_threshold".into(), GdValue::Float(pbr.alpha_cutoff as f64)));
+                            properties.push((
+                                "alpha_scissor_threshold".into(),
+                                GdValue::Float(pbr.alpha_cutoff as f64),
+                            ));
                         }
-                        properties.push(("cull_mode".into(), GdValue::Int(if pbr.double_sided { 2 } else { 0 })));
+                        properties.push((
+                            "cull_mode".into(),
+                            GdValue::Int(if pbr.double_sided { 2 } else { 0 }),
+                        ));
                     } else if image.alpha {
                         properties.push(("transparency".into(), GdValue::Int(1)));
                     }
@@ -1318,96 +1473,292 @@ mod tests {
 
     #[test]
     fn static_cells_preserve_geometry_collision_and_entity_links() {
-        fn cube(x:f64)->crate::map::Brush {
-            use crate::map::{Face,UvFormat};
-            use crate::math::{Plane,Vec2};
-            let faces=[(-Vec3::X,-x),(Vec3::X,x+64.),(-Vec3::Y,0.),(Vec3::Y,64.),(-Vec3::Z,0.),(Vec3::Z,64.)]
-                .into_iter().map(|(normal,d)|Face{plane:Plane{normal,d},points:[Vec3::ZERO;3],texture:"stone".into(),format:UvFormat::Standard,uv_axes:[Vec3::X,Vec3::Y],offset:Vec2::ZERO,rotation:0.,scale:Vec2::ONE,surface:None}).collect();
-            crate::map::Brush{faces}
+        fn cube(x: f64) -> crate::map::Brush {
+            use crate::map::{Face, UvFormat};
+            use crate::math::{Plane, Vec2};
+            let faces = [
+                (-Vec3::X, -x),
+                (Vec3::X, x + 64.),
+                (-Vec3::Y, 0.),
+                (Vec3::Y, 64.),
+                (-Vec3::Z, 0.),
+                (Vec3::Z, 64.),
+            ]
+            .into_iter()
+            .map(|(normal, d)| Face {
+                plane: Plane { normal, d },
+                points: [Vec3::ZERO; 3],
+                texture: "stone".into(),
+                format: UvFormat::Standard,
+                uv_axes: [Vec3::X, Vec3::Y],
+                offset: Vec2::ZERO,
+                rotation: 0.,
+                scale: Vec2::ONE,
+                surface: None,
+            })
+            .collect();
+            crate::map::Brush { faces }
         }
-        let mut world=Entity::default();world.properties.insert("classname".into(),"worldspawn".into());
-        world.brushes=vec![cube(-2048.),cube(0.),cube(128.),cube(2048.)];
-        let mut mover=Entity::default();mover.properties.insert("classname".into(),"func_animate".into());mover.properties.insert("targetname".into(),"platform".into());mover.brushes=vec![cube(4096.)];
-        let map=MapFile{entities:vec![world,mover],..Default::default()};
-        let classes=IndexMap::new();let mut settings=Settings::default();settings.default_collision=CollisionKind::Concave;
-        let options=LevelOptions{inline_collision:true,..Default::default()};
-        let original=build_level(&map,&classes,&settings,&options);
-        settings.static_cell_size=1024.;
-        let chunked=build_level(&map,&classes,&settings,&options);
-        assert_eq!(chunked.stats.triangles,original.stats.triangles);
-        assert_eq!(chunked.stats.brushes,original.stats.brushes);
-        assert_eq!(chunked.level.entities.iter().filter(|e|e.classname=="func_static").count(),3);
-        assert_eq!(chunked.level.entities.iter().filter(|e|e.classname=="func_animate").count(),1);
-        let mover=|result:&LevelResult|result.level.entities.iter().find(|e|e.classname=="func_animate").unwrap().transform.clone();
-        assert_eq!(mover(&original),mover(&chunked));
-        // Compare collision triangles in world coordinates, independent of chunk origins.
-        let triangles=|result:&LevelResult|{
-            let mut points:Vec<_>=result.level.entities.iter().zip(&result.collision).flat_map(|(e,c)|c.triangles.iter().map(move |p|std::array::from_fn::<_,3,_>(|a|((p[a] as f64+e.transform.translation[a])*1000.).round() as i64))).collect();
-            points.sort();points
+        let mut world = Entity::default();
+        world
+            .properties
+            .insert("classname".into(), "worldspawn".into());
+        world.brushes = vec![cube(-2048.), cube(0.), cube(128.), cube(2048.)];
+        let mut mover = Entity::default();
+        mover
+            .properties
+            .insert("classname".into(), "func_animate".into());
+        mover
+            .properties
+            .insert("targetname".into(), "platform".into());
+        mover.brushes = vec![cube(4096.)];
+        let map = MapFile {
+            entities: vec![world, mover],
+            ..Default::default()
         };
-        assert!(!triangles(&original).is_empty());assert_eq!(triangles(&original),triangles(&chunked));
+        let classes = IndexMap::new();
+        let mut settings = Settings::default();
+        settings.default_collision = CollisionKind::Concave;
+        let options = LevelOptions {
+            inline_collision: true,
+            ..Default::default()
+        };
+        let original = build_level(&map, &classes, &settings, &options);
+        settings.static_cell_size = 1024.;
+        let chunked = build_level(&map, &classes, &settings, &options);
+        assert_eq!(chunked.stats.triangles, original.stats.triangles);
+        assert_eq!(chunked.stats.brushes, original.stats.brushes);
+        assert_eq!(
+            chunked
+                .level
+                .entities
+                .iter()
+                .filter(|e| e.classname == "func_static")
+                .count(),
+            3
+        );
+        assert_eq!(
+            chunked
+                .level
+                .entities
+                .iter()
+                .filter(|e| e.classname == "func_animate")
+                .count(),
+            1
+        );
+        let mover = |result: &LevelResult| {
+            result
+                .level
+                .entities
+                .iter()
+                .find(|e| e.classname == "func_animate")
+                .unwrap()
+                .transform
+                .clone()
+        };
+        assert_eq!(mover(&original), mover(&chunked));
+        // Compare collision triangles in world coordinates, independent of chunk origins.
+        let triangles = |result: &LevelResult| {
+            let mut points: Vec<_> = result
+                .level
+                .entities
+                .iter()
+                .zip(&result.collision)
+                .flat_map(|(e, c)| {
+                    c.triangles.iter().map(move |p| {
+                        std::array::from_fn::<_, 3, _>(|a| {
+                            ((p[a] as f64 + e.transform.translation[a]) * 1000.).round() as i64
+                        })
+                    })
+                })
+                .collect();
+            points.sort();
+            points
+        };
+        assert!(!triangles(&original).is_empty());
+        assert_eq!(triangles(&original), triangles(&chunked));
         // A shared face on a cell boundary must not reappear after partitioning.
-        let mut map=map;map.entities.truncate(1);map.entities[0].brushes=vec![cube(960.),cube(1024.)];
-        settings.cull_hidden=true;settings.static_cell_size=0.;
-        let joined=build_level(&map,&classes,&settings,&options);
-        settings.static_cell_size=1024.;let split=build_level(&map,&classes,&settings,&options);
-        assert!(joined.stats.triangles<=split.stats.triangles);assert_eq!(split.stats.triangles,20);
-
+        let mut map = map;
+        map.entities.truncate(1);
+        map.entities[0].brushes = vec![cube(960.), cube(1024.)];
+        settings.cull_hidden = true;
+        settings.static_cell_size = 0.;
+        let joined = build_level(&map, &classes, &settings, &options);
+        settings.static_cell_size = 1024.;
+        let split = build_level(&map, &classes, &settings, &options);
+        assert!(joined.stats.triangles <= split.stats.triangles);
+        assert_eq!(split.stats.triangles, 20);
     }
 
     #[test]
     fn a_solid_past_godots_surface_limit_becomes_several_meshes() {
-        use crate::map::{Face,UvFormat};
-        use crate::math::{Plane,Vec2};
-        let cube=|i:usize|{
-            let x=i as f64*128.;
-            let faces=[(-Vec3::X,-x),(Vec3::X,x+64.),(-Vec3::Y,0.),(Vec3::Y,64.),(-Vec3::Z,0.),(Vec3::Z,64.)]
-                .into_iter().map(|(normal,d)|Face{plane:Plane{normal,d},points:[Vec3::ZERO;3],texture:format!("paint_{i}"),format:UvFormat::Standard,uv_axes:[Vec3::X,Vec3::Y],offset:Vec2::ZERO,rotation:0.,scale:Vec2::ONE,surface:None}).collect();
-            crate::map::Brush{faces}
+        use crate::map::{Face, UvFormat};
+        use crate::math::{Plane, Vec2};
+        let cube = |i: usize| {
+            let x = i as f64 * 128.;
+            let faces = [
+                (-Vec3::X, -x),
+                (Vec3::X, x + 64.),
+                (-Vec3::Y, 0.),
+                (Vec3::Y, 64.),
+                (-Vec3::Z, 0.),
+                (Vec3::Z, 64.),
+            ]
+            .into_iter()
+            .map(|(normal, d)| Face {
+                plane: Plane { normal, d },
+                points: [Vec3::ZERO; 3],
+                texture: format!("paint_{i}"),
+                format: UvFormat::Standard,
+                uv_axes: [Vec3::X, Vec3::Y],
+                offset: Vec2::ZERO,
+                rotation: 0.,
+                scale: Vec2::ONE,
+                surface: None,
+            })
+            .collect();
+            crate::map::Brush { faces }
         };
-        let mut world=Entity::default();world.properties.insert("classname".into(),"worldspawn".into());
-        world.brushes=(0..300).map(cube).collect();
-        let map=MapFile{entities:vec![world],..Default::default()};
-        let built=build(&map,&IndexMap::new(),&Settings::default(),&BuildOptions{scene_name:"wide".into(),mesh_dir:"res://wide".into()});
-        let names:Vec<_>=built.meshes.iter().map(|m|m.file_name.as_str()).collect();
-        assert_eq!(names,["worldspawn.obj","worldspawn_2.obj"]);
-        let surfaces:Vec<_>=built.meshes.iter().map(|m|m.contents.matches("\nusemtl ").count()).collect();
-        assert_eq!(surfaces,[256,44]);
-        let world=&built.scene.root.children[0];
-        let parts:Vec<_>=world.children.iter().filter(|n|n.class=="MeshInstance3D").map(|n|n.name.as_str()).collect();
-        assert_eq!(parts,["mesh","mesh_2"]);
+        let mut world = Entity::default();
+        world
+            .properties
+            .insert("classname".into(), "worldspawn".into());
+        world.brushes = (0..300).map(cube).collect();
+        let map = MapFile {
+            entities: vec![world],
+            ..Default::default()
+        };
+        let built = build(
+            &map,
+            &IndexMap::new(),
+            &Settings::default(),
+            &BuildOptions {
+                scene_name: "wide".into(),
+                mesh_dir: "res://wide".into(),
+            },
+        );
+        let names: Vec<_> = built.meshes.iter().map(|m| m.file_name.as_str()).collect();
+        assert_eq!(names, ["worldspawn.obj", "worldspawn_2.obj"]);
+        let surfaces: Vec<_> = built
+            .meshes
+            .iter()
+            .map(|m| m.contents.matches("\nusemtl ").count())
+            .collect();
+        assert_eq!(surfaces, [256, 44]);
+        let world = &built.scene.root.children[0];
+        let parts: Vec<_> = world
+            .children
+            .iter()
+            .filter(|n| n.class == "MeshInstance3D")
+            .map(|n| n.name.as_str())
+            .collect();
+        assert_eq!(parts, ["mesh", "mesh_2"]);
     }
 
     #[test]
     fn a_water_volume_is_a_sensor_with_its_top_drawn_as_water() {
-        use crate::map::{Face,UvFormat};
-        use crate::math::{Plane,Vec2};
-        let faces=[(-Vec3::X,64.),(Vec3::X,64.),(-Vec3::Y,64.),(Vec3::Y,64.),(-Vec3::Z,64.),(Vec3::Z,0.)]
-            .into_iter().map(|(normal,d)|Face{plane:Plane{normal,d},points:[Vec3::ZERO;3],texture:"water".into(),format:UvFormat::Standard,uv_axes:[Vec3::X,Vec3::Y],offset:Vec2::ZERO,rotation:0.,scale:Vec2::ONE,surface:None}).collect();
-        let mut pool=Entity::default();
-        pool.properties.insert("classname".into(),"water_volume".into());
-        pool.properties.insert("water_priority".into(),"3".into());
-        pool.brushes=vec![crate::map::Brush{faces}];
-        let mut world=Entity::default();world.properties.insert("classname".into(),"worldspawn".into());
-        let map=MapFile{entities:vec![world,pool],..Default::default()};
-        let built=build(&map,&IndexMap::new(),&Settings::default(),&BuildOptions{scene_name:"pool".into(),mesh_dir:"res://pool".into()});
-        let pool=built.scene.root.children.iter().find(|n|n.name=="water_volume").unwrap();
-        assert_eq!(pool.class,"Area3D");
-        assert_eq!(pool.children.iter().filter(|n|n.class=="CollisionShape3D").count(),1);
+        use crate::map::{Face, UvFormat};
+        use crate::math::{Plane, Vec2};
+        let faces = [
+            (-Vec3::X, 64.),
+            (Vec3::X, 64.),
+            (-Vec3::Y, 64.),
+            (Vec3::Y, 64.),
+            (-Vec3::Z, 64.),
+            (Vec3::Z, 0.),
+        ]
+        .into_iter()
+        .map(|(normal, d)| Face {
+            plane: Plane { normal, d },
+            points: [Vec3::ZERO; 3],
+            texture: "water".into(),
+            format: UvFormat::Standard,
+            uv_axes: [Vec3::X, Vec3::Y],
+            offset: Vec2::ZERO,
+            rotation: 0.,
+            scale: Vec2::ONE,
+            surface: None,
+        })
+        .collect();
+        let mut pool = Entity::default();
+        pool.properties
+            .insert("classname".into(), "water_volume".into());
+        pool.properties.insert("water_priority".into(), "3".into());
+        pool.brushes = vec![crate::map::Brush { faces }];
+        let mut world = Entity::default();
+        world
+            .properties
+            .insert("classname".into(), "worldspawn".into());
+        let map = MapFile {
+            entities: vec![world, pool],
+            ..Default::default()
+        };
+        let built = build(
+            &map,
+            &IndexMap::new(),
+            &Settings::default(),
+            &BuildOptions {
+                scene_name: "pool".into(),
+                mesh_dir: "res://pool".into(),
+            },
+        );
+        let pool = built
+            .scene
+            .root
+            .children
+            .iter()
+            .find(|n| n.name == "water_volume")
+            .unwrap();
+        assert_eq!(pool.class, "Area3D");
+        assert_eq!(
+            pool.children
+                .iter()
+                .filter(|n| n.class == "CollisionShape3D")
+                .count(),
+            1
+        );
         // Only the top: two triangles.
-        let mesh=built.meshes.iter().find(|m|m.file_name=="water_volume.obj").unwrap();
-        assert_eq!(mesh.contents.lines().filter(|l|l.starts_with("f ")).count(),2);
-        let water=pool.children.iter().find(|n|n.name=="heron_water").unwrap();
-        assert_eq!(water.groups,["heron_water"]);
-        let Some((_,GdValue::Str(json)))=water.properties.iter().find(|p|p.0=="data_json") else {panic!()};
-        let data:serde_json::Value=serde_json::from_str(json).unwrap();
-        assert_eq!(data["priority"],3);
-        assert_eq!(data["volumes"][0]["planes"].as_array().unwrap().len(),6);
+        let mesh = built
+            .meshes
+            .iter()
+            .find(|m| m.file_name == "water_volume.obj")
+            .unwrap();
+        assert_eq!(
+            mesh.contents
+                .lines()
+                .filter(|l| l.starts_with("f "))
+                .count(),
+            2
+        );
+        let water = pool
+            .children
+            .iter()
+            .find(|n| n.name == "heron_water")
+            .unwrap();
+        assert_eq!(water.groups, ["heron_water"]);
+        let Some((_, GdValue::Str(json))) = water.properties.iter().find(|p| p.0 == "data_json")
+        else {
+            panic!()
+        };
+        let data: serde_json::Value = serde_json::from_str(json).unwrap();
+        assert_eq!(data["priority"], 3);
+        assert_eq!(data["volumes"][0]["planes"].as_array().unwrap().len(), 6);
         assert!(crate::writer::godot_water::used(&built.scene));
-        let text=crate::writer::tscn::write(&built.scene);
-        assert!(text.contains(r#"[sub_resource type="ShaderMaterial" id="HeronWater_water_volume_0"]"#),"{text}");
-        assert!(text.contains("surface_material_override/0 = SubResource(\"HeronWater_water_volume_0\")"),"{text}");
-        assert!(text.find("id=\"HeronWaterShader\"").unwrap()<text.find("id=\"HeronWater_water_volume_0\"").unwrap());
+        let text = crate::writer::tscn::write(&built.scene);
+        assert!(
+            text.contains(r#"[sub_resource type="ShaderMaterial" id="HeronWater_water_volume_0"]"#),
+            "{text}"
+        );
+        assert!(
+            text.contains(
+                "surface_material_override/0 = SubResource(\"HeronWater_water_volume_0\")"
+            ),
+            "{text}"
+        );
+        assert!(
+            text.find("id=\"HeronWaterShader\"").unwrap()
+                < text.find("id=\"HeronWater_water_volume_0\"").unwrap()
+        );
     }
 
     #[test]
@@ -1542,7 +1893,7 @@ pub fn build_level(
         let name = entity_node_name(entity, recipe, index, &mut used_names);
         let mut collision_mesh = level::CollisionMesh::default();
 
-        let mut animation_pivot=None;
+        let mut animation_pivot = None;
         let mut out = level::Entity {
             name: name.clone(),
             classname: entity.classname().to_string(),
@@ -1559,7 +1910,11 @@ pub fn build_level(
             ..Default::default()
         };
 
-        if recipe.is_solid && !(entity.brushes.is_empty() && entity.patches.is_empty() && entity.external_surfaces.is_empty()) {
+        if recipe.is_solid
+            && !(entity.brushes.is_empty()
+                && entity.patches.is_empty()
+                && entity.external_surfaces.is_empty())
+        {
             let mut geo = geometry::build_solid(
                 entity,
                 settings,
@@ -1567,7 +1922,11 @@ pub fn build_level(
                     origin_kind: recipe.origin,
                     collision: match (options.collision, recipe.collision) {
                         (false, _) => CollisionKind::None,
-                        (true, kind) if crate::water::enabled(entity) && kind != CollisionKind::None => CollisionKind::Convex,
+                        (true, kind)
+                            if crate::water::enabled(entity) && kind != CollisionKind::None =>
+                        {
+                            CollisionKind::Convex
+                        }
                         (true, CollisionKind::Concave) if options.convex_collision => {
                             CollisionKind::Convex
                         }
@@ -1594,16 +1953,33 @@ pub fn build_level(
             // The baseline water draws a surface; its closed hull remains a sensor.
             if crate::water::enabled(entity) && crate::water::baseline(entity) {
                 for surface in &mut geo.mesh.surfaces {
-                    surface.indices=surface.indices.chunks_exact(3).filter(|triangle|triangle.iter().all(|i|surface.vertices[*i as usize].normal.y>0.5)).flatten().copied().collect();
+                    surface.indices = surface
+                        .indices
+                        .chunks_exact(3)
+                        .filter(|triangle| {
+                            triangle
+                                .iter()
+                                .all(|i| surface.vertices[*i as usize].normal.y > 0.5)
+                        })
+                        .flatten()
+                        .copied()
+                        .collect();
                 }
-                geo.mesh.surfaces.retain(|surface|!surface.indices.is_empty());
+                geo.mesh
+                    .surfaces
+                    .retain(|surface| !surface.indices.is_empty());
             }
             let shared = if recipe.origin == OriginKind::Brush && !recipe.occluder {
                 crate::instancing::apply(entity, &mut geo, settings.scale_factor)
-            } else { None };
-            animation_pivot=geo.bounds.map(|b|b.center());
+            } else {
+                None
+            };
+            animation_pivot = geo.bounds.map(|b| b.center());
             let origin = math::to_godot(geo.origin) * settings.scale_factor;
-            out.transform = shared.unwrap_or_else(|| level::Transform { translation: [origin.x, origin.y, origin.z], ..Default::default() });
+            out.transform = shared.unwrap_or_else(|| level::Transform {
+                translation: [origin.x, origin.y, origin.z],
+                ..Default::default()
+            });
 
             if options.inline_collision {
                 collision_mesh.triangles = geo
@@ -1645,7 +2021,11 @@ pub fn build_level(
                 if !geo.mesh.is_empty() {
                     let text = crate::writer::obj::write(
                         &geo.mesh,
-                        if entity.external_asset.is_some() { "imported_model" } else { &name },
+                        if entity.external_asset.is_some() {
+                            "imported_model"
+                        } else {
+                            &name
+                        },
                         crate::writer::obj::ObjOptions {
                             flip_faces: settings.flip_faces,
                             flip_uv_v: !settings.flip_uv_v,
@@ -1675,57 +2055,61 @@ pub fn build_level(
                     stats.triangles += geo.mesh.triangle_count();
                 }
             } else {
-            let empty_collision = crate::writer::gltf::Collision::default();
-            let written = crate::writer::gltf::write(
-                &geo.mesh,
-                if options.mesh_collision {
-                    &collision
-                } else {
-                    &empty_collision
-                },
-                if entity.external_asset.is_some() { "imported_model" } else { &name },
-                crate::writer::gltf::GltfOptions {
-                    flip_faces: settings.flip_faces,
-                    flip_uv_v: settings.flip_uv_v,
-                },
-            );
-            if let Some(mut glb) = written {
-                crate::writer::gltf::embed_materials(&mut glb, &albedos, settings.flip_uv_v);
-                let file_name = format!("{name}.glb");
-                out.surfaces = glb
-                    .textures
-                    .iter()
-                    .enumerate()
-                    .map(|(primitive, texture)| level::Surface {
-                        primitive,
-                        texture: texture.clone(),
-                    })
-                    .collect();
-                if let Some((mesh, parts)) = glb.collision {
-                    out.collision = Some(level::Collision {
-                        kind: collision.kind(),
-                        mesh,
-                        parts,
-                        // An Area3D reports overlaps and lets bodies through;
-                        // anything else is a wall. `default_node_class` gives
-                        // every `trigger_*` an Area3D, and the FGD names the
-                        // rest with `node=Area3D`.
-                        sensor: recipe.node_class == "Area3D",
+                let empty_collision = crate::writer::gltf::Collision::default();
+                let written = crate::writer::gltf::write(
+                    &geo.mesh,
+                    if options.mesh_collision {
+                        &collision
+                    } else {
+                        &empty_collision
+                    },
+                    if entity.external_asset.is_some() {
+                        "imported_model"
+                    } else {
+                        &name
+                    },
+                    crate::writer::gltf::GltfOptions {
+                        flip_faces: settings.flip_faces,
+                        flip_uv_v: settings.flip_uv_v,
+                    },
+                );
+                if let Some(mut glb) = written {
+                    crate::writer::gltf::embed_materials(&mut glb, &albedos, settings.flip_uv_v);
+                    let file_name = format!("{name}.glb");
+                    out.surfaces = glb
+                        .textures
+                        .iter()
+                        .enumerate()
+                        .map(|(primitive, texture)| level::Surface {
+                            primitive,
+                            texture: texture.clone(),
+                        })
+                        .collect();
+                    if let Some((mesh, parts)) = glb.collision {
+                        out.collision = Some(level::Collision {
+                            kind: collision.kind(),
+                            mesh,
+                            parts,
+                            // An Area3D reports overlaps and lets bodies through;
+                            // anything else is a wall. `default_node_class` gives
+                            // every `trigger_*` an Area3D, and the FGD names the
+                            // rest with `node=Area3D`.
+                            sensor: recipe.node_class == "Area3D",
+                        });
+                        stats.collision_shapes += parts;
+                    }
+                    out.mesh = Some(if options.mesh_dir.is_empty() {
+                        file_name.clone()
+                    } else {
+                        format!("{}/{file_name}", options.mesh_dir.trim_end_matches('/'))
                     });
-                    stats.collision_shapes += parts;
+                    meshes.push(level::MeshFile {
+                        file_name,
+                        bytes: glb.bytes,
+                    });
+                    stats.surfaces += out.surfaces.len();
+                    stats.triangles += geo.mesh.triangle_count();
                 }
-                out.mesh = Some(if options.mesh_dir.is_empty() {
-                    file_name.clone()
-                } else {
-                    format!("{}/{file_name}", options.mesh_dir.trim_end_matches('/'))
-                });
-                meshes.push(level::MeshFile {
-                    file_name,
-                    bytes: glb.bytes,
-                });
-                stats.surfaces += out.surfaces.len();
-                stats.triangles += geo.mesh.triangle_count();
-            }
             }
             if !options.mesh_collision && out.collision.is_none() && !collision.is_empty() {
                 // The collision stayed out of the `.glb`; the level record
@@ -1768,17 +2152,49 @@ pub fn build_level(
                 .insert(key, level::Value::from_fgd(definition, &raw));
         }
 
-        if out.properties.contains_key("animation_keys") && entity.get("animation_pivot").is_none() {
-            if let Some(p)=animation_pivot {out.properties.insert("animation_pivot".into(),level::Value::Vec3([p.x,p.y,p.z]));}
+        if out.properties.contains_key("animation_keys") && entity.get("animation_pivot").is_none()
+        {
+            if let Some(p) = animation_pivot {
+                out.properties.insert(
+                    "animation_pivot".into(),
+                    level::Value::Vec3([p.x, p.y, p.z]),
+                );
+            }
         }
-        if matches!(entity.classname(),"func_button"|"trigger_once"|"trigger_multiple") {
-            let volumes:Vec<Vec<[f64;4]>>=entity.brushes.iter().map(|b|b.faces.iter().map(|f|[f.plane.normal.y,f.plane.normal.z,f.plane.normal.x,f.plane.d*settings.scale_factor]).collect()).collect();
-            out.properties.insert("_heron_trigger_volumes".into(),level::Value::String(serde_json::to_string(&volumes).unwrap()));
+        if matches!(
+            entity.classname(),
+            "func_button" | "trigger_once" | "trigger_multiple"
+        ) {
+            let volumes: Vec<Vec<[f64; 4]>> = entity
+                .brushes
+                .iter()
+                .map(|b| {
+                    b.faces
+                        .iter()
+                        .map(|f| {
+                            [
+                                f.plane.normal.y,
+                                f.plane.normal.z,
+                                f.plane.normal.x,
+                                f.plane.d * settings.scale_factor,
+                            ]
+                        })
+                        .collect()
+                })
+                .collect();
+            out.properties.insert(
+                "_heron_trigger_volumes".into(),
+                level::Value::String(serde_json::to_string(&volumes).unwrap()),
+            );
         }
-        crate::water::attach(entity,&mut out,settings.scale_factor,&mut warnings);
-        if let Some(water)=crate::water::build(entity,&out,settings.scale_factor) {
-            if let Some(mesh)=meshes.last_mut().filter(|mesh|out.mesh.as_ref().is_some_and(|name|name.rsplit('/').next()==Some(mesh.file_name.as_str()))) {
-                crate::water::glb_material(&mut mesh.bytes,&water);
+        crate::water::attach(entity, &mut out, settings.scale_factor, &mut warnings);
+        if let Some(water) = crate::water::build(entity, &out, settings.scale_factor) {
+            if let Some(mesh) = meshes.last_mut().filter(|mesh| {
+                out.mesh
+                    .as_ref()
+                    .is_some_and(|name| name.rsplit('/').next() == Some(mesh.file_name.as_str()))
+            }) {
+                crate::water::glb_material(&mut mesh.bytes, &water);
             }
         }
         stats.entities += 1;
@@ -1792,13 +2208,21 @@ pub fn build_level(
     let (textures, texture_warnings) = level_textures(&library, settings);
     warnings.extend(texture_warnings);
 
-    let aliases = crate::instancing::aliases(meshes.iter().map(|m| (m.file_name.as_str(),m.bytes.as_slice())));
+    let aliases = crate::instancing::aliases(
+        meshes
+            .iter()
+            .map(|m| (m.file_name.as_str(), m.bytes.as_slice())),
+    );
     meshes.retain(|m| !aliases.contains_key(&m.file_name));
     for entity in &mut built {
         if let Some(path) = &mut entity.mesh {
-            let (dir,file) = path.rsplit_once('/').map_or(("",path.as_str()), |v| v);
+            let (dir, file) = path.rsplit_once('/').map_or(("", path.as_str()), |v| v);
             if let Some(original) = aliases.get(file) {
-                *path = if dir.is_empty() { original.clone() } else { format!("{dir}/{original}") };
+                *path = if dir.is_empty() {
+                    original.clone()
+                } else {
+                    format!("{dir}/{original}")
+                };
             }
         }
     }

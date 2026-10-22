@@ -120,9 +120,13 @@ impl Tool {
             Tool::Assemble => translation_key("Assemble brush tool (N)"),
             Tool::Sweep => translation_key("Sweep tool (Y)"),
             Tool::ControlPoint => translation_key("Control point tool (P)"),
-            Tool::Fillet => translation_key("Fillet tool: select preview edges, then Apply or Enter (O)"),
+            Tool::Fillet => {
+                translation_key("Fillet tool: select preview edges, then Apply or Enter (O)")
+            }
             Tool::Paint => translation_key("Paint material (K)"),
-            Tool::Sculpt => translation_key("Sculpt terrain: drag over it, Shift swaps raise and lower (J)"),
+            Tool::Sculpt => {
+                translation_key("Sculpt terrain: drag over it, Shift swaps raise and lower (J)")
+            }
         }
     }
 
@@ -156,7 +160,10 @@ impl Tool {
     ///
     /// The three handle tools differ only in what a drag grabs, so they share their
     /// input handling.
-    #[allow(dead_code, reason = "used once the handle tools are wired into the views")]
+    #[allow(
+        dead_code,
+        reason = "used once the handle tools are wired into the views"
+    )]
     pub fn is_handle_tool(self) -> bool {
         matches!(
             self,

@@ -118,9 +118,9 @@ pub trait Canvas {
     /// Strokes independent segments and clears the path. Backends may stream these
     /// without allocating a separate path for every segment.
     fn stroke_segments(&mut self, segments: &mut dyn Iterator<Item = (Vec2d, Vec2d)>) {
-        for (from,to) in segments {
-            self.move_to(from.x(),from.y());
-            self.line_to(to.x(),to.y());
+        for (from, to) in segments {
+            self.move_to(from.x(), from.y());
+            self.line_to(to.x(), to.y());
         }
         self.stroke();
     }
@@ -138,7 +138,15 @@ pub trait Canvas {
     /// at `origin` and each of its pixels `scale` user units across, sampled without
     /// smoothing: the UV editor's material behind the face. `key` names the image, so a
     /// backend that uploads it can keep the upload while the key stays the same.
-    fn paint_tiled_image(&mut self, key: &str, width: u32, height: u32, pixels: &[u8], origin: (f64, f64), scale: f64);
+    fn paint_tiled_image(
+        &mut self,
+        key: &str,
+        width: u32,
+        height: u32,
+        pixels: &[u8],
+        origin: (f64, f64),
+        scale: f64,
+    );
 
     /// The clip area's bounds in user space, where the backend can tell them.
     fn clip_extents(&mut self) -> Option<(f64, f64, f64, f64)> {
@@ -164,7 +172,14 @@ pub fn arc_segments(radius: f64, sweep: f64) -> usize {
 }
 
 /// The points along an arc, from `angle1` to `angle2`, clockwise when `positive`.
-pub fn arc_points(xc: f64, yc: f64, radius: f64, angle1: f64, mut angle2: f64, positive: bool) -> Vec<(f64, f64)> {
+pub fn arc_points(
+    xc: f64,
+    yc: f64,
+    radius: f64,
+    angle1: f64,
+    mut angle2: f64,
+    positive: bool,
+) -> Vec<(f64, f64)> {
     let tau = std::f64::consts::TAU;
     if positive {
         while angle2 < angle1 {
@@ -213,7 +228,10 @@ impl Raster {
             state: RasterState {
                 transform: tiny_skia::Transform::identity(),
                 color: tiny_skia::Color::BLACK,
-                stroke: tiny_skia::Stroke { width: 2.0, ..Default::default() },
+                stroke: tiny_skia::Stroke {
+                    width: 2.0,
+                    ..Default::default()
+                },
                 fill_rule: tiny_skia::FillRule::Winding,
                 clip: None,
             },
@@ -234,7 +252,11 @@ impl Raster {
                 [c.red(), c.green(), c.blue(), c.alpha()]
             })
             .collect();
-        crate::assets::Rgba { width, height, pixels }
+        crate::assets::Rgba {
+            width,
+            height,
+            pixels,
+        }
     }
 
     fn take_path(&mut self) -> Option<tiny_skia::Path> {
@@ -381,27 +403,54 @@ impl Canvas for Raster {
     fn stroke_preserve(&mut self) {
         if let Some(path) = self.current_path() {
             let paint = self.paint_style();
-            self.pixmap.stroke_path(&path, &paint, &self.state.stroke, tiny_skia::Transform::identity(), self.state.clip.as_ref());
+            self.pixmap.stroke_path(
+                &path,
+                &paint,
+                &self.state.stroke,
+                tiny_skia::Transform::identity(),
+                self.state.clip.as_ref(),
+            );
         }
     }
     fn fill_preserve(&mut self) {
         if let Some(path) = self.current_path() {
             let paint = self.paint_style();
-            self.pixmap.fill_path(&path, &paint, self.state.fill_rule, tiny_skia::Transform::identity(), self.state.clip.as_ref());
+            self.pixmap.fill_path(
+                &path,
+                &paint,
+                self.state.fill_rule,
+                tiny_skia::Transform::identity(),
+                self.state.clip.as_ref(),
+            );
         }
     }
     fn paint(&mut self) {
-        let rect = tiny_skia::Rect::from_xywh(0.0, 0.0, self.pixmap.width() as f32, self.pixmap.height() as f32);
+        let rect = tiny_skia::Rect::from_xywh(
+            0.0,
+            0.0,
+            self.pixmap.width() as f32,
+            self.pixmap.height() as f32,
+        );
         if let Some(rect) = rect {
             let paint = self.paint_style();
-            self.pixmap.fill_rect(rect, &paint, tiny_skia::Transform::identity(), self.state.clip.as_ref());
+            self.pixmap.fill_rect(
+                rect,
+                &paint,
+                tiny_skia::Transform::identity(),
+                self.state.clip.as_ref(),
+            );
         }
     }
     fn clip(&mut self) {
         if let Some(path) = self.take_path() {
             let mut mask = tiny_skia::Mask::new(self.pixmap.width(), self.pixmap.height());
             if let Some(mask) = mask.as_mut() {
-                mask.fill_path(&path, self.state.fill_rule, true, tiny_skia::Transform::identity());
+                mask.fill_path(
+                    &path,
+                    self.state.fill_rule,
+                    true,
+                    tiny_skia::Transform::identity(),
+                );
             }
             // Intersected with the clip already in force, as Cairo's `clip` does.
             if let (Some(mask), Some(old)) = (mask.as_mut(), self.state.clip.as_ref()) {
@@ -412,26 +461,59 @@ impl Canvas for Raster {
             self.state.clip = mask;
         }
     }
-    fn paint_tiled_image(&mut self, _key: &str, width: u32, height: u32, pixels: &[u8], origin: (f64, f64), scale: f64) {
-        let Some(size) = tiny_skia::IntSize::from_wh(width, height) else { return };
+    fn paint_tiled_image(
+        &mut self,
+        _key: &str,
+        width: u32,
+        height: u32,
+        pixels: &[u8],
+        origin: (f64, f64),
+        scale: f64,
+    ) {
+        let Some(size) = tiny_skia::IntSize::from_wh(width, height) else {
+            return;
+        };
         let premultiplied: Vec<u8> = pixels
             .chunks_exact(4)
             .flat_map(|p| {
                 let a = u16::from(p[3]);
-                [(u16::from(p[0]) * a / 255) as u8, (u16::from(p[1]) * a / 255) as u8, (u16::from(p[2]) * a / 255) as u8, p[3]]
+                [
+                    (u16::from(p[0]) * a / 255) as u8,
+                    (u16::from(p[1]) * a / 255) as u8,
+                    (u16::from(p[2]) * a / 255) as u8,
+                    p[3],
+                ]
             })
             .collect();
-        let Some(image) = tiny_skia::Pixmap::from_vec(premultiplied, size) else { return };
+        let Some(image) = tiny_skia::Pixmap::from_vec(premultiplied, size) else {
+            return;
+        };
         let transform = self
             .state
             .transform
             .pre_translate(origin.0 as f32, origin.1 as f32)
             .pre_scale(scale as f32, scale as f32);
         let mut paint = tiny_skia::Paint::default();
-        paint.shader = tiny_skia::Pattern::new(image.as_ref(), tiny_skia::SpreadMode::Repeat, tiny_skia::FilterQuality::Nearest, 1.0, transform);
-        let rect = tiny_skia::Rect::from_xywh(0.0, 0.0, self.pixmap.width() as f32, self.pixmap.height() as f32);
+        paint.shader = tiny_skia::Pattern::new(
+            image.as_ref(),
+            tiny_skia::SpreadMode::Repeat,
+            tiny_skia::FilterQuality::Nearest,
+            1.0,
+            transform,
+        );
+        let rect = tiny_skia::Rect::from_xywh(
+            0.0,
+            0.0,
+            self.pixmap.width() as f32,
+            self.pixmap.height() as f32,
+        );
         if let Some(rect) = rect {
-            self.pixmap.fill_rect(rect, &paint, tiny_skia::Transform::identity(), self.state.clip.as_ref());
+            self.pixmap.fill_rect(
+                rect,
+                &paint,
+                tiny_skia::Transform::identity(),
+                self.state.clip.as_ref(),
+            );
         }
     }
     fn set_font_bold(&mut self, _bold: bool) {}
@@ -440,7 +522,15 @@ impl Canvas for Raster {
     fn text_extents(&mut self, text: &str, size: f64) -> TextExtents {
         // An estimate, for layout only: text is not drawn here.
         let width = text.chars().count() as f64 * size * 0.55;
-        TextExtents { x_bearing: 0.0, y_bearing: -size * 0.75, width, height: size, x_advance: width, line_height: size * 1.2, baseline: size * 0.95 }
+        TextExtents {
+            x_bearing: 0.0,
+            y_bearing: -size * 0.75,
+            width,
+            height: size,
+            x_advance: width,
+            line_height: size * 1.2,
+            baseline: size * 0.95,
+        }
     }
 }
 

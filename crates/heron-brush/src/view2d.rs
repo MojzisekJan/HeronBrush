@@ -4,12 +4,12 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use eframe::egui;
 use editor_core::camera2d::{Camera2d, ViewPlane};
 use editor_core::view2d::{DragState, FlatView, Modifiers, SelectAndMove, ViewportState};
+use eframe::egui;
 
-use crate::egui_canvas::EguiCanvas;
 use crate::editor::Editor;
+use crate::egui_canvas::EguiCanvas;
 
 /// The modifier keys egui reports, as the core reads them. Command stands in for Control
 /// on macOS, where it is what the shortcuts use.
@@ -31,7 +31,7 @@ pub struct Pane2d {
     drag: SelectAndMove,
     /// Where the primary press began, while the button is held.
     pressed_at: Option<egui::Pos2>,
-    paint_stroke: Option<(editor_core::document::MaterialStroke,egui::Pos2)>,
+    paint_stroke: Option<(editor_core::document::MaterialStroke, egui::Pos2)>,
     /// Whether the pointer was over the view last frame.
     hovered: bool,
     /// The modifiers last seen over the view.
@@ -60,7 +60,9 @@ pub struct BaseCache {
 
 #[cfg(test)]
 impl BaseCache {
-    pub(crate) fn invalidate(&mut self) { self.key = None; }
+    pub(crate) fn invalidate(&mut self) {
+        self.key = None;
+    }
 }
 
 /// [`BaseCache`] seen by the core as the keeper of the bottom layer, for one frame.
@@ -76,18 +78,29 @@ impl editor_core::view2d::BaseKeeper for KeepBase<'_> {
         let ppp = self.painter.ctx().pixels_per_point();
         let mut h = std::collections::hash_map::DefaultHasher::new();
         key.hash(&mut h);
-        for v in [self.rect.min.x, self.rect.min.y, self.rect.max.x, self.rect.max.y, ppp] {
+        for v in [
+            self.rect.min.x,
+            self.rect.min.y,
+            self.rect.max.x,
+            self.rect.max.y,
+            ppp,
+        ] {
             v.to_bits().hash(&mut h);
         }
         let key = h.finish();
         if self.cache.key != Some(key) {
             let mut capture = EguiCanvas::capturing(self.painter, self.rect);
             draw(&mut capture);
-            self.cache.meshes = capture.into_capture().into_meshes(self.painter.ctx(), self.painter.clip_rect(), ppp);
+            self.cache.meshes = capture.into_capture().into_meshes(
+                self.painter.ctx(),
+                self.painter.clip_rect(),
+                ppp,
+            );
             self.cache.key = Some(key);
             self.cache.rebuilds += 1;
         }
-        self.painter.extend(self.cache.meshes.iter().cloned().map(egui::Shape::Mesh));
+        self.painter
+            .extend(self.cache.meshes.iter().cloned().map(egui::Shape::Mesh));
     }
 }
 
@@ -149,13 +162,30 @@ impl Pane2d {
             drag: Rc::new(RefCell::new(DragState::default())),
             marquee: Rc::new(RefCell::new(None)),
         };
-        Self { target_pick: Rc::clone(&editor.target_pick), animation: crate::animation_gizmo::Gizmo::linked(&editor.animation_link), flat, drag, pressed_at: None, paint_stroke:None, hovered: false, modifiers: Modifiers::default(), secondary: None, context_click: None, material_paste:None, base: BaseCache::default() }
+        Self {
+            target_pick: Rc::clone(&editor.target_pick),
+            animation: crate::animation_gizmo::Gizmo::linked(&editor.animation_link),
+            flat,
+            drag,
+            pressed_at: None,
+            paint_stroke: None,
+            hovered: false,
+            modifiers: Modifiers::default(),
+            secondary: None,
+            context_click: None,
+            material_paste: None,
+            base: BaseCache::default(),
+        }
     }
 
     /// Lays the pane out in `rect`: input first, then the drawing.
     pub fn show(&mut self, ui: &mut egui::Ui, rect: egui::Rect) {
         let plane = self.flat.state.borrow().camera.plane;
-        let response = ui.interact(rect, ui.id().with(("view2d", plane.name())), egui::Sense::click_and_drag());
+        let response = ui.interact(
+            rect,
+            ui.id().with(("view2d", plane.name())),
+            egui::Sense::click_and_drag(),
+        );
         let viewport = (f64::from(rect.width()), f64::from(rect.height()));
         let local = |p: egui::Pos2| (f64::from(p.x - rect.min.x), f64::from(p.y - rect.min.y));
         let modifiers = modifiers(ui);
@@ -167,37 +197,59 @@ impl Pane2d {
                 i.pointer.primary_pressed(),
                 i.pointer.primary_released(),
                 i.pointer.interact_pos(),
-                i.pointer.button_double_clicked(egui::PointerButton::Primary),
+                i.pointer
+                    .button_double_clicked(egui::PointerButton::Primary),
                 i.pointer.press_origin(),
                 pointer_moved(i),
             )
         });
         let picking = self.target_pick.borrow().source.is_some();
-        if picking && ui.input(|i| i.key_pressed(egui::Key::Escape)) { self.target_pick.borrow_mut().source = None; }
+        if picking && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+            self.target_pick.borrow_mut().source = None;
+        }
         if picking && response.hovered() && ui.input(|i| i.pointer.primary_pressed()) {
             if let Some(at) = pointer {
-                let (x,y) = local(at);
-                self.target_pick.borrow_mut().picked = Some(self.flat.pick_node(x,y,viewport));
+                let (x, y) = local(at);
+                self.target_pick.borrow_mut().picked = Some(self.flat.pick_node(x, y, viewport));
             }
         }
-        if self.pressed_at.is_some() && ui.input(|i| !i.focused || (!i.pointer.primary_down() && !i.pointer.primary_released())) {
+        if self.pressed_at.is_some()
+            && ui.input(|i| {
+                !i.focused || (!i.pointer.primary_down() && !i.pointer.primary_released())
+            })
+        {
             // `cancel`: it closes the move's transaction.
             // `escape` only drops a lasso, and the open transaction then swallowed every
             // later edit from the history.
-            self.drag.cancel(); self.pressed_at=None;self.paint_stroke=None;
+            self.drag.cancel();
+            self.pressed_at = None;
+            self.paint_stroke = None;
         }
-        if pressed && !picking && response.hovered() && self.flat.filters.borrow().animation_frame.is_none() {
+        if pressed
+            && !picking
+            && response.hovered()
+            && self.flat.filters.borrow().animation_frame.is_none()
+        {
             // Where the button went down, not where the pointer is by the time the frame
             // runs: a slow frame can carry the first motion along with the press.
             if let Some(at) = press_origin.or(pointer) {
                 let (x, y) = local(at);
                 // The press is a click about a face first, then the start of a drag.
-                self.paint_stroke=None;
-                if *self.flat.tool.borrow()==editor_core::tool::Tool::Paint && !modifiers.shift {
-                    let mut stroke=self.flat.document.borrow().begin_material_stroke();
-                    self.flat.paint_material_stroke_at(if double {2} else {1},x,y,viewport,&mut stroke);
-                    self.paint_stroke=Some((stroke,at));
-                } else { self.flat.face_click(if double { 2 } else { 1 }, x, y, modifiers, viewport); }
+                self.paint_stroke = None;
+                if *self.flat.tool.borrow() == editor_core::tool::Tool::Paint && !modifiers.shift {
+                    let mut stroke = self.flat.document.borrow().begin_material_stroke();
+                    self.flat.paint_material_stroke_at(
+                        if double { 2 } else { 1 },
+                        x,
+                        y,
+                        viewport,
+                        &mut stroke,
+                    );
+                    self.paint_stroke = Some((stroke, at));
+                } else {
+                    self.flat
+                        .face_click(if double { 2 } else { 1 }, x, y, modifiers, viewport);
+                }
                 self.drag.begin(x, y, modifiers, viewport);
                 self.pressed_at = Some(at);
             }
@@ -205,29 +257,40 @@ impl Pane2d {
         if let (Some(origin), Some(at)) = (self.pressed_at, pointer) {
             let delta = at - origin;
             if moved {
-                if let Some((stroke,last))=self.paint_stroke.as_mut() {
-                    let steps=((last.distance(at)/3.0).ceil() as usize).clamp(1,128);
+                if let Some((stroke, last)) = self.paint_stroke.as_mut() {
+                    let steps = ((last.distance(at) / 3.0).ceil() as usize).clamp(1, 128);
                     for n in 1..=steps {
-                        let point=last.lerp(at,n as f32/steps as f32);let (x,y)=local(point);
-                        self.flat.paint_material_stroke_at(1,x,y,viewport,stroke);
+                        let point = last.lerp(at, n as f32 / steps as f32);
+                        let (x, y) = local(point);
+                        self.flat
+                            .paint_material_stroke_at(1, x, y, viewport, stroke);
                     }
-                    *last=at;
+                    *last = at;
                 }
-                self.drag.update(f64::from(delta.x), f64::from(delta.y), modifiers, viewport);
+                self.drag
+                    .update(f64::from(delta.x), f64::from(delta.y), modifiers, viewport);
             }
             if released {
-                self.drag.end(f64::from(delta.x), f64::from(delta.y), modifiers, viewport);
-                self.pressed_at = None;self.paint_stroke=None;
+                self.drag
+                    .end(f64::from(delta.x), f64::from(delta.y), modifiers, viewport);
+                self.pressed_at = None;
+                self.paint_stroke = None;
             }
         } else if released {
-            self.pressed_at = None;self.paint_stroke=None;
+            self.pressed_at = None;
+            self.paint_stroke = None;
         }
-        if self.pressed_at.is_some() && ui.input(|i| i.key_pressed(egui::Key::Escape)) && self.drag.escape() {
+        if self.pressed_at.is_some()
+            && ui.input(|i| i.key_pressed(egui::Key::Escape))
+            && self.drag.escape()
+        {
             self.pressed_at = None;
         }
 
         // A right-click that stays put opens the menu, `MapViewBase::showPopupMenu`.
-        if ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Secondary)) && response.hovered() {
+        if ui.input(|i| i.pointer.button_pressed(egui::PointerButton::Secondary))
+            && response.hovered()
+        {
             self.secondary = pointer;
         }
         if ui.input(|i| i.pointer.button_released(egui::PointerButton::Secondary)) {
@@ -253,7 +316,10 @@ impl Pane2d {
             }
             _ => self.flat.entity_drag_leave(),
         }
-        if let (Some(dropped), Some(at)) = (response.dnd_release_payload::<crate::widgets::Dragged>(), pointer) {
+        if let (Some(dropped), Some(at)) = (
+            response.dnd_release_payload::<crate::widgets::Dragged>(),
+            pointer,
+        ) {
             let (x, y) = local(at);
             match &*dropped {
                 crate::widgets::Dragged::Class(name) => {
@@ -271,14 +337,23 @@ impl Pane2d {
             self.flat.pan(f64::from(delta.x), f64::from(delta.y));
         }
 
-        if response.clicked_by(egui::PointerButton::Middle) && !picking && !modifiers.shift && !modifiers.control && !modifiers.alt
-            && self.flat.filters.borrow().animation_frame.is_none() {
-            if let Some(at)=pointer { let (x,y)=local(at);self.material_paste=self.flat.face_under_pointer(x,y,viewport); }
+        if response.clicked_by(egui::PointerButton::Middle)
+            && !picking
+            && !modifiers.shift
+            && !modifiers.control
+            && !modifiers.alt
+            && self.flat.filters.borrow().animation_frame.is_none()
+        {
+            if let Some(at) = pointer {
+                let (x, y) = local(at);
+                self.material_paste = self.flat.face_under_pointer(x, y, viewport);
+            }
         }
 
         // Two fingers pan and pinch (crate::touch).
         if let Some(motion) = crate::touch::take_motion(ui.ctx(), plane_view(plane)) {
-            self.flat.pan(f64::from(motion.pan.x), f64::from(motion.pan.y));
+            self.flat
+                .pan(f64::from(motion.pan.x), f64::from(motion.pan.y));
             let (x, y) = local(motion.centre);
             self.flat.zoom_about(f64::from(motion.zoom), x, y, viewport);
         }
@@ -319,11 +394,24 @@ impl Pane2d {
 
         let painter = ui.painter_at(rect);
         let mut canvas = EguiCanvas::new(&painter, rect);
-        let mut keeper = KeepBase { cache: &mut self.base, painter: &painter, rect };
-        self.flat.draw_keeping_base(&mut canvas, Some(&mut keeper), viewport);
-        let camera=self.flat.state.borrow().camera;
-        let tool=*self.flat.tool.borrow();
-        self.animation.show_2d(ui,rect,&self.flat.document,&self.flat.filters,&self.flat.grid,tool,camera);
+        let mut keeper = KeepBase {
+            cache: &mut self.base,
+            painter: &painter,
+            rect,
+        };
+        self.flat
+            .draw_keeping_base(&mut canvas, Some(&mut keeper), viewport);
+        let camera = self.flat.state.borrow().camera;
+        let tool = *self.flat.tool.borrow();
+        self.animation.show_2d(
+            ui,
+            rect,
+            &self.flat.document,
+            &self.flat.filters,
+            &self.flat.grid,
+            tool,
+            camera,
+        );
     }
 }
 
@@ -348,11 +436,21 @@ mod tests {
     use super::*;
 
     fn input() -> egui::RawInput {
-        egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0))), ..Default::default() }
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(800.0, 600.0),
+            )),
+            ..Default::default()
+        }
     }
 
     fn picture(pane: &Pane2d) -> Vec<(Vec<egui::epaint::Vertex>, Vec<u32>)> {
-        pane.base.meshes.iter().map(|m| (m.vertices.clone(), m.indices.clone())).collect()
+        pane.base
+            .meshes
+            .iter()
+            .map(|m| (m.vertices.clone(), m.indices.clone()))
+            .collect()
     }
 
     /// The kept picture of a flat view's bottom layer is the one a fresh pane draws, after
@@ -380,25 +478,44 @@ mod tests {
             frame(pane);
             let mut fresh = Pane2d::new(&editor, ViewPlane::Top);
             fresh.flat.state.borrow_mut().camera = pane.flat.state.borrow().camera;
-            fresh.flat.state.borrow_mut().framed_generation = pane.flat.state.borrow().framed_generation;
+            fresh.flat.state.borrow_mut().framed_generation =
+                pane.flat.state.borrow().framed_generation;
             frame(&mut fresh);
-            assert!(picture(pane) == picture(&fresh), "the kept picture is stale after {what}");
+            assert!(
+                picture(pane) == picture(&fresh),
+                "the kept picture is stale after {what}"
+            );
         };
         frame(&mut pane);
         frame(&mut pane);
-        assert_eq!(pane.base.rebuilds, 1, "an unchanged view draws its picture once");
-        let ids: Vec<_> = map_model::node::brushes_with_ids(editor.document.borrow().tree_world()).into_iter().map(|(id, _)| id).collect();
+        assert_eq!(
+            pane.base.rebuilds, 1,
+            "an unchanged view draws its picture once"
+        );
+        let ids: Vec<_> = map_model::node::brushes_with_ids(editor.document.borrow().tree_world())
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
         assert!(ids.len() >= 2, "the sample has brushes to move");
 
         editor.document.borrow_mut().select_only(ids[0]);
         check(&mut pane, "selecting");
         let rebuilds = pane.base.rebuilds;
-        editor.document.borrow_mut().translate_selection(geometry_math::vec::Vec3d::new(16.0, 0.0, 0.0));
+        editor
+            .document
+            .borrow_mut()
+            .translate_selection(geometry_math::vec::Vec3d::new(16.0, 0.0, 0.0));
         check(&mut pane, "moving the selection");
-        assert_eq!(pane.base.rebuilds, rebuilds, "moving the selection keeps the picture");
+        assert_eq!(
+            pane.base.rebuilds, rebuilds,
+            "moving the selection keeps the picture"
+        );
 
         editor.document.borrow_mut().select_only(ids[1]);
-        editor.document.borrow_mut().translate_selection(geometry_math::vec::Vec3d::new(0.0, 32.0, 0.0));
+        editor
+            .document
+            .borrow_mut()
+            .translate_selection(geometry_math::vec::Vec3d::new(0.0, 32.0, 0.0));
         editor.document.borrow_mut().clear_selection();
         check(&mut pane, "moving another brush");
         editor.document.borrow_mut().undo();
@@ -408,7 +525,9 @@ mod tests {
         editor.document.borrow_mut().set_layer_hidden(0, true);
         check(&mut pane, "hiding a layer");
         editor.document.borrow_mut().set_layer_hidden(0, false);
-        editor_core::preferences::edit(|p| p.edge_color = editor_core::preferences::Color::rgb(1.0, 0.0, 0.0));
+        editor_core::preferences::edit(|p| {
+            p.edge_color = editor_core::preferences::Color::rgb(1.0, 0.0, 0.0)
+        });
         check(&mut pane, "changing the edge colour");
         editor.grid.borrow_mut().increase();
         check(&mut pane, "changing the grid");

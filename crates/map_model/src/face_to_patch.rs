@@ -41,11 +41,23 @@ pub fn create_patches(
     let mut patches = Vec::new();
 
     if n == 3 {
-        patches.push(make_patch(face, point_rows, point_columns, [v[1], v[2], v[0], v[0]], texture_size));
+        patches.push(make_patch(
+            face,
+            point_rows,
+            point_columns,
+            [v[1], v[2], v[0], v[0]],
+            texture_size,
+        ));
         return patches;
     }
 
-    patches.push(make_patch(face, point_rows, point_columns, [v[0], v[1], v[2], v[3]], texture_size));
+    patches.push(make_patch(
+        face,
+        point_rows,
+        point_columns,
+        [v[0], v[1], v[2], v[3]],
+        texture_size,
+    ));
 
     // Extend the quad outward by one vertex on each side of its non-boundary diagonal
     // until fewer than two are left.
@@ -190,7 +202,10 @@ mod tests {
         let world = Bbox3d::from_scalars(-16384.0, 16384.0);
         let brush = shapes::create_cuboid(
             &world,
-            &Bbox3d::new(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0)),
+            &Bbox3d::new(
+                Vec3d::new(-32.0, -32.0, -32.0),
+                Vec3d::new(32.0, 32.0, 32.0),
+            ),
             "stone",
         )
         .expect("a cube");
@@ -219,7 +234,11 @@ mod tests {
         assert_eq!(patch.material_name, "stone");
         // Every control point sits on the face's plane (z = 32).
         for point in &patch.control_points {
-            assert!((point.position.z() - 32.0).abs() < 1e-6, "{:?}", point.position);
+            assert!(
+                (point.position.z() - 32.0).abs() < 1e-6,
+                "{:?}",
+                point.position
+            );
         }
         // The centre control point is the average of the four corners.
         let centre = patch.control_points[4].position;
@@ -256,6 +275,9 @@ mod tests {
         for point in &patches[0].control_points {
             widest = widest.max(point.uv.x().abs());
         }
-        assert!((widest - 0.5).abs() < 1e-4, "the outer edge sits at 0.5: {widest}");
+        assert!(
+            (widest - 0.5).abs() < 1e-4,
+            "the outer edge sits at 0.5: {widest}"
+        );
     }
 }

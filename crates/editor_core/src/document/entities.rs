@@ -1,6 +1,8 @@
 //! Document operations for entities.
 
-use super::{Document, DefaultProperties, Edit, EntityNode, EntityUnder, Node, NodeId, NodeKind, Vec3d, node};
+use super::{
+    node, DefaultProperties, Document, Edit, EntityNode, EntityUnder, Node, NodeId, NodeKind, Vec3d,
+};
 
 impl Document {
     /// The class of the entity with the given id, if it is one.
@@ -99,9 +101,10 @@ impl Document {
         let wanted = classname.to_ascii_lowercase();
         let mut picked: Vec<NodeId> = Vec::new();
         for (id, entity) in node::entities_with_ids(&self.tree.world) {
-            let Some(name) = entity.classname() else { continue };
-            if name.eq_ignore_ascii_case("worldspawn") || name.to_ascii_lowercase() != wanted
-            {
+            let Some(name) = entity.classname() else {
+                continue;
+            };
+            if name.eq_ignore_ascii_case("worldspawn") || name.to_ascii_lowercase() != wanted {
                 continue;
             }
             if !node::layer_of(&self.tree.world, id)
@@ -180,9 +183,7 @@ impl Document {
         self.change_entity(id, |entity| {
             match entity.properties.iter_mut().find(|(k, _)| k == key) {
                 Some((_, existing)) => *existing = value.to_string(),
-                None => entity
-                    .properties
-                    .push((key.to_string(), value.to_string())),
+                None => entity.properties.push((key.to_string(), value.to_string())),
             }
         })
     }
@@ -212,9 +213,7 @@ impl Document {
             let defaults: Vec<(String, String)> = definition
                 .properties
                 .iter()
-                .filter_map(|property| {
-                    Some((property.key.clone(), property.default.clone()?))
-                })
+                .filter_map(|property| Some((property.key.clone(), property.default.clone()?)))
                 .filter(|(key, _)| {
                     let present = entity.property(key).is_some();
                     match mode {
@@ -265,11 +264,7 @@ impl Document {
 
     /// Applies the same change to every entity in `ids`, as one undo step. The `edit`
     /// closure runs once per entity. Returns whether any were changed.
-    fn change_entities(
-        &mut self,
-        ids: &[NodeId],
-        mut edit: impl FnMut(&mut EntityNode),
-    ) -> bool {
+    fn change_entities(&mut self, ids: &[NodeId], mut edit: impl FnMut(&mut EntityNode)) -> bool {
         let mut before = Vec::new();
         let mut after = Vec::new();
         for &id in ids {
@@ -282,7 +277,10 @@ impl Document {
             let mut changed = entity.clone();
             edit(&mut changed);
             before.push(node.clone());
-            after.push(Node { id, kind: NodeKind::Entity(changed) });
+            after.push(Node {
+                id,
+                kind: NodeKind::Entity(changed),
+            });
         }
         if before.is_empty() {
             return false;
@@ -296,7 +294,10 @@ impl Document {
         // A walk of the tree per selected node is fine for a few; for thousands of
         // selected lights it was a quarter of a second every frame the Entity tab showed.
         if self.selection.len() > 8 {
-            return node::entities_with_ids(&self.tree.world).into_iter().filter(|(id, _)| self.selection.contains(id)).collect();
+            return node::entities_with_ids(&self.tree.world)
+                .into_iter()
+                .filter(|(id, _)| self.selection.contains(id))
+                .collect();
         }
         self.selection
             .iter()
@@ -329,13 +330,7 @@ impl Document {
     /// Sets or clears one bit of a flags property on every entity in `ids`, each keeping
     /// its own value for the other bits, in one undo step. `SmartFlagsEditor`'s per-bit
     /// edit, which is what makes a multi-entity flags edit safe.
-    pub fn set_entity_flag_on(
-        &mut self,
-        ids: &[NodeId],
-        key: &str,
-        bit: i64,
-        set: bool,
-    ) -> bool {
+    pub fn set_entity_flag_on(&mut self, ids: &[NodeId], key: &str, bit: i64, set: bool) -> bool {
         self.set_entity_flag_seeded_on(ids, key, 0, bit, set)
     }
 
@@ -358,7 +353,9 @@ impl Document {
             let updated = if set { current | bit } else { current & !bit };
             match entity.properties.iter_mut().find(|(k, _)| k == key) {
                 Some((_, existing)) => *existing = updated.to_string(),
-                None => entity.properties.push((key.to_string(), updated.to_string())),
+                None => entity
+                    .properties
+                    .push((key.to_string(), updated.to_string())),
             }
         })
     }
@@ -423,7 +420,9 @@ impl Document {
                 let Some(node) = node::find_node(&self.tree.world, entity_id).cloned() else {
                     continue;
                 };
-                let NodeKind::Entity(entity) = &node.kind else { continue };
+                let NodeKind::Entity(entity) = &node.kind else {
+                    continue;
+                };
 
                 let (leaving, staying): (Vec<Node>, Vec<Node>) = entity
                     .children
@@ -434,7 +433,10 @@ impl Document {
                     continue;
                 }
                 moved_ids.extend(leaving.iter().map(|child| child.id));
-                additions.push(Edit::Added { layer: layer_index, nodes: leaving });
+                additions.push(Edit::Added {
+                    layer: layer_index,
+                    nodes: leaving,
+                });
 
                 if staying.is_empty() {
                     // The entity has nothing left; it goes with its brushes.
@@ -488,7 +490,8 @@ impl Document {
             let restored: Vec<(String, String)> = protected
                 .iter()
                 .filter_map(|key| {
-                    self.linked_sibling_property(*id, key).map(|v| (key.clone(), v))
+                    self.linked_sibling_property(*id, key)
+                        .map(|v| (key.clone(), v))
                 })
                 .collect();
             plans.push((*id, restored));
@@ -516,14 +519,10 @@ impl Document {
     /// the same position in another member of its linked set.
     fn linked_sibling_property(&self, entity_id: NodeId, key: &str) -> Option<String> {
         // The linked set and the group the entity sits in.
-        let (_, members) = self
-            .linked_sets()
-            .into_iter()
-            .find(|(_, ids)| {
-                ids.iter().any(|group_id| {
-                    node::contents_of(&self.tree.world, *group_id).contains(&entity_id)
-                })
-            })?;
+        let (_, members) = self.linked_sets().into_iter().find(|(_, ids)| {
+            ids.iter()
+                .any(|group_id| node::contents_of(&self.tree.world, *group_id).contains(&entity_id))
+        })?;
         let own_group = *members.iter().find(|group_id| {
             node::contents_of(&self.tree.world, **group_id).contains(&entity_id)
         })?;
@@ -548,9 +547,10 @@ impl Document {
     /// Which child of `group_id` the entity is, by position.
     fn entity_position_in_group(&self, group_id: NodeId, entity_id: NodeId) -> Option<usize> {
         match node::find_node(&self.tree.world, group_id).map(|n| &n.kind) {
-            Some(NodeKind::Group(group)) => {
-                group.children.iter().position(|child| child.id == entity_id)
-            }
+            Some(NodeKind::Group(group)) => group
+                .children
+                .iter()
+                .position(|child| child.id == entity_id),
             _ => None,
         }
     }

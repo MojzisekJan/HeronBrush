@@ -30,13 +30,20 @@ mod tests {
         let mut document = crate::document::Document::new(crate::world::WorldBounds::default());
         document.create_point_entity("ambient_sound", geometry_math::vec::Vec3d::zero());
         for definition in definitions().placeable() {
-            assert!(crate::entity_icons::kind(&definition.name).is_some(), "missing icon: {}", definition.name);
+            assert!(
+                crate::entity_icons::kind(&definition.name).is_some(),
+                "missing icon: {}",
+                definition.name
+            );
             if definition.kind == map_model::fgd::DefinitionKind::Point {
                 let sprite = crate::entity_icons::sprite(&definition.name);
                 assert!(sprite.pixels.chunks_exact(4).any(|p| p[3] > 0));
                 assert!(sprite.pixels.chunks_exact(4).any(|p| p[3] == 0));
                 if definition.name != "light" {
-                    assert!(document.materials().get(&format!("#model/builtin/{}", definition.name)).is_some());
+                    assert!(document
+                        .materials()
+                        .get(&format!("#model/builtin/{}", definition.name))
+                        .is_some());
                 }
             }
         }

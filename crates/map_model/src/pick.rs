@@ -32,9 +32,7 @@ pub struct Hit {
 pub fn pick(world: &World, ray: &Ray3d) -> Vec<Hit> {
     let mut hits: Vec<Hit> = brushes_with_ids(world)
         .into_iter()
-        .filter(|(_, brush)| {
-            intersection::intersect_ray_bbox(ray, &brush.bounds()).is_some()
-        })
+        .filter(|(_, brush)| intersection::intersect_ray_bbox(ray, &brush.bounds()).is_some())
         .filter_map(|(node, brush)| {
             // The nearest face the ray enters through.
             let mut nearest: Option<(usize, f64)> = None;

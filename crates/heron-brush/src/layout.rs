@@ -7,8 +7,8 @@
 
 use std::collections::HashMap;
 
-use eframe::egui;
 use editor_core::preferences::Layout;
+use eframe::egui;
 
 use crate::theme;
 
@@ -19,7 +19,12 @@ enum Node {
     /// Several views one at a time; which one shows is kept per pane.
     Cycling(&'static str, Vec<usize>),
     /// Two nodes side by side (`horizontal`) or one above the other, with a splitter.
-    Split { id: &'static str, horizontal: bool, first: Box<Node>, second: Box<Node> },
+    Split {
+        id: &'static str,
+        horizontal: bool,
+        first: Box<Node>,
+        second: Box<Node>,
+    },
 }
 
 /// The arrangement's state, kept across frames.
@@ -42,7 +47,12 @@ pub struct Panes {
 impl Panes {
     fn tree(&self, layout: Layout) -> Node {
         use Node::*;
-        let split = |id, horizontal, a, b| Split { id, horizontal, first: Box::new(a), second: Box::new(b) };
+        let split = |id, horizontal, a, b| Split {
+            id,
+            horizontal,
+            first: Box::new(a),
+            second: Box::new(b),
+        };
         if self.detached {
             return match layout {
                 Layout::One | Layout::Two => Cycling("flat", vec![1, 2, 3]),
@@ -54,20 +64,39 @@ impl Panes {
             Layout::One => Cycling("all", vec![0, 1, 2, 3]),
             Layout::Two => split("h", true, View(0), Cycling("flat", vec![1, 2, 3])),
             // The top view above the two side views.
-            Layout::Three => split("h", true, View(0), split("right", false, View(1), Cycling("sides", vec![2, 3]))),
+            Layout::Three => split(
+                "h",
+                true,
+                View(0),
+                split("right", false, View(1), Cycling("sides", vec![2, 3])),
+            ),
             // `FourPaneMapView`: 3D over YZ on the left, XY over XZ on the right, so X runs
             // across the screen in both right-hand views.
-            Layout::Four => split("h", true, split("left", false, View(0), View(3)), split("right", false, View(1), View(2))),
+            Layout::Four => split(
+                "h",
+                true,
+                split("left", false, View(0), View(3)),
+                split("right", false, View(1), View(2)),
+            ),
         }
     }
 
     /// Where each view goes in `area` this frame, by view number. Draws the splitters and
     /// lets them be dragged.
-    pub fn arrange(&mut self, ui: &egui::Ui, area: egui::Rect, layout: Layout) -> Vec<(usize, egui::Rect)> {
+    pub fn arrange(
+        &mut self,
+        ui: &egui::Ui,
+        area: egui::Rect,
+        layout: Layout,
+    ) -> Vec<(usize, egui::Rect)> {
         let mut out = Vec::new();
         // A maximised view is a state of an arrangement, not of the views: a new layout,
         // or the 3D view leaving or coming back, starts without one.
-        if self.built.replace((layout, self.detached)).is_some_and(|built| built != (layout, self.detached)) {
+        if self
+            .built
+            .replace((layout, self.detached))
+            .is_some_and(|built| built != (layout, self.detached))
+        {
             self.maximised = None;
         }
         if let Some(view) = self.maximised {
@@ -85,28 +114,45 @@ impl Panes {
         out
     }
 
-    fn place(&mut self, ui: &egui::Ui, node: &Node, area: egui::Rect, out: &mut Vec<(usize, egui::Rect)>) {
+    fn place(
+        &mut self,
+        ui: &egui::Ui,
+        node: &Node,
+        area: egui::Rect,
+        out: &mut Vec<(usize, egui::Rect)>,
+    ) {
         match node {
             Node::View(view) => out.push((*view, area)),
             Node::Cycling(id, views) => {
                 let at = *self.cycles.get(id).unwrap_or(&0) % views.len();
                 out.push((views[at], area));
             }
-            Node::Split { id, horizontal, first, second } => {
+            Node::Split {
+                id,
+                horizontal,
+                first,
+                second,
+            } => {
                 let line = 1.0;
                 let fraction = *self.splits.get(id).unwrap_or(&0.5);
                 let (a, bar, b) = if *horizontal {
                     let x = area.left() + ((area.width() - line) * fraction).round();
                     (
                         egui::Rect::from_min_max(area.min, egui::pos2(x, area.bottom())),
-                        egui::Rect::from_min_max(egui::pos2(x, area.top()), egui::pos2(x + line, area.bottom())),
+                        egui::Rect::from_min_max(
+                            egui::pos2(x, area.top()),
+                            egui::pos2(x + line, area.bottom()),
+                        ),
                         egui::Rect::from_min_max(egui::pos2(x + line, area.top()), area.max),
                     )
                 } else {
                     let y = area.top() + ((area.height() - line) * fraction).round();
                     (
                         egui::Rect::from_min_max(area.min, egui::pos2(area.right(), y)),
-                        egui::Rect::from_min_max(egui::pos2(area.left(), y), egui::pos2(area.right(), y + line)),
+                        egui::Rect::from_min_max(
+                            egui::pos2(area.left(), y),
+                            egui::pos2(area.right(), y + line),
+                        ),
                         egui::Rect::from_min_max(egui::pos2(area.left(), y + line), area.max),
                     )
                 };
@@ -174,14 +220,33 @@ fn collect_cycling(node: &Node, out: &mut Vec<(&'static str, Vec<usize>)>) {
 
 /// A draggable splitter line. `vertical_line` means it runs top to bottom.
 fn splitter(ui: &egui::Ui, id: &str, line: egui::Rect, vertical_line: bool) -> Option<egui::Pos2> {
-    let grab = if vertical_line { line.expand2(egui::vec2(4.0, 0.0)) } else { line.expand2(egui::vec2(0.0, 4.0)) };
+    let grab = if vertical_line {
+        line.expand2(egui::vec2(4.0, 0.0))
+    } else {
+        line.expand2(egui::vec2(0.0, 4.0))
+    };
     let response = ui.interact(grab, ui.id().with(("splitter", id)), egui::Sense::drag());
     let active = response.hovered() || response.dragged();
-    ui.painter().rect_filled(line, 0.0, if active { theme::accent() } else { theme::base() });
+    ui.painter().rect_filled(
+        line,
+        0.0,
+        if active {
+            theme::accent()
+        } else {
+            theme::base()
+        },
+    );
     if active {
-        ui.ctx().set_cursor_icon(if vertical_line { egui::CursorIcon::ResizeHorizontal } else { egui::CursorIcon::ResizeVertical });
+        ui.ctx().set_cursor_icon(if vertical_line {
+            egui::CursorIcon::ResizeHorizontal
+        } else {
+            egui::CursorIcon::ResizeVertical
+        });
     }
-    response.dragged().then(|| response.interact_pointer_pos()).flatten()
+    response
+        .dragged()
+        .then(|| response.interact_pointer_pos())
+        .flatten()
 }
 
 /// A view's name as a small pill in its top-left corner, laid over the name the shared
@@ -195,12 +260,38 @@ pub fn view_label(ui: &egui::Ui, rect: egui::Rect, view: usize, focused: bool) -
         _ => "Side",
     });
     let font = egui::FontId::proportional(theme::text_size() - 2.0);
-    let width = ui.fonts_mut(|f| f.layout_no_wrap(name.to_string(), font.clone(), theme::fg()).size().x);
+    let width = ui.fonts_mut(|f| {
+        f.layout_no_wrap(name.to_string(), font.clone(), theme::fg())
+            .size()
+            .x
+    });
     // Wide enough to cover the 12px name the 2D drawing puts at (8, 18).
-    let pill = egui::Rect::from_min_size(rect.min + egui::vec2(5.0, 5.0), egui::vec2(width + 16.0, 18.0));
+    let pill = egui::Rect::from_min_size(
+        rect.min + egui::vec2(5.0, 5.0),
+        egui::vec2(width + 16.0, 18.0),
+    );
     let painter = ui.painter_at(rect);
     painter.rect_filled(pill, egui::CornerRadius::same(9), theme::base());
-    painter.rect_stroke(pill, egui::CornerRadius::same(9), egui::Stroke::new(1.0, if focused { theme::accent() } else { theme::border() }), egui::StrokeKind::Inside);
-    crate::theme::text(&painter, pill.center(), egui::Align2::CENTER_CENTER, name, font, if focused { theme::fg() } else { theme::dim() });
+    painter.rect_stroke(
+        pill,
+        egui::CornerRadius::same(9),
+        egui::Stroke::new(
+            1.0,
+            if focused {
+                theme::accent()
+            } else {
+                theme::border()
+            },
+        ),
+        egui::StrokeKind::Inside,
+    );
+    crate::theme::text(
+        &painter,
+        pill.center(),
+        egui::Align2::CENTER_CENTER,
+        name,
+        font,
+        if focused { theme::fg() } else { theme::dim() },
+    );
     pill
 }

@@ -221,22 +221,20 @@ mod tests {
             ))),
             Some(1.0)
         );
-        assert!(
-            path.pick(Vec2d::new(90.0, 90.0), 0.0, |p| Some(Vec2d::new(
+        assert!(path
+            .pick(Vec2d::new(90.0, 90.0), 0.0, |p| Some(Vec2d::new(
                 p.x(),
                 p.y()
             )))
-            .is_none()
-        );
+            .is_none());
         pose.clip.tracks[0][0].interpolation = Interpolation::Hold;
         let hold = Path::new(&pose).unwrap();
         assert_eq!(hold.segments.iter().filter(|s| s.2).count(), 1);
-        assert!(
-            hold.segments
-                .iter()
-                .filter(|s| !s.2)
-                .all(|(a, b, _)| a.x() == b.x())
-        );
+        assert!(hold
+            .segments
+            .iter()
+            .filter(|s| !s.2)
+            .all(|(a, b, _)| a.x() == b.x()));
     }
     #[test]
     fn bezier_path_includes_excursions_with_coincident_endpoints() {

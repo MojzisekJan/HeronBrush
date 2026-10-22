@@ -458,13 +458,12 @@ mod tests {
         let fs = AssetFileSystem::mount(&[root.clone()]);
         assert_eq!(fs.read("thing.txt"), Some(b"ten".to_vec()));
         assert_eq!(fs.read("stored.txt"), Some(b"stored".to_vec()));
-        assert!(
-            fs.resolve("thing.txt")
-                .unwrap()
-                .display_path()
-                .to_string_lossy()
-                .contains("pak10.pak!/thing.txt")
-        );
+        assert!(fs
+            .resolve("thing.txt")
+            .unwrap()
+            .display_path()
+            .to_string_lossy()
+            .contains("pak10.pak!/thing.txt"));
         std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
@@ -507,13 +506,12 @@ mod tests {
         std::fs::write(root.join("bad.pak"), b"broken").unwrap();
         std::fs::write(root.join("loose"), b"okay").unwrap();
         let fs = AssetFileSystem::mount(&[root.clone()]);
-        assert!(
-            fs.resolve("file")
-                .unwrap()
-                .read()
-                .unwrap_err()
-                .contains("CRC")
-        );
+        assert!(fs
+            .resolve("file")
+            .unwrap()
+            .read()
+            .unwrap_err()
+            .contains("CRC"));
         assert_eq!(fs.read("loose"), Some(b"okay".to_vec()));
         assert!(!fs.warnings().is_empty());
         std::fs::remove_dir_all(root).unwrap();

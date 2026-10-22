@@ -47,25 +47,48 @@ impl FlaxOptions {
     }
 }
 
-pub fn validate(level:&Level)->Result<(),String>{
+pub fn validate(level: &Level) -> Result<(), String> {
     use crate::level::Value;
     for entity in &level.entities {
-        if let Some(value)=entity.properties.get("flax_prefab") {
-            if !matches!(value,Value::String(path) if !std::path::Path::new(path).is_absolute()&&path.ends_with(".prefab")&& !path.split('/').any(|part|part=="..")){return Err(format!("{}: flax_prefab must name an project Content/*.prefab resource",entity.name))}
+        if let Some(value) = entity.properties.get("flax_prefab") {
+            if !matches!(value,Value::String(path) if !std::path::Path::new(path).is_absolute()&&path.ends_with(".prefab")&& !path.split('/').any(|part|part==".."))
+            {
+                return Err(format!(
+                    "{}: flax_prefab must name an project Content/*.prefab resource",
+                    entity.name
+                ));
+            }
         }
-        if let Some(value)=entity.properties.get("flax_body_type") {
-            let Value::String(body)=value else{return Err(format!("{}: flax_body_type must be a string",entity.name))};
-            if !matches!(body.as_str(),"static"|"kinematic"|"dynamic"){return Err(format!("{}: invalid flax_body_type {body}",entity.name))}
-            if body=="dynamic" && (entity.properties.contains_key("_heron_animation") || entity.collision.as_ref().is_some_and(|shape|shape.kind!=crate::level::CollisionShape::Convex)){return Err(format!("{}: dynamic Flax bodies require convex collision and cannot use exported animation",entity.name))}
+        if let Some(value) = entity.properties.get("flax_body_type") {
+            let Value::String(body) = value else {
+                return Err(format!("{}: flax_body_type must be a string", entity.name));
+            };
+            if !matches!(body.as_str(), "static" | "kinematic" | "dynamic") {
+                return Err(format!("{}: invalid flax_body_type {body}", entity.name));
+            }
+            if body == "dynamic"
+                && (entity.properties.contains_key("_heron_animation")
+                    || entity
+                        .collision
+                        .as_ref()
+                        .is_some_and(|shape| shape.kind != crate::level::CollisionShape::Convex))
+            {
+                return Err(format!("{}: dynamic Flax bodies require convex collision and cannot use exported animation",entity.name));
+            }
         }
-        if let Some(value)=entity.properties.get("flax_mass") {
-            let mass=match value{Value::Float(value)=>*value,Value::Int(value)=>*value as f64,_=>return Err(format!("{}: flax_mass must be numeric",entity.name))};
-            if !mass.is_finite() || mass<=0.{return Err(format!("{}: flax_mass must be positive",entity.name))}
+        if let Some(value) = entity.properties.get("flax_mass") {
+            let mass = match value {
+                Value::Float(value) => *value,
+                Value::Int(value) => *value as f64,
+                _ => return Err(format!("{}: flax_mass must be numeric", entity.name)),
+            };
+            if !mass.is_finite() || mass <= 0. {
+                return Err(format!("{}: flax_mass must be positive", entity.name));
+            }
         }
     }
     Ok(())
 }
-
 
 /// Centimetres to a metre, which is what Flax measures in.
 const CENTIMETRES: f64 = 100.0;
@@ -76,28 +99,40 @@ pub fn write(level: &Level, options: &FlaxOptions) -> Vec<FlaxFile> {
 }
 
 /// Builds the importer and includes entity-local geometry for persistent native colliders.
-pub fn write_with_collision(level: &Level, options: &FlaxOptions, collision: &[CollisionMesh]) -> Vec<FlaxFile> {
+pub fn write_with_collision(
+    level: &Level,
+    options: &FlaxOptions,
+    collision: &[CollisionMesh],
+) -> Vec<FlaxFile> {
     write_importer(level, options, collision, false)
 }
 
-fn write_importer(level: &Level, options: &FlaxOptions, collision: &[CollisionMesh], live: bool) -> Vec<FlaxFile> {
+fn write_importer(
+    level: &Level,
+    options: &FlaxOptions,
+    collision: &[CollisionMesh],
+    live: bool,
+) -> Vec<FlaxFile> {
     let manifest = super::three::write(level, collision);
-    let metadata_root: serde_json::Value = serde_json::from_str(&manifest).expect("serialized level");
+    let metadata_root: serde_json::Value =
+        serde_json::from_str(&manifest).expect("serialized level");
     let mut entries = String::new();
     for (index, entity) in level.entities.iter().enumerate() {
         let t = &entity.transform;
         let (gx, gy, gz) = (t.translation[0], t.translation[1], t.translation[2]);
-        let (fx, fy, fz) = (
-            gx * CENTIMETRES,
-            gy * CENTIMETRES,
-            -gz * CENTIMETRES,
-        );
+        let (fx, fy, fz) = (gx * CENTIMETRES, gy * CENTIMETRES, -gz * CENTIMETRES);
         // Reflect the full YXZ rotation across Z. Components are [pitch, yaw, roll].
-        let q = glam::DQuat::from_euler(glam::EulerRot::YXZ,
-            t.rotation_yxz[1], t.rotation_yxz[0], t.rotation_yxz[2]);
+        let q = glam::DQuat::from_euler(
+            glam::EulerRot::YXZ,
+            t.rotation_yxz[1],
+            t.rotation_yxz[0],
+            t.rotation_yxz[2],
+        );
         let (qx, qy, qz, qw) = (-q.x, -q.y, q.z, q.w);
         let [sx, sy, sz] = t.scale;
-        let metadata = escape(&serde_json::to_string(&metadata_root["entities"][index]).expect("finite level entity"));
+        let metadata = escape(
+            &serde_json::to_string(&metadata_root["entities"][index]).expect("finite level entity"),
+        );
         entries.push_str(&format!(
             "        new Placement(\"{name}\", \"{classname}\", {mesh}, \
              new Vector3({fx:.3}f, {fy:.3}f, {fz:.3}f), \
@@ -118,15 +153,28 @@ fn write_importer(level: &Level, options: &FlaxOptions, collision: &[CollisionMe
         ));
     }
 
-    let class_name = if live { "HeronBrushLiveBuilder" } else { "HeronBrushLevel" };
+    let class_name = if live {
+        "HeronBrushLiveBuilder"
+    } else {
+        "HeronBrushLevel"
+    };
     let placements = if live {
         include_str!("flax_live_placements.cs").to_string()
     } else {
-        format!("private static readonly Placement[] Placements =\n        {{\n{entries}        }};")
+        format!(
+            "private static readonly Placement[] Placements =\n        {{\n{entries}        }};"
+        )
     };
-    let import_skip = if live { "if (File.Exists(path + \".flax\")) continue;" } else { "" };
+    let import_skip = if live {
+        "if (File.Exists(path + \".flax\")) continue;"
+    } else {
+        ""
+    };
     // Editor live previews remain at the document pose and do not need the runtime companion.
-    let animation_attach = if live { "" } else { r#"            foreach (var placement in Placements)
+    let animation_attach = if live {
+        ""
+    } else {
+        r#"            foreach (var placement in Placements)
             {
                 var properties = JObject.Parse(placement.MetadataJson)["properties"];
                 string waterJson = (string)properties?["_heron_water"]?["value"];
@@ -146,7 +194,8 @@ fn write_importer(level: &Level, options: &FlaxOptions, collision: &[CollisionMe
                     trigger.Targets = resolved.ToArray();
                 }
             }
-"# };
+"#
+    };
     let content = escape(&options.content_dir);
     let mut script = format!(
         r#"// Generated by Heron Brush. A Flax Engine editor script.
@@ -450,39 +499,63 @@ namespace Game
 }}
 "#,
         level = escape(&level.name),
-        source_key=namespace(level,options),
-        bindings_helper=include_str!("flax_bindings.cs"),
+        source_key = namespace(level, options),
+        bindings_helper = include_str!("flax_bindings.cs"),
     );
 
     if live {
         // The standalone import menu is replaced by the live editor plugin.
-        let start = script.find("#if FLAX_EDITOR\n    public sealed class HeronBrushImportMenu").expect("import menu section");
+        let start = script
+            .find("#if FLAX_EDITOR\n    public sealed class HeronBrushImportMenu")
+            .expect("import menu section");
         script.truncate(start);
         script.push_str("}\n");
     }
-    let mut files=vec![FlaxFile {
-        path: format!("{class_name}.cs"),
-        contents: script,
-    }, FlaxFile {
-        path: format!("{}.level.json", level.name),
-        contents: manifest,
-    }, FlaxFile {
-        path: "HeronBrushAnimation.cs".into(),
-        contents: include_str!("flax_animation.cs").into(),
-    }, FlaxFile {
-        path: "HeronBrushMotionPlayer.cs".into(),
-        contents: include_str!("flax_player.cs").into(),
-    },FlaxFile{path:"HeronBrushWater.cs".into(),contents:include_str!("flax_water.cs").into()},FlaxFile{path:"HeronBrushLevelRoot.cs".into(),contents:include_str!("flax_level_root.cs").into()}];
+    let mut files = vec![
+        FlaxFile {
+            path: format!("{class_name}.cs"),
+            contents: script,
+        },
+        FlaxFile {
+            path: format!("{}.level.json", level.name),
+            contents: manifest,
+        },
+        FlaxFile {
+            path: "HeronBrushAnimation.cs".into(),
+            contents: include_str!("flax_animation.cs").into(),
+        },
+        FlaxFile {
+            path: "HeronBrushMotionPlayer.cs".into(),
+            contents: include_str!("flax_player.cs").into(),
+        },
+        FlaxFile {
+            path: "HeronBrushWater.cs".into(),
+            contents: include_str!("flax_water.cs").into(),
+        },
+        FlaxFile {
+            path: "HeronBrushLevelRoot.cs".into(),
+            contents: include_str!("flax_level_root.cs").into(),
+        },
+    ];
     if !live {
-        let namespace=namespace(level,options);
-        for file in &mut files{if file.path.ends_with(".cs"){file.contents=file.contents.replace("namespace Game",&format!("namespace {namespace}"));}}
+        let namespace = namespace(level, options);
+        for file in &mut files {
+            if file.path.ends_with(".cs") {
+                file.contents = file
+                    .contents
+                    .replace("namespace Game", &format!("namespace {namespace}"));
+            }
+        }
     }
     files
 }
 
-pub fn namespace(level:&Level,options:&FlaxOptions)->String{
-    let mut hash=0xcbf29ce484222325u64;
-    for byte in format!("{}\n{}",options.content_dir.replace('\\',"/"),level.name).bytes(){hash^=u64::from(byte);hash=hash.wrapping_mul(0x100000001b3);}
+pub fn namespace(level: &Level, options: &FlaxOptions) -> String {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in format!("{}\n{}", options.content_dir.replace('\\', "/"), level.name).bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
     format!("Game.HeronLevel_{hash:016x}")
 }
 
@@ -500,18 +573,38 @@ fn asset_path(mesh: &str, content_dir: &str) -> String {
 
 /// Escapes a string for a C# literal.
 fn escape(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n").replace('\r', "\\r").replace('\t', "\\t")
+    value
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
 }
 
 /// A fixed importer installed once; live updates contain only meshes and JSON.
 pub fn live_importer() -> String {
-    let level = Level { format: crate::level::FORMAT_VERSION, generator: "Heron Brush".into(), name: "Heron Brush Live".into(), scale: 32.0, textures: vec![], entities: vec![] };
-    write_importer(&level, &FlaxOptions::for_level("HeronBrushLive/preview"), &[], true).remove(0).contents
+    let level = Level {
+        format: crate::level::FORMAT_VERSION,
+        generator: "Heron Brush".into(),
+        name: "Heron Brush Live".into(),
+        scale: 32.0,
+        textures: vec![],
+        entities: vec![],
+    };
+    write_importer(
+        &level,
+        &FlaxOptions::for_level("HeronBrushLive/preview"),
+        &[],
+        true,
+    )
+    .remove(0)
+    .contents
 }
 
 /// Flax-native placement values plus complete neutral metadata/collision geometry.
 pub fn live_snapshot(level: &Level, collision: &[CollisionMesh]) -> String {
-    let metadata: serde_json::Value = serde_json::from_str(&super::three::write(level, collision)).expect("serialized level");
+    let metadata: serde_json::Value =
+        serde_json::from_str(&super::three::write(level, collision)).expect("serialized level");
     let placements: Vec<_> = level.entities.iter().enumerate().map(|(i,e)| {
         let t = &e.transform;
         let q = glam::DQuat::from_euler(glam::EulerRot::YXZ, t.rotation_yxz[1], t.rotation_yxz[0], t.rotation_yxz[2]);
@@ -582,7 +675,10 @@ mod tests {
         let files = write(&level(), &FlaxOptions::for_level("arena"));
         let script = &files[0].contents;
         assert!(script.contains("\"arena/worldspawn\""), "{script}");
-        assert!(!script.contains("\"arena/worldspawn.glb\""), "placement must store an asset stem:\n{script}");
+        assert!(
+            !script.contains("\"arena/worldspawn.glb\""),
+            "placement must store an asset stem:\n{script}"
+        );
     }
 
     #[test]
@@ -623,16 +719,25 @@ mod tests {
         let e = &mut input.entities[1];
         e.transform.rotation_yxz = [0.3, -0.7, 0.4];
         e.transform.scale = [2.0, 0.5, 3.0];
-        e.properties.insert("custom_speed".into(), crate::level::Value::Float(2.75));
+        e.properties
+            .insert("custom_speed".into(), crate::level::Value::Float(2.75));
         e.targets.push("worldspawn".into());
         e.tags.push("custom_tag".into());
         let files = write(&input, &FlaxOptions::for_level("arena"));
         let json: serde_json::Value = serde_json::from_str(&files[1].contents).unwrap();
-        assert_eq!(json["entities"][1]["properties"]["custom_speed"]["value"], 2.75);
+        assert_eq!(
+            json["entities"][1]["properties"]["custom_speed"]["value"],
+            2.75
+        );
         assert_eq!(json["entities"][1]["targets"][0], "worldspawn");
-        assert!(files[0].contents.contains("new Vector3(2.000000000f, 0.500000000f, 3.000000000f)"));
-        assert!(files[0].contents.contains("configure(actors[placement.Name], placement, actors)"));
-        assert!(files[0].contents.contains("actor.LocalOrientation = placement.Orientation"));
+        assert!(files[0]
+            .contents
+            .contains("new Vector3(2.000000000f, 0.500000000f, 3.000000000f)"));
+        assert!(files[0]
+            .contents
+            .contains("configure(actors[placement.Name], placement, actors)"));
+        assert!(files[0]
+            .contents
+            .contains("actor.LocalOrientation = placement.Orientation"));
     }
-
 }

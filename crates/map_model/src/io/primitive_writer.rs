@@ -341,13 +341,12 @@ mod tests {
             .collect::<Vec<_>>()
             .join("\n");
         let bare = read_map(&without_comments, None).unwrap();
-        assert!(
-            bare.entities
-                .iter()
-                .flat_map(|e| &e.brushes)
-                .flat_map(|b| &b.faces)
-                .all(|f| f.primitive_uv.is_some())
-        );
+        assert!(bare
+            .entities
+            .iter()
+            .flat_map(|e| &e.brushes)
+            .flat_map(|b| &b.faces)
+            .all(|f| f.primitive_uv.is_some()));
         let mut reopened = read_map(&written, None).unwrap();
         assert_eq!(reopened.entities.len(), map.entities.len());
         for (original, actual) in map.entities.iter().zip(&mut reopened.entities) {
@@ -384,11 +383,9 @@ mod tests {
     #[test]
     fn missing_or_invalid_dimensions_fail_but_pending_matrices_need_no_texture() {
         let mut map = read_map(include_str!("../../tests/fixtures/format.map"), None).unwrap();
-        assert!(
-            write_quake3_map(&map, &mut |_| None)
-                .unwrap_err()
-                .contains("dimensions unavailable")
-        );
+        assert!(write_quake3_map(&map, &mut |_| None)
+            .unwrap_err()
+            .contains("dimensions unavailable"));
         for bad in [
             Vec2f::new(0., 64.),
             Vec2f::new(f32::NAN, 64.),
@@ -403,12 +400,10 @@ mod tests {
                 }
             }
         }
-        assert!(
-            write_quake3_map(&map, &mut |_| panic!(
-                "pending matrices do not need dimensions"
-            ))
-            .is_ok()
-        );
+        assert!(write_quake3_map(&map, &mut |_| panic!(
+            "pending matrices do not need dimensions"
+        ))
+        .is_ok());
     }
 }
 
@@ -438,10 +433,8 @@ mod doom3_tests {
             .unwrap()
             .properties
             .push(("rotation".into(), "0 -1 0 1 0 0 0 0 1".into()));
-        assert!(
-            write_doom3_map(&map, &mut |_| Some(Vec2f::new(128., 64.)))
-                .unwrap_err()
-                .contains("rotation")
-        );
+        assert!(write_doom3_map(&map, &mut |_| Some(Vec2f::new(128., 64.)))
+            .unwrap_err()
+            .contains("rotation"));
     }
 }

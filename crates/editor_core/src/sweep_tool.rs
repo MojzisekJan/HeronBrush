@@ -11,14 +11,14 @@
 //! compute the vertices they share identically, so the result stays watertight even when
 //! the coordinates are being rounded.
 
-use map_model::brush::Brush;
-use map_model::polyhedron::Polyhedron;
 use geometry_math::bbox::Bbox3d;
 use geometry_math::mat::Mat4x4d;
 use geometry_math::mat_ext;
 use geometry_math::quat::Quatd;
 use geometry_math::scalar::Float;
 use geometry_math::vec::{self, Vec3d};
+use map_model::brush::Brush;
+use map_model::polyhedron::Polyhedron;
 
 /// Whether the stations land on whole coordinates.
 ///
@@ -161,11 +161,7 @@ impl Default for SweepParameters {
 /// angle; there is exactly one circle in the plane across the axis that does both, and
 /// this finds its centre. Any travel along the axis itself becomes a helical lift rather
 /// than part of the circle.
-fn arc_pivot(
-    source: &SweepSource,
-    transform: &SweepTransform,
-    rotation: &Quatd,
-) -> Option<Vec3d> {
+fn arc_pivot(source: &SweepSource, transform: &SweepTransform, rotation: &Quatd) -> Option<Vec3d> {
     let theta = rotation.angle();
     if theta.abs() < f64::ALMOST_ZERO {
         return None;
@@ -309,8 +305,7 @@ pub fn transform_table(
 ) -> Vec<Vec<Mat4x4d>> {
     let rotation = transform.effective_rotation();
     let pivot = station_arc_pivot(source, transform, parameters, &rotation);
-    let cap =
-        station_transform_with_pivot(source, transform, parameters, 1.0, &rotation, pivot);
+    let cap = station_transform_with_pivot(source, transform, parameters, 1.0, &rotation, pivot);
 
     // The exclusive prefix product: powers[r] is the cap transform applied r times.
     let mut powers = Vec::with_capacity(parameters.iterations);
@@ -328,12 +323,7 @@ pub fn transform_table(
                     let t = s as f64 / parameters.segments as f64;
                     power
                         * station_transform_with_pivot(
-                            source,
-                            transform,
-                            parameters,
-                            t,
-                            &rotation,
-                            pivot,
+                            source, transform, parameters, t, &rotation, pivot,
                         )
                 })
                 .collect()
@@ -373,8 +363,8 @@ fn generate_unchecked(
     };
 
     let mut result = Vec::new();
-    for (face_index,face) in source.faces.iter().enumerate() {
-        let mut previous:Option<Brush>=None;
+    for (face_index, face) in source.faces.iter().enumerate() {
+        let mut previous: Option<Brush> = None;
         for r in 0..parameters.iterations {
             for i in 0..parameters.segments {
                 let points: Vec<Vec3d> = face
@@ -382,36 +372,89 @@ fn generate_unchecked(
                     .flat_map(|v| [station(*v, r, i), station(*v, r, i + 1)])
                     .collect();
 
-                if points.iter().any(|p|p.v.iter().any(|v|!v.is_finite())) {return Vec::new();}
+                if points.iter().any(|p| p.v.iter().any(|v| !v.is_finite())) {
+                    return Vec::new();
+                }
                 if let Ok(geometry) = Polyhedron::from_points(&points, f64::ALMOST_ZERO) {
-                    let raw=Brush::from_polyhedron(geometry,material);
-                    let start:Vec<_>=face.iter().map(|v|station(*v,r,i)).collect();
-                    let end:Vec<_>=face.iter().map(|v|station(*v,r,i+1)).collect();
-                    let attrs:Vec<_>=raw.faces().iter().enumerate().map(|(fi,target)| {
-                        let mut attr=source.attributes.get(face_index).cloned().unwrap_or_else(||target.clone());
-                        attr.points=target.points;attr.plane=target.plane;
-                        let on=|points:&Vec<Vec3d>|points.iter().all(|p|(vec::dot(target.normal(),*p)-target.plane.distance).abs()<1e-7);
-                        let cap_start=on(&start);let cap_end=on(&end);
-                        if (cap_start && (i>0 || r>0)) || (cap_end && (i+1<parameters.segments || r+1<parameters.iterations)) {attr.material_name="skip".into();}
-                        let polygon=raw.face_polygon(fi).unwrap_or_default();
-                        let carried=previous.as_ref().and_then(|brush|brush.geometry_faces().filter_map(|(old,vertices)| {
-                            if old.material_name.as_str()=="skip" {return None;}
-                            let shared:Vec<_>=vertices.iter().filter(|p|polygon.iter().any(|q|vec::squared_distance(**p,*q)<1e-12)).collect();
-                            (shared.len()>=2).then(||(old,**shared.first().unwrap()))
-                        }).max_by(|(a,_),(b,_)|vec::dot(a.normal(),target.normal()).total_cmp(&vec::dot(b.normal(),target.normal()))));
-                        if !cap_start && !cap_end {
-                            if let Some((old,anchor))=carried {attr.wrap_uv_from(old,anchor);}
-                            else if let Some(source)=source.attributes.get(face_index) {
-                                let p=source.plane;let q=target.plane;let line=vec::cross(p.normal,q.normal);let denominator=vec::squared_length(line);
-                                let anchor=if denominator>1e-12 {
-                                    (vec::cross(q.normal,line)*p.distance+vec::cross(line,p.normal)*q.distance+line*vec::dot(start[0],line))/denominator
-                                } else {start[0]};
-                                attr.wrap_uv_from(source,anchor);
+                    let raw = Brush::from_polyhedron(geometry, material);
+                    let start: Vec<_> = face.iter().map(|v| station(*v, r, i)).collect();
+                    let end: Vec<_> = face.iter().map(|v| station(*v, r, i + 1)).collect();
+                    let attrs: Vec<_> = raw
+                        .faces()
+                        .iter()
+                        .enumerate()
+                        .map(|(fi, target)| {
+                            let mut attr = source
+                                .attributes
+                                .get(face_index)
+                                .cloned()
+                                .unwrap_or_else(|| target.clone());
+                            attr.points = target.points;
+                            attr.plane = target.plane;
+                            let on = |points: &Vec<Vec3d>| {
+                                points.iter().all(|p| {
+                                    (vec::dot(target.normal(), *p) - target.plane.distance).abs()
+                                        < 1e-7
+                                })
+                            };
+                            let cap_start = on(&start);
+                            let cap_end = on(&end);
+                            if (cap_start && (i > 0 || r > 0))
+                                || (cap_end
+                                    && (i + 1 < parameters.segments
+                                        || r + 1 < parameters.iterations))
+                            {
+                                attr.material_name = "skip".into();
                             }
-                        }
-                        attr
-                    }).collect();
-                    let brush=raw.with_exact_face_attributes(&attrs).unwrap();previous=Some(brush.clone());result.push(brush);
+                            let polygon = raw.face_polygon(fi).unwrap_or_default();
+                            let carried = previous.as_ref().and_then(|brush| {
+                                brush
+                                    .geometry_faces()
+                                    .filter_map(|(old, vertices)| {
+                                        if old.material_name.as_str() == "skip" {
+                                            return None;
+                                        }
+                                        let shared: Vec<_> = vertices
+                                            .iter()
+                                            .filter(|p| {
+                                                polygon
+                                                    .iter()
+                                                    .any(|q| vec::squared_distance(**p, *q) < 1e-12)
+                                            })
+                                            .collect();
+                                        (shared.len() >= 2)
+                                            .then(|| (old, **shared.first().unwrap()))
+                                    })
+                                    .max_by(|(a, _), (b, _)| {
+                                        vec::dot(a.normal(), target.normal())
+                                            .total_cmp(&vec::dot(b.normal(), target.normal()))
+                                    })
+                            });
+                            if !cap_start && !cap_end {
+                                if let Some((old, anchor)) = carried {
+                                    attr.wrap_uv_from(old, anchor);
+                                } else if let Some(source) = source.attributes.get(face_index) {
+                                    let p = source.plane;
+                                    let q = target.plane;
+                                    let line = vec::cross(p.normal, q.normal);
+                                    let denominator = vec::squared_length(line);
+                                    let anchor = if denominator > 1e-12 {
+                                        (vec::cross(q.normal, line) * p.distance
+                                            + vec::cross(line, p.normal) * q.distance
+                                            + line * vec::dot(start[0], line))
+                                            / denominator
+                                    } else {
+                                        start[0]
+                                    };
+                                    attr.wrap_uv_from(source, anchor);
+                                }
+                            }
+                            attr
+                        })
+                        .collect();
+                    let brush = raw.with_exact_face_attributes(&attrs).unwrap();
+                    previous = Some(brush.clone());
+                    result.push(brush);
                 }
             }
         }
@@ -421,64 +464,156 @@ fn generate_unchecked(
 
 /// Validated sweep: no missing cells and no solid self-intersections.
 /// Counts are bounded before creating the transform table.
-fn generate_checked_uncached(source:&SweepSource, transform:&SweepTransform, parameters:&SweepParameters, material:&str)->Result<Vec<Brush>,String> {
-    let count=parameters.segments.checked_mul(parameters.iterations).and_then(|n|n.checked_mul(source.faces.len())).ok_or("The sweep is too large.")?;
-    if count==0 || count>1024 {return Err("Use between 1 and 1024 sweep cells in total.".into());}
-    if source.faces.iter().any(|f|f.len()<3 || f.iter().any(|p|p.v.iter().any(|v|!v.is_finite())))
-        || source.center.v.iter().chain(source.normal.v.iter()).any(|v|!v.is_finite())
-        || transform.translation.v.iter().chain(transform.scale.v.iter()).any(|v|!v.is_finite())
-        || transform.scale.v.iter().any(|v|*v<=0.0) || !transform.effective_rotation().angle().is_finite() {
+fn generate_checked_uncached(
+    source: &SweepSource,
+    transform: &SweepTransform,
+    parameters: &SweepParameters,
+    material: &str,
+) -> Result<Vec<Brush>, String> {
+    let count = parameters
+        .segments
+        .checked_mul(parameters.iterations)
+        .and_then(|n| n.checked_mul(source.faces.len()))
+        .ok_or("The sweep is too large.")?;
+    if count == 0 || count > 1024 {
+        return Err("Use between 1 and 1024 sweep cells in total.".into());
+    }
+    if source
+        .faces
+        .iter()
+        .any(|f| f.len() < 3 || f.iter().any(|p| p.v.iter().any(|v| !v.is_finite())))
+        || source
+            .center
+            .v
+            .iter()
+            .chain(source.normal.v.iter())
+            .any(|v| !v.is_finite())
+        || transform
+            .translation
+            .v
+            .iter()
+            .chain(transform.scale.v.iter())
+            .any(|v| !v.is_finite())
+        || transform.scale.v.iter().any(|v| *v <= 0.0)
+        || !transform.effective_rotation().angle().is_finite()
+    {
         return Err("The sweep needs finite vertices, a finite turn and positive scale.".into());
     }
-    let mut result=generate_unchecked(source,transform,parameters,material);
-    if result.len()!=count {return Err("A sweep segment collapsed. Reduce the turn, disable integer snapping or increase its size.".into());}
-    let bounds:Vec<_>=result.iter().map(Brush::bounds).collect();
-    for i in 0..result.len() {for j in i+1..result.len() {
-        if (0..3).any(|axis|bounds[i].max[axis].min(bounds[j].max[axis])-bounds[i].min[axis].max(bounds[j].min[axis])<=1e-6) {continue;}
-        if map_model::csg::intersect(&result[i],&result[j]).is_some_and(|b|b.volume()>result[i].volume().min(result[j].volume()).max(1.0)*1e-7) {
-            return Err(format!("Sweep cells {} and {} intersect. Increase the bend radius or reduce the profile/turn.",i+1,j+1));
-        }
-    }}
-    // Only full, opposed polygon contacts are hidden. Exposed caps remain visible.
-    let mut contacts=std::collections::BTreeMap::<Vec<[i64;3]>,Vec<(usize,usize)>>::new();
-    for (bi,brush) in result.iter().enumerate() {for (fi,_) in brush.faces().iter().enumerate() {
-        let Some(polygon)=brush.face_polygon(fi) else {continue;};
-        let mut key:Vec<_>=polygon.iter().map(|p|[(p[0]*1e5).round() as i64,(p[1]*1e5).round() as i64,(p[2]*1e5).round() as i64]).collect();key.sort();
-        contacts.entry(key).or_default().push((bi,fi));
-    }}
-    let mut attrs:Vec<_>=result.iter().map(|b|b.faces().to_vec()).collect();
-    for contact in contacts.values() {
-        if let [(a,fa),(b,fb)]=contact.as_slice() {
-            if vec::dot(attrs[*a][*fa].normal(),attrs[*b][*fb].normal()) < -1.0+1e-6
-                && (attrs[*a][*fa].plane.distance+attrs[*b][*fb].plane.distance).abs()<1e-7
-                && result[*a].face_polygon(*fa).unwrap().iter().all(|p|result[*b].face_polygon(*fb).unwrap().iter().any(|q|vec::squared_distance(*p,*q)<1e-14)) {
-                attrs[*a][*fa].material_name="skip".into();attrs[*b][*fb].material_name="skip".into();
+    let mut result = generate_unchecked(source, transform, parameters, material);
+    if result.len() != count {
+        return Err("A sweep segment collapsed. Reduce the turn, disable integer snapping or increase its size.".into());
+    }
+    let bounds: Vec<_> = result.iter().map(Brush::bounds).collect();
+    for i in 0..result.len() {
+        for j in i + 1..result.len() {
+            if (0..3).any(|axis| {
+                bounds[i].max[axis].min(bounds[j].max[axis])
+                    - bounds[i].min[axis].max(bounds[j].min[axis])
+                    <= 1e-6
+            }) {
+                continue;
+            }
+            if map_model::csg::intersect(&result[i], &result[j]).is_some_and(|b| {
+                b.volume() > result[i].volume().min(result[j].volume()).max(1.0) * 1e-7
+            }) {
+                return Err(format!("Sweep cells {} and {} intersect. Increase the bend radius or reduce the profile/turn.",i+1,j+1));
             }
         }
     }
-    for (brush,faces) in result.iter_mut().zip(attrs) {*brush=brush.with_exact_face_attributes(&faces).unwrap();}
+    // Only full, opposed polygon contacts are hidden. Exposed caps remain visible.
+    let mut contacts = std::collections::BTreeMap::<Vec<[i64; 3]>, Vec<(usize, usize)>>::new();
+    for (bi, brush) in result.iter().enumerate() {
+        for (fi, _) in brush.faces().iter().enumerate() {
+            let Some(polygon) = brush.face_polygon(fi) else {
+                continue;
+            };
+            let mut key: Vec<_> = polygon
+                .iter()
+                .map(|p| {
+                    [
+                        (p[0] * 1e5).round() as i64,
+                        (p[1] * 1e5).round() as i64,
+                        (p[2] * 1e5).round() as i64,
+                    ]
+                })
+                .collect();
+            key.sort();
+            contacts.entry(key).or_default().push((bi, fi));
+        }
+    }
+    let mut attrs: Vec<_> = result.iter().map(|b| b.faces().to_vec()).collect();
+    for contact in contacts.values() {
+        if let [(a, fa), (b, fb)] = contact.as_slice() {
+            if vec::dot(attrs[*a][*fa].normal(), attrs[*b][*fb].normal()) < -1.0 + 1e-6
+                && (attrs[*a][*fa].plane.distance + attrs[*b][*fb].plane.distance).abs() < 1e-7
+                && result[*a].face_polygon(*fa).unwrap().iter().all(|p| {
+                    result[*b]
+                        .face_polygon(*fb)
+                        .unwrap()
+                        .iter()
+                        .any(|q| vec::squared_distance(*p, *q) < 1e-14)
+                })
+            {
+                attrs[*a][*fa].material_name = "skip".into();
+                attrs[*b][*fb].material_name = "skip".into();
+            }
+        }
+    }
+    for (brush, faces) in result.iter_mut().zip(attrs) {
+        *brush = brush.with_exact_face_attributes(&faces).unwrap();
+    }
     Ok(result)
 }
 
-type CachedSweep=(SweepSource,SweepTransform,SweepParameters,String,Result<Vec<Brush>,String>);
+type CachedSweep = (
+    SweepSource,
+    SweepTransform,
+    SweepParameters,
+    String,
+    Result<Vec<Brush>, String>,
+);
 thread_local! {static SWEEP_CACHE:std::cell::RefCell<Option<CachedSweep>>=const{std::cell::RefCell::new(None)};}
 
 /// Shares validated geometry between the inspector and multiple viewports. Returned
 /// brushes are independent copies; all source attributes participate in invalidation.
-pub fn generate_checked(source:&SweepSource,transform:&SweepTransform,parameters:&SweepParameters,material:&str)->Result<Vec<Brush>,String> {
+pub fn generate_checked(
+    source: &SweepSource,
+    transform: &SweepTransform,
+    parameters: &SweepParameters,
+    material: &str,
+) -> Result<Vec<Brush>, String> {
     SWEEP_CACHE.with(|cache| {
-        if let Some((old_source,old_transform,old_parameters,old_material,result))=cache.borrow().as_ref() {
-            if old_source==source && old_transform==transform && old_parameters==parameters && old_material==material {return result.clone();}
+        if let Some((old_source, old_transform, old_parameters, old_material, result)) =
+            cache.borrow().as_ref()
+        {
+            if old_source == source
+                && old_transform == transform
+                && old_parameters == parameters
+                && old_material == material
+            {
+                return result.clone();
+            }
         }
-        let result=generate_checked_uncached(source,transform,parameters,material);
-        *cache.borrow_mut()=Some((source.clone(),*transform,*parameters,material.to_owned(),result.clone()));
+        let result = generate_checked_uncached(source, transform, parameters, material);
+        *cache.borrow_mut() = Some((
+            source.clone(),
+            *transform,
+            *parameters,
+            material.to_owned(),
+            result.clone(),
+        ));
         result
     })
 }
 
 /// Preview compatibility: a refused sweep displays no partial geometry.
-pub fn generate_brushes(source:&SweepSource,transform:&SweepTransform,parameters:&SweepParameters,material:&str)->Vec<Brush> {
-    generate_checked(source,transform,parameters,material).unwrap_or_default()
+pub fn generate_brushes(
+    source: &SweepSource,
+    transform: &SweepTransform,
+    parameters: &SweepParameters,
+    material: &str,
+) -> Vec<Brush> {
+    generate_checked(source, transform, parameters, material).unwrap_or_default()
 }
 
 /// The bounds the swept brushes would occupy, for framing or for checking they fit.
@@ -500,7 +635,7 @@ mod tests {
     /// A 64-unit square facing up, at the origin.
     fn square() -> SweepSource {
         SweepSource {
-            attributes:Vec::new(),
+            attributes: Vec::new(),
             faces: vec![vec![
                 Vec3d::new(-32.0, -32.0, 0.0),
                 Vec3d::new(32.0, -32.0, 0.0),
@@ -544,16 +679,17 @@ mod tests {
         // 330 degrees one way is 30 degrees the other, and sweeping all 330 is not what
         // dragging a ring that far meant.
         let long_way = SweepTransform {
-            rotation: Quatd::from_axis_angle(
-                Vec3d::new(0.0, 0.0, 1.0),
-                330.0f64.to_radians(),
-            ),
+            rotation: Quatd::from_axis_angle(Vec3d::new(0.0, 0.0, 1.0), 330.0f64.to_radians()),
             ..Default::default()
         };
         let effective = long_way.effective_rotation();
         geometry_math::assert_approx_eq!(effective.angle().to_degrees(), 30.0, 1e-6);
         // About the opposite axis, so it turns the other way.
-        geometry_math::assert_approx_eq!(vec::normalize(effective.axis()), Vec3d::new(0.0, 0.0, -1.0), 1e-6);
+        geometry_math::assert_approx_eq!(
+            vec::normalize(effective.axis()),
+            Vec3d::new(0.0, 0.0, -1.0),
+            1e-6
+        );
     }
 
     #[test]
@@ -628,10 +764,7 @@ mod tests {
         // than going straight.
         let transform = SweepTransform {
             translation: Vec3d::new(128.0, 0.0, 0.0),
-            rotation: Quatd::from_axis_angle(
-                Vec3d::new(0.0, 1.0, 0.0),
-                90.0f64.to_radians(),
-            ),
+            rotation: Quatd::from_axis_angle(Vec3d::new(0.0, 1.0, 0.0), 90.0f64.to_radians()),
             ..Default::default()
         };
         let parameters = SweepParameters {
@@ -693,7 +826,10 @@ mod tests {
         // comes back: a straight line would not.
         let table = transform_table(&square(), &transform, &parameters);
         let quarter = table[0][parameters.segments / 4] * Vec3d::zero();
-        assert!(quarter.z() > 1.0, "the S-bend did not leave upwards: {quarter:?}");
+        assert!(
+            quarter.z() > 1.0,
+            "the S-bend did not leave upwards: {quarter:?}"
+        );
 
         // And it still arrives where it was asked to.
         let end = table[0][parameters.segments] * Vec3d::zero();
@@ -750,7 +886,7 @@ mod tests {
     #[test]
     fn a_sweep_of_nothing_makes_nothing() {
         let empty = SweepSource {
-            attributes:Vec::new(),
+            attributes: Vec::new(),
             faces: Vec::new(),
             center: Vec3d::zero(),
             normal: Vec3d::new(0.0, 0.0, 1.0),
@@ -767,49 +903,145 @@ mod tests {
 #[cfg(test)]
 mod upgrade_tests {
     use super::*;
-    fn source()->SweepSource {
-        let points=vec![Vec3d::new(-8.0,-8.0,0.0),Vec3d::new(8.0,-8.0,0.0),Vec3d::new(8.0,8.0,0.0),Vec3d::new(-8.0,8.0,0.0)];
-        let mut face=map_model::brush_face::BrushFace::from_points([points[0],points[1],points[2]],"tile",map_model::uv::UvCoordSystem::Paraxial,map_model::uv::UvAttributes::default()).unwrap();
-        face.set_paint(Some(map_model::brush_face::FaceColor::Solid{color:map_model::brush_face::Rgb::new(10,80,140),alpha:255}));
-        face.surface_material=Some(map_model::brush_face::SurfaceMaterial{roughness:35,metallic:80,emission:4});
-        SweepSource{faces:vec![points],attributes:vec![face],center:Vec3d::zero(),normal:Vec3d::new(0.0,0.0,1.0)}
+    fn source() -> SweepSource {
+        let points = vec![
+            Vec3d::new(-8.0, -8.0, 0.0),
+            Vec3d::new(8.0, -8.0, 0.0),
+            Vec3d::new(8.0, 8.0, 0.0),
+            Vec3d::new(-8.0, 8.0, 0.0),
+        ];
+        let mut face = map_model::brush_face::BrushFace::from_points(
+            [points[0], points[1], points[2]],
+            "tile",
+            map_model::uv::UvCoordSystem::Paraxial,
+            map_model::uv::UvAttributes::default(),
+        )
+        .unwrap();
+        face.set_paint(Some(map_model::brush_face::FaceColor::Solid {
+            color: map_model::brush_face::Rgb::new(10, 80, 140),
+            alpha: 255,
+        }));
+        face.surface_material = Some(map_model::brush_face::SurfaceMaterial {
+            roughness: 35,
+            metallic: 80,
+            emission: 4,
+        });
+        SweepSource {
+            faces: vec![points],
+            attributes: vec![face],
+            center: Vec3d::zero(),
+            normal: Vec3d::new(0.0, 0.0, 1.0),
+        }
     }
     #[test]
     fn checked_sweep_preserves_surface_and_uv_across_stations() {
-        let source=source();
-        for curved in [false,true] {
-            let transform=if curved {SweepTransform{translation:Vec3d::new(64.0,0.0,64.0),rotation:Quatd::from_axis_angle(Vec3d::new(0.0,1.0,0.0),std::f64::consts::FRAC_PI_2),..Default::default()}}
-                else {SweepTransform{translation:Vec3d::new(0.0,0.0,64.0),..Default::default()}};
-            let parameters=SweepParameters{segments:8,iterations:1,alignment:SweepAlignment::Free,path_mode:if curved {SweepPathMode::Arc}else{SweepPathMode::Straight}};
-            let brushes=generate_checked(&source,&transform,&parameters,"fallback").unwrap();assert_eq!(brushes.len(),8);
-            assert_eq!(brushes.iter().flat_map(|b|b.faces()).filter(|f|f.material_name.as_str()=="skip").count(),14);
-            for face in brushes.iter().flat_map(|b|b.faces()).filter(|f|f.material_name.as_str()!="skip") {
-                assert_eq!(face.material_name.as_str(),"tile");assert_eq!(face.paint(),source.attributes[0].paint());assert_eq!(face.surface_material,source.attributes[0].surface_material);
+        let source = source();
+        for curved in [false, true] {
+            let transform = if curved {
+                SweepTransform {
+                    translation: Vec3d::new(64.0, 0.0, 64.0),
+                    rotation: Quatd::from_axis_angle(
+                        Vec3d::new(0.0, 1.0, 0.0),
+                        std::f64::consts::FRAC_PI_2,
+                    ),
+                    ..Default::default()
+                }
+            } else {
+                SweepTransform {
+                    translation: Vec3d::new(0.0, 0.0, 64.0),
+                    ..Default::default()
+                }
+            };
+            let parameters = SweepParameters {
+                segments: 8,
+                iterations: 1,
+                alignment: SweepAlignment::Free,
+                path_mode: if curved {
+                    SweepPathMode::Arc
+                } else {
+                    SweepPathMode::Straight
+                },
+            };
+            let brushes = generate_checked(&source, &transform, &parameters, "fallback").unwrap();
+            assert_eq!(brushes.len(), 8);
+            assert_eq!(
+                brushes
+                    .iter()
+                    .flat_map(|b| b.faces())
+                    .filter(|f| f.material_name.as_str() == "skip")
+                    .count(),
+                14
+            );
+            for face in brushes
+                .iter()
+                .flat_map(|b| b.faces())
+                .filter(|f| f.material_name.as_str() != "skip")
+            {
+                assert_eq!(face.material_name.as_str(), "tile");
+                assert_eq!(face.paint(), source.attributes[0].paint());
+                assert_eq!(face.surface_material, source.attributes[0].surface_material);
             }
-            let mut checks=0;
+            let mut checks = 0;
             for pair in brushes.windows(2) {
-                for (a,pa) in pair[0].geometry_faces().filter(|(f,_)|f.material_name.as_str()!="skip") {
-                    for (b,pb) in pair[1].geometry_faces().filter(|(f,_)|f.material_name.as_str()!="skip") {
-                        let shared:Vec<_>=pa.iter().filter(|p|pb.iter().any(|q|vec::squared_distance(**p,*q)<1e-12)).collect();
-                        if shared.len()<2 {continue;}
-                        for p in shared {let delta=a.uv_coords(*p)-b.uv_coords(*p);assert!(delta.x().abs()<0.001 && delta.y().abs()<0.001,"sweep UV seam {delta:?}");}
-                        checks+=1;
+                for (a, pa) in pair[0]
+                    .geometry_faces()
+                    .filter(|(f, _)| f.material_name.as_str() != "skip")
+                {
+                    for (b, pb) in pair[1]
+                        .geometry_faces()
+                        .filter(|(f, _)| f.material_name.as_str() != "skip")
+                    {
+                        let shared: Vec<_> = pa
+                            .iter()
+                            .filter(|p| pb.iter().any(|q| vec::squared_distance(**p, *q) < 1e-12))
+                            .collect();
+                        if shared.len() < 2 {
+                            continue;
+                        }
+                        for p in shared {
+                            let delta = a.uv_coords(*p) - b.uv_coords(*p);
+                            assert!(
+                                delta.x().abs() < 0.001 && delta.y().abs() < 0.001,
+                                "sweep UV seam {delta:?}"
+                            );
+                        }
+                        checks += 1;
                     }
                 }
             }
-            assert_eq!(checks,28);
+            assert_eq!(checks, 28);
         }
     }
     #[test]
     fn checked_sweep_refuses_collapsed_excessive_and_looping_paths() {
-        let source=source();
-        let mut parameters=SweepParameters{segments:8,iterations:1,alignment:SweepAlignment::Integer,path_mode:SweepPathMode::Straight};
-        let tiny=SweepTransform{translation:Vec3d::new(0.0,0.0,0.01),..Default::default()};
-        assert!(generate_checked(&source,&tiny,&parameters,"stone").is_err());
-        parameters.iterations=usize::MAX;assert!(generate_checked(&source,&tiny,&parameters,"stone").is_err());
-        parameters.iterations=5;parameters.alignment=SweepAlignment::Free;parameters.path_mode=SweepPathMode::Arc;
-        let looped=SweepTransform{translation:Vec3d::new(64.0,0.0,64.0),rotation:Quatd::from_axis_angle(Vec3d::new(0.0,1.0,0.0),std::f64::consts::FRAC_PI_2),..Default::default()};
-        assert!(generate_checked(&source,&looped,&parameters,"stone").unwrap_err().contains("intersect"));
+        let source = source();
+        let mut parameters = SweepParameters {
+            segments: 8,
+            iterations: 1,
+            alignment: SweepAlignment::Integer,
+            path_mode: SweepPathMode::Straight,
+        };
+        let tiny = SweepTransform {
+            translation: Vec3d::new(0.0, 0.0, 0.01),
+            ..Default::default()
+        };
+        assert!(generate_checked(&source, &tiny, &parameters, "stone").is_err());
+        parameters.iterations = usize::MAX;
+        assert!(generate_checked(&source, &tiny, &parameters, "stone").is_err());
+        parameters.iterations = 5;
+        parameters.alignment = SweepAlignment::Free;
+        parameters.path_mode = SweepPathMode::Arc;
+        let looped = SweepTransform {
+            translation: Vec3d::new(64.0, 0.0, 64.0),
+            rotation: Quatd::from_axis_angle(
+                Vec3d::new(0.0, 1.0, 0.0),
+                std::f64::consts::FRAC_PI_2,
+            ),
+            ..Default::default()
+        };
+        assert!(generate_checked(&source, &looped, &parameters, "stone")
+            .unwrap_err()
+            .contains("intersect"));
     }
 }
 
@@ -818,16 +1050,50 @@ mod cache_upgrade_tests {
     use super::*;
     #[test]
     fn sweep_cache_tracks_surface_changes_and_returns_independent_geometry() {
-        let points=vec![Vec3d::new(0.0,0.0,0.0),Vec3d::new(8.0,0.0,0.0),Vec3d::new(8.0,8.0,0.0),Vec3d::new(0.0,8.0,0.0)];
-        let face=map_model::brush_face::BrushFace::from_points([points[0],points[1],points[2]],"old",map_model::uv::UvCoordSystem::Paraxial,map_model::uv::UvAttributes::default()).unwrap();
-        let mut source=SweepSource{faces:vec![points],attributes:vec![face],center:Vec3d::new(4.0,4.0,0.0),normal:Vec3d::new(0.0,0.0,1.0)};
-        let transform=SweepTransform{translation:Vec3d::new(0.0,0.0,32.0),..Default::default()};
-        let parameters=SweepParameters{segments:4,iterations:1,path_mode:SweepPathMode::Straight,alignment:SweepAlignment::Free};
-        let mut first=generate_checked(&source,&transform,&parameters,"fallback").unwrap();
-        let mut changed=first[0].faces().to_vec();changed[0].material_name="modified".into();first[0]=first[0].with_exact_face_attributes(&changed).unwrap();
-        let second=generate_checked(&source,&transform,&parameters,"fallback").unwrap();assert!(second.iter().flat_map(|b|b.faces()).all(|f|f.material_name.as_str()!="modified"));
-        source.attributes[0].material_name="updated".into();
-        let updated=generate_checked(&source,&transform,&parameters,"fallback").unwrap();
-        assert!(updated.iter().flat_map(|b|b.faces()).filter(|f|f.material_name.as_str()!="skip").all(|f|f.material_name.as_str()=="updated"));
+        let points = vec![
+            Vec3d::new(0.0, 0.0, 0.0),
+            Vec3d::new(8.0, 0.0, 0.0),
+            Vec3d::new(8.0, 8.0, 0.0),
+            Vec3d::new(0.0, 8.0, 0.0),
+        ];
+        let face = map_model::brush_face::BrushFace::from_points(
+            [points[0], points[1], points[2]],
+            "old",
+            map_model::uv::UvCoordSystem::Paraxial,
+            map_model::uv::UvAttributes::default(),
+        )
+        .unwrap();
+        let mut source = SweepSource {
+            faces: vec![points],
+            attributes: vec![face],
+            center: Vec3d::new(4.0, 4.0, 0.0),
+            normal: Vec3d::new(0.0, 0.0, 1.0),
+        };
+        let transform = SweepTransform {
+            translation: Vec3d::new(0.0, 0.0, 32.0),
+            ..Default::default()
+        };
+        let parameters = SweepParameters {
+            segments: 4,
+            iterations: 1,
+            path_mode: SweepPathMode::Straight,
+            alignment: SweepAlignment::Free,
+        };
+        let mut first = generate_checked(&source, &transform, &parameters, "fallback").unwrap();
+        let mut changed = first[0].faces().to_vec();
+        changed[0].material_name = "modified".into();
+        first[0] = first[0].with_exact_face_attributes(&changed).unwrap();
+        let second = generate_checked(&source, &transform, &parameters, "fallback").unwrap();
+        assert!(second
+            .iter()
+            .flat_map(|b| b.faces())
+            .all(|f| f.material_name.as_str() != "modified"));
+        source.attributes[0].material_name = "updated".into();
+        let updated = generate_checked(&source, &transform, &parameters, "fallback").unwrap();
+        assert!(updated
+            .iter()
+            .flat_map(|b| b.faces())
+            .filter(|f| f.material_name.as_str() != "skip")
+            .all(|f| f.material_name.as_str() == "updated"));
     }
 }

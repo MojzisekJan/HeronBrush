@@ -8,23 +8,23 @@ use std::rc::Rc;
 use geometry_math::bbox::Bbox3d;
 use geometry_math::vec::{self, Vec2d, Vec3d};
 
-use crate::canvas::Canvas;
 use crate::camera2d::{self, Camera2d};
-use crate::document::{Document, FaceRef};
+use crate::canvas::Canvas;
 use crate::clip_tool::ClipTool;
+use crate::document::{Document, FaceRef};
 use crate::extrude_tool;
 use crate::grid::Grid;
-use map_model::brush::Brush;
 use crate::handle_drag::HandlePicker;
 use crate::handle_tool::{HandleKind, HandleManager};
+use crate::preferences::{pref, Color};
 use crate::rotate_tool::RotateTool;
 use crate::scale_tool::{self, AnchorPos, BBoxHandle, ProportionalAxes};
-use crate::tool::Tool;
-use crate::preferences::{pref, Color};
-use crate::view_filters::{EntityLinkMode, ViewFilters};
 use crate::shape_tool::ShapeParameters;
 use crate::shear_tool;
+use crate::tool::Tool;
+use crate::view_filters::{EntityLinkMode, ViewFilters};
 use crate::world::WorldBounds;
+use map_model::brush::Brush;
 
 /// The colour one world axis is drawn in.
 ///
@@ -125,11 +125,7 @@ pub struct ViewportState {
 ///
 /// This runs from the draw function rather than on a resize, because a view has no size
 /// until it is first drawn, and a document can be opened at any time after that.
-pub fn frame_new_document(
-    state: &mut ViewportState,
-    document: &Document,
-    viewport: (f64, f64),
-) {
+pub fn frame_new_document(state: &mut ViewportState, document: &Document, viewport: (f64, f64)) {
     if state.framed_generation == Some(document.generation()) {
         return;
     }
@@ -152,7 +148,6 @@ pub fn draw(
     cr: &mut dyn Canvas,
     viewport: (f64, f64),
 ) {
-
     draw_base(state, grid, document, filters, cr, viewport);
     draw_over_base(state, document, filters, cr, viewport);
 }
@@ -167,12 +162,27 @@ fn animated_brushes(filters: &ViewFilters) -> bool {
 /// preferences, the filters that decide whether brush edges are drawn, and the
 /// unselected brushes' edges. A view that keeps the picture [`draw_base`] made can draw
 /// it again unchanged while this stays the same.
-pub fn base_key(state: &ViewportState, grid: &Grid, document: &Document, filters: &ViewFilters, viewport: (f64, f64)) -> u64 {
+pub fn base_key(
+    state: &ViewportState,
+    grid: &Grid,
+    document: &Document,
+    filters: &ViewFilters,
+    viewport: (f64, f64),
+) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
     let camera = &state.camera;
     (camera.plane as u8).hash(&mut h);
-    for v in [camera.position.x(), camera.position.y(), camera.position.z(), camera.zoom, viewport.0, viewport.1, state.bounds.half_extent(), grid.actual_size()] {
+    for v in [
+        camera.position.x(),
+        camera.position.y(),
+        camera.position.z(),
+        camera.zoom,
+        viewport.0,
+        viewport.1,
+        state.bounds.half_extent(),
+        grid.actual_size(),
+    ] {
         v.to_bits().hash(&mut h);
     }
     grid.visible().hash(&mut h);
@@ -189,7 +199,14 @@ pub fn base_key(state: &ViewportState, grid: &Grid, document: &Document, filters
 /// The bottom of the picture, which only changes when [`base_key`] does: the background,
 /// the grid, the axes, the world's bounds and the edges of every brush that is not
 /// selected.
-pub fn draw_base(state: &ViewportState, grid: &Grid, document: &Document, filters: &ViewFilters, cr: &mut dyn Canvas, viewport: (f64, f64)) {
+pub fn draw_base(
+    state: &ViewportState,
+    grid: &Grid,
+    document: &Document,
+    filters: &ViewFilters,
+    cr: &mut dyn Canvas,
+    viewport: (f64, f64),
+) {
     // Background.
     set_colour(cr, pref(|p| p.background_color));
     cr.paint();
@@ -204,12 +221,20 @@ pub fn draw_base(state: &ViewportState, grid: &Grid, document: &Document, filter
 
 /// Everything [`draw`] puts over [`draw_base`]: the selection, the entities, bounds and
 /// links, the tool's own marks and the view's name.
-pub fn draw_over_base(state: &ViewportState, document: &Document, filters: &ViewFilters, cr: &mut dyn Canvas, viewport: (f64, f64)) {
+pub fn draw_over_base(
+    state: &ViewportState,
+    document: &Document,
+    filters: &ViewFilters,
+    cr: &mut dyn Canvas,
+    viewport: (f64, f64),
+) {
     document.animation_preview_time(filters.preview_motion && filters.animation_frame.is_none());
     if filters.show_brushes && filters.show_edges {
         if animated_brushes(filters) {
-            draw_animation_brushes(state,document,filters,cr,viewport);
-        } else { draw_selected_brushes(state, document, cr, viewport); }
+            draw_animation_brushes(state, document, filters, cr, viewport);
+        } else {
+            draw_selected_brushes(state, document, cr, viewport);
+        }
     }
     if filters.show_point_entities {
         draw_entities(state, document, filters, cr, viewport);
@@ -234,11 +259,14 @@ pub fn draw_over_base(state: &ViewportState, document: &Document, filters: &View
     set_ink(cr, false);
     cr.move_to(8.0, 18.0);
     draw_text(cr, crate::i18n::tr(state.camera.plane.name()), 12.0);
-    if let Some(frame)=filters.animation_frame {
-        cr.move_to(8.0,34.0);
-        draw_text(cr,&format!("{} {} · Esc",crate::i18n::tr("Frame"),frame),12.0);
+    if let Some(frame) = filters.animation_frame {
+        cr.move_to(8.0, 34.0);
+        draw_text(
+            cr,
+            &format!("{} {} · Esc", crate::i18n::tr("Frame"), frame),
+            12.0,
+        );
     }
-
 }
 
 /// Draws `text` with its baseline at the context's current point, through the canvas's
@@ -381,7 +409,8 @@ pub fn draw_compass(state: &ViewportState, cr: &mut dyn Canvas, viewport: (f64, 
     let origin = plane.unproject(Vec2d::zero(), 0.0);
     let right = plane.unproject(Vec2d::new(1.0, 0.0), 0.0) - origin;
     let up = plane.unproject(Vec2d::new(0.0, 1.0), 0.0) - origin;
-    let arrows = crate::compass::arrows(right, up, plane.view_direction(), Some(plane.depth_axis()));
+    let arrows =
+        crate::compass::arrows(right, up, plane.view_direction(), Some(plane.depth_axis()));
     crate::compass::draw(cr, viewport, &arrows);
 }
 
@@ -438,14 +467,12 @@ pub fn draw_handles(
 
     // What the pointer is over, marked before the handles so the handles sit on top of
     // it: the edge or the face outline the handle stands for, in the picked colour.
-    if let Some(handle) = hovered
-        .and_then(|position| {
-            handles
-                .handles()
-                .iter()
-                .find(|handle| vec::is_zero(handle.position - position, 0.001))
-        })
-    {
+    if let Some(handle) = hovered.and_then(|position| {
+        handles
+            .handles()
+            .iter()
+            .find(|handle| vec::is_zero(handle.position - position, 0.001))
+    }) {
         set_colour(cr, pref(|p| p.selected_handle_color));
         cr.set_line_width(2.0);
         for (from, to) in crate::handle_tool::outline_of(handle) {
@@ -470,7 +497,11 @@ pub fn draw_handles(
         }
         // Hovered handles grow to indicate the click target. Selected handles are red, unselected
         // ones yellow, and vertex-insertion handles smaller.
-        let radius = if over { pick_radius() + 1.5 } else { pick_radius() };
+        let radius = if over {
+            pick_radius() + 1.5
+        } else {
+            pick_radius()
+        };
         let radius = if handle.splits { radius * 0.55 } else { radius };
         cr.new_sub_path();
         cr.arc(
@@ -563,7 +594,10 @@ pub fn draw_handle_status(handles: &HandleManager, cr: &mut dyn Canvas) {
     cr.move_to(8.0, 60.0);
     draw_text(
         cr,
-        &format!("{} · {count} of {total} selected", kind.action_name(count.max(1))),
+        &format!(
+            "{} · {count} of {total} selected",
+            kind.action_name(count.max(1))
+        ),
         10.0,
     );
 }
@@ -663,8 +697,7 @@ pub fn begin_extrude_2d(
         .selected_brushes()
         .into_iter()
         .filter_map(|brush| {
-            extrude_tool::find_closest_horizon_edge(brush, ray)
-                .map(|edge| (brush.clone(), edge))
+            extrude_tool::find_closest_horizon_edge(brush, ray).map(|edge| (brush.clone(), edge))
         })
         .min_by(|(_, a), (_, b)| {
             a.from_ray
@@ -702,8 +735,8 @@ pub fn pick_scale_handle(
     scale_tool::all_handles()
         .into_iter()
         .map(|handle| {
-            let on_screen = camera
-                .plane_to_screen(camera.plane.project(handle.position(box_)), viewport);
+            let on_screen =
+                camera.plane_to_screen(camera.plane.project(handle.position(box_)), viewport);
             (handle, vec::squared_distance(on_screen, cursor))
         })
         .filter(|(_, distance)| *distance <= (handle_radius() + 2.0).powi(2))
@@ -879,8 +912,7 @@ pub fn begin_clip(
     viewport: (f64, f64),
     cursor: Vec2d,
 ) -> DragMode {
-    let Some(position) = clip_point_under_cursor(state, grid, document, viewport, cursor)
-    else {
+    let Some(position) = clip_point_under_cursor(state, grid, document, viewport, cursor) else {
         return DragMode::Idle;
     };
 
@@ -924,12 +956,25 @@ pub fn clip_point_under_cursor(
 }
 
 /// The next point uses exactly the same placement and picking rules as a click.
-pub fn clip_preview_point(state: &ViewportState, grid: &Grid, document: &Document,
-    clip: &ClipTool, viewport: (f64,f64)) -> Option<Vec3d> {
-    if clip.is_dragging() { return None; }
+pub fn clip_preview_point(
+    state: &ViewportState,
+    grid: &Grid,
+    document: &Document,
+    clip: &ClipTool,
+    viewport: (f64, f64),
+) -> Option<Vec3d> {
+    if clip.is_dragging() {
+        return None;
+    }
     let point = clip_point_under_cursor(state, grid, document, viewport, state.cursor?)?;
     let reach = CLIP_HANDLE_RADIUS * 2.0 / state.camera.zoom;
-    if clip.points().iter().any(|p| vec::squared_distance(*p, point) <= reach*reach) { return None; }
+    if clip
+        .points()
+        .iter()
+        .any(|p| vec::squared_distance(*p, point) <= reach * reach)
+    {
+        return None;
+    }
     clip.can_add_point(point).then_some(point)
 }
 
@@ -1009,7 +1054,13 @@ pub fn draw_sweep(
     cr.line_to(to.x(), to.y());
     let _ = cr.stroke();
     for point in [from, to] {
-        cr.arc(point.x(), point.y(), CLIP_HANDLE_RADIUS, 0.0, std::f64::consts::TAU);
+        cr.arc(
+            point.x(),
+            point.y(),
+            CLIP_HANDLE_RADIUS,
+            0.0,
+            std::f64::consts::TAU,
+        );
         let _ = cr.fill();
     }
 }
@@ -1082,7 +1133,13 @@ pub fn draw_clip(
     set_colour(cr, pref(|p| p.clip_handle_color));
     for point in &screen {
         cr.new_path();
-        cr.arc(point.x(), point.y(), CLIP_HANDLE_RADIUS, 0.0, std::f64::consts::TAU);
+        cr.arc(
+            point.x(),
+            point.y(),
+            CLIP_HANDLE_RADIUS,
+            0.0,
+            std::f64::consts::TAU,
+        );
         let _ = cr.fill();
     }
 }
@@ -1120,13 +1177,19 @@ pub fn draw_creation_box(state: &ViewportState, cr: &mut dyn Canvas, viewport: (
         return;
     };
 
-    let corners = bounds.vertices().map(|corner| {
-        state.camera.world_to_screen(corner, viewport)
-    });
+    let corners = bounds
+        .vertices()
+        .map(|corner| state.camera.world_to_screen(corner, viewport));
     let left = corners.iter().map(|c| c.x()).fold(f64::INFINITY, f64::min);
-    let right = corners.iter().map(|c| c.x()).fold(f64::NEG_INFINITY, f64::max);
+    let right = corners
+        .iter()
+        .map(|c| c.x())
+        .fold(f64::NEG_INFINITY, f64::max);
     let top = corners.iter().map(|c| c.y()).fold(f64::INFINITY, f64::min);
-    let bottom = corners.iter().map(|c| c.y()).fold(f64::NEG_INFINITY, f64::max);
+    let bottom = corners
+        .iter()
+        .map(|c| c.y())
+        .fold(f64::NEG_INFINITY, f64::max);
 
     set_colour(cr, pref(|p| p.resize_handle_color));
     cr.set_line_width(1.0);
@@ -1185,12 +1248,7 @@ pub fn draw_extrude_preview(
     let _ = cr.stroke();
 }
 
-pub fn draw_grid(
-    state: &ViewportState,
-    grid: &Grid,
-    cr: &mut dyn Canvas,
-    viewport: (f64, f64),
-) {
+pub fn draw_grid(state: &ViewportState, grid: &Grid, cr: &mut dyn Canvas, viewport: (f64, f64)) {
     if !grid.visible() {
         return;
     }
@@ -1214,7 +1272,11 @@ pub fn draw_grid(
         // Every 8th line is brighter, giving a readable major/minor grid.
         let major = (x / (spacing * 8.0)).fract() == 0.0;
         set_grid_color(cr, major);
-        let sx = camera.plane_to_screen(Vec2d::new(x, 0.0), viewport).x().floor() + 0.5;
+        let sx = camera
+            .plane_to_screen(Vec2d::new(x, 0.0), viewport)
+            .x()
+            .floor()
+            + 0.5;
         cr.move_to(sx, 0.0);
         cr.line_to(sx, h);
         let _ = cr.stroke();
@@ -1225,7 +1287,11 @@ pub fn draw_grid(
     while y <= max.y() {
         let major = (y / (spacing * 8.0)).fract() == 0.0;
         set_grid_color(cr, major);
-        let sy = camera.plane_to_screen(Vec2d::new(0.0, y), viewport).y().floor() + 0.5;
+        let sy = camera
+            .plane_to_screen(Vec2d::new(0.0, y), viewport)
+            .y()
+            .floor()
+            + 0.5;
         cr.move_to(0.0, sy);
         cr.line_to(w, sy);
         let _ = cr.stroke();
@@ -1239,7 +1305,10 @@ pub fn set_grid_color(cr: &mut dyn Canvas, major: bool) {
         set_colour(cr, colour.with_alpha(colour.a * pref(|p| p.grid_alpha)));
     } else {
         let colour = pref(|p| p.grid_color_2d);
-        set_colour(cr, colour.with_alpha(colour.a * pref(|p| p.grid_alpha) * 0.5));
+        set_colour(
+            cr,
+            colour.with_alpha(colour.a * pref(|p| p.grid_alpha) * 0.5),
+        );
     }
 }
 
@@ -1326,8 +1395,12 @@ pub fn swept_bounds(
     document: &Document,
     square: bool,
 ) -> Option<geometry_math::bbox::Bbox3d> {
-    let initial = camera.plane.unproject(camera.screen_to_plane(from, viewport), 0.0);
-    let current = camera.plane.unproject(camera.screen_to_plane(to, viewport), 0.0);
+    let initial = camera
+        .plane
+        .unproject(camera.screen_to_plane(from, viewport), 0.0);
+    let current = camera
+        .plane
+        .unproject(camera.screen_to_plane(to, viewport), 0.0);
 
     let mut min = vec::min(initial, current);
     let mut max = vec::max(initial, current);
@@ -1463,20 +1536,51 @@ pub struct Extruding {
 }
 
 /// Draws the edges of every brush in the document.
-pub fn draw_animation_brushes(state:&ViewportState, document:&Document, filters:&ViewFilters, cr:&mut dyn Canvas, viewport:(f64,f64)) {
-    let frame=document.animation_wireframe(filters);
-    for (past,offset,edges) in &frame.ghosts {
-        let alpha=0.45 / *offset as f32;
-        let color=if *past {Color::rgba(0.25,0.65,1.0,alpha)} else {Color::rgba(1.0,0.55,0.2,alpha)};
-        stroke_edges(state,edges,cr,viewport,color,1.0);
+pub fn draw_animation_brushes(
+    state: &ViewportState,
+    document: &Document,
+    filters: &ViewFilters,
+    cr: &mut dyn Canvas,
+    viewport: (f64, f64),
+) {
+    let frame = document.animation_wireframe(filters);
+    for (past, offset, edges) in &frame.ghosts {
+        let alpha = 0.45 / *offset as f32;
+        let color = if *past {
+            Color::rgba(0.25, 0.65, 1.0, alpha)
+        } else {
+            Color::rgba(1.0, 0.55, 0.2, alpha)
+        };
+        stroke_edges(state, edges, cr, viewport, color, 1.0);
     }
-    stroke_edges(state,&frame.locked,cr,viewport,pref(|p|p.locked_edge_color),1.0);
-    stroke_edges(state,&frame.plain,cr,viewport,pref(|p|p.edge_color),1.0);
-    for (peer,edges) in &frame.peers {
-        let [r,g,b]=crate::collab::peer_color_bytes(*peer);
-        stroke_edges(state,edges,cr,viewport,Color::bytes(r,g,b),2.0);
+    stroke_edges(
+        state,
+        &frame.locked,
+        cr,
+        viewport,
+        pref(|p| p.locked_edge_color),
+        1.0,
+    );
+    stroke_edges(
+        state,
+        &frame.plain,
+        cr,
+        viewport,
+        pref(|p| p.edge_color),
+        1.0,
+    );
+    for (peer, edges) in &frame.peers {
+        let [r, g, b] = crate::collab::peer_color_bytes(*peer);
+        stroke_edges(state, edges, cr, viewport, Color::bytes(r, g, b), 2.0);
     }
-    stroke_edges(state,&frame.selected,cr,viewport,pref(|p|p.selected_edge_color),2.0);
+    stroke_edges(
+        state,
+        &frame.selected,
+        cr,
+        viewport,
+        pref(|p| p.selected_edge_color),
+        2.0,
+    );
 }
 
 pub fn draw_brushes(
@@ -1490,13 +1594,24 @@ pub fn draw_brushes(
 }
 
 /// The selected brushes' edges, in the highlight colour.
-pub fn draw_selected_brushes(state: &ViewportState, document: &Document, cr: &mut dyn Canvas, viewport: (f64, f64)) {
+pub fn draw_selected_brushes(
+    state: &ViewportState,
+    document: &Document,
+    cr: &mut dyn Canvas,
+    viewport: (f64, f64),
+) {
     stroke_edges(
         state,
         &document.selected_edges(),
         cr,
         viewport,
-        pref(|p| if document.has_shape_preview() {p.resize_handle_color} else {p.selected_edge_color}),
+        pref(|p| {
+            if document.has_shape_preview() {
+                p.resize_handle_color
+            } else {
+                p.selected_edge_color
+            }
+        }),
         2.0,
     );
 }
@@ -1517,7 +1632,14 @@ pub fn draw_static_brushes(
         pref(|p| p.locked_edge_color),
         1.0,
     );
-    stroke_edges(state, &document.edges(), cr, viewport, pref(|p| p.edge_color), 1.0);
+    stroke_edges(
+        state,
+        &document.edges(),
+        cr,
+        viewport,
+        pref(|p| p.edge_color),
+        1.0,
+    );
     // The other participants' selections in a live session, each in the colour that
     // person draws in everywhere, so it does not read as this editor's. Drawn under the
     // local selection, which wins where they overlap.
@@ -1562,10 +1684,11 @@ pub fn draw_entities(
 ) {
     // Each entity's class, looked up rather than asked of the document per entity, which
     // walked the whole tree twice for every box.
-    let classnames: std::collections::HashMap<map_model::node::NodeId, &str> = map_model::node::point_entities_by_layer(document.tree_world())
-        .into_iter()
-        .filter_map(|(id, entity, _)| entity.classname().map(|name| (id, name)))
-        .collect();
+    let classnames: std::collections::HashMap<map_model::node::NodeId, &str> =
+        map_model::node::point_entities_by_layer(document.tree_world())
+            .into_iter()
+            .filter_map(|(id, entity, _)| entity.classname().map(|name| (id, name)))
+            .collect();
     for entity in document.entity_boxes() {
         let min = state.camera.world_to_screen(entity.bounds.min, viewport);
         let max = state.camera.world_to_screen(entity.bounds.max, viewport);
@@ -1592,17 +1715,20 @@ pub fn draw_entities(
         let _ = cr.stroke();
 
         if let Some(classname) = classnames.get(&entity.node) {
-            crate::entity_icons::draw(cr, classname, (min.x()+max.x())*0.5-10., (min.y()+max.y())*0.5-10., 20.);
+            crate::entity_icons::draw(
+                cr,
+                classname,
+                (min.x() + max.x()) * 0.5 - 10.,
+                (min.y() + max.y()) * 0.5 - 10.,
+                20.,
+            );
         }
 
         // `ViewEditor`'s "Show entity classnames": with nothing but a box to go on, the
         // class is the only thing saying what an entity is.
         if filters.show_entity_classnames {
             if let Some(classname) = classnames.get(&entity.node) {
-                cr.move_to(
-                    min.x().min(max.x()),
-                    min.y().min(max.y()) - 3.0,
-                );
+                cr.move_to(min.x().min(max.x()), min.y().min(max.y()) - 3.0);
                 draw_text(cr, classname, 10.0);
             }
         }
@@ -1832,14 +1958,30 @@ pub fn draw_entity_links(
         set_colour(cr, link_colour(&link));
         cr.move_to(from.x(), from.y());
         cr.line_to(to.x(), to.y());
-        let delta=to-from;let length=(delta.x()*delta.x()+delta.y()*delta.y()).sqrt();
-        if length>12.0 {let u=delta/length;let side=Vec2d::new(-u.y(),u.x());for sign in [-1.0,1.0]{let tip=to-u*9.0+side*(4.0*sign);cr.move_to(to.x(),to.y());cr.line_to(tip.x(),tip.y());}}
+        let delta = to - from;
+        let length = (delta.x() * delta.x() + delta.y() * delta.y()).sqrt();
+        if length > 12.0 {
+            let u = delta / length;
+            let side = Vec2d::new(-u.y(), u.x());
+            for sign in [-1.0, 1.0] {
+                let tip = to - u * 9.0 + side * (4.0 * sign);
+                cr.move_to(to.x(), to.y());
+                cr.line_to(tip.x(), tip.y());
+            }
+        }
         let _ = cr.stroke();
         // What the link does, by the links that touch the selection only: written by
         // every link, a map with many reads as a wall of labels.
         if link.touches_selection && length > 24.0 {
             let middle = (from + to) / 2.0;
-            draw_label(cr, &link.label(), middle, crate::size_labels::Alignment::Top, 2.0, LabelStyle::Weak);
+            draw_label(
+                cr,
+                &link.label(),
+                middle,
+                crate::size_labels::Alignment::Top,
+                2.0,
+                LabelStyle::Weak,
+            );
             cr.set_line_width(1.0);
         }
     }
@@ -1861,7 +2003,7 @@ pub fn stroke_edges(
     set_colour(cr, colour);
     cr.set_line_width(width);
 
-    let mut segments = edges.iter().filter_map(|(start,end)| {
+    let mut segments = edges.iter().filter_map(|(start, end)| {
         let from = state.camera.world_to_screen(*start, viewport);
         let to = state.camera.world_to_screen(*end, viewport);
         // An edge running along the view axis projects to a point; skip it rather than
@@ -1879,16 +2021,21 @@ pub fn stroke_edges(
         {
             return None;
         }
-        Some((from,to))
+        Some((from, to))
     });
     #[cfg(feature = "test-support")]
     let legacy = crate::bench_support::legacy_line_paths();
     #[cfg(not(feature = "test-support"))]
     let legacy = false;
     if legacy {
-        for (from,to) in segments {cr.move_to(from.x(),from.y());cr.line_to(to.x(),to.y());}
+        for (from, to) in segments {
+            cr.move_to(from.x(), from.y());
+            cr.line_to(to.x(), to.y());
+        }
         cr.stroke();
-    } else {cr.stroke_segments(&mut segments);}
+    } else {
+        cr.stroke_segments(&mut segments);
+    }
 }
 
 /// Draws the edge of the editable world as a rectangle.
@@ -1963,987 +2110,1039 @@ impl SelectAndMove {
     /// The press, at `(x, y)` in view pixels.
     pub fn begin(&self, x: f64, y: f64, modifiers: Modifiers, viewport: (f64, f64)) {
         #[allow(unused_variables)]
-        let Self { state, grid, document, shape_parameters, tool, clip, handles, rotate, fillet, pending_shape, redraw_everywhere, sweep, refresh_panels, redraw, focus, drag, marquee } = self;
+        let Self {
+            state,
+            grid,
+            document,
+            shape_parameters,
+            tool,
+            clip,
+            handles,
+            rotate,
+            fillet,
+            pending_shape,
+            redraw_everywhere,
+            sweep,
+            refresh_panels,
+            redraw,
+            focus,
+            drag,
+            marquee,
+        } = self;
 
-            *marquee.borrow_mut() = Some(document.borrow().selection_snapshot());
-            // Take the keyboard off any number field the pointer was last in, so the
-            // grid and nudge keys reach the window again.
-            focus();
+        *marquee.borrow_mut() = Some(document.borrow().selection_snapshot());
+        // Take the keyboard off any number field the pointer was last in, so the
+        // grid and nudge keys reach the window again.
+        focus();
 
-            // Painting has its own stroke: the paint gesture handles it, and a
-            // press here must not also select or start moving the brush under it.
-            if *tool.borrow() == Tool::Paint {
+        // Painting has its own stroke: the paint gesture handles it, and a
+        // press here must not also select or start moving the brush under it.
+        if *tool.borrow() == Tool::Paint {
+            *drag.borrow_mut() = DragState {
+                origin: Vec2d::new(x, y),
+                current: Vec2d::new(x, y),
+                mode: DragMode::Idle,
+                ..DragState::default()
+            };
+            return;
+        }
+
+        if *tool.borrow() == Tool::Clip {
+            let mode = begin_clip(
+                &state.borrow(),
+                &grid.borrow(),
+                &document.borrow(),
+                &mut clip.borrow_mut(),
+                viewport,
+                Vec2d::new(x, y),
+            );
+            *drag.borrow_mut() = DragState {
+                origin: Vec2d::new(x, y),
+                current: Vec2d::new(x, y),
+                applied: Vec3d::zero(),
+                vertex_stacks_expanded: false,
+                mode,
+                scaling: None,
+                shearing: None,
+                extruding: None,
+                splitting: None,
+            };
+            redraw();
+            return;
+        }
+
+        if *tool.borrow() == Tool::Rotate {
+            let mut rotate = rotate.borrow_mut();
+            if rotate.center().is_none() {
+                rotate.reset_center(&document.borrow(), &grid.borrow());
+            }
+            let mode = match rotate.center() {
+                None => DragMode::Idle,
+                Some(center) => {
+                    let camera = state.borrow().camera;
+                    let on_screen = camera.plane_to_screen(camera.plane.project(center), viewport);
+                    let reach = vec::distance(on_screen, Vec2d::new(x, y));
+                    if reach <= handle_radius() + 2.0 {
+                        DragMode::MovingRotationCenter
+                    } else {
+                        // Anywhere else turns the selection. The ring is a guide, not
+                        // a boundary: grabbing further out only makes the drag finer.
+                        document.borrow_mut().begin_transaction();
+                        state.borrow_mut().rotating = true;
+                        DragMode::Rotating
+                    }
+                }
+            };
+            drop(rotate);
+            *drag.borrow_mut() = DragState {
+                origin: Vec2d::new(x, y),
+                current: Vec2d::new(x, y),
+                applied: Vec3d::zero(),
+                vertex_stacks_expanded: false,
+                mode,
+                scaling: None,
+                shearing: None,
+                extruding: None,
+                splitting: None,
+            };
+            redraw();
+            return;
+        }
+
+        // The sweep tool's destination cap: a press on it drags it, a press anywhere
+        // else does nothing (the faces to sweep are chosen with Alt-click).
+        if *tool.borrow() == Tool::Sweep {
+            let mode = sweep_cap_under_cursor(
+                &state.borrow(),
+                &document.borrow(),
+                &sweep.borrow(),
+                viewport,
+                Vec2d::new(x, y),
+            )
+            .map_or(DragMode::Idle, |()| DragMode::MovingSweepCap);
+            *drag.borrow_mut() = DragState {
+                origin: Vec2d::new(x, y),
+                current: Vec2d::new(x, y),
+                mode,
+                ..DragState::default()
+            };
+            redraw();
+            return;
+        }
+
+        // Shift activates extrusion except in a handle tool, where it splits vertices.
+        if modifiers.shift && HandleKind::of(*tool.borrow()).is_none() {
+            let camera = state.borrow().camera;
+            let ray = camera.ray_through(Vec2d::new(x, y), viewport, PICK_REACH);
+            let started = {
+                let document = document.borrow();
+                begin_extrude_2d(
+                    &document,
+                    &ray,
+                    camera.direction(),
+                    modifiers.control,
+                    modifiers.alt,
+                )
+            };
+            if let Some(extruding) = started {
+                document.borrow_mut().begin_transaction();
+                // Preparing a Shift-drag must still select a face on a plain click.
+                let picked = document
+                    .borrow()
+                    .pick(&ray)
+                    .filter(|hit| hit.face.is_some());
+                if let Some(hit) = picked {
+                    let face = FaceRef {
+                        node: hit.node,
+                        face: hit.face.unwrap(),
+                    };
+                    if modifiers.control {
+                        document.borrow_mut().toggle_face_selected(face);
+                    } else {
+                        document.borrow_mut().select_face_only(face);
+                    }
+                }
+                *drag.borrow_mut() = DragState {
+                    origin: Vec2d::new(x, y),
+                    current: Vec2d::new(x, y),
+                    applied: Vec3d::zero(),
+                    vertex_stacks_expanded: false,
+                    mode: DragMode::Extruding,
+                    scaling: None,
+                    shearing: None,
+                    extruding: Some(extruding),
+                    splitting: None,
+                };
+                redraw();
+                return;
+            }
+        }
+
+        if *tool.borrow() == Tool::Shear {
+            let camera = state.borrow().camera;
+            let caught = document.borrow().selection_bounds().and_then(|bounds| {
+                let cursor = Vec2d::new(x, y);
+                shear_tool::handles(&bounds)
+                    .into_iter()
+                    .map(|(normal, center)| {
+                        let on_screen =
+                            camera.plane_to_screen(camera.plane.project(center), viewport);
+                        (normal, center, vec::squared_distance(on_screen, cursor))
+                    })
+                    .filter(|(_, _, distance)| *distance <= (handle_radius() + 2.0).powi(2))
+                    .min_by(|(_, _, a), (_, _, b)| {
+                        a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                    .map(|(normal, center, _)| (normal, center, bounds))
+            });
+
+            if caught.is_some() {
+                document.borrow_mut().begin_transaction();
+            }
+            *drag.borrow_mut() = DragState {
+                origin: Vec2d::new(x, y),
+                current: Vec2d::new(x, y),
+                applied: Vec3d::zero(),
+                vertex_stacks_expanded: false,
+                mode: if caught.is_some() {
+                    DragMode::Shearing
+                } else {
+                    DragMode::Idle
+                },
+                scaling: None,
+                shearing: caught,
+                extruding: None,
+                splitting: None,
+            };
+            redraw();
+            return;
+        }
+
+        if *tool.borrow() == Tool::Scale {
+            let box_ = document.borrow().selection_bounds();
+            let picked = box_.and_then(|box_| {
+                pick_scale_handle(&state.borrow(), &box_, viewport, Vec2d::new(x, y))
+                    .map(|handle| (handle, box_))
+            });
+            if picked.is_some() {
+                // One drag is one step in the history, however many edits it makes.
+                document.borrow_mut().begin_transaction();
+            }
+            state.borrow_mut().scaling = picked.map(|(handle, _)| handle);
+            *drag.borrow_mut() = DragState {
+                origin: Vec2d::new(x, y),
+                current: Vec2d::new(x, y),
+                applied: Vec3d::zero(),
+                vertex_stacks_expanded: false,
+                mode: if picked.is_some() {
+                    DragMode::Scaling
+                } else {
+                    DragMode::Idle
+                },
+                scaling: picked,
+                shearing: None,
+                extruding: None,
+                splitting: None,
+            };
+            redraw();
+            return;
+        }
+
+        if let Some(kind) = HandleKind::of(*tool.borrow()) {
+            // Ctrl adds to what is picked, as it does for objects.
+            let add_to_selection = modifiers.control;
+            let mut handles = handles.borrow_mut();
+            handles.collect(kind, document.borrow().selected_brushes().into_iter());
+
+            // Fillet pins a preview edge without dragging or editing the source.
+            if *tool.borrow() == Tool::Fillet {
+                match pick_handle(&state.borrow(), &handles, viewport, Vec2d::new(x, y)) {
+                    Some(position) => {
+                        let outcome = crate::fillet_tool::press(
+                            &document,
+                            &mut handles,
+                            *fillet.borrow(),
+                            position,
+                            add_to_selection,
+                        );
+                        crate::fillet_tool::report(&outcome);
+                    }
+                    None => {
+                        let ray = state.borrow().camera.ray_through(
+                            Vec2d::new(x, y),
+                            viewport,
+                            PICK_REACH,
+                        );
+                        let hit = document.borrow().pick(&ray).map(|hit| hit.node);
+                        crate::fillet_tool::select_brush(
+                            &mut document.borrow_mut(),
+                            &mut handles,
+                            hit,
+                            add_to_selection,
+                        );
+                    }
+                }
+                drop(handles);
                 *drag.borrow_mut() = DragState {
                     origin: Vec2d::new(x, y),
                     current: Vec2d::new(x, y),
                     mode: DragMode::Idle,
                     ..DragState::default()
                 };
-                return;
-            }
-
-            if *tool.borrow() == Tool::Clip {
-                let mode = begin_clip(
-                    &state.borrow(),
-                    &grid.borrow(),
-                    &document.borrow(),
-                    &mut clip.borrow_mut(),
-                    viewport,
-                    Vec2d::new(x, y),
-                );
-                *drag.borrow_mut() = DragState {
-                    origin: Vec2d::new(x, y),
-                    current: Vec2d::new(x, y),
-                    applied: Vec3d::zero(),
-                    vertex_stacks_expanded: false,
-                    mode,
-                    scaling: None,
-                    shearing: None,
-                    extruding: None,
-                    splitting: None,
-                };
                 redraw();
-                return;
-            }
-
-            
-            if *tool.borrow() == Tool::Rotate {
-                let mut rotate = rotate.borrow_mut();
-                if rotate.center().is_none() {
-                    rotate.reset_center(&document.borrow(), &grid.borrow());
-                }
-                let mode = match rotate.center() {
-                    None => DragMode::Idle,
-                    Some(center) => {
-                        let camera = state.borrow().camera;
-                        let on_screen = camera
-                            .plane_to_screen(camera.plane.project(center), viewport);
-                        let reach = vec::distance(on_screen, Vec2d::new(x, y));
-                        if reach <= handle_radius() + 2.0 {
-                            DragMode::MovingRotationCenter
-                        } else {
-                            // Anywhere else turns the selection. The ring is a guide, not
-                            // a boundary: grabbing further out only makes the drag finer.
-                            document.borrow_mut().begin_transaction();
-                            state.borrow_mut().rotating = true;
-                            DragMode::Rotating
-                        }
-                    }
-                };
-                drop(rotate);
-                *drag.borrow_mut() = DragState {
-                    origin: Vec2d::new(x, y),
-                    current: Vec2d::new(x, y),
-                    applied: Vec3d::zero(),
-                    vertex_stacks_expanded: false,
-                    mode,
-                    scaling: None,
-                    shearing: None,
-                    extruding: None,
-                    splitting: None,
-                };
-                redraw();
-                return;
-            }
-
-            // The sweep tool's destination cap: a press on it drags it, a press anywhere
-            // else does nothing (the faces to sweep are chosen with Alt-click).
-            if *tool.borrow() == Tool::Sweep {
-                let mode = sweep_cap_under_cursor(
-                    &state.borrow(),
-                    &document.borrow(),
-                    &sweep.borrow(),
-                    viewport,
-                    Vec2d::new(x, y),
-                )
-                .map_or(DragMode::Idle, |()| DragMode::MovingSweepCap);
-                *drag.borrow_mut() = DragState {
-                    origin: Vec2d::new(x, y),
-                    current: Vec2d::new(x, y),
-                    mode,
-                    ..DragState::default()
-                };
-                redraw();
-                return;
-            }
-
-            // Shift activates extrusion except in a handle tool, where it splits vertices.
-            if modifiers.shift
-                && HandleKind::of(*tool.borrow()).is_none()
-            {
-                let camera = state.borrow().camera;
-                let ray = camera.ray_through(Vec2d::new(x, y), viewport, PICK_REACH);
-                let started = {
-                    let document = document.borrow();
-                    begin_extrude_2d(
-                        &document,
-                        &ray,
-                        camera.direction(),
-                        modifiers.control,
-                        modifiers.alt,
-                    )
-                };
-                if let Some(extruding) = started {
-                    document.borrow_mut().begin_transaction();
-                    // Preparing a Shift-drag must still select a face on a plain click.
-                    let picked = document.borrow().pick(&ray).filter(|hit| hit.face.is_some());
-                    if let Some(hit) = picked {
-                        let face = FaceRef { node: hit.node, face: hit.face.unwrap() };
-                        if modifiers.control { document.borrow_mut().toggle_face_selected(face); }
-                        else { document.borrow_mut().select_face_only(face); }
-                    }
-                    *drag.borrow_mut() = DragState {
-                        origin: Vec2d::new(x, y),
-                        current: Vec2d::new(x, y),
-                        applied: Vec3d::zero(),
-                        vertex_stacks_expanded: false,
-                        mode: DragMode::Extruding,
-                        scaling: None,
-                        shearing: None,
-                        extruding: Some(extruding),
-                        splitting: None,
-                    };
-                    redraw();
-                    return;
-                }
-            }
-
-            if *tool.borrow() == Tool::Shear {
-                let camera = state.borrow().camera;
-                let caught = document.borrow().selection_bounds().and_then(|bounds| {
-                    let cursor = Vec2d::new(x, y);
-                    shear_tool::handles(&bounds)
-                        .into_iter()
-                        .map(|(normal, center)| {
-                            let on_screen = camera.plane_to_screen(
-                                camera.plane.project(center),
-                                viewport,
-                            );
-                            (normal, center, vec::squared_distance(on_screen, cursor))
-                        })
-                        .filter(|(_, _, distance)| {
-                            *distance <= (handle_radius() + 2.0).powi(2)
-                        })
-                        .min_by(|(_, _, a), (_, _, b)| {
-                            a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
-                        })
-                        .map(|(normal, center, _)| (normal, center, bounds))
-                });
-
-                if caught.is_some() {
-                    document.borrow_mut().begin_transaction();
-                }
-                *drag.borrow_mut() = DragState {
-                    origin: Vec2d::new(x, y),
-                    current: Vec2d::new(x, y),
-                    applied: Vec3d::zero(),
-                    vertex_stacks_expanded: false,
-                    mode: if caught.is_some() {
-                        DragMode::Shearing
-                    } else {
-                        DragMode::Idle
-                    },
-                    scaling: None,
-                    shearing: caught,
-                    extruding: None,
-                    splitting: None,
-                };
-                redraw();
-                return;
-            }
-
-            if *tool.borrow() == Tool::Scale {
-                let box_ = document.borrow().selection_bounds();
-                let picked = box_.and_then(|box_| {
-                    pick_scale_handle(&state.borrow(), &box_, viewport, Vec2d::new(x, y))
-                        .map(|handle| (handle, box_))
-                });
-                if picked.is_some() {
-                    // One drag is one step in the history, however many edits it makes.
-                    document.borrow_mut().begin_transaction();
-                }
-                state.borrow_mut().scaling = picked.map(|(handle, _)| handle);
-                *drag.borrow_mut() = DragState {
-                    origin: Vec2d::new(x, y),
-                    current: Vec2d::new(x, y),
-                    applied: Vec3d::zero(),
-                    vertex_stacks_expanded: false,
-                    mode: if picked.is_some() {
-                        DragMode::Scaling
-                    } else {
-                        DragMode::Idle
-                    },
-                    scaling: picked,
-                    shearing: None,
-                    extruding: None,
-                    splitting: None,
-                };
-                redraw();
-                return;
-            }
-
-            if let Some(kind) = HandleKind::of(*tool.borrow()) {
-                // Ctrl adds to what is picked, as it does for objects.
-                let add_to_selection =
-                    modifiers.control;
-                let mut handles = handles.borrow_mut();
-                handles.collect(kind, document.borrow().selected_brushes().into_iter());
-
-                // Fillet pins a preview edge without dragging or editing the source.
-                if *tool.borrow() == Tool::Fillet {
-                    match pick_handle(&state.borrow(), &handles, viewport, Vec2d::new(x, y)) {
-                        Some(position) => {
-                            let outcome = crate::fillet_tool::press(
-                                &document,
-                                &mut handles,
-                                *fillet.borrow(),
-                                position,
-                                add_to_selection,
-                            );
-                            crate::fillet_tool::report(&outcome);
-                        }
-                        None => {
-                            let ray = state.borrow().camera.ray_through(Vec2d::new(x, y), viewport, PICK_REACH);
-                            let hit = document.borrow().pick(&ray).map(|hit| hit.node);
-                            crate::fillet_tool::select_brush(&mut document.borrow_mut(), &mut handles, hit, add_to_selection);
-                        }
-                    }
-                    drop(handles);
-                    *drag.borrow_mut() = DragState {
-                        origin: Vec2d::new(x, y),
-                        current: Vec2d::new(x, y),
-                        mode: DragMode::Idle,
-                        ..DragState::default()
-                    };
-                    redraw();
-                    refresh_panels();
-                    return;
-                }
-
-                let mut splitting = None;
-                let mut grabbed = None;
-                let picked_one = handles.selected_count() == 1;
-                let mode = begin_handle_drag(
-                    &state.borrow(),
-                    &mut handles,
-                    &document,
-                    viewport,
-                    Vec2d::new(x, y),
-                    add_to_selection,
-                    // Splitting is the vertex tool's, and Shift is what asks for it --
-                    // unless Alt is held as well, which asks for a snap instead.
-                    *tool.borrow() == Tool::Vertex
-                        && modifiers.shift
-                        && !modifiers.alt,
-                    *tool.borrow() == Tool::Vertex
-                        && modifiers.shift
-                        && modifiers.alt
-                        && picked_one,
-                    &mut splitting,
-                    &mut grabbed,
-                );
-                drop(handles);
-                if matches!(mode, DragMode::MovingHandle | DragMode::SplittingHandle) {
-                    document.borrow_mut().begin_transaction();
-                }
-                // Which handle the guide comes out of, once there is a drag to guide.
-                state.borrow_mut().dragging_handle = match mode {
-                    DragMode::MovingHandle => grabbed,
-                    DragMode::SplittingHandle => splitting,
-                    _ => None,
-                };
-                *drag.borrow_mut() = DragState {
-                    origin: Vec2d::new(x, y),
-                    current: Vec2d::new(x, y),
-                    applied: Vec3d::zero(),
-                    vertex_stacks_expanded: false,
-                    mode,
-                    scaling: None,
-                    shearing: None,
-                    extruding: None,
-                    splitting,
-                };
-                redraw();
-                // Which handles are picked is what the fillet panel works from,
-                // so it hears about a press the way the sweep panel hears about a
-                // dragged cap.
                 refresh_panels();
                 return;
             }
 
-            let ray = state
-                .borrow()
-                .camera
-                .ray_through(Vec2d::new(x, y), viewport, PICK_REACH);
-
-            let mut document = document.borrow_mut();
-            // In an orthographic view, depth must not prevent dragging the
-            // selected geometry. Modified clicks still pick the nearest object.
-            let modified_pick = modifiers.control || modifiers.shift;
-            let hit = if modified_pick {
-                document.pick(&ray)
-            } else {
-                document.pick_selected(&ray).or_else(|| document.pick(&ray))
-            };
-            // Whether anything was selected before the click below clears it: a drag
-            // from empty space draws a brush, but not on the same drag that deselects.
-            let had_selection = document.has_selection();
-            // `SelectionTool`: Shift picks the face under the pointer rather than the
-            // whole brush (`isFaceClick`), and Ctrl adds to the selection
-            // (`isMultiClick`) -- so Shift+Ctrl picks several faces.
-            let add_to_selection = modifiers.control;
-            let pick_face = modifiers.shift;
-
-            match (hit, pick_face) {
-                // Shift picks a face, which only a brush has.
-                (Some(hit), true) if hit.face.is_some() => {
-                    let face = FaceRef {
-                        node: hit.node,
-                        face: hit.face.expect("checked just above"),
-                    };
-                    if add_to_selection {
-                        document.toggle_face_selected(face);
-                    } else {
-                        document.select_face_only(face);
-                    }
-                }
-                (Some(hit), true) if add_to_selection => document.toggle_selected(hit.node),
-                (Some(hit), true) => document.select_only(hit.node),
-                (Some(hit), false) if add_to_selection => document.toggle_selected(hit.node),
-                (Some(hit), false) => {
-                    // Clicking something already selected keeps the whole selection, so a
-                    // drag can move several brushes at once.
-                    if !document.is_selected(hit.node) {
-                        document.select_only(hit.node);
-                    }
-                }
-                (None, _) if !add_to_selection => document.clear_selection(),
-                (None, _) => {}
+            let mut splitting = None;
+            let mut grabbed = None;
+            let picked_one = handles.selected_count() == 1;
+            let mode = begin_handle_drag(
+                &state.borrow(),
+                &mut handles,
+                &document,
+                viewport,
+                Vec2d::new(x, y),
+                add_to_selection,
+                // Splitting is the vertex tool's, and Shift is what asks for it --
+                // unless Alt is held as well, which asks for a snap instead.
+                *tool.borrow() == Tool::Vertex && modifiers.shift && !modifiers.alt,
+                *tool.borrow() == Tool::Vertex && modifiers.shift && modifiers.alt && picked_one,
+                &mut splitting,
+                &mut grabbed,
+            );
+            drop(handles);
+            if matches!(mode, DragMode::MovingHandle | DragMode::SplittingHandle) {
+                document.borrow_mut().begin_transaction();
             }
-
+            // Which handle the guide comes out of, once there is a drag to guide.
+            state.borrow_mut().dragging_handle = match mode {
+                DragMode::MovingHandle => grabbed,
+                DragMode::SplittingHandle => splitting,
+                _ => None,
+            };
             *drag.borrow_mut() = DragState {
                 origin: Vec2d::new(x, y),
                 current: Vec2d::new(x, y),
                 applied: Vec3d::zero(),
                 vertex_stacks_expanded: false,
+                mode,
                 scaling: None,
                 shearing: None,
                 extruding: None,
-                splitting: None,
-                mode: match hit {
-                    Some(_) if document.has_selection() => {
-                        // The whole drag is one step in the history. Without this every
-                        // motion event recorded its own, and a drag across the window
-                        // left a hundred of them to undo one at a time.
-                        document.begin_transaction();
-                        DragMode::Moving
-                    }
-                    None => empty_space_drag_mode(
-                        had_selection,
-                        add_to_selection,
-                        *tool.borrow(),
-                    ),
-                    _ => DragMode::Idle,
-                },
+                splitting,
             };
-            state.borrow_mut().moving = drag.borrow().mode == DragMode::Moving;
-
             redraw();
-        
+            // Which handles are picked is what the fillet panel works from,
+            // so it hears about a press the way the sweep panel hears about a
+            // dragged cap.
+            refresh_panels();
+            return;
+        }
+
+        let ray = state
+            .borrow()
+            .camera
+            .ray_through(Vec2d::new(x, y), viewport, PICK_REACH);
+
+        let mut document = document.borrow_mut();
+        // In an orthographic view, depth must not prevent dragging the
+        // selected geometry. Modified clicks still pick the nearest object.
+        let modified_pick = modifiers.control || modifiers.shift;
+        let hit = if modified_pick {
+            document.pick(&ray)
+        } else {
+            document.pick_selected(&ray).or_else(|| document.pick(&ray))
+        };
+        // Whether anything was selected before the click below clears it: a drag
+        // from empty space draws a brush, but not on the same drag that deselects.
+        let had_selection = document.has_selection();
+        // `SelectionTool`: Shift picks the face under the pointer rather than the
+        // whole brush (`isFaceClick`), and Ctrl adds to the selection
+        // (`isMultiClick`) -- so Shift+Ctrl picks several faces.
+        let add_to_selection = modifiers.control;
+        let pick_face = modifiers.shift;
+
+        match (hit, pick_face) {
+            // Shift picks a face, which only a brush has.
+            (Some(hit), true) if hit.face.is_some() => {
+                let face = FaceRef {
+                    node: hit.node,
+                    face: hit.face.expect("checked just above"),
+                };
+                if add_to_selection {
+                    document.toggle_face_selected(face);
+                } else {
+                    document.select_face_only(face);
+                }
+            }
+            (Some(hit), true) if add_to_selection => document.toggle_selected(hit.node),
+            (Some(hit), true) => document.select_only(hit.node),
+            (Some(hit), false) if add_to_selection => document.toggle_selected(hit.node),
+            (Some(hit), false) => {
+                // Clicking something already selected keeps the whole selection, so a
+                // drag can move several brushes at once.
+                if !document.is_selected(hit.node) {
+                    document.select_only(hit.node);
+                }
+            }
+            (None, _) if !add_to_selection => document.clear_selection(),
+            (None, _) => {}
+        }
+
+        *drag.borrow_mut() = DragState {
+            origin: Vec2d::new(x, y),
+            current: Vec2d::new(x, y),
+            applied: Vec3d::zero(),
+            vertex_stacks_expanded: false,
+            scaling: None,
+            shearing: None,
+            extruding: None,
+            splitting: None,
+            mode: match hit {
+                Some(_) if document.has_selection() => {
+                    // The whole drag is one step in the history. Without this every
+                    // motion event recorded its own, and a drag across the window
+                    // left a hundred of them to undo one at a time.
+                    document.begin_transaction();
+                    DragMode::Moving
+                }
+                None => empty_space_drag_mode(had_selection, add_to_selection, *tool.borrow()),
+                _ => DragMode::Idle,
+            },
+        };
+        state.borrow_mut().moving = drag.borrow().mode == DragMode::Moving;
+
+        redraw();
     }
     /// The pointer moved; `(dx, dy)` is the offset from the press.
     pub fn update(&self, dx: f64, dy: f64, modifiers: Modifiers, viewport: (f64, f64)) {
         #[allow(unused_variables)]
-        let Self { state, grid, document, shape_parameters, tool, clip, handles, rotate, fillet, pending_shape, redraw_everywhere, sweep, refresh_panels, redraw, focus, drag, marquee } = self;
+        let Self {
+            state,
+            grid,
+            document,
+            shape_parameters,
+            tool,
+            clip,
+            handles,
+            rotate,
+            fillet,
+            pending_shape,
+            redraw_everywhere,
+            sweep,
+            refresh_panels,
+            redraw,
+            focus,
+            drag,
+            marquee,
+        } = self;
 
-                        let mut drag = drag.borrow_mut();
-            drag.current = drag.origin + Vec2d::new(dx, dy);
+        let mut drag = drag.borrow_mut();
+        drag.current = drag.origin + Vec2d::new(dx, dy);
 
-            // `InputEventRecorder`: a press becomes a drag only once the pointer has moved
-            // off the spot, so a click on a handle picks it rather than moving it by
-            // whatever the grid rounded the press point to.
-            if drag.mode == DragMode::MovingHandle
-                && drag.applied == Vec3d::zero()
-                && vec::length(Vec2d::new(dx, dy)) < DRAG_THRESHOLD
-            {
-                return;
+        // `InputEventRecorder`: a press becomes a drag only once the pointer has moved
+        // off the spot, so a click on a handle picks it rather than moving it by
+        // whatever the grid rounded the press point to.
+        if drag.mode == DragMode::MovingHandle
+            && drag.applied == Vec3d::zero()
+            && vec::length(Vec2d::new(dx, dy)) < DRAG_THRESHOLD
+        {
+            return;
+        }
+
+        if drag.mode == DragMode::ClippingPoint {
+            let state = state.borrow();
+            if let Some(position) = clip_point_under_cursor(
+                &state,
+                &grid.borrow(),
+                &document.borrow(),
+                viewport,
+                drag.current,
+            ) {
+                let help_vectors = vec![state.camera.direction()];
+                clip.borrow_mut().drag_point(position, help_vectors);
             }
+            drop(state);
+            redraw();
+            return;
+        }
 
-            if drag.mode == DragMode::ClippingPoint {
-                let state = state.borrow();
-                if let Some(position) = clip_point_under_cursor(
-                    &state,
-                    &grid.borrow(),
-                    &document.borrow(),
-                    viewport,
-                    drag.current,
-                ) {
-                    let help_vectors = vec![state.camera.direction()];
-                    clip.borrow_mut().drag_point(position, help_vectors);
-                }
-                drop(state);
-                redraw();
-                return;
-            }
-
-            if drag.mode == DragMode::MovingRotationCenter {
-                let state_ref = state.borrow();
-                // The centre keeps its depth; only the two axes the view shows can move.
-                let center = rotate.borrow().center();
-                if let Some(center) = center {
-                    let camera = state_ref.camera;
-                    let on_plane = camera.screen_to_plane(drag.current, viewport);
-                    let depth = center[camera.plane.depth_axis()];
-                    let moved = grid
-                        .borrow()
-                        .snap_point(camera.plane.unproject(on_plane, depth));
-                    drop(state_ref);
-                    rotate.borrow_mut().set_center(moved);
-                    drop(drag);
-                    redraw();
-                }
-                return;
-            }
-
-            if drag.mode == DragMode::MovingSweepCap {
-                let moved = sweep_cap_translation(
-                    &state.borrow(),
-                    &document.borrow(),
-                    &grid.borrow(),
-                    viewport,
-                    drag.current,
-                    sweep.borrow().transform.translation,
-                );
-                if let Some(translation) = moved {
-                    if sweep.borrow().transform.translation != translation {
-                        sweep.borrow_mut().transform.translation = translation;
-                        drop(drag);
-                        refresh_panels();
-                        redraw();
-                    }
-                }
-                return;
-            }
-
-            if drag.mode == DragMode::Rotating {
-                let camera = state.borrow().camera;
-                let mut rotate = rotate.borrow_mut();
-                let Some(center) = rotate.center() else {
-                    return;
-                };
-
-                // Both ends of the drag are put on the plane the ring lies in, which is
-                // the one the view draws; the axis is what the view looks along.
+        if drag.mode == DragMode::MovingRotationCenter {
+            let state_ref = state.borrow();
+            // The centre keeps its depth; only the two axes the view shows can move.
+            let center = rotate.borrow().center();
+            if let Some(center) = center {
+                let camera = state_ref.camera;
+                let on_plane = camera.screen_to_plane(drag.current, viewport);
                 let depth = center[camera.plane.depth_axis()];
-                let from = camera
-                    .plane
-                    .unproject(camera.screen_to_plane(drag.origin, viewport), depth);
-                let to = camera
-                    .plane
-                    .unproject(camera.screen_to_plane(drag.current, viewport), depth);
-                let axis = -camera.direction();
-
-                let Some(angle) = rotate.measure(&grid.borrow(), axis, from, to) else {
-                    return;
-                };
-                drop(rotate);
-
-                // `RotateTool::applyRotation`: roll back and turn the original again, so
-                // the result depends only on where the pointer is and not on how it got
-                // there.
-                let mut document = document.borrow_mut();
-                document.rollback_transaction();
-                document.rotate_selection_about(center, axis, angle.to_degrees());
-                drop(document);
+                let moved = grid
+                    .borrow()
+                    .snap_point(camera.plane.unproject(on_plane, depth));
+                drop(state_ref);
+                rotate.borrow_mut().set_center(moved);
                 drop(drag);
                 redraw();
-                return;
             }
+            return;
+        }
 
-            if drag.mode == DragMode::Extruding {
-                let Some(extruding) = drag.extruding.clone() else {
-                    return;
-                };
-                let camera = state.borrow().camera;
-                let ray = camera.ray_through(drag.current, viewport, PICK_REACH);
-
-                let Some(proposed) = extruding.picker.pick(&ray) else {
-                    return;
-                };
-                let grid = *grid.borrow();
-                let snapped = if extruding.second_polygon.is_some() {
-                    extruding.handle + grid.snap_point(proposed - extruding.handle)
-                } else {
-                    extrude_tool::snap_handle_position(
-                        &grid,
-                        &extruding.brush,
-                        extruding.face,
-                        extruding.normal,
-                        extruding.handle,
-                        proposed,
-                    )
-                };
-                let delta = snapped - extruding.handle;
-
-                // Every step starts again from the brushes as they were.
-                let mut document = document.borrow_mut();
-                document.rollback_transaction();
-                match extruding.mode {
-                    extrude_tool::ExtrudeMode::Extrude => {
-                        if let Some(second) = &extruding.second_polygon {
-                            document.extrude_face_planes(&[
-                                (extruding.polygon.clone(), delta),
-                                (second.clone(), delta),
-                            ])
-                        } else {
-                            document.extrude_faces(&extruding.polygon, delta)
-                        }
-                    }
-                    extrude_tool::ExtrudeMode::Slide => {
-                        document.slide_faces(&extruding.polygon, delta)
-                    }
-                    extrude_tool::ExtrudeMode::Split => {
-                        document.split_faces(&extruding.polygon, delta)
-                    }
-                    extrude_tool::ExtrudeMode::Stamp => {
-                        document.stamp_faces(&extruding.polygon, delta)
-                    }
-                };
-                drop(document);
-                drop(drag);
-                redraw();
-                return;
-            }
-
-            if drag.mode == DragMode::Shearing {
-                let Some((normal, side_center, start_bounds)) = drag.shearing else {
-                    return;
-                };
-                let camera = state.borrow().camera;
-
-                // The face can only slide across the screen, which is what the picker
-                // works out from the view direction.
-                let Some(picker) = shear_tool::picker(
-                    normal,
-                    side_center,
-                    Vec3d::zero(),
-                    false,
-                    camera.direction(),
-                    false,
-                ) else {
-                    return;
-                };
-
-                let ray = camera.ray_through(drag.current, viewport, PICK_REACH);
-                let Some(proposed) = picker.pick(&ray) else {
-                    return;
-                };
-                let delta = grid.borrow().snap_point(proposed - side_center);
-
-                let mut document = document.borrow_mut();
-                document.rollback_transaction();
-                if let Some(transform) =
-                    geometry_math::mat_ext::shear_bbox_matrix(&start_bounds, normal, delta)
-                {
-                    document.transform_selection(&transform);
-                }
-                drop(document);
-                drop(drag);
-                redraw();
-                return;
-            }
-
-            if drag.mode == DragMode::Scaling {
-                let Some((handle, start_box)) = drag.scaling else {
-                    return;
-                };
-                let camera = state.borrow().camera;
-
-                let from = camera.screen_to_plane(drag.origin, viewport);
-                let to = camera.screen_to_plane(drag.current, viewport);
-                let asked = camera.plane.unproject(to - from, 0.0);
-
-                // The handle is snapped where it lands, so a dragged side comes to rest on
-                // a grid line whatever the box started at.
-                let grid = *grid.borrow();
-                let anchor = handle.position(&start_box);
-                let delta = grid.snap_point(anchor + asked) - anchor;
-
-                let flags = modifiers;
-                let proportional = if flags.shift {
-                    ProportionalAxes::all()
-                } else {
-                    ProportionalAxes::none()
-                };
-                let anchor_pos = if flags.alt {
-                    AnchorPos::Center
-                } else {
-                    AnchorPos::Opposite
-                };
-                
-                let Some(new_box) = handle.drag(&start_box, delta, proportional, anchor_pos)
-                else {
-                    return;
-                };
-
-                // Roll back and scale the original box again, rather than scaling what
-                // the last step left, so the steps do not compound.
-                let mut document = document.borrow_mut();
-                document.rollback_transaction();
-                let transform = geometry_math::mat_ext::scale_bbox_matrix(&start_box, &new_box);
-                document.transform_selection(&transform);
-                drop(document);
-                drop(drag);
-                redraw();
-                return;
-            }
-
-            if drag.mode == DragMode::MovingHandle {
-                let camera = state.borrow().camera;
-
-                // The pointer's travel, in world units, the same way a move drag measures
-                // it: a 2D view can only move things in the two axes it shows.
-                let from = camera.screen_to_plane(drag.origin, viewport);
-                let to = camera.screen_to_plane(drag.current, viewport);
-                let asked = camera.plane.unproject(to - from, 0.0);
-
-                let grid = *grid.borrow();
-                let mut handles = handles.borrow_mut();
-                if handles.selected_vertices().is_empty() {
-                    return;
-                }
-
-                // Relative snapping rounds the drag delta, preserving the initial off-grid offset.
-                // Control enables absolute snapping of the handle position.
-                let ctrl = modifiers.control;
-                let total = if ctrl {
-                    let anchor = handles.selected_anchor().unwrap_or(Vec3d::zero());
-                    grid.snap_point(anchor + asked) - anchor
-                } else {
-                    grid.snap_point(asked)
-                };
-
-                let step = total - drag.applied;
-                if step == Vec3d::zero() {
-                    return;
-                }
-                let before_expansion = (!drag.vertex_stacks_expanded).then(|| handles.clone());
-                if !drag.vertex_stacks_expanded {
-                    handles.expand_vertex_stacks(camera.plane.depth_axis(), pref(|p| p.drag_occluded_vertices_2d));
-                }
-                let vertices = handles.selected_vertices();
-                // A control point is not a brush vertex, so which of the two moves
-                // depends on what the handles are of.
-                let moved = if handles.kind() == Some(HandleKind::ControlPoint) {
-                    document.borrow_mut().move_control_points(&vertices, step)
-                } else {
-                    document.borrow_mut().move_handles(&vertices, step)
-                };
-                if moved {
-                    drag.vertex_stacks_expanded = true;
-                    handles.move_selection(step);
-                    drag.applied = total;
-                    drop(handles);
-                    // The guide follows the moving handle.
-                    let mut state = state.borrow_mut();
-                    state.dragging_handle = state.dragging_handle.map(|at| at + step);
-                    drop(state);
+        if drag.mode == DragMode::MovingSweepCap {
+            let moved = sweep_cap_translation(
+                &state.borrow(),
+                &document.borrow(),
+                &grid.borrow(),
+                viewport,
+                drag.current,
+                sweep.borrow().transform.translation,
+            );
+            if let Some(translation) = moved {
+                if sweep.borrow().transform.translation != translation {
+                    sweep.borrow_mut().transform.translation = translation;
                     drop(drag);
+                    refresh_panels();
                     redraw();
-                } else if let Some(before) = before_expansion {
-                    *handles = before;
                 }
-                return;
             }
+            return;
+        }
 
-            if drag.mode == DragMode::SplittingHandle {
-                let camera = state.borrow().camera;
-                let from = camera.screen_to_plane(drag.origin, viewport);
-                let to = camera.screen_to_plane(drag.current, viewport);
-                let asked = camera.plane.unproject(to - from, 0.0);
-                let total = grid.borrow().snap_point(asked);
-                if total == drag.applied {
-                    return;
-                }
-
-                let Some(at) = drag.splitting else {
-                    return;
-                };
-
-                let mut document = document.borrow_mut();
-                // Each step is measured from the brush as it was, so the corner follows
-                // the pointer rather than compounding.
-                document.rollback_transaction();
-                if document.split_handle(at, total) > 0 {
-                    drag.applied = total;
-                    state.borrow_mut().dragging_handle = Some(at + total);
-                    // The new corner is what is picked, so it can be moved again, or
-                    // rounded, without hunting for it.
-                    let mut handles = handles.borrow_mut();
-                    handles.clear_selection();
-                    handles.select(at + total, false);
-                }
-                drop(document);
-                drop(drag);
-                redraw();
-                return;
-            }
-
-            if matches!(drag.mode, DragMode::Lassoing | DragMode::LassoingHandles) {
-                state.borrow_mut().lasso = Some((drag.origin, drag.current));
-                if drag.mode == DragMode::Lassoing {
-                    let camera = state.borrow().camera;
-                    let caught = lassoed(&camera, &document.borrow(), drag.origin, drag.current, viewport);
-                    if let Some(initial) = marquee.borrow().as_ref() {
-                        let add = modifiers.control;
-                        document.borrow_mut().preview_marquee(initial, &caught, add);
-                    }
-                }
-                drop(drag);
-                redraw_everywhere();
-                redraw();
-                return;
-            }
-
-            if drag.mode == DragMode::Creating {
-                // Show the box that would be made -- snapped, and with the depth this
-                // view cannot speak for -- rather than the rectangle the pointer swept.
-                // Nothing is committed until the drag ends.
-                let camera = state.borrow().camera;
-                let square = modifiers.shift;
-                let bounds = swept_bounds(
-                    &camera,
-                    &grid.borrow(),
-                    drag.origin,
-                    drag.current,
-                    viewport,
-                    &document.borrow(),
-                    square,
-                );
-                state.borrow_mut().creating = bounds;
-                // The 3D view draws the same box as the shape it would make, so it is
-                // shared rather than kept in this view's own state.
-                *pending_shape.borrow_mut() = bounds;
-                drop(drag);
-                redraw_everywhere();
-                return;
-            }
-            if drag.mode != DragMode::Moving {
-                return;
-            }
+        if drag.mode == DragMode::Rotating {
             let camera = state.borrow().camera;
-
-            // Both ends of the drag are converted to world space and subtracted there, so
-            // the delta is in world units whatever the zoom. A 2D view can only move
-            // things in the two axes it shows.
-            let from = camera.screen_to_plane(drag.origin, viewport);
-            let to = camera.screen_to_plane(drag.origin + Vec2d::new(dx, dy), viewport);
-            let asked = camera.plane.unproject(to - from, 0.0);
-
-            let grid = *grid.borrow();
-            let mut document = document.borrow_mut();
-            let Some(bounds) = document.selection_bounds() else {
+            let mut rotate = rotate.borrow_mut();
+            let Some(center) = rotate.center() else {
                 return;
             };
 
-            // The move is measured from the selection's reference point — its snapped
-            // centre — and asked of the grid, which drops any part of it that would go
-            // against the drag. Measuring the whole move from where the drag began, rather
-            // than accumulating each step, is what keeps snapping from eating a little of
-            // every one.
-            let reference = grid.reference_point(&bounds);
-            let total = grid.move_delta_for_point(reference, asked);
+            // Both ends of the drag are put on the plane the ring lies in, which is
+            // the one the view draws; the axis is what the view looks along.
+            let depth = center[camera.plane.depth_axis()];
+            let from = camera
+                .plane
+                .unproject(camera.screen_to_plane(drag.origin, viewport), depth);
+            let to = camera
+                .plane
+                .unproject(camera.screen_to_plane(drag.current, viewport), depth);
+            let axis = -camera.direction();
+
+            let Some(angle) = rotate.measure(&grid.borrow(), axis, from, to) else {
+                return;
+            };
+            drop(rotate);
+
+            // `RotateTool::applyRotation`: roll back and turn the original again, so
+            // the result depends only on where the pointer is and not on how it got
+            // there.
+            let mut document = document.borrow_mut();
+            document.rollback_transaction();
+            document.rotate_selection_about(center, axis, angle.to_degrees());
+            drop(document);
+            drop(drag);
+            redraw();
+            return;
+        }
+
+        if drag.mode == DragMode::Extruding {
+            let Some(extruding) = drag.extruding.clone() else {
+                return;
+            };
+            let camera = state.borrow().camera;
+            let ray = camera.ray_through(drag.current, viewport, PICK_REACH);
+
+            let Some(proposed) = extruding.picker.pick(&ray) else {
+                return;
+            };
+            let grid = *grid.borrow();
+            let snapped = if extruding.second_polygon.is_some() {
+                extruding.handle + grid.snap_point(proposed - extruding.handle)
+            } else {
+                extrude_tool::snap_handle_position(
+                    &grid,
+                    &extruding.brush,
+                    extruding.face,
+                    extruding.normal,
+                    extruding.handle,
+                    proposed,
+                )
+            };
+            let delta = snapped - extruding.handle;
+
+            // Every step starts again from the brushes as they were.
+            let mut document = document.borrow_mut();
+            document.rollback_transaction();
+            match extruding.mode {
+                extrude_tool::ExtrudeMode::Extrude => {
+                    if let Some(second) = &extruding.second_polygon {
+                        document.extrude_face_planes(&[
+                            (extruding.polygon.clone(), delta),
+                            (second.clone(), delta),
+                        ])
+                    } else {
+                        document.extrude_faces(&extruding.polygon, delta)
+                    }
+                }
+                extrude_tool::ExtrudeMode::Slide => document.slide_faces(&extruding.polygon, delta),
+                extrude_tool::ExtrudeMode::Split => document.split_faces(&extruding.polygon, delta),
+                extrude_tool::ExtrudeMode::Stamp => document.stamp_faces(&extruding.polygon, delta),
+            };
+            drop(document);
+            drop(drag);
+            redraw();
+            return;
+        }
+
+        if drag.mode == DragMode::Shearing {
+            let Some((normal, side_center, start_bounds)) = drag.shearing else {
+                return;
+            };
+            let camera = state.borrow().camera;
+
+            // The face can only slide across the screen, which is what the picker
+            // works out from the view direction.
+            let Some(picker) = shear_tool::picker(
+                normal,
+                side_center,
+                Vec3d::zero(),
+                false,
+                camera.direction(),
+                false,
+            ) else {
+                return;
+            };
+
+            let ray = camera.ray_through(drag.current, viewport, PICK_REACH);
+            let Some(proposed) = picker.pick(&ray) else {
+                return;
+            };
+            let delta = grid.borrow().snap_point(proposed - side_center);
+
+            let mut document = document.borrow_mut();
+            document.rollback_transaction();
+            if let Some(transform) =
+                geometry_math::mat_ext::shear_bbox_matrix(&start_bounds, normal, delta)
+            {
+                document.transform_selection(&transform);
+            }
+            drop(document);
+            drop(drag);
+            redraw();
+            return;
+        }
+
+        if drag.mode == DragMode::Scaling {
+            let Some((handle, start_box)) = drag.scaling else {
+                return;
+            };
+            let camera = state.borrow().camera;
+
+            let from = camera.screen_to_plane(drag.origin, viewport);
+            let to = camera.screen_to_plane(drag.current, viewport);
+            let asked = camera.plane.unproject(to - from, 0.0);
+
+            // The handle is snapped where it lands, so a dragged side comes to rest on
+            // a grid line whatever the box started at.
+            let grid = *grid.borrow();
+            let anchor = handle.position(&start_box);
+            let delta = grid.snap_point(anchor + asked) - anchor;
+
+            let flags = modifiers;
+            let proportional = if flags.shift {
+                ProportionalAxes::all()
+            } else {
+                ProportionalAxes::none()
+            };
+            let anchor_pos = if flags.alt {
+                AnchorPos::Center
+            } else {
+                AnchorPos::Opposite
+            };
+
+            let Some(new_box) = handle.drag(&start_box, delta, proportional, anchor_pos) else {
+                return;
+            };
+
+            // Roll back and scale the original box again, rather than scaling what
+            // the last step left, so the steps do not compound.
+            let mut document = document.borrow_mut();
+            document.rollback_transaction();
+            let transform = geometry_math::mat_ext::scale_bbox_matrix(&start_box, &new_box);
+            document.transform_selection(&transform);
+            drop(document);
+            drop(drag);
+            redraw();
+            return;
+        }
+
+        if drag.mode == DragMode::MovingHandle {
+            let camera = state.borrow().camera;
+
+            // The pointer's travel, in world units, the same way a move drag measures
+            // it: a 2D view can only move things in the two axes it shows.
+            let from = camera.screen_to_plane(drag.origin, viewport);
+            let to = camera.screen_to_plane(drag.current, viewport);
+            let asked = camera.plane.unproject(to - from, 0.0);
+
+            let grid = *grid.borrow();
+            let mut handles = handles.borrow_mut();
+            if handles.selected_vertices().is_empty() {
+                return;
+            }
+
+            // Relative snapping rounds the drag delta, preserving the initial off-grid offset.
+            // Control enables absolute snapping of the handle position.
+            let ctrl = modifiers.control;
+            let total = if ctrl {
+                let anchor = handles.selected_anchor().unwrap_or(Vec3d::zero());
+                grid.snap_point(anchor + asked) - anchor
+            } else {
+                grid.snap_point(asked)
+            };
 
             let step = total - drag.applied;
             if step == Vec3d::zero() {
                 return;
             }
-            if document.translate_selection(step) {
-                drag.applied = total;
-                drop(document);
-                redraw();
-            }
-        
-    }
-    /// The release; `(dx, dy)` is the offset from the press.
-    pub fn end(&self, dx: f64, dy: f64, modifiers: Modifiers, viewport: (f64, f64)) {
-        #[allow(unused_variables)]
-        let Self { state, grid, document, shape_parameters, tool, clip, handles, rotate, fillet, pending_shape, redraw_everywhere, sweep, refresh_panels, redraw, focus, drag, marquee } = self;
-
-            state.borrow_mut().creating = None;
-            // Whatever the release means further down, the selection is no longer being
-            // dragged: a click that never moved ends here too.
-            state.borrow_mut().moving = false;
-            *pending_shape.borrow_mut() = None;
-
-            let mut drag = drag.borrow_mut();
-
-            if matches!(
-                drag.mode,
-                DragMode::Moving
-                    | DragMode::MovingHandle
-                    | DragMode::SplittingHandle
-                    | DragMode::Scaling
-                    | DragMode::Rotating
-                    | DragMode::Shearing
-                    | DragMode::Extruding
-            ) {
-                // Defer reducing an existing multi-selection until release: pressing a
-                // selected vertex must still allow dragging the whole selection.
-                if drag.mode == DragMode::MovingHandle
-                    && !drag.vertex_stacks_expanded
-                    && vec::length(Vec2d::new(dx, dy)) < DRAG_THRESHOLD
-                    && !(modifiers.control || modifiers.shift)
-                {
-                    let mut handles = handles.borrow_mut();
-                    if handles.kind() == Some(HandleKind::Vertex) {
-                        if let Some(position) = state.borrow().dragging_handle {
-                            handles.select(position, false);
-                        }
-                    }
-                }
-                // The whole drag becomes one step in the history.
-                if document.borrow_mut().commit_transaction() && drag.mode == DragMode::Rotating
-                {
-                    crate::say!("rotated {:.1}°", rotate.borrow().angle().to_degrees());
-                }
-                drag.mode = DragMode::Idle;
-                drag.scaling = None;
-                drag.shearing = None;
-                drag.extruding = None;
-                let mut state = state.borrow_mut();
-                state.lasso = None;
-            state.scaling = None;
-                state.rotating = false;
-                state.moving = false;
-                state.dragging_handle = None;
-                drop(state);
-                redraw();
-                return;
-            }
-            if drag.mode == DragMode::MovingRotationCenter {
-                drag.mode = DragMode::Idle;
-                return;
-            }
-            if drag.mode == DragMode::ClippingPoint {
-                clip.borrow_mut().end_drag_point();
-                drag.mode = DragMode::Idle;
-                redraw();
-                return;
-            }
-            let mode = std::mem::take(&mut drag.mode);
-
-            if mode == DragMode::LassoingHandles {
-                let swept = state.borrow().lasso;
-                state.borrow_mut().lasso = None;
-                let Some((from, to)) = swept else {
-                    return;
-                };
-                if vec::distance(from, to) < DRAG_THRESHOLD {
-                    redraw();
-                    return;
-                }
-
-                // The handles inside the rectangle, which is `VertexToolController`'s
-                // lasso: several vertices or edges taken in one sweep.
-                let camera = state.borrow().camera;
-                let add = modifiers.control;
-                let mut handles = handles.borrow_mut();
-                let caught: Vec<Vec3d> = handles
-                    .handles()
-                    .iter()
-                    .map(|handle| handle.position)
-                    .filter(|position| {
-                        let on_screen =
-                            camera.plane_to_screen(camera.plane.project(*position), viewport);
-                        let (left, right) = (from.x().min(to.x()), from.x().max(to.x()));
-                        let (top, bottom) = (from.y().min(to.y()), from.y().max(to.y()));
-                        on_screen.x() >= left
-                            && on_screen.x() <= right
-                            && on_screen.y() >= top
-                            && on_screen.y() <= bottom
-                    })
-                    .collect();
-                if !add {
-                    handles.clear_selection();
-                }
-                for position in &caught {
-                    if !handles.is_selected(*position) {
-                        handles.select(*position, true);
-                    }
-                }
-                drop(handles);
-                crate::say!("{} handles selected", caught.len());
-                redraw();
-                refresh_panels();
-                return;
-            }
-
-            if mode == DragMode::Lassoing {
-                let swept = state.borrow().lasso;
-                state.borrow_mut().lasso = None;
-                let Some((from, to)) = swept else {
-                    return;
-                };
-
-                // A drag of a pixel or two is a click that shook, and clicking empty
-                // space clears the selection -- which is what the press handler already
-                // did, so there is nothing left to do.
-                if vec::distance(from, to) < 3.0 {
-                    redraw();
-                    return;
-                }
-                let camera = state.borrow().camera;
-                let add = modifiers.control;
-                let caught = lassoed(&camera, &document.borrow(), from, to, viewport);
-
-                let mut document = document.borrow_mut();
-                if let Some(initial) = marquee.borrow_mut().take() {
-                    document.preview_marquee(&initial, &caught, add);
-                }
-                crate::say!(
-                    "{}",
-                    text_utils::string_format::str_plural(
-                        caught.len(),
-                        "1 object selected",
-                        &format!("{} objects selected", caught.len())
-                    )
+            let before_expansion = (!drag.vertex_stacks_expanded).then(|| handles.clone());
+            if !drag.vertex_stacks_expanded {
+                handles.expand_vertex_stacks(
+                    camera.plane.depth_axis(),
+                    pref(|p| p.drag_occluded_vertices_2d),
                 );
-                drop(document);
-                redraw_everywhere();
+            }
+            let vertices = handles.selected_vertices();
+            // A control point is not a brush vertex, so which of the two moves
+            // depends on what the handles are of.
+            let moved = if handles.kind() == Some(HandleKind::ControlPoint) {
+                document.borrow_mut().move_control_points(&vertices, step)
+            } else {
+                document.borrow_mut().move_handles(&vertices, step)
+            };
+            if moved {
+                drag.vertex_stacks_expanded = true;
+                handles.move_selection(step);
+                drag.applied = total;
+                drop(handles);
+                // The guide follows the moving handle.
+                let mut state = state.borrow_mut();
+                state.dragging_handle = state.dragging_handle.map(|at| at + step);
+                drop(state);
+                drop(drag);
                 redraw();
-                refresh_panels();
-                return;
+            } else if let Some(before) = before_expansion {
+                *handles = before;
             }
+            return;
+        }
 
-            if mode != DragMode::Creating {
-                return;
-            }
+        if drag.mode == DragMode::SplittingHandle {
             let camera = state.borrow().camera;
-            let grid = *grid.borrow();
+            let from = camera.screen_to_plane(drag.origin, viewport);
+            let to = camera.screen_to_plane(drag.current, viewport);
+            let asked = camera.plane.unproject(to - from, 0.0);
+            let total = grid.borrow().snap_point(asked);
+            if total == drag.applied {
+                return;
+            }
 
-            let square = modifiers.shift;
-
-            let Some(bounds) = swept_bounds(
-                &camera,
-                &grid,
-                drag.origin,
-                drag.origin + Vec2d::new(dx, dy),
-                viewport,
-                &document.borrow(),
-                square,
-            ) else {
+            let Some(at) = drag.splitting else {
                 return;
             };
 
             let mut document = document.borrow_mut();
-            match document.begin_shape_preview(bounds,*shape_parameters.borrow()) {
-                Ok(_)=>*tool.borrow_mut()=Tool::Brush,
-                Err(error)=>crate::complain!("could not draw the shape: {error}"),
+            // Each step is measured from the brush as it was, so the corner follows
+            // the pointer rather than compounding.
+            document.rollback_transaction();
+            if document.split_handle(at, total) > 0 {
+                drag.applied = total;
+                state.borrow_mut().dragging_handle = Some(at + total);
+                // The new corner is what is picked, so it can be moved again, or
+                // rounded, without hunting for it.
+                let mut handles = handles.borrow_mut();
+                handles.clear_selection();
+                handles.select(at + total, false);
             }
             drop(document);
+            drop(drag);
             redraw();
-        
+            return;
+        }
+
+        if matches!(drag.mode, DragMode::Lassoing | DragMode::LassoingHandles) {
+            state.borrow_mut().lasso = Some((drag.origin, drag.current));
+            if drag.mode == DragMode::Lassoing {
+                let camera = state.borrow().camera;
+                let caught = lassoed(
+                    &camera,
+                    &document.borrow(),
+                    drag.origin,
+                    drag.current,
+                    viewport,
+                );
+                if let Some(initial) = marquee.borrow().as_ref() {
+                    let add = modifiers.control;
+                    document.borrow_mut().preview_marquee(initial, &caught, add);
+                }
+            }
+            drop(drag);
+            redraw_everywhere();
+            redraw();
+            return;
+        }
+
+        if drag.mode == DragMode::Creating {
+            // Show the box that would be made -- snapped, and with the depth this
+            // view cannot speak for -- rather than the rectangle the pointer swept.
+            // Nothing is committed until the drag ends.
+            let camera = state.borrow().camera;
+            let square = modifiers.shift;
+            let bounds = swept_bounds(
+                &camera,
+                &grid.borrow(),
+                drag.origin,
+                drag.current,
+                viewport,
+                &document.borrow(),
+                square,
+            );
+            state.borrow_mut().creating = bounds;
+            // The 3D view draws the same box as the shape it would make, so it is
+            // shared rather than kept in this view's own state.
+            *pending_shape.borrow_mut() = bounds;
+            drop(drag);
+            redraw_everywhere();
+            return;
+        }
+        if drag.mode != DragMode::Moving {
+            return;
+        }
+        let camera = state.borrow().camera;
+
+        // Both ends of the drag are converted to world space and subtracted there, so
+        // the delta is in world units whatever the zoom. A 2D view can only move
+        // things in the two axes it shows.
+        let from = camera.screen_to_plane(drag.origin, viewport);
+        let to = camera.screen_to_plane(drag.origin + Vec2d::new(dx, dy), viewport);
+        let asked = camera.plane.unproject(to - from, 0.0);
+
+        let grid = *grid.borrow();
+        let mut document = document.borrow_mut();
+        let Some(bounds) = document.selection_bounds() else {
+            return;
+        };
+
+        // The move is measured from the selection's reference point — its snapped
+        // centre — and asked of the grid, which drops any part of it that would go
+        // against the drag. Measuring the whole move from where the drag began, rather
+        // than accumulating each step, is what keeps snapping from eating a little of
+        // every one.
+        let reference = grid.reference_point(&bounds);
+        let total = grid.move_delta_for_point(reference, asked);
+
+        let step = total - drag.applied;
+        if step == Vec3d::zero() {
+            return;
+        }
+        if document.translate_selection(step) {
+            drag.applied = total;
+            drop(document);
+            redraw();
+        }
+    }
+    /// The release; `(dx, dy)` is the offset from the press.
+    pub fn end(&self, dx: f64, dy: f64, modifiers: Modifiers, viewport: (f64, f64)) {
+        #[allow(unused_variables)]
+        let Self {
+            state,
+            grid,
+            document,
+            shape_parameters,
+            tool,
+            clip,
+            handles,
+            rotate,
+            fillet,
+            pending_shape,
+            redraw_everywhere,
+            sweep,
+            refresh_panels,
+            redraw,
+            focus,
+            drag,
+            marquee,
+        } = self;
+
+        state.borrow_mut().creating = None;
+        // Whatever the release means further down, the selection is no longer being
+        // dragged: a click that never moved ends here too.
+        state.borrow_mut().moving = false;
+        *pending_shape.borrow_mut() = None;
+
+        let mut drag = drag.borrow_mut();
+
+        if matches!(
+            drag.mode,
+            DragMode::Moving
+                | DragMode::MovingHandle
+                | DragMode::SplittingHandle
+                | DragMode::Scaling
+                | DragMode::Rotating
+                | DragMode::Shearing
+                | DragMode::Extruding
+        ) {
+            // Defer reducing an existing multi-selection until release: pressing a
+            // selected vertex must still allow dragging the whole selection.
+            if drag.mode == DragMode::MovingHandle
+                && !drag.vertex_stacks_expanded
+                && vec::length(Vec2d::new(dx, dy)) < DRAG_THRESHOLD
+                && !(modifiers.control || modifiers.shift)
+            {
+                let mut handles = handles.borrow_mut();
+                if handles.kind() == Some(HandleKind::Vertex) {
+                    if let Some(position) = state.borrow().dragging_handle {
+                        handles.select(position, false);
+                    }
+                }
+            }
+            // The whole drag becomes one step in the history.
+            if document.borrow_mut().commit_transaction() && drag.mode == DragMode::Rotating {
+                crate::say!("rotated {:.1}°", rotate.borrow().angle().to_degrees());
+            }
+            drag.mode = DragMode::Idle;
+            drag.scaling = None;
+            drag.shearing = None;
+            drag.extruding = None;
+            let mut state = state.borrow_mut();
+            state.lasso = None;
+            state.scaling = None;
+            state.rotating = false;
+            state.moving = false;
+            state.dragging_handle = None;
+            drop(state);
+            redraw();
+            return;
+        }
+        if drag.mode == DragMode::MovingRotationCenter {
+            drag.mode = DragMode::Idle;
+            return;
+        }
+        if drag.mode == DragMode::ClippingPoint {
+            clip.borrow_mut().end_drag_point();
+            drag.mode = DragMode::Idle;
+            redraw();
+            return;
+        }
+        let mode = std::mem::take(&mut drag.mode);
+
+        if mode == DragMode::LassoingHandles {
+            let swept = state.borrow().lasso;
+            state.borrow_mut().lasso = None;
+            let Some((from, to)) = swept else {
+                return;
+            };
+            if vec::distance(from, to) < DRAG_THRESHOLD {
+                redraw();
+                return;
+            }
+
+            // The handles inside the rectangle, which is `VertexToolController`'s
+            // lasso: several vertices or edges taken in one sweep.
+            let camera = state.borrow().camera;
+            let add = modifiers.control;
+            let mut handles = handles.borrow_mut();
+            let caught: Vec<Vec3d> = handles
+                .handles()
+                .iter()
+                .map(|handle| handle.position)
+                .filter(|position| {
+                    let on_screen =
+                        camera.plane_to_screen(camera.plane.project(*position), viewport);
+                    let (left, right) = (from.x().min(to.x()), from.x().max(to.x()));
+                    let (top, bottom) = (from.y().min(to.y()), from.y().max(to.y()));
+                    on_screen.x() >= left
+                        && on_screen.x() <= right
+                        && on_screen.y() >= top
+                        && on_screen.y() <= bottom
+                })
+                .collect();
+            if !add {
+                handles.clear_selection();
+            }
+            for position in &caught {
+                if !handles.is_selected(*position) {
+                    handles.select(*position, true);
+                }
+            }
+            drop(handles);
+            crate::say!("{} handles selected", caught.len());
+            redraw();
+            refresh_panels();
+            return;
+        }
+
+        if mode == DragMode::Lassoing {
+            let swept = state.borrow().lasso;
+            state.borrow_mut().lasso = None;
+            let Some((from, to)) = swept else {
+                return;
+            };
+
+            // A drag of a pixel or two is a click that shook, and clicking empty
+            // space clears the selection -- which is what the press handler already
+            // did, so there is nothing left to do.
+            if vec::distance(from, to) < 3.0 {
+                redraw();
+                return;
+            }
+            let camera = state.borrow().camera;
+            let add = modifiers.control;
+            let caught = lassoed(&camera, &document.borrow(), from, to, viewport);
+
+            let mut document = document.borrow_mut();
+            if let Some(initial) = marquee.borrow_mut().take() {
+                document.preview_marquee(&initial, &caught, add);
+            }
+            crate::say!(
+                "{}",
+                text_utils::string_format::str_plural(
+                    caught.len(),
+                    "1 object selected",
+                    &format!("{} objects selected", caught.len())
+                )
+            );
+            drop(document);
+            redraw_everywhere();
+            redraw();
+            refresh_panels();
+            return;
+        }
+
+        if mode != DragMode::Creating {
+            return;
+        }
+        let camera = state.borrow().camera;
+        let grid = *grid.borrow();
+
+        let square = modifiers.shift;
+
+        let Some(bounds) = swept_bounds(
+            &camera,
+            &grid,
+            drag.origin,
+            drag.origin + Vec2d::new(dx, dy),
+            viewport,
+            &document.borrow(),
+            square,
+        ) else {
+            return;
+        };
+
+        let mut document = document.borrow_mut();
+        match document.begin_shape_preview(bounds, *shape_parameters.borrow()) {
+            Ok(_) => *tool.borrow_mut() = Tool::Brush,
+            Err(error) => crate::complain!("could not draw the shape: {error}"),
+        }
+        drop(document);
+        redraw();
     }
     /// The gesture was taken away without a release.
     ///
@@ -2955,53 +3154,87 @@ impl SelectAndMove {
     /// badly from breaking the next one.
     pub fn cancel(&self) {
         #[allow(unused_variables)]
-        let Self { state, grid, document, shape_parameters, tool, clip, handles, rotate, fillet, pending_shape, redraw_everywhere, sweep, refresh_panels, redraw, focus, drag, marquee } = self;
+        let Self {
+            state,
+            grid,
+            document,
+            shape_parameters,
+            tool,
+            clip,
+            handles,
+            rotate,
+            fillet,
+            pending_shape,
+            redraw_everywhere,
+            sweep,
+            refresh_panels,
+            redraw,
+            focus,
+            drag,
+            marquee,
+        } = self;
 
-            let mut drag = drag.borrow_mut();
-            if drag.mode == DragMode::Idle {
-                return;
+        let mut drag = drag.borrow_mut();
+        if drag.mode == DragMode::Idle {
+            return;
+        }
+        if drag.mode == DragMode::Lassoing {
+            if let Some(initial) = marquee.borrow_mut().take() {
+                document.borrow_mut().restore_selection(&initial);
             }
-            if drag.mode == DragMode::Lassoing {
-                if let Some(initial) = marquee.borrow_mut().take() {
-                    document.borrow_mut().restore_selection(&initial);
-                }
-            } else {
-                document.borrow_mut().commit_transaction();
-            }
-            drag.mode = DragMode::Idle;
-            drag.scaling = None;
-            drag.shearing = None;
-            drag.extruding = None;
-            let mut state = state.borrow_mut();
-            state.scaling = None;
-            state.rotating = false;
-            state.moving = false;
-            state.dragging_handle = None;
-            drop(state);
-            drop(drag);
-            redraw_everywhere();
-            redraw();
-        
+        } else {
+            document.borrow_mut().commit_transaction();
+        }
+        drag.mode = DragMode::Idle;
+        drag.scaling = None;
+        drag.shearing = None;
+        drag.extruding = None;
+        let mut state = state.borrow_mut();
+        state.scaling = None;
+        state.rotating = false;
+        state.moving = false;
+        state.dragging_handle = None;
+        drop(state);
+        drop(drag);
+        redraw_everywhere();
+        redraw();
     }
     /// Escape during a lasso restores the selection. Returns whether it did, in which
     /// case the frontend resets its gesture.
     pub fn escape(&self) -> bool {
         #[allow(unused_variables)]
-        let Self { state, grid, document, shape_parameters, tool, clip, handles, rotate, fillet, pending_shape, redraw_everywhere, sweep, refresh_panels, redraw, focus, drag, marquee } = self;
+        let Self {
+            state,
+            grid,
+            document,
+            shape_parameters,
+            tool,
+            clip,
+            handles,
+            rotate,
+            fillet,
+            pending_shape,
+            redraw_everywhere,
+            sweep,
+            refresh_panels,
+            redraw,
+            focus,
+            drag,
+            marquee,
+        } = self;
 
-            let selecting = drag.borrow().mode == DragMode::Lassoing;
-            if selecting {
-                if let Some(initial) = marquee.borrow_mut().take() {
-                    document.borrow_mut().restore_selection(&initial);
-                }
-                drag.borrow_mut().mode = DragMode::Idle;
-                state.borrow_mut().lasso = None;
-                redraw_everywhere();
-                redraw();
-                                return true;
+        let selecting = drag.borrow().mode == DragMode::Lassoing;
+        if selecting {
+            if let Some(initial) = marquee.borrow_mut().take() {
+                document.borrow_mut().restore_selection(&initial);
             }
-            false
-        
+            drag.borrow_mut().mode = DragMode::Idle;
+            state.borrow_mut().lasso = None;
+            redraw_everywhere();
+            redraw();
+            return true;
+        }
+        false
     }
 }
 
@@ -3049,7 +3282,10 @@ pub struct Probe {
 impl FlatView {
     /// A ray from the pointer into the view.
     pub fn ray(&self, x: f64, y: f64, viewport: (f64, f64)) -> geometry_math::ray::Ray3d {
-        self.state.borrow().camera.ray_through(Vec2d::new(x, y), viewport, PICK_REACH)
+        self.state
+            .borrow()
+            .camera
+            .ray_through(Vec2d::new(x, y), viewport, PICK_REACH)
     }
 
     /// Where the pointer is on the view's plane, the axis it looks along taken as zero,
@@ -3057,12 +3293,22 @@ impl FlatView {
     pub fn snapped_point(&self, x: f64, y: f64, viewport: (f64, f64)) -> Vec3d {
         let state = self.state.borrow();
         let on_plane = state.camera.screen_to_plane(Vec2d::new(x, y), viewport);
-        self.grid.borrow().snap_point(state.camera.plane.unproject(on_plane, 0.0))
+        self.grid
+            .borrow()
+            .snap_point(state.camera.plane.unproject(on_plane, 0.0))
     }
 
     /// The node under the pointer.
-    pub fn pick_node(&self, x: f64, y: f64, viewport: (f64, f64)) -> Option<map_model::node::NodeId> {
-        self.document.borrow().pick(&self.ray(x, y, viewport)).map(|hit| hit.node)
+    pub fn pick_node(
+        &self,
+        x: f64,
+        y: f64,
+        viewport: (f64, f64),
+    ) -> Option<map_model::node::NodeId> {
+        self.document
+            .borrow()
+            .pick(&self.ray(x, y, viewport))
+            .map(|hit| hit.node)
     }
 
     /// Zooms about the pointer, as `MapViewBase::doMouseScroll` does: what is under the
@@ -3078,7 +3324,10 @@ impl FlatView {
             .cursor
             .unwrap_or_else(|| Vec2d::new(viewport.0 / 2.0, viewport.1 / 2.0));
         let factor = if dy < 0.0 { 1.1 } else { 1.0 / 1.1 };
-        self.state.borrow_mut().camera.zoom_at(factor, anchor, viewport);
+        self.state
+            .borrow_mut()
+            .camera
+            .zoom_at(factor, anchor, viewport);
         link_cameras(&self.state, &self.cameras);
         (self.redraw)();
     }
@@ -3089,7 +3338,10 @@ impl FlatView {
         if !(factor.is_finite() && factor > 0.0) {
             return;
         }
-        self.state.borrow_mut().camera.zoom_at(factor, Vec2d::new(x, y), viewport);
+        self.state
+            .borrow_mut()
+            .camera
+            .zoom_at(factor, Vec2d::new(x, y), viewport);
         link_cameras(&self.state, &self.cameras);
         (self.redraw)();
     }
@@ -3141,7 +3393,11 @@ impl FlatView {
 
     /// Rebuilds the Shift-extrude outline and redraws if it changed.
     fn update_extrude_preview(&self, cursor: Vec2d, modifiers: Modifiers, viewport: (f64, f64)) {
-        let ray = self.state.borrow().camera.ray_through(cursor, viewport, PICK_REACH);
+        let ray = self
+            .state
+            .borrow()
+            .camera
+            .ray_through(cursor, viewport, PICK_REACH);
         let allow_corner = !(modifiers.control || modifiers.alt);
         let outlines = if modifiers.shift {
             let document = self.document.borrow();
@@ -3172,7 +3428,14 @@ impl FlatView {
     /// paint tool puts the current material on the one clicked -- a single click for the
     /// face the ray enters through, a double click for the whole brush, Shift to take the
     /// face's material as the current one.
-    pub fn face_click(&self, presses: i32, x: f64, y: f64, modifiers: Modifiers, viewport: (f64, f64)) {
+    pub fn face_click(
+        &self,
+        presses: i32,
+        x: f64,
+        y: f64,
+        modifiers: Modifiers,
+        viewport: (f64, f64),
+    ) {
         let active = *self.tool.borrow();
         if active != Tool::Clip && active != Tool::Paint {
             return;
@@ -3185,7 +3448,10 @@ impl FlatView {
         let Some(index) = hit.face else {
             return;
         };
-        let face = FaceRef { node: hit.node, face: index };
+        let face = FaceRef {
+            node: hit.node,
+            face: index,
+        };
 
         if active == Tool::Clip {
             if presses != 2 {
@@ -3221,25 +3487,55 @@ impl FlatView {
         }
     }
 
-    pub fn face_under_pointer(&self,x:f64,y:f64,viewport:(f64,f64))->Option<FaceRef> {
-        let hit=self.document.borrow().pick(&self.ray(x,y,viewport))?;
-        Some(FaceRef{node:hit.node,face:hit.face?})
+    pub fn face_under_pointer(&self, x: f64, y: f64, viewport: (f64, f64)) -> Option<FaceRef> {
+        let hit = self.document.borrow().pick(&self.ray(x, y, viewport))?;
+        Some(FaceRef {
+            node: hit.node,
+            face: hit.face?,
+        })
     }
 
     /// One sample of a held-button material stroke in a flat view.
-    pub fn paint_material_stroke_at(&self, presses:i32, x:f64, y:f64, viewport:(f64,f64), stroke:&mut crate::document::MaterialStroke) {
-        if *self.tool.borrow()!=Tool::Paint || self.filters.borrow().animation_frame.is_some() { return; }
-        if x<0.0 || y<0.0 || x>viewport.0 || y>viewport.1 { return; }
-        let ray=self.ray(x,y,viewport);
-        let mut document=self.document.borrow_mut();
-        let Some(hit)=document.pick(&ray) else { return; };
-        let Some(face)=hit.face else { return; };
-        let targets=if presses>=2 {
-            (0..document.brush(hit.node).unwrap().geometry().face_count()).map(|face|FaceRef{node:hit.node,face}).collect()
-        } else { vec![FaceRef{node:hit.node,face}] };
-        let changed=document.paint_material_stroke(&targets,stroke)>0;
+    pub fn paint_material_stroke_at(
+        &self,
+        presses: i32,
+        x: f64,
+        y: f64,
+        viewport: (f64, f64),
+        stroke: &mut crate::document::MaterialStroke,
+    ) {
+        if *self.tool.borrow() != Tool::Paint || self.filters.borrow().animation_frame.is_some() {
+            return;
+        }
+        if x < 0.0 || y < 0.0 || x > viewport.0 || y > viewport.1 {
+            return;
+        }
+        let ray = self.ray(x, y, viewport);
+        let mut document = self.document.borrow_mut();
+        let Some(hit) = document.pick(&ray) else {
+            return;
+        };
+        let Some(face) = hit.face else {
+            return;
+        };
+        let targets = if presses >= 2 {
+            (0..document.brush(hit.node).unwrap().geometry().face_count())
+                .map(|face| FaceRef {
+                    node: hit.node,
+                    face,
+                })
+                .collect()
+        } else {
+            vec![FaceRef {
+                node: hit.node,
+                face,
+            }]
+        };
+        let changed = document.paint_material_stroke(&targets, stroke) > 0;
         drop(document);
-        if changed { (self.redraw_everywhere)(); }
+        if changed {
+            (self.redraw_everywhere)();
+        }
     }
 
     /// What the right-click menu needs to know about the point under the pointer.
@@ -3253,7 +3549,10 @@ impl FlatView {
             material: hit.and_then(|hit| {
                 hit.face.and_then(|face| {
                     document
-                        .face_at(FaceRef { node: hit.node, face })
+                        .face_at(FaceRef {
+                            node: hit.node,
+                            face,
+                        })
                         .map(|face| face.material_name.to_string())
                 })
             }),
@@ -3262,9 +3561,20 @@ impl FlatView {
     }
 
     /// A prefab from the asset library dropped on the view: inserted where it landed.
-    pub fn drop_prefab(&self, path: &std::path::Path, x: f64, y: f64, viewport: (f64, f64)) -> bool {
+    pub fn drop_prefab(
+        &self,
+        path: &std::path::Path,
+        x: f64,
+        y: f64,
+        viewport: (f64, f64),
+    ) -> bool {
         let at = self.snapped_point(x, y, viewport);
-        let landed = crate::assets::insert_prefab_on_grid(&mut self.document.borrow_mut(), path, at, &self.grid.borrow());
+        let landed = crate::assets::insert_prefab_on_grid(
+            &mut self.document.borrow_mut(),
+            path,
+            at,
+            &self.grid.borrow(),
+        );
         (self.redraw_everywhere)();
         (self.refresh_panels)();
         landed
@@ -3322,121 +3632,157 @@ impl FlatView {
     /// [`FlatView::draw`], with the bottom of the picture ([`draw_base`]) handed to
     /// `keeper` with its [`base_key`], so a view that kept the last one can draw that
     /// again instead. Without a keeper it is drawn into `cr` like the rest.
-    pub fn draw_keeping_base(&self, cr: &mut dyn Canvas, keeper: Option<&mut dyn BaseKeeper>, viewport: (f64, f64)) {
+    pub fn draw_keeping_base(
+        &self,
+        cr: &mut dyn Canvas,
+        keeper: Option<&mut dyn BaseKeeper>,
+        viewport: (f64, f64),
+    ) {
         #[allow(unused_variables)]
-        let Self { state, extrude_preview, grid, document, tool, clip, handles, rotate, filters, sweep, fillet, pending_shape, .. } = self;
+        let Self {
+            state,
+            extrude_preview,
+            grid,
+            document,
+            tool,
+            clip,
+            handles,
+            rotate,
+            filters,
+            sweep,
+            fillet,
+            pending_shape,
+            ..
+        } = self;
 
-            let document = document.borrow();
-            frame_new_document(&mut state.borrow_mut(), &document, viewport);
-            // A draw drag started in another view (the 3D one) shows here too, through the
-            // shared box. This view's own drag fills `creating` instead.
-            {
-                let mut state = state.borrow_mut();
-                state.creating_elsewhere = match state.creating {
-                    Some(_) => None,
-                    None => *pending_shape.borrow(),
-                };
+        let document = document.borrow();
+        frame_new_document(&mut state.borrow_mut(), &document, viewport);
+        // A draw drag started in another view (the 3D one) shows here too, through the
+        // shared box. This view's own drag fills `creating` instead.
+        {
+            let mut state = state.borrow_mut();
+            state.creating_elsewhere = match state.creating {
+                Some(_) => None,
+                None => *pending_shape.borrow(),
+            };
+        }
+        {
+            let (state, grid, filters) = (state.borrow(), grid.borrow(), filters.borrow());
+            match keeper {
+                Some(keeper) => {
+                    let key = base_key(&state, &grid, &document, &filters, viewport);
+                    keeper.base(key, &|cr: &mut dyn Canvas| {
+                        draw_base(&state, &grid, &document, &filters, cr, viewport)
+                    });
+                }
+                None => draw_base(&state, &grid, &document, &filters, cr, viewport),
             }
-            {
-                let (state, grid, filters) = (state.borrow(), grid.borrow(), filters.borrow());
-                match keeper {
-                    Some(keeper) => {
-                        let key = base_key(&state, &grid, &document, &filters, viewport);
-                        keeper.base(key, &|cr: &mut dyn Canvas| draw_base(&state, &grid, &document, &filters, cr, viewport));
+            draw_over_base(&state, &document, &filters, cr, viewport);
+        }
+        crate::animation_mode::draw(cr, &filters.borrow(), viewport.1);
+        if filters.borrow().animation_frame.is_some() {
+            let f = *filters.borrow();
+            let time = f.animation_frame.unwrap() as f64 / f.animation_fps.max(1) as f64;
+            if let Ok(pose) = crate::animation_pose::Pose::selected(&document, time) {
+                if let Some(path) = document.animation_path(&pose).as_ref() {
+                    path.draw(cr, time, f.animation_fps, |p| {
+                        Some(state.borrow().camera.world_to_screen(p, viewport))
+                    });
+                }
+                if f.animation_edit_pivot || *tool.borrow() == Tool::Rotate || f.animation_rotate {
+                    let p = state
+                        .borrow()
+                        .camera
+                        .world_to_screen(pose.centre(), viewport);
+                    let _ = cr.save();
+                    cr.set_source_rgb(1.0, 0.6, 0.15);
+                    cr.set_line_width(1.5);
+                    if f.animation_edit_pivot {
+                        cr.set_source_rgb(1.0, 0.85, 0.15);
+                        cr.rectangle(p.x() - 5.0, p.y() - 5.0, 10.0, 10.0);
+                    } else {
+                        cr.arc(p.x(), p.y(), 5.0, 0.0, std::f64::consts::TAU);
                     }
-                    None => draw_base(&state, &grid, &document, &filters, cr, viewport),
-                }
-                draw_over_base(&state, &document, &filters, cr, viewport);
-            }
-            crate::animation_mode::draw(cr,&filters.borrow(),viewport.1);
-            if filters.borrow().animation_frame.is_some() {
-                let f=*filters.borrow();
-                let time=f.animation_frame.unwrap() as f64/f.animation_fps.max(1) as f64;
-                if let Ok(pose)=crate::animation_pose::Pose::selected(&document,time) {
-                    if let Some(path)=document.animation_path(&pose).as_ref() {
-                        path.draw(cr,time,f.animation_fps,|p|Some(state.borrow().camera.world_to_screen(p,viewport)));
-                    }
-                    if f.animation_edit_pivot || *tool.borrow()==Tool::Rotate || f.animation_rotate {
-                        let p=state.borrow().camera.world_to_screen(pose.centre(),viewport);
-                        let _=cr.save();cr.set_source_rgb(1.0,0.6,0.15);cr.set_line_width(1.5);
-                        if f.animation_edit_pivot {
-                            cr.set_source_rgb(1.0,0.85,0.15);cr.rectangle(p.x()-5.0,p.y()-5.0,10.0,10.0);
-                        } else {cr.arc(p.x(),p.y(),5.0,0.0,std::f64::consts::TAU);}
-                        cr.move_to(p.x()-9.0,p.y());cr.line_to(p.x()+9.0,p.y());
-                        cr.move_to(p.x(),p.y()-9.0);cr.line_to(p.x(),p.y()+9.0);
-                        let _=cr.stroke();let _=cr.restore();
-                    }
-                }
-                draw_compass(&state.borrow(),cr,viewport);
-                return;
-            }
-            draw_selection_bounds(&state.borrow(), &document, cr, viewport);
-            draw_size_labels(&state.borrow(), &document, *tool.borrow(), cr, viewport);
-            if *tool.borrow() == Tool::Clip {
-                draw_clip(&state.borrow(), &grid.borrow(), &document, &clip.borrow(), cr, viewport);
-            }
-            if *tool.borrow() == Tool::Sweep {
-                draw_sweep(&state.borrow(), &document, &sweep.borrow(), cr, viewport);
-            }
-            if *tool.borrow() == Tool::Scale {
-                if let Some(box_) = document.selection_bounds() {
-                    let dragged = state.borrow().scaling;
-                    draw_scale_handles(&state.borrow(), &box_, dragged, cr, viewport);
+                    cr.move_to(p.x() - 9.0, p.y());
+                    cr.line_to(p.x() + 9.0, p.y());
+                    cr.move_to(p.x(), p.y() - 9.0);
+                    cr.line_to(p.x(), p.y() + 9.0);
+                    let _ = cr.stroke();
+                    let _ = cr.restore();
                 }
             }
-            if *tool.borrow() == Tool::Shear {
-                if let Some(box_) = document.selection_bounds() {
-                    draw_shear_handles(&state.borrow(), &box_, cr, viewport);
-                }
-            }
-            if *tool.borrow() == Tool::Rotate {
-                let mut rotate = rotate.borrow_mut();
-                // The centre follows the selection until someone drags it somewhere else.
-                if rotate.center().is_none() {
-                    rotate.reset_center(&document, &grid.borrow());
-                }
-                if let Some(center) = rotate.center() {
-                    let turning = state.borrow().rotating.then(|| rotate.display_angle());
-                    draw_rotation_handle(&state.borrow(), center, turning, cr, viewport);
-                }
-            }
-            if let Some(kind) = HandleKind::of(*tool.borrow()) {
-                // The handles follow the selection and the brushes' own shape, both of
-                // which change under the tool, so they are gathered afresh each frame.
-                let mut handles = handles.borrow_mut();
-                if kind == HandleKind::ControlPoint {
-                    handles.collect_control_points(document.selected_patches().into_iter());
-                } else {
-                    handles.collect(kind, document.selected_brushes().into_iter());
-                }
-                let hovered = state.borrow().cursor.and_then(|cursor| {
-                    pick_handle(&state.borrow(), &handles, viewport, cursor)
-                });
-                draw_handles(&state.borrow(), &handles, hovered, cr, viewport);
-                draw_handle_status(&handles, cr);
-
-                // The fillet: the edge a press would round, marked, and a dashed outline
-                // of what it would leave.
-                if *tool.borrow() == Tool::Fillet {
-                    draw_fillet_preview(
-                        &state.borrow(),
-                        &document,
-                        &handles,
-                        hovered,
-                        *fillet.borrow(),
-                        cr,
-                        viewport,
-                    );
-                }
-            }
-            draw_extrude_preview(
+            draw_compass(&state.borrow(), cr, viewport);
+            return;
+        }
+        draw_selection_bounds(&state.borrow(), &document, cr, viewport);
+        draw_size_labels(&state.borrow(), &document, *tool.borrow(), cr, viewport);
+        if *tool.borrow() == Tool::Clip {
+            draw_clip(
                 &state.borrow(),
-                &extrude_preview.borrow(),
+                &grid.borrow(),
+                &document,
+                &clip.borrow(),
                 cr,
                 viewport,
             );
-            draw_compass(&state.borrow(), cr, viewport);
-        
+        }
+        if *tool.borrow() == Tool::Sweep {
+            draw_sweep(&state.borrow(), &document, &sweep.borrow(), cr, viewport);
+        }
+        if *tool.borrow() == Tool::Scale {
+            if let Some(box_) = document.selection_bounds() {
+                let dragged = state.borrow().scaling;
+                draw_scale_handles(&state.borrow(), &box_, dragged, cr, viewport);
+            }
+        }
+        if *tool.borrow() == Tool::Shear {
+            if let Some(box_) = document.selection_bounds() {
+                draw_shear_handles(&state.borrow(), &box_, cr, viewport);
+            }
+        }
+        if *tool.borrow() == Tool::Rotate {
+            let mut rotate = rotate.borrow_mut();
+            // The centre follows the selection until someone drags it somewhere else.
+            if rotate.center().is_none() {
+                rotate.reset_center(&document, &grid.borrow());
+            }
+            if let Some(center) = rotate.center() {
+                let turning = state.borrow().rotating.then(|| rotate.display_angle());
+                draw_rotation_handle(&state.borrow(), center, turning, cr, viewport);
+            }
+        }
+        if let Some(kind) = HandleKind::of(*tool.borrow()) {
+            // The handles follow the selection and the brushes' own shape, both of
+            // which change under the tool, so they are gathered afresh each frame.
+            let mut handles = handles.borrow_mut();
+            if kind == HandleKind::ControlPoint {
+                handles.collect_control_points(document.selected_patches().into_iter());
+            } else {
+                handles.collect(kind, document.selected_brushes().into_iter());
+            }
+            let hovered = state
+                .borrow()
+                .cursor
+                .and_then(|cursor| pick_handle(&state.borrow(), &handles, viewport, cursor));
+            draw_handles(&state.borrow(), &handles, hovered, cr, viewport);
+            draw_handle_status(&handles, cr);
+
+            // The fillet: the edge a press would round, marked, and a dashed outline
+            // of what it would leave.
+            if *tool.borrow() == Tool::Fillet {
+                draw_fillet_preview(
+                    &state.borrow(),
+                    &document,
+                    &handles,
+                    hovered,
+                    *fillet.borrow(),
+                    cr,
+                    viewport,
+                );
+            }
+        }
+        draw_extrude_preview(&state.borrow(), &extrude_preview.borrow(), cr, viewport);
+        draw_compass(&state.borrow(), cr, viewport);
     }
 }
 
@@ -3451,7 +3797,22 @@ mod tests {
     #[test]
     fn the_link_2d_views_preference_decides_whether_views_follow() {
         let bounds = WorldBounds::default();
-        let state = |plane| Rc::new(RefCell::new(ViewportState {camera:Camera2d::new(plane,bounds.half_extent()),cursor:None,bounds,framed_generation:None,creating:None,creating_elsewhere:None,lasso:None,scaling:None,rotating:false,moving:false,dragging_handle:None,entity_drop:None}));
+        let state = |plane| {
+            Rc::new(RefCell::new(ViewportState {
+                camera: Camera2d::new(plane, bounds.half_extent()),
+                cursor: None,
+                bounds,
+                framed_generation: None,
+                creating: None,
+                creating_elsewhere: None,
+                lasso: None,
+                scaling: None,
+                rotating: false,
+                moving: false,
+                dragging_handle: None,
+                entity_drop: None,
+            }))
+        };
         let (top, front) = (state(ViewPlane::Top), state(ViewPlane::Front));
         let cameras = Rc::new(RefCell::new(vec![Rc::clone(&top), Rc::clone(&front)]));
         let before = front.borrow().camera.zoom;
@@ -3466,31 +3827,68 @@ mod tests {
 
     #[test]
     fn animation_wireframe_renders_all_orthographic_planes() {
-        let mut d=Document::new(Default::default());
-        let brush=map_model::shapes::create_cuboid(&d.world_bounds(),&Bbox3d::from_scalars(0.0,16.0),"stone").unwrap();
-        d.add_brushes(vec![brush]);d.select_all();
-        let id=d.create_brush_entity("func_animate").unwrap();
-        d.set_entity_property(id,"animation_keys","0 0 0 0 0 0 0; 2 128 96 64 0 0 0");
-        let original=d.to_map_text();
-        let filters=ViewFilters {animation_frame:Some(30),animation_fps:30,onion_frames:1,onion_step:15,..Default::default()};
-        let mut canvas=crate::canvas::Raster::new(960,320).unwrap();
-        let cr=&mut canvas;
-        cr.set_source_rgb(0.08,0.08,0.08);cr.paint();
-        for (i,plane) in [ViewPlane::Top,ViewPlane::Front,ViewPlane::Side].into_iter().enumerate() {
-            let bounds=WorldBounds::default();
-            let mut state=ViewportState {camera:Camera2d::new(plane,bounds.half_extent()),cursor:None,bounds,framed_generation:None,creating:None,creating_elsewhere:None,lasso:None,scaling:None,rotating:false,moving:false,dragging_handle:None,entity_drop:None};
-            state.camera.position=Vec3d::new(72.0,56.0,40.0);state.camera.zoom=2.5;
-            cr.save();cr.translate(i as f64*320.0,0.0);
-            cr.rectangle(0.0,0.0,320.0,320.0);cr.clip();
-            draw_animation_brushes(&state,&d,&filters,cr,(320.0,320.0));
-            let pose=crate::animation_pose::Pose::selected(&d,1.0).unwrap();
-            if let Some(path)=d.animation_path(&pose).as_ref() {
-                path.draw(cr,1.0,30,|p|Some(state.camera.world_to_screen(p,(320.0,320.0))));
+        let mut d = Document::new(Default::default());
+        let brush = map_model::shapes::create_cuboid(
+            &d.world_bounds(),
+            &Bbox3d::from_scalars(0.0, 16.0),
+            "stone",
+        )
+        .unwrap();
+        d.add_brushes(vec![brush]);
+        d.select_all();
+        let id = d.create_brush_entity("func_animate").unwrap();
+        d.set_entity_property(id, "animation_keys", "0 0 0 0 0 0 0; 2 128 96 64 0 0 0");
+        let original = d.to_map_text();
+        let filters = ViewFilters {
+            animation_frame: Some(30),
+            animation_fps: 30,
+            onion_frames: 1,
+            onion_step: 15,
+            ..Default::default()
+        };
+        let mut canvas = crate::canvas::Raster::new(960, 320).unwrap();
+        let cr = &mut canvas;
+        cr.set_source_rgb(0.08, 0.08, 0.08);
+        cr.paint();
+        for (i, plane) in [ViewPlane::Top, ViewPlane::Front, ViewPlane::Side]
+            .into_iter()
+            .enumerate()
+        {
+            let bounds = WorldBounds::default();
+            let mut state = ViewportState {
+                camera: Camera2d::new(plane, bounds.half_extent()),
+                cursor: None,
+                bounds,
+                framed_generation: None,
+                creating: None,
+                creating_elsewhere: None,
+                lasso: None,
+                scaling: None,
+                rotating: false,
+                moving: false,
+                dragging_handle: None,
+                entity_drop: None,
+            };
+            state.camera.position = Vec3d::new(72.0, 56.0, 40.0);
+            state.camera.zoom = 2.5;
+            cr.save();
+            cr.translate(i as f64 * 320.0, 0.0);
+            cr.rectangle(0.0, 0.0, 320.0, 320.0);
+            cr.clip();
+            draw_animation_brushes(&state, &d, &filters, cr, (320.0, 320.0));
+            let pose = crate::animation_pose::Pose::selected(&d, 1.0).unwrap();
+            if let Some(path) = d.animation_path(&pose).as_ref() {
+                path.draw(cr, 1.0, 30, |p| {
+                    Some(state.camera.world_to_screen(p, (320.0, 320.0)))
+                });
             }
             cr.restore();
         }
-        canvas.into_rgba().save_png(&std::env::temp_dir().join("orthographic-animation.png")).unwrap();
-        assert_eq!(d.to_map_text(),original);
+        canvas
+            .into_rgba()
+            .save_png(&std::env::temp_dir().join("orthographic-animation.png"))
+            .unwrap();
+        assert_eq!(d.to_map_text(), original);
     }
 
     #[test]
@@ -3511,7 +3909,11 @@ mod tests {
                 || t.positions.iter().all(|p| p.x() >= 32. - 1e-6)
         }));
         clip.toggle_side(); // Both halves survive.
-        assert!(document.preview_mesh_with_clip(&filters, Some(&clip)).triangles.iter().all(|t| t.alpha == 1.0));
+        assert!(document
+            .preview_mesh_with_clip(&filters, Some(&clip))
+            .triangles
+            .iter()
+            .all(|t| t.alpha == 1.0));
         assert_eq!(document.revision(), revision);
         let restored = document.preview_mesh(&filters);
         assert_eq!(restored.triangles.len(), original.triangles.len());
@@ -3520,19 +3922,30 @@ mod tests {
 
     #[test]
     fn clip_hover_matches_the_first_and_second_clicked_grid_points() {
-        let mut document=two_cubes(); document.select_all();
-        let grid=Grid::new(4); let viewport=(640.,480.);
-        for plane in [ViewPlane::Top,ViewPlane::Front,ViewPlane::Side] {
-            let bounds=WorldBounds::default();
-            let mut state=ViewportState {
-                camera:Camera2d::new(plane,bounds.half_extent()),cursor:Some(Vec2d::new(323.,211.)),
-                bounds,framed_generation:None,creating:None,creating_elsewhere:None,lasso:None,
-                scaling:None,rotating:false,moving:false,dragging_handle:None,entity_drop:None,
+        let mut document = two_cubes();
+        document.select_all();
+        let grid = Grid::new(4);
+        let viewport = (640., 480.);
+        for plane in [ViewPlane::Top, ViewPlane::Front, ViewPlane::Side] {
+            let bounds = WorldBounds::default();
+            let mut state = ViewportState {
+                camera: Camera2d::new(plane, bounds.half_extent()),
+                cursor: Some(Vec2d::new(323., 211.)),
+                bounds,
+                framed_generation: None,
+                creating: None,
+                creating_elsewhere: None,
+                lasso: None,
+                scaling: None,
+                rotating: false,
+                moving: false,
+                dragging_handle: None,
+                entity_drop: None,
             };
-            state.camera.zoom=2.;
-            let mut clip=ClipTool::default();
-            let first=clip_preview_point(&state,&grid,&document,&clip,viewport).unwrap();
-            assert_eq!(first,grid.snap_point(first));
+            state.camera.zoom = 2.;
+            let mut clip = ClipTool::default();
+            let first = clip_preview_point(&state, &grid, &document, &clip, viewport).unwrap();
+            assert_eq!(first, grid.snap_point(first));
             // The empty tool must already draw the hover point.
             let mut canvas = crate::canvas::Raster::new(640, 480).unwrap();
             // Other viewport drawing can leave a current point behind.
@@ -3544,23 +3957,42 @@ mod tests {
             assert!(pixels.iter().any(|b| *b != 0));
             for y in 0..480usize {
                 for x in 0..640usize {
-                    if (x as f64 - center.x()).hypot(y as f64 - center.y()) > CLIP_HANDLE_RADIUS + 2.0 {
-                        assert_eq!(&pixels[y * stride + x * 4..y * stride + x * 4 + 4], &[0; 4],
-                            "clip hover painted outside its handle at {x}, {y}");
+                    if (x as f64 - center.x()).hypot(y as f64 - center.y())
+                        > CLIP_HANDLE_RADIUS + 2.0
+                    {
+                        assert_eq!(
+                            &pixels[y * stride + x * 4..y * stride + x * 4 + 4],
+                            &[0; 4],
+                            "clip hover painted outside its handle at {x}, {y}"
+                        );
                     }
                 }
             }
-            begin_clip(&state,&grid,&document,&mut clip,viewport,state.cursor.unwrap());
-            assert_eq!(clip.points(),vec![first]);
-            assert!(clip_preview_point(&state,&grid,&document,&clip,viewport).is_none());
+            begin_clip(
+                &state,
+                &grid,
+                &document,
+                &mut clip,
+                viewport,
+                state.cursor.unwrap(),
+            );
+            assert_eq!(clip.points(), vec![first]);
+            assert!(clip_preview_point(&state, &grid, &document, &clip, viewport).is_none());
             clip.end_drag_point();
-            state.cursor=Some(Vec2d::new(419.,211.));
-            let second=clip_preview_point(&state,&grid,&document,&clip,viewport).unwrap();
-            begin_clip(&state,&grid,&document,&mut clip,viewport,state.cursor.unwrap());
-            assert_eq!(clip.points(),vec![first,second]);
+            state.cursor = Some(Vec2d::new(419., 211.));
+            let second = clip_preview_point(&state, &grid, &document, &clip, viewport).unwrap();
+            begin_clip(
+                &state,
+                &grid,
+                &document,
+                &mut clip,
+                viewport,
+                state.cursor.unwrap(),
+            );
+            assert_eq!(clip.points(), vec![first, second]);
             clip.end_drag_point();
-            state.cursor=None;
-            assert!(clip_preview_point(&state,&grid,&document,&clip,viewport).is_none());
+            state.cursor = None;
+            assert!(clip_preview_point(&state, &grid, &document, &clip, viewport).is_none());
         }
     }
 
@@ -3600,7 +4032,12 @@ mod tests {
     }
 
     /// The rectangle on screen that a world box projects to, with a little air.
-    fn rectangle_around(camera: &Camera2d, min: Vec3d, max: Vec3d, viewport: (f64, f64)) -> (Vec2d, Vec2d) {
+    fn rectangle_around(
+        camera: &Camera2d,
+        min: Vec3d,
+        max: Vec3d,
+        viewport: (f64, f64),
+    ) -> (Vec2d, Vec2d) {
         let corners = [
             camera.world_to_screen(min, viewport),
             camera.world_to_screen(max, viewport),
@@ -3650,7 +4087,10 @@ mod tests {
         let camera = Camera2d::new(ViewPlane::Top, 16384.0);
         let viewport = (800.0, 600.0);
         let whole = (Vec2d::new(-1e6, -1e6), Vec2d::new(1e6, 1e6));
-        assert_eq!(lassoed(&camera, &document, whole.0, whole.1, viewport).len(), 2);
+        assert_eq!(
+            lassoed(&camera, &document, whole.0, whole.1, viewport).len(),
+            2
+        );
     }
 
     #[test]

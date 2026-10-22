@@ -280,10 +280,12 @@ pub fn safe_min<T: Num, I: IntoIterator<Item = Option<T>>>(values: I) -> Option<
     values
         .into_iter()
         .flatten()
-        .fold(None, |acc: Option<T>, v| Some(match acc {
-            Some(a) if a < v => a,
-            _ => v,
-        }))
+        .fold(None, |acc: Option<T>, v| {
+            Some(match acc {
+                Some(a) if a < v => a,
+                _ => v,
+            })
+        })
 }
 
 /// Returns the maximum of the given values, ignoring any that are NaN.
@@ -294,7 +296,10 @@ pub fn safe_max<T: Float, I: IntoIterator<Item = T>>(values: I) -> T {
     values
         .into_iter()
         .filter(|v| !v.is_nan())
-        .fold(T::nan(), |acc, v| if acc.is_nan() || v > acc { v } else { acc })
+        .fold(
+            T::nan(),
+            |acc, v| if acc.is_nan() || v > acc { v } else { acc },
+        )
 }
 
 /// Returns the absolute difference of the given values.
@@ -753,8 +758,7 @@ pub fn solve_quartic<T: Float>(a: T, b: T, c: T, d: T, e: T, epsilon: T) -> Root
     // substitute x = y - A/4 to eliminate the cubic term: x^4 + px^2 + qx + r = 0
     let p = -T::from_f64(3.0 / 8.0) * ca * ca + cb;
     let q = T::from_f64(1.0 / 8.0) * ca * ca * ca - half * ca * cb + cc;
-    let r = -T::from_f64(3.0 / 256.0) * ca * ca * ca * ca
-        + T::from_f64(1.0 / 16.0) * ca * ca * cb
+    let r = -T::from_f64(3.0 / 256.0) * ca * ca * ca * ca + T::from_f64(1.0 / 16.0) * ca * ca * cb
         - quarter * ca * cc
         + cd;
 

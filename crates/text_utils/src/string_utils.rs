@@ -155,14 +155,12 @@ mod tests {
     #[test]
     fn find_next_delimited_string_honours_escapes() {
         // The escaped brace does not open anything, so the later one does.
-        let found =
-            str_find_next_delimited_string("\\{a {b} c", "{", "}", Some('\\')).unwrap();
+        let found = str_find_next_delimited_string("\\{a {b} c", "{", "}", Some('\\')).unwrap();
         assert_eq!(found.start, 4);
         assert_eq!(found.length, Some(3));
 
         // An escaped closing brace does not close the string.
-        let found =
-            str_find_next_delimited_string("{a \\} b}", "{", "}", Some('\\')).unwrap();
+        let found = str_find_next_delimited_string("{a \\} b}", "{", "}", Some('\\')).unwrap();
         assert_eq!(found.length, Some(8));
     }
 }

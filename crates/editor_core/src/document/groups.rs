@@ -1,6 +1,10 @@
 //! Document operations for groups.
 
-use super::{Document, Edit, EntityNode, Group, HashMap, HashSet, Mat4x4d, Node, NodeId, NodeKind, Vec3d, brush_node, deep_renumber, identity_transformation, mat_ext, node, parse_transformation, preserve_protected_properties, transform_node, translate_paste, translation_transformation};
+use super::{
+    brush_node, deep_renumber, identity_transformation, mat_ext, node, parse_transformation,
+    preserve_protected_properties, transform_node, translate_paste, translation_transformation,
+    Document, Edit, EntityNode, Group, HashMap, HashSet, Mat4x4d, Node, NodeId, NodeKind, Vec3d,
+};
 
 impl Document {
     /// Makes a group out of the selection.
@@ -29,8 +33,10 @@ impl Document {
                 by_layer.push((index, taken));
             }
         }
-        let members: Vec<Node> =
-            by_layer.iter().flat_map(|(_, nodes)| nodes.iter().cloned()).collect();
+        let members: Vec<Node> = by_layer
+            .iter()
+            .flat_map(|(_, nodes)| nodes.iter().cloned())
+            .collect();
         if members.is_empty() {
             return None;
         }
@@ -50,7 +56,10 @@ impl Document {
             .into_iter()
             .map(|(layer, nodes)| Edit::Removed { layer, nodes })
             .collect();
-        parts.push(Edit::Added { layer: target_layer, nodes: vec![group] });
+        parts.push(Edit::Added {
+            layer: target_layer,
+            nodes: vec![group],
+        });
         self.apply_and_record(Edit::Batch(parts));
 
         // The objects are the same objects, only what they hang from has changed, so what
@@ -101,23 +110,40 @@ impl Document {
 
         // Keep a selected brush group in place. Removing individual members and
         // re-adding them at layer level would dissolve the group, including on Undo.
-        let group = node::groups_with_ids(&self.tree.world).into_iter()
-            .find(|(_, group)| !group.children.is_empty()
-                && group.children.iter().all(|n| matches!(n.kind, NodeKind::Brush(_)))
-                && group.children.len() == self.selection.len()
-                && group.children.iter().all(|n| self.selection.contains(&n.id)))
+        let group = node::groups_with_ids(&self.tree.world)
+            .into_iter()
+            .find(|(_, group)| {
+                !group.children.is_empty()
+                    && group
+                        .children
+                        .iter()
+                        .all(|n| matches!(n.kind, NodeKind::Brush(_)))
+                    && group.children.len() == self.selection.len()
+                    && group
+                        .children
+                        .iter()
+                        .all(|n| self.selection.contains(&n.id))
+            })
             .map(|(id, _)| id);
         if let Some(group_id) = group {
             let before = node::find_node(&self.tree.world, group_id)?.clone();
             let mut after = before.clone();
-            let NodeKind::Group(group) = &mut after.kind else { unreachable!() };
+            let NodeKind::Group(group) = &mut after.kind else {
+                unreachable!()
+            };
             let entity = Node::new(NodeKind::Entity(EntityNode {
-                properties: vec![(map_model::entity_properties::keys::CLASSNAME.into(), classname.into())],
+                properties: vec![(
+                    map_model::entity_properties::keys::CLASSNAME.into(),
+                    classname.into(),
+                )],
                 children: std::mem::take(&mut group.children),
             }));
             let id = entity.id;
             group.children.push(entity);
-            self.apply_and_record(Edit::Changed { before: vec![before], after: vec![after] });
+            self.apply_and_record(Edit::Changed {
+                before: vec![before],
+                after: vec![after],
+            });
             return Some(id);
         }
 
@@ -175,7 +201,10 @@ impl Document {
         // quadratic in the number of groups.
         let entries: Vec<_> = node::groups_with_contents(&self.tree.world)
             .into_iter()
-            .filter(|entry| !entry.contents.is_empty() && entry.contents.iter().all(|id| self.selection.contains(id)))
+            .filter(|entry| {
+                !entry.contents.is_empty()
+                    && entry.contents.iter().all(|id| self.selection.contains(id))
+            })
             .collect();
         let dissolving: Vec<NodeId> = entries.iter().map(|entry| entry.id).collect();
 
@@ -187,8 +216,14 @@ impl Document {
         for entry in &entries {
             let (node, group, layer) = (entry.node.clone(), entry.group, entry.layer);
             freed.extend(group.children.iter().map(|child| child.id));
-            additions.push(Edit::Added { layer, nodes: group.children.clone() });
-            removals.push(Edit::Removed { layer, nodes: vec![node] });
+            additions.push(Edit::Added {
+                layer,
+                nodes: group.children.clone(),
+            });
+            removals.push(Edit::Removed {
+                layer,
+                nodes: vec![node],
+            });
         }
         drop(entries);
         if removals.is_empty() {
@@ -199,7 +234,10 @@ impl Document {
         self.apply_and_record(Edit::Batch(removals));
 
         // The group the user was editing may be one of the ones that just went.
-        if self.open_group.is_some_and(|open| dissolving.contains(&open)) {
+        if self
+            .open_group
+            .is_some_and(|open| dissolving.contains(&open))
+        {
             self.open_group = None;
         }
         self.selection = freed.into_iter().collect();
@@ -216,8 +254,10 @@ impl Document {
         if groups.len() < 2 {
             return 0;
         }
-        let entries: HashMap<NodeId, (&Node, usize)> =
-            node::groups_with_contents(&self.tree.world).into_iter().map(|entry| (entry.id, (entry.node, entry.layer))).collect();
+        let entries: HashMap<NodeId, (&Node, usize)> = node::groups_with_contents(&self.tree.world)
+            .into_iter()
+            .map(|entry| (entry.id, (entry.node, entry.layer)))
+            .collect();
         if groups.iter().any(|id| {
             matches!(
                 entries.get(id).map(|(n, _)| &n.kind),
@@ -238,12 +278,20 @@ impl Document {
         let mut merged_children = target_group.children.clone();
         let mut removals = Vec::new();
         for source in groups.iter().copied().filter(|id| *id != target) {
-            let Some((node, layer)) = entries.get(&source).map(|(n, layer)| ((*n).clone(), *layer)) else {
+            let Some((node, layer)) = entries
+                .get(&source)
+                .map(|(n, layer)| ((*n).clone(), *layer))
+            else {
                 continue;
             };
-            let NodeKind::Group(group) = &node.kind else { continue };
+            let NodeKind::Group(group) = &node.kind else {
+                continue;
+            };
             merged_children.extend(group.children.iter().cloned());
-            removals.push(Edit::Removed { layer, nodes: vec![node] });
+            removals.push(Edit::Removed {
+                layer,
+                nodes: vec![node],
+            });
         }
         drop(entries);
         if removals.is_empty() {
@@ -260,7 +308,10 @@ impl Document {
         };
         let folded = removals.len();
 
-        removals.push(Edit::Changed { before: vec![target_node], after: vec![new_target] });
+        removals.push(Edit::Changed {
+            before: vec![target_node],
+            after: vec![new_target],
+        });
         self.apply_and_record(Edit::Batch(removals));
 
         self.selection = contents.into_iter().collect();
@@ -274,7 +325,9 @@ impl Document {
         let selected = &self.selection;
         node::groups_with_contents(&self.tree.world)
             .into_iter()
-            .filter(|entry| !entry.contents.is_empty() && entry.contents.iter().all(|c| selected.contains(c)))
+            .filter(|entry| {
+                !entry.contents.is_empty() && entry.contents.iter().all(|c| selected.contains(c))
+            })
             .map(|entry| entry.id)
             .collect()
     }
@@ -440,8 +493,7 @@ impl Document {
         let Some(first) = self.selection.iter().next().copied() else {
             return false;
         };
-        let Some(group) = node::outermost_group_of(&self.tree.world, first, self.open_group)
-        else {
+        let Some(group) = node::outermost_group_of(&self.tree.world, first, self.open_group) else {
             return false;
         };
         self.open_group = Some(group);
@@ -453,11 +505,15 @@ impl Document {
     /// Group`. Returns how many moved. Nothing happens with no group open, nor to an
     /// object already inside a group.
     pub fn add_selection_to_open_group(&mut self) -> usize {
-        let Some(group_id) = self.open_group else { return 0 };
+        let Some(group_id) = self.open_group else {
+            return 0;
+        };
         let Some(group_node) = node::find_node(&self.tree.world, group_id).cloned() else {
             return 0;
         };
-        let NodeKind::Group(_) = &group_node.kind else { return 0 };
+        let NodeKind::Group(_) = &group_node.kind else {
+            return 0;
+        };
 
         // The selected nodes sitting directly on a layer -- what can be moved in.
         let mut by_layer: Vec<(usize, Vec<Node>)> = Vec::new();
@@ -472,8 +528,10 @@ impl Document {
                 by_layer.push((index, taken));
             }
         }
-        let incoming: Vec<Node> =
-            by_layer.iter().flat_map(|(_, nodes)| nodes.iter().cloned()).collect();
+        let incoming: Vec<Node> = by_layer
+            .iter()
+            .flat_map(|(_, nodes)| nodes.iter().cloned())
+            .collect();
         if incoming.is_empty() {
             return 0;
         }
@@ -489,7 +547,10 @@ impl Document {
             .into_iter()
             .map(|(layer, nodes)| Edit::Removed { layer, nodes })
             .collect();
-        parts.push(Edit::Changed { before: vec![group_node], after: vec![new_group] });
+        parts.push(Edit::Changed {
+            before: vec![group_node],
+            after: vec![new_group],
+        });
         self.apply_and_record(Edit::Batch(parts));
 
         self.selection = moved_ids.into_iter().collect();
@@ -500,12 +561,18 @@ impl Document {
     /// Moves the selected members of the open group back onto its layer.
     /// `removeSelectedObjectsFromGroup`. Returns how many moved.
     pub fn remove_selection_from_open_group(&mut self) -> usize {
-        let Some(group_id) = self.open_group else { return 0 };
+        let Some(group_id) = self.open_group else {
+            return 0;
+        };
         let Some(group_node) = node::find_node(&self.tree.world, group_id).cloned() else {
             return 0;
         };
-        let NodeKind::Group(group) = &group_node.kind else { return 0 };
-        let Some(layer) = node::layer_of(&self.tree.world, group_id) else { return 0 };
+        let NodeKind::Group(group) = &group_node.kind else {
+            return 0;
+        };
+        let Some(layer) = node::layer_of(&self.tree.world, group_id) else {
+            return 0;
+        };
 
         let (leaving, staying): (Vec<Node>, Vec<Node>) = group
             .children
@@ -525,8 +592,14 @@ impl Document {
 
         // Take the objects out of the group first, then drop them on the layer.
         self.apply_and_record(Edit::Batch(vec![
-            Edit::Changed { before: vec![group_node], after: vec![new_group] },
-            Edit::Added { layer, nodes: leaving },
+            Edit::Changed {
+                before: vec![group_node],
+                after: vec![new_group],
+            },
+            Edit::Added {
+                layer,
+                nodes: leaving,
+            },
         ]));
 
         self.selection = leaving_ids.into_iter().collect();
@@ -594,7 +667,10 @@ impl Document {
     pub fn create_linked_duplicate(&mut self, grid_size: f64) -> Option<NodeId> {
         let (source_id, layer, source_node) = node::groups_with_contents(&self.tree.world)
             .into_iter()
-            .find(|entry| !entry.contents.is_empty() && entry.contents.iter().all(|c| self.selection.contains(c)))
+            .find(|entry| {
+                !entry.contents.is_empty()
+                    && entry.contents.iter().all(|c| self.selection.contains(c))
+            })
             .map(|entry| (entry.id, entry.layer, entry.node.clone()))?;
         let NodeKind::Group(source_group) = &source_node.kind else {
             return None;
@@ -651,7 +727,9 @@ impl Document {
         self.apply(&edit);
         self.record_edit(edit);
 
-        self.selection = node::contents_of(&self.tree.world, copy_id).into_iter().collect();
+        self.selection = node::contents_of(&self.tree.world, copy_id)
+            .into_iter()
+            .collect();
         self.face_selection.clear();
         self.mark_changed();
         Some(copy_id)
@@ -693,16 +771,17 @@ impl Document {
                 Some(NodeKind::Group(group)) if group.children.iter().any(&is_selected)
             )
         })?;
-        let extract_positions: Vec<usize> = match &node::find_node(&self.tree.world, reference)?.kind {
-            NodeKind::Group(group) => group
-                .children
-                .iter()
-                .enumerate()
-                .filter(|(_, child)| is_selected(child))
-                .map(|(index, _)| index)
-                .collect(),
-            _ => return None,
-        };
+        let extract_positions: Vec<usize> =
+            match &node::find_node(&self.tree.world, reference)?.kind {
+                NodeKind::Group(group) => group
+                    .children
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, child)| is_selected(child))
+                    .map(|(index, _)| index)
+                    .collect(),
+                _ => return None,
+            };
         if extract_positions.is_empty() {
             return None;
         }
@@ -716,8 +795,12 @@ impl Document {
             let Some(node) = node::find_node(&self.tree.world, *group_id).cloned() else {
                 continue;
             };
-            let NodeKind::Group(group) = &node.kind else { continue };
-            let Some(layer) = node::layer_of(&self.tree.world, *group_id) else { continue };
+            let NodeKind::Group(group) = &node.kind else {
+                continue;
+            };
+            let Some(layer) = node::layer_of(&self.tree.world, *group_id) else {
+                continue;
+            };
             if group.children.len() <= extract_positions.iter().copied().max().unwrap_or(0) {
                 continue; // the members disagree on their shape; nothing safe to do
             }
@@ -736,7 +819,10 @@ impl Document {
             if let NodeKind::Group(g) = &mut trimmed.kind {
                 g.children = kept;
             }
-            changes.push(Edit::Changed { before: vec![node.clone()], after: vec![trimmed] });
+            changes.push(Edit::Changed {
+                before: vec![node.clone()],
+                after: vec![trimmed],
+            });
 
             let new_group = Node::new(NodeKind::Group(Group {
                 id: self.fresh_id(),
@@ -749,7 +835,10 @@ impl Document {
                 children: extracted,
             }));
             new_ids.push(new_group.id);
-            additions.push(Edit::Added { layer, nodes: vec![new_group] });
+            additions.push(Edit::Added {
+                layer,
+                nodes: vec![new_group],
+            });
         }
 
         if new_ids.is_empty() {
@@ -881,19 +970,24 @@ impl Document {
         }
         // Every linked member's node and contents from one walk of the tree; looking
         // each up on its own walked the tree twice per member.
-        let members: HashMap<NodeId, (&Node, Vec<NodeId>)> = node::groups_with_contents(&self.tree.world)
-            .into_iter()
-            .filter(|entry| entry.group.linked_group_id.is_some())
-            .map(|entry| (entry.id, (entry.node, entry.contents)))
-            .collect();
+        let members: HashMap<NodeId, (&Node, Vec<NodeId>)> =
+            node::groups_with_contents(&self.tree.world)
+                .into_iter()
+                .filter(|entry| entry.group.linked_group_id.is_some())
+                .map(|entry| (entry.id, (entry.node, entry.contents)))
+                .collect();
         for (_, ids) in sets {
             if ids.len() < 2 {
                 continue;
             }
             let source_id = ids.iter().copied().find(|id| {
-                let now = members.get(id).map(|(_, contents)| contents.as_slice()).unwrap_or_default();
+                let now = members
+                    .get(id)
+                    .map(|(_, contents)| contents.as_slice())
+                    .unwrap_or_default();
                 let was = pre.and_then(|pre| pre.get(id));
-                now.iter().any(|c| signal.contains(c)) || was.is_some_and(|was| was.iter().any(|c| signal.contains(c)))
+                now.iter().any(|c| signal.contains(c))
+                    || was.is_some_and(|was| was.iter().any(|c| signal.contains(c)))
             });
             let Some(source_id) = source_id else {
                 continue;
@@ -927,8 +1021,16 @@ impl Document {
                     let NodeKind::Group(sibling_group) = &sibling_node.kind else {
                         return None;
                     };
-                    let sibling_matrix = sibling_group.transformation.as_deref().and_then(parse_transformation)?;
-                    Some((*id, sibling_node, sibling_group, sibling_matrix * source_inverse))
+                    let sibling_matrix = sibling_group
+                        .transformation
+                        .as_deref()
+                        .and_then(parse_transformation)?;
+                    Some((
+                        *id,
+                        sibling_node,
+                        sibling_group,
+                        sibling_matrix * source_inverse,
+                    ))
                 })
                 .collect();
 
@@ -951,31 +1053,57 @@ impl Document {
                 })
                 .map(|(at, _)| at)
                 .collect();
-            let was: Option<Vec<&Node>> = previous.and_then(|previous| changed.iter().map(|&at| previous.get(&source_group.children[at].id).copied()).collect());
-            let incremental = pre.is_some() && !changed.is_empty() && changed.iter().all(|&at| leaf(&source_group.children[at])) && was.is_some();
+            let was: Option<Vec<&Node>> = previous.and_then(|previous| {
+                changed
+                    .iter()
+                    .map(|&at| previous.get(&source_group.children[at].id).copied())
+                    .collect()
+            });
+            let incremental = pre.is_some()
+                && !changed.is_empty()
+                && changed.iter().all(|&at| leaf(&source_group.children[at]))
+                && was.is_some();
             // A copy's child i must be the copy of source child i as it was: same kind,
             // and where the source child stood, moved to the copy -- otherwise (a copy
             // built some other way, children reordered) every child is rebuilt.
             // Compared by the corners alone, moved by `relative` (exact for a convex
             // brush's box), which costs a fraction of transforming the brush itself.
-            let same_place = |copy: &Node, was: &Node, relative: &Mat4x4d| match (&copy.kind, &was.kind) {
-                (NodeKind::Brush(copy), NodeKind::Brush(was)) => {
-                    let moved = geometry_math::bbox::Bbox3d::merge_all(was.vertex_positions().into_iter().map(|v| *relative * v));
-                    moved.is_some_and(|moved| {
-                        let bounds = copy.bounds();
-                        geometry_math::vec::length(bounds.min - moved.min) < 0.01 && geometry_math::vec::length(bounds.max - moved.max) < 0.01
-                    })
-                }
-                (NodeKind::Patch(copy), NodeKind::Patch(was)) => copy.control_points.len() == was.control_points.len()
-                    && copy.control_points.iter().zip(&was.control_points).all(|(a, b)| geometry_math::vec::length(a.position - *relative * b.position) < 0.01),
-                _ => false,
-            };
+            let same_place =
+                |copy: &Node, was: &Node, relative: &Mat4x4d| match (&copy.kind, &was.kind) {
+                    (NodeKind::Brush(copy), NodeKind::Brush(was)) => {
+                        let moved = geometry_math::bbox::Bbox3d::merge_all(
+                            was.vertex_positions().into_iter().map(|v| *relative * v),
+                        );
+                        moved.is_some_and(|moved| {
+                            let bounds = copy.bounds();
+                            geometry_math::vec::length(bounds.min - moved.min) < 0.01
+                                && geometry_math::vec::length(bounds.max - moved.max) < 0.01
+                        })
+                    }
+                    (NodeKind::Patch(copy), NodeKind::Patch(was)) => {
+                        copy.control_points.len() == was.control_points.len()
+                            && copy
+                                .control_points
+                                .iter()
+                                .zip(&was.control_points)
+                                .all(|(a, b)| {
+                                    geometry_math::vec::length(a.position - *relative * b.position)
+                                        < 0.01
+                                })
+                    }
+                    _ => false,
+                };
             let matches = |sibling: &Group, relative: &Mat4x4d| {
                 let Some(was) = &was else { return false };
                 sibling.children.len() == source_group.children.len()
-                    && changed.iter().zip(was).all(|(&at, was)| same_place(&sibling.children[at], was, relative))
+                    && changed
+                        .iter()
+                        .zip(was)
+                        .all(|(&at, was)| same_place(&sibling.children[at], was, relative))
             };
-            let (piecewise, work): (Vec<_>, Vec<_>) = work.into_iter().partition(|(_, _, sibling, relative)| incremental && matches(sibling, relative));
+            let (piecewise, work): (Vec<_>, Vec<_>) = work
+                .into_iter()
+                .partition(|(_, _, sibling, relative)| incremental && matches(sibling, relative));
             let copy = |(_, _, sibling, relative): &(NodeId, &Node, &Group, Mat4x4d)| -> Vec<(Node, Node)> {
                 changed
                     .iter()
@@ -1000,7 +1128,12 @@ impl Document {
                 after.push(now);
             }
             let build = |relative: &Mat4x4d| -> Vec<Node> {
-                let mut children: Vec<Node> = source_group.children.iter().cloned().map(deep_renumber).collect();
+                let mut children: Vec<Node> = source_group
+                    .children
+                    .iter()
+                    .cloned()
+                    .map(deep_renumber)
+                    .collect();
                 for child in &mut children {
                     transform_node(child, relative, &world_bounds);
                 }
@@ -1009,13 +1142,19 @@ impl Document {
             let built: Vec<Vec<Node>> = {
                 use rayon::prelude::*;
                 if work.len() >= 8 {
-                    work.par_iter().map(|(_, _, _, relative)| build(relative)).collect()
+                    work.par_iter()
+                        .map(|(_, _, _, relative)| build(relative))
+                        .collect()
                 } else {
-                    work.iter().map(|(_, _, _, relative)| build(relative)).collect()
+                    work.iter()
+                        .map(|(_, _, _, relative)| build(relative))
+                        .collect()
                 }
             };
 
-            for ((sibling_id, sibling_node, sibling_group, relative), children) in work.into_iter().zip(built) {
+            for ((sibling_id, sibling_node, sibling_group, relative), children) in
+                work.into_iter().zip(built)
+            {
                 let mut rebuilt = sibling_group.clone();
                 rebuilt.children = children;
                 // Geometry moves with `relative`; a point entity's facing has to be

@@ -10,9 +10,9 @@
 //! rather than dropped, and the discrepancy is reported. A map that has lost a layer
 //! definition is still worth opening.
 
-use rustc_hash::FxHashMap;
 use geometry_math::bbox::Bbox3d;
 use geometry_math::vec::Vec3d;
+use rustc_hash::FxHashMap;
 
 use crate::brush::{Brush, BrushError};
 use crate::entity_properties::{keys, values};
@@ -35,9 +35,8 @@ impl NodeId {
         use std::sync::atomic::{AtomicU64, Ordering};
         use std::sync::OnceLock;
         static COUNTER: OnceLock<AtomicU64> = OnceLock::new();
-        let counter = COUNTER.get_or_init(|| {
-            AtomicU64::new((u64::from(crate::ids::session_prefix()) << 40) | 1)
-        });
+        let counter = COUNTER
+            .get_or_init(|| AtomicU64::new((u64::from(crate::ids::session_prefix()) << 40) | 1));
         NodeId(counter.fetch_add(1, Ordering::Relaxed))
     }
 }
@@ -274,10 +273,7 @@ pub fn point_entities(world: &World) -> Vec<(NodeId, &EntityNode)> {
     result
 }
 
-fn collect_point_entities<'a>(
-    nodes: &'a [Node],
-    out: &mut Vec<(NodeId, &'a EntityNode)>,
-) {
+fn collect_point_entities<'a>(nodes: &'a [Node], out: &mut Vec<(NodeId, &'a EntityNode)>) {
     for node in nodes {
         match &node.kind {
             NodeKind::Entity(entity) => {
@@ -345,16 +341,27 @@ pub struct Tree {
 
 /// Builds the document tree from a map file.
 pub fn build_tree(map: &MapFile, world_bounds: &Bbox3d) -> Tree {
-    build_tree_with(map, world_bounds, |_, entity, bounds, warnings| brush_nodes(entity, bounds, warnings))
+    build_tree_with(map, world_bounds, |_, entity, bounds, warnings| {
+        brush_nodes(entity, bounds, warnings)
+    })
 }
 
 /// Consumes parsed geometry instead of copying every face and patch on map open.
 pub fn build_tree_owned(mut map: MapFile, world_bounds: &Bbox3d) -> Tree {
-    let mut geometry: Vec<_> = map.entities.iter_mut().map(|entity| {
-        Some((std::mem::take(&mut entity.brushes), std::mem::take(&mut entity.patches)))
-    }).collect();
+    let mut geometry: Vec<_> = map
+        .entities
+        .iter_mut()
+        .map(|entity| {
+            Some((
+                std::mem::take(&mut entity.brushes),
+                std::mem::take(&mut entity.patches),
+            ))
+        })
+        .collect();
     build_tree_with(&map, world_bounds, |index, _, bounds, warnings| {
-        let (brushes, patches) = geometry[index].take().expect("entity geometry is used once");
+        let (brushes, patches) = geometry[index]
+            .take()
+            .expect("entity geometry is used once");
         let mut nodes = Vec::with_capacity(brushes.len() + patches.len());
         for patch in patches {
             nodes.push(match patch.id {
@@ -368,7 +375,10 @@ pub fn build_tree_owned(mut map: MapFile, world_bounds: &Bbox3d) -> Tree {
                     Some(id) => Node::with_id(NodeId(id), NodeKind::Brush(built)),
                     None => Node::new(NodeKind::Brush(built)),
                 }),
-                Err(cause) => warnings.push(TreeWarning::InvalidBrush { cause, line: brush.line }),
+                Err(cause) => warnings.push(TreeWarning::InvalidBrush {
+                    cause,
+                    line: brush.line,
+                }),
             }
         }
         nodes
@@ -450,7 +460,10 @@ fn build_tree_with(
     // Keep the first occurrence of duplicate ids, matching the previous linear search.
     let mut parents = ParentIndex::default();
     for (index, group) in groups.iter().enumerate() {
-        parents.groups.entry(group.group.id.clone()).or_insert(index);
+        parents
+            .groups
+            .entry(group.group.id.clone())
+            .or_insert(index);
     }
     for (index, layer) in layers.iter().enumerate() {
         if let Some(id) = &layer.id {
@@ -598,8 +611,7 @@ fn read_layer(entity: &RawEntity) -> Layer {
             .unwrap_or(0),
         hidden: entity.property(keys::TB_LAYER_HIDDEN) == Some(values::TRUE),
         locked: entity.property(keys::TB_LAYER_LOCKED) == Some(values::TRUE),
-        omit_from_export: entity.property(keys::TB_LAYER_OMIT_FROM_EXPORT)
-            == Some(values::TRUE),
+        omit_from_export: entity.property(keys::TB_LAYER_OMIT_FROM_EXPORT) == Some(values::TRUE),
         color: entity.property(keys::TB_LAYER_COLOR).map(str::to_string),
         children: Vec::new(),
     }
@@ -717,26 +729,33 @@ pub fn flatten_tree(world: &World, format: MapFormat, game: Option<String>) -> M
         ..Entity::default()
     };
     if worldspawn.property(keys::CLASSNAME).is_none() {
-        worldspawn
-            .properties
-            .insert(0, (keys::CLASSNAME.to_string(), values::WORLDSPAWN.to_string()));
+        worldspawn.properties.insert(
+            0,
+            (keys::CLASSNAME.to_string(), values::WORLDSPAWN.to_string()),
+        );
     }
     if let Some(layer) = default_layer {
         set_layer_properties(&mut worldspawn.properties, layer);
-        collect_children(&layer.children, None, &mut worldspawn, &mut entities, &mut next_id);
+        collect_children(
+            &layer.children,
+            None,
+            &mut worldspawn,
+            &mut entities,
+            &mut next_id,
+        );
     }
     entities.insert(0, worldspawn);
 
     // Every other layer becomes an entity of its own.
     for layer in world.layers.iter().skip(1) {
-        let id = layer
-            .id
-            .clone()
-            .unwrap_or_else(|| take_id(&mut next_id));
+        let id = layer.id.clone().unwrap_or_else(|| take_id(&mut next_id));
 
         let mut entity = Entity {
             properties: vec![
-                (keys::CLASSNAME.to_string(), values::GROUP_CLASSNAME.to_string()),
+                (
+                    keys::CLASSNAME.to_string(),
+                    values::GROUP_CLASSNAME.to_string(),
+                ),
                 (keys::TB_TYPE.to_string(), values::TYPE_LAYER.to_string()),
                 (keys::TB_NAME.to_string(), layer.name.clone()),
                 (keys::TB_ID.to_string(), id.clone()),
@@ -836,7 +855,10 @@ fn collect_children(
 
                 let mut written = Entity {
                     properties: vec![
-                        (keys::CLASSNAME.to_string(), values::GROUP_CLASSNAME.to_string()),
+                        (
+                            keys::CLASSNAME.to_string(),
+                            values::GROUP_CLASSNAME.to_string(),
+                        ),
                         (keys::TB_TYPE.to_string(), values::TYPE_GROUP.to_string()),
                         (keys::TB_NAME.to_string(), group.name.clone()),
                         (keys::TB_ID.to_string(), id.clone()),
@@ -1040,11 +1062,7 @@ pub fn brushes_by_layer(world: &World) -> Vec<(NodeId, &Brush, usize)> {
     for (index, layer) in world.layers.iter().enumerate() {
         let mut in_layer = Vec::new();
         collect_brushes_with_ids(&layer.children, &mut in_layer);
-        result.extend(
-            in_layer
-                .into_iter()
-                .map(|(id, brush)| (id, brush, index)),
-        );
+        result.extend(in_layer.into_iter().map(|(id, brush)| (id, brush, index)));
     }
     result
 }
@@ -1067,11 +1085,7 @@ pub fn patches_by_layer(world: &World) -> Vec<(NodeId, &Patch, usize)> {
     for (index, layer) in world.layers.iter().enumerate() {
         let mut in_layer = Vec::new();
         collect(&layer.children, &mut in_layer);
-        result.extend(
-            in_layer
-                .into_iter()
-                .map(|(id, patch)| (id, patch, index)),
-        );
+        result.extend(in_layer.into_iter().map(|(id, patch)| (id, patch, index)));
     }
     result
 }
@@ -1082,11 +1096,7 @@ pub fn point_entities_by_layer(world: &World) -> Vec<(NodeId, &EntityNode, usize
     for (index, layer) in world.layers.iter().enumerate() {
         let mut in_layer = Vec::new();
         collect_point_entities(&layer.children, &mut in_layer);
-        result.extend(
-            in_layer
-                .into_iter()
-                .map(|(id, entity)| (id, entity, index)),
-        );
+        result.extend(in_layer.into_iter().map(|(id, entity)| (id, entity, index)));
     }
     result
 }
@@ -1103,10 +1113,7 @@ pub fn entities_with_ids(world: &World) -> Vec<(NodeId, &EntityNode)> {
     result
 }
 
-fn collect_entities_with_ids<'a>(
-    nodes: &'a [Node],
-    out: &mut Vec<(NodeId, &'a EntityNode)>,
-) {
+fn collect_entities_with_ids<'a>(nodes: &'a [Node], out: &mut Vec<(NodeId, &'a EntityNode)>) {
     for node in nodes {
         match &node.kind {
             NodeKind::Entity(entity) => {
@@ -1323,12 +1330,23 @@ pub struct GroupEntry<'a> {
 /// a `layer_of` and a `contents_of` per group, which made them quadratic in the number
 /// of groups.
 pub fn groups_with_contents(world: &World) -> Vec<GroupEntry<'_>> {
-    fn collect<'a>(nodes: &'a [Node], layer: usize, open: &mut Vec<usize>, out: &mut Vec<GroupEntry<'a>>) {
+    fn collect<'a>(
+        nodes: &'a [Node],
+        layer: usize,
+        open: &mut Vec<usize>,
+        out: &mut Vec<GroupEntry<'a>>,
+    ) {
         for node in nodes {
             match &node.kind {
                 NodeKind::Group(group) => {
                     open.push(out.len());
-                    out.push(GroupEntry { id: node.id, node, group, layer, contents: Vec::new() });
+                    out.push(GroupEntry {
+                        id: node.id,
+                        node,
+                        group,
+                        layer,
+                        contents: Vec::new(),
+                    });
                     collect(&group.children, layer, open, out);
                     open.pop();
                 }
@@ -1360,7 +1378,13 @@ pub fn groups_with_contents(world: &World) -> Vec<GroupEntry<'_>> {
 /// each of those groups its contents ([`contents_of`]): [`outermost_group_of`] and
 /// [`contents_of`] for the whole tree in one walk, for selecting many objects at once.
 /// `open` is transparent, as there.
-pub fn outermost_groups(world: &World, open: Option<NodeId>) -> (rustc_hash::FxHashMap<NodeId, NodeId>, rustc_hash::FxHashMap<NodeId, Vec<NodeId>>) {
+pub fn outermost_groups(
+    world: &World,
+    open: Option<NodeId>,
+) -> (
+    rustc_hash::FxHashMap<NodeId, NodeId>,
+    rustc_hash::FxHashMap<NodeId, Vec<NodeId>>,
+) {
     fn walk(
         nodes: &[Node],
         open: Option<NodeId>,
@@ -1371,7 +1395,11 @@ pub fn outermost_groups(world: &World, open: Option<NodeId>) -> (rustc_hash::FxH
         for node in nodes {
             match &node.kind {
                 NodeKind::Group(group) => {
-                    let inner = if outermost.is_none() && Some(node.id) != open { Some(node.id) } else { outermost };
+                    let inner = if outermost.is_none() && Some(node.id) != open {
+                        Some(node.id)
+                    } else {
+                        outermost
+                    };
                     if let Some(g) = outermost {
                         members.insert(node.id, g);
                     }
@@ -1604,10 +1632,19 @@ pub fn replace_nodes(world: &mut World, replacements: &[Node]) -> usize {
         _ => {}
     }
     // The last of each id, as replacing in turn leaves it.
-    let wanted: rustc_hash::FxHashMap<NodeId, usize> =
-        replacements.iter().enumerate().map(|(index, node)| (node.id, index)).collect();
+    let wanted: rustc_hash::FxHashMap<NodeId, usize> = replacements
+        .iter()
+        .enumerate()
+        .map(|(index, node)| (node.id, index))
+        .collect();
 
-    fn walk(nodes: &mut [Node], replacements: &[Node], wanted: &rustc_hash::FxHashMap<NodeId, usize>, floor: Option<usize>, found: &mut usize) {
+    fn walk(
+        nodes: &mut [Node],
+        replacements: &[Node],
+        wanted: &rustc_hash::FxHashMap<NodeId, usize>,
+        floor: Option<usize>,
+        found: &mut usize,
+    ) {
         for node in nodes.iter_mut() {
             let mut floor = floor;
             if let Some(&index) = wanted.get(&node.id) {
@@ -1619,9 +1656,15 @@ pub fn replace_nodes(world: &mut World, replacements: &[Node]) -> usize {
                 }
             }
             match &mut node.kind {
-                NodeKind::Group(group) => walk(&mut group.children, replacements, wanted, floor, found),
-                NodeKind::Entity(entity) => walk(&mut entity.children, replacements, wanted, floor, found),
-                NodeKind::Layer(layer) => walk(&mut layer.children, replacements, wanted, floor, found),
+                NodeKind::Group(group) => {
+                    walk(&mut group.children, replacements, wanted, floor, found)
+                }
+                NodeKind::Entity(entity) => {
+                    walk(&mut entity.children, replacements, wanted, floor, found)
+                }
+                NodeKind::Layer(layer) => {
+                    walk(&mut layer.children, replacements, wanted, floor, found)
+                }
                 NodeKind::Brush(_) | NodeKind::Patch(_) => {}
             }
         }
@@ -1640,11 +1683,20 @@ pub fn replace_nodes_owned(world: &mut World, replacements: Vec<Node>) -> usize 
     if replacements.len() <= 1 {
         return replace_nodes(world, &replacements);
     }
-    let wanted: rustc_hash::FxHashMap<NodeId, usize> =
-        replacements.iter().enumerate().map(|(index, node)| (node.id, index)).collect();
+    let wanted: rustc_hash::FxHashMap<NodeId, usize> = replacements
+        .iter()
+        .enumerate()
+        .map(|(index, node)| (node.id, index))
+        .collect();
     let mut slots: Vec<Option<Node>> = replacements.into_iter().map(Some).collect();
 
-    fn walk(nodes: &mut [Node], slots: &mut [Option<Node>], wanted: &rustc_hash::FxHashMap<NodeId, usize>, floor: Option<usize>, found: &mut usize) {
+    fn walk(
+        nodes: &mut [Node],
+        slots: &mut [Option<Node>],
+        wanted: &rustc_hash::FxHashMap<NodeId, usize>,
+        floor: Option<usize>,
+        found: &mut usize,
+    ) {
         for node in nodes.iter_mut() {
             let mut floor = floor;
             if let Some(&index) = wanted.get(&node.id) {
@@ -1737,5 +1789,8 @@ pub fn find_node(world: &World, id: NodeId) -> Option<&Node> {
         None
     }
 
-    world.layers.iter().find_map(|layer| search(&layer.children, id))
+    world
+        .layers
+        .iter()
+        .find_map(|layer| search(&layer.children, id))
 }

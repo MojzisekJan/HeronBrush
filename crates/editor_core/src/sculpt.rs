@@ -103,7 +103,13 @@ pub struct SculptParameters {
 
 impl Default for SculptParameters {
     fn default() -> Self {
-        Self { mode: SculptMode::Raise, direction: SculptDirection::Up, columns: ColumnShape::Triangles, radius: 128.0, strength: 0.25 }
+        Self {
+            mode: SculptMode::Raise,
+            direction: SculptDirection::Up,
+            columns: ColumnShape::Triangles,
+            radius: 128.0,
+            strength: 0.25,
+        }
     }
 }
 

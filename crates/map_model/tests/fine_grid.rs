@@ -1,9 +1,9 @@
 //! Fine-grid assets must keep their actual lattice corners after saving and loading.
+use geometry_math::{bbox::Bbox3d, vec};
 use map_model::{
     brush::Brush,
     io::{map_reader::read_map, map_writer::write_map},
 };
-use geometry_math::{bbox::Bbox3d, vec};
 #[test]
 fn nearly_coplanar_grid_facets_survive_loading_and_saving() {
     let bounds = Bbox3d::from_scalars(-16384., 16384.);

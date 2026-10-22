@@ -28,7 +28,9 @@ pub struct EntityModel {
 
 impl EntityModel {
     /// Optional PBR data for a skin.
-    pub fn pbr_at(&self, material: usize) -> Option<&crate::model_pbr::ModelPbr> { self.pbr.get(material) }
+    pub fn pbr_at(&self, material: usize) -> Option<&crate::model_pbr::ModelPbr> {
+        self.pbr.get(material)
+    }
     /// Skins in triangle material order.
     pub fn skins(&self) -> impl Iterator<Item = &Skin> {
         std::iter::once(&self.skin).chain(self.extra_skins.iter())

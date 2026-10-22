@@ -73,9 +73,8 @@ pub fn tessellate(patch: &Patch, subdivisions: usize) -> Vec<PatchTriangle> {
             ];
 
             let point = |u: f64, v: f64| evaluate_quadratic_bezier_surface(&positions, u, v);
-            let coord = |u: f64, v: f64| {
-                evaluate_quadratic_bezier_surface(&uvs, u as f32, v as f32)
-            };
+            let coord =
+                |u: f64, v: f64| evaluate_quadratic_bezier_surface(&uvs, u as f32, v as f32);
 
             for row in 0..steps {
                 for column in 0..steps {
@@ -83,8 +82,7 @@ pub fn tessellate(patch: &Patch, subdivisions: usize) -> Vec<PatchTriangle> {
                         column as f64 / steps as f64,
                         (column + 1) as f64 / steps as f64,
                     );
-                    let (v0, v1) =
-                        (row as f64 / steps as f64, (row + 1) as f64 / steps as f64);
+                    let (v0, v1) = (row as f64 / steps as f64, (row + 1) as f64 / steps as f64);
 
                     let corners = [
                         (point(u0, v0), coord(u0, v0)),
@@ -178,7 +176,11 @@ mod tests {
         // both ways at once shadows and occludes itself everywhere.
         let steps = 2;
         let triangles = tessellate(&flat_patch(3, 3), steps);
-        assert_eq!(triangles.len(), steps * steps * 2, "two per cell of the grid");
+        assert_eq!(
+            triangles.len(),
+            steps * steps * 2,
+            "two per cell of the grid"
+        );
 
         // All of them face the same way, since the patch is flat.
         for triangle in &triangles {
@@ -215,7 +217,10 @@ mod tests {
 
         // It rises, but a quadratic Bézier does not reach its middle control point.
         assert!(highest > 1.0, "the patch did not bow: {highest}");
-        assert!(highest < 64.0, "the patch overshot its control point: {highest}");
+        assert!(
+            highest < 64.0,
+            "the patch overshot its control point: {highest}"
+        );
     }
 
     #[test]

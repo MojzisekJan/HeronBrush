@@ -104,7 +104,11 @@ pub struct TokenizeError {
 
 impl fmt::Display for TokenizeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "line {}, column {}: {}", self.line, self.column, self.message)
+        write!(
+            f,
+            "line {}, column {}: {}",
+            self.line, self.column, self.message
+        )
     }
 }
 
@@ -178,7 +182,9 @@ impl<'a> Tokenizer<'a> {
 
     fn run(mut self) -> Result<Vec<SpannedToken<'a>>, TokenizeError> {
         let mut tokens = Vec::with_capacity(self.bytes.len() / 8);
-        while let Some(token) = self.next_token()? { tokens.push(token); }
+        while let Some(token) = self.next_token()? {
+            tokens.push(token);
+        }
         Ok(tokens)
     }
 
@@ -303,7 +309,8 @@ impl<'a> Tokenizer<'a> {
     fn read_word_or_number(&mut self) -> Token<'a> {
         let start = self.position;
         while let Some(c) = self.peek() {
-            if c.is_ascii_whitespace() || matches!(c, b'{' | b'}' | b'(' | b')' | b'[' | b']' | b'"')
+            if c.is_ascii_whitespace()
+                || matches!(c, b'{' | b'}' | b'(' | b')' | b'[' | b']' | b'"')
             {
                 break;
             }

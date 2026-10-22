@@ -41,13 +41,19 @@ pub fn write(level: &Level, options: &UnrealOptions) -> String {
     for (index, entity) in level.entities.iter().enumerate() {
         setup.push_str(&format!("    actors[{index}].set_editor_property(\"tags\", [\"heron_brush_entity_index:{index}\"])\n"));
         if let Some(light) = super::common_entities::light(entity) {
-            let [r,g,b,a] = light.color;
+            let [r, g, b, a] = light.color;
             setup.push_str(&format!("    light = actors[{index}].get_component_by_class(unreal.LightComponent)\n    light.set_light_color(unreal.LinearColor({r:.6},{g:.6},{b:.6},{a:.6}), False)\n    light.set_intensity({:.6})\n    light.set_editor_property(\"cast_shadows\", {})\n", light.energy, if light.shadows { "True" } else { "False" }));
             if light.kind != "Directional" {
-                setup.push_str(&format!("    light.set_editor_property(\"attenuation_radius\", {:.6})\n", light.range * 100.));
+                setup.push_str(&format!(
+                    "    light.set_editor_property(\"attenuation_radius\", {:.6})\n",
+                    light.range * 100.
+                ));
             }
             if light.kind == "Spot" {
-                setup.push_str(&format!("    light.set_editor_property(\"outer_cone_angle\", {:.6})\n", light.half_angle));
+                setup.push_str(&format!(
+                    "    light.set_editor_property(\"outer_cone_angle\", {:.6})\n",
+                    light.half_angle
+                ));
             }
         }
         let t = &entity.transform;
@@ -57,7 +63,15 @@ pub fn write(level: &Level, options: &UnrealOptions) -> String {
         let (ux, uy, uz) = (gz * 100.0, -gx * 100.0, gy * 100.0);
         // Native lights and player starts look along +X, while the source
         // convention looks along -Z, which this basis maps to -X.
-        let native = entity.mesh.is_none() && matches!(entity.classname.as_str(), "light" | "light_spot" | "light_sun" | "info_player_start" | "info_player_deathmatch");
+        let native = entity.mesh.is_none()
+            && matches!(
+                entity.classname.as_str(),
+                "light"
+                    | "light_spot"
+                    | "light_sun"
+                    | "info_player_start"
+                    | "info_player_deathmatch"
+            );
         let [qx, qy, qz, qw] = unreal_rotation(t.rotation_yxz, native).to_array();
         let [sx, sy, sz] = [t.scale[2], t.scale[0], t.scale[1]];
         entries.push_str(&format!(
@@ -158,7 +172,11 @@ fn unreal_rotation([pitch, yaw, roll]: [f64; 3], native: bool) -> glam::DQuat {
 
 /// Escapes a string for a Python string literal.
 fn escape(text: &str) -> String {
-    text.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n").replace('\r', "\\r").replace('\t', "\\t")
+    text.replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
 }
 
 #[cfg(test)]
@@ -198,7 +216,10 @@ mod tests {
     fn the_script_converts_to_unreal_axes_and_centimetres() {
         let script = write(&a_level(), &UnrealOptions::for_level("arena"));
         // map = (1, 2, 3) -> unreal (x, -y, z) * 100 = (100, -200, 300).
-        assert!(script.contains("(100.000000, -200.000000, 300.000000)"), "{script}");
+        assert!(
+            script.contains("(100.000000, -200.000000, 300.000000)"),
+            "{script}"
+        );
         assert!(script.contains("/Game/arena"));
         assert!(script.contains("arena/worldspawn.glb"));
     }
@@ -211,27 +232,48 @@ mod tests {
         level.entities[0].transform.scale = [2.0, 0.7, 3.1];
         let t = &level.entities[0].transform;
         let script = write(&level, &UnrealOptions::for_level("arena"));
-        let entry = script.lines().find(|l| l.trim_start().starts_with("(\"worldspawn\"")).unwrap();
-        let values: Vec<Vec<f64>> = entry.split('(').skip(2).map(|part|
-            part.split(')').next().unwrap().split(',').map(|n| n.trim().parse().unwrap()).collect()
-        ).collect();
+        let entry = script
+            .lines()
+            .find(|l| l.trim_start().starts_with("(\"worldspawn\""))
+            .unwrap();
+        let values: Vec<Vec<f64>> = entry
+            .split('(')
+            .skip(2)
+            .map(|part| {
+                part.split(')')
+                    .next()
+                    .unwrap()
+                    .split(',')
+                    .map(|n| n.trim().parse().unwrap())
+                    .collect()
+            })
+            .collect();
         let position = DVec3::new(values[0][0], values[0][1], values[0][2]);
-        let q = DQuat::from_xyzw(values[1][0],values[1][1],values[1][2],values[1][3]);
-        let scale = DVec3::new(values[2][0],values[2][1],values[2][2]);
-        let [x,y,z] = t.rotation_yxz;
-        let basis = crate::scene::basis_from_euler_yxz(crate::math::Vec3::new(x,y,z));
+        let q = DQuat::from_xyzw(values[1][0], values[1][1], values[1][2], values[1][3]);
+        let scale = DVec3::new(values[2][0], values[2][1], values[2][2]);
+        let [x, y, z] = t.rotation_yxz;
+        let basis = crate::scene::basis_from_euler_yxz(crate::math::Vec3::new(x, y, z));
         let source = DMat3::from_cols_array(&basis).transpose();
-        let convert = |p: DVec3| DVec3::new(p.z,-p.x,p.y);
-        for point in [DVec3::X,DVec3::Y,DVec3::Z,DVec3::new(0.3,-2.,4.)] {
-            let expected = convert(source * (DVec3::from_array(t.scale) * point) + DVec3::from_array(t.translation)) * 100.;
+        let convert = |p: DVec3| DVec3::new(p.z, -p.x, p.y);
+        for point in [DVec3::X, DVec3::Y, DVec3::Z, DVec3::new(0.3, -2., 4.)] {
+            let expected = convert(
+                source * (DVec3::from_array(t.scale) * point) + DVec3::from_array(t.translation),
+            ) * 100.;
             let actual = q * (scale * convert(point) * 100.) + position;
-            assert!((actual - expected).length() < 1e-5, "{actual} != {expected}");
+            assert!(
+                (actual - expected).length() < 1e-5,
+                "{actual} != {expected}"
+            );
         }
         assert!(script.contains("rotation = unreal.Quat(*quaternion).rotator()"));
-        assert_eq!(script.matches("actor.set_actor_scale3d(unreal.Vector(*scale))").count(),3);
+        assert_eq!(
+            script
+                .matches("actor.set_actor_scale3d(unreal.Vector(*scale))")
+                .count(),
+            3
+        );
         let native = unreal_rotation(t.rotation_yxz, true);
         assert!((native * DVec3::X - convert(source * -DVec3::Z)).length() < 1e-10);
         assert!((native * DVec3::Z - convert(source * DVec3::Y)).length() < 1e-10);
     }
-
 }

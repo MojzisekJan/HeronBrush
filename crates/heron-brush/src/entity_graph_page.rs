@@ -11,9 +11,9 @@
 
 use std::collections::HashMap;
 
-use eframe::egui::{self, Color32, CornerRadius, Pos2, Rect, Sense, Stroke, Vec2};
 use editor_core::document::EntityGraph;
 use editor_core::i18n::{fill, tr};
+use eframe::egui::{self, Color32, CornerRadius, Pos2, Rect, Sense, Stroke, Vec2};
 use map_model::node::NodeId;
 
 use crate::{dialog, editor::Editor, theme};
@@ -40,7 +40,15 @@ pub struct EntityGraphPage {
 
 impl Default for EntityGraphPage {
     fn default() -> Self {
-        Self { open: false, offset: Vec2::new(24.0, 24.0), zoom: 1.0, moved: HashMap::new(), cache: None, linking: None, status: String::new() }
+        Self {
+            open: false,
+            offset: Vec2::new(24.0, 24.0),
+            zoom: 1.0,
+            moved: HashMap::new(),
+            cache: None,
+            linking: None,
+            status: String::new(),
+        }
     }
 }
 
@@ -51,14 +59,20 @@ impl EntityGraphPage {
         }
         let mut close = false;
         let mut arrange = false;
-        let open = dialog::show(ctx, "entity-graph", tr("Entity links"), [960.0, 620.0], |ui, part| match part {
-            dialog::Part::Actions => {
-                close = dialog::button(ui, tr("Close"), true).clicked();
-                arrange = dialog::button(ui, tr("Arrange"), true).clicked();
-                ui.label(egui::RichText::new(&self.status).color(theme::dim()));
-            }
-            dialog::Part::Body => self.canvas(ui, editor),
-        });
+        let open = dialog::show(
+            ctx,
+            "entity-graph",
+            tr("Entity links"),
+            [960.0, 620.0],
+            |ui, part| match part {
+                dialog::Part::Actions => {
+                    close = dialog::button(ui, tr("Close"), true).clicked();
+                    arrange = dialog::button(ui, tr("Arrange"), true).clicked();
+                    ui.label(egui::RichText::new(&self.status).color(theme::dim()));
+                }
+                dialog::Part::Body => self.canvas(ui, editor),
+            },
+        );
         if arrange {
             self.moved.clear();
             self.offset = Vec2::new(24.0, 24.0);
@@ -90,11 +104,19 @@ impl EntityGraphPage {
 
     fn canvas(&mut self, ui: &mut egui::Ui, editor: &Editor) {
         let (graph, layout) = self.graph(editor);
-        let (rect, background) = ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
+        let (rect, background) =
+            ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, CornerRadius::same(4), theme::base());
         if graph.nodes.is_empty() {
-            crate::theme::text(&painter, rect.center(), egui::Align2::CENTER_CENTER, tr("Nothing in this map names another entity or is named by one."), theme::body(), theme::dim());
+            crate::theme::text(
+                &painter,
+                rect.center(),
+                egui::Align2::CENTER_CENTER,
+                tr("Nothing in this map names another entity or is named by one."),
+                theme::body(),
+                theme::dim(),
+            );
             return;
         }
 
@@ -131,24 +153,45 @@ impl EntityGraphPage {
         // The arrows first, under the boxes: from a box's right edge to the left edge of
         // the box it fires, with the key at the middle.
         for edge in &graph.edges {
-            let (Some(from), Some(to)) = (boxes.get(&edge.from), boxes.get(&edge.to)) else { continue };
+            let (Some(from), Some(to)) = (boxes.get(&edge.from), boxes.get(&edge.to)) else {
+                continue;
+            };
             let start = from.right_center();
             let end = to.left_center();
             let colour = link_colour(&edge.key);
             let bend = ((end.x - start.x).abs() * 0.5).max(40.0 * self.zoom);
             let curve = egui::epaint::CubicBezierShape::from_points_stroke(
-                [start, start + Vec2::new(bend, 0.0), end - Vec2::new(bend, 0.0), end],
+                [
+                    start,
+                    start + Vec2::new(bend, 0.0),
+                    end - Vec2::new(bend, 0.0),
+                    end,
+                ],
                 false,
                 Color32::TRANSPARENT,
                 Stroke::new(1.5, colour),
             );
             painter.add(curve);
             let tip = 8.0 * self.zoom;
-            painter.add(egui::Shape::convex_polygon(vec![end, end + Vec2::new(-tip, -tip * 0.5), end + Vec2::new(-tip, tip * 0.5)], colour, Stroke::NONE));
+            painter.add(egui::Shape::convex_polygon(
+                vec![
+                    end,
+                    end + Vec2::new(-tip, -tip * 0.5),
+                    end + Vec2::new(-tip, tip * 0.5),
+                ],
+                colour,
+                Stroke::NONE,
+            ));
             // A plain `target` is what an arrow means; any other key is written by it.
             if edge.key != "target" {
                 let middle = curve_middle(start, end);
-                painter.text(middle, egui::Align2::CENTER_BOTTOM, &edge.key, egui::FontId::proportional(11.0 * self.zoom.max(0.8)), colour);
+                painter.text(
+                    middle,
+                    egui::Align2::CENTER_BOTTOM,
+                    &edge.key,
+                    egui::FontId::proportional(11.0 * self.zoom.max(0.8)),
+                    colour,
+                );
             }
         }
 
@@ -157,7 +200,11 @@ impl EntityGraphPage {
         let mut released_on = None;
         for node in &graph.nodes {
             let area = boxes[&node.id];
-            let response = ui.interact(area, ui.id().with(("graph-node", node.id.0)), Sense::click_and_drag());
+            let response = ui.interact(
+                area,
+                ui.id().with(("graph-node", node.id.0)),
+                Sense::click_and_drag(),
+            );
             if response.dragged() && self.linking.is_none() {
                 let moved = place(node.id, &self.moved) + response.drag_delta() / self.zoom;
                 self.moved.insert(node.id, moved);
@@ -165,22 +212,64 @@ impl EntityGraphPage {
             if response.clicked() {
                 clicked = Some(node.id);
             }
-            if response.hovered() && ui.input(|i| i.pointer.primary_released()) && self.linking.is_some_and(|from| from != node.id) {
+            if response.hovered()
+                && ui.input(|i| i.pointer.primary_released())
+                && self.linking.is_some_and(|from| from != node.id)
+            {
                 released_on = Some(node.id);
             }
-            let background = if response.hovered() { theme::button_hover() } else { theme::surface() };
-            let stroke = if node.selected { Stroke::new(2.0, theme::accent()) } else { Stroke::new(1.0, theme::border()) };
-            painter.rect(area, CornerRadius::same(6), background, stroke, egui::StrokeKind::Inside);
+            let background = if response.hovered() {
+                theme::button_hover()
+            } else {
+                theme::surface()
+            };
+            let stroke = if node.selected {
+                Stroke::new(2.0, theme::accent())
+            } else {
+                Stroke::new(1.0, theme::border())
+            };
+            painter.rect(
+                area,
+                CornerRadius::same(6),
+                background,
+                stroke,
+                egui::StrokeKind::Inside,
+            );
             let text_size = 12.0 * self.zoom.max(0.8);
-            painter.text(area.left_top() + Vec2::new(10.0, 8.0) * self.zoom, egui::Align2::LEFT_TOP, &node.classname, egui::FontId::new(text_size, theme::bold()), theme::fg());
+            painter.text(
+                area.left_top() + Vec2::new(10.0, 8.0) * self.zoom,
+                egui::Align2::LEFT_TOP,
+                &node.classname,
+                egui::FontId::new(text_size, theme::bold()),
+                theme::fg(),
+            );
             if let Some(name) = &node.name {
-                painter.text(area.left_bottom() + Vec2::new(10.0, -8.0) * self.zoom, egui::Align2::LEFT_BOTTOM, name, egui::FontId::proportional(text_size * 0.92), theme::dim());
+                painter.text(
+                    area.left_bottom() + Vec2::new(10.0, -8.0) * self.zoom,
+                    egui::Align2::LEFT_BOTTOM,
+                    name,
+                    egui::FontId::proportional(text_size * 0.92),
+                    theme::dim(),
+                );
             }
 
             // The dot a new link is dragged from.
             let dot = area.right_center();
-            let dot_response = ui.interact(Rect::from_center_size(dot, Vec2::splat(14.0)), ui.id().with(("graph-dot", node.id.0)), Sense::drag());
-            painter.circle(dot, 5.0, if dot_response.hovered() { theme::accent() } else { theme::surface() }, Stroke::new(1.5, theme::accent()));
+            let dot_response = ui.interact(
+                Rect::from_center_size(dot, Vec2::splat(14.0)),
+                ui.id().with(("graph-dot", node.id.0)),
+                Sense::drag(),
+            );
+            painter.circle(
+                dot,
+                5.0,
+                if dot_response.hovered() {
+                    theme::accent()
+                } else {
+                    theme::surface()
+                },
+                Stroke::new(1.5, theme::accent()),
+            );
             if dot_response.drag_started() {
                 self.linking = Some(node.id);
             }
@@ -192,8 +281,17 @@ impl EntityGraphPage {
                     ui.label(egui::RichText::new(tr("It fires nothing")).color(theme::dim()));
                 }
                 for edge in outgoing {
-                    if ui.button(fill("Remove {}", &[&format!("{} → {}", edge.key, edge.value)])).clicked() {
-                        editor.document.borrow_mut().unlink_entities(edge.from, &edge.key);
+                    if ui
+                        .button(fill(
+                            "Remove {}",
+                            &[&format!("{} → {}", edge.key, edge.value)],
+                        ))
+                        .clicked()
+                    {
+                        editor
+                            .document
+                            .borrow_mut()
+                            .unlink_entities(edge.from, &edge.key);
                         (editor.redraw)();
                         ui.close();
                     }
@@ -204,7 +302,10 @@ impl EntityGraphPage {
         // A link being dragged: a line from its dot to the pointer, made when it is let go
         // on another box.
         if let Some(from) = self.linking {
-            if let (Some(start), Some(pointer)) = (boxes.get(&from).map(|b| b.right_center()), ui.input(|i| i.pointer.latest_pos())) {
+            if let (Some(start), Some(pointer)) = (
+                boxes.get(&from).map(|b| b.right_center()),
+                ui.input(|i| i.pointer.latest_pos()),
+            ) {
                 painter.line_segment([start, pointer], Stroke::new(1.5, theme::accent()));
             }
             if let Some(to) = released_on {
@@ -229,7 +330,10 @@ impl EntityGraphPage {
 
 /// An arrow's colour: the views' link colours, the kill one for a killtarget.
 fn link_colour(key: &str) -> Color32 {
-    let colour = if key.trim_end_matches(|c: char| c.is_ascii_digit()).eq_ignore_ascii_case("killtarget") {
+    let colour = if key
+        .trim_end_matches(|c: char| c.is_ascii_digit())
+        .eq_ignore_ascii_case("killtarget")
+    {
         editor_core::preferences::pref(|p| p.kill_entity_link_color)
     } else {
         editor_core::preferences::pref(|p| p.entity_link_color)

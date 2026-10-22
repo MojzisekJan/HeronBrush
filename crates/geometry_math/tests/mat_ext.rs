@@ -1,6 +1,5 @@
 //! Tests for mat ext behavior.
 
-
 #![allow(clippy::excessive_precision)]
 
 use geometry_math::assert_approx_eq;
@@ -215,9 +214,18 @@ fn coordinate_system_matrix_maps_into_the_system() {
     )
     .expect("the three axes are independent");
 
-    assert_eq!(m * Vec3d::new(1.0, 0.0, 0.0), Vec3d::new(-1.0, 0.0, 0.0) + o);
-    assert_eq!(m * Vec3d::new(0.0, 1.0, 0.0), Vec3d::new(0.0, -1.0, 0.0) + o);
-    assert_eq!(m * Vec3d::new(0.0, 0.0, 1.0), Vec3d::new(0.0, 0.0, -1.0) + o);
+    assert_eq!(
+        m * Vec3d::new(1.0, 0.0, 0.0),
+        Vec3d::new(-1.0, 0.0, 0.0) + o
+    );
+    assert_eq!(
+        m * Vec3d::new(0.0, 1.0, 0.0),
+        Vec3d::new(0.0, -1.0, 0.0) + o
+    );
+    assert_eq!(
+        m * Vec3d::new(0.0, 0.0, 1.0),
+        Vec3d::new(0.0, 0.0, -1.0) + o
+    );
 }
 
 #[test]
@@ -248,8 +256,14 @@ fn shear_matrix_shears_one_axis_by_another() {
 fn perspective_and_ortho_matrices_map_the_near_plane() {
     // An orthographic volume maps its own corners onto the clip cube.
     let m = ortho_matrix(1.0, 100.0, -10.0, 10.0, 10.0, -10.0);
-    assert_approx_eq!(m * Vec3d::new(-10.0, -10.0, -1.0), Vec3d::new(-1.0, -1.0, -1.0));
-    assert_approx_eq!(m * Vec3d::new(10.0, 10.0, -100.0), Vec3d::new(1.0, 1.0, 1.0));
+    assert_approx_eq!(
+        m * Vec3d::new(-10.0, -10.0, -1.0),
+        Vec3d::new(-1.0, -1.0, -1.0)
+    );
+    assert_approx_eq!(
+        m * Vec3d::new(10.0, 10.0, -100.0),
+        Vec3d::new(1.0, 1.0, 1.0)
+    );
 
     // A perspective matrix keeps the view direction on the axis.
     let p = perspective_matrix(90.0, 1.0, 100.0, 800, 600);
@@ -368,9 +382,10 @@ fn points_transformation_matrix_recovers_a_known_transform() {
         * rotation_matrix_about_axis(Vec3d::new(0.0, 0.0, 1.0), scalar::to_radians(90.0));
     let output: Vec<Vec3d> = input.iter().map(|p| m * *p).collect();
 
-    let recovered =
-        points_transformation_matrix_3(input[0], input[1], input[2], output[0], output[1], output[2])
-            .expect("the three points are not colinear");
+    let recovered = points_transformation_matrix_3(
+        input[0], input[1], input[2], output[0], output[1], output[2],
+    )
+    .expect("the three points are not colinear");
 
     for (i, p) in input.iter().enumerate() {
         assert_approx_eq!(recovered * *p, output[i]);

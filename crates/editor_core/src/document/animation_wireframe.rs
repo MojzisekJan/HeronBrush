@@ -1,9 +1,6 @@
 //! Shared frame cache for all orthographic animation previews.
 use super::*;
-use crate::{
-    motion_preview::Motion,
-    view_filters::ViewFilters,
-};
+use crate::{motion_preview::Motion, view_filters::ViewFilters};
 type Edges = Vec<(Vec3d, Vec3d)>;
 #[derive(Default)]
 pub struct Frame {
@@ -39,7 +36,9 @@ impl Document {
                 .elapsed()
                 .as_secs_f64()
         } else {
-            if !self.trigger_preview.active() {cache.clock = None;}
+            if !self.trigger_preview.active() {
+                cache.clock = None;
+            }
             0.0
         }
     }
@@ -116,9 +115,14 @@ impl Document {
                 };
                 target.extend(source.edges.iter().map(|(a, b)| {
                     let transform = |p| match &source.motion {
-                        Some(Motion::Keyframes { pivot, track, .. } | Motion::Playback {pivot, authored:track,..})
-                            if !playing && filters.animation_frame.is_some() =>
-                        {
+                        Some(
+                            Motion::Keyframes { pivot, track, .. }
+                            | Motion::Playback {
+                                pivot,
+                                authored: track,
+                                ..
+                            },
+                        ) if !playing && filters.animation_frame.is_some() => {
                             track.transform_clamped(p, *pivot, now, false)
                         }
                         Some(motion) if playing || filters.animation_frame.is_some() => {
@@ -130,7 +134,15 @@ impl Document {
                     (transform(*a), transform(*b))
                 }));
                 if source.selected && !source.locked {
-                    if let Some(Motion::Keyframes { pivot, track, .. } | Motion::Playback {pivot, authored:track,..}) = &source.motion {
+                    if let Some(
+                        Motion::Keyframes { pivot, track, .. }
+                        | Motion::Playback {
+                            pivot,
+                            authored: track,
+                            ..
+                        },
+                    ) = &source.motion
+                    {
                         for offset in 1..=key.2 {
                             for past in [true, false] {
                                 let time = now

@@ -19,13 +19,27 @@ fn setup() -> (egui::Context, Editor) {
 fn keyboard(
     ctx: &egui::Context,
     editor: &Editor,
-) -> (editor_core::commands::Commands, std::rc::Rc<std::cell::RefCell<crate::WindowState>>, crate::animation_page::AnimationPage) {
+) -> (
+    editor_core::commands::Commands,
+    std::rc::Rc<std::cell::RefCell<crate::WindowState>>,
+    crate::animation_page::AnimationPage,
+) {
     let window = std::rc::Rc::new(std::cell::RefCell::new(crate::WindowState::default()));
-    (crate::commands_for(editor, ctx, &window), window, crate::animation_page::AnimationPage::default())
+    (
+        crate::commands_for(editor, ctx, &window),
+        window,
+        crate::animation_page::AnimationPage::default(),
+    )
 }
 
 fn press(key: egui::Key, modifiers: egui::Modifiers) -> egui::Event {
-    egui::Event::Key { key, physical_key: Some(key), pressed: true, repeat: false, modifiers }
+    egui::Event::Key {
+        key,
+        physical_key: Some(key),
+        pressed: true,
+        repeat: false,
+        modifiers,
+    }
 }
 
 /// Ctrl+S, Ctrl+O, Ctrl+N, Ctrl+Shift+S and Ctrl+, reach the window while a text field
@@ -38,24 +52,57 @@ fn window_shortcuts_work_while_a_field_has_the_keyboard() {
     let cmd = egui::Modifiers::COMMAND;
     for (event, action) in [
         (press(egui::Key::S, cmd), Action::Save),
-        (press(egui::Key::S, cmd | egui::Modifiers::SHIFT), Action::SaveAs),
+        (
+            press(egui::Key::S, cmd | egui::Modifiers::SHIFT),
+            Action::SaveAs,
+        ),
         (press(egui::Key::O, cmd), Action::Open),
         (press(egui::Key::N, cmd), Action::New),
         (press(egui::Key::Comma, cmd), Action::Preferences),
     ] {
-        crate::dispatch_keys(&commands, &window, &mut animation, &editor, vec![event], cmd, None, true);
+        crate::dispatch_keys(
+            &commands,
+            &window,
+            &mut animation,
+            &editor,
+            vec![event],
+            cmd,
+            None,
+            true,
+        );
         assert_eq!(window.borrow_mut().action.take(), Some(action));
     }
     // A plain key while the field has the keyboard is typing, not a command.
     editor.document.borrow_mut().select_all();
     let before = editor.document.borrow().to_map_text();
-    let typed = vec![press(egui::Key::Delete, egui::Modifiers::NONE), egui::Event::Text("#".into())];
-    crate::dispatch_keys(&commands, &window, &mut animation, &editor, typed, egui::Modifiers::NONE, None, true);
+    let typed = vec![
+        press(egui::Key::Delete, egui::Modifiers::NONE),
+        egui::Event::Text("#".into()),
+    ];
+    crate::dispatch_keys(
+        &commands,
+        &window,
+        &mut animation,
+        &editor,
+        typed,
+        egui::Modifiers::NONE,
+        None,
+        true,
+    );
     assert_eq!(editor.document.borrow().to_map_text(), before);
     assert!(editor.grid.borrow().visible());
     assert!(window.borrow().action.is_none());
     // Without a field it is the command.
-    crate::dispatch_keys(&commands, &window, &mut animation, &editor, vec![press(egui::Key::Delete, egui::Modifiers::NONE)], egui::Modifiers::NONE, None, false);
+    crate::dispatch_keys(
+        &commands,
+        &window,
+        &mut animation,
+        &editor,
+        vec![press(egui::Key::Delete, egui::Modifiers::NONE)],
+        egui::Modifiers::NONE,
+        None,
+        false,
+    );
     assert_ne!(editor.document.borrow().to_map_text(), before);
 }
 
@@ -66,9 +113,27 @@ fn number_sign_toggles_the_grid() {
     let (commands, window, mut animation) = keyboard(&ctx, &editor);
     let visible = editor.grid.borrow().visible();
     let hash = || vec![egui::Event::Text("#".into())];
-    crate::dispatch_keys(&commands, &window, &mut animation, &editor, hash(), egui::Modifiers::SHIFT, None, false);
+    crate::dispatch_keys(
+        &commands,
+        &window,
+        &mut animation,
+        &editor,
+        hash(),
+        egui::Modifiers::SHIFT,
+        None,
+        false,
+    );
     assert_eq!(editor.grid.borrow().visible(), !visible);
-    crate::dispatch_keys(&commands, &window, &mut animation, &editor, hash(), egui::Modifiers::SHIFT, None, false);
+    crate::dispatch_keys(
+        &commands,
+        &window,
+        &mut animation,
+        &editor,
+        hash(),
+        egui::Modifiers::SHIFT,
+        None,
+        false,
+    );
     assert_eq!(editor.grid.borrow().visible(), visible);
 }
 
@@ -99,9 +164,18 @@ fn revert_discards_changes_without_asking() {
 fn save_as_adds_the_map_extension() {
     use crate::app_actions::with_map_extension;
     use std::path::PathBuf;
-    assert_eq!(with_map_extension(PathBuf::from("/maps/castle")), PathBuf::from("/maps/castle.map"));
-    assert_eq!(with_map_extension(PathBuf::from("/maps/castle.map")), PathBuf::from("/maps/castle.map"));
-    assert_eq!(with_map_extension(PathBuf::from("/maps/castle.MAP")), PathBuf::from("/maps/castle.MAP"));
+    assert_eq!(
+        with_map_extension(PathBuf::from("/maps/castle")),
+        PathBuf::from("/maps/castle.map")
+    );
+    assert_eq!(
+        with_map_extension(PathBuf::from("/maps/castle.map")),
+        PathBuf::from("/maps/castle.map")
+    );
+    assert_eq!(
+        with_map_extension(PathBuf::from("/maps/castle.MAP")),
+        PathBuf::from("/maps/castle.MAP")
+    );
 }
 
 /// The close prompt names the map.
@@ -109,7 +183,10 @@ fn save_as_adds_the_map_extension() {
 fn the_unsaved_changes_prompt_names_the_map() {
     let (_ctx, editor) = setup();
     let message = crate::app_actions::unsaved_message(&editor.document.borrow());
-    assert!(message.starts_with("crate.map has changes that are not saved."), "{message}");
+    assert!(
+        message.starts_with("crate.map has changes that are not saved."),
+        "{message}"
+    );
     assert!(message.ends_with("If you discard them they are gone."));
 }
 
@@ -125,7 +202,12 @@ fn menu_items_are_enabled_only_when_they_apply() {
             .iter()
             .flatten()
             .find_map(|entry| match entry {
-                Entry::Item { action, enabled, checked, .. } if *action == wanted => Some((*enabled, *checked)),
+                Entry::Item {
+                    action,
+                    enabled,
+                    checked,
+                    ..
+                } if *action == wanted => Some((*enabled, *checked)),
                 _ => None,
             })
             .expect("the item is in a menu")
@@ -134,8 +216,18 @@ fn menu_items_are_enabled_only_when_they_apply() {
     let filters = editor.filters.borrow();
     let mut status = crate::chrome::Status::default();
     let menus = crate::chrome::menus(&status, false, &grid, &filters);
-    for action in [Action::Repeat, Action::ClearRepeat, Action::ReloadPoint, Action::UnloadPoint, Action::ReloadPortal, Action::UnloadPortal] {
-        assert!(!find(&menus, action).0, "{action:?} is offered with nothing to do");
+    for action in [
+        Action::Repeat,
+        Action::ClearRepeat,
+        Action::ReloadPoint,
+        Action::UnloadPoint,
+        Action::ReloadPortal,
+        Action::UnloadPortal,
+    ] {
+        assert!(
+            !find(&menus, action).0,
+            "{action:?} is offered with nothing to do"
+        );
     }
     assert!(find(&menus, Action::LoadPoint).0);
     assert_eq!(find(&menus, Action::Animation).1, Some(false));
@@ -154,11 +246,20 @@ fn the_window_is_centred_on_its_own_monitor() {
     let monitor = egui::vec2(1920.0, 1080.0);
     let size = egui::vec2(1360.0, 760.0);
     let first = egui::Rect::from_min_size(egui::pos2(100.0, 80.0), egui::vec2(800.0, 450.0));
-    assert_eq!(crate::centred_on_monitor(first, monitor, size), egui::pos2(280.0, 160.0));
+    assert_eq!(
+        crate::centred_on_monitor(first, monitor, size),
+        egui::pos2(280.0, 160.0)
+    );
     let second = first.translate(egui::vec2(1920.0, 0.0));
-    assert_eq!(crate::centred_on_monitor(second, monitor, size), egui::pos2(2200.0, 160.0));
+    assert_eq!(
+        crate::centred_on_monitor(second, monitor, size),
+        egui::pos2(2200.0, 160.0)
+    );
     let left = first.translate(egui::vec2(-1920.0, 0.0));
-    assert_eq!(crate::centred_on_monitor(left, monitor, size), egui::pos2(-1640.0, 160.0));
+    assert_eq!(
+        crate::centred_on_monitor(left, monitor, size),
+        egui::pos2(-1640.0, 160.0)
+    );
 }
 
 /// A new layout, or the 3D view leaving, drops a maximised view; Space does not cycle
@@ -171,7 +272,10 @@ fn a_layout_change_drops_the_maximised_view() {
     let area = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0));
     let arrange = |panes: &mut crate::layout::Panes, layout| {
         let mut out = Vec::new();
-        let raw = egui::RawInput { screen_rect: Some(area), ..Default::default() };
+        let raw = egui::RawInput {
+            screen_rect: Some(area),
+            ..Default::default()
+        };
         let mut output = ctx.run_ui(raw, |ui| out = panes.arrange(ui, area, layout));
         output.textures_delta.clear();
         out
@@ -189,5 +293,9 @@ fn a_layout_change_drops_the_maximised_view() {
     assert_eq!(panes.maximised, None);
     panes.focused = Some(0);
     panes.cycle(Layout::One);
-    assert_eq!(panes.focused, Some(0), "the detached 3D view has no pane to cycle");
+    assert_eq!(
+        panes.focused,
+        Some(0),
+        "the detached 3D view has no pane to cycle"
+    );
 }

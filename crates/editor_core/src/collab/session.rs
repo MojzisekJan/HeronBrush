@@ -13,8 +13,8 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 
-use map_model::node::{NodeId, World};
 use geometry_math::bbox::Bbox3d;
+use map_model::node::{NodeId, World};
 
 use super::net::{Link, Role};
 use super::wire::{WireEdit, WireMessage, WireWorld};
@@ -91,15 +91,22 @@ pub struct SessionInbox {
 
 impl From<std::sync::mpsc::Receiver<std::io::Result<Session>>> for SessionInbox {
     fn from(receiver: std::sync::mpsc::Receiver<std::io::Result<Session>>) -> Self {
-        Self { receiver, stop: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)) }
+        Self {
+            receiver,
+            stop: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        }
     }
 }
 impl std::ops::Deref for SessionInbox {
     type Target = std::sync::mpsc::Receiver<std::io::Result<Session>>;
-    fn deref(&self) -> &Self::Target { &self.receiver }
+    fn deref(&self) -> &Self::Target {
+        &self.receiver
+    }
 }
 impl Drop for SessionInbox {
-    fn drop(&mut self) { self.stop.store(true, std::sync::atomic::Ordering::Relaxed); }
+    fn drop(&mut self) {
+        self.stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
 }
 
 /// One participant's link, as the host keeps it. A guest has exactly one of these --
@@ -156,14 +163,21 @@ pub struct Session {
 impl Session {
     /// Hosts on `0.0.0.0:port` over TCP and blocks until a guest joins. Run on a thread.
     pub fn host(port: u16) -> std::io::Result<Session> {
-        Ok(Session::new(Link::host(("0.0.0.0", port))?, Origin::TcpHost(port)))
+        Ok(Session::new(
+            Link::host(("0.0.0.0", port))?,
+            Origin::TcpHost(port),
+        ))
     }
 
     /// Joins a TCP host at `addr` (`"host:port"`). The web build, which cannot open TCP,
     /// joins the same host over a WebSocket on that port.
     pub fn join(addr: &str) -> std::io::Result<Session> {
         #[cfg(target_arch = "wasm32")]
-        let link = Link::join_websocket(&if addr.contains("://") { addr.to_string() } else { format!("ws://{addr}") })?;
+        let link = Link::join_websocket(&if addr.contains("://") {
+            addr.to_string()
+        } else {
+            format!("ws://{addr}")
+        })?;
         #[cfg(not(target_arch = "wasm32"))]
         let link = Link::join(addr)?;
         Ok(Session::new(link, Origin::TcpGuest(addr.to_string())))
@@ -173,8 +187,7 @@ impl Session {
     /// session each time another editor dials the token in -- the first join, and every
     /// rejoin after a drop, come through the same receiver.
     #[cfg(feature = "iroh")]
-    pub fn host_iroh() -> std::io::Result<(String, SessionInbox)>
-    {
+    pub fn host_iroh() -> std::io::Result<(String, SessionInbox)> {
         let (ticket, link_rx) = super::net::host_iroh()?;
         let (session_tx, session_rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
@@ -203,14 +216,14 @@ impl Session {
     /// The same shape as [`Session::host_iroh`], so the window's Host action is one call
     /// either way -- what differs is how far the token reaches: this one to the machines
     /// that can see this one, iroh's to anywhere.
-    pub fn host_on_this_network(
-        port: u16,
-    ) -> std::io::Result<(String, SessionInbox)> {
+    pub fn host_on_this_network(port: u16) -> std::io::Result<(String, SessionInbox)> {
         // A page cannot listen for connections: the browser joins, a desktop editor hosts.
         #[cfg(target_arch = "wasm32")]
         {
             let _ = port;
-            Err(std::io::Error::other("hosting a live session needs the desktop app; join one from the browser"))
+            Err(std::io::Error::other(
+                "hosting a live session needs the desktop app; join one from the browser",
+            ))
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -229,12 +242,17 @@ impl Session {
                         Ok((stream, _)) => {
                             let result = Link::from_accepted(stream)
                                 .map(|link| Session::new(link, Origin::TcpHost(port)));
-                            if session_tx.send(result).is_err() { break; }
+                            if session_tx.send(result).is_err() {
+                                break;
+                            }
                         }
                         Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                             std::thread::sleep(web_time::Duration::from_millis(10));
                         }
-                        Err(error) => { let _ = session_tx.send(Err(error)); break; }
+                        Err(error) => {
+                            let _ = session_tx.send(Err(error));
+                            break;
+                        }
                     }
                 }
             });
@@ -246,8 +264,7 @@ impl Session {
     /// compiled in and works ([`Session::host_on_this_network`]); this one is not here,
     /// and saying so beats a caller wondering which build it is talking to.
     #[cfg(not(feature = "iroh"))]
-    pub fn host_iroh() -> std::io::Result<(String, SessionInbox)>
-    {
+    pub fn host_iroh() -> std::io::Result<(String, SessionInbox)> {
         Err(without_iroh())
     }
 
@@ -311,10 +328,13 @@ impl Session {
         }
         // A newcomer must see stationary cameras without waiting for movement.
         for (peer, camera) in self.cameras.borrow().iter() {
-            link.send(&WireMessage::Relayed {
-                from: *peer,
-                message: Box::new(camera.clone()),
-            }.to_json());
+            link.send(
+                &WireMessage::Relayed {
+                    from: *peer,
+                    message: Box::new(camera.clone()),
+                }
+                .to_json(),
+            );
         }
         self.links.borrow_mut().push(PeerLink { id, link });
         id
@@ -378,10 +398,18 @@ impl Session {
         let message = if self.is_host() {
             WireMessage::Edit(WireEdit::from_edit(edit))
         } else {
-            let id = format!("{:08x}-{}", map_model::ids::session_prefix(),
-                NEXT_EDIT.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
-            self.pending_edits.borrow_mut().push((id.clone(), edit.clone()));
-            WireMessage::TrackedEdit { id, edit: WireEdit::from_edit(edit) }
+            let id = format!(
+                "{:08x}-{}",
+                map_model::ids::session_prefix(),
+                NEXT_EDIT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            );
+            self.pending_edits
+                .borrow_mut()
+                .push((id.clone(), edit.clone()));
+            WireMessage::TrackedEdit {
+                id,
+                edit: WireEdit::from_edit(edit),
+            }
         };
         self.broadcast(&message.to_json());
     }
@@ -389,7 +417,11 @@ impl Session {
     /// Edits the host has not acknowledged, to replay after adopting its world
     /// on reconnect. A repeated add is safe because remote application is idempotent.
     pub fn take_unacknowledged(&self) -> Vec<Edit> {
-        self.pending_edits.borrow_mut().drain(..).map(|(_, edit)| edit).collect()
+        self.pending_edits
+            .borrow_mut()
+            .drain(..)
+            .map(|(_, edit)| edit)
+            .collect()
     }
 
     /// Tells the others what this editor has selected.
@@ -399,7 +431,11 @@ impl Session {
     }
 
     /// Tells the others where this editor's 3D camera stands and looks.
-    pub fn send_camera(&self, position: geometry_math::vec::Vec3d, direction: geometry_math::vec::Vec3d) {
+    pub fn send_camera(
+        &self,
+        position: geometry_math::vec::Vec3d,
+        direction: geometry_math::vec::Vec3d,
+    ) {
         let message = WireMessage::Camera {
             position: [position.x(), position.y(), position.z()],
             direction: [direction.x(), direction.y(), direction.z()],
@@ -428,21 +464,33 @@ impl Session {
                                 // Only the host may announce worlds, peer departures
                                 // or relay envelopes. Validate edits before forwarding.
                                 let valid = match &message {
-                                    WireMessage::Edit(edit) | WireMessage::TrackedEdit { edit, .. } => edit.clone().into_edit(bounds).is_ok(),
-                                    WireMessage::Hello(_) | WireMessage::Selection(_) | WireMessage::Camera { .. } => true,
+                                    WireMessage::Edit(edit)
+                                    | WireMessage::TrackedEdit { edit, .. } => {
+                                        edit.clone().into_edit(bounds).is_ok()
+                                    }
+                                    WireMessage::Hello(_)
+                                    | WireMessage::Selection(_)
+                                    | WireMessage::Camera { .. } => true,
                                     _ => false,
                                 };
                                 if !valid {
-                                    events.push(SessionEvent::Undecodable("invalid guest message".into()));
+                                    events.push(SessionEvent::Undecodable(
+                                        "invalid guest message".into(),
+                                    ));
                                     continue;
                                 }
-                                let echo_edit = matches!(&message, WireMessage::Edit(_) | WireMessage::TrackedEdit { .. });
+                                let echo_edit = matches!(
+                                    &message,
+                                    WireMessage::Edit(_) | WireMessage::TrackedEdit { .. }
+                                );
                                 let relayed = WireMessage::Relayed {
                                     from: peer_link.id,
                                     message: Box::new(message.clone()),
                                 }
                                 .to_json();
-                                for other in links.iter().filter(|other| echo_edit || other.id != peer_link.id)
+                                for other in links
+                                    .iter()
+                                    .filter(|other| echo_edit || other.id != peer_link.id)
                                 {
                                     other.link.send(&relayed);
                                 }
@@ -503,7 +551,9 @@ impl Session {
             },
             WireMessage::TrackedEdit { id, edit } => match edit.into_edit(bounds) {
                 Ok(edit) => {
-                    self.pending_edits.borrow_mut().retain(|(pending, _)| pending != &id);
+                    self.pending_edits
+                        .borrow_mut()
+                        .retain(|(pending, _)| pending != &id);
                     events.push(SessionEvent::ApplyEdit(edit));
                 }
                 Err(e) => events.push(SessionEvent::Undecodable(e.to_string())),
@@ -522,16 +572,31 @@ impl Session {
                 position,
                 direction,
             } => {
-                let valid = position.iter().chain(direction.iter()).all(|v| v.is_finite())
+                let valid = position
+                    .iter()
+                    .chain(direction.iter())
+                    .all(|v| v.is_finite())
                     && (1e-12..=4.0).contains(&direction.iter().map(|v| v * v).sum::<f64>());
-                if !valid { return; }
+                if !valid {
+                    return;
+                }
                 if self.is_host() {
-                    self.cameras.borrow_mut().insert(from, WireMessage::Camera { position, direction });
+                    self.cameras.borrow_mut().insert(
+                        from,
+                        WireMessage::Camera {
+                            position,
+                            direction,
+                        },
+                    );
                 }
                 events.push(SessionEvent::PeerCamera {
                     peer: from,
                     position: geometry_math::vec::Vec3d::new(position[0], position[1], position[2]),
-                    direction: geometry_math::vec::Vec3d::new(direction[0], direction[1], direction[2]),
+                    direction: geometry_math::vec::Vec3d::new(
+                        direction[0],
+                        direction[1],
+                        direction[2],
+                    ),
                 });
             }
             WireMessage::Relayed {
@@ -576,7 +641,11 @@ mod tests {
 ";
 
     fn free_port() -> u16 {
-        TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port()
+        TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port()
     }
 
     fn poll_within(session: &Session, timeout: Duration) -> Vec<SessionEvent> {
@@ -614,9 +683,15 @@ mod tests {
             "the guest's adopted world matches the host's"
         );
 
-        host.send_edit(&Edit::Added { layer: 1, nodes: vec![] });
+        host.send_edit(&Edit::Added {
+            layer: 1,
+            nodes: vec![],
+        });
         let events = poll_within(&guest, Duration::from_secs(2));
-        assert!(matches!(events[0], SessionEvent::ApplyEdit(Edit::Added { layer: 1, .. })));
+        assert!(matches!(
+            events[0],
+            SessionEvent::ApplyEdit(Edit::Added { layer: 1, .. })
+        ));
     }
 
     fn flatten_map(world: &World) -> String {
@@ -673,9 +748,9 @@ mod tests {
         let deadline = Instant::now() + Duration::from_secs(2);
         let mut host_named = false;
         while Instant::now() < deadline && !host_named {
-            host_named = second.poll(&bounds()).iter().any(|e| {
-                matches!(e, SessionEvent::PeerName { peer: HOST_PEER, name } if name == "Host")
-            });
+            host_named = second.poll(&bounds()).iter().any(
+                |e| matches!(e, SessionEvent::PeerName { peer: HOST_PEER, name } if name == "Host"),
+            );
             std::thread::sleep(Duration::from_millis(5));
         }
         assert!(host_named);

@@ -1,6 +1,6 @@
 //! Document operations for layers.
 
-use super::{Document, HashSet, LayerSummary, NodeId, node};
+use super::{node, Document, HashSet, LayerSummary, NodeId};
 
 impl Document {
     /// A summary of every layer, for the panel to show.
@@ -39,7 +39,8 @@ impl Document {
 
     /// Which layer a newly drawn brush goes onto.
     pub fn current_layer(&self) -> usize {
-        self.current_layer.min(self.tree.world.layers.len().saturating_sub(1))
+        self.current_layer
+            .min(self.tree.world.layers.len().saturating_sub(1))
     }
 
     /// Sets which layer a newly drawn brush goes onto.
@@ -162,7 +163,8 @@ impl Document {
             )
             .collect();
         self.selection.retain(|id| !on_layer.contains(id));
-        self.face_selection.retain(|face| !on_layer.contains(&face.node));
+        self.face_selection
+            .retain(|face| !on_layer.contains(&face.node));
     }
 
     /// Returns whether the given layer's contents can be picked and edited.
@@ -321,9 +323,7 @@ impl Document {
             .map(|(id, _, layer)| (id, layer));
         self.selection = brushes
             .chain(entities)
-            .filter(|(_, layer)| {
-                indices.contains(layer) && self.layer_is_editable(*layer)
-            })
+            .filter(|(_, layer)| indices.contains(layer) && self.layer_is_editable(*layer))
             .map(|(id, _)| id)
             .collect();
         self.face_selection.clear();

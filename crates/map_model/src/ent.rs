@@ -19,10 +19,10 @@
 //!
 //! Uses `quick-xml` to build a small tree of elements and text.
 
-use quick_xml::events::Event;
-use quick_xml::Reader;
 use geometry_math::bbox::Bbox3d;
 use geometry_math::vec::Vec3d;
+use quick_xml::events::Event;
+use quick_xml::Reader;
 
 use crate::fgd::{
     Choice, DefinitionKind, EntityDefinition, EntityDefinitions, Flag, PropertyDefinition,
@@ -166,7 +166,12 @@ pub fn read_ent(source: &str) -> Result<EntityDefinitions, EntError> {
 /// Builds the element tree, or nothing for a document with no element in it.
 fn parse_document(source: &str) -> Result<Option<Element>, EntError> {
     let mut reader = Reader::from_str(source);
-    let line_of = |position: u64| source[..(position as usize).min(source.len())].matches('\n').count() + 1;
+    let line_of = |position: u64| {
+        source[..(position as usize).min(source.len())]
+            .matches('\n')
+            .count()
+            + 1
+    };
 
     // The document itself is a nameless element holding the top-level ones.
     let mut stack: Vec<Element> = vec![Element {
@@ -210,7 +215,10 @@ fn parse_document(source: &str) -> Result<Option<Element>, EntError> {
             }
             Event::GeneralRef(reference) => {
                 // `&gt;` and the like arrive on their own; put back what they stand for.
-                let name = reference.decode().map(|t| t.into_owned()).unwrap_or_default();
+                let name = reference
+                    .decode()
+                    .map(|t| t.into_owned())
+                    .unwrap_or_default();
                 let resolved = resolve_reference(&name).unwrap_or_else(|| format!("&{name};"));
                 push_text(&mut stack, &resolved);
             }
@@ -232,7 +240,10 @@ fn parse_document(source: &str) -> Result<Option<Element>, EntError> {
 }
 
 /// An element from its start tag: the name and the attributes, unescaped.
-fn element_from(start: &quick_xml::events::BytesStart<'_>, line: usize) -> Result<Element, EntError> {
+fn element_from(
+    start: &quick_xml::events::BytesStart<'_>,
+    line: usize,
+) -> Result<Element, EntError> {
     let name = String::from_utf8_lossy(start.name().as_ref()).into_owned();
     let mut attributes = Vec::new();
     for attribute in start.attributes() {
@@ -315,7 +326,10 @@ fn read_class(
         let Some(property) = read_property(child, declarations, warnings) else {
             continue;
         };
-        if properties.iter().any(|p: &PropertyDefinition| p.key == property.key) {
+        if properties
+            .iter()
+            .any(|p: &PropertyDefinition| p.key == property.key)
+        {
             warnings.push(format!(
                 "line {}: skipping duplicate entity property definition \"{}\"",
                 child.line, property.key
@@ -361,7 +375,11 @@ fn read_color(element: &Element, warnings: &mut Vec<String>) -> Option<[u8; 3]> 
         let scaled = if bytes { value } else { value * 255.0 };
         scaled.round().clamp(0.0, 255.0) as u8
     };
-    Some([channel(numbers[0]), channel(numbers[1]), channel(numbers[2])])
+    Some([
+        channel(numbers[0]),
+        channel(numbers[1]),
+        channel(numbers[2]),
+    ])
 }
 
 /// `parseBounds`: six numbers, the minimum corner then the maximum.
@@ -444,9 +462,15 @@ fn read_spawnflags(element: &Element, warnings: &mut Vec<String>) -> Option<Prop
 }
 
 /// `parseListDeclaration`: a `<list name="...">` of `<item name value/>`s.
-fn read_list_declaration(element: &Element, warnings: &mut Vec<String>) -> Option<PropertyDefinition> {
+fn read_list_declaration(
+    element: &Element,
+    warnings: &mut Vec<String>,
+) -> Option<PropertyDefinition> {
     if !element.has_attribute("name") {
-        warnings.push(format!("line {}: expected attribute 'name': list", element.line));
+        warnings.push(format!(
+            "line {}: expected attribute 'name': list",
+            element.line
+        ));
         return None;
     }
     let choices = element
@@ -627,7 +651,10 @@ Quake3 Arena entity definition file for Q3Radiant
         assert_eq!(skybox.color, Some([196, 224, 255]));
         assert_eq!(
             skybox.bounds,
-            Some(Bbox3d::new(Vec3d::new(-4.0, -4.0, -4.0), Vec3d::new(4.0, 4.0, 4.0)))
+            Some(Bbox3d::new(
+                Vec3d::new(-4.0, -4.0, -4.0),
+                Vec3d::new(4.0, 4.0, 4.0)
+            ))
         );
         // Descriptions join the first and last text children, excluding text between property
         // elements.
@@ -662,7 +689,10 @@ Quake3 Arena entity definition file for Q3Radiant
         assert_eq!(definitions.all()[0].color, Some([0, 255, 0]));
         assert_eq!(
             definitions.all()[0].bounds,
-            Some(Bbox3d::new(Vec3d::new(-2.0, -2.0, -2.0), Vec3d::new(2.0, 2.0, 2.0)))
+            Some(Bbox3d::new(
+                Vec3d::new(-2.0, -2.0, -2.0),
+                Vec3d::new(2.0, 2.0, 2.0)
+            ))
         );
         assert_eq!(definitions.warnings.len(), 1, "{:?}", definitions.warnings);
     }
@@ -695,24 +725,48 @@ Target this entity with a misc_model.
         assert_eq!(bobbing.kind, DefinitionKind::Solid);
         assert_eq!(bobbing.color, Some([0, 102, 255]));
         assert_eq!(bobbing.bounds, None);
-        assert!(bobbing.description.starts_with("Solid entity that oscillates"));
-        assert!(bobbing.description.ends_with("Target this entity with a misc_model."));
+        assert!(bobbing
+            .description
+            .starts_with("Solid entity that oscillates"));
+        assert!(bobbing
+            .description
+            .ends_with("Target this entity with a misc_model."));
 
         let keys: Vec<&str> = bobbing.properties.iter().map(|p| p.key.as_str()).collect();
         assert_eq!(
             keys,
-            ["spawnflags", "noise", "model2", "color", "targetname", "_castshadows", "_celshader"]
+            [
+                "spawnflags",
+                "noise",
+                "model2",
+                "color",
+                "targetname",
+                "_castshadows",
+                "_celshader"
+            ]
         );
         let PropertyType::Flags(flags) = &property(bobbing, "spawnflags").kind else {
             panic!("spawnflags are flags");
         };
         assert_eq!(flags.len(), 2);
-        assert_eq!((flags[0].value, flags[0].description.as_str()), (1, "X Axis"));
-        assert_eq!((flags[1].value, flags[1].description.as_str()), (2, "Y Axis"));
-        assert_eq!(property(bobbing, "noise").kind, PropertyType::Other("sound".to_string()));
+        assert_eq!(
+            (flags[0].value, flags[0].description.as_str()),
+            (1, "X Axis")
+        );
+        assert_eq!(
+            (flags[1].value, flags[1].description.as_str()),
+            (2, "Y Axis")
+        );
+        assert_eq!(
+            property(bobbing, "noise").kind,
+            PropertyType::Other("sound".to_string())
+        );
         assert_eq!(property(bobbing, "color").kind, PropertyType::Color);
         assert_eq!(property(bobbing, "color").default.as_deref(), Some("1 1 1"));
-        assert_eq!(property(bobbing, "targetname").kind, PropertyType::TargetSource);
+        assert_eq!(
+            property(bobbing, "targetname").kind,
+            PropertyType::TargetSource
+        );
         let shadows = property(bobbing, "_castshadows");
         assert_eq!(shadows.kind, PropertyType::Integer);
         assert_eq!(shadows.default.as_deref(), Some("0"));
@@ -738,7 +792,10 @@ Target this entity with a misc_model.
         assert_eq!(emitter.name, "linkEmitter");
         // Missing bounds use the document default of eight units in each direction.
         assert_eq!(emitter.bounds, None);
-        assert_eq!(property(emitter, "target").kind, PropertyType::TargetDestination);
+        assert_eq!(
+            property(emitter, "target").kind,
+            PropertyType::TargetDestination
+        );
         assert_eq!(property(emitter, "target").long_description, None);
     }
 
@@ -764,9 +821,18 @@ Target this entity with a misc_model.
         assert_eq!(
             count.kind,
             PropertyType::Choices(vec![
-                Choice { value: "0".into(), description: "white".into() },
-                Choice { value: "1".into(), description: "red".into() },
-                Choice { value: "2".into(), description: "green".into() },
+                Choice {
+                    value: "0".into(),
+                    description: "white".into()
+                },
+                Choice {
+                    value: "1".into(),
+                    description: "red".into()
+                },
+                Choice {
+                    value: "2".into(),
+                    description: "green".into()
+                },
             ])
         );
         assert_eq!(count.default.as_deref(), Some("0"));
@@ -823,9 +889,15 @@ Target this entity with a misc_model.
 "#;
         let definitions = read_ent(file).unwrap();
         let skybox = &definitions.all()[0];
-        assert_eq!(property(skybox, "_scale").kind, PropertyType::Other("real".to_string()));
+        assert_eq!(
+            property(skybox, "_scale").kind,
+            PropertyType::Other("real".to_string())
+        );
         assert_eq!(property(skybox, "_scale").default.as_deref(), Some("asdf"));
-        assert_eq!(property(skybox, "_count").kind, PropertyType::Other("integer".to_string()));
+        assert_eq!(
+            property(skybox, "_count").kind,
+            PropertyType::Other("integer".to_string())
+        );
         assert_eq!(definitions.warnings.len(), 2, "{:?}", definitions.warnings);
     }
 
@@ -847,7 +919,10 @@ Target this entity with a misc_model.
         let switch = definitions.find("item_switch").unwrap();
         let model = switch.model.as_ref().expect("a model");
         assert_eq!(
-            model.resolve(&[("spawnflags".to_string(), "1".to_string())]).unwrap().path,
+            model
+                .resolve(&[("spawnflags".to_string(), "1".to_string())])
+                .unwrap()
+                .path,
             std::path::PathBuf::from("a.md3")
         );
     }
@@ -864,14 +939,24 @@ Target this entity with a misc_model.
         };
         let definitions = read_ent(&source).unwrap();
         // The file has 86 classes, most of them the Q3Map2 compiler's.
-        assert!(definitions.all().len() > 80, "{} classes", definitions.all().len());
-        let spawn = definitions.find("info_player_deathmatch").expect("a player start");
+        assert!(
+            definitions.all().len() > 80,
+            "{} classes",
+            definitions.all().len()
+        );
+        let spawn = definitions
+            .find("info_player_deathmatch")
+            .expect("a player start");
         assert_eq!(spawn.kind, DefinitionKind::Point);
         assert!(spawn.bounds.is_some());
         let bobbing = definitions.find("func_bobbing").expect("a mover");
         assert_eq!(bobbing.kind, DefinitionKind::Solid);
         assert!(bobbing.property("spawnflags").is_some());
-        let with_models = definitions.all().iter().filter(|d| d.model.is_some()).count();
+        let with_models = definitions
+            .all()
+            .iter()
+            .filter(|d| d.model.is_some())
+            .count();
         assert!(with_models > 20, "{with_models} classes name a model");
     }
 

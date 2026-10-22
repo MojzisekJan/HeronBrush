@@ -1,11 +1,11 @@
 //! Round asset face coordinates without independently moving shared face planes.
 //! Usage: cargo run -p map_model --example round_asset_coordinates -- assets [--write]
-use map_model::{brush::Brush, io::map_reader::read_map};
-use std::{collections::HashMap, path::PathBuf};
 use geometry_math::{
     bbox::Bbox3d,
     vec::{self, Vec3d},
 };
+use map_model::{brush::Brush, io::map_reader::read_map};
+use std::{collections::HashMap, path::PathBuf};
 const CONTACT: f64 = 1e-6;
 const MAX_MOVE: f64 = 0.002;
 #[derive(Clone)]

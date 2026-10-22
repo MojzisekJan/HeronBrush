@@ -19,15 +19,20 @@
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
-use eframe::egui;
 use editor_core::i18n::tr;
+use eframe::egui;
 
 use crate::{dialog, theme};
 
 /// Whether choosers and questions are drawn in the window rather than by the system.
 pub fn in_app() -> bool {
     static IN_APP: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *IN_APP.get_or_init(|| cfg!(any(target_os = "android", target_arch = "wasm32")) || std::env::var_os("HERON_BRUSH_IN_APP_FILES").is_some_and(|v| !v.is_empty() && v != "0") || std::env::var_os("HERON_BRUSH_SCRIPT").is_some())
+    *IN_APP.get_or_init(|| {
+        cfg!(any(target_os = "android", target_arch = "wasm32"))
+            || std::env::var_os("HERON_BRUSH_IN_APP_FILES")
+                .is_some_and(|v| !v.is_empty() && v != "0")
+            || std::env::var_os("HERON_BRUSH_SCRIPT").is_some()
+    })
 }
 
 /// What a chooser picks.
@@ -68,7 +73,10 @@ impl FileDialog {
 
     /// Shows only files with these extensions (without the dot).
     pub fn add_filter(mut self, name: impl Into<String>, extensions: &[&str]) -> Self {
-        self.filters.push((name.into(), extensions.iter().map(|e| e.to_string()).collect()));
+        self.filters.push((
+            name.into(),
+            extensions.iter().map(|e| e.to_string()).collect(),
+        ));
         self
     }
 
@@ -106,7 +114,9 @@ impl FileDialog {
     }
 
     fn key(&self, caller: &std::panic::Location<'_>) -> String {
-        self.id.clone().unwrap_or_else(|| format!("{}:{}:{}", caller.file(), caller.line(), caller.column()))
+        self.id
+            .clone()
+            .unwrap_or_else(|| format!("{}:{}:{}", caller.file(), caller.line(), caller.column()))
     }
 
     fn ask(self, key: String, kind: Kind, open: bool) -> Option<PathBuf> {
@@ -118,8 +128,17 @@ impl FileDialog {
                 if kind == Kind::Folder {
                     crate::web::choose_folder(key.clone());
                 } else {
-                    let extensions = self.filters.iter().flat_map(|(_, extensions)| extensions.iter().cloned()).collect();
-                    crate::web::choose_file(key.clone(), kind == Kind::Save, extensions, self.file_name.clone());
+                    let extensions = self
+                        .filters
+                        .iter()
+                        .flat_map(|(_, extensions)| extensions.iter().cloned())
+                        .collect();
+                    crate::web::choose_file(
+                        key.clone(),
+                        kind == Kind::Save,
+                        extensions,
+                        self.file_name.clone(),
+                    );
                 }
             }
             take_answer(&key)
@@ -189,9 +208,19 @@ pub fn deliver(key: String, path: Option<PathBuf>) {
 /// Asks a question with a row of buttons; returns the index of the button chosen, or
 /// `None` while it is unanswered (and when it was dismissed). `open` asks it. On the
 /// desktop the system's message box answers at once.
-pub fn question(key: &str, open: bool, title: &str, message: &str, buttons: &[&str]) -> Option<usize> {
+pub fn question(
+    key: &str,
+    open: bool,
+    title: &str,
+    message: &str,
+    buttons: &[&str],
+) -> Option<usize> {
     if !in_app() {
-        return if open { system_question(title, message, buttons) } else { None };
+        return if open {
+            system_question(title, message, buttons)
+        } else {
+            None
+        };
     }
     STATE.with(|state| {
         let mut state = state.borrow_mut();
@@ -217,10 +246,19 @@ pub fn question(key: &str, open: bool, title: &str, message: &str, buttons: &[&s
 fn system_question(title: &str, message: &str, buttons: &[&str]) -> Option<usize> {
     let choice = match buttons {
         [yes, no] => rfd::MessageButtons::OkCancelCustom(yes.to_string(), no.to_string()),
-        [yes, no, cancel] => rfd::MessageButtons::YesNoCancelCustom(yes.to_string(), no.to_string(), cancel.to_string()),
+        [yes, no, cancel] => rfd::MessageButtons::YesNoCancelCustom(
+            yes.to_string(),
+            no.to_string(),
+            cancel.to_string(),
+        ),
         _ => rfd::MessageButtons::Ok,
     };
-    let answer = rfd::MessageDialog::new().set_level(rfd::MessageLevel::Warning).set_title(title).set_description(message).set_buttons(choice).show();
+    let answer = rfd::MessageDialog::new()
+        .set_level(rfd::MessageLevel::Warning)
+        .set_title(title)
+        .set_description(message)
+        .set_buttons(choice)
+        .show();
     match answer {
         rfd::MessageDialogResult::Custom(label) => buttons.iter().position(|b| *b == label),
         rfd::MessageDialogResult::Ok | rfd::MessageDialogResult::Yes => Some(0),
@@ -306,14 +344,36 @@ impl Browser {
             })
             .to_string()
         });
-        let extensions = request.filters.iter().flat_map(|(_, list)| list.iter().map(|e| e.to_ascii_lowercase())).collect();
+        let extensions = request
+            .filters
+            .iter()
+            .flat_map(|(_, list)| list.iter().map(|e| e.to_ascii_lowercase()))
+            .collect();
         let folder = request
             .directory
             .filter(|d| d.is_dir())
-            .or_else(|| STATE.with(|s| s.borrow().last.clone()).filter(|d| d.is_dir()))
-            .or_else(|| default_places().into_iter().map(|(_, p)| p).find(|p| p.is_dir()))
+            .or_else(|| {
+                STATE
+                    .with(|s| s.borrow().last.clone())
+                    .filter(|d| d.is_dir())
+            })
+            .or_else(|| {
+                default_places()
+                    .into_iter()
+                    .map(|(_, p)| p)
+                    .find(|p| p.is_dir())
+            })
             .unwrap_or_else(|| PathBuf::from("/"));
-        let mut browser = Self { key, kind, title, extensions, folder: folder.clone(), entries: Vec::new(), error: None, name: request.file_name.unwrap_or_default() };
+        let mut browser = Self {
+            key,
+            kind,
+            title,
+            extensions,
+            folder: folder.clone(),
+            entries: Vec::new(),
+            error: None,
+            name: request.file_name.unwrap_or_default(),
+        };
         browser.go(folder);
         browser
     }
@@ -335,7 +395,11 @@ impl Browser {
                         shown.then_some(Entry { name, path, folder })
                     })
                     .collect();
-                entries.sort_by(|a, b| b.folder.cmp(&a.folder).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())));
+                entries.sort_by(|a, b| {
+                    b.folder
+                        .cmp(&a.folder)
+                        .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+                });
                 self.entries = entries;
                 self.error = None;
                 if self.kind == Kind::Open {
@@ -348,7 +412,11 @@ impl Browser {
     }
 
     fn allows(&self, path: &Path) -> bool {
-        self.extensions.is_empty() || path.extension().and_then(|e| e.to_str()).is_some_and(|e| self.extensions.iter().any(|x| x.eq_ignore_ascii_case(e)))
+        self.extensions.is_empty()
+            || path
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| self.extensions.iter().any(|x| x.eq_ignore_ascii_case(e)))
     }
 
     /// The path the default button would hand back.
@@ -368,78 +436,169 @@ impl Browser {
         let mut answer = None;
         let mut go = None;
         let title = self.title.clone();
-        let row_height = if crate::touch::enabled(ctx) { 44.0 } else { 30.0 };
-        let open = dialog::show_modal(ctx, "in-app-file-browser", &title, [620.0, 560.0], |ui, part| match part {
-            dialog::Part::Body => {
-                // The places as a row of buttons, the one holding this folder in the accent;
-                // the home folder by its house and its name rather than "~".
-                ui.horizontal_wrapped(|ui| {
-                    let home = std::env::var_os("HOME").map(PathBuf::from);
-                    let here = places.iter().filter(|(_, path)| self.folder.starts_with(path)).max_by_key(|(_, path)| path.as_os_str().len()).map(|(_, path)| path.clone());
-                    for (name, path) in places {
-                        let is_home = home.as_ref() == Some(path);
-                        let label = if is_home { path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| name.clone()) } else { name.clone() };
-                        let icon = if is_home { egui_phosphor::regular::HOUSE } else { egui_phosphor::regular::FOLDER_SIMPLE };
-                        if crate::widgets::icon_label_button(ui, icon, &label, here.as_ref() == Some(path)).clicked() {
-                            go = Some(path.clone());
-                        }
-                    }
-                });
-                ui.add_space(2.0);
-                ui.horizontal(|ui| {
-                    let up = self.folder.parent().map(Path::to_path_buf);
-                    if crate::widgets::icon_label_button(ui, egui_phosphor::regular::ARROW_UP, "", false).clicked() && up.is_some() {
-                        go = up;
-                    }
-                    ui.add(egui::Label::new(egui::RichText::new(self.folder.display().to_string()).color(theme::dim())).truncate());
-                });
-                if let Some(error) = &self.error {
-                    ui.colored_label(theme::error(), error);
-                }
-                let list_height = (ui.available_height() - if self.kind == Kind::Save { theme::CONTROL_HEIGHT + 12.0 } else { 0.0 }).max(row_height * 2.0);
-                egui::ScrollArea::vertical().max_height(list_height).auto_shrink([false, false]).show(ui, |ui| {
-                    for entry in &self.entries {
-                        let picked = !entry.folder && entry.name == self.name;
-                        let (rect, response) = crate::widgets::list_row(ui, row_height, picked, egui::Sense::click());
-                        let icon = if entry.folder { egui_phosphor::regular::FOLDER_SIMPLE } else { egui_phosphor::regular::FILE };
-                        let colour = if entry.folder || self.kind != Kind::Folder { theme::fg() } else { theme::disabled() };
-                        let icon_colour = if entry.folder { theme::accent_text() } else { theme::dim() };
-                        crate::theme::text(ui.painter(), rect.left_center() + egui::vec2(18.0, 0.0), egui::Align2::CENTER_CENTER, icon, theme::icon(), icon_colour);
-                        crate::theme::text(ui.painter(), rect.left_center() + egui::vec2(34.0, 0.0), egui::Align2::LEFT_CENTER, &entry.name, theme::body(), colour);
-                        if response.clicked() {
-                            if entry.folder {
-                                go = Some(entry.path.clone());
-                            } else if self.kind != Kind::Folder {
-                                // A tap picks; a second tap on the picked file (or a
-                                // double click) takes it.
-                                if picked || response.double_clicked() {
-                                    answer = Some(Some(entry.path.clone()));
-                                }
-                                self.name = entry.name.clone();
+        let row_height = if crate::touch::enabled(ctx) {
+            44.0
+        } else {
+            30.0
+        };
+        let open = dialog::show_modal(
+            ctx,
+            "in-app-file-browser",
+            &title,
+            [620.0, 560.0],
+            |ui, part| match part {
+                dialog::Part::Body => {
+                    // The places as a row of buttons, the one holding this folder in the accent;
+                    // the home folder by its house and its name rather than "~".
+                    ui.horizontal_wrapped(|ui| {
+                        let home = std::env::var_os("HOME").map(PathBuf::from);
+                        let here = places
+                            .iter()
+                            .filter(|(_, path)| self.folder.starts_with(path))
+                            .max_by_key(|(_, path)| path.as_os_str().len())
+                            .map(|(_, path)| path.clone());
+                        for (name, path) in places {
+                            let is_home = home.as_ref() == Some(path);
+                            let label = if is_home {
+                                path.file_name()
+                                    .map(|n| n.to_string_lossy().into_owned())
+                                    .unwrap_or_else(|| name.clone())
+                            } else {
+                                name.clone()
+                            };
+                            let icon = if is_home {
+                                egui_phosphor::regular::HOUSE
+                            } else {
+                                egui_phosphor::regular::FOLDER_SIMPLE
+                            };
+                            if crate::widgets::icon_label_button(
+                                ui,
+                                icon,
+                                &label,
+                                here.as_ref() == Some(path),
+                            )
+                            .clicked()
+                            {
+                                go = Some(path.clone());
                             }
                         }
+                    });
+                    ui.add_space(2.0);
+                    ui.horizontal(|ui| {
+                        let up = self.folder.parent().map(Path::to_path_buf);
+                        if crate::widgets::icon_label_button(
+                            ui,
+                            egui_phosphor::regular::ARROW_UP,
+                            "",
+                            false,
+                        )
+                        .clicked()
+                            && up.is_some()
+                        {
+                            go = up;
+                        }
+                        ui.add(
+                            egui::Label::new(
+                                egui::RichText::new(self.folder.display().to_string())
+                                    .color(theme::dim()),
+                            )
+                            .truncate(),
+                        );
+                    });
+                    if let Some(error) = &self.error {
+                        ui.colored_label(theme::error(), error);
                     }
-                });
-                if self.kind == Kind::Save {
-                    ui.add_space(6.0);
-                    ui.add(egui::TextEdit::singleline(&mut self.name).hint_text("name.map").desired_width(f32::INFINITY).margin(crate::widgets::body_entry_margin(ui, 6, 6)).min_size(egui::vec2(0.0, crate::widgets::ROW_HEIGHT)));
+                    let list_height = (ui.available_height()
+                        - if self.kind == Kind::Save {
+                            theme::CONTROL_HEIGHT + 12.0
+                        } else {
+                            0.0
+                        })
+                    .max(row_height * 2.0);
+                    egui::ScrollArea::vertical()
+                        .max_height(list_height)
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            for entry in &self.entries {
+                                let picked = !entry.folder && entry.name == self.name;
+                                let (rect, response) = crate::widgets::list_row(
+                                    ui,
+                                    row_height,
+                                    picked,
+                                    egui::Sense::click(),
+                                );
+                                let icon = if entry.folder {
+                                    egui_phosphor::regular::FOLDER_SIMPLE
+                                } else {
+                                    egui_phosphor::regular::FILE
+                                };
+                                let colour = if entry.folder || self.kind != Kind::Folder {
+                                    theme::fg()
+                                } else {
+                                    theme::disabled()
+                                };
+                                let icon_colour = if entry.folder {
+                                    theme::accent_text()
+                                } else {
+                                    theme::dim()
+                                };
+                                crate::theme::text(
+                                    ui.painter(),
+                                    rect.left_center() + egui::vec2(18.0, 0.0),
+                                    egui::Align2::CENTER_CENTER,
+                                    icon,
+                                    theme::icon(),
+                                    icon_colour,
+                                );
+                                crate::theme::text(
+                                    ui.painter(),
+                                    rect.left_center() + egui::vec2(34.0, 0.0),
+                                    egui::Align2::LEFT_CENTER,
+                                    &entry.name,
+                                    theme::body(),
+                                    colour,
+                                );
+                                if response.clicked() {
+                                    if entry.folder {
+                                        go = Some(entry.path.clone());
+                                    } else if self.kind != Kind::Folder {
+                                        // A tap picks; a second tap on the picked file (or a
+                                        // double click) takes it.
+                                        if picked || response.double_clicked() {
+                                            answer = Some(Some(entry.path.clone()));
+                                        }
+                                        self.name = entry.name.clone();
+                                    }
+                                }
+                            }
+                        });
+                    if self.kind == Kind::Save {
+                        ui.add_space(6.0);
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.name)
+                                .hint_text("name.map")
+                                .desired_width(f32::INFINITY)
+                                .margin(crate::widgets::body_entry_margin(ui, 6, 6))
+                                .min_size(egui::vec2(0.0, crate::widgets::ROW_HEIGHT)),
+                        );
+                    }
                 }
-            }
-            dialog::Part::Actions => {
-                let label = match self.kind {
-                    Kind::Open => tr("Open"),
-                    Kind::Save => tr("Save"),
-                    Kind::Folder => tr("Choose"),
-                };
-                let chosen = self.chosen();
-                if dialog::accent_button(ui, label, chosen.is_some()).clicked() {
-                    answer = Some(chosen);
+                dialog::Part::Actions => {
+                    let label = match self.kind {
+                        Kind::Open => tr("Open"),
+                        Kind::Save => tr("Save"),
+                        Kind::Folder => tr("Choose"),
+                    };
+                    let chosen = self.chosen();
+                    if dialog::accent_button(ui, label, chosen.is_some()).clicked() {
+                        answer = Some(chosen);
+                    }
+                    if dialog::button(ui, tr("Cancel"), true).clicked() {
+                        answer = Some(None);
+                    }
                 }
-                if dialog::button(ui, tr("Cancel"), true).clicked() {
-                    answer = Some(None);
-                }
-            }
-        });
+            },
+        );
         if let Some(folder) = go {
             self.go(folder);
         }
@@ -457,9 +616,17 @@ fn default_places() -> Vec<Place> {
     if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
         places.push(("~".to_string(), home));
     }
-    places.push((tr("Examples").to_string(), editor_core::samples::directory()));
+    places.push((
+        tr("Examples").to_string(),
+        editor_core::samples::directory(),
+    ));
     if let Ok(here) = std::env::current_dir() {
-        places.push((here.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| here.display().to_string()), here));
+        places.push((
+            here.file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| here.display().to_string()),
+            here,
+        ));
     }
     places
 }
@@ -471,7 +638,11 @@ pub fn show(ctx: &egui::Context) {
     }
     let (browser, places) = STATE.with(|state| {
         let mut state = state.borrow_mut();
-        let places = if state.places.is_empty() { default_places() } else { state.places.clone() };
+        let places = if state.places.is_empty() {
+            default_places()
+        } else {
+            state.places.clone()
+        };
         (state.browser.take(), places)
     });
     if let Some(mut browser) = browser {
@@ -491,20 +662,30 @@ pub fn show(ctx: &egui::Context) {
     let question = STATE.with(|state| state.borrow_mut().question.take());
     if let Some(question) = question {
         let mut choice = None;
-        let open = dialog::show_modal(ctx, "in-app-question", &question.title, [460.0, 220.0], |ui, part| match part {
-            dialog::Part::Body => {
-                ui.label(&question.message);
-            }
-            dialog::Part::Actions => {
-                // Right to left: the first button is the rightmost, in the accent.
-                for (index, label) in question.buttons.iter().enumerate() {
-                    let clicked = if index == 0 { dialog::accent_button(ui, label, true).clicked() } else { dialog::button(ui, label, true).clicked() };
-                    if clicked {
-                        choice = Some(Some(index));
+        let open = dialog::show_modal(
+            ctx,
+            "in-app-question",
+            &question.title,
+            [460.0, 220.0],
+            |ui, part| match part {
+                dialog::Part::Body => {
+                    ui.label(&question.message);
+                }
+                dialog::Part::Actions => {
+                    // Right to left: the first button is the rightmost, in the accent.
+                    for (index, label) in question.buttons.iter().enumerate() {
+                        let clicked = if index == 0 {
+                            dialog::accent_button(ui, label, true).clicked()
+                        } else {
+                            dialog::button(ui, label, true).clicked()
+                        };
+                        if clicked {
+                            choice = Some(Some(index));
+                        }
                     }
                 }
-            }
-        });
+            },
+        );
         if !open {
             choice = Some(None);
         }
@@ -534,13 +715,29 @@ mod tests {
         std::fs::write(dir.join("c.MAP"), "").unwrap();
         std::fs::write(dir.join("notes.txt"), "").unwrap();
         std::fs::write(dir.join(".hidden.map"), "").unwrap();
-        let browser = Browser::new("k".into(), Kind::Open, FileDialog::new().add_filter("Maps", &["map"]).set_directory(&dir));
+        let browser = Browser::new(
+            "k".into(),
+            Kind::Open,
+            FileDialog::new()
+                .add_filter("Maps", &["map"])
+                .set_directory(&dir),
+        );
         let names: Vec<&str> = browser.entries.iter().map(|e| e.name.as_str()).collect();
         assert_eq!(names, ["b-folder", "a.map", "c.MAP"]);
-        let folders = Browser::new("k".into(), Kind::Folder, FileDialog::new().set_directory(&dir));
+        let folders = Browser::new(
+            "k".into(),
+            Kind::Folder,
+            FileDialog::new().set_directory(&dir),
+        );
         assert_eq!(folders.entries.len(), 1);
         assert_eq!(folders.chosen(), Some(dir.clone()));
-        let mut save = Browser::new("k".into(), Kind::Save, FileDialog::new().set_directory(&dir).set_file_name("new.map"));
+        let mut save = Browser::new(
+            "k".into(),
+            Kind::Save,
+            FileDialog::new()
+                .set_directory(&dir)
+                .set_file_name("new.map"),
+        );
         assert_eq!(save.chosen(), Some(dir.join("new.map")));
         save.name = "  ".into();
         assert_eq!(save.chosen(), None);
@@ -551,18 +748,29 @@ mod tests {
     /// and waits for an answer; a tap on a file picks it, a second tap takes it.
     #[test]
     fn the_browser_draws_in_the_window_and_a_second_tap_opens() {
-        let dir = std::env::temp_dir().join(format!("heron-file-browser-ui-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("heron-file-browser-ui-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("a.map"), "").unwrap();
         let ctx = egui::Context::default();
         ctx.set_embed_viewports(true);
         crate::theme::install(&ctx);
-        let mut browser = Browser::new("k".into(), Kind::Open, FileDialog::new().add_filter("Maps", &["map"]).set_directory(&dir));
+        let mut browser = Browser::new(
+            "k".into(),
+            Kind::Open,
+            FileDialog::new()
+                .add_filter("Maps", &["map"])
+                .set_directory(&dir),
+        );
         let places = vec![("Here".to_string(), dir.clone())];
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0));
         let frame = |browser: &mut Browser, events: Vec<egui::Event>| {
-            let raw = egui::RawInput { screen_rect: Some(screen), events, ..Default::default() };
+            let raw = egui::RawInput {
+                screen_rect: Some(screen),
+                events,
+                ..Default::default()
+            };
             let mut answer = None;
             let mut output = ctx.run_ui(raw, |ui| answer = browser.show(ui.ctx(), &places));
             output.textures_delta.clear();
@@ -581,7 +789,23 @@ mod tests {
             }
         }
         let at = row.expect("the file is listed");
-        let click = |at| vec![egui::Event::PointerMoved(at), egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed: true, modifiers: Default::default() }, egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed: false, modifiers: Default::default() }];
+        let click = |at| {
+            vec![
+                egui::Event::PointerMoved(at),
+                egui::Event::PointerButton {
+                    pos: at,
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Default::default(),
+                },
+                egui::Event::PointerButton {
+                    pos: at,
+                    button: egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Default::default(),
+                },
+            ]
+        };
         let (_, answer) = frame(&mut browser, click(at));
         assert_eq!(answer, None, "the first tap picks");
         assert_eq!(browser.name, "a.map");
@@ -593,10 +817,15 @@ mod tests {
 
     #[test]
     fn an_answer_goes_only_to_the_call_site_that_asked() {
-        STATE.with(|state| state.borrow_mut().answer = Some(("open-map".into(), Some(PathBuf::from("/x.map")))));
+        STATE.with(|state| {
+            state.borrow_mut().answer = Some(("open-map".into(), Some(PathBuf::from("/x.map"))))
+        });
         if in_app() {
             assert_eq!(FileDialog::new().id("other").pick_file(false), None);
-            assert_eq!(FileDialog::new().id("open-map").pick_file(false), Some(PathBuf::from("/x.map")));
+            assert_eq!(
+                FileDialog::new().id("open-map").pick_file(false),
+                Some(PathBuf::from("/x.map"))
+            );
             assert_eq!(FileDialog::new().id("open-map").pick_file(false), None);
         } else {
             // The system dialogs answer at once, so nothing is ever waiting.

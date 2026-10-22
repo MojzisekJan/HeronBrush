@@ -1,6 +1,6 @@
 //! Agent-facing animation operations. Validate complete drafts before a single undoable edit.
 use super::*;
-use crate::animation_curves::{CHANNELS, Clip, Interpolation};
+use crate::animation_curves::{Clip, Interpolation, CHANNELS};
 
 pub(super) fn definitions() -> Vec<Value> {
     let id = json!({"type":"string","minLength":1,"description":"Brush entity ID as a decimal string. Use make_brush_entity for loose selected brushes."});
@@ -120,45 +120,113 @@ pub(super) fn call(
     name: &str,
     args: &Value,
 ) -> Result<String, String> {
-    if matches!(name,"configure_animation_trigger"|"get_animation_trigger"|"preview_animation_trigger") {
-        let source=map_model::node::NodeId(extensions::node_id(&args["source"])?);
-        let mut config=crate::animation_trigger::Config::read(d,source)?;
-        if name=="preview_animation_trigger" {
-            let reset=args["reset"].as_bool().unwrap_or(false);
-            if reset {d.reset_trigger_preview();}else{d.preview_trigger(source)?;}
-            collab.trigger_preview=Some(!reset);
-            return Ok(json!({"source":source.0.to_string(),"preview_requested":!reset,"reset":reset}).to_string());
+    if matches!(
+        name,
+        "configure_animation_trigger" | "get_animation_trigger" | "preview_animation_trigger"
+    ) {
+        let source = map_model::node::NodeId(extensions::node_id(&args["source"])?);
+        let mut config = crate::animation_trigger::Config::read(d, source)?;
+        if name == "preview_animation_trigger" {
+            let reset = args["reset"].as_bool().unwrap_or(false);
+            if reset {
+                d.reset_trigger_preview();
+            } else {
+                d.preview_trigger(source)?;
+            }
+            collab.trigger_preview = Some(!reset);
+            return Ok(
+                json!({"source":source.0.to_string(),"preview_requested":!reset,"reset":reset})
+                    .to_string(),
+            );
         }
-        if name=="configure_animation_trigger" {
-            if args["expected_revision"].as_u64().is_some_and(|r|r!=d.revision()){return Err("map revision changed".into());}
-            if let Some(v)=args["action"].as_str(){config.action=v.into();}
-            if let Some(v)=args["clip"].as_str(){config.clip=v.into();}
-            if let Some(v)=args["once"].as_bool(){config.once=v;}
-            if let Some(v)=args["wait"].as_f64(){config.wait=v;}
-            let target=if args.get("target_entity").is_some(){Some(map_model::node::NodeId(extensions::node_id(&args["target_entity"])?))}else{None};
-            config=crate::animation_trigger::configure(d,source,config,target,args["dry_run"].as_bool().unwrap_or(false))?;
+        if name == "configure_animation_trigger" {
+            if args["expected_revision"]
+                .as_u64()
+                .is_some_and(|r| r != d.revision())
+            {
+                return Err("map revision changed".into());
+            }
+            if let Some(v) = args["action"].as_str() {
+                config.action = v.into();
+            }
+            if let Some(v) = args["clip"].as_str() {
+                config.clip = v.into();
+            }
+            if let Some(v) = args["once"].as_bool() {
+                config.once = v;
+            }
+            if let Some(v) = args["wait"].as_f64() {
+                config.wait = v;
+            }
+            let target = if args.get("target_entity").is_some() {
+                Some(map_model::node::NodeId(extensions::node_id(
+                    &args["target_entity"],
+                )?))
+            } else {
+                None
+            };
+            config = crate::animation_trigger::configure(
+                d,
+                source,
+                config,
+                target,
+                args["dry_run"].as_bool().unwrap_or(false),
+            )?;
         }
         return Ok(json!({"source":source.0.to_string(),"config":config,"warning":config.targets(d).err(),"revision":d.revision(),"dry_run":args["dry_run"].as_bool().unwrap_or(false)}).to_string());
     }
     let id = target(d, args)?;
-    if matches!(name,"animation_library"|"connect_animation_button") {
-        if args["expected_revision"].as_u64().is_some_and(|r|r!=d.revision()) {return Err("map revision changed".into());}
-        let dry=args["dry_run"].as_bool().unwrap_or(false);
-        if name=="animation_library" {
-            let (mut library,current)=crate::animation_library::Library::read(d,id)?;
-            let action=args["action"].as_str().ok_or("Missing action")?;
-            let selected=if action=="list" {current} else {library.edit(&current,action,args["name"].as_str().ok_or("Missing animation name")?)?};
-            if action!="list" && !dry {d.run_as_one_edit(|d|library.write(d,id,&selected));}
+    if matches!(name, "animation_library" | "connect_animation_button") {
+        if args["expected_revision"]
+            .as_u64()
+            .is_some_and(|r| r != d.revision())
+        {
+            return Err("map revision changed".into());
+        }
+        let dry = args["dry_run"].as_bool().unwrap_or(false);
+        if name == "animation_library" {
+            let (mut library, current) = crate::animation_library::Library::read(d, id)?;
+            let action = args["action"].as_str().ok_or("Missing action")?;
+            let selected = if action == "list" {
+                current
+            } else {
+                library.edit(
+                    &current,
+                    action,
+                    args["name"].as_str().ok_or("Missing animation name")?,
+                )?
+            };
+            if action != "list" && !dry {
+                d.run_as_one_edit(|d| library.write(d, id, &selected));
+            }
             return Ok(json!({"entity":id.0.to_string(),"selected":selected,"library":library,"revision":d.revision(),"dry_run":dry}).to_string());
         }
-        let button=map_model::node::NodeId(extensions::node_id(&args["button"])?);
-        let entities=map_model::node::entities_with_ids(d.tree_world());
-        let (_,source)=entities.iter().find(|(n,_)|*n==button).ok_or("Button not found")?;
-        if !["func_button","trigger_multiple","trigger_once"].contains(&source.classname().unwrap_or("")) {return Err("Expected func_button, trigger_multiple or trigger_once".into());}
-        let (_,target)=entities.iter().find(|(n,_)|*n==id).unwrap();
-        if target.property("animation_keys").is_none() {return Err("Add the target animation first".into());}
-        let targetname=target.property("targetname").filter(|s|!s.is_empty()).map(str::to_owned).unwrap_or_else(||format!("animation_{}",id.0));
-        if !dry {d.run_as_one_edit(|d|{d.set_entity_property(id,"targetname",&targetname);d.set_entity_property(button,"target",&targetname);});}
+        let button = map_model::node::NodeId(extensions::node_id(&args["button"])?);
+        let entities = map_model::node::entities_with_ids(d.tree_world());
+        let (_, source) = entities
+            .iter()
+            .find(|(n, _)| *n == button)
+            .ok_or("Button not found")?;
+        if !["func_button", "trigger_multiple", "trigger_once"]
+            .contains(&source.classname().unwrap_or(""))
+        {
+            return Err("Expected func_button, trigger_multiple or trigger_once".into());
+        }
+        let (_, target) = entities.iter().find(|(n, _)| *n == id).unwrap();
+        if target.property("animation_keys").is_none() {
+            return Err("Add the target animation first".into());
+        }
+        let targetname = target
+            .property("targetname")
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned)
+            .unwrap_or_else(|| format!("animation_{}", id.0));
+        if !dry {
+            d.run_as_one_edit(|d| {
+                d.set_entity_property(id, "targetname", &targetname);
+                d.set_entity_property(button, "target", &targetname);
+            });
+        }
         return Ok(json!({"entity":id.0.to_string(),"button":button.0.to_string(),"targetname":targetname,"revision":d.revision(),"dry_run":dry}).to_string());
     }
     let (old, old_mode, old_pivot) = read(d, id)?;
@@ -186,10 +254,18 @@ pub(super) fn call(
         return Err("map revision changed; read the animation again before writing".into());
     }
     if name == "set_animation_pivot" {
-        let pivot=vec3(args,"pivot")?;
+        let pivot = vec3(args, "pivot")?;
         crate::animation_pose::Pose::validate_pivot(pivot)?;
-        let dry=args["dry_run"].as_bool().unwrap_or(false);
-        if !dry {d.run_as_one_edit(|d| {d.set_entity_property(id,"animation_pivot",&format!("{} {} {}",pivot.x(),pivot.y(),pivot.z()));});}
+        let dry = args["dry_run"].as_bool().unwrap_or(false);
+        if !dry {
+            d.run_as_one_edit(|d| {
+                d.set_entity_property(
+                    id,
+                    "animation_pivot",
+                    &format!("{} {} {}", pivot.x(), pivot.y(), pivot.z()),
+                );
+            });
+        }
         return Ok(json!({"entity":id.0.to_string(),"revision":d.revision(),"dry_run":dry,"pivot":pivot.v,"clip":old}).to_string());
     }
     let mut clip = Clip {
@@ -200,18 +276,34 @@ pub(super) fn call(
     };
     let mut mode = args["mode"].as_str().unwrap_or("loop").to_owned();
     if name == "key_animation_pose" {
-        let time=args["frame"].as_u64().ok_or("Invalid frame")? as f64 / old.fps as f64;
-        let pose=crate::animation_pose::Pose::read(d,id,time)?;
-        let channel=CHANNELS.iter().position(|c|Some(*c)==args["channel"].as_str()).ok_or("Invalid channel")?;
-        clip=pose.keyed(channel,args["value"].as_f64().ok_or("Invalid value")?-old.sample(channel,time))?;
-        mode=old_mode.clone();
+        let time = args["frame"].as_u64().ok_or("Invalid frame")? as f64 / old.fps as f64;
+        let pose = crate::animation_pose::Pose::read(d, id, time)?;
+        let channel = CHANNELS
+            .iter()
+            .position(|c| Some(*c) == args["channel"].as_str())
+            .ok_or("Invalid channel")?;
+        clip = pose.keyed(
+            channel,
+            args["value"].as_f64().ok_or("Invalid value")? - old.sample(channel, time),
+        )?;
+        mode = old_mode.clone();
     } else if name == "retime_animation" {
         clip = old.clone();
         mode = old_mode.clone();
         let ids = if let Some(keys) = args["key_ids"].as_array() {
-            keys.iter().map(extensions::node_id).collect::<Result<std::collections::BTreeSet<_>, _>>()?
-        } else { clip.tracks.iter().flatten().map(|k| k.id).collect() };
-        clip.retime(&ids, args["scale"].as_f64().unwrap_or(1.0), args["pivot_seconds"].as_f64().unwrap_or(0.0), args["offset_seconds"].as_f64().unwrap_or(0.0), args["extend_duration"].as_bool().unwrap_or(false))?;
+            keys.iter()
+                .map(extensions::node_id)
+                .collect::<Result<std::collections::BTreeSet<_>, _>>()?
+        } else {
+            clip.tracks.iter().flatten().map(|k| k.id).collect()
+        };
+        clip.retime(
+            &ids,
+            args["scale"].as_f64().unwrap_or(1.0),
+            args["pivot_seconds"].as_f64().unwrap_or(0.0),
+            args["offset_seconds"].as_f64().unwrap_or(0.0),
+            args["extend_duration"].as_bool().unwrap_or(false),
+        )?;
     } else if name == "apply_animation_recipe" {
         let recipe = args["recipe"].as_str().ok_or("missing recipe")?;
         let axis = match args["axis"].as_str().unwrap_or("z") {
@@ -225,7 +317,12 @@ pub(super) fn call(
             "shuttle" => 128.0,
             _ => 16.0,
         });
-        let channel = axis + if recipe == "spin" || recipe == "door" { 3 } else { 0 };
+        let channel = axis
+            + if recipe == "spin" || recipe == "door" {
+                3
+            } else {
+                0
+            };
         clip.insert(channel, 0.0, 0.0)?;
         if recipe == "bob" {
             clip.insert(channel, clip.duration * 0.5, amount)?;
@@ -236,8 +333,10 @@ pub(super) fn call(
         } else {
             clip.insert(channel, clip.duration, amount)?;
             if recipe == "door" {
-                mode="once".into();
-                for k in &mut clip.tracks[channel] {k.interpolation=Interpolation::Bezier;}
+                mode = "once".into();
+                for k in &mut clip.tracks[channel] {
+                    k.interpolation = Interpolation::Bezier;
+                }
             }
             if recipe == "shuttle" && args.get("mode").is_none() {
                 mode = "pingpong".into();
@@ -283,11 +382,16 @@ pub(super) fn call(
     } else {
         old_pivot
     };
-    let door = if name=="apply_animation_recipe" && args["recipe"].as_str()==Some("door") {
-        let (mut library,_)=crate::animation_library::Library::read(d,id)?;
-        library.clips.extend(crate::animation_library::Library::door(clip.clone()).clips);
-        library.validate()?;Some(library)
-    } else {None};
+    let door = if name == "apply_animation_recipe" && args["recipe"].as_str() == Some("door") {
+        let (mut library, _) = crate::animation_library::Library::read(d, id)?;
+        library
+            .clips
+            .extend(crate::animation_library::Library::door(clip.clone()).clips);
+        library.validate()?;
+        Some(library)
+    } else {
+        None
+    };
     let dry = args["dry_run"].as_bool().unwrap_or(false);
     if !dry {
         d.run_as_one_edit(|d| {
@@ -299,9 +403,9 @@ pub(super) fn call(
                 "animation_pivot",
                 &format!("{} {} {}", pivot.x(), pivot.y(), pivot.z()),
             );
-            if let Some(library)=&door {
-                library.write(d,id,"open");
-                d.set_entity_property(id,"start_on","0");
+            if let Some(library) = &door {
+                library.write(d, id, "open");
+                d.set_entity_property(id, "start_on", "0");
             }
         });
     }
@@ -312,42 +416,104 @@ pub(super) fn call(
 mod tests {
     use super::*;
     #[test]
-    fn agent_trigger_configuration_and_preview_share_validation(){
-        let (mut d,target,source,_)=crate::animation_trigger::tests::fixture();let mut c=Collab::default();let before=d.to_map_text();
-        let args=json!({"source":source.0.to_string(),"target_entity":target.0.to_string(),"action":"play","clip":"route","once":false,"wait":0.0,"dry_run":true});
-        let call=|d:&mut Document,c:&mut Collab,name,args:&Value|super::super::call_tool(d,c,name,args);
-        call(&mut d,&mut c,"configure_animation_trigger",&args).unwrap();assert_eq!(before,d.to_map_text());
-        let mut args=args;args["dry_run"]=json!(false);args["expected_revision"]=json!(0);assert!(call(&mut d,&mut c,"configure_animation_trigger",&args).is_err());args.as_object_mut().unwrap().remove("expected_revision");
-        call(&mut d,&mut c,"configure_animation_trigger",&args).unwrap();let saved=d.to_map_text();
-        let mut args=json!({"source":source.0.to_string()});
-        let read:Value=serde_json::from_str(&call(&mut d,&mut c,"get_animation_trigger",&args).unwrap()).unwrap();assert!(read["warning"].is_null());assert_eq!(read["config"]["action"],"play");
-        call(&mut d,&mut c,"preview_animation_trigger",&args).unwrap();assert_eq!(c.trigger_preview,Some(true));assert_eq!(saved,d.to_map_text());args["reset"]=json!(true);call(&mut d,&mut c,"preview_animation_trigger",&args).unwrap();assert_eq!(c.trigger_preview,Some(false));
-        d.undo();assert_eq!(before,d.to_map_text());
+    fn agent_trigger_configuration_and_preview_share_validation() {
+        let (mut d, target, source, _) = crate::animation_trigger::tests::fixture();
+        let mut c = Collab::default();
+        let before = d.to_map_text();
+        let args = json!({"source":source.0.to_string(),"target_entity":target.0.to_string(),"action":"play","clip":"route","once":false,"wait":0.0,"dry_run":true});
+        let call = |d: &mut Document, c: &mut Collab, name, args: &Value| {
+            super::super::call_tool(d, c, name, args)
+        };
+        call(&mut d, &mut c, "configure_animation_trigger", &args).unwrap();
+        assert_eq!(before, d.to_map_text());
+        let mut args = args;
+        args["dry_run"] = json!(false);
+        args["expected_revision"] = json!(0);
+        assert!(call(&mut d, &mut c, "configure_animation_trigger", &args).is_err());
+        args.as_object_mut().unwrap().remove("expected_revision");
+        call(&mut d, &mut c, "configure_animation_trigger", &args).unwrap();
+        let saved = d.to_map_text();
+        let mut args = json!({"source":source.0.to_string()});
+        let read: Value =
+            serde_json::from_str(&call(&mut d, &mut c, "get_animation_trigger", &args).unwrap())
+                .unwrap();
+        assert!(read["warning"].is_null());
+        assert_eq!(read["config"]["action"], "play");
+        call(&mut d, &mut c, "preview_animation_trigger", &args).unwrap();
+        assert_eq!(c.trigger_preview, Some(true));
+        assert_eq!(saved, d.to_map_text());
+        args["reset"] = json!(true);
+        call(&mut d, &mut c, "preview_animation_trigger", &args).unwrap();
+        assert_eq!(c.trigger_preview, Some(false));
+        d.undo();
+        assert_eq!(before, d.to_map_text());
     }
     #[test]
     fn agent_named_door_and_button_are_atomic() {
-        let mut d=Document::new(WorldBounds::default());let mut c=Collab::default();
-        super::super::call_tool(&mut d,&mut c,"add_shape",&json!({"kind":"cuboid","min":[0,0,0],"max":[32,32,64]})).unwrap();
-        let id=d.create_brush_entity("func_animate").unwrap();
-        let before=d.to_map_text();
-        let args=json!({"entity":id.0.to_string(),"recipe":"door","amount":-90,"dry_run":true});
-        super::super::call_tool(&mut d,&mut c,"apply_animation_recipe",&args).unwrap();assert_eq!(d.to_map_text(),before);
-        let mut args=args;args["dry_run"]=json!(false);
-        super::super::call_tool(&mut d,&mut c,"apply_animation_recipe",&args).unwrap();
-        let (library,active)=crate::animation_library::Library::read(&d,id).unwrap();assert_eq!(active,"open");
-        assert_eq!(library.clips["open"].clip.sample(5,2.),-90.);assert_eq!(library.clips["close"].clip.sample(5,2.),0.);
-        d.undo();assert_eq!(d.to_map_text(),before);d.redo();
-        let before=d.to_map_text();
-        super::super::call_tool(&mut d,&mut c,"animation_library",&json!({"entity":id.0.to_string(),"action":"select","name":"close","dry_run":true})).unwrap();assert_eq!(d.to_map_text(),before);
+        let mut d = Document::new(WorldBounds::default());
+        let mut c = Collab::default();
+        super::super::call_tool(
+            &mut d,
+            &mut c,
+            "add_shape",
+            &json!({"kind":"cuboid","min":[0,0,0],"max":[32,32,64]}),
+        )
+        .unwrap();
+        let id = d.create_brush_entity("func_animate").unwrap();
+        let before = d.to_map_text();
+        let args = json!({"entity":id.0.to_string(),"recipe":"door","amount":-90,"dry_run":true});
+        super::super::call_tool(&mut d, &mut c, "apply_animation_recipe", &args).unwrap();
+        assert_eq!(d.to_map_text(), before);
+        let mut args = args;
+        args["dry_run"] = json!(false);
+        super::super::call_tool(&mut d, &mut c, "apply_animation_recipe", &args).unwrap();
+        let (library, active) = crate::animation_library::Library::read(&d, id).unwrap();
+        assert_eq!(active, "open");
+        assert_eq!(library.clips["open"].clip.sample(5, 2.), -90.);
+        assert_eq!(library.clips["close"].clip.sample(5, 2.), 0.);
+        d.undo();
+        assert_eq!(d.to_map_text(), before);
+        d.redo();
+        let before = d.to_map_text();
+        super::super::call_tool(
+            &mut d,
+            &mut c,
+            "animation_library",
+            &json!({"entity":id.0.to_string(),"action":"select","name":"close","dry_run":true}),
+        )
+        .unwrap();
+        assert_eq!(d.to_map_text(), before);
         assert!(super::super::call_tool(&mut d,&mut c,"animation_library",&json!({"entity":id.0.to_string(),"action":"delete","name":"open","expected_revision":0})).is_err());
-        super::super::call_tool(&mut d,&mut c,"add_shape",&json!({"kind":"cuboid","min":[64,0,0],"max":[80,16,16]})).unwrap();
-        let button=d.create_brush_entity("func_button").unwrap();let before=d.to_map_text();
-        let args=json!({"entity":id.0.to_string(),"button":button.0.to_string()});
-        super::super::call_tool(&mut d,&mut c,"connect_animation_button",&args).unwrap();
-        let entities=map_model::node::entities_with_ids(d.tree_world());
-        let target=entities.iter().find(|(n,_)|*n==id).unwrap().1.property("targetname").unwrap();
-        assert_eq!(entities.iter().find(|(n,_)|*n==button).unwrap().1.property("target"),Some(target));
-        d.undo();assert_eq!(d.to_map_text(),before);
+        super::super::call_tool(
+            &mut d,
+            &mut c,
+            "add_shape",
+            &json!({"kind":"cuboid","min":[64,0,0],"max":[80,16,16]}),
+        )
+        .unwrap();
+        let button = d.create_brush_entity("func_button").unwrap();
+        let before = d.to_map_text();
+        let args = json!({"entity":id.0.to_string(),"button":button.0.to_string()});
+        super::super::call_tool(&mut d, &mut c, "connect_animation_button", &args).unwrap();
+        let entities = map_model::node::entities_with_ids(d.tree_world());
+        let target = entities
+            .iter()
+            .find(|(n, _)| *n == id)
+            .unwrap()
+            .1
+            .property("targetname")
+            .unwrap();
+        assert_eq!(
+            entities
+                .iter()
+                .find(|(n, _)| *n == button)
+                .unwrap()
+                .1
+                .property("target"),
+            Some(target)
+        );
+        d.undo();
+        assert_eq!(d.to_map_text(), before);
     }
     #[test]
     fn agent_recipes_validate_preview_and_undo_atomically() {
@@ -395,34 +561,41 @@ mod tests {
         assert_eq!(d.to_map_text(), before);
         d.redo();
         assert_eq!(d.to_map_text(), saved);
-        let mut pivot_args=json!({"entity":id.0.to_string(),"pivot":[12,24,36],"dry_run":true});
-        super::super::call_tool(&mut d,&mut c,"set_animation_pivot",&pivot_args).unwrap();
-        assert_eq!(d.to_map_text(),saved);
-        pivot_args["dry_run"]=json!(false);
-        let old_clip=read(&d,id).unwrap().0;
-        super::super::call_tool(&mut d,&mut c,"set_animation_pivot",&pivot_args).unwrap();
-        let updated=read(&d,id).unwrap();
-        assert_eq!(updated.0,old_clip);assert_eq!(updated.2,Vec3d::new(12.0,24.0,36.0));
-        d.undo();assert_eq!(d.to_map_text(),saved);
-        pivot_args["pivot"]=json!([100001,0,0]);
-        assert!(super::super::call_tool(&mut d,&mut c,"set_animation_pivot",&pivot_args).is_err());
-        assert_eq!(d.to_map_text(),saved);
+        let mut pivot_args = json!({"entity":id.0.to_string(),"pivot":[12,24,36],"dry_run":true});
+        super::super::call_tool(&mut d, &mut c, "set_animation_pivot", &pivot_args).unwrap();
+        assert_eq!(d.to_map_text(), saved);
+        pivot_args["dry_run"] = json!(false);
+        let old_clip = read(&d, id).unwrap().0;
+        super::super::call_tool(&mut d, &mut c, "set_animation_pivot", &pivot_args).unwrap();
+        let updated = read(&d, id).unwrap();
+        assert_eq!(updated.0, old_clip);
+        assert_eq!(updated.2, Vec3d::new(12.0, 24.0, 36.0));
+        d.undo();
+        assert_eq!(d.to_map_text(), saved);
+        pivot_args["pivot"] = json!([100001, 0, 0]);
+        assert!(
+            super::super::call_tool(&mut d, &mut c, "set_animation_pivot", &pivot_args).is_err()
+        );
+        assert_eq!(d.to_map_text(), saved);
         let keyed = json!({"entity":id.0.to_string(),"frame":30,"channel":"X","value":42.0});
-        super::super::call_tool(&mut d,&mut c,"key_animation_pose",&keyed).unwrap();
-        assert_eq!(read(&d,id).unwrap().0.sample(0,1.0),42.0);
-        d.undo();assert_eq!(d.to_map_text(),saved);
-        let mut retime = json!({"entity":id.0.to_string(),"scale":2.0,"extend_duration":true,"dry_run":true});
-        super::super::call_tool(&mut d,&mut c,"retime_animation",&retime).unwrap();
-        assert_eq!(d.to_map_text(),saved);
+        super::super::call_tool(&mut d, &mut c, "key_animation_pose", &keyed).unwrap();
+        assert_eq!(read(&d, id).unwrap().0.sample(0, 1.0), 42.0);
+        d.undo();
+        assert_eq!(d.to_map_text(), saved);
+        let mut retime =
+            json!({"entity":id.0.to_string(),"scale":2.0,"extend_duration":true,"dry_run":true});
+        super::super::call_tool(&mut d, &mut c, "retime_animation", &retime).unwrap();
+        assert_eq!(d.to_map_text(), saved);
         retime["dry_run"] = json!(false);
-        super::super::call_tool(&mut d,&mut c,"retime_animation",&retime).unwrap();
-        let data = read(&d,id).unwrap();
-        assert_eq!(data.0.duration,8.0);
-        assert_eq!(data.0.sample(2,4.0),24.0);
-        d.undo(); assert_eq!(d.to_map_text(),saved);
+        super::super::call_tool(&mut d, &mut c, "retime_animation", &retime).unwrap();
+        let data = read(&d, id).unwrap();
+        assert_eq!(data.0.duration, 8.0);
+        assert_eq!(data.0.sample(2, 4.0), 24.0);
+        d.undo();
+        assert_eq!(d.to_map_text(), saved);
         retime["key_ids"] = json!(["999999999"]);
-        assert!(super::super::call_tool(&mut d,&mut c,"retime_animation",&retime).is_err());
-        assert_eq!(d.to_map_text(),saved);
+        assert!(super::super::call_tool(&mut d, &mut c, "retime_animation", &retime).is_err());
+        assert_eq!(d.to_map_text(), saved);
         for recipe in ["spin", "shuttle"] {
             super::super::call_tool(
                 &mut d,

@@ -62,14 +62,30 @@ mod web {
     /// Where the view `key` keeps its picture, for [`blit`] in the paint callback, which
     /// may not hold the context itself.
     pub fn publish(key: u64, gl: &Rc<glow::Context>, framebuffer: glow::Framebuffer) {
-        PICTURES.with(|pictures| pictures.borrow_mut().insert(key, (Rc::downgrade(gl), framebuffer)));
+        PICTURES.with(|pictures| {
+            pictures
+                .borrow_mut()
+                .insert(key, (Rc::downgrade(gl), framebuffer))
+        });
     }
 
     /// Copies the view `key`'s picture, `width` by `height`, into egui's target at
     /// `viewport`. Both glow contexts drive the same WebGL context, so the target egui
     /// bound is the one drawn to.
-    pub fn blit(key: u64, width: i32, height: i32, viewport: eframe::egui::epaint::ViewportInPixels) {
-        let Some((gl, framebuffer)) = PICTURES.with(|pictures| pictures.borrow().get(&key).and_then(|(gl, framebuffer)| Some((gl.upgrade()?, *framebuffer)))) else { return };
+    pub fn blit(
+        key: u64,
+        width: i32,
+        height: i32,
+        viewport: eframe::egui::epaint::ViewportInPixels,
+    ) {
+        let Some((gl, framebuffer)) = PICTURES.with(|pictures| {
+            pictures
+                .borrow()
+                .get(&key)
+                .and_then(|(gl, framebuffer)| Some((gl.upgrade()?, *framebuffer)))
+        }) else {
+            return;
+        };
         unsafe {
             gl.bind_framebuffer(glow::READ_FRAMEBUFFER, Some(framebuffer));
             gl.blit_framebuffer(

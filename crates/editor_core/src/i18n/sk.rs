@@ -21,7 +21,10 @@ pub(super) const NOUNS: [(&str, &[&str]); 13] = [
     ("object", &["objekt", "objekty", "objektov"]),
     ("patch", &["patch", "patche", "patchov"]),
     ("point", &["bod", "body", "bodov"]),
-    ("triangle", &["trojuholník", "trojuholníky", "trojuholníkov"]),
+    (
+        "triangle",
+        &["trojuholník", "trojuholníky", "trojuholníkov"],
+    ),
     ("vertex", &["vrchol", "vrcholy", "vrcholov"]),
 ];
 

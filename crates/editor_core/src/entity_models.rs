@@ -10,10 +10,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use map_model::entity_model::EntityModel;
 use map_model::asset_fs::AssetFileSystem;
-use std::sync::Arc;
+use map_model::entity_model::EntityModel;
 use map_model::sprite::Sprite;
+use std::sync::Arc;
 
 /// The models loaded so far, and where to look for more.
 #[derive(Default)]
@@ -74,22 +74,32 @@ impl ModelStore {
 
         self.mount();
         let explicit = crate::files::is_absolute(Path::new(named));
-        let bytes = if explicit { crate::files::read(Path::new(named)).ok() } else { self.read(named) };
+        let bytes = if explicit {
+            crate::files::read(Path::new(named)).ok()
+        } else {
+            self.read(named)
+        };
         let model = bytes.and_then(|bytes| {
             let result = if is_glb {
                 map_model::glb_model::read(&bytes)
             } else if is_md2 || is_md3 {
-                let directory=Path::new(named).parent().unwrap_or(Path::new(""));
-                let read = if is_md3 { map_model::md3_model::read } else { map_model::md2_model::read };
-                read(&bytes,&mut |skin| {
+                let directory = Path::new(named).parent().unwrap_or(Path::new(""));
+                let read = if is_md3 {
+                    map_model::md3_model::read
+                } else {
+                    map_model::md2_model::read
+                };
+                read(&bytes, &mut |skin| {
                     if explicit {
-                        let path=Path::new(skin);
-                        let relative=directory.join(path);
+                        let path = Path::new(skin);
+                        let relative = directory.join(path);
                         crate::files::read(&relative).ok().or_else(|| {
-                            let basename=path.file_name()?;crate::files::read(&directory.join(basename)).ok()
+                            let basename = path.file_name()?;
+                            crate::files::read(&directory.join(basename)).ok()
                         })
                     } else {
-                        self.read(skin).or_else(||self.read(&directory.join(skin).to_string_lossy()))
+                        self.read(skin)
+                            .or_else(|| self.read(&directory.join(skin).to_string_lossy()))
                     }
                 })
             } else if is_obj {
@@ -106,8 +116,11 @@ impl ModelStore {
                         format!("{directory}/{name}")
                     };
                     let read = |path: &str| {
-                        if explicit && crate::files::is_absolute(Path::new(path)) { crate::files::read(Path::new(path)).ok() }
-                        else { self.read(path) }
+                        if explicit && crate::files::is_absolute(Path::new(path)) {
+                            crate::files::read(Path::new(path)).ok()
+                        } else {
+                            self.read(path)
+                        }
                     };
                     read(&relative).or_else(|| read(name))
                 };
@@ -141,7 +154,11 @@ impl ModelStore {
         }
 
         self.mount();
-        let bytes = if Path::new(named).is_absolute() {crate::files::read(Path::new(named)).ok()} else {self.read(named)};
+        let bytes = if Path::new(named).is_absolute() {
+            crate::files::read(Path::new(named)).ok()
+        } else {
+            self.read(named)
+        };
         let sprite = bytes.and_then(|bytes| {
             match map_model::sprite::read(&bytes, self.palette.as_deref()) {
                 Ok(sprite) => Some(Rc::new(sprite)),
@@ -170,13 +187,22 @@ impl ModelStore {
         }
 
         if self.assets.is_none() {
-            let roots: Vec<_> = self.directories().into_iter().rev().filter(|p| crate::files::is_dir(p)).collect();
-            let assets=Arc::new(AssetFileSystem::mount(&roots));
-            for warning in assets.warnings() { crate::complain!("{warning}"); }
-            self.assets=Some(assets);
+            let roots: Vec<_> = self
+                .directories()
+                .into_iter()
+                .rev()
+                .filter(|p| crate::files::is_dir(p))
+                .collect();
+            let assets = Arc::new(AssetFileSystem::mount(&roots));
+            for warning in assets.warnings() {
+                crate::complain!("{warning}");
+            }
+            self.assets = Some(assets);
         }
 
-        self.palette = self.read("gfx/palette.lmp").or_else(|| self.read("palette.lmp"));
+        self.palette = self
+            .read("gfx/palette.lmp")
+            .or_else(|| self.read("palette.lmp"));
     }
 
     /// The directories a game's own files are looked for in.
@@ -192,24 +218,36 @@ impl ModelStore {
 
     /// One file's bytes, from a directory or from a pak.
     fn read(&self, named: &str) -> Option<Vec<u8>> {
-        let asset=self.assets.as_ref()?.resolve(named)?;
-        match asset.read() { Ok(bytes)=>Some(bytes),Err(error)=>{crate::complain!("{}: {error}",asset.display_path().display());None} }
+        let asset = self.assets.as_ref()?.resolve(named)?;
+        match asset.read() {
+            Ok(bytes) => Some(bytes),
+            Err(error) => {
+                crate::complain!("{}: {error}", asset.display_path().display());
+                None
+            }
+        }
     }
 
     /// A model reader using the document's shared asset index.
     pub fn with_assets(game_path: PathBuf, assets: Arc<AssetFileSystem>) -> Self {
-        Self { game_path, assets:Some(assets), ..Self::default() }
+        Self {
+            game_path,
+            assets: Some(assets),
+            ..Self::default()
+        }
     }
 
     /// An already mounted shared index, if available.
-    pub fn shared_assets(&self) -> Option<&Arc<AssetFileSystem>> { self.assets.as_ref() }
+    pub fn shared_assets(&self) -> Option<&Arc<AssetFileSystem>> {
+        self.assets.as_ref()
+    }
 
     /// The shared index, mounting the legacy standalone search roots when needed.
     pub fn assets(&mut self) -> &Arc<AssetFileSystem> {
         self.mount();
-        self.assets.get_or_insert_with(||Arc::new(AssetFileSystem::default()))
+        self.assets
+            .get_or_insert_with(|| Arc::new(AssetFileSystem::default()))
     }
-
 }
 
 #[cfg(test)]
@@ -250,8 +288,11 @@ pub mod tests {
         let game = std::env::temp_dir().join("heron-model-store-pak");
         let _ = std::fs::remove_dir_all(&game);
         std::fs::create_dir_all(game.join("id1")).expect("a game directory");
-        std::fs::write(game.join("id1/pak0.pak"), pak_holding(&one_triangle_model()))
-            .expect("a written pak");
+        std::fs::write(
+            game.join("id1/pak0.pak"),
+            pak_holding(&one_triangle_model()),
+        )
+        .expect("a written pak");
 
         let mut store = ModelStore::new(&game);
         assert!(store.model("progs/thing.mdl").is_some());
@@ -261,46 +302,100 @@ pub mod tests {
 
     #[test]
     fn md2_and_its_pcx_skin_are_identical_loose_pak_and_pk3() {
-        let root=std::env::temp_dir().join("heron-md2-model-store");
-        let _=std::fs::remove_dir_all(&root);
-        let mut expected=None;
-        for container in ["loose","pak","pk3"] {
-            let base=root.join(container);std::fs::create_dir_all(&base).unwrap();
-            if container=="loose" {
-                let dir=base.join("models/check");std::fs::create_dir_all(&dir).unwrap();
-                std::fs::write(dir.join("preview.md2"),include_bytes!("../../../examples/editor-checks/fixtures/md2/preview.md2")).unwrap();
-                std::fs::write(dir.join("skin.pcx"),include_bytes!("../../../examples/editor-checks/fixtures/md2/skin.pcx")).unwrap();
+        let root = std::env::temp_dir().join("heron-md2-model-store");
+        let _ = std::fs::remove_dir_all(&root);
+        let mut expected = None;
+        for container in ["loose", "pak", "pk3"] {
+            let base = root.join(container);
+            std::fs::create_dir_all(&base).unwrap();
+            if container == "loose" {
+                let dir = base.join("models/check");
+                std::fs::create_dir_all(&dir).unwrap();
+                std::fs::write(
+                    dir.join("preview.md2"),
+                    include_bytes!("../../../examples/editor-checks/fixtures/md2/preview.md2"),
+                )
+                .unwrap();
+                std::fs::write(
+                    dir.join("skin.pcx"),
+                    include_bytes!("../../../examples/editor-checks/fixtures/md2/skin.pcx"),
+                )
+                .unwrap();
             } else {
-                let data: &[u8]=if container=="pak" {include_bytes!("../../../examples/editor-checks/fixtures/md2/models.pak")} else {include_bytes!("../../../examples/editor-checks/fixtures/md2/models.pk3")};
-                std::fs::write(base.join(format!("pak0.{container}")),data).unwrap();
+                let data: &[u8] = if container == "pak" {
+                    include_bytes!("../../../examples/editor-checks/fixtures/md2/models.pak")
+                } else {
+                    include_bytes!("../../../examples/editor-checks/fixtures/md2/models.pk3")
+                };
+                std::fs::write(base.join(format!("pak0.{container}")), data).unwrap();
             }
-            let mut store=ModelStore::new(&base);let model=store.model("models/check/preview.md2").unwrap();
-            assert_eq!(model.triangles.len(),6);assert_eq!(&model.skin.pixels[..4],&[255,40,40,255]);
-            if let Some(expected)=&expected {assert_eq!(&model,expected);} else {expected=Some(model.clone());}
-            assert!(Rc::ptr_eq(&model,&store.model("models/check/preview.md2").unwrap()));
-            assert!(!base.join("models/check/skin.pcx").exists() || container=="loose");
+            let mut store = ModelStore::new(&base);
+            let model = store.model("models/check/preview.md2").unwrap();
+            assert_eq!(model.triangles.len(), 6);
+            assert_eq!(&model.skin.pixels[..4], &[255, 40, 40, 255]);
+            if let Some(expected) = &expected {
+                assert_eq!(&model, expected);
+            } else {
+                expected = Some(model.clone());
+            }
+            assert!(Rc::ptr_eq(
+                &model,
+                &store.model("models/check/preview.md2").unwrap()
+            ));
+            assert!(!base.join("models/check/skin.pcx").exists() || container == "loose");
         }
         // Explicit loose model imports resolve the skin beside the chosen model too.
-        let path=root.join("loose/models/check/preview.md2").to_string_lossy().into_owned();
-        let mut store=ModelStore::default();assert_eq!(&store.model(&path).unwrap(),expected.as_ref().unwrap());
+        let path = root
+            .join("loose/models/check/preview.md2")
+            .to_string_lossy()
+            .into_owned();
+        let mut store = ModelStore::default();
+        assert_eq!(&store.model(&path).unwrap(), expected.as_ref().unwrap());
         std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
     fn md3_surfaces_and_skins_are_identical_loose_pak_and_pk3() {
-        let root = std::env::temp_dir().join(format!("heron-md3-model-store-{}-{}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        let root = std::env::temp_dir().join(format!(
+            "heron-md3-model-store-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
         let mut expected = None;
         for container in ["loose", "pak", "pk3"] {
-            let base = root.join(container); std::fs::create_dir_all(&base).unwrap();
+            let base = root.join(container);
+            std::fs::create_dir_all(&base).unwrap();
             if container == "loose" {
-                let dir = base.join("models/check"); std::fs::create_dir_all(&dir).unwrap();
+                let dir = base.join("models/check");
+                std::fs::create_dir_all(&dir).unwrap();
                 for (name, bytes) in [
-                    ("preview.md3", include_bytes!("../../../examples/editor-checks/fixtures/md3/preview.md3").as_slice()),
-                    ("skin0.tga", include_bytes!("../../../examples/editor-checks/fixtures/md3/skin0.tga").as_slice()),
-                    ("skin1.tga", include_bytes!("../../../examples/editor-checks/fixtures/md3/skin1.tga").as_slice()),
-                ] { std::fs::write(dir.join(name), bytes).unwrap(); }
+                    (
+                        "preview.md3",
+                        include_bytes!("../../../examples/editor-checks/fixtures/md3/preview.md3")
+                            .as_slice(),
+                    ),
+                    (
+                        "skin0.tga",
+                        include_bytes!("../../../examples/editor-checks/fixtures/md3/skin0.tga")
+                            .as_slice(),
+                    ),
+                    (
+                        "skin1.tga",
+                        include_bytes!("../../../examples/editor-checks/fixtures/md3/skin1.tga")
+                            .as_slice(),
+                    ),
+                ] {
+                    std::fs::write(dir.join(name), bytes).unwrap();
+                }
             } else {
-                let data: &[u8] = if container == "pak" { include_bytes!("../../../examples/editor-checks/fixtures/md3/models.pak") } else { include_bytes!("../../../examples/editor-checks/fixtures/md3/models.pk3") };
+                let data: &[u8] = if container == "pak" {
+                    include_bytes!("../../../examples/editor-checks/fixtures/md3/models.pak")
+                } else {
+                    include_bytes!("../../../examples/editor-checks/fixtures/md3/models.pk3")
+                };
                 std::fs::write(base.join(format!("pak0.{container}")), data).unwrap();
             }
             let mut store = ModelStore::new(&base);
@@ -309,12 +404,25 @@ pub mod tests {
             assert_eq!(model.extra_skins.len(), 1);
             assert_eq!(&model.skin.pixels[..4], &[240, 20, 30, 255]);
             assert_eq!(&model.extra_skins[0].pixels[..4], &[10, 220, 40, 255]);
-            if let Some(expected) = &expected { assert_eq!(&model, expected); } else { expected = Some(model.clone()); }
-            assert!(Rc::ptr_eq(&model, &store.model("models/check/preview.md3").unwrap()));
+            if let Some(expected) = &expected {
+                assert_eq!(&model, expected);
+            } else {
+                expected = Some(model.clone());
+            }
+            assert!(Rc::ptr_eq(
+                &model,
+                &store.model("models/check/preview.md3").unwrap()
+            ));
             assert!(container == "loose" || !base.join("models/check").exists());
         }
-        let path = root.join("loose/models/check/preview.md3").to_string_lossy().into_owned();
-        assert_eq!(&ModelStore::default().model(&path).unwrap(), expected.as_ref().unwrap());
+        let path = root
+            .join("loose/models/check/preview.md3")
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(
+            &ModelStore::default().model(&path).unwrap(),
+            expected.as_ref().unwrap()
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -369,10 +477,15 @@ pub mod tests {
             "mtllib crate.mtl\nv 0 0 0\nv 8 0 0\nv 8 8 0\nvt 0 0\nvt 1 0\nvt 1 1\nf 1/1 2/2 3/3\n",
         )
         .expect("the model");
-        std::fs::write(game.join("id1/props/crate.mtl"), "newmtl c\nmap_Kd crate.png\n")
-            .expect("the material");
+        std::fs::write(
+            game.join("id1/props/crate.mtl"),
+            "newmtl c\nmap_Kd crate.png\n",
+        )
+        .expect("the material");
         let image = image::RgbaImage::from_pixel(4, 2, image::Rgba([10, 20, 30, 255]));
-        image.save(game.join("id1/props/crate.png")).expect("the texture");
+        image
+            .save(game.join("id1/props/crate.png"))
+            .expect("the texture");
 
         let mut store = ModelStore::new(&game);
         let model = store.model("props/crate.obj").expect("it is found");

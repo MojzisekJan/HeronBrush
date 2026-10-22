@@ -9,10 +9,10 @@
 pub mod android;
 mod animation_gizmo;
 mod animation_page;
-mod manual_page;
-mod welcome_page;
 mod app_actions;
+mod array_dialog;
 mod assets_page;
+mod build_page;
 mod chrome;
 mod console;
 mod context_menu;
@@ -23,64 +23,64 @@ mod egui_canvas;
 mod entity_graph_page;
 mod entity_page;
 mod export_page;
-mod build_page;
-mod update_page;
-mod shortcut_editor;
+mod manual_page;
 mod menu;
 mod plugin_page;
 mod preferences_page;
 mod shape_dialogs;
-mod array_dialog;
+mod shortcut_editor;
+mod update_page;
+mod welcome_page;
 // The web build has one page per tab and no command line to hand over.
-#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-mod single_instance;
-mod session_page;
-mod render_page;
-mod form;
-mod script;
 mod colour_picker;
 mod face_tools;
 mod file_dialog;
+mod form;
 mod geometry_pages;
 mod gl_glue;
 mod idle;
-mod pool;
-mod profile;
 mod inspector;
 mod layout;
 mod map_page;
 mod material_page;
 mod paint_gizmo;
+#[cfg(test)]
+mod perf_tests;
+mod pool;
+mod profile;
+mod render_page;
+mod script;
+mod session_page;
+#[cfg(test)]
+mod shell_tests;
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+mod single_instance;
 mod texture_gizmo;
 mod theme;
 mod tool_rows;
 mod touch;
 mod trigger_panel;
+#[cfg(test)]
+mod ui_tests;
 mod uv_panel;
 mod view2d;
-#[cfg(target_arch = "wasm32")]
-pub mod web;
+mod view3d;
 #[cfg(feature = "wgpu")]
 mod view3d_wgpu;
-mod view3d;
+#[cfg(target_arch = "wasm32")]
+pub mod web;
 mod widgets;
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 mod zip;
-#[cfg(test)]
-mod ui_tests;
-#[cfg(test)]
-mod shell_tests;
-#[cfg(test)]
-mod perf_tests;
 
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use eframe::egui;
 use editor_core::camera2d::ViewPlane;
 use editor_core::commands::{Commands, Window};
 use editor_core::i18n::tr;
+use eframe::egui;
 
 use chrome::Chrome;
 use editor::Editor;
@@ -189,7 +189,8 @@ impl Window for EguiWindow {
                 #[cfg(target_arch = "wasm32")]
                 web::read_clipboard();
                 #[cfg(not(target_arch = "wasm32"))]
-                self.ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaste);
+                self.ctx
+                    .send_viewport_cmd(egui::ViewportCommand::RequestPaste);
             }
         }
     }
@@ -202,7 +203,11 @@ impl Window for EguiWindow {
 }
 
 /// The keyboard commands every view shares, wired to `editor` and to the window state.
-pub(crate) fn commands_for(editor: &Editor, ctx: &egui::Context, window: &Rc<RefCell<WindowState>>) -> Commands {
+pub(crate) fn commands_for(
+    editor: &Editor,
+    ctx: &egui::Context,
+    window: &Rc<RefCell<WindowState>>,
+) -> Commands {
     Commands {
         grid: editor.grid.clone(),
         document: editor.document.clone(),
@@ -218,8 +223,13 @@ pub(crate) fn commands_for(editor: &Editor, ctx: &egui::Context, window: &Rc<Ref
         active_plane: editor.active_plane.clone(),
         fillet: editor.fillet.clone(),
         camera_3d: editor.camera.clone(),
-        sources: Rc::new(RefCell::new(std::mem::take(&mut *editor.sources.borrow_mut()))),
-        window: Rc::new(EguiWindow { ctx: ctx.clone(), state: Rc::clone(window) }),
+        sources: Rc::new(RefCell::new(std::mem::take(
+            &mut *editor.sources.borrow_mut(),
+        ))),
+        window: Rc::new(EguiWindow {
+            ctx: ctx.clone(),
+            state: Rc::clone(window),
+        }),
     }
 }
 
@@ -227,7 +237,15 @@ pub(crate) fn commands_for(editor: &Editor, ctx: &egui::Context, window: &Rc<Ref
 /// a text field has the keyboard.
 pub(crate) fn window_shortcut(event: &egui::Event) -> Option<app_actions::Action> {
     use app_actions::Action;
-    let egui::Event::Key { key, pressed: true, modifiers: m, .. } = event else { return None };
+    let egui::Event::Key {
+        key,
+        pressed: true,
+        modifiers: m,
+        ..
+    } = event
+    else {
+        return None;
+    };
     if !(m.command || m.ctrl) || m.alt {
         return None;
     }
@@ -255,31 +273,80 @@ pub(crate) fn dispatch_keys(
     scene: Option<Rc<editor_core::view3d::Scene3d>>,
     field_focused: bool,
 ) {
-    let modifiers = |m: egui::Modifiers| editor_core::input::Modifiers { shift: m.shift, control: m.command || m.ctrl, alt: m.alt };
-    let (binding_text,preset)=editor_core::preferences::pref(|p|(p.keyboard_bindings.clone(),p.keymap));
-    let bindings=editor_core::custom_shortcuts::load(&binding_text).ok().filter(|b|editor_core::custom_shortcuts::validate(b,preset).is_ok()).unwrap_or_default();
+    let modifiers = |m: egui::Modifiers| editor_core::input::Modifiers {
+        shift: m.shift,
+        control: m.command || m.ctrl,
+        alt: m.alt,
+    };
+    let (binding_text, preset) =
+        editor_core::preferences::pref(|p| (p.keyboard_bindings.clone(), p.keymap));
+    let bindings = editor_core::custom_shortcuts::load(&binding_text)
+        .ok()
+        .filter(|b| editor_core::custom_shortcuts::validate(b, preset).is_ok())
+        .unwrap_or_default();
     for event in events {
-        let chord=match &event {
-            egui::Event::Key{key,pressed:true,modifiers:m,..}=>Some(editor_core::custom_shortcuts::Chord{key:view3d::key(*key),modifiers:modifiers(*m)}),
-            egui::Event::Copy=>Some(editor_core::custom_shortcuts::Chord{key:editor_core::input::Key::Letter('c'),modifiers:editor_core::input::Modifiers{control:true,..Default::default()}}),
-            egui::Event::Cut=>Some(editor_core::custom_shortcuts::Chord{key:editor_core::input::Key::Letter('x'),modifiers:editor_core::input::Modifiers{control:true,..Default::default()}}),
-            _=>None,
+        let chord = match &event {
+            egui::Event::Key {
+                key,
+                pressed: true,
+                modifiers: m,
+                ..
+            } => Some(editor_core::custom_shortcuts::Chord {
+                key: view3d::key(*key),
+                modifiers: modifiers(*m),
+            }),
+            egui::Event::Copy => Some(editor_core::custom_shortcuts::Chord {
+                key: editor_core::input::Key::Letter('c'),
+                modifiers: editor_core::input::Modifiers {
+                    control: true,
+                    ..Default::default()
+                },
+            }),
+            egui::Event::Cut => Some(editor_core::custom_shortcuts::Chord {
+                key: editor_core::input::Key::Letter('x'),
+                modifiers: editor_core::input::Modifiers {
+                    control: true,
+                    ..Default::default()
+                },
+            }),
+            _ => None,
         };
-        if let Some(chord)=chord {
-            if let Some(command)=editor_core::custom_shortcuts::resolve(&bindings,preset,chord,field_focused) {
+        if let Some(chord) = chord {
+            if let Some(command) =
+                editor_core::custom_shortcuts::resolve(&bindings, preset, chord, field_focused)
+            {
                 use app_actions::Action;
-                let action=match command.id {
-                    "new"=>Some(Action::New),"open"=>Some(Action::Open),"save"=>Some(Action::Save),"save_as"=>Some(Action::SaveAs),
-                    "preferences"=>Some(Action::Preferences),"export"=>Some(Action::Export),"build"=>Some(Action::Build),"preview"=>Some(Action::PreviewAnimations),
-                    "undo"=>Some(Action::Undo),"redo"=>Some(Action::Redo),"copy"=>Some(Action::Copy),"cut"=>Some(Action::Cut),"paste"=>Some(Action::Paste),
-                    "duplicate"=>Some(Action::Duplicate),"delete"=>Some(Action::Delete),"select_all"=>Some(Action::SelectAll),"repeat"=>Some(Action::Repeat),
-                    _=>None,
+                let action = match command.id {
+                    "new" => Some(Action::New),
+                    "open" => Some(Action::Open),
+                    "save" => Some(Action::Save),
+                    "save_as" => Some(Action::SaveAs),
+                    "preferences" => Some(Action::Preferences),
+                    "export" => Some(Action::Export),
+                    "build" => Some(Action::Build),
+                    "preview" => Some(Action::PreviewAnimations),
+                    "undo" => Some(Action::Undo),
+                    "redo" => Some(Action::Redo),
+                    "copy" => Some(Action::Copy),
+                    "cut" => Some(Action::Cut),
+                    "paste" => Some(Action::Paste),
+                    "duplicate" => Some(Action::Duplicate),
+                    "delete" => Some(Action::Delete),
+                    "select_all" => Some(Action::SelectAll),
+                    "repeat" => Some(Action::Repeat),
+                    _ => None,
                 };
-                if let Some(action)=action{window.borrow_mut().action=Some(action);}
-                else if let Ok(canonical)=editor_core::custom_shortcuts::parse(command.default){commands.key_pressed_canonical(canonical.key,None,canonical.modifiers);}
+                if let Some(action) = action {
+                    window.borrow_mut().action = Some(action);
+                } else if let Ok(canonical) = editor_core::custom_shortcuts::parse(command.default)
+                {
+                    commands.key_pressed_canonical(canonical.key, None, canonical.modifiers);
+                }
                 continue;
             }
-            if editor_core::custom_shortcuts::suppressed(&bindings,preset,chord,field_focused){continue;}
+            if editor_core::custom_shortcuts::suppressed(&bindings, preset, chord, field_focused) {
+                continue;
+            }
         }
         if let Some(action) = window_shortcut(&event) {
             window.borrow_mut().action = Some(action);
@@ -292,7 +359,13 @@ pub(crate) fn dispatch_keys(
             continue;
         }
         match event {
-            egui::Event::Key { key, physical_key, pressed: true, modifiers: m, .. } => {
+            egui::Event::Key {
+                key,
+                physical_key,
+                pressed: true,
+                modifiers: m,
+                ..
+            } => {
                 let core_key = view3d::key(key);
                 let mods = modifiers(m);
                 if let Some(scene) = &scene {
@@ -319,11 +392,15 @@ pub(crate) fn dispatch_keys(
             }
             egui::Event::Paste(text) => {
                 let waiting = {
-                    let mut state=window.borrow_mut();
-                    let explicit_paste=state.middle_paste_pending && (held.command || held.ctrl);
-                    state.middle_paste_pending=false;
-                    let waiting=state.waiting.take();
-                    if explicit_paste { None } else { waiting }
+                    let mut state = window.borrow_mut();
+                    let explicit_paste = state.middle_paste_pending && (held.command || held.ctrl);
+                    state.middle_paste_pending = false;
+                    let waiting = state.waiting.take();
+                    if explicit_paste {
+                        None
+                    } else {
+                        waiting
+                    }
                 };
                 match waiting {
                     Some(then) => then(text),
@@ -435,7 +512,10 @@ impl Instance {
             let _ = tx.send(request);
             ctx.request_repaint();
         });
-        Self { _listening: listening, inbox }
+        Self {
+            _listening: listening,
+            inbox,
+        }
     }
 }
 
@@ -473,7 +553,11 @@ impl App {
             popup: None,
             fillet_window: false,
         };
-        let flat = [Pane2d::new(&editor, ViewPlane::Top), Pane2d::new(&editor, ViewPlane::Front), Pane2d::new(&editor, ViewPlane::Side)];
+        let flat = [
+            Pane2d::new(&editor, ViewPlane::Top),
+            Pane2d::new(&editor, ViewPlane::Front),
+            Pane2d::new(&editor, ViewPlane::Side),
+        ];
         let window = Rc::new(RefCell::new(WindowState::default()));
         let commands = commands_for(&editor, ctx, &window);
         let live = editor_core::godot_live::LiveLink::new(&editor.document);
@@ -543,7 +627,9 @@ impl App {
         let mut events = std::mem::take(&mut self.tabs);
         events.extend(ui.input(|i| i.events.clone()));
         let held = ui.input(|i| i.modifiers);
-        let scene = if self.window.borrow().panes.focused == Some(0) && !self.window.borrow().panes.detached {
+        let scene = if self.window.borrow().panes.focused == Some(0)
+            && !self.window.borrow().panes.detached
+        {
             self.view3d.as_ref().map(|v| Rc::clone(&v.scene))
         } else {
             None
@@ -551,8 +637,23 @@ impl App {
         self.key_events(events, held, scene, field_focused);
     }
 
-    fn key_events(&mut self, events: Vec<egui::Event>, held: egui::Modifiers, scene: Option<Rc<editor_core::view3d::Scene3d>>, field_focused: bool) {
-        dispatch_keys(&self.commands, &self.window, &mut self.animation, &self.editor, events, held, scene, field_focused);
+    fn key_events(
+        &mut self,
+        events: Vec<egui::Event>,
+        held: egui::Modifiers,
+        scene: Option<Rc<editor_core::view3d::Scene3d>>,
+        field_focused: bool,
+    ) {
+        dispatch_keys(
+            &self.commands,
+            &self.window,
+            &mut self.animation,
+            &self.editor,
+            events,
+            held,
+            scene,
+            field_focused,
+        );
     }
 
     /// The map views, as the layout arranges them.
@@ -566,7 +667,13 @@ impl App {
         touch::set_views(ui.ctx(), &placed);
 
         // A press in a view gives it the keyboard.
-        if let Some(press) = ui.input(|i| if i.pointer.any_pressed() { i.pointer.press_origin() } else { None }) {
+        if let Some(press) = ui.input(|i| {
+            if i.pointer.any_pressed() {
+                i.pointer.press_origin()
+            } else {
+                None
+            }
+        }) {
             if let Some((view, _)) = placed.iter().find(|(_, rect)| rect.contains(press)) {
                 self.window.borrow_mut().panes.focused = Some(*view);
             }
@@ -577,7 +684,8 @@ impl App {
         for &(view, rect) in &placed {
             match view {
                 0 => {
-                    self.window.borrow_mut().perspective_size = Some((f64::from(rect.width()), f64::from(rect.height())));
+                    self.window.borrow_mut().perspective_size =
+                        Some((f64::from(rect.width()), f64::from(rect.height())));
                     if let Some(view) = &mut self.view3d {
                         let started = self.profiler.is_some().then(web_time::Instant::now);
                         view.show(ui, rect);
@@ -597,7 +705,15 @@ impl App {
             }
             let pill = layout::view_label(ui, rect, view, focused == Some(view));
             // Without a keyboard's Space, the name steps to the pane's next view.
-            if touch::enabled(ui.ctx()) && ui.interact(pill.expand(6.0), ui.id().with(("view-label", view)), egui::Sense::click()).clicked() {
+            if touch::enabled(ui.ctx())
+                && ui
+                    .interact(
+                        pill.expand(6.0),
+                        ui.id().with(("view-label", view)),
+                        egui::Sense::click(),
+                    )
+                    .clicked()
+            {
                 let mut window = self.window.borrow_mut();
                 window.panes.focused = Some(view);
                 window.panes.cycle(layout);
@@ -606,31 +722,73 @@ impl App {
         self.window.borrow_mut().flat_sizes = sizes;
         touch::modifier_strip(ui.ctx(), area);
 
-        let paste=self.view3d.as_mut().and_then(|view|view.material_paste.take())
-            .or_else(||self.flat.iter_mut().find_map(|pane|pane.material_paste.take()));
-        if let Some(face)=paste {
-            let document=self.editor.document.clone();let ctx=ui.ctx().clone();
-            ctx.memory_mut(|memory| { if let Some(id)=memory.focused() { memory.surrender_focus(id); } });
-            self.window.borrow_mut().middle_paste_pending=true;
-            EguiWindow{ctx:ctx.clone(),state:self.window.clone()}.with_clipboard(Box::new(move |text| {
-                document.borrow_mut().paste_face_attributes_on(&text,&[face]);ctx.request_repaint();
+        let paste = self
+            .view3d
+            .as_mut()
+            .and_then(|view| view.material_paste.take())
+            .or_else(|| {
+                self.flat
+                    .iter_mut()
+                    .find_map(|pane| pane.material_paste.take())
+            });
+        if let Some(face) = paste {
+            let document = self.editor.document.clone();
+            let ctx = ui.ctx().clone();
+            ctx.memory_mut(|memory| {
+                if let Some(id) = memory.focused() {
+                    memory.surrender_focus(id);
+                }
+            });
+            self.window.borrow_mut().middle_paste_pending = true;
+            EguiWindow {
+                ctx: ctx.clone(),
+                state: self.window.clone(),
+            }
+            .with_clipboard(Box::new(move |text| {
+                document
+                    .borrow_mut()
+                    .paste_face_attributes_on(&text, &[face]);
+                ctx.request_repaint();
             }));
         }
 
         // A right-click that stayed put in any view opens the menu for what it was over.
-        let click = self.view3d.as_mut().and_then(|view| view.context_click.take()).or_else(|| self.flat.iter_mut().find_map(|pane| pane.context_click.take()));
+        let click = self
+            .view3d
+            .as_mut()
+            .and_then(|view| view.context_click.take())
+            .or_else(|| {
+                self.flat
+                    .iter_mut()
+                    .find_map(|pane| pane.context_click.take())
+            });
         if let Some((at, probe)) = click {
-            let mut sections = editor_core::context_menu::build(&self.editor.document.borrow(), &probe);
-            sections.splice(0..0, editor_core::context_menu::edge_section(self.picked_edges()));
+            let mut sections =
+                editor_core::context_menu::build(&self.editor.document.borrow(), &probe);
+            sections.splice(
+                0..0,
+                editor_core::context_menu::edge_section(self.picked_edges()),
+            );
             // Nothing selected and the pointer over nothing: no menu rather than an empty box.
-            self.menu = (!sections.is_empty()).then_some(context_menu::Open { at, sections, frame: ui.ctx().cumulative_frame_nr() });
+            self.menu = (!sections.is_empty()).then_some(context_menu::Open {
+                at,
+                sections,
+                frame: ui.ctx().cumulative_frame_nr(),
+            });
         }
     }
 
     /// How many edges are picked with the Edge or Fillet tool, for the menu's Fillet entry.
     pub(crate) fn picked_edges(&self) -> usize {
         let tool = *self.editor.tool.borrow();
-        if matches!(tool, editor_core::tool::Tool::Edge | editor_core::tool::Tool::Fillet) { self.editor.handles.borrow().selected_edges().len() } else { 0 }
+        if matches!(
+            tool,
+            editor_core::tool::Tool::Edge | editor_core::tool::Tool::Fillet
+        ) {
+            self.editor.handles.borrow().selected_edges().len()
+        } else {
+            0
+        }
     }
 
     /// The right-click menu, while it is open.
@@ -645,9 +803,14 @@ impl App {
         }
     }
 
-    fn run_context_action(&mut self, ctx: &egui::Context, action: editor_core::context_menu::Action) {
+    fn run_context_action(
+        &mut self,
+        ctx: &egui::Context,
+        action: editor_core::context_menu::Action,
+    ) {
         let step = self.editor.grid.borrow().actual_size();
-        let outcome = editor_core::context_menu::run(&action, &mut self.editor.document.borrow_mut(), step);
+        let outcome =
+            editor_core::context_menu::run(&action, &mut self.editor.document.borrow_mut(), step);
         match outcome {
             editor_core::context_menu::Outcome::Done => {}
             editor_core::context_menu::Outcome::Reveal(name) => {
@@ -697,7 +860,11 @@ impl App {
         }
         // The header words the session's state: hosting, connected, reconnecting.
         if let Some(label) = self.session.indicator() {
-            indicators.push(chrome::Indicator { tooltip: label.clone(), label, action: app_actions::Action::Session });
+            indicators.push(chrome::Indicator {
+                tooltip: label.clone(),
+                label,
+                action: app_actions::Action::Session,
+            });
         }
         if let Some(server) = &self.mcp {
             indicators.push(chrome::Indicator {
@@ -728,13 +895,23 @@ impl App {
         // catches up a frame after that, so the window is placed once two frames have
         // gone by unchanged.
         self.settled_frames = if rescaled { 0 } else { self.settled_frames + 1 };
-        if self.settled_frames >= 2 && !self.placed && ui.ctx().native_pixels_per_point().is_some() {
+        if self.settled_frames >= 2 && !self.placed && ui.ctx().native_pixels_per_point().is_some()
+        {
             self.placed = true;
-            let size = if self.startup { egui::vec2(920.0, 620.0) } else { egui::vec2(1360.0, 760.0) };
-            ui.ctx().send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
-            let (monitor, outer) = ui.input(|i| (i.viewport().monitor_size, i.viewport().outer_rect));
+            let size = if self.startup {
+                egui::vec2(920.0, 620.0)
+            } else {
+                egui::vec2(1360.0, 760.0)
+            };
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
+            let (monitor, outer) =
+                ui.input(|i| (i.viewport().monitor_size, i.viewport().outer_rect));
             if let (Some(monitor), Some(outer)) = (monitor, outer) {
-                ui.ctx().send_viewport_cmd(egui::ViewportCommand::OuterPosition(centred_on_monitor(outer, monitor, size)));
+                ui.ctx()
+                    .send_viewport_cmd(egui::ViewportCommand::OuterPosition(centred_on_monitor(
+                        outer, monitor, size,
+                    )));
             }
         }
         if rescaled {
@@ -747,9 +924,16 @@ impl App {
 /// the monitor's size but not where it is, so the monitor is taken to be the one of that
 /// size whose tile holds the window's centre: exact for a single monitor and for a row
 /// of same-sized ones, where the old `(monitor - size) / 2` always went to the first.
-pub(crate) fn centred_on_monitor(outer: egui::Rect, monitor: egui::Vec2, size: egui::Vec2) -> egui::Pos2 {
+pub(crate) fn centred_on_monitor(
+    outer: egui::Rect,
+    monitor: egui::Vec2,
+    size: egui::Vec2,
+) -> egui::Pos2 {
     let centre = outer.center();
-    let origin = egui::pos2((centre.x / monitor.x).floor() * monitor.x, (centre.y / monitor.y).floor() * monitor.y);
+    let origin = egui::pos2(
+        (centre.x / monitor.x).floor() * monitor.x,
+        (centre.y / monitor.y).floor() * monitor.y,
+    );
     origin + ((monitor - size) / 2.0).max(egui::Vec2::ZERO)
 }
 
@@ -757,7 +941,12 @@ pub(crate) fn centred_on_monitor(outer: egui::Rect, monitor: egui::Vec2, size: e
 /// manager's frame would. macOS keeps its native frame (hidden behind the content), which
 /// already does this; a phone's app has the whole screen, and its edges are for fingers.
 fn resize_edges(ui: &egui::Ui, window: egui::Rect) {
-    if cfg!(target_os = "macos") || chrome::button_style() == chrome::ButtonStyle::Nothing || ui.input(|i| i.viewport().maximized.unwrap_or(false) || i.viewport().fullscreen.unwrap_or(false)) {
+    if cfg!(target_os = "macos")
+        || chrome::button_style() == chrome::ButtonStyle::Nothing
+        || ui.input(|i| {
+            i.viewport().maximized.unwrap_or(false) || i.viewport().fullscreen.unwrap_or(false)
+        })
+    {
         return;
     }
     use egui::ResizeDirection as D;
@@ -765,22 +954,59 @@ fn resize_edges(ui: &egui::Ui, window: egui::Rect) {
     let corner = 12.0;
     let (l, r, t, b) = (window.left(), window.right(), window.top(), window.bottom());
     let zones = [
-        (D::NorthWest, egui::Rect::from_min_max(egui::pos2(l, t), egui::pos2(l + corner, t + corner)), egui::CursorIcon::ResizeNorthWest),
-        (D::NorthEast, egui::Rect::from_min_max(egui::pos2(r - corner, t), egui::pos2(r, t + corner)), egui::CursorIcon::ResizeNorthEast),
-        (D::SouthWest, egui::Rect::from_min_max(egui::pos2(l, b - corner), egui::pos2(l + corner, b)), egui::CursorIcon::ResizeSouthWest),
-        (D::SouthEast, egui::Rect::from_min_max(egui::pos2(r - corner, b - corner), egui::pos2(r, b)), egui::CursorIcon::ResizeSouthEast),
-        (D::North, egui::Rect::from_min_max(egui::pos2(l, t), egui::pos2(r, t + edge)), egui::CursorIcon::ResizeNorth),
-        (D::South, egui::Rect::from_min_max(egui::pos2(l, b - edge), egui::pos2(r, b)), egui::CursorIcon::ResizeSouth),
-        (D::West, egui::Rect::from_min_max(egui::pos2(l, t), egui::pos2(l + edge, b)), egui::CursorIcon::ResizeWest),
-        (D::East, egui::Rect::from_min_max(egui::pos2(r - edge, t), egui::pos2(r, b)), egui::CursorIcon::ResizeEast),
+        (
+            D::NorthWest,
+            egui::Rect::from_min_max(egui::pos2(l, t), egui::pos2(l + corner, t + corner)),
+            egui::CursorIcon::ResizeNorthWest,
+        ),
+        (
+            D::NorthEast,
+            egui::Rect::from_min_max(egui::pos2(r - corner, t), egui::pos2(r, t + corner)),
+            egui::CursorIcon::ResizeNorthEast,
+        ),
+        (
+            D::SouthWest,
+            egui::Rect::from_min_max(egui::pos2(l, b - corner), egui::pos2(l + corner, b)),
+            egui::CursorIcon::ResizeSouthWest,
+        ),
+        (
+            D::SouthEast,
+            egui::Rect::from_min_max(egui::pos2(r - corner, b - corner), egui::pos2(r, b)),
+            egui::CursorIcon::ResizeSouthEast,
+        ),
+        (
+            D::North,
+            egui::Rect::from_min_max(egui::pos2(l, t), egui::pos2(r, t + edge)),
+            egui::CursorIcon::ResizeNorth,
+        ),
+        (
+            D::South,
+            egui::Rect::from_min_max(egui::pos2(l, b - edge), egui::pos2(r, b)),
+            egui::CursorIcon::ResizeSouth,
+        ),
+        (
+            D::West,
+            egui::Rect::from_min_max(egui::pos2(l, t), egui::pos2(l + edge, b)),
+            egui::CursorIcon::ResizeWest,
+        ),
+        (
+            D::East,
+            egui::Rect::from_min_max(egui::pos2(r - edge, t), egui::pos2(r, b)),
+            egui::CursorIcon::ResizeEast,
+        ),
     ];
     for (index, (direction, rect, cursor)) in zones.into_iter().enumerate() {
-        let response = ui.interact(rect, egui::Id::new(("window-edge", index)), egui::Sense::drag());
+        let response = ui.interact(
+            rect,
+            egui::Id::new(("window-edge", index)),
+            egui::Sense::drag(),
+        );
         if response.hovered() || response.dragged() {
             ui.ctx().set_cursor_icon(cursor);
         }
         if response.drag_started_by(egui::PointerButton::Primary) {
-            ui.ctx().send_viewport_cmd(egui::ViewportCommand::BeginResize(direction));
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::BeginResize(direction));
         }
     }
 }
@@ -824,7 +1050,15 @@ impl eframe::App for App {
         if !ctx.egui_wants_keyboard_input() {
             let (tabs, rest): (Vec<_>, Vec<_>) = std::mem::take(&mut raw_input.events)
                 .into_iter()
-                .partition(|event| matches!(event, egui::Event::Key { key: egui::Key::Tab, .. }));
+                .partition(|event| {
+                    matches!(
+                        event,
+                        egui::Event::Key {
+                            key: egui::Key::Tab,
+                            ..
+                        }
+                    )
+                });
             raw_input.events = rest;
             self.tabs.extend(tabs);
         }
@@ -854,7 +1088,11 @@ impl App {
         // A paste from the menu in the browser: the clipboard text the page read.
         #[cfg(target_arch = "wasm32")]
         if let Some(text) = web::take_clipboard() {
-            let waiting = { let mut state=self.window.borrow_mut();state.middle_paste_pending=false;state.waiting.take() };
+            let waiting = {
+                let mut state = self.window.borrow_mut();
+                state.middle_paste_pending = false;
+                state.waiting.take()
+            };
             if let Some(then) = waiting {
                 then(text);
             }
@@ -864,7 +1102,11 @@ impl App {
         if let Some(path) = self.pending_map.take() {
             self.replace_map(ui.ctx(), path);
         }
-        let action = self.chrome.action.take().or_else(|| self.window.borrow_mut().action.take());
+        let action = self
+            .chrome
+            .action
+            .take()
+            .or_else(|| self.window.borrow_mut().action.take());
         if let Some(action) = action {
             self.action(ui.ctx(), action);
         }
@@ -898,8 +1140,15 @@ impl App {
         if let Some(server) = &self.mcp {
             if !self.editor.document.borrow().in_transaction() {
                 for _ in 0..32 {
-                    let Ok((line, reply)) = server.requests.try_recv() else { break };
-                    let response = editor_core::mcp::respond(&mut self.editor.document.borrow_mut(), &mut self.mcp_state, &line, false);
+                    let Ok((line, reply)) = server.requests.try_recv() else {
+                        break;
+                    };
+                    let response = editor_core::mcp::respond(
+                        &mut self.editor.document.borrow_mut(),
+                        &mut self.mcp_state,
+                        &line,
+                        false,
+                    );
                     let _ = reply.send(response.map(|v| v.to_string()).unwrap_or_default());
                 }
             }
@@ -926,18 +1175,47 @@ impl App {
                 editor_core::say!("autosaved to {}", path.display());
             }
             if !app_actions::can_leave(&mut self.editor.document.borrow_mut()) {
-                ui.ctx().send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                ui.ctx()
+                    .send_viewport_cmd(egui::ViewportCommand::CancelClose);
             }
         }
-        if let Some(path) = ui.input(|i| i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).find(|p| p.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| ext.eq_ignore_ascii_case("map")))) {
+        if let Some(path) = ui.input(|i| {
+            i.raw
+                .dropped_files
+                .iter()
+                .map(|f| f.path().to_path_buf())
+                .find(|p| {
+                    p.extension()
+                        .and_then(|ext| ext.to_str())
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("map"))
+                })
+        }) {
             self.pending_map = Some(Some(path));
             ui.ctx().request_repaint();
         }
-        #[cfg(not(target_arch="wasm32"))]
-        if let Some(path)=ui.input(|i|i.raw.dropped_files.iter().map(|f|f.path().to_path_buf()).find(|p|matches!(p.extension().and_then(|e|e.to_str()).map(str::to_ascii_lowercase).as_deref(),Some("obj"|"glb")))) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(path) = ui.input(|i| {
+            i.raw
+                .dropped_files
+                .iter()
+                .map(|f| f.path().to_path_buf())
+                .find(|p| {
+                    matches!(
+                        p.extension()
+                            .and_then(|e| e.to_str())
+                            .map(str::to_ascii_lowercase)
+                            .as_deref(),
+                        Some("obj" | "glb")
+                    )
+                })
+        }) {
             self.import_model_file(&path);
         }
-        if ui.input(|i| !i.focused || i.key_pressed(egui::Key::Escape) || ((i.modifiers.command || i.modifiers.ctrl) && i.key_pressed(egui::Key::Z))) {
+        if ui.input(|i| {
+            !i.focused
+                || i.key_pressed(egui::Key::Escape)
+                || ((i.modifiers.command || i.modifiers.ctrl) && i.key_pressed(egui::Key::Z))
+        }) {
             // Escape that cancels a pose drag goes no further.
             if self.editor.animation_link.borrow().dragging {
                 ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
@@ -974,10 +1252,19 @@ impl App {
         };
 
         ui.painter().rect_filled(ui.max_rect(), 0.0, theme::panel());
-        let header = egui::Rect::from_min_size(window.min, egui::vec2(window.width(), theme::HEADER_HEIGHT));
-        let toolbar_height = if toolbar_hidden { 0.0 } else { theme::TOOLBAR_HEIGHT };
-        let toolbar = egui::Rect::from_min_size(egui::pos2(window.left(), header.bottom()), egui::vec2(window.width(), toolbar_height));
-        let mut workspace = egui::Rect::from_min_max(egui::pos2(window.left(), toolbar.bottom()), window.max);
+        let header =
+            egui::Rect::from_min_size(window.min, egui::vec2(window.width(), theme::HEADER_HEIGHT));
+        let toolbar_height = if toolbar_hidden {
+            0.0
+        } else {
+            theme::TOOLBAR_HEIGHT
+        };
+        let toolbar = egui::Rect::from_min_size(
+            egui::pos2(window.left(), header.bottom()),
+            egui::vec2(window.width(), toolbar_height),
+        );
+        let mut workspace =
+            egui::Rect::from_min_max(egui::pos2(window.left(), toolbar.bottom()), window.max);
 
         let title = self.title();
         self.set_title(ui.ctx(), title.clone());
@@ -993,21 +1280,35 @@ impl App {
             self.chrome.toolbar(ui, toolbar);
         }
 
-        if *self.editor.tool.borrow()!=editor_core::tool::Tool::Brush {self.editor.document.borrow_mut().finish_shape_preview();}
-        let shape_update=self.editor.document.borrow_mut().update_shape_preview(*self.editor.shape_parameters.borrow());
-        if let Err(error)=shape_update {
-            if let Some(valid)=self.editor.document.borrow().shape_preview_parameters() { *self.editor.shape_parameters.borrow_mut()=valid; }
+        if *self.editor.tool.borrow() != editor_core::tool::Tool::Brush {
+            self.editor.document.borrow_mut().finish_shape_preview();
+        }
+        let shape_update = self
+            .editor
+            .document
+            .borrow_mut()
+            .update_shape_preview(*self.editor.shape_parameters.borrow());
+        if let Err(error) = shape_update {
+            if let Some(valid) = self.editor.document.borrow().shape_preview_parameters() {
+                *self.editor.shape_parameters.borrow_mut() = valid;
+            }
             editor_core::complain!("could not update the shape: {error}");
         }
 
         // The status strip along the bottom, and the output pane over it when shown.
-        let strip = egui::Rect::from_min_max(egui::pos2(workspace.left(), workspace.bottom() - console::STRIP_HEIGHT), workspace.max);
+        let strip = egui::Rect::from_min_max(
+            egui::pos2(workspace.left(), workspace.bottom() - console::STRIP_HEIGHT),
+            workspace.max,
+        );
         if console::strip(ui, strip, console_shown) {
             self.window.borrow_mut().console = !console_shown;
         }
         workspace.max.y = strip.top();
         if console_shown {
-            let pane = egui::Rect::from_min_max(egui::pos2(workspace.left(), workspace.bottom() - console::HEIGHT), workspace.max);
+            let pane = egui::Rect::from_min_max(
+                egui::pos2(workspace.left(), workspace.bottom() - console::HEIGHT),
+                workspace.max,
+            );
             console::show(ui, pane);
             workspace.max.y = pane.top();
         }
@@ -1018,19 +1319,31 @@ impl App {
             // rather than shrinking to a strip above a panel of fixed minimum height.
             let room = (workspace.height() - 240.0).max(workspace.height() * 0.5);
             let height = (workspace.height() * 0.68).clamp(260.0, 600.0).min(room);
-            let rect = egui::Rect::from_min_max(egui::pos2(workspace.left(), workspace.bottom() - height), workspace.max);
-            let mut panel = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(egui::Layout::top_down(egui::Align::Min)));
+            let rect = egui::Rect::from_min_max(
+                egui::pos2(workspace.left(), workspace.bottom() - height),
+                workspace.max,
+            );
+            let mut panel = ui.new_child(
+                egui::UiBuilder::new()
+                    .max_rect(rect)
+                    .layout(egui::Layout::top_down(egui::Align::Min)),
+            );
             panel.set_clip_rect(rect);
             self.animation.show_docked(&mut panel, &self.editor);
             workspace.max.y = rect.top();
-            ui.painter().hline(rect.x_range(), rect.top() + 0.5, egui::Stroke::new(1.0, theme::border()));
+            ui.painter().hline(
+                rect.x_range(),
+                rect.top() + 0.5,
+                egui::Stroke::new(1.0, theme::border()),
+            );
         }
 
         // A touch screen starts with the views alone when they are small (a phone); the
         // header's button brings the inspector.
         if !self.touch_layout_set {
             self.touch_layout_set = true;
-            if touch::enabled(ui.ctx()) && (workspace.width() < 720.0 || workspace.height() < 420.0) {
+            if touch::enabled(ui.ctx()) && (workspace.width() < 720.0 || workspace.height() < 420.0)
+            {
                 self.window.borrow_mut().inspector_hidden = true;
                 ui.ctx().request_repaint();
             }
@@ -1042,38 +1355,85 @@ impl App {
         if inspector_hidden {
             self.views(ui, workspace);
         } else if workspace.width() < 600.0 && workspace.height() > workspace.width() {
-            let height = (workspace.height() * self.inspector_share).clamp(160.0, (workspace.height() - 160.0).max(160.0));
+            let height = (workspace.height() * self.inspector_share)
+                .clamp(160.0, (workspace.height() - 160.0).max(160.0));
             let divider_y = workspace.bottom() - height - 1.0;
-            let views = egui::Rect::from_min_max(workspace.min, egui::pos2(workspace.right(), divider_y));
-            let divider = egui::Rect::from_min_max(egui::pos2(workspace.left(), divider_y), egui::pos2(workspace.right(), divider_y + 1.0));
-            let panel = egui::Rect::from_min_max(egui::pos2(workspace.left(), divider.bottom()), workspace.max);
+            let views =
+                egui::Rect::from_min_max(workspace.min, egui::pos2(workspace.right(), divider_y));
+            let divider = egui::Rect::from_min_max(
+                egui::pos2(workspace.left(), divider_y),
+                egui::pos2(workspace.right(), divider_y + 1.0),
+            );
+            let panel = egui::Rect::from_min_max(
+                egui::pos2(workspace.left(), divider.bottom()),
+                workspace.max,
+            );
             self.views(ui, views);
             self.inspector.show(ui, panel, &self.editor);
-            let response = ui.interact(divider.expand2(egui::vec2(0.0, 8.0)), ui.id().with("split-inspector-below"), egui::Sense::drag());
-            if let Some(pointer) = response.dragged().then(|| response.interact_pointer_pos()).flatten() {
-                self.inspector_share = ((workspace.bottom() - pointer.y) / workspace.height()).clamp(0.2, 0.8);
+            let response = ui.interact(
+                divider.expand2(egui::vec2(0.0, 8.0)),
+                ui.id().with("split-inspector-below"),
+                egui::Sense::drag(),
+            );
+            if let Some(pointer) = response
+                .dragged()
+                .then(|| response.interact_pointer_pos())
+                .flatten()
+            {
+                self.inspector_share =
+                    ((workspace.bottom() - pointer.y) / workspace.height()).clamp(0.2, 0.8);
             }
-            let colour = if response.dragged() { theme::accent() } else { theme::border() };
+            let colour = if response.dragged() {
+                theme::accent()
+            } else {
+                theme::border()
+            };
             ui.painter().rect_filled(divider, 0.0, colour);
         } else {
             // On a small screen the column may narrow further, and never takes more than
             // half of it.
-            let narrowest = if workspace.width() < 720.0 { 240.0 } else { 280.0 };
-            let inspector_width = self.inspector_width.clamp(narrowest, (workspace.width() - 240.0).max(narrowest)).min((workspace.width() * 0.5).max(narrowest));
+            let narrowest = if workspace.width() < 720.0 {
+                240.0
+            } else {
+                280.0
+            };
+            let inspector_width = self
+                .inspector_width
+                .clamp(narrowest, (workspace.width() - 240.0).max(narrowest))
+                .min((workspace.width() * 0.5).max(narrowest));
             let divider_x = workspace.right() - inspector_width - 1.0;
-            let views = egui::Rect::from_min_max(workspace.min, egui::pos2(divider_x, workspace.bottom()));
-            let divider = egui::Rect::from_min_max(egui::pos2(divider_x, workspace.top()), egui::pos2(divider_x + 1.0, workspace.bottom()));
-            let column = egui::Rect::from_min_max(egui::pos2(divider.right(), workspace.top()), workspace.max);
+            let views =
+                egui::Rect::from_min_max(workspace.min, egui::pos2(divider_x, workspace.bottom()));
+            let divider = egui::Rect::from_min_max(
+                egui::pos2(divider_x, workspace.top()),
+                egui::pos2(divider_x + 1.0, workspace.bottom()),
+            );
+            let column = egui::Rect::from_min_max(
+                egui::pos2(divider.right(), workspace.top()),
+                workspace.max,
+            );
             self.views(ui, views);
             self.inspector.show(ui, column, &self.editor);
-            let response = ui.interact(divider.expand2(egui::vec2(4.0, 0.0)), ui.id().with("split-inspector"), egui::Sense::drag());
+            let response = ui.interact(
+                divider.expand2(egui::vec2(4.0, 0.0)),
+                ui.id().with("split-inspector"),
+                egui::Sense::drag(),
+            );
             if response.hovered() || response.dragged() {
                 ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
             }
-            if let Some(pointer) = response.dragged().then(|| response.interact_pointer_pos()).flatten() {
+            if let Some(pointer) = response
+                .dragged()
+                .then(|| response.interact_pointer_pos())
+                .flatten()
+            {
                 self.inspector_width = workspace.right() - pointer.x - 1.0;
             }
-            let colour = if response.hovered() || response.dragged() { theme::accent() } else { theme::border() };
+            let colour = if response.hovered() || response.dragged() {
+                theme::accent()
+            } else {
+                theme::border()
+            };
             ui.painter().rect_filled(divider, 0.0, colour);
         }
 
@@ -1082,20 +1442,26 @@ impl App {
 
         let ctx = ui.ctx().clone();
         self.show_dialogs(&ctx);
-        if self.inspector.show_uv_window(&ctx,&self.editor) {self.window.borrow_mut().inspector_hidden=false;}
+        if self.inspector.show_uv_window(&ctx, &self.editor) {
+            self.window.borrow_mut().inspector_hidden = false;
+        }
         self.manual.show(&ctx);
         if let Some(request) = self.welcome.show(&ctx) {
             self.welcome_request(&ctx, request);
         }
         self.exports.show(&ctx, &self.editor, &self.live);
         self.builds.show(&ctx, &self.editor);
-        self.plugins.show(&ctx, &self.editor, self.inspector.plugin_cards());
+        self.plugins
+            .show(&ctx, &self.editor, self.inspector.plugin_cards());
         self.capture_script_snapshot(&ctx);
 
         // The game names the tags and the face flags, and its path is where a class's
         // model is looked for, so a change to either reaches the open map at once.
         if self.preferences.show(&ctx) {
-            preferences_page::apply_game(&mut self.editor.document.borrow_mut(), editor_core::games::current().as_ref());
+            preferences_page::apply_game(
+                &mut self.editor.document.borrow_mut(),
+                editor_core::games::current().as_ref(),
+            );
         }
         if self.inspector.corner_requested() {
             self.shapes.corner(&self.editor);
@@ -1118,14 +1484,19 @@ impl App {
 
     /// Starts a profiled frame, and turns the orbiting camera if one was asked for.
     fn profile_begin(&mut self, ctx: &egui::Context, frame_cpu: Option<f32>) {
-        let Some(profiler) = &mut self.profiler else { return };
+        let Some(profiler) = &mut self.profiler else {
+            return;
+        };
         profiler.begin(frame_cpu);
         if let Some(angle) = profiler.orbit_step() {
             if let Some(bounds) = self.editor.document.borrow().bounds() {
                 let mut camera = self.editor.camera.borrow_mut();
                 let centre = bounds.center();
-                let reach = geometry_math::vec::length(bounds.size()) / 2.0 / (camera.fov_degrees.to_radians() / 2.0).tan();
-                let from = geometry_math::vec::Vec3d::new(angle.cos(), angle.sin(), 0.35) * reach.max(64.0);
+                let reach = geometry_math::vec::length(bounds.size())
+                    / 2.0
+                    / (camera.fov_degrees.to_radians() / 2.0).tan();
+                let from = geometry_math::vec::Vec3d::new(angle.cos(), angle.sin(), 0.35)
+                    * reach.max(64.0);
                 camera.position = centre + from;
                 camera.look_along(-from);
             }
@@ -1157,10 +1528,13 @@ impl App {
                     }))
                 })
                 .collect();
-            let camera=*self.editor.camera.borrow();
+            let camera = *self.editor.camera.borrow();
             let evidence = serde_json::json!({"camera_position":[camera.position[0],camera.position[1],camera.position[2]],"map":doc.to_map_text(),"modified":doc.is_modified(),"shape_preview":doc.has_shape_preview(),"current_material":doc.current_material(),"imported_models":imported_models,"brushes":doc.brush_count(),"revision":doc.revision(),"selection":doc.selection_ids().len(),"tool":self.editor.tool.borrow().name(),"face_selection":doc.face_selection_count(),"simulation_preview":self.editor.filters.borrow().preview_motion,"pixels_per_point":ctx.pixels_per_point(),"screen_points":[ctx.content_rect().width(),ctx.content_rect().height()]});
-            match std::fs::write(&path, serde_json::to_vec_pretty(&evidence).expect("snapshot JSON")) {
-                Ok(()) => println!("script snapshot: {}",path.display()),
+            match std::fs::write(
+                &path,
+                serde_json::to_vec_pretty(&evidence).expect("snapshot JSON"),
+            ) {
+                Ok(()) => println!("script snapshot: {}", path.display()),
                 Err(error) => eprintln!("script snapshot: {error}"),
             }
         }
@@ -1173,27 +1547,49 @@ impl App {
         let title = tr("Welcome to Heron Brush");
         self.set_title(&ctx, title.into());
         ui.painter().rect_filled(window, 0.0, theme::bg());
-        let bar_height = if cfg!(target_arch = "wasm32") { 0.0 } else { theme::HEADER_HEIGHT };
+        let bar_height = if cfg!(target_arch = "wasm32") {
+            0.0
+        } else {
+            theme::HEADER_HEIGHT
+        };
         let bar = egui::Rect::from_min_size(window.min, egui::vec2(window.width(), bar_height));
         if bar_height > 0.0 {
             ui.painter().rect_filled(bar, 0.0, theme::base());
-            ui.painter().hline(bar.x_range(), bar.bottom() - 0.5, egui::Stroke::new(1.0, theme::border()));
+            ui.painter().hline(
+                bar.x_range(),
+                bar.bottom() - 0.5,
+                egui::Stroke::new(1.0, theme::border()),
+            );
             let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
             chrome::title_bar_drag(ui, bar, "welcome-title", maximized);
             // No logo here: the welcome screen's own column starts with a large one.
-            crate::theme::text(ui.painter(), bar.center(), egui::Align2::CENTER_CENTER, title, theme::body(), theme::dim());
+            crate::theme::text(
+                ui.painter(),
+                bar.center(),
+                egui::Align2::CENTER_CENTER,
+                title,
+                theme::body(),
+                theme::dim(),
+            );
             chrome::window_buttons(ui, bar, maximized);
         }
 
         let body = egui::Rect::from_min_max(egui::pos2(window.left(), bar.bottom()), window.max);
-        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(body).layout(egui::Layout::top_down(egui::Align::Min)));
+        let mut child = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(body)
+                .layout(egui::Layout::top_down(egui::Align::Min)),
+        );
         let request = self.welcome.show_in(&mut child);
         if let Some(request) = request {
             self.welcome_request(&ctx, request);
         }
         self.manual.show(&ctx);
         if self.preferences.show(&ctx) {
-            preferences_page::apply_game(&mut self.editor.document.borrow_mut(), editor_core::games::current().as_ref());
+            preferences_page::apply_game(
+                &mut self.editor.document.borrow_mut(),
+                editor_core::games::current().as_ref(),
+            );
         }
         file_dialog::show(&ctx);
     }
@@ -1201,7 +1597,9 @@ impl App {
     /// What later launches asked for: the window comes to the front, and a map they
     /// named opens as File > Open would open it, asking about unsaved changes first.
     fn instance_requests(&mut self, ctx: &egui::Context) {
-        let Some(instance) = &self.instance else { return };
+        let Some(instance) = &self.instance else {
+            return;
+        };
         while let Ok(request) = instance.inbox.try_recv() {
             ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
@@ -1249,7 +1647,10 @@ fn request_device(options: &mut eframe::egui_wgpu::WgpuConfiguration) {
 
 /// The editor, for eframe's app creator on Android and on the web.
 #[cfg(any(target_os = "android", target_arch = "wasm32"))]
-fn create_app(cc: &eframe::CreationContext<'_>, startup: Startup) -> Result<Box<dyn eframe::App>, Box<dyn std::error::Error + Send + Sync>> {
+fn create_app(
+    cc: &eframe::CreationContext<'_>,
+    startup: Startup,
+) -> Result<Box<dyn eframe::App>, Box<dyn std::error::Error + Send + Sync>> {
     Ok(Box::new(App::new(cc, startup)?))
 }
 
@@ -1270,17 +1671,24 @@ pub fn run_desktop() -> eframe::Result {
         }
         std::process::exit(code);
     }
-    let editor_core::cli::Command::Open(files) = command else { return Ok(()) };
+    let editor_core::cli::Command::Open(files) = command else {
+        return Ok(());
+    };
 
     // Hand the map to the editor already running. Not with
     // definitions or materials named, which are the new session's own, and not under a
     // developer's input script, which needs a window of its own.
-    let solo = new_instance || files.fgd.is_some() || files.materials.is_some() || std::env::var_os("HERON_BRUSH_SCRIPT").is_some();
+    let solo = new_instance
+        || files.fgd.is_some()
+        || files.materials.is_some()
+        || std::env::var_os("HERON_BRUSH_SCRIPT").is_some();
     let server = if solo {
         None
     } else {
         let request = match &files.map {
-            Some(map) => single_instance::Request::Open(std::path::absolute(map).unwrap_or_else(|_| map.clone())),
+            Some(map) => single_instance::Request::Open(
+                std::path::absolute(map).unwrap_or_else(|_| map.clone()),
+            ),
             None => single_instance::Request::Activate,
         };
         match single_instance::claim(&single_instance::Endpoint::current(), &request) {
@@ -1292,7 +1700,11 @@ pub fn run_desktop() -> eframe::Result {
             }
         }
     };
-    let startup = Startup { map: files.map, fgd: files.fgd, materials: files.materials };
+    let startup = Startup {
+        map: files.map,
+        fgd: files.fgd,
+        materials: files.materials,
+    };
 
     let mut viewport = egui::ViewportBuilder::default()
         .with_title("Heron Brush")
@@ -1304,7 +1716,9 @@ pub fn run_desktop() -> eframe::Result {
         .with_min_inner_size([640.0, 400.0])
         // The panels' background is translucent at the "Panel opacity" preference.
         .with_transparent(true);
-    if let Ok(icon) = eframe::icon_data::from_png_bytes(include_bytes!("../assets/app-icons/heron-brush.png")) {
+    if let Ok(icon) =
+        eframe::icon_data::from_png_bytes(include_bytes!("../assets/app-icons/heron-brush.png"))
+    {
         viewport = viewport.with_icon(icon);
     }
     viewport = if cfg!(target_os = "macos") {
@@ -1326,7 +1740,11 @@ pub fn run_desktop() -> eframe::Result {
     #[cfg(not(feature = "wgpu"))]
     let renderer = eframe::Renderer::Glow;
     #[cfg_attr(not(feature = "wgpu"), allow(unused_mut))]
-    let mut options = eframe::NativeOptions { renderer, viewport, ..Default::default() };
+    let mut options = eframe::NativeOptions {
+        renderer,
+        viewport,
+        ..Default::default()
+    };
     #[cfg(feature = "wgpu")]
     request_device(&mut options.wgpu_options);
     eframe::run_native(

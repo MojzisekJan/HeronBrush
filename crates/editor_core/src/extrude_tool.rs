@@ -138,17 +138,23 @@ pub fn find_closest_horizon_edge(brush: &Brush, ray: &Ray3d) -> Option<HorizonEd
         let left_geometry_face = geometry.half_edge(edge.first).face;
         let right_geometry_face = geometry.half_edge(edge.second).face;
 
-        let left_dot = vec::dot(geometry.face_plane(left_geometry_face).normal, ray.direction);
-        let right_dot = vec::dot(geometry.face_plane(right_geometry_face).normal, ray.direction);
+        let left_dot = vec::dot(
+            geometry.face_plane(left_geometry_face).normal,
+            ray.direction,
+        );
+        let right_dot = vec::dot(
+            geometry.face_plane(right_geometry_face).normal,
+            ray.direction,
+        );
         if (left_dot < 0.0) == (right_dot < 0.0) {
             // Either both faces are visible or neither is.
             continue;
         }
 
-        let from = geometry.vertex(geometry.half_edge(edge.first).origin).position;
-        let to = geometry
-            .vertex(geometry.destination(edge.first))
+        let from = geometry
+            .vertex(geometry.half_edge(edge.first).origin)
             .position;
+        let to = geometry.vertex(geometry.destination(edge.first)).position;
         let segment = geometry_math::segment::Segment3d::new(from, to);
         let distance = geometry_math::distance::distance_ray_segment(ray, &segment);
         if distance.parallel {
@@ -297,7 +303,8 @@ pub fn find_horizon_corner(
 /// movement across the view counts and the picker is a plain plane. What each of the two
 /// faces makes of that movement is the part of it along that face's own normal.
 pub fn corner_picker(corner: &HorizonCorner, view_direction: Vec3d, press: &Ray3d) -> HandlePicker {
-    let plane = geometry_math::plane::Plane3d::from_anchor_and_normal(corner.handle, view_direction);
+    let plane =
+        geometry_math::plane::Plane3d::from_anchor_and_normal(corner.handle, view_direction);
     let offset = geometry_math::intersection::intersect_ray_plane(press, &plane)
         .map(|distance| corner.handle - press.point_at_distance(distance))
         .unwrap_or(Vec3d::zero());
@@ -452,8 +459,7 @@ mod tests {
         let initial = Vec3d::new(0.0, 0.0, 32.0);
         let proposed = Vec3d::new(0.0, 0.0, 45.0);
 
-        let snapped =
-            snap_handle_position(&grid(false), &brush, face, normal, initial, proposed);
+        let snapped = snap_handle_position(&grid(false), &brush, face, normal, initial, proposed);
         geometry_math::assert_approx_eq!(snapped, proposed, 1e-9);
     }
 
@@ -465,8 +471,7 @@ mod tests {
 
         let initial = Vec3d::new(0.0, 0.0, 32.0);
         let proposed = initial + normal * (size * 1.3);
-        let snapped =
-            snap_handle_position(&grid(true), &brush, face, normal, initial, proposed);
+        let snapped = snap_handle_position(&grid(true), &brush, face, normal, initial, proposed);
 
         // A box's edges run along the axes, so the face lands a whole grid step away.
         geometry_math::assert_approx_eq!(snapped, initial + normal * size, 1e-6);
@@ -478,8 +483,7 @@ mod tests {
         let (face, normal) = top_of(&brush);
         let initial = Vec3d::new(0.0, 0.0, 32.0);
 
-        let snapped =
-            snap_handle_position(&grid(true), &brush, face, normal, initial, initial);
+        let snapped = snap_handle_position(&grid(true), &brush, face, normal, initial, initial);
         geometry_math::assert_approx_eq!(snapped, initial, 1e-9);
     }
 
@@ -571,21 +575,15 @@ mod tests {
     fn the_handle_only_moves_along_the_face_it_drags() {
         let brush = cube();
         let looking = Vec3d::new(0.0, -1.0, 0.0);
-        let edge = find_closest_horizon_edge(
-            &brush,
-            &ray(Vec3d::new(0.0, 128.0, 32.0), looking),
-        )
-        .expect("the cube has a silhouette");
+        let edge = find_closest_horizon_edge(&brush, &ray(Vec3d::new(0.0, 128.0, 32.0), looking))
+            .expect("the cube has a silhouette");
 
         let press = ray(Vec3d::new(0.0, 128.0, 32.0), looking);
         let picker = horizon_picker(&edge, looking, &press);
         // The pointer has moved sideways as well as along the normal; only the latter
         // counts, so the handle stays on the line through it.
         let moved = picker
-            .pick(&ray(
-                edge.handle + Vec3d::new(40.0, 128.0, 16.0),
-                looking,
-            ))
+            .pick(&ray(edge.handle + Vec3d::new(40.0, 128.0, 16.0), looking))
             .expect("the ray meets the plane");
         let along = moved - edge.handle;
         let sideways = along - edge.normal * vec::dot(along, edge.normal);
@@ -600,8 +598,7 @@ mod tests {
 
         let initial = Vec3d::new(0.0, 0.0, 32.0);
         let proposed = initial - normal * (size * 1.3);
-        let snapped =
-            snap_handle_position(&grid(true), &brush, face, normal, initial, proposed);
+        let snapped = snap_handle_position(&grid(true), &brush, face, normal, initial, proposed);
 
         geometry_math::assert_approx_eq!(snapped, initial - normal * size, 1e-6);
     }

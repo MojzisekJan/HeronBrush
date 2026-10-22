@@ -1,7 +1,7 @@
 use super::*;
 use crate::{document::Document, world::WorldBounds};
-use std::{net::TcpListener, rc::Rc, time::Duration};
 use geometry_math::vec::Vec3d;
+use std::{net::TcpListener, rc::Rc, time::Duration};
 
 fn pair() -> (Session, Session) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -23,9 +23,12 @@ fn wired(session: Rc<Session>, world: &World) -> Document {
 }
 
 fn add(doc: &mut Document) {
-    let brush =
-        map_model::shapes::create_cuboid(&doc.world_bounds(), &Bbox3d::from_scalars(-8., 8.), "stone")
-            .unwrap();
+    let brush = map_model::shapes::create_cuboid(
+        &doc.world_bounds(),
+        &Bbox3d::from_scalars(-8., 8.),
+        "stone",
+    )
+    .unwrap();
     doc.add_brushes(vec![brush]);
 }
 
@@ -36,7 +39,11 @@ fn pump(peers: &mut [(&Session, &mut Document)]) {
                 match event {
                     SessionEvent::ApplyEdit(edit) => doc.apply_remote(&edit),
                     SessionEvent::AdoptWorld(world) => doc.adopt_world(world),
-                    SessionEvent::PeerCamera { peer, position, direction } => doc.set_peer_camera(peer, Some((position, direction))),
+                    SessionEvent::PeerCamera {
+                        peer,
+                        position,
+                        direction,
+                    } => doc.set_peer_camera(peer, Some((position, direction))),
                     SessionEvent::PeerName { peer, name } => doc.set_peer_name(peer, name),
                     SessionEvent::PeerLeft { peer, .. } => doc.remove_peer(peer),
                     SessionEvent::ConnectionLost => doc.clear_peers(),
@@ -174,7 +181,6 @@ fn edits_without_acknowledgement_survive_disconnect_and_replay_once() {
     assert_eq!(map_model::node::brushes_with_ids(h.tree_world()).len(), 1);
 }
 
-
 #[test]
 fn stationary_cameras_reach_late_joiners_and_disappear_on_departure() {
     let (host, first) = pair();
@@ -190,7 +196,10 @@ fn stationary_cameras_reach_late_joiners_and_disappear_on_departure() {
     pump(&mut [(&host, &mut h), (&first, &mut a)]);
     assert_eq!(h.peer_cameras().get(&1), Some(&(ap, direction)));
     assert_eq!(a.peer_cameras().get(&0), Some(&(hp, direction)));
-    assert!(a.peer_cameras().get(&1).is_none(), "own camera is not echoed");
+    assert!(
+        a.peer_cameras().get(&1).is_none(),
+        "own camera is not echoed"
+    );
     let (joined, second) = pair();
     let second_id = host.add_peer(joined);
     let mut b = Document::new(WorldBounds::default());
@@ -203,7 +212,10 @@ fn stationary_cameras_reach_late_joiners_and_disappear_on_departure() {
     assert_eq!(h.to_map_text(), original, "presence is not map content");
     first.send_camera(ap + direction * 32., Vec3d::new(1., 0., 0.));
     pump(&mut [(&host, &mut h), (&first, &mut a), (&second, &mut b)]);
-    assert_eq!(b.peer_cameras().get(&1), Some(&(ap + direction * 32., Vec3d::new(1., 0., 0.))));
+    assert_eq!(
+        b.peer_cameras().get(&1),
+        Some(&(ap + direction * 32., Vec3d::new(1., 0., 0.)))
+    );
     drop(first);
     pump(&mut [(&host, &mut h), (&second, &mut b)]);
     assert!(!b.peer_cameras().contains_key(&1));

@@ -1,11 +1,11 @@
 //! Tests for cutting brushes against each other.
 
-use map_model::brush::{Brush, ClipOutcome};
-use map_model::csg;
-use map_model::shapes;
 use geometry_math::bbox::Bbox3d;
 use geometry_math::plane::Plane3d;
 use geometry_math::vec::Vec3d;
+use map_model::brush::{Brush, ClipOutcome};
+use map_model::csg;
+use map_model::shapes;
 
 fn world_bounds() -> Bbox3d {
     Bbox3d::from_scalars(-16384.0, 16384.0)
@@ -27,7 +27,10 @@ fn total_volume(brushes: &[Brush]) -> f64 {
 
 #[test]
 fn clipping_a_box_in_half_keeps_the_half_behind_the_plane() {
-    let cube = boxed(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0));
+    let cube = boxed(
+        Vec3d::new(-32.0, -32.0, -32.0),
+        Vec3d::new(32.0, 32.0, 32.0),
+    );
     let plane = Plane3d::from_anchor_and_normal(Vec3d::zero(), Vec3d::new(0.0, 0.0, 1.0));
 
     let ClipOutcome::Clipped(half) = cube.clip(&plane) else {
@@ -40,24 +43,26 @@ fn clipping_a_box_in_half_keeps_the_half_behind_the_plane() {
 
 #[test]
 fn a_plane_that_misses_leaves_the_brush_unchanged() {
-    let cube = boxed(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0));
-
-    let above = Plane3d::from_anchor_and_normal(
-        Vec3d::new(0.0, 0.0, 100.0),
-        Vec3d::new(0.0, 0.0, 1.0),
+    let cube = boxed(
+        Vec3d::new(-32.0, -32.0, -32.0),
+        Vec3d::new(32.0, 32.0, 32.0),
     );
+
+    let above =
+        Plane3d::from_anchor_and_normal(Vec3d::new(0.0, 0.0, 100.0), Vec3d::new(0.0, 0.0, 1.0));
     assert!(matches!(cube.clip(&above), ClipOutcome::Unchanged));
 
-    let below = Plane3d::from_anchor_and_normal(
-        Vec3d::new(0.0, 0.0, -100.0),
-        Vec3d::new(0.0, 0.0, 1.0),
-    );
+    let below =
+        Plane3d::from_anchor_and_normal(Vec3d::new(0.0, 0.0, -100.0), Vec3d::new(0.0, 0.0, 1.0));
     assert!(matches!(cube.clip(&below), ClipOutcome::Empty));
 }
 
 #[test]
 fn a_clipped_brush_keeps_its_materials() {
-    let cube = boxed(Vec3d::new(-32.0, -32.0, -32.0), Vec3d::new(32.0, 32.0, 32.0));
+    let cube = boxed(
+        Vec3d::new(-32.0, -32.0, -32.0),
+        Vec3d::new(32.0, 32.0, 32.0),
+    );
     let plane = Plane3d::from_anchor_and_normal(Vec3d::zero(), Vec3d::new(0.0, 0.0, 1.0));
 
     let ClipOutcome::Clipped(half) = cube.clip(&plane) else {
@@ -97,14 +102,8 @@ fn subtracting_a_brush_that_swallows_the_target_leaves_nothing() {
 #[test]
 fn cutting_a_notch_out_of_a_slab() {
     // A wall with a doorway cut out of one edge: the classic use.
-    let wall = boxed(
-        Vec3d::new(-64.0, -8.0, 0.0),
-        Vec3d::new(64.0, 8.0, 64.0),
-    );
-    let doorway = boxed(
-        Vec3d::new(-16.0, -16.0, 0.0),
-        Vec3d::new(16.0, 16.0, 40.0),
-    );
+    let wall = boxed(Vec3d::new(-64.0, -8.0, 0.0), Vec3d::new(64.0, 8.0, 64.0));
+    let doorway = boxed(Vec3d::new(-16.0, -16.0, 0.0), Vec3d::new(16.0, 16.0, 40.0));
 
     let pieces = csg::subtract(&wall, &doorway);
     assert!(!pieces.is_empty());
@@ -123,18 +122,17 @@ fn cutting_a_notch_out_of_a_slab() {
 
 #[test]
 fn a_hole_through_the_middle_leaves_pieces_all_around_it() {
-    let slab = boxed(
-        Vec3d::new(-64.0, -64.0, 0.0),
-        Vec3d::new(64.0, 64.0, 16.0),
-    );
-    let hole = boxed(
-        Vec3d::new(-16.0, -16.0, -8.0),
-        Vec3d::new(16.0, 16.0, 24.0),
-    );
+    let slab = boxed(Vec3d::new(-64.0, -64.0, 0.0), Vec3d::new(64.0, 64.0, 16.0));
+    let hole = boxed(Vec3d::new(-16.0, -16.0, -8.0), Vec3d::new(16.0, 16.0, 24.0));
 
     let pieces = csg::subtract(&slab, &hole);
     // Four pieces around the hole, since the hole goes right through.
-    assert_eq!(pieces.len(), 4, "{:?}", pieces.iter().map(|p| p.bounds()).collect::<Vec<_>>());
+    assert_eq!(
+        pieces.len(),
+        4,
+        "{:?}",
+        pieces.iter().map(|p| p.bounds()).collect::<Vec<_>>()
+    );
 
     let expected = slab.bounds().volume() - 32.0 * 32.0 * 16.0;
     assert!((total_volume(&pieces) - expected).abs() < 1.0);
@@ -142,14 +140,8 @@ fn a_hole_through_the_middle_leaves_pieces_all_around_it() {
 
 #[test]
 fn the_pieces_of_a_subtraction_do_not_overlap() {
-    let slab = boxed(
-        Vec3d::new(-64.0, -64.0, 0.0),
-        Vec3d::new(64.0, 64.0, 16.0),
-    );
-    let hole = boxed(
-        Vec3d::new(-16.0, -16.0, -8.0),
-        Vec3d::new(16.0, 16.0, 24.0),
-    );
+    let slab = boxed(Vec3d::new(-64.0, -64.0, 0.0), Vec3d::new(64.0, 64.0, 16.0));
+    let hole = boxed(Vec3d::new(-16.0, -16.0, -8.0), Vec3d::new(16.0, 16.0, 24.0));
     let pieces = csg::subtract(&slab, &hole);
 
     for (i, a) in pieces.iter().enumerate() {
@@ -166,14 +158,8 @@ fn the_pieces_of_a_subtraction_do_not_overlap() {
 
 #[test]
 fn nothing_of_the_tool_survives_in_the_pieces() {
-    let slab = boxed(
-        Vec3d::new(-64.0, -64.0, 0.0),
-        Vec3d::new(64.0, 64.0, 16.0),
-    );
-    let hole = boxed(
-        Vec3d::new(-16.0, -16.0, -8.0),
-        Vec3d::new(16.0, 16.0, 24.0),
-    );
+    let slab = boxed(Vec3d::new(-64.0, -64.0, 0.0), Vec3d::new(64.0, 64.0, 16.0));
+    let hole = boxed(Vec3d::new(-16.0, -16.0, -8.0), Vec3d::new(16.0, 16.0, 24.0));
     let pieces = csg::subtract(&slab, &hole);
 
     // The middle of the hole is in none of them.
@@ -188,12 +174,12 @@ fn nothing_of_the_tool_survives_in_the_pieces() {
 
 #[test]
 fn subtracting_several_tools_in_turn() {
-    let slab = boxed(
-        Vec3d::new(-64.0, -64.0, 0.0),
-        Vec3d::new(64.0, 64.0, 16.0),
-    );
+    let slab = boxed(Vec3d::new(-64.0, -64.0, 0.0), Vec3d::new(64.0, 64.0, 16.0));
     let holes = [
-        boxed(Vec3d::new(-48.0, -16.0, -8.0), Vec3d::new(-16.0, 16.0, 24.0)),
+        boxed(
+            Vec3d::new(-48.0, -16.0, -8.0),
+            Vec3d::new(-16.0, 16.0, 24.0),
+        ),
         boxed(Vec3d::new(16.0, -16.0, -8.0), Vec3d::new(48.0, 16.0, 24.0)),
     ];
 
@@ -251,10 +237,7 @@ fn intersecting_works_on_shapes_that_are_not_boxes() {
         "stone",
     )
     .expect("a cylinder");
-    let slab = boxed(
-        Vec3d::new(-64.0, -64.0, 16.0),
-        Vec3d::new(64.0, 64.0, 32.0),
-    );
+    let slab = boxed(Vec3d::new(-64.0, -64.0, 16.0), Vec3d::new(64.0, 64.0, 32.0));
 
     let disc = csg::intersect(&cylinder, &slab).expect("they overlap");
     disc.geometry().check_invariant().expect("a valid mesh");

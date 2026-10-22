@@ -22,8 +22,12 @@ pub struct RingDrag {
 }
 #[derive(Debug, Clone, Copy)]
 enum RingMotion {
-    Plane { reference: Vec3d },
-    Tangent { pixels_per_radian: geometry_math::vec::Vec2d },
+    Plane {
+        reference: Vec3d,
+    },
+    Tangent {
+        pixels_per_radian: geometry_math::vec::Vec2d,
+    },
 }
 impl RingDrag {
     fn screen(
@@ -139,7 +143,10 @@ impl RingDrag {
         Some(Self {
             axis,
             center,
-            reference: match mode { RingMotion::Plane { reference } => reference, _ => to_unit(caught - center)? },
+            reference: match mode {
+                RingMotion::Plane { reference } => reference,
+                _ => to_unit(caught - center)?,
+            },
             camera: *camera,
             height,
             start: pointer,
@@ -182,7 +189,10 @@ mod ring_tests {
             for side in [-1.0, 1.0] {
                 let mut axis = Vec3d::zero();
                 axis[index] = 1.0;
-                let mut camera = Camera3d { position: axis * 500.0 * side, ..Default::default() };
+                let mut camera = Camera3d {
+                    position: axis * 500.0 * side,
+                    ..Default::default()
+                };
                 camera.look_along(-camera.position);
                 let mut from = Vec3d::zero();
                 from[(index + 1) % 3] = 48.0;
@@ -212,7 +222,10 @@ mod ring_tests {
     }
     #[test]
     fn edge_on_ring_is_pickable_and_moves_smoothly_in_both_directions() {
-        let mut camera = Camera3d { position: Vec3d::new(0.0, -500.0, 0.0), ..Default::default() };
+        let mut camera = Camera3d {
+            position: Vec3d::new(0.0, -500.0, 0.0),
+            ..Default::default()
+        };
         camera.look_along(-camera.position);
         let start = Vec3d::new(32.0, -(64.0_f64.powi(2) - 32.0_f64.powi(2)).sqrt(), 0.0);
         let press = ray(&camera, start);
@@ -232,7 +245,10 @@ mod ring_tests {
     #[test]
     fn screen_tolerance_is_constant_with_distance_and_rejects_empty_space() {
         for distance in [256.0, 1024.0, 8192.0] {
-            let mut camera = Camera3d { position: Vec3d::new(0.0, 0.0, distance), ..Default::default() };
+            let mut camera = Camera3d {
+                position: Vec3d::new(0.0, 0.0, distance),
+                ..Default::default()
+            };
             camera.look_along(-camera.position);
             let radius = 64.0 * camera.world_units_per_pixel(Vec3d::zero(), 800.0);
             let point = Vec3d::new(0.8, 0.6, 0.0) * radius;

@@ -191,8 +191,7 @@ fn tinted(color: [f32; 3], tint: Option<[f32; 3]>) -> [f32; 3] {
     };
     let mut result = [0.0f32; 3];
     for channel in 0..3 {
-        result[channel] =
-            color[channel] * (1.0 - SELECTION_TINT) + tint[channel] * SELECTION_TINT;
+        result[channel] = color[channel] * (1.0 - SELECTION_TINT) + tint[channel] * SELECTION_TINT;
     }
     result
 }
@@ -467,7 +466,6 @@ impl Renderer {
     /// On context loss, discard the renderer without GL calls and recreate it, then
     /// re-upload CPU-side scene data into the new context.
     pub fn new(gl: glow::Context, settings: RenderSettings) -> Result<Self, String> {
-
         unsafe {
             // Which GL the driver actually gave, since what the shaders may use depends on
             // it and a mismatch shows up as a blank view rather than as an error.
@@ -482,64 +480,36 @@ impl Renderer {
                 shaders::SCENE_VERTEX,
                 &shaders::normal_mapping(shaders::SCENE_FRAGMENT),
             )?;
-            let depth = Program::new(
+            let depth = Program::new(&gl, shaders::DEPTH_VERTEX, shaders::DEPTH_FRAGMENT)?;
+            let material_depth = Program::new(
                 &gl,
-                shaders::DEPTH_VERTEX,
-                shaders::DEPTH_FRAGMENT,
+                shaders::MATERIAL_DEPTH_VERTEX,
+                shaders::MATERIAL_DEPTH_FRAGMENT,
             )?;
-            let material_depth = Program::new(&gl, shaders::MATERIAL_DEPTH_VERTEX, shaders::MATERIAL_DEPTH_FRAGMENT)?;
             let normals = Program::new(
                 &gl,
                 shaders::NORMAL_VERTEX,
                 &shaders::normal_mapping(shaders::NORMAL_FRAGMENT),
             )?;
-            let ssao = Program::new(
-                &gl,
-                shaders::FULLSCREEN_VERTEX,
-                shaders::SSAO_FRAGMENT,
-            )?;
-            let blur = Program::new(
-                &gl,
-                shaders::FULLSCREEN_VERTEX,
-                shaders::BLUR_FRAGMENT,
-            )?;
-            let bright = Program::new(
-                &gl,
-                shaders::FULLSCREEN_VERTEX,
-                shaders::BRIGHT_FRAGMENT,
-            )?;
-            let gaussian = Program::new(
-                &gl,
-                shaders::FULLSCREEN_VERTEX,
-                shaders::GAUSSIAN_FRAGMENT,
-            )?;
-            let composite = Program::new(
-                &gl,
-                shaders::FULLSCREEN_VERTEX,
-                shaders::COMPOSITE_FRAGMENT,
-            )?;
+            let ssao = Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::SSAO_FRAGMENT)?;
+            let blur = Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::BLUR_FRAGMENT)?;
+            let bright = Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::BRIGHT_FRAGMENT)?;
+            let gaussian =
+                Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::GAUSSIAN_FRAGMENT)?;
+            let composite =
+                Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::COMPOSITE_FRAGMENT)?;
             let accumulate = Program::new(
                 &gl,
                 shaders::FULLSCREEN_VERTEX,
                 shaders::ACCUMULATE_FRAGMENT,
             )?;
-            let ssr = Program::new(
-                &gl,
-                shaders::FULLSCREEN_VERTEX,
-                shaders::SSR_FRAGMENT,
-            )?;
-            let fxaa = Program::new(
-                &gl,
-                shaders::FULLSCREEN_VERTEX,
-                shaders::FXAA_FRAGMENT,
-            )?;
-            let sprite_program = Program::new(
-                &gl,
-                shaders::SPRITE_VERTEX,
-                shaders::SPRITE_FRAGMENT,
-            )?;
+            let ssr = Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::SSR_FRAGMENT)?;
+            let fxaa = Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::FXAA_FRAGMENT)?;
+            let sprite_program =
+                Program::new(&gl, shaders::SPRITE_VERTEX, shaders::SPRITE_FRAGMENT)?;
 
-            let sky_background = Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::SKY_FRAGMENT)?;
+            let sky_background =
+                Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::SKY_FRAGMENT)?;
             let geometry = Mesh::new(&gl)?;
             let wire = Mesh::new(&gl)?;
             let lines = Mesh::new(&gl)?;
@@ -620,7 +590,13 @@ impl Renderer {
                     *slot = true;
                 }
             }
-            self.make_pending_textures(used.iter().enumerate().filter(|(_, u)| **u).map(|(i, _)| i).collect::<Vec<_>>());
+            self.make_pending_textures(
+                used.iter()
+                    .enumerate()
+                    .filter(|(_, u)| **u)
+                    .map(|(i, _)| i)
+                    .collect::<Vec<_>>(),
+            );
         }
         let mut data: Vec<f32> = Vec::with_capacity(triangles.len() * 3 * FLOATS_PER_VERTEX);
         let mut bounds: Option<Bbox3d> = None;
@@ -653,7 +629,13 @@ impl Renderer {
         // to the end, so everything solid is already in the depth buffer to be seen
         // through when they are drawn.
         let mut order: Vec<usize> = (0..triangles.len()).collect();
-        order.sort_by_key(|index| (blended(&triangles[*index]), triangles[*index].material, triangles[*index].surface_material));
+        order.sort_by_key(|index| {
+            (
+                blended(&triangles[*index]),
+                triangles[*index].material,
+                triangles[*index].surface_material,
+            )
+        });
 
         self.batches.clear();
         let mut batch: Option<Batch> = None;
@@ -677,7 +659,11 @@ impl Renderer {
 
             let this_alpha = batch_alpha(triangle);
             match &mut batch {
-                Some(open) if open.material == triangle.material && open.alpha == this_alpha && open.surface_material == triangle.surface_material => {
+                Some(open)
+                    if open.material == triangle.material
+                        && open.alpha == this_alpha
+                        && open.surface_material == triangle.surface_material =>
+                {
                     open.count += 3
                 }
                 _ => {
@@ -694,9 +680,7 @@ impl Renderer {
                 }
             }
 
-            for (index, (corner, uv)) in
-                triangle.positions.iter().zip(triangle.uv).enumerate()
-            {
+            for (index, (corner, uv)) in triangle.positions.iter().zip(triangle.uv).enumerate() {
                 bounds = Some(match bounds {
                     Some(bounds) => bounds.merged_with_point(*corner),
                     None => Bbox3d::new(*corner, *corner),
@@ -710,9 +694,16 @@ impl Renderer {
                     None => color,
                 };
                 data.extend([corner.x() as f32, corner.y() as f32, corner.z() as f32]);
-                let normal = triangle.corner_normals.map_or(triangle.normal, |n| n[index]);
+                let normal = triangle
+                    .corner_normals
+                    .map_or(triangle.normal, |n| n[index]);
                 data.extend([normal.x() as f32, normal.y() as f32, normal.z() as f32]);
-                data.extend([corner_color[0], corner_color[1], corner_color[2], triangle.alpha]);
+                data.extend([
+                    corner_color[0],
+                    corner_color[1],
+                    corner_color[2],
+                    triangle.alpha,
+                ]);
                 data.extend([uv.x(), uv.y()]);
             }
         }
@@ -726,7 +717,9 @@ impl Renderer {
             // Each triangle's three sides as lines: the corners `ab`, `bc` and `ca`.
             let mut lines: Vec<f32> = Vec::with_capacity(data.len() * 2);
             for triangle in data.chunks_exact(3 * FLOATS_PER_VERTEX) {
-                let corner = |index: usize| &triangle[index * FLOATS_PER_VERTEX..(index + 1) * FLOATS_PER_VERTEX];
+                let corner = |index: usize| {
+                    &triangle[index * FLOATS_PER_VERTEX..(index + 1) * FLOATS_PER_VERTEX]
+                };
                 for (from, to) in [(0, 1), (1, 2), (2, 0)] {
                     lines.extend_from_slice(corner(from));
                     lines.extend_from_slice(corner(to));
@@ -747,17 +740,28 @@ impl Renderer {
                     self.gl.delete_texture(texture);
                 }
             }
-            for (texture,_) in self.normal_textures.drain(..).flatten() { self.gl.delete_texture(texture); }
-            for (orm,emissive) in self.pbr_textures.drain(..).flatten() {self.gl.delete_texture(orm);self.gl.delete_texture(emissive);}
+            for (texture, _) in self.normal_textures.drain(..).flatten() {
+                self.gl.delete_texture(texture);
+            }
+            for (orm, emissive) in self.pbr_textures.drain(..).flatten() {
+                self.gl.delete_texture(orm);
+                self.gl.delete_texture(emissive);
+            }
         }
-        self.material_sizes = materials.iter().map(|m| (m.width as f32, m.height as f32)).collect();
+        self.material_sizes = materials
+            .iter()
+            .map(|m| (m.width as f32, m.height as f32))
+            .collect();
         self.material_alpha = materials.iter().map(|m| m.alpha()).collect();
         self.normal_textures = vec![None; materials.len()];
         self.pbr_textures = vec![None; materials.len()];
-        self.model_pbrs = materials.iter().map(|m|m.model_pbr.clone()).collect();
+        self.model_pbrs = materials.iter().map(|m| m.model_pbr.clone()).collect();
         // Every slot holds something from the start, or a material after a missing one
         // would be drawn with the wrong texture.
-        self.material_textures = self.white.map(|white| vec![white; materials.len()]).unwrap_or_default();
+        self.material_textures = self
+            .white
+            .map(|white| vec![white; materials.len()])
+            .unwrap_or_default();
         self.pending_materials = materials.iter().cloned().map(Some).collect();
     }
 
@@ -765,21 +769,41 @@ impl Renderer {
     /// decoding their images (on this thread: the GL context is here).
     fn make_pending_textures(&mut self, used: impl IntoIterator<Item = usize>) {
         for index in used {
-            let Some(material) = self.pending_materials.get_mut(index).and_then(Option::take) else { continue };
+            let Some(material) = self.pending_materials.get_mut(index).and_then(Option::take)
+            else {
+                continue;
+            };
             unsafe {
                 let normal = material.normal_map.as_ref().and_then(|map| {
                     let pixels = map.pixels()?;
-                    make_rgba_texture(&self.gl, map.width, map.height, &pixels[..(map.width * map.height * 4) as usize]).ok().map(|texture| (texture, map.flip_y))
+                    make_rgba_texture(
+                        &self.gl,
+                        map.width,
+                        map.height,
+                        &pixels[..(map.width * map.height * 4) as usize],
+                    )
+                    .ok()
+                    .map(|texture| (texture, map.flip_y))
                 });
                 self.normal_textures[index] = normal;
-                if let Some(pbr)=&material.model_pbr {
-                    let orm=pbr.preview_orm();
-                    let white=map_model::entity_model::Skin {width:1,height:1,pixels:vec![255;4]};
-                    let emission=pbr.emissive.as_deref().unwrap_or(&white);
-                    if let Ok(orm)=make_rgba_texture(&self.gl,orm.width,orm.height,&orm.pixels) {
-                        match make_rgba_texture(&self.gl,emission.width,emission.height,&emission.pixels) {
-                            Ok(emission)=>self.pbr_textures[index]=Some((orm,emission)),
-                            Err(_)=>self.gl.delete_texture(orm),
+                if let Some(pbr) = &material.model_pbr {
+                    let orm = pbr.preview_orm();
+                    let white = map_model::entity_model::Skin {
+                        width: 1,
+                        height: 1,
+                        pixels: vec![255; 4],
+                    };
+                    let emission = pbr.emissive.as_deref().unwrap_or(&white);
+                    if let Ok(orm) = make_rgba_texture(&self.gl, orm.width, orm.height, &orm.pixels)
+                    {
+                        match make_rgba_texture(
+                            &self.gl,
+                            emission.width,
+                            emission.height,
+                            &emission.pixels,
+                        ) {
+                            Ok(emission) => self.pbr_textures[index] = Some((orm, emission)),
+                            Err(_) => self.gl.delete_texture(orm),
                         }
                     }
                 }
@@ -859,14 +883,20 @@ impl Renderer {
         let guide_data = to_vertices(guides);
         self.handles
             .upload(&self.gl, &handle_data, glow::DYNAMIC_DRAW);
-        self.guides.upload(&self.gl, &guide_data, glow::DYNAMIC_DRAW);
+        self.guides
+            .upload(&self.gl, &guide_data, glow::DYNAMIC_DRAW);
     }
 
     /// Replaces the point-entity sprites the view draws. Camera-independent, so this is
     /// only called when the map changes; the billboard is built from the camera each
     /// frame in `Self::render_sprites`.
     pub fn upload_sprites(&mut self, sprites: Vec<SpriteInstance>) {
-        self.make_pending_textures(sprites.iter().map(|sprite| sprite.material).collect::<Vec<_>>());
+        self.make_pending_textures(
+            sprites
+                .iter()
+                .map(|sprite| sprite.material)
+                .collect::<Vec<_>>(),
+        );
         self.sprite_instances = sprites;
     }
 
@@ -938,9 +968,15 @@ impl Renderer {
                         point.x() as f32,
                         point.y() as f32,
                         point.z() as f32,
-                        0.0, 0.0, 0.0, // normal, unused
-                        0.0, 0.0, 0.0, 0.0, // colour, unused
-                        u, v,
+                        0.0,
+                        0.0,
+                        0.0, // normal, unused
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0, // colour, unused
+                        u,
+                        v,
                     ]);
                 };
                 vertex(bottom_left, 0.0, 1.0);
@@ -951,8 +987,7 @@ impl Renderer {
                 vertex(top_left, 0.0, 0.0);
             }
 
-            self.sprite_mesh
-                .upload(&self.gl, &data, glow::DYNAMIC_DRAW);
+            self.sprite_mesh.upload(&self.gl, &data, glow::DYNAMIC_DRAW);
             unsafe {
                 self.sprite_mesh.draw(&self.gl, glow::TRIANGLES);
             }
@@ -1002,20 +1037,32 @@ impl Renderer {
         let height = height.max(1);
         self.ensure_axis_colors();
         unsafe {
-            let target = self.gl.get_parameter_framebuffer(glow::DRAW_FRAMEBUFFER_BINDING);
+            let target = self
+                .gl
+                .get_parameter_framebuffer(glow::DRAW_FRAMEBUFFER_BINDING);
             self.gl.viewport(0, 0, width, height);
             let [r, g, b] = self.settings.background_color;
             self.gl.clear_color(r, g, b, 1.0);
             self.gl.depth_mask(true);
-            self.gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+            self.gl
+                .clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
             self.gl.disable(glow::DEPTH_TEST);
             self.gl.disable(glow::CULL_FACE);
             self.gl.disable(glow::BLEND);
             self.gl.use_program(Some(self.scene.program));
-            self.scene.set_matrix(&self.gl, "view_projection", &(camera.projection_matrix(width, height) * camera.view_matrix()));
+            self.scene.set_matrix(
+                &self.gl,
+                "view_projection",
+                &(camera.projection_matrix(width, height) * camera.view_matrix()),
+            );
             self.scene.set_f32(&self.gl, "lit", -1.0);
-            let contrast = if 0.2126*r + 0.7152*g + 0.0722*b > 0.5 { 0.12 } else { 0.85 };
-            self.scene.set_vec3(&self.gl, "wire_color", contrast, contrast, contrast);
+            let contrast = if 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5 {
+                0.12
+            } else {
+                0.85
+            };
+            self.scene
+                .set_vec3(&self.gl, "wire_color", contrast, contrast, contrast);
             self.scene.set_f32(&self.gl, "tonemap_here", 0.0);
             self.scene.set_f32(&self.gl, "alpha_scale", 1.0);
             self.scene.set_f32(&self.gl, "round_points", 0.0);
@@ -1042,7 +1089,8 @@ impl Renderer {
 
         // Whatever the host is drawing into, which is where the last pass has to end up.
         self.target = unsafe {
-            self.gl.get_parameter_framebuffer(glow::DRAW_FRAMEBUFFER_BINDING)
+            self.gl
+                .get_parameter_framebuffer(glow::DRAW_FRAMEBUFFER_BINDING)
         };
 
         self.ensure_post_targets(width, height);
@@ -1143,8 +1191,7 @@ impl Renderer {
         let mut lowest = [255u8; 3];
         let mut highest = [0u8; 3];
         let mut totals = [0u64; 3];
-        let mut counts: std::collections::HashMap<[u8; 3], u64> =
-            std::collections::HashMap::new();
+        let mut counts: std::collections::HashMap<[u8; 3], u64> = std::collections::HashMap::new();
 
         for pixel in pixels.as_chunks::<4>().0 {
             for channel in 0..3 {
@@ -1181,7 +1228,13 @@ impl Renderer {
 
     /// Render the uploaded scene into a separate RGBA target, independent of window size.
     /// Returns bottom-to-top rows, as OpenGL reads them. The caller must own a current GL context.
-    pub fn capture_rgba(&mut self, camera: &Camera3d, width: i32, height: i32, samples: u32) -> Result<Vec<u8>, String> {
+    pub fn capture_rgba(
+        &mut self,
+        camera: &Camera3d,
+        width: i32,
+        height: i32,
+        samples: u32,
+    ) -> Result<Vec<u8>, String> {
         let result = self.capture_batch(camera, width, height, samples, true, None);
         self.restart_accumulating();
         result
@@ -1189,46 +1242,115 @@ impl Renderer {
 
     /// Capture one accumulating sample and display it in the caller's framebuffer.
     /// Keep scene/settings/resolution unchanged between steps; set first after cancellation.
-    pub fn capture_step(&mut self, camera: &Camera3d, width: i32, height: i32, first: bool, preview: (i32,i32)) -> Result<Vec<u8>, String> {
-        self.capture_batch(camera,width,height,1,first,Some(preview))
+    pub fn capture_step(
+        &mut self,
+        camera: &Camera3d,
+        width: i32,
+        height: i32,
+        first: bool,
+        preview: (i32, i32),
+    ) -> Result<Vec<u8>, String> {
+        self.capture_batch(camera, width, height, 1, first, Some(preview))
     }
 
-    fn capture_batch(&mut self, camera: &Camera3d, width: i32, height: i32, samples: u32, first: bool, preview: Option<(i32,i32)>) -> Result<Vec<u8>, String> {
+    fn capture_batch(
+        &mut self,
+        camera: &Camera3d,
+        width: i32,
+        height: i32,
+        samples: u32,
+        first: bool,
+        preview: Option<(i32, i32)>,
+    ) -> Result<Vec<u8>, String> {
         if !(16..=4096).contains(&width) || !(16..=4096).contains(&height) {
             return Err("Render dimensions must be between 16 and 4096 pixels".into());
         }
         unsafe {
             let gl = &self.gl;
-            let max = gl.get_parameter_i32(glow::MAX_TEXTURE_SIZE).min(gl.get_parameter_i32(glow::MAX_RENDERBUFFER_SIZE));
-            if width > max || height > max { return Err(format!("GPU render limit is {max} pixels")); }
+            let max = gl
+                .get_parameter_i32(glow::MAX_TEXTURE_SIZE)
+                .min(gl.get_parameter_i32(glow::MAX_RENDERBUFFER_SIZE));
+            if width > max || height > max {
+                return Err(format!("GPU render limit is {max} pixels"));
+            }
             let old_draw = gl.get_parameter_framebuffer(glow::DRAW_FRAMEBUFFER_BINDING);
             let old_read = gl.get_parameter_framebuffer(glow::READ_FRAMEBUFFER_BINDING);
             let target = gl.create_framebuffer()?;
-            let color = match gl.create_renderbuffer() { Ok(v) => v, Err(e) => { gl.delete_framebuffer(target); return Err(e); } };
-            let depth = match gl.create_renderbuffer() { Ok(v) => v, Err(e) => { gl.delete_renderbuffer(color); gl.delete_framebuffer(target); return Err(e); } };
+            let color = match gl.create_renderbuffer() {
+                Ok(v) => v,
+                Err(e) => {
+                    gl.delete_framebuffer(target);
+                    return Err(e);
+                }
+            };
+            let depth = match gl.create_renderbuffer() {
+                Ok(v) => v,
+                Err(e) => {
+                    gl.delete_renderbuffer(color);
+                    gl.delete_framebuffer(target);
+                    return Err(e);
+                }
+            };
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(target));
             gl.bind_renderbuffer(glow::RENDERBUFFER, Some(color));
             gl.renderbuffer_storage(glow::RENDERBUFFER, glow::RGBA8, width, height);
-            gl.framebuffer_renderbuffer(glow::FRAMEBUFFER, glow::COLOR_ATTACHMENT0, glow::RENDERBUFFER, Some(color));
+            gl.framebuffer_renderbuffer(
+                glow::FRAMEBUFFER,
+                glow::COLOR_ATTACHMENT0,
+                glow::RENDERBUFFER,
+                Some(color),
+            );
             gl.bind_renderbuffer(glow::RENDERBUFFER, Some(depth));
             gl.renderbuffer_storage(glow::RENDERBUFFER, glow::DEPTH_COMPONENT24, width, height);
-            gl.framebuffer_renderbuffer(glow::FRAMEBUFFER, glow::DEPTH_ATTACHMENT, glow::RENDERBUFFER, Some(depth));
-            let complete = gl.check_framebuffer_status(glow::FRAMEBUFFER) == glow::FRAMEBUFFER_COMPLETE;
+            gl.framebuffer_renderbuffer(
+                glow::FRAMEBUFFER,
+                glow::DEPTH_ATTACHMENT,
+                glow::RENDERBUFFER,
+                Some(depth),
+            );
+            let complete =
+                gl.check_framebuffer_status(glow::FRAMEBUFFER) == glow::FRAMEBUFFER_COMPLETE;
             let result = if complete {
-                if first {self.restart_accumulating();}
-                for _ in 0..samples.clamp(1,64) { self.draw(camera,width,height); }
+                if first {
+                    self.restart_accumulating();
+                }
+                for _ in 0..samples.clamp(1, 64) {
+                    self.draw(camera, width, height);
+                }
                 let mut pixels = vec![0; width as usize * height as usize * 4];
-                self.gl.bind_framebuffer(glow::READ_FRAMEBUFFER,Some(target));
-                self.gl.read_pixels(0,0,width,height,glow::RGBA,glow::UNSIGNED_BYTE,glow::PixelPackData::Slice(Some(&mut pixels)));
-                if let Some((pw,ph))=preview {
-                    self.gl.bind_framebuffer(glow::DRAW_FRAMEBUFFER,old_draw);
-                    self.gl.blit_framebuffer(0,0,width,height,0,0,pw.max(1),ph.max(1),glow::COLOR_BUFFER_BIT,glow::LINEAR);
+                self.gl
+                    .bind_framebuffer(glow::READ_FRAMEBUFFER, Some(target));
+                self.gl.read_pixels(
+                    0,
+                    0,
+                    width,
+                    height,
+                    glow::RGBA,
+                    glow::UNSIGNED_BYTE,
+                    glow::PixelPackData::Slice(Some(&mut pixels)),
+                );
+                if let Some((pw, ph)) = preview {
+                    self.gl.bind_framebuffer(glow::DRAW_FRAMEBUFFER, old_draw);
+                    self.gl.blit_framebuffer(
+                        0,
+                        0,
+                        width,
+                        height,
+                        0,
+                        0,
+                        pw.max(1),
+                        ph.max(1),
+                        glow::COLOR_BUFFER_BIT,
+                        glow::LINEAR,
+                    );
                 }
                 Ok(pixels)
-            } else { Err("The GPU could not allocate the render target; try a smaller resolution".into()) };
-            self.gl.bind_framebuffer(glow::DRAW_FRAMEBUFFER,old_draw);
-            self.gl.bind_framebuffer(glow::READ_FRAMEBUFFER,old_read);
-            self.gl.bind_renderbuffer(glow::RENDERBUFFER,None);
+            } else {
+                Err("The GPU could not allocate the render target; try a smaller resolution".into())
+            };
+            self.gl.bind_framebuffer(glow::DRAW_FRAMEBUFFER, old_draw);
+            self.gl.bind_framebuffer(glow::READ_FRAMEBUFFER, old_read);
+            self.gl.bind_renderbuffer(glow::RENDERBUFFER, None);
             self.gl.delete_renderbuffer(color);
             self.gl.delete_renderbuffer(depth);
             self.gl.delete_framebuffer(target);
@@ -1261,8 +1383,13 @@ impl Renderer {
                     self.gl.delete_texture(*texture);
                 }
             }
-            for (texture,_) in self.normal_textures.iter().flatten() { self.gl.delete_texture(*texture); }
-            for (orm,emissive) in self.pbr_textures.iter().flatten() {self.gl.delete_texture(*orm);self.gl.delete_texture(*emissive);}
+            for (texture, _) in self.normal_textures.iter().flatten() {
+                self.gl.delete_texture(*texture);
+            }
+            for (orm, emissive) in self.pbr_textures.iter().flatten() {
+                self.gl.delete_texture(*orm);
+                self.gl.delete_texture(*emissive);
+            }
             self.lines.destroy(&self.gl);
             self.handles.destroy(&self.gl);
             self.guides.destroy(&self.gl);
@@ -1322,7 +1449,11 @@ impl Renderer {
     /// Remakes the shadow map if the preferences now ask for a different size.
     fn ensure_shadow_target(&mut self) {
         let wanted = shadow_size(&self.settings);
-        if self.shadow.as_ref().is_some_and(|shadow| shadow.size == wanted) {
+        if self
+            .shadow
+            .as_ref()
+            .is_some_and(|shadow| shadow.size == wanted)
+        {
             return;
         }
         unsafe {
@@ -1361,35 +1492,80 @@ impl Renderer {
             let ordinary_opaque = self.batches.iter().all(|batch| {
                 batch.alpha == map_model::material::Alpha::Opaque
                     && batch.material != Some(SKIP_PREVIEW_MATERIAL)
-                    && batch.material.and_then(|m|self.model_pbrs.get(m)).is_none_or(|p|p.is_none())
+                    && batch
+                        .material
+                        .and_then(|m| self.model_pbrs.get(m))
+                        .is_none_or(|p| p.is_none())
             });
             if ordinary_opaque {
                 self.geometry.draw(&self.gl, glow::TRIANGLES);
             } else {
                 self.gl.use_program(Some(self.material_depth.program));
-                self.material_depth.set_matrix(&self.gl,"view_projection",light_matrix);
-                self.material_depth.set_i32(&self.gl,"material",2);
+                self.material_depth
+                    .set_matrix(&self.gl, "view_projection", light_matrix);
+                self.material_depth.set_i32(&self.gl, "material", 2);
                 self.gl.bind_vertex_array(Some(self.geometry.array));
                 for batch in &self.batches {
-                    if batch.alpha == map_model::material::Alpha::Blended || batch.material == Some(SKIP_PREVIEW_MATERIAL) { continue; }
-                    let pbr = batch.material.and_then(|m|self.model_pbrs.get(m)).and_then(|p|p.as_ref());
-                    if pbr.is_some_and(|p|p.double_sided) || batch.alpha == map_model::material::Alpha::Masked {
+                    if batch.alpha == map_model::material::Alpha::Blended
+                        || batch.material == Some(SKIP_PREVIEW_MATERIAL)
+                    {
+                        continue;
+                    }
+                    let pbr = batch
+                        .material
+                        .and_then(|m| self.model_pbrs.get(m))
+                        .and_then(|p| p.as_ref());
+                    if pbr.is_some_and(|p| p.double_sided)
+                        || batch.alpha == map_model::material::Alpha::Masked
+                    {
                         self.gl.disable(glow::CULL_FACE);
                     } else {
                         self.gl.enable(glow::CULL_FACE);
-                        self.gl.cull_face(if pbr.is_some() {glow::BACK} else {glow::FRONT});
+                        self.gl.cull_face(if pbr.is_some() {
+                            glow::BACK
+                        } else {
+                            glow::FRONT
+                        });
                     }
-                    self.material_depth.set_f32(&self.gl,"material_face_mode",pbr.map_or(0.,|p|if p.double_sided {2.} else {1.}));
-                    self.material_depth.set_f32(&self.gl,"material_alpha_mode",if batch.alpha == map_model::material::Alpha::Masked {1.} else {0.});
-                    self.material_depth.set_f32(&self.gl,"material_alpha_cutoff",pbr.map_or(0.5,|p|p.alpha_cutoff));
-                    let (w,h) = batch.material.and_then(|m|self.material_sizes.get(m)).copied().unwrap_or((1.,1.));
-                    self.material_depth.set_vec2(&self.gl,"material_size",w,h);
-                    if let Some(texture) = batch.material.and_then(|m|self.material_textures.get(m)).copied().or(self.white) {
-                        bind_texture(&self.gl,2,texture);
+                    self.material_depth.set_f32(
+                        &self.gl,
+                        "material_face_mode",
+                        pbr.map_or(0., |p| if p.double_sided { 2. } else { 1. }),
+                    );
+                    self.material_depth.set_f32(
+                        &self.gl,
+                        "material_alpha_mode",
+                        if batch.alpha == map_model::material::Alpha::Masked {
+                            1.
+                        } else {
+                            0.
+                        },
+                    );
+                    self.material_depth.set_f32(
+                        &self.gl,
+                        "material_alpha_cutoff",
+                        pbr.map_or(0.5, |p| p.alpha_cutoff),
+                    );
+                    let (w, h) = batch
+                        .material
+                        .and_then(|m| self.material_sizes.get(m))
+                        .copied()
+                        .unwrap_or((1., 1.));
+                    self.material_depth
+                        .set_vec2(&self.gl, "material_size", w, h);
+                    if let Some(texture) = batch
+                        .material
+                        .and_then(|m| self.material_textures.get(m))
+                        .copied()
+                        .or(self.white)
+                    {
+                        bind_texture(&self.gl, 2, texture);
                     }
-                    self.gl.draw_arrays(glow::TRIANGLES,batch.first,batch.count);
+                    self.gl
+                        .draw_arrays(glow::TRIANGLES, batch.first, batch.count);
                 }
-                self.gl.enable(glow::CULL_FACE); self.gl.cull_face(glow::FRONT);
+                self.gl.enable(glow::CULL_FACE);
+                self.gl.cull_face(glow::FRONT);
             }
             self.gl.bind_framebuffer(glow::FRAMEBUFFER, self.target);
         }
@@ -1427,8 +1603,9 @@ impl Renderer {
             self.normals.set_matrix(&self.gl, "projection", &projection);
             self.gl.bind_vertex_array(Some(self.geometry.array));
             for batch in &self.batches {
-                self.bind_normal_map(&self.normals,batch.material);
-                self.gl.draw_arrays(glow::TRIANGLES,batch.first,batch.count);
+                self.bind_normal_map(&self.normals, batch.material);
+                self.gl
+                    .draw_arrays(glow::TRIANGLES, batch.first, batch.count);
             }
             self.gl.bind_vertex_array(None);
 
@@ -1447,7 +1624,8 @@ impl Renderer {
                 width as f32 / 4.0,
                 height as f32 / 4.0,
             );
-            self.ssao.set_f32(&self.gl, "radius", self.settings.ao_radius);
+            self.ssao
+                .set_f32(&self.gl, "radius", self.settings.ao_radius);
             self.ssao.set_f32(&self.gl, "bias", 0.5);
             self.ssao.set_i32(&self.gl, "depth_texture", 0);
             self.ssao.set_i32(&self.gl, "normal_texture", 1);
@@ -1464,14 +1642,12 @@ impl Renderer {
             self.blur.set_i32(&self.gl, "source", 0);
             self.blur.set_i32(&self.gl, "depth_texture", 1);
             self.blur.set_i32(&self.gl, "normal_texture", 2);
-            self.blur.set_matrix(&self.gl, "inverse_projection", &inverse_projection);
-            self.blur.set_f32(&self.gl, "radius", self.settings.ao_radius);
-            self.blur.set_vec2(
-                &self.gl,
-                "texel",
-                1.0 / width as f32,
-                1.0 / height as f32,
-            );
+            self.blur
+                .set_matrix(&self.gl, "inverse_projection", &inverse_projection);
+            self.blur
+                .set_f32(&self.gl, "radius", self.settings.ao_radius);
+            self.blur
+                .set_vec2(&self.gl, "texel", 1.0 / width as f32, 1.0 / height as f32);
             bind_texture(&self.gl, 0, screen.ao_texture);
             bind_texture(&self.gl, 1, screen.depth_texture);
             bind_texture(&self.gl, 2, screen.normal_texture);
@@ -1491,7 +1667,10 @@ impl Renderer {
     ) {
         let view_projection = self.projection(camera, width, height) * camera.view_matrix();
         // The map the scene samples, which may have been remade at a different size.
-        let texel_side = self.shadow.as_ref().map_or(1.0, |shadow| shadow.size as f32);
+        let texel_side = self
+            .shadow
+            .as_ref()
+            .map_or(1.0, |shadow| shadow.size as f32);
 
         // Into the floating-point buffer when there is one, so the bright parts survive to
         // be bloomed; straight to the screen when there is not.
@@ -1517,16 +1696,42 @@ impl Renderer {
                     self.gl.use_program(Some(self.sky_background.program));
                     let program = &self.sky_background;
                     program.set_matrix(&self.gl, "inverse_view_projection", &inverse);
-                    program.set_vec3(&self.gl, "camera_position", camera.position.x() as f32, camera.position.y() as f32, camera.position.z() as f32);
-                    for (name, color) in [("sky_color", self.settings.sky_color), ("horizon_color", self.settings.horizon_color), ("ground_color", self.settings.ground_color)] {
+                    program.set_vec3(
+                        &self.gl,
+                        "camera_position",
+                        camera.position.x() as f32,
+                        camera.position.y() as f32,
+                        camera.position.z() as f32,
+                    );
+                    for (name, color) in [
+                        ("sky_color", self.settings.sky_color),
+                        ("horizon_color", self.settings.horizon_color),
+                        ("ground_color", self.settings.ground_color),
+                    ] {
                         program.set_vec3(&self.gl, name, color[0], color[1], color[2]);
                     }
                     let color = self.settings.sun_color;
                     let energy = self.settings.sun_intensity;
-                    program.set_vec3(&self.gl, "sun_color", color[0]*energy, color[1]*energy, color[2]*energy);
-                    program.set_vec3(&self.gl, "to_sun", -sun.x() as f32, -sun.y() as f32, -sun.z() as f32);
+                    program.set_vec3(
+                        &self.gl,
+                        "sun_color",
+                        color[0] * energy,
+                        color[1] * energy,
+                        color[2] * energy,
+                    );
+                    program.set_vec3(
+                        &self.gl,
+                        "to_sun",
+                        -sun.x() as f32,
+                        -sun.y() as f32,
+                        -sun.z() as f32,
+                    );
                     program.set_f32(&self.gl, "exposure", self.settings.exposure);
-                    program.set_f32(&self.gl, "tonemap_here", if into_post.is_some() { 0.0 } else { 1.0 });
+                    program.set_f32(
+                        &self.gl,
+                        "tonemap_here",
+                        if into_post.is_some() { 0.0 } else { 1.0 },
+                    );
                     // The sky writes colour only, and the post-processing target also takes
                     // reflectivity: GLES and WebGL refuse to draw while a buffer the shader
                     // has no output for is active, so only the colour is for this pass.
@@ -1535,7 +1740,8 @@ impl Renderer {
                     }
                     self.draw_fullscreen();
                     if into_post.is_some() {
-                        self.gl.draw_buffers(&[glow::COLOR_ATTACHMENT0, glow::COLOR_ATTACHMENT1]);
+                        self.gl
+                            .draw_buffers(&[glow::COLOR_ATTACHMENT0, glow::COLOR_ATTACHMENT1]);
                     }
                     self.gl.depth_mask(true);
                 }
@@ -1581,7 +1787,8 @@ impl Renderer {
                 sun_color[2] * sun_intensity,
             );
             let [sky_r, sky_g, sky_b] = self.settings.sky_color;
-            self.scene.set_vec3(&self.gl, "sky_color", sky_r, sky_g, sky_b);
+            self.scene
+                .set_vec3(&self.gl, "sky_color", sky_r, sky_g, sky_b);
             let [haze_r, haze_g, haze_b] = self.settings.horizon_color;
             self.scene
                 .set_vec3(&self.gl, "horizon_color", haze_r, haze_g, haze_b);
@@ -1592,26 +1799,26 @@ impl Renderer {
                 .set_f32(&self.gl, "roughness_value", self.settings.default_roughness);
             self.scene
                 .set_f32(&self.gl, "metallic_value", self.settings.default_metalness);
+            self.scene.set_f32(
+                &self.gl,
+                "ambient_strength",
+                self.settings.ambient_intensity,
+            );
             self.scene
-                .set_f32(&self.gl, "ambient_strength", self.settings.ambient_intensity);
-            self.scene.set_f32(&self.gl, "exposure", self.settings.exposure);
+                .set_f32(&self.gl, "exposure", self.settings.exposure);
             self.scene.set_f32(
                 &self.gl,
                 "flat_shading",
-                if self.settings.realistic_shading { 0.0 } else { 1.0 },
+                if self.settings.realistic_shading {
+                    0.0
+                } else {
+                    1.0
+                },
             );
-            self.scene.set_vec2(
-                &self.gl,
-                "viewport",
-                width as f32,
-                height as f32,
-            );
-            self.scene.set_vec2(
-                &self.gl,
-                "shadow_texel",
-                1.0 / texel_side,
-                1.0 / texel_side,
-            );
+            self.scene
+                .set_vec2(&self.gl, "viewport", width as f32, height as f32);
+            self.scene
+                .set_vec2(&self.gl, "shadow_texel", 1.0 / texel_side, 1.0 / texel_side);
             self.scene.set_i32(&self.gl, "shadow_map", 0);
             self.scene.set_i32(&self.gl, "occlusion", 1);
 
@@ -1623,7 +1830,8 @@ impl Renderer {
             if let Some(depth) = depth {
                 bind_texture(&self.gl, 3, depth);
             }
-            self.scene.set_matrix(&self.gl, "view", &camera.view_matrix());
+            self.scene
+                .set_matrix(&self.gl, "view", &camera.view_matrix());
             self.scene.set_matrix(
                 &self.gl,
                 "projection",
@@ -1705,7 +1913,6 @@ impl Renderer {
             self.scene.set_f32(&self.gl, "lit", 1.0);
             self.scene.set_i32(&self.gl, "material", 2);
             self.draw_batches();
-
         }
     }
 
@@ -1767,7 +1974,8 @@ impl Renderer {
             self.ssr.set_matrix(&self.gl, "view", &camera.view_matrix());
 
             let [sky_r, sky_g, sky_b] = self.settings.sky_color;
-            self.ssr.set_vec3(&self.gl, "sky_color", sky_r, sky_g, sky_b);
+            self.ssr
+                .set_vec3(&self.gl, "sky_color", sky_r, sky_g, sky_b);
             let [haze_r, haze_g, haze_b] = self.settings.horizon_color;
             self.ssr
                 .set_vec3(&self.gl, "horizon_color", haze_r, haze_g, haze_b);
@@ -1853,7 +2061,8 @@ impl Renderer {
             if !embedded(&self.gl) {
                 self.gl.enable(glow::PROGRAM_POINT_SIZE);
             }
-            self.scene.set_f32(&self.gl, "point_size", handle_point_size(&self.settings));
+            self.scene
+                .set_f32(&self.gl, "point_size", handle_point_size(&self.settings));
             for (test_depth, alpha) in [(true, 1.0f32), (false, 0.35)] {
                 if test_depth {
                     self.gl.enable(glow::DEPTH_TEST);
@@ -1880,16 +2089,49 @@ impl Renderer {
 
     /// Shared normal sampling for the lit scene and screen-space normal pass.
     fn bind_normal_map(&self, program: &Program, material: Option<usize>) {
-            let normal = material.and_then(|i| self.normal_textures.get(i)).copied().flatten();
-            let pbr = material.and_then(|i| self.model_pbrs.get(i)).and_then(|p|p.as_ref());
-            program.set_f32(&self.gl,"material_face_mode",pbr.map_or(0.0,|p|if p.double_sided {2.0} else {1.0}));
-            program.set_i32(&self.gl,"normal_map",4);
-            program.set_f32(&self.gl,"has_normal_map",if normal.is_some() {1.0} else {0.0});
-            program.set_f32(&self.gl,"normal_scale",material.and_then(|i|self.model_pbrs.get(i)).and_then(|p|p.as_ref()).map_or(1.,|p|p.normal_scale));
-            program.set_f32(&self.gl,"normal_y_sign",if normal.is_some_and(|(_,flip)|flip) {-1.0} else {1.0});
-            if let Some((texture,_)) = normal { bind_texture(&self.gl,4,texture); }
-            let (width,height) = material.and_then(|i| self.material_sizes.get(i)).copied().unwrap_or((1.0,1.0));
-            program.set_vec2(&self.gl,"material_size",width,height);
+        let normal = material
+            .and_then(|i| self.normal_textures.get(i))
+            .copied()
+            .flatten();
+        let pbr = material
+            .and_then(|i| self.model_pbrs.get(i))
+            .and_then(|p| p.as_ref());
+        program.set_f32(
+            &self.gl,
+            "material_face_mode",
+            pbr.map_or(0.0, |p| if p.double_sided { 2.0 } else { 1.0 }),
+        );
+        program.set_i32(&self.gl, "normal_map", 4);
+        program.set_f32(
+            &self.gl,
+            "has_normal_map",
+            if normal.is_some() { 1.0 } else { 0.0 },
+        );
+        program.set_f32(
+            &self.gl,
+            "normal_scale",
+            material
+                .and_then(|i| self.model_pbrs.get(i))
+                .and_then(|p| p.as_ref())
+                .map_or(1., |p| p.normal_scale),
+        );
+        program.set_f32(
+            &self.gl,
+            "normal_y_sign",
+            if normal.is_some_and(|(_, flip)| flip) {
+                -1.0
+            } else {
+                1.0
+            },
+        );
+        if let Some((texture, _)) = normal {
+            bind_texture(&self.gl, 4, texture);
+        }
+        let (width, height) = material
+            .and_then(|i| self.material_sizes.get(i))
+            .copied()
+            .unwrap_or((1.0, 1.0));
+        program.set_vec2(&self.gl, "material_size", width, height);
     }
 
     /// Draws the geometry, one pass per material.
@@ -1898,20 +2140,47 @@ impl Renderer {
             self.gl.bind_vertex_array(Some(self.geometry.array));
             let mut blending = false;
             for batch in &self.batches {
-                self.scene.set_i32(&self.gl, "skip_hatch", i32::from(batch.material == Some(SKIP_PREVIEW_MATERIAL)));
-                let pbr=batch.material.and_then(|i|self.model_pbrs.get(i)).and_then(|p|p.as_ref());
-                let maps=batch.material.and_then(|i|self.pbr_textures.get(i)).copied().flatten();
-                self.scene.set_i32(&self.gl,"model_orm",5);
-                self.scene.set_i32(&self.gl,"model_emissive",6);
-                if let Some(white)=self.white {
-                    bind_texture(&self.gl,5,maps.map_or(white,|m|m.0));
-                    bind_texture(&self.gl,6,maps.map_or(white,|m|m.1));
+                self.scene.set_i32(
+                    &self.gl,
+                    "skip_hatch",
+                    i32::from(batch.material == Some(SKIP_PREVIEW_MATERIAL)),
+                );
+                let pbr = batch
+                    .material
+                    .and_then(|i| self.model_pbrs.get(i))
+                    .and_then(|p| p.as_ref());
+                let maps = batch
+                    .material
+                    .and_then(|i| self.pbr_textures.get(i))
+                    .copied()
+                    .flatten();
+                self.scene.set_i32(&self.gl, "model_orm", 5);
+                self.scene.set_i32(&self.gl, "model_emissive", 6);
+                if let Some(white) = self.white {
+                    bind_texture(&self.gl, 5, maps.map_or(white, |m| m.0));
+                    bind_texture(&self.gl, 6, maps.map_or(white, |m| m.1));
                 }
-                let e=pbr.map_or([0.;3],|p|p.emissive_factor);
-                self.scene.set_vec3(&self.gl,"model_emissive_factor",e[0],e[1],e[2]);
-                self.scene.set_f32(&self.gl,"model_ao_strength",pbr.map_or(0.,|p|p.occlusion_strength));
-                let [roughness, metallic, emission] = batch.surface_material.map(|s| s.factors())
-                    .unwrap_or_else(||pbr.map_or([self.settings.default_roughness, self.settings.default_metalness, 0.0],|p|[p.roughness,p.metallic,0.]));
+                let e = pbr.map_or([0.; 3], |p| p.emissive_factor);
+                self.scene
+                    .set_vec3(&self.gl, "model_emissive_factor", e[0], e[1], e[2]);
+                self.scene.set_f32(
+                    &self.gl,
+                    "model_ao_strength",
+                    pbr.map_or(0., |p| p.occlusion_strength),
+                );
+                let [roughness, metallic, emission] = batch
+                    .surface_material
+                    .map(|s| s.factors())
+                    .unwrap_or_else(|| {
+                        pbr.map_or(
+                            [
+                                self.settings.default_roughness,
+                                self.settings.default_metalness,
+                                0.0,
+                            ],
+                            |p| [p.roughness, p.metallic, 0.],
+                        )
+                    });
                 self.scene.set_f32(&self.gl, "roughness_value", roughness);
                 self.scene.set_f32(&self.gl, "metallic_value", metallic);
                 self.scene.set_f32(&self.gl, "emission_value", emission);
@@ -1923,7 +2192,7 @@ impl Renderer {
                     continue;
                 };
                 bind_texture(&self.gl, 2, texture);
-                self.bind_normal_map(&self.scene,batch.material);
+                self.bind_normal_map(&self.scene, batch.material);
 
                 // A surface with no material gets the white pixel and a size of one, which
                 // leaves the vertex colour showing through unchanged.
@@ -1940,7 +2209,11 @@ impl Renderer {
                     map_model::material::Alpha::Blended => 2.0,
                 };
                 self.scene.set_f32(&self.gl, "material_alpha_mode", mode);
-                self.scene.set_f32(&self.gl, "material_alpha_cutoff", pbr.map_or(0.5, |p| p.alpha_cutoff));
+                self.scene.set_f32(
+                    &self.gl,
+                    "material_alpha_cutoff",
+                    pbr.map_or(0.5, |p| p.alpha_cutoff),
+                );
 
                 // The blended batches are last. Turn on blending and stop writing depth
                 // once the first one comes round: a pane of glass should not hide what is
@@ -2025,28 +2298,41 @@ impl Renderer {
             self.gl.viewport(0, 0, width, height);
             self.gl.use_program(Some(self.composite.program));
             self.composite.set_i32(&self.gl, "scene_depth", 3);
-            if let Some(screen) = &self.screen { bind_texture(&self.gl, 3, screen.depth_texture); }
-            let dof = self.settings.depth_of_field.filter(|_| self.screen.is_some());
-            self.composite.set_vec2(&self.gl, "clip_planes", camera.near as f32, camera.far as f32);
-            self.composite.set_vec2(&self.gl, "image_size", width as f32, height as f32);
-            self.composite.set_vec3(&self.gl, "dof",
+            if let Some(screen) = &self.screen {
+                bind_texture(&self.gl, 3, screen.depth_texture);
+            }
+            let dof = self
+                .settings
+                .depth_of_field
+                .filter(|_| self.screen.is_some());
+            self.composite.set_vec2(
+                &self.gl,
+                "clip_planes",
+                camera.near as f32,
+                camera.far as f32,
+            );
+            self.composite
+                .set_vec2(&self.gl, "image_size", width as f32, height as f32);
+            self.composite.set_vec3(
+                &self.gl,
+                "dof",
                 dof.map_or(1., |d| d.focus_distance.max(1.)),
                 dof.map_or(0., |d| d.focus_range.max(0.)),
-                dof.map_or(0., |d| d.radius.clamp(0., 24.)));
+                dof.map_or(0., |d| d.radius.clamp(0., 24.)),
+            );
             self.composite.set_i32(&self.gl, "scene", 0);
             self.composite.set_i32(&self.gl, "bloom", 1);
             self.composite.set_i32(&self.gl, "reflections", 2);
             bind_texture(&self.gl, 2, post.ssr_texture);
-            self.composite
-                .set_f32(
-                    &self.gl,
-                    "bloom_intensity",
-                    if self.settings.bloom {
-                        self.settings.bloom_intensity
-                    } else {
-                        0.0
-                    },
-                );
+            self.composite.set_f32(
+                &self.gl,
+                "bloom_intensity",
+                if self.settings.bloom {
+                    self.settings.bloom_intensity
+                } else {
+                    0.0
+                },
+            );
             self.composite
                 .set_f32(&self.gl, "exposure", self.settings.exposure);
             bind_texture(&self.gl, 0, post.hdr_texture);
@@ -2085,11 +2371,8 @@ impl Renderer {
             self.accumulate.set_i32(&self.gl, "history", 1);
             // A running average rather than a fade, so an early frame counts as much as a
             // late one.
-            self.accumulate.set_f32(
-                &self.gl,
-                "weight",
-                1.0 / (self.sample as f32 + 1.0),
-            );
+            self.accumulate
+                .set_f32(&self.gl, "weight", 1.0 / (self.sample as f32 + 1.0));
             bind_texture(&self.gl, 0, post.ldr_texture);
             bind_texture(&self.gl, 1, post.accumulation_textures[read]);
             self.draw_fullscreen();
@@ -2110,12 +2393,8 @@ impl Renderer {
             self.gl.viewport(0, 0, width, height);
             self.gl.use_program(Some(self.fxaa.program));
             self.fxaa.set_i32(&self.gl, "source", 0);
-            self.fxaa.set_vec2(
-                &self.gl,
-                "texel",
-                1.0 / width as f32,
-                1.0 / height as f32,
-            );
+            self.fxaa
+                .set_vec2(&self.gl, "texel", 1.0 / width as f32, 1.0 / height as f32);
             // Turning it off is the shader passing the picture through rather than the
             // pass being skipped: the picture is in the low dynamic range buffer, and
             // this is what puts it on the screen.
@@ -2411,11 +2690,19 @@ impl ShadowTarget {
             )?;
             // Outside the map, nothing is in shadow, so the border reads as fully lit.
             // GLES 3.0 has no border: there the map's edge stretches out instead.
-            let wrap = if embedded(gl) { glow::CLAMP_TO_EDGE } else { glow::CLAMP_TO_BORDER };
+            let wrap = if embedded(gl) {
+                glow::CLAMP_TO_EDGE
+            } else {
+                glow::CLAMP_TO_BORDER
+            };
             gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_S, wrap as i32);
             gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_T, wrap as i32);
             if !embedded(gl) {
-                gl.tex_parameter_f32_slice(glow::TEXTURE_2D, glow::TEXTURE_BORDER_COLOR, &[1.0, 1.0, 1.0, 1.0]);
+                gl.tex_parameter_f32_slice(
+                    glow::TEXTURE_2D,
+                    glow::TEXTURE_BORDER_COLOR,
+                    &[1.0, 1.0, 1.0, 1.0],
+                );
             }
 
             let framebuffer = gl
@@ -2436,7 +2723,9 @@ impl ShadowTarget {
             let status = gl.check_framebuffer_status(glow::FRAMEBUFFER);
             gl.bind_framebuffer(glow::FRAMEBUFFER, None);
             if status != glow::FRAMEBUFFER_COMPLETE {
-                return Err(format!("the shadow framebuffer is not usable ({status:#x})"));
+                return Err(format!(
+                    "the shadow framebuffer is not usable ({status:#x})"
+                ));
             }
 
             Ok(Self {
@@ -2594,12 +2883,7 @@ impl PostTargets {
                 .create_renderbuffer()
                 .map_err(|e| format!("could not create a renderbuffer: {e}"))?;
             gl.bind_renderbuffer(glow::RENDERBUFFER, Some(depth));
-            gl.renderbuffer_storage(
-                glow::RENDERBUFFER,
-                glow::DEPTH_COMPONENT24,
-                width,
-                height,
-            );
+            gl.renderbuffer_storage(glow::RENDERBUFFER, glow::DEPTH_COMPONENT24, width, height);
 
             let hdr_framebuffer = gl
                 .create_framebuffer()
@@ -2719,8 +3003,20 @@ unsafe fn make_color_target(
     unsafe {
         // The type has to suit the internal format on GLES: bytes for RGBA8, floats for the
         // half-float targets. The desktop accepts either.
-        let kind = if internal_format == glow::RGBA8 as i32 { glow::UNSIGNED_BYTE } else { glow::FLOAT };
-        let texture = make_texture(gl, internal_format, width, height, glow::RGBA, kind, glow::LINEAR)?;
+        let kind = if internal_format == glow::RGBA8 as i32 {
+            glow::UNSIGNED_BYTE
+        } else {
+            glow::FLOAT
+        };
+        let texture = make_texture(
+            gl,
+            internal_format,
+            width,
+            height,
+            glow::RGBA,
+            kind,
+            glow::LINEAR,
+        )?;
         let framebuffer = gl
             .create_framebuffer()
             .map_err(|e| format!("could not create a framebuffer: {e}"))?;
@@ -2844,8 +3140,7 @@ fn make_kernel() -> Vec<f32> {
             random.next_f32() * 2.0 - 1.0,
             random.next_f32(),
         ];
-        let length =
-            (sample[0] * sample[0] + sample[1] * sample[1] + sample[2] * sample[2]).sqrt();
+        let length = (sample[0] * sample[0] + sample[1] * sample[1] + sample[2] * sample[2]).sqrt();
         if length > 0.0 {
             for component in &mut sample {
                 *component /= length;
@@ -2869,12 +3164,27 @@ unsafe fn make_material_texture(
     gl: &glow::Context,
     material: &map_model::material::Material,
 ) -> Result<glow::Texture, String> {
-    let pixels = material.pixels().ok_or_else(|| "the image did not decode".to_string())?;
-    unsafe { make_rgba_texture(gl, material.width, material.height, &pixels[..(material.width * material.height * 4) as usize]) }
+    let pixels = material
+        .pixels()
+        .ok_or_else(|| "the image did not decode".to_string())?;
+    unsafe {
+        make_rgba_texture(
+            gl,
+            material.width,
+            material.height,
+            &pixels[..(material.width * material.height * 4) as usize],
+        )
+    }
 }
 
-unsafe fn make_rgba_texture(gl: &glow::Context, width: u32, height: u32, pixels: &[u8]) -> Result<glow::Texture,String> {
-    if width == 0 || height == 0 || u64::from(width)*u64::from(height)*4 != pixels.len() as u64 {
+unsafe fn make_rgba_texture(
+    gl: &glow::Context,
+    width: u32,
+    height: u32,
+    pixels: &[u8],
+) -> Result<glow::Texture, String> {
+    if width == 0 || height == 0 || u64::from(width) * u64::from(height) * 4 != pixels.len() as u64
+    {
         return Err("the image has no pixels".to_string());
     }
 
@@ -3033,8 +3343,8 @@ mod tests {
             // the sample would look for occluders behind the surface.
             assert!(sample[2] >= 0.0, "{sample:?}");
             // And none reaches further than the radius it is scaled by.
-            let length = (sample[0] * sample[0] + sample[1] * sample[1] + sample[2] * sample[2])
-                .sqrt();
+            let length =
+                (sample[0] * sample[0] + sample[1] * sample[1] + sample[2] * sample[2]).sqrt();
             assert!(length <= 1.0, "{length}");
         }
     }
@@ -3110,9 +3420,18 @@ fn for_context<'a>(gl: &glow::Context, source: &'a str) -> std::borrow::Cow<'a, 
             let body: String = body
                 .lines()
                 .map(|line| {
-                    let output = line.trim().strip_prefix("out vec4 ").and_then(|rest| rest.strip_suffix(';'));
-                    match output.and_then(|name| FRAGMENT_OUTPUTS.iter().position(|wanted| *wanted == name.trim())) {
-                        Some(location) => format!("layout(location = {location}) {}\n", line.trim()),
+                    let output = line
+                        .trim()
+                        .strip_prefix("out vec4 ")
+                        .and_then(|rest| rest.strip_suffix(';'));
+                    match output.and_then(|name| {
+                        FRAGMENT_OUTPUTS
+                            .iter()
+                            .position(|wanted| *wanted == name.trim())
+                    }) {
+                        Some(location) => {
+                            format!("layout(location = {location}) {}\n", line.trim())
+                        }
                         None => format!("{line}\n"),
                     }
                 })

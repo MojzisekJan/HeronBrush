@@ -121,14 +121,23 @@ fn a_slow_drag_that_loses_focus_moves_once_and_undoes() {
     // Somewhere over a brush, found by asking the view what is under each point.
     let start = (0..60)
         .flat_map(|i| (0..60).map(move |j| egui::pos2(i as f32 * 10.0, j as f32 * 10.0)))
-        .find(|p| pane.flat.pick_node(f64::from(p.x), f64::from(p.y), viewport).is_some())
+        .find(|p| {
+            pane.flat
+                .pick_node(f64::from(p.x), f64::from(p.y), viewport)
+                .is_some()
+        })
         .expect("a brush under some point of the view");
     let flat = std::rc::Rc::clone(&pane.flat);
     let mut time = 0.0;
     let mut frame = |events: Vec<egui::Event>, focused: bool| {
         // Five frames a second: too few samples for egui's `is_moving`.
         time += 0.2;
-        let raw = egui::RawInput { time: Some(time), focused, events, ..input() };
+        let raw = egui::RawInput {
+            time: Some(time),
+            focused,
+            events,
+            ..input()
+        };
         let mut output = ctx.run_ui(raw, |ui| pane.show(ui, rect));
         output.textures_delta.clear();
     };
@@ -149,11 +158,21 @@ fn a_slow_drag_that_loses_focus_moves_once_and_undoes() {
     frame(vec![egui::Event::PointerMoved(start + step)], true);
     frame(vec![egui::Event::PointerMoved(start + step * 2.0)], true);
     let moved = editor.document.borrow().to_map_text();
-    assert_ne!(moved, before_move, "the drag moved the brush while the button was held");
+    assert_ne!(
+        moved, before_move,
+        "the drag moved the brush while the button was held"
+    );
     frame(vec![], false);
     frame(vec![button(start + step * 2.5, false)], true);
-    assert_eq!(editor.document.borrow().to_map_text(), moved, "focus loss keeps the move");
-    assert!(!editor.document.borrow().in_transaction(), "focus loss closes the move's transaction");
+    assert_eq!(
+        editor.document.borrow().to_map_text(),
+        moved,
+        "focus loss keeps the move"
+    );
+    assert!(
+        !editor.document.borrow().in_transaction(),
+        "focus loss closes the move's transaction"
+    );
     assert!(editor.document.borrow_mut().undo().is_some());
     assert_eq!(editor.document.borrow().to_map_text(), before_move);
 }
@@ -177,7 +196,11 @@ fn a_flat_view_drags_the_animated_body_without_auto_key() {
     let mut time = 0.0;
     let mut frame = |events: Vec<egui::Event>| {
         time += 0.05;
-        let raw = egui::RawInput { time: Some(time), events, ..input() };
+        let raw = egui::RawInput {
+            time: Some(time),
+            events,
+            ..input()
+        };
         let mut output = ctx.run_ui(raw, |ui| pane.show(ui, rect));
         output.textures_delta.clear();
     };
@@ -185,18 +208,32 @@ fn a_flat_view_drags_the_animated_body_without_auto_key() {
     let camera = pane_camera(&editor);
     let c = camera.world_to_screen(pose.centre(), (600.0, 600.0));
     let start = egui::pos2(c.x() as f32, c.y() as f32);
-    let button = |pos, pressed| egui::Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE };
+    let button = |pos, pressed| egui::Event::PointerButton {
+        pos,
+        button: egui::PointerButton::Primary,
+        pressed,
+        modifiers: egui::Modifiers::NONE,
+    };
     let before = editor.document.borrow().to_map_text();
     frame(vec![egui::Event::PointerMoved(start), button(start, true)]);
-    frame(vec![egui::Event::PointerMoved(start + egui::vec2(2.0, 0.0))]);
+    frame(vec![egui::Event::PointerMoved(
+        start + egui::vec2(2.0, 0.0),
+    )]);
     frame(vec![button(start + egui::vec2(2.0, 0.0), false)]);
-    assert_eq!(editor.document.borrow().to_map_text(), before, "a click authors nothing");
+    assert_eq!(
+        editor.document.borrow().to_map_text(),
+        before,
+        "a click authors nothing"
+    );
     let end = start + egui::vec2(200.0, 0.0);
     frame(vec![egui::Event::PointerMoved(start), button(start, true)]);
-    frame(vec![egui::Event::PointerMoved(start + egui::vec2(100.0, 0.0))]);
+    frame(vec![egui::Event::PointerMoved(
+        start + egui::vec2(100.0, 0.0),
+    )]);
     frame(vec![egui::Event::PointerMoved(end)]);
     frame(vec![button(end, false)]);
-    let moved = editor_core::animation_pose::Pose::selected(&editor.document.borrow(), 1.0).unwrap();
+    let moved =
+        editor_core::animation_pose::Pose::selected(&editor.document.borrow(), 1.0).unwrap();
     assert!(moved.clip.sample(0, 1.0) > 0.0, "keyed along X");
     assert_eq!(moved.clip.sample(1, 1.0), 0.0);
     assert!(!editor.document.borrow().in_transaction());
@@ -218,13 +255,20 @@ fn opacity_repaints_gradients_live_but_not_solid_faces() {
         output.textures_delta.clear();
     };
     editor.document.borrow_mut().select_all();
-    editor.document.borrow_mut().set_face_color(Some(FaceColor::solid(Rgb::new(212, 52, 52))));
+    editor
+        .document
+        .borrow_mut()
+        .set_face_color(Some(FaceColor::solid(Rgb::new(212, 52, 52))));
     frame(&mut page);
     let solid = editor.document.borrow().to_map_text();
     page.typed_opacity = Some(50.0);
     frame(&mut page);
     frame(&mut page);
-    assert_eq!(editor.document.borrow().to_map_text(), solid, "a solid face keeps its opacity until the next paint");
+    assert_eq!(
+        editor.document.borrow().to_map_text(),
+        solid,
+        "a solid face keeps its opacity until the next paint"
+    );
 
     let gradient = crate::face_tools::GradientDraft::default().paint(255);
     editor.document.borrow_mut().set_face_color(Some(gradient));
@@ -232,12 +276,20 @@ fn opacity_repaints_gradients_live_but_not_solid_faces() {
     let before = editor.document.borrow().to_map_text();
     page.typed_opacity = Some(50.0);
     frame(&mut page);
-    let painted = editor.document.borrow().first_selected_face_color().unwrap();
+    let painted = editor
+        .document
+        .borrow()
+        .first_selected_face_color()
+        .unwrap();
     assert!(matches!(painted, FaceColor::MultiGradient { .. }));
     assert_eq!(painted.alpha(), 128, "the gradient follows the opacity");
     frame(&mut page);
     editor.document.borrow_mut().undo();
-    assert_eq!(editor.document.borrow().to_map_text(), before, "one step undoes it");
+    assert_eq!(
+        editor.document.borrow().to_map_text(),
+        before,
+        "one step undoes it"
+    );
 }
 
 /// The sweep page says what the sweep would make before it is made.
@@ -249,12 +301,18 @@ fn sweep_preview_describes_the_pending_sweep() {
     d.select_face_only(editor_core::document::FaceRef { node: id, face: 0 });
     let source = d.sweep_source().expect("a face to sweep");
     let mut inputs = editor_core::sweep_tool::SweepInputs::default();
-    assert_eq!(crate::face_tools::sweep_preview(&source, &inputs, "x"), "The sweep goes nowhere");
+    assert_eq!(
+        crate::face_tools::sweep_preview(&source, &inputs, "x"),
+        "The sweep goes nowhere"
+    );
     inputs.transform.translation = geometry_math::vec::Vec3d::new(64.0, 64.0, 64.0);
     inputs.parameters.segments = 4;
     inputs.parameters.path_mode = editor_core::sweep_tool::SweepPathMode::Straight;
     let text = crate::face_tools::sweep_preview(&source, &inputs, "x");
-    assert!(text.starts_with("4 brushes, ") && text.matches(" × ").count() == 2, "{text}");
+    assert!(
+        text.starts_with("4 brushes, ") && text.matches(" × ").count() == 2,
+        "{text}"
+    );
 }
 
 /// The fillet panel's Round edges button names what it would round, and the result of a
@@ -263,9 +321,15 @@ fn sweep_preview_describes_the_pending_sweep() {
 fn fillet_panel_reports_in_the_panel() {
     let (ctx, editor) = setup();
     let mut panel = crate::face_tools::FilletPanel::default();
-    assert_eq!(crate::face_tools::FilletWork::of(&editor), crate::face_tools::FilletWork::Nothing);
+    assert_eq!(
+        crate::face_tools::FilletWork::of(&editor),
+        crate::face_tools::FilletWork::Nothing
+    );
     let id = map_model::node::brushes_with_ids(editor.document.borrow().tree_world())[0].0;
-    editor.document.borrow_mut().select_face_only(editor_core::document::FaceRef { node: id, face: 0 });
+    editor
+        .document
+        .borrow_mut()
+        .select_face_only(editor_core::document::FaceRef { node: id, face: 0 });
     let work = crate::face_tools::FilletWork::of(&editor);
     assert_eq!(work, crate::face_tools::FilletWork::FaceLoops(1));
     assert_eq!(work.describe(), "The loop around 1 selected face");
@@ -282,9 +346,20 @@ fn every_tab_and_dialog_renders_in_the_light_scheme() {
     crate::theme::use_scheme(&ctx, false);
     assert!(!crate::theme::is_dark());
     assert!(!ctx.global_style().visuals.dark_mode);
-    let sized = |w: f32, h: f32| egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(w, h))), ..Default::default() };
+    let sized = |w: f32, h: f32| egui::RawInput {
+        screen_rect: Some(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(w, h),
+        )),
+        ..Default::default()
+    };
     let mut inspector = Inspector::default();
-    let first_brush = editor.document.borrow().selectable_brushes().first().map(|(id, _)| *id);
+    let first_brush = editor
+        .document
+        .borrow()
+        .selectable_brushes()
+        .first()
+        .map(|(id, _)| *id);
     for (w, h) in [(1360.0, 760.0), (900.0, 600.0)] {
         for selection in 0..3 {
             {
@@ -292,7 +367,8 @@ fn every_tab_and_dialog_renders_in_the_light_scheme() {
                 document.clear_selection();
                 match (selection, first_brush) {
                     (1, Some(id)) => document.toggle_selected(id),
-                    (2, Some(id)) => document.select_face_only(editor_core::document::FaceRef { node: id, face: 0 }),
+                    (2, Some(id)) => document
+                        .select_face_only(editor_core::document::FaceRef { node: id, face: 0 }),
                     _ => {}
                 }
             }
@@ -300,11 +376,21 @@ fn every_tab_and_dialog_renders_in_the_light_scheme() {
             for tab in [Tab::Map, Tab::Entity, Tab::Face, Tab::Assets] {
                 inspector.tab = tab;
                 for _ in 0..2 {
-                    let mut output = ctx.run_ui(sized(w, h), |ui| inspector.show(ui, egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(340.0, h)), &editor));
+                    let mut output = ctx.run_ui(sized(w, h), |ui| {
+                        inspector.show(
+                            ui,
+                            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(340.0, h)),
+                            &editor,
+                        )
+                    });
                     output.textures_delta.clear();
                 }
             }
-            assert_eq!(editor.document.borrow().to_map_text(), before, "{w}x{h}, selection {selection}");
+            assert_eq!(
+                editor.document.borrow().to_map_text(),
+                before,
+                "{w}x{h}, selection {selection}"
+            );
         }
         let mut animation = crate::animation_page::AnimationPage::default();
         animation.open = true;
@@ -314,7 +400,7 @@ fn every_tab_and_dialog_renders_in_the_light_scheme() {
         let mut preferences = crate::preferences_page::PreferencesPage::default();
         preferences.open = true;
         let mut plugin_cards = crate::plugin_page::Cards::default();
-    let mut plugins = crate::plugin_page::PluginPage::default();
+        let mut plugins = crate::plugin_page::PluginPage::default();
         plugins.open();
         let mut export = crate::export_page::ExportPage::default();
         export.open = true;
@@ -346,18 +432,56 @@ fn every_tab_and_dialog_renders_in_the_light_scheme() {
 
 #[test]
 fn custom_binding_bypasses_blender_translation_and_respects_text_focus() {
-    let (ctx,editor)=setup();
-    let window=std::rc::Rc::new(std::cell::RefCell::new(crate::WindowState::default()));
-    let commands=crate::commands_for(&editor,&ctx,&window);
-    let mut preferences=editor_core::preferences::current();preferences.keymap=editor_core::preferences::Keymap::Blender;
-    preferences.keyboard_bindings=r#"{"tool_brush":"F5","save":"F6"}"#.into();editor_core::preferences::set_current(preferences);
-    let mut animation=crate::animation_page::AnimationPage::default();
-    let event=|key|egui::Event::Key{key,physical_key:Some(key),pressed:true,repeat:false,modifiers:egui::Modifiers::NONE};
-    crate::dispatch_keys(&commands,&window,&mut animation,&editor,vec![event(egui::Key::F5)],egui::Modifiers::NONE,None,true);
-    assert_eq!(*editor.tool.borrow(),editor_core::tool::Tool::Select);
-    crate::dispatch_keys(&commands,&window,&mut animation,&editor,vec![event(egui::Key::F5)],egui::Modifiers::NONE,None,false);
-    assert_eq!(*editor.tool.borrow(),editor_core::tool::Tool::Brush);
-    crate::dispatch_keys(&commands,&window,&mut animation,&editor,vec![event(egui::Key::F6)],egui::Modifiers::NONE,None,true);
-    assert_eq!(window.borrow().action,Some(crate::app_actions::Action::Save));
+    let (ctx, editor) = setup();
+    let window = std::rc::Rc::new(std::cell::RefCell::new(crate::WindowState::default()));
+    let commands = crate::commands_for(&editor, &ctx, &window);
+    let mut preferences = editor_core::preferences::current();
+    preferences.keymap = editor_core::preferences::Keymap::Blender;
+    preferences.keyboard_bindings = r#"{"tool_brush":"F5","save":"F6"}"#.into();
+    editor_core::preferences::set_current(preferences);
+    let mut animation = crate::animation_page::AnimationPage::default();
+    let event = |key| egui::Event::Key {
+        key,
+        physical_key: Some(key),
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    };
+    crate::dispatch_keys(
+        &commands,
+        &window,
+        &mut animation,
+        &editor,
+        vec![event(egui::Key::F5)],
+        egui::Modifiers::NONE,
+        None,
+        true,
+    );
+    assert_eq!(*editor.tool.borrow(), editor_core::tool::Tool::Select);
+    crate::dispatch_keys(
+        &commands,
+        &window,
+        &mut animation,
+        &editor,
+        vec![event(egui::Key::F5)],
+        egui::Modifiers::NONE,
+        None,
+        false,
+    );
+    assert_eq!(*editor.tool.borrow(), editor_core::tool::Tool::Brush);
+    crate::dispatch_keys(
+        &commands,
+        &window,
+        &mut animation,
+        &editor,
+        vec![event(egui::Key::F6)],
+        egui::Modifiers::NONE,
+        None,
+        true,
+    );
+    assert_eq!(
+        window.borrow().action,
+        Some(crate::app_actions::Action::Save)
+    );
     editor_core::preferences::set_current(Default::default());
 }
