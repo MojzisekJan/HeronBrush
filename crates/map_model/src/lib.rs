@@ -54,6 +54,7 @@ pub mod stylized_text;
 pub mod text;
 pub mod uv;
 pub mod uv_alignment;
+pub mod voxel;
 pub mod wal;
 
 pub mod hollow;
