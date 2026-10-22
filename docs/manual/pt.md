@@ -153,15 +153,23 @@ Geometria → Matriz copia a seleção e mostra as cópias no mapa enquanto voc�
 Quando a seleção é um grupo inteiro, **Cópias vinculadas** torna cada cópia uma duplicata vinculada, então uma alteração em uma chega a todas. **Aplicar** mantém as cópias e as seleciona junto com o original; **Cancelar** as remove. A matriz inteira é desfeita em um único passo.
 
 ## Esculpir terreno
-O terreno é feito de muitos brushes pequenos cujo topo o pincel de esculpir sobe e desce. Selecione uma caixa plana e escolha Geometria → Dividir em colunas: a caixa é cortada em colunas triangulares com um passo de grade de largura, colocadas em um grupo chamado Terrain. O topo de um triângulo é sempre plano, então as colunas podem formar cristas e vales.
+O terreno é feito de muitos brushes pequenos cuja superfície o pincel de esculpir empurra para fora e puxa para dentro. Selecione um ou mais brushes e escolha Geometria → Dividir em colunas. Os brushes são cortados ao longo das linhas da grade em colunas com um passo de grade de largura, colocadas em um grupo chamado Terrain. Os cortes seguem a grade do mundo, então brushes lado a lado são cortados nos mesmos lugares e compartilham os cantos. Cada coluna fica ao longo do lado fino do brush: na vertical em um piso ou em um teto, na horizontal em uma parede. Uma caverna funciona do mesmo jeito: deixe uma caixa oca (Hollow selection) com paredes de um passo de grade de espessura, selecione as paredes e divida-as.
 
-Escolha a ferramenta **Esculpir** (`J`) e arraste sobre o terreno na vista 3D. O anel laranja mostra o pincel. Sem seleção, o pincel altera todos os brushes abaixo dele; com seleção, só os selecionados. A barra no topo da janela escolhe o que um traço faz:
+A barra de esculpir escolhe a forma das colunas. **Triângulo** cria duas colunas por célula da grade, e o topo de um triângulo continua plano não importa como seja esculpido. **Quadrado** cria uma por célula, metade dos brushes; o topo dela dobra ao longo de uma diagonal.
 
-- **Elevar** e **Baixar** movem a superfície para cima ou para baixo, mais no centro do anel e nada na borda. Segure `Shift` para trocá-los.
+Escolha a ferramenta **Esculpir** (`J`) e arraste sobre a superfície na vista 3D. O anel laranja mostra o pincel. Sem seleção, o pincel altera todos os brushes abaixo dele; com seleção, só os selecionados. A barra no topo da janela escolhe o que um traço faz:
+
+- **Elevar** e **Baixar** movem a superfície para fora ou para dentro, mais no centro do anel e nada na borda. Segure `Shift` para trocá-los.
 - **Suavizar** nivela as saliências.
-- **Aplainar** iguala a superfície à altura onde o traço começou.
+- **Aplainar** nivela a superfície no ponto onde o traço começou.
 
-Os dois números ao lado dos modos são **Raio (unidades)** e **Força (%)**. Só os cantos de cima se movem, na vertical; a base fica onde está e uma coluna mantém pelo menos uma unidade de espessura. Um traço é desfeito em um único passo. Nas vistas 2D a ferramenta seleciona como a ferramenta Selecionar.
+**Direção** escolhe o sentido:
+
+- **Cima** move a superfície direto para cima e para baixo, dentro de um círculo no chão. É o modo para terreno.
+- **Câmera** move a superfície para perto e para longe da vista, dentro de uma esfera em volta do ponteiro. Olhe para um piso, uma parede ou um teto e o pincel molda o que você está vendo.
+- **Normal** move a superfície para fora da face sob o ponteiro onde o traço começa.
+
+Os dois números são **Raio (unidades)** e **Força (%)**. Só os cantos do lado que o traço move se mexem; a parte de trás fica onde está e uma coluna mantém pelo menos uma unidade de espessura. Onde brushes compartilham um canto, eles o movem juntos, então a superfície continua fechada. Um traço é desfeito em um único passo. Nas vistas 2D a ferramenta seleciona como a ferramenta Selecionar.
 
 # Materiais e UVs
 ## Carregando e aplicando materiais

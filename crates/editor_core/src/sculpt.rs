@@ -34,10 +34,66 @@ impl SculptMode {
     }
 }
 
+/// Which way a stroke moves the surface.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SculptDirection {
+    /// Straight up and down, within a column standing on the ground: terrain.
+    Up,
+    /// Towards and away from the camera, within a ball: whatever the view looks at, a
+    /// floor, a wall or a ceiling.
+    Camera,
+    /// Out of and into the face under the pointer where the stroke begins, within a ball.
+    Normal,
+}
+
+impl SculptDirection {
+    pub const ALL: [Self; 3] = [Self::Up, Self::Camera, Self::Normal];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Up => translation_key("Up"),
+            Self::Camera => translation_key("Camera"),
+            Self::Normal => translation_key("Normal"),
+        }
+    }
+}
+
+/// The shape of the columns Split into columns cuts a brush into.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ColumnShape {
+    /// Two triangles per grid cell. Each top stays flat however its corners move.
+    Triangles,
+    /// One column per grid cell. A sculpted top bends along a diagonal.
+    Squares,
+}
+
+impl ColumnShape {
+    pub const ALL: [Self; 2] = [Self::Triangles, Self::Squares];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Triangles => translation_key("Triangle"),
+            Self::Squares => translation_key("Square"),
+        }
+    }
+
+    /// How many columns one grid cell becomes.
+    pub fn per_cell(self) -> usize {
+        match self {
+            Self::Triangles => 2,
+            Self::Squares => 1,
+        }
+    }
+}
+
 /// The sculpt brush.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SculptParameters {
     pub mode: SculptMode,
+    /// Which way a stroke moves the surface.
+    pub direction: SculptDirection,
+    /// What Split into columns cuts a brush into.
+    pub columns: ColumnShape,
     /// The brush's radius in map units, measured across the ground.
     pub radius: f64,
     /// How much one dab does, from 0 to 1: Raise and Lower move the centre by a tenth of
@@ -47,7 +103,7 @@ pub struct SculptParameters {
 
 impl Default for SculptParameters {
     fn default() -> Self {
-        Self { mode: SculptMode::Raise, radius: 128.0, strength: 0.25 }
+        Self { mode: SculptMode::Raise, direction: SculptDirection::Up, columns: ColumnShape::Triangles, radius: 128.0, strength: 0.25 }
     }
 }
 

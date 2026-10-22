@@ -153,15 +153,23 @@ Geometri → Array kopierer utvalget og viser kopiene i kartet mens du endrer ve
 Når utvalget er én hel gruppe, gjør **Koblede kopier** hver kopi til et koblet duplikat, så en endring i én når alle. **Bruk** beholder kopiene og velger dem sammen med originalen; **Avbryt** fjerner dem. Hele arrayet angres i ett steg.
 
 ## Modellere terreng
-Terreng består av mange små brushes som modelleringspenselen hever og senker toppen av. Velg en flat boks og Geometri → Del i søyler: boksen deles i trekantede søyler, ett rutenettsteg brede, som legges i en gruppe kalt Terrain. Toppen av en trekant er alltid plan, så søylene kan danne rygger og daler.
+Terreng består av mange små brushes som modelleringspenselen skyver ut og trekker inn overflaten på. Velg én eller flere brushes og velg Geometri → Del i søyler. Brushene deles langs rutenettlinjene i søyler som er ett rutenettsteg brede, og søylene legges i en gruppe kalt Terrain. Snittene følger rutenettet i verden, så brushes som ligger inntil hverandre, deles på de samme stedene og deler hjørner. Hver søyle står langs den tynne siden av brushen: loddrett i et gulv eller et tak, vannrett i en vegg. En hule lages på samme måte: gjør en boks hul (Hollow selection) med veggtykkelse på ett rutenettsteg, velg veggene og del dem.
 
-Velg verktøyet **Modeller** (`J`) og dra over terrenget i 3D-visningen. Den oransje ringen viser penselen. Uten utvalg endrer penselen alle brushes under den; med et utvalg bare de valgte. Linjen øverst i vinduet velger hva et strøk gjør:
+Modelleringslinjen velger formen på søylene. **Trekant** lager to søyler per rute, og toppen av en trekant forblir plan uansett hvordan den modelleres. **Kvadrat** lager én per rute, altså halvparten så mange brushes; toppen bøyer seg langs en diagonal.
 
-- **Hev** og **Senk** flytter overflaten opp eller ned, mest midt i ringen og ikke i det hele tatt ved kanten. Hold `Shift` for å bytte dem.
+Velg verktøyet **Modeller** (`J`) og dra over overflaten i 3D-visningen. Den oransje ringen viser penselen. Uten utvalg endrer penselen alle brushes under den; med et utvalg bare de valgte. Linjen øverst i vinduet velger hva et strøk gjør:
+
+- **Hev** og **Senk** flytter overflaten ut eller inn, mest midt i ringen og ikke i det hele tatt ved kanten. Hold `Shift` for å bytte dem.
 - **Glatt** jevner ut kuler.
-- **Jevn ut** jevner overflaten til høyden der strøket begynte.
+- **Jevn ut** planerer overflaten til der strøket begynte.
 
-De to tallene ved siden av modusene er **Radius (enheter)** og **Styrke (%)**. Bare de øverste hjørnene flyttes, loddrett; bunnen blir der den er, og en søyle blir minst én enhet tykk. Et strøk angres i ett steg. I 2D-visningene velger verktøyet som valgverktøyet.
+**Retning** velger hvilken vei:
+
+- **Opp** flytter overflaten rett opp og ned, innenfor en sirkel på bakken. Dette er for terreng.
+- **Kamera** flytter den mot og bort fra visningen, innenfor en kule rundt pekeren. Se på et gulv, en vegg eller et tak, så former penselen det du ser på.
+- **Normal** flytter den ut fra flaten under pekeren der strøket begynner.
+
+De to tallene er **Radius (enheter)** og **Styrke (%)**. Bare hjørnene på den siden strøket beveger, flytter seg; baksiden blir der den er, og en søyle blir minst én enhet tykk. Der brushes deler et hjørne, flytter de det sammen, så overflaten forblir lukket. Et strøk angres i ett steg. I 2D-visningene velger verktøyet som valgverktøyet.
 
 # Materialer og UV-er
 ## Laste inn og bruke materialer

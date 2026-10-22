@@ -153,15 +153,23 @@ Geometria → Pole skopíruje výber a kópie zobrazuje v mape, kým meníte hod
 Keď je vybraná jedna celá skupina, **Prepojené kópie** urobí z každej kópie prepojený duplikát, takže úprava jednej sa prejaví vo všetkých. **Použiť** kópie ponechá a vyberie ich spolu s originálom; **Zrušiť** ich odstráni. Celé pole sa vracia jedným krokom späť.
 
 ## Sochanie terénu
-Terén tvorí veľa malých brushov, ktorých vrchy sochársky štetec posúva nahor a nadol. Vyberte plochý kváder a zvoľte Geometria → Rozdeliť na stĺpce: kváder sa rozreže na trojboké stĺpce široké jeden krok mriežky a vloží ich do skupiny Terrain. Vrch trojuholníka je vždy rovný, takže stĺpce môžu tvoriť hrebene aj údolia.
+Terén tvorí veľa malých brushov, ktorých povrch sochársky štetec vytláča a vtláča. Vyberte jeden alebo viac brushov a zvoľte Geometria → Rozdeliť na stĺpce. Rozreže ich pozdĺž čiar mriežky na stĺpce široké jeden krok mriežky a vloží ich do skupiny Terrain. Rezy idú po mriežke sveta, takže brushe vedľa seba sa rozrežú na rovnakých miestach a zdieľajú rohy. Každý stĺpec stojí pozdĺž najtenšej strany brushu: zvislo v podlahe alebo strope, vodorovne v stene. Rovnako vznikne jaskyňa: z kvádra urobte dutinu (Hollow selection) s hrúbkou steny jeden krok mriežky, vyberte steny a rozdeľte ich.
 
-Zvoľte nástroj **Sochať** (`J`) a ťahajte po teréne v 3D pohľade. Oranžový kruh ukazuje štetec. Bez výberu štetec mení všetky brushe pod sebou, s výberom len tie vybrané. Lišta hore v okne určuje, čo ťah urobí:
+Tvar stĺpcov určuje lišta sochania. **Trojuholník** dáva dva stĺpce na bunku mriežky a vrch trojuholníka zostane rovný, nech sa tvaruje akokoľvek. **Štvorec** dáva jeden stĺpec na bunku, teda polovičný počet brushov; jeho vrch sa ohne pozdĺž uhlopriečky.
 
-- **Zdvihnúť** a **Znížiť** posunú povrch nahor alebo nadol, najviac v strede kruhu a na okraji vôbec. Podržaním `Shift` ich prehodíte.
+Zvoľte nástroj **Sochať** (`J`) a ťahajte po povrchu v 3D pohľade. Oranžový kruh ukazuje štetec. Bez výberu štetec mení všetky brushe pod sebou, s výberom len tie vybrané. Lišta hore v okne určuje, čo ťah urobí:
+
+- **Zdvihnúť** a **Znížiť** posunú povrch von alebo dovnútra, najviac v strede kruhu a na okraji vôbec. Podržaním `Shift` ich prehodíte.
 - **Vyhladiť** zarovná hrbolčeky.
-- **Zarovnať** zarovná povrch na výšku, kde ťah začal.
+- **Zarovnať** zarovná povrch tam, kde ťah začal.
 
-Dve čísla vedľa režimov sú **Polomer (jednotky)** a **Sila (%)**. Posúvajú sa len horné rohy, a to zvislo; spodok zostáva na mieste a stĺpec zostane aspoň jednu jednotku hrubý. Ťah sa vracia jedným krokom späť. V 2D pohľadoch nástroj vyberá rovnako ako nástroj Výber.
+**Smer** určuje kadiaľ:
+
+- **Hore** posúva povrch zvislo, v kruhu na zemi. To je pre terén.
+- **Kamera** ho posúva k pohľadu a od neho, v guli okolo ukazovateľa. Pozrite sa na podlahu, stenu alebo strop a tvaruje sa to, na čo sa pozeráte.
+- **Normála** ho posúva von zo steny, nad ktorou ťah začal.
+
+Dve čísla sú **Polomer (jednotky)** a **Sila (%)**. Posúvajú sa len rohy na strane, ktorou ťah hýbe; zadná strana zostáva na mieste a stĺpec zostane aspoň jednu jednotku hrubý. Roh, ktorý brushe zdieľajú, sa posunie vo všetkých rovnako, takže povrch zostane uzavretý. Ťah sa vracia jedným krokom späť. V 2D pohľadoch nástroj vyberá rovnako ako nástroj Výber.
 
 # Materiály a UV
 ## Načítanie a použitie materiálov

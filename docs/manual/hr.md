@@ -153,15 +153,23 @@ Geometrija → Niz kopira odabir i prikazuje kopije na karti dok mijenjate vrije
 Kad je odabrana jedna cijela grupa, **Povezane kopije** od svake kopije radi povezani duplikat, pa izmjena jedne stiže do svih. **Primijeni** zadržava kopije i odabire ih zajedno s originalom; **Odustani** ih uklanja. Cijeli niz poništava se jednim korakom.
 
 ## Oblikovanje terena
-Teren se sastoji od mnogo malih brusheva čije vrhove kist za oblikovanje podiže i spušta. Odaberite plosnati kvadar i Geometrija → Podijeli na stupce: kvadar se reže na trokutaste stupce široke jedan korak mreže i stavlja u grupu Terrain. Vrh trokuta uvijek je ravan, pa stupci mogu tvoriti grebene i doline.
+Teren se sastoji od mnogo malih brusheva čiju površinu kist za oblikovanje gura i vuče. Odaberite jedan ili više brusheva pa Geometrija → Podijeli na stupce. Brushevi se režu duž linija mreže na stupce široke jedan korak mreže, a stupci idu u grupu Terrain. Rezovi prate mrežu svijeta, pa se susjedni brushevi režu na istim mjestima i dijele kutove. Svaki stupac stoji duž najtanje strane brusha: okomito u podu ili stropu, vodoravno u zidu. Špilja se radi isto: izdubite kvadar (Hollow selection) s debljinom zida od jednog koraka mreže, odaberite zidove i podijelite ih.
 
-Odaberite alat **Oblikovanje** (`J`) i povlačite po terenu u 3D prikazu. Narančasti prsten prikazuje kist. Bez odabira kist mijenja svaki brush ispod sebe, s odabirom samo odabrane. Traka na vrhu prozora određuje što potez radi:
+Traka za oblikovanje određuje oblik stupaca. **Trokut** daje dva stupca po ćeliji mreže, a vrh trokuta ostaje ravan kako god ga oblikovali. **Kvadrat** daje jedan stupac po ćeliji, dakle upola manje brusheva; vrh mu se savija duž dijagonale.
 
-- **Podigni** i **Spusti** pomiču površinu gore ili dolje, najviše u središtu prstena, a na rubu nimalo. Držite `Shift` da ih zamijenite.
+Odaberite alat **Oblikovanje** (`J`) i povlačite po površini u 3D prikazu. Narančasti prsten prikazuje kist. Bez odabira kist mijenja svaki brush ispod sebe, s odabirom samo odabrane. Traka na vrhu prozora određuje što potez radi:
+
+- **Podigni** i **Spusti** pomiču površinu van ili unutra, najviše u središtu prstena, a na rubu nimalo. Držite `Shift` da ih zamijenite.
 - **Izgladi** izravnava neravnine.
-- **Poravnaj** poravnava površinu na visinu na kojoj je potez počeo.
+- **Poravnaj** poravnava površinu na mjesto gdje je potez počeo.
 
-Dva broja pokraj načina su **Polumjer (jedinice)** i **Jačina (%)**. Pomiču se samo gornji kutovi, okomito; dno ostaje na mjestu, a stupac ostaje debeo barem jednu jedinicu. Potez se poništava jednim korakom. U 2D prikazima alat odabire kao alat Odabir.
+**Smjer** određuje kamo:
+
+- **Gore** pomiče površinu ravno gore i dolje, unutar kruga na tlu. To je za teren.
+- **Kamera** je pomiče prema pogledu i od njega, unutar kugle oko pokazivača. Pogledajte pod, zid ili strop i oblikuje se ono što gledate.
+- **Normala** je pomiče van iz plohe ispod pokazivača na mjestu gdje potez počinje.
+
+Dva broja su **Polumjer (jedinice)** i **Jačina (%)**. Pomiču se samo kutovi na strani koju potez pomiče; stražnja strana ostaje na mjestu, a stupac ostaje debeo barem jednu jedinicu. Kut koji brushevi dijele pomiče se u svima zajedno, pa površina ostaje zatvorena. Potez se poništava jednim korakom. U 2D prikazima alat odabire kao alat Odabir.
 
 # Materijali i UV
 ## Učitavanje i primjena materijala

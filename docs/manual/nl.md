@@ -153,15 +153,23 @@ Geometrie → Array kopieert de selectie en toont de kopieën in de kaart terwij
 Als de selectie één hele groep is, maakt **Gekoppelde kopieën** van elke kopie een gekoppeld duplicaat, zodat een wijziging aan één ze allemaal bereikt. **Toepassen** houdt de kopieën en selecteert ze samen met het origineel; **Annuleren** verwijdert ze. De hele array wordt in één stap ongedaan gemaakt.
 
 ## Terrein boetseren
-Terrein bestaat uit veel kleine brushes waarvan het boetseerpenseel de bovenkant omhoog en omlaag beweegt. Selecteer een plat blok en kies Geometrie → In kolommen verdelen: het blok wordt in driehoekige kolommen van één rasterstap breed gesneden, die in een groep met de naam Terrain komen. De bovenkant van een driehoek is altijd vlak, dus de kolommen kunnen ruggen en dalen vormen.
+Terrein bestaat uit veel kleine brushes waarvan het boetseerpenseel het oppervlak naar buiten duwt en naar binnen trekt. Selecteer een of meer brushes en kies Geometrie → In kolommen verdelen. De brushes worden langs de rasterlijnen in kolommen van één rasterstap breed gesneden, die in een groep met de naam Terrain komen. De sneden volgen het raster van de wereld, dus brushes naast elkaar worden op dezelfde plekken gesneden en delen hun hoeken. Elke kolom staat langs de dunne kant van de brush: rechtop in een vloer of een plafond, liggend in een wand. Een grot werkt net zo: hol een blok uit (Hollow selection) met een wanddikte van één rasterstap, selecteer de wanden en verdeel ze.
 
-Kies het gereedschap **Boetseren** (`J`) en sleep in de 3D-weergave over het terrein. De oranje ring toont het penseel. Zonder selectie verandert het penseel elke brush eronder; met een selectie alleen de geselecteerde. De balk bovenaan het venster kiest wat een streek doet:
+De boetseerbalk kiest de vorm van de kolommen. **Driehoek** maakt er twee per rastercel, en de bovenkant van een driehoek blijft vlak hoe je hem ook boetseert. **Vierkant** maakt er één per cel, dus half zoveel brushes; de bovenkant buigt langs een diagonaal.
 
-- **Verhogen** en **Verlagen** bewegen het oppervlak omhoog of omlaag, het meest in het midden van de ring en niet aan de rand. Houd `Shift` ingedrukt om ze te wisselen.
+Kies het gereedschap **Boetseren** (`J`) en sleep in de 3D-weergave over het oppervlak. De oranje ring toont het penseel. Zonder selectie verandert het penseel elke brush eronder; met een selectie alleen de geselecteerde. De balk bovenaan het venster kiest wat een streek doet:
+
+- **Verhogen** en **Verlagen** bewegen het oppervlak naar buiten of naar binnen, het meest in het midden van de ring en niet aan de rand. Houd `Shift` ingedrukt om ze te wisselen.
 - **Gladmaken** strijkt bulten glad.
-- **Egaliseren** brengt het oppervlak op de hoogte waar de streek begon.
+- **Egaliseren** brengt het oppervlak op het niveau waar de streek begon.
 
-De twee getallen naast de modi zijn **Straal (eenheden)** en **Sterkte (%)**. Alleen de bovenste hoeken bewegen, recht omhoog of omlaag; de onderkant blijft waar hij is en een kolom blijft minstens één eenheid dik. Een streek wordt in één stap ongedaan gemaakt. In de 2D-weergaven selecteert het gereedschap zoals het Selectiegereedschap.
+**Richting** kiest welke kant op:
+
+- **Omhoog** beweegt het oppervlak recht omhoog en omlaag, binnen een cirkel op de grond. Dit is voor terrein.
+- **Camera** beweegt het naar de weergave toe en ervan af, binnen een bol rond de aanwijzer. Kijk naar een vloer, een wand of een plafond en het penseel vormt wat je ziet.
+- **Normaal** beweegt het naar buiten uit het vlak onder de aanwijzer waar de streek begint.
+
+De twee getallen zijn **Straal (eenheden)** en **Sterkte (%)**. Alleen de hoeken aan de kant die de streek beweegt, bewegen mee; de achterkant blijft waar hij is en een kolom blijft minstens één eenheid dik. Waar brushes een hoek delen, bewegen ze die samen, zodat het oppervlak gesloten blijft. Een streek wordt in één stap ongedaan gemaakt. In de 2D-weergaven selecteert het gereedschap zoals het Selectiegereedschap.
 
 # Materialen en UV's
 ## Materialen laden en toepassen

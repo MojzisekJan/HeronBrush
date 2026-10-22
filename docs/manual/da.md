@@ -153,15 +153,23 @@ Geometri → Array kopierer markeringen og viser kopierne i kortet, mens du ænd
 Når markeringen er én hel gruppe, gør **Sammenkædede kopier** hver kopi til en sammenkædet kopi, så en ændring af én når dem alle. **Anvend** beholder kopierne og markerer dem sammen med originalen; **Annuller** fjerner dem. Hele arrayet fortrydes i ét trin.
 
 ## Modellér terræn
-Terræn består af mange små brushes, hvis overside modelleringspenslen hæver og sænker. Vælg en flad kasse og Geometri → Del i søjler: kassen skæres i trekantede søjler, ét gittertrin brede, og lægges i en gruppe ved navn Terrain. Oversiden af en trekant er altid plan, så søjlerne kan danne kamme og dale.
+Terræn består af mange små brushes, hvis overflade modelleringspenslen skubber ud og trykker ind. Markér en eller flere brushes, og vælg Geometri → Del i søjler. Det skærer dem langs gitterlinjerne i søjler, ét gittertrin brede, og lægger søjlerne i en gruppe ved navn Terrain. Snittene følger verdens gitter, så brushes, der ligger side om side, skæres de samme steder og deler hjørner. Hver søjle står langs brushens tynde side: lodret i et gulv eller et loft, vandret i en væg. En hule laves på samme måde: gør en kasse hul (Hollow selection) med en vægtykkelse på ét gittertrin, markér væggene, og del dem.
 
-Vælg værktøjet **Modellér** (`J`), og træk hen over terrænet i 3D-visningen. Den orange ring viser penslen. Uden markering ændrer penslen alle brushes under den; med en markering kun de markerede. Linjen øverst i vinduet vælger, hvad et strøg gør:
+Modelleringslinjen vælger søjlernes form. **Trekant** laver to pr. gittercelle, og oversiden af en trekant forbliver plan, uanset hvordan den modelleres. **Kvadrat** laver én pr. celle, altså halvt så mange brushes; dens overside knækker langs en diagonal.
 
-- **Hæv** og **Sænk** flytter overfladen op eller ned, mest i midten af ringen og slet ikke ved kanten. Hold `Shift` nede for at bytte dem.
+Vælg værktøjet **Modellér** (`J`), og træk hen over overfladen i 3D-visningen. Den orange ring viser penslen. Uden markering ændrer penslen alle brushes under den; med en markering kun de markerede. Linjen øverst i vinduet vælger, hvad et strøg gør:
+
+- **Hæv** og **Sænk** flytter overfladen ud eller ind, mest i midten af ringen og slet ikke ved kanten. Hold `Shift` nede for at bytte dem.
 - **Glat** udglatter buler.
-- **Udjævn** jævner overfladen til den højde, hvor strøget begyndte.
+- **Udjævn** jævner overfladen ud til det sted, hvor strøget begyndte.
 
-De to tal ved siden af tilstandene er **Radius (enheder)** og **Styrke (%)**. Kun de øverste hjørner flytter sig, lodret; bunden bliver, hvor den er, og en søjle forbliver mindst én enhed tyk. Et strøg fortrydes i ét trin. I 2D-visningerne markerer værktøjet som markeringsværktøjet.
+**Retning** vælger hvilken vej:
+
+- **Op** flytter overfladen lodret op og ned, inden for en cirkel på jorden. Den er til terræn.
+- **Kamera** flytter den mod visningen og væk fra den, inden for en kugle omkring markøren. Se på et gulv, en væg eller et loft, og penslen former det.
+- **Normal** flytter den ud fra den flade, der er under markøren, hvor strøget begynder.
+
+De to tal er **Radius (enheder)** og **Styrke (%)**. Kun hjørnerne på den side, strøget flytter, bevæger sig; bagsiden bliver, hvor den er, og en søjle forbliver mindst én enhed tyk. Hvor brushes deler et hjørne, flytter de det sammen, så overfladen forbliver lukket. Et strøg fortrydes i ét trin. I 2D-visningerne markerer værktøjet som markeringsværktøjet.
 
 # Materialer og UV'er
 ## Indlæsning og anvendelse af materialer

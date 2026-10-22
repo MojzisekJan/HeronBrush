@@ -153,15 +153,23 @@ Geometrija → Masyvas nukopijuoja pasirinkimą ir rodo kopijas žemėlapyje, ko
 Kai pasirinkta viena visa grupė, **Susietos kopijos** kiekvieną kopiją paverčia susietu dublikatu, todėl vienos pakeitimas pasiekia visas. **Taikyti** palieka kopijas ir pažymi jas kartu su originalu; **Atšaukti** jas pašalina. Visas masyvas atšaukiamas vienu žingsniu.
 
 ## Reljefo lipdymas
-Reljefą sudaro daug mažų brush'ų, kurių viršus lipdymo teptukas kelia ir leidžia. Pasirinkite plokščią gretasienį ir Geometrija → Padalyti į stulpus: jis supjaustomas į trikampius stulpus, vieno tinklelio žingsnio pločio, ir sudedamas į grupę Terrain. Trikampio viršus visada plokščias, todėl stulpai gali sudaryti keteras ir slėnius.
+Reljefą sudaro daug mažų brašų, kurių paviršių lipdymo teptukas stumia ir traukia. Pažymėkite vieną ar kelis brašus ir pasirinkite Geometrija → Padalyti į stulpus. Brašai supjaustomi išilgai tinklelio linijų į vieno tinklelio žingsnio pločio stulpus, o stulpai sudedami į grupę Terrain. Pjūviai eina pagal pasaulio tinklelį, todėl greta esantys brašai supjaustomi tose pačiose vietose ir turi bendrus kampus. Kiekvienas stulpas stovi išilgai ploniausios brašo pusės: stačias grindyse ar lubose, gulsčias sienoje. Urvas daromas taip pat: išskobkite gretasienį (Hollow selection) su vieno tinklelio žingsnio sienų storiu, pažymėkite sienas ir jas padalykite.
 
-Pasirinkite įrankį **Lipdymas** (`J`) ir vilkite per reljefą 3D vaizde. Oranžinis žiedas rodo teptuką. Kai niekas nepasirinkta, teptukas keičia visus po juo esančius brush'us, o esant pasirinkimui – tik pasirinktus. Juosta lango viršuje nustato, ką daro brūkšnys:
+Lipdymo juosta nustato stulpų formą. **Trikampis** sukuria du stulpus kiekvienam tinklelio langeliui, ir trikampio viršus lieka plokščias, kad ir kaip jį lipdytumėte. **Kvadratas** sukuria vieną stulpą langeliui, tai yra perpus mažiau brašų; jo viršus sulinksta išilgai įstrižainės.
 
-- **Pakelti** ir **Nuleisti** kelia arba leidžia paviršių – labiausiai žiedo centre, o krašte visai ne. Laikykite `Shift`, kad juos sukeistumėte.
-- **Išlyginti nelygumus** išlygina nelygumus.
-- **Išlyginti** išlygina paviršių iki aukščio, kuriame brūkšnys prasidėjo.
+Pasirinkite įrankį **Lipdymas** (`J`) ir vilkite per paviršių 3D vaizde. Oranžinis žiedas rodo teptuką. Kai niekas nepažymėta, teptukas keičia visus po juo esančius brašus, o kai yra pažymėtų, tik pažymėtus. Juosta lango viršuje nustato, ką daro brūkšnys:
 
-Du skaičiai šalia režimų yra **Spindulys (vienetai)** ir **Stiprumas (%)**. Juda tik viršutiniai kampai, statmenai aukštyn arba žemyn; apačia lieka vietoje, o stulpas lieka bent vieno vieneto storio. Brūkšnys atšaukiamas vienu žingsniu. 2D vaizduose įrankis žymi kaip žymėjimo įrankis.
+- **Pakelti** ir **Nuleisti** stumia paviršių į išorę arba į vidų, labiausiai žiedo centre, o krašte visai ne. Laikykite `Shift`, kad juos sukeistumėte.
+- **Išlyginti nelygumus** nugludina kauburius.
+- **Išlyginti** išlygina paviršių iki vietos, kurioje brūkšnys prasidėjo.
+
+**Kryptis** nustato, kuria kryptimi:
+
+- **Aukštyn** stumia paviršių tiesiai aukštyn ir žemyn, apskritime ant žemės. Tai skirta reljefui.
+- **Kamera** stumia jį artyn prie vaizdo ir tolyn nuo jo, rutulyje aplink žymeklį. Pažiūrėkite į grindis, sieną ar lubas, ir lipdomas bus tai, į ką žiūrite.
+- **Normalė** stumia jį į išorę iš sienelės, kuri yra po žymekliu ten, kur brūkšnys prasideda.
+
+Du skaičiai yra **Spindulys (vienetai)** ir **Stiprumas (%)**. Juda tik kampai toje pusėje, kurią brūkšnys stumia; galinė pusė lieka vietoje, o stulpas lieka bent vieno vieneto storio. Bendrą kampą brašai pastumia kartu, todėl paviršius lieka uždaras. Brūkšnys atšaukiamas vienu žingsniu. 2D vaizduose įrankis žymi kaip žymėjimo įrankis.
 
 # Medžiagos ir UV
 ## Medžiagų įkėlimas ir taikymas

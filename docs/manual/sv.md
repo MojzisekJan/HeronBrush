@@ -153,15 +153,23 @@ Geometri → Array kopierar markeringen och visar kopiorna i kartan medan du än
 När markeringen är en hel grupp gör **Länkade kopior** varje kopia till en länkad dubblett, så en ändring av en når alla. **Verkställ** behåller kopiorna och markerar dem tillsammans med originalet; **Avbryt** tar bort dem. Hela arrayen ångras i ett steg.
 
 ## Skulptera terräng
-Terräng består av många små brushes vars ovansida skulpteringspenseln höjer och sänker. Markera en platt låda och välj Geometri → Dela i pelare: lådan delas i triangulära pelare, ett rutnätssteg breda, som läggs i en grupp med namnet Terrain. Ovansidan av en triangel är alltid plan, så pelarna kan bilda åsar och dalar.
+Terräng består av många små brushar vars yta skulpteringspenseln trycker ut och drar in. Markera en eller flera brushar och välj Geometri → Dela i pelare. Kommandot skär dem längs rutnätets linjer i pelare som är ett rutnätssteg breda och lägger pelarna i en grupp med namnet Terrain. Snitten följer världens rutnät, så brushar som ligger bredvid varandra skärs på samma ställen och delar hörn. Varje pelare står längs brushens tunna sida: upprätt i ett golv eller ett tak, liggande i en vägg. En grotta fungerar likadant: gör en låda ihålig (Hollow selection) med en väggtjocklek på ett rutnätssteg, markera väggarna och dela dem.
 
-Välj verktyget **Skulptera** (`J`) och dra över terrängen i 3D-vyn. Den orange ringen visar penseln. Utan markering ändrar penseln alla brushes under den; med en markering bara de markerade. Listen överst i fönstret väljer vad ett drag gör:
+Skulpteringslisten väljer pelarnas form. **Triangel** ger två pelare per ruta i rutnätet, och en triangels ovansida förblir plan hur den än skulpteras. **Kvadrat** ger en per ruta, hälften så många brushar; dess ovansida böjs längs en diagonal.
 
-- **Höj** och **Sänk** flyttar ytan uppåt eller nedåt, mest i ringens mitt och inte alls vid kanten. Håll ned `Shift` för att byta dem.
+Välj verktyget **Skulptera** (`J`) och dra över ytan i 3D-vyn. Den orange ringen visar penseln. Utan markering ändrar penseln alla brushar under den; med en markering bara de markerade. Listen överst i fönstret väljer vad ett drag gör:
+
+- **Höj** och **Sänk** flyttar ytan utåt eller inåt, mest i ringens mitt och inte alls vid kanten. Håll ned `Shift` för att byta dem.
 - **Jämna ut** jämnar ut bulor.
-- **Plana ut** planar ut ytan till höjden där draget började.
+- **Plana ut** planar ut ytan till där draget började.
 
-De två talen bredvid lägena är **Radie (enheter)** och **Styrka (%)**. Bara de övre hörnen flyttas, lodrätt; botten stannar där den är och en pelare förblir minst en enhet tjock. Ett drag ångras i ett steg. I 2D-vyerna markerar verktyget som markeringsverktyget.
+**Riktning** väljer åt vilket håll:
+
+- **Upp** flyttar ytan rakt upp och ned, inom en cirkel på marken. Det är till för terräng.
+- **Kamera** flyttar den mot och från vyn, inom ett klot runt pekaren. Titta på ett golv, en vägg eller ett tak så formar penseln det.
+- **Normal** flyttar den utåt från den yta som pekaren är över när draget börjar.
+
+De två talen är **Radie (enheter)** och **Styrka (%)**. Bara hörnen på den sida som draget flyttar rör sig; baksidan stannar där den är och en pelare förblir minst en enhet tjock. Där brushar delar ett hörn flyttar de det tillsammans, så ytan förblir sluten. Ett drag ångras i ett steg. I 2D-vyerna markerar verktyget som markeringsverktyget.
 
 # Material och UV
 ## Läsa in och tillämpa material

@@ -153,15 +153,23 @@ Geometria → Taulukko kopioi valinnan ja näyttää kopiot kartassa, kun muutat
 Kun valintana on yksi kokonainen ryhmä, **Linkitetyt kopiot** tekee jokaisesta kopiosta linkitetyn kaksoiskappaleen, joten muutos yhteen ulottuu kaikkiin. **Käytä** säilyttää kopiot ja valitsee ne alkuperäisen kanssa; **Peruuta** poistaa ne. Koko taulukko perutaan yhdellä askeleella.
 
 ## Maaston muotoilu
-Maasto koostuu monista pienistä brusheista, joiden yläpintaa muotoilusivellin nostaa ja laskee. Valitse litteä laatikko ja Geometria → Jaa pylväiksi: laatikko leikataan ruudukon askeleen levyisiksi kolmiopylväiksi, jotka siirretään Terrain-nimiseen ryhmään. Kolmion yläpinta on aina tasainen, joten pylväät voivat muodostaa harjanteita ja laaksoja.
+Maasto koostuu monista pienistä brusheista, joiden pintaa muotoilusivellin työntää ulos ja painaa sisään. Valitse yksi tai useampi brush ja Geometria → Jaa pylväiksi. Se leikkaa ne ruudukon viivoja pitkin ruudukon askeleen levyisiksi pylväiksi ja siirtää pylväät Terrain-nimiseen ryhmään. Leikkaukset seuraavat maailman ruudukkoa, joten vierekkäiset brushit leikataan samoista kohdista ja niillä on yhteiset kulmat. Jokainen pylväs on brushin ohuen sivun suuntainen: pystyssä lattiassa tai katossa, vaakasuorassa seinässä. Luola tehdään samalla tavalla: tee laatikosta ontto (Hollow selection) yhden ruudukon askeleen seinämänpaksuudella, valitse seinämät ja jaa ne.
 
-Valitse **Muotoile**-työkalu (`J`) ja vedä maaston yli 3D-näkymässä. Oranssi rengas näyttää siveltimen. Ilman valintaa sivellin muuttaa kaikkia alleen jääviä brusheja, valinnan kanssa vain valittuja. Ikkunan yläreunan palkki valitsee, mitä veto tekee:
+Muotoilupalkki valitsee pylväiden muodon. **Kolmio** tekee kaksi pylvästä ruudukon solua kohden, ja kolmion yläpinta pysyy tasaisena, miten sitä muotoileekin. **Neliö** tekee yhden solua kohden, eli puolet vähemmän brusheja; sen yläpinta taittuu lävistäjää pitkin.
 
-- **Nosta** ja **Laske** siirtävät pintaa ylös tai alas, eniten renkaan keskellä eikä lainkaan reunalla. Pidä `Shift` pohjassa vaihtaaksesi ne.
+Valitse **Muotoile**-työkalu (`J`) ja vedä pinnan yli 3D-näkymässä. Oranssi rengas näyttää siveltimen. Ilman valintaa sivellin muuttaa kaikkia alleen jääviä brusheja, valinnan kanssa vain valittuja. Ikkunan yläreunan palkki valitsee, mitä veto tekee:
+
+- **Nosta** ja **Laske** siirtävät pintaa ulos tai sisään, eniten renkaan keskellä eikä lainkaan reunalla. Pidä `Shift` pohjassa vaihtaaksesi ne.
 - **Pehmennä** tasoittaa kuhmut.
-- **Tasoita** tasoittaa pinnan siihen korkeuteen, josta veto alkoi.
+- **Tasoita** tasoittaa pinnan siihen kohtaan, josta veto alkoi.
 
-Tilojen vieressä olevat kaksi lukua ovat **Säde (yksikköä)** ja **Voimakkuus (%)**. Vain yläkulmat liikkuvat, pystysuoraan; pohja pysyy paikallaan ja pylväs pysyy vähintään yhden yksikön paksuisena. Veto perutaan yhdellä askeleella. 2D-näkymissä työkalu valitsee kuten valintatyökalu.
+**Suunta** valitsee, mihin suuntaan:
+
+- **Ylös** siirtää pintaa suoraan ylös ja alas maahan piirtyvän ympyrän sisällä. Se on maastoa varten.
+- **Kamera** siirtää sitä kohti näkymää ja siitä poispäin osoittimen ympärillä olevan pallon sisällä. Katso lattiaa, seinää tai kattoa, niin sivellin muotoilee sitä.
+- **Normaali** siirtää sitä ulos tahkosta, joka on osoittimen alla vedon alkaessa.
+
+Kaksi lukua ovat **Säde (yksikköä)** ja **Voimakkuus (%)**. Vain sen puolen kulmat liikkuvat, jota veto siirtää; takapuoli pysyy paikallaan ja pylväs pysyy vähintään yhden yksikön paksuisena. Kun brusheilla on yhteinen kulma, ne siirtävät sitä yhdessä, joten pinta pysyy suljettuna. Veto perutaan yhdellä askeleella. 2D-näkymissä työkalu valitsee kuten valintatyökalu.
 
 # Materiaalit ja UV:t
 ## Materiaalien lataaminen ja käyttäminen

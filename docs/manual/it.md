@@ -153,15 +153,23 @@ Geometria → Serie copia la selezione e mostra le copie nella mappa mentre camb
 Quando la selezione è un gruppo intero, **Copie collegate** rende ogni copia un duplicato collegato, quindi una modifica a una raggiunge tutte. **Applica** mantiene le copie e le seleziona insieme all'originale; **Annulla** le rimuove. L'intera serie si annulla in un solo passaggio.
 
 ## Scolpire il terreno
-Il terreno è fatto di molti piccoli brush la cui parte superiore il pennello di scultura alza e abbassa. Seleziona un parallelepipedo piatto e scegli Geometria → Dividi in colonne: viene tagliato in colonne triangolari larghe un passo di griglia, messe in un gruppo chiamato Terrain. La parte superiore di un triangolo è sempre piana, quindi le colonne possono formare creste e valli.
+Il terreno è fatto di molti piccoli brush la cui superficie il pennello di scultura spinge e tira. Seleziona uno o più brush e scegli Geometria → Dividi in colonne. I brush vengono tagliati lungo le linee della griglia in colonne larghe un passo di griglia, e le colonne finiscono in un gruppo chiamato Terrain. I tagli seguono la griglia del mondo, quindi brush affiancati vengono tagliati negli stessi punti e condividono gli angoli. Ogni colonna sta lungo il lato più sottile del brush: in verticale in un pavimento o in un soffitto, in orizzontale in una parete. Una grotta si fa allo stesso modo: svuota un parallelepipedo (Hollow selection) con pareti spesse un passo di griglia, seleziona le pareti e dividile.
 
-Scegli lo strumento **Scolpisci** (`J`) e trascina sul terreno nella vista 3D. L'anello arancione mostra il pennello. Senza selezione il pennello cambia ogni brush sotto di sé; con una selezione, solo quelli selezionati. La barra in cima alla finestra sceglie cosa fa un tratto:
+La barra di scultura sceglie la forma delle colonne. **Triangolo** ne crea due per cella della griglia, e la parte superiore di un triangolo resta piana comunque la si scolpisca. **Quadrato** ne crea una per cella, cioè metà dei brush; la sua parte superiore si piega lungo una diagonale.
 
-- **Alza** e **Abbassa** spostano la superficie in su o in giù, di più al centro dell'anello e per niente sul bordo. Tieni premuto `Shift` per scambiarli.
+Scegli lo strumento **Scolpisci** (`J`) e trascina sulla superficie nella vista 3D. L'anello arancione mostra il pennello. Senza selezione il pennello cambia ogni brush sotto di sé; con una selezione, solo quelli selezionati. La barra in cima alla finestra sceglie cosa fa un tratto:
+
+- **Alza** e **Abbassa** spostano la superficie in fuori o in dentro, di più al centro dell'anello e per niente sul bordo. Tieni premuto `Shift` per scambiarli.
 - **Leviga** spiana le gobbe.
-- **Appiattisci** porta la superficie all'altezza dove è iniziato il tratto.
+- **Appiattisci** porta la superficie al punto dove è iniziato il tratto.
 
-I due numeri accanto alle modalità sono **Raggio (unità)** e **Forza (%)**. Si muovono solo gli angoli superiori, in verticale; la base resta dov'è e una colonna resta spessa almeno un'unità. Un tratto si annulla in un solo passaggio. Nelle viste 2D lo strumento seleziona come lo strumento Seleziona.
+**Direzione** sceglie verso dove:
+
+- **Su** sposta la superficie dritta in su e in giù, dentro un cerchio a terra. È quella per il terreno.
+- **Telecamera** la avvicina e la allontana dalla vista, dentro una sfera attorno al puntatore. Guarda un pavimento, una parete o un soffitto e modella quello.
+- **Normale** la sposta in fuori dalla faccia che sta sotto il puntatore dove inizia il tratto.
+
+I due numeri sono **Raggio (unità)** e **Forza (%)**. Si muovono solo gli angoli sul lato che il tratto sposta; il retro resta dov'è e una colonna resta spessa almeno un'unità. Dove più brush condividono un angolo lo spostano insieme, quindi la superficie resta chiusa. Un tratto si annulla in un solo passaggio. Nelle viste 2D lo strumento seleziona come lo strumento Seleziona.
 
 # Materiali e UV
 ## Caricare e applicare i materiali

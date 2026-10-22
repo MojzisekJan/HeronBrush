@@ -153,15 +153,23 @@ Geometri → Larik menyalin pilihan dan menampilkan salinan di peta selagi Anda 
 Bila pilihan adalah satu grup utuh, **Salinan tertaut** menjadikan setiap salinan duplikat tertaut, sehingga perubahan pada satu salinan sampai ke semuanya. **Terapkan** mempertahankan salinan dan memilihnya bersama aslinya; **Batal** menghapusnya. Seluruh larik dibatalkan dalam satu langkah.
 
 ## Memahat medan
-Medan terdiri dari banyak brush kecil yang bagian atasnya dinaikkan dan diturunkan oleh kuas pahat. Pilih kotak datar lalu Geometri → Bagi menjadi kolom: kotak dipotong menjadi kolom segitiga selebar satu langkah kisi dan dimasukkan ke grup bernama Terrain. Bagian atas segitiga selalu datar, jadi kolom dapat membentuk punggung bukit dan lembah.
+Medan terdiri dari banyak brush kecil yang permukaannya didorong dan ditarik oleh kuas pahat. Pilih satu atau beberapa brush lalu pilih Geometri → Bagi menjadi kolom. Brush dipotong sepanjang garis kisi menjadi kolom selebar satu langkah kisi, dan kolom-kolom itu dimasukkan ke grup bernama Terrain. Potongan mengikuti kisi dunia, jadi brush yang bersebelahan terpotong di tempat yang sama dan berbagi sudut. Setiap kolom berdiri searah sisi brush yang paling tipis: tegak di lantai atau langit-langit, mendatar di dinding. Gua dibuat dengan cara yang sama: lubangi sebuah kotak (Hollow selection) dengan tebal dinding satu langkah kisi, pilih dindingnya, lalu bagi.
 
-Pilih alat **Pahat** (`J`) dan seret di atas medan pada tampilan 3D. Cincin oranye menunjukkan kuas. Tanpa pilihan, kuas mengubah setiap brush di bawahnya; dengan pilihan, hanya yang dipilih. Bilah di bagian atas jendela memilih apa yang dilakukan sapuan:
+Bilah pahat memilih bentuk kolom. **Segitiga** membuat dua kolom per sel kisi, dan bagian atas segitiga tetap datar bagaimanapun dipahat. **Persegi** membuat satu kolom per sel, jadi jumlah brush hanya separuhnya; bagian atasnya menekuk di sepanjang diagonal.
 
-- **Naikkan** dan **Turunkan** menggerakkan permukaan ke atas atau ke bawah, paling banyak di tengah cincin dan sama sekali tidak di tepinya. Tahan `Shift` untuk menukarnya.
+Pilih alat **Pahat** (`J`) dan seret di atas permukaan pada tampilan 3D. Cincin oranye menunjukkan kuas. Tanpa pilihan, kuas mengubah setiap brush di bawahnya; dengan pilihan, hanya yang dipilih. Bilah di bagian atas jendela memilih apa yang dilakukan sapuan:
+
+- **Naikkan** dan **Turunkan** menggerakkan permukaan ke luar atau ke dalam, paling banyak di tengah cincin dan sama sekali tidak di tepinya. Tahan `Shift` untuk menukarnya.
 - **Haluskan** meratakan tonjolan.
-- **Ratakan** meratakan permukaan ke ketinggian tempat sapuan dimulai.
+- **Ratakan** meratakan permukaan ke tempat sapuan dimulai.
 
-Dua angka di samping mode adalah **Radius (unit)** dan **Kekuatan (%)**. Hanya sudut atas yang bergerak, tegak lurus; bagian bawah tetap di tempat dan kolom tetap setebal paling sedikit satu unit. Satu sapuan dibatalkan dalam satu langkah. Pada tampilan 2D alat ini memilih seperti alat Pilih.
+**Arah** memilih ke mana:
+
+- **Atas** menggerakkan permukaan lurus ke atas dan ke bawah, di dalam lingkaran di tanah. Ini untuk medan.
+- **Kamera** menggerakkannya mendekati dan menjauhi tampilan, di dalam bola di sekitar penunjuk. Arahkan pandangan ke lantai, dinding, atau langit-langit, dan bagian itulah yang dibentuk.
+- **Normal** menggerakkannya keluar dari permukaan yang ada di bawah penunjuk saat sapuan dimulai.
+
+Dua angka itu adalah **Radius (unit)** dan **Kekuatan (%)**. Hanya sudut di sisi yang digerakkan sapuan yang bergerak; sisi belakang tetap di tempat dan kolom tetap setebal paling sedikit satu unit. Sudut yang dipakai bersama oleh beberapa brush bergerak bersama, jadi permukaan tetap tertutup. Satu sapuan dibatalkan dalam satu langkah. Pada tampilan 2D alat ini memilih seperti alat Pilih.
 
 # Material dan UV
 ## Memuat dan menerapkan material

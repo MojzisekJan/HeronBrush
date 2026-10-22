@@ -153,15 +153,23 @@ Geometria → Szyk kopiuje zaznaczenie i pokazuje kopie na mapie, gdy zmieniasz 
 Gdy zaznaczona jest jedna cała grupa, **Połączone kopie** robi z każdej kopii połączony duplikat, więc zmiana jednej dociera do wszystkich. **Zastosuj** zostawia kopie i zaznacza je razem z oryginałem; **Anuluj** je usuwa. Cały szyk cofa się jednym krokiem.
 
 ## Rzeźbienie terenu
-Teren składa się z wielu małych brushy, których wierzchy pędzel rzeźbiarski podnosi i opuszcza. Zaznacz płaski prostopadłościan i wybierz Geometria → Podziel na słupy: zostanie pocięty na trójkątne słupy szerokie na jeden krok siatki, umieszczone w grupie o nazwie Terrain. Wierzch trójkąta jest zawsze płaski, więc słupy mogą tworzyć grzbiety i doliny.
+Teren składa się z wielu małych brushów, których powierzchnię pędzel rzeźbiarski wypycha na zewnątrz i wciska do środka. Zaznacz jeden lub więcej brushów i wybierz Geometria → Podziel na słupy. Brushe zostaną pocięte wzdłuż linii siatki na słupy szerokie na jeden krok siatki, umieszczone w grupie o nazwie Terrain. Cięcia biegną po siatce świata, więc sąsiednie brushe są cięte w tych samych miejscach i mają wspólne narożniki. Każdy słup stoi wzdłuż najcieńszej strony brusha: pionowo w podłodze lub suficie, poziomo w ścianie. Jaskinię robi się tak samo: wydrąż prostopadłościan (Hollow selection) z grubością ścian jeden krok siatki, zaznacz ściany i podziel je.
 
-Wybierz narzędzie **Rzeźbienie** (`J`) i przeciągaj po terenie w widoku 3D. Pomarańczowy pierścień pokazuje pędzel. Bez zaznaczenia pędzel zmienia każdy brush pod sobą, z zaznaczeniem tylko zaznaczone. Pasek u góry okna wybiera, co robi pociągnięcie:
+Kształt słupów wybiera pasek rzeźbienia. **Trójkąt** daje dwa słupy na komórkę siatki, a wierzch trójkąta pozostaje płaski, jakkolwiek się go rzeźbi. **Kwadrat** daje jeden słup na komórkę, czyli o połowę mniej brushów; jego wierzch zgina się wzdłuż przekątnej.
 
-- **Podnieś** i **Obniż** przesuwają powierzchnię w górę lub w dół, najmocniej w środku pierścienia, a na krawędzi wcale. Przytrzymaj `Shift`, aby je zamienić.
+Wybierz narzędzie **Rzeźbienie** (`J`) i przeciągaj po powierzchni w widoku 3D. Pomarańczowy pierścień pokazuje pędzel. Bez zaznaczenia pędzel zmienia każdy brush pod sobą, z zaznaczeniem tylko zaznaczone. Pasek u góry okna wybiera, co robi pociągnięcie:
+
+- **Podnieś** i **Obniż** przesuwają powierzchnię na zewnątrz lub do środka, najmocniej w środku pierścienia, a na krawędzi wcale. Przytrzymaj `Shift`, aby je zamienić.
 - **Wygładź** wyrównuje nierówności.
-- **Wyrównaj** wyrównuje powierzchnię do wysokości, na której zaczęło się pociągnięcie.
+- **Wyrównaj** wyrównuje powierzchnię do miejsca, w którym zaczęło się pociągnięcie.
 
-Dwie liczby obok trybów to **Promień (jednostki)** i **Siła (%)**. Przesuwają się tylko górne narożniki, pionowo; spód zostaje na miejscu, a słup ma co najmniej jedną jednostkę grubości. Pociągnięcie cofa się jednym krokiem. W widokach 2D narzędzie zaznacza tak jak narzędzie Zaznaczanie.
+**Kierunek** wybiera, w którą stronę:
+
+- **W górę** przesuwa powierzchnię pionowo w górę i w dół, w obrębie koła na ziemi. To tryb do terenu.
+- **Kamera** przesuwa ją w stronę widoku i od niego, w obrębie kuli wokół kursora. Spójrz na podłogę, ścianę lub sufit, a pędzel ukształtuje to, na co patrzysz.
+- **Normalna** przesuwa ją na zewnątrz od ściany pod kursorem w miejscu, gdzie zaczyna się pociągnięcie.
+
+Dwie liczby to **Promień (jednostki)** i **Siła (%)**. Przesuwają się tylko narożniki po stronie, którą rusza pociągnięcie; tył zostaje na miejscu, a słup ma co najmniej jedną jednostkę grubości. Wspólny narożnik brushe przesuwają razem, więc powierzchnia pozostaje zamknięta. Pociągnięcie cofa się jednym krokiem. W widokach 2D narzędzie zaznacza tak jak narzędzie Zaznaczanie.
 
 # Materiały i UV
 ## Wczytywanie i nakładanie materiałów

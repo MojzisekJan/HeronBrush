@@ -153,15 +153,23 @@ Geometrie → Array kopiert die Auswahl und zeigt die Kopien in der Karte, währ
 Ist eine ganze Gruppe ausgewählt, macht **Verknüpfte Kopien** jede Kopie zu einem verknüpften Duplikat, sodass eine Änderung an einer alle erreicht. **Anwenden** behält die Kopien und wählt sie mit dem Original aus; **Abbrechen** entfernt sie. Das ganze Array wird in einem Schritt rückgängig gemacht.
 
 ## Gelände modellieren
-Gelände besteht aus vielen kleinen Brushes, deren Oberseiten der Modellierpinsel hebt und senkt. Wähle einen flachen Quader und dann Geometrie → In Säulen teilen: Der Quader wird in dreieckige Säulen von einem Rasterschritt Breite zerteilt, die in eine Gruppe namens Terrain kommen. Die Oberseite eines Dreiecks ist immer eben, daher können die Säulen Grate und Täler bilden.
+Gelände besteht aus vielen kleinen Brushes, deren Oberfläche der Modellierpinsel hinausschiebt und hineindrückt. Wähle einen oder mehrere Brushes aus und dann Geometrie → In Säulen teilen. Das zerschneidet sie entlang der Rasterlinien in Säulen von einem Rasterschritt Breite und legt die Säulen in eine Gruppe namens Terrain. Die Schnitte folgen dem Raster der Welt, daher werden nebeneinanderliegende Brushes an denselben Stellen geschnitten und teilen sich ihre Ecken. Jede Säule steht entlang der dünnen Seite des Brushes: senkrecht in einem Boden oder einer Decke, waagerecht in einer Wand. Eine Höhle funktioniert genauso: Höhle einen Quader aus (Hollow selection) mit einer Wandstärke von einem Rasterschritt, wähle die Wände aus und teile sie.
 
-Wähle das Werkzeug **Modellieren** (`J`) und ziehe in der 3D-Ansicht über das Gelände. Der orange Ring zeigt den Pinsel. Ohne Auswahl ändert der Pinsel jeden Brush darunter, mit Auswahl nur die ausgewählten. Die Leiste oben im Fenster legt fest, was ein Strich tut:
+Die Modellierleiste legt die Form der Säulen fest. **Dreieck** erzeugt zwei pro Rasterzelle, und die Oberseite eines Dreiecks bleibt eben, wie auch immer du sie modellierst. **Quadrat** erzeugt eine pro Zelle, also halb so viele Brushes; ihre Oberseite knickt entlang einer Diagonale.
 
-- **Anheben** und **Senken** bewegen die Oberfläche nach oben oder unten, am stärksten in der Mitte des Rings und am Rand gar nicht. Halte `Shift`, um sie zu tauschen.
+Wähle das Werkzeug **Modellieren** (`J`) und ziehe in der 3D-Ansicht über die Oberfläche. Der orange Ring zeigt den Pinsel. Ohne Auswahl ändert der Pinsel jeden Brush darunter, mit Auswahl nur die ausgewählten. Die Leiste oben im Fenster legt fest, was ein Strich tut:
+
+- **Anheben** und **Senken** bewegen die Oberfläche nach außen oder innen, am stärksten in der Mitte des Rings und am Rand gar nicht. Halte `Shift`, um sie zu tauschen.
 - **Glätten** gleicht Unebenheiten aus.
-- **Ebnen** ebnet die Oberfläche auf die Höhe, an der der Strich begann.
+- **Ebnen** ebnet die Oberfläche auf den Punkt ein, an dem der Strich begann.
 
-Die zwei Zahlen neben den Modi sind **Radius (Einheiten)** und **Stärke (%)**. Nur die oberen Ecken bewegen sich, senkrecht nach oben oder unten; der Boden bleibt, wo er ist, und eine Säule bleibt mindestens eine Einheit dick. Ein Strich wird in einem Schritt rückgängig gemacht. In den 2D-Ansichten wählt das Werkzeug aus wie das Auswahlwerkzeug.
+**Richtung** legt fest, wohin:
+
+- **Nach oben** bewegt die Oberfläche senkrecht nach oben und unten, innerhalb eines Kreises auf dem Boden. Das ist für Gelände gedacht.
+- **Kamera** bewegt sie auf die Ansicht zu und von ihr weg, innerhalb einer Kugel um den Mauszeiger. Schau auf einen Boden, eine Wand oder eine Decke, und der Pinsel formt genau das.
+- **Normale** bewegt sie aus der Fläche heraus, die beim Beginn des Strichs unter dem Mauszeiger liegt.
+
+Die zwei Zahlen sind **Radius (Einheiten)** und **Stärke (%)**. Nur die Ecken auf der Seite, die der Strich bewegt, bewegen sich; die Rückseite bleibt, wo sie ist, und eine Säule bleibt mindestens eine Einheit dick. Wo sich Brushes eine Ecke teilen, bewegen sie sie gemeinsam, sodass die Oberfläche geschlossen bleibt. Ein Strich wird in einem Schritt rückgängig gemacht. In den 2D-Ansichten wählt das Werkzeug aus wie das Auswahlwerkzeug.
 
 # Materialien und UVs
 ## Materialien laden und zuweisen

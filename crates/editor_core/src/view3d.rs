@@ -1577,13 +1577,14 @@ impl Scene3d {
                     }
                 }
             }
-            // The sculpt brush's outline, lying on the terrain under the pointer.
+            // The sculpt brush's outline, lying on the surface under the pointer.
             if active == Tool::Sculpt && pointer_inside.get() {
                 let (x, y) = *pointer.borrow();
                 let ray = camera.borrow().ray_through(x, y, width, height);
-                if let Some(at) = document.sculpt_target(&ray) {
+                let parameters = crate::sculpt::parameters();
+                if let (Some(at), Some(along)) = (document.sculpt_target(&ray), document.sculpt_axis(&ray, parameters.direction)) {
                     let colour = [0.9, 0.38, 0.0, 1.0];
-                    let ring = document.sculpt_ring(at, crate::sculpt::parameters().radius);
+                    let ring = document.sculpt_ring(at, parameters.radius, along);
                     for pair in ring.windows(2) {
                         guides.push((pair[0], colour));
                         guides.push((pair[1], colour));
@@ -2634,7 +2635,7 @@ impl Scene3d {
                 if *tool.borrow()==Tool::Sculpt && !modifiers.alt && filters.borrow().animation_frame.is_none() {
                     let ray = camera.borrow().ray_through(x, y, width, height);
                     let Some(at) = document.borrow().sculpt_target(&ray) else { return; };
-                    let mut state = document.borrow().begin_sculpt_stroke();
+                    let Some(mut state) = document.borrow().begin_sculpt_stroke_under(&ray, crate::sculpt::parameters().direction) else { return; };
                     if document.borrow_mut().sculpt_dab(at, &sculpt_brush(modifiers.shift), &mut state) { render(); }
                     *stroke.borrow_mut()=Some(AttrStroke::Sculpt { state, last:at, inverted:modifiers.shift });
                     return;
@@ -2700,7 +2701,7 @@ impl Scene3d {
                         let Some(at) = document.borrow().sculpt_target(&ray) else { return; };
                         let brush = sculpt_brush(*inverted);
                         // Dabs a spacing apart along the way, so a quick drag leaves no gaps.
-                        let distance = (at.x()-last.x()).hypot(at.y()-last.y());
+                        let distance = geometry_math::vec::length(at-*last);
                         let steps = (distance/brush.spacing()).floor() as usize;
                         let mut changed = false;
                         for i in 1..=steps.min(64) {

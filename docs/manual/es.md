@@ -153,15 +153,23 @@ Geometría → Matriz copia la selección y muestra las copias en el mapa mientr
 Cuando la selección es un grupo entero, **Copias vinculadas** convierte cada copia en un duplicado vinculado, así que un cambio en una llega a todas. **Aplicar** conserva las copias y las selecciona junto con el original; **Cancelar** las elimina. Toda la matriz se deshace en un solo paso.
 
 ## Esculpir terreno
-El terreno se compone de muchos brushes pequeños cuya parte superior el pincel de esculpir sube y baja. Selecciona una caja plana y elige Geometría → Dividir en columnas: la caja se corta en columnas triangulares de un paso de cuadrícula de ancho, que van a un grupo llamado Terrain. La parte superior de un triángulo siempre es plana, así que las columnas pueden formar crestas y valles.
+El terreno se compone de muchos brushes pequeños cuya superficie el pincel de esculpir empuja hacia fuera y hacia dentro. Selecciona uno o más brushes y elige Geometría → Dividir en columnas. Los corta a lo largo de las líneas de la cuadrícula en columnas de un paso de cuadrícula de ancho y pone las columnas en un grupo llamado Terrain. Los cortes siguen la cuadrícula del mundo, así que los brushes contiguos se cortan en los mismos sitios y comparten sus esquinas. Cada columna se alza a lo largo del lado delgado del brush: en vertical en un suelo o un techo, en horizontal en una pared. Una cueva se hace igual: vacía una caja (Hollow selection) con un grosor de pared de un paso de cuadrícula, selecciona las paredes y divídelas.
 
-Elige la herramienta **Esculpir** (`J`) y arrastra sobre el terreno en la vista 3D. El anillo naranja muestra el pincel. Sin selección, el pincel cambia todos los brushes que tiene debajo; con selección, solo los seleccionados. La barra de la parte superior de la ventana elige qué hace un trazo:
+La barra de esculpir elige la forma de las columnas. **Triángulo** crea dos por celda de la cuadrícula, y la parte superior de un triángulo sigue plana por mucho que la esculpas. **Cuadrado** crea una por celda, la mitad de brushes; su parte superior se dobla a lo largo de una diagonal.
 
-- **Subir** y **Bajar** mueven la superficie hacia arriba o hacia abajo, más en el centro del anillo y nada en el borde. Mantén `Shift` para intercambiarlos.
+Elige la herramienta **Esculpir** (`J`) y arrastra sobre la superficie en la vista 3D. El anillo naranja muestra el pincel. Sin selección, el pincel cambia todos los brushes que tiene debajo; con selección, solo los seleccionados. La barra de la parte superior de la ventana elige qué hace un trazo:
+
+- **Subir** y **Bajar** mueven la superficie hacia fuera o hacia dentro, más en el centro del anillo y nada en el borde. Mantén `Shift` para intercambiarlos.
 - **Suavizar** iguala los bultos.
-- **Aplanar** nivela la superficie a la altura donde empezó el trazo.
+- **Aplanar** nivela la superficie hasta donde empezó el trazo.
 
-Los dos números junto a los modos son **Radio (unidades)** y **Fuerza (%)**. Solo se mueven las esquinas superiores, en vertical; la base se queda donde está y una columna mantiene al menos una unidad de grosor. Un trazo se deshace en un solo paso. En las vistas 2D la herramienta selecciona como la herramienta Seleccionar.
+**Dirección** elige hacia dónde:
+
+- **Arriba** mueve la superficie en vertical, arriba y abajo, dentro de un círculo sobre el suelo. Es para terreno.
+- **Cámara** la acerca y la aleja de la vista, dentro de una esfera alrededor del puntero. Mira un suelo, una pared o un techo y el pincel le da forma.
+- **Normal** la saca de la cara que está bajo el puntero donde empieza el trazo.
+
+Los dos números son **Radio (unidades)** y **Fuerza (%)**. Solo se mueven las esquinas del lado que mueve el trazo; la parte de atrás se queda donde está y una columna mantiene al menos una unidad de grosor. Donde los brushes comparten una esquina, la mueven juntos, así que la superficie sigue cerrada. Un trazo se deshace en un solo paso. En las vistas 2D la herramienta selecciona como la herramienta Seleccionar.
 
 # Materiales y UV
 ## Cargar y aplicar materiales

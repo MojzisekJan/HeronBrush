@@ -153,15 +153,23 @@ Geometrija → Niz kopira izbor in prikazuje kopije v zemljevidu, medtem ko spre
 Ko je izbrana ena cela skupina, **Povezane kopije** iz vsake kopije naredi povezan dvojnik, zato sprememba ene doseže vse. **Uporabi** obdrži kopije in jih izbere skupaj z izvirnikom; **Prekliči** jih odstrani. Celoten niz se razveljavi v enem koraku.
 
 ## Oblikovanje terena
-Teren sestavlja veliko majhnih brushev, katerih vrhove čopič za oblikovanje dviga in spušča. Izberite ploščat kvader in Geometrija → Razdeli na stebre: kvader se razreže na trikotne stebre, široke en korak mreže, in jih postavi v skupino Terrain. Vrh trikotnika je vedno raven, zato lahko stebri tvorijo grebene in doline.
+Teren sestavlja veliko majhnih brushev, katerih površino čopič za oblikovanje potiska ven in vleče noter. Izberite enega ali več brushev in nato Geometrija → Razdeli na stebre. Ukaz jih vzdolž črt mreže razreže na stebre, široke en korak mreže, in stebre postavi v skupino Terrain. Rezi sledijo mreži sveta, zato se sosednji brushi razrežejo na istih mestih in si delijo kote. Vsak steber stoji vzdolž tanke stranice brusha: pokonci v tleh ali stropu, vodoravno v steni. Jama nastane na enak način: izdolbite kvader (Hollow selection) z debelino stene en korak mreže, izberite stene in jih razdelite.
 
-Izberite orodje **Oblikovanje** (`J`) in vlecite po terenu v 3D-pogledu. Oranžen obroč prikazuje čopič. Brez izbora čopič spremeni vsak brush pod seboj, z izborom le izbrane. Trak na vrhu okna določa, kaj naredi poteza:
+Obliko stebrov določa trak za oblikovanje. **Trikotnik** naredi dva stebra na celico mreže, vrh trikotnika pa ostane raven, ne glede na to, kako ga oblikujete. **Kvadrat** naredi en steber na celico, torej pol manj brushev; njegov vrh se upogne vzdolž diagonale.
 
-- **Dvigni** in **Spusti** premakneta površino gor ali dol, najbolj v središču obroča in na robu nič. Držite `Shift`, da ju zamenjate.
+Izberite orodje **Oblikovanje** (`J`) in vlecite po površini v 3D-pogledu. Oranžen obroč prikazuje čopič. Brez izbora čopič spremeni vsak brush pod seboj, z izborom le izbrane. Trak na vrhu okna določa, kaj naredi poteza:
+
+- **Dvigni** in **Spusti** premakneta površino ven ali noter, najbolj v središču obroča in na robu nič. Držite `Shift`, da ju zamenjate.
 - **Zgladi** zgladi neravnine.
-- **Poravnaj** poravna površino na višino, kjer se je poteza začela.
+- **Poravnaj** poravna površino na mesto, kjer se je poteza začela.
 
-Števili ob načinih sta **Polmer (enote)** in **Moč (%)**. Premikajo se le zgornji koti, navpično; dno ostane na mestu, steber pa ostane debel vsaj eno enoto. Poteza se razveljavi v enem koraku. V 2D-pogledih orodje izbira kot orodje Izbira.
+**Smer** določa, v katero smer:
+
+- **Gor** premika površino naravnost gor in dol, znotraj kroga na tleh. To je za teren.
+- **Kamera** jo premika proti pogledu in stran od njega, znotraj krogle okoli kazalca. Poglejte tla, steno ali strop in čopič oblikuje to.
+- **Normala** jo premika ven iz ploskve, nad katero je kazalec, ko se poteza začne.
+
+Dve števili sta **Polmer (enote)** in **Moč (%)**. Premikajo se le koti na strani, ki jo poteza premika; zadnja stran ostane na mestu, steber pa ostane debel vsaj eno enoto. Kjer si brushi delijo kot, ga premaknejo skupaj, zato površina ostane zaprta. Poteza se razveljavi v enem koraku. V 2D-pogledih orodje izbira kot orodje Izbira.
 
 # Materiali in UV
 ## Nalaganje in uporaba materialov

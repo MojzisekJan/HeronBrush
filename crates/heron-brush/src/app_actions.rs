@@ -357,7 +357,8 @@ impl App {
             Action::Array => self.arrays.open(&self.editor),
             Action::SplitColumns => {
                 let cell = self.editor.grid.borrow().actual_size();
-                let result = self.editor.document.borrow_mut().split_into_columns(cell);
+                let shape = editor_core::sculpt::parameters().columns;
+                let result = self.editor.document.borrow_mut().split_into_columns(cell, shape);
                 match result {
                     Ok(count) => editor_core::say!("{}", editor_core::i18n::fill("Columns: {}", &[&count.to_string()])),
                     Err(why) => editor_core::say!("{}", tr(why)),

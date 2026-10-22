@@ -198,14 +198,28 @@ pub fn fillet_controls(ui: &mut egui::Ui, parameters: &Rc<RefCell<FilletParamete
     });
 }
 
-/// The sculpt brush's strip in the tool bar: what a dab does, its radius and strength.
+/// The sculpt brush's strip in the tool bar: what a dab does, its radius and strength,
+/// which way it moves the surface, and the shape of the columns Split into columns makes.
+/// Where the strip is too narrow for the choices side by side they become drop-downs.
 pub fn sculpt_row(ui: &mut egui::Ui) {
-    use editor_core::sculpt::{self, SculptMode, SculptParameters};
+    use editor_core::sculpt::{self, ColumnShape, SculptDirection, SculptMode, SculptParameters};
     use egui_phosphor::regular as icon;
+    /// The width the strip takes with every choice side by side.
+    const FULL: f32 = 840.0;
+    let compact = ui.available_width() < FULL;
+    // One of `names`, side by side or, in a narrow strip, in a drop-down `narrow` wide.
+    let choose = |ui: &mut egui::Ui, id: &str, names: &[&str], tip: &str, selected: &mut usize, wide: f32, narrow: f32| {
+        if compact {
+            widgets::dropdown(ui, id, selected, names, narrow)
+        } else {
+            let items: Vec<(&str, &str)> = names.iter().map(|name| (*name, tip)).collect();
+            widgets::segmented_choice(ui, id, &items, selected, wide)
+        }
+    };
     let mut parameters = sculpt::parameters();
-    let modes: Vec<(&str, &str)> = SculptMode::ALL.iter().map(|mode| (tr(mode.name()), "")).collect();
+    let modes: Vec<&str> = SculptMode::ALL.iter().map(|mode| tr(mode.name())).collect();
     let mut mode = SculptMode::ALL.iter().position(|m| *m == parameters.mode).unwrap_or(0);
-    if widgets::segmented_choice(ui, "sculpt-mode", &modes, &mut mode, 240.0) {
+    if choose(ui, "sculpt-mode", &modes, "", &mut mode, 240.0, 88.0) {
         parameters.mode = SculptMode::ALL[mode];
     }
     ui.label(egui::RichText::new(icon::CIRCLE_DASHED).font(theme::icon()).color(theme::dim())).on_hover_text(tr("Radius (units)"));
@@ -214,6 +228,18 @@ pub fn sculpt_row(ui: &mut egui::Ui) {
     let mut percent = parameters.strength * 100.0;
     if widgets::spin_width(ui, &mut percent, 1.0..=100.0, 5.0, 0, 52.0).on_hover_text(tr("Strength (%)")).changed() {
         parameters.strength = percent / 100.0;
+    }
+    ui.label(egui::RichText::new(icon::COMPASS).font(theme::icon()).color(theme::dim())).on_hover_text(tr("Direction"));
+    let directions: Vec<&str> = SculptDirection::ALL.iter().map(|direction| tr(direction.name())).collect();
+    let mut direction = SculptDirection::ALL.iter().position(|d| *d == parameters.direction).unwrap_or(0);
+    if choose(ui, "sculpt-direction", &directions, tr("Direction"), &mut direction, 200.0, 80.0) {
+        parameters.direction = SculptDirection::ALL[direction];
+    }
+    ui.label(egui::RichText::new(icon::GRID_FOUR).font(theme::icon()).color(theme::dim())).on_hover_text(tr("Split into columns"));
+    let shapes: Vec<&str> = ColumnShape::ALL.iter().map(|shape| tr(shape.name())).collect();
+    let mut shape = ColumnShape::ALL.iter().position(|s| *s == parameters.columns).unwrap_or(0);
+    if choose(ui, "sculpt-columns", &shapes, tr("Split into columns"), &mut shape, 160.0, 96.0) {
+        parameters.columns = ColumnShape::ALL[shape];
     }
     sculpt::set_parameters(parameters);
 }

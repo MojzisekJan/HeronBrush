@@ -153,15 +153,23 @@ Geometri → Dizi seçimi kopyalar ve değerleri değiştirirken kopyaları hari
 Seçim tek bir grubun tamamıysa **Bağlı kopyalar** her kopyayı bağlı bir kopya yapar, böylece birinde yapılan değişiklik hepsine ulaşır. **Uygula** kopyaları tutar ve onları asıl nesneyle birlikte seçer; **İptal** onları kaldırır. Dizinin tamamı tek adımda geri alınır.
 
 ## Arazi şekillendirme
-Arazi, şekillendirme fırçasının üst yüzlerini yükseltip alçalttığı çok sayıda küçük brush'tan oluşur. Düz bir kutu seçip Geometri → Sütunlara böl komutunu seçin: kutu bir ızgara adımı genişliğinde üçgen sütunlara bölünür ve Terrain adlı bir gruba konur. Üçgenin üstü her zaman düzdür, bu yüzden sütunlar sırt ve vadi oluşturabilir.
+Arazi, şekillendirme fırçasının yüzeyini dışarı itip içeri çektiği çok sayıda küçük brush'tan oluşur. Bir veya daha fazla brush seçin ve Geometri → Sütunlara böl komutunu seçin. Komut onları ızgara çizgileri boyunca bir ızgara adımı genişliğinde sütunlara böler ve sütunları Terrain adlı bir gruba koyar. Kesimler dünyanın ızgarasını izler, bu yüzden yan yana duran brush'lar aynı yerlerden kesilir ve köşelerini paylaşır. Her sütun brush'ın ince kenarı boyunca durur: zeminde veya tavanda dik, duvarda yatay. Mağara da aynı şekilde yapılır: bir kutuyu bir ızgara adımı duvar kalınlığıyla oyun (Hollow selection), duvarları seçin ve bölün.
 
-**Şekillendir** aracını (`J`) seçin ve 3D görünümde arazinin üzerinde sürükleyin. Turuncu halka fırçayı gösterir. Seçim yokken fırça altındaki her brush'ı değiştirir; seçim varken yalnızca seçilenleri. Pencerenin üstündeki şerit bir darbenin ne yapacağını seçer:
+Şekillendirme şeridi sütunların biçimini seçer. **Üçgen** her ızgara hücresine iki sütun koyar ve üçgenin üstü nasıl şekillendirilirse şekillendirilsin düz kalır. **Kare** her hücreye bir sütun koyar, yani yarı sayıda brush; üstü bir köşegen boyunca bükülür.
 
-- **Yükselt** ve **Alçalt** yüzeyi yukarı veya aşağı taşır; halkanın ortasında en çok, kenarında hiç. Yer değiştirmek için `Shift` tuşunu basılı tutun.
+**Şekillendir** aracını (`J`) seçin ve 3D görünümde yüzeyin üzerinde sürükleyin. Turuncu halka fırçayı gösterir. Seçim yokken fırça altındaki her brush'ı değiştirir; seçim varken yalnızca seçilenleri. Pencerenin üstündeki şerit bir darbenin ne yapacağını seçer:
+
+- **Yükselt** ve **Alçalt** yüzeyi dışarı veya içeri taşır; halkanın ortasında en çok, kenarında hiç. Yer değiştirmek için `Shift` tuşunu basılı tutun.
 - **Yumuşat** tümsekleri düzeltir.
-- **Düzleştir** yüzeyi darbenin başladığı yüksekliğe düzler.
+- **Düzleştir** yüzeyi darbenin başladığı yere düzler.
 
-Modların yanındaki iki sayı **Yarıçap (birim)** ve **Güç (%)** değerleridir. Yalnızca üst köşeler, dikey olarak hareket eder; alt kısım yerinde kalır ve bir sütun en az bir birim kalınlıkta kalır. Bir darbe tek adımda geri alınır. 2D görünümlerde araç, Seçim aracı gibi seçer.
+**Yön** hangi yöne gidileceğini seçer:
+
+- **Yukarı** yüzeyi yerdeki bir daire içinde dümdüz yukarı ve aşağı taşır. Arazi için budur.
+- **Kamera** onu işaretçinin çevresindeki bir küre içinde görünüme doğru ve görünümden uzağa taşır. Bir zemine, duvara ya da tavana bakın, fırça onu şekillendirir.
+- **Normal** onu, darbe başladığında işaretçinin altındaki yüzden dışarı taşır.
+
+İki sayı **Yarıçap (birim)** ve **Güç (%)** değerleridir. Yalnızca darbenin taşıdığı taraftaki köşeler hareket eder; arka taraf yerinde kalır ve bir sütun en az bir birim kalınlıkta kalır. Brush'lar paylaştıkları bir köşeyi birlikte taşır, böylece yüzey kapalı kalır. Bir darbe tek adımda geri alınır. 2D görünümlerde araç, Seçim aracı gibi seçer.
 
 # Malzemeler ve UV'ler
 ## Malzemeleri yükleme ve uygulama

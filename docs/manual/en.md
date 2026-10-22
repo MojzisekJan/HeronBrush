@@ -225,15 +225,23 @@ Geometry → Array copies the selection and shows the copies in the map while yo
 When the selection is one whole group, **Linked copies** makes each copy a linked duplicate, so an edit to one reaches them all. **Apply** keeps the copies and selects them with the original; **Cancel** removes them. The whole array undoes in one step.
 
 ## Sculpting terrain
-Terrain is made of many small brushes whose tops the sculpt brush moves up and down. Select a flat box and choose Geometry → Split into columns: it cuts the box into triangular columns one grid step across and puts them in a group named Terrain. The top of a triangle is always flat, so the columns can form ridges and valleys.
+Terrain is made of many small brushes whose surface the sculpt brush pushes and pulls. Select one or more brushes and choose Geometry → Split into columns. It cuts them along the grid lines into columns one grid step across and puts the columns in a group named Terrain. The cuts follow the world's grid, so brushes side by side are cut in the same places and share their corners. Each column stands along the brush's thin side: upright in a floor or a ceiling, sideways in a wall. A cave works the same way: hollow a box (Hollow selection) with a wall thickness of one grid step, select the walls and split them.
 
-Choose the **Sculpt** tool (`J`) and drag over the terrain in the 3D view. The orange ring shows the brush. With nothing selected the brush changes every brush under it; with a selection, only the selected ones. The strip at the top of the window chooses what a stroke does:
+The sculpt strip chooses the shape of the columns. **Triangle** makes two per grid cell, and a triangle's top stays flat however it is sculpted. **Square** makes one per cell, half as many brushes; its top bends along a diagonal.
 
-- **Raise** and **Lower** move the surface up or down, most at the centre of the ring and nothing at its edge. Hold `Shift` to swap them.
+Choose the **Sculpt** tool (`J`) and drag over the surface in the 3D view. The orange ring shows the brush. With nothing selected the brush changes every brush under it; with a selection, only the selected ones. The strip at the top of the window chooses what a stroke does:
+
+- **Raise** and **Lower** move the surface out or in, most at the centre of the ring and nothing at its edge. Hold `Shift` to swap them.
 - **Smooth** evens out bumps.
-- **Flatten** levels the surface to the height where the stroke began.
+- **Flatten** levels the surface to where the stroke began.
 
-The two numbers beside the modes are **Radius (units)** and **Strength (%)**. Only the top corners move, straight up or down; the bottom stays where it is, and a column stays at least one unit thick. A stroke undoes in one step. In the 2D views the tool selects as the Select tool does.
+**Direction** chooses which way:
+
+- **Up** moves the surface straight up and down, within a circle on the ground. This is for terrain.
+- **Camera** moves it towards and away from the view, within a ball round the pointer. Look at a floor, a wall or a ceiling and it shapes that.
+- **Normal** moves it out of the face under the pointer where the stroke begins.
+
+The two numbers are **Radius (units)** and **Strength (%)**. Only the corners on the side the stroke moves move; the back stays where it is, and a column stays at least one unit thick. Where brushes share a corner they move it together, so the surface stays closed. A stroke undoes in one step. In the 2D views the tool selects as the Select tool does.
 
 # Materials and UVs
 ## Loading and applying materials

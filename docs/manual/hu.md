@@ -153,15 +153,23 @@ A Geometria → Tömb lemásolja a kijelölést, és a másolatokat a térképen
 Ha egy teljes csoport van kijelölve, az **Összekapcsolt másolatok** minden másolatot összekapcsolt duplikátummá tesz, így az egyiken végzett módosítás mindegyikre kihat. Az **Alkalmaz** megtartja a másolatokat, és az eredetivel együtt kijelöli őket; a **Mégse** eltávolítja őket. Az egész tömb egy lépésben visszavonható.
 
 ## Terep formázása
-A terep sok kis brushból áll, amelyek tetejét a formázó ecset emeli és süllyeszti. Jelölj ki egy lapos téglatestet, és válaszd a Geometria → Oszlopokra bontás parancsot: a téglatest egy rácslépésnyi széles háromszög alapú oszlopokra bomlik, amelyek egy Terrain nevű csoportba kerülnek. A háromszög teteje mindig sík, így az oszlopok gerinceket és völgyeket is alkothatnak.
+A terep sok kis brush-ból áll, amelyek felületét a formázó ecset kifelé tolja és befelé húzza. Jelölj ki egy vagy több brush-t, és válaszd a Geometria → Oszlopokra bontás parancsot. Ez a rácsvonalak mentén egy rácslépésnyi széles oszlopokra vágja őket, az oszlopokat pedig egy Terrain nevű csoportba teszi. A vágások a világ rácsát követik, így az egymás melletti brush-ok ugyanott vágódnak el, és közös sarkaik lesznek. Minden oszlop a brush legvékonyabb oldala mentén áll: függőlegesen a padlóban vagy a mennyezetben, vízszintesen a falban. Barlang ugyanígy készül: üregelj ki egy téglatestet (Hollow selection) egy rácslépésnyi falvastagsággal, jelöld ki a falakat, és bontsd fel őket.
 
-Válaszd a **Formázás** eszközt (`J`), és húzd végig a terepen a 3D nézetben. A narancssárga gyűrű mutatja az ecsetet. Kijelölés nélkül az ecset minden alatta lévő brusht módosít, kijelöléssel csak a kijelölteket. Az ablak tetején lévő sáv adja meg, mit tesz egy húzás:
+A formázási sáv adja meg az oszlopok alakját. A **Háromszög** rácscellánként két oszlopot készít, és a háromszög teteje sík marad, akárhogy formázod. A **Négyzet** cellánként egyet készít, vagyis feleannyi brush-t; a teteje egy átló mentén hajlik meg.
 
-- A **Emelés** és a **Süllyesztés** fel vagy le mozgatja a felületet, a gyűrű közepén a legjobban, a szélén egyáltalán nem. A `Shift` lenyomva tartásával felcserélheted őket.
+Válaszd a **Formázás** eszközt (`J`), és húzd végig a felületen a 3D nézetben. A narancssárga gyűrű mutatja az ecsetet. Kijelölés nélkül az ecset minden alatta lévő brush-t módosít, kijelöléssel csak a kijelölteket. Az ablak tetején lévő sáv adja meg, mit tesz egy húzás:
+
+- Az **Emelés** és a **Süllyesztés** kifelé vagy befelé mozgatja a felületet, a gyűrű közepén a legjobban, a szélén egyáltalán nem. A `Shift` lenyomva tartásával felcserélheted őket.
 - A **Simítás** elsimítja a dudorokat.
-- A **Simítás síkba** arra a magasságra simítja a felületet, ahol a húzás kezdődött.
+- A **Simítás síkba** arra a szintre simítja a felületet, ahol a húzás kezdődött.
 
-A módok melletti két szám a **Sugár (egység)** és az **Erősség (%)**. Csak a felső sarkok mozognak, függőlegesen; az alj a helyén marad, és egy oszlop legalább egy egység vastag marad. Egy húzás egy lépésben visszavonható. A 2D nézetekben az eszköz úgy jelöl ki, mint a Kijelölés eszköz.
+Az **Irány** adja meg, merre:
+
+- A **Fel** egyenesen fel és le mozgatja a felületet, egy talajon fekvő körön belül. Ez a terephez való.
+- A **Kamera** a nézet felé és attól el mozgatja, a mutató körüli gömbön belül. Nézz egy padlóra, falra vagy mennyezetre, és azt formázza.
+- A **Normális** kifelé mozgatja abból a lapból, amely a mutató alatt van ott, ahol a húzás kezdődik.
+
+A két szám a **Sugár (egység)** és az **Erősség (%)**. Csak a húzás által mozgatott oldal sarkai mozognak; a hátoldal a helyén marad, és egy oszlop legalább egy egység vastag marad. Ahol brush-ok osztoznak egy sarkon, ott együtt mozgatják, így a felület zárt marad. Egy húzás egy lépésben visszavonható. A 2D nézetekben az eszköz úgy jelöl ki, mint a Kijelölés eszköz.
 
 # Anyagok és UV-k
 ## Anyagok betöltése és alkalmazása

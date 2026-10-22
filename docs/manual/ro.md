@@ -153,15 +153,23 @@ Geometrie → Matrice copiază selecția și arată copiile în hartă cât timp
 Când selecția este un grup întreg, **Copii legate** face din fiecare copie un duplicat legat, deci o modificare la una ajunge la toate. **Aplică** păstrează copiile și le selectează împreună cu originalul; **Renunță** le elimină. Întreaga matrice se anulează într-un singur pas.
 
 ## Sculptarea terenului
-Terenul este alcătuit din multe brush-uri mici, ale căror vârfuri pensula de sculptat le ridică și le coboară. Selectați o cutie plată și alegeți Geometrie → Împarte în coloane: cutia este tăiată în coloane triunghiulare late de un pas al grilei, puse într-un grup numit Terrain. Vârful unui triunghi este mereu plan, așa că coloanele pot forma creste și văi.
+Terenul este alcătuit din multe brush-uri mici, a căror suprafață pensula de sculptat o împinge în afară și o trage înăuntru. Selectează unul sau mai multe brush-uri și alege Geometrie → Împarte în coloane. Brush-urile sunt tăiate de-a lungul liniilor grilei în coloane late de un pas al grilei, puse într-un grup numit Terrain. Tăieturile urmează grila lumii, așa că brush-urile alăturate sunt tăiate în aceleași locuri și au colțuri comune. Fiecare coloană stă de-a lungul laturii subțiri a brush-ului: vertical într-o podea sau într-un tavan, orizontal într-un perete. O peșteră se face la fel: golește o cutie (Hollow selection) cu pereți groși de un pas al grilei, selectează pereții și împarte-i.
 
-Alegeți unealta **Sculptare** (`J`) și trageți peste teren în vizualizarea 3D. Inelul portocaliu arată pensula. Fără selecție, pensula schimbă fiecare brush de sub ea; cu o selecție, doar pe cele selectate. Bara din partea de sus a ferestrei alege ce face o trăsătură:
+Bara de sculptare alege forma coloanelor. **Triunghi** face două coloane pe celula de grilă, iar vârful unui triunghi rămâne plan oricum l-ai sculpta. **Pătrat** face una pe celulă, deci de două ori mai puține brush-uri; vârful ei se îndoaie de-a lungul unei diagonale.
 
-- **Ridică** și **Coboară** mută suprafața în sus sau în jos, cel mai mult în centrul inelului și deloc la margine. Țineți `Shift` pentru a le inversa.
+Alege unealta **Sculptare** (`J`) și trage peste suprafață în vizualizarea 3D. Inelul portocaliu arată pensula. Fără selecție, pensula schimbă fiecare brush de sub ea; cu o selecție, doar pe cele selectate. Bara din partea de sus a ferestrei alege ce face o trăsătură:
+
+- **Ridică** și **Coboară** mută suprafața în afară sau înăuntru, cel mai mult în centrul inelului și deloc la margine. Ține `Shift` pentru a le inversa.
 - **Netezește** netezește denivelările.
-- **Aplatizează** aduce suprafața la înălțimea unde a început trăsătura.
+- **Aplatizează** aduce suprafața la nivelul unde a început trăsătura.
 
-Cele două numere de lângă moduri sunt **Rază (unități)** și **Putere (%)**. Se mișcă doar colțurile de sus, vertical; baza rămâne pe loc, iar o coloană rămâne groasă de cel puțin o unitate. O trăsătură se anulează într-un pas. În vizualizările 2D unealta selectează la fel ca unealta Selectare.
+**Direcție** alege încotro:
+
+- **Sus** mută suprafața drept în sus și în jos, într-un cerc pe sol. Aceasta e pentru teren.
+- **Cameră** o mută spre vizualizare și dinspre ea, într-o sferă în jurul cursorului. Uită-te la o podea, un perete sau un tavan, iar pensula modelează ce vezi.
+- **Normală** o mută în afara feței de sub cursor, acolo unde începe trăsătura.
+
+Cele două numere sunt **Rază (unități)** și **Putere (%)**. Se mișcă doar colțurile de pe partea pe care o mișcă trăsătura; spatele rămâne pe loc, iar o coloană rămâne groasă de cel puțin o unitate. Unde brush-urile au un colț comun, îl mută împreună, așa că suprafața rămâne închisă. O trăsătură se anulează într-un pas. În vizualizările 2D unealta selectează la fel ca unealta Selectare.
 
 # Materiale și UV-uri
 ## Încărcarea și aplicarea materialelor
