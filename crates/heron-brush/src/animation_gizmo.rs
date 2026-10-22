@@ -188,7 +188,7 @@ impl Gizmo {
             v[i] = 1.0;
             v
         };
-        for i in 0..3 {
+        for (i, &color) in COLORS.iter().enumerate() {
             let points: Vec<egui::Pos2> = if rotate {
                 let (u, v) = ((i + 1) % 3, (i + 2) % 3);
                 (0..=96)
@@ -212,10 +212,10 @@ impl Gizmo {
             ));
             painter.add(egui::Shape::line(
                 points.clone(),
-                egui::Stroke::new(2.5, COLORS[i]),
+                egui::Stroke::new(2.5, color),
             ));
             if !rotate {
-                painter.circle_filled(*points.last().unwrap(), 5.0, COLORS[i]);
+                painter.circle_filled(*points.last().unwrap(), 5.0, color);
             }
         }
         if f.animation_edit_pivot {

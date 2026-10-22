@@ -32,14 +32,14 @@ pub fn header(bytes: &[u8]) -> Result<(u32, u32, [usize; 4]), String> {
     }
     let mut offsets = [0; 4];
     let mut end = 100;
-    for level in 0..4 {
+    for (level, slot) in offsets.iter_mut().enumerate() {
         let offset = word(40 + level * 4) as usize;
         if offset < end {
             return Err("overlapping WAL mip ranges".into());
         }
         let count = ((width >> level) as usize) * ((height >> level) as usize);
         end = offset.checked_add(count).ok_or("WAL mip range overflow")?;
-        offsets[level] = offset;
+        *slot = offset;
     }
     Ok((width, height, offsets))
 }

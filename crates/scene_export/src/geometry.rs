@@ -1568,8 +1568,10 @@ mod tests {
             .to_vec(),
             indices: vec![0, 1, 2],
         };
-        let mut entity = Entity::default();
-        entity.external_surfaces = vec![surface.clone(), surface];
+        let entity = Entity {
+            external_surfaces: vec![surface.clone(), surface],
+            ..Default::default()
+        };
         let geo = build_solid(
             &entity,
             &Settings::default(),

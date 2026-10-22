@@ -168,8 +168,9 @@ enum Residency {
     Pending,
     /// With a worker.
     Queued,
-    /// On the GPU, taking this many bytes.
-    Resident(MaterialTexture, u64),
+    /// On the GPU, taking this many bytes. Boxed so the other states, which most
+    /// materials are in, stay small.
+    Resident(Box<MaterialTexture>, u64),
     /// Did not decode; drawn with its placeholder.
     Failed,
 }
@@ -1445,7 +1446,7 @@ impl RenderScene {
             done.pbr,
             &self.materials[m].name,
         );
-        self.textures[m] = Residency::Resident(texture, bytes);
+        self.textures[m] = Residency::Resident(Box::new(texture), bytes);
         self.resident_bytes += bytes;
         self.material_normals[m] = flip;
         if let Some(info) = done.info {

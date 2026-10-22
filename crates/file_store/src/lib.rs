@@ -127,12 +127,19 @@ mod web {
     use std::io;
     use std::path::{Path, PathBuf};
 
+    /// What is told of each write: the path and its new contents, or `None` for a removal.
+    type WriteHook = fn(&Path, Option<&[u8]>);
+    /// Where a file that is not in memory is looked for next.
+    type Fallback = fn(&Path) -> Option<&'static [u8]>;
+    /// Files changed since a revision, each with its contents, or `None` if it was removed.
+    type Changes = Vec<(PathBuf, Option<Vec<u8>>)>;
+
     thread_local! {
         static FILES: RefCell<BTreeMap<PathBuf, super::SharedBytes>> = const { RefCell::new(BTreeMap::new()) };
         static CHANGED: RefCell<BTreeMap<PathBuf, u64>> = const { RefCell::new(BTreeMap::new()) };
         static REVISION: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
-        static HOOK: RefCell<Option<fn(&Path, Option<&[u8]>)>> = const { RefCell::new(None) };
-        static FALLBACK: RefCell<Option<fn(&Path) -> Option<&'static [u8]>>> = const { RefCell::new(None) };
+        static HOOK: RefCell<Option<WriteHook>> = const { RefCell::new(None) };
+        static FALLBACK: RefCell<Option<Fallback>> = const { RefCell::new(None) };
     }
 
     /// Puts files in place before the editor starts: those the page kept from earlier
@@ -178,7 +185,7 @@ mod web {
 
     /// A coalesced snapshot of files changed after `since`, including deletions.
     /// Revision zero sends all current files; unchanged large images are not copied.
-    pub fn changes_since(since: u64) -> (u64, Vec<(PathBuf, Option<Vec<u8>>)>) {
+    pub fn changes_since(since: u64) -> (u64, Changes) {
         let mut changes = Vec::new();
         let revision = visit_changes_since(since, |path, bytes| {
             changes.push((path.to_path_buf(), bytes.map(<[u8]>::to_vec)));

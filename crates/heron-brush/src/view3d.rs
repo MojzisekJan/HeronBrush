@@ -92,7 +92,7 @@ struct GlView {
 
 /// Which renderer draws the view.
 enum Backend {
-    Gl(GlView),
+    Gl(Box<GlView>),
     #[cfg(feature = "wgpu")]
     Wgpu(Box<crate::view3d_wgpu::WgpuView>),
     /// No renderer this GPU can run (wgpu on GLES, a GL that would not compile the
@@ -205,14 +205,14 @@ impl View3d {
                 ) {
                     Ok(mut renderer) => {
                         scene.renderer_created(&mut renderer);
-                        Backend::Gl(GlView {
+                        Backend::Gl(Box::new(GlView {
                             gl: Rc::clone(renderer.gl()),
                             renderer,
                             target: None,
                             drawn: std::cell::Cell::new(None),
                             gpu_timer: crate::profile::GpuTimer::from_env(),
                             gpu_ms: None,
-                        })
+                        }))
                     }
                     Err(why) => {
                         let why = format!(

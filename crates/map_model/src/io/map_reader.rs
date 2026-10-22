@@ -374,6 +374,14 @@ struct Reader<'a> {
     local_plane_lines: rustc_hash::FxHashSet<usize>,
 }
 
+/// A face's notes: its colour, surface material, export_hidden flag and primitive UV matrix.
+type FaceNotes = (
+    Option<FaceColor>,
+    Option<crate::brush_face::SurfaceMaterial>,
+    bool,
+    Option<Box<[[f64; 3]; 2]>>,
+);
+
 impl<'a> Reader<'a> {
     fn new(source: &'a str, format: Option<MapFormat>, literal_strings: bool) -> Self {
         Self {
@@ -1017,15 +1025,7 @@ impl<'a> Reader<'a> {
         })
     }
 
-    fn read_face_notes(
-        &mut self,
-        line: usize,
-    ) -> (
-        Option<FaceColor>,
-        Option<crate::brush_face::SurfaceMaterial>,
-        bool,
-        Option<Box<[[f64; 3]; 2]>>,
-    ) {
+    fn read_face_notes(&mut self, line: usize) -> FaceNotes {
         // A colour is written as a comment on the face's own line, so that a file with
         // colours in it is still a plain `.map`. Only a comment on that line and carrying
         // the editor's own marker is one; anything else is somebody's note.

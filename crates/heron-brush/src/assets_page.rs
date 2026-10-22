@@ -513,15 +513,16 @@ mod tests {
     use super::*;
 
     fn page(names: &[&str]) -> AssetsPage {
-        let mut page = AssetsPage::default();
-        page.prefabs = names
-            .iter()
-            .map(|n| Prefab {
-                name: n.to_string(),
-                path: PathBuf::from(format!("/lib/{n}.map")),
-            })
-            .collect();
-        page
+        AssetsPage {
+            prefabs: names
+                .iter()
+                .map(|n| Prefab {
+                    name: n.to_string(),
+                    path: PathBuf::from(format!("/lib/{n}.map")),
+                })
+                .collect(),
+            ..Default::default()
+        }
     }
 
     #[test]

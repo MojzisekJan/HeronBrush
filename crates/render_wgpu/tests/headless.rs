@@ -480,8 +480,10 @@ fn draws_point_entity_sprites() {
         Pose::Rest,
         &mut renderer.scene,
     );
-    let mut camera = Camera3d::default();
-    camera.position = geometry_math::vec::Vec3d::new(-40.0, 0.0, 0.0);
+    let mut camera = Camera3d {
+        position: geometry_math::vec::Vec3d::new(-40.0, 0.0, 0.0),
+        ..Default::default()
+    };
     camera.look_along(geometry_math::vec::Vec3d::new(1.0, 0.0, 0.0));
     let mut settings = editor_core::render_settings::from_preferences();
     settings.procedural_sky = false;
@@ -662,7 +664,9 @@ fn bench() {
     base.antialiasing = true;
     base.accumulate = true;
     let size = (1058, 808);
-    let configurations: [(&str, fn(&mut render::RenderSettings)); 13] = [
+    /// Turns the base settings into one configuration to time.
+    type Configure = fn(&mut render::RenderSettings);
+    let configurations: [(&str, Configure); 13] = [
         ("everything", |_| {}),
         ("no light entities", |_| {}),
         ("no bloom", |s| s.bloom = false),
@@ -935,8 +939,10 @@ fn reflections_show_the_pillar_in_a_smooth_floor() {
         Pose::Rest,
         &mut renderer.scene,
     );
-    let mut camera = Camera3d::default();
-    camera.position = geometry_math::vec::Vec3d::new(-300.0, -20.0, 60.0);
+    let mut camera = Camera3d {
+        position: geometry_math::vec::Vec3d::new(-300.0, -20.0, 60.0),
+        ..Default::default()
+    };
     camera.look_along(geometry_math::vec::Vec3d::new(300.0, 20.0, -20.0));
     let mut settings = single_frame_settings();
     settings.procedural_sky = true;
@@ -970,7 +976,7 @@ fn reflections_show_the_pillar_in_a_smooth_floor() {
         .as_chunks::<4>()
         .0
         .iter()
-        .zip(plain.2.chunks_exact(4))
+        .zip(plain.2.as_chunks::<4>().0)
         .filter(|(a, b)| a[0].abs_diff(b[0]) > 12)
         .count();
     assert!(changed > 300, "reflections changed only {changed} pixels");
@@ -990,8 +996,10 @@ fn light_entities_light_the_scene_and_cache_their_shadows() {
     let mut tracker = SceneTracker::new();
     let filters = ViewFilters::default();
     tracker.sync(&document, &filters, None, Pose::Rest, &mut renderer.scene);
-    let mut camera = Camera3d::default();
-    camera.position = geometry_math::vec::Vec3d::new(-260.0, -380.0, 300.0);
+    let mut camera = Camera3d {
+        position: geometry_math::vec::Vec3d::new(-260.0, -380.0, 300.0),
+        ..Default::default()
+    };
     camera.look_along(geometry_math::vec::Vec3d::new(260.0, 380.0, -300.0));
     let mut settings = single_frame_settings();
     settings.procedural_sky = false;
@@ -1122,7 +1130,7 @@ fn light_entities_light_the_scene_and_cache_their_shadows() {
         .as_chunks::<4>()
         .0
         .iter()
-        .zip(unshadowed.2.chunks_exact(4))
+        .zip(unshadowed.2.as_chunks::<4>().0)
         .filter(|(a, b)| b[0] > a[0].saturating_add(20))
         .count();
     assert!(
@@ -1541,8 +1549,10 @@ fn an_animation_stays_quiet_and_leaves_no_trail() {
     };
     let document = shuttle_yard();
     let filters = ViewFilters::default();
-    let mut camera = Camera3d::default();
-    camera.position = geometry_math::vec::Vec3d::new(0.0, -260.0, 150.0);
+    let mut camera = Camera3d {
+        position: geometry_math::vec::Vec3d::new(0.0, -260.0, 150.0),
+        ..Default::default()
+    };
     camera.look_along(geometry_math::vec::Vec3d::new(0.0, 400.0, -190.0));
     let size = (320, 200);
     let mut settings = editor_core::render_settings::from_preferences();
@@ -1872,9 +1882,11 @@ fn imported_face_rules_control_front_and_back_coverage() {
         renderer.scene.finish();
         renderer.scene.load_textures_now();
         for back in [false, true] {
-            let mut camera = Camera3d::default();
-            camera.pitch = if back { 1.56 } else { -1.56 };
-            camera.yaw = 0.;
+            let mut camera = Camera3d {
+                pitch: if back { 1.56 } else { -1.56 },
+                yaw: 0.,
+                ..Default::default()
+            };
             camera.frame_in_viewport(&bounds, 320., 240.);
             renderer.render(&view(
                 &camera,
@@ -1987,7 +1999,7 @@ fn imported_single_sided_back_does_not_cast_a_sun_shadow() {
                 .as_chunks::<4>()
                 .0
                 .iter()
-                .zip(images[1].chunks_exact(4))
+                .zip(images[1].as_chunks::<4>().0)
                 .filter(|(a, b)| a[..3].iter().zip(&b[..3]).any(|(x, y)| x.abs_diff(*y) > 4))
                 .count(),
         );
@@ -2011,9 +2023,11 @@ fn imported_opaque_back_does_not_occlude_the_receiver() {
     .unwrap();
     document.add_brushes(vec![receiver]);
     document.clear_selection();
-    let mut camera = Camera3d::default();
-    camera.pitch = 1.56;
-    camera.yaw = 0.;
+    let mut camera = Camera3d {
+        pitch: 1.56,
+        yaw: 0.,
+        ..Default::default()
+    };
     camera.frame_in_viewport(&document.bounds().unwrap(), 320., 240.);
     let mut settings = single_frame_settings();
     settings.procedural_sky = false;
@@ -2090,7 +2104,7 @@ fn imported_opaque_back_does_not_occlude_the_receiver() {
                 .as_chunks::<4>()
                 .0
                 .iter()
-                .zip(baseline.2.chunks_exact(4))
+                .zip(baseline.2.as_chunks::<4>().0)
                 .filter(|(a, b)| a[..3].iter().zip(&b[..3]).any(|(a, b)| a.abs_diff(*b) > 4))
                 .count(),
         );

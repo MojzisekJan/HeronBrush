@@ -495,14 +495,16 @@ impl Canvas for Raster {
             .transform
             .pre_translate(origin.0 as f32, origin.1 as f32)
             .pre_scale(scale as f32, scale as f32);
-        let mut paint = tiny_skia::Paint::default();
-        paint.shader = tiny_skia::Pattern::new(
-            image.as_ref(),
-            tiny_skia::SpreadMode::Repeat,
-            tiny_skia::FilterQuality::Nearest,
-            1.0,
-            transform,
-        );
+        let paint = tiny_skia::Paint {
+            shader: tiny_skia::Pattern::new(
+                image.as_ref(),
+                tiny_skia::SpreadMode::Repeat,
+                tiny_skia::FilterQuality::Nearest,
+                1.0,
+                transform,
+            ),
+            ..Default::default()
+        };
         let rect = tiny_skia::Rect::from_xywh(
             0.0,
             0.0,

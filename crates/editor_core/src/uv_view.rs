@@ -122,8 +122,6 @@ pub enum Grip {
     },
 }
 
-/// Builds the editor, returning it and the way to bring it up to date.
-
 /// The canvas's state between events: the view, the origin handle and the drag in
 /// progress.
 #[derive(Default)]
@@ -1070,11 +1068,6 @@ pub fn draw(document: &Document, cr: &mut dyn Canvas, width: f64, height: f64, v
     cr.close_path();
     cr.stroke();
 }
-
-/// The material as something cairo can paint.
-///
-/// Cairo wants premultiplied ARGB in the machine's own byte order; the material is plain
-/// RGBA. Nothing else in the editor needs the conversion, so it lives here.
 
 #[cfg(test)]
 mod tests {

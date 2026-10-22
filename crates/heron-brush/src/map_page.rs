@@ -287,7 +287,9 @@ impl MapPage {
             theme::body(),
             theme::dim(),
         );
-        let switches: [(Flag, bool, &str, fn(&egui::Painter, Rect, Color32)); 3] = [
+        /// Draws a switch's icon in a rect, in a colour.
+        type Icon = fn(&egui::Painter, Rect, Color32);
+        let switches: [(Flag, bool, &str, Icon); 3] = [
             (
                 Flag::Hidden,
                 layer.hidden,

@@ -354,14 +354,17 @@ pub struct SurfacePreview {
     pub brushes: Vec<(map_model::node::NodeId, Vec<map_model::brush::Brush>)>,
 }
 
+/// What a preview was made from: document generation and revision, parameters and edges.
+type PreviewKey = (
+    u64,
+    u64,
+    FilletParameters,
+    Vec<(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)>,
+);
+
 #[derive(Default)]
 pub struct PreviewCache {
-    key: Option<(
-        u64,
-        u64,
-        FilletParameters,
-        Vec<(geometry_math::vec::Vec3d, geometry_math::vec::Vec3d)>,
-    )>,
+    key: Option<PreviewKey>,
     value: Option<Rc<SurfacePreview>>,
 }
 

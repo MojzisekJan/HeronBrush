@@ -44,6 +44,9 @@ struct State {
     defold_retry: Instant,
 }
 
+/// Told about every change to a live link's status.
+type Observer = Box<dyn Fn(&LiveLink)>;
+
 pub struct LiveLink {
     document: Weak<RefCell<Document>>,
     state: RefCell<Option<State>>,
@@ -51,7 +54,7 @@ pub struct LiveLink {
     engine: std::cell::Cell<Target>,
     defold_hot_reload: std::cell::Cell<bool>,
     /// The frontend's indicator and status labels, told about every change.
-    observer: RefCell<Option<Box<dyn Fn(&LiveLink)>>>,
+    observer: RefCell<Option<Observer>>,
     /// Whether the status changed since the observer last heard. The observer is told
     /// only once no borrow of the state is held, since it reads the state back.
     changed: std::cell::Cell<bool>,

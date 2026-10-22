@@ -263,6 +263,9 @@ pub(crate) fn window_shortcut(event: &egui::Event) -> Option<app_actions::Action
 /// window's own shortcuts go to `window` even while a text field has the keyboard
 /// (`field_focused`); everything else is the field's then. The 3D view's fly keys come
 /// first while it has the keyboard (`scene`).
+// The app passes its own fields and the tests build each piece on its own, so there is
+// no existing struct that holds them all.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn dispatch_keys(
     commands: &Commands,
     window: &Rc<RefCell<WindowState>>,

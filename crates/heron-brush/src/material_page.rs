@@ -549,6 +549,9 @@ impl MaterialPage {
     }
 }
 
+/// The document and collection revisions, then the material names in use and all of them.
+type MaterialNames = ((u64, u64), Vec<String>, Vec<String>);
+
 /// The Replace Material dialog: a material in use on the left, what to put in its place
 /// on the right, across the selection when there is one and the map otherwise.
 #[derive(Default)]
@@ -561,7 +564,7 @@ struct Replace {
     said: Option<String>,
     /// The names in use and all the names, with the document and collection revisions they
     /// were read at: finding what the map wears walks every face.
-    names: Option<((u64, u64), Vec<String>, Vec<String>)>,
+    names: Option<MaterialNames>,
 }
 
 impl Replace {
@@ -894,8 +897,10 @@ mod tests {
         };
         let before = document.borrow().to_map_text();
         let original = document.borrow().face_at(face).unwrap().clone();
-        let mut page = MaterialPage::default();
-        page.filter = "t000".into();
+        let mut page = MaterialPage {
+            filter: "t000".into(),
+            ..Default::default()
+        };
         let draw = |page: &mut MaterialPage, events| {
             let mut output = ctx.run_ui(
                 egui::RawInput {

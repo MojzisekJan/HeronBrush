@@ -466,8 +466,7 @@ impl UvPanel {
                     step,
                     digits,
                     width,
-                    text,
-                    theme::axis(axis),
+                    (text, theme::axis(axis)),
                 ),
                 None => widgets::spin_width(ui, &mut value, low..=high, step, digits, width),
             })

@@ -652,6 +652,37 @@ fn draw_join(
     }
 }
 
+fn corner_number<T: egui::emath::Numeric>(
+    ui: &mut egui::Ui,
+    value: &mut T,
+    range: std::ops::RangeInclusive<f64>,
+    valid: [bool; 2],
+) -> bool {
+    let before = *value;
+    if ui
+        .add_enabled(
+            valid[0] && value.to_f64() > *range.start(),
+            egui::Button::new("−"),
+        )
+        .clicked()
+    {
+        *value = T::from_f64((value.to_f64() - 1.0).max(*range.start()));
+    }
+    let changed = ui
+        .add(egui::DragValue::new(value).range(range.clone()))
+        .changed();
+    if ui
+        .add_enabled(
+            valid[1] && value.to_f64() + 1.0 <= *range.end(),
+            egui::Button::new("+"),
+        )
+        .clicked()
+    {
+        *value = T::from_f64(value.to_f64() + 1.0);
+    }
+    changed || *value != before
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -975,10 +1006,12 @@ mod tests {
             }
             d.select_all();
         }
-        let mut dialogs = ShapeDialogs::default();
-        dialogs.corner_rounded = true;
-        dialogs.corner_radius = 16.0;
-        dialogs.corner_segments = 1;
+        let mut dialogs = ShapeDialogs {
+            corner_rounded: true,
+            corner_radius: 16.0,
+            corner_segments: 1,
+            ..Default::default()
+        };
         dialogs.corner(&editor);
         assert!(dialogs.corner.is_some());
         assert_eq!(
@@ -1041,35 +1074,4 @@ mod tests {
             "the status starts afresh"
         );
     }
-}
-
-fn corner_number<T: egui::emath::Numeric>(
-    ui: &mut egui::Ui,
-    value: &mut T,
-    range: std::ops::RangeInclusive<f64>,
-    valid: [bool; 2],
-) -> bool {
-    let before = *value;
-    if ui
-        .add_enabled(
-            valid[0] && value.to_f64() > *range.start(),
-            egui::Button::new("−"),
-        )
-        .clicked()
-    {
-        *value = T::from_f64((value.to_f64() - 1.0).max(*range.start()));
-    }
-    let changed = ui
-        .add(egui::DragValue::new(value).range(range.clone()))
-        .changed();
-    if ui
-        .add_enabled(
-            valid[1] && value.to_f64() + 1.0 <= *range.end(),
-            egui::Button::new("+"),
-        )
-        .clicked()
-    {
-        *value = T::from_f64(value.to_f64() + 1.0);
-    }
-    changed || *value != before
 }

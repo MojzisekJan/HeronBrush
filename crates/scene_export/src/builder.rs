@@ -1516,8 +1516,10 @@ mod tests {
             ..Default::default()
         };
         let classes = IndexMap::new();
-        let mut settings = Settings::default();
-        settings.default_collision = CollisionKind::Concave;
+        let mut settings = Settings {
+            default_collision: CollisionKind::Concave,
+            ..Default::default()
+        };
         let options = LevelOptions {
             inline_collision: true,
             ..Default::default()

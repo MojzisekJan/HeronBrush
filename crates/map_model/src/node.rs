@@ -555,6 +555,9 @@ struct ParentIndex {
 
 /// Puts a node under the group or layer with the given id, falling back to the default
 /// layer and reporting the discrepancy when there is no such parent.
+// The mutable arguments are separate parts of the tree under construction, which the
+// builder also uses on their own between the two calls.
+#[allow(clippy::too_many_arguments)]
 fn place(
     node: Node,
     parent: Option<String>,

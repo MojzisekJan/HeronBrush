@@ -81,8 +81,8 @@ pub fn bake(face: &BrushFace, polygon: &[Vec3d], material: Option<&Material>) ->
             // Without an underlying image, paint alpha is surface transparency.
             // Textured paint retains the existing overlay behaviour.
             if material.is_none_or(|m| m.width == 0 || m.height == 0) {
-                for c in 0..3 {
-                    pixels.push((color[c] * 255.0).round() as u8);
+                for c in color {
+                    pixels.push((c * 255.0).round() as u8);
                 }
                 pixels.push(paint.alpha());
                 continue;

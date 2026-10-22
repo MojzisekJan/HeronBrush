@@ -570,8 +570,8 @@ mod tests {
         }
         let lookups = start.elapsed();
         let start = std::time::Instant::now();
-        for i in 0..20000 {
-            assert_eq!(fs.read(&names[i]).unwrap(), content);
+        for name in &names {
+            assert_eq!(fs.read(name).unwrap(), content);
         }
         eprintln!(
             "asset-index: mount 20000 entries {mount:?}; 200000 indexed resolves {lookups:?}; 20000 bounded deflates {:?}",

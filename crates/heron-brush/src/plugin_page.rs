@@ -68,6 +68,9 @@ pub fn groups<'a>(plugins: &'a [Plugin], query: &str) -> [(bool, Vec<&'a Plugin>
     [(true, matching(true)), (false, matching(false))]
 }
 
+/// What a plugin was last inspected at: the document generation and revision, and the answers.
+type InspectStamp = ((u64, u64), Vec<(String, SettingValue)>);
+
 /// What the cards remember between frames: each setting's answer and each plugin's last
 /// output.
 #[derive(Default)]
@@ -81,7 +84,7 @@ pub struct Cards {
     outputs: HashMap<String, RunOutput>,
     sessions: HashMap<String, (String, Result<editor_core::plugin::Session, String>)>,
     waiting: HashMap<String, (u64, u64, web_time::Instant)>,
-    inspected: HashMap<String, ((u64, u64), Vec<(String, SettingValue)>)>,
+    inspected: HashMap<String, InspectStamp>,
 }
 
 impl Cards {

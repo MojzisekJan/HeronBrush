@@ -727,12 +727,9 @@ impl Chrome {
 
         // The locks are preferences, which the preference pane and the U key also change.
         use editor_core::preferences::{edit, pref};
-        let locks: [(
-            &str,
-            &str,
-            bool,
-            fn(&mut editor_core::preferences::Preferences, bool),
-        ); 2] = [
+        /// Turns one lock on or off in the preferences.
+        type SetLock = fn(&mut editor_core::preferences::Preferences, bool);
+        let locks: [(&str, &str, bool, SetLock); 2] = [
             (
                 tr("Lock"),
                 tr("Keep the mapping when a brush moves"),

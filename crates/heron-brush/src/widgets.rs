@@ -153,7 +153,8 @@ pub fn spin_width(
 
 /// A spin led by a small coloured caption inside the field, as an engine inspector marks
 /// a vector's components, and without the steppers, which a narrow field has no room
-/// for: it still scrubs, types and steps with the arrow keys.
+/// for: it still scrubs, types and steps with the arrow keys. `caption` is the text and
+/// its colour.
 pub fn spin_captioned(
     ui: &mut egui::Ui,
     value: &mut f64,
@@ -161,21 +162,10 @@ pub fn spin_captioned(
     step: f64,
     decimals: usize,
     width: f32,
-    caption: &str,
-    colour: Color32,
+    caption: (&str, Color32),
 ) -> egui::Response {
-    ui.scope(|ui| {
-        spin_body(
-            ui,
-            value,
-            range,
-            step,
-            decimals,
-            width,
-            Some((caption, colour)),
-        )
-    })
-    .inner
+    ui.scope(|ui| spin_body(ui, value, range, step, decimals, width, Some(caption)))
+        .inner
 }
 
 /// Side-by-side spins sharing the available width, one per value, each captioned X, Y,
@@ -210,8 +200,7 @@ pub fn axis_spins(
                         step,
                         decimals,
                         each,
-                        caption,
-                        theme::axis(i),
+                        (caption, theme::axis(i)),
                     )
                 })
                 .inner
@@ -1392,6 +1381,30 @@ pub mod icons {
     }
 }
 
+/// Visible one-unit steps beside the entry; all edits share the preview update.
+pub fn number_buttons<T: egui::emath::Numeric>(
+    ui: &mut egui::Ui,
+    value: &mut T,
+    range: std::ops::RangeInclusive<f64>,
+) -> bool {
+    number_buttons_step(ui, value, range, 1.0)
+}
+
+/// Number buttons whose increments and drag speed follow a discrete generator step.
+pub fn number_buttons_step<T: egui::emath::Numeric>(
+    ui: &mut egui::Ui,
+    value: &mut T,
+    range: std::ops::RangeInclusive<f64>,
+    step: f64,
+) -> bool {
+    ui.add(
+        egui_native_look::NumberField::new(value)
+            .range(range)
+            .step(step),
+    )
+    .changed()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1517,28 +1530,4 @@ mod tests {
         }
         assert!(on && changed);
     }
-}
-
-/// Visible one-unit steps beside the entry; all edits share the preview update.
-pub fn number_buttons<T: egui::emath::Numeric>(
-    ui: &mut egui::Ui,
-    value: &mut T,
-    range: std::ops::RangeInclusive<f64>,
-) -> bool {
-    number_buttons_step(ui, value, range, 1.0)
-}
-
-/// Number buttons whose increments and drag speed follow a discrete generator step.
-pub fn number_buttons_step<T: egui::emath::Numeric>(
-    ui: &mut egui::Ui,
-    value: &mut T,
-    range: std::ops::RangeInclusive<f64>,
-    step: f64,
-) -> bool {
-    ui.add(
-        egui_native_look::NumberField::new(value)
-            .range(range)
-            .step(step),
-    )
-    .changed()
 }

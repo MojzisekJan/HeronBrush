@@ -47,6 +47,12 @@ struct Listed {
     example: bool,
 }
 
+/// Makes map thumbnails in the background: a map and when it changed in, its picture out.
+type PreviewPool = crate::pool::Pool<
+    (PathBuf, SystemTime, egui::Context),
+    (PathBuf, SystemTime, Option<assets::Rgba>),
+>;
+
 pub struct WelcomePage {
     pub open: bool,
     /// The recent maps, starred first, then the examples not among them.
@@ -57,10 +63,7 @@ pub struct WelcomePage {
     last_row: usize,
     refreshed: Option<Instant>,
     thumbnails: HashMap<PathBuf, Thumbnail>,
-    previews: crate::pool::Pool<
-        (PathBuf, SystemTime, egui::Context),
-        (PathBuf, SystemTime, Option<assets::Rgba>),
-    >,
+    previews: PreviewPool,
     error: String,
     /// The map the trash question is about, while it waits for an in-app answer.
     trashing: Option<PathBuf>,

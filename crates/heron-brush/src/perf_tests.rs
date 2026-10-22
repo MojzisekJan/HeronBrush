@@ -268,8 +268,8 @@ fn perf_egui_material_browser() {
                     + output
                         .textures_delta
                         .set
-                        .iter()
-                        .flat_map(|(_, deltas)| deltas.iter())
+                        .values()
+                        .flat_map(|deltas| deltas.iter())
                         .map(|delta| delta.image.width() * delta.image.height() * 4)
                         .sum::<usize>(),
             );

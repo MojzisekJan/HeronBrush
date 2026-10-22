@@ -358,8 +358,8 @@ fn generate_painted_scaled(
             let normals_at = triangle.normals.unwrap_or([normal / length; 3]);
             let first = vertex_count + 1;
             let first_normal = normal_count + 1;
-            for i in 0..3 {
-                let normal = fold(normals_at[i]);
+            for (i, &normal) in normals_at.iter().enumerate() {
+                let normal = fold(normal);
                 normal_count += 1;
                 let _ = writeln!(
                     normals,

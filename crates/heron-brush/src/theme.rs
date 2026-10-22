@@ -896,6 +896,8 @@ pub fn use_scheme(ctx: &egui::Context, dark: bool) {
     ctx.all_styles_mut(apply_visuals);
 }
 
+pub use egui_native_look::{galley_top, text};
+
 #[cfg(test)]
 mod fallback_tests {
     use super::*;
@@ -920,5 +922,3 @@ mod fallback_tests {
         assert_eq!(fallback_order(Language::Czech).len(), FALLBACK_FONTS.len());
     }
 }
-
-pub use egui_native_look::{galley_top, text};

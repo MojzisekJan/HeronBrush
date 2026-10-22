@@ -161,12 +161,7 @@ struct State {
 /// A swatch button that opens the picker. Edits `rgb`, and `alpha` (0 to 1) when given:
 /// a panel passes its own opacity here so the picker's slider and the panel's agree.
 /// The response is `changed()` when the user changed the colour or the alpha.
-pub fn button(
-    ui: &mut Ui,
-    id: Id,
-    rgb: &mut [u8; 3],
-    mut alpha: Option<&mut f32>,
-) -> egui::Response {
+pub fn button(ui: &mut Ui, id: Id, rgb: &mut [u8; 3], alpha: Option<&mut f32>) -> egui::Response {
     let size = egui::vec2(36.0, 24.0);
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
     let mut response = ui

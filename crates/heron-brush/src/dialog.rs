@@ -213,6 +213,9 @@ fn dialog_room(ctx: &egui::Context) -> egui::Vec2 {
     (ctx.content_rect().size() - egui::vec2(24.0, 48.0)).max(egui::vec2(64.0, 64.0))
 }
 
+// Both callers are in `show_window` and pass its own arguments straight through; a struct
+// for them would be built only to be taken apart here.
+#[allow(clippy::too_many_arguments)]
 fn embedded(
     ctx: &egui::Context,
     id: &str,

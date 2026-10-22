@@ -23,6 +23,9 @@ const NODE: Vec2 = Vec2::new(176.0, 46.0);
 const COLUMN: f32 = 260.0;
 const ROW: f32 = 70.0;
 
+/// Each entity's column and row in the graph, as [`EntityGraph::layout`] gives them.
+type Layout = HashMap<NodeId, (usize, usize)>;
+
 /// The window's state.
 pub struct EntityGraphPage {
     pub open: bool,
@@ -32,7 +35,7 @@ pub struct EntityGraphPage {
     /// Boxes the person moved, by entity, in graph units.
     moved: HashMap<NodeId, Pos2>,
     /// The graph and the map state it was made from.
-    cache: Option<(u64, EntityGraph, HashMap<NodeId, (usize, usize)>)>,
+    cache: Option<(u64, EntityGraph, Layout)>,
     /// The box a link is being dragged from.
     linking: Option<NodeId>,
     status: String,
@@ -82,7 +85,7 @@ impl EntityGraphPage {
     }
 
     /// The graph, made again when the map or the selection changed.
-    fn graph(&mut self, editor: &Editor) -> (EntityGraph, HashMap<NodeId, (usize, usize)>) {
+    fn graph(&mut self, editor: &Editor) -> (EntityGraph, Layout) {
         let document = editor.document.borrow();
         let key = {
             use std::hash::{Hash, Hasher};

@@ -14,12 +14,15 @@ thread_local! {
     static LOG: RefCell<Log> = const { RefCell::new(Log::new()) };
 }
 
+/// Told of each line as it is said.
+type Listener = Box<dyn Fn(Kind, &str)>;
+
 /// What has been said, and who is listening.
 struct Log {
     /// The lines, oldest first.
     lines: Vec<(Kind, String)>,
     /// The frontend's pane, once there is one.
-    listener: Option<Box<dyn Fn(Kind, &str)>>,
+    listener: Option<Listener>,
 }
 
 impl Log {

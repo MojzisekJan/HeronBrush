@@ -718,7 +718,7 @@ impl Renderer {
         if embedded(&self.gl) {
             // Each triangle's three sides as lines: the corners `ab`, `bc` and `ca`.
             let mut lines: Vec<f32> = Vec::with_capacity(data.len() * 2);
-            for triangle in data.chunks_exact(3 * FLOATS_PER_VERTEX) {
+            for triangle in data.as_chunks::<{ 3 * FLOATS_PER_VERTEX }>().0 {
                 let corner = |index: usize| {
                     &triangle[index * FLOATS_PER_VERTEX..(index + 1) * FLOATS_PER_VERTEX]
                 };
@@ -3517,6 +3517,49 @@ fn bytes_of(data: &[f32]) -> &[u8] {
     unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, std::mem::size_of_val(data)) }
 }
 
+/// Whether the context is GLES (or WebGL 2): no polygon line mode, no texture border, no
+/// point size switch, and shaders in GLSL ES.
+fn embedded(gl: &glow::Context) -> bool {
+    gl.version().is_embedded
+}
+
+/// A shader written as GLSL 1.50 in the version GLES 3.0 and WebGL 2 read: `#version 300
+/// es` with the precisions GLSL ES wants said. The bodies are written to be valid in both,
+/// without the implicit int-to-float conversions GLSL 1.50 allows and GLSL ES does not.
+fn for_context<'a>(gl: &glow::Context, source: &'a str) -> std::borrow::Cow<'a, str> {
+    const DESKTOP: &str = "#version 150 core";
+    match source.strip_prefix(DESKTOP) {
+        Some(body) if embedded(gl) => {
+            // GLSL ES wants every output of a shader with several placed by `layout`, where
+            // the desktop binds them by name before linking (FRAGMENT_OUTPUTS).
+            let body: String = body
+                .lines()
+                .map(|line| {
+                    let output = line
+                        .trim()
+                        .strip_prefix("out vec4 ")
+                        .and_then(|rest| rest.strip_suffix(';'));
+                    match output.and_then(|name| {
+                        FRAGMENT_OUTPUTS
+                            .iter()
+                            .position(|wanted| *wanted == name.trim())
+                    }) {
+                        Some(location) => {
+                            format!("layout(location = {location}) {}\n", line.trim())
+                        }
+                        None => format!("{line}\n"),
+                    }
+                })
+                .collect();
+            format!(
+                "#version 300 es\nprecision highp float;\nprecision highp int;\nprecision highp sampler2D;\nprecision highp sampler2DShadow;\nprecision highp samplerCube;{body}"
+            )
+            .into()
+        }
+        _ => source.into(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3587,48 +3630,5 @@ mod tests {
             assert_eq!(offset, expected);
             expected += components;
         }
-    }
-}
-
-/// Whether the context is GLES (or WebGL 2): no polygon line mode, no texture border, no
-/// point size switch, and shaders in GLSL ES.
-fn embedded(gl: &glow::Context) -> bool {
-    gl.version().is_embedded
-}
-
-/// A shader written as GLSL 1.50 in the version GLES 3.0 and WebGL 2 read: `#version 300
-/// es` with the precisions GLSL ES wants said. The bodies are written to be valid in both,
-/// without the implicit int-to-float conversions GLSL 1.50 allows and GLSL ES does not.
-fn for_context<'a>(gl: &glow::Context, source: &'a str) -> std::borrow::Cow<'a, str> {
-    const DESKTOP: &str = "#version 150 core";
-    match source.strip_prefix(DESKTOP) {
-        Some(body) if embedded(gl) => {
-            // GLSL ES wants every output of a shader with several placed by `layout`, where
-            // the desktop binds them by name before linking (FRAGMENT_OUTPUTS).
-            let body: String = body
-                .lines()
-                .map(|line| {
-                    let output = line
-                        .trim()
-                        .strip_prefix("out vec4 ")
-                        .and_then(|rest| rest.strip_suffix(';'));
-                    match output.and_then(|name| {
-                        FRAGMENT_OUTPUTS
-                            .iter()
-                            .position(|wanted| *wanted == name.trim())
-                    }) {
-                        Some(location) => {
-                            format!("layout(location = {location}) {}\n", line.trim())
-                        }
-                        None => format!("{line}\n"),
-                    }
-                })
-                .collect();
-            format!(
-                "#version 300 es\nprecision highp float;\nprecision highp int;\nprecision highp sampler2D;\nprecision highp sampler2DShadow;\nprecision highp samplerCube;{body}"
-            )
-            .into()
-        }
-        _ => source.into(),
     }
 }
