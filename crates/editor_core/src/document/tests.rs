@@ -2454,6 +2454,39 @@ fn hiding_a_tag_takes_its_faces_and_brushes_out_of_what_is_drawn() {
 }
 
 #[test]
+fn transparent_tags_draw_triggers_and_clip_faces_see_through() {
+    use crate::games::{Tag, TagRule};
+
+    let mut document = one_box();
+    let tag = |name: &str, rule, pattern: &str| Tag { name: name.to_string(), rule, pattern: pattern.to_string(), transparent: true };
+    document.set_tags(vec![tag("Trigger", TagRule::Classname, "trigger_*")], vec![tag("Clip", TagRule::Material, "clip")]);
+    let filters = crate::view_filters::ViewFilters::default();
+    let alphas = |document: &Document| {
+        let mut alphas: Vec<f32> = document.triangles(&filters).iter().map(|triangle| triangle.alpha).collect();
+        alphas.dedup();
+        alphas
+    };
+    assert_eq!(alphas(&document), [1.0], "a plain brush is solid");
+
+    // The box becomes a trigger's brush.
+    document.select_all();
+    let trigger = document.create_brush_entity("trigger_once").unwrap();
+    assert_eq!(alphas(&document), [surfaces::SEE_THROUGH_ALPHA]);
+    // A door is solid, though only the entity changed, not its brush.
+    assert!(document.set_entity_property(trigger, "classname", "func_door"));
+    assert_eq!(alphas(&document), [1.0]);
+    assert!(document.set_entity_property(trigger, "classname", "trigger_multiple"));
+    assert_eq!(alphas(&document), [surfaces::SEE_THROUGH_ALPHA]);
+
+    // A clip brush in the world is see-through by its faces' material.
+    let mut document = Document::new(Default::default());
+    document.set_tags(Vec::new(), vec![tag("Clip", TagRule::Material, "clip")]);
+    let bounds = Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(32.0, 32.0, 32.0));
+    document.add_brushes(vec![map_model::shapes::create_cuboid(&document.world_bounds(), &bounds, "clip").unwrap()]);
+    assert_eq!(alphas(&document), [surfaces::SEE_THROUGH_ALPHA]);
+}
+
+#[test]
 fn a_brush_tag_hides_the_brushes_of_the_entity_it_matches() {
     use crate::games::{Tag, TagRule};
 

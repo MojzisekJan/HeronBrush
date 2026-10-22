@@ -351,7 +351,7 @@ impl Document {
             let walk = cache.walk;
             let mut order = Vec::with_capacity(cache.order.len());
             let mut clipped = FxHashSet::default();
-            let mut jobs: Vec<(NodeId, &map_model::brush::Brush, bool, Option<&ClipTool>)> = Vec::new();
+            let mut jobs: Vec<(NodeId, &map_model::brush::Brush, bool, bool, Option<&ClipTool>)> = Vec::new();
             // Whether a node has to be built; if not, its kept surface is brought up to date
             // with its layer's lock and marked drawn.
             let keep = |cache: &mut SurfaceCache, id: NodeId, locked: bool| -> bool {
@@ -377,6 +377,7 @@ impl Document {
 
             if filters.show_brushes {
                 let hidden_by_tag = self.brushes_hidden_by_tags();
+                let shown_through = self.brushes_shown_through();
                 for (id, brush, layer) in node::brushes_by_layer(&self.tree.world) {
                     if !self.node_is_drawn(id, layer) || (!hidden_by_tag.is_empty() && hidden_by_tag.contains(&id)) {
                         continue;
@@ -386,10 +387,11 @@ impl Document {
                     if cut.is_some() {
                         clipped.insert(id);
                     }
+                    let see_through = shown_through.contains(&id);
                     if !keep(cache, id, locked) {
                         if let Some((_, replacements)) = fillet.and_then(|preview| preview.brushes.iter().find(|(node,_)| *node == id)) {
-                            for replacement in replacements { jobs.push((id, replacement, locked, None)); }
-                        } else { jobs.push((id, brush, locked, cut)); }
+                            for replacement in replacements { jobs.push((id, replacement, locked, see_through, None)); }
+                        } else { jobs.push((id, brush, locked, see_through, cut)); }
                     }
                     order.push(id);
                 }
@@ -430,17 +432,18 @@ impl Document {
                 filters,
                 face_color: crate::preferences::pref(|p| p.face_color).rgb_f32(),
                 world_bounds: self.world_bounds(),
+                see_through_faces: self.face_tags.iter().filter(|tag| tag.transparent).collect(),
             };
             // Face tags ask the document, which cannot be shared between threads; with none
             // hidden (the usual case) a face is never hidden by one.
             let built: Vec<(Vec<Triangle>, Vec<FaceRun>)> = if jobs.len() >= PARALLEL_BUILDS && self.hidden_tags.is_empty() {
                 use rayon::prelude::*;
-                jobs.par_iter().map(|(id, brush, locked, cut)| brush_surface(&inputs, *id, brush, *locked, *cut, |_| false)).collect()
+                jobs.par_iter().map(|(id, brush, locked, see_through, cut)| brush_surface(&inputs, *id, brush, *locked, *see_through, *cut, |_| false)).collect()
             } else {
-                jobs.iter().map(|(id, brush, locked, cut)| brush_surface(&inputs, *id, brush, *locked, *cut, |face| self.face_hidden_by_tag(face))).collect()
+                jobs.iter().map(|(id, brush, locked, see_through, cut)| brush_surface(&inputs, *id, brush, *locked, *see_through, *cut, |face| self.face_hidden_by_tag(face))).collect()
             };
             let mut combined: Vec<(NodeId,bool,Vec<Triangle>,Vec<FaceRun>)> = Vec::new();
-            for ((id, _, locked, _), (triangles, mut faces)) in jobs.iter().zip(built) {
+            for ((id, _, locked, _, _), (triangles, mut faces)) in jobs.iter().zip(built) {
                 if let Some((_,_,out,runs)) = combined.last_mut().filter(|(last,_,_,_)| last == id) {
                     let offset = out.len() as u32;
                     for face in &mut faces { face.range.start += offset; face.range.end += offset; }
@@ -597,7 +600,13 @@ struct BrushInputs<'a> {
     filters: ViewFilters,
     face_color: [f32; 3],
     world_bounds: geometry_math::bbox::Bbox3d,
+    /// The face tags marked `transparent`, such as clip and origin.
+    see_through_faces: Vec<&'a crate::games::Tag>,
 }
+
+/// How opaque a brush or face tagged `transparent` is drawn: a trigger, a clip face.
+/// TrenchBroom's "Transparent face alpha" default.
+pub(super) const SEE_THROUGH_ALPHA: f32 = 0.4;
 
 /// Puts a freshly built surface into the cache, keeping the old stamp when it came out
 /// the same (an undo, a hide and show, an edit that changed nothing drawn).
@@ -618,11 +627,14 @@ fn commit(cache: &mut SurfaceCache, id: NodeId, locked: bool, triangles: Vec<Tri
 }
 
 /// A brush's surface: each face fanned into triangles, wearing its material or paint.
+/// `see_through` draws the whole brush see-through, as a face tagged `transparent` is.
+#[allow(clippy::too_many_arguments)]
 fn brush_surface(
 inputs: &BrushInputs,
 id: NodeId,
 brush: &map_model::brush::Brush,
 locked: bool,
+see_through: bool,
 clip: Option<&ClipTool>,
 hidden_by_tag: impl Fn(&map_model::brush_face::BrushFace) -> bool,
 ) -> (Vec<Triangle>, Vec<FaceRun>) {
@@ -671,6 +683,9 @@ let filters = &inputs.filters;
                 None => if material.is_some() { [1.0, 1.0, 1.0] } else { inputs.face_color },
             };
             let alpha = if is_skip { 0.75 } else { paint.map_or(1.0, |c| f32::from(c.alpha()) / 255.0) };
+            // Skip has a look of its own, hatched.
+            let shown_through = !is_skip && (see_through || inputs.see_through_faces.iter().any(|tag| super::tags::face_carries(tag, face, inputs.materials)));
+            let alpha = if shown_through { alpha.min(SEE_THROUGH_ALPHA) } else { alpha };
             let face_start = result.len();
             for corners in map_model::brush_face::paint_triangles(face, polygon, paint) {
                 result.push(Triangle {

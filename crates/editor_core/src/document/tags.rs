@@ -171,24 +171,31 @@ impl Document {
     }
 
     /// The brushes a hidden tag takes out of what is drawn.
+    pub(super) fn brushes_hidden_by_tags(&self) -> HashSet<NodeId> {
+        self.brushes_tagged(|tag| self.hidden_tags.contains(&tag.name))
+    }
+
+    /// The brushes a tag marked `transparent` has the views draw see-through, as
+    /// TrenchBroom draws triggers.
+    pub(super) fn brushes_shown_through(&self) -> HashSet<NodeId> {
+        self.brushes_tagged(|tag| tag.transparent)
+    }
+
+    /// The brushes carrying one of the brush tags `wanted` accepts.
     ///
     /// Worked out in one pass rather than per brush: a brush tag is matched against the
     /// entity a brush belongs to, and finding that entity means walking the tree, which is
     /// not something to do once per brush of a large map.
-    pub(super) fn brushes_hidden_by_tags(&self) -> HashSet<NodeId> {
-        let hidden: Vec<&crate::games::Tag> = self
-            .brush_tags
-            .iter()
-            .filter(|tag| self.hidden_tags.contains(&tag.name))
-            .collect();
-        if hidden.is_empty() {
+    fn brushes_tagged(&self, wanted: impl Fn(&crate::games::Tag) -> bool) -> HashSet<NodeId> {
+        let tags: Vec<&crate::games::Tag> = self.brush_tags.iter().filter(|tag| wanted(tag)).collect();
+        if tags.is_empty() {
             return HashSet::new();
         }
 
         let mut out = HashSet::new();
 
         // The tags that go by the class of the entity a brush is in.
-        let by_class: Vec<&&crate::games::Tag> = hidden
+        let by_class: Vec<&&crate::games::Tag> = tags
             .iter()
             .filter(|tag| tag.rule == crate::games::TagRule::Classname)
             .collect();
@@ -209,7 +216,7 @@ impl Document {
         }
 
         // The tags that go by a flag on one of the brush's faces.
-        let by_flag: Vec<&&crate::games::Tag> = hidden
+        let by_flag: Vec<&&crate::games::Tag> = tags
             .iter()
             .filter(|tag| tag.rule == crate::games::TagRule::ContentFlag)
             .collect();
@@ -228,23 +235,6 @@ impl Document {
         out
     }
 
-    /// Whether the shader the face's material came from carries a `surfaceparm` the tag
-    /// names, `SurfaceParmTagMatcher::matchesMaterial`.
-    ///
-    /// A material that is a plain image has no parms and so carries no such tag; only a
-    /// material that came from a `.shader` can.
-    fn face_has_surface_parm(
-        &self,
-        face: &map_model::brush_face::BrushFace,
-        tag: &crate::games::Tag,
-    ) -> bool {
-        self.materials
-            .get(&face.material_name)
-            .is_some_and(|material| {
-                material.surface_parms.iter().any(|parm| tag.matches_name(parm))
-            })
-    }
-
     /// Whether a face is hidden by one of the tags it carries.
     pub(super) fn face_hidden_by_tag(&self, face: &map_model::brush_face::BrushFace) -> bool {
         if self.hidden_tags.is_empty() {
@@ -253,13 +243,21 @@ impl Document {
         self.face_tags
             .iter()
             .filter(|tag| self.hidden_tags.contains(&tag.name))
-            .any(|tag| match tag.rule {
-                crate::games::TagRule::Material => tag.matches_name(&face.material_name),
-                crate::games::TagRule::ContentFlag | crate::games::TagRule::SurfaceFlag => {
-                    flags_match(tag, face)
-                }
-                crate::games::TagRule::SurfaceParm => self.face_has_surface_parm(face, tag),
-                _ => false,
-            })
+            .any(|tag| face_carries(tag, face, &self.materials))
+    }
+}
+
+/// Whether `face` carries the face tag `tag`: by its material's name, by a flag, or by a
+/// `surfaceparm` of the shader its material came from (`SurfaceParmTagMatcher`). A
+/// material that is a plain image has no parms and so carries no such tag. Free of the
+/// document, so the views can ask it while building brushes on many threads.
+pub(super) fn face_carries(tag: &crate::games::Tag, face: &map_model::brush_face::BrushFace, materials: &map_model::material::MaterialCollection) -> bool {
+    match tag.rule {
+        crate::games::TagRule::Material => tag.matches_name(&face.material_name),
+        crate::games::TagRule::ContentFlag | crate::games::TagRule::SurfaceFlag => flags_match(tag, face),
+        crate::games::TagRule::SurfaceParm => materials
+            .get(&face.material_name)
+            .is_some_and(|material| material.surface_parms.iter().any(|parm| tag.matches_name(parm))),
+        _ => false,
     }
 }
