@@ -60,6 +60,13 @@ pub struct VoxelMesh {
     pub indices: Vec<u32>,
 }
 
+/// Whether a sample is ground. Zero counts: a sample on a face of the ground, as grid
+/// aligned terrain has many of, then belongs to it, and so does the cell between such
+/// samples.
+fn solid(sample: f32) -> bool {
+    sample >= 0.0
+}
+
 /// How much a dab does at `distance` from its centre, from 1 there to 0 at `radius`.
 fn falloff(distance: f64, radius: f64) -> f64 {
     if radius <= 0.0 || distance >= radius {
@@ -113,6 +120,119 @@ impl VoxelField {
         }
     }
 
+    /// A field of `dims` samples `cell` apart from `origin`, each the value `density`
+    /// gives at its position, held within [`RANGE`]. Fails as [`Self::solid_box`] does.
+    pub fn sampled(
+        origin: Vec3d,
+        cell: f64,
+        dims: [usize; 3],
+        density: impl Fn(Vec3d) -> f32,
+    ) -> Result<Self, &'static str> {
+        if !(cell.is_finite() && cell > 0.0) {
+            return Err("Set a grid size first.");
+        }
+        let count = dims
+            .iter()
+            .try_fold(1usize, |n, d| n.checked_mul(*d))
+            .filter(|n| *n <= MAX_SAMPLES && dims.iter().all(|d| *d >= 2))
+            .ok_or("That makes too many voxels. Use a bigger grid size.")?;
+        let mut field = Self {
+            origin,
+            cell,
+            dims,
+            density: vec![-RANGE; count],
+        };
+        for k in 0..dims[2] {
+            for j in 0..dims[1] {
+                for i in 0..dims[0] {
+                    let at = field.index(i, j, k);
+                    field.density[at] = density(field.position(i, j, k)).clamp(-RANGE, RANGE);
+                }
+            }
+        }
+        Ok(field)
+    }
+
+    /// The ground inside the grid as convex brushes wearing `material`. A cell that is
+    /// ground all through is one box. A cell the surface passes through is cut into six
+    /// tetrahedra round the same diagonal in every cell, so neighbouring cells meet face to
+    /// face; within a tetrahedron the surface is flat, so the ground in it is convex. The
+    /// pieces are many and small; merging neighbours afterwards makes them fewer.
+    pub fn to_brushes(&self, material: &str) -> Vec<crate::brush::Brush> {
+        use crate::brush::Brush;
+        use crate::polyhedron::Polyhedron;
+        // Corner `n` of a cell is offset by its bits: 1 along x, 2 along y, 4 along z.
+        let offset = |n: usize| Vec3d::new((n & 1) as f64, ((n >> 1) & 1) as f64, (n >> 2) as f64);
+        // The six tetrahedra round the diagonal from corner 0 to corner 7, one for each
+        // order the three axes can be walked in.
+        const TETRAHEDRA: [[usize; 4]; 6] = [
+            [0, 1, 3, 7],
+            [0, 1, 5, 7],
+            [0, 2, 3, 7],
+            [0, 2, 6, 7],
+            [0, 4, 5, 7],
+            [0, 4, 6, 7],
+        ];
+        let smallest = self.cell.powi(3) * 1e-4;
+        let mut brushes = Vec::new();
+        let mut keep = |points: &[Vec3d]| {
+            // A sample of exactly zero puts a crossing on a corner already in the list,
+            // and the hull refuses a point twice.
+            let mut unique: Vec<Vec3d> = Vec::with_capacity(points.len());
+            for p in points {
+                if !unique.iter().any(|q| vec::length(*q - *p) < 1e-9) {
+                    unique.push(*p);
+                }
+            }
+            if unique.len() < 4 {
+                return;
+            }
+            let Ok(geometry) = Polyhedron::from_points(&unique, 1e-9) else {
+                return;
+            };
+            let brush = Brush::from_polyhedron(geometry, material);
+            if brush.volume() > smallest {
+                brushes.push(brush);
+            }
+        };
+        for k in 0..self.dims[2] - 1 {
+            for j in 0..self.dims[1] - 1 {
+                for i in 0..self.dims[0] - 1 {
+                    let d: [f32; 8] = std::array::from_fn(|n| {
+                        self.density[self.index(i + (n & 1), j + ((n >> 1) & 1), k + (n >> 2))]
+                    });
+                    let ground = d.iter().filter(|v| solid(**v)).count();
+                    if ground == 0 {
+                        continue;
+                    }
+                    let corner = |n: usize| self.position(i, j, k) + offset(n) * self.cell;
+                    if ground == 8 {
+                        keep(&std::array::from_fn::<_, 8, _>(corner));
+                        continue;
+                    }
+                    for tetra in TETRAHEDRA {
+                        let mut points = Vec::with_capacity(8);
+                        for (x, &a) in tetra.iter().enumerate() {
+                            if solid(d[a]) {
+                                points.push(corner(a));
+                            }
+                            for &b in &tetra[x + 1..] {
+                                if solid(d[a]) != solid(d[b]) {
+                                    let t = f64::from(d[a] / (d[a] - d[b]));
+                                    points.push(corner(a) + (corner(b) - corner(a)) * t);
+                                }
+                            }
+                        }
+                        if points.len() >= 4 {
+                            keep(&points);
+                        }
+                    }
+                }
+            }
+        }
+        brushes
+    }
+
     /// Where the grid starts: its first sample.
     pub fn origin(&self) -> Vec3d {
         self.origin
@@ -155,11 +275,11 @@ impl VoxelField {
     /// Whether the point `p` is inside the ground, by the nearest sample.
     pub fn is_solid(&self, p: Vec3d) -> bool {
         let at = (p - self.origin) / self.cell;
-        self.sample(
+        solid(self.sample(
             at.x().round() as i64,
             at.y().round() as i64,
             at.z().round() as i64,
-        ) > 0.0
+        ))
     }
 
     /// One dab of `tool` at `centre`, reaching `radius` units, with `strength` from 0 to 1.
@@ -284,14 +404,14 @@ impl VoxelField {
             for cj in -1..ny {
                 for ci in -1..nx {
                     let d: [f32; 8] = CORNERS.map(|[a, b, c]| self.sample(ci + a, cj + b, ck + c));
-                    let solid = d.iter().filter(|v| **v > 0.0).count();
-                    if solid == 0 || solid == 8 {
+                    let ground = d.iter().filter(|v| solid(**v)).count();
+                    if ground == 0 || ground == 8 {
                         continue;
                     }
                     let mut sum = Vec3d::new(0.0, 0.0, 0.0);
                     let mut crossings = 0.0;
                     for (a, b) in EDGES {
-                        if (d[a] > 0.0) == (d[b] > 0.0) {
+                        if solid(d[a]) == solid(d[b]) {
                             continue;
                         }
                         let t = f64::from(d[a] / (d[a] - d[b]));
@@ -332,7 +452,7 @@ impl VoxelField {
         for k in -1..=nz {
             for j in -1..=ny {
                 for i in -1..=nx {
-                    let here = self.sample(i, j, k) > 0.0;
+                    let here = solid(self.sample(i, j, k));
                     for a in 0..3 {
                         let (b, c) = ((a + 1) % 3, (a + 2) % 3);
                         let mut next = [i, j, k];
@@ -340,7 +460,7 @@ impl VoxelField {
                         if next[a] > [nx, ny, nz][a] {
                             continue;
                         }
-                        if here == (self.sample(next[0], next[1], next[2]) > 0.0) {
+                        if here == solid(self.sample(next[0], next[1], next[2])) {
                             continue;
                         }
                         let around = |ob: i64, oc: i64| {
@@ -504,6 +624,10 @@ mod tests {
         for t in mesh.indices.as_chunks::<3>().0 {
             let [a, b, c] = [0, 1, 2].map(|i| mesh.positions[t[i] as usize]);
             let facing = vec::cross(b - a, c - a);
+            // A sample exactly on the sphere makes a triangle with no area, and no side.
+            if vec::length(facing) < 1e-9 {
+                continue;
+            }
             assert!(
                 vec::dot(facing, (a + b + c) / 3.0 - centre) > 0.0,
                 "wound inwards"
@@ -607,6 +731,48 @@ mod tests {
         damaged[last] ^= 0xff;
         assert!(VoxelField::from_bytes(&damaged).is_err());
         assert!(VoxelField::from_bytes(b"HVOX").is_err());
+    }
+
+    /// The volume of the ground the field's brushes hold together.
+    fn brush_volume(field: &VoxelField) -> f64 {
+        field.to_brushes("rock").iter().map(|b| b.volume()).sum()
+    }
+
+    #[test]
+    fn a_box_becomes_brushes_of_the_same_volume() {
+        let bounds = Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(64.0, 48.0, 32.0));
+        let field = VoxelField::solid_box(&bounds, 8.0).unwrap();
+        let brushes = field.to_brushes("rock");
+        assert!(!brushes.is_empty());
+        let got = brush_volume(&field);
+        assert!((got - 64.0 * 48.0 * 32.0).abs() < 1e-6, "{got}");
+        // Every piece lies inside the box.
+        for brush in &brushes {
+            let b = brush.bounds();
+            assert!(b.min.x() >= -1e-9 && b.max.z() <= 32.0 + 1e-9, "{b:?}");
+        }
+    }
+
+    #[test]
+    fn a_ball_becomes_convex_brushes_close_to_its_volume() {
+        let field = ball(Vec3d::new(0.0, 0.0, 0.0), 64.0, 8.0);
+        let exact = 4.0 / 3.0 * std::f64::consts::PI * 64f64.powi(3);
+        let got = brush_volume(&field);
+        assert!((got - exact).abs() / exact < 0.03, "{got} {exact}");
+        // Pieces only touch: their volumes add up to the volume their union encloses,
+        // which the mesh of the same field measures independently.
+        let mesh = field.mesh();
+        let enclosed: f64 = mesh
+            .indices
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|t| {
+                let [a, b, c] = t.map(|i| mesh.positions[i as usize]);
+                vec::dot(a, vec::cross(b, c)) / 6.0
+            })
+            .sum();
+        assert!((got - enclosed).abs() / exact < 0.03, "{got} {enclosed}");
     }
 
     #[test]
