@@ -208,9 +208,11 @@ pub fn menus(
                 .icon(icon::EXPORT)
                 .keys(&shortcut("export")),
             #[cfg(not(target_arch = "wasm32"))]
-            item(tr("Build and run"), Action::Build).keys(&shortcut("build")),
+            item(tr("Build and run"), Action::Build)
+                .icon(icon::PLAY)
+                .keys(&shortcut("build")),
             #[cfg(target_arch = "wasm32")]
-            item(tr("Play in a new tab"), Action::Playtest),
+            item(tr("Play in a new tab"), Action::Playtest).icon(icon::PLAY),
             item(tr("Render image"), Action::Render).icon(icon::IMAGE),
             Entry::Separator,
             item(tr("Plugins"), Action::Plugins).icon(icon::PUZZLE_PIECE),
@@ -334,7 +336,7 @@ pub fn menus(
         // Help
         vec![
             item(tr("Manual"), Action::Manual).icon(icon::BOOK_OPEN),
-            item(tr("Application updates"), Action::Updates),
+            item(tr("Application updates"), Action::Updates).icon(icon::ARROW_CIRCLE_DOWN),
             Entry::Separator,
             item(tr("About"), Action::About).icon(icon::INFO),
         ],
