@@ -232,7 +232,9 @@ fn spin_body(
 ) -> egui::Response {
     let before = *value;
     let stepper = if caption.is_some() { 0.0 } else { 16.0 };
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, ROW_HEIGHT), Sense::hover());
+    // As tall as the row's other controls: the tool bar's are shorter than a form's.
+    let height = ui.spacing().interact_size.y;
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), Sense::hover());
     let radius = CornerRadius::same(theme::radius());
     let enabled = ui.is_enabled();
     let hovered = ui.rect_contains_pointer(rect);
