@@ -155,7 +155,7 @@ Bila pilihan adalah satu grup utuh, **Salinan tertaut** menjadikan setiap salina
 ## Memahat medan
 Medan terdiri dari banyak brush kecil yang permukaannya didorong dan ditarik oleh kuas pahat. Pilih satu atau beberapa brush lalu pilih Geometri → Bagi menjadi kolom. Brush dipotong sepanjang garis kisi menjadi kolom selebar satu langkah kisi, dan kolom-kolom itu dimasukkan ke grup bernama Terrain. Potongan mengikuti kisi dunia, jadi brush yang bersebelahan terpotong di tempat yang sama dan berbagi sudut. Setiap kolom berdiri searah sisi brush yang paling tipis: tegak di lantai atau langit-langit, mendatar di dinding. Gua dibuat dengan cara yang sama: lubangi sebuah kotak (Hollow selection) dengan tebal dinding satu langkah kisi, pilih dindingnya, lalu bagi.
 
-Bilah pahat memilih bentuk kolom. **Segitiga** membuat dua kolom per sel kisi, dan bagian atas segitiga tetap datar bagaimanapun dipahat. **Persegi** membuat satu kolom per sel, jadi jumlah brush hanya separuhnya; bagian atasnya menekuk di sepanjang diagonal.
+Jendela **Pahat**, yang dibuka tombol di ujung bilah pahat, memilih bentuk kolom dan juga bisa membagi pilihan. **Segitiga** membuat dua kolom per sel kisi, dan bagian atas segitiga tetap datar bagaimanapun dipahat. **Persegi** membuat satu kolom per sel, jadi jumlah brush hanya separuhnya; bagian atasnya menekuk di sepanjang diagonal. **Segi enam** menutupi brush dengan segi enam selebar dua langkah kisi, masing-masing dibagi menjadi enam segitiga di sekitar pusatnya, sehingga setiap bagian atas tetap datar.
 
 Pilih alat **Pahat** (`J`) dan seret di atas permukaan pada tampilan 3D. Cincin oranye menunjukkan kuas. Tanpa pilihan, kuas mengubah setiap brush di bawahnya; dengan pilihan, hanya yang dipilih. Bilah di bagian atas jendela memilih apa yang dilakukan sapuan:
 
@@ -163,7 +163,7 @@ Pilih alat **Pahat** (`J`) dan seret di atas permukaan pada tampilan 3D. Cincin 
 - **Haluskan** meratakan tonjolan.
 - **Ratakan** meratakan permukaan ke tempat sapuan dimulai.
 
-**Arah** memilih ke mana:
+Di jendela yang sama, **Arah** memilih ke mana:
 
 - **Atas** menggerakkan permukaan lurus ke atas dan ke bawah, di dalam lingkaran di tanah. Ini untuk medan.
 - **Kamera** menggerakkannya mendekati dan menjauhi tampilan, di dalam bola di sekitar penunjuk. Arahkan pandangan ke lantai, dinding, atau langit-langit, dan bagian itulah yang dibentuk.

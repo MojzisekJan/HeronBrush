@@ -155,7 +155,7 @@ Seçim tek bir grubun tamamıysa **Bağlı kopyalar** her kopyayı bağlı bir k
 ## Arazi şekillendirme
 Arazi, şekillendirme fırçasının yüzeyini dışarı itip içeri çektiği çok sayıda küçük brush'tan oluşur. Bir veya daha fazla brush seçin ve Geometri → Sütunlara böl komutunu seçin. Komut onları ızgara çizgileri boyunca bir ızgara adımı genişliğinde sütunlara böler ve sütunları Terrain adlı bir gruba koyar. Kesimler dünyanın ızgarasını izler, bu yüzden yan yana duran brush'lar aynı yerlerden kesilir ve köşelerini paylaşır. Her sütun brush'ın ince kenarı boyunca durur: zeminde veya tavanda dik, duvarda yatay. Mağara da aynı şekilde yapılır: bir kutuyu bir ızgara adımı duvar kalınlığıyla oyun (Hollow selection), duvarları seçin ve bölün.
 
-Şekillendirme şeridi sütunların biçimini seçer. **Üçgen** her ızgara hücresine iki sütun koyar ve üçgenin üstü nasıl şekillendirilirse şekillendirilsin düz kalır. **Kare** her hücreye bir sütun koyar, yani yarı sayıda brush; üstü bir köşegen boyunca bükülür.
+Sütunların biçimini, şekillendirme şeridinin sonundaki düğmenin açtığı **Şekillendir** penceresi seçer; seçimi oradan da bölebilirsiniz. **Üçgen** her ızgara hücresine iki sütun koyar ve üçgenin üstü nasıl şekillendirilirse şekillendirilsin düz kalır. **Kare** her hücreye bir sütun koyar, yani yarı sayıda brush; üstü bir köşegen boyunca bükülür. **Altıgen**, brush'ı iki ızgara adımı genişliğinde altıgenlerle kaplar; her biri merkezinin çevresinde altı üçgene bölünür, böylece her üst yüz düz kalır.
 
 **Şekillendir** aracını (`J`) seçin ve 3D görünümde yüzeyin üzerinde sürükleyin. Turuncu halka fırçayı gösterir. Seçim yokken fırça altındaki her brush'ı değiştirir; seçim varken yalnızca seçilenleri. Pencerenin üstündeki şerit bir darbenin ne yapacağını seçer:
 
@@ -163,7 +163,7 @@ Arazi, şekillendirme fırçasının yüzeyini dışarı itip içeri çektiği �
 - **Yumuşat** tümsekleri düzeltir.
 - **Düzleştir** yüzeyi darbenin başladığı yere düzler.
 
-**Yön** hangi yöne gidileceğini seçer:
+Aynı pencerede **Yön** hangi yöne gidileceğini seçer:
 
 - **Yukarı** yüzeyi yerdeki bir daire içinde dümdüz yukarı ve aşağı taşır. Arazi için budur.
 - **Kamera** onu işaretçinin çevresindeki bir küre içinde görünüme doğru ve görünümden uzağa taşır. Bir zemine, duvara ya da tavana bakın, fırça onu şekillendirir.

@@ -155,7 +155,7 @@ Quando la selezione è un gruppo intero, **Copie collegate** rende ogni copia un
 ## Scolpire il terreno
 Il terreno è fatto di molti piccoli brush la cui superficie il pennello di scultura spinge e tira. Seleziona uno o più brush e scegli Geometria → Dividi in colonne. I brush vengono tagliati lungo le linee della griglia in colonne larghe un passo di griglia, e le colonne finiscono in un gruppo chiamato Terrain. I tagli seguono la griglia del mondo, quindi brush affiancati vengono tagliati negli stessi punti e condividono gli angoli. Ogni colonna sta lungo il lato più sottile del brush: in verticale in un pavimento o in un soffitto, in orizzontale in una parete. Una grotta si fa allo stesso modo: svuota un parallelepipedo (Hollow selection) con pareti spesse un passo di griglia, seleziona le pareti e dividile.
 
-La barra di scultura sceglie la forma delle colonne. **Triangolo** ne crea due per cella della griglia, e la parte superiore di un triangolo resta piana comunque la si scolpisca. **Quadrato** ne crea una per cella, cioè metà dei brush; la sua parte superiore si piega lungo una diagonale.
+La finestra **Scolpisci**, aperta dal pulsante alla fine della barra di scultura, sceglie la forma delle colonne e può anche dividere la selezione. **Triangolo** ne crea due per cella della griglia, e la parte superiore di un triangolo resta piana comunque la si scolpisca. **Quadrato** ne crea una per cella, cioè metà dei brush; la sua parte superiore si piega lungo una diagonale. **Esagono** copre il brush con esagoni larghi due passi di griglia, ciascuno diviso in sei triangoli attorno al centro, così ogni parte superiore resta piana.
 
 Scegli lo strumento **Scolpisci** (`J`) e trascina sulla superficie nella vista 3D. L'anello arancione mostra il pennello. Senza selezione il pennello cambia ogni brush sotto di sé; con una selezione, solo quelli selezionati. La barra in cima alla finestra sceglie cosa fa un tratto:
 
@@ -163,7 +163,7 @@ Scegli lo strumento **Scolpisci** (`J`) e trascina sulla superficie nella vista 
 - **Leviga** spiana le gobbe.
 - **Appiattisci** porta la superficie al punto dove è iniziato il tratto.
 
-**Direzione** sceglie verso dove:
+Nella stessa finestra, **Direzione** sceglie verso dove:
 
 - **Su** sposta la superficie dritta in su e in giù, dentro un cerchio a terra. È quella per il terreno.
 - **Telecamera** la avvicina e la allontana dalla vista, dentro una sfera attorno al puntatore. Guarda un pavimento, una parete o un soffitto e modella quello.

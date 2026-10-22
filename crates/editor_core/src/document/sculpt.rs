@@ -583,7 +583,8 @@ impl Document {
     /// `cell` units apart, so brushes side by side are cut in the same places and share
     /// their corners. The columns stand along the brush's thinnest side: up out of a
     /// floor or a ceiling, out of a wall. Each grid cell makes two triangles or one square,
-    /// as `shape` says; cells at the brush's edges are cut short. The columns keep the
+    /// or the brush is tiled with hexagons of six triangles each, as `shape` says; cells at
+    /// the brush's edges are cut short. The columns keep the
     /// brush's materials and go into a group named Terrain, which is selected. Returns how
     /// many there are.
     pub fn split_into_columns(
@@ -666,42 +667,93 @@ impl Document {
         for ((id, brush), ([a, b], [across, down])) in brushes.iter().zip(&plans) {
             let (ua, ub) = (unit(*a), unit(*b));
             let mut pieces = Vec::new();
-            // A strip at a time, so each cell is cut out of a strip, not the whole brush.
-            for i in across.clone() {
-                let (a0, a1) = (i as f64 * cell, (i + 1) as f64 * cell);
-                let Some(strip) =
-                    keep_behind(brush, -ua, -a0).and_then(|piece| keep_behind(&piece, ua, a1))
-                else {
-                    continue;
+            if shape == ColumnShape::Hexagons {
+                let bounds = brush.bounds();
+                let span = |axis: usize, step: f64, reach: f64| {
+                    let first = ((bounds.min[axis] - reach) / step).floor() as i64;
+                    let last = ((bounds.max[axis] + reach) / step).ceil() as i64;
+                    first..=last
                 };
-                for j in down.clone() {
-                    let (b0, b1) = (j as f64 * cell, (j + 1) as f64 * cell);
-                    let Some(cell) =
-                        keep_behind(&strip, -ub, -b0).and_then(|piece| keep_behind(&piece, ub, b1))
+                // Each triangle is cut out of the brush by its three sides.
+                let triangle = |corners: [(f64, f64); 3]| -> Option<Brush> {
+                    let mut piece = brush.clone();
+                    for k in 0..3 {
+                        let ((xa, xb), (ya, yb), (za, zb)) =
+                            (corners[k], corners[(k + 1) % 3], corners[(k + 2) % 3]);
+                        let mut normal = vec::normalize(ua * (yb - xb) - ub * (ya - xa));
+                        let mut at = vec::dot(normal, ua * xa + ub * xb);
+                        if vec::dot(normal, ua * za + ub * zb) > at {
+                            normal = -normal;
+                            at = -at;
+                        }
+                        piece = keep_behind(&piece, normal, at)?;
+                    }
+                    let size = piece.bounds().size();
+                    (size[*a] >= 1e-3 && size[*b] >= 1e-3).then_some(piece)
+                };
+                for i in span(*a, 1.5 * cell, cell) {
+                    let ca = 1.5 * cell * i as f64;
+                    let offset = if i.rem_euclid(2) == 1 { cell } else { 0.0 };
+                    for j in span(*b, 2.0 * cell, 2.0 * cell) {
+                        let cb = 2.0 * cell * j as f64 + offset;
+                        if ca + cell <= bounds.min[*a]
+                            || ca - cell >= bounds.max[*a]
+                            || cb + cell <= bounds.min[*b]
+                            || cb - cell >= bounds.max[*b]
+                        {
+                            continue;
+                        }
+                        let ring = [
+                            (ca + cell, cb),
+                            (ca + cell / 2.0, cb + cell),
+                            (ca - cell / 2.0, cb + cell),
+                            (ca - cell, cb),
+                            (ca - cell / 2.0, cb - cell),
+                            (ca + cell / 2.0, cb - cell),
+                        ];
+                        for k in 0..6 {
+                            pieces.extend(triangle([(ca, cb), ring[k], ring[(k + 1) % 6]]));
+                        }
+                    }
+                }
+            } else {
+                // A strip at a time, so each cell is cut out of a strip, not the whole brush.
+                for i in across.clone() {
+                    let (a0, a1) = (i as f64 * cell, (i + 1) as f64 * cell);
+                    let Some(strip) =
+                        keep_behind(brush, -ua, -a0).and_then(|piece| keep_behind(&piece, ua, a1))
                     else {
                         continue;
                     };
-                    let size = cell.bounds().size();
-                    if size[*a] < 1e-3 || size[*b] < 1e-3 {
-                        continue;
+                    for j in down.clone() {
+                        let (b0, b1) = (j as f64 * cell, (j + 1) as f64 * cell);
+                        let Some(cell) = keep_behind(&strip, -ub, -b0)
+                            .and_then(|piece| keep_behind(&piece, ub, b1))
+                        else {
+                            continue;
+                        };
+                        let size = cell.bounds().size();
+                        if size[*a] < 1e-3 || size[*b] < 1e-3 {
+                            continue;
+                        }
+                        if shape == ColumnShape::Squares {
+                            pieces.push(cell);
+                            continue;
+                        }
+                        // The diagonal alternates with the world's cells, so the triangles meet
+                        // in a regular pattern rather than all leaning one way, across
+                        // neighbouring brushes too.
+                        let ((pa, pb), (qa, qb)) = if (i + j).rem_euclid(2) == 0 {
+                            ((a0, b0), (a1, b1))
+                        } else {
+                            ((a1, b0), (a0, b1))
+                        };
+                        let (da, db) = (qa - pa, qb - pb);
+                        let normal = vec::normalize(ua * db - ub * da);
+                        let at = vec::dot(normal, ua * pa + ub * pb);
+                        pieces.extend(keep_behind(&cell, normal, at));
+                        pieces.extend(keep_behind(&cell, -normal, -at));
                     }
-                    if shape == ColumnShape::Squares {
-                        pieces.push(cell);
-                        continue;
-                    }
-                    // The diagonal alternates with the world's cells, so the triangles meet
-                    // in a regular pattern rather than all leaning one way, across
-                    // neighbouring brushes too.
-                    let ((pa, pb), (qa, qb)) = if (i + j).rem_euclid(2) == 0 {
-                        ((a0, b0), (a1, b1))
-                    } else {
-                        ((a1, b0), (a0, b1))
-                    };
-                    let (da, db) = (qa - pa, qb - pb);
-                    let normal = vec::normalize(ua * db - ub * da);
-                    let at = vec::dot(normal, ua * pa + ub * pb);
-                    pieces.extend(keep_behind(&cell, normal, at));
-                    pieces.extend(keep_behind(&cell, -normal, -at));
                 }
             }
             if pieces.is_empty() {
@@ -719,6 +771,13 @@ impl Document {
                 })
                 .collect();
             made += pieces.len();
+            // The count above is an estimate for hexagons, which the brush's edges cut into
+            // more pieces; nothing has changed yet, so the limit still holds.
+            if made > MAX_COLUMNS {
+                return Err(translation_key(
+                    "That makes more than 8192 columns. Use a bigger grid size.",
+                ));
+            }
             replacements.insert(*id, pieces);
         }
         self.run_as_one_edit(|document| {
@@ -1315,8 +1374,9 @@ mod tests {
             let mut d = slab();
             d.split_into_columns(16.0, shape).unwrap();
             let slab = Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(128.0, 128.0, 32.0));
-            let mut shown = 0;
-            for (_, brush, _) in node::brushes_by_layer(d.tree_world()) {
+            let (mut ends, mut sides) = (0, 0.0);
+            let columns = node::brushes_by_layer(d.tree_world());
+            for (_, brush, _) in &columns {
                 for face in brush.faces() {
                     let corners = corners_in(brush, &face.plane);
                     let on_the_slab = (0..3).any(|i| {
@@ -1328,12 +1388,21 @@ mod tests {
                         "{shape:?} {:?} {corners:?}",
                         face.plane.normal
                     );
-                    shown += usize::from(!face.export_hidden);
+                    if !face.export_hidden {
+                        if face.normal().z().abs() > 1.0 - 1e-9 {
+                            ends += 1;
+                        } else {
+                            sides += area(&corners, face.normal());
+                        }
+                    }
                 }
             }
-            // Top and bottom of every column, and the sides along the slab's edge.
-            let per_cell = shape.per_cell();
-            assert_eq!(shown, 64 * per_cell * 2 + 4 * 8, "{shape:?}");
+            // Top and bottom of every column, and sides that cover the slab's edge.
+            assert_eq!(ends, columns.len() * 2, "{shape:?}");
+            assert!(
+                (sides - 4.0 * 128.0 * 32.0).abs() < 1e-6,
+                "{shape:?} {sides}"
+            );
             assert!(holes(&d).is_empty());
         }
     }
@@ -1514,10 +1583,127 @@ mod tests {
             ColumnShape::Triangles,
             "the split keeps its old shape unless asked"
         );
+        assert_eq!(ColumnShape::Hexagons.per_cell(), 2);
         assert_eq!(
             ColumnShape::ALL.map(ColumnShape::name),
-            ["Triangle", "Square"]
+            ["Triangle", "Square", "Hexagon"]
         );
+    }
+
+    /// The area of every top face of `d`'s brushes together.
+    fn top_area(d: &Document) -> f64 {
+        node::brushes_by_layer(d.tree_world())
+            .iter()
+            .flat_map(|(_, brush, _)| brush.faces().iter().map(move |face| (brush, face)))
+            .filter(|(_, face)| face.normal().z() > 1.0 - 1e-9)
+            .map(|(brush, face)| area(&corners_in(brush, &face.plane), face.normal()))
+            .sum()
+    }
+
+    #[test]
+    fn a_box_splits_into_hexagons_of_six_flat_triangles() {
+        let mut d = slab();
+        let made = d.split_into_columns(16.0, ColumnShape::Hexagons).unwrap();
+        assert_eq!(d.selection_count(), made);
+        let columns = node::brushes_by_layer(d.tree_world());
+        assert!(columns
+            .iter()
+            .all(|(_, brush, _)| brush.vertex_positions().len() == 6));
+        assert!(
+            (top_area(&d) - 128.0 * 128.0).abs() < 1e-6,
+            "the pieces cover the box"
+        );
+        let heights = heights(&d);
+        assert!(heights.values().all(|z| (*z - 32.0).abs() < 1e-9));
+        // A whole hexagon inside the box: its centre and six corners, on half grid steps.
+        for k in [
+            [24, 16],
+            [16, 0],
+            [32, 0],
+            [40, 16],
+            [32, 32],
+            [16, 32],
+            [8, 16],
+        ] {
+            assert!(heights.contains_key(&k), "a hexagon has a corner at {k:?}");
+        }
+        assert!(
+            !heights.contains_key(&[24, 0]),
+            "the hexagons are not squares"
+        );
+    }
+
+    #[test]
+    fn with_nothing_selected_the_brush_sculpts_the_terrain_group() {
+        let mut d = terrain();
+        d.clear_selection();
+        let params = SculptParameters {
+            radius: 40.0,
+            strength: 1.0,
+            ..Default::default()
+        };
+        // From above, as the 3D view finds it under the pointer.
+        let ray = geometry_math::ray::Ray3d::new(
+            Vec3d::new(64.0, 64.0, 256.0),
+            Vec3d::new(0.0, 0.0, -1.0),
+        );
+        let at = d
+            .sculpt_target(&ray)
+            .expect("the terrain is under the pointer");
+        let mut stroke = d.begin_sculpt_stroke();
+        assert!(d.sculpt_dab(at, &params, &mut stroke));
+        assert!(heights(&d)[&[64, 64]] > 32.0);
+    }
+
+    #[test]
+    fn a_hexagon_split_over_the_limit_is_refused_and_changes_nothing() {
+        let mut d = Document::new(Default::default());
+        // 64 × 64 cells at two columns a cell is exactly the limit, which the estimate
+        // allows, but the hexagons the edges cut make more pieces than that.
+        let side = 1024.0;
+        let bounds = Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(side, side, 32.0));
+        d.add_brushes(vec![map_model::shapes::create_cuboid(
+            &d.world_bounds(),
+            &bounds,
+            map_model::shapes::DEFAULT_MATERIAL,
+        )
+        .unwrap()]);
+        d.select_all();
+        let before = node::brushes_by_layer(d.tree_world()).len();
+        assert!(d.split_into_columns(16.0, ColumnShape::Hexagons).is_err());
+        assert_eq!(node::brushes_by_layer(d.tree_world()).len(), before);
+    }
+
+    #[test]
+    fn neighbouring_brushes_split_into_hexagons_that_meet() {
+        let mut d = Document::new(Default::default());
+        for x in [0.0, 128.0] {
+            let bounds = Bbox3d::new(Vec3d::new(x, 0.0, 0.0), Vec3d::new(x + 128.0, 128.0, 32.0));
+            d.add_brushes(vec![map_model::shapes::create_cuboid(
+                &d.world_bounds(),
+                &bounds,
+                map_model::shapes::DEFAULT_MATERIAL,
+            )
+            .unwrap()]);
+        }
+        d.select_all();
+        d.split_into_columns(16.0, ColumnShape::Hexagons).unwrap();
+        assert!((top_area(&d) - 256.0 * 128.0).abs() < 1e-6);
+        // A hexagon across the seam at x = 128 is cut in two, and the halves share the
+        // corners on the seam, so a dab there moves both and the surface stays closed.
+        let params = SculptParameters {
+            radius: 40.0,
+            strength: 1.0,
+            ..Default::default()
+        };
+        d.clear_selection();
+        let mut stroke = d.begin_sculpt_stroke();
+        for _ in 0..3 {
+            assert!(d.sculpt_dab(Vec3d::new(128.0, 60.0, 32.0), &params, &mut stroke));
+        }
+        let heights = heights(&d);
+        assert!(heights[&[128, 64]] > 32.0);
+        assert_eq!(heights[&[0, 0]], 32.0);
     }
 }
 

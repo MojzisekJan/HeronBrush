@@ -226,7 +226,7 @@ Když je vybraná jedna celá skupina, **Propojené kopie** udělá z každé ko
 ## Sochání terénu
 Terén tvoří mnoho malých brushů, jejichž povrch sochařský štětec vytlačuje a vtlačuje. Vyberte jeden nebo víc brushů a zvolte Geometrie → Rozdělit na sloupce. Rozřeže je podél čar mřížky na sloupce široké jeden krok mřížky a vloží je do skupiny Terrain. Řezy jdou po mřížce světa, takže brushe vedle sebe se rozřežou na stejných místech a sdílejí rohy. Každý sloupec stojí podél nejtenčí strany brushe: svisle v podlaze nebo stropu, vodorovně ve stěně. Stejně vznikne jeskyně: z kvádru udělejte dutinu (Vytvořit dutinu) s tloušťkou stěny jeden krok mřížky, vyberte stěny a rozdělte je.
 
-Tvar sloupců určuje lišta sochání. **Trojúhelník** dává dva sloupce na buňku mřížky a vršek trojúhelníku zůstane rovný, ať se tvaruje jakkoli. **Čtverec** dává jeden sloupec na buňku, tedy poloviční počet brushů; jeho vršek se ohne podél úhlopříčky.
+Tvar sloupců určuje okno **Sochat**, které otevře tlačítko na konci lišty sochání. V okně jde výběr také rovnou rozdělit. **Trojúhelník** dává dva sloupce na buňku mřížky a vršek trojúhelníku zůstane rovný, ať se tvaruje jakkoli. **Čtverec** dává jeden sloupec na buňku, tedy poloviční počet brushů; jeho vršek se ohne podél úhlopříčky. **Šestiúhelník** pokryje brush šestiúhelníky širokými dva kroky mřížky. Každý se rozdělí na šest trojúhelníků kolem středu, takže všechny vršky zůstanou rovné.
 
 Zvolte nástroj **Sochat** (`J`) a táhněte po povrchu ve 3D pohledu. Oranžový kruh ukazuje štětec. Bez výběru štětec mění všechny brushe pod sebou, s výběrem jen ty vybrané. Lišta nahoře v okně určuje, co tah udělá:
 
@@ -234,7 +234,7 @@ Zvolte nástroj **Sochat** (`J`) a táhněte po povrchu ve 3D pohledu. Oranžov�
 - **Vyhladit** srovná hrbolky.
 - **Zarovnat** zarovná povrch tam, kde tah začal.
 
-**Směr** určuje kudy:
+Ve stejném okně **Směr** určuje kudy:
 
 - **Nahoru** posouvá povrch svisle, v kruhu na zemi. To je pro terén.
 - **Kamera** ho posouvá k pohledu a od něj, v kouli kolem ukazatele. Podívejte se na podlahu, stěnu nebo strop a tvaruje se to, na co se díváte.

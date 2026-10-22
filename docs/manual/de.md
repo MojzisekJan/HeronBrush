@@ -155,7 +155,7 @@ Ist eine ganze Gruppe ausgewählt, macht **Verknüpfte Kopien** jede Kopie zu ei
 ## Gelände modellieren
 Gelände besteht aus vielen kleinen Brushes, deren Oberfläche der Modellierpinsel hinausschiebt und hineindrückt. Wähle einen oder mehrere Brushes aus und dann Geometrie → In Säulen teilen. Das zerschneidet sie entlang der Rasterlinien in Säulen von einem Rasterschritt Breite und legt die Säulen in eine Gruppe namens Terrain. Die Schnitte folgen dem Raster der Welt, daher werden nebeneinanderliegende Brushes an denselben Stellen geschnitten und teilen sich ihre Ecken. Jede Säule steht entlang der dünnen Seite des Brushes: senkrecht in einem Boden oder einer Decke, waagerecht in einer Wand. Eine Höhle funktioniert genauso: Höhle einen Quader aus (Hollow selection) mit einer Wandstärke von einem Rasterschritt, wähle die Wände aus und teile sie.
 
-Die Modellierleiste legt die Form der Säulen fest. **Dreieck** erzeugt zwei pro Rasterzelle, und die Oberseite eines Dreiecks bleibt eben, wie auch immer du sie modellierst. **Quadrat** erzeugt eine pro Zelle, also halb so viele Brushes; ihre Oberseite knickt entlang einer Diagonale.
+Das Fenster **Modellieren**, das die Schaltfläche am Ende der Modellierleiste öffnet, legt die Form der Säulen fest und kann die Auswahl auch gleich teilen. **Dreieck** erzeugt zwei pro Rasterzelle, und die Oberseite eines Dreiecks bleibt eben, wie auch immer du sie modellierst. **Quadrat** erzeugt eine pro Zelle, also halb so viele Brushes; ihre Oberseite knickt entlang einer Diagonale. **Sechseck** belegt den Brush mit Sechsecken, zwei Rasterschritte breit, jedes in sechs Dreiecke um seine Mitte geteilt, sodass jede Oberseite eben bleibt.
 
 Wähle das Werkzeug **Modellieren** (`J`) und ziehe in der 3D-Ansicht über die Oberfläche. Der orange Ring zeigt den Pinsel. Ohne Auswahl ändert der Pinsel jeden Brush darunter, mit Auswahl nur die ausgewählten. Die Leiste oben im Fenster legt fest, was ein Strich tut:
 
@@ -163,7 +163,7 @@ Wähle das Werkzeug **Modellieren** (`J`) und ziehe in der 3D-Ansicht über die 
 - **Glätten** gleicht Unebenheiten aus.
 - **Ebnen** ebnet die Oberfläche auf den Punkt ein, an dem der Strich begann.
 
-**Richtung** legt fest, wohin:
+Im selben Fenster legt **Richtung** fest, wohin:
 
 - **Nach oben** bewegt die Oberfläche senkrecht nach oben und unten, innerhalb eines Kreises auf dem Boden. Das ist für Gelände gedacht.
 - **Kamera** bewegt sie auf die Ansicht zu und von ihr weg, innerhalb einer Kugel um den Mauszeiger. Schau auf einen Boden, eine Wand oder eine Decke, und der Pinsel formt genau das.

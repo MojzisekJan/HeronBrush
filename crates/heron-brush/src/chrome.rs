@@ -130,6 +130,8 @@ pub struct Chrome {
     pub popup: Option<(Popup, Rect)>,
     /// Whether the fillet's settings window is open; it closes with the tool.
     pub fillet_window: bool,
+    /// Whether the sculpt brush's settings window is open; it closes with the tool.
+    pub sculpt_window: bool,
 }
 
 /// `format_size`: whole sizes without a fraction, the small ones as they are.
@@ -913,7 +915,32 @@ impl Chrome {
                 self.fillet_window = false;
             }
             if tool == Tool::Sculpt {
-                row.horizontal(crate::tool_rows::sculpt_row);
+                row.horizontal(|row| {
+                    self.sculpt_window ^= crate::tool_rows::sculpt_row(row, self.sculpt_window);
+                });
+            } else {
+                self.sculpt_window = false;
+            }
+            // The sculpt brush's direction and the columns' shape, in a window like the
+            // fillet's, so the strip keeps to what changes while sculpting.
+            if self.sculpt_window {
+                let mut split = false;
+                let mut close = false;
+                self.sculpt_window = crate::dialog::show_tool(
+                    ui.ctx(),
+                    "sculpt-settings",
+                    tr("Sculpt"),
+                    [420.0, 200.0],
+                    |ui, part| match part {
+                        crate::dialog::Part::Body => split |= crate::tool_rows::sculpt_controls(ui),
+                        crate::dialog::Part::Actions => {
+                            close |= crate::dialog::button(ui, tr("Close"), true).clicked();
+                        }
+                    },
+                ) && !close;
+                if split {
+                    self.action = Some(Action::SplitColumns);
+                }
             }
             // The fillet's settings in a window of their own, beside the views it works in.
             if self.fillet_window {
@@ -1366,6 +1393,7 @@ mod shape_preview_tests {
         let before = editor.document.borrow().to_map_text();
         let mut chrome = Chrome {
             fillet_window: false,
+            sculpt_window: false,
             tool: editor.tool.clone(),
             grid: editor.grid.clone(),
             document: editor.document.clone(),

@@ -155,7 +155,7 @@ Kun valintana on yksi kokonainen ryhmä, **Linkitetyt kopiot** tekee jokaisesta 
 ## Maaston muotoilu
 Maasto koostuu monista pienistä brusheista, joiden pintaa muotoilusivellin työntää ulos ja painaa sisään. Valitse yksi tai useampi brush ja Geometria → Jaa pylväiksi. Se leikkaa ne ruudukon viivoja pitkin ruudukon askeleen levyisiksi pylväiksi ja siirtää pylväät Terrain-nimiseen ryhmään. Leikkaukset seuraavat maailman ruudukkoa, joten vierekkäiset brushit leikataan samoista kohdista ja niillä on yhteiset kulmat. Jokainen pylväs on brushin ohuen sivun suuntainen: pystyssä lattiassa tai katossa, vaakasuorassa seinässä. Luola tehdään samalla tavalla: tee laatikosta ontto (Hollow selection) yhden ruudukon askeleen seinämänpaksuudella, valitse seinämät ja jaa ne.
 
-Muotoilupalkki valitsee pylväiden muodon. **Kolmio** tekee kaksi pylvästä ruudukon solua kohden, ja kolmion yläpinta pysyy tasaisena, miten sitä muotoileekin. **Neliö** tekee yhden solua kohden, eli puolet vähemmän brusheja; sen yläpinta taittuu lävistäjää pitkin.
+Ikkuna **Muotoile**, jonka muotoilupalkin lopussa oleva painike avaa, valitsee pylväiden muodon ja voi myös jakaa valinnan. **Kolmio** tekee kaksi pylvästä ruudukon solua kohden, ja kolmion yläpinta pysyy tasaisena, miten sitä muotoileekin. **Neliö** tekee yhden solua kohden, eli puolet vähemmän brusheja; sen yläpinta taittuu lävistäjää pitkin. **Kuusikulmio** peittää brushin kuusikulmioilla, jotka ovat kaksi ruudukon askelta leveitä. Kukin jaetaan kuudeksi kolmioksi keskipisteensä ympärille, joten jokainen yläpinta pysyy tasaisena.
 
 Valitse **Muotoile**-työkalu (`J`) ja vedä pinnan yli 3D-näkymässä. Oranssi rengas näyttää siveltimen. Ilman valintaa sivellin muuttaa kaikkia alleen jääviä brusheja, valinnan kanssa vain valittuja. Ikkunan yläreunan palkki valitsee, mitä veto tekee:
 
@@ -163,7 +163,7 @@ Valitse **Muotoile**-työkalu (`J`) ja vedä pinnan yli 3D-näkymässä. Oranssi
 - **Pehmennä** tasoittaa kuhmut.
 - **Tasoita** tasoittaa pinnan siihen kohtaan, josta veto alkoi.
 
-**Suunta** valitsee, mihin suuntaan:
+Samassa ikkunassa **Suunta** valitsee, mihin suuntaan:
 
 - **Ylös** siirtää pintaa suoraan ylös ja alas maahan piirtyvän ympyrän sisällä. Se on maastoa varten.
 - **Kamera** siirtää sitä kohti näkymää ja siitä poispäin osoittimen ympärillä olevan pallon sisällä. Katso lattiaa, seinää tai kattoa, niin sivellin muotoilee sitä.

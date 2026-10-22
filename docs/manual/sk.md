@@ -155,7 +155,7 @@ Keď je vybraná jedna celá skupina, **Prepojené kópie** urobí z každej kó
 ## Sochanie terénu
 Terén tvorí veľa malých brushov, ktorých povrch sochársky štetec vytláča a vtláča. Vyberte jeden alebo viac brushov a zvoľte Geometria → Rozdeliť na stĺpce. Rozreže ich pozdĺž čiar mriežky na stĺpce široké jeden krok mriežky a vloží ich do skupiny Terrain. Rezy idú po mriežke sveta, takže brushe vedľa seba sa rozrežú na rovnakých miestach a zdieľajú rohy. Každý stĺpec stojí pozdĺž najtenšej strany brushu: zvislo v podlahe alebo strope, vodorovne v stene. Rovnako vznikne jaskyňa: z kvádra urobte dutinu (Hollow selection) s hrúbkou steny jeden krok mriežky, vyberte steny a rozdeľte ich.
 
-Tvar stĺpcov určuje lišta sochania. **Trojuholník** dáva dva stĺpce na bunku mriežky a vrch trojuholníka zostane rovný, nech sa tvaruje akokoľvek. **Štvorec** dáva jeden stĺpec na bunku, teda polovičný počet brushov; jeho vrch sa ohne pozdĺž uhlopriečky.
+Tvar stĺpcov určuje okno **Sochať**, ktoré otvorí tlačidlo na konci lišty sochania. V okne sa dá výber aj rovno rozdeliť. **Trojuholník** dáva dva stĺpce na bunku mriežky a vrch trojuholníka zostane rovný, nech sa tvaruje akokoľvek. **Štvorec** dáva jeden stĺpec na bunku, teda polovičný počet brushov; jeho vrch sa ohne pozdĺž uhlopriečky. **Šesťuholník** pokryje brush šesťuholníkmi širokými dva kroky mriežky. Každý sa rozdelí na šesť trojuholníkov okolo stredu, takže všetky vrchy zostanú rovné.
 
 Zvoľte nástroj **Sochať** (`J`) a ťahajte po povrchu v 3D pohľade. Oranžový kruh ukazuje štetec. Bez výberu štetec mení všetky brushe pod sebou, s výberom len tie vybrané. Lišta hore v okne určuje, čo ťah urobí:
 
@@ -163,7 +163,7 @@ Zvoľte nástroj **Sochať** (`J`) a ťahajte po povrchu v 3D pohľade. Oranžov
 - **Vyhladiť** zarovná hrbolčeky.
 - **Zarovnať** zarovná povrch tam, kde ťah začal.
 
-**Smer** určuje kadiaľ:
+V tom istom okne **Smer** určuje kadiaľ:
 
 - **Hore** posúva povrch zvislo, v kruhu na zemi. To je pre terén.
 - **Kamera** ho posúva k pohľadu a od neho, v guli okolo ukazovateľa. Pozrite sa na podlahu, stenu alebo strop a tvaruje sa to, na čo sa pozeráte.

@@ -155,7 +155,7 @@ Gdy zaznaczona jest jedna cała grupa, **Połączone kopie** robi z każdej kopi
 ## Rzeźbienie terenu
 Teren składa się z wielu małych brushów, których powierzchnię pędzel rzeźbiarski wypycha na zewnątrz i wciska do środka. Zaznacz jeden lub więcej brushów i wybierz Geometria → Podziel na słupy. Brushe zostaną pocięte wzdłuż linii siatki na słupy szerokie na jeden krok siatki, umieszczone w grupie o nazwie Terrain. Cięcia biegną po siatce świata, więc sąsiednie brushe są cięte w tych samych miejscach i mają wspólne narożniki. Każdy słup stoi wzdłuż najcieńszej strony brusha: pionowo w podłodze lub suficie, poziomo w ścianie. Jaskinię robi się tak samo: wydrąż prostopadłościan (Hollow selection) z grubością ścian jeden krok siatki, zaznacz ściany i podziel je.
 
-Kształt słupów wybiera pasek rzeźbienia. **Trójkąt** daje dwa słupy na komórkę siatki, a wierzch trójkąta pozostaje płaski, jakkolwiek się go rzeźbi. **Kwadrat** daje jeden słup na komórkę, czyli o połowę mniej brushów; jego wierzch zgina się wzdłuż przekątnej.
+Kształt słupów wybiera okno **Rzeźbienie**, które otwiera przycisk na końcu paska rzeźbienia; można w nim też od razu podzielić zaznaczenie. **Trójkąt** daje dwa słupy na komórkę siatki, a wierzch trójkąta pozostaje płaski, jakkolwiek się go rzeźbi. **Kwadrat** daje jeden słup na komórkę, czyli o połowę mniej brushów; jego wierzch zgina się wzdłuż przekątnej. **Sześciokąt** pokrywa brush sześciokątami o szerokości dwóch kroków siatki, każdy podzielony na sześć trójkątów wokół środka, więc każdy wierzch pozostaje płaski.
 
 Wybierz narzędzie **Rzeźbienie** (`J`) i przeciągaj po powierzchni w widoku 3D. Pomarańczowy pierścień pokazuje pędzel. Bez zaznaczenia pędzel zmienia każdy brush pod sobą, z zaznaczeniem tylko zaznaczone. Pasek u góry okna wybiera, co robi pociągnięcie:
 
@@ -163,7 +163,7 @@ Wybierz narzędzie **Rzeźbienie** (`J`) i przeciągaj po powierzchni w widoku 3
 - **Wygładź** wyrównuje nierówności.
 - **Wyrównaj** wyrównuje powierzchnię do miejsca, w którym zaczęło się pociągnięcie.
 
-**Kierunek** wybiera, w którą stronę:
+W tym samym oknie **Kierunek** wybiera, w którą stronę:
 
 - **W górę** przesuwa powierzchnię pionowo w górę i w dół, w obrębie koła na ziemi. To tryb do terenu.
 - **Kamera** przesuwa ją w stronę widoku i od niego, w obrębie kuli wokół kursora. Spójrz na podłogę, ścianę lub sufit, a pędzel ukształtuje to, na co patrzysz.

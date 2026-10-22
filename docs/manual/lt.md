@@ -155,7 +155,7 @@ Kai pasirinkta viena visa grupė, **Susietos kopijos** kiekvieną kopiją paver�
 ## Reljefo lipdymas
 Reljefą sudaro daug mažų brašų, kurių paviršių lipdymo teptukas stumia ir traukia. Pažymėkite vieną ar kelis brašus ir pasirinkite Geometrija → Padalyti į stulpus. Brašai supjaustomi išilgai tinklelio linijų į vieno tinklelio žingsnio pločio stulpus, o stulpai sudedami į grupę Terrain. Pjūviai eina pagal pasaulio tinklelį, todėl greta esantys brašai supjaustomi tose pačiose vietose ir turi bendrus kampus. Kiekvienas stulpas stovi išilgai ploniausios brašo pusės: stačias grindyse ar lubose, gulsčias sienoje. Urvas daromas taip pat: išskobkite gretasienį (Hollow selection) su vieno tinklelio žingsnio sienų storiu, pažymėkite sienas ir jas padalykite.
 
-Lipdymo juosta nustato stulpų formą. **Trikampis** sukuria du stulpus kiekvienam tinklelio langeliui, ir trikampio viršus lieka plokščias, kad ir kaip jį lipdytumėte. **Kvadratas** sukuria vieną stulpą langeliui, tai yra perpus mažiau brašų; jo viršus sulinksta išilgai įstrižainės.
+Stulpų formą nustato langas **Lipdymas**, kurį atidaro mygtukas lipdymo juostos gale; jame galima ir padalyti pasirinkimą. **Trikampis** sukuria du stulpus kiekvienam tinklelio langeliui, ir trikampio viršus lieka plokščias, kad ir kaip jį lipdytumėte. **Kvadratas** sukuria vieną stulpą langeliui, tai yra perpus mažiau brašų; jo viršus sulinksta išilgai įstrižainės. **Šešiakampis** padengia brush'ą dviejų tinklelio žingsnių pločio šešiakampiais, kurių kiekvienas padalijamas į šešis trikampius aplink centrą, todėl kiekvienas viršus lieka plokščias.
 
 Pasirinkite įrankį **Lipdymas** (`J`) ir vilkite per paviršių 3D vaizde. Oranžinis žiedas rodo teptuką. Kai niekas nepažymėta, teptukas keičia visus po juo esančius brašus, o kai yra pažymėtų, tik pažymėtus. Juosta lango viršuje nustato, ką daro brūkšnys:
 
@@ -163,7 +163,7 @@ Pasirinkite įrankį **Lipdymas** (`J`) ir vilkite per paviršių 3D vaizde. Ora
 - **Išlyginti nelygumus** nugludina kauburius.
 - **Išlyginti** išlygina paviršių iki vietos, kurioje brūkšnys prasidėjo.
 
-**Kryptis** nustato, kuria kryptimi:
+Tame pačiame lange **Kryptis** nustato, kuria kryptimi:
 
 - **Aukštyn** stumia paviršių tiesiai aukštyn ir žemyn, apskritime ant žemės. Tai skirta reljefui.
 - **Kamera** stumia jį artyn prie vaizdo ir tolyn nuo jo, rutulyje aplink žymeklį. Pažiūrėkite į grindis, sieną ar lubas, ir lipdomas bus tai, į ką žiūrite.

@@ -155,7 +155,7 @@ När markeringen är en hel grupp gör **Länkade kopior** varje kopia till en l
 ## Skulptera terräng
 Terräng består av många små brushar vars yta skulpteringspenseln trycker ut och drar in. Markera en eller flera brushar och välj Geometri → Dela i pelare. Kommandot skär dem längs rutnätets linjer i pelare som är ett rutnätssteg breda och lägger pelarna i en grupp med namnet Terrain. Snitten följer världens rutnät, så brushar som ligger bredvid varandra skärs på samma ställen och delar hörn. Varje pelare står längs brushens tunna sida: upprätt i ett golv eller ett tak, liggande i en vägg. En grotta fungerar likadant: gör en låda ihålig (Hollow selection) med en väggtjocklek på ett rutnätssteg, markera väggarna och dela dem.
 
-Skulpteringslisten väljer pelarnas form. **Triangel** ger två pelare per ruta i rutnätet, och en triangels ovansida förblir plan hur den än skulpteras. **Kvadrat** ger en per ruta, hälften så många brushar; dess ovansida böjs längs en diagonal.
+Fönstret **Skulptera**, som knappen i slutet av skulpteringslisten öppnar, väljer pelarnas form och kan också dela markeringen. **Triangel** ger två pelare per ruta i rutnätet, och en triangels ovansida förblir plan hur den än skulpteras. **Kvadrat** ger en per ruta, hälften så många brushar; dess ovansida böjs längs en diagonal. **Sexhörning** täcker brushen med sexhörningar två rutnätssteg breda, var och en delad i sex trianglar runt mitten, så att varje ovansida förblir plan.
 
 Välj verktyget **Skulptera** (`J`) och dra över ytan i 3D-vyn. Den orange ringen visar penseln. Utan markering ändrar penseln alla brushar under den; med en markering bara de markerade. Listen överst i fönstret väljer vad ett drag gör:
 
@@ -163,7 +163,7 @@ Välj verktyget **Skulptera** (`J`) och dra över ytan i 3D-vyn. Den orange ring
 - **Jämna ut** jämnar ut bulor.
 - **Plana ut** planar ut ytan till där draget började.
 
-**Riktning** väljer åt vilket håll:
+I samma fönster väljer **Riktning** åt vilket håll:
 
 - **Upp** flyttar ytan rakt upp och ned, inom en cirkel på marken. Det är till för terräng.
 - **Kamera** flyttar den mot och från vyn, inom ett klot runt pekaren. Titta på ett golv, en vägg eller ett tak så formar penseln det.

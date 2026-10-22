@@ -357,36 +357,20 @@ pub fn fillet_controls(ui: &mut egui::Ui, parameters: &Rc<RefCell<FilletParamete
 }
 
 /// The sculpt brush's strip in the tool bar: what a dab does, its radius and strength,
-/// which way it moves the surface, and the shape of the columns Split into columns makes.
-/// Where the strip is too narrow for the choices side by side they become drop-downs.
-pub fn sculpt_row(ui: &mut egui::Ui) {
-    use editor_core::sculpt::{self, ColumnShape, SculptDirection, SculptMode, SculptParameters};
+/// and the button for the settings window. Returns whether that button was clicked.
+pub fn sculpt_row(ui: &mut egui::Ui, open: bool) -> bool {
+    use editor_core::sculpt::{self, SculptMode, SculptParameters};
     use egui_phosphor::regular as icon;
-    /// The width the strip takes with every choice side by side.
-    const FULL: f32 = 840.0;
-    let compact = ui.available_width() < FULL;
-    // One of `names`, side by side or, in a narrow strip, in a drop-down `narrow` wide.
-    let choose = |ui: &mut egui::Ui,
-                  id: &str,
-                  names: &[&str],
-                  tip: &str,
-                  selected: &mut usize,
-                  wide: f32,
-                  narrow: f32| {
-        if compact {
-            widgets::dropdown(ui, id, selected, names, narrow)
-        } else {
-            let items: Vec<(&str, &str)> = names.iter().map(|name| (*name, tip)).collect();
-            widgets::segmented_choice(ui, id, &items, selected, wide)
-        }
-    };
     let mut parameters = sculpt::parameters();
-    let modes: Vec<&str> = SculptMode::ALL.iter().map(|mode| tr(mode.name())).collect();
+    let modes: Vec<(&str, &str)> = SculptMode::ALL
+        .iter()
+        .map(|mode| (tr(mode.name()), ""))
+        .collect();
     let mut mode = SculptMode::ALL
         .iter()
         .position(|m| *m == parameters.mode)
         .unwrap_or(0);
-    if choose(ui, "sculpt-mode", &modes, "", &mut mode, 240.0, 88.0) {
+    if widgets::segmented_choice(ui, "sculpt-mode", &modes, &mut mode, 240.0) {
         parameters.mode = SculptMode::ALL[mode];
     }
     ui.label(
@@ -417,55 +401,72 @@ pub fn sculpt_row(ui: &mut egui::Ui) {
     {
         parameters.strength = percent / 100.0;
     }
-    ui.label(
-        egui::RichText::new(icon::COMPASS)
-            .font(theme::icon())
-            .color(theme::dim()),
-    )
-    .on_hover_text(tr("Direction"));
-    let directions: Vec<&str> = SculptDirection::ALL
+    sculpt::set_parameters(parameters);
+    widgets::icon_label_button(ui, icon::SLIDERS_HORIZONTAL, "", open)
+        .on_hover_text(tr("Sculpt"))
+        .clicked()
+}
+
+/// The sculpt brush's settings for its window, as a form like the fillet's: which way a
+/// stroke moves the surface, and the shape of the columns, with the split beside it.
+/// Returns whether Split into columns was clicked.
+pub fn sculpt_controls(ui: &mut egui::Ui) -> bool {
+    use editor_core::sculpt::{self, ColumnShape, SculptDirection};
+    let mut parameters = sculpt::parameters();
+    let labels = [tr("Direction:"), tr("Column shape:")];
+    let label_width = labels
         .iter()
-        .map(|direction| tr(direction.name()))
+        .map(|l| crate::chrome::text_width(ui, l, theme::body()))
+        .fold(0.0, f32::max);
+    let gap = 12.0;
+    let control = (ui.available_width() - label_width - gap).max(200.0);
+    let row = |ui: &mut egui::Ui, label: &str, add: &mut dyn FnMut(&mut egui::Ui)| {
+        ui.horizontal(|ui| {
+            let (rect, _) = ui.allocate_exact_size(
+                egui::vec2(label_width, widgets::ROW_HEIGHT),
+                egui::Sense::hover(),
+            );
+            theme::text(
+                ui.painter(),
+                egui::pos2(rect.right(), rect.center().y),
+                egui::Align2::RIGHT_CENTER,
+                label,
+                theme::body(),
+                theme::dim(),
+            );
+            ui.add_space(gap - ui.spacing().item_spacing.x);
+            add(ui);
+        });
+    };
+    let directions: Vec<(&str, &str)> = SculptDirection::ALL
+        .iter()
+        .map(|direction| (tr(direction.name()), ""))
         .collect();
     let mut direction = SculptDirection::ALL
         .iter()
         .position(|d| *d == parameters.direction)
         .unwrap_or(0);
-    if choose(
-        ui,
-        "sculpt-direction",
-        &directions,
-        tr("Direction"),
-        &mut direction,
-        200.0,
-        80.0,
-    ) {
-        parameters.direction = SculptDirection::ALL[direction];
-    }
-    ui.label(
-        egui::RichText::new(icon::GRID_FOUR)
-            .font(theme::icon())
-            .color(theme::dim()),
-    )
-    .on_hover_text(tr("Split into columns"));
-    let shapes: Vec<&str> = ColumnShape::ALL
+    row(ui, labels[0], &mut |ui| {
+        widgets::segmented_choice(ui, "sculpt-direction", &directions, &mut direction, control);
+    });
+    parameters.direction = SculptDirection::ALL[direction];
+    let shapes: Vec<(&str, &str)> = ColumnShape::ALL
         .iter()
-        .map(|shape| tr(shape.name()))
+        .map(|shape| (tr(shape.name()), ""))
         .collect();
     let mut shape = ColumnShape::ALL
         .iter()
         .position(|s| *s == parameters.columns)
         .unwrap_or(0);
-    if choose(
-        ui,
-        "sculpt-columns",
-        &shapes,
-        tr("Split into columns"),
-        &mut shape,
-        160.0,
-        96.0,
-    ) {
-        parameters.columns = ColumnShape::ALL[shape];
-    }
+    row(ui, labels[1], &mut |ui| {
+        widgets::segmented_choice(ui, "sculpt-columns", &shapes, &mut shape, control);
+    });
+    parameters.columns = ColumnShape::ALL[shape];
     sculpt::set_parameters(parameters);
+    let mut split = false;
+    ui.horizontal(|ui| {
+        ui.add_space(label_width + gap - ui.spacing().item_spacing.x);
+        split = ui.button(tr("Split into columns")).clicked();
+    });
+    split
 }

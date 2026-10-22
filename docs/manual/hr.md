@@ -155,7 +155,7 @@ Kad je odabrana jedna cijela grupa, **Povezane kopije** od svake kopije radi pov
 ## Oblikovanje terena
 Teren se sastoji od mnogo malih brusheva čiju površinu kist za oblikovanje gura i vuče. Odaberite jedan ili više brusheva pa Geometrija → Podijeli na stupce. Brushevi se režu duž linija mreže na stupce široke jedan korak mreže, a stupci idu u grupu Terrain. Rezovi prate mrežu svijeta, pa se susjedni brushevi režu na istim mjestima i dijele kutove. Svaki stupac stoji duž najtanje strane brusha: okomito u podu ili stropu, vodoravno u zidu. Špilja se radi isto: izdubite kvadar (Hollow selection) s debljinom zida od jednog koraka mreže, odaberite zidove i podijelite ih.
 
-Traka za oblikovanje određuje oblik stupaca. **Trokut** daje dva stupca po ćeliji mreže, a vrh trokuta ostaje ravan kako god ga oblikovali. **Kvadrat** daje jedan stupac po ćeliji, dakle upola manje brusheva; vrh mu se savija duž dijagonale.
+Prozor **Oblikovanje**, koji otvara gumb na kraju trake za oblikovanje, određuje oblik stupaca i može odmah podijeliti odabir. **Trokut** daje dva stupca po ćeliji mreže, a vrh trokuta ostaje ravan kako god ga oblikovali. **Kvadrat** daje jedan stupac po ćeliji, dakle upola manje brusheva; vrh mu se savija duž dijagonale. **Šesterokut** prekriva brush šesterokutima širokima dva koraka mreže, svaki podijeljen na šest trokuta oko središta, pa svaki vrh ostaje ravan.
 
 Odaberite alat **Oblikovanje** (`J`) i povlačite po površini u 3D prikazu. Narančasti prsten prikazuje kist. Bez odabira kist mijenja svaki brush ispod sebe, s odabirom samo odabrane. Traka na vrhu prozora određuje što potez radi:
 
@@ -163,7 +163,7 @@ Odaberite alat **Oblikovanje** (`J`) i povlačite po površini u 3D prikazu. Nar
 - **Izgladi** izravnava neravnine.
 - **Poravnaj** poravnava površinu na mjesto gdje je potez počeo.
 
-**Smjer** određuje kamo:
+U istom prozoru **Smjer** određuje kamo:
 
 - **Gore** pomiče površinu ravno gore i dolje, unutar kruga na tlu. To je za teren.
 - **Kamera** je pomiče prema pogledu i od njega, unutar kugle oko pokazivača. Pogledajte pod, zid ili strop i oblikuje se ono što gledate.

@@ -155,7 +155,7 @@ Quand la sélection est un groupe entier, **Copies liées** fait de chaque copie
 ## Sculpter le terrain
 Le terrain est fait de nombreux petits brushes dont le pinceau de sculpture pousse et tire la surface. Sélectionnez un ou plusieurs brushes et choisissez Géométrie → Découper en colonnes. Les brushes sont découpés le long des lignes de la grille en colonnes larges d'un pas de grille, placées dans un groupe nommé Terrain. Les découpes suivent la grille du monde, donc des brushes voisins sont découpés aux mêmes endroits et partagent leurs coins. Chaque colonne se dresse le long du côté mince du brush : debout dans un sol ou un plafond, à l'horizontale dans un mur. Une grotte se fait de la même façon : évidez une boîte (Hollow selection) avec une épaisseur de paroi d'un pas de grille, sélectionnez les parois et découpez-les.
 
-La barre de sculpture choisit la forme des colonnes. **Triangle** en crée deux par case de la grille, et le dessus d'un triangle reste plan, quelle que soit la façon dont on le sculpte. **Carré** en crée une par case, soit moitié moins de brushes ; son dessus se plie le long d'une diagonale.
+La fenêtre **Sculpter**, qu'ouvre le bouton au bout de la barre de sculpture, choisit la forme des colonnes et peut aussi découper la sélection. **Triangle** en crée deux par case de la grille, et le dessus d'un triangle reste plan, quelle que soit la façon dont on le sculpte. **Carré** en crée une par case, soit moitié moins de brushes ; son dessus se plie le long d'une diagonale. **Hexagone** pave la brush d'hexagones larges de deux pas de grille, chacun découpé en six triangles autour de son centre, si bien que chaque dessus reste plan.
 
 Choisissez l'outil **Sculpter** (`J`) et faites glisser sur la surface dans la vue 3D. L'anneau orange montre le pinceau. Sans sélection, le pinceau modifie tous les brushes situés dessous ; avec une sélection, seulement ceux sélectionnés. La barre en haut de la fenêtre choisit l'effet d'un trait :
 
@@ -163,7 +163,7 @@ Choisissez l'outil **Sculpter** (`J`) et faites glisser sur la surface dans la v
 - **Lisser** atténue les bosses.
 - **Aplanir** ramène la surface au niveau du point où le trait a commencé.
 
-**Direction** choisit le sens :
+Dans la même fenêtre, **Direction** choisit le sens :
 
 - **Haut** déplace la surface verticalement, vers le haut et vers le bas, dans un cercle au sol. C'est pour le terrain.
 - **Caméra** la rapproche ou l'éloigne de la vue, dans une sphère autour du pointeur. Regardez un sol, un mur ou un plafond et le pinceau le façonne.

@@ -65,22 +65,28 @@ pub enum ColumnShape {
     Triangles,
     /// One column per grid cell. A sculpted top bends along a diagonal.
     Squares,
+    /// Hexagons two grid cells across, each cut into six triangles round its centre, so
+    /// every top stays flat. The corners lie on half grid steps, which makes a hexagon a
+    /// little taller than a regular one but keeps neighbouring brushes' corners shared.
+    Hexagons,
 }
 
 impl ColumnShape {
-    pub const ALL: [Self; 2] = [Self::Triangles, Self::Squares];
+    pub const ALL: [Self; 3] = [Self::Triangles, Self::Squares, Self::Hexagons];
 
     pub fn name(self) -> &'static str {
         match self {
             Self::Triangles => translation_key("Triangle"),
             Self::Squares => translation_key("Square"),
+            Self::Hexagons => translation_key("Hexagon"),
         }
     }
 
-    /// How many columns one grid cell becomes.
+    /// How many columns one grid cell becomes, on average for hexagons: one covers three
+    /// cells and makes six.
     pub fn per_cell(self) -> usize {
         match self {
-            Self::Triangles => 2,
+            Self::Triangles | Self::Hexagons => 2,
             Self::Squares => 1,
         }
     }

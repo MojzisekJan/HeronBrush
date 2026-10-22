@@ -155,7 +155,7 @@ Ko je izbrana ena cela skupina, **Povezane kopije** iz vsake kopije naredi povez
 ## Oblikovanje terena
 Teren sestavlja veliko majhnih brushev, katerih površino čopič za oblikovanje potiska ven in vleče noter. Izberite enega ali več brushev in nato Geometrija → Razdeli na stebre. Ukaz jih vzdolž črt mreže razreže na stebre, široke en korak mreže, in stebre postavi v skupino Terrain. Rezi sledijo mreži sveta, zato se sosednji brushi razrežejo na istih mestih in si delijo kote. Vsak steber stoji vzdolž tanke stranice brusha: pokonci v tleh ali stropu, vodoravno v steni. Jama nastane na enak način: izdolbite kvader (Hollow selection) z debelino stene en korak mreže, izberite stene in jih razdelite.
 
-Obliko stebrov določa trak za oblikovanje. **Trikotnik** naredi dva stebra na celico mreže, vrh trikotnika pa ostane raven, ne glede na to, kako ga oblikujete. **Kvadrat** naredi en steber na celico, torej pol manj brushev; njegov vrh se upogne vzdolž diagonale.
+Obliko stebrov določa okno **Oblikovanje**, ki ga odpre gumb na koncu traku za oblikovanje; v njem lahko izbor tudi razdelite. **Trikotnik** naredi dva stebra na celico mreže, vrh trikotnika pa ostane raven, ne glede na to, kako ga oblikujete. **Kvadrat** naredi en steber na celico, torej pol manj brushev; njegov vrh se upogne vzdolž diagonale. **Šestkotnik** prekrije brush s šestkotniki, širokimi dva koraka mreže, vsak razdeljen na šest trikotnikov okoli središča, zato vsak vrh ostane raven.
 
 Izberite orodje **Oblikovanje** (`J`) in vlecite po površini v 3D-pogledu. Oranžen obroč prikazuje čopič. Brez izbora čopič spremeni vsak brush pod seboj, z izborom le izbrane. Trak na vrhu okna določa, kaj naredi poteza:
 
@@ -163,7 +163,7 @@ Izberite orodje **Oblikovanje** (`J`) in vlecite po površini v 3D-pogledu. Oran
 - **Zgladi** zgladi neravnine.
 - **Poravnaj** poravna površino na mesto, kjer se je poteza začela.
 
-**Smer** določa, v katero smer:
+V istem oknu **Smer** določa, v katero smer:
 
 - **Gor** premika površino naravnost gor in dol, znotraj kroga na tleh. To je za teren.
 - **Kamera** jo premika proti pogledu in stran od njega, znotraj krogle okoli kazalca. Poglejte tla, steno ali strop in čopič oblikuje to.

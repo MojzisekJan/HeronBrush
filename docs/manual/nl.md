@@ -155,7 +155,7 @@ Als de selectie één hele groep is, maakt **Gekoppelde kopieën** van elke kopi
 ## Terrein boetseren
 Terrein bestaat uit veel kleine brushes waarvan het boetseerpenseel het oppervlak naar buiten duwt en naar binnen trekt. Selecteer een of meer brushes en kies Geometrie → In kolommen verdelen. De brushes worden langs de rasterlijnen in kolommen van één rasterstap breed gesneden, die in een groep met de naam Terrain komen. De sneden volgen het raster van de wereld, dus brushes naast elkaar worden op dezelfde plekken gesneden en delen hun hoeken. Elke kolom staat langs de dunne kant van de brush: rechtop in een vloer of een plafond, liggend in een wand. Een grot werkt net zo: hol een blok uit (Hollow selection) met een wanddikte van één rasterstap, selecteer de wanden en verdeel ze.
 
-De boetseerbalk kiest de vorm van de kolommen. **Driehoek** maakt er twee per rastercel, en de bovenkant van een driehoek blijft vlak hoe je hem ook boetseert. **Vierkant** maakt er één per cel, dus half zoveel brushes; de bovenkant buigt langs een diagonaal.
+Het venster **Boetseren**, dat de knop aan het eind van de boetseerbalk opent, kiest de vorm van de kolommen en kan de selectie ook splitsen. **Driehoek** maakt er twee per rastercel, en de bovenkant van een driehoek blijft vlak hoe je hem ook boetseert. **Vierkant** maakt er één per cel, dus half zoveel brushes; de bovenkant buigt langs een diagonaal. **Zeshoek** bedekt de brush met zeshoeken van twee rasterstappen breed, elk verdeeld in zes driehoeken rond het midden, zodat elke bovenkant vlak blijft.
 
 Kies het gereedschap **Boetseren** (`J`) en sleep in de 3D-weergave over het oppervlak. De oranje ring toont het penseel. Zonder selectie verandert het penseel elke brush eronder; met een selectie alleen de geselecteerde. De balk bovenaan het venster kiest wat een streek doet:
 
@@ -163,7 +163,7 @@ Kies het gereedschap **Boetseren** (`J`) en sleep in de 3D-weergave over het opp
 - **Gladmaken** strijkt bulten glad.
 - **Egaliseren** brengt het oppervlak op het niveau waar de streek begon.
 
-**Richting** kiest welke kant op:
+In hetzelfde venster kiest **Richting** welke kant op:
 
 - **Omhoog** beweegt het oppervlak recht omhoog en omlaag, binnen een cirkel op de grond. Dit is voor terrein.
 - **Camera** beweegt het naar de weergave toe en ervan af, binnen een bol rond de aanwijzer. Kijk naar een vloer, een wand of een plafond en het penseel vormt wat je ziet.

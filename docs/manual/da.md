@@ -155,7 +155,7 @@ Når markeringen er én hel gruppe, gør **Sammenkædede kopier** hver kopi til 
 ## Modellér terræn
 Terræn består af mange små brushes, hvis overflade modelleringspenslen skubber ud og trykker ind. Markér en eller flere brushes, og vælg Geometri → Del i søjler. Det skærer dem langs gitterlinjerne i søjler, ét gittertrin brede, og lægger søjlerne i en gruppe ved navn Terrain. Snittene følger verdens gitter, så brushes, der ligger side om side, skæres de samme steder og deler hjørner. Hver søjle står langs brushens tynde side: lodret i et gulv eller et loft, vandret i en væg. En hule laves på samme måde: gør en kasse hul (Hollow selection) med en vægtykkelse på ét gittertrin, markér væggene, og del dem.
 
-Modelleringslinjen vælger søjlernes form. **Trekant** laver to pr. gittercelle, og oversiden af en trekant forbliver plan, uanset hvordan den modelleres. **Kvadrat** laver én pr. celle, altså halvt så mange brushes; dens overside knækker langs en diagonal.
+Vinduet **Modellér**, som knappen for enden af modelleringslinjen åbner, vælger søjlernes form og kan også dele markeringen. **Trekant** laver to pr. gittercelle, og oversiden af en trekant forbliver plan, uanset hvordan den modelleres. **Kvadrat** laver én pr. celle, altså halvt så mange brushes; dens overside knækker langs en diagonal. **Sekskant** dækker brushen med sekskanter, to gittertrin brede, hver delt i seks trekanter om midten, så hver overside forbliver plan.
 
 Vælg værktøjet **Modellér** (`J`), og træk hen over overfladen i 3D-visningen. Den orange ring viser penslen. Uden markering ændrer penslen alle brushes under den; med en markering kun de markerede. Linjen øverst i vinduet vælger, hvad et strøg gør:
 
@@ -163,7 +163,7 @@ Vælg værktøjet **Modellér** (`J`), og træk hen over overfladen i 3D-visning
 - **Glat** udglatter buler.
 - **Udjævn** jævner overfladen ud til det sted, hvor strøget begyndte.
 
-**Retning** vælger hvilken vej:
+I samme vindue vælger **Retning** hvilken vej:
 
 - **Op** flytter overfladen lodret op og ned, inden for en cirkel på jorden. Den er til terræn.
 - **Kamera** flytter den mod visningen og væk fra den, inden for en kugle omkring markøren. Se på et gulv, en væg eller et loft, og penslen former det.

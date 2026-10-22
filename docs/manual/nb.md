@@ -155,7 +155,7 @@ Når utvalget er én hel gruppe, gjør **Koblede kopier** hver kopi til et koble
 ## Modellere terreng
 Terreng består av mange små brushes som modelleringspenselen skyver ut og trekker inn overflaten på. Velg én eller flere brushes og velg Geometri → Del i søyler. Brushene deles langs rutenettlinjene i søyler som er ett rutenettsteg brede, og søylene legges i en gruppe kalt Terrain. Snittene følger rutenettet i verden, så brushes som ligger inntil hverandre, deles på de samme stedene og deler hjørner. Hver søyle står langs den tynne siden av brushen: loddrett i et gulv eller et tak, vannrett i en vegg. En hule lages på samme måte: gjør en boks hul (Hollow selection) med veggtykkelse på ett rutenettsteg, velg veggene og del dem.
 
-Modelleringslinjen velger formen på søylene. **Trekant** lager to søyler per rute, og toppen av en trekant forblir plan uansett hvordan den modelleres. **Kvadrat** lager én per rute, altså halvparten så mange brushes; toppen bøyer seg langs en diagonal.
+Vinduet **Modeller**, som knappen på enden av modelleringslinjen åpner, velger formen på søylene og kan også dele utvalget. **Trekant** lager to søyler per rute, og toppen av en trekant forblir plan uansett hvordan den modelleres. **Kvadrat** lager én per rute, altså halvparten så mange brushes; toppen bøyer seg langs en diagonal. **Sekskant** dekker brushen med sekskanter, to rutetrinn brede, hver delt i seks trekanter rundt midten, så hver topp forblir plan.
 
 Velg verktøyet **Modeller** (`J`) og dra over overflaten i 3D-visningen. Den oransje ringen viser penselen. Uten utvalg endrer penselen alle brushes under den; med et utvalg bare de valgte. Linjen øverst i vinduet velger hva et strøk gjør:
 
@@ -163,7 +163,7 @@ Velg verktøyet **Modeller** (`J`) og dra over overflaten i 3D-visningen. Den or
 - **Glatt** jevner ut kuler.
 - **Jevn ut** planerer overflaten til der strøket begynte.
 
-**Retning** velger hvilken vei:
+I samme vindu velger **Retning** hvilken vei:
 
 - **Opp** flytter overflaten rett opp og ned, innenfor en sirkel på bakken. Dette er for terreng.
 - **Kamera** flytter den mot og bort fra visningen, innenfor en kule rundt pekeren. Se på et gulv, en vegg eller et tak, så former penselen det du ser på.

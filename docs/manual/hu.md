@@ -155,7 +155,7 @@ Ha egy teljes csoport van kijelölve, az **Összekapcsolt másolatok** minden m�
 ## Terep formázása
 A terep sok kis brush-ból áll, amelyek felületét a formázó ecset kifelé tolja és befelé húzza. Jelölj ki egy vagy több brush-t, és válaszd a Geometria → Oszlopokra bontás parancsot. Ez a rácsvonalak mentén egy rácslépésnyi széles oszlopokra vágja őket, az oszlopokat pedig egy Terrain nevű csoportba teszi. A vágások a világ rácsát követik, így az egymás melletti brush-ok ugyanott vágódnak el, és közös sarkaik lesznek. Minden oszlop a brush legvékonyabb oldala mentén áll: függőlegesen a padlóban vagy a mennyezetben, vízszintesen a falban. Barlang ugyanígy készül: üregelj ki egy téglatestet (Hollow selection) egy rácslépésnyi falvastagsággal, jelöld ki a falakat, és bontsd fel őket.
 
-A formázási sáv adja meg az oszlopok alakját. A **Háromszög** rácscellánként két oszlopot készít, és a háromszög teteje sík marad, akárhogy formázod. A **Négyzet** cellánként egyet készít, vagyis feleannyi brush-t; a teteje egy átló mentén hajlik meg.
+Az oszlopok alakját a(z) **Formázás** ablak adja meg, amelyet a formázási sáv végén lévő gomb nyit meg; a kijelölést is fel tudja osztani. A **Háromszög** rácscellánként két oszlopot készít, és a háromszög teteje sík marad, akárhogy formázod. A **Négyzet** cellánként egyet készít, vagyis feleannyi brush-t; a teteje egy átló mentén hajlik meg. A **Hatszög** két rácslépés széles hatszögekkel fedi le a brusht, mindegyiket hat háromszögre osztja a középpontja körül, így minden tető sík marad.
 
 Válaszd a **Formázás** eszközt (`J`), és húzd végig a felületen a 3D nézetben. A narancssárga gyűrű mutatja az ecsetet. Kijelölés nélkül az ecset minden alatta lévő brush-t módosít, kijelöléssel csak a kijelölteket. Az ablak tetején lévő sáv adja meg, mit tesz egy húzás:
 
@@ -163,7 +163,7 @@ Válaszd a **Formázás** eszközt (`J`), és húzd végig a felületen a 3D né
 - A **Simítás** elsimítja a dudorokat.
 - A **Simítás síkba** arra a szintre simítja a felületet, ahol a húzás kezdődött.
 
-Az **Irány** adja meg, merre:
+Ugyanebben az ablakban az **Irány** adja meg, merre:
 
 - A **Fel** egyenesen fel és le mozgatja a felületet, egy talajon fekvő körön belül. Ez a terephez való.
 - A **Kamera** a nézet felé és attól el mozgatja, a mutató körüli gömbön belül. Nézz egy padlóra, falra vagy mennyezetre, és azt formázza.

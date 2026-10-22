@@ -155,7 +155,7 @@ Quando a seleção é um grupo inteiro, **Cópias vinculadas** torna cada cópia
 ## Esculpir terreno
 O terreno é feito de muitos brushes pequenos cuja superfície o pincel de esculpir empurra para fora e puxa para dentro. Selecione um ou mais brushes e escolha Geometria → Dividir em colunas. Os brushes são cortados ao longo das linhas da grade em colunas com um passo de grade de largura, colocadas em um grupo chamado Terrain. Os cortes seguem a grade do mundo, então brushes lado a lado são cortados nos mesmos lugares e compartilham os cantos. Cada coluna fica ao longo do lado fino do brush: na vertical em um piso ou em um teto, na horizontal em uma parede. Uma caverna funciona do mesmo jeito: deixe uma caixa oca (Hollow selection) com paredes de um passo de grade de espessura, selecione as paredes e divida-as.
 
-A barra de esculpir escolhe a forma das colunas. **Triângulo** cria duas colunas por célula da grade, e o topo de um triângulo continua plano não importa como seja esculpido. **Quadrado** cria uma por célula, metade dos brushes; o topo dela dobra ao longo de uma diagonal.
+A janela **Esculpir**, aberta pelo botão no fim da barra de esculpir, escolhe a forma das colunas e também pode dividir a seleção. **Triângulo** cria duas colunas por célula da grade, e o topo de um triângulo continua plano não importa como seja esculpido. **Quadrado** cria uma por célula, metade dos brushes; o topo dela dobra ao longo de uma diagonal. **Hexágono** cobre o brush com hexágonos de dois passos de grade de largura, cada um dividido em seis triângulos ao redor do centro, então cada topo continua plano.
 
 Escolha a ferramenta **Esculpir** (`J`) e arraste sobre a superfície na vista 3D. O anel laranja mostra o pincel. Sem seleção, o pincel altera todos os brushes abaixo dele; com seleção, só os selecionados. A barra no topo da janela escolhe o que um traço faz:
 
@@ -163,7 +163,7 @@ Escolha a ferramenta **Esculpir** (`J`) e arraste sobre a superfície na vista 3
 - **Suavizar** nivela as saliências.
 - **Aplainar** nivela a superfície no ponto onde o traço começou.
 
-**Direção** escolhe o sentido:
+Na mesma janela, **Direção** escolhe o sentido:
 
 - **Cima** move a superfície direto para cima e para baixo, dentro de um círculo no chão. É o modo para terreno.
 - **Câmera** move a superfície para perto e para longe da vista, dentro de uma esfera em volta do ponteiro. Olhe para um piso, uma parede ou um teto e o pincel molda o que você está vendo.

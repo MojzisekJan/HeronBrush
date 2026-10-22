@@ -155,7 +155,7 @@ Khi vùng chọn là trọn một nhóm, **Bản sao liên kết** biến mỗi 
 ## Điêu khắc địa hình
 Địa hình gồm nhiều brush nhỏ mà cọ điêu khắc đẩy bề mặt ra và kéo vào. Chọn một hoặc nhiều brush rồi chọn Hình học → Chia thành cột. Lệnh này cắt chúng dọc theo các đường lưới thành các cột rộng một bước lưới và đưa các cột vào một nhóm tên Terrain. Các đường cắt theo lưới của thế giới, nên các brush nằm cạnh nhau bị cắt ở cùng chỗ và dùng chung góc. Mỗi cột đứng dọc theo cạnh mỏng của brush: đứng thẳng trong sàn hoặc trần, nằm ngang trong tường. Hang động cũng làm như vậy: khoét rỗng một khối hộp (Hollow selection) với độ dày thành một bước lưới, chọn các thành rồi chia chúng.
 
-Thanh điêu khắc chọn hình dạng của cột. **Tam giác** tạo hai cột cho mỗi ô lưới, và mặt trên của tam giác luôn phẳng dù điêu khắc thế nào. **Vuông** tạo một cột cho mỗi ô, chỉ bằng nửa số brush; mặt trên của nó gập theo một đường chéo.
+Cửa sổ **Điêu khắc**, mở bằng nút ở cuối thanh điêu khắc, chọn hình dạng của cột và cũng có thể chia vùng chọn. **Tam giác** tạo hai cột cho mỗi ô lưới, và mặt trên của tam giác luôn phẳng dù điêu khắc thế nào. **Vuông** tạo một cột cho mỗi ô, chỉ bằng nửa số brush; mặt trên của nó gập theo một đường chéo. **Lục giác** phủ brush bằng các lục giác rộng hai bước lưới, mỗi lục giác được chia thành sáu tam giác quanh tâm, nên mọi mặt trên đều phẳng.
 
 Chọn công cụ **Điêu khắc** (`J`) và kéo trên bề mặt trong khung nhìn 3D. Vòng màu cam hiển thị cọ. Khi không chọn gì, cọ thay đổi mọi brush bên dưới; khi có vùng chọn, chỉ các brush đã chọn. Thanh ở đầu cửa sổ chọn tác dụng của một nét:
 
@@ -163,7 +163,7 @@ Chọn công cụ **Điêu khắc** (`J`) và kéo trên bề mặt trong khung 
 - **Làm mượt** làm phẳng các chỗ gồ.
 - **Làm phẳng** san bề mặt về chỗ nét bắt đầu.
 
-**Hướng** chọn chiều di chuyển:
+Trong cùng cửa sổ, **Hướng** chọn chiều di chuyển:
 
 - **Lên** di chuyển bề mặt thẳng lên và xuống, trong một hình tròn trên mặt đất. Đây là chế độ cho địa hình.
 - **Camera** di chuyển bề mặt lại gần hoặc ra xa khung nhìn, trong một khối cầu quanh con trỏ. Nhìn vào sàn, tường hoặc trần thì cọ tạo hình chỗ đó.

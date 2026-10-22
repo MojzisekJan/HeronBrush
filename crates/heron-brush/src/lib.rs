@@ -552,6 +552,7 @@ impl App {
             filters: editor.filters.clone(),
             popup: None,
             fillet_window: false,
+            sculpt_window: false,
         };
         let flat = [
             Pane2d::new(&editor, ViewPlane::Top),

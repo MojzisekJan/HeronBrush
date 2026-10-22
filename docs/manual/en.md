@@ -227,7 +227,7 @@ When the selection is one whole group, **Linked copies** makes each copy a linke
 ## Sculpting terrain
 Terrain is made of many small brushes whose surface the sculpt brush pushes and pulls. Select one or more brushes and choose Geometry → Split into columns. It cuts them along the grid lines into columns one grid step across and puts the columns in a group named Terrain. The cuts follow the world's grid, so brushes side by side are cut in the same places and share their corners. Each column stands along the brush's thin side: upright in a floor or a ceiling, sideways in a wall. A cave works the same way: hollow a box (Hollow selection) with a wall thickness of one grid step, select the walls and split them.
 
-The sculpt strip chooses the shape of the columns. **Triangle** makes two per grid cell, and a triangle's top stays flat however it is sculpted. **Square** makes one per cell, half as many brushes; its top bends along a diagonal.
+The **Sculpt** window, which the button at the end of the sculpt strip opens, chooses the shape of the columns and can split the selection too. **Triangle** makes two per grid cell, and a triangle's top stays flat however it is sculpted. **Square** makes one per cell, half as many brushes; its top bends along a diagonal. **Hexagon** tiles the brush with hexagons two grid steps across, each cut into six triangles round its centre, so every top stays flat.
 
 Choose the **Sculpt** tool (`J`) and drag over the surface in the 3D view. The orange ring shows the brush. With nothing selected the brush changes every brush under it; with a selection, only the selected ones. The strip at the top of the window chooses what a stroke does:
 
@@ -235,7 +235,7 @@ Choose the **Sculpt** tool (`J`) and drag over the surface in the 3D view. The o
 - **Smooth** evens out bumps.
 - **Flatten** levels the surface to where the stroke began.
 
-**Direction** chooses which way:
+In the same window, **Direction** chooses which way:
 
 - **Up** moves the surface straight up and down, within a circle on the ground. This is for terrain.
 - **Camera** moves it towards and away from the view, within a ball round the pointer. Look at a floor, a wall or a ceiling and it shapes that.

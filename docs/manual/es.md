@@ -155,7 +155,7 @@ Cuando la selección es un grupo entero, **Copias vinculadas** convierte cada co
 ## Esculpir terreno
 El terreno se compone de muchos brushes pequeños cuya superficie el pincel de esculpir empuja hacia fuera y hacia dentro. Selecciona uno o más brushes y elige Geometría → Dividir en columnas. Los corta a lo largo de las líneas de la cuadrícula en columnas de un paso de cuadrícula de ancho y pone las columnas en un grupo llamado Terrain. Los cortes siguen la cuadrícula del mundo, así que los brushes contiguos se cortan en los mismos sitios y comparten sus esquinas. Cada columna se alza a lo largo del lado delgado del brush: en vertical en un suelo o un techo, en horizontal en una pared. Una cueva se hace igual: vacía una caja (Hollow selection) con un grosor de pared de un paso de cuadrícula, selecciona las paredes y divídelas.
 
-La barra de esculpir elige la forma de las columnas. **Triángulo** crea dos por celda de la cuadrícula, y la parte superior de un triángulo sigue plana por mucho que la esculpas. **Cuadrado** crea una por celda, la mitad de brushes; su parte superior se dobla a lo largo de una diagonal.
+La ventana **Esculpir**, que abre el botón al final de la barra de esculpir, elige la forma de las columnas y también puede dividir la selección. **Triángulo** crea dos por celda de la cuadrícula, y la parte superior de un triángulo sigue plana por mucho que la esculpas. **Cuadrado** crea una por celda, la mitad de brushes; su parte superior se dobla a lo largo de una diagonal. **Hexágono** cubre el brush con hexágonos de dos pasos de cuadrícula de ancho, cada uno dividido en seis triángulos alrededor de su centro, así que cada parte superior sigue plana.
 
 Elige la herramienta **Esculpir** (`J`) y arrastra sobre la superficie en la vista 3D. El anillo naranja muestra el pincel. Sin selección, el pincel cambia todos los brushes que tiene debajo; con selección, solo los seleccionados. La barra de la parte superior de la ventana elige qué hace un trazo:
 
@@ -163,7 +163,7 @@ Elige la herramienta **Esculpir** (`J`) y arrastra sobre la superficie en la vis
 - **Suavizar** iguala los bultos.
 - **Aplanar** nivela la superficie hasta donde empezó el trazo.
 
-**Dirección** elige hacia dónde:
+En la misma ventana, **Dirección** elige hacia dónde:
 
 - **Arriba** mueve la superficie en vertical, arriba y abajo, dentro de un círculo sobre el suelo. Es para terreno.
 - **Cámara** la acerca y la aleja de la vista, dentro de una esfera alrededor del puntero. Mira un suelo, una pared o un techo y el pincel le da forma.
