@@ -284,7 +284,9 @@ pub fn menus(
         ],
         // Geometry
         vec![
-            item(tr("Import model"), Action::ImportModel).enabled(!cfg!(target_arch = "wasm32")),
+            item(tr("Import model"), Action::ImportModel)
+                .icon(icon::CUBE)
+                .enabled(!cfg!(target_arch = "wasm32")),
             item(tr("Insert 3D text"), Action::Text).icon(icon::TEXT_T),
             item(tr("Join corner"), Action::Corner).icon(icon::ANGLE),
             item(tr("Array"), Action::Array).icon(icon::DOTS_NINE),
