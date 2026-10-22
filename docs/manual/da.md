@@ -173,6 +173,8 @@ De to tal er **Radius (enheder)** og **Styrke (%)**. Kun hjørnerne på den side
 
 Når modelleringen er færdig, så markér terrænet og vælg Geometri → **Flet søjler**, eller knappen i vinduet **Modellér**. Nabosøjler, der sammen danner en konveks brush og ser ens ud, bliver til én brush, så flade stykker bliver til nogle få store brushes. Overfladen flytter sig ikke, og sammenfletningen fortrydes i ét trin.
 
+Til terræn som i voxelspil skal du dele i **Kvadrat**-søjler og slå **Blokke** til i vinduet **Modellér**. Et strøg flytter så hele oversiden af hver søjle i hele gittertrin og holder siderne lodrette, så terrænet stiger i trin. Alle tilstande virker som før; små tryk lægges sammen, til en søjle er steget et helt trin. Søjler med andre former røres ikke.
+
 # Materialer og UV'er
 ## Indlæsning og anvendelse af materialer
 Åbn sektionen **Materialer** under fanen Flade. **Indlæs mappe** tilføjer en mappe med billeder, og **Indlæs .wad** tilføjer en teksturpakke; begge vises under **Samlinger**, hvor krydset fjerner en. Skriv i **Filtrer materialer** for at indsnævre listen. Klik på et materiale for at gøre det aktuelt, hvorefter **Anvend på markering** lægger det på alle markerede flader. **Markér** tilbyder Markér brushes med det og Markér flader med det. **Erstat** udskifter ét materiale med et andet i hele kortet eller kun i markeringen.

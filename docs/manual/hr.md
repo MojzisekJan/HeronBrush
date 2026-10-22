@@ -173,6 +173,8 @@ Dva broja su **Polumjer (jedinice)** i **Jačina (%)**. Pomiču se samo kutovi n
 
 Kad završite s oblikovanjem, odaberite teren i izaberite Geometrija → **Spoji stupce** ili gumb u prozoru **Oblikovanje**. Susjedni stupci koji zajedno čine konveksan brush i jednako izgledaju postaju jedan brush, pa ravni dijelovi postaju nekoliko velikih brusheva. Površina se ne pomiče, a spajanje se poništava u jednom koraku.
 
+Za teren kao u voxel igrama podijelite na stupce **Kvadrat** i uključite **Blokovi** u prozoru **Oblikovanje**. Potez tada pomiče cijeli vrh svakog stupca za cijele korake mreže i ostavlja stranice okomitima, pa teren raste u stepenicama. Svi načini rade kao prije; mali potezi se zbrajaju dok stupac ne naraste za cijeli korak. Stupci drugih oblika ostaju kakvi jesu.
+
 # Materijali i UV
 ## Učitavanje i primjena materijala
 Otvorite odjeljak **Materijali** na kartici Ploha. **Učitaj direktorij** dodaje direktorij sa slikama, a **Učitaj .wad** dodaje paket tekstura; oboje se pojavljuje pod **Zbirke**, gdje ih križić uklanja. Upisivanjem u **Filtriraj materijale** sužavate popis. Kliknite materijal da postane trenutačni, a zatim ga **Primijeni na odabir** stavlja na svaku odabranu plohu. **Odaberi** nudi Odaberi brusheve s njim i Odaberi plohe s njim. **Zamijeni** zamjenjuje jedan materijal drugim u cijeloj mapi ili samo u odabiru.

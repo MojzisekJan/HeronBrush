@@ -244,6 +244,8 @@ Dvě čísla jsou **Poloměr (jednotky)** a **Síla (%)**. Posouvají se jen roh
 
 Až budete se sochaním hotovi, vyberte terén a zvolte Geometrie → **Sloučit sloupce**, nebo tlačítko v okně **Sochat**. Sousední sloupce, které spolu tvoří konvexní brush a vypadají stejně, se sloučí do jednoho, takže z rovných ploch zbude pár velkých brushů. Povrch se nepohne a sloučení se vrací jedním krokem zpět.
 
+Pro terén jako ve voxelových hrách rozdělte na sloupce **Čtverec** a v okně **Sochat** zapněte **Kostky**. Tah pak posouvá celý vršek každého sloupce po celých krocích mřížky a boky nechává svislé, takže terén stoupá ve schodech. Zvýšit, Snížit, Vyhladit i Zarovnat fungují jako dřív; malé tahy se sčítají, dokud sloupec nevystoupá o celý krok. Sloupce jiných tvarů zůstanou, jak jsou.
+
 # Materiály a UV
 ## Načtení a použití materiálů
 Otevřete sekci **Materiály** na kartě Stěna. **Načíst složku** přidá složku obrázků a **Načíst .wad** balík textur; oba se objeví v **Sady**, kde je křížek odebere. Psaním do **Filtr materiálů** zúžíte seznam. Kliknutí zvolí aktuální materiál a rovnou ho použije na vybrané stěny nebo brushe. Bez výběru pouze změní aktuální materiál. **Použít na výběr** jej znovu nanese. Použití textury odstraní barevný nátěr či přechod na těchto stěnách, jejich UV mapování zachová. **Vybrat** nabízí Vybrat brushe s ním a Vybrat stěny s ním. **Nahradit** zamění jeden materiál za jiný v celé mapě nebo jen ve výběru.

@@ -173,6 +173,8 @@ De två talen är **Radie (enheter)** och **Styrka (%)**. Bara hörnen på den s
 
 När skulpteringen är klar markerar du terrängen och väljer Geometri → **Slå ihop pelare**, eller knappen i fönstret **Skulptera**. Grannpelare som tillsammans bildar en konvex brush och ser likadana ut blir en brush, så platta partier blir några få stora brushar. Ytan flyttar sig inte, och sammanslagningen ångras i ett steg.
 
+För terräng som i voxelspel delar du i **Kvadrat**-pelare och slår på **Block** i fönstret **Skulptera**. Ett drag flyttar då hela ovansidan av varje pelare i hela rutnätssteg och håller sidorna lodräta, så marken stiger i trappsteg. Alla lägen fungerar som förut; små drag läggs ihop tills en pelare har stigit ett helt steg. Pelare med andra former lämnas orörda.
+
 # Material och UV
 ## Läsa in och tillämpa material
 Öppna avsnittet **Material** på fliken Yta. **Läs in mapp** lägger till en mapp med bilder och **Läs in .wad** lägger till ett texturpaket; båda visas under **Samlingar**, där krysset tar bort en. Skriv i **Filtrera material** för att begränsa listan. Klicka på ett material för att göra det aktuellt, och **Applicera på markering** lägger det sedan på varje markerad yta. **Markera** erbjuder Markera brushar med det och Markera ytor med det. **Ersätt** byter ett material mot ett annat i hela kartan eller bara i markeringen.

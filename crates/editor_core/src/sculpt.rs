@@ -100,6 +100,9 @@ pub struct SculptParameters {
     pub direction: SculptDirection,
     /// What Split into columns cuts a brush into.
     pub columns: ColumnShape,
+    /// Whether a stroke moves square columns as blocks, by whole grid steps with
+    /// upright sides, rather than bending their tops.
+    pub blocks: bool,
     /// The brush's radius in map units, measured across the ground.
     pub radius: f64,
     /// How much one dab does, from 0 to 1: Raise and Lower move the centre by a tenth of
@@ -113,6 +116,7 @@ impl Default for SculptParameters {
             mode: SculptMode::Raise,
             direction: SculptDirection::Up,
             columns: ColumnShape::Triangles,
+            blocks: false,
             radius: 128.0,
             strength: 0.25,
         }

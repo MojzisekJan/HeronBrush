@@ -173,6 +173,8 @@ A két szám a **Sugár (egység)** és az **Erősség (%)**. Csak a húzás ál
 
 Ha végzett a formázással, jelölje ki a terepet, és válassza a Geometria → **Oszlopok egyesítése** parancsot vagy a(z) **Formázás** ablak gombját. Az egymás melletti oszlopok, amelyek együtt konvex brusht alkotnak és ugyanúgy néznek ki, egy brushsá olvadnak, így a sík részekből néhány nagy brush lesz. A felület nem mozdul, és az egyesítés egy lépésben visszavonható.
 
+Voxeljátékokhoz hasonló terephez bontsd **Négyzet** oszlopokra, és kapcsold be a **Kockák** beállítást a(z) **Formázás** ablakban. Egy húzás ekkor minden oszlop teljes tetejét egész rácslépésekkel mozgatja, az oldalakat függőlegesen hagyja, így a terep lépcsőzetesen emelkedik. Minden mód úgy működik, mint eddig; a kis húzások összeadódnak, amíg egy oszlop egy teljes lépést nem emelkedik. A más alakú oszlopok nem változnak.
+
 # Anyagok és UV-k
 ## Anyagok betöltése és alkalmazása
 Nyissa meg a Lap lap **Anyagok** szakaszát. A **Mappa betöltése** egy képeket tartalmazó mappát, a **.wad betöltése** egy textúracsomagot ad hozzá; mindkettő a **Gyűjtemények** alatt jelenik meg, ahol a kereszt eltávolítja őket. A lista szűkítéséhez írjon az **Anyagok szűrése** mezőbe. Egy anyagra kattintva az lesz az aktuális, majd az **Alkalmazás a kijelölésre** minden kijelölt lapra felteszi. A **Kijelölés** menü a Brush-ok kijelölése, amelyek ezt használják és a Lapok kijelölése, amelyek ezt használják lehetőséget kínálja. A **Csere** egy anyagot egy másikra cserél az egész térképen vagy csak a kijelölésben.

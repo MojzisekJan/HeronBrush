@@ -173,6 +173,8 @@ Los dos números son **Radio (unidades)** y **Fuerza (%)**. Solo se mueven las e
 
 Cuando termines de esculpir, selecciona el terreno y elige Geometría → **Unir columnas**, o el botón de la ventana **Esculpir**. Las columnas vecinas que juntas forman un brush convexo y se ven igual pasan a ser un solo brush, así que las zonas planas quedan en unos pocos brushes grandes. La superficie no se mueve y la unión se deshace en un paso.
 
+Para un terreno como el de los juegos de vóxeles, divide en columnas **Cuadrado** y activa **Bloques** en la ventana **Esculpir**. Un trazo mueve entonces toda la parte superior de cada columna por pasos enteros de cuadrícula y deja sus lados verticales, así que el suelo sube en escalones. Todos los modos funcionan igual; los toques pequeños se suman hasta un paso entero. Las columnas de otras formas no cambian.
+
 # Materiales y UV
 ## Cargar y aplicar materiales
 Abre la sección **Materiales** de la pestaña Cara. **Cargar carpeta** añade una carpeta de imágenes y **Cargar .wad** añade un paquete de texturas; ambos aparecen en **Colecciones**, donde la cruz quita uno. Escribe en **Filtrar materiales** para acotar la lista. Haz clic en un material para que sea el actual y, después, **Aplicar a la selección** lo pone en todas las caras seleccionadas. **Seleccionar** ofrece Seleccionar los brushes que lo usan y Seleccionar las caras que lo usan. **Reemplazar** cambia un material por otro en todo el mapa o solo en la selección.

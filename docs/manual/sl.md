@@ -173,6 +173,8 @@ Dve števili sta **Polmer (enote)** in **Moč (%)**. Premikajo se le koti na str
 
 Ko končate z oblikovanjem, izberite teren in nato Geometrija → **Združi stebre** ali gumb v oknu **Oblikovanje**. Sosednji stebri, ki skupaj tvorijo konveksen brush in so videti enako, postanejo en brush, zato ravni deli postanejo nekaj velikih brushev. Površina se ne premakne, združevanje pa razveljavite v enem koraku.
 
+Za teren kot v voxel igrah razdelite na stebre **Kvadrat** in v oknu **Oblikovanje** vklopite **Kocke**. Poteza tedaj premika ves vrh vsakega stebra za cele korake mreže in pusti stranice navpične, zato teren raste v stopnicah. Vsi načini delujejo kot prej; majhne poteze se seštevajo, dokler steber ne zraste za cel korak. Stebri drugih oblik ostanejo nespremenjeni.
+
 # Materiali in UV
 ## Nalaganje in uporaba materialov
 Odprite razdelek **Materiali** na zavihku Ploskev. **Naloži mapo** doda mapo slik, **Naloži .wad** pa paket tekstur; oboje se prikaže pod **Zbirke**, kjer križec element odstrani. Za zožitev seznama tipkajte v **Filtriraj materiale**. S klikom material postane trenutni, **Uporabi za izbor** pa ga nanese na vse izbrane ploskve. **Izberi** ponuja Izberi brushe z njim in Izberi ploskve z njim. **Zamenjaj** zamenja en material z drugim v celotnem zemljevidu ali samo v izboru.

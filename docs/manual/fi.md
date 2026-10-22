@@ -173,6 +173,8 @@ Kaksi lukua ovat **Säde (yksikköä)** ja **Voimakkuus (%)**. Vain sen puolen k
 
 Kun muotoilu on valmis, valitse maasto ja valitse Geometria → **Yhdistä pylväät** tai ikkunan **Muotoile** painike. Vierekkäiset pylväät, jotka yhdessä muodostavat kuperan brushin ja näyttävät samalta, yhdistyvät yhdeksi brushiksi, joten tasaisista kohdista jää muutama suuri brush. Pinta ei liiku, ja yhdistämisen voi kumota yhdellä askeleella.
 
+Vokselipelien kaltaista maastoa varten jaa **Neliö**-pylväisiin ja kytke **Palikat** päälle ikkunassa **Muotoile**. Veto siirtää silloin jokaisen pylvään koko yläpintaa kokonaisin ruudukon askelin ja pitää sivut pystysuorina, joten maasto nousee portaittain. Kaikki tilat toimivat kuten ennen; pienet vedot kasautuvat, kunnes pylväs on noussut kokonaisen askeleen. Muun muotoiset pylväät jäävät ennalleen.
+
 # Materiaalit ja UV:t
 ## Materiaalien lataaminen ja käyttäminen
 Avaa Tahko-välilehden **Materiaalit**-osio. **Lataa kansio** lisää kuvakansion ja **Lataa .wad** lisää tekstuuripaketin; molemmat näkyvät kohdassa **Kokoelmat**, jossa risti poistaa sellaisen. Kirjoita kenttään **Suodata materiaaleja** rajataksesi luetteloa. Napsauta materiaalia tehdäksesi siitä nykyisen, ja **Käytä valintaan** asettaa sen jokaiselle valitulle tahkolle. **Valitse** tarjoaa vaihtoehdot Valitse brushit, joissa se on ja Valitse tahkot, joissa se on. **Korvaa** vaihtaa materiaalin toiseen koko kartassa tai vain valinnassa.

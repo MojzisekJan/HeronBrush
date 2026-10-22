@@ -245,6 +245,8 @@ The two numbers are **Radius (units)** and **Strength (%)**. Only the corners on
 
 When the sculpting is done, select the terrain and choose Geometry → **Merge columns**, or the button in the **Sculpt** window. Neighbouring columns that together make a convex brush and look the same become one brush, so flat stretches turn into a few large brushes. The surface does not move, and the merge undoes in one step.
 
+For terrain like a voxel game's, split into **Square** columns and turn on **Blocks** in the **Sculpt** window. A stroke then moves each column's whole top by whole grid steps and keeps its sides upright, so the ground rises in steps. Raise, Lower, Smooth and Flatten work as before; small dabs add up until a column has risen a whole step. Columns of other shapes are left alone.
+
 # Materials and UVs
 ## Loading and applying materials
 Open the Face tab's **Materials** section. **Load folder** adds a folder of images and **Load .wad** adds a texture package; both appear under **Collections**, where the cross removes one. Type in **Filter materials** to narrow the list. Click a material to make it current and apply it immediately to the selected faces or brushes. Without a selection it only changes the current material. **Apply to selection** reapplies it. Assigning a texture removes solid or gradient paint on those faces while preserving their UV mapping. **Select** offers Select brushes with it and Select faces with it. **Replace** swaps one material for another across the map or only in the selection.

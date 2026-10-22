@@ -173,6 +173,8 @@ De to tallene er **Radius (enheter)** og **Styrke (%)**. Bare hjørnene på den 
 
 Når modelleringen er ferdig, merker du terrenget og velger Geometri → **Slå sammen søyler**, eller knappen i vinduet **Modeller**. Nabosøyler som sammen danner en konveks brush og ser like ut, blir én brush, så flate partier blir noen få store brushes. Overflaten flytter seg ikke, og sammenslåingen angres i ett steg.
 
+For terreng som i voxelspill deler du i **Kvadrat**-søyler og slår på **Blokker** i vinduet **Modeller**. Et strøk flytter da hele toppen av hver søyle i hele rutetrinn og holder sidene loddrette, så bakken stiger i trinn. Alle modusene virker som før; små strøk legges sammen til en søyle har steget et helt trinn. Søyler med andre former røres ikke.
+
 # Materialer og UV-er
 ## Laste inn og bruke materialer
 Åpne seksjonen **Materialer** på fanen Flate. **Last inn mappe** legger til en mappe med bilder, og **Last inn .wad** legger til en teksturpakke; begge vises under **Samlinger**, der krysset fjerner en av dem. Skriv i **Filtrer materialer** for å snevre inn listen. Klikk på et materiale for å gjøre det gjeldende, og **Bruk på utvalget** legger det deretter på alle valgte flater. **Velg** tilbyr Velg brusher med det og Velg flater med det. **Erstatt** bytter ut ett materiale med et annet i hele kartet eller bare i utvalget.

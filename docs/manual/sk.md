@@ -173,6 +173,8 @@ Dve čísla sú **Polomer (jednotky)** a **Sila (%)**. Posúvajú sa len rohy na
 
 Keď budete so sochaním hotoví, vyberte terén a zvoľte Geometria → **Zlúčiť stĺpce**, alebo tlačidlo v okne **Sochať**. Susedné stĺpce, ktoré spolu tvoria konvexný brush a vyzerajú rovnako, sa zlúčia do jedného, takže z rovných plôch zostane pár veľkých brushov. Povrch sa nepohne a zlúčenie sa vracia jedným krokom späť.
 
+Pre terén ako vo voxelových hrách rozdeľte na stĺpce **Štvorec** a v okne **Sochať** zapnite **Kocky**. Ťah potom posúva celý vrch každého stĺpca po celých krokoch mriežky a boky necháva zvislé, takže terén stúpa v schodoch. Všetky režimy fungujú ako predtým; malé ťahy sa sčítavajú, kým stĺpec nevystúpi o celý krok. Stĺpce iných tvarov zostanú, ako sú.
+
 # Materiály a UV
 ## Načítanie a použitie materiálov
 Otvorte sekciu **Materiály** na karte Stena. **Načítať priečinok** pridá priečinok obrázkov a **Načítať .wad** balík textúr; oba sa objavia v **Kolekcie**, kde ich krížik odoberie. Písaním do **Filtrovať materiály** zúžite zoznam. Kliknutím zvolíte aktuálny materiál a **Použiť na výber** ho dá na všetky vybrané steny. **Vybrať** ponúka Vybrať brushe s ním a Vybrať steny s ním. **Nahradiť** zamení jeden materiál za iný v celej mape alebo len vo výbere.

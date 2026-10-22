@@ -173,6 +173,8 @@ Aynı pencerede **Yön** hangi yöne gidileceğini seçer:
 
 Şekillendirme bittiğinde araziyi seçin ve Geometri → **Sütunları birleştir** komutunu ya da **Şekillendir** penceresindeki düğmeyi seçin. Birlikte dışbükey bir brush oluşturan ve aynı görünen komşu sütunlar tek bir brush olur; böylece düz bölgeler birkaç büyük brush'a dönüşür. Yüzey kıpırdamaz ve birleştirme tek adımda geri alınır.
 
+Voksel oyunlarındaki gibi bir arazi için **Kare** sütunlara bölün ve **Şekillendir** penceresinde **Bloklar** seçeneğini açın. Bir fırça darbesi o zaman her sütunun tüm üstünü tam ızgara adımlarıyla taşır ve yanlarını dik bırakır; zemin basamak basamak yükselir. Tüm kipler eskisi gibi çalışır; küçük darbeler bir sütun tam bir adım yükselene kadar toplanır. Başka biçimdeki sütunlara dokunulmaz.
+
 # Malzemeler ve UV'ler
 ## Malzemeleri yükleme ve uygulama
 Yüzey sekmesinin **Malzemeler** bölümünü açın. **Klasör yükle** bir görüntü klasörü, **.wad yükle** ise bir doku paketi ekler; ikisi de **Koleksiyonlar** altında görünür ve çarpı işaretiyle kaldırılabilir. Listeyi daraltmak için **Malzemeleri süz** alanına yazın. Bir malzemeyi geçerli malzeme yapmak için üzerine tıklayın; ardından **Seçime uygula** onu tüm seçili yüzeylere uygular. **Seç** menüsü, Bu malzemeyi taşıyan fırçaları seç ve Bu malzemeyi taşıyan yüzeyleri seç seçeneklerini sunar. **Değiştir** bir malzemeyi tüm haritada ya da yalnızca seçimde başka bir malzemeyle değiştirir.

@@ -173,6 +173,8 @@ Du skaičiai yra **Spindulys (vienetai)** ir **Stiprumas (%)**. Juda tik kampai 
 
 Baigę lipdyti, pažymėkite reljefą ir pasirinkite Geometrija → **Sujungti stulpus** arba mygtuką lange **Lipdymas**. Gretimi stulpai, kurie kartu sudaro iškilą brush'ą ir atrodo vienodai, tampa vienu brush'u, todėl lygūs plotai virsta keliais dideliais brush'ais. Paviršius nepajuda, o sujungimą galima atšaukti vienu žingsniu.
 
+Reljefui kaip vokselinių žaidimų padalykite į **Kvadratas** stulpus ir lange **Lipdymas** įjunkite **Blokai**. Brūkšnys tada kelia visą kiekvieno stulpo viršų visais tinklelio žingsniais ir palieka šonus stačius, todėl reljefas kyla laiptais. Visi režimai veikia kaip anksčiau; maži brūkšniai sumuojasi, kol stulpas pakyla visu žingsniu. Kitų formų stulpai lieka nepakitę.
+
 # Medžiagos ir UV
 ## Medžiagų įkėlimas ir taikymas
 Atverkite kortelės Sienelė skyrių **Medžiagos**. **Įkelti aplanką** prideda paveikslėlių aplanką, o **Įkelti .wad** – tekstūrų paketą; abu atsiranda po **Kolekcijos**, kur kryželis vieną pašalina. Rašykite į **Filtruoti medžiagas**, kad susiaurintumėte sąrašą. Spustelėkite medžiagą, kad ji taptų dabartine, tada **Taikyti pažymėtiems** uždeda ją ant kiekvienos pažymėtos sienelės. **Pažymėti** siūlo Pažymėti brašus su ja ir Pažymėti sieneles su ja. **Pakeisti** sukeičia vieną medžiagą kita visame žemėlapyje arba tik pažymėtuose objektuose.

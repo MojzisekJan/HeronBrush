@@ -173,6 +173,8 @@ Les deux nombres sont **Rayon (unités)** et **Force (%)**. Seuls les coins du c
 
 Une fois la sculpture terminée, sélectionnez le terrain et choisissez Géométrie → **Fusionner les colonnes**, ou le bouton de la fenêtre **Sculpter**. Les colonnes voisines qui forment ensemble une brush convexe et ont le même aspect deviennent une seule brush : les zones plates se réduisent à quelques grandes brushes. La surface ne bouge pas, et la fusion s'annule en une seule étape.
 
+Pour un terrain comme dans les jeux voxel, découpez en colonnes **Carré** et activez **Blocs** dans la fenêtre **Sculpter**. Un trait déplace alors tout le dessus de chaque colonne par pas de grille entiers et garde ses côtés verticaux : le sol monte en marches. Tous les modes fonctionnent comme avant ; les petites touches s'additionnent jusqu'à un pas entier. Les colonnes d'autres formes ne bougent pas.
+
 # Matériaux et UV
 ## Charger et appliquer des matériaux
 Ouvrez la section **Matériaux** de l’onglet Face. **Charger un dossier** ajoute un dossier d’images et **Charger un .wad** ajoute un paquet de textures ; tous deux apparaissent sous **Collections**, où la croix en retire un. Tapez dans **Filtrer les matériaux** pour restreindre la liste. Cliquez sur un matériau pour le rendre courant, puis **Appliquer à la sélection** le pose sur toutes les faces sélectionnées. **Sélectionner** propose Sélectionner les brushes l'utilisant et Sélectionner les faces l'utilisant. **Remplacer** substitue un matériau à un autre dans toute la carte ou seulement dans la sélection.

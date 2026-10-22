@@ -173,6 +173,8 @@ Dwie liczby to **Promień (jednostki)** i **Siła (%)**. Przesuwają się tylko 
 
 Po skończeniu rzeźbienia zaznacz teren i wybierz Geometria → **Scal słupy** albo przycisk w oknie **Rzeźbienie**. Sąsiednie słupy, które razem tworzą wypukły brush i wyglądają tak samo, stają się jednym brushem, więc płaskie fragmenty zamieniają się w kilka dużych brushów. Powierzchnia się nie przesuwa, a scalenie cofa się jednym krokiem.
 
+Aby uzyskać teren jak w grach wokselowych, podziel na słupy **Kwadrat** i włącz **Bloki** w oknie **Rzeźbienie**. Pociągnięcie przesuwa wtedy cały wierzch każdego słupa o całe kroki siatki i zostawia boki pionowe, więc teren wznosi się stopniami. Wszystkie tryby działają jak dotąd; małe pociągnięcia sumują się, aż słup wzrośnie o cały krok. Słupy innych kształtów zostają bez zmian.
+
 # Materiały i UV
 ## Wczytywanie i nakładanie materiałów
 Otwórz sekcję **Materiały** na karcie Ściana. **Wczytaj folder** dodaje folder obrazów, a **Wczytaj .wad** dodaje pakiet tekstur; oba pojawiają się w **Kolekcje**, gdzie krzyżyk usuwa wybraną pozycję. Wpisz tekst w **Filtruj materiały**, aby zawęzić listę. Kliknij materiał, aby uczynić go bieżącym, a **Zastosuj do zaznaczenia** nałoży go na wszystkie zaznaczone ściany. **Zaznacz** oferuje Zaznacz brushe z tym materiałem i Zaznacz ściany z tym materiałem. **Zastąp** zamienia jeden materiał na inny w całej mapie lub tylko w zaznaczeniu.

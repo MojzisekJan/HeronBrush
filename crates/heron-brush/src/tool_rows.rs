@@ -465,6 +465,19 @@ pub fn sculpt_controls(ui: &mut egui::Ui, cell: f64) -> Option<crate::app_action
         widgets::segmented_choice(ui, "sculpt-columns", &shapes, &mut shape, control);
     });
     parameters.columns = ColumnShape::ALL[shape];
+    ui.horizontal(|ui| {
+        ui.add_space(label_width + gap - ui.spacing().item_spacing.x);
+        ui.vertical(|ui| {
+            ui.set_max_width(control);
+            crate::widgets::checkbox(ui, &mut parameters.blocks, tr("Blocks"));
+            ui.label(
+                egui::RichText::new(tr(
+                    "Square columns move by whole grid steps, with upright sides.",
+                ))
+                .color(theme::dim()),
+            );
+        });
+    });
     sculpt::set_parameters(parameters);
     // How wide the columns come out, and a warning when that is finer than brush
     // terrain suits.

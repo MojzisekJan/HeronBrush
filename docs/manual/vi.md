@@ -173,6 +173,8 @@ Hai số là **Bán kính (đơn vị)** và **Cường độ (%)**. Chỉ các 
 
 Khi điêu khắc xong, hãy chọn địa hình rồi chọn Hình học → **Gộp cột**, hoặc nút trong cửa sổ **Điêu khắc**. Các cột liền kề cùng tạo thành một brush lồi và trông giống nhau sẽ gộp thành một brush, nên các vùng phẳng chỉ còn vài brush lớn. Bề mặt không xê dịch, và thao tác gộp được hoàn tác trong một bước.
 
+Để có địa hình như trong game voxel, hãy chia thành cột **Vuông** và bật **Khối** trong cửa sổ **Điêu khắc**. Khi đó mỗi nét di chuyển toàn bộ mặt trên của từng cột theo từng bước lưới trọn vẹn và giữ các mặt bên thẳng đứng, nên mặt đất nhô lên thành bậc. Mọi chế độ vẫn hoạt động như trước; các nét nhỏ cộng dồn cho đến khi cột lên đủ một bước. Cột có hình dạng khác được giữ nguyên.
+
 # Vật liệu và UV
 ## Tải và áp dụng vật liệu
 Mở phần **Vật liệu** của thẻ Mặt. **Tải thư mục** thêm một thư mục ảnh và **Tải .wad** thêm một gói texture; cả hai xuất hiện trong **Bộ sưu tập**, nơi dấu chéo dùng để gỡ bỏ. Nhập vào **Lọc vật liệu** để thu hẹp danh sách. Nhấp vào một vật liệu để đặt nó làm vật liệu hiện hành, rồi **Áp dụng cho vùng chọn** gán nó cho mọi mặt đang chọn. **Chọn** có Chọn brush dùng vật liệu này và Chọn mặt dùng vật liệu này. **Thay thế** đổi một vật liệu thành vật liệu khác trên toàn bản đồ hoặc chỉ trong vùng chọn.

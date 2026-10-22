@@ -173,6 +173,8 @@ Die zwei Zahlen sind **Radius (Einheiten)** und **Stärke (%)**. Nur die Ecken a
 
 Wenn das Modellieren fertig ist, wähle das Terrain aus und dann Geometrie → **Säulen zusammenfügen** oder die Schaltfläche im Fenster **Modellieren**. Benachbarte Säulen, die zusammen einen konvexen Brush ergeben und gleich aussehen, werden zu einem, sodass flache Stellen zu wenigen großen Brushes werden. Die Oberfläche bewegt sich nicht, und das Zusammenfügen lässt sich in einem Schritt rückgängig machen.
 
+Für Terrain wie in Voxel-Spielen teile in **Quadrat**-Säulen und schalte im Fenster **Modellieren** **Blöcke** ein. Ein Strich bewegt dann die ganze Oberseite jeder Säule in ganzen Rasterschritten und lässt die Seiten senkrecht, sodass das Gelände in Stufen ansteigt. Alle Modi wirken wie zuvor; kleine Tupfer summieren sich, bis eine Säule einen ganzen Schritt gestiegen ist. Säulen anderer Form bleiben, wie sie sind.
+
 # Materialien und UVs
 ## Materialien laden und zuweisen
 Öffnen Sie im Tab Fläche den Abschnitt **Materialien**. **Einen Ordner laden** fügt einen Ordner mit Bildern hinzu und **Eine .wad laden** ein Texturpaket; beide erscheinen unter **Sammlungen**, wo das Kreuz einen Eintrag entfernt. Tippen Sie in **Materialien filtern**, um die Liste einzugrenzen. Klicken Sie auf ein Material, um es zum aktuellen zu machen; **Auf die Auswahl anwenden** legt es dann auf jede ausgewählte Fläche. **Auswählen** bietet Brushes damit auswählen und Flächen damit auswählen. **Ersetzen** tauscht ein Material gegen ein anderes aus, in der ganzen Map oder nur in der Auswahl.

@@ -173,6 +173,8 @@ Cele două numere sunt **Rază (unități)** și **Putere (%)**. Se mișcă doar
 
 Când ai terminat de sculptat, selectează terenul și alege Geometrie → **Unește coloanele** sau butonul din fereastra **Sculptare**. Coloanele vecine care împreună formează un brush convex și arată la fel devin un singur brush, așa că zonele plane rămân câteva brush-uri mari. Suprafața nu se mișcă, iar unirea se anulează într-un singur pas.
 
+Pentru un teren ca în jocurile voxel, împarte în coloane **Pătrat** și activează **Blocuri** în fereastra **Sculptare**. O trăsătură mută atunci tot vârful fiecărei coloane cu pași întregi de grilă și lasă laturile verticale, așa că terenul urcă în trepte. Toate modurile funcționează ca înainte; atingerile mici se adună până la un pas întreg. Coloanele de alte forme rămân neschimbate.
+
 # Materiale și UV-uri
 ## Încărcarea și aplicarea materialelor
 Deschide secțiunea **Materiale** din fila Față. **Încarcă dosar** adaugă un dosar cu imagini, iar **Încarcă .wad** adaugă un pachet de texturi; amândouă apar sub **Colecții**, unde crucea elimină una dintre ele. Scrie în **Filtrează materialele** pentru a restrânge lista. Fă clic pe un material pentru a-l face curent, apoi **Aplică selecției** îl pune pe fiecare față selectată. **Selectează** oferă Selectează brush-urile cu acesta și Selectează fețele cu acesta. **Înlocuiește** schimbă un material cu altul în toată harta sau doar în selecție.

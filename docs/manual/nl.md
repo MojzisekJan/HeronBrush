@@ -173,6 +173,8 @@ De twee getallen zijn **Straal (eenheden)** en **Sterkte (%)**. Alleen de hoeken
 
 Als het boetseren klaar is, selecteer je het terrein en kies je Geometrie → **Kolommen samenvoegen**, of de knop in het venster **Boetseren**. Naburige kolommen die samen een convexe brush vormen en er hetzelfde uitzien, worden één brush, zodat vlakke stukken een paar grote brushes worden. Het oppervlak verschuift niet, en het samenvoegen maak je in één stap ongedaan.
 
+Voor terrein zoals in voxelgames splits je in **Vierkant**-kolommen en zet je **Blokken** aan in het venster **Boetseren**. Een streek verplaatst dan de hele bovenkant van elke kolom in hele rasterstappen en houdt de zijkanten recht, zodat de grond in treden stijgt. Alle modi werken als voorheen; kleine tikken tellen op tot een hele stap. Kolommen van andere vormen blijven zoals ze zijn.
+
 # Materialen en UV's
 ## Materialen laden en toepassen
 Open de sectie **Materialen** in het tabblad Vlak. **Map laden** voegt een map met afbeeldingen toe en **.wad laden** voegt een texturepakket toe; beide verschijnen onder **Collecties**, waar het kruisje er een verwijdert. Typ in **Materialen filteren** om de lijst te beperken. Klik op een materiaal om het actueel te maken; **Op selectie toepassen** zet het dan op elk geselecteerd vlak. **Selecteren** biedt Brushes ermee selecteren en Vlakken ermee selecteren. **Vervangen** wisselt een materiaal in de hele map of alleen in de selectie om voor een ander.

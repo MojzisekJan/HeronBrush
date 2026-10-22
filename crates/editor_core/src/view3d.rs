@@ -3335,10 +3335,19 @@ impl Scene3d {
             let Some(at) = document.borrow().sculpt_target(&ray) else {
                 return;
             };
-            let Some(mut state) = document
-                .borrow()
-                .begin_sculpt_stroke_under(&ray, crate::sculpt::parameters().direction)
-            else {
+            let parameters = crate::sculpt::parameters();
+            let state = if parameters.blocks {
+                Some(
+                    document
+                        .borrow()
+                        .begin_block_stroke(grid.borrow().actual_size()),
+                )
+            } else {
+                document
+                    .borrow()
+                    .begin_sculpt_stroke_under(&ray, parameters.direction)
+            };
+            let Some(mut state) = state else {
                 return;
             };
             if document

@@ -5,6 +5,8 @@ use super::*;
 use crate::i18n::translation_key;
 use crate::sculpt::{falloff, ColumnShape, SculptDirection, SculptMode, SculptParameters};
 
+mod blocks;
+
 /// The thinnest a column may get: Lower stops this far above its bottom.
 const MIN_THICKNESS: f64 = 1.0;
 
@@ -35,6 +37,8 @@ pub struct SculptStroke {
     ball: bool,
     /// The level Flatten moves to, measured along the stroke: where the stroke began.
     level: Option<f64>,
+    /// For a stroke in blocks, the grid step and each column's height before rounding.
+    blocks: Option<blocks::Blocks>,
 }
 
 /// A vertex position as a key, so the corner several brushes share moves once.
@@ -300,6 +304,7 @@ impl Document {
             along: Vec3d::new(0.0, 0.0, 1.0),
             ball: false,
             level: None,
+            blocks: None,
         }
     }
 
@@ -396,6 +401,9 @@ impl Document {
     ) -> bool {
         if self.revision() != stroke.revision || self.in_transaction() {
             return false;
+        }
+        if stroke.blocks.is_some() {
+            return self.block_dab(centre, parameters, stroke);
         }
         let (along, ball) = (stroke.along, stroke.ball);
         let radius = parameters.radius;
@@ -575,7 +583,12 @@ impl Document {
             .into_iter()
             .map(|(id, brush)| brush_node(id, brush))
             .collect();
+        self.record_dab(stroke, before, after);
+        true
+    }
 
+    /// Applies a dab's change and folds it into the stroke's one undo step.
+    fn record_dab(&mut self, stroke: &mut SculptStroke, before: Vec<Node>, after: Vec<Node>) {
         let length = self.history.undo_len();
         self.apply_and_record(Edit::Changed { before, after });
         // A full history drops its oldest step to make room, which moves the mark.
@@ -583,7 +596,6 @@ impl Document {
         stroke.mark = stroke.mark.saturating_sub(evicted);
         self.history.coalesce_since(stroke.mark);
         stroke.revision = self.revision();
-        true
     }
 
     /// Cuts each selected brush into columns to sculpt, along the world's grid lines
@@ -807,7 +819,7 @@ mod tests {
     use super::*;
 
     /// A 128 × 128 box, 32 tall, selected.
-    fn slab() -> Document {
+    pub(super) fn slab() -> Document {
         let mut d = Document::new(Default::default());
         let bounds = Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(128.0, 128.0, 32.0));
         d.add_brushes(vec![map_model::shapes::create_cuboid(
@@ -820,14 +832,14 @@ mod tests {
     }
 
     /// The slab split into triangular columns, 16 units across, and selected.
-    fn terrain() -> Document {
+    pub(super) fn terrain() -> Document {
         let mut d = slab();
         assert_eq!(d.split_into_columns(16.0, ColumnShape::Triangles), Ok(128));
         d
     }
 
     /// The slab split into square columns, 16 units across, and selected.
-    fn square_terrain() -> Document {
+    pub(super) fn square_terrain() -> Document {
         let mut d = slab();
         assert_eq!(d.split_into_columns(16.0, ColumnShape::Squares), Ok(64));
         d
