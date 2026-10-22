@@ -524,6 +524,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Maximise", "Suurenna"),
     ("Maximize or restore window", "Suurenna tai palauta ikkuna"),
     ("Merge", "Yhdistä"),
+    ("Merge columns", "Yhdistä pylväät"),
     ("Merge groups", "Yhdistä ryhmät"),
     ("Metallic", "Metallisuus"),
     ("Metalness with no material", "Metallisuus ilman materiaalia"),

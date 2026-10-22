@@ -171,6 +171,8 @@ I samme vindue vælger **Retning** hvilken vej:
 
 De to tal er **Radius (enheder)** og **Styrke (%)**. Kun hjørnerne på den side, strøget flytter, bevæger sig; bagsiden bliver, hvor den er, og en søjle forbliver mindst én enhed tyk. Hvor brushes deler et hjørne, flytter de det sammen, så overfladen forbliver lukket. Et strøg fortrydes i ét trin. I 2D-visningerne markerer værktøjet som markeringsværktøjet.
 
+Når modelleringen er færdig, så markér terrænet og vælg Geometri → **Flet søjler**, eller knappen i vinduet **Modellér**. Nabosøjler, der sammen danner en konveks brush og ser ens ud, bliver til én brush, så flade stykker bliver til nogle få store brushes. Overfladen flytter sig ikke, og sammenfletningen fortrydes i ét trin.
+
 # Materialer og UV'er
 ## Indlæsning og anvendelse af materialer
 Åbn sektionen **Materialer** under fanen Flade. **Indlæs mappe** tilføjer en mappe med billeder, og **Indlæs .wad** tilføjer en teksturpakke; begge vises under **Samlinger**, hvor krydset fjerner en. Skriv i **Filtrer materialer** for at indsnævre listen. Klik på et materiale for at gøre det aktuelt, hvorefter **Anvend på markering** lægger det på alle markerede flader. **Markér** tilbyder Markér brushes med det og Markér flader med det. **Erstat** udskifter ét materiale med et andet i hele kortet eller kun i markeringen.

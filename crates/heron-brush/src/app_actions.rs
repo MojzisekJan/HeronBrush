@@ -78,6 +78,7 @@ pub enum Action {
     Array,
     /// Cut the selected box into columns one grid step across, to sculpt.
     SplitColumns,
+    MergeColumns,
     Preferences,
     Plugins,
     Export,
@@ -484,6 +485,19 @@ impl App {
                     Ok(count) => editor_core::say!(
                         "{}",
                         editor_core::i18n::fill("Columns: {}", &[&count.to_string()])
+                    ),
+                    Err(why) => editor_core::say!("{}", tr(why)),
+                }
+            }
+            Action::MergeColumns => {
+                let before = self.editor.document.borrow().selection_count();
+                let result = self.editor.document.borrow_mut().merge_columns();
+                match result {
+                    Ok(removed) => editor_core::say!(
+                        "{}: {} → {}",
+                        tr("Merge columns"),
+                        before,
+                        editor_core::i18n::counted(before - removed, "brush")
                     ),
                     Err(why) => editor_core::say!("{}", tr(why)),
                 }

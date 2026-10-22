@@ -171,6 +171,8 @@ U istom prozoru **Smjer** određuje kamo:
 
 Dva broja su **Polumjer (jedinice)** i **Jačina (%)**. Pomiču se samo kutovi na strani koju potez pomiče; stražnja strana ostaje na mjestu, a stupac ostaje debeo barem jednu jedinicu. Kut koji brushevi dijele pomiče se u svima zajedno, pa površina ostaje zatvorena. Potez se poništava jednim korakom. U 2D prikazima alat odabire kao alat Odabir.
 
+Kad završite s oblikovanjem, odaberite teren i izaberite Geometrija → **Spoji stupce** ili gumb u prozoru **Oblikovanje**. Susjedni stupci koji zajedno čine konveksan brush i jednako izgledaju postaju jedan brush, pa ravni dijelovi postaju nekoliko velikih brusheva. Površina se ne pomiče, a spajanje se poništava u jednom koraku.
+
 # Materijali i UV
 ## Učitavanje i primjena materijala
 Otvorite odjeljak **Materijali** na kartici Ploha. **Učitaj direktorij** dodaje direktorij sa slikama, a **Učitaj .wad** dodaje paket tekstura; oboje se pojavljuje pod **Zbirke**, gdje ih križić uklanja. Upisivanjem u **Filtriraj materijale** sužavate popis. Kliknite materijal da postane trenutačni, a zatim ga **Primijeni na odabir** stavlja na svaku odabranu plohu. **Odaberi** nudi Odaberi brusheve s njim i Odaberi plohe s njim. **Zamijeni** zamjenjuje jedan materijal drugim u cijeloj mapi ili samo u odabiru.

@@ -171,6 +171,8 @@ Aynı pencerede **Yön** hangi yöne gidileceğini seçer:
 
 İki sayı **Yarıçap (birim)** ve **Güç (%)** değerleridir. Yalnızca darbenin taşıdığı taraftaki köşeler hareket eder; arka taraf yerinde kalır ve bir sütun en az bir birim kalınlıkta kalır. Brush'lar paylaştıkları bir köşeyi birlikte taşır, böylece yüzey kapalı kalır. Bir darbe tek adımda geri alınır. 2D görünümlerde araç, Seçim aracı gibi seçer.
 
+Şekillendirme bittiğinde araziyi seçin ve Geometri → **Sütunları birleştir** komutunu ya da **Şekillendir** penceresindeki düğmeyi seçin. Birlikte dışbükey bir brush oluşturan ve aynı görünen komşu sütunlar tek bir brush olur; böylece düz bölgeler birkaç büyük brush'a dönüşür. Yüzey kıpırdamaz ve birleştirme tek adımda geri alınır.
+
 # Malzemeler ve UV'ler
 ## Malzemeleri yükleme ve uygulama
 Yüzey sekmesinin **Malzemeler** bölümünü açın. **Klasör yükle** bir görüntü klasörü, **.wad yükle** ise bir doku paketi ekler; ikisi de **Koleksiyonlar** altında görünür ve çarpı işaretiyle kaldırılabilir. Listeyi daraltmak için **Malzemeleri süz** alanına yazın. Bir malzemeyi geçerli malzeme yapmak için üzerine tıklayın; ardından **Seçime uygula** onu tüm seçili yüzeylere uygular. **Seç** menüsü, Bu malzemeyi taşıyan fırçaları seç ve Bu malzemeyi taşıyan yüzeyleri seç seçeneklerini sunar. **Değiştir** bir malzemeyi tüm haritada ya da yalnızca seçimde başka bir malzemeyle değiştirir.

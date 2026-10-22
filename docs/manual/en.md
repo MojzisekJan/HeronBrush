@@ -243,6 +243,8 @@ In the same window, **Direction** chooses which way:
 
 The two numbers are **Radius (units)** and **Strength (%)**. Only the corners on the side the stroke moves move; the back stays where it is, and a column stays at least one unit thick. Where brushes share a corner they move it together, so the surface stays closed. A stroke undoes in one step. In the 2D views the tool selects as the Select tool does.
 
+When the sculpting is done, select the terrain and choose Geometry → **Merge columns**, or the button in the **Sculpt** window. Neighbouring columns that together make a convex brush and look the same become one brush, so flat stretches turn into a few large brushes. The surface does not move, and the merge undoes in one step.
+
 # Materials and UVs
 ## Loading and applying materials
 Open the Face tab's **Materials** section. **Load folder** adds a folder of images and **Load .wad** adds a texture package; both appear under **Collections**, where the cross removes one. Type in **Filter materials** to narrow the list. Click a material to make it current and apply it immediately to the selected faces or brushes. Without a selection it only changes the current material. **Apply to selection** reapplies it. Assigning a texture removes solid or gradient paint on those faces while preserving their UV mapping. **Select** offers Select brushes with it and Select faces with it. **Replace** swaps one material for another across the map or only in the selection.

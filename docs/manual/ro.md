@@ -171,6 +171,8 @@ Alege unealta **Sculptare** (`J`) și trage peste suprafață în vizualizarea 3
 
 Cele două numere sunt **Rază (unități)** și **Putere (%)**. Se mișcă doar colțurile de pe partea pe care o mișcă trăsătura; spatele rămâne pe loc, iar o coloană rămâne groasă de cel puțin o unitate. Unde brush-urile au un colț comun, îl mută împreună, așa că suprafața rămâne închisă. O trăsătură se anulează într-un pas. În vizualizările 2D unealta selectează la fel ca unealta Selectare.
 
+Când ai terminat de sculptat, selectează terenul și alege Geometrie → **Unește coloanele** sau butonul din fereastra **Sculptare**. Coloanele vecine care împreună formează un brush convex și arată la fel devin un singur brush, așa că zonele plane rămân câteva brush-uri mari. Suprafața nu se mișcă, iar unirea se anulează într-un singur pas.
+
 # Materiale și UV-uri
 ## Încărcarea și aplicarea materialelor
 Deschide secțiunea **Materiale** din fila Față. **Încarcă dosar** adaugă un dosar cu imagini, iar **Încarcă .wad** adaugă un pachet de texturi; amândouă apar sub **Colecții**, unde crucea elimină una dintre ele. Scrie în **Filtrează materialele** pentru a restrânge lista. Fă clic pe un material pentru a-l face curent, apoi **Aplică selecției** îl pune pe fiecare față selectată. **Selectează** oferă Selectează brush-urile cu acesta și Selectează fețele cu acesta. **Înlocuiește** schimbă un material cu altul în toată harta sau doar în selecție.

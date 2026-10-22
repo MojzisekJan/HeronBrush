@@ -530,6 +530,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Maximise", "Развернуть"),
     ("Maximize or restore window", "Развернуть или восстановить окно"),
     ("Merge", "Объединить"),
+    ("Merge columns", "Объединить столбцы"),
     ("Merge groups", "Слить группы"),
     ("Metallic", "Металличность"),
     ("Metalness with no material", "Металличность без материала"),

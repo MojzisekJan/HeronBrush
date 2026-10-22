@@ -295,6 +295,7 @@ pub fn menus(
             item(tr("Join corner"), Action::Corner).icon(icon::ANGLE),
             item(tr("Array"), Action::Array).icon(icon::DOTS_NINE),
             item(tr("Split into columns"), Action::SplitColumns).icon(icon::MOUNTAINS),
+            item(tr("Merge columns"), Action::MergeColumns).icon(icon::UNITE),
             Entry::Separator,
             item(tr("Convert faces to patches"), Action::Patches).icon(icon::BEZIER_CURVE),
             item(tr("Move selection out of its entity"), Action::Structural)
@@ -924,7 +925,7 @@ impl Chrome {
             // The sculpt brush's direction and the columns' shape, in a window like the
             // fillet's, so the strip keeps to what changes while sculpting.
             if self.sculpt_window {
-                let mut split = false;
+                let mut chosen = None;
                 let mut close = false;
                 self.sculpt_window = crate::dialog::show_tool(
                     ui.ctx(),
@@ -932,14 +933,14 @@ impl Chrome {
                     tr("Sculpt"),
                     [420.0, 200.0],
                     |ui, part| match part {
-                        crate::dialog::Part::Body => split |= crate::tool_rows::sculpt_controls(ui),
+                        crate::dialog::Part::Body => chosen = crate::tool_rows::sculpt_controls(ui),
                         crate::dialog::Part::Actions => {
                             close |= crate::dialog::button(ui, tr("Close"), true).clicked();
                         }
                     },
                 ) && !close;
-                if split {
-                    self.action = Some(Action::SplitColumns);
+                if chosen.is_some() {
+                    self.action = chosen;
                 }
             }
             // The fillet's settings in a window of their own, beside the views it works in.

@@ -171,6 +171,8 @@ Samassa ikkunassa **Suunta** valitsee, mihin suuntaan:
 
 Kaksi lukua ovat **Säde (yksikköä)** ja **Voimakkuus (%)**. Vain sen puolen kulmat liikkuvat, jota veto siirtää; takapuoli pysyy paikallaan ja pylväs pysyy vähintään yhden yksikön paksuisena. Kun brusheilla on yhteinen kulma, ne siirtävät sitä yhdessä, joten pinta pysyy suljettuna. Veto perutaan yhdellä askeleella. 2D-näkymissä työkalu valitsee kuten valintatyökalu.
 
+Kun muotoilu on valmis, valitse maasto ja valitse Geometria → **Yhdistä pylväät** tai ikkunan **Muotoile** painike. Vierekkäiset pylväät, jotka yhdessä muodostavat kuperan brushin ja näyttävät samalta, yhdistyvät yhdeksi brushiksi, joten tasaisista kohdista jää muutama suuri brush. Pinta ei liiku, ja yhdistämisen voi kumota yhdellä askeleella.
+
 # Materiaalit ja UV:t
 ## Materiaalien lataaminen ja käyttäminen
 Avaa Tahko-välilehden **Materiaalit**-osio. **Lataa kansio** lisää kuvakansion ja **Lataa .wad** lisää tekstuuripaketin; molemmat näkyvät kohdassa **Kokoelmat**, jossa risti poistaa sellaisen. Kirjoita kenttään **Suodata materiaaleja** rajataksesi luetteloa. Napsauta materiaalia tehdäksesi siitä nykyisen, ja **Käytä valintaan** asettaa sen jokaiselle valitulle tahkolle. **Valitse** tarjoaa vaihtoehdot Valitse brushit, joissa se on ja Valitse tahkot, joissa se on. **Korvaa** vaihtaa materiaalin toiseen koko kartassa tai vain valinnassa.

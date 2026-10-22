@@ -408,9 +408,10 @@ pub fn sculpt_row(ui: &mut egui::Ui, open: bool) -> bool {
 }
 
 /// The sculpt brush's settings for its window, as a form like the fillet's: which way a
-/// stroke moves the surface, and the shape of the columns, with the split beside it.
-/// Returns whether Split into columns was clicked.
-pub fn sculpt_controls(ui: &mut egui::Ui) -> bool {
+/// stroke moves the surface, and the shape of the columns, with the split and the merge
+/// beside it. Returns the one of those two that was clicked.
+pub fn sculpt_controls(ui: &mut egui::Ui) -> Option<crate::app_actions::Action> {
+    use crate::app_actions::Action;
     use editor_core::sculpt::{self, ColumnShape, SculptDirection};
     let mut parameters = sculpt::parameters();
     let labels = [tr("Direction:"), tr("Column shape:")];
@@ -463,10 +464,15 @@ pub fn sculpt_controls(ui: &mut egui::Ui) -> bool {
     });
     parameters.columns = ColumnShape::ALL[shape];
     sculpt::set_parameters(parameters);
-    let mut split = false;
+    let mut chosen = None;
     ui.horizontal(|ui| {
         ui.add_space(label_width + gap - ui.spacing().item_spacing.x);
-        split = ui.button(tr("Split into columns")).clicked();
+        if ui.button(tr("Split into columns")).clicked() {
+            chosen = Some(Action::SplitColumns);
+        }
+        if ui.button(tr("Merge columns")).clicked() {
+            chosen = Some(Action::MergeColumns);
+        }
     });
-    split
+    chosen
 }

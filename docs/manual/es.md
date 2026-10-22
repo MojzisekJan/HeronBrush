@@ -171,6 +171,8 @@ En la misma ventana, **Dirección** elige hacia dónde:
 
 Los dos números son **Radio (unidades)** y **Fuerza (%)**. Solo se mueven las esquinas del lado que mueve el trazo; la parte de atrás se queda donde está y una columna mantiene al menos una unidad de grosor. Donde los brushes comparten una esquina, la mueven juntos, así que la superficie sigue cerrada. Un trazo se deshace en un solo paso. En las vistas 2D la herramienta selecciona como la herramienta Seleccionar.
 
+Cuando termines de esculpir, selecciona el terreno y elige Geometría → **Unir columnas**, o el botón de la ventana **Esculpir**. Las columnas vecinas que juntas forman un brush convexo y se ven igual pasan a ser un solo brush, así que las zonas planas quedan en unos pocos brushes grandes. La superficie no se mueve y la unión se deshace en un paso.
+
 # Materiales y UV
 ## Cargar y aplicar materiales
 Abre la sección **Materiales** de la pestaña Cara. **Cargar carpeta** añade una carpeta de imágenes y **Cargar .wad** añade un paquete de texturas; ambos aparecen en **Colecciones**, donde la cruz quita uno. Escribe en **Filtrar materiales** para acotar la lista. Haz clic en un material para que sea el actual y, después, **Aplicar a la selección** lo pone en todas las caras seleccionadas. **Seleccionar** ofrece Seleccionar los brushes que lo usan y Seleccionar las caras que lo usan. **Reemplazar** cambia un material por otro en todo el mapa o solo en la selección.

@@ -1,6 +1,6 @@
 //! Sculpting terrain made of brushes: dabs that move the surface corners of the selected
 //! brushes up and down, or along any other direction, and splitting brushes into
-//! triangular or square columns to sculpt.
+//! triangular, square or hexagonal columns to sculpt.
 use super::*;
 use crate::i18n::translation_key;
 use crate::sculpt::{falloff, ColumnShape, SculptDirection, SculptMode, SculptParameters};

@@ -523,6 +523,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Maximise", "Maximizar"),
     ("Maximize or restore window", "Maximizar ou restaurar janela"),
     ("Merge", "Mesclar"),
+    ("Merge columns", "Mesclar colunas"),
     ("Merge groups", "Mesclar grupos"),
     ("Metallic", "Metalicidade"),
     ("Metalness with no material", "Metalicidade sem material"),

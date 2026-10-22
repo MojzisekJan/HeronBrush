@@ -171,6 +171,8 @@ Tame pačiame lange **Kryptis** nustato, kuria kryptimi:
 
 Du skaičiai yra **Spindulys (vienetai)** ir **Stiprumas (%)**. Juda tik kampai toje pusėje, kurią brūkšnys stumia; galinė pusė lieka vietoje, o stulpas lieka bent vieno vieneto storio. Bendrą kampą brašai pastumia kartu, todėl paviršius lieka uždaras. Brūkšnys atšaukiamas vienu žingsniu. 2D vaizduose įrankis žymi kaip žymėjimo įrankis.
 
+Baigę lipdyti, pažymėkite reljefą ir pasirinkite Geometrija → **Sujungti stulpus** arba mygtuką lange **Lipdymas**. Gretimi stulpai, kurie kartu sudaro iškilą brush'ą ir atrodo vienodai, tampa vienu brush'u, todėl lygūs plotai virsta keliais dideliais brush'ais. Paviršius nepajuda, o sujungimą galima atšaukti vienu žingsniu.
+
 # Medžiagos ir UV
 ## Medžiagų įkėlimas ir taikymas
 Atverkite kortelės Sienelė skyrių **Medžiagos**. **Įkelti aplanką** prideda paveikslėlių aplanką, o **Įkelti .wad** – tekstūrų paketą; abu atsiranda po **Kolekcijos**, kur kryželis vieną pašalina. Rašykite į **Filtruoti medžiagas**, kad susiaurintumėte sąrašą. Spustelėkite medžiagą, kad ji taptų dabartine, tada **Taikyti pažymėtiems** uždeda ją ant kiekvienos pažymėtos sienelės. **Pažymėti** siūlo Pažymėti brašus su ja ir Pažymėti sieneles su ja. **Pakeisti** sukeičia vieną medžiagą kita visame žemėlapyje arba tik pažymėtuose objektuose.

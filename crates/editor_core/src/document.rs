@@ -22,6 +22,7 @@ pub use links::{EntityGraph, GraphEdge, GraphNode};
 mod array;
 mod light_marker;
 mod materials;
+mod merge_columns;
 mod scene_lights;
 mod sculpt;
 mod selection;

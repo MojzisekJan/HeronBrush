@@ -524,6 +524,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Maximise", "최대화"),
     ("Maximize or restore window", "창 최대화 또는 복원"),
     ("Merge", "병합"),
+    ("Merge columns", "기둥 합치기"),
     ("Merge groups", "그룹 병합"),
     ("Metallic", "금속성"),
     ("Metalness with no material", "재질이 없을 때의 금속성"),

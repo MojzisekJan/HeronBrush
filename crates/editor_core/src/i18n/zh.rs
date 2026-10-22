@@ -528,6 +528,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Maximise", "最大化"),
     ("Maximize or restore window", "最大化或还原窗口"),
     ("Merge", "合并"),
+    ("Merge columns", "合并柱体"),
     ("Merge groups", "合并组"),
     ("Metallic", "金属度"),
     ("Metalness with no material", "没有材质时的金属度"),

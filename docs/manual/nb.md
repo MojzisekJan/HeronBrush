@@ -171,6 +171,8 @@ I samme vindu velger **Retning** hvilken vei:
 
 De to tallene er **Radius (enheter)** og **Styrke (%)**. Bare hjørnene på den siden strøket beveger, flytter seg; baksiden blir der den er, og en søyle blir minst én enhet tykk. Der brushes deler et hjørne, flytter de det sammen, så overflaten forblir lukket. Et strøk angres i ett steg. I 2D-visningene velger verktøyet som valgverktøyet.
 
+Når modelleringen er ferdig, merker du terrenget og velger Geometri → **Slå sammen søyler**, eller knappen i vinduet **Modeller**. Nabosøyler som sammen danner en konveks brush og ser like ut, blir én brush, så flate partier blir noen få store brushes. Overflaten flytter seg ikke, og sammenslåingen angres i ett steg.
+
 # Materialer og UV-er
 ## Laste inn og bruke materialer
 Åpne seksjonen **Materialer** på fanen Flate. **Last inn mappe** legger til en mappe med bilder, og **Last inn .wad** legger til en teksturpakke; begge vises under **Samlinger**, der krysset fjerner en av dem. Skriv i **Filtrer materialer** for å snevre inn listen. Klikk på et materiale for å gjøre det gjeldende, og **Bruk på utvalget** legger det deretter på alle valgte flater. **Velg** tilbyr Velg brusher med det og Velg flater med det. **Erstatt** bytter ut ett materiale med et annet i hele kartet eller bare i utvalget.

@@ -171,6 +171,8 @@ Di jendela yang sama, **Arah** memilih ke mana:
 
 Dua angka itu adalah **Radius (unit)** dan **Kekuatan (%)**. Hanya sudut di sisi yang digerakkan sapuan yang bergerak; sisi belakang tetap di tempat dan kolom tetap setebal paling sedikit satu unit. Sudut yang dipakai bersama oleh beberapa brush bergerak bersama, jadi permukaan tetap tertutup. Satu sapuan dibatalkan dalam satu langkah. Pada tampilan 2D alat ini memilih seperti alat Pilih.
 
+Setelah selesai memahat, pilih medan lalu pilih Geometri → **Gabungkan kolom**, atau tombol di jendela **Pahat**. Kolom bersebelahan yang bersama-sama membentuk brush cembung dan tampak sama menjadi satu brush, sehingga bagian datar menjadi beberapa brush besar. Permukaannya tidak bergeser, dan penggabungan bisa dibatalkan dalam satu langkah.
+
 # Material dan UV
 ## Memuat dan menerapkan material
 Buka bagian **Material** di tab Permukaan. **Muat folder** menambahkan folder gambar dan **Muat .wad** menambahkan paket tekstur; keduanya muncul di bawah **Koleksi**, dan tanda silang menghapusnya. Ketik di **Filter material** untuk mempersempit daftar. Klik sebuah material untuk menjadikannya material aktif, lalu **Terapkan pada pilihan** memasangnya di setiap permukaan yang dipilih. **Pilih** menyediakan Pilih brush dengan material ini dan Pilih permukaan dengan material ini. **Ganti** menukar satu material dengan material lain di seluruh peta atau hanya di dalam pilihan.

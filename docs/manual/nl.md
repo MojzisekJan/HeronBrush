@@ -171,6 +171,8 @@ In hetzelfde venster kiest **Richting** welke kant op:
 
 De twee getallen zijn **Straal (eenheden)** en **Sterkte (%)**. Alleen de hoeken aan de kant die de streek beweegt, bewegen mee; de achterkant blijft waar hij is en een kolom blijft minstens één eenheid dik. Waar brushes een hoek delen, bewegen ze die samen, zodat het oppervlak gesloten blijft. Een streek wordt in één stap ongedaan gemaakt. In de 2D-weergaven selecteert het gereedschap zoals het Selectiegereedschap.
 
+Als het boetseren klaar is, selecteer je het terrein en kies je Geometrie → **Kolommen samenvoegen**, of de knop in het venster **Boetseren**. Naburige kolommen die samen een convexe brush vormen en er hetzelfde uitzien, worden één brush, zodat vlakke stukken een paar grote brushes worden. Het oppervlak verschuift niet, en het samenvoegen maak je in één stap ongedaan.
+
 # Materialen en UV's
 ## Materialen laden en toepassen
 Open de sectie **Materialen** in het tabblad Vlak. **Map laden** voegt een map met afbeeldingen toe en **.wad laden** voegt een texturepakket toe; beide verschijnen onder **Collecties**, waar het kruisje er een verwijdert. Typ in **Materialen filteren** om de lijst te beperken. Klik op een materiaal om het actueel te maken; **Op selectie toepassen** zet het dan op elk geselecteerd vlak. **Selecteren** biedt Brushes ermee selecteren en Vlakken ermee selecteren. **Vervangen** wisselt een materiaal in de hele map of alleen in de selectie om voor een ander.

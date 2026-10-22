@@ -171,6 +171,8 @@ Na mesma janela, **Direção** escolhe o sentido:
 
 Os dois números são **Raio (unidades)** e **Força (%)**. Só os cantos do lado que o traço move se mexem; a parte de trás fica onde está e uma coluna mantém pelo menos uma unidade de espessura. Onde brushes compartilham um canto, eles o movem juntos, então a superfície continua fechada. Um traço é desfeito em um único passo. Nas vistas 2D a ferramenta seleciona como a ferramenta Selecionar.
 
+Quando terminar de esculpir, selecione o terreno e escolha Geometria → **Mesclar colunas**, ou o botão na janela **Esculpir**. Colunas vizinhas que juntas formam um brush convexo e têm a mesma aparência viram um só brush, então trechos planos ficam em poucos brushes grandes. A superfície não se move, e a mesclagem se desfaz em um passo.
+
 # Materiais e UVs
 ## Carregando e aplicando materiais
 Abra a seção **Materiais** da aba Face. **Carregar pasta** adiciona uma pasta de imagens e **Carregar .wad** adiciona um pacote de texturas; ambos aparecem em **Coleções**, onde o X remove um deles. Digite em **Filtrar materiais** para restringir a lista. Clique em um material para torná-lo o atual e **Aplicar à seleção** o coloca em todas as faces selecionadas. **Selecionar** oferece Selecionar brushes que o usam e Selecionar faces que o usam. **Substituir** troca um material por outro no mapa inteiro ou só na seleção.

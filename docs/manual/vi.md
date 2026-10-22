@@ -171,6 +171,8 @@ Trong cùng cửa sổ, **Hướng** chọn chiều di chuyển:
 
 Hai số là **Bán kính (đơn vị)** và **Cường độ (%)**. Chỉ các góc ở phía mà nét di chuyển mới di chuyển; phía sau giữ nguyên và mỗi cột dày ít nhất một đơn vị. Góc mà các brush dùng chung sẽ di chuyển cùng nhau, nên bề mặt vẫn kín. Một nét được hoàn tác trong một bước. Trong các khung nhìn 2D, công cụ chọn như công cụ Chọn.
 
+Khi điêu khắc xong, hãy chọn địa hình rồi chọn Hình học → **Gộp cột**, hoặc nút trong cửa sổ **Điêu khắc**. Các cột liền kề cùng tạo thành một brush lồi và trông giống nhau sẽ gộp thành một brush, nên các vùng phẳng chỉ còn vài brush lớn. Bề mặt không xê dịch, và thao tác gộp được hoàn tác trong một bước.
+
 # Vật liệu và UV
 ## Tải và áp dụng vật liệu
 Mở phần **Vật liệu** của thẻ Mặt. **Tải thư mục** thêm một thư mục ảnh và **Tải .wad** thêm một gói texture; cả hai xuất hiện trong **Bộ sưu tập**, nơi dấu chéo dùng để gỡ bỏ. Nhập vào **Lọc vật liệu** để thu hẹp danh sách. Nhấp vào một vật liệu để đặt nó làm vật liệu hiện hành, rồi **Áp dụng cho vùng chọn** gán nó cho mọi mặt đang chọn. **Chọn** có Chọn brush dùng vật liệu này và Chọn mặt dùng vật liệu này. **Thay thế** đổi một vật liệu thành vật liệu khác trên toàn bản đồ hoặc chỉ trong vùng chọn.

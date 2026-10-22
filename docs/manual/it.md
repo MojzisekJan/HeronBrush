@@ -171,6 +171,8 @@ Nella stessa finestra, **Direzione** sceglie verso dove:
 
 I due numeri sono **Raggio (unità)** e **Forza (%)**. Si muovono solo gli angoli sul lato che il tratto sposta; il retro resta dov'è e una colonna resta spessa almeno un'unità. Dove più brush condividono un angolo lo spostano insieme, quindi la superficie resta chiusa. Un tratto si annulla in un solo passaggio. Nelle viste 2D lo strumento seleziona come lo strumento Seleziona.
 
+Finita la scultura, seleziona il terreno e scegli Geometria → **Unisci colonne**, o il pulsante nella finestra **Scolpisci**. Le colonne vicine che insieme formano un brush convesso e hanno lo stesso aspetto diventano un unico brush, così le zone piane si riducono a pochi brush grandi. La superficie non si sposta e l'unione si annulla in un passo.
+
 # Materiali e UV
 ## Caricare e applicare i materiali
 Apri la sezione **Materiali** della scheda Faccia. **Carica cartella** aggiunge una cartella di immagini e **Carica .wad** aggiunge un pacchetto di texture; entrambi compaiono sotto **Collezioni**, dove la croce ne rimuove uno. Digita in **Filtra i materiali** per restringere l'elenco. Fai clic su un materiale per renderlo corrente, poi **Applica alla selezione** lo assegna a tutte le facce selezionate. **Seleziona** offre Seleziona i brush che lo usano e Seleziona le facce che lo usano. **Sostituisci** scambia un materiale con un altro in tutta la mappa o solo nella selezione.

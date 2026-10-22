@@ -171,6 +171,8 @@ V istem oknu **Smer** določa, v katero smer:
 
 Dve števili sta **Polmer (enote)** in **Moč (%)**. Premikajo se le koti na strani, ki jo poteza premika; zadnja stran ostane na mestu, steber pa ostane debel vsaj eno enoto. Kjer si brushi delijo kot, ga premaknejo skupaj, zato površina ostane zaprta. Poteza se razveljavi v enem koraku. V 2D-pogledih orodje izbira kot orodje Izbira.
 
+Ko končate z oblikovanjem, izberite teren in nato Geometrija → **Združi stebre** ali gumb v oknu **Oblikovanje**. Sosednji stebri, ki skupaj tvorijo konveksen brush in so videti enako, postanejo en brush, zato ravni deli postanejo nekaj velikih brushev. Površina se ne premakne, združevanje pa razveljavite v enem koraku.
+
 # Materiali in UV
 ## Nalaganje in uporaba materialov
 Odprite razdelek **Materiali** na zavihku Ploskev. **Naloži mapo** doda mapo slik, **Naloži .wad** pa paket tekstur; oboje se prikaže pod **Zbirke**, kjer križec element odstrani. Za zožitev seznama tipkajte v **Filtriraj materiale**. S klikom material postane trenutni, **Uporabi za izbor** pa ga nanese na vse izbrane ploskve. **Izberi** ponuja Izberi brushe z njim in Izberi ploskve z njim. **Zamenjaj** zamenja en material z drugim v celotnem zemljevidu ali samo v izboru.

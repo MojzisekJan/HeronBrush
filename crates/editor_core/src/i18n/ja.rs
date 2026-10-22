@@ -524,6 +524,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Maximise", "最大化"),
     ("Maximize or restore window", "最大化または元のサイズに戻す"),
     ("Merge", "マージ"),
+    ("Merge columns", "柱を結合"),
     ("Merge groups", "グループをマージ"),
     ("Metallic", "金属度"),
     ("Metalness with no material", "マテリアル未設定時の金属度"),

@@ -171,6 +171,8 @@ Im selben Fenster legt **Richtung** fest, wohin:
 
 Die zwei Zahlen sind **Radius (Einheiten)** und **Stärke (%)**. Nur die Ecken auf der Seite, die der Strich bewegt, bewegen sich; die Rückseite bleibt, wo sie ist, und eine Säule bleibt mindestens eine Einheit dick. Wo sich Brushes eine Ecke teilen, bewegen sie sie gemeinsam, sodass die Oberfläche geschlossen bleibt. Ein Strich wird in einem Schritt rückgängig gemacht. In den 2D-Ansichten wählt das Werkzeug aus wie das Auswahlwerkzeug.
 
+Wenn das Modellieren fertig ist, wähle das Terrain aus und dann Geometrie → **Säulen zusammenfügen** oder die Schaltfläche im Fenster **Modellieren**. Benachbarte Säulen, die zusammen einen konvexen Brush ergeben und gleich aussehen, werden zu einem, sodass flache Stellen zu wenigen großen Brushes werden. Die Oberfläche bewegt sich nicht, und das Zusammenfügen lässt sich in einem Schritt rückgängig machen.
+
 # Materialien und UVs
 ## Materialien laden und zuweisen
 Öffnen Sie im Tab Fläche den Abschnitt **Materialien**. **Einen Ordner laden** fügt einen Ordner mit Bildern hinzu und **Eine .wad laden** ein Texturpaket; beide erscheinen unter **Sammlungen**, wo das Kreuz einen Eintrag entfernt. Tippen Sie in **Materialien filtern**, um die Liste einzugrenzen. Klicken Sie auf ein Material, um es zum aktuellen zu machen; **Auf die Auswahl anwenden** legt es dann auf jede ausgewählte Fläche. **Auswählen** bietet Brushes damit auswählen und Flächen damit auswählen. **Ersetzen** tauscht ein Material gegen ein anderes aus, in der ganzen Map oder nur in der Auswahl.

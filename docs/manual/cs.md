@@ -242,6 +242,8 @@ Ve stejném okně **Směr** určuje kudy:
 
 Dvě čísla jsou **Poloměr (jednotky)** a **Síla (%)**. Posouvají se jen rohy na straně, kterou tah hýbe; zadní strana zůstává na místě a sloupec zůstane aspoň jednu jednotku silný. Roh, který brushe sdílejí, se posune ve všech stejně, takže povrch zůstane uzavřený. Tah se vrací jedním krokem zpět. Ve 2D pohledech nástroj vybírá stejně jako nástroj Výběr.
 
+Až budete se sochaním hotovi, vyberte terén a zvolte Geometrie → **Sloučit sloupce**, nebo tlačítko v okně **Sochat**. Sousední sloupce, které spolu tvoří konvexní brush a vypadají stejně, se sloučí do jednoho, takže z rovných ploch zbude pár velkých brushů. Povrch se nepohne a sloučení se vrací jedním krokem zpět.
+
 # Materiály a UV
 ## Načtení a použití materiálů
 Otevřete sekci **Materiály** na kartě Stěna. **Načíst složku** přidá složku obrázků a **Načíst .wad** balík textur; oba se objeví v **Sady**, kde je křížek odebere. Psaním do **Filtr materiálů** zúžíte seznam. Kliknutí zvolí aktuální materiál a rovnou ho použije na vybrané stěny nebo brushe. Bez výběru pouze změní aktuální materiál. **Použít na výběr** jej znovu nanese. Použití textury odstraní barevný nátěr či přechod na těchto stěnách, jejich UV mapování zachová. **Vybrat** nabízí Vybrat brushe s ním a Vybrat stěny s ním. **Nahradit** zamění jeden materiál za jiný v celé mapě nebo jen ve výběru.
