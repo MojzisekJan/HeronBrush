@@ -410,7 +410,9 @@ pub fn sculpt_row(ui: &mut egui::Ui, open: bool) -> bool {
 /// The sculpt brush's settings for its window, as a form like the fillet's: which way a
 /// stroke moves the surface, and the shape of the columns, with the split and the merge
 /// beside it. Returns the one of those two that was clicked.
-pub fn sculpt_controls(ui: &mut egui::Ui) -> Option<crate::app_actions::Action> {
+///
+/// `cell` is the grid size, which is how wide the columns come out.
+pub fn sculpt_controls(ui: &mut egui::Ui, cell: f64) -> Option<crate::app_actions::Action> {
     use crate::app_actions::Action;
     use editor_core::sculpt::{self, ColumnShape, SculptDirection};
     let mut parameters = sculpt::parameters();
@@ -464,6 +466,30 @@ pub fn sculpt_controls(ui: &mut egui::Ui) -> Option<crate::app_actions::Action> 
     });
     parameters.columns = ColumnShape::ALL[shape];
     sculpt::set_parameters(parameters);
+    // How wide the columns come out, and a warning when that is finer than brush
+    // terrain suits.
+    let fine = cell < editor_core::document::COARSE_CELL;
+    ui.horizontal(|ui| {
+        ui.add_space(label_width + gap - ui.spacing().item_spacing.x);
+        ui.vertical(|ui| {
+            ui.set_max_width(control);
+            ui.label(
+                egui::RichText::new(editor_core::i18n::fill(
+                    "Columns are one grid step across: {} units.",
+                    &[&format!("{cell}")],
+                ))
+                .color(theme::dim()),
+            );
+            if fine {
+                ui.label(
+                    egui::RichText::new(tr(
+                        "Brush terrain suits coarse shapes. A grid under 8 makes many small brushes.",
+                    ))
+                    .color(theme::warning()),
+                );
+            }
+        });
+    });
     let mut chosen = None;
     ui.horizontal(|ui| {
         ui.add_space(label_width + gap - ui.spacing().item_spacing.x);

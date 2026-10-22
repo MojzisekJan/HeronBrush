@@ -28,7 +28,7 @@ mod sculpt;
 mod selection;
 mod shape_preview;
 pub use array::{array_transforms, ArrayKind, ArrayParameters, MAX_COPIES as MAX_ARRAY_COPIES};
-pub use sculpt::{SculptStroke, MAX_COLUMNS};
+pub use sculpt::{SculptStroke, COARSE_CELL, MAX_COLUMNS, MIN_CELL};
 mod surfaces;
 pub use surfaces::{NodeSurface, SurfaceCache};
 mod tags;

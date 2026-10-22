@@ -933,7 +933,10 @@ impl Chrome {
                     tr("Sculpt"),
                     [420.0, 200.0],
                     |ui, part| match part {
-                        crate::dialog::Part::Body => chosen = crate::tool_rows::sculpt_controls(ui),
+                        crate::dialog::Part::Body => {
+                            let cell = self.grid.borrow().actual_size();
+                            chosen = crate::tool_rows::sculpt_controls(ui, cell);
+                        }
                         crate::dialog::Part::Actions => {
                             close |= crate::dialog::button(ui, tr("Close"), true).clicked();
                         }

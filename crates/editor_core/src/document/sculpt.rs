@@ -11,6 +11,13 @@ const MIN_THICKNESS: f64 = 1.0;
 /// The most columns one split makes.
 pub const MAX_COLUMNS: usize = 8192;
 
+/// The finest grid a split cuts along.
+pub const MIN_CELL: f64 = 1.0;
+
+/// Below this grid size the Sculpt window warns that columns get small: brush terrain
+/// suits coarse shapes, and a fine grid makes many brushes for little detail.
+pub const COARSE_CELL: f64 = 8.0;
+
 /// Sculpted heights land on this grid, the finest the map checks find tidy.
 const HEIGHT_STEP: f64 = 0.125;
 
@@ -594,6 +601,13 @@ impl Document {
     ) -> Result<usize, &'static str> {
         if !(cell.is_finite() && cell > 0.0) {
             return Err(translation_key("Set a grid size first."));
+        }
+        // A column thinner than a unit is noise to an engine, and Lower keeps every column
+        // at least that thick anyway.
+        if cell < MIN_CELL {
+            return Err(translation_key(
+                "The grid is too fine for terrain. Use a grid of 1 or more.",
+            ));
         }
         let brushes: Vec<(NodeId, Brush)> = self
             .selected_brushes_with_ids()
@@ -1653,6 +1667,20 @@ mod tests {
         let mut stroke = d.begin_sculpt_stroke();
         assert!(d.sculpt_dab(at, &params, &mut stroke));
         assert!(heights(&d)[&[64, 64]] > 32.0);
+    }
+
+    #[test]
+    fn a_grid_finer_than_a_unit_is_refused() {
+        for shape in ColumnShape::ALL {
+            let mut d = slab();
+            assert!(d.split_into_columns(0.5, shape).is_err(), "{shape:?}");
+            assert_eq!(node::brushes_by_layer(d.tree_world()).len(), 1);
+            assert!(
+                d.split_into_columns(MIN_CELL, shape).is_err(),
+                "too many columns"
+            );
+            assert!(d.split_into_columns(8.0, shape).is_ok(), "{shape:?}");
+        }
     }
 
     #[test]
