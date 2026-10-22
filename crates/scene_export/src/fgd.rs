@@ -217,7 +217,7 @@ fn parse_into(
     if !visited.insert(canonical) {
         return Ok(());
     }
-    let text = file_store::read_to_string(path.as_ref()).map_err(|source| FgdError::Io {
+    let text = file_store::read_to_string(path).map_err(|source| FgdError::Io {
         path: path.display().to_string(),
         source,
     })?;

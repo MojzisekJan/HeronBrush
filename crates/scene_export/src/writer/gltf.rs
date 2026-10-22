@@ -210,7 +210,7 @@ impl Blob {
         }
         let view = self.view(start, ELEMENT_ARRAY_BUFFER);
         // The next view holds floats, which glTF wants 4-byte aligned.
-        while self.bytes.len() % 4 != 0 {
+        while !self.bytes.len().is_multiple_of(4) {
             self.bytes.push(0);
         }
         (view, if short { UNSIGNED_SHORT } else { UNSIGNED_INT })
@@ -246,7 +246,7 @@ fn split_for_short_indices(
     let mut local = vec![u32::MAX; vertex_count];
     let mut source: Vec<u32> = Vec::new();
     let mut remapped: Vec<u32> = Vec::new();
-    for tri in indices.chunks_exact(3) {
+    for tri in indices.as_chunks::<3>().0 {
         let fresh = tri
             .iter()
             .filter(|&&v| local[v as usize] == u32::MAX)
@@ -692,7 +692,7 @@ pub fn tangents(
     let n = positions.len();
     let mut along_u = vec![[0.0f32; 3]; n];
     let mut along_v = vec![[0.0f32; 3]; n];
-    for tri in indices.chunks_exact(3) {
+    for tri in indices.as_chunks::<3>().0 {
         let [a, b, c] = [tri[0] as usize, tri[1] as usize, tri[2] as usize];
         if a >= n || b >= n || c >= n || a >= uvs.len() || b >= uvs.len() || c >= uvs.len() {
             continue;

@@ -479,7 +479,7 @@ fn diamond_path(cr: &mut dyn Canvas, x: f64, y: f64, size: f64) {
 
 fn diamond(cr: &mut dyn Canvas, x: f64, y: f64, size: f64) {
     diamond_path(cr, x, y, size);
-    let _ = cr.fill();
+    cr.fill();
 }
 
 /// A rectangle with rounded corners.
@@ -536,16 +536,16 @@ impl State {
         let g = &st.geometry;
         let px = |v: f64| if st.crisp { v.floor() + 0.5 } else { v };
         set(cr, st.background);
-        let _ = cr.paint();
+        cr.paint();
         if let Some(c) = st.label_background {
             set(cr, c);
             cr.rectangle(0.0, 0.0, g.left, h);
-            let _ = cr.fill();
+            cr.fill();
         }
         if let Some(c) = st.ruler_background {
             set(cr, c);
             cr.rectangle(0.0, 0.0, w, g.top);
-            let _ = cr.fill();
+            cr.fill();
         }
         let lanes = s.lane_count();
         let lane = s.lane_height(g, h);
@@ -558,13 +558,13 @@ impl State {
                 let bottom = (g.top + (row + 1) as f64 * lane).round();
                 cr.rectangle(0.0, top, width, bottom - top);
             }
-            let _ = cr.fill();
+            cr.fill();
         }
         let colours = &st.curve_colours;
         let text = |cr: &mut dyn Canvas, x: f64, y: f64, label: &str, colour: Rgba, size: f64| {
             set(cr, colour);
             cr.move_to(x, y);
-            let _ = cr.show_text(label, size);
+            cr.show_text(label, size);
         };
         for (channel, label) in CHANNELS.iter().enumerate() {
             if !s.curves && (channel == 1 || channel == 2) {
@@ -586,11 +586,11 @@ impl State {
                 };
                 set(cr, st.active_row);
                 cr.rectangle(0.0, top, g.left - st.active_row_inset, height);
-                let _ = cr.fill();
+                cr.fill();
                 if let Some(c) = st.active_bar {
                     set(cr, c);
                     cr.rectangle(0.0, top, 2.0, height);
-                    let _ = cr.fill();
+                    cr.fill();
                 }
             }
             let swatch = if st.crisp {
@@ -602,12 +602,12 @@ impl State {
                 for (i, c) in colours[..3].iter().enumerate() {
                     set(cr, *c);
                     cr.rectangle(8.0 + 3.0 * i as f64, swatch, 2.0, 12.0);
-                    let _ = cr.fill();
+                    cr.fill();
                 }
             } else {
                 set(cr, colours[channel]);
                 cr.rectangle(8.0, swatch, 3.0, 12.0);
-                let _ = cr.fill();
+                cr.fill();
             }
             let baseline = if st.crisp {
                 (y + st.label_baseline).round()
@@ -633,9 +633,9 @@ impl State {
             cr.line_to(g.left - 0.5, h);
             cr.move_to(0.0, g.top - 0.5);
             cr.line_to(w, g.top - 0.5);
-            let _ = cr.stroke();
+            cr.stroke();
         }
-        let _ = cr.save();
+        cr.save();
         cr.rectangle(g.left, 0.0, w - g.left, h);
         cr.clip();
         if st.crisp {
@@ -654,7 +654,7 @@ impl State {
                     cr.move_to(x, g.top);
                     cr.line_to(x, h);
                 }
-                let _ = cr.stroke();
+                cr.stroke();
                 if let Some(c) = st.ruler_tick {
                     set(cr, c);
                     for i in (first..=first + count).filter(|i| i % per != 0) {
@@ -662,7 +662,7 @@ impl State {
                         cr.move_to(x, g.top - 4.0);
                         cr.line_to(x, g.top - 1.0);
                     }
-                    let _ = cr.stroke();
+                    cr.stroke();
                 }
             }
         }
@@ -684,12 +684,12 @@ impl State {
             set(cr, st.grid_major);
             cr.move_to(px(x), g.top);
             cr.line_to(px(x), h);
-            let _ = cr.stroke();
+            cr.stroke();
             if let Some(c) = st.ruler_tick {
                 set(cr, c);
                 cr.move_to(px(x), g.top - 8.0);
                 cr.line_to(px(x), g.top - 1.0);
-                let _ = cr.stroke();
+                cr.stroke();
             }
             let dx = if st.crisp { 4.0 } else { 3.0 };
             let label = format!("{:.0}", t * s.clip.fps as f64);
@@ -715,12 +715,12 @@ impl State {
         let shade_top = if st.range_shade_ruler { 0.0 } else { g.top };
         set(cr, st.range_shade);
         cr.rectangle(end, shade_top, (w - end).max(0.0), h - shade_top);
-        let _ = cr.fill();
+        cr.fill();
         if let Some(c) = st.range_edge {
             set(cr, c);
             cr.move_to(end - 0.5, 0.0);
             cr.line_to(end - 0.5, h);
-            let _ = cr.stroke();
+            cr.stroke();
         }
         if s.curves {
             for i in 0..=4 {
@@ -729,7 +729,7 @@ impl State {
                 set(cr, st.value_grid);
                 cr.move_to(g.left, px(y));
                 cr.line_to(w, px(y));
-                let _ = cr.stroke();
+                cr.stroke();
                 let label = format!("{value:.1}");
                 let x = if st.values_right_aligned {
                     (w - 6.0 - cr.text_extents(&label, st.ruler_font_size).x_advance).round()
@@ -750,7 +750,7 @@ impl State {
                 set(cr, c);
                 cr.move_to(g.left, y);
                 cr.line_to(w, y);
-                let _ = cr.stroke();
+                cr.stroke();
             }
             set(cr, colours[s.active]);
             cr.set_line_width(st.curve_width);
@@ -766,20 +766,20 @@ impl State {
                     cr.line_to(x, y);
                 }
             }
-            let _ = cr.stroke();
+            cr.stroke();
             cr.set_line_width(1.0);
             for (id, _, x, y) in s.handles(g, w, h) {
                 let (_, key) = s.clip.key(id).unwrap();
                 set(cr, st.handle);
                 cr.move_to(s.x_in(g, key.time, w), s.y_in(g, s.active, key.value, h));
                 cr.line_to(x, y);
-                let _ = cr.stroke();
+                cr.stroke();
                 cr.arc(x, y, 4.0, 0.0, std::f64::consts::TAU);
-                let _ = cr.fill();
+                cr.fill();
                 if let Some(c) = st.key_outline {
                     set(cr, c);
                     cr.arc(x, y, 4.0, 0.0, std::f64::consts::TAU);
-                    let _ = cr.stroke();
+                    cr.stroke();
                 }
             }
         }
@@ -788,7 +788,7 @@ impl State {
             set(cr, st.playhead);
             cr.move_to(px(playhead), g.top - 4.0);
             cr.line_to(px(playhead), h);
-            let _ = cr.stroke();
+            cr.stroke();
         }
         let mut drawn_positions = BTreeSet::new();
         for (channel, keys) in s.clip.tracks.iter().enumerate() {
@@ -818,9 +818,9 @@ impl State {
                     Some(c) => {
                         let c = st.key_selected_outline.filter(|_| selected).unwrap_or(c);
                         diamond_path(cr, x, y, st.key_size);
-                        let _ = cr.fill_preserve();
+                        cr.fill_preserve();
                         set(cr, c);
-                        let _ = cr.stroke();
+                        cr.stroke();
                     }
                 }
             }
@@ -843,9 +843,9 @@ impl State {
                     (y - end.1).abs(),
                 );
             }
-            let _ = cr.fill_preserve();
+            cr.fill_preserve();
             set(cr, st.selection_stroke);
-            let _ = cr.stroke();
+            cr.stroke();
         }
         let x = playhead;
         set(cr, st.playhead);
@@ -853,7 +853,7 @@ impl State {
             None => {
                 cr.move_to(x, g.top - 7.0);
                 cr.line_to(x, h);
-                let _ = cr.stroke();
+                cr.stroke();
                 diamond(cr, x, g.top - 8.0, 4.0);
             }
             Some(label_colour) => {
@@ -861,13 +861,13 @@ impl State {
                 let (label, advance, left, width) = flag.unwrap_or_default();
                 let height = (g.top - 8.0).max(10.0);
                 rounded(cr, left, 3.0, width, height, 3.0);
-                let _ = cr.fill();
+                cr.fill();
                 // A small notch points from the flag down to the line.
                 cr.move_to(x - 4.0, 3.0 + height);
                 cr.line_to(x + 4.0, 3.0 + height);
                 cr.line_to(x, 3.0 + height + 4.0);
                 cr.close_path();
-                let _ = cr.fill();
+                cr.fill();
                 cr.set_font_bold(true);
                 text(
                     cr,
@@ -880,7 +880,7 @@ impl State {
                 cr.set_font_bold(false);
             }
         }
-        let _ = cr.restore();
+        cr.restore();
     }
 }
 
@@ -979,11 +979,8 @@ impl State {
                 s.start = (start - s.seconds(dx, w)).max(0.0);
             }
             Some(Drag::Scrub) => {
-                {
-                    let (x, _) = s.pointer_start;
-                    s.frame = s.time(x + dx, w) * s.clip.fps as f64;
-                }
-                return;
+                let (x, _) = s.pointer_start;
+                s.frame = s.time(x + dx, w) * s.clip.fps as f64;
             }
             Some(Drag::Keys { before, anchor, .. }) => {
                 let raw = s.seconds(dx, w);
@@ -1223,12 +1220,12 @@ mod tests {
         let dark = fg.iter().sum::<f64>() > 1.5;
         let bg = if dark { 0.12 } else { 0.94 };
         cr.set_source_rgb(bg, bg, bg);
-        let _ = cr.paint();
+        cr.paint();
         let colours = [(0.9, 0.3, 0.3), (0.25, 0.7, 0.35), (0.25, 0.55, 0.95)];
         let text = |cr: &mut dyn Canvas, x: f64, y: f64, label: &str| {
             cr.set_source_rgba(fg[0], fg[1], fg[2], 0.85);
             cr.move_to(x, y);
-            let _ = cr.show_text(label, 12.0);
+            cr.show_text(label, 12.0);
         };
         for (channel, label) in CHANNELS.iter().enumerate() {
             if !s.curves && (channel == 1 || channel == 2) {
@@ -1248,12 +1245,12 @@ mod tests {
                     LEFT - 4.0,
                     (h - TOP - 12.0) / s.lane_count(),
                 );
-                let _ = cr.fill();
+                cr.fill();
             }
             let c = colours[channel % 3];
             cr.set_source_rgb(c.0, c.1, c.2);
             cr.rectangle(8.0, y - 5.0, 3.0, 12.0);
-            let _ = cr.fill();
+            cr.fill();
             text(cr, 18.0, y + 5.0, label);
             if s.curves || channel >= 3 {
                 text(
@@ -1264,7 +1261,7 @@ mod tests {
                 );
             }
         }
-        let _ = cr.save();
+        cr.save();
         cr.rectangle(LEFT, 0.0, w - LEFT, h);
         cr.clip();
         // Adaptive ticks retain readable labels at every zoom level.
@@ -1283,13 +1280,13 @@ mod tests {
             cr.set_source_rgba(fg[0], fg[1], fg[2], 0.12);
             cr.move_to(x, TOP);
             cr.line_to(x, h);
-            let _ = cr.stroke();
+            cr.stroke();
             text(cr, x + 3.0, 17.0, &format!("{:.0}", t * s.clip.fps as f64));
         }
         let end = s.x(s.clip.duration, w);
         cr.set_source_rgba(0.5, 0.5, 0.5, 0.12);
         cr.rectangle(end, TOP, (w - end).max(0.0), h - TOP);
-        let _ = cr.fill();
+        cr.fill();
         if s.curves {
             for i in 0..=4 {
                 let value = s.low + (s.high - s.low) * i as f64 / 4.0;
@@ -1297,7 +1294,7 @@ mod tests {
                 cr.set_source_rgba(0.5, 0.5, 0.5, 0.18);
                 cr.move_to(LEFT, y);
                 cr.line_to(w, y);
-                let _ = cr.stroke();
+                cr.stroke();
                 text(cr, LEFT + 4.0, y - 3.0, &format!("{value:.1}"));
             }
             let c = colours[s.active % 3];
@@ -1313,16 +1310,16 @@ mod tests {
                     cr.line_to(x, y);
                 }
             }
-            let _ = cr.stroke();
+            cr.stroke();
             cr.set_line_width(1.0);
             for (id, _, x, y) in s.handles(&TimelineGeometry::CLASSIC, w, h) {
                 let (_, key) = s.clip.key(id).unwrap();
                 cr.set_source_rgba(0.6, 0.65, 0.7, 0.9);
                 cr.move_to(s.x(key.time, w), s.y(s.active, key.value, h));
                 cr.line_to(x, y);
-                let _ = cr.stroke();
+                cr.stroke();
                 cr.arc(x, y, 4.0, 0.0, std::f64::consts::TAU);
-                let _ = cr.fill();
+                cr.fill();
             }
         }
         let mut drawn_positions = BTreeSet::new();
@@ -1356,17 +1353,17 @@ mod tests {
                 (x - end.0).abs(),
                 (y - end.1).abs(),
             );
-            let _ = cr.fill_preserve();
+            cr.fill_preserve();
             cr.set_source_rgba(0.35, 0.6, 1.0, 0.8);
-            let _ = cr.stroke();
+            cr.stroke();
         }
         let x = s.x(s.frame / s.clip.fps as f64, w);
         cr.set_source_rgb(1.0, 0.45, 0.2);
         cr.move_to(x, TOP - 7.0);
         cr.line_to(x, h);
-        let _ = cr.stroke();
+        cr.stroke();
         diamond(cr, x, TOP - 8.0, 4.0);
-        let _ = cr.restore();
+        cr.restore();
     }
 
     /// A canvas that writes down every call, numbers rounded so the same drawing

@@ -557,7 +557,7 @@ fn perf_big_transforms() {
                 for _ in 0..20 {
                     if document.move_handles(&at, Vec3d::new(0.0, 0.0, 1.0)) {
                         for v in &mut at {
-                            *v = *v + Vec3d::new(0.0, 0.0, 1.0);
+                            *v += Vec3d::new(0.0, 0.0, 1.0);
                         }
                     }
                 }
@@ -741,7 +741,7 @@ fn perf_entities_layers_big_brush() {
                 for _ in 0..20 {
                     if document.move_handles(&at, Vec3d::new(0.0, 0.0, 1.0)) {
                         for v in &mut at {
-                            *v = *v + Vec3d::new(0.0, 0.0, 1.0);
+                            *v += Vec3d::new(0.0, 0.0, 1.0);
                         }
                     }
                 }

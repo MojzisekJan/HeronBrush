@@ -401,7 +401,7 @@ pub fn fit_scale(ctx: &egui::Context) -> bool {
     ctx.set_zoom_factor(zoom);
     TEXT_SIZE.store(text.to_bits(), std::sync::atomic::Ordering::Relaxed);
     keep_theme(ctx);
-    ctx.all_styles_mut(|style| apply_text_styles(style));
+    ctx.all_styles_mut(apply_text_styles);
     true
 }
 

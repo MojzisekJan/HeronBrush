@@ -135,10 +135,10 @@ fn modifiers(text: &str) -> Modifiers {
     let mut m = Modifiers::NONE;
     for part in text.split(',') {
         match part.trim() {
-            "cmd" => m = m | Modifiers::COMMAND,
-            "ctrl" => m = m | Modifiers::CTRL,
-            "shift" => m = m | Modifiers::SHIFT,
-            "alt" => m = m | Modifiers::ALT,
+            "cmd" => m |= Modifiers::COMMAND,
+            "ctrl" => m |= Modifiers::CTRL,
+            "shift" => m |= Modifiers::SHIFT,
+            "alt" => m |= Modifiers::ALT,
             _ => {}
         }
     }

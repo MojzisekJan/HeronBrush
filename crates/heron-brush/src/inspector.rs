@@ -212,7 +212,7 @@ impl Inspector {
                 theme::body()
             };
             crate::theme::text(
-                &painter,
+                painter,
                 slot.center(),
                 egui::Align2::CENTER_CENTER,
                 label,

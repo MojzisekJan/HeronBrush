@@ -298,10 +298,8 @@ pub fn read(bytes: &[u8]) -> Result<EntityModel, String> {
                     return Err("Duplicate GLB JSON".into());
                 }
             }
-            0x004e4942 => {
-                if bin.replace(chunk).is_some() {
-                    return Err("Duplicate GLB binary".into());
-                }
+            0x004e4942 if bin.replace(chunk).is_some() => {
+                return Err("Duplicate GLB binary".into());
             }
             _ => {}
         }
@@ -403,7 +401,7 @@ pub fn read(bytes: &[u8]) -> Result<EntityModel, String> {
                 let determinant = matrix[0] * (matrix[5] * matrix[10] - matrix[9] * matrix[6])
                     - matrix[4] * (matrix[1] * matrix[10] - matrix[9] * matrix[2])
                     + matrix[8] * (matrix[1] * matrix[6] - matrix[5] * matrix[2]);
-                for source_ids in indices.chunks_exact(3) {
+                for source_ids in indices.as_chunks::<3>().0 {
                     let ids = if determinant < 0.0 {
                         [source_ids[0], source_ids[2], source_ids[1]]
                     } else {
@@ -516,7 +514,7 @@ pub fn read(bytes: &[u8]) -> Result<EntityModel, String> {
                 texture(&root, bin, &mat["occlusionTexture"])?.map(std::sync::Arc::new);
             imported.emissive =
                 texture(&root, bin, &mat["emissiveTexture"])?.map(std::sync::Arc::new);
-            for pixel in skin.pixels.chunks_exact_mut(4) {
+            for pixel in skin.pixels.as_chunks_mut::<4>().0 {
                 for i in 0..4 {
                     pixel[i] = if i < 3 {
                         tint_srgb(pixel[i], color[i].clamp(0., 1.))
@@ -568,7 +566,7 @@ mod tests {
     }
     fn encode(value: Value, bin: Vec<u8>) -> Vec<u8> {
         let mut json = serde_json::to_vec(&value).unwrap();
-        while json.len() % 4 != 0 {
+        while !json.len().is_multiple_of(4) {
             json.push(b' ')
         }
         let size = 12 + 8 + json.len() + 8 + bin.len();

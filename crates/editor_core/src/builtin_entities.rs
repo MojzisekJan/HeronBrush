@@ -37,8 +37,8 @@ mod tests {
             );
             if definition.kind == map_model::fgd::DefinitionKind::Point {
                 let sprite = crate::entity_icons::sprite(&definition.name);
-                assert!(sprite.pixels.chunks_exact(4).any(|p| p[3] > 0));
-                assert!(sprite.pixels.chunks_exact(4).any(|p| p[3] == 0));
+                assert!(sprite.pixels.as_chunks::<4>().0.iter().any(|p| p[3] > 0));
+                assert!(sprite.pixels.as_chunks::<4>().0.iter().any(|p| p[3] == 0));
                 if definition.name != "light" {
                     assert!(document
                         .materials()

@@ -124,7 +124,7 @@ fn model_surfaces(
                 height: skin.height,
                 png: crate::assets::encode_png(skin.width, skin.height, &skin.pixels)
                     .map_err(Error::Map)?,
-                alpha: skin.pixels.chunks_exact(4).any(|p| p[3] != 255),
+                alpha: skin.pixels.as_chunks::<4>().0.iter().any(|p| p[3] != 255),
                 surface: None,
                 repeat: true,
             });
@@ -187,7 +187,7 @@ fn generated_pbr(
         if let Some(map) = map {
             let godot_png = if slot == "ao" && source.occlusion_strength != 1. {
                 let mut pixels = map.pixels.clone();
-                for pixel in pixels.chunks_exact_mut(4) {
+                for pixel in pixels.as_chunks_mut::<4>().0 {
                     pixel[0] = (255.0 + (pixel[0] as f32 - 255.0) * source.occlusion_strength)
                         .round() as u8;
                 }

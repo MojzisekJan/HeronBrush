@@ -455,7 +455,7 @@ mod tests {
             zip(&[("stored.txt", b"stored")], false),
         )
         .unwrap();
-        let fs = AssetFileSystem::mount(&[root.clone()]);
+        let fs = AssetFileSystem::mount(std::slice::from_ref(&root));
         assert_eq!(fs.read("thing.txt"), Some(b"ten".to_vec()));
         assert_eq!(fs.read("stored.txt"), Some(b"stored".to_vec()));
         assert!(fs
@@ -483,7 +483,7 @@ mod tests {
             ),
         )
         .unwrap();
-        let fs = AssetFileSystem::mount(&[root.clone()]);
+        let fs = AssetFileSystem::mount(std::slice::from_ref(&root));
         assert_eq!(fs.read("models/part/../skin.png"), Some(b"skin".to_vec()));
         for name in [
             "../outside",
@@ -505,7 +505,7 @@ mod tests {
         std::fs::write(root.join("bad.zip"), bytes).unwrap();
         std::fs::write(root.join("bad.pak"), b"broken").unwrap();
         std::fs::write(root.join("loose"), b"okay").unwrap();
-        let fs = AssetFileSystem::mount(&[root.clone()]);
+        let fs = AssetFileSystem::mount(std::slice::from_ref(&root));
         assert!(fs
             .resolve("file")
             .unwrap()
@@ -543,7 +543,7 @@ mod tests {
         std::fs::write(root.join("original/file"), b"yes").unwrap();
         std::os::unix::fs::symlink(root.join("original"), root.join("alias")).unwrap();
         std::os::unix::fs::symlink(&root, root.join("original/back")).unwrap();
-        let fs = AssetFileSystem::mount(&[root.clone()]);
+        let fs = AssetFileSystem::mount(std::slice::from_ref(&root));
         assert_eq!(fs.read("alias/file"), Some(b"yes".to_vec()));
         assert_eq!(fs.read("original/file"), Some(b"yes".to_vec()));
         assert_eq!(fs.files().count(), 2);
@@ -562,7 +562,7 @@ mod tests {
             .collect();
         std::fs::write(root.join("pak0.pk3"), zip(&entries, true)).unwrap();
         let start = std::time::Instant::now();
-        let fs = AssetFileSystem::mount(&[root.clone()]);
+        let fs = AssetFileSystem::mount(std::slice::from_ref(&root));
         let mount = start.elapsed();
         let start = std::time::Instant::now();
         for i in 0..200000 {
@@ -657,7 +657,7 @@ mod residency_bench {
         }
         let before = rss_kib();
         let started = std::time::Instant::now();
-        let assets = AssetFileSystem::mount(&[root.clone()]);
+        let assets = AssetFileSystem::mount(std::slice::from_ref(&root));
         let elapsed = started.elapsed();
         assert!(assets.warnings().is_empty(), "{:?}", assets.warnings());
         assert_eq!(assets.read("models/probe.bin").unwrap(), b"probe");
@@ -775,7 +775,7 @@ mod zip_residency_bench {
         }
         let before = rss_kib();
         let started = std::time::Instant::now();
-        let assets = AssetFileSystem::mount(&[root.clone()]);
+        let assets = AssetFileSystem::mount(std::slice::from_ref(&root));
         let mount = started.elapsed();
         assert!(assets.warnings().is_empty(), "{:?}", assets.warnings());
         assert_eq!(assets.read("models/probe.bin").unwrap(), b"probe");

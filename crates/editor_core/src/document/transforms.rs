@@ -70,10 +70,10 @@ impl Document {
     /// `change` applied to every selected brush, in document order, or `None` if it
     /// refused any of them. Spread over the cores for a big selection: turning ten
     /// thousand brushes is ten thousand independent rebuilds.
-    fn map_selected_brushes<'a>(
-        &'a self,
+    fn map_selected_brushes(
+        &self,
         change: impl Fn(&Brush) -> Option<Brush> + Sync,
-    ) -> Option<Vec<(NodeId, &'a Brush, Brush)>> {
+    ) -> Option<Vec<(NodeId, &Brush, Brush)>> {
         use rayon::prelude::*;
         let selected: Vec<(NodeId, &Brush)> = node::brushes_with_ids(&self.tree.world)
             .into_iter()

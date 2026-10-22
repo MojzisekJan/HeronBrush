@@ -474,7 +474,9 @@ impl Canvas for Raster {
             return;
         };
         let premultiplied: Vec<u8> = pixels
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .flat_map(|p| {
                 let a = u16::from(p[3]);
                 [

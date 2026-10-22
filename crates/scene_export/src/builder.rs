@@ -867,7 +867,9 @@ fn build_entity_node(
             for surface in &mut geo.mesh.surfaces {
                 surface.indices = surface
                     .indices
-                    .chunks_exact(3)
+                    .as_chunks::<3>()
+                    .0
+                    .iter()
                     .filter(|triangle| {
                         triangle
                             .iter()
@@ -1376,10 +1378,7 @@ fn build_material_resources(
                             "emission_enabled".into(),
                             GdValue::Bool(e.iter().any(|v| *v > 0.)),
                         ));
-                        properties.push((
-                            "emission".into(),
-                            GdValue::Color(e[0] as f64, e[1] as f64, e[2] as f64, 1.),
-                        ));
+                        properties.push(("emission".into(), GdValue::Color(e[0], e[1], e[2], 1.)));
                         properties.push(("emission_operator".into(), GdValue::Int(1)));
                         for image in &pbr.images {
                             let texture = GdValue::ExtResource {
@@ -1955,7 +1954,9 @@ pub fn build_level(
                 for surface in &mut geo.mesh.surfaces {
                     surface.indices = surface
                         .indices
-                        .chunks_exact(3)
+                        .as_chunks::<3>()
+                        .0
+                        .iter()
                         .filter(|triangle| {
                             triangle
                                 .iter()
@@ -2216,7 +2217,7 @@ pub fn build_level(
     meshes.retain(|m| !aliases.contains_key(&m.file_name));
     for entity in &mut built {
         if let Some(path) = &mut entity.mesh {
-            let (dir, file) = path.rsplit_once('/').map_or(("", path.as_str()), |v| v);
+            let (dir, file) = path.rsplit_once('/').unwrap_or(("", path.as_str()));
             if let Some(original) = aliases.get(file) {
                 *path = if dir.is_empty() {
                     original.clone()

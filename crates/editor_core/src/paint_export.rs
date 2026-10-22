@@ -146,7 +146,7 @@ pub(crate) fn normal_png(material: &Material) -> Option<std::sync::Arc<[u8]>> {
         return Some(png.into());
     }
     let mut rgba = pixels[..(map.width * map.height * 4) as usize].to_vec();
-    for pixel in rgba.chunks_exact_mut(4) {
+    for pixel in rgba.as_chunks_mut::<4>().0 {
         if map.flip_y {
             pixel[1] = 255 - pixel[1];
         }
@@ -270,7 +270,7 @@ fn prepare_image(
         height: baked.height,
         scale: baked.scale,
         offset: baked.offset,
-        alpha: baked.pixels.chunks_exact(4).any(|p| p[3] < 255),
+        alpha: baked.pixels.as_chunks::<4>().0.iter().any(|p| p[3] < 255),
         png: baked.png()?,
     };
     let size = image.png.len() + pixels.as_ref().map_or(0, |p| p.len()) + key.len();
@@ -393,7 +393,11 @@ pub fn prepare_text(
                             width: material.width,
                             height: material.height,
                             png,
-                            alpha: pixels.chunks_exact(4).any(|pixel| pixel[3] != 255),
+                            alpha: pixels
+                                .as_chunks::<4>()
+                                .0
+                                .iter()
+                                .any(|pixel| pixel[3] != 255),
                             surface: None,
                             repeat: true,
                         },

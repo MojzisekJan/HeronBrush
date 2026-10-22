@@ -81,7 +81,9 @@ fn settle(renderer: &mut Renderer, params: &ViewParams<'_>) -> u32 {
 /// Mean luminance (0..255) of the picture.
 fn mean(pixels: &[u8]) -> f64 {
     let sum: f64 = pixels
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| 0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]))
         .sum();
     sum / (pixels.len() / 4) as f64
@@ -142,7 +144,9 @@ fn draws_every_mode_and_selects_by_state() {
         save(&format!("headless-{mode:?}"), &shot);
         let (w, h, pixels) = &shot;
         let lit = pixels
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .filter(|p| p[0] > 8 || p[1] > 8 || p[2] > 8)
             .count();
         assert!(
@@ -370,8 +374,10 @@ fn accumulates_samples_with_depth_of_field() {
     // differences (unlike the sum of differences) sees as smaller.
     let roughness = |pixels: &[u8]| -> u64 {
         pixels
-            .chunks_exact(4)
-            .zip(pixels.chunks_exact(4).skip(1))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(pixels.as_chunks::<4>().0.iter().skip(1))
             .map(|(a, b)| u64::from(a[1].abs_diff(b[1])).pow(2))
             .sum()
     };
@@ -503,7 +509,13 @@ fn draws_point_entity_sprites() {
     assert!(renderer.scene.texture_stats.resident >= 1);
     let shot = renderer.read_output().expect("output");
     save("sprite", &shot);
-    let lit = shot.2.chunks_exact(4).filter(|p| p[0] > 100).count();
+    let lit = shot
+        .2
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[0] > 100)
+        .count();
     assert!(lit > 400, "the sprite covers only {lit} pixels");
 }
 
@@ -801,8 +813,10 @@ fn temporal_filter_converges_for_a_still_view() {
     save("taa-settled", &settled);
     let roughness = |pixels: &[u8]| -> u64 {
         pixels
-            .chunks_exact(4)
-            .zip(pixels.chunks_exact(4).skip(1))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(pixels.as_chunks::<4>().0.iter().skip(1))
             .map(|(a, b)| u64::from(a[1].abs_diff(b[1])).pow(2))
             .sum()
     };
@@ -953,7 +967,9 @@ fn reflections_show_the_pillar_in_a_smooth_floor() {
     // Only the floor below the horizon line changes: the pillar replaces the sky there.
     let changed = reflected
         .2
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .zip(plain.2.chunks_exact(4))
         .filter(|(a, b)| a[0].abs_diff(b[0]) > 12)
         .count();
@@ -1021,12 +1037,16 @@ fn light_entities_light_the_scene_and_cache_their_shadows() {
     // Both colours show: warm near the point light, cool under the spot.
     let warm = lit
         .2
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[0] > 60 && p[0] > p[2] + 20)
         .count();
     let cool = lit
         .2
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[2] > 60 && p[2] > p[0] + 20)
         .count();
     assert!(warm > 500 && cool > 200, "warm {warm}, cool {cool}");
@@ -1099,7 +1119,9 @@ fn light_entities_light_the_scene_and_cache_their_shadows() {
     save("lights-unshadowed", &unshadowed);
     let brighter = lit
         .2
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .zip(unshadowed.2.chunks_exact(4))
         .filter(|(a, b)| b[0] > a[0].saturating_add(20))
         .count();
@@ -1466,7 +1488,9 @@ fn shuttle_yard() -> Document {
 /// Luminance (0..255) of an RGBA picture, row by row.
 fn luminance(pixels: &[u8]) -> Vec<f64> {
     pixels
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| 0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]))
         .collect()
 }
@@ -1863,7 +1887,9 @@ fn imported_face_rules_control_front_and_back_coverage() {
             coverage.push(
                 image
                     .2
-                    .chunks_exact(4)
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
                     .filter(|pixel| pixel[0] > 100)
                     .count(),
             );
@@ -1958,7 +1984,9 @@ fn imported_single_sided_back_does_not_cast_a_sun_shadow() {
         }
         shadow_changes.push(
             images[0]
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .zip(images[1].chunks_exact(4))
                 .filter(|(a, b)| a[..3].iter().zip(&b[..3]).any(|(x, y)| x.abs_diff(*y) > 4))
                 .count(),
@@ -2059,7 +2087,9 @@ fn imported_opaque_back_does_not_occlude_the_receiver() {
         differences.push(
             image
                 .2
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .zip(baseline.2.chunks_exact(4))
                 .filter(|(a, b)| a[..3].iter().zip(&b[..3]).any(|(a, b)| a.abs_diff(*b) > 4))
                 .count(),

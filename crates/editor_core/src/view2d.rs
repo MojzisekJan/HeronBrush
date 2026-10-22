@@ -346,7 +346,7 @@ pub fn draw_label(
         width + 2.0 * padding,
         height + 2.0 * padding,
     );
-    let _ = cr.fill();
+    cr.fill();
 
     set_colour(cr, ink);
     cr.move_to(x, y + extents.baseline);
@@ -461,7 +461,7 @@ pub fn draw_handles(
             let to = state.camera.world_to_screen(pair[1].0, viewport);
             cr.move_to(from.x(), from.y());
             cr.line_to(to.x(), to.y());
-            let _ = cr.stroke();
+            cr.stroke();
         }
     }
 
@@ -481,7 +481,7 @@ pub fn draw_handles(
             cr.move_to(from.x(), from.y());
             cr.line_to(to.x(), to.y());
         }
-        let _ = cr.stroke();
+        cr.stroke();
     }
 
     for handle in handles.handles() {
@@ -511,10 +511,10 @@ pub fn draw_handles(
             0.0,
             std::f64::consts::TAU,
         );
-        let _ = cr.fill_preserve();
+        cr.fill_preserve();
         cr.set_source_rgb(0.1, 0.1, 0.12);
         cr.set_line_width(1.0);
-        let _ = cr.stroke();
+        cr.stroke();
     }
     // The handle a press would take or a drag is moving, written out as its three
     // coordinates: `NodeHandleToolBase::renderHighlight`, which draws the position beside
@@ -561,7 +561,7 @@ pub fn draw_fillet_preview(
         cr.move_to(from.x(), from.y());
         cr.line_to(to.x(), to.y());
     }
-    let _ = cr.stroke();
+    cr.stroke();
 
     // What the rounding would leave.
     let outline = crate::fillet_tool::preview_edges(document, &edges, parameters);
@@ -576,7 +576,7 @@ pub fn draw_fillet_preview(
         cr.move_to(from.x(), from.y());
         cr.line_to(to.x(), to.y());
     }
-    let _ = cr.stroke();
+    cr.stroke();
     cr.set_dash(&[], 0.0);
 }
 
@@ -632,10 +632,10 @@ pub fn draw_scale_handles(
             handle_radius() * 2.0,
             handle_radius() * 2.0,
         );
-        let _ = cr.fill_preserve();
+        cr.fill_preserve();
         cr.set_source_rgb(0.1, 0.1, 0.12);
         cr.set_line_width(1.0);
-        let _ = cr.stroke();
+        cr.stroke();
     }
 }
 
@@ -658,10 +658,10 @@ pub fn draw_shear_handles(
             handle_radius() * 2.0,
             handle_radius() * 2.0,
         );
-        let _ = cr.fill_preserve();
+        cr.fill_preserve();
         cr.set_source_rgb(0.1, 0.1, 0.12);
         cr.set_line_width(1.0);
-        let _ = cr.stroke();
+        cr.stroke();
     }
 }
 
@@ -774,7 +774,7 @@ pub fn draw_rotation_handle(
         0.0,
         std::f64::consts::TAU,
     );
-    let _ = cr.stroke();
+    cr.stroke();
 
     // While the ring is being dragged, a wedge from where the drag started shows how far
     // it has turned, the way `renderAngleIndicator` does.
@@ -791,7 +791,7 @@ pub fn draw_rotation_handle(
             -angle,
         );
         cr.close_path();
-        let _ = cr.fill();
+        cr.fill();
 
         set_colour(cr, pref(|p| p.selected_handle_color));
         cr.move_to(on_screen.x() + 8.0, on_screen.y() - 8.0);
@@ -808,7 +808,7 @@ pub fn draw_rotation_handle(
         0.0,
         std::f64::consts::TAU,
     );
-    let _ = cr.fill();
+    cr.fill();
 }
 
 /// Handles a press while a handle tool is active.
@@ -1052,7 +1052,7 @@ pub fn draw_sweep(
     cr.set_line_width(1.0);
     cr.move_to(from.x(), from.y());
     cr.line_to(to.x(), to.y());
-    let _ = cr.stroke();
+    cr.stroke();
     for point in [from, to] {
         cr.arc(
             point.x(),
@@ -1061,7 +1061,7 @@ pub fn draw_sweep(
             0.0,
             std::f64::consts::TAU,
         );
-        let _ = cr.fill();
+        cr.fill();
     }
 }
 
@@ -1099,10 +1099,10 @@ pub fn draw_clip(
         // Cairo connects arc() to the previous current point unless the path is cleared.
         cr.new_path();
         cr.arc(p.x(), p.y(), CLIP_HANDLE_RADIUS, 0.0, std::f64::consts::TAU);
-        let _ = cr.fill_preserve();
+        cr.fill_preserve();
         cr.set_source_rgba(0.0, 0.0, 0.0, 0.65);
         cr.set_line_width(1.0);
-        let _ = cr.stroke();
+        cr.stroke();
     }
 
     let points = clip.points();
@@ -1127,7 +1127,7 @@ pub fn draw_clip(
         for point in &screen[1..] {
             cr.line_to(point.x(), point.y());
         }
-        let _ = cr.stroke();
+        cr.stroke();
     }
 
     set_colour(cr, pref(|p| p.clip_handle_color));
@@ -1140,7 +1140,7 @@ pub fn draw_clip(
             0.0,
             std::f64::consts::TAU,
         );
-        let _ = cr.fill();
+        cr.fill();
     }
 }
 
@@ -1162,7 +1162,7 @@ pub fn draw_lasso(state: &ViewportState, cr: &mut dyn Canvas) {
         (to.x() - from.x()).abs(),
         (to.y() - from.y()).abs(),
     );
-    let _ = cr.stroke();
+    cr.stroke();
     cr.set_dash(&[], 0.0);
 }
 
@@ -1194,7 +1194,7 @@ pub fn draw_creation_box(state: &ViewportState, cr: &mut dyn Canvas, viewport: (
     set_colour(cr, pref(|p| p.resize_handle_color));
     cr.set_line_width(1.0);
     cr.rectangle(left, top, right - left, bottom - top);
-    let _ = cr.stroke();
+    cr.stroke();
 }
 
 /// Outlines the box an entity drag would drop into, so where it lands reads before the
@@ -1215,7 +1215,7 @@ pub fn draw_entity_drop(state: &ViewportState, cr: &mut dyn Canvas, viewport: (f
         cr.move_to(from.x(), from.y());
         cr.line_to(to.x(), to.y());
     }
-    let _ = cr.stroke();
+    cr.stroke();
     cr.set_dash(&[], 0.0);
 }
 
@@ -1245,7 +1245,7 @@ pub fn draw_extrude_preview(
         }
         cr.close_path();
     }
-    let _ = cr.stroke();
+    cr.stroke();
 }
 
 pub fn draw_grid(state: &ViewportState, grid: &Grid, cr: &mut dyn Canvas, viewport: (f64, f64)) {
@@ -1279,7 +1279,7 @@ pub fn draw_grid(state: &ViewportState, grid: &Grid, cr: &mut dyn Canvas, viewpo
             + 0.5;
         cr.move_to(sx, 0.0);
         cr.line_to(sx, h);
-        let _ = cr.stroke();
+        cr.stroke();
         x += spacing;
     }
 
@@ -1294,7 +1294,7 @@ pub fn draw_grid(state: &ViewportState, grid: &Grid, cr: &mut dyn Canvas, viewpo
             + 0.5;
         cr.move_to(0.0, sy);
         cr.line_to(w, sy);
-        let _ = cr.stroke();
+        cr.stroke();
         y += spacing;
     }
 }
@@ -1321,12 +1321,12 @@ pub fn draw_axes(state: &ViewportState, cr: &mut dyn Canvas, viewport: (f64, f64
     set_colour(cr, axis_colour(state.camera.plane.shown_axes()[0]));
     cr.move_to(0.0, origin.y().floor() + 0.5);
     cr.line_to(w, origin.y().floor() + 0.5);
-    let _ = cr.stroke();
+    cr.stroke();
 
     set_colour(cr, axis_colour(state.camera.plane.shown_axes()[1]));
     cr.move_to(origin.x().floor() + 0.5, 0.0);
     cr.line_to(origin.x().floor() + 0.5, h);
-    let _ = cr.stroke();
+    cr.stroke();
 }
 
 /// How far the world extends in the direction a 2D view looks.
@@ -1712,7 +1712,7 @@ pub fn draw_entities(
             (max.x() - min.x()).abs(),
             (max.y() - min.y()).abs(),
         );
-        let _ = cr.stroke();
+        cr.stroke();
 
         if let Some(classname) = classnames.get(&entity.node) {
             crate::entity_icons::draw(
@@ -1762,7 +1762,7 @@ pub fn draw_group_bounds(
             (max.x() - min.x()).abs(),
             (max.y() - min.y()).abs(),
         );
-        let _ = cr.stroke();
+        cr.stroke();
         cr.set_dash(&[], 0.0);
     }
 }
@@ -1794,7 +1794,7 @@ pub fn draw_brush_entity_bounds(
             (max.x() - min.x()).abs(),
             (max.y() - min.y()).abs(),
         );
-        let _ = cr.stroke();
+        cr.stroke();
         cr.set_dash(&[], 0.0);
     }
 }
@@ -1827,7 +1827,7 @@ pub fn draw_portals(
         }
         cr.close_path();
     }
-    let _ = cr.stroke();
+    cr.stroke();
 }
 
 /// Draws the way out of the level the last leak check found.
@@ -1859,7 +1859,7 @@ pub fn draw_leak_trace(
             cr.line_to(on_screen.x(), on_screen.y());
         }
     }
-    let _ = cr.stroke();
+    cr.stroke();
 }
 
 /// Draws the box the whole selection fills.
@@ -1892,7 +1892,7 @@ pub fn draw_selection_bounds(
         (max.x() - min.x()).abs(),
         (max.y() - min.y()).abs(),
     );
-    let _ = cr.stroke();
+    cr.stroke();
 }
 
 /// Draws a line from the linked group being edited to each of its other copies.
@@ -1917,7 +1917,7 @@ pub fn draw_linked_group_links(
         cr.move_to(from.x(), from.y());
         cr.line_to(to.x(), to.y());
     }
-    let _ = cr.stroke();
+    cr.stroke();
 }
 
 /// What a link is drawn in: `EntityLinkRenderer`'s two colours, and a third for a link
@@ -1969,7 +1969,7 @@ pub fn draw_entity_links(
                 cr.line_to(tip.x(), tip.y());
             }
         }
-        let _ = cr.stroke();
+        cr.stroke();
         // What the link does, by the links that touch the selection only: written by
         // every link, a map with many reads as a wall of labels.
         if link.touches_selection && length > 24.0 {
@@ -2064,7 +2064,7 @@ pub fn draw_world_bounds(state: &ViewportState, cr: &mut dyn Canvas, viewport: (
         cr.line_to(p.x(), p.y());
     }
     cr.close_path();
-    let _ = cr.stroke();
+    cr.stroke();
 }
 
 /// The distance in pixels a press has to travel before it counts as a drag.
@@ -2359,7 +2359,7 @@ impl SelectAndMove {
                 match pick_handle(&state.borrow(), &handles, viewport, Vec2d::new(x, y)) {
                     Some(position) => {
                         let outcome = crate::fillet_tool::press(
-                            &document,
+                            document,
                             &mut handles,
                             *fillet.borrow(),
                             position,
@@ -2400,7 +2400,7 @@ impl SelectAndMove {
             let mode = begin_handle_drag(
                 &state.borrow(),
                 &mut handles,
-                &document,
+                document,
                 viewport,
                 Vec2d::new(x, y),
                 add_to_selection,
@@ -3694,7 +3694,7 @@ impl FlatView {
                         .borrow()
                         .camera
                         .world_to_screen(pose.centre(), viewport);
-                    let _ = cr.save();
+                    cr.save();
                     cr.set_source_rgb(1.0, 0.6, 0.15);
                     cr.set_line_width(1.5);
                     if f.animation_edit_pivot {
@@ -3707,8 +3707,8 @@ impl FlatView {
                     cr.line_to(p.x() + 9.0, p.y());
                     cr.move_to(p.x(), p.y() - 9.0);
                     cr.line_to(p.x(), p.y() + 9.0);
-                    let _ = cr.stroke();
-                    let _ = cr.restore();
+                    cr.stroke();
+                    cr.restore();
                 }
             }
             draw_compass(&state.borrow(), cr, viewport);

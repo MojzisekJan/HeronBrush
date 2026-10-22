@@ -79,7 +79,7 @@ fn collision_glb(triangles: &[[f32; 3]]) -> Vec<u8> {
         "buffers": [{"byteLength": bin.len()}],
     });
     let mut text = serde_json::to_vec(&doc).unwrap();
-    while text.len() % 4 != 0 {
+    while !text.len().is_multiple_of(4) {
         text.push(b' ');
     }
     let mut out = b"glTF".to_vec();
@@ -384,7 +384,9 @@ pub fn write(
             // The model's fit mirrors GDevelop's Y; Jolt's triangles are one-sided, so
             // they are wound the other way round to keep facing out of the solid.
             let wound: Vec<[f32; 3]> = triangles
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .flat_map(|t| [t[0], t[2], t[1]])
                 .collect();
             let glb = collision_glb(&wound);

@@ -229,7 +229,7 @@ pub fn synthetic_map(spec: &MapSpec) -> String {
             entities.push(g);
         } else if roll < 15 {
             // A brush entity of two structures.
-            let class = if roll % 2 == 0 {
+            let class = if roll.is_multiple_of(2) {
                 "func_wall"
             } else {
                 "func_door"

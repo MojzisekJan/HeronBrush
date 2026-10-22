@@ -751,7 +751,7 @@ fn big_button(
         }) <= width - 20.0
     });
     crate::theme::text(
-        &painter,
+        painter,
         rect.center(),
         egui::Align2::CENTER_CENTER,
         text,
@@ -854,7 +854,7 @@ fn map_row(
         egui::StrokeKind::Inside,
     );
     crate::theme::text(
-        &painter,
+        painter,
         Pos2::new(text_left, rect.center().y - 9.0),
         egui::Align2::LEFT_CENTER,
         name,
@@ -862,7 +862,7 @@ fn map_row(
         theme::fg(),
     );
     crate::theme::text(
-        &painter,
+        painter,
         Pos2::new(text_left, rect.center().y + 10.0),
         egui::Align2::LEFT_CENTER,
         shown,

@@ -232,7 +232,7 @@ fn read_fgd_including(
     }
     visited.push(canonical);
 
-    let source = file_store::read_to_string(path.as_ref()).map_err(|error| FgdError {
+    let source = file_store::read_to_string(path).map_err(|error| FgdError {
         message: format!("cannot read `{}`: {error}", path.display()),
         line: 0,
     })?;

@@ -781,7 +781,7 @@ impl RenderScene {
             for (batch, indices) in &object.batches {
                 let out = grouped.entry(phase_of(*batch)).or_default();
                 out.extend(indices.iter().map(|i| i + base));
-                for tri in indices.chunks_exact(3) {
+                for tri in indices.as_chunks::<3>().0 {
                     let [a, b, c] = [tri[0] + base, tri[1] + base, tri[2] + base];
                     wire.extend_from_slice(&[a, b, b, c, c, a]);
                 }
@@ -893,7 +893,7 @@ fn upload(
         }));
     }
     let buffer = buffer.as_ref().expect("just made");
-    if data.len() as u64 % wgpu::COPY_BUFFER_ALIGNMENT == 0 {
+    if (data.len() as u64).is_multiple_of(wgpu::COPY_BUFFER_ALIGNMENT) {
         queue.write_buffer(buffer, 0, data);
     } else {
         let mut padded = data.to_vec();

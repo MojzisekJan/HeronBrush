@@ -1770,7 +1770,7 @@ mod pcx_material_tests {
         pak.extend_from_slice(&12u32.to_le_bytes());
         pak.extend_from_slice(&(payload.len() as u32).to_le_bytes());
         std::fs::write(root.join("pak0.pak"), pak).unwrap();
-        let assets = crate::asset_fs::AssetFileSystem::mount(&[root.clone()]);
+        let assets = crate::asset_fs::AssetFileSystem::mount(std::slice::from_ref(&root));
         let collection = MaterialCollection::load_assets(&assets, "textures");
         assert!(
             collection.warnings().is_empty(),
@@ -1789,7 +1789,7 @@ mod pcx_material_tests {
         let palette = loose.len() - 768;
         loose[palette + 3..palette + 6].copy_from_slice(&[9, 8, 7]);
         std::fs::write(root.join("textures/base/wall.pcx"), loose).unwrap();
-        let assets = crate::asset_fs::AssetFileSystem::mount(&[root.clone()]);
+        let assets = crate::asset_fs::AssetFileSystem::mount(std::slice::from_ref(&root));
         let collection = MaterialCollection::load_assets(&assets, "textures");
         assert_eq!(
             &collection.get("base/wall").unwrap().pixels().unwrap()[..4],
@@ -1808,7 +1808,7 @@ mod pcx_material_tests {
         image::RgbaImage::from_pixel(1, 1, image::Rgba([1u8, 2, 3, 255]))
             .save(root.join("textures/wall.png"))
             .unwrap();
-        let assets = crate::asset_fs::AssetFileSystem::mount(&[root.clone()]);
+        let assets = crate::asset_fs::AssetFileSystem::mount(std::slice::from_ref(&root));
         let collection = MaterialCollection::load_assets(&assets, "textures");
         assert!(collection.get("broken").unwrap().pixels().is_none());
         assert_eq!(collection.get("wall").unwrap().size(), (1, 1));
@@ -1876,7 +1876,7 @@ mod wal_material_tests {
         .unwrap();
         let folder = MaterialCollection::load_directory(root.join("textures")).unwrap();
         assert!(folder.warnings().is_empty(), "{:?}", folder.warnings());
-        let assets = crate::asset_fs::AssetFileSystem::mount(&[root.clone()]);
+        let assets = crate::asset_fs::AssetFileSystem::mount(std::slice::from_ref(&root));
         let mounted = MaterialCollection::load_assets(&assets, "textures");
         assert!(mounted.warnings().is_empty(), "{:?}", mounted.warnings());
         for material in [
@@ -1914,7 +1914,7 @@ mod wal_material_tests {
         )
         .unwrap();
         let fallback = Arc::new(crate::pcx::palette(&palette([1, 2, 3])).unwrap());
-        let assets = crate::asset_fs::AssetFileSystem::mount(&[root.clone()]);
+        let assets = crate::asset_fs::AssetFileSystem::mount(std::slice::from_ref(&root));
         let first = MaterialCollection::load_assets_with_palette(
             &assets,
             "textures",
@@ -1959,7 +1959,7 @@ mod wal_material_tests {
             .any(|warning| warning.contains("external palette")));
         std::fs::create_dir_all(root.join("pics")).unwrap();
         std::fs::write(root.join("pics/colormap.pcx"), [0; 128]).unwrap();
-        let assets = crate::asset_fs::AssetFileSystem::mount(&[root.clone()]);
+        let assets = crate::asset_fs::AssetFileSystem::mount(std::slice::from_ref(&root));
         let mounted = MaterialCollection::load_assets(&assets, "textures");
         assert!(mounted.get("base/wall").is_none());
         assert!(mounted.warnings().len() >= 2);

@@ -300,7 +300,7 @@ mod tests {
                 "red.png".into(),
                 2,
                 2,
-                vec![255, 0, 0, 255].repeat(4),
+                [255, 0, 0, 255].repeat(4),
             ),
         );
         let start = web_time::Instant::now();

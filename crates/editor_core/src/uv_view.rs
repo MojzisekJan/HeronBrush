@@ -1119,13 +1119,7 @@ mod tests {
                 let b = d.brush(reference.node).unwrap();
                 b.faces()
                     .iter()
-                    .map(|f| {
-                        (
-                            f.uv_attributes,
-                            f.uv_coord_system.clone(),
-                            f.primitive_uv.clone(),
-                        )
-                    })
+                    .map(|f| (f.uv_attributes, f.uv_coord_system, f.primitive_uv.clone()))
                     .collect::<Vec<_>>()
             };
             let before = state(&document);

@@ -28,23 +28,13 @@ const KINDS: [(&str, &str); 4] = [
     ),
 ];
 
+#[derive(Default)]
 pub struct ArrayDialog {
     pub open: bool,
     parameters: ArrayParameters,
     /// What the last change did: how many copies, or why there are none.
     status: String,
     failed: bool,
-}
-
-impl Default for ArrayDialog {
-    fn default() -> Self {
-        Self {
-            open: false,
-            parameters: ArrayParameters::default(),
-            status: String::new(),
-            failed: false,
-        }
-    }
 }
 
 impl ArrayDialog {

@@ -398,10 +398,12 @@ mod tests {
             .join()
             .unwrap();
         assert!(pixels
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .filter(|p| p[3] > 0)
             .all(|p| p[0] > p[1] * 2 && p[0] > p[2] * 2));
-        assert!(pixels.chunks_exact(4).any(|p| p[3] > 0));
+        assert!(pixels.as_chunks::<4>().0.iter().any(|p| p[3] > 0));
         std::fs::remove_dir_all(root).unwrap();
     }
 

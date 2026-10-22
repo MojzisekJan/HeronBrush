@@ -872,7 +872,7 @@ impl Brush {
             let mut rhs = Vec3d::zero();
             for plane in &constraints {
                 let n = plane.normal;
-                rhs = rhs + n * (plane.distance - vec::dot(n, position));
+                rhs += n * (plane.distance - vec::dot(n, position));
                 for i in 0..3 {
                     for j in 0..3 {
                         gram[i][j] += n[i] * n[j];

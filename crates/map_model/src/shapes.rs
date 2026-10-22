@@ -1185,7 +1185,7 @@ pub fn create_hollow_sphere(
     brush_count: usize,
     material: &str,
 ) -> Result<Vec<Brush>, ShapeError> {
-    if !(20..=320).contains(&brush_count) || brush_count % 4 != 0 {
+    if !(20..=320).contains(&brush_count) || !brush_count.is_multiple_of(4) {
         return Err(ShapeError::InvalidParameter(
             "hollow sphere brush count must be a multiple of four from 20 to 320",
         ));

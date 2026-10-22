@@ -248,7 +248,7 @@ pub fn glb_material(bytes: &mut Vec<u8>, water: &Water) {
         }
     }
     let mut encoded = serde_json::to_vec(&json).unwrap();
-    while encoded.len() % 4 != 0 {
+    while !encoded.len().is_multiple_of(4) {
         encoded.push(b' ');
     }
     let mut result = bytes[..12].to_vec();

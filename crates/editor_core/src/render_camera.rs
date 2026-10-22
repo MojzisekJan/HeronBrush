@@ -251,18 +251,18 @@ pub fn frame_rect(aspect: f64, width: f64, height: f64) -> (f64, f64, f64, f64) 
 /// Shade the area outside the output image and show a thin composition frame.
 pub fn draw_frame(cr: &mut dyn crate::canvas::Canvas, aspect: f64, width: f64, height: f64) {
     let (x, y, w, h) = frame_rect(aspect, width, height);
-    let _ = cr.save();
+    cr.save();
     cr.set_source_rgba(0., 0., 0., 0.62);
     cr.rectangle(0., 0., width, y);
     cr.rectangle(0., y + h, width, height - y - h);
     cr.rectangle(0., y, x, h);
     cr.rectangle(x + w, y, width - x - w, h);
-    let _ = cr.fill();
+    cr.fill();
     cr.set_source_rgba(0.96, 0.75, 0.32, 0.95);
     cr.set_line_width(1.5);
     cr.rectangle(x + 0.75, y + 0.75, w - 1.5, h - 1.5);
-    let _ = cr.stroke();
-    let _ = cr.restore();
+    cr.stroke();
+    cr.restore();
 }
 pub struct Job {
     pub path: PathBuf,
@@ -544,7 +544,12 @@ impl Video {
         let rgb: Vec<u8> = pixels
             .chunks_exact(width * 4)
             .rev()
-            .flat_map(|row| row.chunks_exact(4).flat_map(|p| [p[0], p[1], p[2]]))
+            .flat_map(|row| {
+                row.as_chunks::<4>()
+                    .0
+                    .iter()
+                    .flat_map(|p| [p[0], p[1], p[2]])
+            })
             .collect();
         // The palette is chosen per frame; speed 10 is the quantiser's usual trade-off.
         let mut frame = gif::Frame::from_rgb_speed(self.size.0, self.size.1, &rgb, 10);

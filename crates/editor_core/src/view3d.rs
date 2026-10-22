@@ -1829,7 +1829,7 @@ impl Scene3d {
         let fillet_preview = self.fillet_surface_preview(document, width, height);
         // Kept alongside the borrow below, since that shadows the name and the fillet
         // preview further down needs the handles again once it has been dropped.
-        let handle_state = Rc::clone(&handles);
+        let handle_state = Rc::clone(handles);
         let mut handles = handles.borrow_mut();
         if let Some(kind) = HandleKind::of(active) {
             if kind == HandleKind::ControlPoint {
@@ -1856,7 +1856,7 @@ impl Scene3d {
         let mut world_labels: Vec<(String, Vec3d)> = Vec::new();
         let overlay_started = crate::profile::start();
         let (mut points, mut guides) = overlay::build(
-            &document,
+            document,
             active,
             &handles,
             &rotate.borrow(),
@@ -1869,7 +1869,7 @@ impl Scene3d {
         if active == Tool::Clip && pointer_inside.get() {
             let (x, y) = *pointer.borrow();
             let ray = camera.borrow().ray_through(x, y, width, height);
-            if let Some((at, _)) = clip_surface_point(&document, &grid.borrow(), &ray) {
+            if let Some((at, _)) = clip_surface_point(document, &grid.borrow(), &ray) {
                 if !clip.borrow().is_dragging() && clip.borrow().can_add_point(at) {
                     points.push((at, pref(|p| p.clip_handle_color).rgba_f32()));
                 }
@@ -1962,7 +1962,7 @@ impl Scene3d {
             }
 
             if active == Tool::Fillet {
-                let edges = crate::fillet_tool::edges_to_round(&document, &handles, hovered);
+                let edges = crate::fillet_tool::edges_to_round(document, &handles, hovered);
                 for (from, to) in &edges {
                     guides.push((*from, hover_colour));
                     guides.push((*to, hover_colour));
@@ -2407,7 +2407,7 @@ impl Scene3d {
             }
         }
 
-        guides.extend(crate::render_camera::guides(&document, &camera.borrow()));
+        guides.extend(crate::render_camera::guides(document, &camera.borrow()));
 
         crate::profile::add_scene_build(overlay_started);
         FrameOverlay {
@@ -2510,7 +2510,7 @@ impl Scene3d {
             ) {
                 Some(position) => {
                     let outcome = crate::fillet_tool::press(
-                        &document,
+                        document,
                         &mut handles,
                         *fillet.borrow(),
                         position,
@@ -4339,11 +4339,15 @@ mod pick_tests {
             .filter(|edge| !rounded_edges.contains(edge))
             .collect();
         assert!(
-            stale.iter().any(|(a, b)| !overlay
-                .guides
-                .chunks_exact(2)
-                .any(|line| (line[0].0 == *a && line[1].0 == *b)
-                    || (line[0].0 == *b && line[1].0 == *a))),
+            stale.iter().any(
+                |(a, b)| !overlay
+                    .guides
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .any(|line| (line[0].0 == *a && line[1].0 == *b)
+                        || (line[0].0 == *b && line[1].0 == *a))
+            ),
             "old silhouette must not obscure the preview"
         );
         let again = scene

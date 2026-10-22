@@ -36,7 +36,7 @@ pub fn draw(cr: &mut dyn Canvas, name: &str, x: f64, y: f64, size: f64) {
     let Some(k) = kind(name) else {
         return;
     };
-    let _ = cr.save();
+    cr.save();
     cr.translate(x, y);
     cr.scale(size / 24., size / 24.);
     cr.set_line_width(1.8);
@@ -139,8 +139,8 @@ pub fn draw(cr: &mut dyn Canvas, name: &str, x: f64, y: f64, size: f64) {
             line(cr, 12., 12., 12., 22.);
         }
     }
-    let _ = cr.stroke();
-    let _ = cr.restore();
+    cr.stroke();
+    cr.restore();
 }
 pub fn sprite(name: &str) -> map_model::sprite::Sprite {
     let mut canvas = Raster::new(48, 48).expect("a 48 pixel canvas");
@@ -148,7 +148,7 @@ pub fn sprite(name: &str) -> map_model::sprite::Sprite {
     draw(&mut canvas, name, 2., 2., 44.);
     // White throughout, with the icon in the alpha channel.
     let mut pixels = canvas.into_rgba().pixels;
-    for pixel in pixels.chunks_exact_mut(4) {
+    for pixel in pixels.as_chunks_mut::<4>().0 {
         pixel[..3].copy_from_slice(&[255, 255, 255]);
     }
     map_model::sprite::Sprite {

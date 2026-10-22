@@ -788,7 +788,7 @@ pub(crate) fn dash_polyline(points: &[Pos2], pattern: &[f32], offset: f32) -> Ve
     }
     let mut pieces = Vec::new();
     let mut piece: Vec<Pos2> = Vec::new();
-    let on = |index: usize| index % 2 == 0;
+    let on = |index: usize| index.is_multiple_of(2);
     if on(index) {
         piece.push(points[0]);
     }

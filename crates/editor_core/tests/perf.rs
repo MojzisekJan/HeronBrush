@@ -441,7 +441,7 @@ fn perf_geometry_tools() {
                 for _ in 0..60 {
                     if document.move_handles(&at, Vec3d::new(0.0, 0.0, 1.0)) {
                         for v in &mut at {
-                            *v = *v + Vec3d::new(0.0, 0.0, 1.0);
+                            *v += Vec3d::new(0.0, 0.0, 1.0);
                         }
                     }
                 }

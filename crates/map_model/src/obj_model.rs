@@ -190,7 +190,7 @@ pub fn read(
                 });
             }
             let mut skin = skin.unwrap();
-            for pixel in skin.pixels.chunks_exact_mut(4) {
+            for pixel in skin.pixels.as_chunks_mut::<4>().0 {
                 for i in 0..4 {
                     pixel[i] = (pixel[i] as f64 * color[i].clamp(0.0, 1.0)).round() as u8;
                 }

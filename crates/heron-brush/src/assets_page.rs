@@ -184,7 +184,7 @@ impl AssetsPage {
                     ui.spacing_mut().item_spacing = egui::vec2(gap, gap);
                     if self.grid_focused && ui.memory(|m| m.focused().is_none()) {
                         let step = ui.input(|i| {
-                            let step = if i.key_pressed(egui::Key::ArrowLeft) {
+                            if i.key_pressed(egui::Key::ArrowLeft) {
                                 -1
                             } else if i.key_pressed(egui::Key::ArrowRight) {
                                 1
@@ -194,8 +194,7 @@ impl AssetsPage {
                                 per_line as isize
                             } else {
                                 0
-                            };
-                            step
+                            }
                         });
                         // Taken here, so the tools' own Enter does not see it too.
                         let enter = self.selected.is_some()

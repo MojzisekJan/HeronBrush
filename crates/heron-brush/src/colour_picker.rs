@@ -200,7 +200,7 @@ pub fn button(
         .show(|ui| {
             egui::Frame::new()
                 .inner_margin(egui::Margin::same(6))
-                .show(ui, |ui| contents(ui, id, rgb, alpha.as_deref_mut()))
+                .show(ui, |ui| contents(ui, id, rgb, alpha))
                 .inner
         });
     if shown.is_some_and(|inner| inner.inner) {

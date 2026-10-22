@@ -314,7 +314,7 @@ pub fn update_package(package: &str, roots: &[String], content_dir: &str) -> Str
                 }
             }
             out.push("RootAssets:".to_string());
-            out.extend(kept.drain(..));
+            out.append(&mut kept);
             out.extend(roots.iter().map(|root| format!("    - {root}")));
         } else {
             out.push(line.to_string());
@@ -578,11 +578,11 @@ mod tests {
 
     fn glb(json: serde_json::Value, bin: &[u8]) -> Vec<u8> {
         let mut json = serde_json::to_vec(&json).unwrap();
-        while json.len() % 4 != 0 {
+        while !json.len().is_multiple_of(4) {
             json.push(b' ')
         }
         let mut bin = bin.to_vec();
-        while bin.len() % 4 != 0 {
+        while !bin.len().is_multiple_of(4) {
             bin.push(0)
         }
         let mut out = b"glTF".to_vec();

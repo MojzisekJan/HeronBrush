@@ -191,6 +191,31 @@ impl EntityLinkMode {
     }
 }
 
+/// Tells the console what turning a tag on or off did.
+pub fn report_tag_outcome(name: &str, outcome: Option<crate::document::TagOutcome>) {
+    use crate::document::TagOutcome;
+    match outcome {
+        Some(TagOutcome::Changed(0)) => {
+            crate::say!("the selection already matches `{name}`")
+        }
+        Some(TagOutcome::Changed(count)) => {
+            crate::say!("changed {count} faces for `{name}`")
+        }
+        Some(TagOutcome::Ambiguous { used, changed }) => {
+            crate::say!("`{name}` matches several materials; put `{used}` on {changed} faces")
+        }
+        Some(TagOutcome::NoMaterial) => {
+            crate::complain!("no loaded material matches `{name}`")
+        }
+        Some(TagOutcome::NoSelection) => {
+            crate::complain!("select some faces or brushes first")
+        }
+        Some(TagOutcome::Unsupported) | None => {
+            crate::complain!("`{name}` cannot be changed from here")
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -219,31 +244,6 @@ mod tests {
     fn every_link_mode_has_a_label() {
         for mode in EntityLinkMode::ALL {
             assert!(!mode.name().is_empty());
-        }
-    }
-}
-
-/// Tells the console what turning a tag on or off did.
-pub fn report_tag_outcome(name: &str, outcome: Option<crate::document::TagOutcome>) {
-    use crate::document::TagOutcome;
-    match outcome {
-        Some(TagOutcome::Changed(0)) => {
-            crate::say!("the selection already matches `{name}`")
-        }
-        Some(TagOutcome::Changed(count)) => {
-            crate::say!("changed {count} faces for `{name}`")
-        }
-        Some(TagOutcome::Ambiguous { used, changed }) => {
-            crate::say!("`{name}` matches several materials; put `{used}` on {changed} faces")
-        }
-        Some(TagOutcome::NoMaterial) => {
-            crate::complain!("no loaded material matches `{name}`")
-        }
-        Some(TagOutcome::NoSelection) => {
-            crate::complain!("select some faces or brushes first")
-        }
-        Some(TagOutcome::Unsupported) | None => {
-            crate::complain!("`{name}` cannot be changed from here")
         }
     }
 }

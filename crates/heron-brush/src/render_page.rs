@@ -900,11 +900,11 @@ impl RenderPage {
         }
         ui.add_space(8.0);
         widgets::card(ui, tr("Presets"), None, |ui| {
-            let names: Vec<&str> = OUTPUT_PRESETS.iter().map(|(name, ..)| tr(*name)).collect();
+            let names: Vec<&str> = OUTPUT_PRESETS.iter().map(|(name, ..)| tr(name)).collect();
             if let Some(index) = form::button_strip(ui, &names, true) {
                 apply_output_preset(&mut self.settings, index);
             }
-            let names: Vec<&str> = LIGHTING_PRESETS.iter().map(|name| tr(*name)).collect();
+            let names: Vec<&str> = LIGHTING_PRESETS.iter().map(|name| tr(name)).collect();
             if let Some(index) = form::button_strip(ui, &names, true) {
                 let (lighting, elevation, azimuth) = Lighting::preset(index);
                 self.settings.lighting = Some(lighting);

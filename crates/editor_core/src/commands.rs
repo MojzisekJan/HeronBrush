@@ -138,7 +138,7 @@ impl Commands {
             && !shift
             && (digit == Some(0) || matches!(key, Key::Keypad(0) | Key::Insert))
         {
-            render_camera::align_to_view(&mut document.borrow_mut(), &camera_3d);
+            render_camera::align_to_view(&mut document.borrow_mut(), camera_3d);
             window.refresh_inspector();
             window.refresh_toolbar();
             window.redraw();
@@ -378,14 +378,7 @@ impl Commands {
                     window.refresh_inspector();
                 }
                 Key::Escape if shift => {
-                    set_tool(
-                        &tool,
-                        &clip,
-                        &handles,
-                        &rotate,
-                        &assemble,
-                        tool::Tool::Select,
-                    );
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Select);
                 }
                 Key::Escape if document.borrow().in_transaction() => {
                     document.borrow_mut().cancel_transaction();
@@ -456,7 +449,7 @@ impl Commands {
                     if !matches!(*tool.borrow(), tool::Tool::Assemble | tool::Tool::Clip) =>
                 {
                     let outcome = crate::fillet_tool::apply(
-                        &document,
+                        document,
                         &mut handles.borrow_mut(),
                         *fillet.borrow(),
                     );
@@ -498,45 +491,25 @@ impl Commands {
                         }
                     }
                 }
-                Key::Letter('n') if !ctrl => set_tool(
-                    &tool,
-                    &clip,
-                    &handles,
-                    &rotate,
-                    &assemble,
-                    tool::Tool::Assemble,
-                ),
+                Key::Letter('n') if !ctrl => {
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Assemble)
+                }
                 // Tool shortcuts: B draws brushes, E selects edges, and Y activates sweep.
-                Key::Letter('y') if !ctrl && !shift && !alt => set_tool(
-                    &tool,
-                    &clip,
-                    &handles,
-                    &rotate,
-                    &assemble,
-                    tool::Tool::Sweep,
-                ),
-                Key::Letter('b') if !ctrl => set_tool(
-                    &tool,
-                    &clip,
-                    &handles,
-                    &rotate,
-                    &assemble,
-                    tool::Tool::Brush,
-                ),
+                Key::Letter('y') if !ctrl && !shift && !alt => {
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Sweep)
+                }
+                Key::Letter('b') if !ctrl => {
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Brush)
+                }
                 Key::Letter('e') if !ctrl && !shift && !alt => {
-                    set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Edge)
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Edge)
                 }
                 Key::Letter('c') if !ctrl => {
-                    set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Clip)
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Clip)
                 }
-                Key::Letter('v') if !ctrl => set_tool(
-                    &tool,
-                    &clip,
-                    &handles,
-                    &rotate,
-                    &assemble,
-                    tool::Tool::Vertex,
-                ),
+                Key::Letter('v') if !ctrl => {
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Vertex)
+                }
                 // Tab is Blender's mode key: with a brush in hand it steps around the
                 // ring whole brush -> vertices -> edges -> faces -> whole brush, so one
                 // key reaches every way of editing what is selected.
@@ -548,7 +521,7 @@ impl Commands {
                             tool::Tool::Edge => tool::Tool::Face,
                             _ => tool::Tool::Select,
                         };
-                        set_tool(&tool, &clip, &handles, &rotate, &assemble, next);
+                        set_tool(tool, clip, handles, rotate, assemble, next);
                     }
                 }
                 // `Move objects`, Ctrl+Alt+M: the window that moves the selection by a
@@ -570,25 +543,18 @@ impl Commands {
                     window.refresh_inspector();
                 }
                 Key::Letter('p') if !ctrl => set_tool(
-                    &tool,
-                    &clip,
-                    &handles,
-                    &rotate,
-                    &assemble,
+                    tool,
+                    clip,
+                    handles,
+                    rotate,
+                    assemble,
                     tool::Tool::ControlPoint,
                 ),
                 Key::Letter('f') if !ctrl && !shift => {
-                    set_tool(&tool, &clip, &handles, &rotate, &assemble, tool::Tool::Face)
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Face)
                 }
                 Key::Letter('r') if !ctrl && !shift => {
-                    set_tool(
-                        &tool,
-                        &clip,
-                        &handles,
-                        &rotate,
-                        &assemble,
-                        tool::Tool::Rotate,
-                    );
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Rotate);
                     // `RotateTool::doActivate` resets the centre, so the ring is around
                     // the selection from the first frame rather than only once a flat
                     // view has drawn and set it.
@@ -598,46 +564,21 @@ impl Commands {
                             .reset_center(&document.borrow(), &grid_now);
                     }
                 }
-                Key::Letter('t') if !ctrl => set_tool(
-                    &tool,
-                    &clip,
-                    &handles,
-                    &rotate,
-                    &assemble,
-                    tool::Tool::Scale,
-                ),
-                Key::Letter('g') if !ctrl => set_tool(
-                    &tool,
-                    &clip,
-                    &handles,
-                    &rotate,
-                    &assemble,
-                    tool::Tool::Shear,
-                ),
-                Key::Letter('k') if !ctrl => set_tool(
-                    &tool,
-                    &clip,
-                    &handles,
-                    &rotate,
-                    &assemble,
-                    tool::Tool::Paint,
-                ),
-                Key::Letter('j') if !ctrl => set_tool(
-                    &tool,
-                    &clip,
-                    &handles,
-                    &rotate,
-                    &assemble,
-                    tool::Tool::Sculpt,
-                ),
-                Key::Letter('o') if !ctrl => set_tool(
-                    &tool,
-                    &clip,
-                    &handles,
-                    &rotate,
-                    &assemble,
-                    tool::Tool::Fillet,
-                ),
+                Key::Letter('t') if !ctrl => {
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Scale)
+                }
+                Key::Letter('g') if !ctrl => {
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Shear)
+                }
+                Key::Letter('k') if !ctrl => {
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Paint)
+                }
+                Key::Letter('j') if !ctrl => {
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Sculpt)
+                }
+                Key::Letter('o') if !ctrl => {
+                    set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Fillet)
+                }
                 Key::Letter('z') if ctrl && shift => report(document.borrow_mut().redo(), "redo"),
                 Key::Letter('z') if ctrl => report(document.borrow_mut().undo(), "undo"),
                 Key::Letter('y') if ctrl => report(document.borrow_mut().redo(), "redo"),
@@ -697,7 +638,7 @@ impl Commands {
                 // See [`arrow_key`].
                 Key::Left | Key::Right | Key::Up | Key::Down | Key::PageUp | Key::PageDown
                     if arrow_key(
-                        &document,
+                        document,
                         &grid_now,
                         // The 3D view goes by its camera; a flat view by the plane it
                         // shows, which is the last one the pointer was over.
@@ -712,20 +653,20 @@ impl Commands {
                             alt,
                         },
                         *tool.borrow(),
-                        &handles,
-                        &rotate,
+                        handles,
+                        rotate,
                     ) => {}
-                Key::BracketLeft => rotate_uv(&document, -15.0),
-                Key::BracketRight => rotate_uv(&document, 15.0),
+                Key::BracketLeft => rotate_uv(document, -15.0),
+                Key::BracketRight => rotate_uv(document, 15.0),
                 // `Move to Previous Point` and `Move to Next Point`, which walk the
                 // camera along a leak's trace. With faces selected they scale the
                 // material instead, the way the arrows are the material's while a face
                 // is: a trace and a face are never both what is being worked on.
                 Key::Comma if document.borrow().face_selection_count() > 0 => {
-                    scale_uv(&document, 0.5)
+                    scale_uv(document, 0.5)
                 }
                 Key::Period if document.borrow().face_selection_count() > 0 => {
-                    scale_uv(&document, 2.0)
+                    scale_uv(document, 2.0)
                 }
                 Key::Comma | Key::Period => {
                     let step = document.borrow_mut().step_along_trace(key == Key::Period);
@@ -834,30 +775,30 @@ impl Commands {
                                 Direction::Right
                             },
                         );
-                        flip(&document, axis_of(along));
+                        flip(document, axis_of(along));
                     }
                 }
                 // Rotate a quarter turn about each axis, and mirror along it.
-                Key::Letter('x') if ctrl && shift => flip(&document, Axis::X),
-                Key::Letter('y') if ctrl && shift => flip(&document, Axis::Y),
-                Key::Letter('z') if ctrl && shift && modifiers.alt => flip(&document, Axis::Z),
+                Key::Letter('x') if ctrl && shift => flip(document, Axis::X),
+                Key::Letter('y') if ctrl && shift => flip(document, Axis::Y),
+                Key::Letter('z') if ctrl && shift && modifiers.alt => flip(document, Axis::Z),
                 // Insert places a point entity at the selection centre, or at the origin when
                 // nothing is selected.
                 Key::Insert => {
                     let size = grid_now.actual_size();
-                    place_entity(&document, size);
+                    place_entity(document, size);
                 }
 
                 // Alt-modified shortcuts rotate by a quarter turn without conflicting with tool
                 // shortcuts.
                 Key::Letter('x') if alt && !ctrl => {
-                    rotate_by_quarter_turn(&document, Axis::X, shift)
+                    rotate_by_quarter_turn(document, Axis::X, shift)
                 }
                 Key::Letter('y') if alt && !ctrl => {
-                    rotate_by_quarter_turn(&document, Axis::Y, shift)
+                    rotate_by_quarter_turn(document, Axis::Y, shift)
                 }
                 Key::Letter('z') if alt && !ctrl => {
-                    rotate_by_quarter_turn(&document, Axis::Z, shift)
+                    rotate_by_quarter_turn(document, Axis::Z, shift)
                 }
                 // `MapWindow`: with the clip tool active, delete takes back the last
                 // clip point rather than deleting the selection.
@@ -898,7 +839,7 @@ impl Commands {
                     }
                 }
                 _ if matches!(digit, Some(1..=8)) && alt && !ctrl => {
-                    if !select_shape_kind(&shape_parameters, digit.unwrap_or(0)) {
+                    if !select_shape_kind(shape_parameters, digit.unwrap_or(0)) {
                         return false;
                     }
                 }

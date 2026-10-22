@@ -120,7 +120,7 @@ pub fn read(
         });
     let mut triangles = Vec::with_capacity(tri_count);
     let mut bounds: Option<Bbox3d> = None;
-    for face in faces.chunks_exact(12) {
+    for face in faces.as_chunks::<12>().0 {
         let mut positions = [Vec3d::zero(); 3];
         let mut uv = [Vec2f::new(0., 0.); 3];
         for corner in 0..3 {

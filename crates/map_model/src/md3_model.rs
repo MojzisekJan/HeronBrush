@@ -187,7 +187,7 @@ pub fn read(
             let normal = Vec3d::new(lat.cos() * lng.sin(), lat.sin() * lng.sin(), lng.cos());
             points.push((position, uv, normal));
         }
-        for face in surface[face_range].chunks_exact(12) {
+        for face in surface[face_range].as_chunks::<12>().0 {
             let mut positions = [Vec3d::zero(); 3];
             let mut uv = [Vec2f::new(0., 0.); 3];
             let mut normals = [Vec3d::zero(); 3];
@@ -305,7 +305,7 @@ mod tests {
             (surface + 188, f32::NAN.to_bits()),
         ] {
             let mut bytes = MODEL.to_vec();
-            bytes[at..at + 4].copy_from_slice(&(value as u32).to_le_bytes());
+            bytes[at..at + 4].copy_from_slice(&value.to_le_bytes());
             assert!(
                 read(&bytes, &mut |_| None).is_err(),
                 "accepted field at {at}"

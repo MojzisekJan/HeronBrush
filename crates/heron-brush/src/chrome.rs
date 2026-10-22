@@ -1288,7 +1288,7 @@ pub fn toggle_pill(ui: &Ui, slot: Rect, response: &egui::Response, label: &str, 
     }
     let colour = if on { theme::on_accent() } else { theme::fg() };
     crate::theme::text(
-        &painter,
+        painter,
         slot.center(),
         egui::Align2::CENTER_CENTER,
         label,

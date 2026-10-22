@@ -75,7 +75,7 @@ impl GameConfig {
 }
 
 pub fn parse_file(path: &Path) -> Result<GameConfig, GameConfigError> {
-    let text = file_store::read_to_string(path.as_ref()).map_err(|source| GameConfigError::Io {
+    let text = file_store::read_to_string(path).map_err(|source| GameConfigError::Io {
         path: path.display().to_string(),
         source,
     })?;

@@ -62,7 +62,7 @@ pub fn apply(
         let surface = &mut mesh.surfaces[index];
         let offset = surface.vertices.len() as u32;
         surface.vertices.extend(incoming.vertices.iter().map(|v| {
-            let mut v = v.clone();
+            let mut v = *v;
             v.position = math::to_godot(v.position) * scale_factor;
             v.normal = math::to_godot(v.normal);
             v

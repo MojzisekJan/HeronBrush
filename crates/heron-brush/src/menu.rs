@@ -300,7 +300,7 @@ fn row(
         check_mark(painter, column, text);
     } else if !icon.is_empty() {
         crate::theme::text(
-            &painter,
+            painter,
             column,
             egui::Align2::CENTER_CENTER,
             icon,
@@ -309,7 +309,7 @@ fn row(
         );
     }
     crate::theme::text(
-        &painter,
+        painter,
         egui::pos2(rect.left() + CHECK_COLUMN, rect.center().y),
         egui::Align2::LEFT_CENTER,
         label,
@@ -318,7 +318,7 @@ fn row(
     );
     if !shortcut.is_empty() {
         crate::theme::text(
-            &painter,
+            painter,
             egui::pos2(rect.right() - RIGHT_PAD, rect.center().y),
             egui::Align2::RIGHT_CENTER,
             shortcut,
