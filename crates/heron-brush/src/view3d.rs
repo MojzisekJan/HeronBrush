@@ -194,6 +194,10 @@ impl View3d {
         }));
         let backend = match gpu {
             Gpu::Gl(proc_address) => {
+                // SAFETY: Views are made in eframe's creation callback or in a frame's
+                // update, both of which run with eframe's GL context current on this
+                // thread, and `proc_address` is eframe's loader for it
+                // (`Gpu::from_creation_context`).
                 let make = || unsafe { crate::gl_glue::context(proc_address) };
                 match render::Renderer::new(
                     make(),
@@ -688,6 +692,9 @@ impl GlView {
 
         self.renderer
             .set_settings(editor_core::render_settings::from_preferences());
+        // SAFETY: `show` runs inside egui's update, with eframe's GL context current on this
+        // thread, and `self.gl` wraps that same native context. `target.framebuffer` is the live
+        // framebuffer `resize` made with it, and the previous binding is put back.
         unsafe {
             // In WebGL the bound framebuffer may be egui's, which this context cannot name;
             // egui draws to the canvas there, so that is what goes back.
@@ -728,6 +735,10 @@ impl GlView {
             use eframe::glow::HasContext as _;
             let gl = painter.gl();
             let viewport = info.viewport_in_pixels();
+            // SAFETY: egui_glow runs paint callbacks with its context current, and
+            // eframe's windows share one native context (see the module docs), so
+            // `source` names the view's framebuffer here too. A name deleted since only
+            // raises a GL error. The read binding found on entry is restored.
             unsafe {
                 let previous = gl.get_parameter_i32(eframe::glow::READ_FRAMEBUFFER_BINDING);
                 let source = crate::gl_glue::eframe_framebuffer(source)
@@ -757,6 +768,7 @@ impl GlView {
         });
 
         if profiling {
+            // SAFETY: Still inside egui's update, with the context current as above.
             unsafe { self.gl.finish() };
         }
         self.drawn.get() != before
@@ -769,6 +781,8 @@ impl GlView {
             self.delete_target(old);
         }
         let gl = &self.gl;
+        // SAFETY: Only `show` calls this, inside egui's update with the context current. The
+        // objects are made here, and the previous draw binding is restored before the end.
         unsafe {
             let (Ok(framebuffer), Ok(color), Ok(depth)) = (
                 gl.create_framebuffer(),
@@ -819,6 +833,9 @@ impl GlView {
     }
 
     fn delete_target(&self, target: Target) {
+        // SAFETY: `resize` and `destroy` call this, both with the GL context current (see their
+        // docs). The names were made by `self.gl`, and `target` is moved in, so nothing uses
+        // them afterwards.
         unsafe {
             self.gl.delete_framebuffer(target.framebuffer);
             self.gl.delete_renderbuffer(target.color);

@@ -15,6 +15,9 @@ use crate::view3d::ProcAddress;
 /// `proc_address` must be eframe's loader for a GL context current on this thread.
 pub unsafe fn context(proc_address: &ProcAddress) -> glow::Context {
     #[cfg(not(target_arch = "wasm32"))]
+    // SAFETY: The caller guarantees that `proc_address` is eframe's loader for the GL
+    // context current on this thread, so each pointer it hands glow is that context's entry
+    // point or null. glow panics on a call to a function that did not load.
     return unsafe { glow::Context::from_loader_function_cstr(|name| proc_address(name)) };
     #[cfg(target_arch = "wasm32")]
     {
@@ -86,6 +89,9 @@ mod web {
         }) else {
             return;
         };
+        // SAFETY: In the browser every glow context wraps the page's one WebGL 2 context, on the
+        // main thread, and `framebuffer` was made by `gl`, the context it was published with.
+        // WebGL checks each call, so a name deleted since only raises a GL error.
         unsafe {
             gl.bind_framebuffer(glow::READ_FRAMEBUFFER, Some(framebuffer));
             gl.blit_framebuffer(

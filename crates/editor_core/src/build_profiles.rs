@@ -518,6 +518,10 @@ pub mod runner {
                     let status = loop {
                         if cancel.load(Ordering::Relaxed) {
                             #[cfg(unix)]
+                            // SAFETY: `kill` reads no memory of ours. The child is
+                            // still unreaped (`try_wait` has not returned its
+                            // status), so its pid, and the process group
+                            // `process_group(0)` gave it, cannot have been reused.
                             unsafe {
                                 libc::kill(-(child.id() as i32), libc::SIGKILL);
                             }

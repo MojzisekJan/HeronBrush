@@ -466,6 +466,8 @@ impl Renderer {
     /// On context loss, discard the renderer without GL calls and recreate it, then
     /// re-upload CPU-side scene data into the new context.
     pub fn new(gl: glow::Context, settings: RenderSettings) -> Result<Self, String> {
+        // SAFETY: The caller keeps `gl`'s native context current on this thread, as documented
+        // above. Every call acts on that context and on objects it has just made.
         unsafe {
             // Which GL the driver actually gave, since what the shaders may use depends on
             // it and a mismatch shows up as a blank view rather than as an error.
@@ -734,6 +736,9 @@ impl Renderer {
     /// One texture each, indexed the way the document's collection is, so a triangle's
     /// material index means the same thing on both sides.
     pub fn upload_materials(&mut self, materials: &[map_model::material::Material]) {
+        // SAFETY: The frontend keeps this renderer's context current (see `Renderer::new`). The
+        // textures were made by it, the shared white one is skipped, and draining the lists
+        // means none is deleted twice or used again.
         unsafe {
             for texture in self.material_textures.drain(..) {
                 if Some(texture) != self.white {
@@ -773,6 +778,8 @@ impl Renderer {
             else {
                 continue;
             };
+            // SAFETY: The context is current (see `Renderer::new`). `make_rgba_texture` checks each
+            // image's size against its pixel count before GL reads the slice.
             unsafe {
                 let normal = material.normal_map.as_ref().and_then(|map| {
                     let pixels = map.pixels()?;
@@ -928,6 +935,8 @@ impl Renderer {
             seen
         };
 
+        // SAFETY: The context is current (see `Renderer::new`), and `into` and the sprite program
+        // belong to it.
         unsafe {
             self.gl.bind_framebuffer(glow::FRAMEBUFFER, into);
             self.gl.viewport(0, 0, width, height);
@@ -988,11 +997,14 @@ impl Renderer {
             }
 
             self.sprite_mesh.upload(&self.gl, &data, glow::DYNAMIC_DRAW);
+            // SAFETY: The context is current, and `Mesh::draw` reads only the vertices the upload
+            // above put in the buffer.
             unsafe {
                 self.sprite_mesh.draw(&self.gl, glow::TRIANGLES);
             }
         }
 
+        // SAFETY: The context is current (see `Renderer::new`); this only resets state.
         unsafe {
             self.gl.depth_mask(true);
             self.gl.disable(glow::BLEND);
@@ -1036,6 +1048,8 @@ impl Renderer {
         let width = width.max(1);
         let height = height.max(1);
         self.ensure_axis_colors();
+        // SAFETY: The context is current (see `Renderer::new`). Each mesh draws only the vertices
+        // its last upload holds.
         unsafe {
             let target = self
                 .gl
@@ -1088,6 +1102,7 @@ impl Renderer {
         let light_matrix = self.light_matrix(sun);
 
         // Whatever the host is drawing into, which is where the last pass has to end up.
+        // SAFETY: The context is current (see `Renderer::new`); this only reads a binding.
         self.target = unsafe {
             self.gl
                 .get_parameter_framebuffer(glow::DRAW_FRAMEBUFFER_BINDING)
@@ -1138,6 +1153,7 @@ impl Renderer {
 
         if !self.checked_first_frame {
             self.checked_first_frame = true;
+            // SAFETY: The context is current (see `Renderer::new`); this only reads the error flag.
             let error = unsafe { self.gl.get_error() };
             if error != glow::NO_ERROR {
                 eprintln!("3D view: the first frame raised GL error {error:#x}");
@@ -1175,6 +1191,9 @@ impl Renderer {
     /// cannot see the window they are changing.
     fn probe_frame(&self, width: i32, height: i32) {
         let mut pixels = vec![0u8; (width * height * 4) as usize];
+        // SAFETY: The context is current (see `Renderer::new`). `read_pixels` writes
+        // `width * height` RGBA bytes, which is the length of `pixels`: RGBA rows need no
+        // padding at any pack alignment GL allows up to 4, and nothing here binds a pack buffer.
         unsafe {
             self.gl.bind_framebuffer(glow::FRAMEBUFFER, self.target);
             self.gl.read_pixels(
@@ -1265,6 +1284,9 @@ impl Renderer {
         if !(16..=4096).contains(&width) || !(16..=4096).contains(&height) {
             return Err("Render dimensions must be between 16 and 4096 pixels".into());
         }
+        // SAFETY: The caller keeps the context current, as `capture_rgba` says. The size is
+        // checked above, so `pixels` is exactly the RGBA bytes `read_pixels` writes for the
+        // target. Every object made here is deleted before returning, on the error paths too.
         unsafe {
             let gl = &self.gl;
             let max = gl
@@ -1361,6 +1383,9 @@ impl Renderer {
 
     /// Releases everything on the GPU.
     pub fn destroy(self) {
+        // SAFETY: The context is current (see `Renderer::new`). `self` is consumed, so nothing
+        // is used after it is deleted, and the white texture the material slots share is
+        // deleted once, at the end.
         unsafe {
             self.scene.destroy(&self.gl);
             self.sky_background.destroy(&self.gl);
@@ -1456,6 +1481,8 @@ impl Renderer {
         {
             return;
         }
+        // SAFETY: The context is current (see `Renderer::new`), and the old target is taken out
+        // before it is destroyed.
         unsafe {
             if let Some(shadow) = self.shadow.take() {
                 shadow.destroy(&self.gl);
@@ -1471,6 +1498,8 @@ impl Renderer {
             return;
         };
 
+        // SAFETY: The context is current (see `Renderer::new`). Each batch's range lies inside
+        // the geometry buffer, since `upload` builds both from the same vertices.
         unsafe {
             self.gl
                 .bind_framebuffer(glow::FRAMEBUFFER, Some(shadow.framebuffer));
@@ -1583,6 +1612,8 @@ impl Renderer {
             return;
         };
 
+        // SAFETY: The context is current (see `Renderer::new`). Each batch's range lies inside
+        // the geometry buffer, since `upload` builds both from the same vertices.
         unsafe {
             // The normals and depth the occlusion pass reads.
             self.gl
@@ -1676,6 +1707,8 @@ impl Renderer {
         // be bloomed; straight to the screen when there is not.
         let into_post = self.post.as_ref().map(|post| post.hdr_framebuffer);
 
+        // SAFETY: The context is current (see `Renderer::new`), and every framebuffer, texture
+        // and program used here is a live object of the renderer's.
         unsafe {
             self.gl
                 .bind_framebuffer(glow::FRAMEBUFFER, into_post.or(self.target));
@@ -1958,6 +1991,8 @@ impl Renderer {
             return;
         };
 
+        // SAFETY: The context is current (see `Renderer::new`), and every framebuffer, texture
+        // and program used here is a live object of the renderer's.
         unsafe {
             self.gl
                 .bind_framebuffer(glow::FRAMEBUFFER, Some(post.ssr_framebuffer));
@@ -2034,6 +2069,8 @@ impl Renderer {
     /// into the finished picture, but against the same depth the scene was drawn with, so
     /// what is behind a wall is still behind it.
     fn render_overlay(&self, into: Option<glow::Framebuffer>, width: i32, height: i32) {
+        // SAFETY: The context is current (see `Renderer::new`). The meshes draw only the vertices
+        // their last upload holds.
         unsafe {
             self.gl.bind_framebuffer(glow::FRAMEBUFFER, into);
             self.gl.viewport(0, 0, width, height);
@@ -2135,7 +2172,12 @@ impl Renderer {
     }
 
     /// Draws the geometry, one pass per material.
+    ///
+    /// # Safety
+    /// The context must be current on this thread.
     unsafe fn draw_batches(&self) {
+        // SAFETY: The caller keeps the context current. Each batch's range lies inside the
+        // geometry buffer, since `upload` builds both from the same vertices.
         unsafe {
             self.gl.bind_vertex_array(Some(self.geometry.array));
             let mut blending = false;
@@ -2240,7 +2282,13 @@ impl Renderer {
         }
     }
 
+    /// Draws one triangle over the whole target, its corners made from `gl_VertexID`.
+    ///
+    /// # Safety
+    /// The context must be current on this thread.
     unsafe fn draw_fullscreen(&self) {
+        // SAFETY: The caller keeps the context current. The vertex array has no attribute
+        // enabled, so the draw reads no buffer.
         unsafe {
             self.gl.bind_vertex_array(Some(self.fullscreen));
             self.gl.draw_arrays(glow::TRIANGLES, 0, 3);
@@ -2260,6 +2308,8 @@ impl Renderer {
         };
         let (width, height) = (post.width, post.height);
 
+        // SAFETY: The context is current (see `Renderer::new`), and every framebuffer, texture
+        // and program used here is a live object of the renderer's.
         unsafe {
             self.gl.disable(glow::DEPTH_TEST);
             self.gl.disable(glow::CULL_FACE);
@@ -2359,6 +2409,8 @@ impl Renderer {
         let write = (self.sample % 2) as usize;
         let read = 1 - write;
 
+        // SAFETY: The context is current (see `Renderer::new`), and every framebuffer, texture
+        // and program used here is a live object of the renderer's.
         unsafe {
             self.gl.bind_framebuffer(
                 glow::FRAMEBUFFER,
@@ -2387,6 +2439,8 @@ impl Renderer {
             return;
         };
 
+        // SAFETY: The context is current (see `Renderer::new`), and every framebuffer, texture
+        // and program used here is a live object of the renderer's.
         unsafe {
             self.gl.disable(glow::DEPTH_TEST);
             self.gl.bind_framebuffer(glow::FRAMEBUFFER, self.target);
@@ -2422,8 +2476,11 @@ impl Renderer {
         }
 
         if let Some(old) = self.post.take() {
+            // SAFETY: The context is current (see `Renderer::new`), and `old` was taken out, so
+            // nothing uses it again.
             unsafe { old.destroy(&self.gl) };
         }
+        // SAFETY: The context is current (see `Renderer::new`).
         self.post = unsafe { PostTargets::new(&self.gl, width, height) }
             .inspect_err(|error| eprintln!("3D view: no bloom or anti-aliasing: {error}"))
             .ok();
@@ -2440,8 +2497,11 @@ impl Renderer {
         }
 
         if let Some(old) = self.screen.take() {
+            // SAFETY: The context is current (see `Renderer::new`), and `old` was taken out, so
+            // nothing uses it again.
             unsafe { old.destroy(&self.gl) };
         }
+        // SAFETY: The context is current (see `Renderer::new`).
         self.screen = unsafe { ScreenTargets::new(&self.gl, width, height) }
             .inspect_err(|error| eprintln!("3D view: no ambient occlusion: {error}"))
             .ok();
@@ -2456,11 +2516,17 @@ struct Program {
 }
 
 impl Program {
+    /// Compiles and links a program from the two sources, rewritten for GLES if need be.
+    ///
+    /// # Safety
+    /// `gl`'s context must be current on this thread.
     unsafe fn new(
         gl: &glow::Context,
         vertex_source: &str,
         fragment_source: &str,
     ) -> Result<Self, String> {
+        // SAFETY: The caller keeps `gl`'s context current, and every object used here was made
+        // in it just above.
         unsafe {
             let program = gl
                 .create_program()
@@ -2556,40 +2622,58 @@ impl Program {
                 elements[column * 4 + row] = matrix[column][row] as f32;
             }
         }
+        // SAFETY: `gl` is the renderer's context, current while it draws (see `Renderer::new`),
+        // and `location` came from this program. GL reads the 16 elements of `elements`.
         unsafe { gl.uniform_matrix_4_f32_slice(Some(location), false, &elements) };
     }
 
     fn set_vec3(&self, gl: &glow::Context, name: &str, x: f32, y: f32, z: f32) {
         if let Some(location) = self.uniforms.get(name) {
+            // SAFETY: `gl` is the renderer's context, current while it draws (see `Renderer::new`),
+            // and `location` came from this program.
             unsafe { gl.uniform_3_f32(Some(location), x, y, z) };
         }
     }
 
     fn set_vec3_slice(&self, gl: &glow::Context, name: &str, values: &[f32]) {
         if let Some(location) = self.uniforms.get(name) {
+            // SAFETY: `gl` is the renderer's context, current while it draws (see `Renderer::new`),
+            // and `location` came from this program. glow passes GL the slice's own length.
             unsafe { gl.uniform_3_f32_slice(Some(location), values) };
         }
     }
 
     fn set_vec2(&self, gl: &glow::Context, name: &str, x: f32, y: f32) {
         if let Some(location) = self.uniforms.get(name) {
+            // SAFETY: `gl` is the renderer's context, current while it draws (see `Renderer::new`),
+            // and `location` came from this program.
             unsafe { gl.uniform_2_f32(Some(location), x, y) };
         }
     }
 
     fn set_f32(&self, gl: &glow::Context, name: &str, value: f32) {
         if let Some(location) = self.uniforms.get(name) {
+            // SAFETY: `gl` is the renderer's context, current while it draws (see `Renderer::new`),
+            // and `location` came from this program.
             unsafe { gl.uniform_1_f32(Some(location), value) };
         }
     }
 
     fn set_i32(&self, gl: &glow::Context, name: &str, value: i32) {
         if let Some(location) = self.uniforms.get(name) {
+            // SAFETY: `gl` is the renderer's context, current while it draws (see `Renderer::new`),
+            // and `location` came from this program.
             unsafe { gl.uniform_1_i32(Some(location), value) };
         }
     }
 
+    /// Deletes the program.
+    ///
+    /// # Safety
+    /// `gl` must be the context that made the program, current on this thread, and the
+    /// program must not be used afterwards.
     unsafe fn destroy(&self, gl: &glow::Context) {
+        // SAFETY: The caller keeps `gl`'s context current and stops using the program.
         unsafe { gl.delete_program(self.program) };
     }
 }
@@ -2603,7 +2687,14 @@ struct Mesh {
 }
 
 impl Mesh {
+    /// A vertex array and an empty buffer laid out as [`ATTRIBUTES`] says.
+    ///
+    /// # Safety
+    /// `gl`'s context must be current on this thread.
     unsafe fn new(gl: &glow::Context) -> Result<Self, String> {
+        // SAFETY: The caller keeps `gl`'s context current. The attribute offsets are into the
+        // bound buffer, not into memory of ours, and stay inside one vertex (the vertex layout
+        // test checks that they add up).
         unsafe {
             let array = gl
                 .create_vertex_array()
@@ -2639,16 +2730,25 @@ impl Mesh {
 
     fn upload(&mut self, gl: &glow::Context, data: &[f32], usage: u32) {
         self.count = (data.len() / FLOATS_PER_VERTEX) as i32;
+        // SAFETY: `gl` is the renderer's context, current while it works (see `Renderer::new`).
+        // `bytes_of` covers exactly `data`, so GL copies that and no more, and `count` above
+        // matches what the buffer now holds.
         unsafe {
             gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.buffer));
             gl.buffer_data_u8_slice(glow::ARRAY_BUFFER, bytes_of(data), usage);
         }
     }
 
+    /// Draws every vertex of the last upload.
+    ///
+    /// # Safety
+    /// `gl` must be the context that made the mesh, current on this thread.
     unsafe fn draw(&self, gl: &glow::Context, mode: u32) {
         if self.count == 0 {
             return;
         }
+        // SAFETY: The caller keeps `gl`'s context current. `count` comes from the last upload,
+        // so the draw reads only vertices the buffer holds.
         unsafe {
             gl.bind_vertex_array(Some(self.array));
             gl.draw_arrays(mode, 0, self.count);
@@ -2656,7 +2756,13 @@ impl Mesh {
         }
     }
 
+    /// Deletes the vertex array and the buffer.
+    ///
+    /// # Safety
+    /// `gl` must be the context that made the mesh, current on this thread, and the mesh
+    /// must not be used afterwards.
     unsafe fn destroy(&self, gl: &glow::Context) {
+        // SAFETY: The caller keeps `gl`'s context current and stops using the mesh.
         unsafe {
             gl.delete_vertex_array(self.array);
             gl.delete_buffer(self.buffer);
@@ -2674,7 +2780,13 @@ struct ShadowTarget {
 }
 
 impl ShadowTarget {
+    /// A depth texture `size` texels square, with a framebuffer to draw into it.
+    ///
+    /// # Safety
+    /// `gl`'s context must be current on this thread.
     unsafe fn new(gl: &glow::Context, size: i32) -> Result<Self, String> {
+        // SAFETY: The caller keeps `gl`'s context current, and every object used here was made
+        // in it just above. No call reads memory of ours except the four-float border colour.
         unsafe {
             let depth_texture = make_texture(
                 gl,
@@ -2736,7 +2848,13 @@ impl ShadowTarget {
         }
     }
 
+    /// Deletes the framebuffer and the texture.
+    ///
+    /// # Safety
+    /// `gl` must be the context that made the target, current on this thread, and the
+    /// target must not be used afterwards.
     unsafe fn destroy(&self, gl: &glow::Context) {
+        // SAFETY: The caller keeps `gl`'s context current and stops using the target.
         unsafe {
             gl.delete_framebuffer(self.framebuffer);
             gl.delete_texture(self.depth_texture);
@@ -2757,7 +2875,13 @@ struct ScreenTargets {
 }
 
 impl ScreenTargets {
+    /// The normal, occlusion and blur targets at the viewport's size.
+    ///
+    /// # Safety
+    /// `gl`'s context must be current on this thread.
     unsafe fn new(gl: &glow::Context, width: i32, height: i32) -> Result<Self, String> {
+        // SAFETY: The caller keeps `gl`'s context current, and every object used here was made
+        // in it just above.
         unsafe {
             let normal_texture = make_texture(
                 gl,
@@ -2819,7 +2943,13 @@ impl ScreenTargets {
         }
     }
 
+    /// Deletes the framebuffers and their textures.
+    ///
+    /// # Safety
+    /// `gl` must be the context that made the targets, current on this thread, and the
+    /// targets must not be used afterwards.
     unsafe fn destroy(&self, gl: &glow::Context) {
+        // SAFETY: The caller keeps `gl`'s context current and stops using the targets.
         unsafe {
             gl.delete_framebuffer(self.normal_framebuffer);
             gl.delete_framebuffer(self.ao_framebuffer);
@@ -2868,7 +2998,13 @@ struct PostTargets {
 }
 
 impl PostTargets {
+    /// The post-processing targets at the viewport's size.
+    ///
+    /// # Safety
+    /// `gl`'s context must be current on this thread.
     unsafe fn new(gl: &glow::Context, width: i32, height: i32) -> Result<Self, String> {
+        // SAFETY: The caller keeps `gl`'s context current, and every object used here was made
+        // in it just above.
         unsafe {
             let hdr_texture = make_texture(
                 gl,
@@ -2967,7 +3103,13 @@ impl PostTargets {
         }
     }
 
+    /// Deletes the framebuffers, textures and the depth buffer.
+    ///
+    /// # Safety
+    /// `gl` must be the context that made the targets, current on this thread, and the
+    /// targets must not be used afterwards.
     unsafe fn destroy(&self, gl: &glow::Context) {
+        // SAFETY: The caller keeps `gl`'s context current and stops using the targets.
         unsafe {
             gl.delete_framebuffer(self.hdr_framebuffer);
             gl.delete_framebuffer(self.ldr_framebuffer);
@@ -2994,12 +3136,17 @@ impl PostTargets {
 }
 
 /// A framebuffer with one colour attachment of the given format.
+///
+/// # Safety
+/// `gl`'s context must be current on this thread.
 unsafe fn make_color_target(
     gl: &glow::Context,
     internal_format: i32,
     width: i32,
     height: i32,
 ) -> Result<(glow::Framebuffer, glow::Texture), String> {
+    // SAFETY: The caller keeps `gl`'s context current, and the texture attached is the one
+    // made just above.
     unsafe {
         // The type has to suit the internal format on GLES: bytes for RGBA8, floats for the
         // half-float targets. The desktop accepts either.
@@ -3036,6 +3183,10 @@ unsafe fn make_color_target(
 
 /* ========== small GL helpers ========== */
 
+/// An empty texture of the given format, clamped at its edges.
+///
+/// # Safety
+/// `gl`'s context must be current on this thread.
 unsafe fn make_texture(
     gl: &glow::Context,
     internal_format: i32,
@@ -3045,6 +3196,8 @@ unsafe fn make_texture(
     kind: u32,
     filter: u32,
 ) -> Result<glow::Texture, String> {
+    // SAFETY: The caller keeps `gl`'s context current. `tex_image_2d` gets no pixels, so it
+    // only allocates the storage and reads no memory of ours.
     unsafe {
         let texture = gl
             .create_texture()
@@ -3078,11 +3231,16 @@ unsafe fn make_texture(
 }
 
 /// A framebuffer holding one channel, which is all an occlusion factor needs.
+///
+/// # Safety
+/// `gl`'s context must be current on this thread.
 unsafe fn make_single_channel_target(
     gl: &glow::Context,
     width: i32,
     height: i32,
 ) -> Result<(glow::Framebuffer, glow::Texture), String> {
+    // SAFETY: The caller keeps `gl`'s context current, and the texture attached is the one
+    // made just above.
     unsafe {
         let texture = make_texture(
             gl,
@@ -3110,7 +3268,12 @@ unsafe fn make_single_channel_target(
     }
 }
 
+/// Whether the bound framebuffer can be drawn into, as an error naming `what` if not.
+///
+/// # Safety
+/// `gl`'s context must be current on this thread.
 unsafe fn check_framebuffer(gl: &glow::Context, what: &str) -> Result<(), String> {
+    // SAFETY: The caller keeps `gl`'s context current; this only reads a status.
     let status = unsafe { gl.check_framebuffer_status(glow::FRAMEBUFFER) };
     if status == glow::FRAMEBUFFER_COMPLETE {
         Ok(())
@@ -3120,6 +3283,8 @@ unsafe fn check_framebuffer(gl: &glow::Context, what: &str) -> Result<(), String
 }
 
 fn bind_texture(gl: &glow::Context, unit: u32, texture: glow::Texture) {
+    // SAFETY: `gl` is the renderer's context, current while it draws (see `Renderer::new`),
+    // and `texture` is one it made.
     unsafe {
         gl.active_texture(glow::TEXTURE0 + unit);
         gl.bind_texture(glow::TEXTURE_2D, Some(texture));
@@ -3160,6 +3325,9 @@ fn make_kernel() -> Vec<f32> {
 ///
 /// Mipmapped and filtered: a level is full of surfaces seen at a glancing angle, and an
 /// unmipmapped texture on one of those is a field of aliasing rather than a wall.
+///
+/// # Safety
+/// `gl`'s context must be current on this thread.
 unsafe fn make_material_texture(
     gl: &glow::Context,
     material: &map_model::material::Material,
@@ -3167,6 +3335,8 @@ unsafe fn make_material_texture(
     let pixels = material
         .pixels()
         .ok_or_else(|| "the image did not decode".to_string())?;
+    // SAFETY: The caller keeps `gl`'s context current. The slice is bounds-checked here, and
+    // `make_rgba_texture` checks its length against the size again.
     unsafe {
         make_rgba_texture(
             gl,
@@ -3177,6 +3347,10 @@ unsafe fn make_material_texture(
     }
 }
 
+/// A mipmapped, repeating RGBA texture from `width * height` pixels of four bytes.
+///
+/// # Safety
+/// `gl`'s context must be current on this thread. The pixel count is checked here.
 unsafe fn make_rgba_texture(
     gl: &glow::Context,
     width: u32,
@@ -3188,6 +3362,9 @@ unsafe fn make_rgba_texture(
         return Err("the image has no pixels".to_string());
     }
 
+    // SAFETY: The caller keeps `gl`'s context current. `pixels` holds exactly
+    // `width * height` RGBA bytes, checked above, and RGBA rows need no padding at any
+    // unpack alignment up to 4 (egui sets 1, `make_noise_texture` puts back 4).
     unsafe {
         let texture = gl
             .create_texture()
@@ -3224,7 +3401,12 @@ unsafe fn make_rgba_texture(
 }
 
 /// One white pixel, for wherever a missing pass would otherwise leave nothing bound.
+///
+/// # Safety
+/// `gl`'s context must be current on this thread.
 unsafe fn make_white_texture(gl: &glow::Context) -> Result<glow::Texture, String> {
+    // SAFETY: The caller keeps `gl`'s context current, and the slice is the one RGBA pixel
+    // a 1 by 1 texture reads.
     unsafe {
         let texture = gl
             .create_texture()
@@ -3256,6 +3438,9 @@ unsafe fn make_white_texture(gl: &glow::Context) -> Result<glow::Texture, String
 }
 
 /// A small tiled texture of random directions, to rotate the kernel per pixel.
+///
+/// # Safety
+/// `gl`'s context must be current on this thread.
 unsafe fn make_noise_texture(gl: &glow::Context) -> Result<glow::Texture, String> {
     let mut random = Random::new(0xabcd_ef01_2345_6789);
     let mut pixels = Vec::with_capacity(4 * 4 * 3);
@@ -3266,6 +3451,8 @@ unsafe fn make_noise_texture(gl: &glow::Context) -> Result<glow::Texture, String
         pixels.push(128);
     }
 
+    // SAFETY: The caller keeps `gl`'s context current. `pixels` is 4 by 4 RGB bytes, and
+    // with the unpack alignment at 1 for the upload GL reads those 48 bytes and no more.
     unsafe {
         let texture = gl
             .create_texture()
@@ -3324,8 +3511,9 @@ impl Random {
 
 /// Reinterprets a slice of floats as the bytes GL wants.
 fn bytes_of(data: &[f32]) -> &[u8] {
-    // Safety: every bit pattern of an `f32` is a valid `u8` sequence, the length is scaled
-    // to match, and the borrow keeps the slice alive for as long as the result.
+    // SAFETY: Every byte of an `f32` is a valid `u8`, a `u8` needs no alignment, and
+    // `size_of_val` is the length of `data` in bytes. The result borrows `data`, so it
+    // cannot outlive it.
     unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, std::mem::size_of_val(data)) }
 }
 

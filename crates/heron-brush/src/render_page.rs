@@ -328,6 +328,9 @@ impl RenderPage {
             renderer.destroy();
         }
         if let (Some(gl), Some(target)) = (&self.gl, self.preview.take()) {
+            // SAFETY: The caller keeps the GL context current, as the doc says (`tick` calls this
+            // with the main window's context current). The names were made by `gl`, and `take`
+            // removes them, so they are not used again.
             unsafe {
                 gl.delete_framebuffer(target.framebuffer);
                 gl.delete_renderbuffer(target.color);
@@ -492,6 +495,8 @@ impl RenderPage {
         wanted: (i32, i32),
     ) {
         if self.renderer.is_none() {
+            // SAFETY: `tick` runs with the main window's GL context current on this thread, and
+            // `proc_address` is eframe's loader for it (`Gpu::from_creation_context`).
             let make = || unsafe { crate::gl_glue::context(proc_address) };
             match render::Renderer::new(make(), editor_core::render_settings::from_preferences()) {
                 Ok(renderer) => {
@@ -524,9 +529,11 @@ impl RenderPage {
         // In WebGL the bound framebuffer may be egui's, which this context cannot name;
         // egui draws to the canvas there.
         #[cfg(not(target_arch = "wasm32"))]
+        // SAFETY: `tick` runs with the main window's GL context current, which `gl` wraps.
         let previous = unsafe { gl.get_parameter_framebuffer(glow::DRAW_FRAMEBUFFER_BINDING) };
         #[cfg(target_arch = "wasm32")]
         let previous = None;
+        // SAFETY: Same context, and `target.framebuffer` is the live preview `resize` made.
         unsafe { gl.bind_framebuffer(glow::FRAMEBUFFER, Some(target.framebuffer)) };
         if let Some(job) = &mut self.job {
             if job.completed == 0 {
@@ -584,6 +591,7 @@ impl RenderPage {
             self.drawn = Some(key);
             ctx.request_repaint();
         }
+        // SAFETY: Same context, and `previous` is the binding read above.
         unsafe { gl.bind_framebuffer(glow::FRAMEBUFFER, previous) };
     }
 
@@ -605,12 +613,16 @@ impl RenderPage {
     fn resize(&mut self, (width, height): (i32, i32)) {
         let Some(gl) = &self.gl else { return };
         if let Some(old) = self.preview.take() {
+            // SAFETY: Only `tick_gl` calls this, with the context current. `old` was taken out of
+            // `self.preview`, so its names are not used again.
             unsafe {
                 gl.delete_framebuffer(old.framebuffer);
                 gl.delete_renderbuffer(old.color);
                 gl.delete_renderbuffer(old.depth);
             }
         }
+        // SAFETY: Same context. The objects are made here, the previous draw binding is restored,
+        // and an incomplete framebuffer is deleted rather than kept.
         unsafe {
             let (Ok(framebuffer), Ok(color), Ok(depth)) = (
                 gl.create_framebuffer(),
@@ -1170,6 +1182,10 @@ impl RenderPage {
                 use eframe::glow::HasContext as _;
                 let gl = painter.gl();
                 let viewport = info.viewport_in_pixels();
+                // SAFETY: egui_glow runs paint callbacks with its context current, and
+                // eframe's windows share one native context, so `source` names the
+                // preview's framebuffer here too. A name deleted since only raises a GL
+                // error. The read binding found on entry is restored.
                 unsafe {
                     let previous = gl.get_parameter_i32(eframe::glow::READ_FRAMEBUFFER_BINDING);
                     let source = crate::gl_glue::eframe_framebuffer(source)

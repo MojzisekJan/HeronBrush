@@ -11,6 +11,9 @@ repository = "https://github.com/MojzisekJan/HeronBrush"
 [workspace.lints.rust]
 missing_docs = "warn"
 
+[workspace.lints.clippy]
+undocumented_unsafe_blocks = "warn"
+
 [profile.dev]
 # Keep full debug info, but in a `.dwp` beside the binary rather than inside it: the
 # executable drops from ~380 MB to ~50 MB and gdb/backtraces still work.

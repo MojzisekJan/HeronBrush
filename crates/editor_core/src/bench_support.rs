@@ -695,6 +695,8 @@ pub fn peak_rss() -> u64 {
         if !ok {
             return 0;
         }
+        // SAFETY: `usage` was zeroed and every field is an integer, so it holds a valid `Rusage`
+        // whatever `getrusage` wrote over it.
         let maxrss = unsafe { usage.assume_init() }.maxrss.max(0) as u64;
         // macOS reports bytes, Linux kilobytes.
         if cfg!(target_os = "macos") {

@@ -203,6 +203,8 @@ impl GpuTimer {
 
     /// Starts timing; the GL context must be current.
     pub fn begin(&mut self, gl: &glow::Context) {
+        // SAFETY: The caller keeps `gl`'s context current, as the doc says (`GlView::show` calls
+        // this inside egui's update). The query is one this context made.
         unsafe {
             let query = match self.free.pop() {
                 Some(query) => query,
@@ -218,6 +220,8 @@ impl GpuTimer {
 
     /// Stops timing and returns the latest finished measurement, in milliseconds.
     pub fn end(&mut self, gl: &glow::Context) -> Option<f64> {
+        // SAFETY: `GlView::show` calls this right after `begin`, with the same context current.
+        // The queries are ones `begin` made in it, and the results are read into locals.
         unsafe {
             gl.end_query(glow::TIME_ELAPSED);
             while self.pending.len() > 1 {
@@ -236,6 +240,8 @@ impl GpuTimer {
 
     /// Frees the queries; the GL context must be current.
     pub fn destroy(self, gl: &glow::Context) {
+        // SAFETY: The caller keeps `gl`'s context current, as the doc says. `self` is consumed,
+        // so no query is used after it is deleted.
         unsafe {
             for query in self.free.into_iter().chain(self.pending) {
                 gl.delete_query(query);
