@@ -32,12 +32,16 @@ pub struct UnityOptions {
     /// `Assets/Levels`. Also forms the stable per-export namespace; the script
     /// finds the meshes relative to its own source asset.
     pub assets_hint: String,
+    /// Generated materials whose normal map the export writes beside their albedo
+    /// as `<name>_normal.png`, in the OpenGL convention Unity uses.
+    pub normal_maps: Vec<String>,
 }
 
 impl Default for UnityOptions {
     fn default() -> Self {
         UnityOptions {
             assets_hint: "Assets/Levels".to_string(),
+            normal_maps: Vec::new(),
         }
     }
 }
@@ -246,6 +250,27 @@ pub fn write_with_materials(
             ));
         }
     }
+    for name in &options.normal_maps {
+        surface_setup.push_str(&format!(
+            "        ApplyNormal(root, here, \"{}\", \"{}_paint\");\n",
+            escape(name),
+            escape(&level.name)
+        ));
+    }
+    // Generated paint is drawn once across its face; repeating it would blend the
+    // far edge into the near one.
+    let clamped = materials
+        .iter()
+        .filter(|(_, material)| !material.repeat && material.pbr.is_none())
+        .map(|(name, _)| format!("\"{}\"", escape(name)))
+        .collect::<Vec<_>>();
+    if !clamped.is_empty() {
+        surface_setup.push_str(&format!(
+            "        ClampPaint(here, \"{}_paint\", new[] {{ {} }});\n",
+            escape(&level.name),
+            clamped.join(", ")
+        ));
+    }
     for (name, material) in materials {
         let Some(pbr) = &material.pbr else { continue };
         let has = |slot| pbr.images.iter().any(|image| image.slot == slot);
@@ -399,6 +424,11 @@ public static class HeronBrushLevelImporter
                     if (replacement.HasProperty("_Glossiness")) replacement.SetFloat("_Glossiness", 1f - roughness);
                     replacement.SetTexture("_EmissionMap", albedo);
                     replacement.SetColor("_EmissionColor", Color.white * emission);
+                    // The Standard editor recomputes _EMISSION from this flag when it
+                    // validates the material; the OBJ material's EmissiveIsBlack
+                    // would switch the glow off.
+                    replacement.globalIlluminationFlags = emission > 0f
+                        ? MaterialGlobalIlluminationFlags.BakedEmissive : MaterialGlobalIlluminationFlags.EmissiveIsBlack;
                     if (emission > 0f) replacement.EnableKeyword("_EMISSION");
                     else replacement.DisableKeyword("_EMISSION");
                     if (create) AssetDatabase.CreateAsset(replacement, path);
@@ -730,6 +760,36 @@ mod tests {
         // transformed source -Z direction even when pitch and roll are nonzero.
         let light = rotation * DQuat::from_rotation_y(std::f64::consts::PI);
         assert!((light * DVec3::Z - mirror(source * -DVec3::Z)).length() < 1e-6);
+    }
+
+    #[test]
+    fn generated_materials_get_normal_maps_clamped_paint_and_a_lasting_glow() {
+        let generated = |repeat| crate::materials::GeneratedMaterial {
+            path: String::new(),
+            width: 1,
+            height: 1,
+            png: Vec::new(),
+            alpha: false,
+            surface: None,
+            repeat,
+            pbr: None,
+        };
+        let mut materials = indexmap::IndexMap::new();
+        materials.insert("bbpaint_texture".to_string(), generated(true));
+        materials.insert("bbpaint_paint".to_string(), generated(false));
+        let options = UnityOptions {
+            normal_maps: vec!["bbpaint_texture".into()],
+            ..UnityOptions::default()
+        };
+        let script = &write_with_materials(&a_level(), &[], &options, &materials)[0].contents;
+        assert!(script.contains("ApplyNormal(root, here, \"bbpaint_texture\", \"arena_paint\");"));
+        assert!(script.contains("private static void ApplyNormal("));
+        assert!(script.contains("TextureImporterType.NormalMap"));
+        // Only the baked paint clamps; a texture keeps tiling.
+        assert!(script.contains("ClampPaint(here, \"arena_paint\", new[] { \"bbpaint_paint\" });"));
+        // Unity's Standard editor drops _EMISSION from a material flagged
+        // EmissiveIsBlack, the flag an OBJ material starts with.
+        assert!(script.contains("replacement.globalIlluminationFlags = emission > 0f"));
     }
 
     #[test]

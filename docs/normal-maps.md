@@ -38,6 +38,8 @@ and gradients have no normal map input.
 Exports that write GLB meshes embed the normal map in the OpenGL convention,
 with tangents, as the material's `normalTexture`. Godot's StandardMaterial3D takes
 a `<texture>_normal` image from the project's texture folder; the other suffixes
-are not looked for there. Unity's OBJ path, the plain
+are not looked for there. Unity gets the map as `<material>_normal.png` beside the
+albedo, also in the OpenGL convention, named on the MTL's `norm` line. Build Level
+imports it as a normal map and sets it as the material's `_BumpMap`. The plain
 OBJ writer, Defold's `.model` (one colour sampler) and Stride's materials do not
 carry it. See [the feature matrix](feature-matrix.md).

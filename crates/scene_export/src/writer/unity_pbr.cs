@@ -124,3 +124,59 @@
             renderer.sharedMaterials = slots;
         }
     }
+
+    // A brush texture's normal map: <name>_normal.png beside the albedo, already in
+    // Unity's OpenGL convention. Reuses the surface material when ApplySurface made one.
+    private static void ApplyNormal(GameObject root, string here, string name, string directory)
+    {
+        var normal = PbrImage(here, directory, name, "normal", false, true);
+        var path = ToAssetPath(Path.Combine(here, "Materials", name + ".mat"));
+        Material replacement = null;
+        foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
+        {
+            var slots = renderer.sharedMaterials;
+            for (int i = 0; i < slots.Length; i++)
+            {
+                var source = slots[i];
+                if (source == null || source.name != name) continue;
+                if (replacement == null)
+                {
+                    replacement = AssetDatabase.LoadAssetAtPath<Material>(path);
+                    bool create = replacement == null;
+                    if (create) replacement = new Material(source);
+                    else if (replacement != source) replacement.CopyPropertiesFromMaterial(source);
+                    if (replacement != source)
+                    {
+                        var shader = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline == null
+                            ? Shader.Find("Standard") : Shader.Find("Universal Render Pipeline/Lit");
+                        if (shader != null) replacement.shader = shader;
+                        replacement.name = name;
+                    }
+                    replacement.SetTexture("_BumpMap", normal);
+                    replacement.SetFloat("_BumpScale", 1f);
+                    replacement.EnableKeyword("_NORMALMAP");
+                    if (create)
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(path));
+                        AssetDatabase.Refresh();
+                        AssetDatabase.CreateAsset(replacement, path);
+                    }
+                    else EditorUtility.SetDirty(replacement);
+                }
+                slots[i] = replacement;
+            }
+            renderer.sharedMaterials = slots;
+        }
+    }
+
+    // Generated paint images clamp, as in the other targets.
+    private static void ClampPaint(string here, string directory, string[] names)
+    {
+        foreach (var name in names)
+        {
+            var importer = AssetImporter.GetAtPath(ToAssetPath(Path.Combine(here, directory, name + ".png"))) as TextureImporter;
+            if (importer == null || importer.wrapMode == TextureWrapMode.Clamp) continue;
+            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.SaveAndReimport();
+        }
+    }

@@ -75,8 +75,6 @@ NOT_CLAIMED = {
     "door": scope({"unreal", "obj", "gltf", "glb"}, NO_PLAYER),
     "water": scope({"unreal", "obj", "gltf", "glb"}, "not in the adapter list of docs/water-export.md"),
     "normal": {
-        "unity": "Unity's OBJ and MTL path has no normal-map slot for brush textures; its "
-                 "material adapter applies normal maps to imported GLB models only",
         "obj": "the OBJ writer writes no normal maps",
         "defold": DEFOLD_SAMPLER,
         "stride": "docs/stride-export.md: normal maps are not transferred to Stride materials",

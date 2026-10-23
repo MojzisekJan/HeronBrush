@@ -16,7 +16,8 @@ objects to retain those assignments.
 - Tool materials such as skip, clip and origin are not replaced by generated paint.
 
 Godot receives StandardMaterial3D resources and external PNGs. Unity receives OBJ,
-MTL and PNG files; material references are relative to the mesh folder. Engine
+MTL and PNG files; material references are relative to the mesh folder. Its Build
+Level importer sets the paint images to clamp, as the GLB samplers do. Engine
 exports using GLB embed the paint images and PBR base-colour material assignments
 inside each mesh. External PNGs are also available to loaders such as Defold's.
 Standalone glTF/GLB retains its opaque-solid `baseColorFactor` optimisation and uses

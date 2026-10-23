@@ -760,11 +760,21 @@ fn build(
                 ));
             }
             if target == Target::Unity && !settings.generated_materials.is_empty() {
-                let mtl = paint_mtl(&settings, &format!("../{}_paint", options.name));
+                let mtl = paint_mtl(&settings, &format!("../{}_paint", options.name), true);
                 files.push((
                     directory.join(&options.name).join(unity_mtl),
                     Contents::Text(mtl),
                 ));
+                // The importer turns these into the materials' normal maps; they are
+                // in the OpenGL convention Unity uses.
+                for name in unity_normal_maps(&settings) {
+                    files.push((
+                        directory
+                            .join(format!("{}_paint", options.name))
+                            .join(format!("{name}_normal.png")),
+                        Contents::Bytes(settings.normal_maps[name.as_str()].to_vec()),
+                    ));
+                }
             }
 
             match target {
@@ -1012,7 +1022,10 @@ fn build(
                 }
                 Target::Unity => {
                     writer::unity::validate(&built.level).map_err(Error::Map)?;
-                    let mut unity = writer::unity::UnityOptions::default();
+                    let mut unity = writer::unity::UnityOptions {
+                        normal_maps: unity_normal_maps(&settings),
+                        ..Default::default()
+                    };
                     if let Some(assets) = directory
                         .ancestors()
                         .find(|path| path.file_name().is_some_and(|name| name == "Assets"))
@@ -1243,7 +1256,20 @@ fn stride_package(folder: &Path) -> Option<(PathBuf, String, String)> {
     None
 }
 
-pub fn paint_mtl(settings: &Settings, image_directory: &str) -> String {
+/// The generated Unity materials that have a normal map, written beside their
+/// albedo as `<name>_normal.png`.
+fn unity_normal_maps(settings: &Settings) -> Vec<String> {
+    settings
+        .generated_materials
+        .keys()
+        .filter(|name| settings.normal_maps.contains_key(name.as_str()))
+        .cloned()
+        .collect()
+}
+
+/// The MTL for generated materials. With `normals`, a material with a normal map
+/// names its `<name>_normal.png` on a `norm` line, which the caller must write.
+pub fn paint_mtl(settings: &Settings, image_directory: &str, normals: bool) -> String {
     use std::fmt::Write;
     let mut mtl = String::from("# Heron Brush face paints\n");
     for (name, material) in &settings.generated_materials {
@@ -1251,6 +1277,9 @@ pub fn paint_mtl(settings: &Settings, image_directory: &str) -> String {
             mtl,
             "newmtl {name}\nKd 1 1 1\nmap_Kd {image_directory}/{name}.png"
         );
+        if normals && settings.normal_maps.contains_key(name.as_str()) {
+            let _ = writeln!(mtl, "norm {image_directory}/{name}_normal.png");
+        }
         if let Some([roughness, metallic, emission]) = material.surface {
             let _ = writeln!(
                 mtl,
@@ -1837,6 +1866,53 @@ mod tests {
             }
             assert!(checked > 0, "{target:?} wrote no textured GLB");
         }
+    }
+
+    #[test]
+    fn unity_gets_brush_normal_maps_beside_the_albedo_in_the_opengl_convention() {
+        let scratch = Scratch::new("unity-normal-maps");
+        let textures = scratch.0.join("textures");
+        std::fs::create_dir_all(&textures).expect("texture folder");
+        let png = |rgba: [u8; 4]| crate::assets::encode_png(2, 2, &rgba.repeat(4)).expect("png");
+        std::fs::write(textures.join("stone.png"), png([90, 90, 90, 255])).expect("albedo");
+        // A DirectX map: Unity, like glTF, wants its green channel inverted.
+        std::fs::write(
+            textures.join("stone_normal_dx.png"),
+            png([140, 200, 250, 255]),
+        )
+        .expect("normal map");
+        let mut document = one_cube();
+        document.load_materials(&textures).expect("materials load");
+        let out = scratch.0.join("unity");
+        let options = Options {
+            target: Target::Unity,
+            name: "arena".into(),
+            project_dir: scratch.0.to_string_lossy().into_owned(),
+            texture_dir: "textures".into(),
+            ..Options::default()
+        };
+        let report = export(&document, &out, &options).expect("export");
+        let normals: Vec<_> = report
+            .files
+            .iter()
+            .filter(|p| p.to_string_lossy().ends_with("_normal.png"))
+            .collect();
+        assert_eq!(normals.len(), 1, "{:?}", report.files);
+        let image = image::open(normals[0]).expect("normal PNG").to_rgba8();
+        assert_eq!(image.get_pixel(0, 0).0, [140, 55, 250, 255]);
+        let name = normals[0]
+            .file_name()
+            .and_then(|n| n.to_str())
+            .and_then(|n| n.strip_suffix("_normal.png"))
+            .expect("named after its material");
+        assert!(out.join(format!("arena_paint/{name}.png")).is_file());
+        let mtl = std::fs::read_to_string(out.join("arena/arena_paint.mtl")).expect("MTL");
+        assert!(mtl.contains(&format!("norm ../arena_paint/{name}_normal.png")));
+        let script = std::fs::read_to_string(out.join("Editor/HeronBrushLevelImporter.cs"))
+            .expect("importer");
+        assert!(script.contains(&format!(
+            "ApplyNormal(root, here, \"{name}\", \"arena_paint\");"
+        )));
     }
 
     /// A directory of this test's own, cleaned up as the test ends.

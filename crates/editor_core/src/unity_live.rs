@@ -109,7 +109,7 @@ pub fn prepare(
     let directory = Path::new(&options.directory);
     let mut files = vec![];
     let mut meshes = vec![];
-    let mtl = crate::export::paint_mtl(settings, &format!("../{}_paint", options.name));
+    let mtl = crate::export::paint_mtl(settings, &format!("../{}_paint", options.name), false);
     let mtl_name = format!(
         "{}.mtl",
         crate::export::paint_export::image_name(mtl.as_bytes())
