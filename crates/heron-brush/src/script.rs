@@ -9,6 +9,8 @@
 //! move 400 300
 //! click 400 300 [right|double] [shift,alt,cmd]  # modifiers held through the click
 //! drag 400 300 500 320 [right|middle]
+//! down 400 300 [right|middle]  # a press held until `up`, for a slow drag made of moves
+//! up 450 300 [right|middle]
 //! scroll 400 300 -3        # lines, negative scrolls down
 //! key S cmd,shift          # an egui key name, optional modifiers (cmd = Ctrl off macOS)
 //! text hello world
@@ -46,6 +48,8 @@ enum Step {
     Move(Pos2),
     Click(Pos2, PointerButton, bool, Modifiers),
     Drag(Pos2, Pos2, PointerButton),
+    /// A button pressed or let go at a point.
+    Press(Pos2, PointerButton, bool),
     Scroll(Pos2, f32),
     Key(Key, Modifiers),
     Text(String),
@@ -187,6 +191,11 @@ fn parse(text: &str) -> Result<VecDeque<Step>, String> {
                 Pos2::new(num(0)?, num(1)?),
                 Pos2::new(num(2)?, num(3)?),
                 button(rest.get(4)),
+            ),
+            "down" | "up" => Step::Press(
+                Pos2::new(num(0)?, num(1)?),
+                button(rest.get(2)),
+                command == "down",
             ),
             "scroll" => Step::Scroll(Pos2::new(num(0)?, num(1)?), num(2)?),
             "key" => {
@@ -358,6 +367,9 @@ impl Script {
                 }
                 self.queue.push_back(press(b, button, false));
             }
+            Step::Press(p, button, down) => self
+                .queue
+                .extend([Event::PointerMoved(p), press(p, button, down)]),
             Step::Scroll(p, lines) => self.queue.extend([
                 Event::PointerMoved(p),
                 Event::MouseWheel {

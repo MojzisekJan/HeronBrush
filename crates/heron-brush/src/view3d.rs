@@ -440,6 +440,11 @@ impl View3d {
                 scene.drag_update(dx, dy, mods, size);
                 scene.stroke_update(local(origin), dx, dy, size);
             }
+            let (x, y) = local(at);
+            let seconds = f64::from(ui.input(|i| i.stable_dt));
+            if scene.stroke_hold(x, y, seconds, size) {
+                ui.ctx().request_repaint();
+            }
             if released(egui::PointerButton::Primary) {
                 scene.drag_end(dx, dy, mods, size);
                 scene.stroke_end();

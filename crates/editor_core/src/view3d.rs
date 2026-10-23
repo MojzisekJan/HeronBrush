@@ -447,6 +447,10 @@ pub const DRAG_THRESHOLD: f64 = 3.0;
 /// nothing, `Camera::DefaultPointDistance`.
 pub const DEFAULT_DRAW_DISTANCE: f64 = 256.0;
 
+/// How often a sculpt stroke dabs again while the pointer rests, in seconds: holding the
+/// button still keeps raising, as clicking again would.
+pub const HOLD_DAB_INTERVAL: f64 = 0.1;
+
 /// Whether a point on screen is inside the rectangle a lasso swept out.
 pub fn inside(from: Vec2d, to: Vec2d, point: Vec2d) -> bool {
     let (left, right) = (from.x().min(to.x()), from.x().max(to.x()));
@@ -702,12 +706,14 @@ pub enum AttrStroke {
         state: crate::document::MaterialStroke,
         last: (f64, f64),
     },
-    /// A drag of the sculpt brush: where the last dab fell, and whether Shift swapped
-    /// raise and lower when it began.
+    /// A drag of the sculpt brush: where the last dab fell, whether Shift swapped raise
+    /// and lower when it began, and how long the pointer has rested since that dab, in
+    /// seconds.
     Sculpt {
         state: crate::document::SculptStroke,
         last: Vec3d,
         inverted: bool,
+        rested: f64,
     },
 }
 
@@ -3365,6 +3371,7 @@ impl Scene3d {
                 state,
                 last: at,
                 inverted: modifiers.shift,
+                rested: 0.0,
             });
             return;
         }
@@ -3496,6 +3503,7 @@ impl Scene3d {
                 state,
                 last,
                 inverted,
+                rested,
             } => {
                 if *tool.borrow() != Tool::Sculpt {
                     return;
@@ -3518,12 +3526,59 @@ impl Scene3d {
                 }
                 if steps > 0 {
                     *last = at;
+                    *rested = 0.0;
                 }
                 if changed {
                     render();
                 }
             }
         }
+    }
+
+    /// Keeps a sculpt stroke working while the button is held: after the pointer at
+    /// `x`, `y` has rested `HOLD_DAB_INTERVAL` since the last dab, dabs again under it.
+    /// `seconds` is the time since the last call. Returns whether a sculpt stroke is under
+    /// way, so the caller keeps the frames coming.
+    pub fn stroke_hold(&self, x: f64, y: f64, seconds: f64, (width, height): (f64, f64)) -> bool {
+        let Self {
+            document,
+            tool,
+            camera,
+            render,
+            stroke,
+            ..
+        } = self;
+        let mut stroke = stroke.borrow_mut();
+        let Some(AttrStroke::Sculpt {
+            state,
+            last,
+            inverted,
+            rested,
+        }) = &mut *stroke
+        else {
+            return false;
+        };
+        if *tool.borrow() != Tool::Sculpt {
+            return false;
+        }
+        // A long frame, say after a slow dab, counts as one interval, so dabs never pile up.
+        *rested += seconds.min(HOLD_DAB_INTERVAL);
+        if *rested < HOLD_DAB_INTERVAL {
+            return true;
+        }
+        *rested = 0.0;
+        let ray = camera.borrow().ray_through(x, y, width, height);
+        let Some(at) = document.borrow().sculpt_target(&ray) else {
+            return true;
+        };
+        *last = at;
+        if document
+            .borrow_mut()
+            .sculpt_dab(at, &sculpt_brush(*inverted), state)
+        {
+            render();
+        }
+        true
     }
 
     /// The face-attribute stroke's release.
