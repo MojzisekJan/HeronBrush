@@ -22,6 +22,7 @@ pub use links::{EntityGraph, GraphEdge, GraphNode};
 mod array;
 mod light_marker;
 mod materials;
+pub(crate) use materials::relative_material_path;
 mod merge_columns;
 mod scene_lights;
 mod sculpt;

@@ -450,7 +450,13 @@ fn generate_painted_scaled(
                 .map(|(name, _)| name.as_str())
                 .unwrap_or(name),
         ) {
-            let _ = writeln!(mtl, "map_Kd {}", material.path.display());
+            // Relative to the `.mtl`, so the export can move with the textures it uses.
+            let path = if material.path.is_absolute() {
+                crate::document::relative_material_path(&material.path, obj_path)
+            } else {
+                material.path.display().to_string()
+            };
+            let _ = writeln!(mtl, "map_Kd {path}");
         }
     }
 
@@ -659,6 +665,31 @@ common/caulk
         );
         assert_eq!(obj.matches("o brush_").count(), 1);
         assert!(!mtl.contains("clip") && !mtl.contains("skip"));
+    }
+
+    #[test]
+    fn a_texture_file_is_named_relative_to_the_mtl() {
+        // Found loading the .obj target's output in Blender: map_Kd held the absolute
+        // path of the texture on the machine that exported it.
+        let root = std::env::temp_dir().join(format!("heron-obj-relative-{}", std::process::id()));
+        let textures = root.join("textures");
+        fs::create_dir_all(&textures).unwrap();
+        let png = crate::assets::encode_png(2, 2, &[200; 16]).unwrap();
+        fs::write(textures.join("stone.png"), png).unwrap();
+        let mut document = one_cube();
+        document.load_materials(&textures).unwrap();
+        let obj = root.join("export").join("room.obj");
+        let (_, files) = files(&document, &obj, opts());
+        let mtl = files
+            .iter()
+            .find(|(path, _)| path.extension().is_some_and(|e| e == "mtl"))
+            .map(|(_, contents)| String::from_utf8_lossy(contents).into_owned())
+            .unwrap();
+        assert!(
+            mtl.contains("map_Kd ../textures/stone.png"),
+            "the MTL was:\n{mtl}"
+        );
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

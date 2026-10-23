@@ -799,7 +799,9 @@ fn absolute_material_path(path: &Path) -> PathBuf {
     clean
 }
 
-fn relative_material_path(path: &Path, map: &Path) -> String {
+/// `path` as seen from the folder holding `map`, with `/` separators, or the whole
+/// path when the two share no root at all.
+pub(crate) fn relative_material_path(path: &Path, map: &Path) -> String {
     // Both sides resolved through symlinks, as material sources are when they load: on
     // macOS `/var` and `/tmp` are links into `/private`, and comparing a resolved source
     // with an unresolved map folder left no shared prefix and an absolute path.
