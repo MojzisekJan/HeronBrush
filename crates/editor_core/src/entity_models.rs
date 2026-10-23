@@ -67,7 +67,8 @@ impl ModelStore {
         let is_glb = lowercase.ends_with(".glb");
         let is_md2 = lowercase.ends_with(".md2");
         let is_md3 = lowercase.ends_with(".md3");
-        if !is_mdl && !is_obj && !is_glb && !is_md2 && !is_md3 {
+        let is_fm = lowercase.ends_with(".fm");
+        if !is_mdl && !is_obj && !is_glb && !is_md2 && !is_md3 && !is_fm {
             self.loaded.insert(named.to_string(), None);
             return None;
         }
@@ -82,10 +83,12 @@ impl ModelStore {
         let model = bytes.and_then(|bytes| {
             let result = if is_glb {
                 map_model::glb_model::read(&bytes)
-            } else if is_md2 || is_md3 {
+            } else if is_md2 || is_md3 || is_fm {
                 let directory = Path::new(named).parent().unwrap_or(Path::new(""));
                 let read = if is_md3 {
                     map_model::md3_model::read
+                } else if is_fm {
+                    map_model::fm_model::read
                 } else {
                     map_model::md2_model::read
                 };

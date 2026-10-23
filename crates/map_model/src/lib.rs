@@ -25,6 +25,7 @@ pub mod entity_rotation;
 pub mod face_to_patch;
 pub mod fgd;
 pub mod fillet;
+pub mod fm_model;
 pub mod glb_model;
 pub mod ids;
 pub mod io;
