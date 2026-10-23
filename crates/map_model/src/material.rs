@@ -759,6 +759,17 @@ impl MaterialCollection {
                 }
             };
             for shader in crate::shader::read(&text) {
+                // A map names a shader without the texture root, as it does an image:
+                // q3map2 puts `textures/` back in front of every face's name. A shader
+                // outside the root (a model's, an effect's) cannot go on a face at all.
+                let Some(name) = shader
+                    .name
+                    .get(..prefix.len())
+                    .filter(|root| root.eq_ignore_ascii_case(&prefix))
+                    .map(|_| shader.name[prefix.len()..].to_string())
+                else {
+                    continue;
+                };
                 let mut material = None;
                 for named in shader.image_candidates() {
                     let named = named.trim_start_matches('/');
@@ -771,7 +782,7 @@ impl MaterialCollection {
                     for path in candidates {
                         if let Some(asset) = fs.resolve(&path) {
                             match Material::asset_with_palette(
-                                shader.name.clone(),
+                                name.clone(),
                                 asset.clone(),
                                 palette.clone(),
                             ) {
@@ -1497,6 +1508,39 @@ mod shader_tests {
         let warnings = collection.load_shaders(&root);
         assert_eq!(warnings.len(), 1, "{warnings:?}");
         assert!(collection.is_empty());
+    }
+
+    #[test]
+    fn a_mounted_game_s_shaders_are_named_as_a_map_names_them() {
+        let root = scratch("mounted");
+        write_image(&root.join("textures/skies/clouds.png"), [1, 2, 3, 255]);
+        write_image(&root.join("textures/common/caulk.png"), [4, 5, 6, 255]);
+        write_image(&root.join("models/thing/glow.png"), [7, 8, 9, 255]);
+        std::fs::create_dir_all(root.join("scripts")).expect("the directory");
+        std::fs::write(
+            root.join("scripts/oa.shader"),
+            "textures/skies/day\n{\nqer_editorimage textures/skies/clouds.tga\nsurfaceparm sky\n}\n\
+             textures/common/caulk\n{\nsurfaceparm nodraw\n}\n\
+             models/thing/glow\n{\n{\nmap models/thing/glow.tga\n}\n}\n",
+        )
+        .expect("the script");
+        let assets = crate::asset_fs::AssetFileSystem::mount(std::slice::from_ref(&root));
+        let collection = MaterialCollection::load_assets(&assets, "textures");
+
+        // OpenArena's sky is `skies/day` in a map, which q3map2 reads as
+        // `textures/skies/day`; a name with the root kept would be looked up as
+        // `textures/textures/skies/day` and the sky would be lost.
+        let sky = collection.get("skies/day").expect("the sky shader");
+        assert_eq!(sky.name, "skies/day");
+        assert_eq!(sky.surface_parms, ["sky"]);
+        // The shader takes the place of the image of the same name, parms and all.
+        let caulk = collection.get("common/caulk").expect("caulk");
+        assert_eq!(caulk.surface_parms, ["nodraw"]);
+        let names: Vec<_> = collection.materials().iter().map(|m| &m.name).collect();
+        assert_eq!(names.len(), 3, "{names:?}");
+        assert!(names
+            .iter()
+            .all(|name| !name.starts_with("textures/") && !name.starts_with("models/")));
     }
 
     #[test]

@@ -1,0 +1,626 @@
+// heron material-sources []
+// Format: Valve
+// heron_brush format 3
+// entity 0
+{
+"mapversion" "220"
+"classname" "worldspawn"
+"message" "Heron Brush: Courtyard"
+// heron_brush id 84ba800000000001
+// brush 0
+{
+( -656 -528 -16 ) ( -656 -527 -16 ) ( -656 -528 -15 ) common/caulk 0 0 0 1 1
+( 656 528 0 ) ( 656 528 1 ) ( 656 529 0 ) common/caulk 0 0 0 1 1
+( -656 -528 -16 ) ( -656 -528 -15 ) ( -655 -528 -16 ) common/caulk 0 0 0 1 1
+( 656 528 0 ) ( 657 528 0 ) ( 656 528 1 ) common/caulk 0 0 0 1 1
+( 656 528 0 ) ( 656 529 0 ) ( 657 528 0 ) gothic_floor/largerblock3b 0 0 0 1 1
+( -656 -528 -16 ) ( -655 -528 -16 ) ( -656 -527 -16 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba800000000002
+// brush 1
+{
+( -656 -528 448 ) ( -656 -527 448 ) ( -656 -528 449 ) common/caulk 0 0 0 1 1
+( 656 528 464 ) ( 656 528 465 ) ( 656 529 464 ) common/caulk 0 0 0 1 1
+( -656 -528 448 ) ( -656 -528 449 ) ( -655 -528 448 ) common/caulk 0 0 0 1 1
+( 656 528 464 ) ( 657 528 464 ) ( 656 528 465 ) common/caulk 0 0 0 1 1
+( 656 528 464 ) ( 656 529 464 ) ( 657 528 464 ) common/caulk 0 0 0 1 1
+( -656 -528 448 ) ( -655 -528 448 ) ( -656 -527 448 ) skies/q3dm0 0 0 0 1 1
+}
+// heron_brush id 84ba800000000003
+// brush 2
+{
+( -656 -528 0 ) ( -656 -527 0 ) ( -656 -528 1 ) common/caulk 0 0 0 1 1
+( -640 528 448 ) ( -640 528 449 ) ( -640 529 448 ) gothic_block/blocks18c 0 0 0 1 1
+( -656 -528 0 ) ( -656 -528 1 ) ( -655 -528 0 ) common/caulk 0 0 0 1 1
+( -640 528 448 ) ( -639 528 448 ) ( -640 528 449 ) common/caulk 0 0 0 1 1
+( -640 528 448 ) ( -640 529 448 ) ( -639 528 448 ) common/caulk 0 0 0 1 1
+( -656 -528 0 ) ( -655 -528 0 ) ( -656 -527 0 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba800000000004
+// brush 3
+{
+( 640 -528 0 ) ( 640 -527 0 ) ( 640 -528 1 ) gothic_block/blocks18c 0 0 0 1 1
+( 656 528 448 ) ( 656 528 449 ) ( 656 529 448 ) common/caulk 0 0 0 1 1
+( 640 -528 0 ) ( 640 -528 1 ) ( 641 -528 0 ) common/caulk 0 0 0 1 1
+( 656 528 448 ) ( 657 528 448 ) ( 656 528 449 ) common/caulk 0 0 0 1 1
+( 656 528 448 ) ( 656 529 448 ) ( 657 528 448 ) common/caulk 0 0 0 1 1
+( 640 -528 0 ) ( 641 -528 0 ) ( 640 -527 0 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba800000000005
+// brush 4
+{
+( -640 512 0 ) ( -640 513 0 ) ( -640 512 1 ) common/caulk 0 0 0 1 1
+( 640 528 448 ) ( 640 528 449 ) ( 640 529 448 ) common/caulk 0 0 0 1 1
+( -640 512 0 ) ( -640 512 1 ) ( -639 512 0 ) gothic_block/blocks18c 0 0 0 1 1
+( 640 528 448 ) ( 641 528 448 ) ( 640 528 449 ) common/caulk 0 0 0 1 1
+( 640 528 448 ) ( 640 529 448 ) ( 641 528 448 ) common/caulk 0 0 0 1 1
+( -640 512 0 ) ( -639 512 0 ) ( -640 513 0 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba800000000006
+// brush 5
+{
+( -640 -528 0 ) ( -640 -527 0 ) ( -640 -528 1 ) common/caulk 0 0 0 1 1
+( -64 -512 448 ) ( -64 -512 449 ) ( -64 -511 448 ) gothic_trim/baseboard09 0 0 0 1 1
+( -640 -528 0 ) ( -640 -528 1 ) ( -639 -528 0 ) base_wall/basewall01 0 0 0 1 1
+( -64 -512 448 ) ( -63 -512 448 ) ( -64 -512 449 ) gothic_block/blocks18c 0 0 0 1 1
+( -64 -512 448 ) ( -64 -511 448 ) ( -63 -512 448 ) common/caulk 0 0 0 1 1
+( -640 -528 0 ) ( -639 -528 0 ) ( -640 -527 0 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba800000000007
+// brush 6
+{
+( 64 -528 0 ) ( 64 -527 0 ) ( 64 -528 1 ) gothic_trim/baseboard09 0 0 0 1 1
+( 640 -512 448 ) ( 640 -512 449 ) ( 640 -511 448 ) common/caulk 0 0 0 1 1
+( 64 -528 0 ) ( 64 -528 1 ) ( 65 -528 0 ) base_wall/basewall01 0 0 0 1 1
+( 640 -512 448 ) ( 641 -512 448 ) ( 640 -512 449 ) gothic_block/blocks18c 0 0 0 1 1
+( 640 -512 448 ) ( 640 -511 448 ) ( 641 -512 448 ) common/caulk 0 0 0 1 1
+( 64 -528 0 ) ( 65 -528 0 ) ( 64 -527 0 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba800000000008
+// brush 7
+{
+( -64 -528 128 ) ( -64 -527 128 ) ( -64 -528 129 ) common/caulk 0 0 0 1 1
+( 64 -512 448 ) ( 64 -512 449 ) ( 64 -511 448 ) common/caulk 0 0 0 1 1
+( -64 -528 128 ) ( -64 -528 129 ) ( -63 -528 128 ) base_wall/basewall01 0 0 0 1 1
+( 64 -512 448 ) ( 65 -512 448 ) ( 64 -512 449 ) gothic_block/blocks18c 0 0 0 1 1
+( 64 -512 448 ) ( 64 -511 448 ) ( 65 -512 448 ) common/caulk 0 0 0 1 1
+( -64 -528 128 ) ( -63 -528 128 ) ( -64 -527 128 ) gothic_trim/baseboard09 0 0 0 1 1
+}
+// heron_brush id 84ba800000000009
+// brush 8
+{
+( -640 256 0 ) ( -640 257 0 ) ( -640 256 1 ) common/caulk 0 0 0 1 1
+( 640 512 160 ) ( 640 512 161 ) ( 640 513 160 ) common/caulk 0 0 0 1 1
+( -640 256 0 ) ( -640 256 1 ) ( -639 256 0 ) gothic_block/blocks15 0 0 0 1 1
+( 640 512 160 ) ( 641 512 160 ) ( 640 512 161 ) common/caulk 0 0 0 1 1
+( 640 512 160 ) ( 640 513 160 ) ( 641 512 160 ) gothic_floor/metalbridge06 0 0 0 1 1
+( -640 256 0 ) ( -639 256 0 ) ( -640 257 0 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba80000000000a
+// brush 9
+{
+( 512 -64 0 ) ( 512 -63 0 ) ( 512 -64 1 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 -32 16 ) ( 640 -32 17 ) ( 640 -31 16 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 -64 0 ) ( 512 -64 1 ) ( 513 -64 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 -32 16 ) ( 641 -32 16 ) ( 640 -32 17 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 -32 16 ) ( 640 -31 16 ) ( 641 -32 16 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 -64 0 ) ( 513 -64 0 ) ( 512 -63 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+}
+// heron_brush id 84ba80000000000b
+// brush 10
+{
+( 512 -32 0 ) ( 512 -31 0 ) ( 512 -32 1 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 0 32 ) ( 640 0 33 ) ( 640 1 32 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 -32 0 ) ( 512 -32 1 ) ( 513 -32 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 0 32 ) ( 641 0 32 ) ( 640 0 33 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 0 32 ) ( 640 1 32 ) ( 641 0 32 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 -32 0 ) ( 513 -32 0 ) ( 512 -31 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+}
+// heron_brush id 84ba80000000000c
+// brush 11
+{
+( 512 0 0 ) ( 512 1 0 ) ( 512 0 1 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 32 48 ) ( 640 32 49 ) ( 640 33 48 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 0 0 ) ( 512 0 1 ) ( 513 0 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 32 48 ) ( 641 32 48 ) ( 640 32 49 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 32 48 ) ( 640 33 48 ) ( 641 32 48 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 0 0 ) ( 513 0 0 ) ( 512 1 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+}
+// heron_brush id 84ba80000000000d
+// brush 12
+{
+( 512 32 0 ) ( 512 33 0 ) ( 512 32 1 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 64 64 ) ( 640 64 65 ) ( 640 65 64 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 32 0 ) ( 512 32 1 ) ( 513 32 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 64 64 ) ( 641 64 64 ) ( 640 64 65 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 64 64 ) ( 640 65 64 ) ( 641 64 64 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 32 0 ) ( 513 32 0 ) ( 512 33 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+}
+// heron_brush id 84ba80000000000e
+// brush 13
+{
+( 512 64 0 ) ( 512 65 0 ) ( 512 64 1 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 96 80 ) ( 640 96 81 ) ( 640 97 80 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 64 0 ) ( 512 64 1 ) ( 513 64 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 96 80 ) ( 641 96 80 ) ( 640 96 81 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 96 80 ) ( 640 97 80 ) ( 641 96 80 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 64 0 ) ( 513 64 0 ) ( 512 65 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+}
+// heron_brush id 84ba80000000000f
+// brush 14
+{
+( 512 96 0 ) ( 512 97 0 ) ( 512 96 1 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 128 96 ) ( 640 128 97 ) ( 640 129 96 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 96 0 ) ( 512 96 1 ) ( 513 96 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 128 96 ) ( 641 128 96 ) ( 640 128 97 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 128 96 ) ( 640 129 96 ) ( 641 128 96 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 96 0 ) ( 513 96 0 ) ( 512 97 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+}
+// heron_brush id 84ba800000000010
+// brush 15
+{
+( 512 128 0 ) ( 512 129 0 ) ( 512 128 1 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 160 112 ) ( 640 160 113 ) ( 640 161 112 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 128 0 ) ( 512 128 1 ) ( 513 128 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 160 112 ) ( 641 160 112 ) ( 640 160 113 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 160 112 ) ( 640 161 112 ) ( 641 160 112 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 128 0 ) ( 513 128 0 ) ( 512 129 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+}
+// heron_brush id 84ba800000000011
+// brush 16
+{
+( 512 160 0 ) ( 512 161 0 ) ( 512 160 1 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 192 128 ) ( 640 192 129 ) ( 640 193 128 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 160 0 ) ( 512 160 1 ) ( 513 160 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 192 128 ) ( 641 192 128 ) ( 640 192 129 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 192 128 ) ( 640 193 128 ) ( 641 192 128 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 160 0 ) ( 513 160 0 ) ( 512 161 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+}
+// heron_brush id 84ba800000000012
+// brush 17
+{
+( 512 192 0 ) ( 512 193 0 ) ( 512 192 1 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 224 144 ) ( 640 224 145 ) ( 640 225 144 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 192 0 ) ( 512 192 1 ) ( 513 192 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 224 144 ) ( 641 224 144 ) ( 640 224 145 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 224 144 ) ( 640 225 144 ) ( 641 224 144 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 192 0 ) ( 513 192 0 ) ( 512 193 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+}
+// heron_brush id 84ba800000000013
+// brush 18
+{
+( 512 224 0 ) ( 512 225 0 ) ( 512 224 1 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 256 160 ) ( 640 256 161 ) ( 640 257 160 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 224 0 ) ( 512 224 1 ) ( 513 224 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 256 160 ) ( 641 256 160 ) ( 640 256 161 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 640 256 160 ) ( 640 257 160 ) ( 641 256 160 ) gothic_floor/q1metal7_99 0 0 0 1 1
+( 512 224 0 ) ( 513 224 0 ) ( 512 225 0 ) gothic_floor/q1metal7_99 0 0 0 1 1
+}
+// heron_brush id 84ba800000000014
+// brush 19
+{
+( -352 -224 0 ) ( -352 -223 0 ) ( -352 -224 1 ) gothic_trim/metalsupport4b 0 0 0 1 1
+( -288 -160 256 ) ( -288 -160 257 ) ( -288 -159 256 ) gothic_trim/metalsupport4b 0 0 0 1 1
+( -352 -224 0 ) ( -352 -224 1 ) ( -351 -224 0 ) gothic_trim/metalsupport4b 0 0 0 1 1
+( -288 -160 256 ) ( -287 -160 256 ) ( -288 -160 257 ) gothic_trim/metalsupport4b 0 0 0 1 1
+( -288 -160 256 ) ( -288 -159 256 ) ( -287 -160 256 ) gothic_trim/metalsupport4b 0 0 0 1 1
+( -352 -224 0 ) ( -351 -224 0 ) ( -352 -223 0 ) gothic_trim/metalsupport4b 0 0 0 1 1
+}
+// heron_brush id 84ba800000000015
+// brush 20
+{
+( 288 -224 0 ) ( 288 -223 0 ) ( 288 -224 1 ) gothic_trim/metalsupport4b 0 0 0 1 1
+( 352 -160 256 ) ( 352 -160 257 ) ( 352 -159 256 ) gothic_trim/metalsupport4b 0 0 0 1 1
+( 288 -224 0 ) ( 288 -224 1 ) ( 289 -224 0 ) gothic_trim/metalsupport4b 0 0 0 1 1
+( 352 -160 256 ) ( 353 -160 256 ) ( 352 -160 257 ) gothic_trim/metalsupport4b 0 0 0 1 1
+( 352 -160 256 ) ( 352 -159 256 ) ( 353 -160 256 ) gothic_trim/metalsupport4b 0 0 0 1 1
+( 288 -224 0 ) ( 289 -224 0 ) ( 288 -223 0 ) gothic_trim/metalsupport4b 0 0 0 1 1
+}
+// heron_brush id 84ba800000000016
+// brush 21
+{
+( -64 32 0 ) ( -64 33 0 ) ( -64 32 1 ) gothic_trim/baseboard09 0 0 0 1 1
+( 64 160 8 ) ( 64 160 9 ) ( 64 161 8 ) gothic_trim/baseboard09 0 0 0 1 1
+( -64 32 0 ) ( -64 32 1 ) ( -63 32 0 ) gothic_trim/baseboard09 0 0 0 1 1
+( 64 160 8 ) ( 65 160 8 ) ( 64 160 9 ) gothic_trim/baseboard09 0 0 0 1 1
+( 64 160 8 ) ( 64 161 8 ) ( 65 160 8 ) sfx/bouncepad01_block17 0 0 0 1 1
+( -64 32 0 ) ( -63 32 0 ) ( -64 33 0 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba80000000001a
+// brush 22
+{
+( -272 -912 -16 ) ( -272 -911 -16 ) ( -272 -912 -15 ) common/caulk 0 0 0 1 1
+( 272 -528 0 ) ( 272 -528 1 ) ( 272 -527 0 ) common/caulk 0 0 0 1 1
+( -272 -912 -16 ) ( -272 -912 -15 ) ( -271 -912 -16 ) common/caulk 0 0 0 1 1
+( 272 -528 0 ) ( 273 -528 0 ) ( 272 -528 1 ) common/caulk 0 0 0 1 1
+( 272 -528 0 ) ( 272 -527 0 ) ( 273 -528 0 ) base_floor/clang_floor 0 0 0 1 1
+( -272 -912 -16 ) ( -271 -912 -16 ) ( -272 -911 -16 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba80000000001b
+// brush 23
+{
+( -272 -912 192 ) ( -272 -911 192 ) ( -272 -912 193 ) common/caulk 0 0 0 1 1
+( 272 -528 208 ) ( 272 -528 209 ) ( 272 -527 208 ) common/caulk 0 0 0 1 1
+( -272 -912 192 ) ( -272 -912 193 ) ( -271 -912 192 ) common/caulk 0 0 0 1 1
+( 272 -528 208 ) ( 273 -528 208 ) ( 272 -528 209 ) common/caulk 0 0 0 1 1
+( 272 -528 208 ) ( 272 -527 208 ) ( 273 -528 208 ) common/caulk 0 0 0 1 1
+( -272 -912 192 ) ( -271 -912 192 ) ( -272 -911 192 ) base_wall/metalfloor_wall_10 0 0 0 1 1
+}
+// heron_brush id 84ba80000000001c
+// brush 24
+{
+( -272 -912 0 ) ( -272 -911 0 ) ( -272 -912 1 ) common/caulk 0 0 0 1 1
+( -256 -528 192 ) ( -256 -528 193 ) ( -256 -527 192 ) base_wall/basewall01 0 0 0 1 1
+( -272 -912 0 ) ( -272 -912 1 ) ( -271 -912 0 ) common/caulk 0 0 0 1 1
+( -256 -528 192 ) ( -255 -528 192 ) ( -256 -528 193 ) common/caulk 0 0 0 1 1
+( -256 -528 192 ) ( -256 -527 192 ) ( -255 -528 192 ) common/caulk 0 0 0 1 1
+( -272 -912 0 ) ( -271 -912 0 ) ( -272 -911 0 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba80000000001d
+// brush 25
+{
+( 256 -912 0 ) ( 256 -911 0 ) ( 256 -912 1 ) base_wall/basewall01 0 0 0 1 1
+( 272 -528 192 ) ( 272 -528 193 ) ( 272 -527 192 ) common/caulk 0 0 0 1 1
+( 256 -912 0 ) ( 256 -912 1 ) ( 257 -912 0 ) common/caulk 0 0 0 1 1
+( 272 -528 192 ) ( 273 -528 192 ) ( 272 -528 193 ) common/caulk 0 0 0 1 1
+( 272 -528 192 ) ( 272 -527 192 ) ( 273 -528 192 ) common/caulk 0 0 0 1 1
+( 256 -912 0 ) ( 257 -912 0 ) ( 256 -911 0 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba80000000001e
+// brush 26
+{
+( -256 -912 0 ) ( -256 -911 0 ) ( -256 -912 1 ) common/caulk 0 0 0 1 1
+( 256 -896 192 ) ( 256 -896 193 ) ( 256 -895 192 ) common/caulk 0 0 0 1 1
+( -256 -912 0 ) ( -256 -912 1 ) ( -255 -912 0 ) common/caulk 0 0 0 1 1
+( 256 -896 192 ) ( 257 -896 192 ) ( 256 -896 193 ) base_wall/basewall01 0 0 0 1 1
+( 256 -896 192 ) ( 256 -895 192 ) ( 257 -896 192 ) common/caulk 0 0 0 1 1
+( -256 -912 0 ) ( -255 -912 0 ) ( -256 -911 0 ) common/caulk 0 0 0 1 1
+}
+// heron_brush id 84ba80000000001f
+// brush 27
+{
+( -192 -736 184 ) ( -192 -735 184 ) ( -192 -736 185 ) gothic_trim/baseboard09 0 0 0 1 1
+( -128 -672 192 ) ( -128 -672 193 ) ( -128 -671 192 ) gothic_trim/baseboard09 0 0 0 1 1
+( -192 -736 184 ) ( -192 -736 185 ) ( -191 -736 184 ) gothic_trim/baseboard09 0 0 0 1 1
+( -128 -672 192 ) ( -127 -672 192 ) ( -128 -672 193 ) gothic_trim/baseboard09 0 0 0 1 1
+( -128 -672 192 ) ( -128 -671 192 ) ( -127 -672 192 ) common/caulk 0 0 0 1 1
+( -192 -736 184 ) ( -191 -736 184 ) ( -192 -735 184 ) base_light/ceil1_34_5k 0 0 0 1 1
+}
+// heron_brush id 84ba800000000020
+// brush 28
+{
+( 128 -736 184 ) ( 128 -735 184 ) ( 128 -736 185 ) gothic_trim/baseboard09 0 0 0 1 1
+( 192 -672 192 ) ( 192 -672 193 ) ( 192 -671 192 ) gothic_trim/baseboard09 0 0 0 1 1
+( 128 -736 184 ) ( 128 -736 185 ) ( 129 -736 184 ) gothic_trim/baseboard09 0 0 0 1 1
+( 192 -672 192 ) ( 193 -672 192 ) ( 192 -672 193 ) gothic_trim/baseboard09 0 0 0 1 1
+( 192 -672 192 ) ( 192 -671 192 ) ( 193 -672 192 ) common/caulk 0 0 0 1 1
+( 128 -736 184 ) ( 129 -736 184 ) ( 128 -735 184 ) base_light/ceil1_34_5k 0 0 0 1 1
+}
+// heron_brush id 84ba800000000021
+// brush 29
+{
+( -48 -880 0 ) ( -48 -879 0 ) ( -48 -880 1 ) gothic_trim/baseboard09 0 0 0 1 1
+( 48 -784 8 ) ( 48 -784 9 ) ( 48 -783 8 ) gothic_trim/baseboard09 0 0 0 1 1
+( -48 -880 0 ) ( -48 -880 1 ) ( -47 -880 0 ) common/caulk 0 0 0 1 1
+( 48 -784 8 ) ( 49 -784 8 ) ( 48 -784 9 ) gothic_trim/baseboard09 0 0 0 1 1
+( 48 -784 8 ) ( 48 -783 8 ) ( 49 -784 8 ) base_light/ceil1_34_5k 0 0 0 1 1
+( -48 -880 0 ) ( -47 -880 0 ) ( -48 -879 0 ) common/caulk 0 0 0 1 1
+}
+}
+// heron_brush id 84ba800000000018
+// entity 1
+{
+"classname" "trigger_push"
+"target" "ledge_apex"
+// heron_brush id 84ba800000000017
+// brush 0
+{
+( -48 48 8 ) ( -48 49 8 ) ( -48 48 9 ) common/trigger 0 0 0 1 1
+( 48 144 40 ) ( 48 144 41 ) ( 48 145 40 ) common/trigger 0 0 0 1 1
+( -48 48 8 ) ( -48 48 9 ) ( -47 48 8 ) common/trigger 0 0 0 1 1
+( 48 144 40 ) ( 49 144 40 ) ( 48 144 41 ) common/trigger 0 0 0 1 1
+( 48 144 40 ) ( 48 145 40 ) ( 49 144 40 ) common/trigger 0 0 0 1 1
+( -48 48 8 ) ( -47 48 8 ) ( -48 49 8 ) common/trigger 0 0 0 1 1
+}
+}
+// heron_brush id 84ba800000000019
+// entity 2
+{
+"classname" "target_position"
+"origin" "0 384 256"
+"targetname" "ledge_apex"
+}
+// heron_brush id 84ba800000000023
+// entity 3
+{
+"classname" "trigger_teleport"
+"target" "on_ledge"
+// heron_brush id 84ba800000000022
+// brush 0
+{
+( -40 -872 8 ) ( -40 -871 8 ) ( -40 -872 9 ) common/trigger 0 0 0 1 1
+( 40 -792 72 ) ( 40 -792 73 ) ( 40 -791 72 ) common/trigger 0 0 0 1 1
+( -40 -872 8 ) ( -40 -872 9 ) ( -39 -872 8 ) common/trigger 0 0 0 1 1
+( 40 -792 72 ) ( 41 -792 72 ) ( 40 -792 73 ) common/trigger 0 0 0 1 1
+( 40 -792 72 ) ( 40 -791 72 ) ( 41 -792 72 ) common/trigger 0 0 0 1 1
+( -40 -872 8 ) ( -39 -872 8 ) ( -40 -871 8 ) common/trigger 0 0 0 1 1
+}
+}
+// heron_brush id 84ba800000000024
+// entity 4
+{
+"classname" "misc_teleporter_dest"
+"origin" "-512 384 192"
+"angle" "0"
+"targetname" "on_ledge"
+}
+// heron_brush id 84ba800000000025
+// entity 5
+{
+"classname" "info_player_deathmatch"
+"origin" "-448 -352 32"
+"angle" "45"
+}
+// heron_brush id 84ba800000000026
+// entity 6
+{
+"classname" "info_player_deathmatch"
+"origin" "448 -352 32"
+"angle" "135"
+}
+// heron_brush id 84ba800000000027
+// entity 7
+{
+"classname" "info_player_deathmatch"
+"origin" "-512 64 32"
+"angle" "0"
+}
+// heron_brush id 84ba800000000028
+// entity 8
+{
+"classname" "info_player_deathmatch"
+"origin" "-160 -640 32"
+"angle" "90"
+}
+// heron_brush id 84ba800000000029
+// entity 9
+{
+"classname" "info_player_deathmatch"
+"origin" "448 384 192"
+"angle" "180"
+}
+// heron_brush id 84ba80000000002a
+// entity 10
+{
+"classname" "info_player_intermission"
+"origin" "0 -448 320"
+"angles" "20 90 0"
+}
+// heron_brush id 84ba80000000002b
+// entity 11
+{
+"classname" "weapon_rocketlauncher"
+"origin" "0 448 176"
+"wait" "5"
+"random" "0"
+"count" "10"
+}
+// heron_brush id 84ba80000000002c
+// entity 12
+{
+"classname" "ammo_rockets"
+"origin" "96 448 176"
+"wait" "40"
+"random" "0"
+"count" "5"
+}
+// heron_brush id 84ba80000000002d
+// entity 13
+{
+"classname" "weapon_shotgun"
+"origin" "-448 -96 16"
+"wait" "5"
+"random" "0"
+"count" "10"
+}
+// heron_brush id 84ba80000000002e
+// entity 14
+{
+"classname" "ammo_shells"
+"origin" "-384 -96 16"
+"wait" "40"
+"random" "0"
+"count" "10"
+}
+// heron_brush id 84ba80000000002f
+// entity 15
+{
+"classname" "weapon_railgun"
+"origin" "512 -448 16"
+"wait" "5"
+"random" "0"
+"count" "10"
+}
+// heron_brush id 84ba800000000030
+// entity 16
+{
+"classname" "ammo_slugs"
+"origin" "448 -448 16"
+"wait" "40"
+"random" "0"
+"count" "10"
+}
+// heron_brush id 84ba800000000031
+// entity 17
+{
+"classname" "weapon_plasmagun"
+"origin" "0 -640 16"
+"wait" "5"
+"random" "0"
+"count" "50"
+}
+// heron_brush id 84ba800000000032
+// entity 18
+{
+"classname" "ammo_cells"
+"origin" "96 -640 16"
+"wait" "40"
+"random" "0"
+"count" "30"
+}
+// heron_brush id 84ba800000000033
+// entity 19
+{
+"classname" "item_armor_combat"
+"origin" "0 -256 16"
+"wait" "25"
+"random" "0"
+}
+// heron_brush id 84ba800000000034
+// entity 20
+{
+"classname" "item_health"
+"origin" "-192 -864 16"
+"wait" "35"
+"random" "0"
+"count" "25"
+}
+// heron_brush id 84ba800000000035
+// entity 21
+{
+"classname" "item_health"
+"origin" "192 -864 16"
+"wait" "35"
+"random" "0"
+"count" "25"
+}
+// heron_brush id 84ba800000000036
+// entity 22
+{
+"classname" "item_health"
+"origin" "-512 448 176"
+"wait" "35"
+"random" "0"
+"count" "25"
+}
+// heron_brush id 84ba800000000037
+// entity 23
+{
+"classname" "item_health_large"
+"origin" "448 64 16"
+"wait" "35"
+"random" "0"
+"count" "50"
+}
+// heron_brush id 84ba800000000038
+// entity 24
+{
+"classname" "light"
+"origin" "-160 -832 160"
+"light" "250"
+"_color" "1 1 1"
+"radius" "64"
+"fade" "1"
+"scale" "1"
+"_deviance" "0"
+"_samples" "1"
+"_anglescale" "1"
+}
+// heron_brush id 84ba800000000039
+// entity 25
+{
+"classname" "light"
+"origin" "-160 -608 160"
+"light" "250"
+"_color" "1 1 1"
+"radius" "64"
+"fade" "1"
+"scale" "1"
+"_deviance" "0"
+"_samples" "1"
+"_anglescale" "1"
+}
+// heron_brush id 84ba80000000003a
+// entity 26
+{
+"classname" "light"
+"origin" "160 -832 160"
+"light" "250"
+"_color" "1 1 1"
+"radius" "64"
+"fade" "1"
+"scale" "1"
+"_deviance" "0"
+"_samples" "1"
+"_anglescale" "1"
+}
+// heron_brush id 84ba80000000003b
+// entity 27
+{
+"classname" "light"
+"origin" "160 -608 160"
+"light" "250"
+"_color" "1 1 1"
+"radius" "64"
+"fade" "1"
+"scale" "1"
+"_deviance" "0"
+"_samples" "1"
+"_anglescale" "1"
+}
+// heron_brush id 84ba80000000003c
+// entity 28
+{
+"classname" "light"
+"origin" "-448 -400 320"
+"light" "300"
+"_color" "1 1 1"
+"radius" "64"
+"fade" "1"
+"scale" "1"
+"_deviance" "0"
+"_samples" "1"
+"_anglescale" "1"
+}
+// heron_brush id 84ba80000000003d
+// entity 29
+{
+"classname" "light"
+"origin" "0 -400 320"
+"light" "300"
+"_color" "1 1 1"
+"radius" "64"
+"fade" "1"
+"scale" "1"
+"_deviance" "0"
+"_samples" "1"
+"_anglescale" "1"
+}
+// heron_brush id 84ba80000000003e
+// entity 30
+{
+"classname" "light"
+"origin" "448 -400 320"
+"light" "300"
+"_color" "1 1 1"
+"radius" "64"
+"fade" "1"
+"scale" "1"
+"_deviance" "0"
+"_samples" "1"
+"_anglescale" "1"
+}
+// heron_brush id 84ba80000000003f
+// entity 31
+{
+"classname" "light"
+"origin" "0 96 64"
+"light" "200"
+"_color" "0.4 0.7 1"
+"radius" "64"
+"fade" "1"
+"scale" "1"
+"_deviance" "0"
+"_samples" "1"
+"_anglescale" "1"
+}

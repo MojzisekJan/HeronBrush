@@ -1700,6 +1700,24 @@ fn export_map(document: &mut Document, args: &Value) -> Result<String, String> {
     if path.is_empty() {
         return Err("`path` is required".into());
     }
+    // Quake 3's brush primitives are not a classic dialect: each face carries a texture
+    // matrix worked out from the material's pixel size, which is what the export
+    // window's "Quake 3 (brush primitives)" writes.
+    if args
+        .get("format")
+        .and_then(Value::as_str)
+        .is_some_and(|name| {
+            ["quake3_brushdef", "brushdef"].contains(&name.trim().to_ascii_lowercase().as_str())
+        })
+    {
+        document
+            .export_quake3_map_to(path)
+            .map_err(|error| format!("could not write {path}: {error}"))?;
+        return Ok(extensions::with_warnings(
+            format!("exported {path} as Quake 3 brush primitives"),
+            &document.quake3_map_export_problems(),
+        ));
+    }
     let format = match args.get("format").and_then(Value::as_str) {
         Some(name) => name
             .parse::<map_model::map_format::MapFormat>()
@@ -2035,11 +2053,12 @@ fn tool_definitions() -> Vec<Value> {
             "export_map",
             "Write a copy of the map in a classic .map dialect for a game's compiler; the \
              open map is not changed. standard, valve, quake2 (Quake 2 and 3 face lines, \
-             which Neverball's mapc reads), quake2_valve or hexen2 (Raven's qbsp). Without \
-             a format, the first one the current game lists.",
+             which Neverball's mapc reads), quake2_valve, hexen2 (Raven's qbsp) or \
+             quake3_brushdef (Quake 3 brush primitives, as GtkRadiant writes them). \
+             Without a format, the first one the current game lists.",
             json!({
                 "path": { "type": "string" },
-                "format": { "type": "string", "description": "standard, valve, quake2, quake2_valve or hexen2, in any case" },
+                "format": { "type": "string", "description": "standard, valve, quake2, quake2_valve, hexen2 or quake3_brushdef, in any case" },
             }),
             &["path"],
         ),
@@ -2644,6 +2663,56 @@ mod tests {
             &json!({ "path": path, "format": "Hexen3" })
         )
         .is_err());
+        let _ = std::fs::remove_dir_all(&directory);
+    }
+
+    /// Quake 3's brush primitives, which need each material's pixel size.
+    #[test]
+    fn a_map_is_exported_as_quake3_brush_primitives() {
+        let mut document = Document::new(WorldBounds::default());
+        let directory =
+            std::env::temp_dir().join(format!("heron-mcp-brushdef-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(directory.join("base")).expect("the directory is made");
+        image::RgbaImage::from_pixel(64, 32, image::Rgba([90, 90, 90, 255]))
+            .save(directory.join("base/wall.png"))
+            .expect("the texture");
+        call(
+            &mut document,
+            "add_shape",
+            &json!({ "kind": "cuboid", "min": [0, 0, 0], "max": [64, 64, 64], "material": "base/wall" }),
+        )
+        .expect("a box");
+        let path = directory.join("q3.map");
+        // Without the texture there is no pixel size to build the matrix from.
+        assert!(call(
+            &mut document,
+            "export_map",
+            &json!({ "path": path, "format": "quake3_brushdef" })
+        )
+        .is_err());
+        call(
+            &mut document,
+            "load_materials",
+            &json!({ "path": directory }),
+        )
+        .expect("the textures");
+        let reply = call(
+            &mut document,
+            "export_map",
+            &json!({ "path": path, "format": "Quake3_brushDef" }),
+        )
+        .expect("export");
+        assert!(reply.contains("brush primitives"), "{reply}");
+        let text = std::fs::read_to_string(&path).expect("it was written");
+        assert_eq!(text.matches("brushDef").count(), 1, "{text}");
+        assert_eq!(
+            text.lines()
+                .filter(|line| line.starts_with('(') && line.contains(" ) ) \"base/wall\" 0 0 0"))
+                .count(),
+            6,
+            "{text}"
+        );
         let _ = std::fs::remove_dir_all(&directory);
     }
 
