@@ -87,6 +87,10 @@ pub struct Settings {
     /// -V, so a DirectX map arrives with its green channel inverted). GLB writers embed
     /// them as `normalTexture` and add a `TANGENT` attribute to the primitives using them.
     pub normal_maps: indexmap::IndexMap<String, std::sync::Arc<[u8]>>,
+    /// The same normal maps as `res://` images, for the Godot scene, which names its
+    /// images instead of embedding them. They win over the `<texture>_normal` file
+    /// lookup, which knows neither the editor's other suffixes nor DirectX maps.
+    pub normal_map_paths: indexmap::IndexMap<String, String>,
     /// Map units to Godot units. 1/32 puts a 32 unit Quake grid on 1 metre.
     pub scale_factor: f64,
     /// Textures with these names drive tool behaviour rather than looks.
@@ -186,6 +190,7 @@ impl Default for Settings {
             fallback_texture_size: 32.0,
             generated_materials: Default::default(),
             normal_maps: Default::default(),
+            normal_map_paths: Default::default(),
             group_hierarchy: true,
             cull_hidden: true,
             merge_collision: true,
