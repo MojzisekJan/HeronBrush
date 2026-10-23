@@ -3,8 +3,8 @@
 use eframe::egui;
 
 /// A text field that commits on Enter or on leaving it, so
-/// an edit reaches the history once rather than once per letter. Returns the new text
-/// when it was committed and differs from `value`.
+/// an edit reaches the history once rather than once per letter, and drops the edit on
+/// Escape. Returns the new text when it was committed and differs from `value`.
 pub fn field(
     ui: &mut egui::Ui,
     id: egui::Id,
@@ -29,7 +29,8 @@ pub fn field(
         None
     } else if response.lost_focus() {
         ui.data_mut(|d| d.remove::<String>(id));
-        (text != value).then_some(text)
+        let escaped = ui.input(|i| i.key_pressed(egui::Key::Escape));
+        (!escaped && text != value).then_some(text)
     } else {
         ui.data_mut(|d| d.remove::<String>(id));
         None
@@ -279,8 +280,10 @@ fn spin_body(
             state.bg_stroke = Stroke::NONE;
         }
         // While typing, the number is a text edit; its own focus frame and fill would
-        // draw a second box inside the field, which already lights its edge.
-        entry.visuals_mut().selection.stroke = Stroke::NONE;
+        // draw a second box inside the field, which already lights its edge. The frame
+        // goes with a zero width, but the colour stays: egui draws selected text in it,
+        // and a selected number with no colour was invisible.
+        entry.visuals_mut().selection.stroke = Stroke::new(0.0, theme::fg());
         entry.visuals_mut().extreme_bg_color = Color32::TRANSPARENT;
     }
     let mut response = entry.add_sized(
