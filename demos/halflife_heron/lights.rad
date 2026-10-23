@@ -1,0 +1,2 @@
+// Texture lights for hlrad: a face with one of these textures gives off light.
++0~FIFTS_LGHT01	255 244 224 3000

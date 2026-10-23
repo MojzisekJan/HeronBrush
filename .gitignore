@@ -37,3 +37,7 @@ __pycache__/
 
 # quemap's output for the Quetoo demo.
 /demos/quetoo_heron/build/
+
+# Uplink's textures, SDHLT's tool wad and compiler output for the Half-Life demo.
+/demos/halflife_heron/wads/
+/demos/halflife_heron/build/

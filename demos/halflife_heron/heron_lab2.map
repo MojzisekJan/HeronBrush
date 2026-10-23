@@ -1,0 +1,282 @@
+// heron material-sources [["wad","wads/uplink.wad"],["wad","wads/sdhlt.wad"]]
+// Format: Valve
+// heron_brush format 3
+// entity 0
+{
+"mapversion" "220"
+"classname" "worldspawn"
+"wad" "wads/uplink.wad;wads/sdhlt.wad"
+"message" "Heron Lab, part two"
+"skyname" "desert"
+// heron_brush id 4926140000000041
+// brush 0
+{
+( 1104 128 32 ) ( 1104 129 32 ) ( 1104 128 33 ) duct_wall01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 224 48 ) ( 1392 224 49 ) ( 1392 225 48 ) duct_wall01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1104 128 32 ) ( 1104 128 33 ) ( 1105 128 32 ) duct_wall01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 224 48 ) ( 1393 224 48 ) ( 1392 224 49 ) duct_wall01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 224 48 ) ( 1392 225 48 ) ( 1393 224 48 ) duct_wall01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1104 128 32 ) ( 1105 128 32 ) ( 1104 129 32 ) duct_wall01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 4926140000000042
+// brush 1
+{
+( 1104 128 176 ) ( 1104 129 176 ) ( 1104 128 177 ) duct_wall01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 224 192 ) ( 1392 224 193 ) ( 1392 225 192 ) duct_wall01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1104 128 176 ) ( 1104 128 177 ) ( 1105 128 176 ) duct_wall01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 224 192 ) ( 1393 224 192 ) ( 1392 224 193 ) duct_wall01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 224 192 ) ( 1392 225 192 ) ( 1393 224 192 ) duct_wall01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1104 128 176 ) ( 1105 128 176 ) ( 1104 129 176 ) duct_wall01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 4926140000000043
+// brush 2
+{
+( 1104 128 48 ) ( 1104 129 48 ) ( 1104 128 49 ) duct_wall01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 144 176 ) ( 1392 144 177 ) ( 1392 145 176 ) duct_wall01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1104 128 48 ) ( 1104 128 49 ) ( 1105 128 48 ) duct_wall01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 144 176 ) ( 1393 144 176 ) ( 1392 144 177 ) duct_wall01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 144 176 ) ( 1392 145 176 ) ( 1393 144 176 ) duct_wall01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1104 128 48 ) ( 1105 128 48 ) ( 1104 129 48 ) duct_wall01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 4926140000000044
+// brush 3
+{
+( 1104 208 48 ) ( 1104 209 48 ) ( 1104 208 49 ) duct_wall01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 224 176 ) ( 1392 224 177 ) ( 1392 225 176 ) duct_wall01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1104 208 48 ) ( 1104 208 49 ) ( 1105 208 48 ) duct_wall01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 224 176 ) ( 1393 224 176 ) ( 1392 224 177 ) duct_wall01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 224 176 ) ( 1392 225 176 ) ( 1393 224 176 ) duct_wall01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1104 208 48 ) ( 1105 208 48 ) ( 1104 209 48 ) duct_wall01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 4926140000000045
+// brush 4
+{
+( 1104 144 48 ) ( 1104 145 48 ) ( 1104 144 49 ) duct_wall01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1120 208 176 ) ( 1120 208 177 ) ( 1120 209 176 ) duct_wall01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1104 144 48 ) ( 1104 144 49 ) ( 1105 144 48 ) duct_wall01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1120 208 176 ) ( 1121 208 176 ) ( 1120 208 177 ) duct_wall01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1120 208 176 ) ( 1120 209 176 ) ( 1121 208 176 ) duct_wall01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1104 144 48 ) ( 1105 144 48 ) ( 1104 145 48 ) duct_wall01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 492614000000004b
+// brush 5
+{
+( 1392 48 32 ) ( 1392 49 32 ) ( 1392 48 33 ) c1a1_flr1 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 400 48 ) ( 1792 400 49 ) ( 1792 401 48 ) c1a1_flr1 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 48 32 ) ( 1392 48 33 ) ( 1393 48 32 ) c1a1_flr1 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 400 48 ) ( 1793 400 48 ) ( 1792 400 49 ) c1a1_flr1 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 400 48 ) ( 1792 401 48 ) ( 1793 400 48 ) c1a1_flr1 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1392 48 32 ) ( 1393 48 32 ) ( 1392 49 32 ) null [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 492614000000004c
+// brush 6
+{
+( 1392 48 240 ) ( 1392 49 240 ) ( 1392 48 241 ) fifties_ceil01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 400 256 ) ( 1792 400 257 ) ( 1792 401 256 ) fifties_ceil01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 48 240 ) ( 1392 48 241 ) ( 1393 48 240 ) fifties_ceil01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 400 256 ) ( 1793 400 256 ) ( 1792 400 257 ) fifties_ceil01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 400 256 ) ( 1792 401 256 ) ( 1793 400 256 ) null [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1392 48 240 ) ( 1393 48 240 ) ( 1392 49 240 ) fifties_ceil01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 492614000000004d
+// brush 7
+{
+( 1392 48 48 ) ( 1392 49 48 ) ( 1392 48 49 ) c1a0_labw4 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 64 240 ) ( 1792 64 241 ) ( 1792 65 240 ) c1a0_labw4 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 48 48 ) ( 1392 48 49 ) ( 1393 48 48 ) null [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 64 240 ) ( 1793 64 240 ) ( 1792 64 241 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 64 240 ) ( 1792 65 240 ) ( 1793 64 240 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1392 48 48 ) ( 1393 48 48 ) ( 1392 49 48 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 492614000000004e
+// brush 8
+{
+( 1392 384 48 ) ( 1392 385 48 ) ( 1392 384 49 ) c1a0_labw4 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 400 240 ) ( 1792 400 241 ) ( 1792 401 240 ) c1a0_labw4 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 384 48 ) ( 1392 384 49 ) ( 1393 384 48 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 400 240 ) ( 1793 400 240 ) ( 1792 400 241 ) null [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 400 240 ) ( 1792 401 240 ) ( 1793 400 240 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1392 384 48 ) ( 1393 384 48 ) ( 1392 385 48 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 492614000000004f
+// brush 9
+{
+( 1776 64 48 ) ( 1776 65 48 ) ( 1776 64 49 ) c1a0_labw4 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 384 240 ) ( 1792 384 241 ) ( 1792 385 240 ) null [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1776 64 48 ) ( 1776 64 49 ) ( 1777 64 48 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 384 240 ) ( 1793 384 240 ) ( 1792 384 241 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1792 384 240 ) ( 1792 385 240 ) ( 1793 384 240 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1776 64 48 ) ( 1777 64 48 ) ( 1776 65 48 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 4926140000000050
+// brush 10
+{
+( 1392 64 48 ) ( 1392 65 48 ) ( 1392 64 49 ) c1a0_labw4 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1408 144 240 ) ( 1408 144 241 ) ( 1408 145 240 ) c1a0_labw4 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 64 48 ) ( 1392 64 49 ) ( 1393 64 48 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1408 144 240 ) ( 1409 144 240 ) ( 1408 144 241 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1408 144 240 ) ( 1408 145 240 ) ( 1409 144 240 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1392 64 48 ) ( 1393 64 48 ) ( 1392 65 48 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 4926140000000051
+// brush 11
+{
+( 1392 208 48 ) ( 1392 209 48 ) ( 1392 208 49 ) c1a0_labw4 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1408 384 240 ) ( 1408 384 241 ) ( 1408 385 240 ) c1a0_labw4 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 208 48 ) ( 1392 208 49 ) ( 1393 208 48 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1408 384 240 ) ( 1409 384 240 ) ( 1408 384 241 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1408 384 240 ) ( 1408 385 240 ) ( 1409 384 240 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1392 208 48 ) ( 1393 208 48 ) ( 1392 209 48 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 4926140000000052
+// brush 12
+{
+( 1392 144 160 ) ( 1392 145 160 ) ( 1392 144 161 ) c1a0_labw4 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1408 208 240 ) ( 1408 208 241 ) ( 1408 209 240 ) c1a0_labw4 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1392 144 160 ) ( 1392 144 161 ) ( 1393 144 160 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1408 208 240 ) ( 1409 208 240 ) ( 1408 208 241 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1408 208 240 ) ( 1408 209 240 ) ( 1409 208 240 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1392 144 160 ) ( 1393 144 160 ) ( 1392 145 160 ) c1a0_labw4 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 4926140000000053
+// brush 13
+{
+( 1472 208 236 ) ( 1472 209 236 ) ( 1472 208 237 ) +0~fifts_lght01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1536 240 240 ) ( 1536 240 241 ) ( 1536 241 240 ) +0~fifts_lght01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1472 208 236 ) ( 1472 208 237 ) ( 1473 208 236 ) +0~fifts_lght01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1536 240 240 ) ( 1537 240 240 ) ( 1536 240 241 ) +0~fifts_lght01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1536 240 240 ) ( 1536 241 240 ) ( 1537 240 240 ) +0~fifts_lght01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1472 208 236 ) ( 1473 208 236 ) ( 1472 209 236 ) +0~fifts_lght01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 4926140000000054
+// brush 14
+{
+( 1632 208 236 ) ( 1632 209 236 ) ( 1632 208 237 ) +0~fifts_lght01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1696 240 240 ) ( 1696 240 241 ) ( 1696 241 240 ) +0~fifts_lght01 [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1632 208 236 ) ( 1632 208 237 ) ( 1633 208 236 ) +0~fifts_lght01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1696 240 240 ) ( 1697 240 240 ) ( 1696 240 241 ) +0~fifts_lght01 [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1696 240 240 ) ( 1696 241 240 ) ( 1697 240 240 ) +0~fifts_lght01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1632 208 236 ) ( 1633 208 236 ) ( 1632 209 236 ) +0~fifts_lght01 [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+}
+// heron_brush id 4926140000000046
+// entity 1
+{
+"classname" "info_landmark"
+"origin" "1216 176 80"
+"targetname" "heron_gate"
+}
+// heron_brush id 4926140000000048
+// entity 2
+{
+"classname" "trigger_changelevel"
+"changedelay" "0"
+"map" "heron_lab"
+"landmark" "heron_gate"
+"spawnflags" "2"
+// heron_brush id 4926140000000047
+// brush 0
+{
+( 1120 144 48 ) ( 1120 145 48 ) ( 1120 144 49 ) aaatrigger [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1152 208 176 ) ( 1152 208 177 ) ( 1152 209 176 ) aaatrigger [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1120 144 48 ) ( 1120 144 49 ) ( 1121 144 48 ) aaatrigger [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1152 208 176 ) ( 1153 208 176 ) ( 1152 208 177 ) aaatrigger [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1152 208 176 ) ( 1152 209 176 ) ( 1153 208 176 ) aaatrigger [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1120 144 48 ) ( 1121 144 48 ) ( 1120 145 48 ) aaatrigger [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+}
+// heron_brush id 4926140000000049
+// entity 3
+{
+"classname" "info_player_start"
+"origin" "1168 176 84"
+"angles" "0 0 0"
+}
+// heron_brush id 492614000000004a
+// entity 4
+{
+"classname" "light"
+"origin" "1184 176 160"
+"_light" "255 255 255 80"
+"style" "0"
+"_fade" "1.0"
+"_falloff" "0"
+}
+// heron_brush id 4926140000000057
+// entity 5
+{
+"classname" "func_door_rotating"
+"distance" "90"
+"speed" "100"
+"movesnd" "0"
+"stopsnd" "0"
+"wait" "4"
+"dmg" "0"
+"health" "0"
+"locked_sound" "0"
+"unlocked_sound" "0"
+"locked_sentence" "0"
+"unlocked_sentence" "0"
+"zhlt_lightflags" "0"
+"rendermode" "0"
+"rendercolor" "0 0 0"
+"angles" "0 0 0"
+"renderfx" "0"
+// heron_brush id 4926140000000056
+// brush 0
+{
+( 1396 200 48 ) ( 1396 201 48 ) ( 1396 200 49 ) origin [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1404 208 160 ) ( 1404 208 161 ) ( 1404 209 160 ) origin [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1396 200 48 ) ( 1396 200 49 ) ( 1397 200 48 ) origin [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1404 208 160 ) ( 1405 208 160 ) ( 1404 208 161 ) origin [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1404 208 160 ) ( 1404 209 160 ) ( 1405 208 160 ) origin [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1396 200 48 ) ( 1397 200 48 ) ( 1396 201 48 ) origin [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+// heron_brush id 4926140000000055
+// brush 1
+{
+( 1396 144 48 ) ( 1396 145 48 ) ( 1396 144 49 ) c1a0b_dr4a [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1404 200 160 ) ( 1404 200 161 ) ( 1404 201 160 ) c1a0b_dr4a [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1396 144 48 ) ( 1396 144 49 ) ( 1397 144 48 ) c1a0b_dr4a [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1404 200 160 ) ( 1405 200 160 ) ( 1404 200 161 ) c1a0b_dr4a [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1404 200 160 ) ( 1404 201 160 ) ( 1405 200 160 ) c1a0b_dr4a [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1396 144 48 ) ( 1397 144 48 ) ( 1396 145 48 ) c1a0b_dr4a [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+}
+// heron_brush id 4926140000000058
+// entity 6
+{
+"classname" "monster_scientist"
+"origin" "1600 320 48"
+"body" "-1"
+"sequence" "13"
+"TriggerCondition" "0"
+"rendermode" "0"
+"rendercolor" "0 0 0"
+"angles" "0 180 0"
+"renderfx" "0"
+}
+// heron_brush id 4926140000000059
+// entity 7
+{
+"classname" "item_healthkit"
+"origin" "1600 96 48"
+"delay" "0"
+"angles" "0 0 0"
+}
+// heron_brush id 492614000000005b
+// entity 8
+{
+"classname" "trigger_endsection"
+"section" "_oem_end_demo"
+// heron_brush id 492614000000005a
+// brush 0
+{
+( 1712 64 48 ) ( 1712 65 48 ) ( 1712 64 49 ) aaatrigger [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1776 384 176 ) ( 1776 384 177 ) ( 1776 385 176 ) aaatrigger [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1712 64 48 ) ( 1712 64 49 ) ( 1713 64 48 ) aaatrigger [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1776 384 176 ) ( 1777 384 176 ) ( 1776 384 177 ) aaatrigger [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1 // heron_brush paraxial
+( 1776 384 176 ) ( 1776 385 176 ) ( 1777 384 176 ) aaatrigger [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+( 1712 64 48 ) ( 1713 64 48 ) ( 1712 65 48 ) aaatrigger [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1 // heron_brush paraxial
+}
+}
