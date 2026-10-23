@@ -354,6 +354,10 @@ fn row(
         Sense::hover()
     };
     let (rect, response) = ui.allocate_exact_size(egui::vec2(width, ROW), sense);
+    response.widget_info(|| match checked {
+        Some(on) => egui::WidgetInfo::selected(egui::Role::MenuItemCheckBox, enabled, on, label),
+        None => egui::WidgetInfo::labeled(egui::Role::MenuItem, enabled, label),
+    });
     // WinUI marks the row under the pointer with a subtle fill; the others with the accent.
     let pointed = response.hovered() || lit;
     let hot = enabled && pointed && !theme::win();

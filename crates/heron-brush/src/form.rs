@@ -171,6 +171,9 @@ pub fn sidebar_item(
 ) -> egui::Response {
     let (rect, response) =
         ui.allocate_exact_size(egui::vec2(ui.available_width(), height), Sense::click());
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(egui::Role::ListBoxOption, true, selected, title)
+    });
     crate::widgets::row_focus(ui, &response);
     let painter = ui.painter();
     let radius = egui::CornerRadius::same(theme::radius());

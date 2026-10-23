@@ -1061,6 +1061,10 @@ impl Chrome {
                 Sense::click(),
             )
             .on_hover_text(tool_tip(tool));
+        let active = *self.tool.borrow() == tool;
+        response.widget_info(|| {
+            egui::WidgetInfo::selected(egui::Role::Button, true, active, tr(tool.name()))
+        });
         if response.clicked() {
             self.pick(tool);
         }

@@ -266,6 +266,9 @@ impl MapPage {
         is_current: bool,
     ) -> egui::Response {
         let (row, response) = widgets::list_row(ui, widgets::LIST_ROW, is_current, Sense::click());
+        response.widget_info(|| {
+            egui::WidgetInfo::selected(egui::Role::ListBoxOption, true, is_current, &layer.name)
+        });
         widgets::row_focus(ui, &response);
         let flags = 3.0 * 24.0 + 4.0;
         // The current layer is where a new brush lands, which is worth seeing without

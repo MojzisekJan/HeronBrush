@@ -166,6 +166,9 @@ impl Inspector {
                 Rect::from_min_size(Pos2::new(x, rect.top()), egui::vec2(width, rect.height()));
             x += width;
             let response = ui.interact(slot, ui.scope_id().with(("tab", index)), Sense::click());
+            response.widget_info(|| {
+                egui::WidgetInfo::selected(egui::Role::Tab, true, self.tab == tab, label)
+            });
             if response.clicked() {
                 self.tab = tab;
             }
