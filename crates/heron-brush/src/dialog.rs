@@ -51,6 +51,18 @@ pub fn show_with_body_margin(
     show_window(ctx, id, title, size, body_margin, false, contents)
 }
 
+thread_local! {
+    /// The frame a dialog was last shown in, so the editor can tell one is open.
+    static SHOWN: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+}
+
+/// Whether a dialog was shown this frame or the one before: one is open, and keys such
+/// as Tab belong to it rather than to the editor.
+pub fn any_open(ctx: &egui::Context) -> bool {
+    let frame = ctx.cumulative_frame_nr();
+    SHOWN.with(|shown| shown.get().is_some_and(|at| frame.saturating_sub(at) <= 1))
+}
+
 fn show_window(
     ctx: &egui::Context,
     id: &str,
@@ -62,6 +74,7 @@ fn show_window(
 ) -> bool {
     let placement_id = egui::Id::unique(("dialog-placement", id));
     let frame = ctx.cumulative_frame_nr();
+    SHOWN.with(|shown| shown.set(Some(frame)));
     let previous = ctx.data_mut(|d| d.get_temp::<Placement>(placement_id));
     let opening =
         previous.is_none_or(|p| frame.wrapping_sub(p.last_frame) > 1 || p.opened_frame == frame);

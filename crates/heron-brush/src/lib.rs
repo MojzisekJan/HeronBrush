@@ -1049,9 +1049,13 @@ impl eframe::App for App {
         }
         // Presses a frame did not hand on (no map open yet) do not wait for a later one.
         self.tabs.clear();
-        // A text field that has the keyboard keeps Tab (it moves to the next field);
-        // otherwise Tab is the editor's mode key and egui never sees it.
-        if !ctx.egui_wants_keyboard_input() {
+        // Tab is the editor's mode key only while the keyboard is with the map: nothing
+        // in the panels has it and no dialog is open. Otherwise it moves the keyboard to
+        // the next control, as everywhere else.
+        let keyboard_in_ui = ctx.egui_wants_keyboard_input()
+            || ctx.memory(|m| m.focused().is_some())
+            || dialog::any_open(ctx);
+        if !keyboard_in_ui {
             let (tabs, rest): (Vec<_>, Vec<_>) = std::mem::take(&mut raw_input.events)
                 .into_iter()
                 .partition(|event| {
