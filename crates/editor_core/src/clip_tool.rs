@@ -15,6 +15,8 @@ use geometry_math::scalar::Float;
 use geometry_math::vec::{self, Vec3d};
 use map_model::brush::{Brush, ClipOutcome};
 
+use crate::i18n::translation_key;
+
 /// Which side of the plane is kept.
 ///
 /// `ClipTool::ClipSide`.
@@ -30,12 +32,12 @@ pub enum ClipSide {
 }
 
 impl ClipSide {
-    /// Returns the name shown to the user.
-    pub fn name(self) -> &'static str {
+    /// What the status line says when this side is chosen, as a key for [`crate::i18n::tr`].
+    pub fn kept(self) -> &'static str {
         match self {
-            ClipSide::Front => "front",
-            ClipSide::Both => "both",
-            ClipSide::Back => "back",
+            ClipSide::Front => translation_key("The clip keeps the front part"),
+            ClipSide::Both => translation_key("The clip keeps both parts"),
+            ClipSide::Back => translation_key("The clip keeps the back part"),
         }
     }
 

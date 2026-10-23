@@ -1176,11 +1176,14 @@ pub struct SnapReport {
 
 impl std::fmt::Display for SnapReport {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "snapped {}, already aligned {}, too small to snap {}",
-            self.snapped, self.already_aligned, self.refused
-        )
+        f.write_str(&crate::i18n::fill(
+            "{} snapped, {} already aligned, {} too small to snap",
+            &[
+                &crate::i18n::counted(self.snapped, "brush"),
+                &self.already_aligned.to_string(),
+                &self.refused.to_string(),
+            ],
+        ))
     }
 }
 

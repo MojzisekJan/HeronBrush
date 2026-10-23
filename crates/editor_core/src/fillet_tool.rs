@@ -15,6 +15,7 @@ use std::rc::Rc;
 
 use crate::document::Document;
 use crate::handle_tool::HandleManager;
+use crate::i18n::{counted, fill, tr};
 
 /// What a fillet is made of, shared by the panel that sets it and the click that uses it.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -189,13 +190,16 @@ pub fn report(outcome: &Outcome) {
     match outcome {
         Outcome::Picked => {}
         Outcome::Missed => crate::say!(
-            "nothing to round: pick edges or vertices, or select faces to round their loops"
+            "{}",
+            tr("Nothing to round. Pick edges or vertices, or select faces to round their loops")
         ),
         Outcome::Rounded(count) => crate::say!(
-            "rounded edges on {}",
-            text_utils::string_format::str_plural(*count, "1 brush", &format!("{count} brushes"))
+            "{}",
+            fill("Rounded edges on {}", &[&counted(*count, "brush")])
         ),
-        Outcome::Refused(why) => crate::say!("the edge was not rounded: {why}"),
+        Outcome::Refused(why) => {
+            crate::say!("{}", fill("The edge was not rounded: {}", &[why]))
+        }
     }
 }
 

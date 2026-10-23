@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use web_time::{Duration, Instant};
 
 use crate::document::Document;
+use crate::i18n::fill;
 
 /// The gap between autosave attempts.
 pub const INTERVAL: Duration = Duration::from_secs(10 * 60);
@@ -90,7 +91,7 @@ impl Autosaver {
                 Some(path)
             }
             Err(error) => {
-                crate::complain!("aborting autosave: {error}");
+                crate::complain!("{}", fill("Autosave failed: {}", &[&error.to_string()]));
                 None
             }
         }

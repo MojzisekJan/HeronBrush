@@ -13,6 +13,8 @@ use map_model::node::Node;
 use map_model::node::NodeId;
 use map_model::node::NodeKind;
 
+use crate::i18n::{counted, fill, tr};
+
 /// How many edits can be undone.
 ///
 /// Deep enough to cover any run of work a user would want back, and shallow enough that
@@ -182,33 +184,20 @@ impl Edit {
     /// Returns a short description, for the status line.
     pub fn description(&self) -> String {
         match self {
-            Edit::Changed { after, .. } => {
-                format!("change {}", count(after.len(), "object", "objects"))
-            }
-            Edit::Added { nodes, .. } => {
-                format!("add {}", count(nodes.len(), "object", "objects"))
-            }
-            Edit::Removed { nodes, .. } => {
-                format!("delete {}", count(nodes.len(), "object", "objects"))
-            }
-            Edit::Reordered { .. } => "reorder objects".into(),
-            Edit::LayerInserted { layer, .. } => format!("add layer {}", layer.name),
-            Edit::LayerRemoved { layer, .. } => format!("remove layer {}", layer.name),
-            Edit::LayerChanged { after, .. } => format!("rename layer to {}", after.name),
+            Edit::Changed { after, .. } => fill("change {}", &[&counted(after.len(), "object")]),
+            Edit::Added { nodes, .. } => fill("add {}", &[&counted(nodes.len(), "object")]),
+            Edit::Removed { nodes, .. } => fill("delete {}", &[&counted(nodes.len(), "object")]),
+            Edit::Reordered { .. } => tr("reorder objects").into(),
+            Edit::LayerInserted { layer, .. } => fill("add layer {}", &[&layer.name]),
+            Edit::LayerRemoved { layer, .. } => fill("remove layer {}", &[&layer.name]),
+            Edit::LayerChanged { after, .. } => fill("rename layer to {}", &[&after.name]),
             // The last part is what the operation left behind, which is the half worth
             // naming: "add six objects" says more than "a batch of two".
             Edit::Batch(parts) => parts
                 .last()
-                .map_or_else(|| "do nothing".to_string(), Edit::description),
+                .map_or_else(|| tr("do nothing").to_string(), Edit::description),
         }
     }
-}
-
-fn count(n: usize, singular: &str, plural: &str) -> String {
-    format!(
-        "{n} {}",
-        text_utils::string_format::str_plural(n, singular, plural)
-    )
 }
 
 /// The undo and redo stacks.

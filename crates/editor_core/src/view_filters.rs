@@ -6,7 +6,7 @@
 //! and is handed the filters to answer with, rather than holding them: two views could
 //! want different answers, and a filter is not something a saved map remembers.
 
-use crate::i18n::translation_key;
+use crate::i18n::{counted, fill, tr, translation_key};
 use geometry_math::vec::Vec3d;
 
 /// Which entity links are drawn.
@@ -196,22 +196,31 @@ pub fn report_tag_outcome(name: &str, outcome: Option<crate::document::TagOutcom
     use crate::document::TagOutcome;
     match outcome {
         Some(TagOutcome::Changed(0)) => {
-            crate::say!("the selection already matches `{name}`")
+            crate::say!("{}", fill("The selection already matches \"{}\"", &[name]))
         }
         Some(TagOutcome::Changed(count)) => {
-            crate::say!("changed {count} faces for `{name}`")
+            crate::say!(
+                "{}",
+                fill("Changed {} for \"{}\"", &[&counted(count, "face"), name])
+            )
         }
         Some(TagOutcome::Ambiguous { used, changed }) => {
-            crate::say!("`{name}` matches several materials; put `{used}` on {changed} faces")
+            crate::say!(
+                "{}",
+                fill(
+                    "\"{}\" matches several materials. Put \"{}\" on {}",
+                    &[name, &used, &counted(changed, "face")]
+                )
+            )
         }
         Some(TagOutcome::NoMaterial) => {
-            crate::complain!("no loaded material matches `{name}`")
+            crate::complain!("{}", fill("No loaded material matches \"{}\"", &[name]))
         }
         Some(TagOutcome::NoSelection) => {
-            crate::complain!("select some faces or brushes first")
+            crate::complain!("{}", tr("Select some faces or brushes first"))
         }
         Some(TagOutcome::Unsupported) | None => {
-            crate::complain!("`{name}` cannot be changed from here")
+            crate::complain!("{}", fill("\"{}\" cannot be changed from here", &[name]))
         }
     }
 }

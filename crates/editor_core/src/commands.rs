@@ -7,6 +7,7 @@ use std::{cell::RefCell, rc::Rc};
 use geometry_math::{util::Axis, vec::Vec3d};
 
 use crate::document_setup::Sources;
+use crate::i18n::{counted, fill, tr};
 use crate::input::{Key, Modifiers};
 use crate::{
     assemble_tool, camera2d, camera3d, clip_tool, fillet_tool, grid, handle_tool, preferences,
@@ -21,12 +22,15 @@ use crate::{camera2d::ViewPlane, document::Document, grid::Grid, world::WorldBou
 pub const DEFAULT_MATERIAL_SIZE: geometry_math::vec::Vec2f =
     geometry_math::vec::Vec2f::new(64.0, 64.0);
 
-/// Says what an undo or redo did.
-pub fn report(result: Option<String>, action: &str) {
-    match result {
-        Some(description) => crate::say!("{action}: {description}"),
-        None => crate::say!("nothing to {action}"),
-    }
+/// Says what an undo, or with `redo` a redo, did.
+pub fn report(result: Option<String>, redo: bool) {
+    let line = match (result, redo) {
+        (Some(description), false) => fill("Undone: {}", &[&description]),
+        (Some(description), true) => fill("Redone: {}", &[&description]),
+        (None, false) => tr("Nothing to undo").to_string(),
+        (None, true) => tr("Nothing to redo").to_string(),
+    };
+    crate::say!("{line}");
 }
 
 /// What the commands ask of the window around the views.
@@ -173,7 +177,14 @@ impl Commands {
                 Key::Letter('u') if !ctrl && !shift && !alt => {
                     let locked = !preferences::pref(|p| p.uv_lock);
                     preferences::edit(|preferences| preferences.uv_lock = locked);
-                    crate::say!("UV lock {}", if locked { "on" } else { "off" });
+                    crate::say!(
+                        "{}",
+                        tr(if locked {
+                            "UV lock is on"
+                        } else {
+                            "UV lock is off"
+                        })
+                    );
                 }
                 // `Reset Camera Zoom`, Ctrl+Alt+Z.
                 Key::Letter('z') if ctrl && alt && !shift => {
@@ -181,7 +192,7 @@ impl Commands {
                         state.borrow_mut().camera.zoom = 1.0;
                     }
                     window.redraw();
-                    crate::say!("reset the zoom");
+                    crate::say!("{}", tr("Reset the zoom"));
                 }
                 Key::Letter('u') if ctrl && shift => {
                     for state in cameras.borrow().iter() {
@@ -197,7 +208,7 @@ impl Commands {
                 // centres on it and zooms so it sits inside with a little air.
                 Key::Letter('u') if ctrl && !shift && !alt => {
                     let Some(selection) = document.borrow().selection_bounds() else {
-                        crate::say!("focus: nothing is selected");
+                        crate::say!("{}", tr("Select something to focus on"));
                         return false;
                     };
                     let (width, height) = window.perspective_view_size().unwrap_or((1.0, 1.0));
@@ -253,14 +264,26 @@ impl Commands {
                         Some(path) => {
                             match document.borrow_mut().load_materials(&path) {
                                 Ok(_) => {
-                                    crate::say!("reloaded the materials in {}", path.display())
+                                    crate::say!(
+                                        "{}",
+                                        fill(
+                                            "Reloaded the materials in {}",
+                                            &[&path.display().to_string()]
+                                        )
+                                    )
                                 }
-                                Err(error) => crate::complain!("{}: {error}", path.display()),
+                                Err(error) => crate::complain!(
+                                    "{}",
+                                    fill(
+                                        "Could not reload {}: {}",
+                                        &[&path.display().to_string(), &error.to_string()]
+                                    )
+                                ),
                             }
                             window.redraw();
                             window.refresh_inspector();
                         }
-                        None => crate::say!("no material folder has been loaded"),
+                        None => crate::say!("{}", tr("No material folder has been loaded")),
                     }
                 }
                 Key::Function(6) => {
@@ -269,23 +292,41 @@ impl Commands {
                         Some(path) => {
                             match document.borrow_mut().load_definitions(&path) {
                                 Ok(warnings) => {
-                                    crate::say!("reloaded {}", path.display());
+                                    crate::say!(
+                                        "{}",
+                                        fill(
+                                            "Reloaded the entity definitions from {}",
+                                            &[&path.display().to_string()]
+                                        )
+                                    );
                                     for warning in warnings {
                                         crate::complain!("warning: {warning}");
                                     }
                                 }
-                                Err(error) => crate::complain!("{}: {error}", path.display()),
+                                Err(error) => crate::complain!(
+                                    "{}",
+                                    fill(
+                                        "Could not reload {}: {}",
+                                        &[&path.display().to_string(), &error.to_string()]
+                                    )
+                                ),
                             }
                             window.redraw();
                             window.refresh_inspector();
                         }
-                        None => crate::say!("no entity definitions have been loaded"),
+                        None => crate::say!("{}", tr("No entity definitions have been loaded")),
                     }
                 }
                 Key::Letter('s') if !ctrl => {
                     let size = grid_now.actual_size();
                     let report = document.borrow_mut().snap_vertices_to_grid(size);
-                    crate::say!("snap to grid {size}: {report}");
+                    crate::say!(
+                        "{}",
+                        fill(
+                            "Snapped the vertices to the {} grid: {}",
+                            &[&size.to_string(), &report.to_string()]
+                        )
+                    );
                 }
                 // `ActionManager`'s Edit/Select menu: Ctrl+Alt+A inverts, Ctrl+Shift+A
                 // deselects, Ctrl+T selects everything the drawn brushes touch, Ctrl+E
@@ -297,32 +338,35 @@ impl Commands {
                 // Ctrl+Shift+I shows everything again.
                 Key::Letter('i') if ctrl && alt => {
                     let hidden = document.borrow_mut().hide_selection();
-                    crate::say!("hid {hidden} objects");
+                    crate::say!("{}", fill("Hid {}", &[&counted(hidden, "object")]));
                 }
                 Key::Letter('i') if ctrl && shift => {
                     let shown = document.borrow_mut().show_all();
-                    crate::say!("showed {shown} objects");
+                    crate::say!("{}", fill("Showed {}", &[&counted(shown, "object")]));
                 }
                 Key::Letter('i') if ctrl => {
                     let hidden = document.borrow_mut().isolate_selection();
-                    crate::say!(
-                        "isolate: {}",
-                        if hidden > 0 {
-                            format!("hid {hidden} others")
-                        } else {
-                            "select something first".to_string()
-                        }
-                    );
+                    if hidden > 0 {
+                        crate::say!(
+                            "{}",
+                            fill(
+                                "Isolated the selection and hid {}",
+                                &[&counted(hidden, "object")]
+                            )
+                        );
+                    } else {
+                        crate::say!("{}", tr("Select something to isolate first"));
+                    }
                 }
                 Key::Letter('t') if ctrl => {
                     let did = document.borrow_mut().select_touching();
                     crate::say!(
-                        "select touching: {}",
-                        if did {
-                            "done"
+                        "{}",
+                        tr(if did {
+                            "Selected everything the brushes touch"
                         } else {
-                            "select only brushes first"
-                        }
+                            "Select only brushes first"
+                        })
                     );
                 }
                 Key::Letter('e') if ctrl && shift => {
@@ -331,23 +375,23 @@ impl Commands {
                         None => false,
                     };
                     crate::say!(
-                        "select tall: {}",
-                        if did {
-                            "done"
+                        "{}",
+                        tr(if did {
+                            "Selected everything above and below the brushes"
                         } else {
-                            "hover a flat view with only brushes selected"
-                        }
+                            "Point at a flat view with only brushes selected"
+                        })
                     );
                 }
                 Key::Letter('e') if ctrl => {
                     let did = document.borrow_mut().select_inside();
                     crate::say!(
-                        "select inside: {}",
-                        if did {
-                            "done"
+                        "{}",
+                        tr(if did {
+                            "Selected everything inside the brushes"
                         } else {
-                            "select only brushes first"
-                        }
+                            "Select only brushes first"
+                        })
                     );
                 }
                 // With a handle tool active, select-all means its handles rather than the
@@ -431,7 +475,7 @@ impl Commands {
                 // groups it covers apart.
                 Key::Letter('g') if ctrl && shift => {
                     let dissolved = document.borrow_mut().ungroup_selection();
-                    crate::say!("took apart {dissolved} groups");
+                    crate::say!("{}", fill("Ungrouped {}", &[&counted(dissolved, "group")]));
                 }
                 Key::Letter('g') if ctrl => {
                     let count = document.borrow().groups().len();
@@ -440,7 +484,7 @@ impl Commands {
                         .group_selection(format!("Group {}", count + 1))
                         .is_some()
                     {
-                        crate::say!("grouped the selection");
+                        crate::say!("{}", tr("Grouped the selection"));
                     }
                 }
                 // Return commits the pinned fillet preview, or edges/vertices picked
@@ -467,9 +511,9 @@ impl Commands {
                         Some(brush) => {
                             document.add_brushes(vec![brush]);
                             assemble.reset();
-                            crate::say!("assembled a brush");
+                            crate::say!("{}", tr("Assembled a brush"));
                         }
-                        None => crate::say!("those points do not enclose a volume yet"),
+                        None => crate::say!("{}", tr("The points do not enclose a volume yet")),
                     }
                 }
                 Key::Delete | Key::Backspace if *tool.borrow() == tool::Tool::Assemble => {
@@ -481,13 +525,13 @@ impl Commands {
                     let mut clip = clip.borrow_mut();
                     if ctrl {
                         if clip.toggle_side() {
-                            crate::say!("clip side: {}", clip.clip_side().name());
+                            crate::say!("{}", tr(clip.clip_side().kept()));
                         }
                     } else {
                         let cut = document.borrow_mut().clip_selection(&clip);
                         if cut > 0 {
                             clip.reset();
-                            crate::say!("clipped {cut} brushes");
+                            crate::say!("{}", fill("Clipped {}", &[&counted(cut, "brush")]));
                         }
                     }
                 }
@@ -532,14 +576,14 @@ impl Commands {
                     let made = document
                         .borrow_mut()
                         .convert_selection_to_patches(map_model::face_to_patch::DEFAULT_POINTS);
-                    crate::say!(
-                        "convert faces to patches: {}",
-                        if made > 0 {
-                            format!("{made} patches")
-                        } else {
-                            "select some brush faces first".to_string()
-                        }
-                    );
+                    if made > 0 {
+                        crate::say!(
+                            "{}",
+                            fill("Converted the faces to {}", &[&counted(made, "patch")])
+                        );
+                    } else {
+                        crate::say!("{}", tr("Select some brush faces first"));
+                    }
                     window.refresh_inspector();
                 }
                 Key::Letter('p') if !ctrl => set_tool(
@@ -579,32 +623,52 @@ impl Commands {
                 Key::Letter('o') if !ctrl => {
                     set_tool(tool, clip, handles, rotate, assemble, tool::Tool::Fillet)
                 }
-                Key::Letter('z') if ctrl && shift => report(document.borrow_mut().redo(), "redo"),
-                Key::Letter('z') if ctrl => report(document.borrow_mut().undo(), "undo"),
-                Key::Letter('y') if ctrl => report(document.borrow_mut().redo(), "redo"),
+                Key::Letter('z') if ctrl && shift => report(document.borrow_mut().redo(), true),
+                Key::Letter('z') if ctrl => report(document.borrow_mut().undo(), false),
+                Key::Letter('y') if ctrl => report(document.borrow_mut().redo(), true),
                 // `ActionManager`'s CSG menu: Ctrl+J merge, Ctrl+K subtract,
                 // Ctrl+Shift+K hollow, Ctrl+L intersect.
                 Key::Letter('j') if ctrl && !shift => {
                     let merged = document.borrow_mut().merge_selection();
                     crate::say!(
-                        "convex merge: {}",
-                        if merged { "done" } else { "nothing to merge" }
+                        "{}",
+                        tr(if merged {
+                            "Merged the brushes into one convex brush"
+                        } else {
+                            "Nothing to merge"
+                        })
                     );
                 }
                 Key::Letter('k') if ctrl && !shift => {
                     let changed = document.borrow_mut().subtract_selection();
-                    crate::say!("subtract: changed {changed}");
+                    crate::say!(
+                        "{}",
+                        fill(
+                            "Subtracted the selection from {}",
+                            &[&counted(changed, "brush")]
+                        )
+                    );
                 }
                 Key::Letter('k') if ctrl && shift => {
                     let thickness = grid_now.actual_size();
                     let hollowed = document.borrow_mut().hollow_selection(thickness);
-                    crate::say!("hollow by {thickness}: {hollowed}");
+                    crate::say!(
+                        "{}",
+                        fill(
+                            "Hollowed {} with walls {} units thick",
+                            &[&counted(hollowed, "brush"), &thickness.to_string()]
+                        )
+                    );
                 }
                 Key::Letter('l') if ctrl => {
                     let ok = document.borrow_mut().intersect_selection();
                     crate::say!(
-                        "intersect: {}",
-                        if ok { "done" } else { "nothing in common" }
+                        "{}",
+                        tr(if ok {
+                            "Intersected the brushes"
+                        } else {
+                            "The brushes have nothing in common"
+                        })
                     );
                 }
                 // Material alignment on every face of the selection, until faces can be
@@ -613,7 +677,7 @@ impl Commands {
                     document
                         .borrow_mut()
                         .fit_materials_to_selection(DEFAULT_MATERIAL_SIZE);
-                    crate::say!("fitted the material to each face");
+                    crate::say!("{}", tr("Fitted the material to each face"));
                 }
                 // Alt+Shift+R resets UV alignment and replaces Valve axes with world-aligned
                 // paraxial axes.
@@ -621,17 +685,17 @@ impl Commands {
                     document
                         .borrow_mut()
                         .edit_faces(|face| face.reset_uv_to_paraxial());
-                    crate::say!("reset the material alignment to world-aligned axes");
+                    crate::say!("{}", tr("Reset the material alignment to the world axes"));
                 }
                 // Shift+R resets texture alignment; Control+R repeats edits and Control+Shift+R
                 // clears repeat history.
                 Key::Letter('r') if shift && !ctrl => {
                     document.borrow_mut().edit_faces(|face| face.reset_uv());
-                    crate::say!("reset the material alignment");
+                    crate::say!("{}", tr("Reset the material alignment"));
                 }
                 Key::Letter('r') if ctrl && shift => {
                     document.borrow_mut().clear_repeatable();
-                    crate::say!("forgot what Repeat would do again");
+                    crate::say!("{}", tr("Cleared what Repeat would do"));
                 }
                 Key::Letter('r') if ctrl => repeat_last_commands(document, &**window),
                 // Directional keys edit UVs for face selections and transform objects otherwise.
@@ -685,21 +749,23 @@ impl Commands {
                             }
                             window.redraw();
                         }
-                        None => crate::say!("no further along the trace"),
+                        None => crate::say!("{}", tr("The trace ends here")),
                     }
                 }
                 Key::Letter('d') if ctrl && shift => {
                     let size = grid_now.actual_size();
                     match document.borrow_mut().create_linked_duplicate(size) {
-                        Some(_) => crate::say!("made a linked duplicate"),
-                        None => crate::say!("select a whole group to make a linked duplicate"),
+                        Some(_) => crate::say!("{}", tr("Made a linked duplicate")),
+                        None => {
+                            crate::say!("{}", tr("Select a whole group to make a linked duplicate"))
+                        }
                     }
                     window.refresh_inspector();
                 }
                 Key::Letter('d') if ctrl => {
                     let size = grid_now.actual_size();
                     let copies = document.borrow_mut().duplicate_selection(size);
-                    crate::say!("duplicated {copies}");
+                    crate::say!("{}", fill("Duplicated {}", &[&counted(copies, "object")]));
                 }
                 // The clipboard contains `.map` text for object selections, or material and UV
                 // attributes for selected faces.
@@ -723,12 +789,24 @@ impl Commands {
                 // integer coordinates, Ctrl+Alt+Shift+V to the current grid.
                 Key::Letter('v') if ctrl && shift && !alt => {
                     let report = document.borrow_mut().snap_vertices_to_grid(1.0);
-                    crate::say!("snap vertices to integer: {report}");
+                    crate::say!(
+                        "{}",
+                        fill(
+                            "Snapped the vertices to whole units: {}",
+                            &[&report.to_string()]
+                        )
+                    );
                 }
                 Key::Letter('v') if ctrl && shift && alt => {
                     let size = grid_now.actual_size();
                     let report = document.borrow_mut().snap_vertices_to_grid(size);
-                    crate::say!("snap vertices to grid {size}: {report}");
+                    crate::say!(
+                        "{}",
+                        fill(
+                            "Snapped the vertices to the {} grid: {}",
+                            &[&size.to_string(), &report.to_string()]
+                        )
+                    );
                 }
                 Key::Letter('v') if ctrl => {
                     // Ctrl+V pastes at the snapped pointer position; Ctrl+Alt+V preserves the
@@ -743,7 +821,7 @@ impl Commands {
                         let window = Rc::clone(window);
                         move |text: String| {
                             let pasted = document.borrow_mut().paste_at(&text, target);
-                            crate::say!("pasted {pasted}");
+                            crate::say!("{}", fill("Pasted {}", &[&counted(pasted, "object")]));
                             window.redraw();
                             window.refresh_inspector();
                         }
@@ -757,7 +835,7 @@ impl Commands {
                         document
                             .borrow_mut()
                             .edit_faces(|face| face.flip_uv(horizontally));
-                        crate::say!("flipped the material");
+                        crate::say!("{}", tr("Flipped the material"));
                     } else {
                         let pressed = match window.focused_view() {
                             Some(0) => Some(Pressed::Perspective(*camera_3d.borrow())),
@@ -818,18 +896,18 @@ impl Commands {
                     let picked = handles.borrow().selected_vertices();
                     let changed = document.borrow_mut().remove_handles(&picked);
                     handles.borrow_mut().clear_selection();
-                    crate::say!(
-                        "{}",
-                        if changed > 0 {
-                            format!("took the corners off {changed} brushes")
-                        } else {
-                            "what is left would enclose nothing".to_string()
-                        }
-                    );
+                    if changed > 0 {
+                        crate::say!(
+                            "{}",
+                            fill("Took the corners off {}", &[&counted(changed, "brush")])
+                        );
+                    } else {
+                        crate::say!("{}", tr("Without those corners nothing would be left"));
+                    }
                 }
                 Key::Delete | Key::Backspace => {
                     let deleted = document.borrow_mut().delete_selection();
-                    crate::say!("deleted {deleted}");
+                    crate::say!("{}", fill("Deleted {}", &[&counted(deleted, "object")]));
                 }
                 // Number keys select grid sizes, with 1 selecting one unit and 9 selecting 256.
                 // Alt-number shortcuts select drawing shapes.
@@ -893,10 +971,10 @@ pub fn axis_of(direction: Vec3d) -> Axis {
 /// `Menu/Edit/Repeat`, Ctrl+R. The work is the document's; this says what happened.
 pub fn repeat_last_commands(document: &Rc<RefCell<Document>>, window: &dyn Window) {
     if document.borrow_mut().repeat() {
-        crate::say!("did the last commands again");
+        crate::say!("{}", tr("Repeated the last commands"));
         window.redraw();
     } else {
-        crate::say!("there is nothing to do again");
+        crate::say!("{}", tr("Nothing to repeat"));
     }
 }
 
@@ -1162,7 +1240,13 @@ pub fn arrow_key(
         if copies == 0 {
             return false;
         }
-        crate::say!("duplicated {copies} a step along");
+        crate::say!(
+            "{}",
+            fill(
+                "Duplicated {} one step along",
+                &[&counted(copies, "object")]
+            )
+        );
         return true;
     }
 
@@ -1173,7 +1257,13 @@ pub fn arrow_key(
 
     let moved = document.borrow_mut().translate_selection(delta);
     if moved {
-        crate::say!("nudged by {}", grid.actual_size() as i64);
+        crate::say!(
+            "{}",
+            fill(
+                "Moved by {} units",
+                &[&(grid.actual_size() as i64).to_string()]
+            )
+        );
     }
     moved
 }
@@ -1242,14 +1332,14 @@ pub fn rotate_by_quarter_turn(document: &Rc<RefCell<Document>>, axis: Axis, back
         .borrow_mut()
         .rotate_selection(axis_vector, direction)
     {
-        crate::say!("nothing to rotate");
+        crate::say!("{}", tr("Nothing to rotate"));
     }
 }
 
 /// Mirrors the selection along the given axis.
 pub fn flip(document: &Rc<RefCell<Document>>, axis: Axis) {
     if !document.borrow_mut().flip_selection(axis) {
-        crate::say!("nothing to flip");
+        crate::say!("{}", tr("Nothing to flip"));
     }
 }
 
@@ -1269,7 +1359,10 @@ pub fn set_grid_size(grid: &mut Grid, digit: u32) -> bool {
     }
 
     *grid = grid.with_size(exponent);
-    crate::say!("grid {}", grid.actual_size());
+    crate::say!(
+        "{}",
+        fill("Grid size {}", &[&grid.actual_size().to_string()])
+    );
     true
 }
 
@@ -1291,6 +1384,6 @@ pub fn select_shape_kind(
         return false;
     };
     parameters.borrow_mut().kind = kind;
-    crate::say!("shape: {}", kind.name());
+    crate::say!("{}", fill("Shape: {}", &[tr(kind.name())]));
     true
 }

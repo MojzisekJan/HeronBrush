@@ -9,7 +9,7 @@ use geometry_math::vec::Vec3d;
 use map_model::node::NodeId;
 
 use crate::document::Document;
-use crate::i18n::tr;
+use crate::i18n::{counted, fill, tr};
 use crate::view2d::Probe;
 
 /// What a menu item does.
@@ -251,91 +251,142 @@ fn entity_groups(
 pub fn run(action: &Action, document: &mut Document, grid_step: f64) -> Outcome {
     match action {
         Action::Group => match document.group_selection("Group") {
-            Some(_) => crate::say!("grouped the selection"),
-            None => crate::say!("select something to group"),
+            Some(_) => crate::say!("{}", tr("Grouped the selection")),
+            None => crate::say!("{}", tr("Select something to group")),
         },
         Action::Ungroup => {
             let count = document.ungroup_selection();
-            crate::say!("took apart {count} groups");
+            crate::say!("{}", fill("Ungrouped {}", &[&counted(count, "group")]));
         }
         Action::MergeGroups => {
             let count = document.merge_selected_groups();
-            crate::say!("merged {count} groups into one");
+            crate::say!(
+                "{}",
+                fill("Merged {} into one", &[&counted(count, "group")])
+            );
         }
         Action::AddToGroup => {
             let count = document.add_selection_to_open_group();
-            crate::say!("moved {count} objects into the open group");
+            crate::say!(
+                "{}",
+                fill("Moved {} into the open group", &[&counted(count, "object")])
+            );
         }
         Action::RemoveFromGroup => {
             let count = document.remove_selection_from_open_group();
-            crate::say!("moved {count} objects out of the open group");
+            crate::say!(
+                "{}",
+                fill(
+                    "Moved {} out of the open group",
+                    &[&counted(count, "object")]
+                )
+            );
         }
         Action::LinkedDuplicate => match document.create_linked_duplicate(grid_step) {
-            Some(_) => crate::say!("made a linked duplicate"),
-            None => crate::say!("select a whole group to make a linked duplicate"),
+            Some(_) => crate::say!("{}", tr("Made a linked duplicate")),
+            None => crate::say!("{}", tr("Select a whole group to make a linked duplicate")),
         },
         Action::SelectLinked => {
             document.select_linked_groups();
-            crate::say!("selected the linked set");
+            crate::say!("{}", tr("Selected the linked set"));
         }
         Action::SeparateLinked => {
             let count = document.separate_selected_linked_groups();
-            crate::say!("freed {count} groups from their set");
+            crate::say!("{}", fill("Unlinked {}", &[&counted(count, "group")]));
         }
         Action::ExtractLinked => match document.extract_linked_groups() {
-            Some(groups) => crate::say!("extracted a linked set of {} groups", groups.len()),
-            None => crate::say!("open a linked group and select some but not all of it to extract"),
+            Some(groups) => crate::say!(
+                "{}",
+                fill(
+                    "Extracted a linked set of {}",
+                    &[&counted(groups.len(), "group")]
+                )
+            ),
+            None => crate::say!(
+                "{}",
+                tr("Open a linked group and select some but not all of it to extract")
+            ),
         },
         Action::MakeStructural => {
             let count = document.make_structural();
-            crate::say!("moved {count} objects out of their entity");
+            crate::say!(
+                "{}",
+                fill("Moved {} out of their entity", &[&counted(count, "object")])
+            );
         }
         Action::MoveToLayer(index) => {
             let moved = document.move_selection_to_layer(*index);
-            crate::say!("moved {moved} objects to the layer");
+            crate::say!(
+                "{}",
+                fill("Moved {} to the layer", &[&counted(moved, "object")])
+            );
         }
         Action::MakeLayerActive(index) => document.set_current_layer(*index),
         Action::SelectInLayer(index) => {
             let count = document.select_layer(*index);
-            crate::say!("selected {count} objects on the layer");
+            crate::say!(
+                "{}",
+                fill("Selected {} on the layer", &[&counted(count, "object")])
+            );
         }
         Action::HideLayers => {
             let layers = document.layers_of_selection();
             for index in &layers {
                 document.set_layer_hidden(*index, true);
             }
-            crate::say!("hid {} layers", layers.len());
+            crate::say!("{}", fill("Hid {}", &[&counted(layers.len(), "layer")]));
         }
         Action::IsolateLayers => {
             let layers = document.layers_of_selection();
             document.isolate_layers(&layers);
-            crate::say!("isolated {} layers", layers.len());
+            crate::say!(
+                "{}",
+                fill("Isolated {}", &[&counted(layers.len(), "layer")])
+            );
         }
         Action::SelectAllInLayers => {
             let layers = document.layers_of_selection();
             let count = document.select_layers(&layers);
-            crate::say!("selected {count} objects on {} layers", layers.len());
+            crate::say!(
+                "{}",
+                fill(
+                    "Selected {} on {}",
+                    &[&counted(count, "object"), &counted(layers.len(), "layer")]
+                )
+            );
         }
         Action::SelectClassname(name) => {
             let count = document.select_entities_with_classname(name);
-            crate::say!("selected {count} objects of class {name}");
+            crate::say!(
+                "{}",
+                fill(
+                    "Selected {} of class {}",
+                    &[&counted(count, "entity"), name]
+                )
+            );
         }
         Action::MoveToEntity(id) => {
             let moved = document.move_selection_to_entity(*id);
-            crate::say!("moved {moved} objects into the entity");
+            crate::say!(
+                "{}",
+                fill("Moved {} into the entity", &[&counted(moved, "object")])
+            );
         }
         Action::RevealMaterial(name) => return Outcome::Reveal(name.clone()),
         Action::CopyMaterial(name) => {
-            crate::say!("copied the material name");
+            crate::say!("{}", tr("Copied the material name"));
             return Outcome::Copy(name.clone());
         }
         Action::CreatePoint(classname, at) => {
             document.create_point_entity(classname, *at);
-            crate::say!("placed a {classname}");
+            crate::say!("{}", fill("Placed {}", &[classname]));
         }
         Action::CreateBrushEntity(classname) => match document.create_brush_entity(classname) {
-            Some(_) => crate::say!("made a {classname} out of the selection"),
-            None => crate::say!("select some brushes to make a {classname}"),
+            Some(_) => crate::say!("{}", fill("Made {} out of the selection", &[classname])),
+            None => crate::say!(
+                "{}",
+                fill("Select some brushes to make {} from", &[classname])
+            ),
         },
         Action::Fillet => return Outcome::Fillet,
     }

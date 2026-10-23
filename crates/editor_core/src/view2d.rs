@@ -16,6 +16,7 @@ use crate::extrude_tool;
 use crate::grid::Grid;
 use crate::handle_drag::HandlePicker;
 use crate::handle_tool::{HandleKind, HandleManager};
+use crate::i18n::{counted, fill};
 use crate::preferences::{pref, Color};
 use crate::rotate_tool::RotateTool;
 use crate::scale_tool::{self, AnchorPos, BBoxHandle, ProportionalAxes};
@@ -3005,7 +3006,13 @@ impl SelectAndMove {
             }
             // The whole drag becomes one step in the history.
             if document.borrow_mut().commit_transaction() && drag.mode == DragMode::Rotating {
-                crate::say!("rotated {:.1}°", rotate.borrow().angle().to_degrees());
+                crate::say!(
+                    "{}",
+                    fill(
+                        "Rotated by {}°",
+                        &[&format!("{:.1}", rotate.borrow().angle().to_degrees())]
+                    )
+                );
             }
             drag.mode = DragMode::Idle;
             drag.scaling = None;
@@ -3073,7 +3080,10 @@ impl SelectAndMove {
                 }
             }
             drop(handles);
-            crate::say!("{} handles selected", caught.len());
+            crate::say!(
+                "{}",
+                fill("Selected {}", &[&counted(caught.len(), "handle")])
+            );
             redraw();
             refresh_panels();
             return;
@@ -3103,11 +3113,7 @@ impl SelectAndMove {
             }
             crate::say!(
                 "{}",
-                text_utils::string_format::str_plural(
-                    caught.len(),
-                    "1 object selected",
-                    &format!("{} objects selected", caught.len())
-                )
+                fill("{} selected", &[&counted(caught.len(), "object")])
             );
             drop(document);
             redraw_everywhere();
@@ -3139,7 +3145,10 @@ impl SelectAndMove {
         let mut document = document.borrow_mut();
         match document.begin_shape_preview(bounds, *shape_parameters.borrow()) {
             Ok(_) => *tool.borrow_mut() = Tool::Brush,
-            Err(error) => crate::complain!("could not draw the shape: {error}"),
+            Err(error) => crate::complain!(
+                "{}",
+                fill("Could not draw the shape: {}", &[&error.to_string()])
+            ),
         }
         drop(document);
         redraw();

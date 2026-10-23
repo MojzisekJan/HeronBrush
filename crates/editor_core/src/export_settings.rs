@@ -22,6 +22,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::export::{Options, Target};
+use crate::i18n::fill;
 
 /// Where the settings live, beside the preferences.
 pub fn default_path() -> PathBuf {
@@ -244,7 +245,13 @@ impl Settings {
     pub fn set_in(&mut self, target: Target, options: Options, store: &Path) {
         self.per_engine.insert(key(target), options);
         if let Err(why) = self.save(store) {
-            crate::complain!("the export settings could not be written: {why}");
+            crate::complain!(
+                "{}",
+                fill(
+                    "Could not save the export settings: {}",
+                    &[&why.to_string()]
+                )
+            );
         }
     }
 

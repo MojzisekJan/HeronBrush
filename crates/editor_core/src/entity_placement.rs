@@ -9,6 +9,7 @@ use geometry_math::vec::Vec3d;
 
 use crate::document::Document;
 use crate::grid::Grid;
+use crate::i18n::fill;
 
 /// The class placed when the definitions say nothing.
 ///
@@ -29,7 +30,7 @@ pub fn place_entity(document: &Rc<RefCell<Document>>, classname: &str, grid_size
     let snapped = geometry_math::vec::round(origin / grid_size) * grid_size;
 
     document.create_point_entity(classname, snapped);
-    crate::say!("placed a {classname}");
+    crate::say!("{}", fill("Placed {}", &[classname]));
 }
 
 /// How far down the ray an entity lands when the ray hits nothing.
@@ -70,7 +71,7 @@ pub fn place_entity_on_ray(
     let mut document = document.borrow_mut();
     let origin = drop_origin_on_ray(&document, grid, classname, ray);
     document.create_point_entity(classname, origin);
-    crate::say!("placed a {classname}");
+    crate::say!("{}", fill("Placed {}", &[classname]));
     true
 }
 
@@ -118,7 +119,7 @@ pub fn place_entity_on_reference_plane(
     let mut document = document.borrow_mut();
     let origin = drop_origin_on_reference_plane(&document, grid, classname, ray);
     document.create_point_entity(classname, origin);
-    crate::say!("placed a {classname}");
+    crate::say!("{}", fill("Placed {}", &[classname]));
     true
 }
 

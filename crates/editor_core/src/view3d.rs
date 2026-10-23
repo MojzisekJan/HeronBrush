@@ -14,6 +14,7 @@ use crate::extrude_tool::{self, ExtrudeMode};
 use crate::grid::Grid;
 use crate::handle_drag::{self, HandlePicker};
 use crate::handle_tool::{HandleKind, HandleManager};
+use crate::i18n::{counted, fill};
 use crate::input::{Key, Modifiers};
 use crate::overlay;
 use crate::preferences::pref;
@@ -2932,7 +2933,10 @@ impl Scene3d {
                     }
                     drop(handles);
                     drop(camera);
-                    crate::say!("{} handles selected", caught.len());
+                    crate::say!(
+                        "{}",
+                        fill("Selected {}", &[&counted(caught.len(), "handle")])
+                    );
                     refresh_panels();
                 }
                 redraw();
@@ -2956,11 +2960,7 @@ impl Scene3d {
                 }
                 crate::say!(
                     "{}",
-                    text_utils::string_format::str_plural(
-                        caught.len(),
-                        "1 object selected",
-                        &format!("{} objects selected", caught.len())
-                    )
+                    fill("{} selected", &[&counted(caught.len(), "object")])
                 );
                 drop(document);
                 refresh_panels();
@@ -2980,7 +2980,10 @@ impl Scene3d {
                 let mut document = document.borrow_mut();
                 match document.begin_shape_preview(bounds, *shape_parameters.borrow()) {
                     Ok(_) => *tool.borrow_mut() = Tool::Brush,
-                    Err(error) => crate::complain!("could not draw the shape: {error}"),
+                    Err(error) => crate::complain!(
+                        "{}",
+                        fill("Could not draw the shape: {}", &[&error.to_string()])
+                    ),
                 }
             }
             redraw();

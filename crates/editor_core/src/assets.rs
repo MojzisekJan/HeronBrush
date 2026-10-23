@@ -14,6 +14,7 @@ use std::time::SystemTime;
 use geometry_math::vec::Vec3d;
 
 use crate::document::Document;
+use crate::i18n::{counted, fill};
 
 #[path = "assets_preview.rs"]
 mod preview_depth;
@@ -227,7 +228,13 @@ pub fn insert_prefab_on_grid(
     let text = match crate::files::read_to_string(path) {
         Ok(text) => text,
         Err(error) => {
-            crate::complain!("{}: {error}", path.display());
+            crate::complain!(
+                "{}",
+                fill(
+                    "Could not read {}: {}",
+                    &[&path.display().to_string(), &error.to_string()]
+                )
+            );
             return false;
         }
     };
@@ -236,13 +243,19 @@ pub fn insert_prefab_on_grid(
         .map_or_else(String::new, |stem| stem.to_string_lossy().into_owned());
     let added = document.paste_asset_on_grid(&text, at, &name, grid);
     if added == 0 {
-        crate::complain!("{}: not a map", path.display());
+        crate::complain!(
+            "{}",
+            fill("{} is not a map", &[&path.display().to_string()])
+        );
         return false;
     }
     if let Some(folder) = path.parent() {
         load_folder_materials(document, folder);
     }
-    crate::say!("inserted {name} ({added} objects)");
+    crate::say!(
+        "{}",
+        fill("Inserted {} ({})", &[&name, &counted(added, "object")])
+    );
     true
 }
 
