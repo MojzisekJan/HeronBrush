@@ -155,9 +155,11 @@ fn check_entities(document: &Document, issues: &mut Vec<Issue>) {
 
             // `PropertyKeyWithDoubleQuotationMarksValidator` and its value twin: the
             // format quotes both, and the compilers and editors that read the map do not
-            // all take an escaped quote. The editor's own JSON (keyframe curves) is
-            // written escaped and read back only by Heron Brush and its exports.
-            if key.contains('"') || (value.contains('"') && key != "animation_curves") {
+            // all take an escaped quote. The editor's own JSON (keyframe curves and the
+            // named clips of an animation library) is written escaped and read back only
+            // by Heron Brush and its exports.
+            let own_json = matches!(key.as_str(), "animation_curves" | "animation_library");
+            if key.contains('"') || (value.contains('"') && !own_json) {
                 issues.push(Issue {
                     severity: Severity::Error,
                     kind: "quotation mark in property",
@@ -673,6 +675,7 @@ mod tests {
         let mut document = document_with_a_cube();
         let id = document.create_point_entity("info_player_start", Vec3d::zero());
         document.set_entity_property(id, "animation_curves", r#"{"version":1,"tracks":[]}"#);
+        document.set_entity_property(id, "animation_library", r#"{"clips":{"open":{}}}"#);
 
         assert!(!kinds(&validate(&document)).contains(&"quotation mark in property"));
     }
