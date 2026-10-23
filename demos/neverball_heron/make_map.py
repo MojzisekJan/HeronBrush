@@ -9,7 +9,9 @@ goal, and 90 seconds.
 
 The map is saved in Heron's own dialect (Valve 220) and exported in the Quake 2 one,
 which is what Neverball's mapc reads: heron_lift.map is the export, and
-heron_lift.heron.map is what Heron edits.
+heron_lift.heron.map is what Heron edits. The start pad's walls are a group and the
+goal deck is a layer of its own; the export merges both into the worldspawn, because
+the profile asks for it (mapc 1.6 loses the brushes of a func_group).
 
 Run it with XDG_CONFIG_HOME pointing at a scratch directory whose preferences have the
 Neverball profile and its data folder as the game path: Heron loads the textures from
@@ -52,11 +54,11 @@ class Heron:
         self.proc.stdin.flush()
         return json.loads(self.proc.stdout.readline())
 
-    def call(self, name, **arguments):
-        result = self.request("tools/call", {"name": name, "arguments": arguments})["result"]
+    def call(self, tool, **arguments):
+        result = self.request("tools/call", {"name": tool, "arguments": arguments})["result"]
         text = " | ".join(part["text"] for part in result["content"])
         if result.get("isError"):
-            sys.exit(f"{name} failed: {text}")
+            sys.exit(f"{tool} failed: {text}")
         return text
 
     def box(self, lo, hi, material, top=None, kind="cuboid", facing=UP, **shape):
@@ -95,19 +97,21 @@ def walls(heron, x0, x1, y0, y1, z0, z1, gaps=()):
     """Walls 8 thick around the rectangle x0..x1, y0..y1, except the sides in `gaps`.
 
     A gap is (side, a, b): side "front" (y0) or "back" (y1), open from x = a to b.
+    Returns the walls' brush ids.
     """
-    heron.box([x0 - 8, y0 - 8, z0], [x0, y1 + 8, z1], WALL)
-    heron.box([x1, y0 - 8, z0], [x1 + 8, y1 + 8, z1], WALL)
+    made = [heron.box([x0 - 8, y0 - 8, z0], [x0, y1 + 8, z1], WALL),
+            heron.box([x1, y0 - 8, z0], [x1 + 8, y1 + 8, z1], WALL)]
     for side, y in (("front", y0 - 8), ("back", y1)):
         opening = [gap for gap in gaps if gap[0] == side]
         if not opening:
-            heron.box([x0, y, z0], [x1, y + 8, z1], WALL)
+            made.append(heron.box([x0, y, z0], [x1, y + 8, z1], WALL))
             continue
         _, a, b = opening[0]
         if a > x0:
-            heron.box([x0, y, z0], [a, y + 8, z1], WALL)
+            made.append(heron.box([x0, y, z0], [a, y + 8, z1], WALL))
         if b < x1:
-            heron.box([b, y, z0], [x1, y + 8, z1], WALL)
+            made.append(heron.box([b, y, z0], [x1, y + 8, z1], WALL))
+    return made
 
 
 def main():
@@ -127,9 +131,12 @@ def main():
     ]:
         heron.call("set_entity_property", entity="worldspawn", key=key, value=value)
 
-    # The start pad, 256 square with its top at 0, walled on three sides.
+    # The start pad, 256 square with its top at 0, walled on three sides. Its walls are
+    # a group, so the export has to merge a group for mapc.
     heron.floor([-128, -128, -16], [128, 128, 0], TURF)
-    walls(heron, -128, 128, -128, 128, -16, 32, gaps=[("back", -128, 128)])
+    start_walls = walls(heron, -128, 128, -128, 128, -16, 32, gaps=[("back", -128, 128)])
+    heron.call("select", ids=start_walls)
+    heron.call("group_selection", name="Start walls")
 
     # The ramp climbs 64 over 384 to the deck, on a slab, with a wall each side.
     heron.box([-128, 128, 0], [128, 512, 64], SIDE, top=RAMP, kind="wedge", axis="y",
@@ -157,9 +164,12 @@ def main():
                      state="0")
     heron.entity("info_camp", [0, 640, 64], target="lift_a", radius="0.75")
 
-    # The goal deck, 384 across the gap: too far to roll over while the lift is away.
-    heron.floor([-256, 1280, 48], [256, 1664, 64], GOAL_DECK)
-    walls(heron, -256, 256, 1280, 1664, 48, 96, gaps=[("front", -96, 96)])
+    # The goal deck, 384 across the gap: too far to roll over while the lift is away. It
+    # is on a layer of its own, so the export has to merge a layer for mapc too.
+    goal_deck = [heron.floor([-256, 1280, 48], [256, 1664, 64], GOAL_DECK)]
+    goal_deck += walls(heron, -256, 256, 1280, 1664, 48, 96, gaps=[("front", -96, 96)])
+    heron.call("select", ids=goal_deck)
+    heron.call("move_selection_to_layer", layer="Goal deck")
     heron.entity("info_player_deathmatch", [0, 1536, 88])
 
     # The shortcut: a teleporter in the start pad's corner, out onto the deck.

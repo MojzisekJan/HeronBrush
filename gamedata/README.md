@@ -72,6 +72,14 @@ whitespace are normalized. Neverball's starting map is kept with its profile, an
 new Neverball map starts from it: the profile's "Quake3" format reads as Quake 2 face
 lines, which is what Neverball's `mapc` compiles.
 
+Neverball's profile is no longer marked experimental, and it has a section of Heron's
+own, `"heron": { "mergeGroupsOnExport": true }`. Neverball 1.6's `mapc` puts the
+brushes of a `func_group` in no body, so they are not in the level; with the key set,
+File, Export, Map and the MCP tool `export_map` write groups and extra layers into the
+worldspawn. Saving keeps them. A profile without the key exports groups and layers as
+`func_group` entities, as TrenchBroom does. TrenchBroom's copy of the profile has no such
+section.
+
 A profile's own `assets` folder is mounted under the game's files, as TrenchBroom
 does, so the editor models its definitions name are found. Neverball's models there
 are converted from TrenchBroom's copies, which are Y-up and in metres, to Z-up map

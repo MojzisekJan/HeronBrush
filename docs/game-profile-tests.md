@@ -189,8 +189,10 @@ The 1.6 `mapc` knows these classes:
 - `info_camp` is a switch: rolling into it toggles the whole path loop its `target`
   names, `state` 0 being off. `target_teleporter` jumps the ball to a `target_position`.
 - `info_player_intermission` with a `target_position` is the camera before the start.
-- `func_group` is not read by the 1.6 `mapc`: its brushes compile into no body and
-  vanish. The current source reads it.
+- `func_group` is not a class the 1.6 `mapc` knows. It still reads the brushes, but
+  puts them in no body, so they are neither drawn nor collided with: in the level they
+  are gone, and `mapc` prints the same counts as if they were there. The current source
+  makes a body of a `func_group` with brushes.
 
 A level does not need a set: `neverball -l map-heron/heron_lift.sol` plays one `.sol`
 standalone, from the data folder or from `~/.neverball/`. The game also records every
@@ -204,6 +206,14 @@ Neverball's `mtrl/...` materials, and a new map starts from the profile's initia
 Heron saves in Valve 220, which `mapc` cannot read: the level for `mapc` is written with
 File, Export, Map in the Quake 2 dialect, which the export window now offers first for
 Neverball, or with the MCP tool `export_map`.
+
+Groups and layers are written as `func_group` entities, which the 1.6 `mapc` loses (see
+above). The profile's `heron.mergeGroupsOnExport` key makes the export merge them: every
+brush of a group or an extra layer goes into the worldspawn, and a `func_train` in a
+group stays a `func_train` with its own brushes. The export window and `export_map` say
+how many groups and layers were merged. Save does not merge: the saved map is the one
+you keep editing, and it keeps its groups and layers. That is why `mapc` is always given
+the export, never the saved file, which it could not read anyway.
 
 ### Rerunning it
 
@@ -264,6 +274,15 @@ colour. It saves a screenshot at each step.
 - **MCP could not put a material on one face or export a dialect.** New tools:
   `set_face_material` (one face by index, or every face facing a direction) and
   `export_map`.
+- **Grouped and layered brushes vanished in the level.** Heron wrote groups and extra
+  layers as `func_group`, whose brushes the 1.6 `mapc` puts in no body. An export for
+  Neverball now merges them into the worldspawn; the saved map keeps them. The demo
+  has its start walls in a group and the goal deck on a layer of its own, made with the
+  new MCP tool `move_selection_to_layer`. Exported without the merge, the compiled
+  `.sol` had 22 brushes of which 9 were in no body (the four start walls and the five
+  goal deck brushes): the goal deck was missing. With the merge, all 22 are in a body,
+  the same as before the demo had a group or a layer. The count comes from reading the
+  bodies' lump ranges out of the `.sol`; `mapc`'s own summary is the same either way.
 
 ### Mapping mistakes, not Heron's
 
@@ -278,9 +297,6 @@ colour. It saves a screenshot at each step.
 
 ### What remains
 
-- `func_group` and Heron's extra layers are written as `func_group` entities, which the
-  1.6 `mapc` drops. A Neverball map has to keep its brushes in the default layer and out
-  of groups, or use a newer `mapc`.
 - MCP's `new_map` starts an empty Valve map without the game's initial map, FGD or
   `// Game:` header; the script loads the FGD itself.
 - Neverball's TrenchBroom profile names no default UV scale, so new faces get 1, not the
@@ -291,8 +307,10 @@ colour. It saves a screenshot at each step.
   be made detail through MCP; the level has none.
 - The `__tb_fancy_path_corner.obj` the FGD names for `path_corner` is not in
   TrenchBroom's copy of the profile either, so path corners stay boxes.
-- The profile is still marked experimental. With the export in the Quake 2 dialect it
-  produced a working level; the groups limit above is the main trap left for a user.
+- The profile is no longer marked experimental: following this section, the export
+  gives a level that compiles and plays, with groups and layers. The merge was checked
+  with `mapc` and the `.sol`; the regrouped demo was not played through again, since its
+  brushes and bodies are the same as the version that was.
 
 ## Digital Paint: Paintball 2
 

@@ -9,7 +9,9 @@ on the far deck. Ten coins open the goal, there are fifteen to find, and the clo
 
 - `heron_lift.heron.map` is the map as Heron saves it (Valve 220).
 - `heron_lift.map` is the same map exported in the Quake 2 dialect, which is what `mapc`
-  reads. Its textures are Neverball's own `mtrl/...` materials.
+  reads. Its textures are Neverball's own `mtrl/...` materials. The saved map has the
+  start pad's walls in a group and the goal deck on a layer; the export has them in the
+  worldspawn, since Neverball 1.6's `mapc` loses the brushes of a `func_group`.
 - `make_map.py` builds both again in Heron Brush, through the MCP server.
 - `build.sh` compiles `heron_lift.map` to `heron_lift.sol` and installs it in Neverball's
   user folder, under `map-heron/`. `build.sh --remake` runs `make_map.py` first.

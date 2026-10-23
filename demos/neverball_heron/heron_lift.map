@@ -11,7 +11,7 @@
 "back" "map-back/clouds.sol"
 "grad" "back/land.png"
 "song" "bgm/track1.ogg"
-// heron_brush id 3c814c0000000001
+// heron_brush id 5ade950000000001
 // brush 0
 {
 ( -128 -128 -16 ) ( -128 -127 -16 ) ( -128 -128 -15 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
@@ -21,7 +21,7 @@
 ( 128 128 0 ) ( 128 129 0 ) ( 129 128 0 ) mtrl/turf-green-small 0 0 0 1 1 0 0 0
 ( -128 -128 -16 ) ( -127 -128 -16 ) ( -128 -127 -16 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c0000000002
+// heron_brush id 5ade950000000002
 // brush 1
 {
 ( -136 -136 -16 ) ( -136 -135 -16 ) ( -136 -136 -15 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -31,7 +31,7 @@
 ( -128 136 32 ) ( -128 137 32 ) ( -127 136 32 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( -136 -136 -16 ) ( -135 -136 -16 ) ( -136 -135 -16 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c0000000003
+// heron_brush id 5ade950000000003
 // brush 2
 {
 ( 128 -136 -16 ) ( 128 -135 -16 ) ( 128 -136 -15 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -41,7 +41,7 @@
 ( 136 136 32 ) ( 136 137 32 ) ( 137 136 32 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( 128 -136 -16 ) ( 129 -136 -16 ) ( 128 -135 -16 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c0000000004
+// heron_brush id 5ade950000000004
 // brush 3
 {
 ( -128 -136 -16 ) ( -128 -135 -16 ) ( -128 -136 -15 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -51,7 +51,7 @@
 ( 128 -128 32 ) ( 128 -127 32 ) ( 129 -128 32 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( -128 -136 -16 ) ( -127 -136 -16 ) ( -128 -135 -16 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c0000000005
+// heron_brush id 5ade950000000006
 // brush 4
 {
 ( -128 128 0 ) ( 128 128 0 ) ( 128 512 0 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
@@ -60,7 +60,7 @@
 ( 128 512 0 ) ( 128 512 64 ) ( -128 512 64 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
 ( -128 128 0 ) ( -128 512 0 ) ( -128 512 64 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c0000000006
+// heron_brush id 5ade950000000007
 // brush 5
 {
 ( -128 128 -16 ) ( -128 129 -16 ) ( -128 128 -15 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
@@ -70,7 +70,7 @@
 ( 128 512 0 ) ( 128 513 0 ) ( 129 512 0 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
 ( -128 128 -16 ) ( -127 128 -16 ) ( -128 129 -16 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c0000000007
+// heron_brush id 5ade950000000008
 // brush 6
 {
 ( -136 128 -16 ) ( -136 129 -16 ) ( -136 128 -15 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -80,7 +80,7 @@
 ( -128 512 96 ) ( -128 513 96 ) ( -127 512 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( -136 128 -16 ) ( -135 128 -16 ) ( -136 129 -16 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c0000000008
+// heron_brush id 5ade950000000009
 // brush 7
 {
 ( 128 128 -16 ) ( 128 129 -16 ) ( 128 128 -15 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -90,7 +90,7 @@
 ( 136 512 96 ) ( 136 513 96 ) ( 137 512 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( 128 128 -16 ) ( 129 128 -16 ) ( 128 129 -16 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c0000000009
+// heron_brush id 5ade95000000000a
 // brush 8
 {
 ( -256 512 48 ) ( -256 513 48 ) ( -256 512 49 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
@@ -100,7 +100,7 @@
 ( 256 896 64 ) ( 256 897 64 ) ( 257 896 64 ) mtrl/turf-green 0 0 0 1 1 0 0 0
 ( -256 512 48 ) ( -255 512 48 ) ( -256 513 48 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c000000000a
+// heron_brush id 5ade95000000000b
 // brush 9
 {
 ( -264 504 48 ) ( -264 505 48 ) ( -264 504 49 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -110,7 +110,7 @@
 ( -256 904 96 ) ( -256 905 96 ) ( -255 904 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( -264 504 48 ) ( -263 504 48 ) ( -264 505 48 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c000000000b
+// heron_brush id 5ade95000000000c
 // brush 10
 {
 ( 256 504 48 ) ( 256 505 48 ) ( 256 504 49 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -120,7 +120,7 @@
 ( 264 904 96 ) ( 264 905 96 ) ( 265 904 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( 256 504 48 ) ( 257 504 48 ) ( 256 505 48 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c000000000c
+// heron_brush id 5ade95000000000d
 // brush 11
 {
 ( -256 504 48 ) ( -256 505 48 ) ( -256 504 49 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -130,7 +130,7 @@
 ( -128 512 96 ) ( -128 513 96 ) ( -127 512 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( -256 504 48 ) ( -255 504 48 ) ( -256 505 48 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c000000000d
+// heron_brush id 5ade95000000000e
 // brush 12
 {
 ( 128 504 48 ) ( 128 505 48 ) ( 128 504 49 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -140,7 +140,7 @@
 ( 256 512 96 ) ( 256 513 96 ) ( 257 512 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( 128 504 48 ) ( 129 504 48 ) ( 128 505 48 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c000000000e
+// heron_brush id 5ade95000000000f
 // brush 13
 {
 ( -256 896 48 ) ( -256 897 48 ) ( -256 896 49 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -150,7 +150,7 @@
 ( -96 904 96 ) ( -96 905 96 ) ( -95 904 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( -256 896 48 ) ( -255 896 48 ) ( -256 897 48 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c000000000f
+// heron_brush id 5ade950000000010
 // brush 14
 {
 ( 96 896 48 ) ( 96 897 48 ) ( 96 896 49 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -160,7 +160,7 @@
 ( 256 904 96 ) ( 256 905 96 ) ( 257 904 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( 96 896 48 ) ( 97 896 48 ) ( 96 897 48 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c0000000017
+// heron_brush id 5ade950000000018
 // brush 15
 {
 ( -256 1280 48 ) ( -256 1281 48 ) ( -256 1280 49 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
@@ -170,7 +170,7 @@
 ( 256 1664 64 ) ( 256 1665 64 ) ( 257 1664 64 ) mtrl/turf-blue 0 0 0 1 1 0 0 0
 ( -256 1280 48 ) ( -255 1280 48 ) ( -256 1281 48 ) mtrl/turf-grey 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c0000000018
+// heron_brush id 5ade950000000019
 // brush 16
 {
 ( -264 1272 48 ) ( -264 1273 48 ) ( -264 1272 49 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -180,7 +180,7 @@
 ( -256 1672 96 ) ( -256 1673 96 ) ( -255 1672 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( -264 1272 48 ) ( -263 1272 48 ) ( -264 1273 48 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c0000000019
+// heron_brush id 5ade95000000001a
 // brush 17
 {
 ( 256 1272 48 ) ( 256 1273 48 ) ( 256 1272 49 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -190,7 +190,7 @@
 ( 264 1672 96 ) ( 264 1673 96 ) ( 265 1672 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( 256 1272 48 ) ( 257 1272 48 ) ( 256 1273 48 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c000000001a
+// heron_brush id 5ade95000000001b
 // brush 18
 {
 ( -256 1272 48 ) ( -256 1273 48 ) ( -256 1272 49 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -200,7 +200,7 @@
 ( -96 1280 96 ) ( -96 1281 96 ) ( -95 1280 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( -256 1272 48 ) ( -255 1272 48 ) ( -256 1273 48 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c000000001b
+// heron_brush id 5ade95000000001c
 // brush 19
 {
 ( 96 1272 48 ) ( 96 1273 48 ) ( 96 1272 49 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -210,7 +210,7 @@
 ( 256 1280 96 ) ( 256 1281 96 ) ( 257 1280 96 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 ( 96 1272 48 ) ( 97 1272 48 ) ( 96 1273 48 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
-// heron_brush id 3c814c000000001c
+// heron_brush id 5ade95000000001d
 // brush 20
 {
 ( -256 1664 48 ) ( -256 1665 48 ) ( -256 1664 49 ) mtrl/wood-light 0 0 0 1 1 0 0 0
@@ -221,12 +221,12 @@
 ( -256 1664 48 ) ( -255 1664 48 ) ( -256 1665 48 ) mtrl/wood-light 0 0 0 1 1 0 0 0
 }
 }
-// heron_brush id 3c814c0000000011
+// heron_brush id 5ade950000000012
 // entity 1
 {
 "classname" "func_train"
 "target" "lift_a"
-// heron_brush id 3c814c0000000010
+// heron_brush id 5ade950000000011
 // brush 0
 {
 ( -96 896 48 ) ( -96 897 48 ) ( -96 896 49 ) mtrl/wood-check-glossy 0 0 0 1 1 0 0 0
@@ -237,7 +237,7 @@
 ( -96 896 48 ) ( -95 896 48 ) ( -96 897 48 ) mtrl/wood-check-glossy 0 0 0 1 1 0 0 0
 }
 }
-// heron_brush id 3c814c0000000012
+// heron_brush id 5ade950000000013
 // entity 2
 {
 "classname" "path_corner"
@@ -248,7 +248,7 @@
 "target" "lift_b"
 "targetname" "lift_a"
 }
-// heron_brush id 3c814c0000000013
+// heron_brush id 5ade950000000014
 // entity 3
 {
 "classname" "path_corner"
@@ -259,7 +259,7 @@
 "target" "lift_c"
 "targetname" "lift_b"
 }
-// heron_brush id 3c814c0000000014
+// heron_brush id 5ade950000000015
 // entity 4
 {
 "classname" "path_corner"
@@ -270,7 +270,7 @@
 "target" "lift_d"
 "targetname" "lift_c"
 }
-// heron_brush id 3c814c0000000015
+// heron_brush id 5ade950000000016
 // entity 5
 {
 "classname" "path_corner"
@@ -281,7 +281,7 @@
 "target" "lift_a"
 "targetname" "lift_d"
 }
-// heron_brush id 3c814c0000000016
+// heron_brush id 5ade950000000017
 // entity 6
 {
 "classname" "info_camp"
@@ -292,14 +292,14 @@
 "invisible" "0"
 "target" "lift_a"
 }
-// heron_brush id 3c814c000000001d
+// heron_brush id 5ade95000000001e
 // entity 7
 {
 "classname" "info_player_deathmatch"
 "origin" "0 1536 88"
 "radius" "0.75"
 }
-// heron_brush id 3c814c000000001e
+// heron_brush id 5ade95000000001f
 // entity 8
 {
 "classname" "target_teleporter"
@@ -307,14 +307,14 @@
 "radius" "0.5"
 "target" "deck_landing"
 }
-// heron_brush id 3c814c000000001f
+// heron_brush id 5ade950000000020
 // entity 9
 {
 "classname" "target_position"
 "origin" "160 704 64"
 "targetname" "deck_landing"
 }
-// heron_brush id 3c814c0000000020
+// heron_brush id 5ade950000000021
 // entity 10
 {
 "classname" "info_player_start"
@@ -322,91 +322,91 @@
 "angle" "90"
 "radius" "0.25"
 }
-// heron_brush id 3c814c0000000021
+// heron_brush id 5ade950000000022
 // entity 11
 {
 "classname" "target_position"
 "origin" "0 704 64"
 "targetname" "view"
 }
-// heron_brush id 3c814c0000000022
+// heron_brush id 5ade950000000023
 // entity 12
 {
 "classname" "info_player_intermission"
 "origin" "-640 -384 640"
 "target" "view"
 }
-// heron_brush id 3c814c0000000023
+// heron_brush id 5ade950000000024
 // entity 13
 {
 "classname" "light"
 "origin" "0 32 16"
 "light" "1"
 }
-// heron_brush id 3c814c0000000024
+// heron_brush id 5ade950000000025
 // entity 14
 {
 "classname" "light"
 "origin" "0 96 16"
 "light" "1"
 }
-// heron_brush id 3c814c0000000025
+// heron_brush id 5ade950000000026
 // entity 15
 {
 "classname" "light"
 "origin" "0 256 37"
 "light" "1"
 }
-// heron_brush id 3c814c0000000026
+// heron_brush id 5ade950000000027
 // entity 16
 {
 "classname" "light"
 "origin" "0 320 48"
 "light" "1"
 }
-// heron_brush id 3c814c0000000027
+// heron_brush id 5ade950000000028
 // entity 17
 {
 "classname" "light"
 "origin" "0 384 59"
 "light" "1"
 }
-// heron_brush id 3c814c0000000028
+// heron_brush id 5ade950000000029
 // entity 18
 {
 "classname" "light"
 "origin" "0 560 80"
 "light" "1"
 }
-// heron_brush id 3c814c0000000029
+// heron_brush id 5ade95000000002a
 // entity 19
 {
 "classname" "light"
 "origin" "-192 576 80"
 "light" "1"
 }
-// heron_brush id 3c814c000000002a
+// heron_brush id 5ade95000000002b
 // entity 20
 {
 "classname" "light"
 "origin" "192 576 80"
 "light" "1"
 }
-// heron_brush id 3c814c000000002b
+// heron_brush id 5ade95000000002c
 // entity 21
 {
 "classname" "light"
 "origin" "-192 832 80"
 "light" "1"
 }
-// heron_brush id 3c814c000000002c
+// heron_brush id 5ade95000000002d
 // entity 22
 {
 "classname" "light"
 "origin" "192 832 80"
 "light" "1"
 }
-// heron_brush id 3c814c000000002d
+// heron_brush id 5ade95000000002e
 // entity 23
 {
 "classname" "light"
