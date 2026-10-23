@@ -79,6 +79,30 @@ const CDN = 'https://cdn.jsdelivr.net/npm/three@0.186.0/';
     fs.writeFileSync(path.join(output, 'glb.png'), Buffer.from(three.glbPng.split(',')[1], 'base64'));
     report.three = three.three; report.glb = three.glb; report.gltf = three.gltf;
 
+    // The example loader in src/: the door through advance(dt, feet, height), and its
+    // wrapping of baked and tinted paint.
+    report.loader = await tab.evaluate(async () => {
+      const THREE = await import('three');
+      const {loadLevel} = await import('/check/src/heron_brushlevel.js');
+      const scene = await loadLevel('/three/feature_lab.json');
+      const named = name => scene.entities.find(e => e.properties.targetname === name);
+      const [x, , z] = named('fl_trigger').position.toArray();
+      const door = scene.animations.get(named('fl_door').name);
+      for (let i = 0; i < 90; i++) scene.advance(1 / 60, new THREE.Vector3(x, 0.02, z), 1.8);
+      // Wrapping of each map; with `wide`, only maps wider than one pixel (fl_surface's
+      // one-pixel emissive paint clamps, its 64-pixel tinted textures repeat).
+      const wraps = (name, wide) => { const w = []; named(name).object.traverse(o => { if (o.isMesh) for (const m of [o.material].flat()) if (!wide || m.map?.image.width > 1) w.push(m.map?.wrapS); }); return w; };
+      const baked = wraps('fl_colours'), tinted = wraps('fl_surface', true);
+      return {
+        trigger: door.clip.name === 'open' && door.posed && door.time === 1
+          ? {status: 'PASS', detail: 'advance(dt, feet, 1.8) with the feet on the floor opens the door'}
+          : {status: 'FAIL', detail: `door ${door.clip.name} posed ${door.posed} at ${door.time}`},
+        clamp: baked.every(w => w === 1001) && tinted.every(w => w === 1000)
+          ? {status: 'PASS', detail: 'baked fl_colours paint clamps; fl_surface textures tinted for their surface repeat'}
+          : {status: 'FAIL', detail: `fl_colours ${baked}, fl_surface ${tinted}`},
+      };
+    });
+
     // The generated playtest page: its own player capsule walks into the trigger.
     const play = await browser.newPage({viewport: {width: 1280, height: 720}});
     play.on('pageerror', error => errors.push(error.message));
@@ -115,7 +139,7 @@ const CDN = 'https://cdn.jsdelivr.net/npm/three@0.186.0/';
     await play.screenshot({path: path.join(output, 'three-playtest.png')});
     report.errors = errors;
     if (errors.length) { failed = true; console.log('page errors:', errors); }
-    show('three.js', report.three); show('playtest', report.playtest);
+    show('three.js', report.three); show('loader', report.loader); show('playtest', report.playtest);
     show('GLB', report.glb); show('glTF', report.gltf);
     fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(report, null, 1));
     console.log(failed ? 'FEATURE_LAB three.js FAIL' : 'FEATURE_LAB three.js PASS', output);

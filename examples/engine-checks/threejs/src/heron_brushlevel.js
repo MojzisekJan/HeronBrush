@@ -133,10 +133,13 @@ export async function loadLevel(url, {blocks = isBlocking, factories = {}} = {})
       for(const texture of new Set([...textures.values(),...ownedTextures]))texture.dispose();
       root.clear();
     },
-    advance(dt, feet) {
+    // `height` reaches from the feet to the top of the player, so a trigger volume
+    // that starts above the floor still catches a player standing in it.
+    advance(dt, feet, height = 0) {
       waterTime+=dt;for(const water of waters)water.animate(waterTime);
       if(disposed)throw new Error("Cannot advance a disposed level");
-      for (const trigger of triggers) trigger.update(dt, new Map([['player', feet]]), animations);
+      const body = [0, 0.5, 1].map(f => ['player', feet.clone().setY(feet.y + height * f)]);
+      for (const trigger of triggers) trigger.update(dt, body, animations);
       for (const animation of animations.values()) animation.update(dt);
       root.updateMatrixWorld(true);
       for (const part of colliderParts) {

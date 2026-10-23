@@ -49,7 +49,7 @@ that holds a `playwright` link to `driver/package`.
 ## Loader API
 
 `loadLevel(url, {factories, blocks})` returns the scene, entity records, collision,
-`animations`, `triggers` and `advance(dt, feet)`. `blocks(entity)` picks which
+`animations`, `triggers` and `advance(dt, feet, height)`. `blocks(entity)` picks which
 entities collide. Factories are chosen by `three_factory` or classname and may
 return a cleanup function that `dispose()` calls.
 
