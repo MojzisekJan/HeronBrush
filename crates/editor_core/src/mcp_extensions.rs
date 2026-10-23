@@ -129,6 +129,7 @@ fn target(args: &Value) -> Result<Target, String> {
         "godot" => Ok(Target::Godot),
         "defold" => Ok(Target::Defold),
         "three.js" | "threejs" | "three" => Ok(Target::ThreeJs),
+        "babylon.js" | "babylonjs" | "babylon" => Ok(Target::Babylon),
         "bevy" => Ok(Target::Bevy),
         "raylib" => Ok(Target::Raylib),
         "unity" => Ok(Target::Unity),

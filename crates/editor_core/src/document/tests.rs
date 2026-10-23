@@ -6432,6 +6432,7 @@ fn water_volume_contract_and_runtime_adapters_export_to_all_five_targets() {
             assert!(path.join("water/heron_water_view.gd").exists());
             // Cocos, GDevelop and Stride read the same payload with runtimes of their own.
             for (target, sub) in [
+                (Target::Babylon, "babylon"),
                 (Target::Cocos, "cocos"),
                 (Target::GDevelop, "gdevelop"),
                 (Target::Stride, "stride"),
@@ -6457,6 +6458,17 @@ fn water_volume_contract_and_runtime_adapters_export_to_all_five_targets() {
                     report.warnings
                 );
                 match target {
+                    Target::Babylon => {
+                        assert!(std::fs::read_to_string(path.join("water.json"))
+                            .unwrap()
+                            .contains("_heron_water"));
+                        let runtime =
+                            std::fs::read_to_string(path.join("heron_babylon.js")).unwrap();
+                        assert!(
+                            runtime.contains("export class HeronWater")
+                                && runtime.contains("CUSTOM_VERTEX_UPDATE_POSITION")
+                        );
+                    }
                     Target::Cocos => {
                         assert!(std::fs::read_to_string(path.join("water.json"))
                             .unwrap()

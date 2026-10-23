@@ -1,3 +1,4 @@
+pub mod babylon;
 pub mod cocos;
 pub mod defold;
 pub mod flax;

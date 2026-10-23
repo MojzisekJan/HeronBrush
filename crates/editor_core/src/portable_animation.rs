@@ -290,12 +290,14 @@ mod tests {
             export::Target::Bevy,
             export::Target::Unity,
             export::Target::ThreeJs,
+            export::Target::Babylon,
             export::Target::Flax,
         ] {
             let sub = match target {
                 export::Target::Defold => "defold/main",
                 export::Target::Bevy => "bevy",
                 export::Target::ThreeJs => "three",
+                export::Target::Babylon => "babylon",
                 export::Target::Flax => "flax",
                 _ => "unity/Assets/Level",
             };
@@ -376,6 +378,11 @@ mod tests {
                 }
                 export::Target::Bevy => assert!(path.join("heron_animation.rs").exists()),
                 export::Target::ThreeJs => assert!(path.join("heron_animation.js").exists()),
+                export::Target::Babylon => {
+                    assert!(std::fs::read_to_string(path.join("heron_babylon.js"))
+                        .unwrap()
+                        .contains("export class HeronAnimation "))
+                }
                 export::Target::Flax => assert!(path.join("HeronBrushAnimation.cs").exists()),
                 _ => {
                     assert!(path.join("HeronBrushAnimation.cs").exists());

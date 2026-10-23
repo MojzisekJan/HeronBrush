@@ -70,6 +70,8 @@ def card(logo=None, text=None, text_rgb=(110, 110, 116)):
 
 card(logo=load("icon_color.svg")).save(f"{OUT}/godot.png")
 card(logo=load("three_js_logo.svg")).save(f"{OUT}/threejs.png")
+# Babylon.js's mark is CC BY-ND 4.0: scaled onto the card, never recoloured.
+card(logo=load("babylon_logo.png")).save(f"{OUT}/babylon.png")
 card(logo=load("raylib_logo.png")).save(f"{OUT}/raylib.png")
 
 bevy = trim(load("bevy_logo_dark.svg"))
@@ -105,4 +107,4 @@ def tile(path, out):
 
 # GDevelop's mark, from the macOS app's icon.
 tile("gdevelop_icon.png", f"{OUT}/gdevelop.png")
-print("wrote godot, threejs, raylib, bevy, defold, unity, unreal, flax, cocos, obj, map, gdevelop")
+print("wrote godot, threejs, babylon, raylib, bevy, defold, unity, unreal, flax, cocos, obj, map, gdevelop")
