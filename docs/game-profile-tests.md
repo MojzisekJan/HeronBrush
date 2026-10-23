@@ -18,7 +18,7 @@ Games that are free to download come first, one at a time.
 | DigitalPaintball2 | Digital Paint: Paintball 2 | planned |
 | Quake2 | the freely distributed demo, a source port | planned |
 | DDayNormandy | the free mod on the Quake 2 demo | planned |
-| Hexen2 | the freely distributed demo | planned |
+| Hexen2 | the freely distributed demo | [done](#hexen-ii) |
 
 Not tried, because the game has to be bought: Halflife, Kingpin, SoF, Heretic2,
 Daikatana and Wrath. `Generic` and `heron_brush` are Heron's own profiles.
@@ -138,3 +138,134 @@ ironwail's GL 4.3.
   Harmless, but it is noise TrenchBroom does not add.
 - The GUI wad list was checked in screenshots, but the file dialog route of the
   Materials tab was not driven by a script.
+
+## Hexen II
+
+Tried on 2026-10-23 with the freely distributable Hexen II demo (November 1997, v1.11)
+on Hammer of Thyrion 1.5.9, compiled once with ericw-tools and once with Raven's own
+tools as Hammer of Thyrion ships them. The level is
+[demos/hexen2_heron](../demos/hexen2_heron/README.md): a hall and a chapel, a door that a
+button opens, a trigger that wakes an ambush of imps, an archer and a spider and fades
+the chapel's lights up, steps to a dais and the exit, which sends the player on to the
+demo's first map. Both builds compile sealed, light and play through to the exit.
+
+### What was installed
+
+Everything is under `~/.local/opt/hexen2/`, without root. The archives stay in
+`downloads/`; all of them are on sourceforge.net/projects/uhexen2.
+
+| What | From | Unpacked to |
+| --- | --- | --- |
+| The demo for Linux x86_64, `hexen2demo_nov1997-linux-x86_64.tgz`: the demo's `data1/pak0.pak` and Hammer of Thyrion built for it (`glhexen2`) | Hexen2Demo-Nov.1997 | `hexen2demo_nov1997/` |
+| `libsdl1.2debian` (sdl12-compat) and `libmad0` from Ubuntu 24.04, fetched with `apt-get download` | the distribution's archive | `lib/` |
+| Hammer of Thyrion utilities 1.5.9 (`qbsp`, `vis`, `light`, `pakx` and others) | Hammer of Thyrion/1.5.9/Linux-x86_64 | `hot-utils/utils/` |
+| Hammer of Thyrion source 1.5.9 and the HexenC archive, to read the compiler's map parser and the game code | Hammer of Thyrion/1.5.9/Source, Hexen2 GameData/hcode_archive | `src/`, `hcode/` |
+| ericw-tools 2.0.0-alpha11, the copy from the Quake test | | `~/.local/opt/quake/ericw-tools/` |
+
+The engine is linked against SDL 1.2 and libmad, which this machine does not have, so
+`run.sh` puts `lib/` on the library path and starts `glhexen2`. The demo build refuses
+`-game` ("You must have the full version of Hexen II to play modified games"), so the
+map is installed in the demo's own `data1/maps`. The engine keeps its config and
+screenshots in `~/.hexen2demo`, which it finds through the password database, so
+setting `HOME` does not move it.
+
+The demo has no texture wad. Raven's maps name `gfx/castle.wad` and others in
+worldspawn, but those files stayed at Raven. What Hexen II mappers have is the textures
+inside the game's bsp files, pulled out with a tool into a WAD2. The demo's four maps
+hold 179 textures, among them Raven's own `clip`, `origin` and a `TRIGGER` texture
+called `rtex114`. `demos/hexen2_heron/extract_wad.py` gathers them into `h2demo.wad`.
+It is WAD2, so it needs Hexen II's palette, `gfx/palette.lmp` in `pak0.pak`.
+
+### Setting Heron up
+
+In the welcome window the profile is set to Hexen 2, and in Preferences, Games, the game
+path is `~/.local/opt/hexen2/hexen2demo_nov1997`. Heron then mounts it and `data1` with
+its pak, which is where the palette and the monster models come from. The profile
+loads `gamedata/Hexen2/Hexen2.fgd`. The wad is added from the Materials tab and named in
+worldspawn's `wad` key relative to the map, as for Quake.
+
+### Rerunning it
+
+    cd demos/hexen2_heron
+    ./build.sh                  # makes the wad, runs qbsp -hexen2, vis and light
+    ./build.sh --raven          # the same with Raven's qbsp, vis and light
+    ~/.local/opt/hexen2/run.sh -window -width 800 -height 600 \
+        +map heron_keep +exec playtest.cfg
+
+`build.sh --remake` builds the map again in Heron first, through `make_map.py` and the
+MCP server, with `HERON_BRUSH` and `XDG_CONFIG_HOME` set as for Quake. It saves
+`heron_keep.map` in Heron's own Valve dialect and exports `heron_keep_hexen2.map` in
+Hexen II's, which is what both compilers are given. `playtest.cfg` sets
+`host_framerate 0.02`, so every frame is 1/50 s and a key held for a number of waits
+moves the player the same distance on every run. It walks into the button, prints the
+door's edict, steps in front of the doorway and walks east through the trigger, up the
+steps and into the exit, printing `viewpos` and taking a screenshot at each step. The
+engine has no `setpos`. It ran in a nested Xephyr display with Mesa's llvmpipe.
+
+### What worked
+
+- Both compilers built the map with no leak. Raven's `light` keeps the ambush lights'
+  style 33; ericw's `light` moves the targeted lights to style 32 and writes that back
+  into the entities, so the game code fades style 32 instead. Both fade up in the game.
+- In the engine the console shows the level's name, "The Forgotten Chapel", and nothing
+  from the map. The button prints "You hear a door across the room open" and the door
+  goes from `0 0 0` to `0 0 119.9`; the chapel is dark from the doorway and lit once
+  the trigger fires; the monsters spawn and attack; the steps take the player onto the
+  dais and the exit loads Blackmarsh.
+- Textures and the HUD come out in the right colours, in the editor and in the game,
+  through the palette from `pak0.pak`. The demo's imp, archer, spider and torch models
+  are in Quake's `IDPO` version 6 layout, the one Heron's model reader takes; this was
+  checked by walking the files, not by looking at them in the editor.
+
+### What was fixed in Heron
+
+- **A Hexen II map could not be opened.** Hexen II's dialect is the Standard one with
+  one more number at the end of every face line. Heron read the number as the start of
+  the next face and stopped with a parse error, so no map in TrenchBroom's Hexen 2
+  format or Raven's would open. The reader now takes the number and says the map is Hexen II, with or
+  without a `// Format: Hexen2` header.
+- **Raven's qbsp could not compile anything Heron wrote.** It reads that number as the
+  brush's light value and stops with "Line 9 is incomplete" without it, on Valve and
+  Standard maps alike. Hexen 2 is now a dialect: the export window's `.map` tab offers
+  it, and it writes `0` there, as TrenchBroom does. A scripted run of the window wrote
+  the same file as MCP's export, ids aside. The profile's `"format": "Hexen2"`
+  entry, which the config reader skipped, now means it.
+- **`'mapversion' is not a field`.** A Valve map carries `"mapversion" "220"` in
+  worldspawn, the compilers pass it into the bsp, and the Hexen II engine prints that
+  line on every load. A dialect without a map version, Hexen 2 among them, now leaves
+  a carried `mapversion` out instead of claiming to be Valve 220.
+- **MCP could only save in Valve.** A new `export_map` tool writes a copy in another
+  dialect (`Hexen2`, `Standard`, `Quake2`, `Quake2 (Valve)`) and says what it lost; the
+  open map stays as it was. `make_map.py` uses it for `heron_keep_hexen2.map`.
+- **The FGD's Egyptian torch spawned nothing.** Raven's game code spells it
+  `light_torch_eqypt`; the definition now does too. The `message` keys of worldspawn,
+  buttons, doors and triggers are integers in the FGD now, since Hexen II reads them as
+  line numbers in `strings.txt`.
+
+### Mapping mistakes, not Heron's
+
+- Hexen II's messages are numbers, not text. `"message" "Ambush!"` reads as 0 and prints
+  nothing; `"message" "20"` prints line 20 of `strings.txt`. The level's name is line 125,
+  "The Forgotten Chapel", because the demo's strings had nothing better.
+- A light toggled by a trigger is targeted like a monster: the trigger's `target` finds
+  the light by `targetname`, and a style of 32 or more makes the game fade it from
+  `lightvalue1` to `lightvalue2`. The trigger's own `style` and its "light toggle" flag
+  look like the way to do it, but `SUB_UseTargets` clears the trigger's style before it
+  looks at the targets.
+- `trigger_changelevel` takes `map` and, as a second key, the `targetname` of the
+  `info_player_start` to arrive at. Without it the game picks the first start.
+- Only monsters whose models are in the demo's pak can be placed: imps, archers,
+  spiders, skull wizards, hydras, rats and the sheep. The FGD also offers golems,
+  medusas and others whose models the demo does not have; placing one was not tried.
+- ericw's `qbsp -hexen2` warns that it cannot find a `skip` texture, and its `light`
+  then warns about a texture with no name. Neither comes from the map.
+
+### What remains
+
+- The Hexen II number is read and dropped, and written as 0. Raven's `qbsp` passes it on
+  as a light value per face; no map tested here sets it, but a Raven source that did
+  would lose it in Heron.
+- The editor's view of the monster models from inside the level was not looked at;
+  the 3D view in the screenshots shows the level from outside.
+- Placing a light still writes the FGD's defaults (`style`, `lightvalue1`, `lightvalue2`,
+  `fadespeed`). For Hexen II they are the game's own defaults, so they change nothing.
