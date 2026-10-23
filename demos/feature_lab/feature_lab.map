@@ -1,0 +1,368 @@
+// heron material-sources [["folder","textures"]]
+// Format: Valve
+// heron_brush format 3
+// entity 0
+{
+"mapversion" "220"
+"classname" "worldspawn"
+"sky" "1"
+"sky_top_color" "40 90 200"
+"sky_horizon_color" "230 200 160"
+"fog_enabled" "1"
+"fog_light_color" "180 190 200"
+"fog_density" "0.02"
+// heron_brush id 3096500000000001
+// brush 0
+{
+( -1024 -512 -16 ) ( -1024 -511 -16 ) ( -1024 -512 -15 ) concrete 0 0 0 1 1
+( 1024 512 0 ) ( 1024 512 1 ) ( 1024 513 0 ) concrete 0 0 0 1 1
+( -1024 -512 -16 ) ( -1024 -512 -15 ) ( -1023 -512 -16 ) concrete 0 0 0 1 1
+( 1024 512 0 ) ( 1025 512 0 ) ( 1024 512 1 ) concrete 0 0 0 1 1
+( 1024 512 0 ) ( 1024 513 0 ) ( 1025 512 0 ) concrete 0 0 0 1 1
+( -1024 -512 -16 ) ( -1023 -512 -16 ) ( -1024 -511 -16 ) concrete 0 0 0 1 1
+}
+}
+// heron_brush id 3096500000000004
+// entity 1
+{
+"classname" "func_detail"
+"targetname" "fl_textures"
+// heron_brush id 3096500000000002
+// brush 0
+{
+( -896 -320 8 ) ( -896 -319 8 ) ( -896 -320 9 ) wood 0 0 0 1 1
+( -832 -256 72 ) ( -832 -256 73 ) ( -832 -255 72 ) metal 16 8 0 1 1
+( -896 -320 8 ) ( -896 -320 9 ) ( -895 -320 8 ) crate 0 0 45 1 1
+( -832 -256 72 ) ( -831 -256 72 ) ( -832 -256 73 ) wall 0 0 0 0.5 2
+( -832 -256 72 ) ( -832 -255 72 ) ( -831 -256 72 ) dirt 32 0 90 2 2
+( -896 -320 8 ) ( -895 -320 8 ) ( -896 -319 8 ) hazard 0 0 0 1 1
+}
+// heron_brush id 3096500000000003
+// brush 1
+{
+( -896 -224 8 ) ( -896 -223 8 ) ( -896 -224 9 ) grass 0 0 0 1 1
+( -832 -160 40 ) ( -832 -160 41 ) ( -832 -159 40 ) grass 0 0 0 1 1
+( -896 -224 8 ) ( -896 -224 9 ) ( -895 -224 8 ) grass 0 0 0 1 1
+( -832 -160 40 ) ( -831 -160 40 ) ( -832 -160 41 ) grass 0 0 0 1 1
+( -832 -160 40 ) ( -832 -159 40 ) ( -831 -160 40 ) grass 0 0 0 1 1
+( -896 -224 8 ) ( -895 -224 8 ) ( -896 -223 8 ) grass 0 0 0 1 1
+}
+}
+// heron_brush id 3096500000000006
+// entity 2
+{
+"classname" "func_detail"
+"targetname" "fl_colours"
+// heron_brush id 3096500000000005
+// brush 0
+{
+( -704 -320 8 ) ( -704 -319 8 ) ( -704 -320 9 ) wood 0 0 0 1 1 // heron_brush color 220 30 40
+( -640 -256 72 ) ( -640 -256 73 ) ( -640 -255 72 ) wood 0 0 0 1 1 // heron_brush color 30 200 60
+( -704 -320 8 ) ( -704 -320 9 ) ( -703 -320 8 ) wood 0 0 0 1 1 // heron_brush color 40 60 230
+( -640 -256 72 ) ( -639 -256 72 ) ( -640 -256 73 ) wood 0 0 0 1 1 // heron_brush color 240 220 30
+( -640 -256 72 ) ( -640 -255 72 ) ( -639 -256 72 ) wood 0 0 0 1 1 // heron_brush color 255 255 255
+( -704 -320 8 ) ( -703 -320 8 ) ( -704 -319 8 ) wood 0 0 0 1 1 // heron_brush color 30 200 220 128
+}
+}
+// heron_brush id 3096500000000008
+// entity 3
+{
+"classname" "func_detail"
+"targetname" "fl_gradients"
+// heron_brush id 3096500000000007
+// brush 0
+{
+( -512 -320 8 ) ( -512 -319 8 ) ( -512 -320 9 ) wood 0 0 0 1 1 // heron_brush gradient 255 0 0 0 0 255 0
+( -448 -256 72 ) ( -448 -256 73 ) ( -448 -255 72 ) wood 0 0 0 1 1 // heron_brush linear 45 3 0 255 255 0 0.5 0 255 0 1 0 0 0
+( -512 -320 8 ) ( -512 -320 9 ) ( -511 -320 8 ) wood 0 0 0 1 1 // heron_brush radial 0 3 0 255 255 255 0.5 255 128 0 1 64 0 128
+( -448 -256 72 ) ( -447 -256 72 ) ( -448 -256 73 ) wood 0 0 0 1 1 // heron_brush gradient 0 0 0 255 255 255 90
+( -448 -256 72 ) ( -448 -255 72 ) ( -447 -256 72 ) wood 0 0 0 1 1 // heron_brush color 128 128 128
+( -512 -320 8 ) ( -511 -320 8 ) ( -512 -319 8 ) wood 0 0 0 1 1 // heron_brush color 128 128 128
+}
+}
+// heron_brush id 309650000000000a
+// entity 4
+{
+"classname" "func_detail"
+"targetname" "fl_surface"
+// heron_brush id 3096500000000009
+// brush 0
+{
+( -320 -320 8 ) ( -320 -319 8 ) ( -320 -320 9 ) metal 0 0 0 1 1 // heron_brush pbr 20 90 0
+( -256 -256 72 ) ( -256 -256 73 ) ( -256 -255 72 ) metal 0 0 0 1 1 // heron_brush pbr 90 0 0
+( -320 -320 8 ) ( -320 -320 9 ) ( -319 -320 8 ) wood 0 0 0 1 1 // heron_brush color 255 120 0 pbr 65 0 300
+( -256 -256 72 ) ( -255 -256 72 ) ( -256 -256 73 ) metal 0 0 0 1 1
+( -256 -256 72 ) ( -256 -255 72 ) ( -255 -256 72 ) metal 0 0 0 1 1 // heron_brush pbr 5 100 0
+( -320 -320 8 ) ( -319 -320 8 ) ( -320 -319 8 ) metal 0 0 0 1 1
+}
+}
+// heron_brush id 309650000000000c
+// entity 5
+{
+"classname" "func_detail"
+"targetname" "fl_normal"
+// heron_brush id 309650000000000b
+// brush 0
+{
+( -128 -320 8 ) ( -128 -319 8 ) ( -128 -320 9 ) brick_wall 0 0 0 1 1
+( -64 -256 72 ) ( -64 -256 73 ) ( -64 -255 72 ) brick_wall 0 0 0 1 1
+( -128 -320 8 ) ( -128 -320 9 ) ( -127 -320 8 ) brick_wall 0 0 0 1 1
+( -64 -256 72 ) ( -63 -256 72 ) ( -64 -256 73 ) brick_wall 0 0 0 1 1
+( -64 -256 72 ) ( -64 -255 72 ) ( -63 -256 72 ) brick_wall 0 0 0 1 1
+( -128 -320 8 ) ( -127 -320 8 ) ( -128 -319 8 ) brick_wall 0 0 0 1 1
+}
+}
+// heron_brush id 309650000000000e
+// entity 6
+{
+"classname" "func_wall"
+"targetname" "fl_solid"
+// heron_brush id 309650000000000d
+// brush 0
+{
+( -896 0 8 ) ( -896 1 8 ) ( -896 0 9 ) wall 0 0 0 1 1
+( -832 64 72 ) ( -832 64 73 ) ( -832 65 72 ) wall 0 0 0 1 1
+( -896 0 8 ) ( -896 0 9 ) ( -895 0 8 ) wall 0 0 0 1 1
+( -832 64 72 ) ( -831 64 72 ) ( -832 64 73 ) wall 0 0 0 1 1
+( -832 64 72 ) ( -832 65 72 ) ( -831 64 72 ) wall 0 0 0 1 1
+( -896 0 8 ) ( -895 0 8 ) ( -896 1 8 ) wall 0 0 0 1 1
+}
+}
+// heron_brush id 3096500000000010
+// entity 7
+{
+"classname" "func_clip"
+"targetname" "fl_clip"
+// heron_brush id 309650000000000f
+// brush 0
+{
+( -704 0 8 ) ( -704 1 8 ) ( -704 0 9 ) clip 0 0 0 1 1
+( -640 64 104 ) ( -640 64 105 ) ( -640 65 104 ) clip 0 0 0 1 1
+( -704 0 8 ) ( -704 0 9 ) ( -703 0 8 ) clip 0 0 0 1 1
+( -640 64 104 ) ( -639 64 104 ) ( -640 64 105 ) clip 0 0 0 1 1
+( -640 64 104 ) ( -640 65 104 ) ( -639 64 104 ) clip 0 0 0 1 1
+( -704 0 8 ) ( -703 0 8 ) ( -704 1 8 ) clip 0 0 0 1 1
+}
+}
+// heron_brush id 3096500000000012
+// entity 8
+{
+"classname" "func_detail"
+"targetname" "fl_skip"
+// heron_brush id 3096500000000011
+// brush 0
+{
+( -512 0 8 ) ( -512 1 8 ) ( -512 0 9 ) metal 0 0 0 1 1
+( -448 64 72 ) ( -448 64 73 ) ( -448 65 72 ) metal 0 0 0 1 1
+( -512 0 8 ) ( -512 0 9 ) ( -511 0 8 ) metal 0 0 0 1 1
+( -448 64 72 ) ( -447 64 72 ) ( -448 64 73 ) metal 0 0 0 1 1
+( -448 64 72 ) ( -448 65 72 ) ( -447 64 72 ) skip 0 0 0 1 1
+( -512 0 8 ) ( -511 0 8 ) ( -512 1 8 ) metal 0 0 0 1 1
+}
+}
+// heron_brush id 3096500000000014
+// entity 9
+{
+"classname" "func_detail"
+"targetname" "fl_hidden"
+// heron_brush id 3096500000000013
+// brush 0
+{
+( -320 0 8 ) ( -320 1 8 ) ( -320 0 9 ) wood 0 0 0 1 1
+( -256 64 72 ) ( -256 64 73 ) ( -256 65 72 ) wood 0 0 0 1 1 // heron_brush export_hidden
+( -320 0 8 ) ( -320 0 9 ) ( -319 0 8 ) wood 0 0 0 1 1
+( -256 64 72 ) ( -255 64 72 ) ( -256 64 73 ) wood 0 0 0 1 1
+( -256 64 72 ) ( -256 65 72 ) ( -255 64 72 ) wood 0 0 0 1 1
+( -320 0 8 ) ( -319 0 8 ) ( -320 1 8 ) wood 0 0 0 1 1
+}
+}
+// heron_brush id 3096500000000016
+// entity 10
+{
+"classname" "trigger_multiple"
+"targetname" "fl_trigger"
+"target" "fl_door"
+"wait" "1.5"
+"animation_action" "open"
+"animation_clip" ""
+"animation_once" "0"
+// heron_brush id 3096500000000015
+// brush 0
+{
+( -128 0 8 ) ( -128 1 8 ) ( -128 0 9 ) hazard 0 0 0 1 1
+( -32 96 104 ) ( -32 96 105 ) ( -32 97 104 ) hazard 0 0 0 1 1
+( -128 0 8 ) ( -128 0 9 ) ( -127 0 8 ) hazard 0 0 0 1 1
+( -32 96 104 ) ( -31 96 104 ) ( -32 96 105 ) hazard 0 0 0 1 1
+( -32 96 104 ) ( -32 97 104 ) ( -31 96 104 ) hazard 0 0 0 1 1
+( -128 0 8 ) ( -127 0 8 ) ( -128 1 8 ) hazard 0 0 0 1 1
+}
+}
+// heron_brush id 3096500000000018
+// entity 11
+{
+"classname" "func_animate"
+"targetname" "fl_mover"
+"start_on" "1"
+"animation_keys" "0 0 0 0 0 0 0; 4 0 0 0 0 0 90"
+"animation_curves" "{\"version\":1,\"duration\":4.0,\"fps\":30,\"tracks\":[[{\"id\":1,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":2,\"time\":2.0,\"value\":128.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":3,\"time\":4.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[],[{\"id\":4,\"time\":0.0,\"value\":0.0,\"interpolation\":\"hold\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":5,\"time\":1.0,\"value\":32.0,\"interpolation\":\"hold\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":6,\"time\":3.0,\"value\":0.0,\"interpolation\":\"hold\",\"incoming\":0.0,\"outgoing\":0.0}],[],[],[{\"id\":7,\"time\":0.0,\"value\":0.0,\"interpolation\":\"bezier\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":8,\"time\":4.0,\"value\":90.0,\"interpolation\":\"bezier\",\"incoming\":0.0,\"outgoing\":0.0}]]}"
+"animation_mode" "loop"
+"animation_pivot" "-848.0000000000001 368 16"
+// heron_brush id 3096500000000017
+// brush 0
+{
+( -896 320 8 ) ( -896 321 8 ) ( -896 320 9 ) metal 0 0 0 1 1
+( -800 416 24 ) ( -800 416 25 ) ( -800 417 24 ) metal 0 0 0 1 1
+( -896 320 8 ) ( -896 320 9 ) ( -895 320 8 ) metal 0 0 0 1 1
+( -800 416 24 ) ( -799 416 24 ) ( -800 416 25 ) metal 0 0 0 1 1
+( -800 416 24 ) ( -800 417 24 ) ( -799 416 24 ) metal 0 0 0 1 1
+( -896 320 8 ) ( -895 320 8 ) ( -896 321 8 ) metal 0 0 0 1 1
+}
+}
+// heron_brush id 309650000000001a
+// entity 12
+{
+"classname" "func_animate"
+"targetname" "fl_door"
+"animation_keys" "0 0 0 0 0 0 0; 1 0 0 0 0 0 90"
+"animation_curves" "{\"version\":1,\"duration\":1.0,\"fps\":30,\"tracks\":[[],[],[],[],[],[{\"id\":1,\"time\":0.0,\"value\":0.0,\"interpolation\":\"bezier\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":2,\"time\":1.0,\"value\":90.0,\"interpolation\":\"bezier\",\"incoming\":0.0,\"outgoing\":0.0}]]}"
+"animation_mode" "once"
+"animation_pivot" "-636 320 8"
+"animation_library" "{\"version\":1,\"clips\":{\"close\":{\"clip\":{\"version\":1,\"duration\":1.0,\"fps\":30,\"tracks\":[[],[],[],[],[],[{\"id\":2,\"time\":0.0,\"value\":90.0,\"interpolation\":\"bezier\",\"incoming\":-0.0,\"outgoing\":-0.0},{\"id\":1,\"time\":1.0,\"value\":0.0,\"interpolation\":\"bezier\",\"incoming\":-0.0,\"outgoing\":-0.0}]]},\"mode\":\"once\"},\"default\":{\"clip\":{\"version\":1,\"duration\":2.0,\"fps\":30,\"tracks\":[[{\"id\":1,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":2,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":3,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":4,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":5,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":6,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":7,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":8,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":9,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":10,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}],[{\"id\":11,\"time\":0.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":12,\"time\":2.0,\"value\":0.0,\"interpolation\":\"linear\",\"incoming\":0.0,\"outgoing\":0.0}]]},\"mode\":\"loop\"},\"open\":{\"clip\":{\"version\":1,\"duration\":1.0,\"fps\":30,\"tracks\":[[],[],[],[],[],[{\"id\":1,\"time\":0.0,\"value\":0.0,\"interpolation\":\"bezier\",\"incoming\":0.0,\"outgoing\":0.0},{\"id\":2,\"time\":1.0,\"value\":90.0,\"interpolation\":\"bezier\",\"incoming\":0.0,\"outgoing\":0.0}]]},\"mode\":\"once\"}}}"
+"animation_name" "open"
+"start_on" "0"
+// heron_brush id 3096500000000019
+// brush 0
+{
+( -640 320 8 ) ( -640 321 8 ) ( -640 320 9 ) crate 0 0 0 1 1
+( -632 384 104 ) ( -632 384 105 ) ( -632 385 104 ) crate 0 0 0 1 1
+( -640 320 8 ) ( -640 320 9 ) ( -639 320 8 ) crate 0 0 0 1 1
+( -632 384 104 ) ( -631 384 104 ) ( -632 384 105 ) crate 0 0 0 1 1
+( -632 384 104 ) ( -632 385 104 ) ( -631 384 104 ) crate 0 0 0 1 1
+( -640 320 8 ) ( -639 320 8 ) ( -640 321 8 ) crate 0 0 0 1 1
+}
+}
+// heron_brush id 309650000000001c
+// entity 13
+{
+"classname" "func_button"
+"targetname" "fl_button"
+"target" "fl_door"
+"animation_action" "toggle"
+"animation_clip" ""
+"animation_once" "0"
+"wait" "0"
+// heron_brush id 309650000000001b
+// brush 0
+{
+( -576 320 8 ) ( -576 321 8 ) ( -576 320 9 ) hazard 0 0 0 1 1
+( -560 336 24 ) ( -560 336 25 ) ( -560 337 24 ) hazard 0 0 0 1 1
+( -576 320 8 ) ( -576 320 9 ) ( -575 320 8 ) hazard 0 0 0 1 1
+( -560 336 24 ) ( -559 336 24 ) ( -560 336 25 ) hazard 0 0 0 1 1
+( -560 336 24 ) ( -560 337 24 ) ( -559 336 24 ) hazard 0 0 0 1 1
+( -576 320 8 ) ( -575 320 8 ) ( -576 321 8 ) hazard 0 0 0 1 1
+}
+}
+// heron_brush id 309650000000001e
+// entity 14
+{
+"classname" "water_volume"
+"targetname" "fl_water"
+"water_color" "0.1 0.4 0.6"
+"swim_speed" "2.5"
+"water_priority" "3"
+// heron_brush id 309650000000001d
+// brush 0
+{
+( -384 320 8 ) ( -384 321 8 ) ( -384 320 9 ) wood 0 0 0 1 1
+( -256 448 56 ) ( -256 448 57 ) ( -256 449 56 ) wood 0 0 0 1 1
+( -384 320 8 ) ( -384 320 9 ) ( -383 320 8 ) wood 0 0 0 1 1
+( -256 448 56 ) ( -255 448 56 ) ( -256 448 57 ) wood 0 0 0 1 1
+( -256 448 56 ) ( -256 449 56 ) ( -255 448 56 ) wood 0 0 0 1 1
+( -384 320 8 ) ( -383 320 8 ) ( -384 321 8 ) wood 0 0 0 1 1
+}
+}
+// heron_brush id 309650000000001f
+// entity 15
+{
+"classname" "info_player_start"
+"targetname" "fl_start"
+"origin" "0 -160 32"
+"angles" "0 90 0"
+}
+// heron_brush id 3096500000000020
+// entity 16
+{
+"classname" "light"
+"targetname" "fl_light"
+"origin" "-160 -288 160"
+"light_color" "255 200 120"
+"light_energy" "2.5"
+"omni_range" "8"
+}
+// heron_brush id 3096500000000021
+// entity 17
+{
+"classname" "light_spot"
+"targetname" "fl_spot"
+"origin" "-480 64 192"
+"angles" "-60 45 0"
+"light_color" "120 180 255"
+"light_energy" "3"
+"spot_range" "10"
+"spot_angle" "30"
+}
+// heron_brush id 3096500000000022
+// entity 18
+{
+"classname" "info_waypoint"
+"targetname" "fl_wp_a"
+"target" "fl_wp_b"
+"origin" "128 -160 32"
+}
+// heron_brush id 3096500000000023
+// entity 19
+{
+"classname" "info_waypoint"
+"targetname" "fl_wp_b"
+"origin" "256 -160 32"
+}
+// heron_brush id 3096500000000024
+// entity 20
+{
+"classname" "info_camera"
+"targetname" "fl_camera"
+"origin" "384 -160 64"
+"angles" "0 180 0"
+"fov" "62.5"
+"current" "1"
+}
+// heron_brush id 3096500000000025
+// entity 21
+{
+"classname" "fl_probe"
+"targetname" "fl_probe"
+"target" "fl_wp_a"
+"origin" "512 -160 32"
+"charge" "7"
+"note" "free text, with a comma"
+}
+// heron_brush id 3096500000000026
+// entity 22
+{
+"classname" "heron_model"
+"targetname" "fl_model_a"
+"_heron_model" "models/pbr.glb"
+"origin" "128 160 32"
+"angles" "0 0 0"
+"modelscale" "32"
+}
+// heron_brush id 3096500000000027
+// entity 23
+{
+"classname" "heron_model"
+"targetname" "fl_model_b"
+"_heron_model" "models/pbr.glb"
+"origin" "256 160 32"
+"angles" "0 45 0"
+"modelscale" "48"
+}

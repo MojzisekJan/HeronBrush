@@ -12,6 +12,7 @@ each folder writes the engine project again.
 | [Bevy FPS](bevy_fps/README.md) | Bevy | An exported level with physics, collision and sensors |
 | [Water Lab](water_lab/README.md) | Bevy, three.js, Defold, Unity, Flax | Water volumes and their priorities |
 | [Relay Yard](relay_yard/README.md) | map only | An industrial yard built from asset-library props |
+| Feature Lab | all 14 targets | One station per export feature, for [the feature matrix](../docs/feature-matrix.md) |
 
 Lantern Lane, Motion Lab and Water Lab are also in the editor's welcome window, under
 Examples.
