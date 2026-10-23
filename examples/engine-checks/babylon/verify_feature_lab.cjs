@@ -92,6 +92,9 @@ const fs = require('node:fs'), http = require('node:http'), path = require('node
     if (errors.length) { failed = true; console.log('page errors:', errors); }
     show('babylon', report.babylon);
     show('playtest', report.playtest);
+
+    report.browser = browser.version();
+    console.log(`Chromium ${report.browser}`);
     fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(report, null, 1));
     console.log(failed ? 'FEATURE_LAB Babylon.js FAIL' : 'FEATURE_LAB Babylon.js PASS', output);
     process.exitCode = failed ? 1 : 0;

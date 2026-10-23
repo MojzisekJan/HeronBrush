@@ -456,10 +456,11 @@ export async function checkPlaytest(h) {
   const hidden = place('fl_hidden');
   h.teleport(new B.Vector3(hidden.x - 3, 0.02, hidden.z)); h.face(-Math.PI / 2);
   h.keys.add('KeyW'); run(2); h.keys.clear();
-  const stopped = h.feet().x;
-  results.wall = stopped < hidden.x - 1.25 && stopped > hidden.x - 1.75
-    ? PASS(`walking at fl_hidden stops the player at x=${stopped.toFixed(2)}, the wall at ${(hidden.x - 1.25).toFixed(2)} less the radius`)
-    : FAIL(`walking at fl_hidden ends at x=${stopped}`);
+  // The 2 m box's near wall is 1 m from its middle; the capsule's radius is 8 units.
+  const stopped = h.feet().x, wall = hidden.x - 1, radius = 8 / 32;
+  results.wall = Math.abs(stopped - (wall - radius)) < 0.05
+    ? PASS(`walking at fl_hidden stops the player's middle at x=${stopped.toFixed(3)}, the wall at x=${wall.toFixed(2)} less the 0.25 m radius`)
+    : FAIL(`walking at fl_hidden ends at x=${stopped}, the wall at ${wall}`);
   // The trigger starts 0.25 m above the floor: feet on the floor are under it.
   const door = level.animations.get(at('fl_door').name);
   door.stop(); door.update(0);
@@ -468,9 +469,11 @@ export async function checkPlaytest(h) {
   h.teleport(new B.Vector3(trigger.x, 0.02, trigger.z)); h.face(0);
   run(1.5);
   const feet = h.feet().y;
-  const opened = door.clip.name === 'open' && door.posed && near(door.time, 1);
+  // The feet alone are under the volume; the middle is in it.
+  const sensor = at('fl_trigger').trigger, middle = h.controller.getPosition();
+  const opened = door.clip.name === 'open' && door.posed && near(door.time, 1) && !sensor.contains(h.feet()) && sensor.contains(middle);
   results.trigger = opened
-    ? PASS(`a player standing in fl_trigger (feet at y=${feet.toFixed(2)}, the volume from y=0.25) opens the door: the page tests feet, middle and head; clip ${door.clip.name}, time ${door.time.toFixed(2)}`)
+    ? PASS(`a player standing in fl_trigger (feet at y=${feet.toFixed(2)}, outside the volume, which starts at y=0.25; middle inside) opens the door: the page tests feet, middle and head; clip ${door.clip.name}, time ${door.time.toFixed(2)}`)
     : FAIL(`a standing player (feet y=${feet.toFixed(2)}) does not open the door: clip ${door.clip.name}, posed ${door.posed}, time ${door.time}`);
   // E at the button: look at it from in front and press.
   const button = place('fl_button');
