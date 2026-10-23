@@ -556,6 +556,8 @@ impl App {
             popup: None,
             fillet_window: false,
             sculpt_window: false,
+            menu_titles: Vec::new(),
+            menu_from_keys: false,
         };
         let flat = [
             Pane2d::new(&editor, ViewPlane::Top),
@@ -630,6 +632,28 @@ impl App {
         let field_focused = ui.ctx().egui_wants_keyboard_input();
         let mut events = std::mem::take(&mut self.tabs);
         events.extend(ui.input(|i| i.events.clone()));
+        // While a menu is open its keys are its own: they move through it and pick from
+        // it, and must not also nudge the selection or change the layout.
+        if self.chrome.popup.is_some() {
+            events.retain(|event| {
+                !matches!(
+                    event,
+                    egui::Event::Key {
+                        key: egui::Key::ArrowUp
+                            | egui::Key::ArrowDown
+                            | egui::Key::ArrowLeft
+                            | egui::Key::ArrowRight
+                            | egui::Key::Enter
+                            | egui::Key::Space
+                            | egui::Key::Home
+                            | egui::Key::End
+                            | egui::Key::Escape
+                            | egui::Key::F10,
+                        ..
+                    }
+                )
+            });
+        }
         let held = ui.input(|i| i.modifiers);
         let scene = if self.window.borrow().panes.focused == Some(0)
             && !self.window.borrow().panes.detached

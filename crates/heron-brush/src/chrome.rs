@@ -132,6 +132,11 @@ pub struct Chrome {
     pub fillet_window: bool,
     /// Whether the sculpt brush's settings window is open; it closes with the tool.
     pub sculpt_window: bool,
+    /// Where each menu's title was drawn last frame, for the keyboard to open them.
+    pub menu_titles: Vec<Rect>,
+    /// Whether the menu just opened from the keyboard, to start with its first row
+    /// highlighted.
+    pub menu_from_keys: bool,
 }
 
 /// `format_size`: whole sizes without a fraction, the small ones as they are.
@@ -470,6 +475,9 @@ impl Chrome {
             }
             x = slot.right() + 4.0;
         }
+        if !folded {
+            self.menu_titles.clear();
+        }
         for (index, name) in MENUS.iter().enumerate().filter(|_| !folded) {
             let label = tr(name);
             let width = text_width(ui, label, theme::body()) + 16.0;
@@ -482,6 +490,7 @@ impl Chrome {
                 ui.scope_id().with(("menu-bar", index)),
                 Sense::click(),
             );
+            self.menu_titles.push(slot);
             let open = open_menu == Some(index);
             // With a menu open, pointing at another title opens that one, as menu bars do.
             if response.clicked() || (open_menu.is_some() && !open && response.hovered()) {
@@ -619,12 +628,21 @@ impl Chrome {
         }
     }
 
-    /// Shows the open popup, if any. Call after both bars.
+    /// Shows the open popup, if any. Call after both bars. F10 opens the first menu, and
+    /// with a menu open Left and Right move to the menu beside it, as menu bars do.
     pub fn popups(&mut self, ui: &mut Ui, status: &Status) {
+        let ctx = ui.ctx().clone();
+        let titles = self.menu_titles.len();
+        if titles > 0 && self.popup.is_none() && ctx.memory(|m| m.focused().is_none()) {
+            let f10 = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::F10));
+            if f10 {
+                self.popup = Some((Popup::Menu(0), self.menu_titles[0]));
+                self.menu_from_keys = true;
+            }
+        }
         let Some((popup, from)) = self.popup else {
             return;
         };
-        let ctx = ui.ctx().clone();
         let entries = match popup {
             Popup::Menu(index) => menus(
                 status,
@@ -665,16 +683,37 @@ impl Chrome {
                 egui::Align2::RIGHT_TOP,
             ),
         };
-        if let Some(action) = menu::popup_aligned(
-            &ctx,
-            Id::unique(("bar-popup", format!("{popup:?}"))),
-            at,
-            pivot,
-            &entries,
-        ) {
+        let id = Id::unique(("bar-popup", format!("{popup:?}")));
+        if std::mem::take(&mut self.menu_from_keys) {
+            menu::focus_first(&ctx, id, &entries);
+        }
+        if let Some(action) = menu::popup_aligned(&ctx, id, at, pivot, &entries) {
             self.action = Some(action);
             self.popup = None;
             return;
+        }
+        // Left and Right go to the menu beside; the menu has taken Right first when it
+        // opens a submenu with it.
+        if let (Popup::Menu(index), true) = (popup, titles > 0) {
+            let none = egui::Modifiers::NONE;
+            let (left, right) = ctx.input_mut(|i| {
+                (
+                    i.consume_key(none, egui::Key::ArrowLeft),
+                    i.consume_key(none, egui::Key::ArrowRight),
+                )
+            });
+            let next = if left {
+                Some((index + titles - 1) % titles)
+            } else if right {
+                Some((index + 1) % titles)
+            } else {
+                None
+            };
+            if let Some(next) = next {
+                self.popup = Some((Popup::Menu(next), self.menu_titles[next]));
+                self.menu_from_keys = true;
+                return;
+            }
         }
         if menu::pressed_outside(&ctx, Some(from))
             || ctx.input(|i| i.key_pressed(egui::Key::Escape))
@@ -1425,6 +1464,8 @@ mod shape_preview_tests {
         let mut chrome = Chrome {
             fillet_window: false,
             sculpt_window: false,
+            menu_titles: Vec::new(),
+            menu_from_keys: false,
             tool: editor.tool.clone(),
             grid: editor.grid.clone(),
             document: editor.document.clone(),

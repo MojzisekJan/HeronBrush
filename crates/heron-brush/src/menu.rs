@@ -161,12 +161,85 @@ pub fn popup_aligned<A: Clone>(
     picked
 }
 
-/// Lays `entries` out as rows in `ui`. Returns the action picked.
+/// The rows of `entries` the keyboard can land on: items that are enabled, and submenus.
+fn landings<A>(entries: &[Entry<A>]) -> Vec<usize> {
+    entries
+        .iter()
+        .enumerate()
+        .filter(|(_, entry)| match entry {
+            Entry::Item { enabled, .. } => *enabled,
+            Entry::Sub { .. } => true,
+            Entry::Separator => false,
+        })
+        .map(|(index, _)| index)
+        .collect()
+}
+
+/// Where the keyboard is in the menu `id`, as an index into its entries.
+fn keyboard_id(id: Id) -> Id {
+    Id::unique((id, "keyboard"))
+}
+
+/// Puts the keyboard on the first row of the menu `id` showing `entries`, for a menu
+/// opened from the keyboard.
+pub fn focus_first<A>(ctx: &egui::Context, id: Id, entries: &[Entry<A>]) {
+    if let Some(first) = landings(entries).first() {
+        ctx.data_mut(|d| d.insert_temp(keyboard_id(id), *first));
+    }
+}
+
+/// Lays `entries` out as rows in `ui`. Returns the action picked. While no submenu of it
+/// is open, Up and Down (Home, End) move a highlight through the rows, wrapping round;
+/// Enter or Space runs the highlighted item, and they or Right open a highlighted
+/// submenu with its first row highlighted. Moving the pointer drops the highlight.
 pub fn show<A: Clone>(ui: &mut Ui, id: Id, entries: &[Entry<A>]) -> Option<A> {
     let width = width(ui, entries);
     ui.spacing_mut().item_spacing.y = 0.0;
     let open_sub = Id::unique((id, "open-sub"));
     let mut picked = None;
+    let keyboard = keyboard_id(id);
+    let mut current = ui.data(|d| d.get_temp::<usize>(keyboard));
+    let mut activate = false;
+    let mut open_by_keys = false;
+    let stops = landings(entries);
+    if ui.data(|d| d.get_temp::<usize>(open_sub)).is_none() && !stops.is_empty() {
+        if ui.input(|i| i.pointer.delta() != egui::Vec2::ZERO) {
+            current = None;
+        }
+        let none = egui::Modifiers::NONE;
+        let (down, up, home, end, enter, right) = ui.input_mut(|i| {
+            (
+                i.consume_key(none, egui::Key::ArrowDown),
+                i.consume_key(none, egui::Key::ArrowUp),
+                i.consume_key(none, egui::Key::Home),
+                i.consume_key(none, egui::Key::End),
+                i.consume_key(none, egui::Key::Enter) || i.consume_key(none, egui::Key::Space),
+                current.is_some_and(|c| matches!(entries.get(c), Some(Entry::Sub { .. })))
+                    && i.consume_key(none, egui::Key::ArrowRight),
+            )
+        });
+        let at = current.and_then(|c| stops.iter().position(|s| *s == c));
+        let last = stops.len() - 1;
+        current = if down {
+            Some(stops[at.map_or(0, |a| if a == last { 0 } else { a + 1 })])
+        } else if up {
+            Some(stops[at.map_or(last, |a| if a == 0 { last } else { a - 1 })])
+        } else if home {
+            Some(stops[0])
+        } else if end {
+            Some(stops[last])
+        } else {
+            current
+        };
+        activate = enter && current.is_some();
+        open_by_keys = (enter || right) && current.is_some();
+        match current {
+            Some(c) => ui.data_mut(|d| {
+                d.insert_temp(keyboard, c);
+            }),
+            None => ui.data_mut(|d| d.remove::<usize>(keyboard)),
+        }
+    }
     for (index, entry) in entries.iter().enumerate() {
         match entry {
             Entry::Separator => {
@@ -185,19 +258,25 @@ pub fn show<A: Clone>(ui: &mut Ui, id: Id, entries: &[Entry<A>]) -> Option<A> {
                 checked,
                 icon,
             } => {
+                let lit = current == Some(index);
                 let response = row(
-                    ui, width, label, shortcut, icon, *enabled, *checked, false, false,
+                    ui, width, label, shortcut, icon, *enabled, *checked, false, false, lit,
                 );
                 if response.hovered() {
                     ui.data_mut(|d| d.remove::<usize>(open_sub));
                 }
-                if *enabled && response.clicked() {
+                if *enabled && (response.clicked() || (lit && activate)) {
                     picked = Some(action.clone());
                 }
             }
             Entry::Sub { label, entries } => {
+                let lit = current == Some(index);
+                if lit && open_by_keys {
+                    ui.data_mut(|d| d.insert_temp(open_sub, index));
+                    focus_first(ui.ctx(), Id::unique((id, "sub", index)), entries);
+                }
                 let open = ui.data(|d| d.get_temp::<usize>(open_sub)) == Some(index);
-                let response = row(ui, width, label, "", "", true, None, true, open);
+                let response = row(ui, width, label, "", "", true, None, true, open, lit);
                 if response.hovered() || response.clicked() {
                     ui.data_mut(|d| d.insert_temp(open_sub, index));
                 }
@@ -254,7 +333,8 @@ fn width<A>(ui: &Ui, entries: &[Entry<A>]) -> f32 {
         .ceil()
 }
 
-/// One row. `arrow` marks a submenu row, `open` one whose submenu is showing.
+/// One row. `arrow` marks a submenu row, `open` one whose submenu is showing, and `lit`
+/// the row the keyboard is on, highlighted as the pointer's is.
 #[allow(clippy::too_many_arguments)]
 fn row(
     ui: &mut Ui,
@@ -266,6 +346,7 @@ fn row(
     checked: Option<bool>,
     arrow: bool,
     open: bool,
+    lit: bool,
 ) -> egui::Response {
     let sense = if enabled {
         Sense::click()
@@ -274,8 +355,9 @@ fn row(
     };
     let (rect, response) = ui.allocate_exact_size(egui::vec2(width, ROW), sense);
     // WinUI marks the row under the pointer with a subtle fill; the others with the accent.
-    let hot = enabled && response.hovered() && !theme::win();
-    let subtle = enabled && response.hovered() && theme::win();
+    let pointed = response.hovered() || lit;
+    let hot = enabled && pointed && !theme::win();
+    let subtle = enabled && pointed && theme::win();
     let painter = ui.painter();
     if hot {
         painter.rect_filled(rect, CornerRadius::same(4), theme::accent());
