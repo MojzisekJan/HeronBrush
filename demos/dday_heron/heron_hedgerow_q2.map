@@ -1,0 +1,501 @@
+// Format: Quake2
+// heron_brush format 3
+// entity 0
+{
+"classname" "worldspawn"
+"message" "Heron Hedgerow"
+"sky" "sr"
+"_sunlight" "150"
+"_sun_mangle" "60 -40 0"
+"_sunlight2" "60"
+// heron_brush id 6f68710000000001
+// brush 0
+{
+( -1040 -528 -16 ) ( -1040 -527 -16 ) ( -1040 -528 -15 ) dday/grass1 0 0 0 1 1
+( 1040 528 0 ) ( 1040 528 1 ) ( 1040 529 0 ) dday/grass1 0 0 0 1 1
+( -1040 -528 -16 ) ( -1040 -528 -15 ) ( -1039 -528 -16 ) dday/grass1 0 0 0 1 1
+( 1040 528 0 ) ( 1041 528 0 ) ( 1040 528 1 ) dday/grass1 0 0 0 1 1
+( 1040 528 0 ) ( 1040 529 0 ) ( 1041 528 0 ) dday/grass1 0 0 0 1 1
+( -1040 -528 -16 ) ( -1039 -528 -16 ) ( -1040 -527 -16 ) dday/grass1 0 0 0 1 1
+}
+// heron_brush id 6f68710000000002
+// brush 1
+{
+( -1040 -528 448 ) ( -1040 -527 448 ) ( -1040 -528 449 ) e1u1/sky1 0 0 0 1 1
+( 1040 528 464 ) ( 1040 528 465 ) ( 1040 529 464 ) e1u1/sky1 0 0 0 1 1
+( -1040 -528 448 ) ( -1040 -528 449 ) ( -1039 -528 448 ) e1u1/sky1 0 0 0 1 1
+( 1040 528 464 ) ( 1041 528 464 ) ( 1040 528 465 ) e1u1/sky1 0 0 0 1 1
+( 1040 528 464 ) ( 1040 529 464 ) ( 1041 528 464 ) e1u1/sky1 0 0 0 1 1
+( -1040 -528 448 ) ( -1039 -528 448 ) ( -1040 -527 448 ) e1u1/sky1 0 0 0 1 1
+}
+// heron_brush id 6f68710000000003
+// brush 2
+{
+( -1040 -528 0 ) ( -1040 -527 0 ) ( -1040 -528 1 ) dday/bricks2 0 0 0 1 1
+( -1024 528 448 ) ( -1024 528 449 ) ( -1024 529 448 ) dday/bricks2 0 0 0 1 1
+( -1040 -528 0 ) ( -1040 -528 1 ) ( -1039 -528 0 ) dday/bricks2 0 0 0 1 1
+( -1024 528 448 ) ( -1023 528 448 ) ( -1024 528 449 ) dday/bricks2 0 0 0 1 1
+( -1024 528 448 ) ( -1024 529 448 ) ( -1023 528 448 ) dday/bricks2 0 0 0 1 1
+( -1040 -528 0 ) ( -1039 -528 0 ) ( -1040 -527 0 ) dday/bricks2 0 0 0 1 1
+}
+// heron_brush id 6f68710000000004
+// brush 3
+{
+( 1024 -528 0 ) ( 1024 -527 0 ) ( 1024 -528 1 ) dday/bricks2 0 0 0 1 1
+( 1040 528 448 ) ( 1040 528 449 ) ( 1040 529 448 ) dday/bricks2 0 0 0 1 1
+( 1024 -528 0 ) ( 1024 -528 1 ) ( 1025 -528 0 ) dday/bricks2 0 0 0 1 1
+( 1040 528 448 ) ( 1041 528 448 ) ( 1040 528 449 ) dday/bricks2 0 0 0 1 1
+( 1040 528 448 ) ( 1040 529 448 ) ( 1041 528 448 ) dday/bricks2 0 0 0 1 1
+( 1024 -528 0 ) ( 1025 -528 0 ) ( 1024 -527 0 ) dday/bricks2 0 0 0 1 1
+}
+// heron_brush id 6f68710000000005
+// brush 4
+{
+( -1024 -528 0 ) ( -1024 -527 0 ) ( -1024 -528 1 ) dday/bricks2 0 0 0 1 1
+( 1024 -512 448 ) ( 1024 -512 449 ) ( 1024 -511 448 ) dday/bricks2 0 0 0 1 1
+( -1024 -528 0 ) ( -1024 -528 1 ) ( -1023 -528 0 ) dday/bricks2 0 0 0 1 1
+( 1024 -512 448 ) ( 1025 -512 448 ) ( 1024 -512 449 ) dday/bricks2 0 0 0 1 1
+( 1024 -512 448 ) ( 1024 -511 448 ) ( 1025 -512 448 ) dday/bricks2 0 0 0 1 1
+( -1024 -528 0 ) ( -1023 -528 0 ) ( -1024 -527 0 ) dday/bricks2 0 0 0 1 1
+}
+// heron_brush id 6f68710000000006
+// brush 5
+{
+( -1024 512 0 ) ( -1024 513 0 ) ( -1024 512 1 ) dday/bricks2 0 0 0 1 1
+( 1024 528 448 ) ( 1024 528 449 ) ( 1024 529 448 ) dday/bricks2 0 0 0 1 1
+( -1024 512 0 ) ( -1024 512 1 ) ( -1023 512 0 ) dday/bricks2 0 0 0 1 1
+( 1024 528 448 ) ( 1025 528 448 ) ( 1024 528 449 ) dday/bricks2 0 0 0 1 1
+( 1024 528 448 ) ( 1024 529 448 ) ( 1025 528 448 ) dday/bricks2 0 0 0 1 1
+( -1024 512 0 ) ( -1023 512 0 ) ( -1024 513 0 ) dday/bricks2 0 0 0 1 1
+}
+// heron_brush id 6f68710000000008
+// brush 6
+{
+( -768 -512 0 ) ( -768 -511 0 ) ( -768 -512 1 ) dday/bricks7 0 0 0 1 1
+( -752 -64 48 ) ( -752 -64 49 ) ( -752 -63 48 ) dday/bricks7 0 0 0 1 1
+( -768 -512 0 ) ( -768 -512 1 ) ( -767 -512 0 ) dday/bricks7 0 0 0 1 1
+( -752 -64 48 ) ( -751 -64 48 ) ( -752 -64 49 ) dday/bricks7 0 0 0 1 1
+( -752 -64 48 ) ( -752 -63 48 ) ( -751 -64 48 ) dday/bricks7 0 0 0 1 1
+( -768 -512 0 ) ( -767 -512 0 ) ( -768 -511 0 ) dday/bricks7 0 0 0 1 1
+}
+// heron_brush id 6f68710000000009
+// brush 7
+{
+( -768 64 0 ) ( -768 65 0 ) ( -768 64 1 ) dday/bricks7 0 0 0 1 1
+( -752 512 48 ) ( -752 512 49 ) ( -752 513 48 ) dday/bricks7 0 0 0 1 1
+( -768 64 0 ) ( -768 64 1 ) ( -767 64 0 ) dday/bricks7 0 0 0 1 1
+( -752 512 48 ) ( -751 512 48 ) ( -752 512 49 ) dday/bricks7 0 0 0 1 1
+( -752 512 48 ) ( -752 513 48 ) ( -751 512 48 ) dday/bricks7 0 0 0 1 1
+( -768 64 0 ) ( -767 64 0 ) ( -768 65 0 ) dday/bricks7 0 0 0 1 1
+}
+// heron_brush id 6f68710000000015
+// brush 8
+{
+( 752 -512 0 ) ( 752 -511 0 ) ( 752 -512 1 ) dday/bricks7 0 0 0 1 1
+( 768 -64 48 ) ( 768 -64 49 ) ( 768 -63 48 ) dday/bricks7 0 0 0 1 1
+( 752 -512 0 ) ( 752 -512 1 ) ( 753 -512 0 ) dday/bricks7 0 0 0 1 1
+( 768 -64 48 ) ( 769 -64 48 ) ( 768 -64 49 ) dday/bricks7 0 0 0 1 1
+( 768 -64 48 ) ( 768 -63 48 ) ( 769 -64 48 ) dday/bricks7 0 0 0 1 1
+( 752 -512 0 ) ( 753 -512 0 ) ( 752 -511 0 ) dday/bricks7 0 0 0 1 1
+}
+// heron_brush id 6f68710000000016
+// brush 9
+{
+( 752 64 0 ) ( 752 65 0 ) ( 752 64 1 ) dday/bricks7 0 0 0 1 1
+( 768 512 48 ) ( 768 512 49 ) ( 768 513 48 ) dday/bricks7 0 0 0 1 1
+( 752 64 0 ) ( 752 64 1 ) ( 753 64 0 ) dday/bricks7 0 0 0 1 1
+( 768 512 48 ) ( 769 512 48 ) ( 768 512 49 ) dday/bricks7 0 0 0 1 1
+( 768 512 48 ) ( 768 513 48 ) ( 769 512 48 ) dday/bricks7 0 0 0 1 1
+( 752 64 0 ) ( 753 64 0 ) ( 752 65 0 ) dday/bricks7 0 0 0 1 1
+}
+// heron_brush id 6f68710000000021
+// brush 10
+{
+( -128 -128 0 ) ( -128 -127 0 ) ( -128 -128 1 ) dday/base1 0 0 0 1 1
+( 128 128 96 ) ( 128 128 97 ) ( 128 129 96 ) dday/base1 0 0 0 1 1
+( -128 -128 0 ) ( -128 -128 1 ) ( -127 -128 0 ) dday/base1 0 0 0 1 1
+( 128 128 96 ) ( 129 128 96 ) ( 128 128 97 ) dday/base1 0 0 0 1 1
+( 128 128 96 ) ( 128 129 96 ) ( 129 128 96 ) dday/base1 0 0 0 1 1
+( -128 -128 0 ) ( -127 -128 0 ) ( -128 -127 0 ) dday/base1 0 0 0 1 1
+}
+// heron_brush id 6f68710000000022
+// brush 11
+{
+( -320 -64 0 ) ( -128 -64 0 ) ( -128 64 0 ) dday/base1 0 0 0 1 1
+( -320 -64 0 ) ( -320 64 0 ) ( -128 64 96 ) dday/base1 0 0 0 1 1
+( -128 64 0 ) ( -128 -64 0 ) ( -128 -64 96 ) dday/base1 0 0 0 1 1
+( -128 64 96 ) ( -320 64 0 ) ( -128 64 0 ) dday/base1 0 0 0 1 1
+( -128 -64 0 ) ( -320 -64 0 ) ( -128 -64 96 ) dday/base1 0 0 0 1 1
+}
+// heron_brush id 6f68710000000023
+// brush 12
+{
+( 320 64 0 ) ( 128 64 0 ) ( 128 -64 0 ) dday/base1 64 0 180 1 1
+( 320 64 0 ) ( 320 -64 0 ) ( 128 -64 96 ) dday/base1 120 0 180 0.8 1
+( 128 -64 0 ) ( 128 64 0 ) ( 128 64 96 ) dday/base1 0.000000000000011756609 0 180 1 -1
+( 128 -64 96 ) ( 320 -64 0 ) ( 128 -64 0 ) dday/base1 64 0 180 1 -1
+( 128 64 0 ) ( 320 64 0 ) ( 128 64 96 ) dday/base1 64 0 180 1 -1
+}
+// heron_brush id 6f68710000000026
+// brush 13
+{
+( -544 -320 0 ) ( -544 -319 0 ) ( -544 -320 1 ) dday/crate1 0 0 0 1 1
+( -480 -256 64 ) ( -480 -256 65 ) ( -480 -255 64 ) dday/crate1 0 0 0 1 1
+( -544 -320 0 ) ( -544 -320 1 ) ( -543 -320 0 ) dday/crate1 0 0 0 1 1
+( -480 -256 64 ) ( -479 -256 64 ) ( -480 -256 65 ) dday/crate1 0 0 0 1 1
+( -480 -256 64 ) ( -480 -255 64 ) ( -479 -256 64 ) dday/crate1 0 0 0 1 1
+( -544 -320 0 ) ( -543 -320 0 ) ( -544 -319 0 ) dday/crate1 0 0 0 1 1
+}
+// heron_brush id 6f68710000000027
+// brush 14
+{
+( -480 224 0 ) ( -480 225 0 ) ( -480 224 1 ) dday/crate1 0 0 0 1 1
+( -416 288 64 ) ( -416 288 65 ) ( -416 289 64 ) dday/crate1 0 0 0 1 1
+( -480 224 0 ) ( -480 224 1 ) ( -479 224 0 ) dday/crate1 0 0 0 1 1
+( -416 288 64 ) ( -415 288 64 ) ( -416 288 65 ) dday/crate1 0 0 0 1 1
+( -416 288 64 ) ( -416 289 64 ) ( -415 288 64 ) dday/crate1 0 0 0 1 1
+( -480 224 0 ) ( -479 224 0 ) ( -480 225 0 ) dday/crate1 0 0 0 1 1
+}
+// heron_brush id 6f68710000000028
+// brush 15
+{
+( -656 -320 0 ) ( -656 -319 0 ) ( -656 -320 1 ) dday/hedge 0 0 0 1 1
+( -624 -128 80 ) ( -624 -128 81 ) ( -624 -127 80 ) dday/hedge 0 0 0 1 1
+( -656 -320 0 ) ( -656 -320 1 ) ( -655 -320 0 ) dday/hedge 0 0 0 1 1
+( -624 -128 80 ) ( -623 -128 80 ) ( -624 -128 81 ) dday/hedge 0 0 0 1 1
+( -624 -128 80 ) ( -624 -127 80 ) ( -623 -128 80 ) dday/hedge 0 0 0 1 1
+( -656 -320 0 ) ( -655 -320 0 ) ( -656 -319 0 ) dday/hedge 0 0 0 1 1
+}
+// heron_brush id 6f68710000000029
+// brush 16
+{
+( -656 128 0 ) ( -656 129 0 ) ( -656 128 1 ) dday/hedge 0 0 0 1 1
+( -624 320 80 ) ( -624 320 81 ) ( -624 321 80 ) dday/hedge 0 0 0 1 1
+( -656 128 0 ) ( -656 128 1 ) ( -655 128 0 ) dday/hedge 0 0 0 1 1
+( -624 320 80 ) ( -623 320 80 ) ( -624 320 81 ) dday/hedge 0 0 0 1 1
+( -624 320 80 ) ( -624 321 80 ) ( -623 320 80 ) dday/hedge 0 0 0 1 1
+( -656 128 0 ) ( -655 128 0 ) ( -656 129 0 ) dday/hedge 0 0 0 1 1
+}
+// heron_brush id 6f6871000000002a
+// brush 17
+{
+( 480 -320 0 ) ( 480 -319 0 ) ( 480 -320 1 ) dday/crate1 0 0 0 1 1
+( 544 -256 64 ) ( 544 -256 65 ) ( 544 -255 64 ) dday/crate1 0 0 0 1 1
+( 480 -320 0 ) ( 480 -320 1 ) ( 481 -320 0 ) dday/crate1 0 0 0 1 1
+( 544 -256 64 ) ( 545 -256 64 ) ( 544 -256 65 ) dday/crate1 0 0 0 1 1
+( 544 -256 64 ) ( 544 -255 64 ) ( 545 -256 64 ) dday/crate1 0 0 0 1 1
+( 480 -320 0 ) ( 481 -320 0 ) ( 480 -319 0 ) dday/crate1 0 0 0 1 1
+}
+// heron_brush id 6f6871000000002b
+// brush 18
+{
+( 416 224 0 ) ( 416 225 0 ) ( 416 224 1 ) dday/crate1 0 0 0 1 1
+( 480 288 64 ) ( 480 288 65 ) ( 480 289 64 ) dday/crate1 0 0 0 1 1
+( 416 224 0 ) ( 416 224 1 ) ( 417 224 0 ) dday/crate1 0 0 0 1 1
+( 480 288 64 ) ( 481 288 64 ) ( 480 288 65 ) dday/crate1 0 0 0 1 1
+( 480 288 64 ) ( 480 289 64 ) ( 481 288 64 ) dday/crate1 0 0 0 1 1
+( 416 224 0 ) ( 417 224 0 ) ( 416 225 0 ) dday/crate1 0 0 0 1 1
+}
+// heron_brush id 6f6871000000002c
+// brush 19
+{
+( 624 -320 0 ) ( 624 -319 0 ) ( 624 -320 1 ) dday/hedge 0 0 0 1 1
+( 656 -128 80 ) ( 656 -128 81 ) ( 656 -127 80 ) dday/hedge 0 0 0 1 1
+( 624 -320 0 ) ( 624 -320 1 ) ( 625 -320 0 ) dday/hedge 0 0 0 1 1
+( 656 -128 80 ) ( 657 -128 80 ) ( 656 -128 81 ) dday/hedge 0 0 0 1 1
+( 656 -128 80 ) ( 656 -127 80 ) ( 657 -128 80 ) dday/hedge 0 0 0 1 1
+( 624 -320 0 ) ( 625 -320 0 ) ( 624 -319 0 ) dday/hedge 0 0 0 1 1
+}
+// heron_brush id 6f6871000000002d
+// brush 20
+{
+( 624 128 0 ) ( 624 129 0 ) ( 624 128 1 ) dday/hedge 0 0 0 1 1
+( 656 320 80 ) ( 656 320 81 ) ( 656 321 80 ) dday/hedge 0 0 0 1 1
+( 624 128 0 ) ( 624 128 1 ) ( 625 128 0 ) dday/hedge 0 0 0 1 1
+( 656 320 80 ) ( 657 320 80 ) ( 656 320 81 ) dday/hedge 0 0 0 1 1
+( 656 320 80 ) ( 656 321 80 ) ( 657 320 80 ) dday/hedge 0 0 0 1 1
+( 624 128 0 ) ( 625 128 0 ) ( 624 129 0 ) dday/hedge 0 0 0 1 1
+}
+}
+// heron_brush id 6f68710000000007
+// entity 1
+{
+"classname" "info_team_start"
+"origin" "-960 0 64"
+"dll" "usa"
+"kills" "30"
+"message" "Allies"
+"nextmap" "heron_hedgerow"
+"obj_owner" "0"
+"points" "20"
+}
+// heron_brush id 6f6871000000000a
+// entity 2
+{
+"classname" "info_reinforcements_start"
+"origin" "-896 0 24"
+"obj_owner" "0"
+"angle" "0"
+}
+// heron_brush id 6f6871000000000b
+// entity 3
+{
+"classname" "info_lgunner_start"
+"origin" "-960 -384 24"
+"obj_owner" "0"
+"angle" "0"
+}
+// heron_brush id 6f6871000000000c
+// entity 4
+{
+"classname" "info_officer_start"
+"origin" "-960 -192 24"
+"obj_owner" "0"
+"angle" "0"
+}
+// heron_brush id 6f6871000000000d
+// entity 5
+{
+"classname" "info_infantry_start"
+"origin" "-960 0 24"
+"obj_owner" "0"
+"angle" "0"
+}
+// heron_brush id 6f6871000000000e
+// entity 6
+{
+"classname" "info_hgunner_start"
+"origin" "-960 192 24"
+"obj_owner" "0"
+"angle" "0"
+}
+// heron_brush id 6f6871000000000f
+// entity 7
+{
+"classname" "info_sniper_start"
+"origin" "-960 384 24"
+"obj_owner" "0"
+"angle" "0"
+}
+// heron_brush id 6f68710000000010
+// entity 8
+{
+"classname" "info_special_start"
+"origin" "-864 -288 24"
+"obj_owner" "0"
+"angle" "0"
+}
+// heron_brush id 6f68710000000011
+// entity 9
+{
+"classname" "info_engineer_start"
+"origin" "-864 -96 24"
+"obj_owner" "0"
+"angle" "0"
+}
+// heron_brush id 6f68710000000012
+// entity 10
+{
+"classname" "info_medic_start"
+"origin" "-864 96 24"
+"obj_owner" "0"
+"angle" "0"
+}
+// heron_brush id 6f68710000000013
+// entity 11
+{
+"classname" "info_flamethrower_start"
+"origin" "-864 288 24"
+"obj_owner" "0"
+"angle" "0"
+}
+// heron_brush id 6f68710000000014
+// entity 12
+{
+"classname" "info_team_start"
+"origin" "960 0 64"
+"dll" "grm"
+"kills" "30"
+"message" "Axis"
+"nextmap" "heron_hedgerow"
+"obj_owner" "1"
+"points" "20"
+}
+// heron_brush id 6f68710000000017
+// entity 13
+{
+"classname" "info_reinforcements_start"
+"origin" "896 0 24"
+"obj_owner" "1"
+"angle" "180"
+}
+// heron_brush id 6f68710000000018
+// entity 14
+{
+"classname" "info_lgunner_start"
+"origin" "960 -384 24"
+"obj_owner" "1"
+"angle" "180"
+}
+// heron_brush id 6f68710000000019
+// entity 15
+{
+"classname" "info_officer_start"
+"origin" "960 -192 24"
+"obj_owner" "1"
+"angle" "180"
+}
+// heron_brush id 6f6871000000001a
+// entity 16
+{
+"classname" "info_infantry_start"
+"origin" "960 0 24"
+"obj_owner" "1"
+"angle" "180"
+}
+// heron_brush id 6f6871000000001b
+// entity 17
+{
+"classname" "info_hgunner_start"
+"origin" "960 192 24"
+"obj_owner" "1"
+"angle" "180"
+}
+// heron_brush id 6f6871000000001c
+// entity 18
+{
+"classname" "info_sniper_start"
+"origin" "960 384 24"
+"obj_owner" "1"
+"angle" "180"
+}
+// heron_brush id 6f6871000000001d
+// entity 19
+{
+"classname" "info_special_start"
+"origin" "864 -288 24"
+"obj_owner" "1"
+"angle" "180"
+}
+// heron_brush id 6f6871000000001e
+// entity 20
+{
+"classname" "info_engineer_start"
+"origin" "864 -96 24"
+"obj_owner" "1"
+"angle" "180"
+}
+// heron_brush id 6f6871000000001f
+// entity 21
+{
+"classname" "info_medic_start"
+"origin" "864 96 24"
+"obj_owner" "1"
+"angle" "180"
+}
+// heron_brush id 6f68710000000020
+// entity 22
+{
+"classname" "info_flamethrower_start"
+"origin" "864 288 24"
+"obj_owner" "1"
+"angle" "180"
+}
+// heron_brush id 6f68710000000025
+// entity 23
+{
+"classname" "objective_touch"
+"obj_owner" "99"
+"message" "The bunker"
+"health" "10"
+"dmg" "5"
+// heron_brush id 6f68710000000024
+// brush 0
+{
+( -96 -96 96 ) ( -96 -95 96 ) ( -96 -96 97 ) e1u1/trigger 0 0 0 1 1
+( 96 96 160 ) ( 96 96 161 ) ( 96 97 160 ) e1u1/trigger 0 0 0 1 1
+( -96 -96 96 ) ( -96 -96 97 ) ( -95 -96 96 ) e1u1/trigger 0 0 0 1 1
+( 96 96 160 ) ( 97 96 160 ) ( 96 96 161 ) e1u1/trigger 0 0 0 1 1
+( 96 96 160 ) ( 96 97 160 ) ( 97 96 160 ) e1u1/trigger 0 0 0 1 1
+( -96 -96 96 ) ( -95 -96 96 ) ( -96 -95 96 ) e1u1/trigger 0 0 0 1 1
+}
+}
+// heron_brush id 6f6871000000002e
+// entity 24
+{
+"classname" "light"
+"origin" "-768 -320 384"
+"light" "300"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 6f6871000000002f
+// entity 25
+{
+"classname" "light"
+"origin" "-768 320 384"
+"light" "300"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 6f68710000000030
+// entity 26
+{
+"classname" "light"
+"origin" "-256 -320 384"
+"light" "300"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 6f68710000000031
+// entity 27
+{
+"classname" "light"
+"origin" "-256 320 384"
+"light" "300"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 6f68710000000032
+// entity 28
+{
+"classname" "light"
+"origin" "256 -320 384"
+"light" "300"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 6f68710000000033
+// entity 29
+{
+"classname" "light"
+"origin" "256 320 384"
+"light" "300"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 6f68710000000034
+// entity 30
+{
+"classname" "light"
+"origin" "768 -320 384"
+"light" "300"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 6f68710000000035
+// entity 31
+{
+"classname" "light"
+"origin" "768 320 384"
+"light" "300"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 6f68710000000036
+// entity 32
+{
+"classname" "info_player_start"
+"origin" "0 -384 256"
+"angle" "0"
+}
