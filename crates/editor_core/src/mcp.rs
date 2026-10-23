@@ -775,6 +775,7 @@ pub(crate) fn call_tool(
         "select" => select(document, args),
         "set_face_color" => set_face_color(document, args),
         "set_face_material" => set_face_material(document, args),
+        "set_face_flags" => set_face_flags(document, args),
         "omit_covered_faces" => Ok(format!(
             "Omitted {} fully covered static faces",
             document.omit_covered_faces()
@@ -1638,6 +1639,61 @@ fn set_face_material(document: &mut Document, args: &Value) -> Result<String, St
     if material.is_empty() {
         return Err("`material` is required".into());
     }
+    let faces = faces_of_brush(document, args)?;
+    document.set_current_material(material);
+    let changed = document.apply_current_material_on(&faces);
+    Ok(format!("put {material} on {changed} faces"))
+}
+
+/// Sets the Quake 2 style content flags, surface flags and value of faces of one brush,
+/// and Daikatana's light colour, picked as `set_face_material` picks them. A Daikatana
+/// `.wal` gives its faces no flags, so a sky or a light panel there needs them on the
+/// face. `reset` takes a face's own away again.
+fn set_face_flags(document: &mut Document, args: &Value) -> Result<String, String> {
+    let faces = faces_of_brush(document, args)?;
+    let number = |key: &str| -> Result<i32, String> {
+        match args.get(key) {
+            None => Ok(0),
+            Some(value) => value
+                .as_i64()
+                .and_then(|n| i32::try_from(n).ok())
+                .ok_or(format!("`{key}` must be a 32-bit integer")),
+        }
+    };
+    let surface = if args.get("reset").and_then(Value::as_bool) == Some(true) {
+        None
+    } else {
+        let color = match args.get("color") {
+            None => None,
+            Some(value) => {
+                let channels: Vec<u8> = value
+                    .as_array()
+                    .map(|array| {
+                        array
+                            .iter()
+                            .filter_map(|n| n.as_u64().and_then(|n| u8::try_from(n).ok()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let [red, green, blue] = channels[..] else {
+                    return Err("`color` is three integers from 0 to 255".into());
+                };
+                Some([red, green, blue])
+            }
+        };
+        Some(map_model::uv::SurfaceAttributes {
+            content_flags: number("content")?,
+            surface_flags: number("surface")?,
+            value: number("value")?,
+            color,
+        })
+    };
+    let changed = document.set_surface_attributes_on(&faces, surface);
+    Ok(format!("set the flags of {changed} faces"))
+}
+
+/// The faces of `brush` a tool names: `face`, an index, or `facing`, a direction.
+fn faces_of_brush(document: &Document, args: &Value) -> Result<Vec<FaceRef>, String> {
     let node = map_model::node::NodeId(extensions::node_id(
         args.get("brush").ok_or("`brush` is required")?,
     )?);
@@ -1670,9 +1726,7 @@ fn set_face_material(document: &mut Document, args: &Value) -> Result<String, St
     if faces.is_empty() || faces.iter().any(|face| document.face_at(*face).is_none()) {
         return Err("no such brush face".into());
     }
-    document.set_current_material(material);
-    let changed = document.apply_current_material_on(&faces);
-    Ok(format!("put {material} on {changed} faces"))
+    Ok(faces)
 }
 
 /// Moves the selection onto a layer named by name, as the layer panel's Move Selection
@@ -1875,6 +1929,28 @@ fn tool_definitions() -> Vec<Value> {
                 "material": { "type": "string" },
             }),
             &["brush", "material"],
+        ),
+        tool(
+            "set_face_flags",
+            "Give faces of one brush their own content flags, surface flags and value, \
+             which the map writes after the UV and a Quake 2 style compiler uses in place \
+             of the texture's, and optionally Daikatana's light colour. Faces are picked \
+             as set_face_material picks them. Missing numbers are 0; reset removes the \
+             face's own so it takes its texture's again.",
+            json!({
+                "brush": { "type": "string", "description": "an id from list_brushes" },
+                "face": { "type": "integer" },
+                "facing": vec3_schema("a direction"),
+                "content": { "type": "integer" },
+                "surface": { "type": "integer" },
+                "value": { "type": "integer" },
+                "color": {
+                    "type": "array", "items": { "type": "integer" }, "minItems": 3, "maxItems": 3,
+                    "description": "Daikatana's surface light colour, 0 to 255 each"
+                },
+                "reset": { "type": "boolean" },
+            }),
+            &["brush"],
         ),
         tool(
             "set_face_color",
@@ -2552,6 +2628,80 @@ mod tests {
             2,
             "the host saw the guest's box"
         );
+    }
+
+    /// A Daikatana sky: the `.wal` has no flags, so the lid's underside gets sky and
+    /// light with Daikatana's light colour, and the export writes them on its line.
+    #[test]
+    fn a_face_gets_its_own_flags_and_daikatana_colour() {
+        let mut document = Document::new(WorldBounds::default());
+        let added = call(
+            &mut document,
+            "add_shape",
+            &json!({"kind":"cuboid","min":[0,0,192],"max":[128,128,208],"material":"e1m1/sky2a"}),
+        )
+        .expect("a lid");
+        let brush: Vec<String> =
+            serde_json::from_str(added.split("selected: ").nth(1).expect("ids")).expect("ids");
+        let done = call(
+            &mut document,
+            "set_face_flags",
+            &json!({"brush": brush[0], "facing": [0, 0, -1], "surface": 5, "value": 600,
+                    "color": [255, 255, 204]}),
+        )
+        .expect("the underside");
+        assert!(done.contains("of 1 faces"), "{done}");
+        for wrong in [
+            json!({"brush": brush[0], "face": 0, "color": [1, 2]}),
+            json!({"brush": brush[0], "face": 0, "color": [1, 2, 256]}),
+            json!({"brush": brush[0], "face": 0, "value": 1.5}),
+            json!({"brush": brush[0], "face": 99}),
+        ] {
+            assert!(
+                call(&mut document, "set_face_flags", &wrong).is_err(),
+                "{wrong}"
+            );
+        }
+        let surfaces = |document: &Document| -> Vec<_> {
+            map_model::node::brushes_with_ids(document.tree_world())
+                .into_iter()
+                .flat_map(|(_, brush)| brush.faces().to_vec())
+                .filter_map(|face| face.surface_attributes)
+                .collect()
+        };
+        assert_eq!(
+            surfaces(&document),
+            [map_model::uv::SurfaceAttributes {
+                content_flags: 0,
+                surface_flags: 5,
+                value: 600,
+                color: Some([255, 255, 204]),
+            }]
+        );
+
+        let directory =
+            std::env::temp_dir().join(format!("heron-mcp-daikatana-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).expect("a directory");
+        let path = directory.join("sky.map");
+        call(
+            &mut document,
+            "export_map",
+            &json!({"path": path.to_string_lossy(), "format": "quake2"}),
+        )
+        .expect("exported");
+        let text = std::fs::read_to_string(&path).expect("the export");
+        let _ = std::fs::remove_dir_all(&directory);
+        let flagged: Vec<&str> = text.lines().filter(|l| l.contains(" 0 5 600 ")).collect();
+        assert_eq!(flagged.len(), 1, "{text}");
+        assert!(flagged[0].ends_with(" 0 5 600 255 255 204"), "{text}");
+
+        call(
+            &mut document,
+            "set_face_flags",
+            &json!({"brush": brush[0], "facing": [0, 0, -1], "reset": true}),
+        )
+        .expect("reset");
+        assert!(surfaces(&document).is_empty());
     }
 
     /// A Neverball floor: turf on top, grey on the sides, exported in the face lines

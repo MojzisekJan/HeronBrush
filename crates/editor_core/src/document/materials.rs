@@ -621,6 +621,23 @@ impl Document {
         })
     }
 
+    /// Gives the faces these surface flags, value and colour, or takes theirs away with
+    /// `None`, so they fall back to their texture's. One undo step; returns how many
+    /// faces changed.
+    pub fn set_surface_attributes_on(
+        &mut self,
+        faces: &[FaceRef],
+        surface: Option<map_model::uv::SurfaceAttributes>,
+    ) -> usize {
+        self.edit_faces_on(faces, |face| {
+            if face.surface_attributes == surface {
+                return false;
+            }
+            face.surface_attributes = surface;
+            true
+        })
+    }
+
     /// Puts a material on one face, wherever the pointer is, without selecting it first.
     ///
     /// Assigns the material name without changing UV mapping. The operation is one undo step and

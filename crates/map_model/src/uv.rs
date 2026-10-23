@@ -845,6 +845,11 @@ pub struct SurfaceAttributes {
     pub surface_flags: i32,
     /// A format-defined value, typically the light emitted by the surface.
     pub value: i32,
+    /// Daikatana's surface light colour, three numbers from 0 to 255 after the value.
+    /// Ion Storm's `qrad3` and `arghrad` light with it; nothing else writes it. Bytes,
+    /// so that a face is no bigger for it: the option fits in the padding.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub color: Option<[u8; 3]>,
 }
 
 #[cfg(test)]

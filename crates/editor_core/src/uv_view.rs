@@ -1171,6 +1171,7 @@ mod tests {
                 content_flags: 0,
                 surface_flags: 4,
                 value: 300,
+                color: None,
             })
         );
         let _ = std::fs::remove_dir_all(&root);

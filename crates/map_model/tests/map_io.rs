@@ -314,6 +314,52 @@ fn surface_flags_are_read_when_present() {
 }
 
 #[test]
+fn a_daikatana_face_keeps_its_light_colour_through_a_save() {
+    // From the DK tools' example.map (IonRadiant): the sky faces give off light of the
+    // colour after the value, the walls have flags and no colour, and an old face has
+    // nothing after its scale.
+    let source = r#"{
+"palette" "e1m1"
+"classname" "worldspawn"
+// brush 0  layer 000
+{
+( 384 256 192 ) ( -256 256 192 ) ( -256 -320 192 ) e1m1/sky2a 0 0 0 1 1 0 5 600 255 255 204
+( -256 -320 208 ) ( -256 256 208 ) ( 384 256 208 ) e1m1/mossrk_04 -192 0 0 1 1 0 1024 0
+( -256 -320 208 ) ( 384 -320 208 ) ( 384 -320 -16 ) e1m1/mossrk_04 0 0 0 1 1
+( 384 -320 208 ) ( 384 256 208 ) ( 384 256 -16 ) e1m1/mossrk_04 0 0 0 1 1
+}
+}
+"#;
+    let map =
+        read_map(source, Some("Daikatana".parse().expect("a known format"))).expect("it parses");
+    let faces = &map.entities[0].brushes[0].faces;
+    assert_eq!(faces.len(), 4);
+    let sky = faces[0].surface_attributes.expect("the sky has flags");
+    assert_eq!((sky.surface_flags, sky.value), (5, 600));
+    assert_eq!(sky.color, Some([255, 255, 204]));
+    let wall = faces[1].surface_attributes.expect("the wall has flags");
+    assert_eq!((wall.surface_flags, wall.color), (1024, None));
+    assert_eq!(faces[2].surface_attributes, None);
+
+    for format in [MapFormat::Quake2, MapFormat::Valve] {
+        let mut map = map.clone();
+        map.format = format;
+        let written = write_map(&map);
+        let lines: Vec<&str> = written.lines().filter(|l| l.starts_with('(')).collect();
+        assert!(
+            lines[0].ends_with(" 0 5 600 255 255 204"),
+            "{format}: {}",
+            lines[0]
+        );
+        assert!(lines[1].ends_with(" 0 1024 0"), "{format}: {}", lines[1]);
+        let reread = read(&written);
+        let faces = &reread.entities[0].brushes[0].faces;
+        assert_eq!(faces[0].surface_attributes, Some(sky), "{format}");
+        assert_eq!(faces[1].surface_attributes, Some(wall), "{format}");
+    }
+}
+
+#[test]
 fn a_brush_primitive_is_read_for_its_geometry_with_default_uv() {
     // A 32-unit cube written as Quake 3 `brushDef`: three points, then the 2x3 texture
     // matrix, then the material and the flags.
@@ -563,6 +609,7 @@ fn a_quake2_dialect_leaves_out_flags_a_face_does_not_have() {
         content_flags: 1,
         surface_flags: 4,
         value: 0,
+        color: None,
     });
     for format in [MapFormat::Quake2, MapFormat::Quake2Valve] {
         map.format = format;

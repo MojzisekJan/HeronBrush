@@ -183,6 +183,9 @@ fn write_face(out: &mut String, face: &BrushFace, format: MapFormat, with_color:
             " {} {} {}",
             surface.content_flags, surface.surface_flags, surface.value
         );
+        if let Some([red, green, blue]) = surface.color {
+            let _ = write!(out, " {red} {green} {blue}");
+        }
     } else if format.writes_empty_surface_attributes() {
         // A face that never had flags still writes the trio in Quake 3's dialect, as
         // TrenchBroom does. Neverball's mapc reads a face line only if it is there, and

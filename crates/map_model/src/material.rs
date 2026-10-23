@@ -188,10 +188,11 @@ impl Pixels {
         }))
     }
 
-    fn indexed(source: Source, palette: Arc<[u8; 768]>) -> Self {
+    /// A `.wal`, with the palette it is drawn with unless it carries its own.
+    fn indexed(source: Source, palette: Option<Arc<[u8; 768]>>) -> Self {
         Pixels(Arc::new(PixelsInner {
             source,
-            palette: Some(palette),
+            palette,
             resident: Mutex::new(None),
             info: OnceLock::new(),
             opaque: false,
@@ -223,7 +224,7 @@ impl Pixels {
                             Source::Memory(_) => unreachable!(),
                         };
                         let bytes: Arc<[u8]> = if is_wal(&path) {
-                            crate::wal::read(&encoded, self.0.palette.as_deref()?)
+                            crate::wal::read(&encoded, self.0.palette.as_deref())
                                 .ok()?
                                 .pixels
                                 .into()
@@ -441,11 +442,16 @@ impl Material {
             } else {
                 wal_header_bytes(&asset.origin)
             };
-            surface_defaults = header.and_then(|bytes| crate::wal::surface_defaults(&bytes));
-            let palette = palette.ok_or_else(|| MaterialError::Decode {
-                path: path.clone(),
-                message: "WAL requires an external palette (pics/colormap.pcx)".into(),
-            })?;
+            surface_defaults = header.as_deref().and_then(crate::wal::surface_defaults);
+            // Daikatana's carry their own palette.
+            let palette = if header.as_deref().is_some_and(crate::wal::is_daikatana) {
+                None
+            } else {
+                Some(palette.ok_or_else(|| MaterialError::Decode {
+                    path: path.clone(),
+                    message: "WAL requires an external palette (pics/colormap.pcx)".into(),
+                })?)
+            };
             Pixels::indexed(Source::Asset(asset), palette)
         } else {
             Pixels::asset(asset, !alpha && !name.starts_with('{'))
@@ -1200,7 +1206,11 @@ fn read_header(path: &Path) -> Result<(u32, u32, bool), String> {
     use image::ImageDecoder;
     if is_pcx(path) || is_wal(path) {
         #[cfg(not(target_arch = "wasm32"))]
-        let length = if is_wal(path) { 100 } else { 128 };
+        let length = if is_wal(path) {
+            crate::wal::HEADER_BYTES
+        } else {
+            128
+        };
         let header = |bytes: &[u8]| {
             if is_wal(path) {
                 crate::wal::header(bytes).map(|(w, h, _)| (w, h, true))
@@ -1210,12 +1220,8 @@ fn read_header(path: &Path) -> Result<(u32, u32, bool), String> {
         };
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use std::io::Read;
-            let mut bytes = [0; 128];
-            std::fs::File::open(path)
-                .and_then(|mut file| file.read_exact(&mut bytes[..length]))
-                .map_err(|error| error.to_string())?;
-            return header(&bytes[..length]);
+            let bytes = read_prefix(path, length).map_err(|error| error.to_string())?;
+            return header(&bytes);
         }
         #[cfg(target_arch = "wasm32")]
         return header(&file_store::read(path).map_err(|error| error.to_string())?);
@@ -1343,37 +1349,48 @@ fn read_material_with_palette(
         has_alpha,
     );
     if is_wal(path) {
-        let palette = palette
-            .as_ref()
-            .map_err(|message| MaterialError::Decode {
-                path: path.into(),
-                message: message.clone(),
-            })?
-            .clone()
-            .ok_or_else(|| MaterialError::Decode {
-                path: path.into(),
-                message: "WAL requires an external palette (pics/colormap.pcx)".into(),
-            })?;
+        let header = wal_header_bytes(path);
+        // Daikatana's carry their own palette.
+        let palette = if header.as_deref().is_some_and(crate::wal::is_daikatana) {
+            None
+        } else {
+            let palette = palette
+                .as_ref()
+                .map_err(|message| MaterialError::Decode {
+                    path: path.into(),
+                    message: message.clone(),
+                })?
+                .clone()
+                .ok_or_else(|| MaterialError::Decode {
+                    path: path.into(),
+                    message: "WAL requires an external palette (pics/colormap.pcx)".into(),
+                })?;
+            Some(palette)
+        };
         material.pixels = Pixels::indexed(Source::File(path.to_path_buf()), palette);
-        material.surface_defaults =
-            wal_header_bytes(path).and_then(|bytes| crate::wal::surface_defaults(&bytes));
+        material.surface_defaults = header.as_deref().and_then(crate::wal::surface_defaults);
     }
     Ok(material)
 }
 
-/// The first 100 bytes of a loose `.wal`, which is its whole header.
+/// The header of a loose `.wal`: up to Daikatana's 892 bytes, a Quake II one's 100 and
+/// what follows it.
 fn wal_header_bytes(path: &Path) -> Option<Vec<u8>> {
     #[cfg(not(target_arch = "wasm32"))]
-    {
-        use std::io::Read;
-        let mut bytes = vec![0; 100];
-        std::fs::File::open(path)
-            .and_then(|mut file| file.read_exact(&mut bytes))
-            .ok()?;
-        Some(bytes)
-    }
+    return read_prefix(path, crate::wal::HEADER_BYTES).ok();
     #[cfg(target_arch = "wasm32")]
     file_store::read(path).ok()
+}
+
+/// Up to the first `length` bytes of a file; fewer if the file is shorter.
+#[cfg(not(target_arch = "wasm32"))]
+fn read_prefix(path: &Path, length: usize) -> std::io::Result<Vec<u8>> {
+    use std::io::Read;
+    let mut bytes = Vec::with_capacity(length);
+    std::fs::File::open(path)?
+        .take(length as u64)
+        .read_to_end(&mut bytes)?;
+    Ok(bytes)
 }
 
 /// A shader as a material: the first of its images that is on disk, under the shader's
@@ -1962,6 +1979,7 @@ mod wal_material_tests {
             content_flags: 0,
             surface_flags: 4,
             value: 300,
+            color: None,
         });
         for material in [
             folder.get("base/sky").unwrap(),
