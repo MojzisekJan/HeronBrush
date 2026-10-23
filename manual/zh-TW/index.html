@@ -17,8 +17,8 @@
 </script>
 <meta name="color-scheme" content="dark light">
 <link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="../../style.css">
-<link rel="stylesheet" href="../../manual.css">
+<link rel="stylesheet" href="../../style.css?v=275cc33779">
+<link rel="stylesheet" href="../../manual.css?v=3dd45d4b16">
 <link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
 </head>
 <body class="manual-page">
@@ -128,6 +128,7 @@
 <p>在 Heron Brush 已經執行時開啟地圖，地圖會交給正在執行的視窗，該視窗會移到最前面。如果想要另開一個視窗，請在命令列加上 <code>--new-instance</code>（請參閱「命令列」）。</p>
 <h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>介面</h2>
 <p>主視窗包含：上方有選單的標題列、其下的工具列、地圖視圖、右側的檢閱器，以及底部的狀態列。</p>
+<figure class="manual-fig"><img src="../../images/hero.webp" width="1890" height="1076" loading="lazy" alt=""></figure>
 <h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>標題列與選單</h3>
 <p>標題列顯示標誌、選單、中間的地圖名稱，以及視窗按鈕。在 macOS 上，常見的紅、黃、綠按鈕位於左側。拖曳標題列可以移動視窗，按兩下則可最大化。有工作在背景執行時，標題列尾端附近會出現指示器：引擎即時連結、即時工作階段或 <strong>MCP 已啟用</strong>。按一下指示器可以停止即時連結，或開啟對應的視窗。</p>
 <ul>
@@ -142,6 +143,7 @@
 </ul>
 <h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>工具列</h3>
 <p>工具列收納了所有工具。第一組是最常用的：選取、筆刷、裁切、頂點、邊、面、旋轉和縮放。第二組包含斜切、組合、掃掠、控制點、圓角和塗色。將滑鼠游標停在按鈕上，可以看到它的名稱和快速鍵。再按一次目前使用中的工具，就會回到選取工具。</p>
+<ul class="tools tool-table"><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/select.svg" width="22" height="22" alt=""></span><span><strong>選取</strong> <span class="keys"><kbd>Esc</kbd></span><br>選取物件並移動。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/brush.svg" width="22" height="22" alt=""></span><span><strong>筆刷</strong> <span class="keys"><kbd>B</kbd></span><br>在視圖中拖曳以繪製新筆刷。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/clip.svg" width="22" height="22" alt=""></span><span><strong>裁切</strong> <span class="keys"><kbd>C</kbd></span><br>以通過兩點或三點的平面裁切筆刷。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/vertex.svg" width="22" height="22" alt=""></span><span><strong>頂點</strong> <span class="keys"><kbd>V</kbd></span><br>拖曳筆刷的角點。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/edge.svg" width="22" height="22" alt=""></span><span><strong>邊</strong> <span class="keys"><kbd>E</kbd></span><br>拖曳筆刷的邊。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/face.svg" width="22" height="22" alt=""></span><span><strong>面</strong> <span class="keys"><kbd>F</kbd></span><br>拖曳筆刷的面。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/rotate.svg" width="22" height="22" alt=""></span><span><strong>旋轉</strong> <span class="keys"><kbd>R</kbd></span><br>以控制把手旋轉選取內容。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/scale.svg" width="22" height="22" alt=""></span><span><strong>縮放</strong> <span class="keys"><kbd>T</kbd></span><br>以控制把手縮放選取內容。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/shear.svg" width="22" height="22" alt=""></span><span><strong>斜切</strong> <span class="keys"><kbd>G</kbd></span><br>以控制把手斜切選取內容。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/assemble.svg" width="22" height="22" alt=""></span><span><strong>組合</strong> <span class="keys"><kbd>N</kbd></span><br>由放置的點組合出凸筆刷。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/sweep.svg" width="22" height="22" alt=""></span><span><strong>掃掠</strong> <span class="keys"><kbd>Y</kbd></span><br>沿圓弧或路徑擠出面。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/controlpoint.svg" width="22" height="22" alt=""></span><span><strong>控制點</strong> <span class="keys"><kbd>P</kbd></span><br>調整面片的控制網格。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/fillet.svg" width="22" height="22" alt=""></span><span><strong>圓角</strong> <span class="keys"><kbd>O</kbd></span><br>將選取的邊導圓或倒角。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/paint.svg" width="22" height="22" alt=""></span><span><strong>塗色</strong> <span class="keys"><kbd>K</kbd></span><br>為面套用材質與顏色。</span></li></ul>
 <p>工具之後是 <strong>水平翻轉</strong> 和 <strong>垂直翻轉</strong>，接著是兩個開關：<strong>鎖定</strong> 會在筆刷移動時保持材質的貼圖對應，<strong>UV</strong> 則在筆刷旋轉時保持（用 <span class="keys"><kbd>U</kbd></span> 切換）。再來是目前工具本身的設定：筆刷工具會顯示形狀及其選項，圓角工具會顯示半徑、面數、角和 <strong>套用</strong>。最右端是工具名稱、格線大小（<strong>格線 16</strong> 等；按一下可選擇其他大小），以及 <strong>格線設定</strong> 選單，內含貼齊格線、顯示格線、預覽動畫、顯示省略的面和關鍵影格動畫。</p>
 <h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>地圖視圖</h3>
 <p>共有四個視圖：3D 視圖和三個平面視圖，分別是俯視（XY）、前視（XZ）和側視（YZ）。偏好設定 → 檢視 → 版面配置 可以選擇單窗格、雙窗格、三窗格或四窗格。拖曳分隔線可以調整窗格大小。在視圖中按一下，鍵盤輸入就會交給該視圖。<span class="keys"><kbd>Space</kbd></span> 會讓一次只顯示一個視圖的窗格切換到下一個視圖，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> 會把目前接收鍵盤輸入的視圖最大化，再按一次則恢復原本的版面。</p>
@@ -201,21 +203,23 @@
 <p>筆刷是由平面定義的凸面實體。複雜的物件請用多個簡單的筆刷組成，不要試圖讓單一筆刷變成凹面。簡單的形狀就足夠時，請盡量減少筆刷數量。</p>
 <h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>繪製筆刷</h3>
 <p>選擇筆刷工具（<span class="keys"><kbd>B</kbd></span>），在視圖中拖曳。工具列會顯示 <strong>要繪製的形狀</strong>：長方體、樓梯、拱形、圓柱、圓錐、球體（UV）、球體（二十面體）和插入 3D 文字。<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span> 到 <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>7</kbd></span> 可以直接選擇形狀。視形狀而定，工具列會顯示 <strong>挖空</strong> 和 <strong>厚度：</strong>，樓梯的 <strong>階高：</strong> 和 <strong>方向：</strong>，圓形形狀的 <strong>軸：</strong>、<strong>邊數：</strong> 和圓周模式，球體的 <strong>環數：</strong>，以及二十面體的 <strong>精確度：</strong>。請在拖曳前設定好選項，並在不只一個視圖中檢查結果。</p>
+<figure class="manual-fig"><img src="../../images/shapes.webp" width="1380" height="803" loading="lazy" alt=""></figure>
 <h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>選取</h3>
 <p>按一下筆刷即可選取，按住 <span class="keys"><kbd>Ctrl</kbd></span> 再按一下可以加入選取範圍。從空白處拖曳會畫出選取框。在 3D 視圖中，按住 <span class="keys"><kbd>Shift</kbd></span> 再按一下可選取單一個面，按住 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span> 再按一下可加選更多面。拖曳已選取的筆刷會移動它；拖曳未選取的筆刷則只選取並移動那一個。</p>
 <p>在 3D 視圖中，按住 <span class="keys"><kbd>Shift</kbd></span> 拖曳已選取筆刷的某個面，可以將它擠出。按住 <span class="keys"><kbd>Alt</kbd></span> 按一下另一個面，可以把所選面的材質和對齊複製過去；<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> 只複製材質，<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> 則複製旋轉。</p>
 <h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>塑形工具</h3>
-<ul>
-<li><strong>選取</strong>（<span class="keys"><kbd>Esc</kbd></span>）：選取並移動。</li>
-<li><strong>頂點</strong>（<span class="keys"><kbd>V</kbd></span>）、<strong>邊</strong>（<span class="keys"><kbd>E</kbd></span>）、<strong>面</strong>（<span class="keys"><kbd>F</kbd></span>）：拖曳角點、邊或面。按住 <span class="keys"><kbd>Shift</kbd></span> 從邊或面的中間拖曳，會在該處新增一個角點。<span class="keys"><kbd>Delete</kbd></span> 會刪除所挑選的角點。</li>
-<li><strong>旋轉</strong>（<span class="keys"><kbd>R</kbd></span>）、<strong>縮放</strong>（<span class="keys"><kbd>T</kbd></span>）、<strong>斜切</strong>（<span class="keys"><kbd>G</kbd></span>）：用控制點變形選取範圍。</li>
-<li><strong>裁切</strong>（<span class="keys"><kbd>C</kbd></span>）：依序點選兩個或三個點來定義切割平面。<span class="keys"><kbd>Enter</kbd></span> 執行切割，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> 選擇要保留哪一側，<span class="keys"><kbd>Backspace</kbd></span> 或 <span class="keys"><kbd>Esc</kbd></span> 會移除最後一個點。</li>
-<li><strong>組合</strong>（<span class="keys"><kbd>N</kbd></span>）：在一個體積周圍放置點，然後按 <span class="keys"><kbd>Enter</kbd></span>，用這些點建立凸面筆刷。<span class="keys"><kbd>Backspace</kbd></span> 會移除最後一個點。</li>
-<li><strong>掃掠</strong>（<span class="keys"><kbd>Y</kbd></span>）：請參閱下方的掃掠一節。</li>
-<li><strong>控制點</strong>（<span class="keys"><kbd>P</kbd></span>）：調整曲面片的控制網格。</li>
-<li><strong>圓角</strong>（<span class="keys"><kbd>O</kbd></span>）：按一下某條邊即可將它倒圓，或用對應的工具挑選邊或頂點後按 <span class="keys"><kbd>Enter</kbd></span>。面數越多，結果越平滑，幾何體也越多。</li>
-<li><strong>塗色</strong>（<span class="keys"><kbd>K</kbd></span>）：請參閱「材質與 UV」。</li>
+<ul class="tools">
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/select.svg" width="22" height="22" alt=""></span><span><strong>選取</strong>（<span class="keys"><kbd>Esc</kbd></span>）：選取並移動。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/vertex.svg" width="22" height="22" alt=""><img src="../../images/tools/edge.svg" width="22" height="22" alt=""><img src="../../images/tools/face.svg" width="22" height="22" alt=""></span><span><strong>頂點</strong>（<span class="keys"><kbd>V</kbd></span>）、<strong>邊</strong>（<span class="keys"><kbd>E</kbd></span>）、<strong>面</strong>（<span class="keys"><kbd>F</kbd></span>）：拖曳角點、邊或面。按住 <span class="keys"><kbd>Shift</kbd></span> 從邊或面的中間拖曳，會在該處新增一個角點。<span class="keys"><kbd>Delete</kbd></span> 會刪除所挑選的角點。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/rotate.svg" width="22" height="22" alt=""><img src="../../images/tools/scale.svg" width="22" height="22" alt=""><img src="../../images/tools/shear.svg" width="22" height="22" alt=""></span><span><strong>旋轉</strong>（<span class="keys"><kbd>R</kbd></span>）、<strong>縮放</strong>（<span class="keys"><kbd>T</kbd></span>）、<strong>斜切</strong>（<span class="keys"><kbd>G</kbd></span>）：用控制點變形選取範圍。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/clip.svg" width="22" height="22" alt=""></span><span><strong>裁切</strong>（<span class="keys"><kbd>C</kbd></span>）：依序點選兩個或三個點來定義切割平面。<span class="keys"><kbd>Enter</kbd></span> 執行切割，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> 選擇要保留哪一側，<span class="keys"><kbd>Backspace</kbd></span> 或 <span class="keys"><kbd>Esc</kbd></span> 會移除最後一個點。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/assemble.svg" width="22" height="22" alt=""></span><span><strong>組合</strong>（<span class="keys"><kbd>N</kbd></span>）：在一個體積周圍放置點，然後按 <span class="keys"><kbd>Enter</kbd></span>，用這些點建立凸面筆刷。<span class="keys"><kbd>Backspace</kbd></span> 會移除最後一個點。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/sweep.svg" width="22" height="22" alt=""></span><span><strong>掃掠</strong>（<span class="keys"><kbd>Y</kbd></span>）：請參閱下方的掃掠一節。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/controlpoint.svg" width="22" height="22" alt=""></span><span><strong>控制點</strong>（<span class="keys"><kbd>P</kbd></span>）：調整曲面片的控制網格。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/fillet.svg" width="22" height="22" alt=""></span><span><strong>圓角</strong>（<span class="keys"><kbd>O</kbd></span>）：按一下某條邊即可將它倒圓，或用對應的工具挑選邊或頂點後按 <span class="keys"><kbd>Enter</kbd></span>。面數越多，結果越平滑，幾何體也越多。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/paint.svg" width="22" height="22" alt=""></span><span><strong>塗色</strong>（<span class="keys"><kbd>K</kbd></span>）：請參閱「材質與 UV」。</span></li>
 </ul>
+<figure class="manual-fig"><img src="../../images/vertex.webp" width="1000" height="700" loading="lazy" alt=""></figure>
 <h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>組合筆刷</h3>
 <ul>
 <li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>：將所選筆刷合併為它們的凸包。</li>
@@ -225,6 +229,7 @@
 </ul>
 <h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>掃掠、圓角、曲面片與倒角</h3>
 <p><strong>掃掠</strong> 會從所選的面沿路徑建立幾何體。先選取面（在掃掠工具中按住 <span class="keys"><kbd>Alt</kbd></span> 按一下），再到面分頁的掃掠區段設定 <strong>行程</strong>、<strong>轉向</strong>（軸和角度）、<strong>縮放</strong>、<strong>階數</strong> 和 <strong>路徑</strong>（整數或自由對齊；弧形、直線或 S 形彎），然後按 <strong>掃掠</strong>。控制項下方的說明會告訴您將建立多少個筆刷。</p>
+<figure class="manual-fig grid-2"><img src="../../images/sweep.webp" width="1515" height="450" loading="lazy" alt=""><img src="../../images/fillet-preview.webp" width="1280" height="840" loading="lazy" alt=""><img src="../../images/join-corner.webp" width="1200" height="852" loading="lazy" alt=""></figure>
 <p><strong>圓角</strong> 區段會依 <strong>半徑</strong>、<strong>面</strong> 和 <strong>角</strong>（斜接或圓角）將所挑選的邊倒圓；只用一個面時會形成倒斜角。</p>
 <p><strong>曲面片</strong> 會顯示所選曲面片的 <strong>欄</strong> 和 <strong>列</strong>，並有按鈕可以新增或移除一對。幾何體 → 將面轉換為曲面片（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>）會從所選的面建立曲面片。</p>
 <p><strong>內縮與倒角</strong> 作用於所選的面：<strong>內縮</strong> 會從邊緣向內縮小面，<strong>深度</strong> 會把面推出（數值為負時則推入）。<strong>倒角面</strong> 會同時套用兩者；第三個按鈕則依深度的正負，加上一塊面板或切出一個凹槽。<strong>接合角落</strong> 會開啟對話框，以斜接或圓角將兩個筆刷接合在一個角落，並提供預覽。</p>
@@ -237,6 +242,7 @@
 <p><strong>塗色</strong> 工具（<span class="keys"><kbd>K</kbd></span>）會把目前的材質套用到游標下的面：按一下為單一個面塗色，按兩下為整個筆刷塗色，按住 <span class="keys"><kbd>Shift</kbd></span> 再按一下則像滴管一樣，把該面的材質取為目前材質。</p>
 <h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>UV 編輯器</h3>
 <p>面分頁的 <strong>UV</strong> 區段會顯示所選面的材質和輪廓。畫布上的滑鼠操作如下：</p>
+<figure class="manual-fig"><img src="../../images/texture-handles.webp" width="1477" height="675" loading="lazy" alt=""></figure>
 <ul>
 <li>滾輪以游標為中心縮放。用右鍵或中鍵拖曳可以平移。按兩下右鍵會重新框選顯示該面；選取另一個面時會自動框選顯示它。</li>
 <li>用左鍵拖曳會移動材質，而面的輪廓保持不動。圓環用於旋轉貼圖對應，角落的控制點用於縮放，中心的控制點則設定這些變更的原點。</li>
@@ -265,6 +271,7 @@
 <p>編輯器中的每個顏色按鈕都會開啟同一個選擇器。在方塊中拖曳可以選擇飽和度和亮度，在旁邊的色條中拖曳則選擇色相。下方有 <strong>R</strong>、<strong>G</strong> 和 <strong>B</strong> 數值，以及顏色具有不透明度時的 <strong>不透明度</strong> 滑桿。十六進位欄位接受 <code>#RRGGBB</code> 或 <code>#RRGGBBAA</code>；文字不是有效的顏色時會變成紅色。<strong>複製</strong> 會把十六進位色碼放到剪貼簿。按一下選擇器外面即可關閉它。</p>
 <h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>漸層</h3>
 <p><strong>漸層</strong> 可以選擇線性漸層或放射狀漸層，旁邊的按鈕會把顏色頭尾對調。每個色標都有一個顏色按鈕和 <strong>位置（%）</strong>，兩端之間的色標還有移除按鈕。<strong>新增色標</strong> 會在最大的間隔中加入一個色標；一個漸層最多可以有八個色標。<strong>漸層角度</strong> 設定線性漸層的方向，並附有 <strong>+45°</strong> 和 <strong>−45°</strong> 按鈕。</p>
+<figure class="manual-fig"><img src="../../images/paint-gradient.webp" width="1040" height="620" loading="lazy" alt=""></figure>
 <p>預覽下方有一條軌道，每個色標都有一個標記。按一下軌道可以新增色標，按一下標記可以開啟它的選擇器，拖曳標記可以移動它，在標記上按右鍵則可以移除它。軌道下方的三個色塊是預設集：暖色漸層、冷色漸層和灰階漸層。對漸層所做的變更會即時套用到選取範圍。</p>
 <p>漸層的方向很重要：請讓它順著屋頂斜面或彎曲的物件，而不是橫跨不相關的面。塗色後請從兩側檢查模型。</p>
 <h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>表面材質</h3>
@@ -273,6 +280,7 @@
 <h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>素材、圖層與群組</h2>
 <h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>素材庫</h3>
 <p>開啟 <strong>素材</strong> 分頁。用 <strong>新增資料夾</strong> 加入一個 <code>.map</code> 模型資料夾；內建素材庫則一直都在。在 <strong>篩選素材</strong> 中輸入文字即可搜尋。按一下模型將它選取，然後按兩下、按 <span class="keys"><kbd>Enter</kbd></span> 或按 <strong>插入</strong>，就會把它加到游標最後所在的位置。您也可以把模型拖曳到視圖中。素材的筆刷會以一個群組插入，讓模型整體一起移動。</p>
+<figure class="manual-fig grid-2"><img src="../../images/assets/sailboat.webp" width="800" height="600" loading="lazy" alt=""><img src="../../images/assets/gate_paifang.webp" width="800" height="600" loading="lazy" alt=""><img src="../../images/assets/portal_gate.webp" width="800" height="600" loading="lazy" alt=""><img src="../../images/assets/windmill-sails-poster.webp" width="800" height="600" loading="lazy" alt=""></figure>
 <p><strong>將選取範圍儲存為素材</strong> 會把所選的筆刷以 <code>.map</code> 寫入素材庫。素材庫中的素材是一般可編輯的筆刷，而不是匯入的網格。</p>
 <h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>圖層</h3>
 <p>地圖分頁的 <strong>圖層</strong> 清單用來整理大型區域。輸入名稱後按 <strong>新增</strong> 可以建立圖層，按 <span class="keys"><kbd>Enter</kbd></span> 則重新命名目前的圖層。每個圖層都可以隱藏、鎖定或排除在匯出之外。<strong>移到這裡</strong> 會把選取範圍移入目前的圖層。視圖中的右鍵選單也提供移至圖層、設為作用中圖層、隱藏圖層和隔離圖層。</p>
@@ -284,6 +292,7 @@
 <p>常用的實體定義都已內建且隨時可用：燈光、玩家起點、門、按鈕、平台、觸發器、靜態道具、音效和路徑點。在實體分頁中用 <strong>實體定義</strong> 載入專案的 FGD 時，會取代同名的類別，並保留其他內建類別。</p>
 <h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>放置實體</h3>
 <p>在實體分頁的 <strong>實體</strong> 瀏覽器中，於 <strong>篩選類別</strong> 輸入文字並選擇一個類別。對於燈光這類點類別，按 <strong>放置</strong> 或按兩下該類別；<span class="keys"><kbd>Insert</kbd></span> 會在選取範圍中心放置一個。對於門或觸發器這類筆刷類別，請先選取筆刷，再按 <strong>產生</strong>。類別也可以直接拖曳到視圖中。</p>
+<figure class="manual-fig"><img src="../../images/entity-tab.webp" width="1200" height="975" loading="lazy" alt=""></figure>
 <h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>屬性</h3>
 <p>屬性清單用來編輯所選的實體。相同類別的實體會一起編輯。<strong>新增屬性</strong> 可以加入定義中可能沒有的鍵；<strong>預設值</strong> 可以把現有屬性還原為預設值，或補上缺少的屬性。類別有定義但實體尚未設定的屬性會以淡色顯示；輸入數值即可加入。請使用 targetname 和 target 來連結實體。</p>
 <h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>匯出能做到什麼</h3>
@@ -293,9 +302,11 @@
 <p>Heron Brush 可以預覽簡單的運動、編輯筆刷實體的關鍵影格動畫，再將它們匯出到多種引擎。</p>
 <h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>預覽動畫</h3>
 <p>在檢視選單、動畫選單、格線設定選單或地圖分頁的檢視區段中開啟 <strong>預覽動畫</strong>。當 start_on 啟用時，它會依實體的 axis、speed、direction、travel 和 wait 屬性播放 func_rotate 的旋轉和 func_shuttle 的來回運動，也會播放設為啟動時播放的關鍵影格片段。風扇和風車素材本身已包含旋轉的部件。</p>
+<figure class="manual-fig"><picture><source media="(prefers-reduced-motion: reduce)" srcset="../../images/fan-preview-poster.webp"><img src="../../images/fan-preview.webp" width="960" height="640" loading="lazy" alt=""></picture></figure>
 <p>關閉預覽會還原原本的姿勢。在視圖中按一下，會先停止播放，再進行選取或編輯；攝影機導覽仍可正常使用。預覽不會變更地圖、復原記錄或匯出結果，也不會執行物理或遊戲邏輯。</p>
 <h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>關鍵影格編輯器</h3>
 <p>用 動畫 → 關鍵影格動畫 或從格線設定選單開啟它。它會停駐在視圖下方；3D 視窗獨立時則停駐在 3D 視窗中。標題中的視窗圖示會把它移到獨立的視窗；目前的影格和復原記錄都會保留。<strong>編輯動畫</strong> 會讓視圖切換到動畫姿勢，<strong>編輯地圖</strong> 則回到靜止時的幾何體。在動畫模式中，每個視圖底部都會顯示 <strong>編輯動畫</strong> 和影格編號。</p>
+<figure class="manual-fig"><img src="../../images/keyframe-curves.webp" width="1600" height="832" loading="lazy" alt=""></figure>
 <p>選取一個筆刷實體，或一個筆刷或筆刷群組，即可為它製作動畫。單層的筆刷群組共用一個動畫和軸心；包含多個實體的群組則需要分別製作動畫。</p>
 <h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>片段</h3>
 <p><strong>動畫</strong> 選擇器可以在具名的片段之間切換。在 <strong>動畫名稱</strong> 中輸入名稱並按 <strong>另存為</strong>，即可用該名稱複製目前的片段；<strong>刪除</strong> 會移除片段。<strong>平移</strong> 會建立一個不含旋轉的 <code>translate</code> 片段。<strong>門動畫</strong> 會建立平滑的 <code>open</code> 和 <code>close</code> 片段，繞目前的軸心轉動 90 度；請先把軸心移到鉸鏈的位置。<strong>啟動時播放</strong> 會讓片段在關卡開始時播放；門的預設集會將它關閉。</p>
@@ -328,6 +339,7 @@
 <p>從歡迎畫面的範例中開啟 <code>motion_lab</code>。它包含一個 L 形路徑平台、一部升降梯、一個旋轉平台，以及一扇附按鈕的鉸鏈門。在 Godot 中開啟它旁邊的 <code>godot/project.godot</code>，然後按 <span class="keys"><kbd>F5</kbd></span>。WASD 和滑鼠控制玩家移動，Space 跳躍，1 到 4 前往各個展示站，R 重新開始目前的展示站。踩上彩色踏板即可啟動它的目標。隨附的 README 說明如何重新匯出。</p>
 <h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>匯出到引擎</h2>
 <p>檔案 → 匯出 會開啟匯出視窗。左側列出各引擎及其標誌：Godot、Defold、three.js、Bevy、raylib、Unity、Unreal Engine、Flax Engine、Cocos Creator、Wavefront .obj、glTF .gltf、GLB .glb，最後是 <code>.map</code>。右側頁面說明該目標會得到什麼。<strong>寫入</strong> 會寫出結果，<strong>檢查</strong> 會建構關卡但不寫出，並列出問題，<strong>關閉</strong> 則關閉視窗。</p>
+<figure class="manual-fig"><img src="../../images/export-window.webp" width="1134" height="924" loading="lazy" alt=""></figure>
 <p>匯出和儲存是分開的：<code>.map</code> 仍然是您可編輯的原始檔。每個控制項一變更就會儲存該引擎的設定，因此每個引擎都會保留各自的設定，視窗下次開啟時也會維持您離開時的樣子。</p>
 <h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>通用選項</h3>
 <ul>
@@ -387,6 +399,7 @@
 <p>標準版本可在區域網路中使用，<strong>區域網路連接埠</strong> 用來設定連接埠。透過網際網路的工作階段（<strong>透過網際網路連線</strong>）需要包含選用網路功能的版本。參與者可以在 3D 視圖中看到彼此的攝影機標記和名稱。</p>
 <p>關閉視窗後，工作階段仍會繼續執行；標題列的指示器會顯示其狀態。<strong>停止工作階段</strong> 或 <strong>離開工作階段</strong> 會結束它。兩個人編輯同一個物件時，以主持人端的順序決定最終版本，而復原也是一項共用的編輯。請盡可能在不同區域工作，並適時儲存檢查點。</p>
 <h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D 顯示與第二台螢幕</h2>
+<figure class="manual-fig"><img src="../../images/render-dusk.webp" width="2520" height="1296" loading="lazy" alt=""></figure>
 <h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>顯示模式</h3>
 <p>地圖分頁的 <strong>檢視</strong> 區段會切換視圖要繪製的內容：筆刷、點實體、實體模型、實體類別名稱、群組外框、曲面片、材質、顯示省略的面、預覽動畫、線框、邊和筆刷實體外框。線框會繪製三角形的邊，包括對角線和表面後方的邊，且不顯示材質。這是暫時性的除錯檢視，不會影響匯出或算繪。</p>
 <p>3D 視圖的光照、陰影、環境光遮蔽、反射、光暈和平滑處理都在偏好設定 → 算繪器中設定。這些是預覽設定；最終影像會使用算繪攝影機本身的設定。</p>
@@ -396,6 +409,7 @@
 <p>3D 視圖預設會開啟程序化天空，可以在偏好設定 → 算繪器 → 光照中關閉。算繪攝影機有自己的 <strong>程序化天空</strong> 開關，會隨地圖一起儲存。天空、地平線和地面的顏色來自環境設定，太陽則跟隨場景照明。天空沒有幾何體，也不會被匯出。</p>
 <h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>算繪攝影機與 PNG 影像</h2>
 <p>檔案 → 算繪影像 會開啟算繪視窗：左側是攝影機及其設定，右側是即時預覽，會在您變更設定時重新繪製。攝影機會儲存在 <code>.map</code> 中一個僅供編輯器使用的 Render cameras 圖層，此圖層不會包含在引擎匯出中。</p>
+<figure class="manual-fig"><img src="../../images/render-lamps.webp" width="1680" height="864" loading="lazy" alt=""></figure>
 <h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>放置攝影機</h3>
 <p>在 3D 視圖中構好畫面，然後按 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>（或 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>），或按 <strong>依 3D 視圖放置攝影機</strong>。若沒有選取攝影機，會更新第一個已儲存的攝影機；若一個都沒有，則會建立一個新的。這個動作可以復原，並會保留輸出和照明設定。<strong>在地圖中選取攝影機</strong>、<strong>從地圖載入攝影機</strong> 和 <strong>將 3D 視圖移至攝影機</strong> 則是反方向操作。<strong>在 3D 視圖中顯示攝影機框</strong> 會顯示輸出範圍的邊界，<strong>從 3D 視圖控制攝影機</strong> 則讓一般的導覽操作移動已儲存的攝影機。</p>
 <h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>設定</h3>
@@ -463,6 +477,6 @@
 <p>在左側的目錄中選擇章節。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> 會顯示目錄並移到搜尋欄位；<span class="keys"><kbd>Esc</kbd></span> 會清除搜尋，搜尋為空時則關閉手冊。<strong>目錄</strong> 會隱藏或顯示章節清單，<strong>文字大小</strong> 會變更字型大小；兩者都會被記住。頂端的語言清單可以在可用的翻譯之間切換。</p>
   </article>
 </div>
-<script src="../../manual.js"></script>
+<script src="../../manual.js?v=bf0e4cd13f"></script>
 </body>
 </html>

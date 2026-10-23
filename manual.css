@@ -49,6 +49,17 @@
 .toc-list a.current { color: var(--accent-2); background: var(--code-bg); }
 .toc-list .chapter ul a.current { border-left-color: var(--accent-2); }
 .toc-toggle { display: none; }
+/* With the script, only the chapter being read shows its sections; the others fold to their
+   titles. Without it every section stays listed. */
+.toc-list.folding .chapter:not(.open) > ul { display: none; }
+.toc-list.folding .chapter > a { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.toc-list.folding .chapter > a::after {
+  content: ""; flex: none; width: 0.4rem; height: 0.4rem; margin-right: 0.15rem;
+  border-right: 1.5px solid var(--faint); border-bottom: 1.5px solid var(--faint);
+  transform: rotate(-45deg); transition: transform 0.15s ease-out;
+}
+.toc-list.folding .chapter.open > a::after { transform: rotate(45deg); }
+.toc-list .chapter { margin-top: 0.15rem; }
 
 /* The reading column: about 70 characters to a line. */
 .manual-body { max-width: 44rem; min-width: 0; font-size: 1.0625rem; line-height: 1.72; color: var(--text); }
@@ -65,6 +76,26 @@
 .manual-body li::marker { color: var(--faint); }
 .manual-body strong { font-weight: 600; color: var(--heading); }
 .manual-body code { font-size: 0.86em; word-break: break-word; }
+/* The editor's tool icons: every tool with its name and description in the tool strip
+   section, and one or more icons beside each entry of the shaping tools list. */
+.manual-body ul.tools { list-style: none; padding-left: 0; }
+.manual-body ul.tools li { display: grid; grid-template-columns: 5.8rem minmax(0, 1fr); column-gap: 0.7rem; align-items: start; }
+.manual-body ul.tools li + li { margin-top: 0.7em; }
+.tools .tool-icons { display: flex; gap: 0.2rem; padding-top: 0.05em; }
+.tools .tool-icons img { display: block; }
+.manual-body ul.tool-table { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.9rem 1.5rem; margin: 0.4rem 0 1.4rem; }
+.manual-body ul.tool-table li { grid-template-columns: 1.75rem minmax(0, 1fr); margin: 0; line-height: 1.45; font-size: 0.95rem; }
+.manual-body ul.tool-table li + li { margin-top: 0; }
+.tool-table kbd { font-size: 0.72rem; }
+@media (max-width: 560px) { .manual-body ul.tool-table { grid-template-columns: minmax(0, 1fr); } }
+
+/* Screenshots from the main page, beside the sections they show. */
+.manual-fig { margin: 1.5rem 0 1.8rem; }
+.manual-fig img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-2); }
+.manual-fig.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+/* An odd number of shots: the first, a wide one, spans both columns. */
+.manual-fig.grid-2 > :first-child:nth-last-child(odd) { grid-column: 1 / -1; }
+.manual-fig picture { display: block; }
 .manual-body table { width: 100%; border-collapse: collapse; margin: 0 0 1.2rem; font-size: 0.95rem; display: block; overflow-x: auto; }
 .manual-body th, .manual-body td { border-bottom: 1px solid var(--line); padding: 0.45rem 0.6rem; text-align: left; vertical-align: top; }
 .anchor {

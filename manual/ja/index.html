@@ -17,8 +17,8 @@
 </script>
 <meta name="color-scheme" content="dark light">
 <link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="../../style.css">
-<link rel="stylesheet" href="../../manual.css">
+<link rel="stylesheet" href="../../style.css?v=275cc33779">
+<link rel="stylesheet" href="../../manual.css?v=3dd45d4b16">
 <link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
 </head>
 <body class="manual-page">
@@ -128,6 +128,7 @@
 <p>Heron Brush の実行中にマップを開くと、そのマップは実行中のウィンドウに渡され、ウィンドウが前面に出ます。別のウィンドウで開きたい場合は、コマンドラインで <code>--new-instance</code> を指定します（「コマンドライン」を参照）。</p>
 <h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>インターフェース</h2>
 <p>メインウィンドウには、メニューを含むタイトルバー、その下のツールストリップ、マップビュー、右側のインスペクター、下端のステータスバーがあります。</p>
+<figure class="manual-fig"><img src="../../images/hero.webp" width="1890" height="1076" loading="lazy" alt=""></figure>
 <h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>タイトルバーとメニュー</h3>
 <p>タイトルバーには、ロゴ、メニュー、中央のマップ名、ウィンドウボタンが表示されます。macOS では、おなじみの赤・黄・緑のボタンが左端にあります。タイトルバーをドラッグするとウィンドウを移動でき、ダブルクリックすると最大化します。バックグラウンドで何かが動いているときは、バーの右端近くにインジケーターが表示されます。エンジンとのライブリンク、ライブセッション、または <strong>MCP 実行中</strong> です。インジケーターをクリックすると、ライブリンクを停止したり、該当するウィンドウを開いたりできます。</p>
 <ul>
@@ -142,6 +143,7 @@
 </ul>
 <h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>ツールストリップ</h3>
 <p>ツールストリップにはすべてのツールが並んでいます。最初のグループは常に使うもので、選択、ブラシ、クリップ、頂点、辺、面、回転、拡大縮小です。2 番目のグループには、せん断、組み立て、スイープ、制御点、フィレット、ペイントがあります。ボタンにポインターを合わせると、名前とショートカットが表示されます。アクティブなツールをもう一度クリックすると、選択ツールに戻ります。</p>
+<ul class="tools tool-table"><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/select.svg" width="22" height="22" alt=""></span><span><strong>選択</strong> <span class="keys"><kbd>Esc</kbd></span><br>オブジェクトを選択して移動します。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/brush.svg" width="22" height="22" alt=""></span><span><strong>ブラシ</strong> <span class="keys"><kbd>B</kbd></span><br>ビューでドラッグして新しいブラシを描きます。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/clip.svg" width="22" height="22" alt=""></span><span><strong>クリップ</strong> <span class="keys"><kbd>C</kbd></span><br>2点または3点を通る平面でブラシを切断します。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/vertex.svg" width="22" height="22" alt=""></span><span><strong>頂点</strong> <span class="keys"><kbd>V</kbd></span><br>ブラシの頂点をドラッグします。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/edge.svg" width="22" height="22" alt=""></span><span><strong>辺</strong> <span class="keys"><kbd>E</kbd></span><br>ブラシの辺をドラッグします。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/face.svg" width="22" height="22" alt=""></span><span><strong>面</strong> <span class="keys"><kbd>F</kbd></span><br>ブラシの面をドラッグします。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/rotate.svg" width="22" height="22" alt=""></span><span><strong>回転</strong> <span class="keys"><kbd>R</kbd></span><br>ハンドルで選択範囲を回転します。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/scale.svg" width="22" height="22" alt=""></span><span><strong>拡大縮小</strong> <span class="keys"><kbd>T</kbd></span><br>ハンドルで選択範囲の大きさを変えます。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/shear.svg" width="22" height="22" alt=""></span><span><strong>せん断</strong> <span class="keys"><kbd>G</kbd></span><br>ハンドルで選択範囲をせん断します。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/assemble.svg" width="22" height="22" alt=""></span><span><strong>組み立て</strong> <span class="keys"><kbd>N</kbd></span><br>置いた点から凸ブラシを組み立てます。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/sweep.svg" width="22" height="22" alt=""></span><span><strong>スイープ</strong> <span class="keys"><kbd>Y</kbd></span><br>円弧やパスに沿って面を押し出します。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/controlpoint.svg" width="22" height="22" alt=""></span><span><strong>制御点</strong> <span class="keys"><kbd>P</kbd></span><br>パッチの制御グリッドを変形します。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/fillet.svg" width="22" height="22" alt=""></span><span><strong>フィレット</strong> <span class="keys"><kbd>O</kbd></span><br>選んだ辺を丸めるか面取りします。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/paint.svg" width="22" height="22" alt=""></span><span><strong>ペイント</strong> <span class="keys"><kbd>K</kbd></span><br>面にマテリアルと色を付けます。</span></li></ul>
 <p>ツールの後には <strong>水平方向に反転</strong> と <strong>垂直方向に反転</strong>、続いて 2 つのスイッチがあります。<strong>ロック</strong> はブラシを移動してもマテリアルのマッピングを保ち、<strong>UV</strong> はブラシを回転しても保ちます（<span class="keys"><kbd>U</kbd></span> で切り替え）。その後にアクティブなツール固有の設定が続きます。ブラシツールでは形状とそのオプション、フィレットツールでは半径・面数・角と <strong>適用</strong> が表示されます。右端には、ツール名、グリッドサイズ（<strong>グリッド 16</strong> など。クリックで別のサイズを選択）、そして <strong>グリッド設定</strong> メニューがあり、グリッドにスナップ、グリッドを表示、アニメーションをプレビュー、除外した面を表示、キーフレームアニメーションが含まれます。</p>
 <h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>マップビュー</h3>
 <p>ビューは 4 つあります。3D ビューと、3 つの平面ビュー、上面 (XY)、正面 (XZ)、側面 (YZ) です。環境設定 → 表示 → レイアウト で、単一ビュー、2 分割、3 分割、4 分割 を選べます。区切り線をドラッグするとペインの大きさを変えられます。ビュー内をクリックすると、そのビューがキーボード入力を受け取ります。<span class="keys"><kbd>Space</kbd></span> は一度に 1 つのビューを表示するペインを次のビューに切り替え、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> はキーボード入力を受けているビューを最大化し、もう一度押すとレイアウトを元に戻します。</p>
@@ -201,21 +203,23 @@
 <p>ブラシは平面で定義される凸型のソリッドです。1 つのブラシを凹型にしようとするのではなく、複数の単純なブラシを組み合わせて複雑なオブジェクトを作ります。単純な形状で十分な箇所では、ブラシの数を少なく抑えましょう。</p>
 <h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>ブラシの描画</h3>
 <p>ブラシツール（<span class="keys"><kbd>B</kbd></span>）を選び、ビュー内でドラッグします。ツールストリップに <strong>描画する形状</strong> が表示され、直方体、階段、アーチ、円柱、円錐、回転楕円体 (UV)、回転楕円体 (正二十面体)、3D テキストを挿入 から選べます。<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span>～<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>7</kbd></span> で形状を直接選択できます。形状に応じて、ストリップには <strong>中空化</strong> と <strong>厚さ:</strong>、階段では <strong>段の高さ:</strong> と <strong>方向:</strong>、円形の形状では <strong>軸:</strong>、<strong>側面数:</strong> と円の作り方、球では <strong>リング数:</strong>、正二十面体では <strong>精度:</strong> が表示されます。オプションはドラッグする前に設定してください。結果は複数のビューで確認しましょう。</p>
+<figure class="manual-fig"><img src="../../images/shapes.webp" width="1380" height="803" loading="lazy" alt=""></figure>
 <h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>選択</h3>
 <p>ブラシをクリックすると選択され、<span class="keys"><kbd>Ctrl</kbd></span> を押しながらクリックすると選択に追加されます。何もない場所からドラッグすると選択ボックスを描けます。3D ビューでは、<span class="keys"><kbd>Shift</kbd></span> を押しながらクリックすると面を 1 つだけ選択し、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span> を押しながらクリックすると面を追加します。選択中のブラシをドラッグすると移動し、未選択のブラシをドラッグすると、そのブラシだけを選択して移動します。</p>
 <p>3D ビューで、選択中のブラシの面を <span class="keys"><kbd>Shift</kbd></span> を押しながらドラッグすると押し出せます。別の面を <span class="keys"><kbd>Alt</kbd></span> を押しながらクリックすると、選択中の面のマテリアルと配置をその面にコピーします。<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> ではマテリアルだけを、<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> では回転をコピーします。</p>
 <h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>形状編集ツール</h3>
-<ul>
-<li><strong>選択</strong>（<span class="keys"><kbd>Esc</kbd></span>）：選択と移動。</li>
-<li><strong>頂点</strong>（<span class="keys"><kbd>V</kbd></span>）、<strong>辺</strong>（<span class="keys"><kbd>E</kbd></span>）、<strong>面</strong>（<span class="keys"><kbd>F</kbd></span>）：角、辺、面をドラッグします。辺や面の中央から <span class="keys"><kbd>Shift</kbd></span> を押しながらドラッグすると、そこに角を追加します。<span class="keys"><kbd>Delete</kbd></span> で選んだ角を削除します。</li>
-<li><strong>回転</strong>（<span class="keys"><kbd>R</kbd></span>）、<strong>拡大縮小</strong>（<span class="keys"><kbd>T</kbd></span>）、<strong>せん断</strong>（<span class="keys"><kbd>G</kbd></span>）：ハンドルで選択範囲を変形します。</li>
-<li><strong>クリップ</strong>（<span class="keys"><kbd>C</kbd></span>）：2 点または 3 点をクリックして切断面を定義します。<span class="keys"><kbd>Enter</kbd></span> で切断し、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> で残す側を選び、<span class="keys"><kbd>Backspace</kbd></span> または <span class="keys"><kbd>Esc</kbd></span> で最後の点を取り消します。</li>
-<li><strong>組み立て</strong>（<span class="keys"><kbd>N</kbd></span>）：立体を囲むように点を置き、<span class="keys"><kbd>Enter</kbd></span> を押すと、それらの点から凸型のブラシを作成します。<span class="keys"><kbd>Backspace</kbd></span> で最後の点を取り消します。</li>
-<li><strong>スイープ</strong>（<span class="keys"><kbd>Y</kbd></span>）：後述の「スイープ」を参照。</li>
-<li><strong>制御点</strong>（<span class="keys"><kbd>P</kbd></span>）：パッチの制御グリッドを変形します。</li>
-<li><strong>フィレット</strong>（<span class="keys"><kbd>O</kbd></span>）：辺をクリックして丸めるか、各ツールで辺や頂点を選んで <span class="keys"><kbd>Enter</kbd></span> を押します。面数を増やすほど滑らかになりますが、ジオメトリも増えます。</li>
-<li><strong>ペイント</strong>（<span class="keys"><kbd>K</kbd></span>）：「マテリアルと UV」を参照。</li>
+<ul class="tools">
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/select.svg" width="22" height="22" alt=""></span><span><strong>選択</strong>（<span class="keys"><kbd>Esc</kbd></span>）：選択と移動。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/vertex.svg" width="22" height="22" alt=""><img src="../../images/tools/edge.svg" width="22" height="22" alt=""><img src="../../images/tools/face.svg" width="22" height="22" alt=""></span><span><strong>頂点</strong>（<span class="keys"><kbd>V</kbd></span>）、<strong>辺</strong>（<span class="keys"><kbd>E</kbd></span>）、<strong>面</strong>（<span class="keys"><kbd>F</kbd></span>）：角、辺、面をドラッグします。辺や面の中央から <span class="keys"><kbd>Shift</kbd></span> を押しながらドラッグすると、そこに角を追加します。<span class="keys"><kbd>Delete</kbd></span> で選んだ角を削除します。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/rotate.svg" width="22" height="22" alt=""><img src="../../images/tools/scale.svg" width="22" height="22" alt=""><img src="../../images/tools/shear.svg" width="22" height="22" alt=""></span><span><strong>回転</strong>（<span class="keys"><kbd>R</kbd></span>）、<strong>拡大縮小</strong>（<span class="keys"><kbd>T</kbd></span>）、<strong>せん断</strong>（<span class="keys"><kbd>G</kbd></span>）：ハンドルで選択範囲を変形します。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/clip.svg" width="22" height="22" alt=""></span><span><strong>クリップ</strong>（<span class="keys"><kbd>C</kbd></span>）：2 点または 3 点をクリックして切断面を定義します。<span class="keys"><kbd>Enter</kbd></span> で切断し、<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> で残す側を選び、<span class="keys"><kbd>Backspace</kbd></span> または <span class="keys"><kbd>Esc</kbd></span> で最後の点を取り消します。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/assemble.svg" width="22" height="22" alt=""></span><span><strong>組み立て</strong>（<span class="keys"><kbd>N</kbd></span>）：立体を囲むように点を置き、<span class="keys"><kbd>Enter</kbd></span> を押すと、それらの点から凸型のブラシを作成します。<span class="keys"><kbd>Backspace</kbd></span> で最後の点を取り消します。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/sweep.svg" width="22" height="22" alt=""></span><span><strong>スイープ</strong>（<span class="keys"><kbd>Y</kbd></span>）：後述の「スイープ」を参照。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/controlpoint.svg" width="22" height="22" alt=""></span><span><strong>制御点</strong>（<span class="keys"><kbd>P</kbd></span>）：パッチの制御グリッドを変形します。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/fillet.svg" width="22" height="22" alt=""></span><span><strong>フィレット</strong>（<span class="keys"><kbd>O</kbd></span>）：辺をクリックして丸めるか、各ツールで辺や頂点を選んで <span class="keys"><kbd>Enter</kbd></span> を押します。面数を増やすほど滑らかになりますが、ジオメトリも増えます。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/paint.svg" width="22" height="22" alt=""></span><span><strong>ペイント</strong>（<span class="keys"><kbd>K</kbd></span>）：「マテリアルと UV」を参照。</span></li>
 </ul>
+<figure class="manual-fig"><img src="../../images/vertex.webp" width="1000" height="700" loading="lazy" alt=""></figure>
 <h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>ブラシの結合</h3>
 <ul>
 <li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>：選択したブラシを凸包に統合。</li>
@@ -225,6 +229,7 @@
 </ul>
 <h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>スイープ、フィレット、パッチ、ベベル</h3>
 <p><strong>スイープ</strong> は、選択した面からパスに沿ってジオメトリを生成します。面を選択し（スイープツールでは <span class="keys"><kbd>Alt</kbd></span> を押しながらクリック）、面タブのスイープセクションで <strong>移動</strong>、<strong>回転</strong>（軸と角度）、<strong>拡大縮小</strong>、<strong>ステップ数</strong>、<strong>パス</strong>（整数 または 自由 の配置、円弧、直線、S 字カーブ）を設定して、<strong>スイープ</strong> を押します。コントロールの下の行に、作成されるブラシの数が表示されます。</p>
+<figure class="manual-fig grid-2"><img src="../../images/sweep.webp" width="1515" height="450" loading="lazy" alt=""><img src="../../images/fillet-preview.webp" width="1280" height="840" loading="lazy" alt=""><img src="../../images/join-corner.webp" width="1200" height="852" loading="lazy" alt=""></figure>
 <p><strong>フィレット</strong> セクションでは、選んだ辺を <strong>半径</strong>、<strong>面</strong>、<strong>角</strong>（留め継ぎ または 丸め）の設定で丸めます。面を 1 にすると面取りになります。</p>
 <p><strong>パッチ</strong> には選択したパッチの <strong>列</strong> と <strong>行</strong> が表示され、ボタンで 1 組ずつ追加・削除できます。形状 → 面をパッチに変換（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>）で、選択した面からパッチを作成します。</p>
 <p><strong>インセットとベベル</strong> は選択した面に作用します。<strong>インセット</strong> は面を辺から内側に縮め、<strong>深さ</strong> は面を外側へ（負の値なら内側へ）押し出します。<strong>面をベベル</strong> は両方を適用します。3 番目のボタンは、深さの符号に応じてパネルを追加するか、くぼみを彫ります。<strong>角を接合</strong> は、2 つのブラシを留め継ぎまたは丸めた角で接合するダイアログを、プレビュー付きで開きます。</p>
@@ -237,6 +242,7 @@
 <p><strong>ペイント</strong> ツール（<span class="keys"><kbd>K</kbd></span>）は、ポインター下の面に現在のマテリアルを適用します。クリックで 1 つの面を、ダブルクリックでブラシ全体をペイントします。<span class="keys"><kbd>Shift</kbd></span> を押しながらクリックすると、スポイトのようにその面のマテリアルを現在のマテリアルとして取得します。</p>
 <h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>UV エディター</h3>
 <p>面タブの <strong>UV</strong> セクションには、選択した面のマテリアルと輪郭が表示されます。キャンバス上のマウス操作は次のとおりです。</p>
+<figure class="manual-fig"><img src="../../images/texture-handles.webp" width="1477" height="675" loading="lazy" alt=""></figure>
 <ul>
 <li>ホイールでポインターを中心にズームします。右ボタンまたは中ボタンでドラッグするとパンします。右ボタンをダブルクリックすると面が再びフレームに収まります。別の面を選択すると自動的にフレームに収まります。</li>
 <li>左ドラッグでマテリアルを移動します。面の輪郭はその場に留まります。リングはマッピングを回転し、角のハンドルは拡大縮小し、中央のハンドルはこれらの変形の原点を設定します。</li>
@@ -265,6 +271,7 @@
 <p>エディター内のどの色ボタンも、同じピッカーを開きます。四角形の中をドラッグして彩度と明度を、その横の帯をドラッグして色相を選びます。下には <strong>R</strong>、<strong>G</strong>、<strong>B</strong> の値があり、色に不透明度がある場合は <strong>不透明度</strong> スライダーもあります。16 進数フィールドには <code>#RRGGBB</code> または <code>#RRGGBBAA</code> を入力でき、有効な色でないあいだは赤く表示されます。<strong>コピー</strong> は 16 進コードをクリップボードにコピーします。ピッカーの外をクリックすると閉じます。</p>
 <h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>グラデーション</h3>
 <p><strong>グラデーション</strong> では 線形グラデーション と 放射状グラデーション を選び、その横のボタンで色の並びを反転します。各分岐点には色ボタンと <strong>位置 (%)</strong> があり、両端の間にある分岐点には削除ボタンがあります。<strong>色の分岐点を追加</strong> は最も広い間隔に分岐点を追加します。分岐点は 1 つのグラデーションにつき最大 8 個です。<strong>グラデーションの角度</strong> は線形グラデーションの方向を設定し、<strong>+45°</strong> と <strong>−45°</strong> のボタンがあります。</p>
+<figure class="manual-fig"><img src="../../images/paint-gradient.webp" width="1040" height="620" loading="lazy" alt=""></figure>
 <p>プレビューの下には、分岐点ごとにマーカーが付いたレールがあります。レールをクリックすると分岐点を追加し、マーカーをクリックするとそのピッカーを開き、マーカーをドラッグすると移動し、マーカーを右クリックすると削除します。レールの下にある 3 つの色見本はプリセットで、暖色グラデーション、寒色グラデーション、グレースケールのグラデーション です。グラデーションへの変更は、選択範囲にリアルタイムで適用されます。</p>
 <p>グラデーションでは向きが重要です。無関係な面をまたぐのではなく、屋根の傾斜や曲がったオブジェクトに沿って向けてください。ペイントした後は、モデルを両側から確認しましょう。</p>
 <h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>サーフェスマテリアル</h3>
@@ -273,6 +280,7 @@
 <h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>アセット、レイヤー、グループ</h2>
 <h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>アセットライブラリ</h3>
 <p><strong>アセット</strong> タブを開きます。<strong>フォルダーを追加</strong> で <code>.map</code> モデルのフォルダーを追加します。内蔵ライブラリは常に利用できます。<strong>アセットを絞り込む</strong> に入力して検索します。モデルをクリックして選択し、ダブルクリックするか、<span class="keys"><kbd>Enter</kbd></span> を押すか、<strong>挿入</strong> をクリックすると、最後にポインターがあった位置に追加されます。モデルをビューにドラッグすることもできます。アセットのブラシは 1 つのグループとして挿入されるので、モデル全体がまとまって動きます。</p>
+<figure class="manual-fig grid-2"><img src="../../images/assets/sailboat.webp" width="800" height="600" loading="lazy" alt=""><img src="../../images/assets/gate_paifang.webp" width="800" height="600" loading="lazy" alt=""><img src="../../images/assets/portal_gate.webp" width="800" height="600" loading="lazy" alt=""><img src="../../images/assets/windmill-sails-poster.webp" width="800" height="600" loading="lazy" alt=""></figure>
 <p><strong>選択範囲をアセットとして保存</strong> は、選択したブラシを <code>.map</code> としてライブラリに書き込みます。ライブラリのアセットは通常の編集可能なブラシで、インポートしたメッシュではありません。</p>
 <h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>レイヤー</h3>
 <p>マップタブの <strong>レイヤー</strong> リストで、広いエリアを整理します。名前を入力して <strong>追加</strong> をクリックするとレイヤーを作成でき、<span class="keys"><kbd>Enter</kbd></span> を押すと現在のレイヤーの名前を変更します。各レイヤーは、非表示、ロック、エクスポート対象外にできます。<strong>ここへ移動</strong> は選択範囲を現在のレイヤーに移動します。ビューのコンテキストメニューにも、レイヤーへ移動、アクティブレイヤーに設定、レイヤーを非表示、指定レイヤーのみ表示 があります。</p>
@@ -284,6 +292,7 @@
 <p>よく使うエンティティ定義は内蔵されており、常に利用できます。ライト、プレイヤースタート、ドア、ボタン、足場、トリガー、静的なプロップ、サウンド、ウェイポイントです。エンティティタブの <strong>エンティティ定義</strong> でプロジェクトの FGD を読み込むと、同じ名前のクラスが置き換えられ、それ以外の内蔵クラスはそのまま残ります。</p>
 <h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>エンティティの配置</h3>
 <p>エンティティタブの <strong>エンティティ</strong> ブラウザーで、<strong>クラスを絞り込む</strong> に入力してクラスを選びます。ライトのようなポイントクラスは、<strong>配置</strong> をクリックするかクラスをダブルクリックします。<span class="keys"><kbd>Insert</kbd></span> で選択範囲の中心に 1 つ配置します。ドアやトリガーのようなブラシクラスは、ブラシを選択して <strong>作成</strong> をクリックします。クラスをビューにドラッグすることもできます。</p>
+<figure class="manual-fig"><img src="../../images/entity-tab.webp" width="1200" height="975" loading="lazy" alt=""></figure>
 <h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>プロパティ</h3>
 <p>プロパティリストでは、選択したエンティティを編集します。同じクラスのエンティティはまとめて編集されます。<strong>プロパティを追加</strong> では、定義にないキーも追加できます。<strong>既定値</strong> では、既存のプロパティを既定値に戻したり、足りないプロパティを追加したりできます。クラスで定義されていてもエンティティにないプロパティは淡色で表示され、値を入力すると追加されます。エンティティ同士をつなぐには targetname と target を使います。</p>
 <h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>エクスポートでできること</h3>
@@ -293,9 +302,11 @@
 <p>Heron Brush では、簡単な動きをプレビューしたり、ブラシエンティティのキーフレームアニメーションを編集したりして、それを複数のエンジンへエクスポートできます。</p>
 <h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>アニメーションのプレビュー</h3>
 <p>表示メニュー、アニメーションメニュー、グリッド設定メニュー、またはマップタブの表示セクションで <strong>アニメーションをプレビュー</strong> をオンにします。start_on が有効な場合、エンティティの axis、speed、direction、travel、wait の各プロパティを使って、func_rotate の回転と func_shuttle の往復運動を再生します。また、開始時に再生 に設定されたキーフレームクリップも再生します。扇風機と風車のアセットには、最初から回転するパーツが含まれています。</p>
+<figure class="manual-fig"><picture><source media="(prefers-reduced-motion: reduce)" srcset="../../images/fan-preview-poster.webp"><img src="../../images/fan-preview.webp" width="960" height="640" loading="lazy" alt=""></picture></figure>
 <p>プレビューをオフにすると、元のポーズに戻ります。ビュー内をクリックすると、選択や編集の前に再生が止まります。カメラ操作はそのまま使えます。プレビューは、マップ、取り消し履歴、エクスポートを変更せず、物理演算やゲームロジックも実行しません。</p>
 <h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>キーフレームエディター</h3>
 <p>アニメーション → キーフレームアニメーション、またはグリッド設定メニューから開きます。ビューの下にドッキングされ、3D ウィンドウが分離しているときはそのウィンドウ内にドッキングされます。見出しにあるウィンドウアイコンを押すと独立したウィンドウに移り、フレームと取り消し履歴は保たれます。<strong>アニメーションを編集</strong> はビューをアニメーションのポーズに切り替え、<strong>マップを編集</strong> は静止状態のジオメトリに戻します。アニメーションモードでは、各ビューの下部に <strong>アニメーションを編集</strong> とフレーム番号が表示されます。</p>
+<figure class="manual-fig"><img src="../../images/keyframe-curves.webp" width="1600" height="832" loading="lazy" alt=""></figure>
 <p>アニメーションさせるには、ブラシエンティティ、またはブラシやブラシのグループを選択します。入れ子のないブラシグループは 1 つのアニメーションとピボットを共有します。複数のエンティティを含むグループには、それぞれ別のアニメーションが必要です。</p>
 <h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>クリップ</h3>
 <p><strong>アニメーション</strong> セレクターで、名前付きのクリップを切り替えます。<strong>アニメーション名</strong> に名前を入力して <strong>名前を付けて保存</strong> をクリックすると、現在のクリップをその名前でコピーします。<strong>削除</strong> はクリップを削除します。<strong>移動</strong> は回転のない <code>translate</code> クリップを作成します。<strong>ドアのアニメーション</strong> は、現在のピボットを中心に 90 度回転する滑らかな <code>open</code> と <code>close</code> のクリップを作成します。先にピボットを蝶番の位置へ移動してください。<strong>開始時に再生</strong> を使うと、レベルの開始時にクリップが再生されます。ドアのプリセットではオフになります。</p>
@@ -328,6 +339,7 @@
 <p>ようこそ画面のサンプルから <code>motion_lab</code> を開きます。L 字型の経路を動く足場、リフト、回転する足場、ボタン付きの蝶番式ドアがあります。隣にある <code>godot/project.godot</code> を Godot で開き、<span class="keys"><kbd>F5</kbd></span> を押します。WASD とマウスでプレイヤーを動かし、Space でジャンプ、1～4 で各ステーションへ移動、R で現在のステーションをやり直します。色の付いたパッドに乗ると、そのターゲットが起動します。再エクスポートの方法は、同梱の README で説明しています。</p>
 <h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>エンジンへのエクスポート</h2>
 <p>ファイル → エクスポート で、エクスポートウィンドウが開きます。左側にエンジンがロゴ付きで並んでいます。Godot、Defold、three.js、Bevy、raylib、Unity、Unreal Engine、Flax Engine、Cocos Creator、Wavefront .obj、glTF .gltf、GLB .glb、そして最後に <code>.map</code> です。右側のページには、その出力先に何が書き出されるかが説明されています。<strong>書き出す</strong> で書き出し、<strong>検証</strong> は書き出さずにレベルをビルドして問題を一覧表示し、<strong>閉じる</strong> でウィンドウを閉じます。</p>
+<figure class="manual-fig"><img src="../../images/export-window.webp" width="1134" height="924" loading="lazy" alt=""></figure>
 <p>エクスポートは保存とは別の操作で、<code>.map</code> は編集用のソースとして残ります。各コントロールは変更されるとすぐにそのエンジンの設定を保存するので、エンジンごとに設定が保持され、ウィンドウは前回閉じたときの状態で開きます。</p>
 <h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>共通オプション</h3>
 <ul>
@@ -387,6 +399,7 @@
 <p>標準ビルドはローカルネットワークで動作し、<strong>ローカルネットワークのポート</strong> でポートを設定します。インターネット経由のセッション（<strong>インターネット経由で接続</strong>）には、オプションのネットワーク機能を含むビルドが必要です。参加者には、3D ビュー内でお互いのカメラマーカーと名前が表示されます。</p>
 <p>ウィンドウを閉じてもセッションは続き、タイトルバーのインジケーターに状態が表示されます。<strong>セッションを停止</strong> または <strong>セッションから退出</strong> で終了します。2 人が同じオブジェクトを編集した場合は、ホスト側の順序で最終的な状態が決まり、取り消しも共有された編集として扱われます。できるだけ別々のエリアで作業し、こまめにチェックポイントを保存しましょう。</p>
 <h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D 表示とセカンドモニター</h2>
+<figure class="manual-fig"><img src="../../images/render-dusk.webp" width="2520" height="1296" loading="lazy" alt=""></figure>
 <h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>表示モード</h3>
 <p>マップタブの <strong>表示</strong> セクションで、ビューに描画するものを切り替えます。ブラシ、ポイントエンティティ、エンティティモデル、エンティティのクラス名、グループの輪郭、パッチ、マテリアル、除外した面を表示、アニメーションをプレビュー、ワイヤーフレーム、辺、ブラシエンティティの輪郭 です。ワイヤーフレームは、対角線や面の裏側の辺も含めて三角形の辺をマテリアルなしで描画します。一時的なデバッグ用の表示で、エクスポートやレンダリングには影響しません。</p>
 <p>3D ビューのライティング、影、アンビエントオクルージョン、反射、ブルーム、スムージングは 環境設定 → レンダラー にあります。これらはプレビュー用の設定で、最終的な画像にはレンダーカメラ自身の設定が使われます。</p>
@@ -396,6 +409,7 @@
 <p>プロシージャルスカイは 3D ビューで既定でオンになっており、環境設定 → レンダラー → ライト でオフにできます。レンダーカメラには独自の <strong>プロシージャルスカイ</strong> スイッチがあり、マップと一緒に保存されます。空、地平線、地面の色はエンバイロメントの設定から取得され、太陽はシーンのライティングに従います。空にはジオメトリがなく、エクスポートもされません。</p>
 <h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>レンダーカメラと PNG 画像</h2>
 <p>ファイル → 画像をレンダリング でレンダリングウィンドウが開きます。左側にカメラとその設定、右側にライブプレビューがあり、設定を変更すると再描画されます。カメラは <code>.map</code> 内のエディター専用の Render cameras レイヤーに保存され、このレイヤーはエンジンへのエクスポートから除外されます。</p>
+<figure class="manual-fig"><img src="../../images/render-lamps.webp" width="1680" height="864" loading="lazy" alt=""></figure>
 <h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>カメラの配置</h3>
 <p>3D ビューで構図を決めて <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>（または <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>）を押すか、<strong>3D ビューからカメラを配置</strong> をクリックします。カメラを選択していない場合は、保存されている最初のカメラが更新され、カメラがない場合は新しく作成されます。この操作は取り消し可能で、出力とライティングの設定は保たれます。<strong>マップ内のカメラを選択</strong>、<strong>マップからカメラを読み込む</strong>、<strong>3D ビューをカメラ位置へ移動</strong> は逆方向の操作です。<strong>3D ビューのカメラ枠</strong> は出力範囲の境界を表示し、<strong>3D ビューからカメラを操作</strong> をオンにすると、通常のナビゲーションで保存済みのカメラを動かせます。</p>
 <h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>設定</h3>
@@ -463,6 +477,6 @@
 <p>左側の目次から章を選びます。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> で目次を表示して検索フィールドに移動します。<span class="keys"><kbd>Esc</kbd></span> で検索をクリアし、検索が空のときはマニュアルを閉じます。<strong>目次</strong> は章リストの表示／非表示を切り替え、<strong>文字サイズ</strong> はフォントサイズを変更します。どちらの設定も記憶されます。上部の言語リストで、利用できる翻訳を切り替えられます。</p>
   </article>
 </div>
-<script src="../../manual.js"></script>
+<script src="../../manual.js?v=bf0e4cd13f"></script>
 </body>
 </html>

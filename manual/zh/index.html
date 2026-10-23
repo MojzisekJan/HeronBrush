@@ -17,8 +17,8 @@
 </script>
 <meta name="color-scheme" content="dark light">
 <link rel="preload" href="../../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="../../style.css">
-<link rel="stylesheet" href="../../manual.css">
+<link rel="stylesheet" href="../../style.css?v=275cc33779">
+<link rel="stylesheet" href="../../manual.css?v=3dd45d4b16">
 <link rel="alternate" hreflang="en" href="../"><link rel="alternate" hreflang="cs" href="../cs/"><link rel="alternate" hreflang="de" href="../de/"><link rel="alternate" hreflang="zh-Hans" href="../zh/"><link rel="alternate" hreflang="es" href="../es/"><link rel="alternate" hreflang="uk" href="../uk/"><link rel="alternate" hreflang="pl" href="../pl/"><link rel="alternate" hreflang="it" href="../it/"><link rel="alternate" hreflang="fr" href="../fr/"><link rel="alternate" hreflang="pt-BR" href="../pt-BR/"><link rel="alternate" hreflang="ja" href="../ja/"><link rel="alternate" hreflang="ko" href="../ko/"><link rel="alternate" hreflang="tr" href="../tr/"><link rel="alternate" hreflang="id" href="../id/"><link rel="alternate" hreflang="ru" href="../ru/"><link rel="alternate" hreflang="nl" href="../nl/"><link rel="alternate" hreflang="sv" href="../sv/"><link rel="alternate" hreflang="da" href="../da/"><link rel="alternate" hreflang="nb" href="../nb/"><link rel="alternate" hreflang="fi" href="../fi/"><link rel="alternate" hreflang="hu" href="../hu/"><link rel="alternate" hreflang="ro" href="../ro/"><link rel="alternate" hreflang="sk" href="../sk/"><link rel="alternate" hreflang="el" href="../el/"><link rel="alternate" hreflang="vi" href="../vi/"><link rel="alternate" hreflang="zh-Hant" href="../zh-TW/"><link rel="alternate" hreflang="bg" href="../bg/"><link rel="alternate" hreflang="hr" href="../hr/"><link rel="alternate" hreflang="sl" href="../sl/"><link rel="alternate" hreflang="lt" href="../lt/">
 </head>
 <body class="manual-page">
@@ -128,6 +128,7 @@
 <p>如果在 Heron Brush 已经运行时打开地图，地图会交给正在运行的窗口，该窗口会被带到前台。需要单独的窗口时，请在命令行中使用 <code>--new-instance</code>（见“命令行”）。</p>
 <h2 id="s2"><a class="anchor" href="#s2" aria-hidden="true" tabindex="-1">#</a>界面</h2>
 <p>主窗口顶部是带菜单的标题栏，其下是工具栏，然后是地图视图、右侧的检查器和底部的状态栏。</p>
+<figure class="manual-fig"><img src="../../images/hero.webp" width="1890" height="1076" loading="lazy" alt=""></figure>
 <h3 id="s2-1"><a class="anchor" href="#s2-1" aria-hidden="true" tabindex="-1">#</a>标题栏和菜单</h3>
 <p>标题栏显示徽标、菜单、居中的地图名称和窗口按钮。在 macOS 上，常见的红、黄、绿按钮位于左侧。拖动标题栏可以移动窗口，双击可以最大化。当有任务在后台运行时，标题栏末端附近会出现指示器：引擎实时连接、实时会话或 <strong>MCP 已启用</strong>。点击指示器可以停止实时连接或打开对应的窗口。</p>
 <ul>
@@ -142,6 +143,7 @@
 </ul>
 <h3 id="s2-2"><a class="anchor" href="#s2-2" aria-hidden="true" tabindex="-1">#</a>工具栏</h3>
 <p>工具栏包含所有工具。第一组是最常用的：选择、笔刷、切割、顶点、边、面、旋转和缩放。第二组包括剪切、拼合、扫掠、控制点、圆角和上色。把鼠标悬停在按钮上可以看到名称和快捷键。再次点击当前工具会回到“选择”。</p>
+<ul class="tools tool-table"><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/select.svg" width="22" height="22" alt=""></span><span><strong>选择</strong> <span class="keys"><kbd>Esc</kbd></span><br>选择对象并移动。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/brush.svg" width="22" height="22" alt=""></span><span><strong>笔刷</strong> <span class="keys"><kbd>B</kbd></span><br>在视图中拖动绘制新笔刷。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/clip.svg" width="22" height="22" alt=""></span><span><strong>切割</strong> <span class="keys"><kbd>C</kbd></span><br>用经过两个或三个点的平面切割笔刷。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/vertex.svg" width="22" height="22" alt=""></span><span><strong>顶点</strong> <span class="keys"><kbd>V</kbd></span><br>拖动笔刷的角点。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/edge.svg" width="22" height="22" alt=""></span><span><strong>边</strong> <span class="keys"><kbd>E</kbd></span><br>拖动笔刷的边。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/face.svg" width="22" height="22" alt=""></span><span><strong>面</strong> <span class="keys"><kbd>F</kbd></span><br>拖动笔刷的面。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/rotate.svg" width="22" height="22" alt=""></span><span><strong>旋转</strong> <span class="keys"><kbd>R</kbd></span><br>用控制柄旋转所选内容。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/scale.svg" width="22" height="22" alt=""></span><span><strong>缩放</strong> <span class="keys"><kbd>T</kbd></span><br>用控制柄缩放所选内容。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/shear.svg" width="22" height="22" alt=""></span><span><strong>剪切</strong> <span class="keys"><kbd>G</kbd></span><br>用控制柄斜切所选内容。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/assemble.svg" width="22" height="22" alt=""></span><span><strong>拼合</strong> <span class="keys"><kbd>N</kbd></span><br>用放置的点构建凸笔刷。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/sweep.svg" width="22" height="22" alt=""></span><span><strong>扫掠</strong> <span class="keys"><kbd>Y</kbd></span><br>沿圆弧或路径挤出面。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/controlpoint.svg" width="22" height="22" alt=""></span><span><strong>控制点</strong> <span class="keys"><kbd>P</kbd></span><br>调整面片的控制网格。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/fillet.svg" width="22" height="22" alt=""></span><span><strong>圆角</strong> <span class="keys"><kbd>O</kbd></span><br>将选中的边倒圆或倒角。</span></li><li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/paint.svg" width="22" height="22" alt=""></span><span><strong>上色</strong> <span class="keys"><kbd>K</kbd></span><br>为面赋予材质和颜色。</span></li></ul>
 <p>工具之后是 <strong>水平翻转</strong> 和 <strong>垂直翻转</strong>，然后是两个开关：<strong>锁定</strong> 在笔刷移动时保持材质贴图，<strong>UV</strong> 在笔刷旋转时保持贴图（用 <span class="keys"><kbd>U</kbd></span> 切换）。接下来是当前工具自己的设置：笔刷工具显示形状及其选项，圆角工具显示半径、面数和转角，以及 <strong>应用</strong> 按钮。最右端是工具名称、网格大小（<strong>网格 16</strong> 等，点击可选择其他大小），以及 <strong>网格设置</strong> 菜单，其中包含吸附到网格、显示网格、预览动画、显示被忽略的面和关键帧动画。</p>
 <h3 id="s2-3"><a class="anchor" href="#s2-3" aria-hidden="true" tabindex="-1">#</a>地图视图</h3>
 <p>共有四个视图：3D 视图和三个平面视图，即俯视（XY）、前视（XZ）和侧视（YZ）。在 首选项 → 视图 → 布局 中可以选择单视图、双视图、三视图或四视图。拖动分隔条可以调整面板大小。点击某个视图会让它获得键盘焦点。<span class="keys"><kbd>Space</kbd></span> 把一次只显示一个视图的面板切换到下一个视图，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> 最大化拥有键盘焦点的视图，再按一次恢复布局。</p>
@@ -201,21 +203,23 @@
 <p>笔刷是由平面围成的凸体。复杂对象应由多个简单笔刷组合而成，而不要试图做出一个凹形笔刷。在简单形状就够用的地方，尽量减少笔刷数量。</p>
 <h3 id="s4-1"><a class="anchor" href="#s4-1" aria-hidden="true" tabindex="-1">#</a>绘制笔刷</h3>
 <p>选择笔刷工具（<span class="keys"><kbd>B</kbd></span>），在视图中拖动。工具栏会显示 <strong>要绘制的形状</strong>：长方体、楼梯、拱形、圆柱、圆锥、椭球（UV）、椭球（二十面体） 和插入 3D 文字。<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>1</kbd></span> 到 <span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>7</kbd></span> 可直接选择形状。根据形状的不同，工具栏会显示 <strong>掏空</strong> 和 <strong>厚度：</strong>，楼梯的 <strong>台阶高度：</strong> 和 <strong>方向：</strong>，圆形形状的 <strong>轴：</strong>、<strong>边数：</strong> 和圆形模式，球体的 <strong>环数：</strong>，以及二十面体的 <strong>精度：</strong>。请在拖动前设置好选项，并在多个视图中检查结果。</p>
+<figure class="manual-fig"><img src="../../images/shapes.webp" width="1380" height="803" loading="lazy" alt=""></figure>
 <h3 id="s4-2"><a class="anchor" href="#s4-2" aria-hidden="true" tabindex="-1">#</a>选择</h3>
 <p>点击笔刷即可选中，按住 <span class="keys"><kbd>Ctrl</kbd></span> 点击可加入选择。从空白处拖动会画出选择框。在 3D 视图中，按住 <span class="keys"><kbd>Shift</kbd></span> 点击可选中单个面，按住 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd></span> 点击可添加更多面。拖动已选中的笔刷会移动它；拖动未选中的笔刷则只选中并移动这一个。</p>
 <p>在 3D 视图中，按住 <span class="keys"><kbd>Shift</kbd></span> 拖动所选笔刷的某个面可以挤出它。按住 <span class="keys"><kbd>Alt</kbd></span> 点击另一个面，可以把所选面的材质和对齐方式复制过去；<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Ctrl</kbd></span> 只复制材质，<span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd></span> 复制旋转。</p>
 <h3 id="s4-3"><a class="anchor" href="#s4-3" aria-hidden="true" tabindex="-1">#</a>造型工具</h3>
-<ul>
-<li><strong>选择</strong>（<span class="keys"><kbd>Esc</kbd></span>）：选择并移动。</li>
-<li><strong>顶点</strong>（<span class="keys"><kbd>V</kbd></span>）、<strong>边</strong>（<span class="keys"><kbd>E</kbd></span>）、<strong>面</strong>（<span class="keys"><kbd>F</kbd></span>）：拖动角点、边或面。按住 <span class="keys"><kbd>Shift</kbd></span> 从边或面的中点拖动会在那里添加一个角点。<span class="keys"><kbd>Delete</kbd></span> 删除所选的角点。</li>
-<li><strong>旋转</strong>（<span class="keys"><kbd>R</kbd></span>）、<strong>缩放</strong>（<span class="keys"><kbd>T</kbd></span>）、<strong>剪切</strong>（<span class="keys"><kbd>G</kbd></span>）：用控制柄变换所选内容。</li>
-<li><strong>切割</strong>（<span class="keys"><kbd>C</kbd></span>）：点击两个或三个点来定义切割平面。<span class="keys"><kbd>Enter</kbd></span> 执行切割，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> 选择保留哪一侧，<span class="keys"><kbd>Backspace</kbd></span> 或 <span class="keys"><kbd>Esc</kbd></span> 删除最后一个点。</li>
-<li><strong>拼合</strong>（<span class="keys"><kbd>N</kbd></span>）：在一个体积周围放置点，按 <span class="keys"><kbd>Enter</kbd></span> 用这些点生成凸笔刷。<span class="keys"><kbd>Backspace</kbd></span> 删除最后一个点。</li>
-<li><strong>扫掠</strong>（<span class="keys"><kbd>Y</kbd></span>）：见下文的扫掠部分。</li>
-<li><strong>控制点</strong>（<span class="keys"><kbd>P</kbd></span>）：调整面片的控制网格形状。</li>
-<li><strong>圆角</strong>（<span class="keys"><kbd>O</kbd></span>）：点击一条边将其倒圆，或用相应工具选取边或顶点后按 <span class="keys"><kbd>Enter</kbd></span>。面数越多结果越平滑，几何体也越多。</li>
-<li><strong>上色</strong>（<span class="keys"><kbd>K</kbd></span>）：见“材质与 UV”。</li>
+<ul class="tools">
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/select.svg" width="22" height="22" alt=""></span><span><strong>选择</strong>（<span class="keys"><kbd>Esc</kbd></span>）：选择并移动。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/vertex.svg" width="22" height="22" alt=""><img src="../../images/tools/edge.svg" width="22" height="22" alt=""><img src="../../images/tools/face.svg" width="22" height="22" alt=""></span><span><strong>顶点</strong>（<span class="keys"><kbd>V</kbd></span>）、<strong>边</strong>（<span class="keys"><kbd>E</kbd></span>）、<strong>面</strong>（<span class="keys"><kbd>F</kbd></span>）：拖动角点、边或面。按住 <span class="keys"><kbd>Shift</kbd></span> 从边或面的中点拖动会在那里添加一个角点。<span class="keys"><kbd>Delete</kbd></span> 删除所选的角点。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/rotate.svg" width="22" height="22" alt=""><img src="../../images/tools/scale.svg" width="22" height="22" alt=""><img src="../../images/tools/shear.svg" width="22" height="22" alt=""></span><span><strong>旋转</strong>（<span class="keys"><kbd>R</kbd></span>）、<strong>缩放</strong>（<span class="keys"><kbd>T</kbd></span>）、<strong>剪切</strong>（<span class="keys"><kbd>G</kbd></span>）：用控制柄变换所选内容。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/clip.svg" width="22" height="22" alt=""></span><span><strong>切割</strong>（<span class="keys"><kbd>C</kbd></span>）：点击两个或三个点来定义切割平面。<span class="keys"><kbd>Enter</kbd></span> 执行切割，<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Enter</kbd></span> 选择保留哪一侧，<span class="keys"><kbd>Backspace</kbd></span> 或 <span class="keys"><kbd>Esc</kbd></span> 删除最后一个点。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/assemble.svg" width="22" height="22" alt=""></span><span><strong>拼合</strong>（<span class="keys"><kbd>N</kbd></span>）：在一个体积周围放置点，按 <span class="keys"><kbd>Enter</kbd></span> 用这些点生成凸笔刷。<span class="keys"><kbd>Backspace</kbd></span> 删除最后一个点。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/sweep.svg" width="22" height="22" alt=""></span><span><strong>扫掠</strong>（<span class="keys"><kbd>Y</kbd></span>）：见下文的扫掠部分。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/controlpoint.svg" width="22" height="22" alt=""></span><span><strong>控制点</strong>（<span class="keys"><kbd>P</kbd></span>）：调整面片的控制网格形状。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/fillet.svg" width="22" height="22" alt=""></span><span><strong>圆角</strong>（<span class="keys"><kbd>O</kbd></span>）：点击一条边将其倒圆，或用相应工具选取边或顶点后按 <span class="keys"><kbd>Enter</kbd></span>。面数越多结果越平滑，几何体也越多。</span></li>
+<li><span class="tool-icons" aria-hidden="true"><img src="../../images/tools/paint.svg" width="22" height="22" alt=""></span><span><strong>上色</strong>（<span class="keys"><kbd>K</kbd></span>）：见“材质与 UV”。</span></li>
 </ul>
+<figure class="manual-fig"><img src="../../images/vertex.webp" width="1000" height="700" loading="lazy" alt=""></figure>
 <h3 id="s4-4"><a class="anchor" href="#s4-4" aria-hidden="true" tabindex="-1">#</a>组合笔刷</h3>
 <ul>
 <li><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>J</kbd></span>：把所选笔刷合并为它们的凸包。</li>
@@ -225,6 +229,7 @@
 </ul>
 <h3 id="s4-5"><a class="anchor" href="#s4-5" aria-hidden="true" tabindex="-1">#</a>扫掠、圆角、面片和倒角</h3>
 <p><strong>扫掠</strong> 从所选面出发，沿路径生成几何体。先选择面（在扫掠工具中按住 <span class="keys"><kbd>Alt</kbd></span> 点击），然后在“面”选项卡的扫掠区块中设置 <strong>行程</strong>、<strong>旋转</strong>（轴和角度）、<strong>缩放</strong>、<strong>步数</strong> 和 <strong>路径</strong>（整数或自由对齐；圆弧、直线或 S 形弯），再按 <strong>扫掠</strong>。控件下方的一行文字会说明将生成多少个笔刷。</p>
+<figure class="manual-fig grid-2"><img src="../../images/sweep.webp" width="1515" height="450" loading="lazy" alt=""><img src="../../images/fillet-preview.webp" width="1280" height="840" loading="lazy" alt=""><img src="../../images/join-corner.webp" width="1200" height="852" loading="lazy" alt=""></figure>
 <p><strong>圆角</strong> 区块用 <strong>半径</strong>、<strong>面</strong> 和 <strong>角</strong>（斜接或圆角）对选取的边进行倒圆；面数为 1 时得到的是倒角。</p>
 <p><strong>面片</strong> 显示所选面片的 <strong>列</strong> 和 <strong>行</strong>，并提供按钮来增加或删除一对。几何体 → 把面转换为面片（<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span>）会用所选面生成面片。</p>
 <p><strong>内缩与倒角</strong> 作用于所选面：<strong>内缩</strong> 把面从边缘向内收缩，<strong>深度</strong> 把面向外推出（为负值时向内）。<strong>倒角面</strong> 同时应用两者；第三个按钮根据深度的正负添加凸起面板或切出凹槽。<strong>连接转角</strong> 会打开一个对话框，以斜接或圆角方式连接两个笔刷，并提供预览。</p>
@@ -237,6 +242,7 @@
 <p><strong>上色</strong> 工具（<span class="keys"><kbd>K</kbd></span>）把当前材质应用到指针下的面：单击为一个面上材质，双击为整个笔刷上材质，按住 <span class="keys"><kbd>Shift</kbd></span> 点击则像吸管一样把该面的材质设为当前材质。</p>
 <h3 id="s5-2"><a class="anchor" href="#s5-2" aria-hidden="true" tabindex="-1">#</a>UV 编辑器</h3>
 <p>“面”选项卡的 <strong>UV</strong> 区块显示所选面的材质和轮廓。画布上的鼠标操作：</p>
+<figure class="manual-fig"><img src="../../images/texture-handles.webp" width="1477" height="675" loading="lazy" alt=""></figure>
 <ul>
 <li>滚轮以指针为中心缩放。用右键或中键拖动可以平移。双击右键重新框显该面；选择另一个面时会自动框显。</li>
 <li>左键拖动会移动材质，面的轮廓保持不动。圆环旋转贴图，角上的控制柄缩放贴图，中心控制柄设置这些变换的原点。</li>
@@ -265,6 +271,7 @@
 <p>编辑器中的所有颜色按钮都会打开同一个取色器。在方块中拖动选择饱和度和亮度，在旁边的色条中拖动选择色相。下方是 <strong>R</strong>、<strong>G</strong> 和 <strong>B</strong> 数值，以及颜色带透明度时的 <strong>不透明度</strong> 滑块。十六进制字段接受 <code>#RRGGBB</code> 或 <code>#RRGGBBAA</code>；文本不是有效颜色时会变红。<strong>复制</strong> 把十六进制代码复制到剪贴板。点击取色器外部即可关闭。</p>
 <h3 id="s6-3"><a class="anchor" href="#s6-3" aria-hidden="true" tabindex="-1">#</a>渐变</h3>
 <p><strong>渐变</strong> 用于选择线性渐变或径向渐变，旁边的按钮可以把颜色首尾对调。每个色标都有一个颜色按钮和 <strong>位置 (%)</strong>，两端之间的色标还有删除按钮。<strong>添加色标</strong> 会在最大的间隙中添加一个色标；一个渐变最多可以有八个色标。<strong>渐变角度</strong> 设置线性渐变的方向，并带有 <strong>+45°</strong> 和 <strong>−45°</strong> 按钮。</p>
+<figure class="manual-fig"><img src="../../images/paint-gradient.webp" width="1040" height="620" loading="lazy" alt=""></figure>
 <p>预览下方有一条滑轨，每个色标对应一个标记。点击滑轨添加色标，点击标记打开它的取色器，拖动标记移动它，右键点击标记将其删除。滑轨下方的三个色块是预设：暖色渐变、冷色渐变和灰度渐变。对渐变的更改会实时应用到所选内容。</p>
 <p>渐变的方向很重要：应沿屋顶坡度或曲面物体的走向设置，而不是横跨互不相关的面。上色后请从两侧检查模型。</p>
 <h3 id="s6-4"><a class="anchor" href="#s6-4" aria-hidden="true" tabindex="-1">#</a>表面材质</h3>
@@ -273,6 +280,7 @@
 <h2 id="s7"><a class="anchor" href="#s7" aria-hidden="true" tabindex="-1">#</a>素材、图层和组</h2>
 <h3 id="s7-1"><a class="anchor" href="#s7-1" aria-hidden="true" tabindex="-1">#</a>素材库</h3>
 <p>打开 <strong>素材</strong> 选项卡。用 <strong>添加文件夹</strong> 添加一个包含 <code>.map</code> 模型的文件夹；内置素材库始终可用。在 <strong>筛选素材</strong> 中输入文字进行搜索。点击模型将其选中，然后双击它、按 <span class="keys"><kbd>Enter</kbd></span> 或点击 <strong>插入</strong>，即可把它添加到指针最后所在的位置。也可以把模型拖到视图中。素材中的笔刷会作为一个组插入，因此模型会整体移动。</p>
+<figure class="manual-fig grid-2"><img src="../../images/assets/sailboat.webp" width="800" height="600" loading="lazy" alt=""><img src="../../images/assets/gate_paifang.webp" width="800" height="600" loading="lazy" alt=""><img src="../../images/assets/portal_gate.webp" width="800" height="600" loading="lazy" alt=""><img src="../../images/assets/windmill-sails-poster.webp" width="800" height="600" loading="lazy" alt=""></figure>
 <p><strong>将所选保存为素材</strong> 会把所选笔刷以 <code>.map</code> 的形式写入素材库。素材库中的素材是普通的可编辑笔刷，而不是导入的网格。</p>
 <h3 id="s7-2"><a class="anchor" href="#s7-2" aria-hidden="true" tabindex="-1">#</a>图层</h3>
 <p>“地图”选项卡中的 <strong>图层</strong> 列表用于组织大型区域。输入名称并点击 <strong>添加</strong> 可以创建图层，按 <span class="keys"><kbd>Enter</kbd></span> 可以重命名当前图层。每个图层都可以隐藏、锁定或排除在导出之外。<strong>移到这里</strong> 把所选内容移到当前图层。视图中的上下文菜单也提供移动到图层、设为活动图层、隐藏图层和隔离图层。</p>
@@ -284,6 +292,7 @@
 <p>常用的实体定义已经内置并始终可用：灯光、玩家起点、门、按钮、平台、触发器、静态道具、声音和路径点。通过“实体”选项卡中的 <strong>实体定义</strong> 加载项目的 FGD 后，同名类别会被替换，其他内置类别则保留。</p>
 <h3 id="s8-1"><a class="anchor" href="#s8-1" aria-hidden="true" tabindex="-1">#</a>放置实体</h3>
 <p>在“实体”选项卡的 <strong>实体</strong> 浏览器中，在 <strong>筛选类别</strong> 中输入文字并选择一个类别。对于点类别（例如灯光），点击 <strong>放置</strong> 或双击该类别；<span class="keys"><kbd>Insert</kbd></span> 会在所选内容的中心放置一个。对于笔刷类别（例如门或触发器），先选择笔刷，然后点击 <strong>生成</strong>。也可以把类别拖到视图中。</p>
+<figure class="manual-fig"><img src="../../images/entity-tab.webp" width="1200" height="975" loading="lazy" alt=""></figure>
 <h3 id="s8-2"><a class="anchor" href="#s8-2" aria-hidden="true" tabindex="-1">#</a>属性</h3>
 <p>属性列表用于编辑所选实体。同一类别的实体会一起编辑。<strong>添加属性</strong> 可以添加定义中可能没有的键；<strong>默认值</strong> 可以把现有属性恢复为默认值，或补上缺少的属性。类别定义了但实体尚未设置的属性会以暗色显示，输入值后即被添加。用 targetname 和 target 来连接实体。</p>
 <h3 id="s8-3"><a class="anchor" href="#s8-3" aria-hidden="true" tabindex="-1">#</a>导出能做什么</h3>
@@ -293,9 +302,11 @@
 <p>Heron Brush 可以预览简单的运动，为笔刷实体编辑关键帧动画，并将其导出到多种引擎。</p>
 <h3 id="s9-1"><a class="anchor" href="#s9-1" aria-hidden="true" tabindex="-1">#</a>预览动画</h3>
 <p>在“视图”菜单、“动画”菜单、“网格设置”菜单或“地图”选项卡的“视图”区块中开启 <strong>预览动画</strong>。当 start_on 启用时，它会根据实体的轴、速度、方向、行程和等待属性播放 func_rotate 的旋转和 func_shuttle 的往返运动，并播放设置为“启动时播放”的关键帧片段。风扇和风车素材已经包含会旋转的部件。</p>
+<figure class="manual-fig"><picture><source media="(prefers-reduced-motion: reduce)" srcset="../../images/fan-preview-poster.webp"><img src="../../images/fan-preview.webp" width="960" height="640" loading="lazy" alt=""></picture></figure>
 <p>关闭预览会恢复原始姿态。在视图中点击会先停止播放，再进行选择或编辑；相机导航不受影响。预览不会更改地图、撤销历史或导出结果，也不会运行物理或游戏逻辑。</p>
 <h3 id="s9-2"><a class="anchor" href="#s9-2" aria-hidden="true" tabindex="-1">#</a>关键帧编辑器</h3>
 <p>通过 动画 → 关键帧动画 或“网格设置”菜单打开它。它停靠在视图下方；当 3D 窗口独立时，则停靠在 3D 窗口中。标题中的窗口图标可以把它移到独立窗口中，当前帧和撤销历史都会保留。<strong>编辑动画</strong> 把视图切换到动画姿态，<strong>编辑地图</strong> 则回到静止几何体。在动画模式下，每个视图底部都会显示 <strong>编辑动画</strong> 和帧号。</p>
+<figure class="manual-fig"><img src="../../images/keyframe-curves.webp" width="1600" height="832" loading="lazy" alt=""></figure>
 <p>选择一个笔刷实体、一个笔刷或一个笔刷组即可为其制作动画。一个扁平的笔刷组共用一个动画和轴心；包含多个实体的组需要分别制作动画。</p>
 <h3 id="s9-3"><a class="anchor" href="#s9-3" aria-hidden="true" tabindex="-1">#</a>片段</h3>
 <p><strong>动画</strong> 选择器用于在命名片段之间切换。在 <strong>动画名称</strong> 中输入名称并点击 <strong>另存为</strong>，即可把当前片段复制为该名称；<strong>删除</strong> 删除片段。<strong>平移</strong> 创建一个不含旋转的 <code>translate</code> 片段。<strong>门动画</strong> 创建平滑的 <code>open</code> 和 <code>close</code> 片段，绕当前轴心旋转 90 度；请先把轴心移到门铰处。<strong>启动时播放</strong> 让片段在关卡开始时播放；门预设会关闭此选项。</p>
@@ -328,6 +339,7 @@
 <p>从欢迎界面的“示例”中打开 <code>motion_lab</code>。其中有一个沿 L 形路径移动的平台、一部升降机、一个旋转平台和一扇带按钮的铰链门。在 Godot 中打开旁边的 <code>godot/project.godot</code> 并按 <span class="keys"><kbd>F5</kbd></span>。WASD 和鼠标控制玩家移动，空格键跳跃，1 到 4 前往各个展台，R 重新开始当前展台。踩上彩色踏板即可激活它的目标。附带的 README 说明了如何重新导出。</p>
 <h2 id="s10"><a class="anchor" href="#s10" aria-hidden="true" tabindex="-1">#</a>导出到引擎</h2>
 <p>文件 → 导出 会打开“导出”窗口。左侧列出各个引擎及其徽标：Godot、Defold、three.js、Bevy、raylib、Unity、Unreal Engine、Flax Engine、Cocos Creator、Wavefront .obj、glTF .gltf、GLB .glb，最后是 <code>.map</code>。右侧页面说明目标将得到什么。<strong>写入</strong> 执行写出，<strong>检查</strong> 构建关卡但不写出，并列出问题，<strong>关闭</strong> 关闭窗口。</p>
+<figure class="manual-fig"><img src="../../images/export-window.webp" width="1134" height="924" loading="lazy" alt=""></figure>
 <p>导出与保存相互独立：<code>.map</code> 始终是你的可编辑源文件。每个控件在更改后会立即保存对应引擎的设置，因此每个引擎都会记住自己的选项，窗口也会保持你上次离开时的状态。</p>
 <h3 id="s10-1"><a class="anchor" href="#s10-1" aria-hidden="true" tabindex="-1">#</a>通用选项</h3>
 <ul>
@@ -387,6 +399,7 @@
 <p>标准版本可在局域网中使用，<strong>本地网络端口</strong> 用于设置端口。通过互联网进行的会话（<strong>通过互联网连接</strong>）需要启用了可选网络功能的版本。参与者可以在 3D 视图中看到彼此的相机标记和名字。</p>
 <p>关闭窗口不会结束会话；标题栏中的指示器会显示其状态。<strong>停止会话</strong> 或 <strong>离开会话</strong> 会结束会话。当两个人编辑同一个对象时，以主持者的顺序决定最终版本，而撤销也是一次共享编辑。尽可能分区域工作，并适时保存检查点。</p>
 <h2 id="s13"><a class="anchor" href="#s13" aria-hidden="true" tabindex="-1">#</a>3D 显示与第二台显示器</h2>
+<figure class="manual-fig"><img src="../../images/render-dusk.webp" width="2520" height="1296" loading="lazy" alt=""></figure>
 <h3 id="s13-1"><a class="anchor" href="#s13-1" aria-hidden="true" tabindex="-1">#</a>显示模式</h3>
 <p>“地图”选项卡的 <strong>视图</strong> 区块用于切换视图中绘制的内容：笔刷、点实体、实体模型、实体类名、组轮廓、面片、材质、显示被忽略的面、预览动画、线框、边和笔刷实体轮廓。线框模式会绘制三角形的边，包括对角线和位于表面后方的边，不显示材质。这是一个临时的调试视图，不会影响导出或渲染。</p>
 <p>3D 视图的光照、阴影、环境光遮蔽、反射、泛光和平滑设置位于 首选项 → 渲染器。这些都是预览设置；最终图像使用渲染相机自己的设置。</p>
@@ -396,6 +409,7 @@
 <p>3D 视图默认开启程序化天空，可以在 首选项 → 渲染器 → 光照 中关闭。渲染相机有自己的 <strong>程序化天空</strong> 开关，随地图一起保存。天空、地平线和地面的颜色来自环境设置，太阳则跟随场景光照。天空没有几何体，也不会被导出。</p>
 <h2 id="s14"><a class="anchor" href="#s14" aria-hidden="true" tabindex="-1">#</a>渲染相机与 PNG 图像</h2>
 <p>文件 → 渲染图像 会打开渲染窗口：左侧是相机及其设置，右侧是实时预览，随着你修改设置而重绘。相机保存在 <code>.map</code> 中一个仅供编辑器使用的 Render cameras 图层里，该图层不会包含在引擎导出中。</p>
+<figure class="manual-fig"><img src="../../images/render-lamps.webp" width="1680" height="864" loading="lazy" alt=""></figure>
 <h3 id="s14-1"><a class="anchor" href="#s14-1" aria-hidden="true" tabindex="-1">#</a>放置相机</h3>
 <p>在 3D 视图中构好图，然后按 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>0</kbd></span>（或 <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Num0</kbd></span>），或点击 <strong>按 3D 视图放置相机</strong>。如果没有选中相机，会更新第一个已保存的相机；如果还没有相机，则新建一个。此操作可以撤销，并会保留输出和光照设置。<strong>在地图中选择相机</strong>、<strong>从地图加载相机</strong> 和 <strong>将 3D 视图移到相机</strong> 的作用方向正好相反。<strong>在 3D 视图中显示相机框</strong> 显示输出图像的边界，<strong>通过 3D 视图控制相机</strong> 让常规导航直接移动已保存的相机。</p>
 <h3 id="s14-2"><a class="anchor" href="#s14-2" aria-hidden="true" tabindex="-1">#</a>设置</h3>
@@ -463,6 +477,6 @@
 <p>在左侧目录中选择章节。<span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></span> 显示目录并跳到搜索框；<span class="keys"><kbd>Esc</kbd></span> 清空搜索，搜索框为空时则关闭手册。<strong>目录</strong> 隐藏或显示章节列表，<strong>字号</strong> 调整文字大小；这两项都会被记住。顶部的语言列表可以在现有译本之间切换。</p>
   </article>
 </div>
-<script src="../../manual.js"></script>
+<script src="../../manual.js?v=bf0e4cd13f"></script>
 </body>
 </html>

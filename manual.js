@@ -7,6 +7,8 @@
   var byId = {};
   links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
   var headings = Array.prototype.slice.call(document.querySelectorAll('.manual-body [id^="s"]'));
+  var chapters = Array.prototype.slice.call(toc.querySelectorAll('.toc-list .chapter'));
+  toc.querySelector('.toc-list').classList.add('folding');
 
   // The section in view: the last heading above a line a little below the header.
   var active = null;
@@ -23,6 +25,8 @@
     var link = byId[id];
     if (link) {
       link.classList.add('current');
+      var chapter = link.closest('.chapter');
+      chapters.forEach(function (c) { c.classList.toggle('open', c === chapter); });
       current.textContent = link.textContent;
       var r = link.getBoundingClientRect(), t = toc.getBoundingClientRect();
       if (getComputedStyle(toc).position === 'sticky' && (r.top < t.top + 90 || r.bottom > t.bottom)) {
