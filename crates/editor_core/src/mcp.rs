@@ -1694,7 +1694,7 @@ fn move_selection_to_layer(document: &mut Document, args: &Value) -> Result<Stri
 }
 
 /// Writes the map in a classic dialect, as `Menu/File/Export/Map` does: Heron saves in
-/// Valve 220, and a compiler such as Neverball's mapc reads only Quake 2 face lines.
+/// Valve 220, and a compiler such as Neverball's mapc reads only Quake 3 face lines.
 fn export_map(document: &mut Document, args: &Value) -> Result<String, String> {
     let path = string_or(args, "path", "");
     if path.is_empty() {
@@ -2034,12 +2034,13 @@ fn tool_definitions() -> Vec<Value> {
         tool(
             "export_map",
             "Write a copy of the map in a classic .map dialect for a game's compiler; the \
-             open map is not changed. standard, valve, quake2 (Quake 2 and 3 face lines, \
-             which Neverball's mapc reads), quake2_valve or hexen2 (Raven's qbsp). Without \
-             a format, the first one the current game lists.",
+             open map is not changed. standard, valve, quake2 (a face without flags \
+             keeps its texture's), quake2_valve, quake3 (flags on every face, which \
+             Neverball's mapc needs) or hexen2 (Raven's qbsp). Without a format, the first \
+             one the current game lists.",
             json!({
                 "path": { "type": "string" },
-                "format": { "type": "string", "description": "standard, valve, quake2, quake2_valve or hexen2, in any case" },
+                "format": { "type": "string", "description": "standard, valve, quake2, quake2_valve, quake3 or hexen2, in any case" },
             }),
             &["path"],
         ),
@@ -2578,10 +2579,10 @@ mod tests {
         let done = call(
             &mut document,
             "export_map",
-            &json!({"path": path, "format": "quake2"}),
+            &json!({"path": path, "format": "quake3"}),
         )
         .expect("exported");
-        assert!(done.ends_with("as Quake2"), "{done}");
+        assert!(done.ends_with("as Quake3"), "{done}");
         let text = std::fs::read_to_string(&path).expect("written");
         let faces: Vec<&str> = text.lines().filter(|l| l.starts_with('(')).collect();
         assert_eq!(faces.len(), 6, "{text}");
