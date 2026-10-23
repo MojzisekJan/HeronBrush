@@ -1176,12 +1176,14 @@ fn build(
 /// The sky and sun the map is lit with: its first render camera's, which a map saves,
 /// or the editor's own when it has no camera, with the sky and fog its worldspawn sets.
 pub fn map_sky(document: &Document, level: &scene_export::level::Level) -> writer::sky::Sky {
+    // Without a saved render camera the level is lit as the 3D view is, from the
+    // preferences. A default camera would bring its own sun and exposure instead.
     let render = crate::render_camera::cameras(document)
         .into_iter()
         .next()
-        .map(|camera| camera.2)
-        .unwrap_or_default()
-        .render();
+        .map_or_else(crate::render_settings::from_preferences, |camera| {
+            camera.2.render()
+        });
     writer::sky::Sky {
         sky: render.sky_color,
         horizon: render.horizon_color,
@@ -2029,6 +2031,27 @@ mod tests {
         assert!(std::fs::read_to_string(directory.join("heron_sky.rs"))
             .unwrap()
             .contains("pub struct HeronSky"));
+    }
+    #[test]
+    fn a_map_without_a_render_camera_takes_the_sun_and_exposure_of_the_3d_view() {
+        let view = crate::render_settings::from_preferences();
+        let level = scene_export::level::Level {
+            format: 2,
+            generator: String::new(),
+            name: "arena".into(),
+            scale: 32.,
+            textures: Vec::new(),
+            entities: Vec::new(),
+        };
+        let sky = map_sky(&one_cube(), &level);
+        assert_eq!(sky.sun_azimuth, view.sun_azimuth);
+        assert_eq!(sky.sun_elevation, view.sun_elevation);
+        assert_eq!(sky.exposure, view.exposure);
+        // Not a default render camera's, which differ from the view's own defaults.
+        assert_ne!(
+            sky.sun_azimuth,
+            crate::render_camera::Settings::default().sun_azimuth
+        );
     }
     #[test]
     fn godot_exports_the_sky_as_a_world_environment_unless_asked_not_to() {
