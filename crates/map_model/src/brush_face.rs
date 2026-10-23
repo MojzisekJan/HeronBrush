@@ -465,9 +465,44 @@ impl PaintOnFace {
             None => (vec::dot(uv, self.direction) - self.start) / self.extent,
         }
     }
-    /// Sample paint at UV coordinates.
-    pub fn at_uv(&self, uv: Vec2f) -> [f32; 3] {
-        let t = self.position_at_uv(uv).clamp(0.0, 1.0);
+    /// Where the gradient runs, as an affine map from face UV to `(x, y)`, each row
+    /// `[per u, per v, constant]`: the gradient position is `x` for a linear gradient and
+    /// the length of `(x, y)` for a radial one, as [`Self::position_at_uv`] measures it.
+    /// For a linear gradient `y` runs square to `x` at the same rate, from its start.
+    /// `None` for paint that is not a gradient.
+    pub fn gradient_frame(&self) -> Option<[[f32; 3]; 2]> {
+        let radial = match self.paint {
+            FaceColor::MultiGradient { radial, .. } => radial,
+            FaceColor::Gradient { .. } => false,
+            FaceColor::Solid { .. } => return None,
+        };
+        Some(match self.ends {
+            Some((a, b)) if radial => {
+                let r = vec::length(b - a);
+                [[1.0 / r, 0.0, -a.x() / r], [0.0, 1.0 / r, -a.y() / r]]
+            }
+            None if radial => {
+                let (sx, sy) = (2.0 / self.span.x(), 2.0 / self.span.y());
+                [
+                    [sx, 0.0, -self.lo.x() * sx - 1.0],
+                    [0.0, sy, -self.lo.y() * sy - 1.0],
+                ]
+            }
+            _ => {
+                let (a, b) = self.ends_uv();
+                let d = b - a;
+                let dd = vec::dot(d, d);
+                let (x, y) = (d.x() / dd, d.y() / dd);
+                [
+                    [x, y, -(a.x() * x + a.y() * y)],
+                    [-y, x, a.x() * y - a.y() * x],
+                ]
+            }
+        })
+    }
+    /// The colour at gradient position `t`, clamped to the ends; a solid colour anywhere.
+    pub fn at_position(&self, t: f32) -> [f32; 3] {
+        let t = t.clamp(0.0, 1.0);
         match self.paint {
             FaceColor::Solid { color, .. } => color.to_f32(),
             FaceColor::MultiGradient { stops, .. } => stops.at(t),
@@ -477,6 +512,10 @@ impl PaintOnFace {
                 std::array::from_fn(|i| a[i] + (b[i] - a[i]) * t)
             }
         }
+    }
+    /// Sample paint at UV coordinates.
+    pub fn at_uv(&self, uv: Vec2f) -> [f32; 3] {
+        self.at_position(self.position_at_uv(uv))
     }
     /// Sample paint at a world position.
     pub fn at(&self, face: &BrushFace, point: Vec3d) -> [f32; 3] {
@@ -1171,6 +1210,59 @@ mod tests {
                 "radial {radial}: {painted} of {whole}"
             );
         }
+    }
+
+    /// The gradient frame measures the same position as the sampler, for linear and
+    /// radial gradients, fitted to the face or placed on it, at points all over the face.
+    #[test]
+    fn the_gradient_frame_measures_what_the_sampler_does() {
+        let (face, polygon) = top_face();
+        let placed = Some(GradientEnds {
+            start: [0.3, 0.2],
+            end: [0.9, 0.7],
+        });
+        let mut paints = vec![FaceColor::gradient(
+            Rgb::new(255, 0, 0),
+            Rgb::new(0, 0, 255),
+            135.0,
+        )];
+        for radial in [false, true] {
+            for ends in [None, placed] {
+                paints.push(FaceColor::MultiGradient {
+                    stops: three_stops(),
+                    radial,
+                    angle: 37.0,
+                    alpha: 255,
+                    ends,
+                });
+            }
+        }
+        for paint in paints {
+            let sampler = PaintOnFace::new(&face, &polygon, paint);
+            let [x, y] = sampler.gradient_frame().expect("a gradient");
+            let radial = matches!(paint, FaceColor::MultiGradient { radial: true, .. });
+            for i in 0..=8 {
+                for j in 0..=8 {
+                    let uv = sampler.from_bounds([i as f32 / 8.0, j as f32 / 8.0]);
+                    let at = |row: [f32; 3]| row[0] * uv.x() + row[1] * uv.y() + row[2];
+                    let measured = if radial {
+                        (at(x) * at(x) + at(y) * at(y)).sqrt()
+                    } else {
+                        at(x)
+                    };
+                    let expected = sampler.position_at_uv(uv);
+                    assert!(
+                        (measured - expected).abs() < 1e-4,
+                        "{paint:?} at {uv:?}: {measured} against {expected}"
+                    );
+                }
+            }
+        }
+        assert!(
+            PaintOnFace::new(&face, &polygon, FaceColor::solid(Rgb::new(1, 2, 3)))
+                .gradient_frame()
+                .is_none()
+        );
     }
 
     #[test]

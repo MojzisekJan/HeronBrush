@@ -7,8 +7,16 @@ objects to retain those assignments.
 `paint_export.rs` rasterizes face paint for direct engine exports and OBJ:
 
 - Opaque solid paint becomes a 1×1 RGBA PNG, shared by faces with identical pixels.
-- Gradients become PNGs with 64–1024 pixels on each axis. The face's UV mapping,
-  gradient angle and polygon bounds determine the colour progression.
+- An opaque gradient, or one with no texture under it, becomes an image every face
+  with the same colours shares: a 256×1 strip for a linear gradient, a 128×128 disc for
+  a radial one. Each face's UVs are mapped onto it, which carries both kinds exactly,
+  since a linear gradient changes evenly across a face and a radial one with the
+  distance from a centre. A thousand faces with one gradient write one image and one
+  material.
+- A gradient placed on part of a face, and translucent paint over a texture, are
+  baked for the face into a PNG with 64–1024 pixels on each axis, where the colour holds
+  at the ends even under a repeating sampler. The face's UV mapping, gradient angle and
+  polygon bounds determine the colour progression.
 - Translucent paint is composited over the original texture. Paint opacity is not
   interpreted as glass transparency.
 - UVs are remapped to texel centres. The temporary map uses explicit Valve UV axes

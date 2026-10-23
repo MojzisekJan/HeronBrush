@@ -1738,8 +1738,10 @@ mod tests {
                 if image.width() == 1 {
                     solids.push(image.get_pixel(0, 0).0);
                 } else {
+                    // The gradient is a strip of its colours, shared by every face that has it.
+                    assert_eq!(image.height(), 1, "{target:?}");
                     assert_eq!(image.get_pixel(0, 0).0, [230, 40, 20, 255]);
-                    assert_eq!(image.get_pixel(0, image.height() - 1).0, [20, 230, 40, 255]);
+                    assert_eq!(image.get_pixel(image.width() - 1, 0).0, [20, 230, 40, 255]);
                 }
             }
             assert!(solids.contains(&[230, 40, 20, 255]) && solids.contains(&[20, 40, 230, 255]));

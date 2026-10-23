@@ -12,18 +12,21 @@ pub struct BakedFace {
     pub width: u32,
     pub height: u32,
     pub pixels: Vec<u8>,
-    /// Affine transform from the original face UV to pixel coordinates in the bake.
-    pub scale: [f32; 2],
-    pub offset: [f32; 2],
+    /// Affine transform from the original face UV to pixel coordinates in the bake, a row
+    /// `[per u, per v, constant]` for each pixel axis.
+    pub to_pixel: [[f32; 3]; 2],
+    /// The pixels as PNG, when already encoded: a shared gradient image is encoded once.
+    pub encoded: Option<std::sync::Arc<[u8]>>,
 }
 impl BakedFace {
     pub fn uv(&self, original: Vec2f) -> Vec2f {
-        Vec2f::new(
-            (original.x() * self.scale[0] + self.offset[0]) / self.width as f32,
-            (original.y() * self.scale[1] + self.offset[1]) / self.height as f32,
-        )
+        let [x, y] = pixel_at(self.to_pixel, original);
+        Vec2f::new(x / self.width as f32, y / self.height as f32)
     }
     pub fn png(&self) -> Result<Vec<u8>, std::io::Error> {
+        if let Some(png) = &self.encoded {
+            return Ok(png.to_vec());
+        }
         crate::assets::encode_png(self.width, self.height, &self.pixels)
             .map_err(std::io::Error::other)
     }
@@ -42,12 +45,20 @@ pub fn bake(face: &BrushFace, polygon: &[Vec3d], material: Option<&Material>) ->
                 (rgb[2] * 255.0).round() as u8,
                 255,
             ],
-            scale: [0.0; 2],
-            offset: [0.5; 2],
+            to_pixel: CENTRE,
+            encoded: None,
         });
     }
     if polygon.len() < 3 {
         return None;
+    }
+    let sampler = map_model::brush_face::PaintOnFace::new(face, polygon, paint);
+    let underneath = material.is_some_and(|m| m.width > 0 && m.height > 0);
+    if paint.alpha() == 255 || !underneath {
+        let uvs: Vec<Vec2f> = polygon.iter().map(|p| face.uv_coords(*p)).collect();
+        if let Some(shared) = shared_gradient(&sampler, paint, &uvs) {
+            return Some(shared);
+        }
     }
     let original: Vec<[f32; 2]> = polygon
         .iter()
@@ -65,7 +76,6 @@ pub fn bake(face: &BrushFace, polygon: &[Vec3d], material: Option<&Material>) ->
             .fold(f32::NEG_INFINITY, f32::max)
     });
     let span = [(hi[0] - lo[0]).max(1e-6), (hi[1] - lo[1]).max(1e-6)];
-    let sampler = map_model::brush_face::PaintOnFace::new(face, polygon, paint);
     let width = span[0].ceil().clamp(64.0, 1024.0) as u32;
     let height = span[1].ceil().clamp(64.0, 1024.0) as u32;
     let mut pixels = Vec::with_capacity((width * height * 4) as usize);
@@ -117,9 +127,158 @@ pub fn bake(face: &BrushFace, polygon: &[Vec3d], material: Option<&Material>) ->
         width,
         height,
         pixels,
-        scale,
-        offset: [0.5 - lo[0] * scale[0], 0.5 - lo[1] * scale[1]],
+        to_pixel: [
+            [scale[0], 0.0, 0.5 - lo[0] * scale[0]],
+            [0.0, scale[1], 0.5 - lo[1] * scale[1]],
+        ],
+        encoded: None,
     })
+}
+
+/// Every UV on the middle of a one-pixel image.
+const CENTRE: [[f32; 3]; 2] = [[0.0, 0.0, 0.5], [0.0, 0.0, 0.5]];
+
+/// UV unchanged: pixel coordinates of the image the face already wears.
+const SAME: [[f32; 3]; 2] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+
+/// Where `to_pixel` takes `uv`.
+fn pixel_at(to_pixel: [[f32; 3]; 2], uv: Vec2f) -> [f32; 2] {
+    to_pixel.map(|row| row[0] * uv.x() + row[1] * uv.y() + row[2])
+}
+
+/// How many pixels a shared linear gradient image has along it, and a radial one each way.
+const LINEAR_PIXELS: u32 = 256;
+const RADIAL_PIXELS: u32 = 128;
+
+/// A gradient as an image every face with the same colours shares, rather than one baked
+/// for the face: a strip of its colours for a linear gradient, a disc of them for a radial
+/// one, with the face's UVs mapped onto it. A linear gradient's colour changes evenly
+/// across a face and a radial one's with the distance from an affine centre, so a mapping
+/// of the corners carries both exactly. A thousand faces with one gradient then make one
+/// image and one material instead of a thousand.
+///
+/// `None` where the face reaches past the image (a gradient placed on part of it), so it
+/// is baked instead: there the colour holds at the ends, which a repeating sampler, as
+/// OBJ has, would not keep.
+fn shared_gradient(
+    sampler: &map_model::brush_face::PaintOnFace,
+    paint: FaceColor,
+    corners: &[Vec2f],
+) -> Option<BakedFace> {
+    let [x, y] = sampler.gradient_frame()?;
+    let radial = matches!(paint, FaceColor::MultiGradient { radial: true, .. });
+    let alpha = paint.alpha();
+    // The image depends only on the colours, so faces after the first take it as made.
+    let colours = match paint {
+        FaceColor::MultiGradient { stops, .. } => format!("{stops:?}"),
+        FaceColor::Gradient { from, to, .. } => format!("{from:?}{to:?}"),
+        FaceColor::Solid { .. } => return None,
+    };
+    let key = format!("{radial}/{alpha}/{colours}");
+    let colour = |t: f32| {
+        let c = sampler.at_position(t);
+        [
+            (c[0] * 255.0).round() as u8,
+            (c[1] * 255.0).round() as u8,
+            (c[2] * 255.0).round() as u8,
+            alpha,
+        ]
+    };
+    const EDGE: f32 = 1e-3;
+    if radial {
+        // Pixel centres sample the disc from -1 to 1 each way, so (x, y) maps onto the
+        // pixels by a half and a shift.
+        let n = RADIAL_PIXELS as f32;
+        let to_pixel = [x, y].map(|row| row.map(|v| v * n / 2.0));
+        let to_pixel = [
+            [to_pixel[0][0], to_pixel[0][1], to_pixel[0][2] + n / 2.0],
+            [to_pixel[1][0], to_pixel[1][1], to_pixel[1][2] + n / 2.0],
+        ];
+        let inside = corners.iter().all(|uv| {
+            pixel_at(to_pixel, *uv)
+                .iter()
+                .all(|p| (-EDGE..=n + EDGE).contains(p))
+        });
+        if !inside {
+            return None;
+        }
+        let (pixels, encoded) = shared_image(&key, RADIAL_PIXELS, RADIAL_PIXELS, || {
+            let mut pixels = Vec::with_capacity((RADIAL_PIXELS * RADIAL_PIXELS * 4) as usize);
+            for j in 0..RADIAL_PIXELS {
+                for i in 0..RADIAL_PIXELS {
+                    let at = |k: u32| (k as f32 + 0.5) / n * 2.0 - 1.0;
+                    pixels.extend(colour((at(i) * at(i) + at(j) * at(j)).sqrt()));
+                }
+            }
+            pixels
+        })?;
+        return Some(BakedFace {
+            width: RADIAL_PIXELS,
+            height: RADIAL_PIXELS,
+            pixels,
+            to_pixel,
+            encoded: Some(encoded),
+        });
+    }
+    // Pixel centres sample positions 0 to 1, the first and last on the gradient's ends.
+    // The strip is one pixel tall; `y` runs across it so the mapping stays square.
+    let n = (LINEAR_PIXELS - 1) as f32;
+    let to_pixel = [
+        [x[0] * n, x[1] * n, x[2] * n + 0.5],
+        [y[0] * n, y[1] * n, y[2] * n + 0.5],
+    ];
+    let inside = corners
+        .iter()
+        .all(|uv| (-EDGE..=1.0 + EDGE).contains(&(x[0] * uv.x() + x[1] * uv.y() + x[2])));
+    if !inside {
+        return None;
+    }
+    let (pixels, encoded) = shared_image(&key, LINEAR_PIXELS, 1, || {
+        (0..LINEAR_PIXELS)
+            .flat_map(|i| colour(i as f32 / n))
+            .collect()
+    })?;
+    Some(BakedFace {
+        width: LINEAR_PIXELS,
+        height: 1,
+        pixels,
+        to_pixel,
+        encoded: Some(encoded),
+    })
+}
+
+/// A shared gradient image: its pixels and their PNG.
+type SharedImage = (Vec<u8>, std::sync::Arc<[u8]>);
+
+thread_local! {
+    /// Shared gradient images by their colours.
+    static GRADIENTS: std::cell::RefCell<HashMap<String, SharedImage>> =
+        std::cell::RefCell::new(HashMap::new());
+}
+
+/// The shared image under `key`, made by `make` and encoded the first time it is asked for.
+fn shared_image(
+    key: &str,
+    width: u32,
+    height: u32,
+    make: impl FnOnce() -> Vec<u8>,
+) -> Option<SharedImage> {
+    if let Some(made) = GRADIENTS.with(|cache| cache.borrow().get(key).cloned()) {
+        return Some(made);
+    }
+    let pixels = make();
+    let png: std::sync::Arc<[u8]> = crate::assets::encode_png(width, height, &pixels)
+        .ok()?
+        .into();
+    GRADIENTS.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        // A handful of gradients is usual; a map with very many does not keep them all.
+        if cache.len() > 256 {
+            cache.clear();
+        }
+        cache.insert(key.to_string(), (pixels.clone(), png.clone()));
+    });
+    Some((pixels, png))
 }
 
 pub fn image_name(png: &[u8]) -> String {
@@ -177,8 +336,7 @@ pub(crate) fn normal_png(material: &Material) -> Option<std::sync::Arc<[u8]>> {
                     image: PreparedImage {
                         width: map.width,
                         height: map.height,
-                        scale: [1.0; 2],
-                        offset: [0.0; 2],
+                        to_pixel: SAME,
                         alpha: false,
                         png: png.clone(),
                     },
@@ -194,8 +352,7 @@ pub(crate) fn normal_png(material: &Material) -> Option<std::sync::Arc<[u8]>> {
 struct PreparedImage {
     width: u32,
     height: u32,
-    scale: [f32; 2],
-    offset: [f32; 2],
+    to_pixel: [[f32; 3]; 2],
     alpha: bool,
     png: Vec<u8>,
 }
@@ -254,16 +411,16 @@ fn prepare_image(
                     width: m.width,
                     height: m.height,
                     pixels: pixels.as_ref()?[..(m.width * m.height * 4) as usize].to_vec(),
-                    scale: [1.0, 1.0],
-                    offset: [0.0, 0.0],
+                    to_pixel: SAME,
+                    encoded: None,
                 })
             })
             .unwrap_or(BakedFace {
                 width: 1,
                 height: 1,
                 pixels: vec![190, 190, 190, 255],
-                scale: [0.0; 2],
-                offset: [0.5; 2],
+                to_pixel: CENTRE,
+                encoded: None,
             })
     } else {
         bake(
@@ -276,8 +433,7 @@ fn prepare_image(
     let image = PreparedImage {
         width: baked.width,
         height: baked.height,
-        scale: baked.scale,
-        offset: baked.offset,
+        to_pixel: baked.to_pixel,
         alpha: baked.pixels.as_chunks::<4>().0.iter().any(|p| p[3] < 255),
         png: baked.png()?,
     };
@@ -588,16 +744,18 @@ pub fn prepare_text(
                     cache.insert(key, name.clone());
                     name
                 };
+                // The face's UV is (p . u / su, p . v / sv) + offset; the image's pixel is
+                // `to_pixel` of that, so each pixel axis is a mix of u and v.
                 let su = f64::from(map_model::uv::safe_scale(face.uv_attributes.scale.x()));
                 let sv = f64::from(map_model::uv::safe_scale(face.uv_attributes.scale.y()));
+                let [row_u, row_v] = image.to_pixel.map(|row| row.map(f64::from));
+                let axis = |row: [f64; 3]| u * (row[0] / su) + v * (row[1] / sv);
                 face.uv_coord_system = map_model::uv::UvCoordSystem::Parallel {
-                    u_axis: u * (f64::from(image.scale[0]) / su),
-                    v_axis: v * (f64::from(image.scale[1]) / sv),
+                    u_axis: axis(row_u),
+                    v_axis: axis(row_v),
                 };
-                face.uv_attributes.offset = Vec2f::new(
-                    face.uv_attributes.offset.x() * image.scale[0] + image.offset[0],
-                    face.uv_attributes.offset.y() * image.scale[1] + image.offset[1],
-                );
+                let [x, y] = pixel_at(image.to_pixel, face.uv_attributes.offset);
+                face.uv_attributes.offset = Vec2f::new(x, y);
                 face.uv_attributes.scale = Vec2f::new(1.0, 1.0);
                 face.uv_attributes.rotation = 0.0;
                 face.material_name = name.into();
@@ -749,6 +907,111 @@ mod tests {
         let rows: std::collections::BTreeSet<u8> = pixels.iter().map(|p| p[1]).collect();
         assert_eq!(columns.len(), 64, "a texel column is lost or doubled");
         assert_eq!(rows.len(), 64, "a texel row is lost or doubled");
+    }
+
+    /// The colour of `image` at normalised `uv`, read bilinearly as a clamping sampler
+    /// reads it.
+    fn sample(image: &BakedFace, uv: Vec2f) -> [f32; 3] {
+        let (w, h) = (image.width as f32, image.height as f32);
+        let x = (uv.x() * w - 0.5).clamp(0.0, w - 1.0);
+        let y = (uv.y() * h - 0.5).clamp(0.0, h - 1.0);
+        let (x0, y0) = (x.floor(), y.floor());
+        let (x1, y1) = ((x0 + 1.0).min(w - 1.0), (y0 + 1.0).min(h - 1.0));
+        let at = |x: f32, y: f32| {
+            let i = ((y as u32 * image.width + x as u32) * 4) as usize;
+            [0, 1, 2].map(|c| f32::from(image.pixels[i + c]) / 255.0)
+        };
+        let (fx, fy) = (x - x0, y - y0);
+        std::array::from_fn(|c| {
+            let top = at(x0, y0)[c] * (1.0 - fx) + at(x1, y0)[c] * fx;
+            let bottom = at(x0, y1)[c] * (1.0 - fx) + at(x1, y1)[c] * fx;
+            top * (1.0 - fy) + bottom * fy
+        })
+    }
+
+    /// Every face of a box painted with one gradient shares one small image, and the
+    /// image read at each corner and between them gives the colour the editor paints
+    /// there, for linear and radial gradients, fitted or turned. A gradient placed on part
+    /// of a face is baked for that face instead.
+    #[test]
+    fn gradients_share_one_image_that_paints_what_the_editor_does() {
+        use map_model::brush_face::ColorStop;
+        use map_model::brush_face::GradientEnds;
+        use map_model::brush_face::GradientStops;
+        use map_model::brush_face::PaintOnFace;
+        let brush = map_model::shapes::create_cuboid(
+            &Bbox3d::new(Vec3d::fill(-1024.0), Vec3d::fill(1024.0)),
+            &Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(96.0, 40.0, 64.0)),
+            "stone",
+        )
+        .expect("a box fits the world");
+        let stops = GradientStops::new(&[
+            ColorStop {
+                position: 0.0,
+                color: Rgb::new(250, 20, 10),
+            },
+            ColorStop {
+                position: 0.4,
+                color: Rgb::new(20, 240, 30),
+            },
+            ColorStop {
+                position: 1.0,
+                color: Rgb::new(10, 30, 250),
+            },
+        ])
+        .expect("three stops");
+        for radial in [false, true] {
+            let paint = FaceColor::MultiGradient {
+                stops,
+                radial,
+                angle: 30.0,
+                alpha: 255,
+                ends: None,
+            };
+            let mut images = std::collections::HashSet::new();
+            for index in 0..brush.faces().len() {
+                let polygon = brush.face_polygon(index).expect("a polygon");
+                let mut face = brush.faces()[index].clone();
+                face.set_paint(Some(paint));
+                let image = bake(&face, &polygon, None).expect("a gradient bakes");
+                assert!(image.encoded.is_some(), "radial {radial}: not shared");
+                images.insert(image.pixels.clone());
+                let sampler = PaintOnFace::new(&face, &polygon, paint);
+                let centre =
+                    polygon.iter().fold(Vec3d::zero(), |a, p| a + *p) / polygon.len() as f64;
+                let points = polygon
+                    .iter()
+                    .flat_map(|p| [*p, (*p + centre) / 2.0])
+                    .chain([centre]);
+                for point in points {
+                    let uv = face.uv_coords(point);
+                    let got = sample(&image, image.uv(uv));
+                    let want = sampler.at_uv(uv);
+                    assert!(
+                        got.iter().zip(want).all(|(g, w)| (g - w).abs() < 0.03),
+                        "radial {radial}, face {index}: {got:?} where the editor has {want:?}"
+                    );
+                }
+            }
+            assert_eq!(images.len(), 1, "radial {radial}: one image for every face");
+        }
+
+        // Placed on the middle of the face, the gradient holds its end colours beyond its
+        // ends, which a shared strip read by a repeating sampler would not.
+        let polygon = brush.face_polygon(0).expect("a polygon");
+        let mut face = brush.faces()[0].clone();
+        face.set_paint(Some(FaceColor::MultiGradient {
+            stops,
+            radial: false,
+            angle: 0.0,
+            alpha: 255,
+            ends: Some(GradientEnds {
+                start: [0.4, 0.5],
+                end: [0.6, 0.5],
+            }),
+        }));
+        let image = bake(&face, &polygon, None).expect("a gradient bakes");
+        assert!(image.encoded.is_none(), "baked for the face");
     }
 }
 
