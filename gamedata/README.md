@@ -70,3 +70,7 @@ backslashes for JSON, quote runtime scale identifiers, and omit Generic's missin
 initial-map references. Definition-file line endings, indentation and trailing
 whitespace are normalized. Neverball's supplied starting map is kept with its
 profile, though its Quake 3 dialect is outside the current profile-format chooser.
+Hexen 2's definitions were corrected against Raven's game code: the Egyptian torch is
+`light_torch_eqypt`, the spelling the game spawns, and the `message` keys of worldspawn,
+buttons, doors and triggers are integers, because Hexen II reads them as line numbers
+in `strings.txt`.

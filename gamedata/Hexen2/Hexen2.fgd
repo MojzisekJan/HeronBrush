@@ -15,7 +15,7 @@
 
 @SolidClass = worldspawn : "World entity"
 [
-    message(string) : "Level name"
+    message(integer) : "Level name (a line of strings.txt)"
     worldtype(choices) : "World Type" : 0 =
     [
         0 : "Castle"
@@ -254,7 +254,7 @@
     [
         -1 : "Stay pressed"
     ]
-    message(string) : "Message"
+    message(integer) : "Message (a line of strings.txt)"
     delay(integer) : "Delay"
     lip(integer) : "Lip" : 4
     health(integer) : "Health"
@@ -304,7 +304,7 @@
         2 : "Reverse" : 0
         4 : "Don't link" : 0
     ]
-    message(string) : "Message"
+    message(integer) : "Message (a line of strings.txt)"
     health(integer) : "Health (shootable)"
     speed(integer) : "Speed" : 100
     wait(choices) : "Wait" : 3 =
@@ -874,7 +874,8 @@
 @PointClass base(light, Angles) size(-8 -8 -8, 8 8 8) = light_gem : "Gem light" []
 @PointClass base(light) size(-8 -8 -8, 8 8 8) = light_globe : "Globe" []
 @PointClass base(light) model(":models/cflmtrch.mdl") size(-8 -8 -8, 8 8 8) = light_torch_castle : "Castle torch" []
-@PointClass base(light_torch_castle) model(":models/egtorch.mdl") = light_torch_egypt : "Egyptian torch" []
+// Spelt as Raven spelt the spawn function in torch.hc; "light_torch_egypt" spawns nothing.
+@PointClass base(light_torch_castle) model(":models/egtorch.mdl") = light_torch_eqypt : "Egyptian torch" []
 @PointClass base(light_torch_castle) model(":models/mflmtrch.mdl") = light_torch_meso : "Meso torch" []
 @PointClass base(light_torch_castle)  model(":models/rflmtrch.mdl") = light_torch_rome : "Roman torch" []
 @PointClass base(light, Lightdmg) model(":models/flame.mdl") size(-10 -10 -20, 10 10 20) = light_torch_small_walltorch : "Walltorch"
@@ -1511,7 +1512,7 @@
     wait(integer) : "Wait" : 2
     health(integer) : "Health"
     delay(integer) : "Delay before trigger"
-    message(string) : "Message"
+    message(integer) : "Message (a line of strings.txt)"
     style(integer) : "Light Style"
 ]
 
@@ -1578,7 +1579,7 @@
     aflag(integer) : "Order"
     health(integer) : "Health"
     delay(integer) : "Delay before trigger"
-    message(string) : "Message"
+    message(integer) : "Message (a line of strings.txt)"
     style(integer) : "Light Style"
     failtarget(target_destination) : "Fail target (PoP)"
     wait(integer) : "Wait (PoP)"
@@ -1760,7 +1761,7 @@
     netname(string) : "Netname"
     wait(integer) : "Wait"
     delay(integer) : "Delay before trigger"
-    message(string) : "Message"
+    message(integer) : "Message (a line of strings.txt)"
     fadespeed(integer) : "Fade speed"
     style(integer) : "Light Style"
 ]
