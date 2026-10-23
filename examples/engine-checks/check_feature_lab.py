@@ -58,31 +58,39 @@ FEATURES = [
 PORTABLE = {"obj", "gltf", "glb"}
 # Documented scope, with the place that says so. A feature listed here for a target
 # is reported N/A rather than FAIL when it is missing.
-NOT_CLAIMED = {
-    "sky": ({"unity", "unreal", "flax", "obj", "gltf", "glb"},
-            "Target::exports_sky is false; docs/sky-export.md says this target does not carry the sky"),
-    "animation": ({"unreal", "obj", "gltf", "glb"},
-                  "the export warns that this target has no keyframe playback controller "
-                  "(docs/keyframe-animation.md)"),
-    "door": ({"unreal", "obj", "gltf", "glb"},
-             "no animation runtime, so no trigger-to-animation wiring (docs/keyframe-animation.md)"),
-    "water": ({"unreal", "obj", "gltf", "glb"},
-              "not in the water adapter list of docs/water-export.md"),
-    "normal": ({"unity", "obj", "defold", "stride"},
-               "brush normal maps reach GLB materials and Godot companions only. Unity's OBJ "
-               "path and the plain OBJ writer have no slot for them, Defold's .model binds only "
-               "the colour sampler, and docs/stride-export.md lists normal maps as not transferred"),
-    "model_pbr": ({"obj", "defold", "stride"},
-                  "docs/model-pbr.md: the standalone OBJ writer does not carry PBR maps; Defold's "
-                  ".model binds only the colour sampler; docs/stride-export.md: normal maps and "
-                  "emission are not transferred to Stride materials"),
-    "properties": ({"obj"}, "OBJ is geometry only (Target::Obj)"),
-    "links": ({"obj"}, "OBJ is geometry only (Target::Obj)"),
-}
+def scope(targets, reason):
+    return {t: reason for t in targets}
+
+
+SKY = "Target::exports_sky is false; docs/sky-export.md says this target does not carry the sky"
+NO_PLAYER = ("the export warns that this target has no keyframe playback controller "
+             "(docs/keyframe-animation.md)")
 UNREAL_COLLISION = ("docs/common-entities.md: the Unreal importer spawns meshes and lights; "
                     "doors, triggers and collision need project setup")
-NOT_CLAIMED["solid"] = ({"unreal"}, UNREAL_COLLISION)
-NOT_CLAIMED["skip"] = ({"unreal"}, UNREAL_COLLISION)
+OBJ_ONLY = "OBJ is geometry only (Target::Obj)"
+DEFOLD_SAMPLER = "Defold's .model binds only the colour sampler; the GLB keeps the map for a project material"
+NOT_CLAIMED = {
+    "sky": scope({"unity", "unreal", "flax", "obj", "gltf", "glb"}, SKY),
+    "animation": scope({"unreal", "obj", "gltf", "glb"}, NO_PLAYER),
+    "door": scope({"unreal", "obj", "gltf", "glb"}, NO_PLAYER),
+    "water": scope({"unreal", "obj", "gltf", "glb"}, "not in the adapter list of docs/water-export.md"),
+    "normal": {
+        "unity": "Unity's OBJ and MTL path has no normal-map slot for brush textures; its "
+                 "material adapter applies normal maps to imported GLB models only",
+        "obj": "the OBJ writer writes no normal maps",
+        "defold": DEFOLD_SAMPLER,
+        "stride": "docs/stride-export.md: normal maps are not transferred to Stride materials",
+    },
+    "model_pbr": {
+        "obj": "docs/model-pbr.md: the standalone OBJ writer does not carry PBR maps",
+        "defold": DEFOLD_SAMPLER,
+        "stride": "docs/stride-export.md: normal maps and emission are not transferred to Stride materials",
+    },
+    "properties": scope({"obj"}, OBJ_ONLY),
+    "links": scope({"obj"}, OBJ_ONLY),
+    "solid": scope({"unreal"}, UNREAL_COLLISION),
+    "skip": scope({"unreal"}, UNREAL_COLLISION),
+}
 
 # What the map says, in its own units and colours. See demos/feature_lab/build.py.
 TEXTURE_FACES = {
@@ -1977,14 +1985,14 @@ def run(target, root):
         return {f: FAIL(f"export could not be read: {error!r}") for f, _ in FEATURES}
     results = {}
     for feature, _ in FEATURES:
-        not_claimed = NOT_CLAIMED.get(feature)
+        not_claimed = NOT_CLAIMED.get(feature, {}).get(target)
         try:
             result = CHECKS[feature](level)
         except (LookupError, OSError, ValueError, AttributeError, TypeError) as error:
             result = FAIL(f"check could not run: {error!r}")
-        if not_claimed and target in not_claimed[0] and result.status != "N/A":
+        if not_claimed and result.status != "N/A":
             seen = "data present" if result.status == "PASS" else "file check"
-            result = NA(f"{not_claimed[1]} ({seen}: {result.reason})")
+            result = NA(f"{not_claimed} ({seen}: {result.reason})")
         results[feature] = result
     return results
 

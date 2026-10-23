@@ -33,4 +33,11 @@ colour texture, and the error appears among the material loading warnings.
 ## Limits
 
 Automatic pairing applies to materials loaded from image folders. Plain colours
-and gradients have no normal map input. Normal maps are not exported to engines.
+and gradients have no normal map input.
+
+Exports that write GLB meshes embed the normal map in the OpenGL convention,
+with tangents, as the material's `normalTexture`. Godot's StandardMaterial3D takes
+a `<texture>_normal` image from the project's texture folder; the other suffixes
+are not looked for there. Unity's OBJ path, the plain
+OBJ writer, Defold's `.model` (one colour sampler) and Stride's materials do not
+carry it. See [the feature matrix](feature-matrix.md).

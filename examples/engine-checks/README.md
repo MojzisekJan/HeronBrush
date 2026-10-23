@@ -22,7 +22,9 @@ geometry, collision, materials and entity data; see
 
 `export_motion_lab.py`, `prepare_motion_lab.py` and `prepare_water.py` export the
 animation and water test maps; [target parity](../../docs/target-parity.md) lists
-their commands.
+their commands. `export_feature_lab.py` exports the feature lab to all 14 targets
+and `check_feature_lab.py` checks the files feature by feature; see
+[the feature matrix](../../docs/feature-matrix.md).
 
 ## Running
 
