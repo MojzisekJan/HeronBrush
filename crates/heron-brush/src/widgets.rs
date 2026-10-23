@@ -21,7 +21,7 @@ pub fn field(
             .hint_text(hint)
             .desired_width(width)
             .margin(crate::widgets::body_entry_margin(ui, 6, 6))
-            .min_size(egui::vec2(0.0, ROW_HEIGHT)),
+            .min_size(egui::vec2(0.0, row_height(ui))),
     );
     underline(ui, &response);
     if response.has_focus() {
@@ -36,10 +36,10 @@ pub fn field(
     }
 }
 
-/// The inner margin of a one-line entry [`ROW_HEIGHT`] tall, `left` and `right` wide, that
+/// The inner margin of a one-line entry [`row_height`] tall, `left` and `right` wide, that
 /// puts the capitals of `font` on the entry's middle.
 pub fn entry_margin(ui: &egui::Ui, font: &egui::FontId, left: i8, right: i8) -> egui::Margin {
-    egui_native_look::entry_margin(ui, font, ROW_HEIGHT, left, right)
+    egui_native_look::entry_margin(ui, font, row_height(ui), left, right)
 }
 
 /// [`entry_margin`] for body text, the font text edits use.
@@ -104,6 +104,13 @@ use crate::theme;
 
 /// The height of entries, spins, drop-downs and buttons.
 pub const ROW_HEIGHT: f32 = theme::CONTROL_HEIGHT;
+
+/// The height of the controls in `ui`: [`ROW_HEIGHT`] in panels and dialogs, less where a
+/// strip such as the tool bar's lowers `interact_size`, so these controls stay as tall as
+/// egui's buttons and the native look's widgets beside them.
+pub fn row_height(ui: &egui::Ui) -> f32 {
+    ui.spacing().interact_size.y
+}
 
 /// An on/off switch in the look of the system ([`egui_native_look::Switch`]). The value
 /// has changed when `response.changed()`.
@@ -221,9 +228,7 @@ fn spin_body(
 ) -> egui::Response {
     let before = *value;
     let stepper = if caption.is_some() { 0.0 } else { 16.0 };
-    // As tall as the row's other controls: the tool bar's are shorter than a form's.
-    let height = ui.spacing().interact_size.y;
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, row_height(ui)), Sense::hover());
     let radius = CornerRadius::same(theme::radius());
     let enabled = ui.is_enabled();
     let hovered = ui.rect_contains_pointer(rect);
@@ -486,7 +491,7 @@ fn dropdown_with_icons(
     let before = *selected;
     let text = choices.get(*selected).copied().unwrap_or("");
     // As tall as the controls around it: ROW_HEIGHT in panels, less in the tool strip.
-    let height = ui.spacing().interact_size.y;
+    let height = row_height(ui);
     let (rect, response) = ui.allocate_exact_size(egui::vec2(width, height), Sense::click());
     let enabled = ui.is_enabled();
     let open = egui::Popup::is_id_open(ui.ctx(), egui::Id::unique(&id).with("dropdown"));
@@ -637,9 +642,9 @@ pub fn row<R>(
     let width = ui.available_width();
     let label_w = (width * LABEL_SHARE).floor();
     ui.horizontal(|ui| {
-        ui.set_min_height(ROW_HEIGHT);
-        let (rect, response) =
-            ui.allocate_exact_size(egui::vec2(label_w, ROW_HEIGHT), Sense::hover());
+        let height = row_height(ui);
+        ui.set_min_height(height);
+        let (rect, response) = ui.allocate_exact_size(egui::vec2(label_w, height), Sense::hover());
         let galley = ui.painter().layout(
             label.to_string(),
             theme::body(),
@@ -679,7 +684,7 @@ pub fn row<R>(
             (None, false) => {}
         }
         ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), ROW_HEIGHT),
+            egui::vec2(ui.available_width(), height),
             egui::Layout::left_to_right(egui::Align::Center),
             control,
         )
@@ -863,7 +868,7 @@ pub fn search(ui: &mut egui::Ui, text: &mut String, hint: &str) -> egui::Respons
             .hint_text(hint)
             .desired_width(ui.available_width())
             .margin(crate::widgets::body_entry_margin(ui, 26, 6))
-            .min_size(egui::vec2(0.0, ROW_HEIGHT)),
+            .min_size(egui::vec2(0.0, row_height(ui))),
     );
     let r = Rect::from_center_size(
         egui::pos2(response.rect.left() + 14.0, response.rect.center().y),
@@ -937,7 +942,7 @@ pub fn icon_button(
 
 /// A thin vertical rule between groups of icon buttons in a toolbar.
 pub fn toolbar_gap(ui: &mut egui::Ui) {
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(9.0, ROW_HEIGHT), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(9.0, row_height(ui)), Sense::hover());
     ui.painter().line_segment(
         [
             egui::pos2(rect.center().x, rect.top() + 7.0),
@@ -966,7 +971,7 @@ pub fn segmented_width(
     items: &[(&str, &str, bool)],
     width: f32,
 ) -> Option<usize> {
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, ROW_HEIGHT), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, row_height(ui)), Sense::hover());
     let n = items.len().max(1);
     let each = rect.width() / n as f32;
     let id = ui.scope_id().with(("segmented", egui::Id::unique(id)));
@@ -1091,7 +1096,7 @@ pub fn toggle_row(
 ) -> egui::Response {
     let width = ui.available_width();
     let (rect, mut response) =
-        ui.allocate_exact_size(egui::vec2(width, ROW_HEIGHT), Sense::click());
+        ui.allocate_exact_size(egui::vec2(width, row_height(ui)), Sense::click());
     let knob = Rect::from_min_max(
         egui::pos2(
             rect.right() - egui_native_look::switch_width(theme::look()),
