@@ -122,12 +122,12 @@ fn write_primitive_map(
             let key = if doom3 {
                 doom3_string(key)?.to_string()
             } else {
-                escape(key)
+                escape(key, true)
             };
             let value = if doom3 {
                 doom3_string(value)?.to_string()
             } else {
-                escape(value)
+                escape(value, false)
             };
             let _ = writeln!(out, "\"{}\" \"{}\"", key, value);
         }
@@ -183,7 +183,7 @@ fn write_primitive_map(
                 let material = if doom3 {
                     doom3_string(&face.material_name)?.to_string()
                 } else {
-                    escape(&face.material_name)
+                    escape(&face.material_name, true)
                 };
                 let [[a, b, c], [d, e, f]] = matrix;
                 let _ = write!(

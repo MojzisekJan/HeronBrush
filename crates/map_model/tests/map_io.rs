@@ -456,6 +456,38 @@ fn quotes_in_a_property_value_are_escaped() {
     assert_eq!(reread.entities[0].property("message"), Some("say \"hi\""));
 }
 
+#[test]
+fn a_neverball_message_keeps_its_single_backslashes() {
+    // map-easy/mover.map: lines break at `\`, and the last one ends in `\"`.
+    let line = "\"message\" \"A moving platform can be tricky.\\Use precise timing.\\\"";
+    let source = format!("{{\n\"classname\" \"worldspawn\"\n{line}\n}}\n");
+    let map = read_map(&source, Some(MapFormat::Quake2)).expect("it parses");
+    assert_eq!(
+        map.entities[0].property("message"),
+        Some("A moving platform can be tricky.\\Use precise timing.\\")
+    );
+
+    let written = write_map(&map);
+    assert!(written.contains(line), "{written}");
+}
+
+#[test]
+fn backslashes_that_look_like_escapes_survive_a_round_trip() {
+    for (key, value) in [
+        ("path\\", "C:\\\\share\\"),
+        ("a", "say \\\"hi\\\""),
+        ("b", "\\\\"),
+        ("c", "ends in a quote\""),
+    ] {
+        let mut map = read_map("{\n\"classname\" \"worldspawn\"\n}\n", None).expect("it parses");
+        map.entities[0]
+            .properties
+            .push((key.to_string(), value.to_string()));
+        let reread = read_map(&write_map(&map), None).expect("it parses again");
+        assert_eq!(reread.entities[0].property(key), Some(value), "{key}");
+    }
+}
+
 /* ========== errors ========== */
 
 #[test]

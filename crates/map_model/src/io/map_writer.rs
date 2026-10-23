@@ -80,7 +80,12 @@ fn write_entity(out: &mut String, entity: &Entity, format: MapFormat, index: usi
     }
 
     for (key, value) in &entity.properties {
-        let _ = writeln!(out, "\"{}\" \"{}\"", escape(key), escape(value));
+        let _ = writeln!(
+            out,
+            "\"{}\" \"{}\"",
+            escape(key, true),
+            escape(value, false)
+        );
     }
 
     for (brush_index, brush) in entity.brushes.iter().enumerate() {
@@ -450,8 +455,32 @@ pub fn format_scalar(value: f64) -> String {
 }
 
 /// Escapes a property key or value for writing between double quotes.
-fn escape(value: &str) -> String {
-    text_utils::string_format::str_escape(value, "\"", '\\')
+///
+/// A quote is escaped, and so is a backslash in front of a quote or another backslash,
+/// which the reader would otherwise take for an escape. Any other backslash goes out as
+/// it is: compilers and games read the value literally, and Neverball breaks a message's
+/// lines with `\`, so `a\b` written as `a\\b` shows an empty line between the two. A
+/// value's last backslash stays single too, since the reader takes a `\"` that ends the
+/// line as the closing quote; a key is followed by its value on the same line, so its
+/// last backslash is escaped.
+fn escape(value: &str, is_key: bool) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut chars = value.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => {
+                let escaped = match chars.peek() {
+                    Some('"' | '\\') => true,
+                    None => is_key,
+                    Some(_) => false,
+                };
+                out.push_str(if escaped { "\\\\" } else { "\\" });
+            }
+            _ => out.push(c),
+        }
+    }
+    out
 }
 
 #[cfg(test)]
