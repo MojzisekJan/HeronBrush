@@ -21,3 +21,7 @@ __pycache__/
 # LibreQuake wads and compiler output for the Quake demo.
 /demos/quake_libre/wads/
 /demos/quake_libre/build/
+
+# The Hexen II demo's textures and compiler output for the Hexen II demo map.
+/demos/hexen2_heron/wads/
+/demos/hexen2_heron/build/
