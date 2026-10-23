@@ -19,9 +19,10 @@ Games that are free to download come first, one at a time.
 | Quake2 | the freely distributed demo, Yamagi Quake II, ericw-tools | [done](#quake-2) |
 | DDayNormandy | D-Day: Normandy, which needs no Quake 2 data, ericw-tools | [done](#d-day-normandy) |
 | Hexen2 | the freely distributed demo | [done](#hexen-ii) |
+| Heretic2 | the freely distributed demo, 0lvin's Heretic II port, q2tools-220 | [done](#heretic-ii) |
 
-Not tried, because the game has to be bought: Halflife, Kingpin, SoF, Heretic2,
-Daikatana and Wrath. `Generic` and `heron_brush` are Heron's own profiles.
+Not tried, because the game has to be bought: Halflife, Kingpin, SoF, Daikatana and
+Wrath. `Generic` and `heron_brush` are Heron's own profiles.
 
 ## Quake
 
@@ -1135,3 +1136,182 @@ alias loop". The log goes to `logs/console.log` in the homedir.
 - No briefing picture was made for the map.
 - Heron does not read 24-bit `.pcx` textures. Quake 2 engines draw `.wal`, so this
   matters only for the two leftover files in `ed/`.
+
+## Heretic II
+
+Tried on 2026-10-23 and 24 with the Heretic II demo that Raven and Activision gave away
+in 1998, 0lvin's Heretic II port (Raven's game code on Yamagi Quake II Remaster) built
+from source as the engine, and q2tools-220 for the compile. The level is
+[demos/heretic2_heron](../demos/heretic2_heron/README.md): a warehouse and a yard open
+to the sky, a door that a button opens, a trigger that wakes two plague elves and three
+rats, prints a line of Corvus's and lights the yard's lamps, steps to a quay and the
+exit, which loads the demo's Silverspring Docks. It compiles sealed and plays through to
+the exit; the engine then crashes loading the next map, which it does with the demo's
+own maps too.
+
+### What was installed
+
+Everything is under `~/.local/opt/heretic2/`, without root. The downloads stay in
+`downloads/`.
+
+| What | From | Unpacked to |
+| --- | --- | --- |
+| The demo, `h2_demo_us.exe` (40 MB, sha256 `a7b29d47...4307`), an InstallShield 5 installer, never run | archive.org, item `h2_demo_us` | `h2demo/` |
+| unshield, built from source (commit feaa32f) with gcc, for its raw extraction | github.com/twogood/unshield | `tools/unshield/` |
+| 0lvin's heretic2 (commit 1d821e2, Yamagi Quake II 8.71H16 underneath) | github.com/0lvin/heretic2 | `src/0lvin-heretic2/`, installed in `0lvin/` |
+| q2tools-220 (commit 07d8d89), built with gcc | github.com/qbism/q2tools-220 | `src/q2tools-220/`, `q2tools/q2tool` |
+| Raven's Heretic II toolkit with source (qbsp3, qrad3, HereticEd, the game code), for reading | code.idtech.space/raven/heretic2-sdk | `downloads/heretic2-sdk/` |
+
+7-Zip opens the `.exe` and gives the installer's cabinets. unshield lists all 1825 files
+of `data1.cab` to `data4.cab` but extracts none ("Decompression failed with code -3"),
+the packaged 1.5.1 and the current source alike. The files carry InstallShield's
+obfuscation flag, unshield undoes it, and the data was never obfuscated. With
+`unshield -r` (raw) the bytes come out with that undone; `tools/is5_inflate.py` redoes
+it and inflates each file, a run of 16-bit lengths each followed by an independent
+deflate stream. All 1825 files come out at the sizes the cabinet lists. The game's
+folder is `Base`, capital B, with its files loose: 274 `.m8` textures under
+`Base/textures`, models (`.fm`) under `Base/models`, and five maps: `tutorial`,
+`democanyon`, `demodocks` and the deathmatch maps `demodmandoria` and `demodmcloud`.
+
+The engine is built with the machine's SDL2 and the headers from the Quake 2 test's
+`~/.local/opt/quake2/dev-root`: `make WITH_SDL3=no WITH_CURL=no WITH_OPENAL=no config
+client game player effects ref_gl1 ref_soft`. The port expects the full game, v1.06 or
+Loki's, and its data in `baseq2`. `0lvin/baseq2` holds the built `game.so`,
+`player.so` and `effects.so`, links to everything in the demo's `Base` but the Windows
+DLLs, a `maps` folder of links (so compiled maps go there and not into the demo), and
+`players/male`, links to the demo's player model `models/player/elf/tris.fm` and its
+`Corvus*.m8` skins, which is where the full game keeps them. Without that the player is
+invisible ("AddEntityToView: NULL Model"). The port reads skies only as `.m32`; the
+demo's sky is `pics/Skies/sky1*.m8`, so one look-up of `.m8` was added
+(`downloads/0lvin-heretic2-demo-sky.patch`). `run-0lvin` starts the engine; with
+`H2_HOME` set, that folder is the home, and the config and screenshots go to
+`$H2_HOME/.local/share/YamagiH2/baseq2`.
+
+q2tools-220 reads Heretic II textures with `-h2tex`, as loose `textures/<name>.m8` under
+`-moddir`. Three things in it break Heretic II, patched in
+`downloads/q2tools-220-heretic2.patch`. It treats surface flag bit 25 as its own alpha
+test, which makes a face detail, and bit 25 is Heretic II's stone footsteps: every stone
+wall was detail and the first compile leaked through the walls. It writes no dummy area
+portal, which id's qbsp3 always wrote and Yamagi's loader requires ("Map has too small
+areas"). And it did not read the lighting numbers HereticEd writes on a `tall_wall`
+face.
+
+Not tried: Heretic2R's Linux port (an open pull request, and it wants v1.06 data) and
+the 32-bit Loki demo, whose FTP server (ftp.lokigames.twolife.be) refused connections.
+0lvin's port ran the demo, so neither was needed.
+
+### Setting Heron up
+
+In the welcome window the profile is set to Heretic 2, and in Preferences, Games, the
+game path is `~/.local/opt/heretic2/h2demo`, the demo's own folder. The project paths
+then list `h2demo` and `h2demo/Base`, the textures appear in the Face tab's material
+browser with their own colours, and the FGD's monster and item models are drawn in the
+3D view. Both steps were done with a scripted run of the window, in a nested Xephyr
+display; the preferences it wrote are the ones the MCP runs use.
+
+### How a Heretic II map is made
+
+Raven's toolkit (HereticEd, qbsp3, qrad3 and the game code) says:
+
+- A face names a texture under `textures/`, such as `Silverspring/oldwall1`, spelt as
+  on disk for a case-sensitive file system. Each `.m8` carries its own palette and the
+  face's default flags: `general/sky` is sky, `general/trigger` nodraw,
+  `general/clip` player clip, and nearly every texture has a footstep material in bits 24
+  and 25 (gravel 0, metal 1, stone 2, wood 3). A face line that ends after the scale
+  takes them from the `.m8`; one with its own three numbers replaces them all.
+- HereticEd writes the three numbers only where they differ from the texture's, and
+  after them, on a face with `tall_wall` (0x400), four more: the face's red, green, blue
+  and alpha from 0 to 1. qrad3 leaves such a face's light as written.
+- Messages are numbers, as in Hexen II: a trigger's or worldspawn's `message` is a line
+  of `levelmsg.txt`, counting its first line, a comment, as 1. Line 31 is "My brethren
+  are insane with bloodlust!".
+- Worldspawn's `sky` names the box in `pics/Skies`; the demo has only `sky1`.
+- A `func_button` with spawnflag 1 (TOUCH) is pressed by walking into it; without it
+  the player has to use the action key. Doors and changelevels work as in Quake 2
+  (`map` is `next$start`).
+- A monster with spawnflag 2 (ASLEEP) is not in the level until something targets it.
+  A `light` with a `targetname`, a `style` of 32 or more and spawnflag 1 starts off and
+  comes on when fired. q2tools' light takes the style as written, unlike ericw-tools'.
+- Monsters follow buoys (`info_buoy`); without them the game warns "no buoys on this
+  map" and they walk straight at the player.
+- The demo has the plague elf, rat, gorgon, harpy, gkrokon, fish, spreader, assassin
+  and tcheckrik models. The tcheckrik's folder is `Tcheckrik`, and a texture names its
+  next frame `General/waterfast2` where the folder is `general`, which both only work
+  on Windows.
+
+### Rerunning it
+
+    cd demos/heretic2_heron
+    ./build.sh                  # q2tool -bsp -vis -rad -h2tex; installs the bsp and the configs
+    H2_HOME=/some/scratch ~/.local/opt/heretic2/run-0lvin +set vid_fullscreen 0 \
+        +set vid_renderer gl1 +set s_initsound 0 +map heron_wharf +exec playtest.cfg
+
+`build.sh --remake` builds the map again in Heron first, through `make_map.py` and the
+MCP server; set `HERON_BRUSH` to the binary and `XDG_CONFIG_HOME` to a scratch folder
+whose preferences have the Heretic 2 game path. It saves `heron_wharf.map` in Heron's
+own Valve dialect and exports `heron_wharf_h2.map` in Quake 2's, which is what `q2tool`
+is given. The configs use the port's `teleport` command to put the player at each step,
+facing east. `playtest.cfg` presses the button, looks at the open door, walks through
+the door and the trigger, and walks from the quay into the exit; `lamps.cfg` looks along
+the yard before and after the trigger. The engine ran in a nested Xephyr display with
+Mesa's llvmpipe and the `gl1` renderer.
+
+### What worked
+
+- `q2tool` found all 12 textures and the map sealed. The bsp's texinfos carry each
+  `.m8`'s flags (`0x3000000` wood, `0x2000000` stone, sky `0x4`), so the engine reads it
+  as "IBSP with version 38 (Heretic II)"; light made 80 faces with the lamps' style 32.
+- In the engine the map loads with nothing in the console that the demo's own maps do
+  not print too ("tried to free special edict", files the client asks the server for),
+  besides the warning about the missing buoys.
+  The button opens the door. The trigger prints "My brethren are insane with
+  bloodlust!", the two elves and three rats appear (`listentities monsters`) and come at
+  the player, and the lamps come on: the same view of the yard goes from a mean
+  brightness of 4.4 to 15.3. The sky draws. The exit prints "Unit complete" and starts
+  loading `demodocks`.
+- Heron's export of the map opened again and exported once more is the same file, byte
+  for byte. A brush in HereticEd's own layout (`Brush_Write`), with a `tall_wall` face
+  and its lighting, opens, saves and exports with the four numbers after the flags, and
+  the patched `q2tool` reads the export. No `.map` source of a Raven or community level
+  was found to round-trip; the toolkit has none.
+
+### What was fixed in Heron
+
+- **No texture was found under the demo's `Base`.** The profile's search path is
+  `base`; on a case-sensitive file system Heron mounted `h2demo/base`, which is not
+  there. A search path now matches a folder whose name differs only in case.
+- **`.m8` textures were not read at all.** The material loader knew PNG, JPEG, TGA, PCX
+  and WAL; the Heretic 2 profile's only format is `.m8`. They are now read from folders,
+  game folders and paks, each through its own palette, with the header's flags, contents
+  and value as the material's surface defaults, as for a `.wal`.
+- **Monsters, items and lights were boxes.** Every model the FGD names is a flex model
+  (`.fm`), which Heron could not read. The first frame and first skin are drawn now.
+- **A map from HereticEd would not open.** The four lighting numbers after a
+  `tall_wall` face's flags were taken for the next face. They are kept on the face and
+  written back after the flags, in every dialect but Quake 3's.
+- **The footstep bits had no ticks.** The profile names surface flags 24 and 25 now,
+  `metal` and `stone` (both is wood); the face panel kept them but could not show them.
+- **`item_spitter`'s model did not parse.** The FGD chose it with `target =>`; it is
+  `target ==`.
+
+### Mapping mistakes, not Heron's
+
+- Lights of 250 in a 192-high room were nearly black with q2tools' light: the lightmaps
+  averaged 28 against the demo maps' 67. The warehouse's lights are 450 and `build.sh`
+  passes `-scale 2`, which brings them to 56.
+- `"message" "Ambush!"` would print nothing; it has to be a line number.
+- The first button test needed the action key; the button has spawnflag 1 now.
+
+### What remains
+
+- The engine crashes (in `monster_start_go`) loading the next map after a changelevel.
+  `gamemap democanyon` from the demo's own tutorial crashes the same way, and `map
+  demodocks` alone loads, so it is the port's level change, not the map. The port's
+  README says its save code, which a level change uses, is broken.
+- The level has no buoys, so the monsters do not path around anything.
+- No level name: worldspawn's `message` would have to be one of the demo's lines.
+- A flex model's mesh nodes and the FGD's `frame` and `skin` are not applied, so a
+  model shows every part in its first frame.
+- The editor's view of the models from inside the level was not looked at; the 3D view
+  in the screenshots shows the level from outside, and the models on a test floor.
+- Raven's own qbsp3 and qrad3 were not built (MSVC projects); q2tools-220 stood in.

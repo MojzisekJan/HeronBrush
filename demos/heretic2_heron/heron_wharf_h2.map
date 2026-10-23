@@ -1,0 +1,487 @@
+// Format: Quake2
+// heron_brush format 3
+// entity 0
+{
+"classname" "worldspawn"
+"sky" "sky1"
+// heron_brush id 5ed6b60000000001
+// brush 0
+{
+( -16 -16 -16 ) ( -16 -15 -16 ) ( -16 -16 -15 ) Silverspring/wfloor1 0 0 0 1 1
+( 528 528 0 ) ( 528 528 1 ) ( 528 529 0 ) Silverspring/wfloor1 0 0 0 1 1
+( -16 -16 -16 ) ( -16 -16 -15 ) ( -15 -16 -16 ) Silverspring/wfloor1 0 0 0 1 1
+( 528 528 0 ) ( 529 528 0 ) ( 528 528 1 ) Silverspring/wfloor1 0 0 0 1 1
+( 528 528 0 ) ( 528 529 0 ) ( 529 528 0 ) Silverspring/wfloor1 0 0 0 1 1
+( -16 -16 -16 ) ( -15 -16 -16 ) ( -16 -15 -16 ) Silverspring/wfloor1 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000002
+// brush 1
+{
+( -16 -16 192 ) ( -16 -15 192 ) ( -16 -16 193 ) Silverspring/roof1 0 0 0 1 1
+( 528 528 208 ) ( 528 528 209 ) ( 528 529 208 ) Silverspring/roof1 0 0 0 1 1
+( -16 -16 192 ) ( -16 -16 193 ) ( -15 -16 192 ) Silverspring/roof1 0 0 0 1 1
+( 528 528 208 ) ( 529 528 208 ) ( 528 528 209 ) Silverspring/roof1 0 0 0 1 1
+( 528 528 208 ) ( 528 529 208 ) ( 529 528 208 ) Silverspring/roof1 0 0 0 1 1
+( -16 -16 192 ) ( -15 -16 192 ) ( -16 -15 192 ) Silverspring/roof1 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000003
+// brush 2
+{
+( -16 -16 0 ) ( -16 -15 0 ) ( -16 -16 1 ) Silverspring/oldwall1 0 0 0 1 1
+( 0 528 192 ) ( 0 528 193 ) ( 0 529 192 ) Silverspring/oldwall1 0 0 0 1 1
+( -16 -16 0 ) ( -16 -16 1 ) ( -15 -16 0 ) Silverspring/oldwall1 0 0 0 1 1
+( 0 528 192 ) ( 1 528 192 ) ( 0 528 193 ) Silverspring/oldwall1 0 0 0 1 1
+( 0 528 192 ) ( 0 529 192 ) ( 1 528 192 ) Silverspring/oldwall1 0 0 0 1 1
+( -16 -16 0 ) ( -15 -16 0 ) ( -16 -15 0 ) Silverspring/oldwall1 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000004
+// brush 3
+{
+( 0 -16 0 ) ( 0 -15 0 ) ( 0 -16 1 ) Silverspring/oldwall1 0 0 0 1 1
+( 512 0 192 ) ( 512 0 193 ) ( 512 1 192 ) Silverspring/oldwall1 0 0 0 1 1
+( 0 -16 0 ) ( 0 -16 1 ) ( 1 -16 0 ) Silverspring/oldwall1 0 0 0 1 1
+( 512 0 192 ) ( 513 0 192 ) ( 512 0 193 ) Silverspring/oldwall1 0 0 0 1 1
+( 512 0 192 ) ( 512 1 192 ) ( 513 0 192 ) Silverspring/oldwall1 0 0 0 1 1
+( 0 -16 0 ) ( 1 -16 0 ) ( 0 -15 0 ) Silverspring/oldwall1 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000005
+// brush 4
+{
+( 0 512 0 ) ( 0 513 0 ) ( 0 512 1 ) Silverspring/oldwall1 0 0 0 1 1
+( 512 528 192 ) ( 512 528 193 ) ( 512 529 192 ) Silverspring/oldwall1 0 0 0 1 1
+( 0 512 0 ) ( 0 512 1 ) ( 1 512 0 ) Silverspring/oldwall1 0 0 0 1 1
+( 512 528 192 ) ( 513 528 192 ) ( 512 528 193 ) Silverspring/oldwall1 0 0 0 1 1
+( 512 528 192 ) ( 512 529 192 ) ( 513 528 192 ) Silverspring/oldwall1 0 0 0 1 1
+( 0 512 0 ) ( 1 512 0 ) ( 0 513 0 ) Silverspring/oldwall1 0 0 0 1 1
+}
+// heron_brush id 5ed6b6000000000a
+// brush 5
+{
+( 32 32 0 ) ( 32 33 0 ) ( 32 32 1 ) palace/crate1 0 0 0 1 1
+( 96 96 64 ) ( 96 96 65 ) ( 96 97 64 ) palace/crate1 0 0 0 1 1
+( 32 32 0 ) ( 32 32 1 ) ( 33 32 0 ) palace/crate1 0 0 0 1 1
+( 96 96 64 ) ( 97 96 64 ) ( 96 96 65 ) palace/crate1 0 0 0 1 1
+( 96 96 64 ) ( 96 97 64 ) ( 97 96 64 ) palace/crate1 0 0 0 1 1
+( 32 32 0 ) ( 33 32 0 ) ( 32 33 0 ) palace/crate1 0 0 0 1 1
+}
+// heron_brush id 5ed6b6000000000b
+// brush 6
+{
+( 96 32 0 ) ( 96 33 0 ) ( 96 32 1 ) palace/crate1 0 0 0 1 1
+( 160 96 64 ) ( 160 96 65 ) ( 160 97 64 ) palace/crate1 0 0 0 1 1
+( 96 32 0 ) ( 96 32 1 ) ( 97 32 0 ) palace/crate1 0 0 0 1 1
+( 160 96 64 ) ( 161 96 64 ) ( 160 96 65 ) palace/crate1 0 0 0 1 1
+( 160 96 64 ) ( 160 97 64 ) ( 161 96 64 ) palace/crate1 0 0 0 1 1
+( 96 32 0 ) ( 97 32 0 ) ( 96 33 0 ) palace/crate1 0 0 0 1 1
+}
+// heron_brush id 5ed6b6000000000c
+// brush 7
+{
+( 48 48 64 ) ( 48 49 64 ) ( 48 48 65 ) palace/crate1 0 0 0 1 1
+( 112 112 128 ) ( 112 112 129 ) ( 112 113 128 ) palace/crate1 0 0 0 1 1
+( 48 48 64 ) ( 48 48 65 ) ( 49 48 64 ) palace/crate1 0 0 0 1 1
+( 112 112 128 ) ( 113 112 128 ) ( 112 112 129 ) palace/crate1 0 0 0 1 1
+( 112 112 128 ) ( 112 113 128 ) ( 113 112 128 ) palace/crate1 0 0 0 1 1
+( 48 48 64 ) ( 49 48 64 ) ( 48 49 64 ) palace/crate1 0 0 0 1 1
+}
+// heron_brush id 5ed6b6000000000d
+// brush 8
+{
+( 512 -80 0 ) ( 512 -79 0 ) ( 512 -80 1 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 224 320 ) ( 528 224 321 ) ( 528 225 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 512 -80 0 ) ( 512 -80 1 ) ( 513 -80 0 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 224 320 ) ( 529 224 320 ) ( 528 224 321 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 224 320 ) ( 528 225 320 ) ( 529 224 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 512 -80 0 ) ( 513 -80 0 ) ( 512 -79 0 ) Silverspring/abrickbot 0 0 0 1 1
+}
+// heron_brush id 5ed6b6000000000e
+// brush 9
+{
+( 512 288 0 ) ( 512 289 0 ) ( 512 288 1 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 592 320 ) ( 528 592 321 ) ( 528 593 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 512 288 0 ) ( 512 288 1 ) ( 513 288 0 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 592 320 ) ( 529 592 320 ) ( 528 592 321 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 592 320 ) ( 528 593 320 ) ( 529 592 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 512 288 0 ) ( 513 288 0 ) ( 512 289 0 ) Silverspring/abrickbot 0 0 0 1 1
+}
+// heron_brush id 5ed6b6000000000f
+// brush 10
+{
+( 512 224 128 ) ( 512 225 128 ) ( 512 224 129 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 288 320 ) ( 528 288 321 ) ( 528 289 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 512 224 128 ) ( 512 224 129 ) ( 513 224 128 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 288 320 ) ( 529 288 320 ) ( 528 288 321 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 288 320 ) ( 528 289 320 ) ( 529 288 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 512 224 128 ) ( 513 224 128 ) ( 512 225 128 ) Silverspring/abrickbot 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000010
+// brush 11
+{
+( 512 -80 -16 ) ( 512 -79 -16 ) ( 512 -80 -15 ) Silverspring/cobble13 0 0 0 1 1
+( 1184 592 0 ) ( 1184 592 1 ) ( 1184 593 0 ) Silverspring/cobble13 0 0 0 1 1
+( 512 -80 -16 ) ( 512 -80 -15 ) ( 513 -80 -16 ) Silverspring/cobble13 0 0 0 1 1
+( 1184 592 0 ) ( 1185 592 0 ) ( 1184 592 1 ) Silverspring/cobble13 0 0 0 1 1
+( 1184 592 0 ) ( 1184 593 0 ) ( 1185 592 0 ) Silverspring/cobble13 0 0 0 1 1
+( 512 -80 -16 ) ( 513 -80 -16 ) ( 512 -79 -16 ) Silverspring/cobble13 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000011
+// brush 12
+{
+( 512 -80 320 ) ( 512 -79 320 ) ( 512 -80 321 ) general/sky 0 0 0 1 1
+( 1184 592 336 ) ( 1184 592 337 ) ( 1184 593 336 ) general/sky 0 0 0 1 1
+( 512 -80 320 ) ( 512 -80 321 ) ( 513 -80 320 ) general/sky 0 0 0 1 1
+( 1184 592 336 ) ( 1185 592 336 ) ( 1184 592 337 ) general/sky 0 0 0 1 1
+( 1184 592 336 ) ( 1184 593 336 ) ( 1185 592 336 ) general/sky 0 0 0 1 1
+( 512 -80 320 ) ( 513 -80 320 ) ( 512 -79 320 ) general/sky 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000012
+// brush 13
+{
+( 528 -80 0 ) ( 528 -79 0 ) ( 528 -80 1 ) Silverspring/abrickbot 0 0 0 1 1
+( 1168 -64 320 ) ( 1168 -64 321 ) ( 1168 -63 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 -80 0 ) ( 528 -80 1 ) ( 529 -80 0 ) Silverspring/abrickbot 0 0 0 1 1
+( 1168 -64 320 ) ( 1169 -64 320 ) ( 1168 -64 321 ) Silverspring/abrickbot 0 0 0 1 1
+( 1168 -64 320 ) ( 1168 -63 320 ) ( 1169 -64 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 -80 0 ) ( 529 -80 0 ) ( 528 -79 0 ) Silverspring/abrickbot 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000013
+// brush 14
+{
+( 528 576 0 ) ( 528 577 0 ) ( 528 576 1 ) Silverspring/abrickbot 0 0 0 1 1
+( 1168 592 320 ) ( 1168 592 321 ) ( 1168 593 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 576 0 ) ( 528 576 1 ) ( 529 576 0 ) Silverspring/abrickbot 0 0 0 1 1
+( 1168 592 320 ) ( 1169 592 320 ) ( 1168 592 321 ) Silverspring/abrickbot 0 0 0 1 1
+( 1168 592 320 ) ( 1168 593 320 ) ( 1169 592 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 528 576 0 ) ( 529 576 0 ) ( 528 577 0 ) Silverspring/abrickbot 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000014
+// brush 15
+{
+( 1168 -80 0 ) ( 1168 -79 0 ) ( 1168 -80 1 ) Silverspring/abrickbot 0 0 0 1 1
+( 1184 592 320 ) ( 1184 592 321 ) ( 1184 593 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 1168 -80 0 ) ( 1168 -80 1 ) ( 1169 -80 0 ) Silverspring/abrickbot 0 0 0 1 1
+( 1184 592 320 ) ( 1185 592 320 ) ( 1184 592 321 ) Silverspring/abrickbot 0 0 0 1 1
+( 1184 592 320 ) ( 1184 593 320 ) ( 1185 592 320 ) Silverspring/abrickbot 0 0 0 1 1
+( 1168 -80 0 ) ( 1169 -80 0 ) ( 1168 -79 0 ) Silverspring/abrickbot 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000017
+// brush 16
+{
+( 1008 -64 0 ) ( 1008 -63 0 ) ( 1008 -64 1 ) Silverspring/wood1 0 0 0 1 1
+( 1168 576 64 ) ( 1168 576 65 ) ( 1168 577 64 ) Silverspring/wood1 0 0 0 1 1
+( 1008 -64 0 ) ( 1008 -64 1 ) ( 1009 -64 0 ) Silverspring/wood1 0 0 0 1 1
+( 1168 576 64 ) ( 1169 576 64 ) ( 1168 576 65 ) Silverspring/wood1 0 0 0 1 1
+( 1168 576 64 ) ( 1168 577 64 ) ( 1169 576 64 ) Silverspring/wood1 0 0 0 1 1
+( 1008 -64 0 ) ( 1009 -64 0 ) ( 1008 -63 0 ) Silverspring/wood1 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000018
+// brush 17
+{
+( 912 160 0 ) ( 912 161 0 ) ( 912 160 1 ) Silverspring/wood1 0 0 0 1 1
+( 944 352 16 ) ( 944 352 17 ) ( 944 353 16 ) Silverspring/wood1 0 0 0 1 1
+( 912 160 0 ) ( 912 160 1 ) ( 913 160 0 ) Silverspring/wood1 0 0 0 1 1
+( 944 352 16 ) ( 945 352 16 ) ( 944 352 17 ) Silverspring/wood1 0 0 0 1 1
+( 944 352 16 ) ( 944 353 16 ) ( 945 352 16 ) Silverspring/wood1 0 0 0 1 1
+( 912 160 0 ) ( 913 160 0 ) ( 912 161 0 ) Silverspring/wood1 0 0 0 1 1
+}
+// heron_brush id 5ed6b60000000019
+// brush 18
+{
+( 944 160 0 ) ( 944 161 0 ) ( 944 160 1 ) Silverspring/wood1 0 0 0 1 1
+( 976 352 32 ) ( 976 352 33 ) ( 976 353 32 ) Silverspring/wood1 0 0 0 1 1
+( 944 160 0 ) ( 944 160 1 ) ( 945 160 0 ) Silverspring/wood1 0 0 0 1 1
+( 976 352 32 ) ( 977 352 32 ) ( 976 352 33 ) Silverspring/wood1 0 0 0 1 1
+( 976 352 32 ) ( 976 353 32 ) ( 977 352 32 ) Silverspring/wood1 0 0 0 1 1
+( 944 160 0 ) ( 945 160 0 ) ( 944 161 0 ) Silverspring/wood1 0 0 0 1 1
+}
+// heron_brush id 5ed6b6000000001a
+// brush 19
+{
+( 976 160 0 ) ( 976 161 0 ) ( 976 160 1 ) Silverspring/wood1 0 0 0 1 1
+( 1008 352 48 ) ( 1008 352 49 ) ( 1008 353 48 ) Silverspring/wood1 0 0 0 1 1
+( 976 160 0 ) ( 976 160 1 ) ( 977 160 0 ) Silverspring/wood1 0 0 0 1 1
+( 1008 352 48 ) ( 1009 352 48 ) ( 1008 352 49 ) Silverspring/wood1 0 0 0 1 1
+( 1008 352 48 ) ( 1008 353 48 ) ( 1009 352 48 ) Silverspring/wood1 0 0 0 1 1
+( 976 160 0 ) ( 977 160 0 ) ( 976 161 0 ) Silverspring/wood1 0 0 0 1 1
+}
+}
+// heron_brush id 5ed6b60000000006
+// entity 1
+{
+"classname" "light"
+"origin" "128 128 160"
+"light" "450"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 5ed6b60000000007
+// entity 2
+{
+"classname" "light"
+"origin" "128 384 160"
+"light" "450"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 5ed6b60000000008
+// entity 3
+{
+"classname" "light"
+"origin" "384 128 160"
+"light" "450"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 5ed6b60000000009
+// entity 4
+{
+"classname" "light"
+"origin" "384 384 160"
+"light" "450"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 5ed6b60000000015
+// entity 5
+{
+"classname" "light"
+"origin" "1088 64 160"
+"light" "250"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 5ed6b60000000016
+// entity 6
+{
+"classname" "light"
+"origin" "1088 448 160"
+"light" "250"
+"style" "0"
+"_cone" "10"
+}
+// heron_brush id 5ed6b6000000001c
+// entity 7
+{
+"classname" "func_door"
+"targetname" "door1"
+"angle" "-1"
+"wait" "-1"
+"speed" "100"
+"sounds" "1"
+// heron_brush id 5ed6b6000000001b
+// brush 0
+{
+( 512 224 0 ) ( 512 225 0 ) ( 512 224 1 ) Silverspring/door1 0 0 0 1 1
+( 528 288 128 ) ( 528 288 129 ) ( 528 289 128 ) Silverspring/door1 0 0 0 1 1
+( 512 224 0 ) ( 512 224 1 ) ( 513 224 0 ) Silverspring/door1 0 0 0 1 1
+( 528 288 128 ) ( 529 288 128 ) ( 528 288 129 ) Silverspring/door1 0 0 0 1 1
+( 528 288 128 ) ( 528 289 128 ) ( 529 288 128 ) Silverspring/door1 0 0 0 1 1
+( 512 224 0 ) ( 513 224 0 ) ( 512 225 0 ) Silverspring/door1 0 0 0 1 1
+}
+}
+// heron_brush id 5ed6b6000000001e
+// entity 8
+{
+"classname" "func_button"
+"target" "door1"
+"angle" "0"
+"wait" "-1"
+"spawnflags" "1"
+"sounds" "1"
+// heron_brush id 5ed6b6000000001d
+// brush 0
+{
+( 504 320 48 ) ( 504 321 48 ) ( 504 320 49 ) Silverspring/0button 0 0 0 1 1
+( 512 352 80 ) ( 512 352 81 ) ( 512 353 80 ) Silverspring/0button 0 0 0 1 1
+( 504 320 48 ) ( 504 320 49 ) ( 505 320 48 ) Silverspring/0button 0 0 0 1 1
+( 512 352 80 ) ( 513 352 80 ) ( 512 352 81 ) Silverspring/0button 0 0 0 1 1
+( 512 352 80 ) ( 512 353 80 ) ( 513 352 80 ) Silverspring/0button 0 0 0 1 1
+( 504 320 48 ) ( 505 320 48 ) ( 504 321 48 ) Silverspring/0button 0 0 0 1 1
+}
+}
+// heron_brush id 5ed6b60000000020
+// entity 9
+{
+"classname" "trigger_once"
+"target" "ambush"
+"message" "31"
+// heron_brush id 5ed6b6000000001f
+// brush 0
+{
+( 544 160 0 ) ( 544 161 0 ) ( 544 160 1 ) general/trigger 0 0 0 1 1
+( 608 352 128 ) ( 608 352 129 ) ( 608 353 128 ) general/trigger 0 0 0 1 1
+( 544 160 0 ) ( 544 160 1 ) ( 545 160 0 ) general/trigger 0 0 0 1 1
+( 608 352 128 ) ( 609 352 128 ) ( 608 352 129 ) general/trigger 0 0 0 1 1
+( 608 352 128 ) ( 608 353 128 ) ( 609 352 128 ) general/trigger 0 0 0 1 1
+( 544 160 0 ) ( 545 160 0 ) ( 544 161 0 ) general/trigger 0 0 0 1 1
+}
+}
+// heron_brush id 5ed6b60000000021
+// entity 10
+{
+"classname" "light"
+"origin" "672 0 288"
+"light" "450"
+"style" "32"
+"_cone" "10"
+"spawnflags" "1"
+"targetname" "ambush"
+}
+// heron_brush id 5ed6b60000000022
+// entity 11
+{
+"classname" "light"
+"origin" "672 512 288"
+"light" "450"
+"style" "32"
+"_cone" "10"
+"spawnflags" "1"
+"targetname" "ambush"
+}
+// heron_brush id 5ed6b60000000023
+// entity 12
+{
+"classname" "light"
+"origin" "928 0 288"
+"light" "450"
+"style" "32"
+"_cone" "10"
+"spawnflags" "1"
+"targetname" "ambush"
+}
+// heron_brush id 5ed6b60000000024
+// entity 13
+{
+"classname" "light"
+"origin" "928 512 288"
+"light" "450"
+"style" "32"
+"_cone" "10"
+"spawnflags" "1"
+"targetname" "ambush"
+}
+// heron_brush id 5ed6b60000000025
+// entity 14
+{
+"classname" "monster_plagueElf"
+"origin" "800 64 24"
+"health" "50"
+"melee_range" "0"
+"bypass_missile_chance" "0"
+"mintel" "0"
+"scale" "1"
+"angle" "180"
+"spawnflags" "2"
+"targetname" "ambush"
+}
+// heron_brush id 5ed6b60000000026
+// entity 15
+{
+"classname" "monster_plagueElf"
+"origin" "800 448 24"
+"health" "50"
+"melee_range" "0"
+"bypass_missile_chance" "0"
+"mintel" "0"
+"scale" "1"
+"angle" "180"
+"spawnflags" "2"
+"targetname" "ambush"
+}
+// heron_brush id 5ed6b60000000027
+// entity 16
+{
+"classname" "monster_rat"
+"origin" "1088 192 72"
+"health" "10"
+"melee_range" "0"
+"bypass_missile_chance" "0"
+"mintel" "0"
+"scale" "1"
+"angle" "180"
+"spawnflags" "2"
+"targetname" "ambush"
+}
+// heron_brush id 5ed6b60000000028
+// entity 17
+{
+"classname" "monster_rat"
+"origin" "1088 256 72"
+"health" "10"
+"melee_range" "0"
+"bypass_missile_chance" "0"
+"mintel" "0"
+"scale" "1"
+"angle" "180"
+"spawnflags" "2"
+"targetname" "ambush"
+}
+// heron_brush id 5ed6b60000000029
+// entity 18
+{
+"classname" "monster_rat"
+"origin" "1088 320 72"
+"health" "10"
+"melee_range" "0"
+"bypass_missile_chance" "0"
+"mintel" "0"
+"scale" "1"
+"angle" "180"
+"spawnflags" "2"
+"targetname" "ambush"
+}
+// heron_brush id 5ed6b6000000002b
+// entity 19
+{
+"classname" "trigger_multiple"
+"target" "exit"
+// heron_brush id 5ed6b6000000002a
+// brush 0
+{
+( 1104 192 64 ) ( 1104 193 64 ) ( 1104 192 65 ) general/trigger 0 0 0 1 1
+( 1152 320 192 ) ( 1152 320 193 ) ( 1152 321 192 ) general/trigger 0 0 0 1 1
+( 1104 192 64 ) ( 1104 192 65 ) ( 1105 192 64 ) general/trigger 0 0 0 1 1
+( 1152 320 192 ) ( 1153 320 192 ) ( 1152 320 193 ) general/trigger 0 0 0 1 1
+( 1152 320 192 ) ( 1152 321 192 ) ( 1153 320 192 ) general/trigger 0 0 0 1 1
+( 1104 192 64 ) ( 1105 192 64 ) ( 1104 193 64 ) general/trigger 0 0 0 1 1
+}
+}
+// heron_brush id 5ed6b6000000002c
+// entity 20
+{
+"classname" "target_changelevel"
+"origin" "1120 256 216"
+"map" "demodocks"
+"targetname" "exit"
+}
+// heron_brush id 5ed6b6000000002d
+// entity 21
+{
+"classname" "info_player_start"
+"origin" "96 256 24"
+"angle" "0"
+}
+// heron_brush id 5ed6b6000000002e
+// entity 22
+{
+"classname" "item_health_half"
+"origin" "256 448 16"
+}
+// heron_brush id 5ed6b6000000002f
+// entity 23
+{
+"classname" "item_ammo_hellstaff"
+"origin" "384 64 16"
+}
+// heron_brush id 5ed6b60000000030
+// entity 24
+{
+"classname" "item_weapon_hellstaff"
+"origin" "256 64 16"
+}
+// heron_brush id 5ed6b60000000031
+// entity 25
+{
+"classname" "item_mana_offensive_half"
+"origin" "1088 64 80"
+}

@@ -16,6 +16,7 @@ each folder writes the engine project again.
 | [Neverball: the lift](neverball_heron/README.md) | Neverball 1.6 | A ramp, coins, a switch that starts a lift, a teleporter and the goal, compiled with mapc |
 | [Paintball 2: Twin Bases](paintball_heron/README.md) | Digital Paint: Paintball 2 | A capture-the-flag field with two team bases, compiled with ericw-tools for Quake 2 |
 | [Hexen II: the keep](hexen2_heron/README.md) | Hexen II (the demo) | A door, a button, an ambush whose lights fade up and an exit, compiled with ericw-tools or Raven's tools |
+| [Heretic II: Heron Wharf](heretic2_heron/README.md) | Heretic II (the demo) | A door, a button, an ambush of plague elves and rats that lights the yard and an exit, compiled with q2tools-220 |
 | [Quetoo: Heron Yard](quetoo_heron/README.md) | Quetoo 1.0.133 | A deathmatch hall with a ledge, a jump pad, a teleporter, weapons and bots, compiled with quemap |
 | Feature Lab | all 16 targets | One station per export feature, for [the feature matrix](../docs/feature-matrix.md) |
 
