@@ -4,6 +4,11 @@
 //!
 //! The format is a header -- `PACK`, then where the directory is and how long -- and one
 //! sixty-four byte entry per file: a name, an offset and a size. There is no compression.
+//!
+//! Daikatana's paks (TrenchBroom calls them `dkpak`) have the same header and
+//! seventy-two byte entries: the name, offset and size, then the stored size and a flag
+//! saying the file is compressed with Ion Storm's run-length and back-reference scheme.
+//! Which of the two a directory holds is read from the directory itself.
 
 use std::path::Path;
 
@@ -16,6 +21,8 @@ pub struct Entry {
     offset: usize,
     /// How long it is.
     length: usize,
+    /// How long it is in the pak, if it is stored compressed (Daikatana).
+    stored: Option<usize>,
 }
 
 /// A pak that has been opened.
@@ -79,7 +86,7 @@ impl Pak {
         let (Some(directory), Some(length)) = (number(4), number(8)) else {
             return Err(PakError::Truncated);
         };
-        if length % 64 != 0
+        if !fits_either_layout(length)
             || directory
                 .checked_add(length)
                 .is_none_or(|end| end > bytes.len())
@@ -97,31 +104,91 @@ impl Pak {
     }
 
     /// One file by its directory index, without a linear name search.
-    pub fn read_index(&self, index: usize) -> Option<&[u8]> {
+    ///
+    /// A compressed file comes back expanded, so owned; a plain one is borrowed.
+    pub fn read_index(&self, index: usize) -> Option<std::borrow::Cow<'_, [u8]>> {
         let entry = self.entries.get(index)?;
-        self.bytes
-            .get(entry.offset..entry.offset.checked_add(entry.length)?)
+        let stored = self
+            .bytes
+            .get(entry.offset..entry.offset.checked_add(entry.stored_length())?)?;
+        match entry.stored {
+            None => Some(std::borrow::Cow::Borrowed(stored)),
+            Some(_) => expand(stored, entry.length)
+                .ok()
+                .map(std::borrow::Cow::Owned),
+        }
     }
 
     /// One file's contents, by the name the game knows it as.
     ///
     /// The comparison ignores case and takes `\` for `/`, since a pak written on one
     /// system is read on another.
-    pub fn read_file(&self, name: &str) -> Option<&[u8]> {
+    pub fn read_file(&self, name: &str) -> Option<std::borrow::Cow<'_, [u8]>> {
         let wanted = tidy(name);
-        self.entries
+        let index = self
+            .entries
             .iter()
-            .find(|entry| tidy(&entry.name) == wanted)
-            .map(|entry| &self.bytes[entry.offset..entry.offset + entry.length])
+            .position(|entry| tidy(&entry.name) == wanted)?;
+        self.read_index(index)
+    }
+}
+
+impl Entry {
+    /// How many bytes it takes up in the pak.
+    fn stored_length(&self) -> usize {
+        self.stored.unwrap_or(self.length)
+    }
+}
+
+/// Quake's directory entry, and Daikatana's with its stored size and compression flag.
+const QUAKE_ENTRY: usize = 64;
+const DAIKATANA_ENTRY: usize = 72;
+
+/// Whether a directory of this many bytes holds whole entries of either kind.
+fn fits_either_layout(length: usize) -> bool {
+    length.is_multiple_of(QUAKE_ENTRY) || length.is_multiple_of(DAIKATANA_ENTRY)
+}
+
+/// How long each entry in this directory is.
+///
+/// A length that only one size divides settles it. One that both divide (576 bytes is
+/// nine Quake entries or eight Daikatana ones) is read as Quake's, unless its names are
+/// not names when read that way and Daikatana's reading gives names and flags that are.
+/// Read at the wrong size, the second entry's name starts inside the first entry's
+/// numbers, which are not printable text.
+fn entry_size(directory: &[u8]) -> usize {
+    let length = directory.len();
+    if !length.is_multiple_of(DAIKATANA_ENTRY) {
+        return QUAKE_ENTRY;
+    }
+    if !length.is_multiple_of(QUAKE_ENTRY) {
+        return DAIKATANA_ENTRY;
+    }
+    let plausible = |size: usize| {
+        directory.chunks_exact(size).all(|entry| {
+            let name = entry[..56].split(|byte| *byte == 0).next().unwrap_or(&[]);
+            let flag_is_flag = size == QUAKE_ENTRY || matches!(entry[68..72], [0 | 1, 0, 0, 0]);
+            !name.is_empty() && name.iter().all(|byte| (0x20..0x7f).contains(byte)) && flag_is_flag
+        })
+    };
+    if !plausible(QUAKE_ENTRY) && plausible(DAIKATANA_ENTRY) {
+        DAIKATANA_ENTRY
+    } else {
+        QUAKE_ENTRY
     }
 }
 
 fn parse_entries(bytes: &[u8], file_length: usize) -> Vec<Entry> {
-    let number =
-        |at: usize| usize::try_from(i32::from_le_bytes(bytes[at..at + 4].try_into().unwrap())).ok();
-    let mut entries = Vec::with_capacity(bytes.len() / 64);
-    for at in (0..bytes.len()).step_by(64) {
-        if at + 64 > bytes.len() {
+    let number = |at: usize| {
+        usize::try_from(i32::from_le_bytes(
+            bytes[at..at + 4].try_into().expect("four bytes"),
+        ))
+        .ok()
+    };
+    let size_of_entry = entry_size(bytes);
+    let mut entries = Vec::with_capacity(bytes.len() / size_of_entry);
+    for at in (0..bytes.len()).step_by(size_of_entry) {
+        if at + size_of_entry > bytes.len() {
             break;
         }
         let name = bytes[at..at + 56]
@@ -132,17 +199,86 @@ fn parse_entries(bytes: &[u8], file_length: usize) -> Vec<Entry> {
         let (Some(offset), Some(size)) = (number(at + 56), number(at + 60)) else {
             continue;
         };
-        // Checked, since these are two numbers the file chose.
-        if offset.checked_add(size).is_none_or(|end| end > file_length) {
-            continue;
-        }
-        entries.push(Entry {
+        let stored = if size_of_entry == DAIKATANA_ENTRY && number(at + 68) != Some(0) {
+            let Some(stored) = number(at + 64) else {
+                continue;
+            };
+            Some(stored)
+        } else {
+            None
+        };
+        let entry = Entry {
             name,
             offset,
             length: size,
-        });
+            stored,
+        };
+        // Checked, since these are numbers the file chose.
+        if offset
+            .checked_add(entry.stored_length())
+            .is_none_or(|end| end > file_length)
+        {
+            continue;
+        }
+        entries.push(entry);
     }
     entries
+}
+
+/// Expands a file Daikatana's `dkpak` compressed, which is `length` bytes once expanded.
+///
+/// The stream is a run of commands, each one byte, as yquake2's `pakextract` reads them:
+/// below 64 copies the next `n + 1` bytes, below 128 writes `n - 62` zeros, below 192
+/// writes the next byte `n - 126` times, below 254 copies `n - 190` bytes from `b + 2`
+/// back in what is already written (`b` is the next byte, and the copy may run into
+/// itself), 254 does nothing and 255 ends it.
+fn expand(stored: &[u8], length: usize) -> Result<Vec<u8>, String> {
+    if length > MAX_MEMBER_BYTES {
+        return Err("PAK member exceeds 256 MiB".into());
+    }
+    let broken = || "a compressed PAK member does not expand to its size".to_string();
+    let mut out = Vec::with_capacity(length);
+    let mut at = 0;
+    while let Some(&command) = stored.get(at) {
+        at += 1;
+        let next = |at: usize| stored.get(at).copied().ok_or_else(broken);
+        let run = match command {
+            0..64 => usize::from(command) + 1,
+            64..128 => usize::from(command) - 62,
+            128..192 => usize::from(command) - 126,
+            192..254 => usize::from(command) - 190,
+            254 => continue,
+            255 => break,
+        };
+        if out.len() + run > length {
+            return Err(broken());
+        }
+        match command {
+            0..64 => {
+                out.extend_from_slice(stored.get(at..at + run).ok_or_else(broken)?);
+                at += run;
+            }
+            64..128 => out.resize(out.len() + run, 0),
+            128..192 => {
+                let byte = next(at)?;
+                at += 1;
+                out.resize(out.len() + run, byte);
+            }
+            _ => {
+                let back = usize::from(next(at)?) + 2;
+                at += 1;
+                let start = out.len().checked_sub(back).ok_or_else(broken)?;
+                for from in start..start + run {
+                    out.push(out[from]);
+                }
+            }
+        }
+    }
+    if out.len() == length {
+        Ok(out)
+    } else {
+        Err(broken())
+    }
 }
 
 /// Shared resolver limit for a requested PAK member, matching ZIP's decoded limit.
@@ -178,7 +314,7 @@ impl FilePak {
                 .map_err(|_| PakError::Truncated.to_string())
         };
         let (offset, length) = (number(4)?, number(8)?);
-        if length % 64 != 0
+        if !fits_either_layout(length)
             || offset
                 .checked_add(length)
                 .is_none_or(|end| end > file_length)
@@ -212,7 +348,7 @@ impl FilePak {
     pub fn read_index(&self, index: usize) -> Result<Vec<u8>, String> {
         use std::io::{Read, Seek, SeekFrom};
         let entry = self.entries.get(index).ok_or("missing PAK entry")?;
-        if entry.length > MAX_MEMBER_BYTES {
+        if entry.length.max(entry.stored_length()) > MAX_MEMBER_BYTES {
             return Err("PAK member exceeds 256 MiB".into());
         }
         let mut file = self.file.lock().map_err(|_| "PAK read lock is poisoned")?;
@@ -226,10 +362,13 @@ impl FilePak {
         unchanged(&file)?;
         file.seek(SeekFrom::Start(entry.offset as u64))
             .map_err(|e| e.to_string())?;
-        let mut bytes = vec![0; entry.length];
+        let mut bytes = vec![0; entry.stored_length()];
         file.read_exact(&mut bytes).map_err(|e| e.to_string())?;
         unchanged(&file)?;
-        Ok(bytes)
+        match entry.stored {
+            None => Ok(bytes),
+            Some(_) => expand(&bytes, entry.length),
+        }
     }
 }
 
@@ -251,7 +390,7 @@ mod tests {
         assert!(std::sync::Arc::ptr_eq(&pak.bytes, &cloned.bytes));
         drop((bytes, pak));
         assert_eq!(
-            cloned.read_file("progs/armor.mdl"),
+            cloned.read_file("progs/armor.mdl").as_deref(),
             Some(&b"a model, more or less"[..])
         );
     }
@@ -278,12 +417,122 @@ mod tests {
         let pak = Pak::read(one_file()).expect("it reads");
         assert_eq!(pak.entries().len(), 1);
         assert_eq!(
-            pak.read_file("progs/armor.mdl"),
+            pak.read_file("progs/armor.mdl").as_deref(),
             Some(&b"a model, more or less"[..])
         );
         // A name written the other way round, or in another case, is the same name.
         assert!(pak.read_file("PROGS\\ARMOR.MDL").is_some());
-        assert_eq!(pak.read_file("progs/nothing.mdl"), None);
+        assert!(pak.read_file("progs/nothing.mdl").is_none());
+    }
+
+    /// A Daikatana stream using every command, and what it expands to.
+    const DK_STREAM: &[u8] = &[
+        2, b'a', b'b', b'c', // three bytes as they are
+        192, 1,  // two bytes from three back: "ab"
+        65, // three zeros
+        130, b'z', // four of 'z'
+        193, 0,    // three bytes from two back, running into what it writes
+        254,  // nothing
+        255,  // the end
+        b'!', // never read
+    ];
+    const DK_EXPANDED: &[u8] = b"abcab\0\0\0zzzzzzz";
+
+    /// A Daikatana pak holding `maps/plain.txt` stored as it is and `maps/packed.txt`
+    /// compressed.
+    fn daikatana_pak() -> Vec<u8> {
+        let plain = b"stored as it is";
+        let mut out = b"PACK".to_vec();
+        out.extend([0; 8]);
+        let mut directory = Vec::new();
+        for (name, stored, length, compressed) in [
+            (&b"maps/plain.txt"[..], &plain[..], plain.len(), 0i32),
+            (&b"maps/packed.txt"[..], DK_STREAM, DK_EXPANDED.len(), 1),
+        ] {
+            let mut field = [0u8; 56];
+            field[..name.len()].copy_from_slice(name);
+            directory.extend(field);
+            directory.extend((out.len() as i32).to_le_bytes());
+            directory.extend((length as i32).to_le_bytes());
+            directory.extend((stored.len() as i32).to_le_bytes());
+            directory.extend(compressed.to_le_bytes());
+            out.extend(stored);
+        }
+        let at = out.len() as i32;
+        out[4..8].copy_from_slice(&at.to_le_bytes());
+        out[8..12].copy_from_slice(&(directory.len() as i32).to_le_bytes());
+        out.extend(directory);
+        out
+    }
+
+    #[test]
+    fn a_daikatana_pak_reads_stored_and_compressed_files() {
+        let pak = Pak::read(daikatana_pak()).expect("a Daikatana pak reads");
+        let names: Vec<_> = pak.entries().iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, ["maps/plain.txt", "maps/packed.txt"]);
+        assert_eq!(
+            pak.read_file("maps/plain.txt").as_deref(),
+            Some(&b"stored as it is"[..])
+        );
+        assert_eq!(
+            pak.read_file("MAPS\\PACKED.TXT").as_deref(),
+            Some(DK_EXPANDED)
+        );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn a_daikatana_pak_reads_the_same_from_disk() {
+        let bytes = daikatana_pak();
+        let path = disk_fixture("daikatana", &bytes);
+        let file = FilePak::open(&path).expect("the directory reads");
+        let memory = Pak::read(bytes).expect("a Daikatana pak reads");
+        assert_eq!(file.entries(), memory.entries());
+        assert_eq!(file.read_index(1).expect("it expands"), DK_EXPANDED);
+        std::fs::remove_file(path).expect("the fixture is removed");
+    }
+
+    #[test]
+    fn a_compressed_stream_that_does_not_add_up_is_refused() {
+        assert_eq!(
+            expand(DK_STREAM, DK_EXPANDED.len()).as_deref(),
+            Ok(DK_EXPANDED)
+        );
+        // Short of its size, past it, cut off in a literal or a run, or reaching back
+        // before the start.
+        for (stream, length) in [
+            (DK_STREAM, DK_EXPANDED.len() + 1),
+            (DK_STREAM, DK_EXPANDED.len() - 1),
+            (&DK_STREAM[..2], 3),
+            (&[130][..], 4),
+            (&[192, 0][..], 2),
+        ] {
+            assert!(expand(stream, length).is_err(), "{stream:?} to {length}");
+        }
+        assert!(expand(&[255], MAX_MEMBER_BYTES + 1).is_err());
+    }
+
+    #[test]
+    fn a_directory_both_sizes_divide_is_read_by_what_its_names_say() {
+        // Nine Quake entries and eight Daikatana ones are both 576 bytes.
+        let directory = |size: usize, count: usize| {
+            let mut out = Vec::new();
+            for index in 0..count {
+                let mut entry = vec![0u8; size];
+                entry[..5].copy_from_slice(format!("file{index}").as_bytes());
+                entry[56..60].copy_from_slice(&0x0101_0101i32.to_le_bytes());
+                if size == DAIKATANA_ENTRY {
+                    entry[64..68].copy_from_slice(&0x0102_0304i32.to_le_bytes());
+                    entry[68] = 1;
+                }
+                out.extend(entry);
+            }
+            out
+        };
+        assert_eq!(entry_size(&directory(QUAKE_ENTRY, 9)), QUAKE_ENTRY);
+        assert_eq!(entry_size(&directory(DAIKATANA_ENTRY, 8)), DAIKATANA_ENTRY);
+        assert_eq!(entry_size(&[0; 576]), QUAKE_ENTRY);
+        assert_eq!(entry_size(&[0; 72]), DAIKATANA_ENTRY);
     }
 
     #[test]
@@ -315,7 +564,7 @@ mod tests {
                 pak.entries().is_empty(),
                 "the entry at {at} should be refused"
             );
-            assert_eq!(pak.read_file("progs/armor.mdl"), None);
+            assert!(pak.read_file("progs/armor.mdl").is_none());
         }
     }
 
