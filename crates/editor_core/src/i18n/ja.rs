@@ -745,6 +745,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Play on start", "開始時に再生"),
     ("Playable HTML with FPS controls and collisions. Open it in a browser; internet is needed for Three.js. JSON and .glb files are included.", "FPS 操作と衝突判定付きのプレイ可能な HTML。ブラウザーで開いてください。Three.js にはインターネット接続が必要です。JSON と .glb ファイルも含まれます。"),
     ("Playable HTML with a Havok character controller, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for Babylon.js. The JSON, .glb files and a runtime module for your own game are included.", "Havok のキャラクターコントローラー、ドア、トリガー、水、ライト、空を備えたプレイ可能な HTML。ブラウザーで開いてください。Babylon.js にはインターネット接続が必要です。JSON、.glb ファイル、自作ゲーム用のランタイムモジュールも含まれます。"),
+    ("Playable HTML with ammo.js physics, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for PlayCanvas. The JSON, .glb files and a runtime module for your own game are included.", "ammo.js の物理、ドア、トリガー、水、ライト、空を備えたプレイ可能な HTML。ブラウザーで開いてください。PlayCanvas にはインターネット接続が必要です。JSON、.glb ファイル、自作ゲーム用のランタイムモジュールも含まれます。"),
     ("Playback", "再生"),
     ("Plays the map's animations from the start, as the 3D view's preview does.", "3Dビューのプレビューと同じように、マップのアニメーションを最初から再生します。"),
     ("Playtest warning: {}", "テストプレイの警告: {}"),

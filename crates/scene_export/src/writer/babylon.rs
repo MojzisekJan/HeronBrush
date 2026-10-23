@@ -113,7 +113,7 @@ pub fn write_html(
 }
 
 /// The runtime module as plain declarations, for a page that inlines it.
-fn inline_module(module: &str) -> String {
+pub(super) fn inline_module(module: &str) -> String {
     module
         .lines()
         .map(|line| line.strip_prefix("export ").unwrap_or(line))

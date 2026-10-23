@@ -43,13 +43,22 @@ licence (`crates/heron-brush-web/vendor/three/LICENSE`).
 The export window shows the logos of the engines it exports to
 (`crates/heron-brush/assets/engines/`). They are the marks of their projects, used only to
 name the export target. Babylon.js's is from its Brand-Toolkit, CC BY-ND 4.0, scaled onto
-the card and otherwise unchanged.
+the card and otherwise unchanged. PlayCanvas's is the black mark from its press pack
+(developer.playcanvas.com/user-manual/press-pack), which PlayCanvas offers to people
+naming and promoting it; it is scaled onto the card and not recoloured. The mark is
+PlayCanvas's trademark and is not covered by the engine's MIT licence.
 
 ## Babylon.js and Havok
 
 The Babylon.js export's playtest page loads Babylon.js 9.29.0 and its loaders (Apache
 licence 2.0) and the Havok physics plugin 1.3.14 (MIT licence) from jsDelivr. Nothing of
 them is bundled.
+
+## PlayCanvas and ammo.js
+
+The PlayCanvas export's playtest page loads the PlayCanvas engine 2.23.1 (MIT licence)
+from jsDelivr, and the ammo.js build the engine's repository ships at tag `v2.23.1`
+(ammo.js is Bullet compiled with Emscripten, zlib licence). Nothing of them is bundled.
 
 ## Demos
 

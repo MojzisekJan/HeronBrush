@@ -37,6 +37,8 @@ pub enum Target {
     ThreeJs,
     /// The level as JSON with `.glb` meshes, a Babylon.js runtime module and a playable page.
     Babylon,
+    /// The level as JSON with `.glb` meshes, a PlayCanvas runtime module and a playable page.
+    PlayCanvas,
     /// The level as JSON with `.glb` meshes, which Bevy's asset loader reads.
     Bevy,
     /// The level as flat text, one keyword to a line, with `.glb` meshes.
@@ -64,11 +66,12 @@ pub enum Target {
 
 impl Target {
     /// Every target, in the order the chooser lists them.
-    pub const ALL: [Target; 15] = [
+    pub const ALL: [Target; 16] = [
         Target::Godot,
         Target::Defold,
         Target::ThreeJs,
         Target::Babylon,
+        Target::PlayCanvas,
         Target::Bevy,
         Target::Raylib,
         Target::Unity,
@@ -98,7 +101,9 @@ impl Target {
             Target::Godot => &["project.godot"],
             Target::Defold => &["game.project"],
             Target::Bevy => &["Cargo.toml"],
-            Target::ThreeJs | Target::Babylon => &["package.json", "index.html"],
+            Target::ThreeJs | Target::Babylon | Target::PlayCanvas => {
+                &["package.json", "index.html"]
+            }
             Target::Unity => &["ProjectSettings/", "Assets/"],
             Target::Unreal => &[".uproject"],
             // A Flax project keeps a `<name>.flaxproj` beside its Content folder; a
@@ -120,6 +125,7 @@ impl Target {
             Target::Godot
                 | Target::ThreeJs
                 | Target::Babylon
+                | Target::PlayCanvas
                 | Target::Bevy
                 | Target::Raylib
                 | Target::Defold
@@ -136,6 +142,7 @@ impl Target {
             Target::Defold => "Defold",
             Target::ThreeJs => "three.js",
             Target::Babylon => "Babylon.js",
+            Target::PlayCanvas => "PlayCanvas",
             Target::Bevy => "Bevy",
             Target::Raylib => "raylib",
             Target::Unity => "Unity",
@@ -476,7 +483,7 @@ fn build(
     let has_animation = map_model::node::entities_with_ids(document.tree_world())
         .iter()
         .any(|(_, entity)| entity.property("animation_keys").is_some());
-    const ANIMATION_WARNING: &str = "This export target does not generate a keyframe playback controller. Godot, raylib, Defold, Bevy, Three.js, Babylon.js, Flax, Unity, Stride, GDevelop and Cocos Creator exports support keyframe playback.";
+    const ANIMATION_WARNING: &str = "This export target does not generate a keyframe playback controller. Godot, raylib, Defold, Bevy, Three.js, Babylon.js, PlayCanvas, Flax, Unity, Stride, GDevelop and Cocos Creator exports support keyframe playback.";
     if matches!(options.target, Target::Gltf | Target::Glb) {
         let (mut report, files) = gltf_export::build(document, directory, options)?;
         if has_animation {
@@ -544,6 +551,7 @@ fn build(
             | Target::Unity
             | Target::ThreeJs
             | Target::Babylon
+            | Target::PlayCanvas
             | Target::Flax
             | Target::Stride
             | Target::GDevelop
@@ -700,6 +708,7 @@ fn build(
                         | Target::Raylib
                         | Target::ThreeJs
                         | Target::Babylon
+                        | Target::PlayCanvas
                         | Target::Cocos
                         | Target::GDevelop
                         | Target::Unity
@@ -716,6 +725,7 @@ fn build(
                         | Target::Unity
                         | Target::ThreeJs
                         | Target::Babylon
+                        | Target::PlayCanvas
                         | Target::Cocos
                         | Target::Flax
                         | Target::Stride
@@ -736,6 +746,7 @@ fn build(
                     | Target::Unity
                     | Target::ThreeJs
                     | Target::Babylon
+                    | Target::PlayCanvas
                     | Target::Flax
                     | Target::Stride
                     | Target::GDevelop
@@ -794,7 +805,7 @@ fn build(
             }
 
             match target {
-                Target::ThreeJs | Target::Babylon | Target::Bevy => {
+                Target::ThreeJs | Target::Babylon | Target::PlayCanvas | Target::Bevy => {
                     if target == Target::Bevy {
                         files.push((
                             directory.join("heron_water_render.rs"),
@@ -829,7 +840,7 @@ fn build(
                         files.push((directory.join("heron_animation_bevy.md"),Contents::Text("# Bevy animation\n\nCopy heron_animation.rs into src/, declare mod heron_animation, and add HeronAnimationPlugin to your Bevy 0.19 app. Requires serde with derive and serde_json. For each exported entity, read properties._heron_animation.value (a JSON string in the tagged property map) and attach HeronAnimation::from_json(data)? to the SAME root as the rest Transform and its mesh/collision children. The plugin updates that Transform in Update before transform propagation. The root must use the exported parent coordinate frame; keep scene-wide transforms on a common parent.\n\nplay(name), pause(), resume(), seek(seconds), stop() control playback. Autoplay respects start_on. stop restores the rest pose. For Avian with its default FixedPostUpdate schedule, add HeronAnimationFixedPlugin instead and run support carrying after HeronAnimationSet in FixedPreUpdate. Use a kinematic body, never a dynamic body. Other physics adapters must synchronize animation with their simulation schedule. Exported func_button, trigger_once and trigger_multiple links are stored in _heron_trigger. Attach HeronAnimationName(entity.name) to animated roots, HeronAnimationTrigger::from_json(data)? to trigger roots, and HeronActivator to the player root. The plugin tests entry into the exported convex volumes. Call trigger.activate() from interaction code for button presses. Once-only behavior and wait cooldowns are shared with the other runtimes.\n".into())));
                     }
                     let sky = options.sky.then(|| map_sky(document, &built.level));
-                    let mut level_json = if target == Target::Babylon {
+                    let mut level_json = if matches!(target, Target::Babylon | Target::PlayCanvas) {
                         writer::babylon::write(&built.level, &built.collision)
                     } else {
                         writer::three::write(&built.level, &built.collision)
@@ -837,7 +848,10 @@ fn build(
                     if let Some(sky) = &sky {
                         let mut value: serde_json::Value =
                             serde_json::from_str(&level_json).expect("level JSON");
-                        if matches!(target, Target::ThreeJs | Target::Babylon) {
+                        if matches!(
+                            target,
+                            Target::ThreeJs | Target::Babylon | Target::PlayCanvas
+                        ) {
                             let panorama = format!("{}/sky.hdr", options.name);
                             value["environment"] = writer::three::environment(sky, Some(&panorama));
                             files.push((
@@ -845,10 +859,12 @@ fn build(
                                 Contents::Bytes(sky.panorama_hdr(
                                     1024,
                                     512,
-                                    if target == Target::Babylon {
-                                        writer::sky::babylon_panorama_direction
-                                    } else {
-                                        writer::sky::three_panorama_direction
+                                    match target {
+                                        Target::Babylon => writer::sky::babylon_panorama_direction,
+                                        Target::PlayCanvas => {
+                                            writer::sky::playcanvas_panorama_direction
+                                        }
+                                        _ => writer::sky::three_panorama_direction,
                                     },
                                 )),
                             ));
@@ -890,6 +906,21 @@ fn build(
                         files.push((
                             directory.join(format!("{}.html", options.name)),
                             Contents::Text(writer::babylon::write_html(
+                                &built.level,
+                                &built.collision,
+                                &built.meshes,
+                                sky.as_ref(),
+                            )),
+                        ));
+                    }
+                    if target == Target::PlayCanvas {
+                        files.push((
+                            directory.join("heron_playcanvas.js"),
+                            Contents::Text(writer::playcanvas::RUNTIME.into()),
+                        ));
+                        files.push((
+                            directory.join(format!("{}.html", options.name)),
+                            Contents::Text(writer::playcanvas::write_html(
                                 &built.level,
                                 &built.collision,
                                 &built.meshes,
@@ -2112,6 +2143,7 @@ mod tests {
             (Target::Godot, "arena.tscn"),
             (Target::ThreeJs, "arena.json"),
             (Target::Babylon, "arena.html"),
+            (Target::PlayCanvas, "arena.html"),
             (Target::Bevy, "arena.json"),
             (Target::Raylib, "arena.level"),
             (Target::Unity, "Editor/HeronBrushLevelImporter.cs"),
@@ -2240,11 +2272,51 @@ mod tests {
     }
 
     #[test]
+    fn playcanvas_writes_its_runtime_a_page_and_the_level_with_inline_collision() {
+        let (report, directory, _scratch) = export_cube(Target::PlayCanvas, "playcanvas-files");
+        for file in [
+            "arena.json",
+            "arena.html",
+            "heron_playcanvas.js",
+            "arena/sky.hdr",
+        ] {
+            assert!(
+                report.files.contains(&directory.join(file)),
+                "{file} missing from {:?}",
+                report.files
+            );
+        }
+        let level: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(directory.join("arena.json")).unwrap())
+                .unwrap();
+        // The runtime builds ammo.js bodies from the level file, so the triangles are
+        // inline and not in the mesh as well.
+        let collision = &level["entities"][0]["collision"];
+        assert!(
+            collision["triangles"].is_array() || collision["hulls"].is_array(),
+            "{collision}"
+        );
+        assert_eq!(
+            gltf_mesh_count(&directory.join("arena/worldspawn.glb")),
+            1,
+            "a collision mesh was written into the GLB"
+        );
+        let runtime = std::fs::read_to_string(directory.join("heron_playcanvas.js")).unwrap();
+        assert!(runtime.contains("export async function loadLevel"));
+        let page = std::fs::read_to_string(directory.join("arena.html")).unwrap();
+        assert!(page.contains(&format!(
+            "playcanvas@{}/build/playcanvas.min.js",
+            writer::playcanvas::PLAYCANVAS_VERSION
+        )));
+    }
+
+    #[test]
     fn bevy_and_three_name_their_sky_in_the_level_environment() {
         for (target, file) in [
             (Target::Bevy, "arena/sky.ktx2"),
             (Target::ThreeJs, "arena/sky.hdr"),
             (Target::Babylon, "arena/sky.hdr"),
+            (Target::PlayCanvas, "arena/sky.hdr"),
         ] {
             let (_, directory, _scratch) = export_cube(target, "portable-sky");
             let level: serde_json::Value = serde_json::from_str(
@@ -2275,6 +2347,12 @@ mod tests {
         assert_ne!(
             std::fs::read(three.1.join("arena/sky.hdr")).unwrap(),
             std::fs::read(babylon.1.join("arena/sky.hdr")).unwrap()
+        );
+        // PlayCanvas's skybox reads it half a turn on from Babylon.js's.
+        let playcanvas = export_cube(Target::PlayCanvas, "playcanvas-sky-turn");
+        assert_ne!(
+            std::fs::read(babylon.1.join("arena/sky.hdr")).unwrap(),
+            std::fs::read(playcanvas.1.join("arena/sky.hdr")).unwrap()
         );
         let (_, directory, _scratch) = export_cube(Target::Bevy, "bevy-sky-module");
         assert!(std::fs::read_to_string(directory.join("heron_sky.rs"))

@@ -319,7 +319,7 @@ Der Raylib-Export fügt `<map>_animation.h` mit einem Player in C und `<map>_pre
 Öffnen Sie `motion_lab` unter Beispiele auf dem Startbildschirm. Es enthält eine Plattform auf einem L-förmigen Pfad, einen Aufzug, eine Drehplattform und eine Tür mit Scharnier samt Schaltern. Öffnen Sie die daneben liegende `godot/project.godot` in Godot und drücken Sie `F5`. WASD und die Maus bewegen den Spieler, Leertaste springt, 1 bis 4 besuchen die Stationen und R startet die aktuelle Station neu. Treten Sie auf eine farbige Platte, um ihr Ziel zu aktivieren. Die beiliegende README erklärt das erneute Exportieren.
 
 # Export in eine Engine
-Datei → Exportieren öffnet das Exportfenster. Links sind die Engines mit ihren Logos aufgelistet: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb und zuletzt `.map`. Die Seite rechts sagt, was das Ziel erhält. **Schreiben** schreibt den Export, **Prüfen** baut das Level, ohne es zu schreiben, und listet die Probleme auf, und **Schließen** schließt das Fenster.
+Datei → Exportieren öffnet das Exportfenster. Links sind die Engines mit ihren Logos aufgelistet: Godot, Defold, three.js, Babylon.js, PlayCanvas, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb und zuletzt `.map`. Die Seite rechts sagt, was das Ziel erhält. **Schreiben** schreibt den Export, **Prüfen** baut das Level, ohne es zu schreiben, und listet die Probleme auf, und **Schließen** schließt das Fenster.
 
 Exportieren ist vom Speichern getrennt: Die `.map` bleibt Ihre bearbeitbare Quelle. Jedes Bedienelement speichert die Einstellungen seiner Engine, sobald es sich ändert; so behält jede Engine ihre eigenen Antworten, und das Fenster öffnet sich so, wie Sie es verlassen haben.
 
@@ -340,7 +340,7 @@ Statische Zellen ordnen Welt-Brushes nach ihren Mittelpunkten zu und fassen sie 
 - Unity: OBJ-Meshes und ein Editor-Importer; exportieren Sie in den Assets-Ordner des Projekts.
 - Unreal Engine: ein generiertes Importskript und ein Content-Pfad, normalerweise /Game/<level>.
 - Flax Engine: ein Content-Pfad für Modelle relativ zum Content-Ordner des Projekts.
-- three.js, Babylon.js, Bevy, raylib und Cocos Creator: Szenen oder Code für diese Laufzeitumgebungen, mit einer Anleitung neben dem Export.
+- three.js, Babylon.js, PlayCanvas, Bevy, raylib und Cocos Creator: Szenen oder Code für diese Laufzeitumgebungen, mit einer Anleitung neben dem Export.
 - glTF / GLB: portable Geometrie für kompatible Programme; GLB ist die Binärform. OBJ: Geometrie und Materialien für Modellierprogramme.
 - `.map`: **Schreiben als** wählt Valve 220, Standard, Quake 2 oder Quake 2 (Valve). Das Fenster sagt, was im gewählten Dialekt verloren ginge.
 

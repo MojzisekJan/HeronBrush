@@ -319,7 +319,7 @@ Ekspor raylib menambahkan `<map>_animation.h` dengan pemutar C dan `<map>_previe
 Buka `motion_lab` dari Contoh di layar sambutan. Contoh ini berisi platform berlintasan L, lift, platform berputar, dan pintu berengsel dengan tombol. Buka `godot/project.godot` di sampingnya dengan Godot lalu tekan `F5`. WASD dan mouse menggerakkan pemain, Space untuk melompat, 1 hingga 4 mengunjungi stasiun-stasiun, dan R memulai ulang stasiun saat ini. Injak bantalan berwarna untuk mengaktifkan targetnya. README yang disertakan menjelaskan cara mengekspor ulang.
 
 # Mengekspor ke mesin game
-Berkas → Ekspor membuka jendela Ekspor. Mesin-mesin game tercantum di sebelah kiri beserta logonya: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb, dan terakhir `.map`. Halaman di sebelah kanan menjelaskan apa yang akan diterima target. **Tulis** menulisnya, **Periksa** membangun level tanpa menulisnya dan menampilkan daftar masalah, dan **Tutup** menutup jendela.
+Berkas → Ekspor membuka jendela Ekspor. Mesin-mesin game tercantum di sebelah kiri beserta logonya: Godot, Defold, three.js, Babylon.js, PlayCanvas, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb, dan terakhir `.map`. Halaman di sebelah kanan menjelaskan apa yang akan diterima target. **Tulis** menulisnya, **Periksa** membangun level tanpa menulisnya dan menampilkan daftar masalah, dan **Tutup** menutup jendela.
 
 Ekspor terpisah dari penyimpanan: `.map` tetap menjadi sumber yang dapat Anda edit. Setiap kontrol langsung menyimpan pengaturan mesinnya begitu diubah, sehingga setiap mesin menyimpan pilihannya sendiri dan jendela terbuka seperti saat Anda meninggalkannya.
 
@@ -340,7 +340,7 @@ Sel statis menetapkan brush dunia berdasarkan titik tengahnya dan menggabungkann
 - Unity: mesh OBJ dan importer editor; ekspor ke dalam folder Assets proyek.
 - Unreal Engine: skrip impor yang dibuat otomatis dan jalur konten, biasanya /Game/<level>.
 - Flax Engine: jalur konten model relatif terhadap folder Content proyek.
-- three.js, Babylon.js, Bevy, raylib, dan Cocos Creator: scene atau kode untuk runtime tersebut, dengan petunjuk di samping hasil ekspor.
+- three.js, Babylon.js, PlayCanvas, Bevy, raylib, dan Cocos Creator: scene atau kode untuk runtime tersebut, dengan petunjuk di samping hasil ekspor.
 - glTF / GLB: geometri portabel untuk alat yang kompatibel; GLB adalah bentuk binernya. OBJ: geometri dan material untuk alat pemodelan.
 - `.map`: **Tulis sebagai** memilih Valve 220, Standar, Quake 2, atau Quake 2 (Valve). Jendela menyebutkan apa yang akan hilang pada dialek yang dipilih.
 

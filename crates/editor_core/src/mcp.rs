@@ -1897,7 +1897,7 @@ fn tool_definitions() -> Vec<Value> {
         ),
         tool(
             "export",
-            "Export the map for an engine: godot, defold, three.js, babylon, bevy, raylib, unity, unreal, flax, stride, cocos, gdevelop, obj, gltf, glb.",
+            "Export the map for an engine: godot, defold, three.js, babylon, playcanvas, bevy, raylib, unity, unreal, flax, stride, cocos, gdevelop, obj, gltf, glb.",
             json!({
                 "engine": { "type": "string" },
                 "path": { "type": "string", "description": "the output directory" },

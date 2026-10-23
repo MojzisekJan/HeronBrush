@@ -745,6 +745,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Play on start", "Toista käynnistettäessä"),
     ("Playable HTML with FPS controls and collisions. Open it in a browser; internet is needed for Three.js. JSON and .glb files are included.", "Pelattava HTML, jossa FPS-ohjaus ja törmäykset. Avaa se selaimessa; Three.js vaatii internetyhteyden. JSON- ja .glb-tiedostot ovat mukana."),
     ("Playable HTML with a Havok character controller, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for Babylon.js. The JSON, .glb files and a runtime module for your own game are included.", "Pelattava HTML, jossa on Havok-hahmonohjain, ovet, laukaisimet, vesi, valot ja taivas. Avaa se selaimessa; Babylon.js tarvitsee internetyhteyden. Mukana ovat JSON, .glb-tiedostot ja ajonaikainen moduuli omaa peliäsi varten."),
+    ("Playable HTML with ammo.js physics, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for PlayCanvas. The JSON, .glb files and a runtime module for your own game are included.", "Pelattava HTML, jossa on ammo.js-fysiikka, ovet, laukaisimet, vesi, valot ja taivas. Avaa se selaimessa; PlayCanvas tarvitsee internetyhteyden. Mukana ovat JSON, .glb-tiedostot ja ajonaikainen moduuli omaa peliäsi varten."),
     ("Playback", "Toisto"),
     ("Plays the map's animations from the start, as the 3D view's preview does.", "Toistaa kartan animaatiot alusta, kuten 3D-näkymän esikatselu."),
     ("Playtest warning: {}", "Pelitestin varoitus: {}"),

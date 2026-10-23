@@ -1,7 +1,7 @@
 # Water volumes across engine targets
 
-Godot, Bevy, Three.js, Babylon.js, Defold, Unity, Flax, Stride, Cocos Creator, GDevelop and
-raylib export a common optional water adapter.
+Godot, Bevy, Three.js, Babylon.js, PlayCanvas, Defold, Unity, Flax, Stride, Cocos Creator,
+GDevelop and raylib export a common optional water adapter.
 Create a brush entity `water_volume`, or add `water_enabled=1` to a custom brush
 class. Existing `fps_water` and `func_water` names are recognized too. Explicit
 `water_enabled=0` disables the adapter. A texture named water alone is not a
@@ -55,6 +55,7 @@ fluids, float arbitrary rigid bodies or implement currents.
 | Bevy 0.19 | Transparent StandardMaterial and private animated mesh copies | `heron_water.rs` supplies queries/velocity without Avian; `heron_water_render.rs` adds waves and per-camera DistanceFog. The Bevy sample wires its Avian player and restores gravity on exit. |
 | Three.js | MeshStandardMaterial with a wave vertex hook | Both generated HTML and the independent JSON importer swim with Space/Ctrl and apply underwater fog. HTML scene updates replace water adapters together with the staged scene. `heron_water.js` is exported for custom consumers. |
 | Babylon.js 9 | The GLB's `PBRMaterial`, alpha-blended and two-sided, with a material plugin that waves upward faces in the vertex shader | `HeronWater` in `heron_babylon.js` (`sample`, `HeronWater.sample`), `level.water(point)`; the volume is a Havok trigger. The generated page swims with Space/Ctrl and gives the view the water's fog. |
+| PlayCanvas 2 | The GLB's `StandardMaterial`, copied per volume, blended and two-sided, with a `transformVS` shader chunk that waves the surface | `HeronWater` in `heron_playcanvas.js` (`sample`, `HeronWater.sample`), `level.water(point)`; the volume is a trigger volume. The generated page swims with Space/Ctrl and gives the view the water's fog. |
 | Defold | Generated shader and separate alpha-blended `heron_water` pass | Generated properties scripts register/unregister volumes. `<level>_water.lua` exposes `sample` and `velocity`. The sample player uses held Space/Ctrl and the optional GUI tint adapter. |
 | Unity | `HeronBrushWater.shader`, transparent double-sided waves | Importer attaches `HeronBrushWater`. Optional MotionPlayer.Step adds a `dive` argument after `jump`; Water/Underwater state is exposed. Assign the level's water components to a HeronBrushWaterView on your camera for the baseline fog adapter. |
 | Flax | Transparent imported material and a private animated virtual mesh | Importer attaches HeronBrushWater; queries convert cm/reflected Z correctly. Optional MotionPlayer.Step adds `dive`. Assign waters to HeronBrushWaterView on the camera for the screen tint adapter. |

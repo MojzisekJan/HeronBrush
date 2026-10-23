@@ -81,6 +81,7 @@ fn key(target: Target) -> &'static str {
         Target::Defold => "defold",
         Target::ThreeJs => "three",
         Target::Babylon => "babylon",
+        Target::PlayCanvas => "playcanvas",
         Target::Bevy => "bevy",
         Target::Raylib => "raylib",
         Target::Unity => "unity",

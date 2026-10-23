@@ -319,7 +319,7 @@ Raylib 匯出會加入含 C 語言播放器的 `<map>_animation.h`，以及含�
 從歡迎畫面的範例中開啟 `motion_lab`。它包含一個 L 形路徑平台、一部升降梯、一個旋轉平台，以及一扇附按鈕的鉸鏈門。在 Godot 中開啟它旁邊的 `godot/project.godot`，然後按 `F5`。WASD 和滑鼠控制玩家移動，Space 跳躍，1 到 4 前往各個展示站，R 重新開始目前的展示站。踩上彩色踏板即可啟動它的目標。隨附的 README 說明如何重新匯出。
 
 # 匯出到引擎
-檔案 → 匯出 會開啟匯出視窗。左側列出各引擎及其標誌：Godot、Defold、three.js、Babylon.js、Bevy、raylib、Unity、Unreal Engine、Flax Engine、Cocos Creator、Wavefront .obj、glTF .gltf、GLB .glb，最後是 `.map`。右側頁面說明該目標會得到什麼。**寫入** 會寫出結果，**檢查** 會建構關卡但不寫出，並列出問題，**關閉** 則關閉視窗。
+檔案 → 匯出 會開啟匯出視窗。左側列出各引擎及其標誌：Godot、Defold、three.js、Babylon.js、PlayCanvas、Bevy、raylib、Unity、Unreal Engine、Flax Engine、Cocos Creator、Wavefront .obj、glTF .gltf、GLB .glb，最後是 `.map`。右側頁面說明該目標會得到什麼。**寫入** 會寫出結果，**檢查** 會建構關卡但不寫出，並列出問題，**關閉** 則關閉視窗。
 
 匯出和儲存是分開的：`.map` 仍然是您可編輯的原始檔。每個控制項一變更就會儲存該引擎的設定，因此每個引擎都會保留各自的設定，視窗下次開啟時也會維持您離開時的樣子。
 
@@ -340,7 +340,7 @@ Raylib 匯出會加入含 C 語言播放器的 `<map>_animation.h`，以及含�
 - Unity：OBJ 網格和一個編輯器匯入器；請匯出到專案的 Assets 資料夾底下。
 - Unreal Engine：產生的匯入指令碼和內容路徑，通常是 /Game/<level>。
 - Flax Engine：相對於專案 Content 資料夾的模型內容路徑。
-- three.js、Babylon.js、Bevy、raylib 和 Cocos Creator：適用於這些執行環境的場景或程式碼，使用說明會放在匯出結果旁。
+- three.js、Babylon.js、PlayCanvas、Bevy、raylib 和 Cocos Creator：適用於這些執行環境的場景或程式碼，使用說明會放在匯出結果旁。
 - glTF / GLB：供相容工具使用的可攜式幾何體；GLB 是二進位格式。OBJ：供建模工具使用的幾何體和材質。
 - `.map`：**寫入為** 可選擇 Valve 220、Standard、Quake 2 或 Quake 2 (Valve)。視窗會說明所選格式會遺失哪些資訊。
 

@@ -147,6 +147,18 @@ Chromium checks typed values, the authored override of a class default, and the
 links; see [Babylon.js export](babylon-export.md) and
 [its run-time checks](feature-runtime-babylon.md).
 
+### PlayCanvas project factories
+
+`loadLevel(pc, app, url, {factories})` in the exported `heron_playcanvas.js` calls a
+project callback chosen by `playcanvas_factory` or classname with the entity's record
+and the level, once every entity exists and every target is resolved to a record. A
+record carries the typed `properties`, the same as plain `values`, the entity, its
+mesh instances and, on the entity, its rigidbody and collision components.
+PlayCanvas's frame is the level's, so nothing is converted. The feature lab's run in
+Chromium checks typed values, the authored override of a class default, and the
+links; see [PlayCanvas export](playcanvas-export.md) and
+[its run-time checks](feature-runtime-playcanvas.md).
+
 ### Bevy project factories
 
 Bevy exports include `heron_entities.rs`. Attach `HeronEntityData::from_json` to
