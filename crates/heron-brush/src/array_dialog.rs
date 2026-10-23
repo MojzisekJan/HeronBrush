@@ -176,8 +176,18 @@ impl ArrayDialog {
             }
             *step = Vec3d::new(v[0], v[1], v[2]);
         };
-        let axis = |ui: &mut egui::Ui, axis: &mut Axis| {
-            widgets::row(ui, tr("Axis:"), None, |ui| {
+        // In a line the axis only turns the copies, so its label says so: with no turn it
+        // changes nothing, which a plain "Axis" hid.
+        let axis = |ui: &mut egui::Ui, axis: &mut Axis, turn_only: bool| {
+            let (label, tip) = if turn_only {
+                (
+                    tr("Turn axis:"),
+                    Some(tr("The axis each copy turns about.")),
+                )
+            } else {
+                (tr("Axis:"), None)
+            };
+            widgets::row(ui, label, tip, |ui| {
                 let mut index = axis.index();
                 if widgets::segmented_choice(
                     ui,
@@ -201,7 +211,7 @@ impl ArrayDialog {
                     -360.0..=360.0,
                     15.0,
                 );
-                axis(ui, &mut p.axis);
+                axis(ui, &mut p.axis, true);
             }
             ArrayKind::Grid => {
                 count(ui, translation_key("Count X"), &mut p.count[0]);
@@ -211,7 +221,7 @@ impl ArrayDialog {
             }
             ArrayKind::Radial => {
                 count(ui, translation_key("Count"), &mut p.count[0]);
-                axis(ui, &mut p.axis);
+                axis(ui, &mut p.axis, false);
                 number(
                     ui,
                     translation_key("Radius (units)"),
@@ -230,7 +240,7 @@ impl ArrayDialog {
             }
             ArrayKind::Scatter => {
                 count(ui, translation_key("Count"), &mut p.count[0]);
-                axis(ui, &mut p.axis);
+                axis(ui, &mut p.axis, false);
                 number(
                     ui,
                     translation_key("Radius (units)"),
