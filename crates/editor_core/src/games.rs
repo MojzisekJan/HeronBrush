@@ -35,6 +35,9 @@ pub struct Game {
     pub definitions: Vec<PathBuf>,
     /// Where its materials live, under the game path.
     pub materials_root: Option<String>,
+    /// Globs naming images under the root that are not materials, but another one's
+    /// normal, specular or glow map.
+    pub materials_excludes: Vec<String>,
     /// Game-relative indexed texture palette.
     pub materials_palette: Option<String>,
     /// The worldspawn key naming the map's texture packages (`wad`), when the game keeps
@@ -56,6 +59,8 @@ pub struct Game {
     /// Whether a map exported for the game's compiler has its groups and layers merged
     /// into the worldspawn, because the compiler drops what is in a `func_group`.
     pub merge_groups_on_export: bool,
+    /// `faceattribs.defaults.scale`, the UV scale new faces get.
+    pub default_uv_scale: Option<(f32, f32)>,
 }
 
 /// A name a configuration gives to the brushes or faces that match a rule.
@@ -210,6 +215,19 @@ impl Game {
         let directory = game_path.join(root);
         crate::files::is_dir(&directory).then_some(directory)
     }
+
+    /// Whether the configuration's `excludes` leave the material `name` out of the
+    /// collection. The globs are matched against the whole name, ignoring case, as
+    /// TrenchBroom does: `*_norm` leaves out `base1/wall_norm`.
+    pub fn excludes_material(&self, name: &str) -> bool {
+        self.materials_excludes.iter().any(|pattern| {
+            text_utils::string_compare::str_matches_glob(
+                name,
+                pattern,
+                text_utils::string_compare::CaseSensitivity::Insensitive,
+            )
+        })
+    }
 }
 
 /// The directories a game configuration is looked for in.
@@ -296,6 +314,7 @@ pub fn read(config: &Path) -> Result<Game, scene_export::gameconfig::GameConfigE
             .map(|name| directory.join(name))
             .collect(),
         materials_root: read.materials_root.clone(),
+        materials_excludes: read.materials_excludes.clone(),
         materials_palette: read.materials_palette.clone(),
         materials_attribute: read.materials_attribute.clone(),
         clip_material: read.tool_texture("clip"),
@@ -305,6 +324,7 @@ pub fn read(config: &Path) -> Result<Game, scene_export::gameconfig::GameConfigE
         surface_flag_names: read.surface_flags.clone(),
         content_flag_names: read.content_flags.clone(),
         merge_groups_on_export: read.merge_groups_on_export,
+        default_uv_scale: read.default_uv_scale.map(|(u, v)| (u as f32, v as f32)),
         directory,
     })
 }
@@ -521,6 +541,20 @@ mod tests {
             quake2.formats[0].format,
             map_model::map_format::MapFormat::Quake2
         );
+    }
+
+    #[test]
+    fn quetoo_leaves_its_normal_and_specular_maps_out_of_the_materials() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../gamedata");
+        let quetoo = read(&root.join("Quetoo/GameConfig.cfg")).expect("it reads");
+        for name in ["base1/wall_norm", "base1/WALL_SPEC", "sky/x_glow"] {
+            assert!(quetoo.excludes_material(name), "{name}");
+        }
+        for name in ["base1/wall", "common/caulk", "normal/floor"] {
+            assert!(!quetoo.excludes_material(name), "{name}");
+        }
+        let quake = read(&root.join("Quake/GameConfig.cfg")).expect("it reads");
+        assert!(!quake.excludes_material("base1/wall_norm"));
     }
 
     #[test]

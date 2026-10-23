@@ -25,6 +25,7 @@ impl Document {
         let brushes =
             shape_tool::create_brushes(&self.world_bounds(), &bounds, &parameters, &material)
                 .map_err(|e| e.to_string())?;
+        let brushes = self.with_default_uv_scale(brushes);
         if brushes.is_empty() {
             return Err("The shape produced no brushes.".into());
         }
@@ -91,7 +92,7 @@ impl Document {
             &parameters,
             &session.material,
         ) {
-            Ok(brushes) if !brushes.is_empty() => brushes,
+            Ok(brushes) if !brushes.is_empty() => self.with_default_uv_scale(brushes),
             Ok(_) => {
                 self.shape_preview = Some(session);
                 return Err("The shape produced no brushes.".into());
@@ -212,6 +213,44 @@ mod tests {
         d.redo();
         assert_eq!(d.to_map_text(), final_map);
         assert!(!d.has_shape_preview());
+    }
+    /// Quetoo's profile scales new faces by 0.25, since its textures are four texels to
+    /// a unit; a drawn shape and its regenerated forms get that scale on every face.
+    #[test]
+    fn shape_preview_gives_new_faces_the_games_default_uv_scale() {
+        let scales = |d: &Document| -> Vec<Vec2f> {
+            d.selection_ids()
+                .iter()
+                .filter_map(|id| match &node::find_node(d.tree_world(), *id)?.kind {
+                    NodeKind::Brush(brush) => Some(brush.clone()),
+                    _ => None,
+                })
+                .flat_map(|brush| {
+                    brush
+                        .faces()
+                        .iter()
+                        .map(|face| face.uv_attributes.scale)
+                        .collect::<Vec<_>>()
+                })
+                .collect()
+        };
+        let mut d = Document::new(Default::default());
+        let mut p = ShapeParameters {
+            kind: ShapeKind::Cylinder,
+            ..Default::default()
+        };
+        d.begin_shape_preview(bounds(), p).unwrap();
+        assert!(scales(&d).iter().all(|s| *s == Vec2f::new(1.0, 1.0)));
+
+        let mut d = Document::new(Default::default());
+        d.set_default_uv_scale(Some((0.25, 0.5)));
+        d.begin_shape_preview(bounds(), p).unwrap();
+        let first = scales(&d);
+        assert!(!first.is_empty());
+        assert!(first.iter().all(|s| *s == Vec2f::new(0.25, 0.5)));
+        p.num_sides = 12;
+        assert!(d.update_shape_preview(p).unwrap());
+        assert!(scales(&d).iter().all(|s| *s == Vec2f::new(0.25, 0.5)));
     }
     #[test]
     fn shape_preview_survives_same_selection_and_a_click_without_movement() {

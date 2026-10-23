@@ -1404,6 +1404,7 @@ fn add_shape(document: &mut Document, args: &Value) -> Result<String, String> {
     if brushes.is_empty() {
         return Err("the bounds were too small to make a solid".into());
     }
+    let brushes = document.with_default_uv_scale(brushes);
 
     // An optional turn about the shape's own centre, x then y then z, folded into the
     // add so the whole thing is one undo step. This is what lets an agent lay a

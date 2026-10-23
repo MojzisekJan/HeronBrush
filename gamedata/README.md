@@ -90,3 +90,11 @@ Hexen 2's definitions were corrected against Raven's game code: the Egyptian tor
 `light_torch_eqypt`, the spelling the game spawns, and the `message` keys of worldspawn,
 buttons, doors and triggers are integers, because Hexen II reads them as line numbers
 in `strings.txt`.
+
+Quetoo's configuration and definitions come from TrenchBroom's master branch as of
+2026-10-17 instead of the 2026.1 release, since Quetoo changes quickly and its author
+keeps them there. The 2026.1 definitions named worldspawn keys the game no longer reads
+(`fraglimit`, `timelimit`, `teams`, `ctf`), so a map made with them got none of its
+limits, and lacked `func_bob` and `misc_portal`. The newer configuration lists the
+"Quake3 (Valve)" format the game's own maps are saved in, a Ladder tag, and the
+`portal` and `reflect` surface flags.

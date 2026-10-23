@@ -614,6 +614,7 @@ pub fn apply_game(document: &mut Document, game: Option<&Game>) {
             game.content_flag_names.clone(),
         );
         document.set_merge_groups_on_export(game.merge_groups_on_export);
+        document.set_default_uv_scale(game.default_uv_scale);
     }
     document.load_entity_models();
 }
@@ -1650,6 +1651,7 @@ mod tests {
             formats: Vec::new(),
             definitions: Vec::new(),
             materials_root: None,
+            materials_excludes: Vec::new(),
             materials_palette: None,
             materials_attribute: None,
             clip_material: None,
@@ -1659,6 +1661,7 @@ mod tests {
             surface_flag_names: vec!["light".into(), "slick".into()],
             content_flag_names: vec!["solid".into()],
             merge_groups_on_export: false,
+            default_uv_scale: None,
         };
         let mut document = Document::new(Default::default());
         apply_game(&mut document, Some(&game));

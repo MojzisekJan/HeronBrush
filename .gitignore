@@ -34,3 +34,6 @@ __pycache__/
 
 # q3map2 and mbspc output for the OpenArena demo.
 /demos/openarena_heron/build/
+
+# quemap's output for the Quetoo demo.
+/demos/quetoo_heron/build/

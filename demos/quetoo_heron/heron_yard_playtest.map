@@ -1,0 +1,560 @@
+// heron material-sources []
+// Format: Valve
+// heron_brush format 3
+// entity 0
+{
+"mapversion" "220"
+"classname" "worldspawn"
+"message" "Heron Yard"
+"sky" "dragonheart"
+"ambient" "0.4"
+"games" "dm"
+"min_clients" "0"
+"author" "Heron Brush"
+// heron_brush id 23c9e10000000001
+// brush 0
+{
+( -16 -16 -16 ) ( -16 -15 -16 ) ( -16 -16 -15 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+( 1040 784 0 ) ( 1040 784 1 ) ( 1040 785 0 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+( -16 -16 -16 ) ( -16 -16 -15 ) ( -15 -16 -16 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+( 1040 784 0 ) ( 1041 784 0 ) ( 1040 784 1 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+( 1040 784 0 ) ( 1040 785 0 ) ( 1041 784 0 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+( -16 -16 -16 ) ( -15 -16 -16 ) ( -16 -15 -16 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000002
+// brush 1
+{
+( -16 -16 384 ) ( -16 -15 384 ) ( -16 -16 385 ) common/sky 0 0 0 0.25 0.25
+( 1040 784 400 ) ( 1040 784 401 ) ( 1040 785 400 ) common/sky 0 0 0 0.25 0.25
+( -16 -16 384 ) ( -16 -16 385 ) ( -15 -16 384 ) common/sky 0 0 0 0.25 0.25
+( 1040 784 400 ) ( 1041 784 400 ) ( 1040 784 401 ) common/sky 0 0 0 0.25 0.25
+( 1040 784 400 ) ( 1040 785 400 ) ( 1041 784 400 ) common/sky 0 0 0 0.25 0.25
+( -16 -16 384 ) ( -15 -16 384 ) ( -16 -15 384 ) common/sky 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000003
+// brush 2
+{
+( -16 -16 0 ) ( -16 -15 0 ) ( -16 -16 1 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 0 784 384 ) ( 0 784 385 ) ( 0 785 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( -16 -16 0 ) ( -16 -16 1 ) ( -15 -16 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 0 784 384 ) ( 1 784 384 ) ( 0 784 385 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 0 784 384 ) ( 0 785 384 ) ( 1 784 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( -16 -16 0 ) ( -15 -16 0 ) ( -16 -15 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000004
+// brush 3
+{
+( 0 -16 0 ) ( 0 -15 0 ) ( 0 -16 1 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 0 384 ) ( 1040 0 385 ) ( 1040 1 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 0 -16 0 ) ( 0 -16 1 ) ( 1 -16 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 0 384 ) ( 1041 0 384 ) ( 1040 0 385 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 0 384 ) ( 1040 1 384 ) ( 1041 0 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 0 -16 0 ) ( 1 -16 0 ) ( 0 -15 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000005
+// brush 4
+{
+( 0 768 0 ) ( 0 769 0 ) ( 0 768 1 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 784 384 ) ( 1040 784 385 ) ( 1040 785 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 0 768 0 ) ( 0 768 1 ) ( 1 768 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 784 384 ) ( 1041 784 384 ) ( 1040 784 385 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 784 384 ) ( 1040 785 384 ) ( 1041 784 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 0 768 0 ) ( 1 768 0 ) ( 0 769 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000006
+// brush 5
+{
+( 1024 0 0 ) ( 1024 1 0 ) ( 1024 0 1 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 320 384 ) ( 1040 320 385 ) ( 1040 321 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1024 0 0 ) ( 1024 0 1 ) ( 1025 0 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 320 384 ) ( 1041 320 384 ) ( 1040 320 385 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 320 384 ) ( 1040 321 384 ) ( 1041 320 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1024 0 0 ) ( 1025 0 0 ) ( 1024 1 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000007
+// brush 6
+{
+( 1024 448 0 ) ( 1024 449 0 ) ( 1024 448 1 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 768 384 ) ( 1040 768 385 ) ( 1040 769 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1024 448 0 ) ( 1024 448 1 ) ( 1025 448 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 768 384 ) ( 1041 768 384 ) ( 1040 768 385 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 768 384 ) ( 1040 769 384 ) ( 1041 768 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1024 448 0 ) ( 1025 448 0 ) ( 1024 449 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000008
+// brush 7
+{
+( 1024 320 128 ) ( 1024 321 128 ) ( 1024 320 129 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 448 384 ) ( 1040 448 385 ) ( 1040 449 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1024 320 128 ) ( 1024 320 129 ) ( 1025 320 128 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 448 384 ) ( 1041 448 384 ) ( 1040 448 385 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 448 384 ) ( 1040 449 384 ) ( 1041 448 384 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1024 320 128 ) ( 1025 320 128 ) ( 1024 321 128 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000009
+// brush 8
+{
+( 0 0 192 ) ( 0 1 192 ) ( 0 0 193 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 1024 8 208 ) ( 1024 8 209 ) ( 1024 9 208 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 0 0 192 ) ( 0 0 193 ) ( 1 0 192 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 1024 8 208 ) ( 1025 8 208 ) ( 1024 8 209 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 1024 8 208 ) ( 1024 9 208 ) ( 1025 8 208 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 0 0 192 ) ( 1 0 192 ) ( 0 1 192 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e1000000000a
+// brush 9
+{
+( 0 8 192 ) ( 0 9 192 ) ( 0 8 193 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 8 576 208 ) ( 8 576 209 ) ( 8 577 208 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 0 8 192 ) ( 0 8 193 ) ( 1 8 192 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 8 576 208 ) ( 9 576 208 ) ( 8 576 209 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 8 576 208 ) ( 8 577 208 ) ( 9 576 208 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 0 8 192 ) ( 1 8 192 ) ( 0 9 192 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e1000000000b
+// brush 10
+{
+( 1016 8 192 ) ( 1016 9 192 ) ( 1016 8 193 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 1024 320 208 ) ( 1024 320 209 ) ( 1024 321 208 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 1016 8 192 ) ( 1016 8 193 ) ( 1017 8 192 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 1024 320 208 ) ( 1025 320 208 ) ( 1024 320 209 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 1024 320 208 ) ( 1024 321 208 ) ( 1025 320 208 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 1016 8 192 ) ( 1017 8 192 ) ( 1016 9 192 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e1000000000c
+// brush 11
+{
+( 0 576 0 ) ( 0 577 0 ) ( 0 576 1 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 640 768 192 ) ( 640 768 193 ) ( 640 769 192 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 0 576 0 ) ( 0 576 1 ) ( 1 576 0 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 640 768 192 ) ( 641 768 192 ) ( 640 768 193 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+( 640 768 192 ) ( 640 769 192 ) ( 641 768 192 ) quake3/base_trim/pewter 0 0 0 0.25 0.25
+( 0 576 0 ) ( 1 576 0 ) ( 0 577 0 ) quake3/base_trim/border11 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e1000000000d
+// brush 12
+{
+( 816 576 0 ) ( 816 577 0 ) ( 816 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 832 768 16 ) ( 832 768 17 ) ( 832 769 16 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 816 576 0 ) ( 816 576 1 ) ( 817 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 832 768 16 ) ( 833 768 16 ) ( 832 768 17 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 832 768 16 ) ( 832 769 16 ) ( 833 768 16 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 816 576 0 ) ( 817 576 0 ) ( 816 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e1000000000e
+// brush 13
+{
+( 800 576 0 ) ( 800 577 0 ) ( 800 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 816 768 32 ) ( 816 768 33 ) ( 816 769 32 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 800 576 0 ) ( 800 576 1 ) ( 801 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 816 768 32 ) ( 817 768 32 ) ( 816 768 33 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 816 768 32 ) ( 816 769 32 ) ( 817 768 32 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 800 576 0 ) ( 801 576 0 ) ( 800 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e1000000000f
+// brush 14
+{
+( 784 576 0 ) ( 784 577 0 ) ( 784 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 800 768 48 ) ( 800 768 49 ) ( 800 769 48 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 784 576 0 ) ( 784 576 1 ) ( 785 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 800 768 48 ) ( 801 768 48 ) ( 800 768 49 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 800 768 48 ) ( 800 769 48 ) ( 801 768 48 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 784 576 0 ) ( 785 576 0 ) ( 784 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000010
+// brush 15
+{
+( 768 576 0 ) ( 768 577 0 ) ( 768 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 784 768 64 ) ( 784 768 65 ) ( 784 769 64 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 768 576 0 ) ( 768 576 1 ) ( 769 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 784 768 64 ) ( 785 768 64 ) ( 784 768 65 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 784 768 64 ) ( 784 769 64 ) ( 785 768 64 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 768 576 0 ) ( 769 576 0 ) ( 768 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000011
+// brush 16
+{
+( 752 576 0 ) ( 752 577 0 ) ( 752 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 768 768 80 ) ( 768 768 81 ) ( 768 769 80 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 752 576 0 ) ( 752 576 1 ) ( 753 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 768 768 80 ) ( 769 768 80 ) ( 768 768 81 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 768 768 80 ) ( 768 769 80 ) ( 769 768 80 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 752 576 0 ) ( 753 576 0 ) ( 752 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000012
+// brush 17
+{
+( 736 576 0 ) ( 736 577 0 ) ( 736 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 752 768 96 ) ( 752 768 97 ) ( 752 769 96 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 736 576 0 ) ( 736 576 1 ) ( 737 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 752 768 96 ) ( 753 768 96 ) ( 752 768 97 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 752 768 96 ) ( 752 769 96 ) ( 753 768 96 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 736 576 0 ) ( 737 576 0 ) ( 736 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000013
+// brush 18
+{
+( 720 576 0 ) ( 720 577 0 ) ( 720 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 736 768 112 ) ( 736 768 113 ) ( 736 769 112 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 720 576 0 ) ( 720 576 1 ) ( 721 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 736 768 112 ) ( 737 768 112 ) ( 736 768 113 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 736 768 112 ) ( 736 769 112 ) ( 737 768 112 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 720 576 0 ) ( 721 576 0 ) ( 720 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000014
+// brush 19
+{
+( 704 576 0 ) ( 704 577 0 ) ( 704 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 720 768 128 ) ( 720 768 129 ) ( 720 769 128 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 704 576 0 ) ( 704 576 1 ) ( 705 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 720 768 128 ) ( 721 768 128 ) ( 720 768 129 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 720 768 128 ) ( 720 769 128 ) ( 721 768 128 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 704 576 0 ) ( 705 576 0 ) ( 704 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000015
+// brush 20
+{
+( 688 576 0 ) ( 688 577 0 ) ( 688 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 704 768 144 ) ( 704 768 145 ) ( 704 769 144 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 688 576 0 ) ( 688 576 1 ) ( 689 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 704 768 144 ) ( 705 768 144 ) ( 704 768 145 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 704 768 144 ) ( 704 769 144 ) ( 705 768 144 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 688 576 0 ) ( 689 576 0 ) ( 688 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000016
+// brush 21
+{
+( 672 576 0 ) ( 672 577 0 ) ( 672 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 688 768 160 ) ( 688 768 161 ) ( 688 769 160 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 672 576 0 ) ( 672 576 1 ) ( 673 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 688 768 160 ) ( 689 768 160 ) ( 688 768 161 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 688 768 160 ) ( 688 769 160 ) ( 689 768 160 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 672 576 0 ) ( 673 576 0 ) ( 672 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000017
+// brush 22
+{
+( 656 576 0 ) ( 656 577 0 ) ( 656 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 672 768 176 ) ( 672 768 177 ) ( 672 769 176 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 656 576 0 ) ( 656 576 1 ) ( 657 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 672 768 176 ) ( 673 768 176 ) ( 672 768 177 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 672 768 176 ) ( 672 769 176 ) ( 673 768 176 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 656 576 0 ) ( 657 576 0 ) ( 656 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000018
+// brush 23
+{
+( 640 576 0 ) ( 640 577 0 ) ( 640 576 1 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 656 768 192 ) ( 656 768 193 ) ( 656 769 192 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 640 576 0 ) ( 640 576 1 ) ( 641 576 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 656 768 192 ) ( 657 768 192 ) ( 656 768 193 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 656 768 192 ) ( 656 769 192 ) ( 657 768 192 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+( 640 576 0 ) ( 641 576 0 ) ( 640 577 0 ) quake3/base_floor/clang_floor 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000019
+// brush 24
+{
+( 256 448 0 ) ( 256 449 0 ) ( 256 448 1 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+( 320 512 8 ) ( 320 512 9 ) ( 320 513 8 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+( 256 448 0 ) ( 256 448 1 ) ( 257 448 0 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+( 320 512 8 ) ( 321 512 8 ) ( 320 512 9 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+( 320 512 8 ) ( 320 513 8 ) ( 321 512 8 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+( 256 448 0 ) ( 257 448 0 ) ( 256 449 0 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e1000000001c
+// brush 25
+{
+( 1040 112 -16 ) ( 1040 113 -16 ) ( 1040 112 -15 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+( 1568 656 0 ) ( 1568 656 1 ) ( 1568 657 0 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+( 1040 112 -16 ) ( 1040 112 -15 ) ( 1041 112 -16 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+( 1568 656 0 ) ( 1569 656 0 ) ( 1568 656 1 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+( 1568 656 0 ) ( 1568 657 0 ) ( 1569 656 0 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+( 1040 112 -16 ) ( 1041 112 -16 ) ( 1040 113 -16 ) quake3/base_floor/diamond2c 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e1000000001d
+// brush 26
+{
+( 1040 112 256 ) ( 1040 113 256 ) ( 1040 112 257 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 656 272 ) ( 1568 656 273 ) ( 1568 657 272 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 112 256 ) ( 1040 112 257 ) ( 1041 112 256 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 656 272 ) ( 1569 656 272 ) ( 1568 656 273 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 656 272 ) ( 1568 657 272 ) ( 1569 656 272 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 112 256 ) ( 1041 112 256 ) ( 1040 113 256 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e1000000001e
+// brush 27
+{
+( 1040 112 0 ) ( 1040 113 0 ) ( 1040 112 1 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 128 256 ) ( 1568 128 257 ) ( 1568 129 256 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 112 0 ) ( 1040 112 1 ) ( 1041 112 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 128 256 ) ( 1569 128 256 ) ( 1568 128 257 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 128 256 ) ( 1568 129 256 ) ( 1569 128 256 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 112 0 ) ( 1041 112 0 ) ( 1040 113 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e1000000001f
+// brush 28
+{
+( 1040 640 0 ) ( 1040 641 0 ) ( 1040 640 1 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 656 256 ) ( 1568 656 257 ) ( 1568 657 256 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 640 0 ) ( 1040 640 1 ) ( 1041 640 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 656 256 ) ( 1569 656 256 ) ( 1568 656 257 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 656 256 ) ( 1568 657 256 ) ( 1569 656 256 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1040 640 0 ) ( 1041 640 0 ) ( 1040 641 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000020
+// brush 29
+{
+( 1552 128 0 ) ( 1552 129 0 ) ( 1552 128 1 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 640 256 ) ( 1568 640 257 ) ( 1568 641 256 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1552 128 0 ) ( 1552 128 1 ) ( 1553 128 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 640 256 ) ( 1569 640 256 ) ( 1568 640 257 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1568 640 256 ) ( 1568 641 256 ) ( 1569 640 256 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+( 1552 128 0 ) ( 1553 128 0 ) ( 1552 129 0 ) quake3/base_wall/basewall01 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000021
+// brush 30
+{
+( 1136 352 248 ) ( 1136 353 248 ) ( 1136 352 249 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+( 1200 416 256 ) ( 1200 416 257 ) ( 1200 417 256 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+( 1136 352 248 ) ( 1136 352 249 ) ( 1137 352 248 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+( 1200 416 256 ) ( 1201 416 256 ) ( 1200 416 257 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+( 1200 416 256 ) ( 1200 417 256 ) ( 1201 416 256 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+( 1136 352 248 ) ( 1137 352 248 ) ( 1136 353 248 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000023
+// brush 31
+{
+( 1392 352 248 ) ( 1392 353 248 ) ( 1392 352 249 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+( 1456 416 256 ) ( 1456 416 257 ) ( 1456 417 256 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+( 1392 352 248 ) ( 1392 352 249 ) ( 1393 352 248 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+( 1456 416 256 ) ( 1457 416 256 ) ( 1456 416 257 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+( 1456 416 256 ) ( 1456 417 256 ) ( 1457 416 256 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+( 1392 352 248 ) ( 1393 352 248 ) ( 1392 353 248 ) quake3/base_light/ceil1_30 0 0 0 0.25 0.25
+}
+// heron_brush id 23c9e10000000025
+// brush 32
+{
+( 1488 352 0 ) ( 1488 353 0 ) ( 1488 352 1 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+( 1552 416 4 ) ( 1552 416 5 ) ( 1552 417 4 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+( 1488 352 0 ) ( 1488 352 1 ) ( 1489 352 0 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+( 1552 416 4 ) ( 1553 416 4 ) ( 1552 416 5 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+( 1552 416 4 ) ( 1552 417 4 ) ( 1553 416 4 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+( 1488 352 0 ) ( 1489 352 0 ) ( 1488 353 0 ) quake3/base_floor/clanggrate 0 0 0 0.25 0.25
+}
+}
+// heron_brush id 23c9e1000000001b
+// entity 1
+{
+"classname" "trigger_push"
+"angles" "-75 90 0"
+"speed" "72"
+"spawnflags" "2"
+// heron_brush id 23c9e1000000001a
+// brush 0
+{
+( 256 448 8 ) ( 256 449 8 ) ( 256 448 9 ) common/trigger 0 0 0 0.25 0.25
+( 320 512 48 ) ( 320 512 49 ) ( 320 513 48 ) common/trigger 0 0 0 0.25 0.25
+( 256 448 8 ) ( 256 448 9 ) ( 257 448 8 ) common/trigger 0 0 0 0.25 0.25
+( 320 512 48 ) ( 321 512 48 ) ( 320 512 49 ) common/trigger 0 0 0 0.25 0.25
+( 320 512 48 ) ( 320 513 48 ) ( 321 512 48 ) common/trigger 0 0 0 0.25 0.25
+( 256 448 8 ) ( 257 448 8 ) ( 256 449 8 ) common/trigger 0 0 0 0.25 0.25
+}
+}
+// heron_brush id 23c9e10000000022
+// entity 2
+{
+"classname" "light"
+"origin" "1168 384 224"
+"radius" "400"
+"color" "1 1 1"
+"drift" "0"
+"intensity" "1.5"
+"style" "z"
+}
+// heron_brush id 23c9e10000000024
+// entity 3
+{
+"classname" "light"
+"origin" "1424 384 224"
+"radius" "400"
+"color" "1 1 1"
+"drift" "0"
+"intensity" "1.5"
+"style" "z"
+}
+// heron_brush id 23c9e10000000026
+// entity 4
+{
+"classname" "misc_teleporter"
+"origin" "1520 384 28"
+"sound" "misc/teleport"
+"target" "ledge"
+}
+// heron_brush id 23c9e10000000027
+// entity 5
+{
+"classname" "misc_teleporter_dest"
+"origin" "96 672 216"
+"angle" "0"
+"targetname" "ledge"
+}
+// heron_brush id 23c9e10000000028
+// entity 6
+{
+"classname" "light"
+"origin" "256 192 288"
+"radius" "500"
+"color" "1 1 1"
+"drift" "0"
+"intensity" "2"
+"style" "z"
+}
+// heron_brush id 23c9e10000000029
+// entity 7
+{
+"classname" "light"
+"origin" "768 192 288"
+"radius" "500"
+"color" "1 1 1"
+"drift" "0"
+"intensity" "2"
+"style" "z"
+}
+// heron_brush id 23c9e1000000002a
+// entity 8
+{
+"classname" "light"
+"origin" "512 448 320"
+"radius" "500"
+"color" "1 1 1"
+"drift" "0"
+"intensity" "2"
+"style" "z"
+}
+// heron_brush id 23c9e1000000002b
+// entity 9
+{
+"classname" "light"
+"origin" "160 672 320"
+"radius" "350"
+"color" "1 0.8 0.6"
+"drift" "0"
+"intensity" "1"
+"style" "z"
+}
+// heron_brush id 23c9e1000000002c
+// entity 10
+{
+"classname" "light"
+"origin" "480 672 320"
+"radius" "350"
+"color" "1 0.8 0.6"
+"drift" "0"
+"intensity" "1"
+"style" "z"
+}
+// heron_brush id 23c9e10000000033
+// entity 11
+{
+"classname" "info_player_intermission"
+"origin" "512 64 320"
+"angles" "20 90 0"
+}
+// heron_brush id 23c9e10000000034
+// entity 12
+{
+"classname" "weapon_rocketlauncher"
+"origin" "480 672 208"
+}
+// heron_brush id 23c9e10000000035
+// entity 13
+{
+"classname" "ammo_rockets"
+"origin" "544 672 208"
+}
+// heron_brush id 23c9e10000000036
+// entity 14
+{
+"classname" "item_armor_jacket"
+"origin" "192 672 208"
+}
+// heron_brush id 23c9e10000000037
+// entity 15
+{
+"classname" "weapon_railgun"
+"origin" "1472 576 16"
+}
+// heron_brush id 23c9e10000000038
+// entity 16
+{
+"classname" "ammo_slugs"
+"origin" "1408 576 16"
+}
+// heron_brush id 23c9e10000000039
+// entity 17
+{
+"classname" "item_health_mega"
+"origin" "1472 192 16"
+}
+// heron_brush id 23c9e1000000003a
+// entity 18
+{
+"classname" "weapon_shotgun"
+"origin" "512 128 16"
+}
+// heron_brush id 23c9e1000000003b
+// entity 19
+{
+"classname" "ammo_shells"
+"origin" "576 128 16"
+}
+// heron_brush id 23c9e1000000003c
+// entity 20
+{
+"classname" "weapon_hyperblaster"
+"origin" "128 384 16"
+}
+// heron_brush id 23c9e1000000003d
+// entity 21
+{
+"classname" "ammo_cells"
+"origin" "128 448 16"
+}
+// heron_brush id 23c9e1000000003e
+// entity 22
+{
+"classname" "item_armor_combat"
+"origin" "768 384 16"
+}
+// heron_brush id 23c9e1000000003f
+// entity 23
+{
+"classname" "item_health"
+"origin" "896 640 16"
+}
+// heron_brush id 23c9e10000000040
+// entity 24
+{
+"classname" "item_health"
+"origin" "960 640 16"
+}
+// heron_brush id 23c9e10000000041
+// entity 25
+{
+"classname" "item_health"
+"origin" "1168 224 16"
+}
+// heron_brush id 23c9e10000000042
+// entity 26
+{
+"classname" "info_player_deathmatch"
+"origin" "288 480 40"
+"angle" "90"
+}
+// heron_brush id 23c9e10000000043
+// entity 27
+{
+"classname" "info_player_deathmatch"
+"origin" "1520 384 32"
+"angle" "180"
+}

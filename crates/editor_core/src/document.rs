@@ -274,6 +274,9 @@ pub struct Document {
     /// worldspawn: the game profile's `heron.mergeGroupsOnExport`, for a compiler that
     /// drops the brushes of a `func_group`.
     merge_groups_on_export: bool,
+    /// `faceattribs.defaults.scale`: the UV scale the shape tools give new faces, for a
+    /// game whose textures are drawn finer than one texel to a unit.
+    default_uv_scale: Option<Vec2f>,
     /// Where a class's model is looked for, and what has been loaded from there.
     ///
     /// `EntityModelManager`. See [`crate::entity_models`].
@@ -1351,6 +1354,7 @@ impl Document {
             surface_flag_names: Vec::new(),
             content_flag_names: Vec::new(),
             merge_groups_on_export: false,
+            default_uv_scale: None,
             model_store: crate::entity_models::ModelStore::default(),
             game_asset_key: None,
             game_materials: Vec::new(),
