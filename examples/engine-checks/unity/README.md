@@ -35,6 +35,30 @@ Unity -batchmode -nographics -quit -projectPath /tmp/heron-unity-check -executeM
 Play Mode tests need an active Unity licence. `HERON_UNITY_BUILD` sets the player
 output path.
 
+## Feature lab
+
+`VerifyFeatureLab.cs` checks the export of
+[`demos/feature_lab/feature_lab.map`](../../../demos/feature_lab/feature_lab.map)
+station by station in the engine. Results are in
+[the Unity runtime check](../../../docs/feature-runtime-unity.md).
+
+```sh
+Unity -batchmode -nographics -quit -createProject /tmp/heron-unity-feature -logFile /tmp/unity-create.log
+python3 examples/engine-checks/unity/prepare_feature_lab.py /tmp/heron-unity-feature
+Unity -batchmode -nographics -projectPath /tmp/heron-unity-feature -executeMethod VerifyFeatureLab.Run -logFile /tmp/unity-feature.log
+Unity -batchmode -projectPath /tmp/heron-unity-feature -executeMethod VerifyFeatureLab.Render -logFile /tmp/unity-feature-render.log
+```
+
+`prepare_feature_lab.py` exports the map into `Assets/Levels/heron-feature-unity`
+and writes `feature_lab_reference.json`: the editor's poses of the mover and door
+and the colour it gives points inside each material station's faces, from the
+ignored `feature_lab_editor_reference` test. `Run` builds the level, checks it in
+edit mode, then enters Play Mode for the trigger, button, autoplay and water view.
+Each feature logs a `HERON_FEATURE <name> PASS|FAIL` line, the summary goes to
+`feature-lab-unity.txt` in the project, and the last line is
+`HERON_FEATURE_LAB PASS` with exit status 0. `Render` needs a GPU and writes
+`captures/*.png`.
+
 ## Animation and custom games
 
 - `VerifyMotion.Run`: see [target parity](../../../docs/target-parity.md).

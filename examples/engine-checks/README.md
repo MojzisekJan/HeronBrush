@@ -16,7 +16,7 @@ geometry, collision, materials and entity data; see
 | [`threejs/`](threejs/README.md) | JSON loader and generated HTML viewer in a browser |
 | [`defold/`](defold/README.md) | Bob build, Bullet physics, game-owned doors and portals |
 | [`flax/`](flax/README.md) | C# importer, native colliders, scene reload, animation |
-| [`unity/`](unity/README.md) | Final and live import, collision, optional gameplay kit |
+| [`unity/`](unity/README.md) | Final and live import, collision, the feature lab in the engine, optional gameplay kit |
 | `stride/`, `gdevelop/`, `cocos/` | Export scripts and run helpers, see [Stride](../../docs/stride-export.md), [GDevelop](../../docs/gdevelop-export.md), [Cocos](../../docs/cocos-export.md) |
 | Bevy | Lives in [`demos/bevy_fps`](../../demos/bevy_fps/README.md) |
 

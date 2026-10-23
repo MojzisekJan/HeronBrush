@@ -404,4 +404,123 @@ mod tests {
         assert!(report.warnings.iter().any(|w| w.starts_with("Animation ")));
         eprintln!("Portable animation fixtures: {}", dir.display());
     }
+
+    #[test]
+    #[ignore = "writes the feature lab's editor reference to HERON_FEATURE_REFERENCE"]
+    fn feature_lab_editor_reference() {
+        // Engine checks compare their import with this: four map points of the mover
+        // and the door placed by the editor's own preview transform, and the colour
+        // the editor gives points inside each face of the material stations.
+        let output = std::env::var_os("HERON_FEATURE_REFERENCE").expect("output JSON path");
+        let lab = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../demos/feature_lab");
+        let text = std::fs::read_to_string(lab.join("feature_lab.map")).expect("feature lab map");
+        let map = map_model::io::map_reader::read_map(&text, None).expect("feature lab parses");
+        let station = |name: &str| {
+            map.entities
+                .iter()
+                .find(|e| e.property("targetname") == Some(name))
+                .expect("station in the map")
+        };
+        let flat = |points: &mut dyn Iterator<Item = Vec3d>| {
+            points
+                .flat_map(|p| [p.x(), p.y(), p.z()])
+                .collect::<Vec<_>>()
+        };
+        let mut cases = Vec::new();
+        for (name, clip, times) in [
+            (
+                "fl_mover",
+                "",
+                &[0., 0.5, 1., 1.5, 2., 2.5, 3., 3.5, 3.9, 5.][..],
+            ),
+            ("fl_door", "open", &[0., 0.25, 0.5, 0.75, 1., 2.][..]),
+        ] {
+            let entity = station(name);
+            let track = Track::from_properties(
+                entity.property("animation_keys").unwrap_or(""),
+                entity.property("animation_mode").unwrap_or("loop"),
+                entity.property("animation_curves"),
+            )
+            .expect("valid animation");
+            let pivot: Vec<f64> = entity
+                .property("animation_pivot")
+                .unwrap_or("0 0 0")
+                .split_whitespace()
+                .map(|v| v.parse().expect("pivot number"))
+                .collect();
+            let pivot = Vec3d::new(pivot[0], pivot[1], pivot[2]);
+            let rest = [
+                pivot,
+                pivot + Vec3d::new(64., 0., 0.),
+                pivot + Vec3d::new(0., 64., 0.),
+                pivot + Vec3d::new(0., 0., 64.),
+            ];
+            for &time in times {
+                let posed = flat(&mut rest.iter().map(|p| track.transform(*p, pivot, time, false)));
+                cases.push(
+                    serde_json::json!({"entity": name, "clip": clip, "time": time,
+                    "rest": flat(&mut rest.iter().copied()), "posed": posed}),
+                );
+            }
+        }
+        let bounds = geometry_math::bbox::Bbox3d::new(Vec3d::fill(-65536.), Vec3d::fill(65536.));
+        let mut faces = Vec::new();
+        for name in [
+            "fl_textures",
+            "fl_colours",
+            "fl_gradients",
+            "fl_surface",
+            "fl_normal",
+        ] {
+            for brush in &station(name).brushes {
+                let brush = map_model::brush::Brush::from_faces(&bounds, brush.faces.clone())
+                    .expect("station brush");
+                for (index, face) in brush.faces().iter().enumerate() {
+                    if face.export_hidden {
+                        continue;
+                    }
+                    let polygon = brush.face_polygon(index).expect("face polygon");
+                    let image =
+                        image::open(lab.join(format!("textures/{}.png", face.material_name)))
+                            .expect("station texture")
+                            .to_rgba8();
+                    let paint = face.paint();
+                    let sampler = paint.map(|paint| {
+                        map_model::brush_face::PaintOnFace::new(face, &polygon, paint)
+                    });
+                    let alpha = paint.map_or(0., |p| f32::from(p.alpha()) / 255.);
+                    let centre = polygon.iter().fold(Vec3d::zero(), |a, p| a + *p)
+                        * (1. / polygon.len() as f64);
+                    let (mut points, mut colours) = (Vec::new(), Vec::new());
+                    for (k, s, t) in (0..polygon.len())
+                        .flat_map(|k| [0.13, 0.31, 0.47, 0.66, 0.83].map(|s| (k, s)))
+                        .flat_map(|(k, s)| [0., 0.37, 0.5].map(|t| (k, s, t)))
+                    {
+                        let edge = polygon[k] * (1. - t) + polygon[(k + 1) % polygon.len()] * t;
+                        let point = centre + (edge - centre) * s;
+                        let uv = face.uv_coords(point);
+                        // Keep clear of texel edges, where nearest sampling is a coin toss.
+                        let inside = |c: f32| (0.2..0.8).contains(&(c - c.floor()));
+                        if alpha < 1. && !(inside(uv.x()) && inside(uv.y())) {
+                            continue;
+                        }
+                        let x = (uv.x().floor() as i64).rem_euclid(i64::from(image.width()));
+                        let y = (uv.y().floor() as i64).rem_euclid(i64::from(image.height()));
+                        let texel = image.get_pixel(x as u32, y as u32).0;
+                        let paint = sampler.as_ref().map_or([0.; 3], |s| s.at_uv(uv));
+                        colours.extend((0..3).map(|i| {
+                            (paint[i] * 255. * alpha + f32::from(texel[i]) * (1. - alpha)).round()
+                        }));
+                        points.extend([point.x(), point.y(), point.z()]);
+                    }
+                    let n = face.normal();
+                    faces.push(serde_json::json!({"station": name,
+                        "texture": face.material_name.as_str(), "normal": [n.x(), n.y(), n.z()],
+                        "points": points, "colours": colours}));
+                }
+            }
+        }
+        let json = serde_json::json!({ "cases": cases, "faces": faces }).to_string();
+        std::fs::write(output, json).expect("write the reference");
+    }
 }
