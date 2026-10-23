@@ -130,22 +130,13 @@ fn show_window(
                     pending = false;
                 }
             }
-            egui::Panel::bottom(egui::Id::unique((id, "actions")))
-                .frame(egui::Frame::new().fill(theme::bg()).inner_margin(12.0))
-                .show_separator_line(true)
-                .show(ui, |ui| {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        contents(ui, Part::Actions)
-                    });
-                });
+            let escape = escape_is_free(ui.ctx());
             egui::CentralPanel::default()
-                .frame(
-                    egui::Frame::new()
-                        .fill(theme::bg())
-                        .inner_margin(body_margin),
-                )
-                .show(ui, |ui| contents(ui, Part::Body));
-            !ui.input(|i| i.viewport().close_requested())
+                .frame(egui::Frame::new().fill(theme::bg()))
+                .show(ui, |ui| {
+                    body_then_actions(ui, id, body_margin, &mut contents)
+                });
+            !ui.input(|i| i.viewport().close_requested()) && !escape_closes(ui.ctx(), escape)
         })
     };
     ctx.data_mut(|d| {
@@ -227,6 +218,7 @@ fn embedded(
     contents: &mut impl FnMut(&mut egui::Ui, Part),
 ) -> bool {
     let mut open = true;
+    let escape = escape_is_free(ctx);
     let room = dialog_room(ctx);
     let size = size.min(room);
     let measured = ctx.memory(|m| m.area_rect(egui::Id::unique(id)));
@@ -278,7 +270,70 @@ fn embedded(
                 );
             });
         });
-    open
+    open && !escape_closes(ctx, escape)
+}
+
+/// Whether nothing else would take an Escape pressed this frame: no text field has the
+/// keyboard and no popup is open. Asked before the dialog's contents run, since a field
+/// that Escape takes the keyboard from no longer has it afterwards.
+fn escape_is_free(ctx: &egui::Context) -> bool {
+    !ctx.memory(|m| m.focused().is_some()) && !egui::Popup::is_any_open(ctx)
+}
+
+/// Whether Escape closes the dialog this frame: pressed, and free when the frame began.
+/// The dialog's own handling of Escape, if it has one, has run by then.
+fn escape_closes(ctx: &egui::Context, free: bool) -> bool {
+    free && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+}
+
+/// The body of an OS-window dialog above its strip of buttons. The body is made first so
+/// Tab reaches it before the buttons; the strip keeps the height it had last frame.
+fn body_then_actions(
+    ui: &mut egui::Ui,
+    id: &str,
+    body_margin: f32,
+    contents: &mut impl FnMut(&mut egui::Ui, Part),
+) {
+    const STRIP_MARGIN: f32 = 12.0;
+    let height_id = egui::Id::unique((id, "actions-height"));
+    let fallback = theme::CONTROL_HEIGHT + 2.0 * STRIP_MARGIN;
+    let strip = ui
+        .ctx()
+        .data(|d| d.get_temp::<f32>(height_id))
+        .unwrap_or(fallback);
+    let full = ui.max_rect();
+    let split = full.bottom() - strip;
+    let body = egui::Rect::from_min_max(full.min, egui::pos2(full.right(), split));
+    let actions = egui::Rect::from_min_max(egui::pos2(full.left(), split), full.max);
+    ui.scope_builder(
+        egui::UiBuilder::new()
+            .max_rect(body.shrink(body_margin))
+            .layout(egui::Layout::top_down(egui::Align::Min)),
+        |ui| {
+            ui.set_clip_rect(body);
+            contents(ui, Part::Body);
+        },
+    );
+    ui.painter().hline(
+        actions.x_range(),
+        actions.top() + 0.5,
+        ui.visuals().widgets.noninteractive.bg_stroke,
+    );
+    let used = ui
+        .scope_builder(
+            egui::UiBuilder::new()
+                .max_rect(actions.shrink(STRIP_MARGIN))
+                .layout(egui::Layout::right_to_left(egui::Align::Center)),
+            |ui| contents(ui, Part::Actions),
+        )
+        .response
+        .rect
+        .height();
+    let wanted = (used + 2.0 * STRIP_MARGIN).max(fallback);
+    if (wanted - strip).abs() > 0.5 {
+        ui.ctx().data_mut(|d| d.insert_temp(height_id, wanted));
+        ui.ctx().request_repaint();
+    }
 }
 
 /// A dialog window's header: its title centred on a bar the width of the window, a

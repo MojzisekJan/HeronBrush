@@ -112,12 +112,14 @@ impl ArrayDialog {
         if make {
             self.begin(editor);
         }
+        // The window's own close and Escape cancel, as Cancel does: only Apply keeps
+        // the copies.
+        let cancel = cancel || (!open && !apply);
         if cancel {
             editor.document.borrow_mut().cancel_array_preview();
             self.status.clear();
         }
-        // Apply, the window's own close, or Escape keep the copies.
-        if apply || !open {
+        if apply {
             editor.document.borrow_mut().finish_array_preview();
             self.status.clear();
         }
