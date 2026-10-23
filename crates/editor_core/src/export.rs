@@ -1041,6 +1041,21 @@ fn build(
                         .collect();
                     // The scene goes into the project already in the export folder, if any.
                     let existing = std::fs::read_to_string(directory.join("game.json")).ok();
+                    // A project further up is not looked into: GDevelop would not see a
+                    // second game.json, so the export would start a project of its own.
+                    if let Some(root) = settings.project_root.as_deref().filter(|root| {
+                        existing.is_none()
+                            && root.join("game.json").is_file()
+                            && root.canonicalize().ok() != directory.canonicalize().ok()
+                    }) {
+                        report.warnings.push(format!(
+                            "GDevelop: the project's game.json is in {}, not in the export \
+                             folder, so this export starts a separate project in {}. Export \
+                             into the folder holding game.json.",
+                            root.display(),
+                            directory.display()
+                        ));
+                    }
                     let gdevelop = writer::gdevelop::GDevelopOptions {
                         sky: options.sky.then(|| map_sky(document, &built.level)),
                     };
@@ -1779,6 +1794,40 @@ mod tests {
         let report = export(&document, &scratch.0, &options).expect("the export is written");
         let directory = scratch.0.clone();
         (report, directory, scratch)
+    }
+
+    #[test]
+    fn gdevelop_warns_when_its_project_is_above_the_export_folder() {
+        // Found exporting the demos with the project folder above maps/: the GDevelop
+        // export wrote a fresh maps/game.json and said nothing, while the project's
+        // own game.json was left without the scene.
+        let scratch = Scratch::new("gdevelop-above");
+        let game = std::fs::read_to_string(
+            export_cube(Target::GDevelop, "gdevelop-source")
+                .1
+                .join("game.json"),
+        )
+        .unwrap();
+        std::fs::write(scratch.0.join("game.json"), game).unwrap();
+        let options = Options {
+            target: Target::GDevelop,
+            name: "arena".to_string(),
+            ..Options::default()
+        };
+        let report = export(&one_cube(), &scratch.0.join("maps"), &options).unwrap();
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| w.contains("separate project")),
+            "{:?}",
+            report.warnings
+        );
+        let report = export(&one_cube(), &scratch.0, &options).unwrap();
+        assert!(!report
+            .warnings
+            .iter()
+            .any(|w| w.contains("separate project")));
     }
 
     #[test]
