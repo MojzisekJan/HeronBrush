@@ -745,6 +745,8 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Reset view", "Reset view"),
     ("Restore", "복원"),
     ("Restore defaults", "기본값 복원"),
+    ("Restore page defaults", "이 페이지 기본값 복원"),
+    ("Restore shown settings", "표시된 설정 복원"),
     ("Resume", "계속"),
     ("Retime keys", "키 시간 변경"),
     ("Retime selection", "선택한 키 시간 변경"),

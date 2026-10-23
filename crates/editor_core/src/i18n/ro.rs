@@ -745,6 +745,8 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Reset view", "Reset view"),
     ("Restore", "Restaurează"),
     ("Restore defaults", "Restaurează valorile implicite"),
+    ("Restore page defaults", "Restaurează pagina"),
+    ("Restore shown settings", "Restaurează setările afișate"),
     ("Resume", "Reia"),
     ("Retime keys", "Retemporizează cheile"),
     ("Retime selection", "Retemporizează selecția"),

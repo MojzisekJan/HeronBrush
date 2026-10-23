@@ -637,7 +637,13 @@ pub struct PreferencesPage {
     was_open: bool,
     /// The fields drawn last frame, for the tests.
     drawn: Vec<&'static str>,
+    /// The settings as they were before the last Restore, and until when its Undo is
+    /// offered.
+    restored: Option<(Preferences, f64)>,
 }
+
+/// How long the Undo after a Restore stays, in seconds.
+const UNDO_RESTORE: f64 = 10.0;
 impl PreferencesPage {
     /// Shows the window while it is open. Returns true when the game or its path changed,
     /// which the caller passes on to the open map with [`apply_game`].
@@ -655,6 +661,19 @@ impl PreferencesPage {
         let defaults = scheme_defaults();
         let mut close = false;
         let mut restore = false;
+        let mut undo = false;
+        let now = ctx.input(|i| i.time);
+        if self.restored.as_ref().is_some_and(|(_, until)| now > *until) {
+            self.restored = None;
+        }
+        // The button says how much it puts back: the page in front, or what a search
+        // shows.
+        let restore_label = if searching(&self.query) {
+            tr("Restore shown settings")
+        } else {
+            tr("Restore page defaults")
+        };
+        let offer_undo = self.restored.is_some();
         let embedded = ctx.embed_viewports();
         self.drawn.clear();
         self.open = dialog::show(ctx, "preferences", tr("Preferences"), SIZE, |ui, part| {
@@ -663,7 +682,10 @@ impl PreferencesPage {
                 // The rest of the strip from the left: the button puts back only the
                 // category in front of the user, or the rows a search shows.
                 ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                    restore = dialog::button(ui, tr("Restore defaults"), true).clicked();
+                    restore = dialog::button(ui, restore_label, true).clicked();
+                    if offer_undo {
+                        undo = dialog::button(ui, tr("Undo"), true).clicked();
+                    }
                     if !self.error.is_empty() {
                         ui.add_space(8.0);
                         ui.add(
@@ -679,9 +701,20 @@ impl PreferencesPage {
             self.body(ui, &mut settings, &defaults, embedded);
         }) && !close;
         if restore {
+            let earlier = settings.clone();
             for name in self.visible_fields() {
                 field(&mut settings, name, Action::Reset(&defaults));
             }
+            if earlier != settings {
+                self.restored = Some((earlier, now + UNDO_RESTORE));
+            }
+        } else if undo {
+            if let Some((earlier, _)) = self.restored.take() {
+                settings = earlier;
+            }
+        }
+        if offer_undo {
+            ctx.request_repaint_after(std::time::Duration::from_secs(1));
         }
         if before == settings {
             return false;

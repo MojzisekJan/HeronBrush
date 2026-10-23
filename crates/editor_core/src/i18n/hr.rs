@@ -745,6 +745,8 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Reset view", "Reset view"),
     ("Restore", "Vrati"),
     ("Restore defaults", "Vrati zadane vrijednosti"),
+    ("Restore page defaults", "Vrati zadano na stranici"),
+    ("Restore shown settings", "Vrati prikazane postavke"),
     ("Resume", "Nastavi"),
     ("Retime keys", "Promijeni vremena ključeva"),
     ("Retime selection", "Promijeni vremena odabira"),

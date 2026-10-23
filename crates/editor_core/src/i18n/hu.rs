@@ -745,6 +745,8 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Reset view", "Reset view"),
     ("Restore", "Visszaállítás"),
     ("Restore defaults", "Alapértékek visszaállítása"),
+    ("Restore page defaults", "Az oldal alapértékei"),
+    ("Restore shown settings", "A látható beállítások visszaállítása"),
     ("Resume", "Folytatás"),
     ("Retime keys", "Kulcsok időzítésének módosítása"),
     ("Retime selection", "Kijelölés időzítésének módosítása"),

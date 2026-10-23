@@ -745,6 +745,8 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Reset view", "Reset view"),
     ("Restore", "還原"),
     ("Restore defaults", "還原預設值"),
+    ("Restore page defaults", "還原本頁預設值"),
+    ("Restore shown settings", "還原顯示的設定"),
     ("Resume", "繼續"),
     ("Retime keys", "調整關鍵影格時間"),
     ("Retime selection", "調整選取項目的時間"),

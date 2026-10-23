@@ -748,6 +748,8 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Reset view", "Obnovit pohled"),
     ("Restore", "Obnovit"),
     ("Restore defaults", "Obnovit výchozí"),
+    ("Restore page defaults", "Obnovit výchozí na stránce"),
+    ("Restore shown settings", "Obnovit zobrazená nastavení"),
     ("Resume", "Pokračovat"),
     ("Retime keys", "Upravit časování"),
     ("Retime selection", "Upravit časování výběru"),

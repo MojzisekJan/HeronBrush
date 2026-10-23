@@ -745,6 +745,8 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Reset view", "Reset view"),
     ("Restore", "元に戻す"),
     ("Restore defaults", "既定値に戻す"),
+    ("Restore page defaults", "このページを既定値に戻す"),
+    ("Restore shown settings", "表示中の設定を戻す"),
     ("Resume", "再開"),
     ("Retime keys", "キーの時間を変更"),
     ("Retime selection", "選択キーの時間を変更"),

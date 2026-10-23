@@ -745,6 +745,8 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Reset view", "Reset view"),
     ("Restore", "Gendan"),
     ("Restore defaults", "Gendan standarder"),
+    ("Restore page defaults", "Gendan sidens standarder"),
+    ("Restore shown settings", "Gendan viste indstillinger"),
     ("Resume", "Genoptag"),
     ("Retime keys", "Omtime nøgler"),
     ("Retime selection", "Omtime markering"),
