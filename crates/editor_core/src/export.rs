@@ -620,6 +620,7 @@ fn build(
                     y_up: true,
                 },
                 1. / options.scale,
+                &settings,
             );
             report.triangles = written.triangles;
             return Ok((

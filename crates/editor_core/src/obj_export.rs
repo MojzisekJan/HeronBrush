@@ -5,6 +5,9 @@
 //!
 //! Writes patches using [`map_model::patch_mesh::tessellate`], sharing the geometry used by the viewport.
 //!
+//! Like the glTF targets, it writes only what is drawn: layers omitted from export and
+//! faces wearing a clip, skip or origin tool material are left out.
+//!
 //! The window that asks for this is [`crate::export_dialog`], which offers it as one
 //! target among the engines.
 
@@ -14,6 +17,8 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use geometry_math::vec::Vec3d;
+
+use scene_export::settings::Settings;
 
 use crate::document::Document;
 
@@ -60,15 +65,17 @@ pub fn files(
     obj_path: &Path,
     options: ObjOptions,
 ) -> (ObjReport, Vec<(PathBuf, Vec<u8>)>) {
-    files_scaled(document, obj_path, options, 1.)
+    files_scaled(document, obj_path, options, 1., &Settings::default())
 }
 
 /// Engine export units; the standalone mesh writer retains map units by default.
+/// `tools` names the clip, skip and origin materials, whose faces are not written.
 pub fn files_scaled(
     document: &Document,
     obj_path: &Path,
     options: ObjOptions,
     scale_factor: f64,
+    tools: &Settings,
 ) -> (ObjReport, Vec<(PathBuf, Vec<u8>)>) {
     let stem = obj_path
         .file_stem()
@@ -77,7 +84,7 @@ pub fn files_scaled(
     let mtl_name = format!("{stem}.mtl");
 
     let (obj, mtl, report, images) =
-        generate_painted_scaled(document, &mtl_name, options, scale_factor);
+        generate_painted_scaled(document, obj_path, options, scale_factor, tools);
     let directory = obj_path.parent().unwrap_or(Path::new("."));
     let mut files: Vec<(PathBuf, Vec<u8>)> = images
         .into_iter()
@@ -105,15 +112,23 @@ fn generate_painted(
     mtl_name: &str,
     options: ObjOptions,
 ) -> (String, String, ObjReport, Vec<(String, Vec<u8>)>) {
-    generate_painted_scaled(document, mtl_name, options, 1.)
+    let obj_path = Path::new(mtl_name).with_extension("obj");
+    generate_painted_scaled(document, &obj_path, options, 1., &Settings::default())
 }
 
 fn generate_painted_scaled(
     document: &Document,
-    mtl_name: &str,
+    obj_path: &Path,
     options: ObjOptions,
     scale_factor: f64,
+    tools: &Settings,
 ) -> (String, String, ObjReport, Vec<(String, Vec<u8>)>) {
+    let stem = obj_path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "map".to_string());
+    let mtl_name = &format!("{stem}.mtl");
+    let omitted = |layer: usize| document.tree_world().layers[layer].omit_from_export;
     let mut surfaces = std::collections::BTreeMap::new();
     let mut paint_images = std::collections::BTreeMap::<String, Vec<u8>>::new();
     let paint_dir = format!("{}_paint", mtl_name.trim_end_matches(".mtl"));
@@ -143,15 +158,15 @@ fn generate_painted_scaled(
     let mut used_materials: Vec<String> = Vec::new();
     let mut current_material: Option<String> = None;
 
-    for (id, brush) in map_model::node::brushes_with_ids(document.tree_world()) {
-        if options.selection_only && !document.is_selected(id) {
+    for (id, brush, layer) in map_model::node::brushes_by_layer(document.tree_world()) {
+        if (options.selection_only && !document.is_selected(id)) || omitted(layer) {
             continue;
         }
         brush_count += 1;
-        let _ = writeln!(faces, "o brush_{}", brush_count);
+        let mut named = false;
 
         for (index, face) in brush.faces().iter().enumerate() {
-            if face.export_hidden {
+            if face.export_hidden || tools.is_tool_texture(&face.material_name) {
                 continue;
             }
             let Some(polygon) = brush.face_polygon(index) else {
@@ -160,18 +175,16 @@ fn generate_painted_scaled(
             if polygon.len() < 3 {
                 continue;
             }
+            if !named {
+                let _ = writeln!(faces, "o brush_{brush_count}");
+                named = true;
+            }
 
-            let paint = if scene_export::settings::Settings::default()
-                .is_tool_texture(&face.material_name)
-            {
-                None
-            } else {
-                crate::export::paint_export::bake(
-                    face,
-                    &polygon,
-                    document.materials().get(&face.material_name),
-                )
-            };
+            let paint = crate::export::paint_export::bake(
+                face,
+                &polygon,
+                document.materials().get(&face.material_name),
+            );
             let surface_suffix = face
                 .surface_material
                 .map(|s| format!("_pbr_{}_{}_{}", s.roughness, s.metallic, s.emission))
@@ -261,8 +274,11 @@ fn generate_painted_scaled(
     // Each patch becomes a separate triangulated OBJ object. Patch UVs already use texture-relative
     // coordinates; brush-face UVs are converted from texels using the material dimensions.
     let mut patch_count = 0usize;
-    for (id, patch, _) in map_model::node::patches_by_layer(document.tree_world()) {
-        if options.selection_only && !document.is_selected(id) {
+    for (id, patch, layer) in map_model::node::patches_by_layer(document.tree_world()) {
+        if (options.selection_only && !document.is_selected(id))
+            || omitted(layer)
+            || tools.is_tool_texture(&patch.material_name)
+        {
             continue;
         }
         let mesh =
@@ -598,6 +614,51 @@ common/caulk
         // A face's texel coordinates would be divided by the material's size instead.
         assert!(obj.contains("vt 0.000000 -0.000000") || obj.contains("vt 0.000000 0.000000"));
         assert!(obj.contains("vt 1.000000 -1.000000"));
+    }
+
+    /// Opens `source` as a map saved under the temporary folder as `<name>.map`.
+    fn open_map(name: &str, source: &str) -> Document {
+        let path = std::env::temp_dir().join(format!("heron-obj-{name}.map"));
+        fs::write(&path, source).expect("a written map");
+        Document::open(&path, WorldBounds::default()).expect("it opens")
+    }
+
+    /// A cube from `min` to `max`, every face wearing `material`.
+    fn cube_text(min: i32, max: i32, material: &str) -> String {
+        let (a, b, c) = (min, max, min + 1);
+        let d = max + 1;
+        format!(
+            "{{\n( {a} {a} {a} ) ( {a} {c} {a} ) ( {a} {a} {c} ) {material} 0 0 0 1 1\n\
+             ( {b} {b} {b} ) ( {b} {b} {d} ) ( {b} {d} {b} ) {material} 0 0 0 1 1\n\
+             ( {a} {a} {a} ) ( {a} {a} {c} ) ( {c} {a} {a} ) {material} 0 0 0 1 1\n\
+             ( {b} {b} {b} ) ( {d} {b} {b} ) ( {b} {b} {d} ) {material} 0 0 0 1 1\n\
+             ( {b} {b} {b} ) ( {b} {d} {b} ) ( {d} {b} {b} ) {material} 0 0 0 1 1\n\
+             ( {a} {a} {a} ) ( {c} {a} {a} ) ( {a} {c} {a} ) {material} 0 0 0 1 1\n}}\n"
+        )
+    }
+
+    #[test]
+    fn tool_faces_and_omitted_layers_are_left_out() {
+        // Found exporting a probe map to every target: the plain .obj carried clip and
+        // skip brushes and a layer omitted from export, which the glTF targets and the
+        // engine meshes all leave out.
+        let source = format!(
+            "{{\n\"classname\" \"worldspawn\"\n{}{}{}}}\n\
+             {{\n\"classname\" \"func_group\"\n\"_tb_type\" \"_tb_layer\"\n\
+             \"_tb_name\" \"Omitted\"\n\"_tb_id\" \"7\"\n\
+             \"_tb_layer_omit_from_export\" \"1\"\n{}}}\n",
+            cube_text(0, 32, "stone"),
+            cube_text(64, 96, "clip"),
+            cube_text(128, 160, "tools/skip"),
+            cube_text(192, 224, "stone"),
+        );
+        let (obj, mtl, report) = generate(&open_map("tools", &source), "m.mtl", opts());
+        assert_eq!(
+            report.triangles, 12,
+            "only the stone cube on a written layer"
+        );
+        assert_eq!(obj.matches("o brush_").count(), 1);
+        assert!(!mtl.contains("clip") && !mtl.contains("skip"));
     }
 
     #[test]
