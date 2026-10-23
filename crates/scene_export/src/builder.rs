@@ -1354,6 +1354,9 @@ fn build_material_resources(
                                     path: albedo.clone(),
                                 },
                             ));
+                            // Multiply: the face glows in its own colour, as in the
+                            // editor. Godot's default adds the white `emission` to it.
+                            properties.push(("emission_operator".into(), GdValue::Int(1)));
                         }
                     }
                     properties.push(("texture_repeat".into(), GdValue::Bool(image.repeat)));
@@ -1760,6 +1763,53 @@ mod tests {
             text.find("id=\"HeronWaterShader\"").unwrap()
                 < text.find("id=\"HeronWater_water_volume_0\"").unwrap()
         );
+    }
+
+    #[test]
+    fn a_glowing_face_paint_glows_in_its_own_colour() {
+        let mut library = MaterialLibrary::default();
+        library.generated.insert(
+            "glow".into(),
+            crate::materials::GeneratedMaterial {
+                path: "res://paint/glow.png".into(),
+                width: 1,
+                height: 1,
+                png: Vec::new(),
+                alpha: false,
+                surface: Some([0.65, 0.0, 3.0]),
+                repeat: false,
+                pbr: None,
+            },
+        );
+        library.materials.insert(
+            "glow".into(),
+            Material::FromTextures {
+                albedo: "res://paint/glow.png".into(),
+                maps: Vec::new(),
+            },
+        );
+        let mut sub_resources = Vec::new();
+        build_material_resources(&library, &mut sub_resources);
+        let property = |name: &str| {
+            sub_resources[0]
+                .properties
+                .iter()
+                .find(|(key, _)| key == name)
+                .map(|(_, value)| value.clone())
+        };
+        assert!(matches!(
+            property("emission_energy_multiplier"),
+            Some(GdValue::Float(e)) if e == 3.0
+        ));
+        assert!(matches!(
+            property("emission_texture"),
+            Some(GdValue::ExtResource { path, .. }) if path == "res://paint/glow.png"
+        ));
+        // Add, Godot's default, would make it white plus the paint.
+        assert!(matches!(
+            property("emission_operator"),
+            Some(GdValue::Int(1))
+        ));
     }
 
     #[test]
