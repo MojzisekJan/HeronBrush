@@ -50,6 +50,7 @@ pub mod portal;
 pub mod shader;
 pub mod shapes;
 pub mod sprite;
+pub mod studio_model;
 pub mod stylized_text;
 pub mod text;
 pub mod uv;
