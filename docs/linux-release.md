@@ -22,6 +22,8 @@ iroh requires a separate build with that feature enabled.
 
 - Releases: `~/.local/opt/heron-brush/releases/<version>+<timestamp>.<commit>[.dirty]`
 - Active release: `~/.local/opt/heron-brush/current`
+- Earlier releases: deleted once the new one is installed and checked; pass
+  `--keep-old` to keep them
 - Terminal command: `~/.local/bin/heron-brush`
 - Desktop launcher: `~/.local/share/applications/io.github.mojzisekjan.HeronBrush.desktop`
 

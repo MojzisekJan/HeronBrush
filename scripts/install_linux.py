@@ -35,6 +35,8 @@ def main():
     parser.add_argument('--bin-dir', type=Path, default=Path.home()/'.local/bin')
     parser.add_argument('--data-dir', type=Path, default=Path(os.environ.get('XDG_DATA_HOME', str(Path.home()/'.local/share'))))
     parser.add_argument('--default-map-handler', action='store_true')
+    parser.add_argument('--keep-old', action='store_true',
+        help='keep earlier releases instead of deleting them once this one is in place')
     args = parser.parse_args()
     version = tomllib.loads((ROOT/'Cargo.toml').read_text())['workspace']['package']['version']
     binary = ROOT/'target/release/heron-brush'
@@ -106,7 +108,15 @@ def main():
         if updated != old:
             shutil.copy2(preferences, preferences.with_name('preferences.before-install-' + stamp))
             preferences.write_text(updated)
-    print(f'Installed {release}\nCommand: {command}\nAssets: {len(expected)}')
+    # The new release is in place and checked, so the earlier ones are only taking room.
+    removed = 0
+    if not args.keep_old:
+        for old_release in (args.prefix/'releases').iterdir():
+            if old_release != release and old_release.is_dir() and not old_release.is_symlink():
+                shutil.rmtree(old_release)
+                removed += 1
+    print(f'Installed {release}\nCommand: {command}\nAssets: {len(expected)}'
+          f'\nRemoved earlier releases: {removed}')
 
 
 if __name__ == '__main__':
