@@ -319,7 +319,7 @@ Raylib eksportas prideda `<map>_animation.h` su C grotuvu ir `<map>_preview.c` s
 Atverkite `motion_lab` iš pasveikinimo ekrano skyriaus Pavyzdžiai. Jame yra platforma L formos keliu, liftas, besisukanti platforma ir ant vyrių kabančios durys su mygtukais. Atverkite šalia esantį `godot/project.godot` programoje Godot ir paspauskite `F5`. WASD ir pelė judina žaidėją, Space – šuolis, nuo 1 iki 4 nukelia į stoteles, o R iš naujo paleidžia dabartinę stotelę. Užlipkite ant spalvotos plokštės, kad aktyvuotumėte jos tikslą. Pridėtas README paaiškina pakartotinį eksportavimą.
 
 # Eksportavimas į variklį
-Failas → Eksportuoti atveria eksporto langą. Kairėje su logotipais išvardyti varikliai: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb ir paskutinis `.map`. Puslapis dešinėje nurodo, ką gaus tikslas. **Įrašyti** jį įrašo, **Tikrinti** sukuria lygį jo neįrašydamas ir išvardija problemas, o **Uždaryti** uždaro langą.
+Failas → Eksportuoti atveria eksporto langą. Kairėje su logotipais išvardyti varikliai: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb ir paskutinis `.map`. Puslapis dešinėje nurodo, ką gaus tikslas. **Įrašyti** jį įrašo, **Tikrinti** sukuria lygį jo neįrašydamas ir išvardija problemas, o **Uždaryti** uždaro langą.
 
 Eksportavimas yra atskiras nuo išsaugojimo: `.map` lieka jūsų redaguojamu šaltiniu. Kiekvienas valdiklis išsaugo savo variklio nustatymus vos tik pasikeičia, todėl kiekvienas variklis išlaiko savo atsakymus, o langas atsiveria toks, kokį jį palikote.
 
@@ -340,7 +340,7 @@ Statiniai langeliai priskiria pasaulio brašus pagal jų centrus ir sujungia juo
 - Unity: OBJ tinklai ir redaktoriaus importuotojas; eksportuokite į projekto aplanką Assets.
 - Unreal Engine: sugeneruotas importavimo skriptas ir turinio kelias, paprastai /Game/<level>.
 - Flax Engine: modelio turinio kelias, santykinis projekto aplanko Content atžvilgiu.
-- three.js, Bevy, raylib ir Cocos Creator: scenos arba kodas toms vykdymo aplinkoms, su instrukcijomis šalia eksporto.
+- three.js, Babylon.js, Bevy, raylib ir Cocos Creator: scenos arba kodas toms vykdymo aplinkoms, su instrukcijomis šalia eksporto.
 - glTF / GLB: perkeliama geometrija suderinamiems įrankiams; GLB yra dvejetainė forma. OBJ: geometrija ir medžiagos modeliavimo įrankiams.
 - `.map`: **Įrašyti kaip** leidžia pasirinkti Valve 220, Standartinis, Quake 2 arba Quake 2 (Valve). Langas nurodo, ką prarastų pasirinktas dialektas.
 

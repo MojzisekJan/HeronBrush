@@ -750,6 +750,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Play in a new tab", "Play in a new tab"),
     ("Play on start", "Воспроизводить при запуске"),
     ("Playable HTML with FPS controls and collisions. Open it in a browser; internet is needed for Three.js. JSON and .glb files are included.", "Играбельный HTML с FPS-управлением и столкновениями. Откройте его в браузере; для Three.js нужен интернет. Файлы JSON и .glb прилагаются."),
+    ("Playable HTML with a Havok character controller, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for Babylon.js. The JSON, .glb files and a runtime module for your own game are included.", "Играбельный HTML с контроллером персонажа Havok, дверями, триггерами, водой, светом и небом. Откройте его в браузере; для Babylon.js нужен интернет. В комплекте JSON, файлы .glb и модуль среды выполнения для вашей игры."),
     ("Playback", "Воспроизведение"),
     ("Plays the map's animations from the start, as the 3D view's preview does.", "Воспроизводит анимации карты с начала, как предпросмотр в 3D-виде."),
     ("Playtest warning: {}", "Предупреждение тестового запуска: {}"),

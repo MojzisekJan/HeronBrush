@@ -319,7 +319,7 @@ Exportul raylib adaugă `<map>_animation.h` cu un player în C și `<map>_previe
 Deschide `motion_lab` din Exemplele de pe ecranul de bun venit. Conține o platformă pe o cale în L, un lift, o platformă rotativă și o ușă cu balamale, cu butoane. Deschide în Godot fișierul `godot/project.godot` de lângă el și apasă `F5`. WASD și mouse-ul mișcă jucătorul, Space sare, 1–4 te duc la stații, iar R repornește stația curentă. Calcă pe un pad colorat pentru a-i activa ținta. README-ul inclus explică reexportarea.
 
 # Exportul către un motor
-Fișier → Exportă deschide fereastra de export. Motoarele sunt listate în stânga, cu siglele lor: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb și, la final, `.map`. Pagina din dreapta spune ce va primi ținta. **Scrie** scrie exportul, **Verifică** construiește nivelul fără să-l scrie și listează problemele, iar **Închide** închide fereastra.
+Fișier → Exportă deschide fereastra de export. Motoarele sunt listate în stânga, cu siglele lor: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb și, la final, `.map`. Pagina din dreapta spune ce va primi ținta. **Scrie** scrie exportul, **Verifică** construiește nivelul fără să-l scrie și listează problemele, iar **Închide** închide fereastra.
 
 Exportul este separat de salvare: fișierul `.map` rămâne sursa ta editabilă. Fiecare control salvează setările motorului său imediat ce se schimbă, așa că fiecare motor își păstrează propriile răspunsuri, iar fereastra se deschide așa cum ai lăsat-o.
 
@@ -340,7 +340,7 @@ Celulele statice atribuie brush-urile lumii după centrele lor și le combină d
 - Unity: mesh-uri OBJ și un importator pentru editor; exportă în dosarul Assets al proiectului.
 - Unreal Engine: un script de import generat și o cale de conținut, de obicei /Game/<level>.
 - Flax Engine: o cale de conținut pentru modele, relativă la dosarul Content al proiectului.
-- three.js, Bevy, raylib și Cocos Creator: scene sau cod pentru aceste runtime-uri, cu instrucțiuni lângă export.
+- three.js, Babylon.js, Bevy, raylib și Cocos Creator: scene sau cod pentru aceste runtime-uri, cu instrucțiuni lângă export.
 - glTF / GLB: geometrie portabilă pentru unelte compatibile; GLB este forma binară. OBJ: geometrie și materiale pentru unelte de modelare.
 - `.map`: **Scrie ca** alege Valve 220, Standard, Quake 2 sau Quake 2 (Valve). Fereastra spune ce s-ar pierde în dialectul ales.
 

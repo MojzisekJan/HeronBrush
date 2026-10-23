@@ -135,6 +135,18 @@ and actions, project-driven moving brush collision, a transformed level parent,
 and loading another copy without changing the first one. It uses local Three.js
 0.186.0 modules. `advance` refreshes collision poses for game-owned movement too.
 
+### Babylon.js project factories
+
+`loadLevel(BABYLON, scene, url, {factories})` in the exported `heron_babylon.js`
+calls a project callback chosen by `babylon_factory` or classname with the entity's
+record and the level, once every entity's node exists and every target is resolved
+to a record. A record carries the typed `properties`, the same as plain `values`, the
+node, its meshes and its Havok body. The scene is switched to Babylon's right-handed
+mode, which is the level's frame, so nothing is converted. The feature lab's run in
+Chromium checks typed values, the authored override of a class default, and the
+links; see [Babylon.js export](babylon-export.md) and
+[its run-time checks](feature-runtime-babylon.md).
+
 ### Bevy project factories
 
 Bevy exports include `heron_entities.rs`. Attach `HeronEntityData::from_json` to

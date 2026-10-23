@@ -744,6 +744,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Play in a new tab", "Play in a new tab"),
     ("Play on start", "Αναπαραγωγή κατά την εκκίνηση"),
     ("Playable HTML with FPS controls and collisions. Open it in a browser; internet is needed for Three.js. JSON and .glb files are included.", "Παίξιμο σε HTML με χειρισμό FPS και συγκρούσεις. Ανοίξτε το σε πρόγραμμα περιήγησης· το Three.js απαιτεί σύνδεση στο διαδίκτυο. Περιλαμβάνονται αρχεία JSON και .glb."),
+    ("Playable HTML with a Havok character controller, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for Babylon.js. The JSON, .glb files and a runtime module for your own game are included.", "Παίξιμο σε HTML με ελεγκτή χαρακτήρα Havok, πόρτες, ενεργοποιητές, νερό, φώτα και ουρανό. Ανοίξτε το σε πρόγραμμα περιήγησης· το Babylon.js χρειάζεται σύνδεση στο διαδίκτυο. Περιλαμβάνονται το JSON, τα αρχεία .glb και μια μονάδα εκτέλεσης για το δικό σας παιχνίδι."),
     ("Playback", "Αναπαραγωγή"),
     ("Plays the map's animations from the start, as the 3D view's preview does.", "Αναπαράγει τις κινήσεις του χάρτη από την αρχή, όπως η προεπισκόπηση της προβολής 3D."),
     ("Playtest warning: {}", "Προειδοποίηση δοκιμής παιχνιδιού: {}"),

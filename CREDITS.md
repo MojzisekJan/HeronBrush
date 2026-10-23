@@ -42,7 +42,14 @@ licence (`crates/heron-brush-web/vendor/three/LICENSE`).
 
 The export window shows the logos of the engines it exports to
 (`crates/heron-brush/assets/engines/`). They are the marks of their projects, used only to
-name the export target.
+name the export target. Babylon.js's is from its Brand-Toolkit, CC BY-ND 4.0, scaled onto
+the card and otherwise unchanged.
+
+## Babylon.js and Havok
+
+The Babylon.js export's playtest page loads Babylon.js 9.29.0 and its loaders (Apache
+licence 2.0) and the Havok physics plugin 1.3.14 (MIT licence) from jsDelivr. Nothing of
+them is bundled.
 
 ## Demos
 

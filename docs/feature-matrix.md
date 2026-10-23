@@ -11,7 +11,8 @@ A PASS here means the data is in the files and right. It does not mean an engine
 imports it, draws it or simulates it. The last section lists what still needs an
 engine run.
 
-Checked on 23 October 2026, on Linux, with the editor at commit `68b9294`.
+Checked on 23 October 2026, on Linux, with the editor at commit `68b9294`. The
+Babylon.js column was added on the same day, from `493d040` on branch `target-babylon`.
 
 ## Rerun
 
@@ -33,27 +34,27 @@ through the MCP animation and trigger tools.
 
 ## Result
 
-| Feature | Godot | Defold | three.js | Bevy | raylib | Unity | Unreal | Flax | Stride | Cocos | GDevelop | OBJ | glTF | GLB |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Textures and UVs | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| Face colours | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| Gradients | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| Surface materials | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| Brush normal maps | PASS | N/A | PASS | PASS | PASS | N/A | PASS | PASS | N/A | PASS | PASS | N/A | PASS | PASS |
-| Solid collision | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
-| Clip brushes | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
-| Skip faces | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
-| Export-hidden faces | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| Trigger volumes | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
-| Sky and fog | PASS | PASS | PASS | PASS | PASS | N/A | N/A | N/A | PASS | PASS | PASS | N/A | N/A | N/A |
-| Keyframe animation | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
-| Door, button and trigger links | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
-| Typed properties | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS |
-| Target links | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS |
-| Lights | PASS | N/A | N/A | N/A | N/A | PASS | PASS | N/A | N/A | N/A | N/A | N/A | N/A | N/A |
-| Water | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
-| Imported models, shared | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| Model PBR maps | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | N/A | PASS | PASS |
+| Feature | Godot | Defold | three.js | Babylon.js | Bevy | raylib | Unity | Unreal | Flax | Stride | Cocos | GDevelop | OBJ | glTF | GLB |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Textures and UVs | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| Face colours | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| Gradients | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| Surface materials | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| Brush normal maps | PASS | N/A | PASS | PASS | PASS | PASS | N/A | PASS | PASS | N/A | PASS | PASS | N/A | PASS | PASS |
+| Solid collision | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
+| Clip brushes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
+| Skip faces | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
+| Export-hidden faces | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| Trigger volumes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
+| Sky and fog | PASS | PASS | PASS | PASS | PASS | PASS | N/A | N/A | N/A | PASS | PASS | PASS | N/A | N/A | N/A |
+| Keyframe animation | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
+| Door, button and trigger links | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
+| Typed properties | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS |
+| Target links | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS |
+| Lights | PASS | N/A | N/A | PASS | N/A | N/A | PASS | PASS | N/A | N/A | N/A | N/A | N/A | N/A | N/A |
+| Water | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
+| Imported models, shared | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| Model PBR maps | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | N/A | PASS | PASS |
 
 Before the fixes below, the first run had 18 failures: face colours on all 14
 targets, the GDevelop clip brush, the Unreal clip brush and trigger, and the
@@ -115,7 +116,8 @@ The other targets read the level JSON and the GLBs beside it.
 - **Target links.** Four links must resolve to the right entities: the
   waypoints, the probe and the button and trigger aimed at the door.
 - **Lights.** A native point and spot light with the map's colour, energy, range
-  and cone.
+  and cone. For Babylon.js, the level JSON's `light` blocks that
+  `heron_babylon.js` turns into lights.
 - **Water.** The `_heron_water` payload with the volume and `swim_speed` 2.5, a
   sensor, a surface of upward faces only, and the target's water adapter file.
 - **Imported models, shared.** Two copies of `models/pbr.glb` must share one
@@ -131,7 +133,7 @@ The other targets read the level JSON and the GLBs beside it.
 | Sky and fog | Unity, Unreal, Flax, OBJ, glTF, GLB | `Target::exports_sky` is false; [sky export](sky-export.md) says so |
 | Keyframe animation, door links | Unreal, OBJ, glTF, GLB | The export warns that there is no playback controller |
 | Water | Unreal, OBJ, glTF, GLB | Not in [water export](water-export.md)'s adapter list |
-| Lights | all but Godot, Unity and Unreal | [Common entities](common-entities.md) lists native lights for those three; the others keep colour, energy and range in the entity data, which the check confirms |
+| Lights | all but Godot, Unity, Unreal and Babylon.js | [Common entities](common-entities.md) lists native lights for Godot, Unity and Unreal, and [Babylon.js export](babylon-export.md) its own; the others keep colour, energy and range in the entity data, which the check confirms |
 | Brush normal maps | Unity, Defold, Stride, OBJ | Unity's OBJ path has no slot for them; Defold's `.model` binds one colour sampler; [Stride export](stride-export.md) lists them as not transferred; OBJ writes none |
 | Model PBR maps | Defold, Stride, OBJ | As above; [model PBR](model-pbr.md) says the OBJ writer does not carry them |
 | Collision rows | Unreal | The importer spawns meshes and lights only; collision stays in the GLBs and JSON |
@@ -223,4 +225,5 @@ File checks cannot show these. For each installed engine:
   cube and `feature_lab_water.h`.
 
 Stride, Cocos Creator and GDevelop have their own native checks on macOS (see
-their pages); Unreal has none on this machine.
+their pages); Unreal has none on this machine. Babylon.js has had its run, in
+Chromium with Havok: see [feature runtime checks for Babylon.js](feature-runtime-babylon.md).

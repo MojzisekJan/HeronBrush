@@ -319,7 +319,7 @@ A raylib export hozzáadja a `<map>_animation.h` fájlt egy C lejátszóval és 
 Nyissa meg a `motion_lab` példát a kezdőképernyő Példák részéből. Tartalmaz egy L alakú útvonalon mozgó platformot, egy liftet, egy forgó platformot és egy zsanéros ajtót gombokkal. Nyissa meg a mellette lévő `godot/project.godot` fájlt Godotban, és nyomja meg az `F5` billentyűt. A WASD és az egér mozgatja a játékost, a Space ugrik, az 1–4 billentyűk az állomásokra visznek, az R pedig újraindítja az aktuális állomást. Lépjen egy színes lapra a célja aktiválásához. A mellékelt README leírja az újraexportálást.
 
 # Exportálás motorba
-A Fájl → Exportálás megnyitja az Exportálás ablakot. A motorok bal oldalon szerepelnek a logóikkal: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb, végül a `.map`. A jobb oldali oldal leírja, mit kap a cél. A **Kiírás** kiírja, az **Ellenőrzés** kiírás nélkül felépíti a pályát, és felsorolja a problémákat, a **Bezárás** pedig bezárja az ablakot.
+A Fájl → Exportálás megnyitja az Exportálás ablakot. A motorok bal oldalon szerepelnek a logóikkal: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb, végül a `.map`. A jobb oldali oldal leírja, mit kap a cél. A **Kiírás** kiírja, az **Ellenőrzés** kiírás nélkül felépíti a pályát, és felsorolja a problémákat, a **Bezárás** pedig bezárja az ablakot.
 
 Az exportálás független a mentéstől: a `.map` marad a szerkeszthető forrás. Minden vezérlő azonnal elmenti a motorja beállításait, amint megváltozik, így minden motor megőrzi a saját válaszait, és az ablak úgy nyílik meg, ahogy hagyta.
 
@@ -340,7 +340,7 @@ A statikus cellák a világ brush-ait a középpontjuk alapján sorolják be, é
 - Unity: OBJ hálók és egy szerkesztőbeli importáló; a projekt Assets mappája alá exportáljon.
 - Unreal Engine: egy generált importszkript és egy tartalomútvonal, általában /Game/<level>.
 - Flax Engine: modell-tartalomútvonal a projekt Content mappájához képest.
-- three.js, Bevy, raylib és Cocos Creator: jelenetek vagy kód ezekhez a futtatókörnyezetekhez, az export mellett útmutatóval.
+- three.js, Babylon.js, Bevy, raylib és Cocos Creator: jelenetek vagy kód ezekhez a futtatókörnyezetekhez, az export mellett útmutatóval.
 - glTF / GLB: hordozható geometria a kompatibilis eszközökhöz; a GLB a bináris változat. OBJ: geometria és anyagok modellező eszközökhöz.
 - `.map`: a **Kiírás mint** a Valve 220, Normál, Quake 2 vagy Quake 2 (Valve) változatot választja. Az ablak megmondja, mit veszítene a választott dialektus.
 

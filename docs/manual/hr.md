@@ -319,7 +319,7 @@ Izvoz za raylib dodaje `<map>_animation.h` s reproduktorom u C-u i `<map>_previe
 Otvorite `motion_lab` iz Primjeri na početnom zaslonu. Sadrži platformu s putanjom u obliku slova L, dizalo, rotirajuću platformu i vrata na šarkama s gumbima. Otvorite `godot/project.godot` pokraj njega u Godotu i pritisnite `F5`. WASD i miš pomiču igrača, Space skače, 1 do 4 vode na postaje, a R ponovno pokreće trenutačnu postaju. Stanite na obojenu podlogu da aktivirate njezin cilj. Priloženi README objašnjava ponovni izvoz.
 
 # Izvoz u pogon
-Datoteka → Izvoz otvara prozor Izvoz. Pogoni su navedeni lijevo s logotipima: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb i na kraju `.map`. Stranica desno kaže što će cilj dobiti. **Zapiši** ga zapisuje, **Provjeri** gradi razinu bez zapisivanja i navodi probleme, a **Zatvori** zatvara prozor.
+Datoteka → Izvoz otvara prozor Izvoz. Pogoni su navedeni lijevo s logotipima: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb i na kraju `.map`. Stranica desno kaže što će cilj dobiti. **Zapiši** ga zapisuje, **Provjeri** gradi razinu bez zapisivanja i navodi probleme, a **Zatvori** zatvara prozor.
 
 Izvoz je odvojen od spremanja: `.map` ostaje vaš izvor koji možete uređivati. Svaka kontrola sprema postavke svog pogona čim se promijeni, pa svaki pogon čuva vlastite odgovore, a prozor se otvara onako kako ste ga ostavili.
 
@@ -340,7 +340,7 @@ Statične ćelije dodjeljuju brusheve svijeta prema njihovim središtima i unuta
 - Unity: OBJ mreže i uvoznik za uređivač; izvozite unutar direktorija Assets projekta.
 - Unreal Engine: generirana skripta za uvoz i putanja sadržaja, obično /Game/<level>.
 - Flax Engine: putanja sadržaja modela relativna prema direktoriju Content projekta.
-- three.js, Bevy, raylib i Cocos Creator: scene ili kôd za ta okruženja, s uputama pokraj izvoza.
+- three.js, Babylon.js, Bevy, raylib i Cocos Creator: scene ili kôd za ta okruženja, s uputama pokraj izvoza.
 - glTF / GLB: prenosiva geometrija za kompatibilne alate; GLB je binarni oblik. OBJ: geometrija i materijali za alate za modeliranje.
 - `.map`: **Zapiši kao** bira Valve 220, Standardno, Quake 2 ili Quake 2 (Valve). Prozor kaže što bi odabrani dijalekt izgubio.
 

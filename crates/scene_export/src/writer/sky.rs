@@ -365,6 +365,20 @@ pub fn three_panorama_direction(u: f32, v: f32) -> V {
     ]
 }
 
+/// The direction a panorama pixel looks along as Babylon.js's `HDRCubeTexture` samples
+/// it in a right-handed scene: `u` turns from +Z through -X, a quarter turn on from
+/// three.js's layout, and `v` runs from straight up to straight down. Measured in
+/// Chromium by drawing panoramas with one bright spot and finding it in the skybox
+/// (`examples/engine-checks/babylon`).
+pub fn babylon_panorama_direction(u: f32, v: f32) -> V {
+    let (phi, latitude) = (u * std::f32::consts::TAU, (0.5 - v) * std::f32::consts::PI);
+    [
+        -phi.sin() * latitude.cos(),
+        latitude.sin(),
+        phi.cos() * latitude.cos(),
+    ]
+}
+
 /// The view's exposure multiplier ahead of AgX (render_wgpu `post.wgsl`).
 const AGX_EXPOSURE: f32 = 1.8;
 
@@ -617,6 +631,23 @@ mod tests {
         let d = godot_panorama_direction(0.25, 0.5);
         assert!((d[0] - 1.).abs() < 1e-5 && d[2].abs() < 1e-5);
         assert!((godot_panorama_direction(0.5, 0.5)[2] - 1.).abs() < 1e-5);
+    }
+
+    #[test]
+    fn babylon_reads_three_s_panorama_a_quarter_turn_on() {
+        // Babylon.js's skybox showed a bright spot at u = 0.1 at 125 degrees round from
+        // +X towards +Z, and one at u = 0.35 at 215: u = 0 looks along +Z, u = 0.25
+        // along -X.
+        let close = |a: V, b: V| (0..3).all(|i| (a[i] - b[i]).abs() < 1e-5);
+        assert!(close(babylon_panorama_direction(0., 0.5), [0., 0., 1.]));
+        assert!(close(babylon_panorama_direction(0.25, 0.5), [-1., 0., 0.]));
+        for (u, v) in [(0.1, 0.3), (0.6, 0.7), (0.9, 0.1)] {
+            let turned = (u + 0.75f32).fract();
+            assert!(close(
+                babylon_panorama_direction(u, v),
+                three_panorama_direction(turned, v)
+            ));
+        }
     }
 
     #[test]
