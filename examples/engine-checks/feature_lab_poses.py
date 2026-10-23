@@ -49,6 +49,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--text", type=Path,
+                        help="also write `name time x y z x y z` lines, rest then posed, "
+                             "one per probe, for a C check")
     parser.add_argument("--binary", type=Path, default=ROOT / "target/debug/heron-brush")
     args = parser.parse_args()
     out = {}
@@ -76,6 +79,11 @@ def main():
         finally:
             editor.close()
     args.output.write_text(json.dumps(out, indent=1))
+    if args.text:
+        lines = [f"{name} {s['time']!r} " + " ".join(repr(v) for v in rest + posed)
+                 for name, samples in out.items() for s in samples
+                 for rest, posed in zip(s["rest"], s["posed"])]
+        args.text.write_text("\n".join(lines) + "\n")
     print(f"{args.output}: {sum(len(s) for s in out.values())} poses")
 
 

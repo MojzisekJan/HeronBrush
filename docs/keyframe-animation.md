@@ -273,7 +273,8 @@ Call `HbInit` once per animated entity and `HbUpdate` each frame. Apply
 `HbMatrix` after the entity rest transform, or use `HbPoint` on rest world-space
 vertices. Apply the same transform to collision and update your physics body.
 Keep `HbTriggerState[HB_TRIGGER_COUNT+1]` alongside the player array;
-`HbCheckTriggers` tests the player point against exported volumes and
+`HbCheckTriggersSpan` tests a standing player's feet, middle and head against
+the exported volumes, `HbCheckTriggers` a single point, and
 `HbActivateTrigger` handles explicit button presses. The preview has no
 collision response and activates triggers with the camera.
 
