@@ -303,7 +303,8 @@ These use the shared `_heron_animation` payload.
   root's Transform, where `data` is `properties._heron_animation.value` (or the
   `Value::String` in the typed loader). Trigger roots get
   `HeronAnimationTrigger::from_json`, animated roots `HeronAnimationName`, and
-  `HeronActivator` marks the player. Call `trigger.activate()` for buttons. The
+  `HeronActivator` marks the player; add `HeronActivatorHeight(metres)` to test it
+  from the feet to the top rather than at one point. Call `trigger.activate()` for buttons. The
   `demos/bevy_fps` sample wires this up with kinematic Avian bodies; other
   physics adapters must synchronise the animated Transform themselves.
 

@@ -409,7 +409,7 @@ export async function checkPortable(url) {
     : FAIL(JSON.stringify({exact, names: colours.map(m => m.name), clamp: translucent?.map.wrapS}));
   const gradientImages = mats('fl_gradients').map(({material}) => material.map).filter(Boolean);
   const gradientsOk = Object.values(GRADIENTS).every(stops => gradientImages.some(map => stopsFound(pixels(map.image), stops)));
-  results.gradients = gradientsOk ? PASS('4 gradients with all stops in clamped maps') : FAIL('a gradient lacks a stop');
+  results.gradients = gradientsOk ? PASS('4 gradients with all their stops in the baked maps') : FAIL('a gradient lacks a stop');
   const surface = mats('fl_surface').map(({material}) => material);
   const surfaceOk = SURFACES.every(([r, m, e]) => surface.some(x => near(x.roughness, r, 1e-3) && near(x.metalness, m, 1e-3) && (!e || near(x.emissiveIntensity, e, 1e-3))));
   results.surface = surfaceOk ? PASS('roughness, metalness and emissive strength 3') : FAIL(JSON.stringify(surface.map(x => [x.name, x.roughness, x.metalness, x.emissiveIntensity])));

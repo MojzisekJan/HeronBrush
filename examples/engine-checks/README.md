@@ -24,7 +24,9 @@ geometry, collision, materials and entity data; see
 animation and water test maps; [target parity](../../docs/target-parity.md) lists
 their commands. `export_feature_lab.py` exports the feature lab to all 14 targets
 and `check_feature_lab.py` checks the files feature by feature; see
-[the feature matrix](../../docs/feature-matrix.md).
+[the feature matrix](../../docs/feature-matrix.md). `feature_lab_poses.py` writes the
+editor's own animation poses for the run-time checks of three.js, Bevy, raylib and the
+portable glTF in [feature runtime checks](../../docs/feature-runtime-web.md).
 
 ## Running
 
