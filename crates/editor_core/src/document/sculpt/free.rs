@@ -287,6 +287,7 @@ impl Document {
             super::super::merge_columns::merge_neighbours(
                 &mut brushes,
                 super::super::merge_columns::Faces::Alike,
+                super::super::merge_columns::Effort::Quick,
             );
             brushes.into_iter().flatten().collect::<Vec<Brush>>()
         };

@@ -63,7 +63,7 @@ impl Document {
             let ids: Vec<NodeId> = family.iter().map(|(id, _)| *id).collect();
             let mut brushes: Vec<Option<Brush>> =
                 family.into_iter().map(|(_, brush)| Some(brush)).collect();
-            for (i, absorbed) in merge_neighbours(&mut brushes, faces) {
+            for (i, absorbed) in merge_neighbours(&mut brushes, faces, Effort::Thorough) {
                 let Some(brush) = brushes[i].take() else {
                     continue;
                 };
@@ -109,27 +109,94 @@ impl Document {
     }
 }
 
+/// How hard [`merge_neighbours`] looks for the fewest brushes.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(in crate::document) enum Effort {
+    /// One pass: what a sculpt dab needs, many times a second.
+    Quick,
+    /// Six passes in five orders, keeping the one that leaves the fewest: what the merge
+    /// commands use.
+    Thorough,
+}
+
+/// The orders the thorough passes take the brushes in besides the one they came in, by
+/// where their corners' average lies: along x then y, along y then x, and the same
+/// backwards along x. Merging is greedy, so the order decides which neighbours pair up
+/// first; on random shapes of boxes one order left 6 % more brushes than the fewest
+/// possible and the best of these four 1.7 %. The order they came in stays one of the
+/// passes: split columns come row by row, which merges flat terrain back into one.
+const ORDERS: [fn(Vec3d) -> [f64; 3]; 4] = [
+    |c| [c.x(), c.y(), c.z()],
+    |c| [c.y(), c.x(), c.z()],
+    |c| [-c.x(), c.y(), c.z()],
+    |c| [c.y(), -c.x(), c.z()],
+];
+
+/// How many brushes make the merge passes worth a thread each.
+#[cfg(not(target_arch = "wasm32"))]
+const PARALLEL_FROM: usize = 256;
+
 /// Merges neighbours among `brushes` wherever [`merged`] allows, until none can be: a
-/// merged brush takes the first one's place and the other's becomes `None`. Returns,
-/// for each brush that took others in, which ones.
+/// merged brush takes the place of the first of its brushes and the others become
+/// `None`. Returns, for each brush that took others in, which ones.
 pub(in crate::document) fn merge_neighbours(
     brushes: &mut [Option<Brush>],
     faces: Faces,
+    effort: Effort,
 ) -> HashMap<usize, Vec<usize>> {
-    // Each brush in the cells its bounds cover, to find its neighbours quickly. A
-    // merged brush is added to the cells it grew into; one that is gone is skipped. The
-    // cells are as big as a middling brush: sized by the smallest, a sliver would make
-    // every big brush cover thousands of them.
-    let mut sizes: Vec<f64> = brushes
+    // The brushes there are, and where each was in `brushes`.
+    let (originals, parts): (Vec<usize>, Vec<Brush>) = brushes
+        .iter_mut()
+        .enumerate()
+        .filter_map(|(i, brush)| Some((i, brush.take()?)))
+        .unzip();
+    if parts.len() < 2 {
+        for (place, brush) in originals.into_iter().zip(parts) {
+            brushes[place] = Some(brush);
+        }
+        return HashMap::new();
+    }
+    let touching = touching_pairs(&parts);
+    let all: Vec<usize> = (0..parts.len()).collect();
+    let pieces = match effort {
+        Effort::Quick => greedy(&parts, &touching, &all, faces, Growth::Turns),
+        Effort::Thorough => best_of_orders(&parts, &touching, &all, faces),
+    };
+
+    // Every brush was taken out above; each piece goes back where its first one was.
+    let mut merged_into = HashMap::new();
+    for mut piece in pieces {
+        piece.members.sort_unstable();
+        let first = originals[piece.members[0]];
+        brushes[first] = Some(piece.brush);
+        if piece.members.len() > 1 {
+            let absorbed = piece.members[1..].iter().map(|m| originals[*m]).collect();
+            merged_into.insert(first, absorbed);
+        }
+    }
+    merged_into
+}
+
+/// A brush made by merging: it and the original brushes it was made of.
+#[derive(Clone)]
+struct Piece {
+    brush: Brush,
+    members: Vec<usize>,
+}
+
+/// For each of `parts`, the others it meets across a face, found once through cells as
+/// big as a middling brush: sized by the smallest, a sliver would make every big brush
+/// cover thousands of them.
+fn touching_pairs(parts: &[Brush]) -> Vec<Vec<usize>> {
+    let mut sizes: Vec<f64> = parts
         .iter()
-        .flatten()
         .map(|brush| {
             let size = brush.bounds().size();
             size.x().max(size.y()).max(size.z())
         })
         .collect();
     sizes.sort_by(f64::total_cmp);
-    let cell = sizes.get(sizes.len() / 2).copied().unwrap_or(1.0).max(1.0);
+    let cell = sizes[sizes.len() / 2].max(1.0);
     let cells_of = |bounds: &Bbox3d| {
         let lo = [0, 1, 2].map(|i| ((bounds.min[i] - SAME) / cell).floor() as i64);
         let hi = [0, 1, 2].map(|i| ((bounds.max[i] + SAME) / cell).floor() as i64);
@@ -144,85 +211,211 @@ pub(in crate::document) fn merge_neighbours(
         cells
     };
     let mut grid: HashMap<[i64; 3], Vec<usize>> = HashMap::new();
-    for (i, brush) in brushes.iter().enumerate() {
-        let Some(brush) = brush else {
-            continue;
-        };
+    for (i, brush) in parts.iter().enumerate() {
         for c in cells_of(&brush.bounds()) {
             grid.entry(c).or_default().push(i);
         }
     }
+    parts
+        .iter()
+        .enumerate()
+        .map(|(i, brush)| {
+            let bounds = brush.bounds().expand(SAME * 10.0);
+            let mut near: Vec<usize> = cells_of(&bounds)
+                .iter()
+                .filter_map(|c| grid.get(c))
+                .flatten()
+                .copied()
+                .filter(|&j| j != i)
+                .collect();
+            near.sort_unstable();
+            near.dedup();
+            near.retain(|&j| {
+                parts[j].bounds().intersects(&bounds) && share_a_face(brush, &parts[j])
+            });
+            near
+        })
+        .collect()
+}
 
-    let mut merged_into: HashMap<usize, Vec<usize>> = HashMap::new();
-    let mut queue: std::collections::VecDeque<usize> = (0..brushes.len()).collect();
+/// Whether `a` and `b` lie against each other across a face: one of each in the same
+/// plane, facing opposite ways.
+fn share_a_face(a: &Brush, b: &Brush) -> bool {
+    a.faces().iter().any(|fa| {
+        b.faces()
+            .iter()
+            .any(|fb| geometry_math::plane::is_equal(&fa.plane, &fb.plane.flip(), SAME))
+    })
+}
+
+/// How a piece that has just taken in a neighbour goes on growing.
+#[derive(Clone, Copy)]
+enum Growth {
+    /// After every other piece has had a turn: pairs form first, then pairs of pairs.
+    Turns,
+    /// At once, until it can take in no more, before the next piece starts. On random
+    /// shapes of boxes this, in the four orders, left 0.5 % more brushes than the fewest
+    /// possible, where taking turns left 1.7 %.
+    Whole,
+}
+
+/// The pieces greedy merging leaves of the `order`ed parts: each piece in turn takes in
+/// the first neighbour it can, in that order, and grows again as `growth` says, until
+/// none can.
+fn greedy(
+    parts: &[Brush],
+    touching: &[Vec<usize>],
+    order: &[usize],
+    faces: Faces,
+    growth: Growth,
+) -> Vec<Piece> {
+    // Pieces are named by their first part and kept by that part's number, so plain
+    // vectors serve where maps cost a third of a pass.
+    const OUTSIDE: usize = usize::MAX;
+    let mut rank = vec![OUTSIDE; parts.len()];
+    for (place, m) in order.iter().enumerate() {
+        rank[*m] = place;
+    }
+    let mut pieces: Vec<Option<Piece>> = vec![None; parts.len()];
+    let mut neighbours: Vec<Vec<usize>> = vec![Vec::new(); parts.len()];
+    for m in order {
+        pieces[*m] = Some(Piece {
+            brush: parts[*m].clone(),
+            members: vec![*m],
+        });
+        neighbours[*m] = touching[*m]
+            .iter()
+            .copied()
+            .filter(|n| rank[*n] != OUTSIDE)
+            .collect();
+    }
+    let mut queue: std::collections::VecDeque<usize> = order.iter().copied().collect();
     while let Some(i) = queue.pop_front() {
-        let Some(brush) = brushes[i].clone() else {
+        let Some(piece) = &pieces[i] else {
             continue;
         };
-        let bounds = brush.bounds().expand(SAME * 10.0);
-        let mut near: Vec<usize> = cells_of(&bounds)
-            .iter()
-            .filter_map(|c| grid.get(c))
-            .flatten()
-            .copied()
-            .filter(|&j| j != i)
-            .collect();
-        near.sort_unstable();
-        near.dedup();
-        let found = near.into_iter().find_map(|j| {
-            let other = brushes[j].as_ref()?;
-            if !other.bounds().intersects(&bounds) {
-                return None;
-            }
-            Some((j, merged(&brush, other, faces)?))
+        // Neighbour lists may repeat a piece; they are put in order and tidied here.
+        let candidates = &mut neighbours[i];
+        candidates.sort_unstable_by_key(|n| rank[*n]);
+        candidates.dedup();
+        let found = candidates.iter().find_map(|j| {
+            let other = pieces[*j].as_ref()?;
+            Some((*j, merged(&piece.brush, &other.brush, faces)?))
         });
         let Some((j, joined)) = found else {
             continue;
         };
-        for c in cells_of(&joined.bounds()) {
-            grid.entry(c).or_default().push(i);
+        let taken = pieces[j].take().expect("a neighbour is a piece");
+        let piece = pieces[i].as_mut().expect("still a piece");
+        piece.brush = joined;
+        piece.members.extend(taken.members);
+        // The neighbours of the two together, each told that j is now i.
+        let theirs = std::mem::take(&mut neighbours[j]);
+        for k in &theirs {
+            for n in neighbours[*k].iter_mut() {
+                if *n == j {
+                    *n = i;
+                }
+            }
         }
-        brushes[i] = Some(joined);
-        brushes[j] = None;
-        let absorbed = merged_into.remove(&j).unwrap_or_default();
-        merged_into
-            .entry(i)
-            .or_default()
-            .extend(absorbed.into_iter().chain([j]));
-        // It may take in more neighbours now that it is bigger.
-        queue.push_back(i);
+        let mine = &mut neighbours[i];
+        mine.extend(theirs);
+        mine.retain(|n| *n != i && *n != j);
+        match growth {
+            Growth::Turns => queue.push_back(i),
+            Growth::Whole => queue.push_front(i),
+        }
     }
-    merged_into
+    pieces.into_iter().flatten().collect()
+}
+
+/// [`greedy`] in the order `members` came in, growing both ways, and in each of
+/// [`ORDERS`] growing [`Growth::Whole`], keeping whichever leaves the fewest pieces. Off the web
+/// the passes run side by side, one thread each.
+fn best_of_orders(
+    parts: &[Brush],
+    touching: &[Vec<usize>],
+    members: &[usize],
+    faces: Faces,
+) -> Vec<Piece> {
+    let centre = |m: usize| {
+        let corners = parts[m].vertex_positions();
+        corners.iter().fold(Vec3d::zero(), |sum, p| sum + *p) / corners.len().max(1) as f64
+    };
+    let mut given = members.to_vec();
+    given.sort_unstable();
+    let sorted = ORDERS.iter().map(|key| {
+        let mut order: Vec<(usize, [f64; 3])> =
+            members.iter().map(|m| (*m, key(centre(*m)))).collect();
+        order.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        order.into_iter().map(|(m, _)| m).collect::<Vec<usize>>()
+    });
+    let passes: Vec<(Vec<usize>, Growth)> =
+        [(given.clone(), Growth::Turns), (given, Growth::Whole)]
+            .into_iter()
+            .chain(sorted.map(|order| (order, Growth::Whole)))
+            .collect();
+    let run =
+        |(order, growth): &(Vec<usize>, Growth)| greedy(parts, touching, order, faces, *growth);
+    #[cfg(not(target_arch = "wasm32"))]
+    let results: Vec<Vec<Piece>> = if members.len() >= PARALLEL_FROM {
+        std::thread::scope(|scope| {
+            let handles: Vec<_> = passes
+                .iter()
+                .map(|pass| scope.spawn(move || run(pass)))
+                .collect();
+            handles
+                .into_iter()
+                .map(|handle| handle.join().expect("a merge pass"))
+                .collect()
+        })
+    } else {
+        passes.iter().map(run).collect()
+    };
+    #[cfg(target_arch = "wasm32")]
+    let results: Vec<Vec<Piece>> = passes.iter().map(run).collect();
+    // The first of the fewest, so the result does not depend on which thread ends first.
+    let fewest = results
+        .iter()
+        .map(Vec::len)
+        .min()
+        .expect("there are passes");
+    results
+        .into_iter()
+        .find(|pieces| pieces.len() == fewest)
+        .expect("one has the fewest")
 }
 
 /// `a` and `b` as one brush, when they share a face, together are convex, and, when
 /// `faces` asks for it, every face of the result lies on faces of theirs that look
 /// alike; `None` otherwise.
 fn merged(a: &Brush, b: &Brush, faces: Faces) -> Option<Brush> {
-    // Touching across a face: anything less leaves a gap or a notch the hull would fill.
-    let touching = a.faces().iter().any(|fa| {
-        b.faces()
+    // Which faces of each lie in a plane of the other's, facing the other way: where
+    // they meet. Worked out once for both tests below.
+    let meets = |face: &map_model::brush_face::BrushFace, other: &Brush| {
+        other
+            .faces()
             .iter()
-            .any(|fb| geometry_math::plane::is_equal(&fa.plane, &fb.plane.flip(), SAME))
-    });
-    if !touching {
+            .any(|f| geometry_math::plane::is_equal(&face.plane, &f.plane.flip(), SAME))
+    };
+    let met_a: Vec<bool> = a.faces().iter().map(|face| meets(face, b)).collect();
+    // Touching across a face: anything less leaves a gap or a notch the hull would fill.
+    if !met_a.contains(&true) {
         return None;
     }
+    let met_b: Vec<bool> = b.faces().iter().map(|face| meets(face, a)).collect();
     // A quick test before the hull: the two are convex together only if each one's
     // corners lie behind every plane of the other but the ones they meet across.
-    let behind = |corners: &[Vec3d], brush: &Brush, other: &Brush| {
-        brush.faces().iter().all(|face| {
-            let shared = other
-                .faces()
-                .iter()
-                .any(|f| geometry_math::plane::is_equal(&face.plane, &f.plane.flip(), SAME));
-            shared
+    let behind = |corners: &[Vec3d], brush: &Brush, met: &[bool]| {
+        brush.faces().iter().zip(met).all(|(face, shared)| {
+            *shared
                 || corners
                     .iter()
                     .all(|p| vec::dot(face.plane.normal, *p) <= face.plane.distance + SAME * 10.0)
         })
     };
-    if !behind(&b.vertex_positions(), a, b) || !behind(&a.vertex_positions(), b, a) {
+    let (corners_a, corners_b) = (a.vertex_positions(), b.vertex_positions());
+    if !behind(&corners_b, a, &met_a) || !behind(&corners_a, b, &met_b) {
         return None;
     }
     // Corners a split or a dab left a hair off a fine grid go back onto it, so the
@@ -235,10 +428,9 @@ fn merged(a: &Brush, b: &Brush, faces: Faces) -> Option<Brush> {
             v
         }
     };
-    let points: Vec<Vec3d> = a
-        .vertex_positions()
+    let points: Vec<Vec3d> = corners_a
         .into_iter()
-        .chain(b.vertex_positions())
+        .chain(corners_b)
         .map(|p| Vec3d::new(tidy(p.x()), tidy(p.y()), tidy(p.z())))
         .collect();
     let hull = map_model::polyhedron::Polyhedron::from_points(&points, f64::ALMOST_ZERO).ok()?;
@@ -521,6 +713,65 @@ mod tests {
             made - removed,
             start.elapsed()
         );
+    }
+
+    /// How long Merge keeping shape takes on sculpted terrain the size of the column
+    /// limit, hills and hollows all over:
+    /// `cargo test --release -p editor_core --lib merge_columns::tests::speed_sculpted -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn speed_sculpted() {
+        for shape in ColumnShape::ALL {
+            let mut d = Document::new(Default::default());
+            let side = if shape == ColumnShape::Hexagons {
+                640.0
+            } else {
+                1024.0
+            };
+            let bounds = Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(side, side, 32.0));
+            d.add_brushes(vec![map_model::shapes::create_cuboid(
+                &d.world_bounds(),
+                &bounds,
+                map_model::shapes::DEFAULT_MATERIAL,
+            )
+            .unwrap()]);
+            d.select_all();
+            let made = d.split_into_columns(16.0, shape).unwrap();
+            d.clear_selection();
+            let mut stroke = d.begin_sculpt_stroke();
+            for i in 0..12 {
+                let parameters = SculptParameters {
+                    radius: 96.0,
+                    strength: 0.6,
+                    mode: if i % 3 == 0 {
+                        crate::sculpt::SculptMode::Lower
+                    } else {
+                        crate::sculpt::SculptMode::Raise
+                    },
+                    ..Default::default()
+                };
+                let at = Vec3d::new(
+                    80.0 + (i * 337 % 880) as f64,
+                    80.0 + (i * 571 % 880) as f64,
+                    32.0,
+                );
+                d.sculpt_dab(at, &parameters, &mut stroke);
+            }
+            let parts: Vec<Brush> = brushes(&d);
+            let all: Vec<usize> = (0..parts.len()).collect();
+            let start = std::time::Instant::now();
+            let touching = touching_pairs(&parts);
+            println!(
+                "{shape:?}: {made} columns, neighbours found in {:?}",
+                start.elapsed()
+            );
+            let start = std::time::Instant::now();
+            let quick = greedy(&parts, &touching, &all, Faces::Any, Growth::Turns);
+            println!("  one pass: {} in {:?}", quick.len(), start.elapsed());
+            let start = std::time::Instant::now();
+            let pieces = best_of_orders(&parts, &touching, &all, Faces::Any);
+            println!("  all passes: {} in {:?}", pieces.len(), start.elapsed());
+        }
     }
 
     #[test]

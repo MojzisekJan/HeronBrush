@@ -700,3 +700,84 @@ fn random_boxes_and_wedges_keep_their_shape() {
         );
     }
 }
+
+/// The fewest boxes `cells` of a grid can be cut into, a box being a full rectangle of
+/// cells: found by trying every box at the first cell left, with what is left
+/// remembered. Cell (x, y) is bit `y * 8 + x`.
+fn fewest_boxes(cells: u64, memo: &mut HashMap<u64, usize>) -> usize {
+    if cells == 0 {
+        return 0;
+    }
+    if let Some(known) = memo.get(&cells) {
+        return *known;
+    }
+    let first = cells.trailing_zeros();
+    let (x, y) = (first % 8, first / 8);
+    let has = |x: u32, y: u32| x < 8 && y < 8 && cells & (1 << (y * 8 + x)) != 0;
+    let mut best = usize::MAX;
+    let mut width = 0;
+    while has(x + width, y) {
+        width += 1;
+    }
+    for w in 1..=width {
+        let mut box_cells = 0u64;
+        let mut h = 0;
+        while (0..w).all(|i| has(x + i, y + h)) {
+            for i in 0..w {
+                box_cells |= 1 << ((y + h) * 8 + x + i);
+            }
+            h += 1;
+            best = best.min(1 + fewest_boxes(cells & !box_cells, memo));
+        }
+    }
+    memo.insert(cells, best);
+    best
+}
+
+/// On random flat shapes of grid cells, the merge comes to the fewest boxes possible
+/// nearly always: in 120 shapes, at most 4 % come to more, none by more than one, and
+/// all together no more than 1 % more. A single greedy pass, as merging was at first,
+/// fails this: some shapes came to two or more boxes too many.
+#[test]
+fn random_flat_shapes_come_close_to_the_fewest() {
+    let (mut ours, mut fewest, mut worse) = (0, 0, 0);
+    let mut shapes = 0;
+    for seed in 0..120 {
+        let mut random = Lcg(seed + 5000);
+        let side = 4 + random.next() % 3;
+        let fill = [50, 70, 85][(random.next() % 3) as usize];
+        let mut at = Vec::new();
+        let mut bits = 0u64;
+        for x in 0..side as i32 {
+            for y in 0..side as i32 {
+                if random.chance(fill) {
+                    at.push([x, y, 0]);
+                    bits |= 1 << (y * 8 + x);
+                }
+            }
+        }
+        if at.len() < 2 {
+            continue;
+        }
+        shapes += 1;
+        let best = fewest_boxes(bits, &mut HashMap::new());
+        let mut d = document_with(|d| cells(d, 16.0, &at));
+        let left = merge_and_check(&mut d);
+        assert!(left >= best, "seed {seed}: fewer than possible?");
+        assert!(
+            left <= best + 1,
+            "seed {seed}: {left} where {best} would do"
+        );
+        ours += left;
+        fewest += best;
+        worse += usize::from(left > best);
+    }
+    assert!(
+        worse * 25 <= shapes,
+        "{worse} of {shapes} shapes came to more than the fewest"
+    );
+    assert!(
+        ours * 100 <= fewest * 101,
+        "{ours} brushes where {fewest} would do"
+    );
+}
