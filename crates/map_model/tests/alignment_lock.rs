@@ -4,8 +4,10 @@
 //! that is only noticed after a room has been built: every wall's material has crept.
 
 use geometry_math::bbox::Bbox3d;
+use geometry_math::mat::Mat4x4d;
 use geometry_math::mat_ext;
 use geometry_math::scalar::Float as _;
+use geometry_math::util::Axis;
 use geometry_math::vec::{self, Vec2f, Vec3d};
 use map_model::brush::Brush;
 use map_model::uv::UvCoordSystem;
@@ -144,6 +146,43 @@ fn with_the_lock_on_a_turned_face_wears_the_same_part_of_the_material() {
             && (difference.y() / 64.0).fract().abs() < 0.01,
         "the material moved by {difference:?}"
     );
+}
+
+/// Whether every corner of the face that pointed along `from` wears the same texel
+/// after `transform` as before, on the face that now points along `to`.
+fn corners_keep_their_texels(transform: &Mat4x4d, from: Vec3d, to: Vec3d) {
+    let brush = cube();
+    let before_face = face_facing(&brush, from);
+    let after = brush
+        .transform_with_alignment(&world_bounds(), transform, true, material_size)
+        .expect("still a box");
+    let after_face = face_facing(&after, to);
+    for corner in brush.faces()[before_face].points {
+        let difference =
+            uv_at(&after, after_face, *transform * corner) - uv_at(&brush, before_face, corner);
+        assert!(
+            (difference.x() / 64.0).fract().abs() < 0.01
+                && (difference.y() / 64.0).fract().abs() < 0.01,
+            "{corner:?} moved on the material by {difference:?}"
+        );
+    }
+}
+
+#[test]
+fn with_the_lock_on_a_mirrored_face_wears_the_mirror_image_of_the_material() {
+    // Mirroring across Y leaves the face looking along X but runs its U axis the other
+    // way. Text on it was coming out upside down instead of reading the other way round.
+    let x = Vec3d::new(1.0, 0.0, 0.0);
+    corners_keep_their_texels(&mat_ext::mirror_matrix(Axis::Y), x, x);
+}
+
+#[test]
+fn with_the_lock_on_a_face_turned_half_round_on_itself_turns_its_material() {
+    // A half turn about the face's own normal flips both axes. Both scales came out
+    // negative on top of the 180 degree rotation, which undid the turn.
+    let x = Vec3d::new(1.0, 0.0, 0.0);
+    let turn = mat_ext::rotation_matrix_about_axis(x, std::f64::consts::PI);
+    corners_keep_their_texels(&turn, x, x);
 }
 
 #[test]

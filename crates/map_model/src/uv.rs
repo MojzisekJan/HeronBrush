@@ -514,11 +514,15 @@ impl UvCoordSystem {
             scalar::correct(vec::length(projected_u), 4, 0.0) as f32,
             scalar::correct(vec::length(projected_v), 4, 0.0) as f32,
         );
-        // The sign says which way round the axis ended up.
-        if vec::dot(u_axis, normalized_u) < 0.0 {
+        // The sign says which way round the axis ended up against the new axes, which
+        // are the base ones turned by the new rotation. Against the old ones a half turn
+        // came out as a rotation of 180 degrees undone by two negative scales, and a
+        // mirror as an upside-down material.
+        let (rotated_u, rotated_v) = rotate_paraxial_axes(base_u, base_v, new_rotation, new_index);
+        if vec::dot(rotated_u, normalized_u) < 0.0 {
             new_scale = Vec2f::new(-new_scale.x(), new_scale.y());
         }
-        if vec::dot(v_axis, normalized_v) < 0.0 {
+        if vec::dot(rotated_v, normalized_v) < 0.0 {
             new_scale = Vec2f::new(new_scale.x(), -new_scale.y());
         }
         if new_scale.x() == 0.0 || new_scale.y() == 0.0 {
