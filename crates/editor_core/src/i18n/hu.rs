@@ -995,6 +995,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The web editor is updated by its hosting site", "The web editor is updated by its hosting site"),
     ("Thickness:", "Vastagság:"),
     ("This build supports the local network only. Guests must be on the same network.", "Ez a kiadás csak a helyi hálózatot támogatja. A vendégeknek ugyanazon a hálózaton kell lenniük."),
+    ("This folder does not exist", "Ez a mappa nem létezik"),
     ("This key is not in the entity definition", "Ez a kulcs nem szerepel az entitásdefinícióban"),
     ("This map loses nothing in that dialect.", "Ez a térkép semmit sem veszít ebben a formátumváltozatban."),
     ("This version is current", "This version is current"),

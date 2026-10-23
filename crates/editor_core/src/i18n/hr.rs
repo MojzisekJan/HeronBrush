@@ -995,6 +995,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The web editor is updated by its hosting site", "The web editor is updated by its hosting site"),
     ("Thickness:", "Debljina:"),
     ("This build supports the local network only. Guests must be on the same network.", "Ova inačica podržava samo lokalnu mrežu. Gosti moraju biti na istoj mreži."),
+    ("This folder does not exist", "Ova mapa ne postoji"),
     ("This key is not in the entity definition", "Ovaj ključ nije u definiciji entiteta"),
     ("This map loses nothing in that dialect.", "Ova mapa u toj inačici ništa ne gubi."),
     ("This version is current", "This version is current"),

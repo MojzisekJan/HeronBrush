@@ -995,6 +995,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The web editor is updated by its hosting site", "The web editor is updated by its hosting site"),
     ("Thickness:", "Πάχος:"),
     ("This build supports the local network only. Guests must be on the same network.", "Αυτή η έκδοση υποστηρίζει μόνο τοπικό δίκτυο. Οι επισκέπτες πρέπει να βρίσκονται στο ίδιο δίκτυο."),
+    ("This folder does not exist", "Αυτός ο φάκελος δεν υπάρχει"),
     ("This key is not in the entity definition", "Αυτό το κλειδί δεν υπάρχει στον ορισμό της οντότητας"),
     ("This map loses nothing in that dialect.", "Αυτός ο χάρτης δεν χάνει τίποτα σε αυτή την παραλλαγή μορφής."),
     ("This version is current", "This version is current"),

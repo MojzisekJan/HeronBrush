@@ -1269,7 +1269,18 @@ impl Control for String {
                         .size()
                         .x
                 }) + 24.0;
-                let text_width = (width - button - ui.spacing().item_spacing.x).max(60.0);
+                // Said at the field rather than when the folder is first needed. The
+                // browser build sees no folders to check.
+                let missing = !cfg!(target_arch = "wasm32")
+                    && !self.is_empty()
+                    && !std::path::Path::new(self.as_str()).is_dir();
+                let warning = if missing {
+                    crate::chrome::text_width(ui, egui_phosphor::regular::WARNING, theme::icon())
+                        + ui.spacing().item_spacing.x
+                } else {
+                    0.0
+                };
+                let text_width = (width - button - warning - ui.spacing().item_spacing.x).max(60.0);
                 if let Some(text) = widgets::field(
                     ui,
                     ui.scope_id().with("path"),
@@ -1287,6 +1298,14 @@ impl Control for String {
                 }
                 if let Some(path) = chooser.pick_folder(browse) {
                     *self = path.display().to_string();
+                }
+                if missing {
+                    ui.label(
+                        egui::RichText::new(egui_phosphor::regular::WARNING)
+                            .font(theme::icon())
+                            .color(theme::error()),
+                    )
+                    .on_hover_text(tr("This folder does not exist"));
                 }
             }
             "game_mods" => {

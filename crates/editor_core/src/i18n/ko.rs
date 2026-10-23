@@ -995,6 +995,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The web editor is updated by its hosting site", "The web editor is updated by its hosting site"),
     ("Thickness:", "두께:"),
     ("This build supports the local network only. Guests must be on the same network.", "이 빌드는 로컬 네트워크만 지원합니다. 게스트도 같은 네트워크에 있어야 합니다."),
+    ("This folder does not exist", "이 폴더가 없습니다"),
     ("This key is not in the entity definition", "이 키는 엔티티 정의에 없습니다"),
     ("This map loses nothing in that dialect.", "이 형식에서는 맵 데이터가 손실되지 않습니다."),
     ("This version is current", "This version is current"),

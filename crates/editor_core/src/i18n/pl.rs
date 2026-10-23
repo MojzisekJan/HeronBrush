@@ -998,6 +998,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The web editor is updated by its hosting site", "The web editor is updated by its hosting site"),
     ("Thickness:", "Grubość:"),
     ("This build supports the local network only. Guests must be on the same network.", "Ta wersja obsługuje tylko sieć lokalną. Goście muszą być w tej samej sieci."),
+    ("This folder does not exist", "Ten folder nie istnieje"),
     ("This key is not in the entity definition", "Tego klucza nie ma w definicji encji"),
     ("This map loses nothing in that dialect.", "Mapa nie traci danych w tym wariancie formatu."),
     ("This version is current", "This version is current"),

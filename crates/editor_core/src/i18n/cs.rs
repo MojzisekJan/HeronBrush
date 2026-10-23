@@ -998,6 +998,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The web editor is updated by its hosting site", "Webový editor aktualizuje jeho provozovatel"),
     ("Thickness:", "Tloušťka:"),
     ("This build supports the local network only. Guests must be on the same network.", "Toto sestavení podporuje jen místní síť. Hosté musí být ve stejné síti."),
+    ("This folder does not exist", "Tato složka neexistuje"),
     ("This key is not in the entity definition", "Tento klíč v definici entity není"),
     ("This map loses nothing in that dialect.", "Při zápisu v této variantě se nic neztratí."),
     ("This version is current", "Tato verze je aktuální"),

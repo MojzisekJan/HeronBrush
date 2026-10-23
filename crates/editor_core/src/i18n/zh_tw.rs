@@ -995,6 +995,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The web editor is updated by its hosting site", "The web editor is updated by its hosting site"),
     ("Thickness:", "厚度："),
     ("This build supports the local network only. Guests must be on the same network.", "此版本僅支援區域網路，訪客必須位於同一網路中。"),
+    ("This folder does not exist", "此資料夾不存在"),
     ("This key is not in the entity definition", "此鍵不在實體定義中"),
     ("This map loses nothing in that dialect.", "以此格式變體儲存，地圖不會遺失任何內容。"),
     ("This version is current", "This version is current"),
