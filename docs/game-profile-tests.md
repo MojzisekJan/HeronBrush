@@ -727,11 +727,11 @@ ran in a nested Xephyr display with Mesa's llvmpipe at 30 frames a second.
 - The editor's 3D view was only looked at from outside the level with the roofs deleted;
   flying the camera through it from a script was not worked out.
 
-The profile could drop "experimental": OpenArena's pk3s, shaders and textures load,
-Heron's Valve save and its brush-primitive export both compile with q3map2 to exactly
-what the original map gives, and patches survive the round trip. The UV scale default
-is the one thing a Quake 3 mapper would notice at once, so I would drop the flag once
-that change is merged.
+The profile is no longer marked experimental: OpenArena's pk3s, shaders and textures
+load, Heron's Valve save and its brush-primitive export both compile with q3map2 to
+exactly what the original map gives, and patches survive the round trip. New brushes
+take the profile's UV scale of 0.5 since the Quetoo run made Heron read
+`faceattribs.defaults.scale`.
 
 ## Quetoo
 

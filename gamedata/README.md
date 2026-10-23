@@ -72,6 +72,9 @@ whitespace are normalized. Neverball's starting map is kept with its profile, an
 new Neverball map starts from it: the profile's "Quake3" format reads as Quake 2 face
 lines, which is what Neverball's `mapc` compiles.
 
+The Quake 3 profile is no longer marked experimental either, after the OpenArena run
+in `docs/game-profile-tests.md`.
+
 Neverball's profile is no longer marked experimental, and it has a section of Heron's
 own, `"heron": { "mergeGroupsOnExport": true }`. Neverball 1.6's `mapc` puts the
 brushes of a `func_group` in no body, so they are not in the level; with the key set,
