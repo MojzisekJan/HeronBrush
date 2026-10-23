@@ -72,7 +72,10 @@ fn write_entity(out: &mut String, entity: &Entity, format: MapFormat, index: usi
 
     // The `mapversion` property identifies the Valve 220 dialect, and belongs on the
     // worldspawn. It is written only if the entity does not already carry it, so a file
-    // that had one keeps its own.
+    // that had one keeps its own. A dialect without one drops a carried one, which would
+    // claim the file is Valve 220; Hexen II's engine also prints "'mapversion' is not a
+    // field" for it on every load.
+    let has_version = format.map_version().is_some();
     if index == 0 && entity.property("mapversion").is_none() {
         if let Some(version) = format.map_version() {
             let _ = writeln!(out, "\"mapversion\" \"{version}\"");
@@ -80,6 +83,9 @@ fn write_entity(out: &mut String, entity: &Entity, format: MapFormat, index: usi
     }
 
     for (key, value) in &entity.properties {
+        if index == 0 && !has_version && key == "mapversion" {
+            continue;
+        }
         let _ = writeln!(out, "\"{}\" \"{}\"", escape(key), escape(value));
     }
 
@@ -162,7 +168,11 @@ fn write_face(out: &mut String, face: &BrushFace, format: MapFormat, with_color:
         UvScalar(face.uv_attributes.scale.y()),
     );
 
-    if let Some(surface) = &face.surface_attributes {
+    if format == MapFormat::Hexen2 {
+        // Hexen II's extra number, which Raven's qbsp requires on every face. It has no
+        // room for the Quake 2 trio.
+        let _ = write!(out, " 0");
+    } else if let Some(surface) = &face.surface_attributes {
         let _ = write!(
             out,
             " {} {} {}",

@@ -168,6 +168,80 @@ fn a_surface_flag_trio_with_no_header_makes_it_a_quake2_dialect() {
     assert_eq!(map.format, MapFormat::Quake2Valve);
 }
 
+/// A brush as TrenchBroom writes it in the Hexen 2 format: Standard face lines with one
+/// more number at the end.
+const HEXEN2_SAMPLE: &str = "\
+// Game: Hexen 2
+// Format: Hexen2
+// entity 0
+{
+\"classname\" \"worldspawn\"
+\"wad\" \"wads/h2demo.wad\"
+// brush 0
+{
+( -16 -16 -16 ) ( -16 16 -16 ) ( -16 -16 16 ) rtex225 0 0 0 1 1 0
+( -16 -16 -16 ) ( -16 -16 16 ) ( 16 -16 -16 ) rtex225 0 0 0 1 1 0
+( -16 -16 -16 ) ( 16 -16 -16 ) ( -16 16 -16 ) rtex343 8 16 90 0.5 0.5 0
+( 16 16 16 ) ( 16 -16 16 ) ( -16 16 16 ) rtex041 0 0 0 1 1 0
+( 16 16 16 ) ( -16 16 16 ) ( 16 16 -16 ) rtex225 0 0 0 1 1 0
+( 16 16 16 ) ( 16 16 -16 ) ( 16 -16 16 ) rtex225 0 0 0 1 1 0
+}
+}
+";
+
+#[test]
+fn a_hexen2_map_reads_with_or_without_its_header() {
+    let map = read_map(HEXEN2_SAMPLE, None).expect("it parses");
+    assert_eq!(map.format, MapFormat::Hexen2);
+    let faces = &map.entities[0].brushes[0].faces;
+    assert_eq!(faces.len(), 6);
+    // The UV comes before the extra number, and the number is not a surface trio.
+    assert_eq!(faces[2].material_name.as_str(), "rtex343");
+    assert_eq!(faces[2].uv_attributes.offset, Vec2f::new(8.0, 16.0));
+    assert_eq!(faces[2].uv_attributes.rotation, 90.0);
+    assert_eq!(faces[2].uv_attributes.scale, Vec2f::new(0.5, 0.5));
+    assert!(faces.iter().all(|face| face.surface_attributes.is_none()));
+
+    // Raven's own sources have no header; the number alone says Hexen II.
+    let bare: String = HEXEN2_SAMPLE
+        .lines()
+        .filter(|line| !line.starts_with("//"))
+        .map(|line| format!("{line}\n"))
+        .collect();
+    let map = read_map(&bare, None).expect("it parses");
+    assert_eq!(map.format, MapFormat::Hexen2);
+}
+
+#[test]
+fn a_hexen2_map_is_written_with_its_number_and_without_a_mapversion() {
+    let mut map = read_map(HEXEN2_SAMPLE, None).expect("it parses");
+    // Carried over from a Valve file, it would claim the wrong dialect.
+    map.entities[0]
+        .properties
+        .insert(0, ("mapversion".to_string(), "220".to_string()));
+    let written = write_map(&map);
+    assert!(written.contains("// Format: Hexen2"), "{written}");
+    assert!(!written.contains("mapversion"), "{written}");
+    assert!(
+        written.contains(") rtex343 8 16 90 0.5 0.5 0\n"),
+        "Raven's qbsp needs the number on every face: {written}"
+    );
+    let faces = written.lines().filter(|line| line.starts_with('(')).count();
+    let numbered = written
+        .lines()
+        .filter(|line| line.starts_with('(') && line.ends_with(" 1 1 0"))
+        .count();
+    assert_eq!((faces, numbered), (6, 5));
+    assert_eq!(
+        read_map(&written, None).expect("it reads back").format,
+        MapFormat::Hexen2
+    );
+
+    // The Valve dialect keeps writing it.
+    map.format = MapFormat::Valve;
+    assert!(write_map(&map).contains("\"mapversion\" \"220\""));
+}
+
 #[test]
 fn the_brush_faces_have_outward_normals() {
     let map = read(VALVE_SAMPLE);

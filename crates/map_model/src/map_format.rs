@@ -25,6 +25,12 @@ pub enum MapFormat {
     Quake2Valve,
     /// Standard UV plus the Quake 2 surface flags trio.
     Quake2,
+    /// Standard UV plus one more number, Hexen II's: `<material> xoff yoff rot xscale yscale value`.
+    ///
+    /// Raven's `qbsp` reads the number as the brush's light value and stops with "line is
+    /// incomplete" when it is missing, so a face line has to end with it. TrenchBroom
+    /// writes it as 0 and so does this editor; the reader takes it and lets it go.
+    Hexen2,
 }
 
 /// What this editor's own additions to the `.map` format are up to.
@@ -76,6 +82,7 @@ impl MapFormat {
             MapFormat::Valve => "Valve",
             MapFormat::Quake2 => "Quake2",
             MapFormat::Quake2Valve => "Quake2 (Valve)",
+            MapFormat::Hexen2 => "Hexen2",
         }
     }
 
@@ -125,6 +132,7 @@ impl FromStr for MapFormat {
             "quake2 (valve)" | "quake2_valve" | "quake3 (valve)" | "quake3_valve" => {
                 Ok(MapFormat::Quake2Valve)
             }
+            "hexen2" => Ok(MapFormat::Hexen2),
             _ => Err(UnknownMapFormat(s.to_string())),
         }
     }
@@ -136,6 +144,15 @@ mod tests {
 
     #[test]
     fn the_header_name_is_read_case_insensitively_with_the_known_aliases() {
+        for format in [
+            MapFormat::Standard,
+            MapFormat::Valve,
+            MapFormat::Quake2,
+            MapFormat::Quake2Valve,
+            MapFormat::Hexen2,
+        ] {
+            assert_eq!(format.name().parse(), Ok(format), "{format}");
+        }
         assert_eq!("Valve".parse(), Ok(MapFormat::Valve));
         assert_eq!("STANDARD".parse(), Ok(MapFormat::Standard));
         assert_eq!("Quake2 (Valve)".parse(), Ok(MapFormat::Quake2Valve));
@@ -143,6 +160,7 @@ mod tests {
         assert_eq!("Quake3".parse(), Ok(MapFormat::Quake2));
         assert_eq!("quake3 (valve)".parse(), Ok(MapFormat::Quake2Valve));
         assert_eq!("Daikatana".parse(), Ok(MapFormat::Quake2));
-        assert!("Hexen2".parse::<MapFormat>().is_err());
+        assert_eq!("Hexen2".parse(), Ok(MapFormat::Hexen2));
+        assert!("Hexen3".parse::<MapFormat>().is_err());
     }
 }

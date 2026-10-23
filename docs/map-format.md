@@ -25,6 +25,10 @@ Quake 2 surface flag trio rides along wherever a face has one, ungated by the di
 the axes and the flags both accounted for there is nothing left that another flavour can
 say and this one cannot, which is what makes it safe to always save in it.
 
+Hexen II's dialect is the Standard one with one more number at the end of each face
+line, which Raven's `qbsp` reads as a light value and refuses to do without. The reader
+takes the number and drops it; the writer puts 0 there, as TrenchBroom does.
+
 So the flavour is not something to choose before there is a map. It is an output format
 like Godot or raylib, and it lives on the export window's `.map` tab, where each one says
 what it would drop from *this* map before it writes.
