@@ -775,6 +775,7 @@ pub(crate) fn call_tool(
         "select" => select(document, args),
         "set_face_color" => set_face_color(document, args),
         "set_face_material" => set_face_material(document, args),
+        "set_face_attributes" => set_face_attributes(document, args),
         "omit_covered_faces" => Ok(format!(
             "Omitted {} fully covered static faces",
             document.omit_covered_faces()
@@ -1638,6 +1639,15 @@ fn set_face_material(document: &mut Document, args: &Value) -> Result<String, St
     if material.is_empty() {
         return Err("`material` is required".into());
     }
+    let faces = addressed_faces(document, args)?;
+    document.set_current_material(material);
+    let changed = document.apply_current_material_on(&faces);
+    Ok(format!("put {material} on {changed} faces"))
+}
+
+/// The faces of one brush a call names: `brush` with `face`, an index from
+/// `describe_brush`, or with `facing`, every face whose normal points that way.
+fn addressed_faces(document: &Document, args: &Value) -> Result<Vec<FaceRef>, String> {
     let node = map_model::node::NodeId(extensions::node_id(
         args.get("brush").ok_or("`brush` is required")?,
     )?);
@@ -1670,9 +1680,65 @@ fn set_face_material(document: &mut Document, args: &Value) -> Result<String, St
     if faces.is_empty() || faces.iter().any(|face| document.face_at(*face).is_none()) {
         return Err("no such brush face".into());
     }
-    document.set_current_material(material);
-    let changed = document.apply_current_material_on(&faces);
-    Ok(format!("put {material} on {changed} faces"))
+    Ok(faces)
+}
+
+/// Sets what the Face tab's number fields set, on faces addressed as for
+/// `set_face_material`: the UV offset, scale and rotation, and the surface flags, content
+/// flags and surface value a Quake 2 or Quake 3 face line carries. Only the keys given
+/// change, all in one undo step, through the same edit the panel makes.
+fn set_face_attributes(document: &mut Document, args: &Value) -> Result<String, String> {
+    use crate::uv_view::Field;
+    let faces = addressed_faces(document, args)?;
+    let mut values = Vec::new();
+    for (key, fields) in [
+        ("offset", [Field::OffsetX, Field::OffsetY]),
+        ("scale", [Field::ScaleX, Field::ScaleY]),
+    ] {
+        let Some(pair) = args.get(key) else {
+            continue;
+        };
+        let pair = pair
+            .as_array()
+            .filter(|pair| pair.len() == 2)
+            .ok_or_else(|| format!("`{key}` must be an array of two numbers"))?;
+        for (field, value) in fields.into_iter().zip(pair) {
+            let value = value
+                .as_f64()
+                .filter(|value| value.is_finite())
+                .ok_or_else(|| format!("`{key}` must be an array of two numbers"))?;
+            values.push((field, value));
+        }
+    }
+    if let Some(rotation) = args.get("rotation") {
+        let rotation = rotation
+            .as_f64()
+            .filter(|value| value.is_finite())
+            .ok_or("`rotation` must be a number of degrees")?;
+        values.push((Field::Rotation, rotation));
+    }
+    for (key, field) in [
+        ("surface_flags", Field::SurfaceFlags),
+        ("content_flags", Field::ContentFlags),
+        ("surface_value", Field::SurfaceValue),
+    ] {
+        if let Some(value) = args.get(key) {
+            let value = value
+                .as_i64()
+                .and_then(|value| i32::try_from(value).ok())
+                .ok_or_else(|| format!("`{key}` must be a 32-bit integer"))?;
+            values.push((field, f64::from(value)));
+        }
+    }
+    if values.is_empty() {
+        return Err(
+            "give at least one of offset, scale, rotation, surface_flags, \
+                    content_flags and surface_value"
+                .into(),
+        );
+    }
+    let changed = crate::uv_view::set_on(document, &faces, &values);
+    Ok(format!("updated {changed} faces"))
 }
 
 /// Moves the selection onto a layer named by name, as the layer panel's Move Selection
@@ -1875,6 +1941,27 @@ fn tool_definitions() -> Vec<Value> {
                 "material": { "type": "string" },
             }),
             &["brush", "material"],
+        ),
+        tool(
+            "set_face_attributes",
+            "Set what the Face tab's fields set on faces of one brush, addressed as for \
+             set_face_material (`face` or `facing`): the UV `offset` [u,v], `scale` [u,v] \
+             and `rotation` in degrees, and the `surface_flags`, `content_flags` and \
+             `surface_value` a Quake 2 or Quake 3 face line carries. Flags are whole \
+             bitmasks, named by the game profile's faceattribs; a face with none of its \
+             own starts from its texture's. Only the keys given change, in one undo step.",
+            json!({
+                "brush": { "type": "string", "description": "an id from list_brushes" },
+                "face": { "type": "integer" },
+                "facing": vec3_schema("a direction"),
+                "offset": {"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2},
+                "scale": {"type":"array","items":{"type":"number"},"minItems":2,"maxItems":2},
+                "rotation": { "type": "number" },
+                "surface_flags": { "type": "integer" },
+                "content_flags": { "type": "integer" },
+                "surface_value": { "type": "integer" },
+            }),
+            &["brush"],
         ),
         tool(
             "set_face_color",
@@ -2552,6 +2639,109 @@ mod tests {
             2,
             "the host saw the guest's box"
         );
+    }
+
+    /// A pillar made detail and its top's texture scaled, through MCP: what `make_map.py`
+    /// for OpenArena could not do. Each call is one undo step.
+    #[test]
+    fn face_attributes_are_set_on_the_faces_named_and_undo_as_one_step() {
+        let mut document = Document::new(WorldBounds::default());
+        let added = call(
+            &mut document,
+            "add_shape",
+            &json!({"kind":"cuboid","min":[0,0,0],"max":[32,32,128],"material":"base_wall"}),
+        )
+        .expect("a pillar");
+        let brush: Vec<String> =
+            serde_json::from_str(added.split("selected: ").nth(1).expect("ids")).expect("ids");
+        let node =
+            map_model::node::NodeId(extensions::node_id(&json!(brush[0])).expect("the id reads"));
+        let face_count = document
+            .brush(node)
+            .expect("the brush")
+            .geometry()
+            .face_count();
+        let top = (0..face_count)
+            .map(|face| FaceRef { node, face })
+            .find(|face| {
+                let brush = document.brush(node).expect("the brush");
+                let mut up = false;
+                brush.for_each_geometry_face(|index, geometry, _| {
+                    up |= index == face.face && geometry.plane.normal.z() > 0.999;
+                });
+                up
+            })
+            .expect("a top face");
+
+        // Detail on every face: Quake 3's CONTENTS_DETAIL is bit 27.
+        let done = call(
+            &mut document,
+            "set_face_attributes",
+            &json!({"brush": brush[0], "facing": [0, 0, 1], "offset": [8, -4], "scale": [0.5, 0.25], "rotation": 90}),
+        )
+        .expect("the top's UV");
+        assert_eq!(done, "updated 1 faces");
+        for face in 0..face_count {
+            call(
+                &mut document,
+                "set_face_attributes",
+                &json!({"brush": brush[0], "face": face, "content_flags": 1 << 27, "surface_value": 5}),
+            )
+            .expect("detail");
+        }
+        let face = document.face_at(top).expect("the top");
+        assert_eq!(
+            face.uv_attributes.offset,
+            geometry_math::vec::Vec2f::new(8.0, -4.0)
+        );
+        assert_eq!(
+            face.uv_attributes.scale,
+            geometry_math::vec::Vec2f::new(0.5, 0.25)
+        );
+        assert_eq!(face.uv_attributes.rotation, 90.0);
+        let surface = face.surface_attributes.expect("the face has its own flags");
+        assert_eq!(surface.content_flags, 1 << 27);
+        assert_eq!(surface.value, 5);
+        assert_eq!(surface.surface_flags, 0);
+
+        // The last call, on the last face, undoes alone; the UV stays.
+        document.undo().expect("an undo");
+        let last = FaceRef {
+            node,
+            face: face_count - 1,
+        };
+        if last != top {
+            assert!(document
+                .face_at(last)
+                .expect("a face")
+                .surface_attributes
+                .is_none());
+            assert!(document
+                .face_at(top)
+                .expect("the top")
+                .surface_attributes
+                .is_some());
+        }
+        assert_eq!(
+            document.face_at(top).expect("the top").uv_attributes.scale,
+            geometry_math::vec::Vec2f::new(0.5, 0.25)
+        );
+
+        for wrong in [
+            json!({"brush": brush[0], "face": 0}),
+            json!({"brush": brush[0], "face": 0, "scale": [1]}),
+            json!({"brush": brush[0], "face": 0, "offset": [1, "x"]}),
+            json!({"brush": brush[0], "face": 0, "content_flags": 1.5}),
+            json!({"brush": brush[0], "face": 0, "surface_flags": 1_i64 << 40}),
+            json!({"brush": brush[0], "face": 99, "rotation": 0}),
+            json!({"brush": brush[0], "facing": [0, 0, 0], "rotation": 0}),
+            json!({"face": 0, "rotation": 0}),
+        ] {
+            assert!(
+                call(&mut document, "set_face_attributes", &wrong).is_err(),
+                "{wrong}"
+            );
+        }
     }
 
     /// A Neverball floor: turf on top, grey on the sides, exported in the face lines

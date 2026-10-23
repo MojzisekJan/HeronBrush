@@ -122,6 +122,10 @@ ironwail's GL 4.3.
   configuration sets `"heron": { "builtinEntities": true }`. A class the game's FGD
   defines is always offered, and a map that already has a `light_spot` still shows it
   and edits its keys.
+- **MCP could not set one face's material or UV.** `set_face_material` (from the
+  Neverball run) puts a material on one face, and the new `set_face_attributes` sets a
+  face's UV offset, scale and rotation, and its flags and surface value, through the same
+  edit the Face tab's fields make. Each call is one undo step.
 
 ### Mapping mistakes, not Heron's
 
@@ -137,8 +141,6 @@ ironwail's GL 4.3.
 - Heron writes brushes that have no UV axes of their own as Standard face lines under
   `// Format: Valve` and `"mapversion" "220"`. ericw-tools reads that fine. Whether
   TrenchBroom opens such a file was not checked.
-- MCP has no tool to set one face's material or UV, so a brush made through MCP wears
-  one material on every face.
 - Placing a light writes the FGD's defaults (`"wait" "1"`, `"style" "0"`) into it.
   Harmless, but it is noise TrenchBroom does not add.
 - The GUI wad list was checked in screenshots, but the file dialog route of the
@@ -279,6 +281,8 @@ colour. It saves a screenshot at each step.
 - **MCP could not put a material on one face or export a dialect.** New tools:
   `set_face_material` (one face by index, or every face facing a direction) and
   `export_map`.
+- **MCP could not set content flags.** The new `set_face_attributes` sets a face's
+  content and surface flags, surface value and UV offset, scale and rotation.
 - **Grouped and layered brushes vanished in the level.** Heron wrote groups and extra
   layers as `func_group`, whose brushes the 1.6 `mapc` puts in no body. An export for
   Neverball now merges them into the worldspawn; the saved map keeps them. The demo
@@ -308,8 +312,9 @@ colour. It saves a screenshot at each step.
   0.5 Neverball's own maps use. The official gamepack in Neverball's source sets
   `"faceattribs": { "defaults": { "scale": [0.5, 0.5] } }`; whether Heron honours that key
   was not checked.
-- MCP cannot set content flags, so a decal (the goal's target, the start arrow) cannot
-  be made detail through MCP; the level has none.
+- The level has no decals (the goal's target, the start arrow): MCP could not make them
+  detail when it was built. `set_face_attributes` can now, but `make_map.py` does not
+  use it yet.
 - The `__tb_fancy_path_corner.obj` the FGD names for `path_corner` is not in
   TrenchBroom's copy of the profile either, so path corners stay boxes.
 - The profile is no longer marked experimental: following this section, the export
@@ -414,6 +419,10 @@ the other team a player so the match starts.
 - **The entity browser listed Heron's built-in classes beside Paintball 2's.** As for
   Quake, a game profile other than Heron's own and Generic is now offered only its own
   classes.
+- **MCP could not set a face's flags.** The new `set_face_attributes` sets them, with
+  the surface value and the UV, on faces addressed as `set_face_material` addresses
+  them. A face with no flags of its own starts from its `.wal`'s, as in the Face tab.
+  This map still relies on the textures' own flags for its sky.
 
 ### Mapping mistakes, not Heron's
 
@@ -433,8 +442,6 @@ the other team a player so the match starts.
   but the game reports `mapversion` as a bad field on load (harmless). The header names
   no game and a format the Paintball 2 profile does not list ("Quake2" and "Quake2
   (Valve)"); whether TrenchBroom opens it without asking was not checked.
-- MCP has no tool to set a face's flags or one face's material, so a map built through
-  MCP relies on the textures' own flags (as this one does for its sky).
 - Heron's tags that match on content flags (Liquid, Detail) do not yet see the flags a
   face takes from its `.wal`.
 
@@ -696,6 +703,9 @@ ran in a nested Xephyr display with Mesa's llvmpipe at 30 frames a second.
   twice, and `gridsize` and `_blocksize` were integers with three numbers as their
   default; the status bar showed it in red. The duplicates are gone and the two keys are
   strings.
+- **MCP could not set content flags or a face's UV.** The new `set_face_attributes`
+  sets the UV offset, scale and rotation and the surface flags, content flags and
+  surface value.
 
 ### Mapping mistakes, not Heron's
 
@@ -715,9 +725,10 @@ ran in a nested Xephyr display with Mesa's llvmpipe at 30 frames a second.
   scale Quake 3's textures are drawn at, and Heron read the key without using it. The
   Quetoo profile test's branch has a change that makes the shape tools honour it. Until that is merged the
   textures in this map are twice the size a Quake 3 mapper would give them.
-- MCP cannot set content flags, so `make_map.py` cannot make its pillars detail.
-  Whether the GUI's face attribute editor sets the profile's `detail` flag and q3map2
-  then treats the brush as detail was not checked.
+- `make_map.py` does not make its pillars detail. MCP can now set content flags with
+  `set_face_attributes` (`"content_flags": 134217728`, Quake 3's `detail` bit), but the
+  script was not changed and rerun. Whether q3map2 then treats the brush as detail was
+  not checked, from MCP or from the GUI's face attribute editor.
 - The brush-primitive export refuses the whole map when one texture has no size: the
   Aggressor variant with patches names a `NULL` texture that is not in OpenArena, and
   could not be exported that way. q3map2 takes a missing image as 64 by 64.
@@ -863,6 +874,8 @@ takes a screenshot each time with the diagnostics overlay showing the origin.
   textures came out four times larger than in its own maps. The shape tools, their
   regenerated previews and MCP's `add_shape` now give new faces the profile's scale;
   this also gives Quake 3 its 0.5.
+- **MCP could not set a face's flags or UV.** The new `set_face_attributes` sets both.
+  This map still relies on the tool materials' names for its sky and triggers.
 - **The profile was out of date.** The 2026.1 definitions offered worldspawn keys the
   game no longer reads (`fraglimit`, `timelimit`, `teams`, `ctf`), so a map's limits were
   lost; they lacked `func_bob` and `misc_portal`; and `trigger_push`'s sound was a file
@@ -895,8 +908,6 @@ takes a screenshot each time with the diagnostics overlay showing the origin.
   the data has OBJ models for all of them under `models/`.
 - The material browser was checked through MCP's `list_materials` (no `_norm` or `_spec`
   among 4151), not looked at in the window.
-- MCP has no tool to set a face's flags or UV, so a map built through MCP relies on the
-  tool materials' names, as this one does for its sky and triggers.
 
 ## Quake 2
 

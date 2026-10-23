@@ -234,7 +234,9 @@ impl Document {
         })
     }
 
-    pub(super) fn edit_faces_on(
+    /// Edits the given faces, whether or not they are the selection, as one undo step.
+    /// `edit` returns whether it changed the face. Returns how many faces changed.
+    pub(crate) fn edit_faces_on(
         &mut self,
         faces: &[FaceRef],
         mut edit: impl FnMut(&mut map_model::brush_face::BrushFace) -> bool,
@@ -256,7 +258,17 @@ impl Document {
             let mut touched = false;
             for index in indices {
                 if let Some(source) = brush.source_face_index(index) {
-                    if edit(&mut painted[source]) {
+                    let face = &mut painted[source];
+                    let uv_before = (face.uv_attributes, face.uv_coord_system);
+                    let pending_before = face.primitive_uv.as_deref().copied();
+                    if edit(face) {
+                        // As in `edit_faces`: an explicit UV edit replaces a pending
+                        // brush-primitive alignment.
+                        if uv_before != (face.uv_attributes, face.uv_coord_system)
+                            && pending_before == face.primitive_uv.as_deref().copied()
+                        {
+                            face.primitive_uv = None;
+                        }
                         touched = true;
                         changed += 1;
                     }

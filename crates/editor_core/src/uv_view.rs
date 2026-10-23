@@ -5,6 +5,8 @@
 //! number fields beside it. The operations themselves are in [`map_model::brush_face`];
 //! nothing here computes a mapping, it only decides which operation a control asks for.
 
+use std::collections::HashMap;
+
 use geometry_math::vec::{Vec2f, Vec3d};
 use map_model::uv_alignment::{UvAxis, UvFitMode, UvPolicy, UvSign};
 
@@ -604,37 +606,68 @@ impl Field {
     /// once a face line carries flags, `qbsp` no longer reads the `.wal`'s, so a sky face
     /// given a light value from zeroes would stop being sky.
     pub fn set(self, document: &mut Document, value: f64) {
-        let defaults: std::collections::HashMap<String, map_model::uv::SurfaceAttributes> =
-            document
-                .materials()
-                .materials()
-                .iter()
-                .filter_map(|m| Some((m.name.clone(), m.surface_defaults?)))
-                .collect();
-        document.edit_faces(|face| {
-            let offset = face.uv_attributes.offset;
-            let scale = face.uv_attributes.scale;
-            let mut surface = face
-                .surface_attributes
-                .or_else(|| defaults.get(face.material_name.as_ref()).copied())
-                .unwrap_or_default();
-            match self {
-                Field::OffsetX => face.uv_attributes.offset = Vec2f::new(value as f32, offset.y()),
-                Field::OffsetY => face.uv_attributes.offset = Vec2f::new(offset.x(), value as f32),
-                Field::ScaleX => face.uv_attributes.scale = Vec2f::new(value as f32, scale.y()),
-                Field::ScaleY => face.uv_attributes.scale = Vec2f::new(scale.x(), value as f32),
-                Field::Rotation => face.uv_attributes.rotation = value as f32,
-                Field::ContentFlags | Field::SurfaceFlags | Field::SurfaceValue => {
-                    match self {
-                        Field::ContentFlags => surface.content_flags = value as i32,
-                        Field::SurfaceFlags => surface.surface_flags = value as i32,
-                        _ => surface.value = value as i32,
-                    }
-                    face.surface_attributes = Some(surface);
-                }
-            }
-        });
+        let defaults = surface_defaults(document);
+        document.edit_faces(|face| self.apply(face, value, &defaults));
     }
+
+    /// Sets the field on one face. `defaults` are the surface attributes each material's
+    /// texture gives it, by material name.
+    fn apply(
+        self,
+        face: &mut map_model::brush_face::BrushFace,
+        value: f64,
+        defaults: &HashMap<String, map_model::uv::SurfaceAttributes>,
+    ) {
+        let offset = face.uv_attributes.offset;
+        let scale = face.uv_attributes.scale;
+        let mut surface = face
+            .surface_attributes
+            .or_else(|| defaults.get(face.material_name.as_ref()).copied())
+            .unwrap_or_default();
+        match self {
+            Field::OffsetX => face.uv_attributes.offset = Vec2f::new(value as f32, offset.y()),
+            Field::OffsetY => face.uv_attributes.offset = Vec2f::new(offset.x(), value as f32),
+            Field::ScaleX => face.uv_attributes.scale = Vec2f::new(value as f32, scale.y()),
+            Field::ScaleY => face.uv_attributes.scale = Vec2f::new(scale.x(), value as f32),
+            Field::Rotation => face.uv_attributes.rotation = value as f32,
+            Field::ContentFlags | Field::SurfaceFlags | Field::SurfaceValue => {
+                match self {
+                    Field::ContentFlags => surface.content_flags = value as i32,
+                    Field::SurfaceFlags => surface.surface_flags = value as i32,
+                    _ => surface.value = value as i32,
+                }
+                face.surface_attributes = Some(surface);
+            }
+        }
+    }
+}
+
+/// Sets several fields on the given faces, selected or not, as one undo step: what the
+/// panel's fields do one at a time, for MCP's `set_face_attributes`. Returns how many
+/// faces changed.
+pub fn set_on(
+    document: &mut Document,
+    faces: &[crate::document::FaceRef],
+    values: &[(Field, f64)],
+) -> usize {
+    let defaults = surface_defaults(document);
+    document.edit_faces_on(faces, |face| {
+        let before = (face.uv_attributes, face.surface_attributes);
+        for (field, value) in values {
+            field.apply(face, *value, &defaults);
+        }
+        before != (face.uv_attributes, face.surface_attributes)
+    })
+}
+
+/// The surface attributes each loaded material's texture gives a face, by name.
+fn surface_defaults(document: &Document) -> HashMap<String, map_model::uv::SurfaceAttributes> {
+    document
+        .materials()
+        .materials()
+        .iter()
+        .filter_map(|m| Some((m.name.clone(), m.surface_defaults?)))
+        .collect()
 }
 
 /// The fields in the order the panel lays them out, with their row labels: offset,
