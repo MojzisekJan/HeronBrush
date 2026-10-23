@@ -1006,7 +1006,7 @@ impl AnimationPage {
             ui.label(egui::RichText::new(heading).font(theme::body_bold()));
             let row = |ui: &mut egui::Ui, label: &str, add: &mut dyn FnMut(&mut egui::Ui)| {
                 ui.horizontal(|ui| {
-                    ui.add_sized([label_width, widgets::ROW_HEIGHT], egui::Label::new(label));
+                    widgets::column_label(ui, label, label_width);
                     add(ui);
                 });
             };
@@ -1081,7 +1081,7 @@ impl AnimationPage {
                 .and_then(|m| INTERPOLATIONS.iter().position(|i| *i == m))
                 .unwrap_or(usize::MAX);
             ui.horizontal(|ui| {
-                ui.add_sized([label_width, widgets::ROW_HEIGHT], egui::Label::new(""));
+                widgets::column_label(ui, "", label_width);
                 if widgets::dropdown(
                     ui,
                     "animation-interpolation",

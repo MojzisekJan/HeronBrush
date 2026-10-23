@@ -17,8 +17,8 @@ pub fn control(ui: &mut egui::Ui, stored: &mut String) {
             for command in COMMANDS {
                 ui.push_id(command.id,|ui|{
                     ui.horizontal(|ui|{
-                        ui.add_sized([155.0,24.0],egui::Label::new(tr(command.label)));
-                        ui.add_sized([60.0,24.0],egui::Label::new(tr(if command.global{"Global"}else{"Map"})));
+                        crate::widgets::column_label(ui,tr(command.label),155.0);
+                        crate::widgets::column_label(ui,tr(if command.global{"Global"}else{"Map"}),60.0);
                         let mut text=draft.get(command.id).cloned().unwrap_or_else(||custom_shortcuts::default_chord(command,preset).into());
                         if ui.add(egui::TextEdit::singleline(&mut text).desired_width(160.0).margin(crate::widgets::body_entry_margin(ui, 6, 6)).min_size(egui::vec2(0.0, crate::widgets::ROW_HEIGHT))).changed(){draft.insert(command.id.into(),text.trim().into());}
                         if ui.add_enabled(draft.contains_key(command.id),egui::Button::new(tr("Reset"))).clicked(){draft.remove(command.id);}

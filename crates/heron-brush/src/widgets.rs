@@ -693,6 +693,29 @@ pub fn row<R>(
     .inner
 }
 
+/// A label `width` wide and as tall as the controls, its text at the left end and on the
+/// row's middle, for a column of labels beside a column of controls. A text too long for
+/// the column ends in an ellipsis and shows in full on hover.
+pub fn column_label(ui: &mut egui::Ui, text: &str, width: f32) -> egui::Response {
+    let (rect, response) =
+        ui.allocate_exact_size(egui::vec2(width, row_height(ui)), Sense::hover());
+    let colour = ui.visuals().text_color();
+    let (galley, cut) = truncated(ui, text, theme::body(), colour, width);
+    ui.painter().galley(
+        egui::pos2(
+            rect.left(),
+            crate::theme::galley_top(ui.ctx(), &galley, rect.center().y),
+        ),
+        galley,
+        colour,
+    );
+    if cut {
+        response.on_hover_text(text)
+    } else {
+        response
+    }
+}
+
 /// One line of text cut short with an ellipsis where it would pass `width`, and whether
 /// it was cut.
 pub fn truncated(
