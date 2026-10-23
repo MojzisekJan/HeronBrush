@@ -71,6 +71,10 @@ pub struct GameConfig {
     /// Heron's built-in classes beside the profile's. Unset leaves the choice to the
     /// editor.
     pub builtin_entities: Option<bool>,
+    /// `heron.searchPathAlternatives`, a key of Heron's own: folders a game that shares
+    /// the profile keeps its base data in instead of `filesystem.searchpath`, such as
+    /// OpenArena's `baseoa` for Quake 3's `baseq3`.
+    pub search_path_alternatives: Vec<String>,
 }
 
 impl GameConfig {
@@ -174,6 +178,17 @@ pub fn parse(text: &str, path: &str) -> Result<GameConfig, GameConfigError> {
     config.builtin_entities = root
         .pointer("/heron/builtinEntities")
         .and_then(Value::as_bool);
+    config.search_path_alternatives = root
+        .pointer("/heron/searchPathAlternatives")
+        .and_then(Value::as_array)
+        .map(|names| {
+            names
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
 
     config.surface_flags = parse_flag_names(root.pointer("/faceattribs/surfaceflags"));
     config.content_flags = parse_flag_names(root.pointer("/faceattribs/contentflags"));
@@ -448,6 +463,18 @@ mod tests {
         )
         .expect("the config parses");
         assert_eq!(cfg.builtin_entities, Some(true));
+        assert!(cfg.search_path_alternatives.is_empty());
+    }
+
+    #[test]
+    fn reads_the_search_path_alternatives() {
+        let cfg = parse(
+            r#"{ "version": 9, "name": "Quake 3",
+                 "heron": { "searchPathAlternatives": [ "baseoa", 3 ] } }"#,
+            "GameConfig.cfg",
+        )
+        .expect("the config parses");
+        assert_eq!(cfg.search_path_alternatives, vec!["baseoa"]);
     }
 
     #[test]

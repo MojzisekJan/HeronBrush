@@ -1107,6 +1107,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Değeri düğüm adını belirleyen varlık özelliği, örneğin targetname"),
     ("The export on save failed: {}", "Kaydederken dışa aktarma başarısız: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Bu motorun proje kök klasörü; doku adının dosya yoluna dönüştürülmesini sağlar. Boş bırakılırsa bölümün yazıldığı konumdan üst klasörlere bakılarak bulunur"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "Oyun klasöründe {} yok, bu yüzden yerine {} kullanılıyor. Modlar alanında adı geçen klasörler bunun üzerine bağlanır."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "Izgara arazi için fazla sık. 1 veya daha büyük bir ızgara kullanın."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "Bölüm JSON, modeller .glb olarak gökyüzüyle birlikte ve bunu çarpıştırıcılar, animasyon ve tetikleyicilerle kuran bir Cocos Creator bileşeniyle. Cocos aynı koordinat sistemini kullandığı için hiçbir şey dönüştürülmez."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "GLTFLoader için düzenlenmiş, .glb örgüleriyle birlikte JSON biçiminde bölüm."),

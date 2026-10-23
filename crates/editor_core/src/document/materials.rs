@@ -75,6 +75,21 @@ impl Document {
         let path = PathBuf::from(&key.1);
         // Without a game path the profile's own assets folder is still mounted.
         let game = crate::games::current();
+        // Said in the console pane only: the MCP server mounts too, and its standard
+        // output is the protocol.
+        if let Some(base) = game
+            .as_ref()
+            .filter(|_| !path.as_os_str().is_empty())
+            .and_then(|game| game.base_folder(&path))
+            .filter(crate::games::BaseFolder::substituted)
+        {
+            crate::console::record_said(format!(
+                "game assets: {} has no {}, so {} is mounted in its place",
+                path.display(),
+                base.configured,
+                base.mounted
+            ));
+        }
         let roots = game
             .as_ref()
             .map(|game| game.asset_roots(&path, &key.2))

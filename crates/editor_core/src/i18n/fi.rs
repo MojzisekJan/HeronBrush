@@ -1107,6 +1107,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Entiteetin ominaisuus, jonka arvo nimeää solmun, esimerkiksi targetname"),
     ("The export on save failed: {}", "Vienti tallennettaessa epäonnistui: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Kansio, josta tämän pelimoottorin projekti alkaa ja jonka avulla tekstuurin nimestä tulee tiedosto. Tyhjänä se etsitään kulkemalla ylöspäin kentän kirjoituskohteesta"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "Pelikansiossa ei ole kansiota {}, joten sen tilalla käytetään kansiota {}. Modit-kohdassa nimetyt kansiot liitetään sen päälle."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "Ruudukko on liian tiheä maastolle. Käytä ruudukkoa 1 tai enemmän."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "Kenttä JSON-muodossa .glb-mallien ja taivaan kanssa sekä Cocos Creator -komponentti, joka rakentaa sen törmäyskappaleineen, animaatioineen ja laukaisimineen. Cocos käyttää samaa koordinaatistoa, joten mitään ei muunneta."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "Kenttä JSON-muodossa, verkot .glb-muodossa, GLTFLoaderia varten järjestettynä."),

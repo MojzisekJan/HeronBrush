@@ -1107,6 +1107,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "targetname 등 노드 이름으로 사용할 엔티티 속성"),
     ("The export on save failed: {}", "저장 시 내보내기 실패: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "텍스처 이름을 파일 경로로 변환할 때 기준이 되는 엔진 프로젝트의 루트 폴더입니다. 비워 두면 레벨 출력 위치부터 상위 폴더를 탐색합니다"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "게임 폴더에 {}이(가) 없어 대신 {}을(를) 사용합니다. 모드에 지정한 폴더는 그 위에 마운트됩니다."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "그리드가 지형에 비해 너무 촘촘합니다. 1 이상의 그리드를 사용하세요."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "레벨을 JSON으로, 모델을 .glb로 하늘과 함께 내보내고, 콜라이더·애니메이션·트리거까지 포함해 이를 구성하는 Cocos Creator 컴포넌트를 함께 생성합니다. Cocos는 같은 좌표계를 쓰므로 변환하지 않습니다."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "GLTFLoader용 JSON 레벨과 .glb 메시를 생성합니다."),

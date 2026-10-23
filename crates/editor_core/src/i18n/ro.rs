@@ -1110,6 +1110,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Proprietatea entității a cărei valoare denumește nodul, de exemplu targetname"),
     ("The export on save failed: {}", "Exportul la salvare a eșuat: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Dosarul în care începe proiectul acestui motor, care transformă numele unei texturi într-un fișier. Lăsat gol, este găsit urcând din locul în care se scrie nivelul"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "Dosarul jocului nu are {}, așa că în locul lui se folosește {}. Dosarele numite la Moduri se montează peste el."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "Grila este prea fină pentru teren. Folosiți o grilă de 1 sau mai mare."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "Nivelul ca JSON cu modele .glb și cerul și o componentă Cocos Creator care îl construiește cu collidere, animație și declanșatoare. Cocos folosește același sistem de coordonate, deci nu se convertește nimic."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "Nivelul ca JSON cu mesh-urile ca .glb, organizat pentru GLTFLoader."),

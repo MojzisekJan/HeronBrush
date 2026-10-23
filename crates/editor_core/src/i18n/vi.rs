@@ -1107,6 +1107,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Thuộc tính thực thể có giá trị dùng làm tên nút, ví dụ targetname"),
     ("The export on save failed: {}", "Xuất khi lưu thất bại: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Thư mục gốc của dự án engine này, dùng để chuyển tên texture thành tệp. Nếu để trống, nó được tìm bằng cách đi ngược lên từ nơi ghi màn chơi"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "Thư mục trò chơi không có {}, nên {} được dùng thay thế. Các thư mục ghi trong Bản mod được gắn chồng lên trên."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "Lưới quá mịn cho địa hình. Hãy dùng lưới từ 1 trở lên."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "Màn chơi dạng JSON với các mô hình .glb và bầu trời, kèm một component Cocos Creator dựng nó cùng collider, hoạt ảnh và trigger. Cocos dùng cùng hệ trục này nên không cần chuyển đổi gì."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "Màn chơi dạng JSON với các lưới dạng .glb, sắp xếp cho GLTFLoader."),

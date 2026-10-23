@@ -1110,6 +1110,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Vlastnost entity určující název uzlu, například targetname"),
     ("The export on save failed: {}", "Export při uložení selhal: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Kořenová složka projektu enginu, podle níž se hledají soubory textur. Pokud je prázdná, hledá se v nadřazených složkách místa zápisu úrovně."),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "Složka hry nemá {}, proto se místo ní používá {}. Složky uvedené v poli Mody se připojí nad ni."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "Mřížka je na terén příliš jemná. Použijte mřížku 1 nebo větší."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "Úroveň jako JSON s modely .glb a oblohou a komponenta pro Cocos Creator, která ji sestaví i s kolidery, animacemi a spouštěči. Cocos používá stejnou souřadnicovou soustavu, takže se nic nepřevádí."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "Úroveň jako JSON a meshe jako .glb, připravené pro GLTFLoader."),

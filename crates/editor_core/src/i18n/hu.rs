@@ -1107,6 +1107,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Az entitástulajdonság, amelynek értéke a csomópont neve lesz, például targetname"),
     ("The export on save failed: {}", "A mentéskori exportálás sikertelen: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "A mappa, ahol a motor projektje kezdődik; ez alapján lesz a textúranévből fájl. Ha üresen marad, a pálya kiírási helyétől felfelé haladva keresi meg"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "A játék mappájában nincs {}, ezért a helyén a(z) {} mappát használja. A Modok mezőben megadott mappák fölé kerülnek."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "A rács túl sűrű a terephez. Használj legalább 1-es rácsot."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "A pálya JSON formátumban .glb modellekkel és az égbolttal, valamint egy Cocos Creator komponens, amely felépíti ütközőkkel, animációval és eseményindítókkal. A Cocos ugyanezt a koordináta-rendszert használja, így nincs átalakítás."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "A pálya JSON formátumban, a mesh-ek .glb-ként, a GLTFLoader számára elrendezve."),

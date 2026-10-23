@@ -28,6 +28,9 @@ pub struct Game {
     pub icon: Option<PathBuf>,
     /// Base-game directory below the installation root.
     pub search_path: Option<String>,
+    /// Folders to mount in place of `search_path` when the game path has none of that
+    /// name: `heron.searchPathAlternatives`, OpenArena's `baseoa` for Quake 3.
+    pub search_path_alternatives: Vec<String>,
     /// The map formats it accepts, in the order the config lists them; the first is what
     /// a new map is written in, and each may name a map to start from.
     pub formats: Vec<Format>,
@@ -157,6 +160,51 @@ pub struct Format {
     pub initial_map: Option<PathBuf>,
 }
 
+/// The base-game folder a game path is mounted with; see [`Game::base_folder`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BaseFolder {
+    /// The profile's `filesystem.searchpath`.
+    pub configured: String,
+    /// The folder that is mounted: the configured one, or what stands in for it.
+    pub mounted: String,
+}
+
+impl BaseFolder {
+    /// Whether another folder stands in for the configured one.
+    pub fn substituted(&self) -> bool {
+        self.configured != self.mounted
+    }
+}
+
+/// The name of the one folder directly in `game_path` that holds game packages, if
+/// exactly one does.
+fn only_package_folder(game_path: &Path) -> Option<String> {
+    const PACKAGES: [&str; 4] = ["pak", "pk3", "pk4", "zip"];
+    let holds_packages = |folder: &Path| {
+        crate::files::read_dir(folder).is_ok_and(|entries| {
+            entries.iter().any(|entry| {
+                entry
+                    .extension()
+                    .and_then(|extension| extension.to_str())
+                    .is_some_and(|extension| {
+                        PACKAGES.contains(&extension.to_ascii_lowercase().as_str())
+                    })
+                    && crate::files::is_file(entry)
+            })
+        })
+    };
+    let entries = crate::files::read_dir(game_path).ok()?;
+    let mut found = entries
+        .iter()
+        .filter(|entry| crate::files::is_dir(entry) && holds_packages(entry));
+    let only = found.next()?;
+    if found.next().is_some() {
+        return None;
+    }
+    only.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+}
+
 impl Game {
     /// User-facing name for the bundled general-purpose profile.
     pub fn display_name(&self) -> &str {
@@ -183,14 +231,8 @@ impl Game {
         if game_path.as_os_str().is_empty() {
             return roots;
         }
-        if let Some(base) = self
-            .search_path
-            .as_deref()
-            .filter(|base| !base.is_empty() && *base != ".")
-        {
-            if !game_path.ends_with(base) {
-                roots.push(game_path.join(base));
-            }
+        if let Some(base) = self.base_folder(game_path) {
+            roots.push(game_path.join(base.mounted));
         }
         roots.push(game_path.to_path_buf());
         for name in mods
@@ -203,6 +245,52 @@ impl Game {
             roots.push(path);
         }
         roots
+    }
+
+    /// The base-game folder [`Self::asset_roots`] mounts under `game_path`: the profile's
+    /// search path, unless the game path has no such folder and does have a stand-in.
+    ///
+    /// OpenArena is played with the Quake 3 profile but keeps its data in `baseoa`, not
+    /// `baseq3`. The stand-ins are the profile's `heron.searchPathAlternatives`, and then
+    /// the one folder in the game path that holds packages (`.pk3`, `.pak` and the like)
+    /// when exactly one does. Without either the missing folder is mounted as before,
+    /// and the mount warns that it is not there.
+    ///
+    /// `None` when the profile has no search path of its own (`.`) or the game path is
+    /// already that folder or one of its stand-ins.
+    pub fn base_folder(&self, game_path: &Path) -> Option<BaseFolder> {
+        let base = self
+            .search_path
+            .as_deref()
+            .filter(|base| !base.is_empty() && *base != ".")?;
+        if game_path.ends_with(base)
+            || self
+                .search_path_alternatives
+                .iter()
+                .any(|alternative| game_path.ends_with(alternative))
+        {
+            return None;
+        }
+        let configured = BaseFolder {
+            configured: base.to_string(),
+            mounted: base.to_string(),
+        };
+        if crate::files::is_dir(&game_path.join(base)) || !crate::files::is_dir(game_path) {
+            return Some(configured);
+        }
+        let stand_in = self
+            .search_path_alternatives
+            .iter()
+            .find(|alternative| crate::files::is_dir(&game_path.join(alternative)))
+            .cloned()
+            .or_else(|| only_package_folder(game_path));
+        Some(match stand_in {
+            Some(mounted) => BaseFolder {
+                configured: base.to_string(),
+                mounted,
+            },
+            None => configured,
+        })
     }
 
     /// The FGD to load: the first the config names that is actually there.
@@ -310,6 +398,7 @@ pub fn read(config: &Path) -> Result<Game, scene_export::gameconfig::GameConfigE
             read.name.clone()
         },
         search_path: read.search_path.clone(),
+        search_path_alternatives: read.search_path_alternatives.clone(),
         icon: read.icon.as_ref().map(|name| directory.join(name)),
         formats: read_formats(config),
         definitions: read
@@ -597,6 +686,63 @@ mod tests {
             vec![install.join("id1")]
         );
         assert!(quake.asset_roots(Path::new(""), "mod_a").is_empty());
+    }
+
+    /// OpenArena under the Quake 3 profile: there is no `baseq3`, so `baseoa` is mounted
+    /// in its place, and naming it in Mods as well does not mount it twice.
+    #[test]
+    fn a_missing_search_path_gives_way_to_a_stand_in() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../gamedata");
+        let quake3 = read(&root.join("Quake3/GameConfig.cfg")).expect("it reads");
+        assert_eq!(quake3.search_path_alternatives, vec!["baseoa"]);
+        let install = std::env::temp_dir().join(format!("heron-openarena-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&install);
+        std::fs::create_dir_all(install.join("baseoa")).expect("baseoa");
+        std::fs::write(install.join("baseoa/pak0.pk3"), b"").expect("a package");
+
+        let base = quake3.base_folder(&install).expect("a base folder");
+        assert!(base.substituted());
+        assert_eq!(
+            (base.configured.as_str(), base.mounted.as_str()),
+            ("baseq3", "baseoa")
+        );
+        let roots = vec![install.join("baseoa"), install.clone()];
+        assert_eq!(quake3.asset_roots(&install, ""), roots);
+        assert_eq!(
+            quake3.asset_roots(&install, "baseoa"),
+            vec![install.clone(), install.join("baseoa")]
+        );
+        assert_eq!(quake3.base_folder(&install.join("baseoa")), None);
+
+        // Once there is a baseq3 it is what is mounted.
+        std::fs::create_dir_all(install.join("baseq3")).expect("baseq3");
+        assert!(!quake3.base_folder(&install).expect("a base").substituted());
+        let _ = std::fs::remove_dir_all(&install);
+    }
+
+    /// A profile with no stand-in of its own takes the one folder that holds packages,
+    /// and none when there are several to choose from.
+    #[test]
+    fn the_only_folder_with_packages_stands_in_for_a_missing_search_path() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../gamedata");
+        let quake = read(&root.join("Quake/GameConfig.cfg")).expect("it reads");
+        let install = std::env::temp_dir().join(format!("heron-lone-pak-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&install);
+        std::fs::create_dir_all(install.join("docs")).expect("docs");
+        std::fs::write(install.join("docs/readme.txt"), b"").expect("a text");
+        std::fs::create_dir_all(install.join("lq1")).expect("lq1");
+        std::fs::write(install.join("lq1/PAK0.PAK"), b"").expect("a package");
+        let base = quake.base_folder(&install).expect("a base folder");
+        assert_eq!(
+            (base.configured.as_str(), base.mounted.as_str()),
+            ("id1", "lq1")
+        );
+
+        std::fs::create_dir_all(install.join("other")).expect("other");
+        std::fs::write(install.join("other/pak0.pak"), b"").expect("a package");
+        let base = quake.base_folder(&install).expect("a base folder");
+        assert!(!base.substituted(), "two candidates, so neither is guessed");
+        let _ = std::fs::remove_dir_all(&install);
     }
 
     #[test]

@@ -1107,6 +1107,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Esybės savybė, kurios reikšmė suteikia mazgui pavadinimą, pvz., targetname"),
     ("The export on save failed: {}", "Eksportuoti išsaugant nepavyko: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Aplankas, kuriame prasideda šio variklio projektas; pagal jį tekstūros pavadinimas paverčiamas failu. Jei paliksite tuščią, jis bus surastas einant aukštyn nuo ten, kur įrašomas lygis"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "Žaidimo aplanke nėra {}, todėl vietoj jo naudojamas {}. Lauke Modifikacijos nurodyti aplankai prijungiami virš jo."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "Tinklelis per smulkus reljefui. Naudokite 1 ar didesnį tinklelį."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "Lygis kaip JSON su .glb modeliais ir dangumi, ir Cocos Creator komponentas, kuris jį sukuria su koliziniais kūnais, animacija ir paleidikliais. Cocos naudoja tą pačią koordinačių sistemą, todėl niekas nekonvertuojama."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "Lygis kaip JSON, tinklai – kaip .glb, išdėstyta GLTFLoader."),

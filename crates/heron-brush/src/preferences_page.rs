@@ -1046,7 +1046,7 @@ fn notes(ui: &mut egui::Ui, name: &str) {
             ui.add_space(6.0);
         }
         "game_mods" => {
-            let paths = GAMES.with(|games| {
+            let (paths, base) = GAMES.with(|games| {
                 let wanted = preferences::pref(|p| p.game.clone());
                 games
                     .borrow()
@@ -1054,7 +1054,12 @@ fn notes(ui: &mut egui::Ui, name: &str) {
                     .find(|game| game.name == wanted)
                     .map(|game| {
                         preferences::pref(|p| {
-                            game.asset_roots(std::path::Path::new(&p.game_path), &p.game_mods)
+                            let game_path = std::path::Path::new(&p.game_path);
+                            (
+                                game.asset_roots(game_path, &p.game_mods),
+                                game.base_folder(game_path)
+                                    .filter(|base| !p.game_path.is_empty() && base.substituted()),
+                            )
                         })
                     })
                     .unwrap_or_default()
@@ -1063,6 +1068,17 @@ fn notes(ui: &mut egui::Ui, name: &str) {
             note(ui, tr("Project paths"));
             for (i, path) in paths.iter().rev().enumerate() {
                 note(ui, &format!("{}. {}", i + 1, path.display()));
+            }
+            // OpenArena under the Quake 3 profile: baseoa is mounted for the missing
+            // baseq3, and saying so here is what tells the user where it came from.
+            if let Some(base) = base {
+                note(
+                    ui,
+                    &fill(
+                        "The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.",
+                        &[&base.configured, &base.mounted],
+                    ),
+                );
             }
             ui.add_space(6.0);
         }
@@ -1648,6 +1664,7 @@ mod tests {
             name: "Example".into(),
             icon: None,
             search_path: None,
+            search_path_alternatives: Vec::new(),
             directory: std::env::temp_dir(),
             formats: Vec::new(),
             definitions: Vec::new(),

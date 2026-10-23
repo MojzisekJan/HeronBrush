@@ -1107,6 +1107,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "The entity property whose value names the node, such as targetname"),
     ("The export on save failed: {}", "保存時のエクスポートに失敗しました: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "ゲームフォルダーに {} がないため、代わりに {} を使います。MOD に指定したフォルダーはその上にマウントされます。"),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "グリッドが細かすぎて地形に向きません。1 以上のグリッドを使ってください。"),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "レベルを JSON、モデルを .glb として空とともに出力し、コライダー・アニメーション・トリガーを含めて組み立てる Cocos Creator コンポーネントを付けます。Cocos は同じ座標系なので変換は行いません。"),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "The level as JSON with the meshes as .glb, laid out for GLTFLoader."),

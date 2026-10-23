@@ -1110,6 +1110,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Властивість сутності, значення якої називає вузол, наприклад targetname"),
     ("The export on save failed: {}", "Не вдалося експортувати під час збереження: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Коренева папка проєкту рушія для пошуку файлів текстур за назвою. Якщо порожня, пошук іде в батьківських папках від місця запису рівня."),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "У теці гри немає {}, тому замість неї використовується {}. Теки, зазначені в полі «Моди», підключаються поверх."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "Сітка надто дрібна для рельєфу. Використайте сітку 1 або більше."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "Рівень як JSON з моделями .glb і небом і компонент Cocos Creator, що будує його з колайдерами, анімацією й тригерами. Cocos використовує ту саму систему координат, тож нічого не перетворюється."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "Рівень як JSON з мешами як .glb, розкладений під GLTFLoader."),

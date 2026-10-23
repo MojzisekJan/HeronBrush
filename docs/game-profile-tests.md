@@ -647,9 +647,8 @@ NetRadiant-custom OpenArena gamepack and the stock maps' sources.
 In the welcome window the profile is set to Quake 3. In Preferences, Games, "Where it is"
 is the OpenArena folder, `~/.local/opt/openarena/openarena-0.8.8`, and Mods is `baseoa`:
 the profile's search path is Quake 3's `baseq3`, which OpenArena does not have, and the
-Mods field is how its own folder is named, as in TrenchBroom. The project paths then
-list `baseoa`, the install and the missing `baseq3`, and Heron mounts the nine pk3s in
-`baseoa`. The material browser lists OpenArena's textures and shaders under the names a
+Mods field is how its own folder is named, as in TrenchBroom. Heron mounts the nine pk3s
+in `baseoa`. The test was run that way; Mods can now be left empty (see below). The material browser lists OpenArena's textures and shaders under the names a
 map uses (`skies/q3dm0`, `common/caulk`), and the profile loads
 `gamedata/Quake3/entities.ent`.
 
@@ -709,6 +708,19 @@ ran in a nested Xephyr display with Mesa's llvmpipe at 30 frames a second.
   twice, and `gridsize` and `_blocksize` were integers with three numbers as their
   default; the status bar showed it in red. The duplicates are gone and the two keys are
   strings.
+- **OpenArena needed `baseoa` in Mods and still warned about `baseq3`.** The profile's
+  search path is `baseq3`, so every OpenArena setup listed a missing folder among the
+  project paths and warned that it was not there. When the game path has no folder of
+  the profile's search path, Heron now mounts a stand-in in its place: one the profile
+  names in `heron.searchPathAlternatives` (the Quake 3 profile names `baseoa`), or else
+  the only folder in the game path that holds `.pak`, `.pk3`, `.pk4` or `.zip`
+  packages. Mods can stay empty. The Games page says under the project paths that
+  `baseoa` is used for the missing `baseq3`, and the console says so when the game's
+  files are mounted. A mod named in Mods is still mounted over it, and a game path that
+  does have `baseq3` mounts that as before. This was chosen over only a hint: the
+  stand-in is what the user would type into Mods anyway, and the note says where it
+  came from. With two or more package folders and no known stand-in, Heron does not
+  guess and the missing folder warns as before.
 - **MCP could not set content flags or a face's UV.** The new `set_face_attributes`
   sets the UV offset, scale and rotation and the surface flags, content flags and
   surface value.
@@ -738,8 +750,6 @@ ran in a nested Xephyr display with Mesa's llvmpipe at 30 frames a second.
 - The brush-primitive export refuses the whole map when one texture has no size: the
   Aggressor variant with patches names a `NULL` texture that is not in OpenArena, and
   could not be exported that way. q3map2 takes a missing image as 64 by 64.
-- The profile's search path is `baseq3`, so every OpenArena setup lists a missing folder
-  among the project paths and warns that it is not there.
 - `gamedata/Quake3/entities.ent` is Quake 3's: OpenArena's extra classes (nail gun, chain
   gun, prox launcher, the Team Arena items, domination points) are not in it.
   NetRadiant-custom's gamepack has them in `oa.game/baseoa/entities.ent`.

@@ -1107,6 +1107,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Свойството на същността, чиято стойност дава името на възела, например targetname"),
     ("The export on save failed: {}", "Експортът при запазване е неуспешен: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Папката, от която започва проектът на този енджин — по нея името на текстура се превръща във файл. Ако е празно, се намира чрез търсене нагоре от мястото, където се записва нивото"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "Папката на играта няма {}, затова на нейно място се използва {}. Папките, посочени в Модификации, се зареждат върху нея."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "Мрежата е твърде ситна за терен. Използвайте мрежа 1 или повече."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "Нивото като JSON с модели .glb и небето и компонент за Cocos Creator, който го изгражда с колайдери, анимация и тригери. Cocos използва същата координатна система, така че нищо не се преобразува."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "Нивото като JSON с мешовете като .glb, подредено за GLTFLoader."),

@@ -1107,6 +1107,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Properti entitas yang nilainya menjadi nama simpul, misalnya targetname"),
     ("The export on save failed: {}", "Ekspor saat menyimpan gagal: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Folder akar proyek engine ini, yang mengubah nama tekstur menjadi berkas. Jika kosong, dicari ke atas dari lokasi penulisan level"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "Folder game tidak memiliki {}, jadi {} dipakai sebagai gantinya. Folder yang disebut di Mod dipasang di atasnya."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "Kisi terlalu rapat untuk medan. Gunakan kisi 1 atau lebih."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "Level sebagai JSON dengan model .glb dan langit, serta komponen Cocos Creator yang membangunnya lengkap dengan collider, animasi, dan trigger. Cocos memakai sistem koordinat yang sama, jadi tidak ada yang dikonversi."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "Level sebagai JSON dengan mesh .glb, disusun untuk GLTFLoader."),

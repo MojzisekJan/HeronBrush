@@ -1107,6 +1107,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Svojstvo entiteta čija vrijednost imenuje čvor, primjerice targetname"),
     ("The export on save failed: {}", "Izvoz pri spremanju nije uspio: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Direktorij u kojem počinje projekt ovog pogona, prema kojem se naziv teksture pretvara u datoteku. Ako je prazan, traži se kretanjem prema gore od mjesta na koje se razina zapisuje"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "Mapa igre nema {}, pa se umjesto nje koristi {}. Mape navedene u polju Modifikacije učitavaju se iznad nje."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "Mreža je presitna za teren. Koristite mrežu od 1 ili više."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "Razina kao JSON s .glb modelima i nebom i komponenta za Cocos Creator koja je gradi s colliderima, animacijom i okidačima. Cocos koristi isti koordinatni sustav, pa se ništa ne pretvara."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "Razina kao JSON s mrežama kao .glb, pripremljena za GLTFLoader."),

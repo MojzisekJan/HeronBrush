@@ -421,7 +421,7 @@ Datoteka → Nastavitve (`Ctrl+,`) odpre nastavitve. Spremembe se uveljavijo tak
 
 ## Strani
 - **Pregled**: skupne nastavitve na enem mestu: Videz (Prekrivnost plošč (%), Barvna shema, Postavitev, Jezik), Urejanje, Pogled in Priročnik.
-- **Igre**: igra, kje so njene datoteke, in vaše ime za sodelovanje. Igra določa, katero obliko zemljevida zapisati, katere definicije entitet naložiti in kje so njeni materiali. Konfiguracije iger se berejo iz mape `games` v mapi s konfiguracijo (`~/.config/heron-brush/games` v Linuxu in macOS, `%LOCALAPPDATA%\heron-brush\games` v sistemu Windows) in iz mape `games` poleg aplikacije, kamor paketi shranijo priloženo konfiguracijo.
+- **Igre**: igra, kje so njene datoteke, in vaše ime za sodelovanje. Igra določa, katero obliko zemljevida zapisati, katere definicije entitet naložiti in kje so njeni materiali. Konfiguracije iger se berejo iz mape `games` v mapi s konfiguracijo (`~/.config/heron-brush/games` v Linuxu in macOS, `%LOCALAPPDATA%\heron-brush\games` v sistemu Windows) in iz mape `games` poleg aplikacije, kamor paketi shranijo priloženo konfiguracijo. Če v mapi igre ni mape, ki jo navaja konfiguracija igre, na primer `baseq3` za Quake 3 v namestitvi OpenArene, Heron uporabi nadomestek, ki ga konfiguracija pozna (`baseoa`), sicer edino mapo tam s paketi `.pak` ali `.pk3`, in to sporoči pod **Modifikacije**. Mape, navedene v **Modifikacije**, se še vedno priklopijo nad njo.
 - **Pogled**: Postavitev, Barvna shema, Jezik, osi sveta, prekrivnost mreže, velikost celice za preverjanje puščanj in zaklepi preslikave.
 - **Barve**: barve pogledov, geometrije in ročic.
 - **Miška**: hitrosti in obračanje smeri razgledovanja, pomikanja in premikanja, hitrost letenja, vidno polje, Poveži 2D-poglede in velikosti ročic.

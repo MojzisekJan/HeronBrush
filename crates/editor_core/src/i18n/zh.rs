@@ -1111,6 +1111,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "其值用作节点名称的实体属性，例如 targetname"),
     ("The export on save failed: {}", "保存时导出失败：{}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "引擎项目的根目录，用于将纹理名称解析为文件。留空时，从关卡写入位置向上查找。"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "游戏文件夹中没有 {}，因此改用 {}。在模组中填写的文件夹会挂载在其上。"),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "网格对地形来说太细。请使用 1 或更大的网格。"),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "关卡为 JSON，模型为 .glb，并包含天空，附带一个 Cocos Creator 组件，用碰撞体、动画和触发器构建关卡。Cocos 使用相同的坐标系，因此无需转换。"),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "关卡为 JSON，网格为 .glb，按 GLTFLoader 的方式组织。"),

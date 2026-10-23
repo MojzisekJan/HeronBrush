@@ -503,7 +503,7 @@ Soubor → Nastavení (`Ctrl+,`) otevře nastavení. Změny platí okamžitě a 
 
 ## Stránky
 - **Přehled**: běžná nastavení pohromadě: Vzhled (Krytí panelů (%), Barevné schéma, Rozvržení, Jazyk), Úpravy, Zobrazení a Příručka.
-- **Hry**: hra, kde jsou její soubory a vaše jméno pro spolupráci. Hra určuje, jaký formát mapy zapisovat, které definice entit načíst a kde jsou její materiály. Konfigurace her se čtou ze složky `games` ve složce konfigurace (`~/.config/heron-brush/games` na Linuxu a macOS, `%LOCALAPPDATA%\heron-brush\games` na Windows) a ze složky `games` vedle aplikace, kam balíčky ukládají přibalenou konfiguraci.
+- **Hry**: hra, kde jsou její soubory a vaše jméno pro spolupráci. Hra určuje, jaký formát mapy zapisovat, které definice entit načíst a kde jsou její materiály. Konfigurace her se čtou ze složky `games` ve složce konfigurace (`~/.config/heron-brush/games` na Linuxu a macOS, `%LOCALAPPDATA%\heron-brush\games` na Windows) a ze složky `games` vedle aplikace, kam balíčky ukládají přibalenou konfiguraci. Když ve složce hry chybí složka, kterou konfigurace hry uvádí, třeba `baseq3` Quake 3 v instalaci OpenArena, Heron použije náhradu, kterou konfigurace zná (`baseoa`), jinak jedinou složku s balíčky `.pak` nebo `.pk3`, a oznámí to pod **Mody**. Složky uvedené v **Mody** se i tak připojí nad ni.
 - **Zobrazení**: Rozvržení, Barevné schéma, Jazyk, osy světa, krytí mřížky, velikost buňky kontroly netěsností a zámky mapování.
 - **Barvy**: barvy pohledů, geometrie a úchytů.
 - **Myš**: rychlosti a převrácení rozhlížení, posunu a pohybu, rychlost letu, zorný úhel, Provázat 2D pohledy a velikosti úchytů.

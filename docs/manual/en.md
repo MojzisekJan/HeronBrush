@@ -521,7 +521,7 @@ File → Preferences (`Ctrl+,`) opens the settings. Changes apply immediately an
 
 ## The pages
 - **Overview**: the common settings together: Appearance (Panel opacity (%), Colour scheme, Layout, Language), Editing, View and Manual.
-- **Games**: the game, where its files are, and your collaboration name. A game says which map format to write, which entity definitions to load and where its materials are. Game configurations are read from the `games` folder in the configuration folder (`~/.config/heron-brush/games` on Linux and macOS, `%LOCALAPPDATA%\heron-brush\games` on Windows) and from the `games` folder beside the application, where packages put the bundled one.
+- **Games**: the game, where its files are, and your collaboration name. A game says which map format to write, which entity definitions to load and where its materials are. Game configurations are read from the `games` folder in the configuration folder (`~/.config/heron-brush/games` on Linux and macOS, `%LOCALAPPDATA%\heron-brush\games` on Windows) and from the `games` folder beside the application, where packages put the bundled one. When the game folder lacks the folder the game configuration names, such as Quake 3's `baseq3` in an OpenArena install, Heron uses a stand-in the configuration knows (`baseoa`), or else the only folder there that holds `.pak` or `.pk3` packages, and says so under **Mods**. Folders named in **Mods** are still mounted over it.
 - **View**: Layout, Colour scheme, Language, world axes, grid opacity, leak-check cell size and the mapping locks.
 - **Colours**: the colours of the views, geometry and handles.
 - **Mouse**: look, pan and move speeds and inversions, fly speed, field of view, Link 2D views and handle sizes.

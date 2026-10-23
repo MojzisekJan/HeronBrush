@@ -421,7 +421,7 @@ Tệp → Tùy chọn (`Ctrl+,`) mở phần cài đặt. Thay đổi có hiệu
 
 ## Các trang
 - **Tổng quan**: các cài đặt thông dụng gom lại: Giao diện (Độ đục bảng (%), Bảng màu giao diện, Bố cục, Ngôn ngữ), Chỉnh sửa, Hiển thị và Hướng dẫn sử dụng.
-- **Trò chơi**: trò chơi, vị trí các tệp của nó, và tên cộng tác của bạn. Trò chơi quyết định định dạng bản đồ để ghi, định nghĩa thực thể để tải và vị trí vật liệu. Cấu hình trò chơi được đọc từ thư mục `games` trong thư mục cấu hình (`~/.config/heron-brush/games` trên Linux và macOS, `%LOCALAPPDATA%\heron-brush\games` trên Windows) và từ thư mục `games` cạnh ứng dụng, nơi các gói cài đặt đặt cấu hình đi kèm.
+- **Trò chơi**: trò chơi, vị trí các tệp của nó, và tên cộng tác của bạn. Trò chơi quyết định định dạng bản đồ để ghi, định nghĩa thực thể để tải và vị trí vật liệu. Cấu hình trò chơi được đọc từ thư mục `games` trong thư mục cấu hình (`~/.config/heron-brush/games` trên Linux và macOS, `%LOCALAPPDATA%\heron-brush\games` trên Windows) và từ thư mục `games` cạnh ứng dụng, nơi các gói cài đặt đặt cấu hình đi kèm. Khi thư mục trò chơi thiếu thư mục mà cấu hình trò chơi nêu tên, chẳng hạn `baseq3` của Quake 3 trong bản cài OpenArena, Heron dùng một thư mục thay thế mà cấu hình biết (`baseoa`), nếu không thì dùng thư mục duy nhất ở đó có gói `.pak` hoặc `.pk3`, và báo điều này dưới **Bản mod**. Các thư mục ghi trong **Bản mod** vẫn được gắn chồng lên trên.
 - **Hiển thị**: Bố cục, Bảng màu giao diện, Ngôn ngữ, trục thế giới, độ đục lưới, kích thước ô kiểm tra rò rỉ và các khóa ánh xạ.
 - **Màu sắc**: màu của khung nhìn, hình học và tay nắm.
 - **Chuột**: tốc độ và đảo chiều khi nhìn, lia và di chuyển, tốc độ bay, góc nhìn, Liên kết các khung nhìn 2D và kích thước tay nắm.

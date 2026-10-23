@@ -1107,6 +1107,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Den entitetsegenskab, hvis værdi navngiver knuden, f.eks. targetname"),
     ("The export on save failed: {}", "Eksporten ved gemning mislykkedes: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Mappen, som denne motors projekt starter i, og som gør et teksturnavn til en fil. Er den tom, findes den ved at gå opad fra der, hvor banen skrives"),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "Spilmappen har ingen {}, så {} bruges i stedet. Mapper angivet i Mods lægges oven på den."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "Gitteret er for fint til terræn. Brug et gitter på 1 eller mere."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "Banen som JSON med .glb-modeller og himlen, og en Cocos Creator-komponent, der bygger den med collidere, animation og triggere. Cocos bruger samme koordinatsystem, så intet konverteres."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "Banen som JSON med meshene som .glb, tilrettelagt til GLTFLoader."),

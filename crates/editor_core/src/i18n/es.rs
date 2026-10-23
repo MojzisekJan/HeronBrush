@@ -1111,6 +1111,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("The entity property whose value names the node, such as targetname", "Propiedad de entidad cuyo valor da nombre al nodo, como targetname"),
     ("The export on save failed: {}", "Falló la exportación al guardar: {}"),
     ("The folder this engine's project begins at, which is what turns a texture name into a file. Left empty it is found by walking up from wherever the level is written", "Carpeta raíz del proyecto del motor, usada para localizar archivos de textura por su nombre. Si está vacía, se busca en los directorios superiores al lugar de escritura del nivel."),
+    ("The game folder has no {}, so {} is used in its place. Folders named in Mods are mounted over it.", "La carpeta del juego no tiene {}, así que se usa {} en su lugar. Las carpetas indicadas en Mods se montan encima."),
     ("The grid is too fine for terrain. Use a grid of 1 or more.", "La cuadrícula es demasiado fina para el terreno. Usa una cuadrícula de 1 o más."),
     ("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.", "El nivel como JSON con modelos .glb y el cielo, y un componente de Cocos Creator que lo construye con colisionadores, animación y activadores. Cocos usa el mismo sistema de coordenadas, así que no se convierte nada."),
     ("The level as JSON with the meshes as .glb, laid out for GLTFLoader.", "El nivel como JSON con las mallas como .glb, organizado para GLTFLoader."),
