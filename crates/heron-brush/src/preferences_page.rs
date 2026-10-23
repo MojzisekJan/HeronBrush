@@ -663,7 +663,11 @@ impl PreferencesPage {
         let mut restore = false;
         let mut undo = false;
         let now = ctx.input(|i| i.time);
-        if self.restored.as_ref().is_some_and(|(_, until)| now > *until) {
+        if self
+            .restored
+            .as_ref()
+            .is_some_and(|(_, until)| now > *until)
+        {
             self.restored = None;
         }
         // The button says how much it puts back: the page in front, or what a search

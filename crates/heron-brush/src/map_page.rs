@@ -479,6 +479,12 @@ impl MapPage {
                 let items: Vec<(&str, &str, bool)> = row
                     .iter()
                     .map(|(label, tip, enabled, _)| {
+                        // A button that cannot be used says what it is waiting for.
+                        let tip = if *enabled {
+                            *tip
+                        } else {
+                            why_unavailable(label)
+                        };
                         (
                             tr(label),
                             if tip.is_empty() { "" } else { tr(tip) },
@@ -920,6 +926,20 @@ fn ellipsized(
     let mut job = egui::text::LayoutJob::simple_singleline(text, font, color);
     job.wrap = egui::text::TextWrapping::truncate_at_width(width.max(1.0));
     job
+}
+
+/// What a group action labelled `label` needs before it can be used, for the tooltip of
+/// its button while it cannot.
+fn why_unavailable(label: &str) -> &'static str {
+    match label {
+        "Group" => translation_key("Select something first"),
+        "Ungroup" | "Open" => translation_key("Select a group first"),
+        "Merge" => translation_key("Select two or more groups first"),
+        "Close" => translation_key("No group is open"),
+        "Add" | "Take out" => translation_key("Open a group and select something first"),
+        "Extract" => translation_key("Open a linked group and select part of it first"),
+        _ => "",
+    }
 }
 
 #[cfg(test)]
