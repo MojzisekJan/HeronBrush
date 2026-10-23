@@ -129,18 +129,24 @@ impl ManualPage {
                             ui.vertical(|ui| {
                                 ui.set_width(sidebar);
                                 ui.spacing_mut().item_spacing.y = 2.0;
-                                for index in shown {
-                                    if form::sidebar_item(
+                                let mut rows = Vec::with_capacity(shown.len());
+                                for &index in &shown {
+                                    let row = form::sidebar_item(
                                         ui,
                                         &self.chapters[index].title,
                                         self.selected == index,
                                         None,
                                         30.0,
-                                    )
-                                    .clicked()
-                                    {
+                                    );
+                                    if row.clicked() {
                                         self.selected = index;
                                     }
+                                    rows.push(row);
+                                }
+                                // Up and Down go through the chapters while one has the
+                                // keyboard.
+                                if let Some(next) = crate::widgets::list_keys(ui, &rows) {
+                                    self.selected = shown[next];
                                 }
                             });
                         });

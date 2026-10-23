@@ -37,6 +37,94 @@ pub fn field(
     }
 }
 
+/// Whether the keyboard is what the user is moving around with: true from a Tab or an
+/// arrow key until the next press of the pointer. Focus is drawn only then, so a click
+/// does not leave a ring behind, as the web's `:focus-visible`.
+pub fn keyboard_navigating(ctx: &egui::Context) -> bool {
+    let id = egui::Id::unique("keyboard-navigating");
+    let (key, pointer) = ctx.input(|i| {
+        let key = i.events.iter().any(|event| {
+            matches!(
+                event,
+                egui::Event::Key {
+                    key: egui::Key::Tab
+                        | egui::Key::ArrowUp
+                        | egui::Key::ArrowDown
+                        | egui::Key::ArrowLeft
+                        | egui::Key::ArrowRight
+                        | egui::Key::Home
+                        | egui::Key::End,
+                    pressed: true,
+                    ..
+                }
+            )
+        });
+        (key, i.pointer.any_pressed())
+    });
+    let mut on = ctx.data(|d| d.get_temp::<bool>(id)).unwrap_or(false);
+    if key {
+        on = true;
+    }
+    if pointer {
+        on = false;
+    }
+    ctx.data_mut(|d| d.insert_temp(id, on));
+    on
+}
+
+/// A list row's keyboard focus: a click gives it the keyboard, so the arrows of
+/// [`list_keys`] work from there, and while the keyboard is in use the row with it is
+/// ringed in the accent.
+pub fn row_focus(ui: &egui::Ui, response: &egui::Response) {
+    if response.clicked() {
+        response.request_focus();
+    }
+    if response.has_focus() && keyboard_navigating(ui.ctx()) {
+        ui.painter().rect_stroke(
+            response.rect.shrink(1.0),
+            CornerRadius::same(theme::radius()),
+            Stroke::new(2.0, theme::accent()),
+            egui::StrokeKind::Inside,
+        );
+    }
+}
+
+/// Keyboard for a list where one row is picked, such as the manual's chapters: while one
+/// of `rows` has the keyboard, Up and Down move to the row before or after, and Home and
+/// End to the first and last, taking the keyboard along. Returns the row moved to, for the
+/// caller to pick. egui's own arrow navigation is held back, or it would move the keyboard
+/// a second time.
+pub fn list_keys(ui: &egui::Ui, rows: &[egui::Response]) -> Option<usize> {
+    let focused = rows.iter().position(egui::Response::has_focus)?;
+    let none = egui::Modifiers::NONE;
+    let (up, down, home, end) = ui.input_mut(|i| {
+        (
+            i.consume_key(none, egui::Key::ArrowUp),
+            i.consume_key(none, egui::Key::ArrowDown),
+            i.consume_key(none, egui::Key::Home),
+            i.consume_key(none, egui::Key::End),
+        )
+    });
+    let next = if up {
+        focused.checked_sub(1)
+    } else if down {
+        (focused + 1 < rows.len()).then_some(focused + 1)
+    } else if home {
+        Some(0)
+    } else if end {
+        rows.len().checked_sub(1)
+    } else {
+        None
+    };
+    if up || down || home || end {
+        ui.memory_mut(|m| m.move_focus(egui::FocusDirection::None));
+    }
+    let next = next.filter(|n| *n != focused)?;
+    rows[next].request_focus();
+    rows[next].scroll_to_me(None);
+    Some(next)
+}
+
 /// The inner margin of a one-line entry [`row_height`] tall, `left` and `right` wide, that
 /// puts the capitals of `font` on the entry's middle.
 pub fn entry_margin(ui: &egui::Ui, font: &egui::FontId, left: i8, right: i8) -> egui::Margin {

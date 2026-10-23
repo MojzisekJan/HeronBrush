@@ -788,14 +788,22 @@ impl PreferencesPage {
             }
             ui.add_space(6.0);
             let searching = searching(&self.query);
+            let mut rows = Vec::with_capacity(CATEGORIES);
             for index in 0..CATEGORIES {
                 let count = hits.iter().filter(|hit| hit.page == index).count();
                 let selected = !searching && self.page == index;
                 let badge = searching.then_some(count);
-                if category(ui, tr(category_title(index)), selected, badge).clicked() {
+                let row = category(ui, tr(category_title(index)), selected, badge);
+                if row.clicked() {
                     self.page = index;
                     self.query.clear();
                 }
+                rows.push(row);
+            }
+            // Up and Down go through the categories while one has the keyboard.
+            if let Some(next) = widgets::list_keys(ui, &rows) {
+                self.page = next;
+                self.query.clear();
             }
         });
     }
@@ -1039,6 +1047,7 @@ fn category(
         egui::vec2(ui.available_width(), widgets::ROW_HEIGHT),
         Sense::click(),
     );
+    widgets::row_focus(ui, &response);
     let painter = ui.painter();
     let radius = egui::CornerRadius::same(theme::radius());
     // On macOS the current one is filled with the accent, as System Settings' sidebar is.
