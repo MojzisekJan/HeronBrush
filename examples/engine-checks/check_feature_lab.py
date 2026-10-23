@@ -27,9 +27,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_TEXTURES = ROOT / "demos/feature_lab/textures"
-TARGETS = ["godot", "defold", "three", "bevy", "raylib", "unity", "unreal", "flax",
-           "stride", "cocos", "gdevelop", "obj", "gltf", "glb"]
-TARGET_NAMES = {"godot": "Godot", "defold": "Defold", "three": "three.js", "bevy": "Bevy",
+TARGETS = ["godot", "defold", "three", "babylon", "bevy", "raylib", "unity", "unreal",
+           "flax", "stride", "cocos", "gdevelop", "obj", "gltf", "glb"]
+TARGET_NAMES = {"godot": "Godot", "defold": "Defold", "three": "three.js", "babylon": "Babylon.js",
+                "bevy": "Bevy",
                 "raylib": "raylib", "unity": "Unity", "unreal": "Unreal", "flax": "Flax",
                 "stride": "Stride", "cocos": "Cocos", "gdevelop": "GDevelop", "obj": "OBJ",
                 "gltf": "glTF", "glb": "GLB"}
@@ -530,6 +531,7 @@ def json_family(target, root):
         e.mesh_ref = source.get("mesh")
         e.extra["tags"] = source.get("tags", [])
         e.extra["transform"] = source.get("transform")
+        e.extra["light"] = source.get("light")
         if "_heron_animation" in e.props:
             e.animation = json.loads(e.props["_heron_animation"][1])
         if "_heron_trigger" in e.props:
@@ -1563,7 +1565,7 @@ def check_sky(level):
             problems.append(f"fog {fog}, want density {FOG['density']}")
         elif colour_distance([round(c * 255) for c in fog["color"]], FOG["colour"]) > 2:
             problems.append(f"fog colour {fog['color']}")
-        files = {"three": [f"{NAME}/sky.hdr"], "bevy": [f"{NAME}/sky.ktx2", "heron_sky.rs"],
+        files = {"three": [f"{NAME}/sky.hdr"], "babylon": [f"{NAME}/sky.hdr"], "bevy": [f"{NAME}/sky.ktx2", "heron_sky.rs"],
                  "raylib": [f"{NAME}/sky.png"],
                  "defold": [f"{NAME}/sky.cubemap", f"{NAME}.render", f"{NAME}_sky.material"],
                  "cocos": [f"{NAME}/sky_{s}.png" for s in ("top", "bottom", "left", "right", "front", "back")]}
@@ -1616,7 +1618,7 @@ def check_payload(animation, door=False):
 
 
 RUNTIME_FILES = {
-    "three": ["heron_animation.js"], "bevy": ["heron_animation.rs"],
+    "three": ["heron_animation.js"], "babylon": ["heron_babylon.js"], "bevy": ["heron_animation.rs"],
     "raylib": [f"{NAME}_animation.h"], "unity": ["HeronBrushAnimation.cs"],
     "flax": ["HeronBrushAnimation.cs"], "stride": [f"{NAME}/HeronBrushStrideRuntime.cs"],
     "cocos": ["HeronBrushLevel.ts"], "defold": [f"{NAME}/func_animate.script"],
@@ -1862,6 +1864,23 @@ def check_lights(level):
         if "PointLight" not in py or "SpotLight" not in py:
             problems.append("importer creates no point or spot light actor")
         return FAIL("; ".join(problems)) if problems else PASS("importer spawns point and spot light actors")
+    if t == "babylon":
+        # The level JSON carries a light block per light entity; heron_babylon.js turns
+        # it into a PointLight or SpotLight under the entity's node.
+        problems = []
+        point, cone = light.extra.get("light"), spot.extra.get("light")
+        if not point or point["kind"] != "point" or point["energy"] != 2.5 or point["range"] != 8.0 or \
+                colour_distance([round(c * 255) for c in point["color"]], (255, 200, 120)) > 1:
+            problems.append(f"point light {point}")
+        if not cone or cone["kind"] != "spot" or cone.get("angle") != 30.0 or cone["range"] != 10.0:
+            problems.append(f"spot light {cone}")
+        runtime = (level.root / "heron_babylon.js").read_text()
+        for name in ("new B.PointLight", "new B.SpotLight"):
+            if name not in runtime:
+                problems.append(f"heron_babylon.js lacks {name}")
+        return FAIL("; ".join(problems)) if problems else PASS(
+            "light blocks (point: colour 255 200 120, energy 2.5, range 8; spot: 30 degree half-angle, "
+            "range 10) that heron_babylon.js makes native lights of")
     if t == "obj":
         return NA("OBJ is geometry only")
     if not data_ok:
@@ -1912,7 +1931,7 @@ def check_water(level):
     # The baseline surface is the volume's upward faces only (docs/water-export.md).
     if e.render and any(normal(tri)[1] < 0.99 for tri in all_triangles(e.render)):
         problems.append("water surface mesh has faces that do not point up")
-    files = {"three": ["heron_water.js"], "bevy": ["heron_water.rs", "heron_water_render.rs"],
+    files = {"three": ["heron_water.js"], "babylon": ["heron_babylon.js"], "bevy": ["heron_water.rs", "heron_water_render.rs"],
              "raylib": [f"{NAME}_water.h"], "defold": [f"{NAME}_water.lua", f"{NAME}_water.material"],
              "unity": ["HeronBrushWater.cs", "HeronBrushWater.shader"], "flax": ["HeronBrushWater.cs"],
              "stride": [f"{NAME}/HeronBrushStrideRuntime.cs"], "cocos": ["HeronBrushLevel.ts"]}

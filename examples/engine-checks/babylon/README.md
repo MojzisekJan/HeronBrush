@@ -1,0 +1,28 @@
+# Babylon.js export check
+
+`verify_feature_lab.cjs` runs the feature lab's Babylon.js export in Chromium. The
+first half loads it the way a game does: a right-handed Babylon.js scene with Havok,
+then `loadLevel` from the exported `heron_babylon.js`. The second half opens the
+generated `feature_lab.html` with `?verify` and drives its character controller.
+`feature_lab_checks.js` holds the checks; the results are in
+[feature runtime checks for Babylon.js](../../../docs/feature-runtime-babylon.md).
+
+```sh
+cargo build -p heron-brush
+python3 examples/engine-checks/export_feature_lab.py --root /tmp/fl babylon
+python3 examples/engine-checks/feature_lab_poses.py /tmp/fl/poses.json
+HERON_CDN_CACHE=/tmp/fl/cdn node examples/engine-checks/babylon/verify_feature_lab.cjs /tmp/fl /tmp/fl/poses.json /tmp/fl/out
+```
+
+It writes `babylon-lab.png` (the three.js check's view), `babylon-stations.png` (closer,
+without fog), `babylon-playtest.png` (the generated page) and `results.json`, and
+exits with status 1 on any failure.
+
+Babylon.js and Havok come from jsDelivr, at the versions the exported page names, so
+the check needs internet access once. `HERON_CDN_CACHE` keeps the downloads in a
+folder for later runs.
+
+The check needs Node with `playwright`. Without Node, Python's Playwright package
+ships one: run `uv run --with playwright python -c "import playwright"` once, then
+use the `node` inside its `playwright/driver` folder, with `NODE_PATH` pointing at a
+folder that holds a `playwright` link to `driver/package`.

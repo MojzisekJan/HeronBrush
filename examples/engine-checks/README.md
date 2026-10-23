@@ -14,6 +14,7 @@ geometry, collision, materials and entity data; see
 | [`godot/`](godot/README.md) | Native scene import, portals, doors, enemy damage |
 | [`raylib/`](raylib/README.md) | Level reader, collision, animation riding, a playable C sample |
 | [`threejs/`](threejs/README.md) | JSON loader and generated HTML viewer in a browser |
+| [`babylon/`](babylon/README.md) | The feature lab through `heron_babylon.js` and Havok, and the generated playtest page, in Chromium |
 | [`defold/`](defold/README.md) | Bob build, Bullet physics, game-owned doors and portals |
 | [`flax/`](flax/README.md) | C# importer, native colliders, scene reload, animation |
 | [`unity/`](unity/README.md) | Final and live import, collision, the feature lab in the engine, optional gameplay kit |
@@ -22,11 +23,12 @@ geometry, collision, materials and entity data; see
 
 `export_motion_lab.py`, `prepare_motion_lab.py` and `prepare_water.py` export the
 animation and water test maps; [target parity](../../docs/target-parity.md) lists
-their commands. `export_feature_lab.py` exports the feature lab to all 14 targets
+their commands. `export_feature_lab.py` exports the feature lab to all 15 targets
 and `check_feature_lab.py` checks the files feature by feature; see
 [the feature matrix](../../docs/feature-matrix.md). `feature_lab_poses.py` writes the
 editor's own animation poses for the run-time checks of three.js, Bevy, raylib and the
-portable glTF in [feature runtime checks](../../docs/feature-runtime-web.md).
+portable glTF in [feature runtime checks](../../docs/feature-runtime-web.md), and of
+Babylon.js in [its own page](../../docs/feature-runtime-babylon.md).
 
 ## Running
 
