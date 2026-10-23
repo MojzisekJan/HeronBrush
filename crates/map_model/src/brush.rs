@@ -395,6 +395,7 @@ impl Brush {
                 surface_material: None,
                 export_hidden: false,
                 primitive_uv: None,
+                heretic2_lighting: None,
                 line: 0,
             });
         }
@@ -1320,6 +1321,7 @@ impl Brush {
                 // A rebuilt face is real geometry, so any pending primitive matrix has
                 // already been resolved or is not this face's concern.
                 primitive_uv: None,
+                heretic2_lighting: source.heretic2_lighting.clone(),
                 line: source.line,
             });
         }

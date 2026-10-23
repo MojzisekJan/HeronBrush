@@ -243,6 +243,65 @@ fn a_hexen2_map_is_written_with_its_number_and_without_a_mapversion() {
     assert!(write_map(&map).contains("\"mapversion\" \"220\""));
 }
 
+/// A brush as HereticEd writes it (`Brush_Write` in Raven's toolkit): integer points, no
+/// header, the trio only where it differs from the texture's, and after the trio of a
+/// `tall_wall` face (surface flag 0x400) the face's red, green, blue and alpha.
+const HERETIC2_SAMPLE: &str = "{
+\"classname\" \"worldspawn\"
+{
+( -16 -16 -16 ) ( -16 16 -16 ) ( -16 -16 16 ) Silverspring/beam 0 0 0 1 1
+( -16 -16 -16 ) ( -16 -16 16 ) ( 16 -16 -16 ) Silverspring/beam 0 0 0 1 1 0 1024 0 1.000000 0.500000 0.250000 1.000000
+( -16 -16 -16 ) ( 16 -16 -16 ) ( -16 16 -16 ) general/clip 8 16 90 0.500000 0.500000 65536 128 0
+( 16 16 16 ) ( 16 -16 16 ) ( -16 16 16 ) Silverspring/beam 0 0 0 1 1
+( 16 16 16 ) ( -16 16 16 ) ( 16 16 -16 ) Silverspring/beam 0 0 0 1 1
+( 16 16 16 ) ( 16 16 -16 ) ( 16 -16 16 ) Silverspring/beam 0 0 0 1 1
+}
+}
+";
+
+#[test]
+fn a_heretic2_tall_wall_keeps_its_lighting_through_a_round_trip() {
+    let map = read_map(HERETIC2_SAMPLE, None).expect("it parses");
+    assert_eq!(map.format, MapFormat::Quake2);
+    let faces = &map.entities[0].brushes[0].faces;
+    assert_eq!(faces.len(), 6);
+    assert_eq!(
+        faces[1].surface_attributes,
+        Some(SurfaceAttributes {
+            content_flags: 0,
+            surface_flags: 1024,
+            value: 0,
+        })
+    );
+    assert_eq!(
+        faces[1].heretic2_lighting.as_deref(),
+        Some(&[1.0, 0.5, 0.25, 1.0])
+    );
+    assert_eq!(faces[2].heretic2_lighting, None);
+    assert_eq!(faces[2].uv_attributes.scale, Vec2f::new(0.5, 0.5));
+
+    // Written for Quake 2, and in the editor's own Valve dialect, the numbers follow the
+    // flags again and read back the same.
+    for format in [MapFormat::Quake2, MapFormat::LOSSLESS] {
+        let mut copy = map.clone();
+        copy.format = format;
+        let written = write_map(&copy);
+        assert!(
+            written.contains(" 0 1024 0 1 0.5 0.25 1\n"),
+            "{format}: {written}"
+        );
+        let again = read_map(&written, None).expect("it reads back");
+        assert_eq!(
+            again.entities[0].brushes[0].faces[1].heretic2_lighting, faces[1].heretic2_lighting,
+            "{format}"
+        );
+    }
+    // Quake 3's compilers stop at a number after the trio.
+    let mut quake3 = map.clone();
+    quake3.format = MapFormat::Quake3;
+    assert!(!write_map(&quake3).contains(" 0 1024 0 1 "));
+}
+
 #[test]
 fn the_brush_faces_have_outward_normals() {
     let map = read(VALVE_SAMPLE);

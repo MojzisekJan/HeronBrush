@@ -978,6 +978,7 @@ impl<'a> Reader<'a> {
             surface_material,
             export_hidden,
             primitive_uv: Some(Box::new(matrix)),
+            heretic2_lighting: None,
             line,
         })
     }
@@ -1009,6 +1010,14 @@ impl<'a> Reader<'a> {
 
         let surface_attributes = self.read_optional_surface_attributes()?;
 
+        // HereticEd follows the flags of a `tall_wall` face with four more numbers, the
+        // face's own light. Nothing else writes numbers there.
+        let heretic2_lighting = if surface_attributes.is_some() {
+            self.read_optional_heretic2_lighting()?
+        } else {
+            None
+        };
+
         // Hexen II puts one more number at the end of a Standard face line. Nothing else
         // in the lineage leaves a lone number there, so it is taken and let go.
         if surface_attributes.is_none()
@@ -1039,6 +1048,7 @@ impl<'a> Reader<'a> {
             surface_material,
             export_hidden,
             primitive_uv,
+            heretic2_lighting,
             line,
         })
     }
@@ -1201,6 +1211,24 @@ impl<'a> Reader<'a> {
             surface_flags: self.expect_number()? as i32,
             value: self.expect_number()? as i32,
         }))
+    }
+
+    /// Reads Heretic II's four lighting numbers when all four are there.
+    fn read_optional_heretic2_lighting(&mut self) -> Result<Option<Box<[f32; 4]>>, ReadError> {
+        let all_numbers = (0..4).all(|offset| {
+            matches!(
+                self.tokens.borrow_mut().peek(offset).map(|t| t.token),
+                Some(Token::Number(_))
+            )
+        });
+        if !all_numbers {
+            return Ok(None);
+        }
+        let mut lighting = [0.0; 4];
+        for channel in &mut lighting {
+            *channel = self.expect_number()? as f32;
+        }
+        Ok(Some(Box::new(lighting)))
     }
 
     /// Reads a `patchDef2` or `patchDef3` body.

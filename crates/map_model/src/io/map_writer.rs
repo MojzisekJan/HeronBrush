@@ -183,6 +183,17 @@ fn write_face(out: &mut String, face: &BrushFace, format: MapFormat, with_color:
             " {} {} {}",
             surface.content_flags, surface.surface_flags, surface.value
         );
+        // Heretic II's lighting of a `tall_wall` face goes after the flags, as HereticEd
+        // writes it. Quake 3's compilers have no room for it.
+        if let Some(lighting) = face
+            .heretic2_lighting
+            .as_deref()
+            .filter(|_| format != MapFormat::Quake3)
+        {
+            for channel in lighting {
+                let _ = write!(out, " {}", UvScalar(*channel));
+            }
+        }
     } else if format.writes_empty_surface_attributes() {
         // A face that never had flags still writes the trio in Quake 3's dialect, as
         // TrenchBroom does. Neverball's mapc reads a face line only if it is there, and
