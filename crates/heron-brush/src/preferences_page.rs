@@ -1662,6 +1662,7 @@ mod tests {
             content_flag_names: vec!["solid".into()],
             merge_groups_on_export: false,
             default_uv_scale: None,
+            set_default_properties: false,
         };
         let mut document = Document::new(Default::default());
         apply_game(&mut document, Some(&game));

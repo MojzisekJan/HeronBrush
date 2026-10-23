@@ -277,6 +277,9 @@ pub struct Document {
     /// `faceattribs.defaults.scale`: the UV scale the shape tools give new faces, for a
     /// game whose textures are drawn finer than one texel to a unit.
     default_uv_scale: Option<Vec2f>,
+    /// Whether a new entity is given its class's default properties: the game profile's
+    /// `entities.setDefaultProperties`. On without a profile.
+    writes_default_properties: bool,
     /// Where a class's model is looked for, and what has been loaded from there.
     ///
     /// `EntityModelManager`. See [`crate::entity_models`].
@@ -1355,6 +1358,7 @@ impl Document {
             content_flag_names: Vec::new(),
             merge_groups_on_export: false,
             default_uv_scale: None,
+            writes_default_properties: true,
             model_store: crate::entity_models::ModelStore::default(),
             game_asset_key: None,
             game_materials: Vec::new(),
@@ -2941,6 +2945,12 @@ impl Document {
     /// its groups and layers merged into the worldspawn. A save keeps them either way.
     pub fn set_merge_groups_on_export(&mut self, merge: bool) {
         self.merge_groups_on_export = merge;
+    }
+
+    /// Takes the game profile's `entities.setDefaultProperties`: whether a new entity is
+    /// given every property its class has a default for, or only its classname.
+    pub fn set_writes_default_properties(&mut self, writes: bool) {
+        self.writes_default_properties = writes;
     }
 
     /// Native Quake III brush primitives, using loaded texture dimensions.
