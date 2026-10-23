@@ -176,6 +176,16 @@ fn shortcut(id: &str) -> String {
     })
 }
 
+/// A tool's tooltip with the key that picks it now, which may not be the default.
+fn tool_tip(tool: Tool) -> String {
+    let keys = tool.shortcut_id().map(shortcut).unwrap_or_default();
+    if keys.is_empty() {
+        tr(tool.tooltip()).to_string()
+    } else {
+        format!("{} ({keys})", tr(tool.tooltip()))
+    }
+}
+
 /// Every menu of the menu bar, with what is checked and what is enabled this frame.
 pub fn menus(
     status: &Status,
@@ -991,7 +1001,7 @@ impl Chrome {
                 ui.scope_id().with(("tool", tool.name())),
                 Sense::click(),
             )
-            .on_hover_text(tr(tool.tooltip()));
+            .on_hover_text(tool_tip(tool));
         if response.clicked() {
             self.pick(tool);
         }

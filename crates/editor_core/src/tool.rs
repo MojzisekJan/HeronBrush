@@ -105,29 +105,52 @@ impl Tool {
         }
     }
 
-    /// The tooltip, including the shortcut.
+    /// The tooltip, without the shortcut: [`Self::shortcut_id`] says which key it is now.
     pub fn tooltip(self) -> &'static str {
         match self {
-            Tool::Select => translation_key("Select and move (Esc)"),
-            Tool::Brush => translation_key("Brush tool: drag out the chosen shape (B)"),
-            Tool::Clip => translation_key("Clip tool (C)"),
-            Tool::Vertex => translation_key("Vertex tool (V)"),
-            Tool::Edge => translation_key("Edge tool (E)"),
-            Tool::Face => translation_key("Face tool (F)"),
-            Tool::Rotate => translation_key("Rotate tool (R)"),
-            Tool::Scale => translation_key("Scale tool (T)"),
-            Tool::Shear => translation_key("Shear tool (G)"),
-            Tool::Assemble => translation_key("Assemble brush tool (N)"),
-            Tool::Sweep => translation_key("Sweep tool (Y)"),
+            Tool::Select => translation_key("Select and move"),
+            Tool::Brush => translation_key("Brush tool: drag out the chosen shape"),
+            Tool::Clip => translation_key("Clip tool"),
+            Tool::Vertex => translation_key("Vertex tool"),
+            Tool::Edge => translation_key("Edge tool"),
+            Tool::Face => translation_key("Face tool"),
+            Tool::Rotate => translation_key("Rotate tool"),
+            Tool::Scale => translation_key("Scale tool"),
+            Tool::Shear => translation_key("Shear tool"),
+            Tool::Assemble => translation_key("Assemble brush tool"),
+            Tool::Sweep => translation_key("Sweep tool"),
             Tool::ControlPoint => translation_key("Control point tool (P)"),
             Tool::Fillet => {
-                translation_key("Fillet tool: select preview edges, then Apply or Enter (O)")
+                translation_key("Fillet tool: select preview edges, then Apply or Enter")
             }
-            Tool::Paint => translation_key("Paint material (K)"),
+            Tool::Paint => translation_key("Paint material"),
             Tool::Sculpt => {
-                translation_key("Sculpt terrain: drag over it, Shift swaps raise and lower (J)")
+                translation_key("Sculpt terrain: drag over it, Shift swaps raise and lower")
             }
         }
+    }
+
+    /// The id of the shortcut that picks this tool, in
+    /// [`crate::custom_shortcuts::COMMANDS`], so a tooltip can show the key bound now
+    /// rather than the default. `None` for a tool without one.
+    pub fn shortcut_id(self) -> Option<&'static str> {
+        Some(match self {
+            Tool::Select => "tool_select",
+            Tool::Brush => "tool_brush",
+            Tool::Clip => "tool_clip",
+            Tool::Vertex => "tool_vertex",
+            Tool::Edge => "tool_edge",
+            Tool::Face => "tool_face",
+            Tool::Rotate => "tool_rotate",
+            Tool::Scale => "tool_scale",
+            Tool::Shear => "tool_shear",
+            Tool::Assemble => "tool_assemble",
+            Tool::Sweep => "tool_sweep",
+            Tool::Fillet => "tool_fillet",
+            Tool::Paint => "tool_paint",
+            Tool::Sculpt => "tool_sculpt",
+            Tool::ControlPoint => return None,
+        })
     }
 
     /// The icon the toolbar button shows, as SVG.
@@ -222,12 +245,19 @@ mod tests {
     }
 
     #[test]
-    fn every_tool_names_itself_and_its_shortcut() {
+    fn every_tool_names_itself_and_its_shortcut_command() {
         for tool in Tool::ALL {
             assert!(!tool.name().is_empty());
             assert!(tool.icon_svg().starts_with("<svg"), "{tool}: no icon");
-            // The tooltip carries the shortcut in brackets, as the toolbar's does.
-            assert!(tool.tooltip().contains('('), "{tool}: {}", tool.tooltip());
+            assert!(!tool.tooltip().is_empty());
+            // The shortcut comes from the bindings, which a user can change, so a tool
+            // names its command there rather than printing a key.
+            if let Some(id) = tool.shortcut_id() {
+                assert!(
+                    crate::custom_shortcuts::COMMANDS.iter().any(|c| c.id == id),
+                    "{tool}: {id}"
+                );
+            }
         }
     }
 }
