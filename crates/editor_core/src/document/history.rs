@@ -429,6 +429,27 @@ impl Document {
                 }
             }
             Edit::Removed { nodes, .. } => removing.extend(nodes.iter().map(|node| node.id)),
+            Edit::LayerInserted { index, layer } => {
+                self.flush_removals(removing);
+                let at = (*index).min(self.tree.world.layers.len());
+                self.tree.world.layers.insert(at, layer.clone());
+                self.current_layer = at;
+                self.mark_changed();
+            }
+            Edit::LayerRemoved { index, .. } => {
+                self.flush_removals(removing);
+                // The default layer is the worldspawn and stays.
+                if *index > 0 && *index < self.tree.world.layers.len() {
+                    self.tree.world.layers.remove(*index);
+                    self.current_layer = self.current_layer.min(self.tree.world.layers.len() - 1);
+                    self.mark_changed();
+                }
+            }
+            Edit::LayerChanged { index, after, .. } => {
+                if let Some(layer) = self.tree.world.layers.get_mut(*index) {
+                    layer.name = after.name.clone();
+                }
+            }
             Edit::Batch(parts) => {
                 for part in parts {
                     self.apply_flattened(part, removing);
@@ -625,6 +646,11 @@ fn collect_before<'a>(edit: &'a Edit, into: &mut HashMap<NodeId, &'a Node>) {
     match edit {
         Edit::Changed { before, .. } => into.extend(before.iter().map(|node| (node.id, node))),
         Edit::Batch(parts) => parts.iter().for_each(|part| collect_before(part, into)),
-        Edit::Added { .. } | Edit::Removed { .. } | Edit::Reordered { .. } => {}
+        Edit::Added { .. }
+        | Edit::Removed { .. }
+        | Edit::Reordered { .. }
+        | Edit::LayerInserted { .. }
+        | Edit::LayerRemoved { .. }
+        | Edit::LayerChanged { .. } => {}
     }
 }

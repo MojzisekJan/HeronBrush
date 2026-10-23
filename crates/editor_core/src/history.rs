@@ -8,7 +8,10 @@
 //! an edit costs is proportional to what it touched. Snapshotting would be simpler, but a
 //! map with a few thousand brushes would make every nudge of one of them expensive.
 
-use map_model::node::{Node, NodeId, NodeKind};
+use map_model::node::Layer;
+use map_model::node::Node;
+use map_model::node::NodeId;
+use map_model::node::NodeKind;
 
 /// How many edits can be undone.
 ///
@@ -88,6 +91,30 @@ pub enum Edit {
         before: Vec<NodeId>,
         after: Vec<NodeId>,
     },
+    /// A layer was put into the world's layer list at `index`, with what is on it.
+    LayerInserted {
+        /// Its position in the list.
+        index: usize,
+        /// The layer and its contents.
+        layer: Layer,
+    },
+    /// A layer was taken out of the world's layer list.
+    LayerRemoved {
+        /// Its position in the list.
+        index: usize,
+        /// The layer and its contents, so undo can put it back.
+        layer: Layer,
+    },
+    /// A layer's name changed. Its contents are not part of this, and the two layers
+    /// here hold none.
+    LayerChanged {
+        /// Its position in the list.
+        index: usize,
+        /// What it was.
+        before: Layer,
+        /// What it became.
+        after: Layer,
+    },
     /// Several edits that are one thing to the user.
     ///
     /// A CSG operation takes brushes out and puts others in, and someone who asked for
@@ -106,6 +133,10 @@ impl Edit {
             Edit::Reordered { before, after, .. } => {
                 (before.len() + after.len()) * std::mem::size_of::<NodeId>()
             }
+            Edit::LayerInserted { layer, .. } | Edit::LayerRemoved { layer, .. } => {
+                weigh(&layer.children) + std::mem::size_of::<Layer>()
+            }
+            Edit::LayerChanged { .. } => 2 * std::mem::size_of::<Layer>(),
             Edit::Batch(parts) => parts.iter().map(Edit::weight).sum(),
         }
     }
@@ -121,6 +152,17 @@ impl Edit {
                 after: before,
             },
             Edit::Added { layer, nodes } => Edit::Removed { layer, nodes },
+            Edit::LayerInserted { index, layer } => Edit::LayerRemoved { index, layer },
+            Edit::LayerRemoved { index, layer } => Edit::LayerInserted { index, layer },
+            Edit::LayerChanged {
+                index,
+                before,
+                after,
+            } => Edit::LayerChanged {
+                index,
+                before: after,
+                after: before,
+            },
             Edit::Removed { layer, nodes } => Edit::Added { layer, nodes },
             Edit::Reordered {
                 layer,
@@ -150,6 +192,9 @@ impl Edit {
                 format!("delete {}", count(nodes.len(), "object", "objects"))
             }
             Edit::Reordered { .. } => "reorder objects".into(),
+            Edit::LayerInserted { layer, .. } => format!("add layer {}", layer.name),
+            Edit::LayerRemoved { layer, .. } => format!("remove layer {}", layer.name),
+            Edit::LayerChanged { after, .. } => format!("rename layer to {}", after.name),
             // The last part is what the operation left behind, which is the half worth
             // naming: "add six objects" says more than "a batch of two".
             Edit::Batch(parts) => parts

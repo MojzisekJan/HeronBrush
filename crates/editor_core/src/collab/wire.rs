@@ -313,6 +313,29 @@ pub enum WireEdit {
         before: Vec<u64>,
         after: Vec<u64>,
     },
+    /// A layer put into the list, with its contents.
+    LayerInserted {
+        /// Its position.
+        index: usize,
+        /// The layer.
+        layer: WireLayer,
+    },
+    /// A layer taken out of the list.
+    LayerRemoved {
+        /// Its position.
+        index: usize,
+        /// The layer.
+        layer: WireLayer,
+    },
+    /// A layer renamed.
+    LayerChanged {
+        /// Its position.
+        index: usize,
+        /// What it was.
+        before: WireLayer,
+        /// What it became.
+        after: WireLayer,
+    },
     /// Several edits that are one step.
     Batch(Vec<WireEdit>),
 }
@@ -342,6 +365,23 @@ impl WireEdit {
                 before: before.iter().map(|id| id.0).collect(),
                 after: after.iter().map(|id| id.0).collect(),
             },
+            Edit::LayerInserted { index, layer } => WireEdit::LayerInserted {
+                index: *index,
+                layer: wire_layer(layer),
+            },
+            Edit::LayerRemoved { index, layer } => WireEdit::LayerRemoved {
+                index: *index,
+                layer: wire_layer(layer),
+            },
+            Edit::LayerChanged {
+                index,
+                before,
+                after,
+            } => WireEdit::LayerChanged {
+                index: *index,
+                before: wire_layer(before),
+                after: wire_layer(after),
+            },
             Edit::Batch(parts) => WireEdit::Batch(parts.iter().map(WireEdit::from_edit).collect()),
         }
     }
@@ -369,6 +409,23 @@ impl WireEdit {
                 layer,
                 before: before.into_iter().map(NodeId).collect(),
                 after: after.into_iter().map(NodeId).collect(),
+            },
+            WireEdit::LayerInserted { index, layer } => Edit::LayerInserted {
+                index,
+                layer: unwire_layer(layer, bounds)?,
+            },
+            WireEdit::LayerRemoved { index, layer } => Edit::LayerRemoved {
+                index,
+                layer: unwire_layer(layer, bounds)?,
+            },
+            WireEdit::LayerChanged {
+                index,
+                before,
+                after,
+            } => Edit::LayerChanged {
+                index,
+                before: unwire_layer(before, bounds)?,
+                after: unwire_layer(after, bounds)?,
             },
             WireEdit::Batch(parts) => Edit::Batch(
                 parts

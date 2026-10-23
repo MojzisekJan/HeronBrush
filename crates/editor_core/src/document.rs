@@ -1024,7 +1024,10 @@ fn touched_ids(edit: &Edit) -> HashSet<NodeId> {
             Edit::Added { nodes, .. } | Edit::Removed { nodes, .. } => {
                 nodes.iter().for_each(|n| add_ids_under(n, out));
             }
-            Edit::Reordered { .. } => {}
+            Edit::Reordered { .. } | Edit::LayerChanged { .. } => {}
+            Edit::LayerInserted { layer, .. } | Edit::LayerRemoved { layer, .. } => {
+                layer.children.iter().for_each(|n| add_ids_under(n, out));
+            }
             Edit::Batch(parts) => parts.iter().for_each(|p| walk(p, out)),
         }
     }
@@ -2788,7 +2791,12 @@ impl Document {
             Edit::Batch(parts) => parts
                 .iter()
                 .all(|part| self.touches_only_selected_brushes(part)),
-            Edit::Added { .. } | Edit::Removed { .. } | Edit::Reordered { .. } => false,
+            Edit::Added { .. }
+            | Edit::Removed { .. }
+            | Edit::Reordered { .. }
+            | Edit::LayerInserted { .. }
+            | Edit::LayerRemoved { .. }
+            | Edit::LayerChanged { .. } => false,
         }
     }
 
