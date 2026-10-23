@@ -266,9 +266,44 @@ pub fn leave_answer(document: &mut editor_core::document::Document) -> Option<bo
     })
 }
 
+/// The revert question, by its key in [`file_dialog::question`].
+const REVERT: &str = "revert";
+
+/// Asks before Revert throws away unsaved changes, which undo cannot bring back: Revert
+/// or Cancel. Returns whether to revert now. An unmodified map needs no question. The
+/// in-app question answers frames later, through [`revert_answer`].
+pub fn may_revert(document: &editor_core::document::Document) -> bool {
+    if !document.is_modified() {
+        return true;
+    }
+    let in_app = file_dialog::in_app();
+    let message = format!(
+        "{} {}\n{}",
+        document.name(),
+        tr("has changes that are not saved."),
+        tr("Reverting throws them away, and undo cannot bring them back.")
+    );
+    match file_dialog::question(
+        REVERT,
+        true,
+        tr("Revert to saved map"),
+        &message,
+        &[tr("Revert"), tr("Cancel")],
+    ) {
+        _ if in_app => false,
+        Some(0) => true,
+        _ => false,
+    }
+}
+
+/// Whether the in-app revert question was just answered Revert. Call every frame.
+pub fn revert_answer() -> bool {
+    file_dialog::question(REVERT, false, "", "", &[]) == Some(0)
+}
+
 /// `Menu/File/Revert`: reads the map again from the file it came from, throwing away
-/// everything since the last save without asking. Returns where its materials and
-/// definitions came from, or `None` when there was nothing to go back to.
+/// everything since the last save; [`may_revert`] asks first. Returns where its
+/// materials and definitions came from, or `None` when there was nothing to go back to.
 pub fn revert(editor: &Editor) -> Option<editor_core::document_setup::Sources> {
     let path = editor.document.borrow().path.clone();
     let Some(path) = path else {
@@ -533,11 +568,8 @@ impl App {
                 }
             }
             Action::Revert => {
-                if let Some(sources) = revert(&self.editor) {
-                    self.cancel_animation_previews();
-                    *self.commands.sources.borrow_mut() = sources;
-                    self.autosaver =
-                        editor_core::autosave::Autosaver::new(&self.editor.document.borrow());
+                if may_revert(&self.editor.document.borrow()) {
+                    self.revert_now();
                 }
             }
             Action::GoTo => {
@@ -621,6 +653,9 @@ impl App {
                 self.load_point_file(&path, point);
             }
         }
+        if revert_answer() {
+            self.revert_now();
+        }
         let saved = saved_as(&mut self.editor.document.borrow_mut());
         let answer = leave_answer(&mut self.editor.document.borrow_mut());
         // A map waiting on the unsaved-changes question opens once the old one is saved
@@ -633,6 +668,16 @@ impl App {
         }
         if self.pending_map.is_some() {
             ctx.request_repaint();
+        }
+    }
+
+    /// Reads the map again from its file, see [`revert`], and starts over what depends on
+    /// the document.
+    fn revert_now(&mut self) {
+        if let Some(sources) = revert(&self.editor) {
+            self.cancel_animation_previews();
+            *self.commands.sources.borrow_mut() = sources;
+            self.autosaver = editor_core::autosave::Autosaver::new(&self.editor.document.borrow());
         }
     }
 

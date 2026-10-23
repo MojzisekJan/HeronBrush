@@ -137,11 +137,13 @@ fn number_sign_toggles_the_grid() {
     assert_eq!(editor.grid.borrow().visible(), visible);
 }
 
-/// Revert reads the map again without asking, and a map never saved has nothing to go
-/// back to.
+/// Revert reads the map again, and a map never saved has nothing to go back to. An
+/// unmodified map is reverted without a question; a modified one is asked about first,
+/// by `may_revert`, before `revert` runs.
 #[test]
-fn revert_discards_changes_without_asking() {
+fn revert_reads_the_map_again() {
     let (_ctx, editor) = setup();
+    assert!(crate::app_actions::may_revert(&editor.document.borrow()));
     let saved = editor.document.borrow().to_map_text();
     editor.document.borrow_mut().select_all();
     assert!(editor.document.borrow_mut().delete_selection() > 0);
