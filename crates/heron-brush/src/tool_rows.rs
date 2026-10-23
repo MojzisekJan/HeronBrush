@@ -350,8 +350,10 @@ pub fn fillet_controls(ui: &mut egui::Ui, parameters: &Rc<RefCell<FilletParamete
         }
     });
     settings.corners = CORNERS[corners].0;
+    // The check box lines up under the controls. A control row reaches them after the
+    // label and the gap, and nothing before the space here adds item spacing to it.
     ui.horizontal(|ui| {
-        ui.add_space(label_width + gap - ui.spacing().item_spacing.x);
+        ui.add_space(label_width + gap);
         crate::widgets::checkbox(ui, &mut settings.inner, tr("Inner L corner"));
     });
 }
