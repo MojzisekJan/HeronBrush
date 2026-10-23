@@ -1098,6 +1098,23 @@ pub(crate) fn call_tool(
                     .collect();
             Ok(extensions::with_warnings(format!("saved {path}"), &exports))
         }
+        "export_map" => {
+            let path = string_or(args, "path", "");
+            if path.is_empty() {
+                return Err("`path` is required".into());
+            }
+            let name = string_or(args, "format", "Valve");
+            let format: map_model::map_format::MapFormat =
+                name.parse().map_err(|error| format!("{error}"))?;
+            document
+                .export_map_to(path, format)
+                .map_err(|error| format!("could not write {path}: {error}"))?;
+            let lost = document.what_a_dialect_would_drop(format);
+            Ok(extensions::with_warnings(
+                format!("wrote {path} as {format}"),
+                &lost,
+            ))
+        }
         "export" => extensions::export(document, args, false),
         "check_export" => extensions::export(document, args, true),
         "get_export_settings" => extensions::export_settings(document, args),
@@ -1896,6 +1913,15 @@ fn tool_definitions() -> Vec<Value> {
             &["path"],
         ),
         tool(
+            "export_map",
+            "Write a copy of the map as a .map file in another dialect, for the compiler of a game that reads only that one; the open map is not changed.",
+            json!({
+                "path": { "type": "string" },
+                "format": { "type": "string", "description": "Valve (default), Standard, Quake2, Quake2 (Valve) or Hexen2" },
+            }),
+            &["path"],
+        ),
+        tool(
             "export",
             "Export the map for an engine: godot, defold, three.js, babylon, playcanvas, bevy, raylib, unity, unreal, flax, stride, cocos, gdevelop, obj, gltf, glb.",
             json!({
@@ -2345,6 +2371,49 @@ mod tests {
             2,
             "the host saw the guest's box"
         );
+    }
+
+    /// A copy in Hexen II's dialect, for Raven's qbsp, leaves the open map as it was.
+    #[test]
+    fn a_map_is_exported_in_another_dialect() {
+        let mut document = Document::new(WorldBounds::default());
+        let directory =
+            std::env::temp_dir().join(format!("heron-mcp-dialect-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).expect("the directory is made");
+        call(
+            &mut document,
+            "add_shape",
+            &json!({ "kind": "cuboid", "min": [0, 0, 0], "max": [64, 64, 64], "material": "rtex225" }),
+        )
+        .expect("a box");
+        let path = directory.join("raven.map");
+        let format = document.format;
+        let reply = call(
+            &mut document,
+            "export_map",
+            &json!({ "path": path, "format": "Hexen2" }),
+        )
+        .expect("export");
+        assert!(reply.contains("as Hexen2"), "{reply}");
+        let text = std::fs::read_to_string(&path).expect("it was written");
+        assert!(text.contains("// Format: Hexen2"), "{text}");
+        assert!(!text.contains("mapversion"), "{text}");
+        assert_eq!(
+            text.lines()
+                .filter(|line| line.starts_with('(') && line.contains(" rtex225 0 0 0 1 1 0"))
+                .count(),
+            6,
+            "{text}"
+        );
+        assert_eq!(document.format, format, "the open map keeps its dialect");
+        assert!(call(
+            &mut document,
+            "export_map",
+            &json!({ "path": path, "format": "Hexen3" })
+        )
+        .is_err());
+        let _ = std::fs::remove_dir_all(&directory);
     }
 
     /// A Quake map's keys: worldspawn's, a brush entity's, and the wad qbsp reads.
