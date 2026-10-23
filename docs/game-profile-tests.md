@@ -14,7 +14,7 @@ Games that are free to download come first, one at a time.
 | Quake | LibreQuake data, a source port, ericw-tools | [done](#quake) |
 | Neverball | Neverball and its `mapc` | [done](#neverball) |
 | Quake3 | OpenArena, q3map2 | planned |
-| Quetoo | Quetoo and its tools | planned |
+| Quetoo | Quetoo and its `quemap` | [done](#quetoo) |
 | DigitalPaintball2 | Digital Paint: Paintball 2, ericw-tools | [done](#digital-paint-paintball-2) |
 | Quake2 | the freely distributed demo, a source port | planned |
 | DDayNormandy | the free mod on the Quake 2 demo | planned |
@@ -543,3 +543,161 @@ engine has no `setpos`. It ran in a nested Xephyr display with Mesa's llvmpipe.
   the 3D view in the screenshots shows the level from outside.
 - Placing a light still writes the FGD's defaults (`style`, `lightvalue1`, `lightvalue2`,
   `fadespeed`). For Hexen II they are the game's own defaults, so they change nothing.
+
+## Quetoo
+
+Tried on 2026-10-23 with Quetoo 1.0.133 for Linux, its compiler `quemap` and its game
+data 1.0.64. The level is [demos/quetoo_heron](../demos/quetoo_heron/README.md): a
+deathmatch hall under the sky with a ledge along one side, reached by stairs or a jump
+pad, and a side room whose teleporter puts the player back on the ledge, with six
+spawns, four weapons, ammo, armour and health. It compiles with no warnings, loads with
+no errors from the map, and four bots play it.
+
+### What was installed
+
+Everything is under `~/.local/opt/quetoo/`, without root. The archives stay in
+`downloads/`.
+
+| What | From | Unpacked to |
+| --- | --- | --- |
+| Quetoo 1.0.133, `quetoo-x86_64-pc-linux.tar.gz` (the engine, `quemap`, the game modules and the libraries they need) | github.com/jdolan/quetoo releases | `quetoo/` |
+| Quetoo data 1.0.64, `quetoo-data.zip` (1.1 GB: textures, models, sounds, and the 25 stock maps with their `.map` sources) | github.com/jdolan/quetoo-data releases | `quetoo/share/quetoo/default/` |
+| Quetoo's source, `git clone --depth 1` (commit ccc8fc2), to read `quemap`'s map reader and the game code | github.com/jdolan/quetoo | `downloads/quetoo-src/` |
+| TrenchBroom's current Quetoo profile, for comparison | TrenchBroom's master branch | `downloads/tb-quetoo/` |
+
+The Linux build bundles its libraries and runs here as it is. The engine looks for its
+data in `share/quetoo` beside its `bin/`, which is where the zip goes. On every start it
+asks GitHub for a newer engine and installs it over itself; an empty `.managed` file in
+`quetoo/` stops that, as it does for a distribution's package. It still checks its data
+against the manifest on Quetoo's server.
+
+Quetoo keeps its log, config, screenshots and a player's own maps in
+`$XDG_DATA_HOME/WickedOldGames/Quetoo/default`, and on start it may write a desktop
+entry, links in `~/.local/bin` and a Discord registration. Every run here had `HOME`,
+`XDG_DATA_HOME` and `XDG_CONFIG_HOME` pointing at a scratch folder, `SDL_AUDIO_DRIVER`
+set to `dummy` and `cl_analyticsUrl` set to 0. One `quemap --help` run before that left
+a log in the real `~/.local/share/WickedOldGames`, which was removed.
+
+### How Quetoo maps are made
+
+Quetoo's mapping documentation is its game code and its own maps: the wiki has nothing
+on mapping, and the `QUAKED` comments in `src/game` describe every class. The stock maps
+were made in TrenchBroom.
+
+- `quemap -w DIR -bsp maps/NAME.map` compiles, lights and writes the map's manifest in
+  one go; this map takes 0.3 seconds. The map is looked up on the search path, so it
+  sits in `DIR/maps`. The client wants the manifest `NAME.mf` beside the bsp, and
+  without it tries to download it from the server and gives up.
+- Face lines are Quake 3's, with or without Valve's UV axes (the stock maps use
+  "Quake3 (Valve)"), each optionally followed by content flags, surface flags and a
+  value. One map cannot mix the two kinds of line. Comments and the header are ignored.
+- Materials are named by their path under `textures/`, such as
+  `quake3/base_wall/basewall01`; each may have a `.mat` file and `_norm`, `_spec` and
+  `_glow` images beside it. The data ships loose files, not pk3s. `quemap` gives the
+  tool materials their flags by name: `common/sky` is sky, `common/caulk` and
+  `common/trigger` are not drawn, `common/clip`, `hint`, `skip`, `origin`, `ladder` and
+  `portal` do what they say. The textures are drawn at 0.25 or 0.5: most are 512
+  pixels across.
+- `func_group`, `misc_dust`, `misc_sprite` and `misc_weather` are merged into the world.
+  TrenchBroom's layers and groups are read, including "omit from export".
+- Worldspawn: `message`, `sky` (a name in `sky/`), `ambient`, `games`, `gameplay`,
+  `movement`, `items`, `min_clients`, `ai`, `frag_limit`, `time_limit`,
+  `capture_limit`, `music` and `gravity`. A server setting other than `default` wins
+  over the map's: `sv_minClients` is 0 unless set, so a map's `min_clients` brings no
+  bots by itself.
+- `info_player_deathmatch` is a spawn, `info_player_team1` to `team4` a team's, and
+  `info_player_intermission` with `angles` the camera between matches.
+- `light` takes `radius`, `color`, `intensity` and `style`; the lighting is done in
+  real time from lights `quemap` stores in the bsp, with light volumes it computes.
+- `trigger_push` throws the player along its `angles` (pitch, yaw, roll; a negative
+  pitch is up) at ten times its `speed`. `misc_teleporter` is a 64 by 64 pad that sends
+  the player to the `misc_teleporter_dest` its `target` names; `trigger_teleporter` is
+  the brush form.
+
+### Setting Heron up
+
+In the welcome window the profile is set to Quetoo, and in Preferences, Games, the game
+path is `~/.local/opt/quetoo/quetoo/share/quetoo`. Heron mounts it and the profile's
+search path, `default`, with any pk3 there, and lists 4151 materials from
+`default/textures`. A scripted run of the window did both and opened the map. Heron's
+own save is what `quemap` compiles; no export is needed.
+
+### Rerunning it
+
+    cd demos/quetoo_heron
+    ./build.sh            # quemap for both maps, then installs them in the user folder
+    ~/.local/opt/quetoo/quetoo/bin/quetoo +set sv_minClients 4 +map heron_yard
+
+`build.sh --remake` builds the map again in Heron first, through `make_map.py` and the
+MCP server, with `HERON_BRUSH` and `XDG_CONFIG_HOME` set as for Quake. The game ran in a
+nested Xephyr display on Mesa's lavapipe Vulkan driver (Quetoo draws through SDL's GPU
+API) at 4 to 10 frames a second. Pictures of the Xephyr window come out striped, so the
+screenshots are the game's own `r_screenshot`.
+
+`playtest.py DISPLAY` plays `heron_yard_playtest`, started with `+set sv_minClients 0
++exec playtest.cfg +map heron_yard_playtest`. That map has two spawns, one on the jump
+pad and one on the teleporter; the script kills and respawns the player six times and
+takes a screenshot each time with the diagnostics overlay showing the origin.
+
+### What worked
+
+- `quemap` built both maps with no warnings. The game loads the level as "Heron Yard",
+  the console has no errors from it, and its bot navigation reports "Linked 1
+  teleporters, 1 jump pads". With `sv_minClients 4` four bots run the hall, the ledge
+  and the side room and frag each other.
+- Respawned on the teleporter the player arrives at the destination on the ledge
+  (origin `96 672 216`), every time. Spawned on the jump pad it landed on the ledge in
+  four of seven tries (`288 682 216`, `288 746 217`); twice it stood on the pad
+  unpushed and once it hit the ledge's front. An earlier pad, at pitch -70, did take a
+  player who walked into it up to the ledge (`288 670 216`).
+- Textures are where Heron draws them, at the profile's scale of 0.25.
+- A round trip of the stock `pits.map` (TrenchBroom, 1599 brushes, Quake3 (Valve) with
+  flags on every face) through Heron's save, and through its export as Quake 2 (Valve),
+  compiles to the same brushes, planes, leafs and faces. The bsp files differ only in
+  the entity string, by Heron's `"mapversion" "220"`.
+
+### What was fixed in Heron
+
+- **Normal and specular maps were listed as materials.** Heron did not read the
+  profile's `materials.excludes`, so the material list held every `_norm`, `_spec`,
+  `_glow` and `_fx` image beside its texture: 2510 of Quetoo's 6658 images. The globs
+  are now read and matched against each material's name.
+- **New brushes ignored the profile's UV scale.** `faceattribs.defaults.scale` was read
+  and never used, so a brush drawn or added through MCP got a scale of 1 and Quetoo's
+  textures came out four times larger than in its own maps. The shape tools, their
+  regenerated previews and MCP's `add_shape` now give new faces the profile's scale;
+  this also gives Quake 3 its 0.5.
+- **The profile was out of date.** The 2026.1 definitions offered worldspawn keys the
+  game no longer reads (`fraglimit`, `timelimit`, `teams`, `ctf`), so a map's limits were
+  lost; they lacked `func_bob` and `misc_portal`; and `trigger_push`'s sound was a file
+  that does not exist. The profile now matches TrenchBroom's master branch, where
+  Quetoo's author keeps it, which also adds the "Quake3 (Valve)" format, a Ladder tag
+  and the `portal` and `reflect` surface flags.
+
+### Mapping mistakes, not Heron's
+
+- The first jump pads (pitch -80 and -70 at speed 70) threw a standing player into the
+  front of the 192-high ledge. Pitch -75 at speed 72 clears it most of the time from a
+  standstill; at 4 to 10 frames a second the result varies from try to try.
+- `quemap` hashes the bsp it finds first on its search path for the manifest, and the
+  user folder is on it: with last build's bsp installed there, the new manifest named
+  the old bsp and the client refused the map. `build.sh` removes the installed copy
+  before compiling.
+- A player who spawns standing in the jump pad's trigger is sometimes not pushed until
+  they move. Only the playtest map has a spawn there.
+
+### What remains
+
+- Driving the player with the movement keys through XTest was unreliable in the nested
+  display: with the mouse on, the pointer turned the view, and with it off the player
+  sometimes walked the opposite way to the key while the view stayed put. The playtest
+  respawns instead of walking.
+- Heron writes `// Format: Valve` and `"mapversion" "220"` where TrenchBroom writes
+  `// Format: Quake3 (Valve)`. `quemap` ignores the header and the game ignores the key,
+  but whether TrenchBroom opens Heron's file without asking was not checked.
+- Items, weapons and spawns are drawn as boxes: the definitions name no model, though
+  the data has OBJ models for all of them under `models/`.
+- The material browser was checked through MCP's `list_materials` (no `_norm` or `_spec`
+  among 4151), not looked at in the window.
+- MCP has no tool to set a face's flags or UV, so a map built through MCP relies on the
+  tool materials' names, as this one does for its sky and triggers.
