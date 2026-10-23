@@ -120,6 +120,188 @@ impl ShapeDialogs {
         self.refresh_corner_steps(editor);
     }
 
+    /// The Join corner options, in cards each led by the switch that turns its part on,
+    /// then what the corner comes to and why it
+    /// cannot be made. Returns whether an option changed.
+    fn corner_controls(&mut self, ui: &mut egui::Ui) -> bool {
+        use crate::widgets::checkbox;
+        use crate::widgets::row;
+        let mut changed = false;
+        let steps = self.corner_steps;
+        crate::widgets::card(ui, "", None, |ui| {
+            changed |= ui
+                .add_enabled_ui(!self.corner_wedges, |ui| {
+                    checkbox(ui, &mut self.corner_rounded, tr("Round outer corner"))
+                })
+                .inner
+                .changed();
+            let own_radius = self.corner_rounded
+                && !self.corner_wedges
+                && !(self.corner_concentric && self.corner_inner);
+            ui.add_enabled_ui(own_radius, |ui| {
+                row(ui, tr("Radius"), None, |ui| {
+                    changed |= corner_number(ui, &mut self.corner_radius, 0.01..=65536.0, steps[0]);
+                });
+                row(ui, tr("Segments"), None, |ui| {
+                    changed |= corner_number(ui, &mut self.corner_segments, 1.0..=64.0, steps[1]);
+                });
+            });
+        });
+        ui.add_space(6.0);
+        crate::widgets::card(ui, "", None, |ui| {
+            changed |= ui
+                .add_enabled_ui(!self.corner_wedges, |ui| {
+                    checkbox(ui, &mut self.corner_inner, tr("Round inner corner"))
+                })
+                .inner
+                .changed();
+            ui.add_enabled_ui(self.corner_inner, |ui| {
+                row(ui, tr("Radius"), None, |ui| {
+                    changed |=
+                        corner_number(ui, &mut self.corner_inner_radius, 0.01..=65536.0, steps[2]);
+                });
+                row(ui, tr("Segments"), None, |ui| {
+                    changed |=
+                        corner_number(ui, &mut self.corner_inner_segments, 1.0..=64.0, steps[3]);
+                });
+            });
+        });
+        ui.add_space(6.0);
+        crate::widgets::card(ui, "", None, |ui| {
+            ui.add_enabled_ui(
+                self.corner_rounded && self.corner_inner && !self.corner_wedges,
+                |ui| {
+                    changed |= checkbox(ui, &mut self.corner_concentric, tr("Concentric rounding"))
+                        .changed();
+                },
+            );
+            let wedges = checkbox(ui, &mut self.corner_wedges, tr("Full-thickness wedges"));
+            changed |= wedges.changed();
+            if wedges.changed() && self.corner_wedges {
+                self.corner_rounded = true;
+                self.corner_inner = true;
+            }
+            ui.add_enabled_ui(self.corner_wedges, |ui| {
+                changed |= checkbox(
+                    ui,
+                    &mut self.corner_preserve_thickness,
+                    tr("Preserve wall thickness"),
+                )
+                .changed();
+            });
+            changed |= checkbox(ui, &mut self.corner_snap, tr("Snap to grid")).changed();
+            ui.add_enabled_ui(self.corner_snap, |ui| {
+                row(ui, tr("Grid"), None, |ui| {
+                    changed |= corner_grid(ui, &mut self.corner_grid);
+                });
+            });
+        });
+        ui.add_space(6.0);
+        let note = if self.corner_wedges {
+            "Inner radius and segments define the wedges. Thickness mode offsets the outer facets."
+        } else {
+            "Outer radius = inner radius + member width. Inner segments apply to both arcs."
+        };
+        ui.add(egui::Label::new(egui::RichText::new(tr(note)).color(theme::dim())).wrap());
+        if let Some(draft) = &self.corner {
+            if self.corner_wedges && !self.corner_preserve_thickness {
+                let [u, v] = draft.join.axes;
+                let a = draft.join.before[0].bounds();
+                let b = draft.join.before[1].bounds();
+                ui.label(format!(
+                    "{}: {:.3} × {:.3}",
+                    tr("Outer radii"),
+                    b.max[u] - b.min[u] + self.corner_inner_radius,
+                    a.max[v] - a.min[v] + self.corner_inner_radius
+                ));
+            } else if self.corner_rounding().concentric {
+                let u = draft.join.axes[0];
+                let width =
+                    draft.join.before[1].bounds().max[u] - draft.join.before[1].bounds().min[u];
+                ui.label(format!(
+                    "{}: {:.3}",
+                    tr("Outer radius"),
+                    width + self.corner_inner_radius
+                ));
+            }
+            ui.label(format!(
+                "{}: {}",
+                tr("Added brushes"),
+                draft.join.added.len()
+            ));
+            if draft.join.snapped_away > 0 {
+                ui.label(format!(
+                    "{}: {}",
+                    tr("Left out by the grid"),
+                    draft.join.snapped_away
+                ));
+            }
+        }
+        if !self.status.is_empty() {
+            ui.add(
+                egui::Label::new(egui::RichText::new(&self.status).color(theme::error()))
+                    .wrap()
+                    .selectable(true),
+            );
+        }
+        changed
+    }
+
+    /// The joined corner in one preview filling `ui`, with the brushes as they were drawn
+    /// faintly under it and the zoom buttons above. Scrolling zooms, dragging pans and a
+    /// double click resets.
+    fn corner_preview(&mut self, ui: &mut egui::Ui) {
+        let Some(join) = self.corner.as_ref().map(|draft| draft.join.clone()) else {
+            ui.centered_and_justified(|ui| {
+                ui.label(egui::RichText::new(tr("Select exactly two brushes.")).color(theme::dim()))
+            });
+            return;
+        };
+        ui.horizontal(|ui| {
+            ui.label(tr("Preview zoom"));
+            if ui
+                .add_enabled(self.corner_zoom > 0.25, egui::Button::new("−"))
+                .clicked()
+            {
+                self.corner_zoom = (self.corner_zoom / 1.25).max(0.25);
+            }
+            if ui
+                .add_enabled(self.corner_zoom < 32.0, egui::Button::new("+"))
+                .clicked()
+            {
+                self.corner_zoom = (self.corner_zoom * 1.25).min(32.0);
+            }
+            if ui.button(tr("Reset view")).clicked() {
+                self.corner_zoom = 1.0;
+                self.corner_pan = egui::Vec2::ZERO;
+            }
+            ui.label(egui::RichText::new(tr("Grey lines: before the join")).color(theme::dim()));
+        });
+        let size = egui::vec2(ui.available_width(), ui.available_height().max(80.0));
+        let (rect, response) = ui.allocate_exact_size(size, egui::Sense::drag());
+        if response.hovered() {
+            let scroll = ui.input_mut(|i| {
+                let delta = i.smooth_scroll_delta.y;
+                i.smooth_scroll_delta = egui::Vec2::ZERO;
+                delta
+            });
+            if scroll != 0.0 {
+                let old = self.corner_zoom;
+                self.corner_zoom = (old * (scroll * 0.005).exp()).clamp(0.25, 32.0);
+                let cursor = response.hover_pos().unwrap_or(rect.center()) - rect.center();
+                self.corner_pan = cursor - (cursor - self.corner_pan) * (self.corner_zoom / old);
+            }
+        }
+        if response.dragged() {
+            self.corner_pan += ui.input(|i| i.pointer.delta());
+        }
+        if response.double_clicked() {
+            self.corner_zoom = 1.0;
+            self.corner_pan = egui::Vec2::ZERO;
+        }
+        draw_join(ui, rect, &join, self.corner_zoom, self.corner_pan);
+    }
+
     fn refresh_corner_steps(&mut self, editor: &Editor) {
         for field in 0..4 {
             for direction in 0..2 {
@@ -348,227 +530,99 @@ impl ShapeDialogs {
         if self.corner_open {
             let mut close = false;
             let mut apply = false;
-            self.corner_open = dialog::show_modal(
-                ctx,
-                "corner",
-                tr("Join corner"),
-                [800.0, 500.0],
-                |ui, part| {
-                    if part == dialog::Part::Actions {
-                        apply |=
-                            dialog::accent_button(ui, tr("Apply"), self.corner.is_some()).clicked();
-                        close |= dialog::button(ui, tr("Cancel"), true).clicked();
-                        return;
-                    }
-                    let (escape, enter) = dialog::keys(ui);
-                    close |= escape;
-                    apply |= enter && self.corner.is_some();
-                    if self
-                        .corner
-                        .as_ref()
-                        .is_some_and(|draft| draft.revision != editor.document.borrow().revision())
-                    {
-                        self.refresh_corner_steps(editor);
-                    }
-                    // The controls and the previews scroll together when the window is
-                    // shorter than they are.
-                    egui::ScrollArea::vertical()
-                        .id_salt("corner-controls")
-                        .auto_shrink([false, false])
-                        .show(ui, |ui| {
-                    let old_options = self.corner_rounding();
-                    let mut changed = false;
-                    ui.allocate_ui(egui::vec2(ui.available_width(), 190.0), |ui| {
-                    ui.columns(2, |columns| {
-                        let ui = &mut columns[0];
-                        changed |= ui.add_enabled_ui(!self.corner_wedges, |ui| crate::widgets::checkbox(ui, &mut self.corner_rounded, tr("Round outer corner"))).inner.changed();
-                        ui.add_enabled_ui(self.corner_rounded && !self.corner_wedges && !(self.corner_concentric && self.corner_inner), |ui| {
-                            ui.horizontal(|ui| {
-                                ui.label(tr("Radius"));
-                                changed |= corner_number(ui, &mut self.corner_radius, 0.01..=65536.0, self.corner_steps[0]);
+            self.corner_open =
+                dialog::show_modal(
+                    ctx,
+                    "corner",
+                    tr("Join corner"),
+                    [880.0, 560.0],
+                    |ui, part| {
+                        if part == dialog::Part::Actions {
+                            apply |= dialog::accent_button(ui, tr("Apply"), self.corner.is_some())
+                                .clicked();
+                            close |= dialog::button(ui, tr("Cancel"), true).clicked();
+                            return;
+                        }
+                        let (escape, enter) = dialog::keys(ui);
+                        close |= escape;
+                        apply |= enter && self.corner.is_some();
+                        if self.corner.as_ref().is_some_and(|draft| {
+                            draft.revision != editor.document.borrow().revision()
+                        }) {
+                            self.refresh_corner_steps(editor);
+                        }
+                        let old_options = self.corner_rounding();
+                        let mut changed = false;
+                        // Wide, the controls make a column on the left and the preview fills
+                        // the right, so the corner stays in sight while a radius changes.
+                        // Narrow, the preview goes on top and the controls scroll under it.
+                        if ui.available_width() >= CORNER_WIDE {
+                            let height = ui.available_height();
+                            ui.horizontal_top(|ui| {
+                                ui.allocate_ui_with_layout(
+                                    egui::vec2(CORNER_CONTROLS, height),
+                                    egui::Layout::top_down(egui::Align::Min),
+                                    |ui| {
+                                        egui::ScrollArea::vertical()
+                                            .id_salt("corner-controls")
+                                            .auto_shrink([false, false])
+                                            .show(ui, |ui| changed |= self.corner_controls(ui));
+                                    },
+                                );
+                                ui.add_space(8.0);
+                                ui.vertical(|ui| self.corner_preview(ui));
                             });
-                            ui.horizontal(|ui| {
-                                ui.label(tr("Segments"));
-                                changed |= corner_number(ui, &mut self.corner_segments, 1.0..=64.0, self.corner_steps[1]);
-                            });
-                        });
-                        let ui = &mut columns[1];
-                        changed |= ui.add_enabled_ui(!self.corner_wedges, |ui| crate::widgets::checkbox(ui, &mut self.corner_inner, tr("Round inner corner"))).inner.changed();
-                        ui.add_enabled_ui(self.corner_inner, |ui| {
-                            ui.horizontal(|ui| {
-                                ui.label(tr("Radius"));
-                                changed |= corner_number(ui, &mut self.corner_inner_radius, 0.01..=65536.0, self.corner_steps[2]);
-                            });
-                            ui.horizontal(|ui| {
-                                ui.label(tr("Segments"));
-                                changed |= corner_number(ui, &mut self.corner_inner_segments, 1.0..=64.0, self.corner_steps[3]);
-                            });
-                        });
-                    });
-                    ui.add_enabled_ui(self.corner_rounded && self.corner_inner && !self.corner_wedges, |ui| {
-                        changed |= crate::widgets::checkbox(ui, &mut self.corner_concentric, tr("Concentric rounding")).changed();
-                    });
-                    let wedge_changed = crate::widgets::checkbox(ui, &mut self.corner_wedges, tr("Full-thickness wedges")).changed();
-                    changed |= wedge_changed;
-                    if wedge_changed && self.corner_wedges {
-                        self.corner_rounded = true;
-                        self.corner_inner = true;
-                    }
-                    ui.add_enabled_ui(self.corner_wedges, |ui| {
-                        changed |= crate::widgets::checkbox(ui, &mut self.corner_preserve_thickness, tr("Preserve wall thickness")).changed();
-                    });
-                    ui.horizontal(|ui| {
-                        changed |= crate::widgets::checkbox(ui, &mut self.corner_snap, tr("Snap to grid")).changed();
-                        ui.add_enabled_ui(self.corner_snap, |ui| {
-                            changed |= corner_grid(ui, &mut self.corner_grid);
-                        });
-                    });
-                    ui.label(tr(if self.corner_wedges {
-                        "Inner radius and segments define the wedges. Thickness mode offsets the outer facets."
-                    } else {
-                        "Outer radius = inner radius + member width. Inner segments apply to both arcs."
-                    }));
-                });
-                    if changed {
-                        match editor
-                            .document
-                            .borrow()
-                            .preview_corner_join_options(self.corner_rounding())
-                        {
-                            Ok(draft) => {
-                                self.corner = Some(draft);
-                                self.status.clear();
-                            }
-                            Err(error) => {
-                                // Keep the last valid parameters and preview for invalid text/drag edits.
-                                self.corner_rounded = old_options.outer.is_some();
-                                self.corner_inner = old_options.inner.is_some();
-                                if let Some((r, n)) = old_options.outer {
-                                    self.corner_radius = r;
-                                    self.corner_segments = n;
+                        } else {
+                            let height = (ui.available_height() * 0.45).clamp(150.0, 300.0);
+                            ui.allocate_ui_with_layout(
+                                egui::vec2(ui.available_width(), height),
+                                egui::Layout::top_down(egui::Align::Min),
+                                |ui| self.corner_preview(ui),
+                            );
+                            ui.add_space(8.0);
+                            egui::ScrollArea::vertical()
+                                .id_salt("corner-controls")
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| changed |= self.corner_controls(ui));
+                        }
+                        if changed {
+                            match editor
+                                .document
+                                .borrow()
+                                .preview_corner_join_options(self.corner_rounding())
+                            {
+                                Ok(draft) => {
+                                    self.corner = Some(draft);
+                                    self.status.clear();
                                 }
-                                if let Some((r, n)) = old_options.inner {
-                                    self.corner_inner_radius = r;
-                                    self.corner_inner_segments = n;
+                                Err(error) => {
+                                    // Keep the last valid parameters and preview for invalid text/drag edits.
+                                    self.corner_rounded = old_options.outer.is_some();
+                                    self.corner_inner = old_options.inner.is_some();
+                                    if let Some((r, n)) = old_options.outer {
+                                        self.corner_radius = r;
+                                        self.corner_segments = n;
+                                    }
+                                    if let Some((r, n)) = old_options.inner {
+                                        self.corner_inner_radius = r;
+                                        self.corner_inner_segments = n;
+                                    }
+                                    self.corner_concentric = old_options.concentric;
+                                    self.corner_wedges = old_options.wedges;
+                                    self.corner_preserve_thickness = old_options.preserve_thickness;
+                                    self.corner_snap = old_options.snap.is_some();
+                                    if let Some(grid) = old_options.snap {
+                                        self.corner_grid = grid;
+                                    }
+                                    self.status = error;
                                 }
-                                self.corner_concentric = old_options.concentric;
-                                self.corner_wedges = old_options.wedges;
-                                self.corner_preserve_thickness = old_options.preserve_thickness;
-                                self.corner_snap = old_options.snap.is_some();
-                                if let Some(grid) = old_options.snap {
-                                    self.corner_grid = grid;
-                                }
-                                self.status = error;
                             }
                         }
-                    }
-                    if changed {
-                        self.refresh_corner_steps(editor);
-                    }
-                    if let Some(draft) = &self.corner {
-                        ui.horizontal(|ui| {
-                            if self.corner_wedges && !self.corner_preserve_thickness {
-                                let [u, v] = draft.join.axes;
-                                let a = draft.join.before[0].bounds();
-                                let b = draft.join.before[1].bounds();
-                                ui.label(format!(
-                                    "{}: {:.3} × {:.3}",
-                                    tr("Outer radii"),
-                                    b.max[u] - b.min[u] + self.corner_inner_radius,
-                                    a.max[v] - a.min[v] + self.corner_inner_radius
-                                ));
-                            } else if self.corner_rounding().concentric {
-                                let u = draft.join.axes[0];
-                                let width = draft.join.before[1].bounds().max[u]
-                                    - draft.join.before[1].bounds().min[u];
-                                ui.label(format!(
-                                    "{}: {:.3}",
-                                    tr("Outer radius"),
-                                    width + self.corner_inner_radius
-                                ));
-                            }
-                            ui.label(format!(
-                                "{}: {}",
-                                tr("Added brushes"),
-                                draft.join.added.len()
-                            ));
-                            if draft.join.snapped_away > 0 {
-                                ui.label(format!(
-                                    "{}: {}",
-                                    tr("Left out by the grid"),
-                                    draft.join.snapped_away
-                                ));
-                            }
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label(tr("Preview zoom"));
-                            if ui
-                                .add_enabled(self.corner_zoom > 0.25, egui::Button::new("−"))
-                                .clicked()
-                            {
-                                self.corner_zoom = (self.corner_zoom / 1.25).max(0.25);
-                            }
-                            if ui
-                                .add_enabled(self.corner_zoom < 32.0, egui::Button::new("+"))
-                                .clicked()
-                            {
-                                self.corner_zoom = (self.corner_zoom * 1.25).min(32.0);
-                            }
-                            if ui.button(tr("Reset view")).clicked() {
-                                self.corner_zoom = 1.0;
-                                self.corner_pan = egui::Vec2::ZERO;
-                            }
-                        });
-                        let height = (ui.available_height() - 40.0).max(160.0);
-                        ui.columns(2, |columns| {
-                            for (index, ui) in columns.iter_mut().enumerate() {
-                                ui.vertical_centered(|ui| {
-                                    ui.label(tr(if index == 0 { "Before" } else { "After" }))
-                                });
-                                let (rect, response) = ui.allocate_exact_size(
-                                    egui::vec2(ui.available_width(), height),
-                                    egui::Sense::drag(),
-                                );
-                                if response.hovered() {
-                                    let scroll = ui.input_mut(|i| {
-                                        let delta = i.smooth_scroll_delta.y;
-                                        i.smooth_scroll_delta = egui::Vec2::ZERO;
-                                        delta
-                                    });
-                                    if scroll != 0.0 {
-                                        let old = self.corner_zoom;
-                                        self.corner_zoom =
-                                            (old * (scroll * 0.005).exp()).clamp(0.25, 32.0);
-                                        let cursor = response.hover_pos().unwrap_or(rect.center())
-                                            - rect.center();
-                                        self.corner_pan = cursor
-                                            - (cursor - self.corner_pan) * (self.corner_zoom / old);
-                                    }
-                                }
-                                if response.dragged() {
-                                    self.corner_pan += ui.input(|i| i.pointer.delta());
-                                }
-                                if response.double_clicked() {
-                                    self.corner_zoom = 1.0;
-                                    self.corner_pan = egui::Vec2::ZERO;
-                                }
-                                draw_join(
-                                    ui,
-                                    rect,
-                                    &draft.join,
-                                    index == 1,
-                                    self.corner_zoom,
-                                    self.corner_pan,
-                                );
-                            }
-                        });
-                    }
-                    if !self.status.is_empty() {
-                        ui.add(egui::Label::new(&self.status).wrap().selectable(true));
-                    }
-                        });
-                },
-            ) && !close;
+                        if changed {
+                            self.refresh_corner_steps(editor);
+                        }
+                    },
+                ) && !close;
             if apply {
                 if let Some(revision) = self.corner.as_ref().map(|draft| draft.revision) {
                     let result = editor
@@ -645,7 +699,6 @@ fn draw_join(
     ui: &egui::Ui,
     rect: egui::Rect,
     join: &editor_core::corner_join::Join,
-    after: bool,
     zoom: f32,
     pan: egui::Vec2,
 ) {
@@ -658,10 +711,7 @@ fn draw_join(
         egui::StrokeKind::Inside,
     );
     let [u, v] = join.axes;
-    let a = join.before[0].bounds();
-    let b = join.before[1].bounds();
-    let min = [a.min[u].min(b.min[u]), a.min[v].min(b.min[v])];
-    let max = [a.max[u].max(b.max[u]), a.max[v].max(b.max[v])];
+    let (min, max) = corner_frame(join);
     let scale = ((rect.width() as f64 - 32.0) / (max[0] - min[0]).max(0.01))
         .min((rect.height() as f64 - 32.0) / (max[1] - min[1]).max(0.01));
     let scale = scale * zoom as f64;
@@ -672,17 +722,74 @@ fn draw_join(
         )
     };
     let painter = ui.painter_at(rect);
-    for (index, brush) in (if after { &join.after } else { &join.before })
-        .iter()
-        .chain(join.added.iter().filter(|_| after))
-        .enumerate()
-    {
+    // The brushes as they were, faint and thin, then what the join makes of them.
+    for brush in &join.before {
+        for (a, b) in brush.edge_positions() {
+            painter.line_segment(
+                [project(a), project(b)],
+                egui::Stroke::new(1.0, theme::dim()),
+            );
+        }
+    }
+    for (index, brush) in join.after.iter().chain(&join.added).enumerate() {
         let colour = theme::series(index);
         for (a, b) in brush.edge_positions() {
             painter.line_segment([project(a), project(b)], egui::Stroke::new(2.0, colour));
         }
     }
 }
+
+/// What the Join corner previews show at zoom 1, as (min, max) in the corner's plane: the
+/// square where the members meet and every vertex the join moved or made, with room
+/// round them, so a small radius is as easy to see as a large one. The members' far ends
+/// are left out; zooming out shows them.
+fn corner_frame(join: &editor_core::corner_join::Join) -> ([f64; 2], [f64; 2]) {
+    let [u, v] = join.axes;
+    let a = join.before[0].bounds();
+    let b = join.before[1].bounds();
+    let mut min = [a.min[u].max(b.min[u]), a.min[v].max(b.min[v])];
+    let mut max = [a.max[u].min(b.max[u]), a.max[v].min(b.max[v])];
+    let old: Vec<geometry_math::vec::Vec3d> = join
+        .before
+        .iter()
+        .flat_map(|brush| brush.vertex_positions())
+        .collect();
+    let made = join
+        .after
+        .iter()
+        .chain(&join.added)
+        .flat_map(|brush| brush.vertex_positions())
+        .filter(|p| {
+            !old.iter()
+                .any(|o| geometry_math::vec::squared_distance(*o, *p) < 1e-6)
+        });
+    for p in made {
+        min = [min[0].min(p[u]), min[1].min(p[v])];
+        max = [max[0].max(p[u]), max[1].max(p[v])];
+    }
+    let pad = (max[0] - min[0]).max(max[1] - min[1]) * 0.75;
+    let whole = (
+        [a.min[u].min(b.min[u]), a.min[v].min(b.min[v])],
+        [a.max[u].max(b.max[u]), a.max[v].max(b.max[v])],
+    );
+    (
+        [
+            (min[0] - pad).max(whole.0[0]),
+            (min[1] - pad).max(whole.0[1]),
+        ],
+        [
+            (max[0] + pad).min(whole.1[0]),
+            (max[1] + pad).min(whole.1[1]),
+        ],
+    )
+}
+
+/// How wide the Join corner window's body must be for the previews to stand beside the
+/// controls rather than above them.
+const CORNER_WIDE: f32 = 680.0;
+
+/// The width of the Join corner controls column beside the previews.
+const CORNER_CONTROLS: f32 = 340.0;
 
 /// The corner's own grid, picked from the sizes the editor's grid offers, in the same
 /// drop-down. Returns whether it changed.
