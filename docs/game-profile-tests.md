@@ -13,7 +13,7 @@ Games that are free to download come first, one at a time.
 | --- | --- | --- |
 | Quake | LibreQuake data, a source port, ericw-tools | [done](#quake) |
 | Neverball | Neverball and its `mapc` | [done](#neverball) |
-| Quake3 | OpenArena, q3map2 | planned |
+| Quake3 | OpenArena, q3map2 | [done](#openarena-quake-3) |
 | Quetoo | Quetoo and its tools | planned |
 | DigitalPaintball2 | Digital Paint: Paintball 2, ericw-tools | [done](#digital-paint-paintball-2) |
 | Quake2 | the freely distributed demo, a source port | planned |
@@ -543,3 +543,174 @@ engine has no `setpos`. It ran in a nested Xephyr display with Mesa's llvmpipe.
   the 3D view in the screenshots shows the level from outside.
 - Placing a light still writes the FGD's defaults (`style`, `lightvalue1`, `lightvalue2`,
   `fadespeed`). For Hexen II they are the game's own defaults, so they change nothing.
+
+## OpenArena (Quake 3)
+
+Tried on 2026-10-23 with OpenArena 0.8.8, the free game on the Quake 3 engine, and the
+q3map2 and mbspc that ship with NetRadiant-custom. The level is
+[demos/openarena_heron](../demos/openarena_heron/README.md): a courtyard under a sky
+shader with a ledge along one side, a jump pad and stairs up to the ledge, and a room
+whose teleporter puts the player on it; five spawns, four weapons, armour, health and
+ammunition. It compiles sealed, lights from the sky and the room's lamps, and plays with
+bots: the jump pad lands the player on the ledge, the teleporter on its destination,
+and three bots find their way about and frag each other.
+
+### What was installed
+
+Everything is under `~/.local/opt/openarena/`, without root. The archives stay in
+`downloads/`.
+
+| What | From | Unpacked to |
+| --- | --- | --- |
+| OpenArena 0.8.8, `openarena-0.8.8.zip` (the game with `openarena.x86_64`, and `baseoa/*.pk3`) | download.tuxfamily.org/openarena/rel/088 (the official mirror) | `openarena-0.8.8/` |
+| `libsdl1.2debian` 1.2.68-2 (sdl12-compat), which the game links and the system lacks | Ubuntu 24.04, `apt-get download` | `root/usr/lib/x86_64-linux-gnu/` |
+| NetRadiant-custom 20260114, Linux x86_64 AppImage, extracted with `--appimage-extract` (q3map2 2.5.17n, mbspc and the editor's OpenArena gamepack) | github.com/Garux/netradiant-custom releases | `netradiant-custom/squashfs-root/usr/bin/` |
+| The sources of OpenArena's stock map "Aggressor" (`oad_aggressor.map`, brush primitives, and `aggressor+++.map`, with patches), for the round trip | github.com/NeonKnightOA/nk-oa-assets, `maps/DM/aggressor` | `downloads/nk-oa-assets/` |
+
+`run-openarena` starts the game with `root/` on the library path and the install as
+`fs_basepath`. The game ran with `+set fs_homepath` pointing at a scratch folder, so
+`~/.openarena` was never made. It keeps a pid file in `$TMPDIR` (`/tmp/ioq3+oa.pid`
+by default); after a run that was killed rather than quit, the next start waits on a
+zenity question about safe video settings, so the runs set `TMPDIR` to a scratch folder
+too and end with `quit`.
+
+### How OpenArena maps are made
+
+The rules come from q3map2's own documentation in NetRadiant-custom's `docs/`, the
+NetRadiant-custom OpenArena gamepack and the stock maps' sources.
+
+- A face names a shader as `skies/q3dm0`; q3map2 puts `textures/` in front. A shader is
+  declared in `scripts/*.shader` inside a pk3: its `qer_editorimage` is what an editor
+  shows, its `surfaceparm`s make it sky, water, nodraw and so on, and `q3map_sun` and
+  `q3map_surfacelight` make it give light. A texture with no shader is an image under
+  `textures/`. OpenArena's `scripts/shaderlist.txt` decides which shader files q3map2
+  reads; the engine reads them all.
+- `common/caulk` is drawn nowhere and lit by nothing, so every face no player sees wears
+  it. `common/trigger` is for trigger brushes, `common/clip` and its kin block without
+  being drawn. Small or decorative brushes are made detail (content flag 0x8000000) so
+  they do not split the vis tree.
+- Spawns are `info_player_deathmatch`; weapons, ammunition and items are point entities
+  16 above the floor, and fall onto it. A jump pad is a `trigger_push` brush whose
+  `target` is a `target_position` at the top of the arc. A teleporter is a
+  `trigger_teleport` brush aimed at a `misc_teleporter_dest`, whose `angle` is the way
+  the player faces on arrival. Lights are `light` entities (`light` and `_color`), or
+  shaders that emit light; a sky shader with `q3map_sun` lights the outdoors.
+- The compile is three runs of q3map2 on the same file: `-meta` (the bsp), `-vis` and
+  `-light`. q3map2 has no OpenArena game of its own: it is `-game quake3` with
+  `-fs_basegame baseoa`. Bots need an `.aas` file from mbspc's `-bsp2aas`. A map is
+  shipped as a pk3 with the bsp, the aas and a `scripts/<map>.arena` file that names its
+  game types.
+- q3map2 reads three kinds of face line: Quake 3's own (the Quake 2 one with the surface
+  flags trio), brush primitives (`brushDef`, a texture matrix per face) and, in
+  NetRadiant-custom's build, Valve 220. Patches are `patchDef2`.
+
+### Setting Heron up
+
+In the welcome window the profile is set to Quake 3. In Preferences, Games, "Where it is"
+is the OpenArena folder, `~/.local/opt/openarena/openarena-0.8.8`, and Mods is `baseoa`:
+the profile's search path is Quake 3's `baseq3`, which OpenArena does not have, and the
+Mods field is how its own folder is named, as in TrenchBroom. The project paths then
+list `baseoa`, the install and the missing `baseq3`, and Heron mounts the nine pk3s in
+`baseoa`. The material browser lists OpenArena's textures and shaders under the names a
+map uses (`skies/q3dm0`, `common/caulk`), and the profile loads
+`gamedata/Quake3/entities.ent`.
+
+### Rerunning it
+
+    cd demos/openarena_heron
+    OA_HOME=/scratch/oahome ./build.sh   # q3map2, mbspc, then heron_court.pk3 into $OA_HOME/baseoa
+    TMPDIR=/scratch/tmp ~/.local/opt/openarena/run-openarena +set fs_homepath /scratch/oahome \
+        +set r_fullscreen 0 +devmap heron_court +exec playtest.cfg
+
+Without `OA_HOME` the pk3 goes into `~/.openarena/baseoa`, where the game looks by
+default. `build.sh --remake` builds the map again in Heron first, through `make_map.py`
+and the MCP server; set `HERON_BRUSH` to the binary and `XDG_CONFIG_HOME` to a scratch
+folder whose preferences have the Quake 3 profile, the game path and the mod.
+`build.sh --primitives` compiles the brush-primitive export instead. `playtest.cfg`
+turns god mode on, uses `setviewpos` to drop the player on the jump pad and into the
+teleporter, prints `viewpos` after each, adds three bots and takes screenshots. The game
+ran in a nested Xephyr display with Mesa's llvmpipe at 30 frames a second.
+
+### What worked
+
+- q3map2 compiled the map with no leak and no warning: every shader was found, the light
+  stage counted 8 point lights, 17 area lights from the shaders and the sky's sun. mbspc
+  found the jump pad and the teleporter as bot routes.
+- In the game the console shows nothing from the map. The jump pad throws the player
+  from `0 96` to the ledge (`viewpos` reads `0 496 202` on landing), and the teleporter
+  puts the player at the destination, `-405 384 210`, facing east. The bots load the
+  `.aas`, run about the yard and the ledge and frag each other, one of them with the
+  rocket launcher from the ledge. Textures, the sky
+  and the light panels are where Heron draws them.
+- The map saved in Heron's Valve dialect and its brush-primitive export compile to the
+  same bsp: the same planes, brushes, surfaces, vertices and texture coordinates; only
+  the lightmaps differ, as they do between two runs of the light stage.
+- Round trip of OpenArena's own sources: `oad_aggressor.map` (835 `brushDef` brushes)
+  opened in Heron, saved as Valve 220 and exported again as brush primitives, compiles
+  to the same bsp as the original in both cases. Texture coordinates differ by at most
+  0.000002; the only other change is `"mapversion" "220"` in the Valve save's entities.
+  `aggressor+++.map` (Quake 3 face lines, four patches) gives the same bsp through Heron
+  too, patches included. Exporting the brush-primitive copy as Quake 3 face lines
+  instead changes the texture alignment, as Heron warns it will (4892 faces lose their
+  own axes).
+
+### What was fixed in Heron
+
+- **Shaders had the wrong names.** Heron listed a game's shaders under their full names,
+  `textures/skies/q3dm0`, while images and maps name them without the texture root. A
+  face naming `skies/q3dm0` found no material, a sky picked in the browser would have
+  been written as `textures/skies/q3dm0`, which q3map2 reads as
+  `textures/textures/skies/q3dm0` (no sky, no sun), and caulk and the sky were listed
+  twice, once without their surfaceparms. Shaders are now named as maps name them and
+  replace the image of the same name; the model, icon and effect shaders outside
+  `textures/` are no longer offered as brush materials.
+- **MCP could not write brush primitives.** `export_map` takes `quake3_brushdef`, the
+  format the export window offers as "Quake 3 (brush primitives)", which is what
+  `make_map.py` uses for `heron_court_brushdef.map`.
+- **The entity definitions warned on every start.** Four classes declared `targetname`
+  twice, and `gridsize` and `_blocksize` were integers with three numbers as their
+  default; the status bar showed it in red. The duplicates are gone and the two keys are
+  strings.
+
+### Mapping mistakes, not Heron's
+
+- A weapon placed next to the teleporter pad stood on it; items drop onto whatever is
+  below them, so they want a clear floor.
+- `screenshot` in the console is taken at the end of a later frame, so a script that
+  moves the player straight after it photographs the new place. The play-test waits a
+  few frames after each one.
+- `god` in a config run with `+devmap` does nothing before the player has entered; it
+  goes after the first wait.
+- mbspc garbles a long path to the bsp ("error opening" a name with junk in it), so
+  `build.sh` runs it from the bsp's folder.
+
+### What remains
+
+- New faces get a UV scale of 1. The profile asks for 0.5 (`faceattribs.defaults`), the
+  scale Quake 3's textures are drawn at, and Heron read the key without using it. The
+  Quetoo profile test's branch has a change that makes the shape tools honour it. Until that is merged the
+  textures in this map are twice the size a Quake 3 mapper would give them.
+- MCP cannot set content flags, so `make_map.py` cannot make its pillars detail.
+  Whether the GUI's face attribute editor sets the profile's `detail` flag and q3map2
+  then treats the brush as detail was not checked.
+- The brush-primitive export refuses the whole map when one texture has no size: the
+  Aggressor variant with patches names a `NULL` texture that is not in OpenArena, and
+  could not be exported that way. q3map2 takes a missing image as 64 by 64.
+- The profile's search path is `baseq3`, so every OpenArena setup lists a missing folder
+  among the project paths and warns that it is not there.
+- `gamedata/Quake3/entities.ent` is Quake 3's: OpenArena's extra classes (nail gun, chain
+  gun, prox launcher, the Team Arena items, domination points) are not in it.
+  NetRadiant-custom's gamepack has them in `oa.game/baseoa/entities.ent`.
+- Placing an entity writes the definition's defaults into it (`wait`, `random`, `count` on
+  weapons, `radius`, `fade` and five more on lights). They are the game's own defaults,
+  but a weapon's `wait` overrides the server's `g_weaponRespawn`.
+- A map saved by Heron carries `"mapversion" "220"` into the bsp's entities. OpenArena
+  ignores it.
+- The editor's 3D view was only looked at from outside the level with the roofs deleted;
+  flying the camera through it from a script was not worked out.
+
+The profile could drop "experimental": OpenArena's pk3s, shaders and textures load,
+Heron's Valve save and its brush-primitive export both compile with q3map2 to exactly
+what the original map gives, and patches survive the round trip. The UV scale default
+is the one thing a Quake 3 mapper would notice at once, so I would drop the flag once
+that change is merged.

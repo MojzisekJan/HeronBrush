@@ -1,0 +1,7 @@
+{
+map "heron_court"
+longname "Heron Brush: Courtyard"
+fraglimit "15"
+type "ffa tourney"
+bots "sarge grism kyonshi"
+}
