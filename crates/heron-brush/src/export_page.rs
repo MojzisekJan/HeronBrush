@@ -458,7 +458,7 @@ impl ExportPage {
         let mut check = false;
         self.open = dialog::show(ctx, "export", tr("Export"), [760.0, 620.0], |ui, part| {
             if part == dialog::Part::Actions {
-                write = form::accent_button(ui, tr("Write"), true).clicked();
+                write = form::accent_button(ui, tr("Export"), true).clicked();
                 close = dialog::button(ui, tr("Close"), true).clicked();
                 ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                     check = dialog::button(ui, tr("Check"), true)

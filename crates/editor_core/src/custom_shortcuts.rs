@@ -22,7 +22,7 @@ pub const COMMANDS: &[Command] = &[
     },
     Command {
         id: "open",
-        label: "Open Map",
+        label: "Open map",
         default: "Ctrl+O",
         global: true,
     },
@@ -34,7 +34,7 @@ pub const COMMANDS: &[Command] = &[
     },
     Command {
         id: "save_as",
-        label: "Save As",
+        label: "Save as",
         default: "Ctrl+Shift+S",
         global: true,
     },

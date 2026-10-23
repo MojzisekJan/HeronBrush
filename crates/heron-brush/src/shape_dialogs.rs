@@ -197,12 +197,14 @@ impl ShapeDialogs {
                         - ui.spacing().item_spacing.x * (count - 1.0))
                         / count)
                         .min(110.0);
-                    close |= theme::button(ui, tr("Close"), width, true).clicked();
+                    // The strip fills from the right: the step to take last, on the right
+                    // as in every dialog, then the ways out.
                     if pending {
-                        confirm |= crate::form::accent_button_width(ui, tr("Confirm"), width, true)
+                        confirm |= crate::form::accent_button_width(ui, tr("Apply"), width, true)
                             .clicked();
                         cancel |= theme::button(ui, tr("Cancel"), width, true).clicked();
                     }
+                    close |= theme::button(ui, tr("Close"), width, true).clicked();
                 } else {
                     egui::ScrollArea::vertical()
                         .id_salt("shape-settings-controls")
@@ -935,7 +937,7 @@ mod tests {
             &ctx,
             &mut dialogs,
             &editor,
-            settings_text(&output, tr("Confirm")),
+            settings_text(&output, tr("Apply")),
         );
         assert!(!editor.document.borrow().has_shape_preview());
         assert_eq!(editor.document.borrow().to_map_text(), inserted);

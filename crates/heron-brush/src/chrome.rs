@@ -204,14 +204,14 @@ pub fn menus(
             item(tr("New map"), Action::New)
                 .icon(icon::FILE_PLUS)
                 .keys(&shortcut("new")),
-            item(tr("Open Map"), Action::Open)
+            item(tr("Open map"), Action::Open)
                 .icon(icon::FOLDER_OPEN)
                 .keys(&shortcut("open")),
             Entry::Separator,
             item(tr("Save"), Action::Save)
                 .icon(icon::FLOPPY_DISK)
                 .keys(&shortcut("save")),
-            item(tr("Save As"), Action::SaveAs)
+            item(tr("Save as"), Action::SaveAs)
                 .icon(icon::FLOPPY_DISK_BACK)
                 .keys(&shortcut("save_as")),
             item(tr("Revert to saved map"), Action::Revert).icon(icon::ARROW_COUNTER_CLOCKWISE),
@@ -914,7 +914,7 @@ impl Chrome {
                     if area.width() >= 620.0 {
                         row.colored_label(theme::dim(), tr("Shape preview"));
                     }
-                    if row.button(tr("Confirm")).clicked() {
+                    if row.button(tr("Apply")).clicked() {
                         self.document.borrow_mut().finish_shape_preview();
                     }
                     if row.button(tr("Cancel")).clicked() {
@@ -1457,7 +1457,7 @@ mod shape_preview_tests {
             .unwrap();
         let output = frame(&ctx, &mut chrome, vec![]);
         let inserted = editor.document.borrow().to_map_text();
-        click(&ctx, &mut chrome, text_at(&output, tr("Confirm")));
+        click(&ctx, &mut chrome, text_at(&output, tr("Apply")));
         assert!(!editor.document.borrow().has_shape_preview());
         assert_eq!(editor.document.borrow().to_map_text(), inserted);
     }

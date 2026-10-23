@@ -13,7 +13,7 @@ When Heron Brush starts without a map, the welcome screen opens. On the left are
 4. Save the source map with `Ctrl+S`. When you are ready to use it in a game, open File → Export and write a scene for your engine.
 
 ## Files and saving
-The `.map` file is your editable source. Save regularly: exporting, live links and rendering never save the map for you. File → Save As (`Ctrl+Shift+S`) adds the `.map` extension if you leave it out. File → Revert to saved map throws away unsaved changes and reloads the file. If you close a window or open another map with unsaved changes, Heron Brush asks whether to **Save**, **Discard** or **Cancel**.
+The `.map` file is your editable source. Save regularly: exporting, live links and rendering never save the map for you. File → Save as (`Ctrl+Shift+S`) adds the `.map` extension if you leave it out. File → Revert to saved map throws away unsaved changes and reloads the file. If you close a window or open another map with unsaved changes, Heron Brush asks whether to **Save**, **Discard** or **Cancel**.
 
 While a saved map has unsaved changes, numbered backups are written every ten minutes to an `autosave` folder next to the map. The 50 newest backups are kept.
 
@@ -25,7 +25,7 @@ The main window has a title bar with the menus, a tool strip under it, the map v
 ## Title bar and menus
 The title bar shows the logo, the menus, the map name in the middle and the window buttons. On macOS the usual red, yellow and green buttons sit at the left. Drag the title bar to move the window and double-click it to maximise. While something runs in the background, an indicator appears near the end of the bar: an engine live link, a live session or **MCP active**. Click an indicator to stop the live link or to open its window.
 
-- **File**: Welcome, New map (`Ctrl+N`), Open Map (`Ctrl+O`), Save (`Ctrl+S`), Save As (`Ctrl+Shift+S`), Revert to saved map, Export, Render image, Plugins and Preferences (`Ctrl+,`).
+- **File**: Welcome, New map (`Ctrl+N`), Open map (`Ctrl+O`), Save (`Ctrl+S`), Save as (`Ctrl+Shift+S`), Revert to saved map, Export, Render image, Plugins and Preferences (`Ctrl+,`).
 - **Edit**: Undo (`Ctrl+Z`), Redo (`Ctrl+Shift+Z`), Cut, Copy, Paste, Duplicate (`Ctrl+D`), Delete, Select all (`Ctrl+A`), Repeat last commands (`Ctrl+R`) and Forget repeatable commands.
 - **View**: 3D view in separate window, Go to, Snap to grid (`Alt+0`), Show grid (`0`), Preview animations and Show omitted faces.
 - **Geometry**: Insert 3D text, Join corner, Convert faces to patches, Move selection out of its entity and Sync linked groups.
@@ -576,4 +576,4 @@ Choose a chapter in the contents on the left. `Ctrl+F` shows the contents and mo
 
 Desktop File → Build and run stores ordered export/copy/run profiles beside project export settings. Preferences → Keyboard → Edit shortcuts edits 30 common commands with conflict checks. Issue rows offer Hide and deterministic UV/property fixes with Undo. Help → Application updates checks the planned MojzisekJan/HeronBrush repository; startup checks are off by default. See [Build, launch, shortcuts and updates](../build-and-updates.md) for arguments, variables, limits and release packaging.
 
-Desktop Geometry → Import model, or dropping an OBJ/GLB, inserts a static model entity. Saved maps receive copied assets beside the map, and Save As carries them into the new folder. Edit origin, angles and modelscale in the entity inspector. See [Static model import](../model-import.md) for formats, export behavior and current limitations.
+Desktop Geometry → Import model, or dropping an OBJ/GLB, inserts a static model entity. Saved maps receive copied assets beside the map, and Save as carries them into the new folder. Edit origin, angles and modelscale in the entity inspector. See [Static model import](../model-import.md) for formats, export behavior and current limitations.
