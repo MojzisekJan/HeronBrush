@@ -372,6 +372,8 @@ struct Reader<'a> {
     warned_about_primitive_uv: bool,
     literal_strings: bool,
     local_plane_lines: rustc_hash::FxHashSet<usize>,
+    /// Whether a Standard face line ended with Hexen II's extra number.
+    saw_hexen2_value: bool,
 }
 
 /// A face's notes: its colour, surface material, export_hidden flag and primitive UV matrix.
@@ -400,6 +402,7 @@ impl<'a> Reader<'a> {
             warned_about_primitive_uv: false,
             literal_strings,
             local_plane_lines: Default::default(),
+            saw_hexen2_value: false,
         }
     }
 
@@ -551,6 +554,11 @@ impl<'a> Reader<'a> {
         // A face carrying the surface-flags trio means a Quake 2 dialect, even when no
         // header said so -- otherwise a save would write the trio under a format that
         // does not have it, and the face attribute editor would stay hidden.
+        // The same for Hexen II's number, which says Hexen II when no header did.
+        if format == MapFormat::Standard && self.saw_hexen2_value {
+            format = MapFormat::Hexen2;
+        }
+
         if !format.has_surface_attributes() && any_face_has_surface_attributes(&entities) {
             format = if format.has_explicit_uv_axes() {
                 MapFormat::Quake2Valve
@@ -1000,6 +1008,16 @@ impl<'a> Reader<'a> {
         }
 
         let surface_attributes = self.read_optional_surface_attributes()?;
+
+        // Hexen II puts one more number at the end of a Standard face line. Nothing else
+        // in the lineage leaves a lone number there, so it is taken and let go.
+        if surface_attributes.is_none()
+            && !is_valve
+            && matches!(self.peek().map(|t| t.token), Some(Token::Number(_)))
+        {
+            self.expect_number()?;
+            self.saw_hexen2_value = true;
+        }
 
         let plane = geometry_math::plane::from_points(points[0], points[1], points[2]).ok_or(
             ReadError::Parse {

@@ -330,6 +330,9 @@ fn read_formats(config: &Path) -> Vec<Format> {
             spelling if spelling.eq_ignore_ascii_case("Standard") => {
                 map_model::map_format::MapFormat::Standard
             }
+            spelling if spelling.eq_ignore_ascii_case("Hexen2") => {
+                map_model::map_format::MapFormat::Hexen2
+            }
             // Every other spelling a game uses -- "Valve", "Quake2 (Valve)", "Quake3
             // (Valve)" -- writes the Valve dialect's face lines, which is the part of the
             // format this editor decides. What the surface attributes carry comes from
@@ -583,5 +586,20 @@ mod tests {
         assert_eq!(game.definition_file(), Some(game.definitions[0].clone()));
 
         let _ = std::fs::remove_dir_all(config.parent().expect("it has a directory"));
+    }
+
+    #[test]
+    fn the_hexen2_profile_lists_its_own_dialect_before_valve() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../gamedata");
+        let hexen2 = read(&root.join("Hexen2/GameConfig.cfg")).expect("it reads");
+        let formats: Vec<map_model::map_format::MapFormat> =
+            hexen2.formats.iter().map(|format| format.format).collect();
+        assert_eq!(
+            formats,
+            vec![
+                map_model::map_format::MapFormat::Hexen2,
+                map_model::map_format::MapFormat::Valve
+            ]
+        );
     }
 }

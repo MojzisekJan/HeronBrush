@@ -75,7 +75,7 @@ enum MapDialect {
 
 /// The `.map` dialects the window offers, in the order it lists them. The first is the one
 /// the editor itself saves in and the one that can hold everything.
-const DIALECTS: [(MapDialect, &str); 6] = [
+const DIALECTS: [(MapDialect, &str); 7] = [
     (MapDialect::Classic(MapFormat::Valve), "Valve 220"),
     (
         MapDialect::Classic(MapFormat::Standard),
@@ -86,6 +86,7 @@ const DIALECTS: [(MapDialect, &str); 6] = [
         MapDialect::Classic(MapFormat::Quake2Valve),
         "Quake 2 (Valve)",
     ),
+    (MapDialect::Classic(MapFormat::Hexen2), "Hexen 2"),
     (MapDialect::Quake3Primitive, "Quake 3 (brush primitives)"),
     (MapDialect::Doom3Primitive, "Doom 3 (brushDef3)"),
 ];

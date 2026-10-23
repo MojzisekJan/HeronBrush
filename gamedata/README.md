@@ -77,3 +77,8 @@ does, so the editor models its definitions name are found. Neverball's models th
 are converted from TrenchBroom's copies, which are Y-up and in metres, to Z-up map
 units (64 to the metre), since Heron reads an OBJ as it is and the profile sets no
 model scale.
+
+Hexen 2's definitions were corrected against Raven's game code: the Egyptian torch is
+`light_torch_eqypt`, the spelling the game spawns, and the `message` keys of worldspawn,
+buttons, doors and triggers are integers, because Hexen II reads them as line numbers
+in `strings.txt`.

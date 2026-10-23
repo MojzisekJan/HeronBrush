@@ -442,7 +442,7 @@ Static cells assign world brushes by their centres and combine them by material 
 - Flax Engine: a model content path relative to the project's Content folder.
 - three.js, Babylon.js, PlayCanvas, Bevy, raylib and Cocos Creator: scenes or code for those runtimes, with instructions next to the export.
 - glTF / GLB: portable geometry for compatible tools; GLB is the binary form. OBJ: geometry and materials for modelling tools.
-- `.map`: **Write as** chooses Valve 220, Standard, Quake 2 or Quake 2 (Valve). The window says what the chosen dialect would lose.
+- `.map`: **Write as** chooses Valve 220, Standard, Quake 2, Quake 2 (Valve) or Hexen 2. The window says what the chosen dialect would lose. Hexen 2 is for Raven's own `qbsp`, which reads no other.
 
 Read the warnings after writing, such as missing textures. **What the check found** lists them in the window.
 

@@ -27,3 +27,7 @@ __pycache__/
 
 # mapc's output for the Neverball demo.
 /demos/neverball_heron/build/
+
+# The Hexen II demo's textures and compiler output for the Hexen II demo map.
+/demos/hexen2_heron/wads/
+/demos/hexen2_heron/build/

@@ -15,6 +15,7 @@ each folder writes the engine project again.
 | [Quake: the lift](quake_libre/README.md) | Quake (LibreQuake) | A door, a button, an ambush, a lift and an exit, compiled with ericw-tools |
 | [Neverball: the lift](neverball_heron/README.md) | Neverball 1.6 | A ramp, coins, a switch that starts a lift, a teleporter and the goal, compiled with mapc |
 | [Paintball 2: Twin Bases](paintball_heron/README.md) | Digital Paint: Paintball 2 | A capture-the-flag field with two team bases, compiled with ericw-tools for Quake 2 |
+| [Hexen II: the keep](hexen2_heron/README.md) | Hexen II (the demo) | A door, a button, an ambush whose lights fade up and an exit, compiled with ericw-tools or Raven's tools |
 | Feature Lab | all 16 targets | One station per export feature, for [the feature matrix](../docs/feature-matrix.md) |
 
 Lantern Lane, Motion Lab and Water Lab are also in the editor's welcome window, under

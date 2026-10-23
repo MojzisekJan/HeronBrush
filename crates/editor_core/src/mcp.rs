@@ -1691,7 +1691,11 @@ fn export_map(document: &mut Document, args: &Value) -> Result<String, String> {
     document
         .export_map_to(path, format)
         .map_err(|error| format!("could not write {path}: {error}"))?;
-    Ok(format!("exported {path} as {format}"))
+    let lost = document.what_a_dialect_would_drop(format);
+    Ok(extensions::with_warnings(
+        format!("exported {path} as {format}"),
+        &lost,
+    ))
 }
 
 fn scale_selection(document: &mut Document, args: &Value) -> Result<String, String> {
@@ -2002,12 +2006,13 @@ fn tool_definitions() -> Vec<Value> {
         ),
         tool(
             "export_map",
-            "Write the map in a classic .map dialect for a compiler: standard, valve, quake2 \
-             (Quake 2 and 3 face lines, which Neverball's mapc reads) or quake2_valve. \
-             Without a format, the first one the current game lists.",
+            "Write a copy of the map in a classic .map dialect for a game's compiler; the \
+             open map is not changed. standard, valve, quake2 (Quake 2 and 3 face lines, \
+             which Neverball's mapc reads), quake2_valve or hexen2 (Raven's qbsp). Without \
+             a format, the first one the current game lists.",
             json!({
                 "path": { "type": "string" },
-                "format": { "type": "string", "enum": ["standard", "valve", "quake2", "quake2_valve"] },
+                "format": { "type": "string", "description": "standard, valve, quake2, quake2_valve or hexen2, in any case" },
             }),
             &["path"],
         ),
@@ -2557,7 +2562,50 @@ mod tests {
         assert!(call(
             &mut document,
             "export_map",
-            &json!({"path": path, "format": "hexen2"})
+            &json!({"path": path, "format": "hexen3"})
+        )
+        .is_err());
+        let _ = std::fs::remove_dir_all(&directory);
+    }
+
+    /// A copy in Hexen II's dialect, for Raven's qbsp, leaves the open map as it was.
+    #[test]
+    fn a_map_is_exported_in_another_dialect() {
+        let mut document = Document::new(WorldBounds::default());
+        let directory =
+            std::env::temp_dir().join(format!("heron-mcp-dialect-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).expect("the directory is made");
+        call(
+            &mut document,
+            "add_shape",
+            &json!({ "kind": "cuboid", "min": [0, 0, 0], "max": [64, 64, 64], "material": "rtex225" }),
+        )
+        .expect("a box");
+        let path = directory.join("raven.map");
+        let format = document.format;
+        let reply = call(
+            &mut document,
+            "export_map",
+            &json!({ "path": path, "format": "Hexen2" }),
+        )
+        .expect("export");
+        assert!(reply.contains("as Hexen2"), "{reply}");
+        let text = std::fs::read_to_string(&path).expect("it was written");
+        assert!(text.contains("// Format: Hexen2"), "{text}");
+        assert!(!text.contains("mapversion"), "{text}");
+        assert_eq!(
+            text.lines()
+                .filter(|line| line.starts_with('(') && line.contains(" rtex225 0 0 0 1 1 0"))
+                .count(),
+            6,
+            "{text}"
+        );
+        assert_eq!(document.format, format, "the open map keeps its dialect");
+        assert!(call(
+            &mut document,
+            "export_map",
+            &json!({ "path": path, "format": "Hexen3" })
         )
         .is_err());
         let _ = std::fs::remove_dir_all(&directory);
