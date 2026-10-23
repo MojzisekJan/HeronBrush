@@ -199,7 +199,8 @@ impl Document {
 
 #[cfg(test)]
 mod tests {
-    use super::super::tests::{square_terrain, terrain};
+    use super::super::tests::square_terrain;
+    use super::super::tests::terrain;
     use super::*;
 
     /// Every column of `d` with its middle and its top.

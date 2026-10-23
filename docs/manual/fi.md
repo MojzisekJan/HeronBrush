@@ -173,7 +173,9 @@ Kaksi lukua ovat **Säde (yksikköä)** ja **Voimakkuus (%)**. Vain sen puolen k
 
 Kun muotoilu on valmis, valitse maasto ja valitse Geometria → **Yhdistä pylväät** tai ikkunan **Muotoile** painike. Vierekkäiset pylväät, jotka yhdessä muodostavat kuperan brushin ja näyttävät samalta, yhdistyvät yhdeksi brushiksi, joten tasaisista kohdista jää muutama suuri brush. Pinta ei liiku, ja yhdistämisen voi kumota yhdellä askeleella.
 
-Vokselipelien kaltaista maastoa varten jaa **Neliö**-pylväisiin ja kytke **Palikat** päälle ikkunassa **Muotoile**. Veto siirtää silloin jokaisen pylvään koko yläpintaa kokonaisin ruudukon askelin ja pitää sivut pystysuorina, joten maasto nousee portaittain. Kaikki tilat toimivat kuten ennen; pienet vedot kasautuvat, kunnes pylväs on noussut kokonaisen askeleen. Muun muotoiset pylväät jäävät ennalleen.
+Vokselipelien kaltaista maastoa varten jaa **Neliö**-pylväisiin ja valitse ikkunan **Muotoile** kohdasta **Veto** vaihtoehto **Palikat**. Veto siirtää silloin jokaisen pylvään koko yläpintaa kokonaisin ruudukon askelin ja pitää sivut pystysuorina, joten maasto nousee portaittain. Kaikki tilat toimivat kuten ennen; pienet vedot kasautuvat, kunnes pylväs on noussut kokonaisen askeleen. Muun muotoiset pylväät jäävät ennalleen.
+
+**Vapaa** ei tarvitse pylväitä, vaan toimii millä tahansa brusheilla. Nosta lisää maata pallon sisään osoittimen ympärille ja Laske poistaa sitä, joten maastoon voi tehdä ulkonemia ja luolia. Pehmennä tasaa sen ja Tasoita tuo sen tasolle, josta veto alkoi. Jokainen painallus rakentaa ulottuvillaan olevat brushit uudelleen ruudukolle pyöristettyinä ja jättää kaiken pallon ulkopuolisen ennalleen, terävät reunat mukaan lukien. Tuloksena on tavallisia brusheja, joihin kaikki muut työkalut toimivat, ja **Yhdistä pylväät** vähentää niitä jälkikäteen. Tiheämpi ruudukko antaa sileämmän pinnan ja enemmän brusheja.
 
 # Materiaalit ja UV:t
 ## Materiaalien lataaminen ja käyttäminen

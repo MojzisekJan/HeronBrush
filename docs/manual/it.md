@@ -173,7 +173,9 @@ I due numeri sono **Raggio (unità)** e **Forza (%)**. Si muovono solo gli angol
 
 Finita la scultura, seleziona il terreno e scegli Geometria → **Unisci colonne**, o il pulsante nella finestra **Scolpisci**. Le colonne vicine che insieme formano un brush convesso e hanno lo stesso aspetto diventano un unico brush, così le zone piane si riducono a pochi brush grandi. La superficie non si sposta e l'unione si annulla in un passo.
 
-Per un terreno come nei giochi voxel, dividi in colonne **Quadrato** e attiva **Blocchi** nella finestra **Scolpisci**. Un tratto sposta allora tutta la parte superiore di ogni colonna a passi interi di griglia e lascia i lati verticali, così il terreno sale a gradini. Tutte le modalità funzionano come prima; i tocchi piccoli si sommano fino a un passo intero. Le colonne di altre forme restano come sono.
+Per un terreno come nei giochi voxel, dividi in colonne **Quadrato** e scegli **Blocchi** in **Tratto** nella finestra **Scolpisci**. Un tratto sposta allora tutta la parte superiore di ogni colonna a passi interi di griglia e lascia i lati verticali, così il terreno sale a gradini. Tutte le modalità funzionano come prima; i tocchi piccoli si sommano fino a un passo intero. Le colonne di altre forme restano come sono.
+
+**Libero** non ha bisogno di colonne: funziona su qualsiasi brush. Alza aggiunge terreno in una sfera attorno al puntatore e Abbassa lo toglie, così il terreno può sporgere e scavarsi in grotte. Leviga lo uniforma e Appiattisci lo porta al livello in cui il tratto è iniziato. Ogni tocco ricostruisce sulla griglia i brush che raggiunge, arrotondati, e lascia com'era tutto ciò che è fuori dalla sfera, spigoli vivi compresi. Il risultato sono brush normali, su cui funziona ogni altro strumento, e **Unisci colonne** poi ne riduce il numero. Una griglia più fine dà una superficie più liscia e più brush.
 
 # Materiali e UV
 ## Caricare e applicare i materiali

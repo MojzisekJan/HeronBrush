@@ -414,9 +414,12 @@ pub fn sculpt_row(ui: &mut egui::Ui, open: bool) -> bool {
 /// `cell` is the grid size, which is how wide the columns come out.
 pub fn sculpt_controls(ui: &mut egui::Ui, cell: f64) -> Option<crate::app_actions::Action> {
     use crate::app_actions::Action;
-    use editor_core::sculpt::{self, ColumnShape, SculptDirection};
+    use editor_core::sculpt;
+    use editor_core::sculpt::ColumnShape;
+    use editor_core::sculpt::SculptDirection;
+    use editor_core::sculpt::SculptForm;
     let mut parameters = sculpt::parameters();
-    let labels = [tr("Direction:"), tr("Column shape:")];
+    let labels = [tr("Direction:"), tr("Column shape:"), tr("Stroke:")];
     let label_width = labels
         .iter()
         .map(|l| crate::chrome::text_width(ui, l, theme::body()))
@@ -465,17 +468,23 @@ pub fn sculpt_controls(ui: &mut egui::Ui, cell: f64) -> Option<crate::app_action
         widgets::segmented_choice(ui, "sculpt-columns", &shapes, &mut shape, control);
     });
     parameters.columns = ColumnShape::ALL[shape];
+    let forms: Vec<(&str, &str)> = SculptForm::ALL
+        .iter()
+        .map(|form| (tr(form.name()), ""))
+        .collect();
+    let mut form = SculptForm::ALL
+        .iter()
+        .position(|f| *f == parameters.form)
+        .unwrap_or(0);
+    row(ui, labels[2], &mut |ui| {
+        widgets::segmented_choice(ui, "sculpt-form", &forms, &mut form, control);
+    });
+    parameters.form = SculptForm::ALL[form];
     ui.horizontal(|ui| {
         ui.add_space(label_width + gap - ui.spacing().item_spacing.x);
         ui.vertical(|ui| {
             ui.set_max_width(control);
-            crate::widgets::checkbox(ui, &mut parameters.blocks, tr("Blocks"));
-            ui.label(
-                egui::RichText::new(tr(
-                    "Square columns move by whole grid steps, with upright sides.",
-                ))
-                .color(theme::dim()),
-            );
+            ui.label(egui::RichText::new(tr(parameters.form.description())).color(theme::dim()));
         });
     });
     sculpt::set_parameters(parameters);

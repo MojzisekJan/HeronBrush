@@ -173,7 +173,9 @@ De twee getallen zijn **Straal (eenheden)** en **Sterkte (%)**. Alleen de hoeken
 
 Als het boetseren klaar is, selecteer je het terrein en kies je Geometrie → **Kolommen samenvoegen**, of de knop in het venster **Boetseren**. Naburige kolommen die samen een convexe brush vormen en er hetzelfde uitzien, worden één brush, zodat vlakke stukken een paar grote brushes worden. Het oppervlak verschuift niet, en het samenvoegen maak je in één stap ongedaan.
 
-Voor terrein zoals in voxelgames splits je in **Vierkant**-kolommen en zet je **Blokken** aan in het venster **Boetseren**. Een streek verplaatst dan de hele bovenkant van elke kolom in hele rasterstappen en houdt de zijkanten recht, zodat de grond in treden stijgt. Alle modi werken als voorheen; kleine tikken tellen op tot een hele stap. Kolommen van andere vormen blijven zoals ze zijn.
+Voor terrein zoals in voxelgames splits je in **Vierkant**-kolommen en kies je **Blokken** bij **Streek** in het venster **Boetseren**. Een streek verplaatst dan de hele bovenkant van elke kolom in hele rasterstappen en houdt de zijkanten recht, zodat de grond in treden stijgt. Alle modi werken als voorheen; kleine tikken tellen op tot een hele stap. Kolommen van andere vormen blijven zoals ze zijn.
+
+**Vrij** heeft geen kolommen nodig: het werkt op elke brush. Verhogen voegt grond toe in een bol rond de aanwijzer en Verlagen haalt die weg, zodat de grond kan overhangen en uitgehold kan worden tot grotten. Gladmaken egaliseert en Egaliseren brengt alles naar het niveau waar de streek begon. Elke tik bouwt de brushes die hij raakt opnieuw op het raster, afgerond, en laat alles buiten zijn bol zoals het was, scherpe randen inbegrepen. Het resultaat is gewone brushes, waarop elk ander gereedschap werkt, en **Kolommen samenvoegen** maakt het er daarna minder. Een fijner raster geeft een gladder oppervlak en meer brushes.
 
 # Materialen en UV's
 ## Materialen laden en toepassen

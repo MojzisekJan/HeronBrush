@@ -173,7 +173,9 @@ De två talen är **Radie (enheter)** och **Styrka (%)**. Bara hörnen på den s
 
 När skulpteringen är klar markerar du terrängen och väljer Geometri → **Slå ihop pelare**, eller knappen i fönstret **Skulptera**. Grannpelare som tillsammans bildar en konvex brush och ser likadana ut blir en brush, så platta partier blir några få stora brushar. Ytan flyttar sig inte, och sammanslagningen ångras i ett steg.
 
-För terräng som i voxelspel delar du i **Kvadrat**-pelare och slår på **Block** i fönstret **Skulptera**. Ett drag flyttar då hela ovansidan av varje pelare i hela rutnätssteg och håller sidorna lodräta, så marken stiger i trappsteg. Alla lägen fungerar som förut; små drag läggs ihop tills en pelare har stigit ett helt steg. Pelare med andra former lämnas orörda.
+För terräng som i voxelspel delar du i **Kvadrat**-pelare och väljer **Block** under **Drag** i fönstret **Skulptera**. Ett drag flyttar då hela ovansidan av varje pelare i hela rutnätssteg och håller sidorna lodräta, så marken stiger i trappsteg. Alla lägen fungerar som förut; små drag läggs ihop tills en pelare har stigit ett helt steg. Pelare med andra former lämnas orörda.
+
+**Fritt** behöver inga pelare och fungerar på alla brushar. Höj lägger till mark i en kula runt pekaren och Sänk tar bort den, så marken kan få överhäng och grottor. Jämna ut jämnar ut den och Plana ut lägger den i nivå med där draget började. Varje tryck bygger om de berörda brusharna på rutnätet, avrundade, och lämnar allt utanför kulan som det var, skarpa kanter också. Resultatet är vanliga brushar, så alla andra verktyg fungerar på dem, och **Slå ihop pelare** gör dem färre efteråt. Ett finare rutnät ger en jämnare yta och fler brushar.
 
 # Material och UV
 ## Läsa in och tillämpa material

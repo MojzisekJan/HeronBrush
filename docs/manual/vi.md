@@ -173,7 +173,9 @@ Hai số là **Bán kính (đơn vị)** và **Cường độ (%)**. Chỉ các 
 
 Khi điêu khắc xong, hãy chọn địa hình rồi chọn Hình học → **Gộp cột**, hoặc nút trong cửa sổ **Điêu khắc**. Các cột liền kề cùng tạo thành một brush lồi và trông giống nhau sẽ gộp thành một brush, nên các vùng phẳng chỉ còn vài brush lớn. Bề mặt không xê dịch, và thao tác gộp được hoàn tác trong một bước.
 
-Để có địa hình như trong game voxel, hãy chia thành cột **Vuông** và bật **Khối** trong cửa sổ **Điêu khắc**. Khi đó mỗi nét di chuyển toàn bộ mặt trên của từng cột theo từng bước lưới trọn vẹn và giữ các mặt bên thẳng đứng, nên mặt đất nhô lên thành bậc. Mọi chế độ vẫn hoạt động như trước; các nét nhỏ cộng dồn cho đến khi cột lên đủ một bước. Cột có hình dạng khác được giữ nguyên.
+Để có địa hình như trong game voxel, hãy chia thành cột **Vuông** và trong cửa sổ **Điêu khắc** chọn **Khối** ở mục **Nét**. Khi đó mỗi nét di chuyển toàn bộ mặt trên của từng cột theo từng bước lưới trọn vẹn và giữ các mặt bên thẳng đứng, nên mặt đất nhô lên thành bậc. Mọi chế độ vẫn hoạt động như trước; các nét nhỏ cộng dồn cho đến khi cột lên đủ một bước. Cột có hình dạng khác được giữ nguyên.
+
+**Tự do** không cần cột và dùng được với mọi brush. Nâng thêm đất trong một khối cầu quanh con trỏ, còn Hạ bớt đất đi, nên địa hình có thể nhô ra và khoét thành hang. Làm mượt san đều, còn Làm phẳng đưa về mức nơi nét bắt đầu. Mỗi lần chạm dựng lại trên lưới các brush trong tầm, có bo tròn, và giữ nguyên mọi thứ ngoài khối cầu, kể cả các cạnh sắc. Kết quả là các brush bình thường, nên mọi công cụ khác đều dùng được, và **Gộp cột** sau đó giảm số lượng của chúng. Lưới mịn hơn cho bề mặt mượt hơn và nhiều brush hơn.
 
 # Vật liệu và UV
 ## Tải và áp dụng vật liệu

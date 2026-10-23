@@ -173,7 +173,9 @@ Dve števili sta **Polmer (enote)** in **Moč (%)**. Premikajo se le koti na str
 
 Ko končate z oblikovanjem, izberite teren in nato Geometrija → **Združi stebre** ali gumb v oknu **Oblikovanje**. Sosednji stebri, ki skupaj tvorijo konveksen brush in so videti enako, postanejo en brush, zato ravni deli postanejo nekaj velikih brushev. Površina se ne premakne, združevanje pa razveljavite v enem koraku.
 
-Za teren kot v voxel igrah razdelite na stebre **Kvadrat** in v oknu **Oblikovanje** vklopite **Kocke**. Poteza tedaj premika ves vrh vsakega stebra za cele korake mreže in pusti stranice navpične, zato teren raste v stopnicah. Vsi načini delujejo kot prej; majhne poteze se seštevajo, dokler steber ne zraste za cel korak. Stebri drugih oblik ostanejo nespremenjeni.
+Za teren kot v voxel igrah razdelite na stebre **Kvadrat** in v oknu **Oblikovanje** pri **Poteza** izberite **Kocke**. Poteza tedaj premika ves vrh vsakega stebra za cele korake mreže in pusti stranice navpične, zato teren raste v stopnicah. Vsi načini delujejo kot prej; majhne poteze se seštevajo, dokler steber ne zraste za cel korak. Stebri drugih oblik ostanejo nespremenjeni.
+
+**Prosto** ne potrebuje stebrov in deluje na poljubnih brushih. Dvigni dodaja teren v krogli okoli kazalca, Spusti pa ga odvzema, zato lahko teren tvori previse in jame. Zgladi ga izravna, Poravnaj pa ga spravi na raven, kjer se je poteza začela. Vsak dotik zadete brushe na mreži sestavi znova, zaobljene, vse zunaj krogle pa pusti, kot je bilo, tudi ostre robove. Rezultat so navadni brushi, zato na njih delujejo vsa druga orodja, **Združi stebre** pa nato zmanjša njihovo število. Gostejša mreža da bolj gladko površino in več brushev.
 
 # Materiali in UV
 ## Nalaganje in uporaba materialov

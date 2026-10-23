@@ -6,6 +6,7 @@ use crate::i18n::translation_key;
 use crate::sculpt::{falloff, ColumnShape, SculptDirection, SculptMode, SculptParameters};
 
 mod blocks;
+mod free;
 
 /// The thinnest a column may get: Lower stops this far above its bottom.
 const MIN_THICKNESS: f64 = 1.0;
@@ -39,6 +40,8 @@ pub struct SculptStroke {
     level: Option<f64>,
     /// For a stroke in blocks, the grid step and each column's height before rounding.
     blocks: Option<blocks::Blocks>,
+    /// For a free stroke, the grid it reshapes the brushes on.
+    free: Option<free::Free>,
 }
 
 /// A vertex position as a key, so the corner several brushes share moves once.
@@ -305,6 +308,7 @@ impl Document {
             ball: false,
             level: None,
             blocks: None,
+            free: None,
         }
     }
 
@@ -404,6 +408,9 @@ impl Document {
         }
         if stroke.blocks.is_some() {
             return self.block_dab(centre, parameters, stroke);
+        }
+        if stroke.free.is_some() {
+            return self.free_dab(centre, parameters, stroke);
         }
         let (along, ball) = (stroke.along, stroke.ball);
         let radius = parameters.radius;

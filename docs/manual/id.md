@@ -173,7 +173,9 @@ Dua angka itu adalah **Radius (unit)** dan **Kekuatan (%)**. Hanya sudut di sisi
 
 Setelah selesai memahat, pilih medan lalu pilih Geometri → **Gabungkan kolom**, atau tombol di jendela **Pahat**. Kolom bersebelahan yang bersama-sama membentuk brush cembung dan tampak sama menjadi satu brush, sehingga bagian datar menjadi beberapa brush besar. Permukaannya tidak bergeser, dan penggabungan bisa dibatalkan dalam satu langkah.
 
-Untuk medan seperti di game voxel, bagi menjadi kolom **Persegi** dan nyalakan **Blok** di jendela **Pahat**. Sapuan lalu memindahkan seluruh bagian atas tiap kolom per langkah kisi utuh dan menjaga sisinya tetap tegak, sehingga tanah naik berundak. Semua mode bekerja seperti sebelumnya; sapuan kecil terakumulasi sampai kolom naik satu langkah penuh. Kolom berbentuk lain dibiarkan.
+Untuk medan seperti di game voxel, bagi menjadi kolom **Persegi** lalu di jendela **Pahat** pilih **Blok** pada **Sapuan**. Sapuan lalu memindahkan seluruh bagian atas tiap kolom per langkah kisi utuh dan menjaga sisinya tetap tegak, sehingga tanah naik berundak. Semua mode bekerja seperti sebelumnya; sapuan kecil terakumulasi sampai kolom naik satu langkah penuh. Kolom berbentuk lain dibiarkan.
+
+**Bebas** tidak memerlukan kolom dan bekerja pada brush apa pun. Naikkan menambah tanah dalam bola di sekitar penunjuk dan Turunkan menguranginya, sehingga tanah bisa menjorok dan membentuk gua. Haluskan meratakannya dan Ratakan membawanya ke ketinggian tempat sapuan dimulai. Setiap sentuhan membangun ulang brush yang dijangkau pada kisi, membulat, dan membiarkan semua di luar bola seperti semula, termasuk tepi yang tajam. Hasilnya brush biasa, sehingga semua alat lain bekerja padanya, dan **Gabungkan kolom** lalu mengurangi jumlahnya. Kisi yang lebih rapat memberi permukaan lebih halus dan lebih banyak brush.
 
 # Material dan UV
 ## Memuat dan menerapkan material

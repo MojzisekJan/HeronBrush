@@ -173,7 +173,9 @@ Aynı pencerede **Yön** hangi yöne gidileceğini seçer:
 
 Şekillendirme bittiğinde araziyi seçin ve Geometri → **Sütunları birleştir** komutunu ya da **Şekillendir** penceresindeki düğmeyi seçin. Birlikte dışbükey bir brush oluşturan ve aynı görünen komşu sütunlar tek bir brush olur; böylece düz bölgeler birkaç büyük brush'a dönüşür. Yüzey kıpırdamaz ve birleştirme tek adımda geri alınır.
 
-Voksel oyunlarındaki gibi bir arazi için **Kare** sütunlara bölün ve **Şekillendir** penceresinde **Bloklar** seçeneğini açın. Bir fırça darbesi o zaman her sütunun tüm üstünü tam ızgara adımlarıyla taşır ve yanlarını dik bırakır; zemin basamak basamak yükselir. Tüm kipler eskisi gibi çalışır; küçük darbeler bir sütun tam bir adım yükselene kadar toplanır. Başka biçimdeki sütunlara dokunulmaz.
+Voksel oyunlarındaki gibi bir arazi için **Kare** sütunlara bölün ve **Şekillendir** penceresinde **Darbe** satırından **Bloklar** seçeneğini seçin. Bir fırça darbesi o zaman her sütunun tüm üstünü tam ızgara adımlarıyla taşır ve yanlarını dik bırakır; zemin basamak basamak yükselir. Tüm kipler eskisi gibi çalışır; küçük darbeler bir sütun tam bir adım yükselene kadar toplanır. Başka biçimdeki sütunlara dokunulmaz.
+
+**Serbest** sütun gerektirmez; her brush üzerinde çalışır. Yükselt, işaretçinin çevresindeki bir kürede zemin ekler, Alçalt ise çıkarır; böylece zemin çıkıntı yapabilir ve mağaralar oluşabilir. Yumuşat düzleştirir, Düzleştir ise darbenin başladığı seviyeye getirir. Her dokunuş, ulaştığı brush'ları ızgarada yuvarlatılmış olarak yeniden kurar ve kürenin dışındaki her şeyi, keskin kenarlar dahil, olduğu gibi bırakır. Sonuç sıradan brush'lardır; tüm diğer araçlar onlarla çalışır ve **Sütunları birleştir** sonradan sayılarını azaltır. Daha sık bir ızgara daha pürüzsüz bir yüzey ve daha çok brush verir.
 
 # Malzemeler ve UV'ler
 ## Malzemeleri yükleme ve uygulama

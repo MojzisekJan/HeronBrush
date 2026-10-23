@@ -7,7 +7,8 @@
 //! near it and flat further away. Everything outside the grid is air, so the surface is
 //! always closed, even where the ground reaches the grid's edge.
 use geometry_math::bbox::Bbox3d;
-use geometry_math::vec::{self, Vec3d};
+use geometry_math::vec;
+use geometry_math::vec::Vec3d;
 
 /// How far from zero a sample goes, in cells: the depth over which a dab can still change
 /// the surface.
@@ -159,6 +160,90 @@ impl VoxelField {
     /// face; within a tetrahedron the surface is flat, so the ground in it is convex. The
     /// pieces are many and small; merging neighbours afterwards makes them fewer.
     pub fn to_brushes(&self, material: &str) -> Vec<crate::brush::Brush> {
+        self.to_brushes_where(material, |_| true)
+    }
+
+    /// The cells whose corners differ between this field and `before`, a field over the
+    /// same grid: where a dab changed something.
+    pub fn changed_cells(&self, before: &Self) -> Vec<[usize; 3]> {
+        let mut cells = Vec::new();
+        for k in 0..self.dims[2] - 1 {
+            for j in 0..self.dims[1] - 1 {
+                for i in 0..self.dims[0] - 1 {
+                    let differs = (0..8).any(|n| {
+                        let at = self.index(i + (n & 1), j + ((n >> 1) & 1), k + (n >> 2));
+                        self.density[at] != before.density[at]
+                    });
+                    if differs {
+                        cells.push([i, j, k]);
+                    }
+                }
+            }
+        }
+        cells
+    }
+
+    /// How many of a cell's eight corners are ground: 8 where the cell is ground all
+    /// through, 0 where it is air.
+    pub fn ground_corners(&self, [i, j, k]: [usize; 3]) -> usize {
+        (0..8)
+            .filter(|n| {
+                solid(self.density[self.index(i + (n & 1), j + ((n >> 1) & 1), k + (n >> 2))])
+            })
+            .count()
+    }
+
+    /// The box a cell of the grid fills.
+    pub fn cell_bounds(&self, [i, j, k]: [usize; 3]) -> Bbox3d {
+        Bbox3d::new(self.position(i, j, k), self.position(i + 1, j + 1, k + 1))
+    }
+
+    /// `cells` packed into few boxes: each grows along x as far as the cells go, then
+    /// along y while every row is there, then along z while every slab is.
+    pub fn boxes_of(&self, cells: &std::collections::HashSet<[usize; 3]>) -> Vec<Bbox3d> {
+        let mut sorted: Vec<[usize; 3]> = cells.iter().copied().collect();
+        sorted.sort_by_key(|[i, j, k]| (*k, *j, *i));
+        let mut taken = std::collections::HashSet::new();
+        let mut boxes = Vec::new();
+        for start in sorted {
+            if taken.contains(&start) {
+                continue;
+            }
+            let free = |c: [usize; 3]| cells.contains(&c) && !taken.contains(&c);
+            let [i0, j0, k0] = start;
+            let mut i1 = i0;
+            while free([i1 + 1, j0, k0]) {
+                i1 += 1;
+            }
+            let mut j1 = j0;
+            while (i0..=i1).all(|i| free([i, j1 + 1, k0])) {
+                j1 += 1;
+            }
+            let mut k1 = k0;
+            while (i0..=i1).all(|i| (j0..=j1).all(|j| free([i, j, k1 + 1]))) {
+                k1 += 1;
+            }
+            for k in k0..=k1 {
+                for j in j0..=j1 {
+                    for i in i0..=i1 {
+                        taken.insert([i, j, k]);
+                    }
+                }
+            }
+            boxes.push(Bbox3d::new(
+                self.position(i0, j0, k0),
+                self.position(i1 + 1, j1 + 1, k1 + 1),
+            ));
+        }
+        boxes
+    }
+
+    /// [`Self::to_brushes`] for the cells `wanted` accepts alone.
+    pub fn to_brushes_where(
+        &self,
+        material: &str,
+        wanted: impl Fn([usize; 3]) -> bool,
+    ) -> Vec<crate::brush::Brush> {
         use crate::brush::Brush;
         use crate::polyhedron::Polyhedron;
         // Corner `n` of a cell is offset by its bits: 1 along x, 2 along y, 4 along z.
@@ -198,6 +283,9 @@ impl VoxelField {
         for k in 0..self.dims[2] - 1 {
             for j in 0..self.dims[1] - 1 {
                 for i in 0..self.dims[0] - 1 {
+                    if !wanted([i, j, k]) {
+                        continue;
+                    }
                     let d: [f32; 8] = std::array::from_fn(|n| {
                         self.density[self.index(i + (n & 1), j + ((n >> 1) & 1), k + (n >> 2))]
                     });

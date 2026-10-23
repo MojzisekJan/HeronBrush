@@ -173,7 +173,9 @@ De to tal er **Radius (enheder)** og **Styrke (%)**. Kun hjørnerne på den side
 
 Når modelleringen er færdig, så markér terrænet og vælg Geometri → **Flet søjler**, eller knappen i vinduet **Modellér**. Nabosøjler, der sammen danner en konveks brush og ser ens ud, bliver til én brush, så flade stykker bliver til nogle få store brushes. Overfladen flytter sig ikke, og sammenfletningen fortrydes i ét trin.
 
-Til terræn som i voxelspil skal du dele i **Kvadrat**-søjler og slå **Blokke** til i vinduet **Modellér**. Et strøg flytter så hele oversiden af hver søjle i hele gittertrin og holder siderne lodrette, så terrænet stiger i trin. Alle tilstande virker som før; små tryk lægges sammen, til en søjle er steget et helt trin. Søjler med andre former røres ikke.
+Til terræn som i voxelspil skal du dele i **Kvadrat**-søjler og vælge **Blokke** under **Strøg** i vinduet **Modellér**. Et strøg flytter så hele oversiden af hver søjle i hele gittertrin og holder siderne lodrette, så terrænet stiger i trin. Alle tilstande virker som før; små tryk lægges sammen, til en søjle er steget et helt trin. Søjler med andre former røres ikke.
+
+**Fri** kræver ingen søjler og virker på alle brushes. Hæv tilføjer terræn i en kugle om markøren, og Sænk fjerner det, så terrænet kan få udhæng og huler. Glat jævner det, og Udjævn bringer det til højden, hvor strøget begyndte. Hvert tryk genopbygger de ramte brushes på gitteret, afrundede, og lader alt uden for kuglen være, skarpe kanter medregnet. Resultatet er almindelige brushes, så alle andre værktøjer virker på dem, og **Flet søjler** gør dem færre bagefter. Et finere gitter giver en glattere overflade og flere brushes.
 
 # Materialer og UV'er
 ## Indlæsning og anvendelse af materialer

@@ -29,76 +29,7 @@ impl Document {
         let mut brushes: Vec<Option<Brush>> =
             selected.into_iter().map(|(_, brush)| Some(brush)).collect();
 
-        // Each brush in the cells its bounds cover, to find its neighbours quickly. A
-        // merged brush is added to the cells it grew into; one that is gone is skipped.
-        let cell = brushes
-            .iter()
-            .flatten()
-            .map(|brush| {
-                let size = brush.bounds().size();
-                size.x().max(size.y()).max(size.z())
-            })
-            .fold(f64::INFINITY, f64::min)
-            .max(1.0);
-        let cells_of = |bounds: &Bbox3d| {
-            let lo = [0, 1, 2].map(|i| ((bounds.min[i] - SAME) / cell).floor() as i64);
-            let hi = [0, 1, 2].map(|i| ((bounds.max[i] + SAME) / cell).floor() as i64);
-            let mut cells = Vec::new();
-            for x in lo[0]..=hi[0] {
-                for y in lo[1]..=hi[1] {
-                    for z in lo[2]..=hi[2] {
-                        cells.push([x, y, z]);
-                    }
-                }
-            }
-            cells
-        };
-        let mut grid: HashMap<[i64; 3], Vec<usize>> = HashMap::new();
-        for (i, brush) in brushes.iter().enumerate() {
-            for c in cells_of(&brush.as_ref().expect("every brush is there").bounds()) {
-                grid.entry(c).or_default().push(i);
-            }
-        }
-
-        let mut merged_into: HashMap<usize, Vec<usize>> = HashMap::new();
-        let mut queue: std::collections::VecDeque<usize> = (0..brushes.len()).collect();
-        while let Some(i) = queue.pop_front() {
-            let Some(brush) = brushes[i].clone() else {
-                continue;
-            };
-            let bounds = brush.bounds().expand(SAME * 10.0);
-            let mut near: Vec<usize> = cells_of(&bounds)
-                .iter()
-                .filter_map(|c| grid.get(c))
-                .flatten()
-                .copied()
-                .filter(|&j| j != i)
-                .collect();
-            near.sort_unstable();
-            near.dedup();
-            let found = near.into_iter().find_map(|j| {
-                let other = brushes[j].as_ref()?;
-                if !other.bounds().intersects(&bounds) {
-                    return None;
-                }
-                Some((j, merged(&brush, other)?))
-            });
-            let Some((j, joined)) = found else {
-                continue;
-            };
-            for c in cells_of(&joined.bounds()) {
-                grid.entry(c).or_default().push(i);
-            }
-            brushes[i] = Some(joined);
-            brushes[j] = None;
-            let absorbed = merged_into.remove(&j).unwrap_or_default();
-            merged_into
-                .entry(i)
-                .or_default()
-                .extend(absorbed.into_iter().chain([j]));
-            // It may take in more neighbours now that it is bigger.
-            queue.push_back(i);
-        }
+        let merged_into = merge_neighbours(&mut brushes);
 
         if merged_into.is_empty() {
             return Ok(0);
@@ -120,6 +51,91 @@ impl Document {
     }
 }
 
+/// Merges neighbours among `brushes` wherever [`merged`] allows, until none can be: a
+/// merged brush takes the first one's place and the other's becomes `None`. Returns,
+/// for each brush that took others in, which ones.
+pub(in crate::document) fn merge_neighbours(
+    brushes: &mut [Option<Brush>],
+) -> HashMap<usize, Vec<usize>> {
+    // Each brush in the cells its bounds cover, to find its neighbours quickly. A
+    // merged brush is added to the cells it grew into; one that is gone is skipped. The
+    // cells are as big as a middling brush: sized by the smallest, a sliver would make
+    // every big brush cover thousands of them.
+    let mut sizes: Vec<f64> = brushes
+        .iter()
+        .flatten()
+        .map(|brush| {
+            let size = brush.bounds().size();
+            size.x().max(size.y()).max(size.z())
+        })
+        .collect();
+    sizes.sort_by(f64::total_cmp);
+    let cell = sizes.get(sizes.len() / 2).copied().unwrap_or(1.0).max(1.0);
+    let cells_of = |bounds: &Bbox3d| {
+        let lo = [0, 1, 2].map(|i| ((bounds.min[i] - SAME) / cell).floor() as i64);
+        let hi = [0, 1, 2].map(|i| ((bounds.max[i] + SAME) / cell).floor() as i64);
+        let mut cells = Vec::new();
+        for x in lo[0]..=hi[0] {
+            for y in lo[1]..=hi[1] {
+                for z in lo[2]..=hi[2] {
+                    cells.push([x, y, z]);
+                }
+            }
+        }
+        cells
+    };
+    let mut grid: HashMap<[i64; 3], Vec<usize>> = HashMap::new();
+    for (i, brush) in brushes.iter().enumerate() {
+        let Some(brush) = brush else {
+            continue;
+        };
+        for c in cells_of(&brush.bounds()) {
+            grid.entry(c).or_default().push(i);
+        }
+    }
+
+    let mut merged_into: HashMap<usize, Vec<usize>> = HashMap::new();
+    let mut queue: std::collections::VecDeque<usize> = (0..brushes.len()).collect();
+    while let Some(i) = queue.pop_front() {
+        let Some(brush) = brushes[i].clone() else {
+            continue;
+        };
+        let bounds = brush.bounds().expand(SAME * 10.0);
+        let mut near: Vec<usize> = cells_of(&bounds)
+            .iter()
+            .filter_map(|c| grid.get(c))
+            .flatten()
+            .copied()
+            .filter(|&j| j != i)
+            .collect();
+        near.sort_unstable();
+        near.dedup();
+        let found = near.into_iter().find_map(|j| {
+            let other = brushes[j].as_ref()?;
+            if !other.bounds().intersects(&bounds) {
+                return None;
+            }
+            Some((j, merged(&brush, other)?))
+        });
+        let Some((j, joined)) = found else {
+            continue;
+        };
+        for c in cells_of(&joined.bounds()) {
+            grid.entry(c).or_default().push(i);
+        }
+        brushes[i] = Some(joined);
+        brushes[j] = None;
+        let absorbed = merged_into.remove(&j).unwrap_or_default();
+        merged_into
+            .entry(i)
+            .or_default()
+            .extend(absorbed.into_iter().chain([j]));
+        // It may take in more neighbours now that it is bigger.
+        queue.push_back(i);
+    }
+    merged_into
+}
+
 /// `a` and `b` as one brush, when they share a face, together are convex, and every
 /// face of the result lies on faces of theirs that look alike; `None` otherwise.
 fn merged(a: &Brush, b: &Brush) -> Option<Brush> {
@@ -130,6 +146,23 @@ fn merged(a: &Brush, b: &Brush) -> Option<Brush> {
             .any(|fb| geometry_math::plane::is_equal(&fa.plane, &fb.plane.flip(), SAME))
     });
     if !touching {
+        return None;
+    }
+    // A quick test before the hull: the two are convex together only if each one's
+    // corners lie behind every plane of the other but the ones they meet across.
+    let behind = |corners: &[Vec3d], brush: &Brush, other: &Brush| {
+        brush.faces().iter().all(|face| {
+            let shared = other
+                .faces()
+                .iter()
+                .any(|f| geometry_math::plane::is_equal(&face.plane, &f.plane.flip(), SAME));
+            shared
+                || corners
+                    .iter()
+                    .all(|p| vec::dot(face.plane.normal, *p) <= face.plane.distance + SAME * 10.0)
+        })
+    };
+    if !behind(&b.vertex_positions(), a, b) || !behind(&a.vertex_positions(), b, a) {
         return None;
     }
     // Corners a split or a dab left a hair off a fine grid go back onto it, so the
@@ -188,7 +221,8 @@ fn looks_alike(a: &map_model::brush_face::BrushFace, b: &map_model::brush_face::
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sculpt::{ColumnShape, SculptParameters};
+    use crate::sculpt::ColumnShape;
+    use crate::sculpt::SculptParameters;
 
     /// A 128 × 128 box, 32 tall, selected.
     fn slab() -> Document {

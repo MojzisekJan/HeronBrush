@@ -173,7 +173,9 @@ Os dois números são **Raio (unidades)** e **Força (%)**. Só os cantos do lad
 
 Quando terminar de esculpir, selecione o terreno e escolha Geometria → **Mesclar colunas**, ou o botão na janela **Esculpir**. Colunas vizinhas que juntas formam um brush convexo e têm a mesma aparência viram um só brush, então trechos planos ficam em poucos brushes grandes. A superfície não se move, e a mesclagem se desfaz em um passo.
 
-Para um terreno como o de jogos de voxels, divida em colunas **Quadrado** e ative **Blocos** na janela **Esculpir**. Um traço move então todo o topo de cada coluna em passos inteiros de grade e mantém os lados retos, então o chão sobe em degraus. Todos os modos funcionam como antes; toques pequenos se somam até um passo inteiro. Colunas de outras formas ficam como estão.
+Para um terreno como o de jogos de voxels, divida em colunas **Quadrado** e escolha **Blocos** em **Traço** na janela **Esculpir**. Um traço move então todo o topo de cada coluna em passos inteiros de grade e mantém os lados retos, então o chão sobe em degraus. Todos os modos funcionam como antes; toques pequenos se somam até um passo inteiro. Colunas de outras formas ficam como estão.
+
+**Livre** não precisa de colunas: funciona com quaisquer brushes. Elevar adiciona terreno numa esfera ao redor do ponteiro e Baixar remove, então o chão pode formar saliências e cavernas. Suavizar nivela as irregularidades e Aplainar leva ao nível onde o traço começou. Cada toque reconstrói na grade os brushes que alcança, arredondados, e deixa tudo fora da esfera como estava, arestas vivas incluídas. O resultado são brushes comuns, então qualquer outra ferramenta funciona neles, e **Mesclar colunas** reduz o número depois. Uma grade mais fina dá uma superfície mais lisa e mais brushes.
 
 # Materiais e UVs
 ## Carregando e aplicando materiais

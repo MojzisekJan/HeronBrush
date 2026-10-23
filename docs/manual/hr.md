@@ -173,7 +173,9 @@ Dva broja su **Polumjer (jedinice)** i **Jačina (%)**. Pomiču se samo kutovi n
 
 Kad završite s oblikovanjem, odaberite teren i izaberite Geometrija → **Spoji stupce** ili gumb u prozoru **Oblikovanje**. Susjedni stupci koji zajedno čine konveksan brush i jednako izgledaju postaju jedan brush, pa ravni dijelovi postaju nekoliko velikih brusheva. Površina se ne pomiče, a spajanje se poništava u jednom koraku.
 
-Za teren kao u voxel igrama podijelite na stupce **Kvadrat** i uključite **Blokovi** u prozoru **Oblikovanje**. Potez tada pomiče cijeli vrh svakog stupca za cijele korake mreže i ostavlja stranice okomitima, pa teren raste u stepenicama. Svi načini rade kao prije; mali potezi se zbrajaju dok stupac ne naraste za cijeli korak. Stupci drugih oblika ostaju kakvi jesu.
+Za teren kao u voxel igrama podijelite na stupce **Kvadrat** i u prozoru **Oblikovanje** kod **Potez** odaberite **Blokovi**. Potez tada pomiče cijeli vrh svakog stupca za cijele korake mreže i ostavlja stranice okomitima, pa teren raste u stepenicama. Svi načini rade kao prije; mali potezi se zbrajaju dok stupac ne naraste za cijeli korak. Stupci drugih oblika ostaju kakvi jesu.
+
+**Slobodno** ne treba stupce i radi na bilo kojim brushevima. Podigni dodaje teren u kugli oko pokazivača, a Spusti ga oduzima, pa teren može imati prevjese i špilje. Izgladi ga ujednačuje, a Poravnaj ga dovodi do razine na kojoj je potez počeo. Svaki dodir iznova gradi zahvaćene brusheve na mreži, zaobljene, a sve izvan kugle ostavlja kakvo je bilo, uključujući oštre rubove. Rezultat su obični brushevi, pa na njima rade svi drugi alati, a **Spoji stupce** poslije smanjuje njihov broj. Gušća mreža daje glađu površinu i više brusheva.
 
 # Materijali i UV
 ## Učitavanje i primjena materijala

@@ -3336,16 +3336,18 @@ impl Scene3d {
                 return;
             };
             let parameters = crate::sculpt::parameters();
-            let state = if parameters.blocks {
-                Some(
-                    document
-                        .borrow()
-                        .begin_block_stroke(grid.borrow().actual_size()),
-                )
-            } else {
-                document
+            let step = grid.borrow().actual_size();
+            let state = match parameters.form {
+                crate::sculpt::SculptForm::Bend => document
                     .borrow()
-                    .begin_sculpt_stroke_under(&ray, parameters.direction)
+                    .begin_sculpt_stroke_under(&ray, parameters.direction),
+                crate::sculpt::SculptForm::Blocks => {
+                    Some(document.borrow().begin_block_stroke(step))
+                }
+                crate::sculpt::SculptForm::Free => {
+                    let axis = document.borrow().sculpt_axis(&ray, parameters.direction);
+                    axis.map(|along| document.borrow().begin_free_stroke(step, along))
+                }
             };
             let Some(mut state) = state else {
                 return;

@@ -173,7 +173,9 @@ Cele două numere sunt **Rază (unități)** și **Putere (%)**. Se mișcă doar
 
 Când ai terminat de sculptat, selectează terenul și alege Geometrie → **Unește coloanele** sau butonul din fereastra **Sculptare**. Coloanele vecine care împreună formează un brush convex și arată la fel devin un singur brush, așa că zonele plane rămân câteva brush-uri mari. Suprafața nu se mișcă, iar unirea se anulează într-un singur pas.
 
-Pentru un teren ca în jocurile voxel, împarte în coloane **Pătrat** și activează **Blocuri** în fereastra **Sculptare**. O trăsătură mută atunci tot vârful fiecărei coloane cu pași întregi de grilă și lasă laturile verticale, așa că terenul urcă în trepte. Toate modurile funcționează ca înainte; atingerile mici se adună până la un pas întreg. Coloanele de alte forme rămân neschimbate.
+Pentru un teren ca în jocurile voxel, împarte în coloane **Pătrat** și alege **Blocuri** la **Trăsătură** în fereastra **Sculptare**. O trăsătură mută atunci tot vârful fiecărei coloane cu pași întregi de grilă și lasă laturile verticale, așa că terenul urcă în trepte. Toate modurile funcționează ca înainte; atingerile mici se adună până la un pas întreg. Coloanele de alte forme rămân neschimbate.
+
+**Liber** nu are nevoie de coloane: funcționează pe orice brush-uri. Ridică adaugă teren într-o sferă în jurul cursorului, iar Coboară îl scoate, așa că terenul poate avea surplombe și peșteri. Netezește îl uniformizează, iar Aplatizează îl aduce la nivelul unde a început trăsătura. Fiecare atingere reface pe grilă brush-urile atinse, rotunjite, și lasă tot ce e în afara sferei cum era, inclusiv muchiile ascuțite. Rezultatul sunt brush-uri obișnuite, pe care merg toate celelalte unelte, iar **Unește coloanele** le reduce apoi numărul. O grilă mai fină dă o suprafață mai netedă și mai multe brush-uri.
 
 # Materiale și UV-uri
 ## Încărcarea și aplicarea materialelor

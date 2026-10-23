@@ -173,7 +173,9 @@ Dve čísla sú **Polomer (jednotky)** a **Sila (%)**. Posúvajú sa len rohy na
 
 Keď budete so sochaním hotoví, vyberte terén a zvoľte Geometria → **Zlúčiť stĺpce**, alebo tlačidlo v okne **Sochať**. Susedné stĺpce, ktoré spolu tvoria konvexný brush a vyzerajú rovnako, sa zlúčia do jedného, takže z rovných plôch zostane pár veľkých brushov. Povrch sa nepohne a zlúčenie sa vracia jedným krokom späť.
 
-Pre terén ako vo voxelových hrách rozdeľte na stĺpce **Štvorec** a v okne **Sochať** zapnite **Kocky**. Ťah potom posúva celý vrch každého stĺpca po celých krokoch mriežky a boky necháva zvislé, takže terén stúpa v schodoch. Všetky režimy fungujú ako predtým; malé ťahy sa sčítavajú, kým stĺpec nevystúpi o celý krok. Stĺpce iných tvarov zostanú, ako sú.
+Pre terén ako vo voxelových hrách rozdeľte na stĺpce **Štvorec** a v okne **Sochať** zvoľte pri **Ťah** možnosť **Kocky**. Ťah potom posúva celý vrch každého stĺpca po celých krokoch mriežky a boky necháva zvislé, takže terén stúpa v schodoch. Všetky režimy fungujú ako predtým; malé ťahy sa sčítavajú, kým stĺpec nevystúpi o celý krok. Stĺpce iných tvarov zostanú, ako sú.
+
+**Voľne** nepotrebuje stĺpce, funguje na akýchkoľvek brushoch. Zdvihnúť pridáva hmotu v guli okolo ukazovateľa a Znížiť ju uberá, takže terén môže tvoriť previsy a jaskyne. Vyhladiť ho vyrovná a Zarovnať ho zrovná do roviny, kde ťah začal. Každý dab prestavá zasiahnuté brushe na mriežke so zaoblením a všetko mimo gule nechá, ako bolo, vrátane ostrých hrán. Výsledkom sú obyčajné brushe, takže na ne fungujú všetky ostatné nástroje, a **Zlúčiť stĺpce** potom zníži ich počet. Jemnejšia mriežka dáva hladší povrch a viac brushov.
 
 # Materiály a UV
 ## Načítanie a použitie materiálov

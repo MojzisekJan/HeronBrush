@@ -173,7 +173,9 @@ Los dos números son **Radio (unidades)** y **Fuerza (%)**. Solo se mueven las e
 
 Cuando termines de esculpir, selecciona el terreno y elige Geometría → **Unir columnas**, o el botón de la ventana **Esculpir**. Las columnas vecinas que juntas forman un brush convexo y se ven igual pasan a ser un solo brush, así que las zonas planas quedan en unos pocos brushes grandes. La superficie no se mueve y la unión se deshace en un paso.
 
-Para un terreno como el de los juegos de vóxeles, divide en columnas **Cuadrado** y activa **Bloques** en la ventana **Esculpir**. Un trazo mueve entonces toda la parte superior de cada columna por pasos enteros de cuadrícula y deja sus lados verticales, así que el suelo sube en escalones. Todos los modos funcionan igual; los toques pequeños se suman hasta un paso entero. Las columnas de otras formas no cambian.
+Para un terreno como el de los juegos de vóxeles, divide en columnas **Cuadrado** y elige **Bloques** en **Trazo** dentro de la ventana **Esculpir**. Un trazo mueve entonces toda la parte superior de cada columna por pasos enteros de cuadrícula y deja sus lados verticales, así que el suelo sube en escalones. Todos los modos funcionan igual; los toques pequeños se suman hasta un paso entero. Las columnas de otras formas no cambian.
+
+**Libre** no necesita columnas: funciona con cualquier brush. Subir añade terreno en una bola alrededor del puntero y Bajar lo quita, así que el suelo puede formar salientes y cuevas. Suavizar lo iguala y Aplanar lo lleva al nivel donde empezó el trazo. Cada toque reconstruye en la cuadrícula los brushes que alcanza, redondeados, y deja todo lo que queda fuera de su bola como estaba, aristas vivas incluidas. El resultado son brushes normales, así que cualquier otra herramienta funciona con ellos, y **Unir columnas** reduce su número después. Una cuadrícula más fina da una superficie más suave y más brushes.
 
 # Materiales y UV
 ## Cargar y aplicar materiales

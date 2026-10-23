@@ -173,7 +173,9 @@ Dwie liczby to **Promień (jednostki)** i **Siła (%)**. Przesuwają się tylko 
 
 Po skończeniu rzeźbienia zaznacz teren i wybierz Geometria → **Scal słupy** albo przycisk w oknie **Rzeźbienie**. Sąsiednie słupy, które razem tworzą wypukły brush i wyglądają tak samo, stają się jednym brushem, więc płaskie fragmenty zamieniają się w kilka dużych brushów. Powierzchnia się nie przesuwa, a scalenie cofa się jednym krokiem.
 
-Aby uzyskać teren jak w grach wokselowych, podziel na słupy **Kwadrat** i włącz **Bloki** w oknie **Rzeźbienie**. Pociągnięcie przesuwa wtedy cały wierzch każdego słupa o całe kroki siatki i zostawia boki pionowe, więc teren wznosi się stopniami. Wszystkie tryby działają jak dotąd; małe pociągnięcia sumują się, aż słup wzrośnie o cały krok. Słupy innych kształtów zostają bez zmian.
+Aby uzyskać teren jak w grach wokselowych, podziel na słupy **Kwadrat** i w oknie **Rzeźbienie** wybierz w **Pociągnięcie** opcję **Bloki**. Pociągnięcie przesuwa wtedy cały wierzch każdego słupa o całe kroki siatki i zostawia boki pionowe, więc teren wznosi się stopniami. Wszystkie tryby działają jak dotąd; małe pociągnięcia sumują się, aż słup wzrośnie o cały krok. Słupy innych kształtów zostają bez zmian.
+
+**Swobodnie** nie potrzebuje słupów i działa na dowolnych brushach. Podnieś dodaje teren w kuli wokół wskaźnika, a Obniż go usuwa, więc teren może tworzyć nawisy i jaskinie. Wygładź go wyrównuje, a Wyrównaj doprowadza do poziomu, w którym zaczęło się pociągnięcie. Każde dotknięcie odbudowuje na siatce brushe, które obejmuje, zaokrąglone, a wszystko poza kulą zostawia bez zmian, łącznie z ostrymi krawędziami. Wynikiem są zwykłe brushe, więc działają na nich wszystkie inne narzędzia, a **Scal słupy** potem zmniejsza ich liczbę. Gęstsza siatka daje gładszą powierzchnię i więcej brushów.
 
 # Materiały i UV
 ## Wczytywanie i nakładanie materiałów

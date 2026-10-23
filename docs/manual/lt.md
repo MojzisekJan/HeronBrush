@@ -173,7 +173,9 @@ Du skaičiai yra **Spindulys (vienetai)** ir **Stiprumas (%)**. Juda tik kampai 
 
 Baigę lipdyti, pažymėkite reljefą ir pasirinkite Geometrija → **Sujungti stulpus** arba mygtuką lange **Lipdymas**. Gretimi stulpai, kurie kartu sudaro iškilą brush'ą ir atrodo vienodai, tampa vienu brush'u, todėl lygūs plotai virsta keliais dideliais brush'ais. Paviršius nepajuda, o sujungimą galima atšaukti vienu žingsniu.
 
-Reljefui kaip vokselinių žaidimų padalykite į **Kvadratas** stulpus ir lange **Lipdymas** įjunkite **Blokai**. Brūkšnys tada kelia visą kiekvieno stulpo viršų visais tinklelio žingsniais ir palieka šonus stačius, todėl reljefas kyla laiptais. Visi režimai veikia kaip anksčiau; maži brūkšniai sumuojasi, kol stulpas pakyla visu žingsniu. Kitų formų stulpai lieka nepakitę.
+Reljefui kaip vokselinių žaidimų padalykite į **Kvadratas** stulpus ir lange **Lipdymas** prie **Brūkšnys** pasirinkite **Blokai**. Brūkšnys tada kelia visą kiekvieno stulpo viršų visais tinklelio žingsniais ir palieka šonus stačius, todėl reljefas kyla laiptais. Visi režimai veikia kaip anksčiau; maži brūkšniai sumuojasi, kol stulpas pakyla visu žingsniu. Kitų formų stulpai lieka nepakitę.
+
+**Laisvai** nereikia stulpų – veikia su bet kokiais brush'ais. Pakelti prideda žemės rutulyje aplink žymeklį, o Nuleisti jos atima, todėl reljefas gali turėti iškyšas ir urvus. Išlyginti nelygumus jį suvienodina, o Išlyginti nuleidžia iki lygio, kur prasidėjo brūkšnys. Kiekvienas prisilietimas tinklelyje iš naujo sudaro paliestus brush'us su suapvalinimu, o viską už rutulio palieka kaip buvo, net aštrias briaunas. Rezultatas – įprasti brush'ai, todėl jiems tinka visi kiti įrankiai, o **Sujungti stulpus** paskui sumažina jų skaičių. Smulkesnis tinklelis duoda lygesnį paviršių ir daugiau brush'ų.
 
 # Medžiagos ir UV
 ## Medžiagų įkėlimas ir taikymas

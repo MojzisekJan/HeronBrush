@@ -173,7 +173,9 @@ A két szám a **Sugár (egység)** és az **Erősség (%)**. Csak a húzás ál
 
 Ha végzett a formázással, jelölje ki a terepet, és válassza a Geometria → **Oszlopok egyesítése** parancsot vagy a(z) **Formázás** ablak gombját. Az egymás melletti oszlopok, amelyek együtt konvex brusht alkotnak és ugyanúgy néznek ki, egy brushsá olvadnak, így a sík részekből néhány nagy brush lesz. A felület nem mozdul, és az egyesítés egy lépésben visszavonható.
 
-Voxeljátékokhoz hasonló terephez bontsd **Négyzet** oszlopokra, és kapcsold be a **Kockák** beállítást a(z) **Formázás** ablakban. Egy húzás ekkor minden oszlop teljes tetejét egész rácslépésekkel mozgatja, az oldalakat függőlegesen hagyja, így a terep lépcsőzetesen emelkedik. Minden mód úgy működik, mint eddig; a kis húzások összeadódnak, amíg egy oszlop egy teljes lépést nem emelkedik. A más alakú oszlopok nem változnak.
+Voxeljátékokhoz hasonló terephez bontsd **Négyzet** oszlopokra, és a(z) **Formázás** ablakban a(z) **Húzás** sorban válaszd a(z) **Kockák** lehetőséget. Egy húzás ekkor minden oszlop teljes tetejét egész rácslépésekkel mozgatja, az oldalakat függőlegesen hagyja, így a terep lépcsőzetesen emelkedik. Minden mód úgy működik, mint eddig; a kis húzások összeadódnak, amíg egy oszlop egy teljes lépést nem emelkedik. A más alakú oszlopok nem változnak.
+
+A(z) **Szabad** mód nem igényel oszlopokat, bármilyen brushokon működik. Az Emelés a mutató körüli gömbben terepet ad hozzá, a Süllyesztés elvesz, így kiugrások és barlangok is készülhetnek. A Simítás kiegyenlíti, a Simítás síkba pedig arra a szintre hozza, ahol a húzás kezdődött. Minden érintés a rácson lekerekítve újraépíti az érintett brushokat, a gömbön kívül pedig mindent úgy hagy, ahogy volt, az éles éleket is. Az eredmény közönséges brush, így minden más eszköz működik rajta, és a(z) **Oszlopok egyesítése** utána csökkenti a számukat. Sűrűbb rács simább felületet és több brusht ad.
 
 # Anyagok és UV-k
 ## Anyagok betöltése és alkalmazása

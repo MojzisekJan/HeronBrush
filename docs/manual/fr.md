@@ -173,7 +173,9 @@ Les deux nombres sont **Rayon (unités)** et **Force (%)**. Seuls les coins du c
 
 Une fois la sculpture terminée, sélectionnez le terrain et choisissez Géométrie → **Fusionner les colonnes**, ou le bouton de la fenêtre **Sculpter**. Les colonnes voisines qui forment ensemble une brush convexe et ont le même aspect deviennent une seule brush : les zones plates se réduisent à quelques grandes brushes. La surface ne bouge pas, et la fusion s'annule en une seule étape.
 
-Pour un terrain comme dans les jeux voxel, découpez en colonnes **Carré** et activez **Blocs** dans la fenêtre **Sculpter**. Un trait déplace alors tout le dessus de chaque colonne par pas de grille entiers et garde ses côtés verticaux : le sol monte en marches. Tous les modes fonctionnent comme avant ; les petites touches s'additionnent jusqu'à un pas entier. Les colonnes d'autres formes ne bougent pas.
+Pour un terrain comme dans les jeux voxel, découpez en colonnes **Carré** et choisissez **Blocs** sous **Trait** dans la fenêtre **Sculpter**. Un trait déplace alors tout le dessus de chaque colonne par pas de grille entiers et garde ses côtés verticaux : le sol monte en marches. Tous les modes fonctionnent comme avant ; les petites touches s'additionnent jusqu'à un pas entier. Les colonnes d'autres formes ne bougent pas.
+
+**Libre** n'a pas besoin de colonnes : il agit sur n'importe quelles brushes. Élever ajoute du terrain dans une boule autour du pointeur et Abaisser en retire, si bien que le sol peut surplomber et se creuser en grottes. Lisser l'égalise et Aplanir le ramène au niveau où le trait a commencé. Chaque touche reconstruit les brushes atteintes sur la grille, arrondies, et laisse tout ce qui est hors de sa boule tel quel, arêtes vives comprises. Le résultat est fait de brushes ordinaires, sur lesquelles tous les autres outils fonctionnent, et **Fusionner les colonnes** en réduit ensuite le nombre. Une grille plus fine donne une surface plus lisse et plus de brushes.
 
 # Matériaux et UV
 ## Charger et appliquer des matériaux

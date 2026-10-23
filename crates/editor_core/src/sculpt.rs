@@ -34,6 +34,43 @@ impl SculptMode {
     }
 }
 
+/// How a stroke reshapes the brushes it reaches.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SculptForm {
+    /// Moves the corners of the columns, so their tops bend.
+    Bend,
+    /// Moves square columns by whole grid steps and keeps their sides upright.
+    Blocks,
+    /// Adds and takes away ground in a 3D grid and builds the brushes again, so it can
+    /// hang over and hollow out.
+    Free,
+}
+
+impl SculptForm {
+    pub const ALL: [Self; 3] = [Self::Bend, Self::Blocks, Self::Free];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Bend => translation_key("Bend"),
+            Self::Blocks => translation_key("Blocks"),
+            Self::Free => translation_key("Freeform"),
+        }
+    }
+
+    /// What a stroke of this form does, a sentence for the Sculpt window.
+    pub fn description(self) -> &'static str {
+        match self {
+            Self::Bend => translation_key("Moves the corners of the columns, so their tops bend."),
+            Self::Blocks => translation_key(
+                "Square columns move by whole grid steps, with upright sides.",
+            ),
+            Self::Free => translation_key(
+                "Adds and takes away ground in a 3D grid and builds the brushes again, overhangs and caves included.",
+            ),
+        }
+    }
+}
+
 /// Which way a stroke moves the surface.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SculptDirection {
@@ -100,9 +137,8 @@ pub struct SculptParameters {
     pub direction: SculptDirection,
     /// What Split into columns cuts a brush into.
     pub columns: ColumnShape,
-    /// Whether a stroke moves square columns as blocks, by whole grid steps with
-    /// upright sides, rather than bending their tops.
-    pub blocks: bool,
+    /// How a stroke reshapes the brushes.
+    pub form: SculptForm,
     /// The brush's radius in map units, measured across the ground.
     pub radius: f64,
     /// How much one dab does, from 0 to 1: Raise and Lower move the centre by a tenth of
@@ -116,7 +152,7 @@ impl Default for SculptParameters {
             mode: SculptMode::Raise,
             direction: SculptDirection::Up,
             columns: ColumnShape::Triangles,
-            blocks: false,
+            form: SculptForm::Bend,
             radius: 128.0,
             strength: 0.25,
         }

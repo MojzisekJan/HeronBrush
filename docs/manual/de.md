@@ -173,7 +173,9 @@ Die zwei Zahlen sind **Radius (Einheiten)** und **Stärke (%)**. Nur die Ecken a
 
 Wenn das Modellieren fertig ist, wähle das Terrain aus und dann Geometrie → **Säulen zusammenfügen** oder die Schaltfläche im Fenster **Modellieren**. Benachbarte Säulen, die zusammen einen konvexen Brush ergeben und gleich aussehen, werden zu einem, sodass flache Stellen zu wenigen großen Brushes werden. Die Oberfläche bewegt sich nicht, und das Zusammenfügen lässt sich in einem Schritt rückgängig machen.
 
-Für Terrain wie in Voxel-Spielen teile in **Quadrat**-Säulen und schalte im Fenster **Modellieren** **Blöcke** ein. Ein Strich bewegt dann die ganze Oberseite jeder Säule in ganzen Rasterschritten und lässt die Seiten senkrecht, sodass das Gelände in Stufen ansteigt. Alle Modi wirken wie zuvor; kleine Tupfer summieren sich, bis eine Säule einen ganzen Schritt gestiegen ist. Säulen anderer Form bleiben, wie sie sind.
+Für Terrain wie in Voxel-Spielen teile in **Quadrat**-Säulen und wähle im Fenster **Modellieren** unter **Strich** die Option **Blöcke**. Ein Strich bewegt dann die ganze Oberseite jeder Säule in ganzen Rasterschritten und lässt die Seiten senkrecht, sodass das Gelände in Stufen ansteigt. Alle Modi wirken wie zuvor; kleine Tupfer summieren sich, bis eine Säule einen ganzen Schritt gestiegen ist. Säulen anderer Form bleiben, wie sie sind.
+
+**Frei** braucht keine Säulen und wirkt auf beliebige Brushes. Anheben fügt in einer Kugel um den Zeiger Gelände hinzu, Senken nimmt es weg, sodass Überhänge und Höhlen entstehen können. Glätten ebnet es, Ebnen bringt es auf die Höhe, wo der Strich begann. Jeder Tupfer baut die erreichten Brushes auf dem Raster gerundet neu auf und lässt alles außerhalb seiner Kugel, wie es war, scharfe Kanten eingeschlossen. Das Ergebnis sind gewöhnliche Brushes, auf die jedes andere Werkzeug wirkt, und **Säulen zusammenfügen** macht sie danach weniger. Ein feineres Raster gibt eine glattere Oberfläche und mehr Brushes.
 
 # Materialien und UVs
 ## Materialien laden und zuweisen
