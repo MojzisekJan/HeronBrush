@@ -132,6 +132,10 @@ fn generate_painted_scaled(
     let mut surfaces = std::collections::BTreeMap::new();
     let mut paint_images = std::collections::BTreeMap::<String, Vec<u8>>::new();
     let paint_dir = format!("{}_paint", mtl_name.trim_end_matches(".mtl"));
+    // Texture files go beside the export, so it moves as one folder and opens on another
+    // machine; each is named by its own file name, numbered when two share one.
+    let texture_dir = format!("{stem}_textures");
+    let mut textures = std::collections::BTreeMap::<String, Vec<u8>>::new();
     let fold = |p: Vec3d| {
         if options.y_up {
             // Quake is Z-up right-handed; the usual modelling frame is Y-up. This is the
@@ -450,11 +454,31 @@ fn generate_painted_scaled(
                 .map(|(name, _)| name.as_str())
                 .unwrap_or(name),
         ) {
-            // Relative to the `.mtl`, so the export can move with the textures it uses.
-            let path = if material.path.is_absolute() {
-                crate::document::relative_material_path(&material.path, obj_path)
-            } else {
-                material.path.display().to_string()
+            // A copy beside the export when the file can be read; otherwise a path relative
+            // to the `.mtl`, so the export can still move with the textures it uses.
+            // A relative path would be read against the process's own directory, so only an
+            // absolute one is copied.
+            let readable = material.path.is_absolute();
+            let copied = readable
+                .then(|| fs::read(&material.path).ok())
+                .flatten()
+                .and_then(|bytes| {
+                    let file = material.path.file_name()?.to_string_lossy().into_owned();
+                    let mut name = format!("{texture_dir}/{file}");
+                    let mut n = 1;
+                    while textures.get(&name).is_some_and(|other| *other != bytes) {
+                        n += 1;
+                        name = format!("{texture_dir}/{n}-{file}");
+                    }
+                    textures.insert(name.clone(), bytes);
+                    Some(name)
+                });
+            let path = match copied {
+                Some(name) => name,
+                None if material.path.is_absolute() => {
+                    crate::document::relative_material_path(&material.path, obj_path)
+                }
+                None => material.path.display().to_string(),
             };
             let _ = writeln!(mtl, "map_Kd {path}");
         }
@@ -476,6 +500,7 @@ fn generate_painted_scaled(
         paint_images
             .into_iter()
             .map(|(name, png)| (format!("{paint_dir}/{name}.png"), png))
+            .chain(textures)
             .collect(),
     )
 }
@@ -668,9 +693,10 @@ common/caulk
     }
 
     #[test]
-    fn a_texture_file_is_named_relative_to_the_mtl() {
+    fn a_texture_file_is_copied_beside_the_mtl() {
         // Found loading the .obj target's output in Blender: map_Kd held the absolute
-        // path of the texture on the machine that exported it.
+        // path of the texture on the machine that exported it, and the export did not
+        // carry the texture along.
         let root = std::env::temp_dir().join(format!("heron-obj-relative-{}", std::process::id()));
         let textures = root.join("textures");
         fs::create_dir_all(&textures).unwrap();
@@ -686,8 +712,15 @@ common/caulk
             .map(|(_, contents)| String::from_utf8_lossy(contents).into_owned())
             .unwrap();
         assert!(
-            mtl.contains("map_Kd ../textures/stone.png"),
+            mtl.contains("map_Kd room_textures/stone.png"),
             "the MTL was:\n{mtl}"
+        );
+        let copy = root.join("export").join("room_textures").join("stone.png");
+        assert!(
+            files
+                .iter()
+                .any(|(path, bytes)| *path == copy && bytes.starts_with(b"\x89PNG")),
+            "the texture travels with the export"
         );
         let _ = fs::remove_dir_all(&root);
     }
