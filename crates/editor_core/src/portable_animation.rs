@@ -523,4 +523,76 @@ mod tests {
         let json = serde_json::json!({ "cases": cases, "faces": faces }).to_string();
         std::fs::write(output, json).expect("write the reference");
     }
+
+    /// Writes the editor's poses of the feature lab's `fl_mover` for engine checks to
+    /// compare against: every 1/60 s over two loops, the same a nanosecond earlier,
+    /// and a few off-grid times.
+    /// Positions and axes are in a Y-up frame in metres, as Defold and Flax use.
+    #[test]
+    fn writes_feature_lab_mover_poses_for_engine_checks() {
+        let map = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../demos/feature_lab/feature_lab.map");
+        let d = Document::open(map, Default::default()).expect("the feature lab opens");
+        let entities = map_model::node::entities_with_ids(d.tree_world());
+        let (_, mover) = entities
+            .iter()
+            .find(|(_, e)| e.property("targetname") == Some("fl_mover"))
+            .expect("the feature lab has fl_mover");
+        let property = |key: &str| mover.property(key).expect("fl_mover is animated");
+        let track = Track::from_properties(
+            property("animation_keys"),
+            property("animation_mode"),
+            Some(property("animation_curves")),
+        )
+        .expect("fl_mover's animation parses");
+        let pivot: Vec<f64> = property("animation_pivot")
+            .split_whitespace()
+            .map(|v| v.parse().expect("the pivot is numeric"))
+            .collect();
+        let pivot = Vec3d::new(pivot[0], pivot[1], pivot[2]);
+        let pose = |time: f64| {
+            let position = track.transform(pivot, pivot, time, false);
+            let axes: Vec<_> = [
+                Vec3d::new(0., 1., 0.),
+                Vec3d::new(0., 0., 1.),
+                Vec3d::new(1., 0., 0.),
+            ]
+            .into_iter()
+            .map(|v| {
+                let r = track.transform(v, Vec3d::zero(), time, true);
+                [r.y(), r.z(), r.x()]
+            })
+            .collect();
+            serde_json::json!({
+                "time": time,
+                "position": [position.y() / 32., position.z() / 32., position.x() / 32.],
+                "axes": axes,
+            })
+        };
+        let frames: Vec<_> = (0..=480).map(|frame| pose(frame as f64 / 60.)).collect();
+        // A runtime that sums 1/60 per frame reads 2.9999999999999942 at frame 180,
+        // just short of the held key at 3 s, so each frame also has the pose a
+        // nanosecond earlier.
+        let frames_before: Vec<_> = (0..=480)
+            .map(|frame| pose((frame as f64 / 60. - 1e-9).max(0.)))
+            .collect();
+        let samples: Vec<_> = [0.25, 0.5, 0.999, 1.0, 1.37, 2.0, 2.9, 3.0, 3.5, 3.99, 5.0]
+            .into_iter()
+            .map(pose)
+            .collect();
+        // Spot checks against the fixture's description: map X peaks at 128 units
+        // at 2 s and map Z is held at 32 units from 1 s to 3 s.
+        assert!((samples[5]["position"][2].as_f64().expect("z") + 26.5 - 4.).abs() < 1e-9);
+        assert!((samples[3]["position"][1].as_f64().expect("y") - 0.5 - 1.).abs() < 1e-9);
+        assert!((samples[2]["position"][1].as_f64().expect("y") - 0.5).abs() < 1e-9);
+        let path = std::env::var_os("HERON_FEATURE_LAB_POSES")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::env::temp_dir().join("heron-feature-lab-poses.json"));
+        let poses = serde_json::json!({
+            "frames": frames,
+            "frames_before": frames_before,
+            "samples": samples,
+        });
+        std::fs::write(&path, poses.to_string()).expect("the poses are written");
+    }
 }

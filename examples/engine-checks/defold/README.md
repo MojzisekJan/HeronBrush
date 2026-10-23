@@ -45,3 +45,13 @@ uses simple directional shading). Enemies and other FPS classes stay as data.
 
 Credits: controller and shaders are MIT code from the earlier tbx project, see
 `LICENSE-TBX`. Textures are Kenney assets under their own licence.
+
+## Feature lab
+
+```sh
+python3 examples/engine-checks/defold/run_feature_lab.py --root /tmp/feature-runs
+```
+
+Exports `demos/feature_lab/feature_lab.map`, builds it with Bob and runs it in
+dmengine inside Xephyr with the check in `feature_lab/`. See
+[feature lab in Defold](../../../docs/feature-runtime-defold.md).

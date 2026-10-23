@@ -1,0 +1,47 @@
+name: "main"
+scale_along_z: 0
+collection_instances {
+  id: "level"
+  collection: "/feature_lab.collection"
+  position {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+}
+embedded_instances {
+  id: "camera"
+  data: "embedded_components {\n  id: \"camera\"\n  type: \"camera\"\n  data: \"aspect_ratio: 1.0\\nfov: 1.0\\nnear_z: 0.05\\nfar_z: 500.0\\nauto_aspect_ratio: 1\\n\"\n}\n"
+  position {
+    x: 20.0
+    y: 15.0
+    z: 5.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+}
+embedded_instances {
+  id: "probe"
+  data: "components {\n  id: \"check\"\n  component: \"/check/check.script\"\n}\nembedded_components {\n  id: \"collision\"\n  type: \"collisionobject\"\n  data: \"type: COLLISION_OBJECT_TYPE_KINEMATIC\\nmass: 0.0\\nfriction: 0.0\\nrestitution: 0.0\\ngroup: \\\"player\\\"\\nmask: \\\"default\\\"\\nlinear_damping: 0.0\\nangular_damping: 0.0\\nlocked_rotation: true\\nembedded_collision_shape {\\n  shapes {\\n    shape_type: TYPE_BOX\\n    position {\\n    }\\n    rotation {\\n    }\\n    index: 0\\n    count: 3\\n  }\\n  data: 0.3\\n  data: 0.3\\n  data: 0.3\\n}\\n\"\n}\n"
+  position {
+    x: 0.0
+    y: 10.0
+    z: 20.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+}

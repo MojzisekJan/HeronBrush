@@ -43,3 +43,13 @@ rebuild ownership.
 Not covered: headless mode cannot check materials, a player build needs collision
 assets baked in the editor, and old import roots are not found again after an
 editor restart.
+
+## Feature lab
+
+```sh
+python3 examples/engine-checks/flax/run_feature_lab.py --root /tmp/feature-runs [--gpu]
+```
+
+Exports `demos/feature_lab/feature_lab.map`, builds a project around it and runs
+`feature_lab/FeatureLabCheck.cs` in the editor. See
+[feature lab in Flax](../../../docs/feature-runtime-flax.md).

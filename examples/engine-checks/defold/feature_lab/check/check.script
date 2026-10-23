@@ -1,0 +1,244 @@
+-- Feature lab runtime check. Runs on a kinematic probe in the player group, the
+-- way a game's player would touch the exported volumes. Each check prints
+-- "PASS <label>" or "FAIL <label>"; the run ends with "FEATURE_LAB_DONE <failures>".
+-- Lines starting "VIEW <name>" ask run_feature_lab.py for a screenshot.
+local water=require "feature_lab_water"
+
+local AWAY=vmath.vector3(0,10,20)
+local failures=0
+local function check(ok,label,detail)
+	if not ok then failures=failures+1 end
+	print((ok and "PASS " or "FAIL ")..label..(detail and (" ("..detail..")") or ""))
+end
+local function near(a,b,eps) return math.abs(a-b)<=(eps or 1e-4) end
+local function fmt(v) return string.format("%.4f %.4f %.4f",v.x,v.y,v.z) end
+local function level(id) return "/level/"..id end
+local function prop(id,name) return go.get(msg.url(nil,level(id),"properties"),name) end
+local function has_component(id,component)
+	return pcall(go.get,msg.url(nil,level(id),component),"material")
+end
+-- Bullet pads every convex hull with its 0.04 m collision margin, so a ray stops
+-- that far outside the brush face.
+local MARGIN=0.05
+local function on_face(hit,expected) return hit>=expected-1e-3 and hit<=expected+MARGIN end
+-- First default-group hit along a segment, or nil.
+local function ray(from,to)
+	return physics.raycast(from,to,{hash("default")})
+end
+local function hit_is(h,id) return h~=nil and h.id==hash(level(id)) end
+
+local function look(eye,target)
+	local f=vmath.normalize(target-eye)
+	local q=vmath.quat_rotation_y(math.atan2(-f.x,-f.z))*vmath.quat_rotation_x(math.asin(f.y))
+	go.set_position(eye,"/camera");go.set_rotation(q,"/camera")
+end
+
+-- Camera views for the screenshots: name, eye, target.
+local VIEWS={
+	{"overview",vmath.vector3(24,18,6),vmath.vector3(1,0,-14)},
+	{"textures",vmath.vector3(-5,3.2,-23.5),vmath.vector3(-9,1.25,-27)},
+	{"colours_front",vmath.vector3(-5,3.2,-17.5),vmath.vector3(-9,1.25,-21)},
+	{"colours_back",vmath.vector3(-13,3.2,-24.5),vmath.vector3(-9,1.25,-21)},
+	{"gradients_front",vmath.vector3(-5,3.2,-11.5),vmath.vector3(-9,1.25,-15)},
+	{"gradients_back",vmath.vector3(-13,3.2,-18.5),vmath.vector3(-9,1.25,-15)},
+	{"surface",vmath.vector3(-5,3.2,-5.5),vmath.vector3(-9,1.25,-9)},
+	{"normal",vmath.vector3(-5,3.2,0.5),vmath.vector3(-9,1.25,-3)},
+	{"hidden_face",vmath.vector3(1,1.6,-5.2),vmath.vector3(1,1.25,-9)},
+	{"solid_face",vmath.vector3(1,1.6,-23.2),vmath.vector3(1,1.25,-27)},
+	{"skip_top",vmath.vector3(1.01,6,-15),vmath.vector3(1,1.25,-15)},
+	{"hidden_top",vmath.vector3(1.01,6,-9),vmath.vector3(1,1.25,-9)},
+	{"clip_and_trigger",vmath.vector3(6,3,-12),vmath.vector3(1,1.5,-12)},
+	{"animation_row",vmath.vector3(17,4,-15),vmath.vector3(11,1,-21)},
+	{"water",vmath.vector3(16,3.5,-5),vmath.vector3(12,1,-10)},
+	{"models",vmath.vector3(9,3,6),vmath.vector3(5,1,6)},
+	{"sky",vmath.vector3(0,3,10),vmath.vector3(0,9,-20)},
+}
+
+local function static_checks(self)
+	-- Typed properties: go.property values, then the full typed level JSON.
+	check(prop("fl_probe","charge")==7,"probe charge is the map's 7, not the default 9")
+	check(prop("fl_probe","armed")==true,"probe armed bool from the class default")
+	check(prop("fl_probe","label")==hash("probe"),"probe label string")
+	check(prop("fl_probe","note")==hash("free text, with a comma"),"string with a comma survives")
+	check(near(prop("light","light_energy"),2.5),"light energy 2.5")
+	check(near(prop("info_camera","fov"),62.5),"camera fov 62.5")
+	check(prop("info_camera","current")==1,"camera current 1")
+	check(near(prop("water_volume","swim_speed"),2.5),"water swim_speed 2.5")
+	check(prop("water_volume","water_priority")==3,"water priority 3")
+	local data=json.decode(sys.load_resource("/feature_lab.json"))
+	local typed={}
+	for _,e in ipairs(data.entities) do typed[e.name]=e.properties end
+	local seq=typed.fl_probe.sequence
+	check(seq.type=="array" and #seq.value==3 and seq.value[1].type=="int" and seq.value[1].value==2
+		and seq.value[2].value==3 and seq.value[3].value==5,"probe sequence array [2,3,5] of ints in the level JSON")
+	check(typed.fl_probe.charge.type=="int","charge typed int")
+	check(typed.light.light_energy.type=="float","light energy typed float")
+	check(typed.info_camera.fov.type=="float" and typed.info_camera.current.type=="int","camera float and int")
+	check(typed.water_volume.swim_speed.type=="float" and typed.water_volume.water_priority.type=="int","water float and int")
+
+	-- Target links resolve to live game objects.
+	local function link(id,expected,label)
+		local target=prop(id,"target")
+		local ok=target==hash(expected) and go.exists(level(expected))
+		check(ok,label,ok and fmt(go.get_world_position(level(expected))) or nil)
+	end
+	link("fl_probe","info_waypoint","probe -> fl_wp_a")
+	link("info_waypoint","info_waypoint_1","fl_wp_a -> fl_wp_b")
+	link("func_button","func_animate_1","button -> fl_door")
+	link("trigger_multiple","func_animate_1","trigger -> fl_door")
+	check(prop("info_waypoint","targetname")==hash("fl_wp_a") and prop("func_animate_1","targetname")==hash("fl_door"),
+		"targetnames kept")
+	check(near(go.get_world_position(level("info_waypoint")).z,4) and near(go.get_world_position(level("info_waypoint_1")).z,8),
+		"waypoints at map positions")
+
+	-- What draws: clip and trigger have no model component, the rest do.
+	check(not has_component("func_clip","mesh"),"clip brush has no model")
+	check(not has_component("trigger_multiple","mesh"),"trigger has no model")
+	for _,id in ipairs({"func_detail","func_detail_1","func_detail_2","func_detail_5","func_detail_6","func_wall","water_volume"}) do
+		check(has_component(id,"mesh"),id.." has a model")
+	end
+
+	-- Static hulls: a ray from above stops on each brush's top.
+	local function top(id,x,z,y,label)
+		local h=ray(vmath.vector3(x,8,z),vmath.vector3(x,-1,z))
+		check(hit_is(h,id) and on_face(h.position.y,y),label,h and (tostring(h.id).." at "..fmt(h.position)) or "no hit")
+	end
+	top("func_wall",1,-27,2.25,"fl_solid has a static hull, top at 2.25 m")
+	top("func_clip",1,-21,3.25,"fl_clip has a static hull, 2 by 3 by 2 m, top at 3.25 m")
+	top("func_detail_5",1,-15,2.25,"fl_skip hull covers the whole brush, skip top included")
+	top("func_detail_6",1,-9,2.25,"fl_hidden hull covers the hidden face")
+	local floor=ray(vmath.vector3(1,8,-2.5),vmath.vector3(1,-1,-2.5))
+	check(hit_is(floor,"worldspawn") and on_face(floor.position.y,0),"ray through the trigger reaches the floor",
+		floor and fmt(floor.position) or "no hit")
+	local side=ray(vmath.vector3(4,1.5,-21),vmath.vector3(-2,1.5,-21))
+	check(hit_is(side,"func_clip") and on_face(side.position.x,2),"clip side face at x=2",side and fmt(side.position) or "no hit")
+
+	-- Water registry from the generated adapter.
+	local data,depth=water.sample(vmath.vector3(12,1,-10))
+	check(data~=nil and near(data.swim_speed,2.5) and near(depth,0.75,1e-3),"water volume sampled with swim_speed 2.5 and depth 0.75",
+		data and string.format("depth %.4f",depth) or "outside")
+	check(water.sample(vmath.vector3(12,3,-10))==nil,"above the water is dry")
+end
+
+local function door_axis() return vmath.rotate(go.get_world_rotation(level("func_animate_1")),vmath.vector3(1,0,0)) end
+local function door_closed() local a=door_axis();return near(a.x,1,1e-3) and near(a.z,0,1e-3) end
+local function door_open() local a=door_axis();return near(a.x,0,1e-3) and near(a.z,-1,1e-3) end
+local function door_hits()
+	local a=ray(vmath.vector3(11.5,2.5,-17),vmath.vector3(11.5,2.5,-23))
+	local b=ray(vmath.vector3(13,2.5,-21),vmath.vector3(8,2.5,-21))
+	return hit_is(a,"func_animate_1"),hit_is(b,"func_animate_1")
+end
+
+local function pose_error(sample)
+	local p=go.get_world_position(level("func_animate"))
+	local q=go.get_world_rotation(level("func_animate"))
+	local e=vmath.length(p-vmath.vector3(sample.position[1],sample.position[2],sample.position[3]))
+	for i,axis in ipairs({vmath.vector3(1,0,0),vmath.vector3(0,1,0),vmath.vector3(0,0,1)}) do
+		local a=sample.axes[i]
+		e=math.max(e,vmath.length(vmath.rotate(q,axis)-vmath.vector3(a[1],a[2],a[3])))
+	end
+	return e
+end
+
+function init(self)
+	self.time=0;self.fixed=0;self.step=1;self.events={};self.draws={}
+	self.poses=json.decode(sys.load_resource("/check/poses.json"))
+	self.playback={max=0,offsets={}}
+	go.set_position(AWAY)
+	look(VIEWS[1][2],VIEWS[1][3])
+end
+
+function fixed_update(self,dt)
+	self.fixed=self.fixed+1
+	-- Playback: after n fixed steps the mover is at n/60 s, or one step either side,
+	-- depending on which script's fixed_update runs first.
+	if self.fixed<=240 then
+		local best,offset=math.huge,nil
+		for k=-1,1 do
+			local f=self.poses.frames[self.fixed+k+1]
+			if f then local e=pose_error(f);if e<best then best,offset=e,k end end
+		end
+		self.playback.max=math.max(self.playback.max,best)
+		self.playback.offsets[offset]=(self.playback.offsets[offset] or 0)+1
+	end
+end
+
+-- A list of timed steps; each runs once when the clock passes its time.
+local STEPS
+STEPS={
+	{0.05,function(self) static_checks(self)
+		local closed,open=door_hits()
+		check(door_closed() and closed and not open,"door starts closed, its collider across the doorway")
+		go.set_position(vmath.vector3(1.5,1.75,-2.5)) end},
+	{0.6,function(self)
+		check((self.events.trigger_multiple or 0)>0,"trigger_response from fl_trigger reached the player probe")
+		go.set_position(AWAY) end},
+	{2.0,function(self)
+		local closed,open=door_hits()
+		check(door_open(),"fl_trigger opened fl_door",fmt(door_axis()))
+		check(open and not closed,"door collider moved with the door",
+			string.format("doorway ray %s, open-side ray %s",tostring(closed),tostring(open)))
+		go.set_position(vmath.vector3(10.25,0.5,-17.75)) end},
+	{2.4,function(self)
+		check((self.events.func_button or 0)>0,"trigger_response from fl_button reached the player probe")
+		go.set_position(AWAY) end},
+	{3.8,function(self)
+		local closed,open=door_hits()
+		check(door_closed() and closed and not open,"fl_button toggled fl_door closed",fmt(door_axis()))
+		go.set_position(vmath.vector3(10.25,0.5,-17.75)) end},
+	{4.2,function(self) go.set_position(AWAY) end},
+	{5.6,function(self)
+		check(door_open(),"fl_button toggled fl_door open again",fmt(door_axis()))
+		local offsets={}
+		for k,v in pairs(self.playback.offsets) do offsets[#offsets+1]=k..":"..v end
+		check(self.playback.max<1e-4 and #offsets==1,"fl_mover playback follows 240 editor frames over 4 s, one step apart throughout",
+			string.format("max error %.2e, step offsets %s",self.playback.max,table.concat(offsets," ")))
+		msg.post(msg.url(nil,level("func_animate"),"properties"),"heron_pause_animation")
+		self.sample=0 end},
+}
+-- Seek the paused mover to each editor sample time and compare one frame later.
+for i=1,11 do
+	STEPS[#STEPS+1]={5.6+i*0.1,function(self)
+		if self.sample>0 then
+			local s=self.poses.samples[self.sample]
+			local e=pose_error(s)
+			check(e<1e-4,string.format("fl_mover pose at %.3f s",s.time),string.format("error %.2e",e))
+		end
+		self.sample=i
+		msg.post(msg.url(nil,level("func_animate"),"properties"),"heron_seek_animation",{time=self.poses.samples[i].time})
+	end}
+end
+STEPS[#STEPS+1]={6.8,function(self)
+	local s=self.poses.samples[self.sample]
+	local e=pose_error(s)
+	check(e<1e-4,string.format("fl_mover pose at %.3f s",s.time),string.format("error %.2e",e))
+	check((self.draws.heron_sky or 0)>0 and (self.draws.model or 0)>0 and (self.draws.heron_water or 0)>0,
+		"render script ran the sky, model and water passes",
+		string.format("frames with draws: sky %d, model %d, water %d",self.draws.heron_sky or 0,self.draws.model or 0,self.draws.heron_water or 0))
+end}
+for i,view in ipairs(VIEWS) do
+	STEPS[#STEPS+1]={7+i*0.8,function(self) look(view[2],view[3]) end}
+	STEPS[#STEPS+1]={7+i*0.8+0.5,function(self) print("VIEW "..view[1]) end}
+end
+STEPS[#STEPS+1]={7+#VIEWS*0.8+1.5,function(self)
+	print("FEATURE_LAB_DONE "..failures)
+	sys.exit(failures==0 and 0 or 1)
+end}
+
+function update(self,dt)
+	self.time=self.time+dt
+	while STEPS[self.step] and self.time>=STEPS[self.step][1] do
+		STEPS[self.step][2](self)
+		self.step=self.step+1
+	end
+end
+
+function on_message(self,id,message,sender)
+	if id==hash("trigger_response") and message.enter then
+		for _,name in ipairs({"trigger_multiple","func_button","water_volume"}) do
+			if message.other_id==hash(level(name)) then self.events[name]=(self.events[name] or 0)+1 end
+		end
+	elseif id==hash("heron_draws") then
+		for name,count in pairs(message) do self.draws[name]=count end
+	end
+end
