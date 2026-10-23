@@ -270,6 +270,10 @@ pub struct Document {
     /// bit order. What the face attribute editor labels its ticks with.
     surface_flag_names: Vec<String>,
     content_flag_names: Vec<String>,
+    /// Whether [`Document::export_map_text`] merges groups and layers into the
+    /// worldspawn: the game profile's `heron.mergeGroupsOnExport`, for a compiler that
+    /// drops the brushes of a `func_group`.
+    merge_groups_on_export: bool,
     /// Where a class's model is looked for, and what has been loaded from there.
     ///
     /// `EntityModelManager`. See [`crate::entity_models`].
@@ -1346,6 +1350,7 @@ impl Document {
             hidden_tags: HashSet::new(),
             surface_flag_names: Vec::new(),
             content_flag_names: Vec::new(),
+            merge_groups_on_export: false,
             model_store: crate::entity_models::ModelStore::default(),
             game_asset_key: None,
             game_materials: Vec::new(),
@@ -2904,26 +2909,40 @@ impl Document {
     /// lighting hints or of notes to yourself stays in the map being edited and is left
     /// out of the one handed to a compiler. An omitted layer is written as an empty
     /// layer rather than dropped, so opening the export in this editor still shows the
-    /// layers the map has.
+    /// layers the map has. For a game whose compiler drops `func_group` brushes the
+    /// groups and layers are merged into the worldspawn instead, see
+    /// [`Self::set_merge_groups_on_export`].
     pub fn export_map_text(&self, format: map_model::map_format::MapFormat) -> String {
+        let world = self.world_for_export();
+        write_map(&node::flatten_tree(&world, format, self.game.clone()))
+    }
+
+    /// The tree as an export writes it: the layers marked as left out are emptied, and
+    /// for a game whose compiler drops `func_group` brushes the groups and layers are
+    /// merged into the worldspawn.
+    fn world_for_export(&self) -> node::World {
         let mut world = self.tree.world.clone();
         for layer in &mut world.layers {
             if layer.omit_from_export {
                 layer.children.clear();
             }
         }
-        write_map(&node::flatten_tree(&world, format, self.game.clone()))
+        if self.merge_groups_on_export {
+            world = node::merge_groups_and_layers(&world);
+        }
+        world
+    }
+
+    /// Takes the game profile's `heron.mergeGroupsOnExport`: whether an exported map has
+    /// its groups and layers merged into the worldspawn. A save keeps them either way.
+    pub fn set_merge_groups_on_export(&mut self, merge: bool) {
+        self.merge_groups_on_export = merge;
     }
 
     /// Native Quake III brush primitives, using loaded texture dimensions.
     /// Faces with pending normalized matrices can be exported without textures.
     pub fn export_quake3_map_text(&self) -> Result<String, String> {
-        let mut world = self.tree.world.clone();
-        for layer in &mut world.layers {
-            if layer.omit_from_export {
-                layer.children.clear();
-            }
-        }
+        let world = self.world_for_export();
         let map = node::flatten_tree(
             &world,
             map_model::map_format::MapFormat::Quake2,
@@ -2946,12 +2965,7 @@ impl Document {
 
     /// Doom 3 Version 2 export with local brush planes and literal strings.
     pub fn export_doom3_map_text(&self) -> Result<String, String> {
-        let mut world = self.tree.world.clone();
-        for layer in &mut world.layers {
-            if layer.omit_from_export {
-                layer.children.clear();
-            }
-        }
+        let world = self.world_for_export();
         let map = node::flatten_tree(
             &world,
             map_model::map_format::MapFormat::Quake2,
@@ -3055,6 +3069,15 @@ impl Document {
             if flagged > 0 {
                 lost.push(format!(
                     "{flagged} faces carry surface or content flags, which this dialect has no room for"
+                ));
+            }
+        }
+        if self.merge_groups_on_export {
+            let groups = node::groups_with_ids(&self.tree.world).len();
+            let layers = self.tree.world.layers.len().saturating_sub(1);
+            if groups + layers > 0 {
+                lost.push(format!(
+                    "this game's compiler drops what is in a func_group, so the export merges groups and layers into the worldspawn (groups: {groups}, extra layers: {layers}); the saved map keeps them"
                 ));
             }
         }

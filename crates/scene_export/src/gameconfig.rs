@@ -60,6 +60,10 @@ pub struct GameConfig {
     pub surface_flags: Vec<String>,
     /// `faceattribs.contentflags`, in bit order.
     pub content_flags: Vec<String>,
+    /// `heron.mergeGroupsOnExport`, a key of Heron's own: the game's compiler does not
+    /// read `func_group`, so an exported map has its groups and layers merged into the
+    /// worldspawn. TrenchBroom's copies of the profiles do not have it.
+    pub merge_groups_on_export: bool,
 }
 
 impl GameConfig {
@@ -148,6 +152,11 @@ pub fn parse(text: &str, path: &str) -> Result<GameConfig, GameConfigError> {
             _ => None,
         };
     }
+
+    config.merge_groups_on_export = root
+        .pointer("/heron/mergeGroupsOnExport")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
 
     config.surface_flags = parse_flag_names(root.pointer("/faceattribs/surfaceflags"));
     config.content_flags = parse_flag_names(root.pointer("/faceattribs/contentflags"));
@@ -396,6 +405,19 @@ mod tests {
         assert_eq!(cfg.tool_texture("origin").as_deref(), Some("origin"));
         assert_eq!(cfg.default_uv_scale, Some((0.5, 0.5)));
         assert_eq!(cfg.brush_tags.len(), 1);
+        assert!(!cfg.merge_groups_on_export);
+    }
+
+    #[test]
+    fn reads_whether_an_export_merges_groups() {
+        let cfg = parse(
+            r#"{ "version": 9, "name": "Neverball",
+                 // Heron's own section.
+                 "heron": { "mergeGroupsOnExport": true } }"#,
+            "GameConfig.cfg",
+        )
+        .expect("the config parses");
+        assert!(cfg.merge_groups_on_export);
     }
 
     #[test]

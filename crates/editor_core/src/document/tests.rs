@@ -2418,6 +2418,99 @@ fn an_export_leaves_out_the_layers_that_are_marked_to_be_left_out() {
     assert!(exported.contains("Notes"));
 }
 
+/// A map with a brush in each of the default layer, a group and a second layer, and a
+/// train in the group: what Neverball's mapc used to lose all but the first of.
+fn grouped_and_layered() -> Document {
+    let cube = |x: i32, material: &str| {
+        let (lo, hi) = (x - 16, x + 16);
+        format!(
+            "{{\n\
+             ( {lo} -16 -16 ) ( {lo} 16 -16 ) ( {lo} -16 16 ) {material} 0 0 0 1 1\n\
+             ( {lo} -16 -16 ) ( {lo} -16 16 ) ( {hi} -16 -16 ) {material} 0 0 0 1 1\n\
+             ( {lo} -16 -16 ) ( {hi} -16 -16 ) ( {lo} 16 -16 ) {material} 0 0 0 1 1\n\
+             ( {hi} 16 16 ) ( {hi} -16 16 ) ( {lo} 16 16 ) {material} 0 0 0 1 1\n\
+             ( {hi} 16 16 ) ( {lo} 16 16 ) ( {hi} 16 -16 ) {material} 0 0 0 1 1\n\
+             ( {hi} 16 16 ) ( {hi} 16 -16 ) ( {hi} -16 16 ) {material} 0 0 0 1 1\n\
+             }}\n"
+        )
+    };
+    let source = format!(
+        "{{\n\"classname\" \"worldspawn\"\n{}}}\n\
+         {{\n\"classname\" \"func_group\"\n\"_tb_type\" \"_tb_group\"\n\
+         \"_tb_name\" \"Steps\"\n\"_tb_id\" \"1\"\n{}}}\n\
+         {{\n\"classname\" \"func_group\"\n\"_tb_type\" \"_tb_layer\"\n\
+         \"_tb_name\" \"Deck\"\n\"_tb_id\" \"2\"\n{}}}\n\
+         {{\n\"classname\" \"func_train\"\n\"target\" \"a\"\n\"_tb_group\" \"1\"\n{}}}\n\
+         {{\n\"classname\" \"light\"\n\"origin\" \"0 0 64\"\n\"_tb_layer\" \"2\"\n}}\n",
+        cube(0, "floor"),
+        cube(64, "step"),
+        cube(128, "deck"),
+        cube(192, "lift"),
+    );
+    let map = read_map(&source, None).expect("the sample parses");
+    Document::from_map(&map, WorldBounds::default(), None)
+}
+
+fn classnames(map: &MapFile) -> Vec<&str> {
+    map.entities
+        .iter()
+        .map(|entity| entity.property("classname").unwrap_or_default())
+        .collect()
+}
+
+#[test]
+fn an_export_for_neverball_merges_groups_and_layers_into_the_worldspawn() {
+    let mut document = grouped_and_layered();
+    document.set_merge_groups_on_export(true);
+
+    let exported = document.export_map_text(MapFormat::Quake2);
+    let map = read_map(&exported, None).expect("the export parses");
+    assert_eq!(classnames(&map), ["worldspawn", "func_train", "light"]);
+    let worldspawn = &map.entities[0];
+    assert_eq!(worldspawn.brushes.len(), 3, "{exported}");
+    // The train keeps its own brush, and names no group that is not there.
+    let train = &map.entities[1];
+    assert_eq!(train.brushes.len(), 1);
+    assert!(!exported.contains("_tb_"), "{exported}");
+
+    // The map being edited, which is what a save writes, keeps its group and layer.
+    let saved = read_map(&document.to_map_text(), None).expect("the save parses");
+    assert_eq!(
+        classnames(&saved)
+            .iter()
+            .filter(|name| **name == "func_group")
+            .count(),
+        2
+    );
+    assert_eq!(saved.entities[0].brushes.len(), 1);
+
+    // The export window says so before writing.
+    let lost = document.what_a_dialect_would_drop(MapFormat::Quake2);
+    assert!(
+        lost.iter()
+            .any(|note| note.contains("groups: 1, extra layers: 1")),
+        "{lost:?}"
+    );
+}
+
+#[test]
+fn an_export_for_other_games_keeps_groups_and_layers() {
+    let document = grouped_and_layered();
+    let exported = document.export_map_text(MapFormat::Quake2);
+    let map = read_map(&exported, None).expect("the export parses");
+    assert_eq!(
+        classnames(&map)
+            .iter()
+            .filter(|name| **name == "func_group")
+            .count(),
+        2
+    );
+    assert_eq!(map.entities[0].brushes.len(), 1);
+    assert!(document
+        .what_a_dialect_would_drop(MapFormat::Quake2)
+        .is_empty());
+}
+
 /* ========== entity models ========== */
 
 #[test]

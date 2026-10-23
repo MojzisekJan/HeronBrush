@@ -930,6 +930,7 @@ pub(crate) fn call_tool(
             "took apart {} groups",
             document.ungroup_selection()
         )),
+        "move_selection_to_layer" => move_selection_to_layer(document, args),
         "delete_selection" => Ok(format!("deleted {} brushes", document.delete_selection())),
         "undo" => match document.undo() {
             Some(what) => Ok(format!("undid: {what}")),
@@ -1673,6 +1674,25 @@ fn set_face_material(document: &mut Document, args: &Value) -> Result<String, St
     Ok(format!("put {material} on {changed} faces"))
 }
 
+/// Moves the selection onto a layer named by name, as the layer panel's Move Selection
+/// does, adding the layer first if there is none of that name.
+fn move_selection_to_layer(document: &mut Document, args: &Value) -> Result<String, String> {
+    let name = string_or(args, "layer", "");
+    if name.is_empty() {
+        return Err("`layer` is required".into());
+    }
+    let index = match document
+        .layers()
+        .iter()
+        .position(|layer| layer.name == name)
+    {
+        Some(index) => index,
+        None => document.add_layer(name),
+    };
+    let moved = document.move_selection_to_layer(index);
+    Ok(format!("moved {moved} objects to layer {name}"))
+}
+
 /// Writes the map in a classic dialect, as `Menu/File/Export/Map` does: Heron saves in
 /// Valve 220, and a compiler such as Neverball's mapc reads only Quake 2 face lines.
 fn export_map(document: &mut Document, args: &Value) -> Result<String, String> {
@@ -1912,6 +1932,13 @@ fn tool_definitions() -> Vec<Value> {
             &[],
         ),
         tool("ungroup_selection", "Take the selected groups apart.", json!({}), &[]),
+        tool(
+            "move_selection_to_layer",
+            "Move the selection onto the layer of that name, adding the layer if the map \
+             has none by that name.",
+            json!({ "layer": { "type": "string" } }),
+            &["layer"],
+        ),
         tool("delete_selection", "Delete the selection.", json!({}), &[]),
         tool("undo", "Undo the last change.", json!({}), &[]),
         tool("redo", "Redo the last undone change.", json!({}), &[]),
@@ -2399,6 +2426,15 @@ mod tests {
         )
         .expect("the group is made");
         assert!(grouped.contains("grouped the selection"));
+        let moved = call(
+            &mut document,
+            "move_selection_to_layer",
+            &json!({ "layer": "Upper" }),
+        )
+        .expect("the grouped brushes move");
+        assert_eq!(moved, "moved 2 objects to layer Upper");
+        assert_eq!(document.layers()[1].name, "Upper");
+        assert_eq!(document.layers()[1].objects, 2);
 
         let map = call(&mut document, "get_map", &json!({})).expect("the map comes back");
         assert!(

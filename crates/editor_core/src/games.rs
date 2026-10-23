@@ -53,6 +53,9 @@ pub struct Game {
     pub surface_flag_names: Vec<String>,
     /// `faceattribs.contentflags` names, in bit order.
     pub content_flag_names: Vec<String>,
+    /// Whether a map exported for the game's compiler has its groups and layers merged
+    /// into the worldspawn, because the compiler drops what is in a `func_group`.
+    pub merge_groups_on_export: bool,
 }
 
 /// A name a configuration gives to the brushes or faces that match a rule.
@@ -301,6 +304,7 @@ pub fn read(config: &Path) -> Result<Game, scene_export::gameconfig::GameConfigE
         face_tags: read_tags(&read.face_tags),
         surface_flag_names: read.surface_flags.clone(),
         content_flag_names: read.content_flags.clone(),
+        merge_groups_on_export: read.merge_groups_on_export,
         directory,
     })
 }
@@ -465,6 +469,12 @@ mod tests {
                 "{folder} icon"
             );
             assert!(!game.formats.is_empty(), "{folder}");
+            // Only Neverball's mapc drops the brushes of a func_group.
+            assert_eq!(
+                game.merge_groups_on_export,
+                folder == "Neverball",
+                "{folder}"
+            );
             assert!(game.definition_file().is_some(), "{folder}");
             for path in &game.definitions {
                 let source = std::fs::read_to_string(path).unwrap();

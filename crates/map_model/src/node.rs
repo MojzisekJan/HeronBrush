@@ -792,6 +792,47 @@ pub fn flatten_tree(world: &World, format: MapFormat, game: Option<String>) -> M
     }
 }
 
+/// The world with its groups dissolved and every layer's contents in the default layer.
+///
+/// For a compiler that does not read the `func_group` entities [`flatten_tree`] writes
+/// groups and layers as: Neverball 1.6's `mapc` compiles their brushes into no body at
+/// all. Flattened, a grouped brush is a worldspawn brush and a grouped entity a plain
+/// entity, with its own brushes still its own. The map being edited keeps its structure;
+/// this is for the copy handed to the compiler.
+pub fn merge_groups_and_layers(world: &World) -> World {
+    fn dissolve(nodes: &[Node], out: &mut Vec<Node>) {
+        for node in nodes {
+            match &node.kind {
+                NodeKind::Group(group) => dissolve(&group.children, out),
+                NodeKind::Layer(layer) => dissolve(&layer.children, out),
+                _ => out.push(node.clone()),
+            }
+        }
+    }
+
+    let mut children = Vec::new();
+    for layer in &world.layers {
+        dissolve(&layer.children, &mut children);
+    }
+    let layers = match world.layers.first() {
+        Some(default) => vec![Layer {
+            id: default.id.clone(),
+            name: default.name.clone(),
+            sort_index: default.sort_index,
+            hidden: default.hidden,
+            locked: default.locked,
+            omit_from_export: default.omit_from_export,
+            color: default.color.clone(),
+            children,
+        }],
+        None => Vec::new(),
+    };
+    World {
+        properties: world.properties.clone(),
+        layers,
+    }
+}
+
 /// Writes out the properties a layer carries beyond its name and id.
 ///
 /// The default layer is the worldspawn, so these go on that entity rather than one of its

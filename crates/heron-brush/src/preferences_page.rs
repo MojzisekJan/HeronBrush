@@ -613,6 +613,7 @@ pub fn apply_game(document: &mut Document, game: Option<&Game>) {
             game.surface_flag_names.clone(),
             game.content_flag_names.clone(),
         );
+        document.set_merge_groups_on_export(game.merge_groups_on_export);
     }
     document.load_entity_models();
 }
@@ -1657,6 +1658,7 @@ mod tests {
             face_tags: vec![tag("clip"), tag("skip")],
             surface_flag_names: vec!["light".into(), "slick".into()],
             content_flag_names: vec!["solid".into()],
+            merge_groups_on_export: false,
         };
         let mut document = Document::new(Default::default());
         apply_game(&mut document, Some(&game));
