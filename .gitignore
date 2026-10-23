@@ -31,3 +31,6 @@ __pycache__/
 # The Hexen II demo's textures and compiler output for the Hexen II demo map.
 /demos/hexen2_heron/wads/
 /demos/hexen2_heron/build/
+
+# quemap's output for the Quetoo demo.
+/demos/quetoo_heron/build/
