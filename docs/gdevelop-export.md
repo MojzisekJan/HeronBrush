@@ -15,7 +15,7 @@ rotationY and rotationX of the same rotation with Y and Z swapped.
 | --- | --- |
 | One `Scene3D::Model3DObject` per mesh | Rotated 90° about X and sized to the GLB's bounds including its origin, so the model stays where the level put it; `KeepOriginal` materials |
 | `<level>/<entity>_collision.glb` + hidden object | `Physics3D` static `Mesh` body for world geometry, including collision the eye does not see |
-| Movers | `Physics3D` kinematic `Box` fitted to the hull's bounds |
+| Movers | `Physics3D` kinematic `Box` fitted to the hull's bounds; a convex solid that draws nothing, such as a clip brush, gets a hidden `<entity>_collision` object with the same box |
 | `HeronPoint` | An invisible 3D box holding each point entity's place |
 | Instance variables | Every typed property, plus `heron_name`, `heron_classname`, `heron_targets`, `heron_tags` |
 | Layer effects | The sun as `DirectionalLight` with shadows, the sky as `Skybox` (six faces, environment light), AgX `ToneMapping`, and `ExponentialFog` when the map asks for fog |

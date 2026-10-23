@@ -94,6 +94,51 @@ fn collision_glb(triangles: &[[f32; 3]]) -> Vec<u8> {
     out
 }
 
+/// The twelve triangles of each box, for a model to hang a box body on.
+fn box_triangles(boxes: &[[[f32; 3]; 2]]) -> Vec<[f32; 3]> {
+    let mut out = Vec::with_capacity(boxes.len() * 36);
+    for [l, h] in boxes {
+        let corner = |i: usize| {
+            [
+                if i & 1 == 0 { l[0] } else { h[0] },
+                if i & 2 == 0 { l[1] } else { h[1] },
+                if i & 4 == 0 { l[2] } else { h[2] },
+            ]
+        };
+        for quad in [
+            [0, 2, 6, 4],
+            [1, 5, 7, 3],
+            [0, 4, 5, 1],
+            [2, 3, 7, 6],
+            [0, 1, 3, 2],
+            [4, 6, 7, 5],
+        ] {
+            for i in [0, 1, 2, 0, 2, 3] {
+                out.push(corner(quad[i]));
+            }
+        }
+    }
+    out
+}
+
+/// A kinematic box body around the hulls' boxes, for an object whose model spans
+/// `lo`..`hi` with its origin: the body sits at the object's centre, offset to the hulls'.
+fn box_body(boxes: &[[[f32; 3]; 2]], lo: [f64; 3], hi: [f64; 3], scale: [f64; 3]) -> Json {
+    let s = PIXELS_PER_METRE;
+    let (mut a, mut b) = ([f32::MAX; 3], [f32::MIN; 3]);
+    for [l, h] in boxes {
+        for i in 0..3 {
+            a[i] = a[i].min(l[i]);
+            b[i] = b[i].max(h[i]);
+        }
+    }
+    let centre = |i: usize| (lo[i] + hi[i]) / 2.;
+    let gd = |v: [f64; 3]| [v[0], v[2], v[1]];
+    let extent = gd([0, 1, 2].map(|i| f64::from(b[i] - a[i]) * s * scale[i].abs()));
+    let offset = gd([0, 1, 2].map(|i| ((f64::from(a[i] + b[i])) / 2. - centre(i)) * s * scale[i]));
+    physics("Kinematic", "Box", extent, offset, "")
+}
+
 /// The level's rotation (YXZ Euler, radians) as a quaternion, x y z w.
 fn quaternion(entity: &Entity) -> [f64; 4] {
     let [x, y, z] = entity.transform.rotation_yxz;
@@ -346,20 +391,7 @@ pub fn write(
             let mut behaviors = Vec::new();
             if mover && !sensor {
                 if let Some(boxes) = shape.filter(|c| !c.boxes.is_empty()).map(|c| &c.boxes) {
-                    let (mut a, mut b) = ([f32::MAX; 3], [f32::MIN; 3]);
-                    for [l, h] in boxes {
-                        for i in 0..3 {
-                            a[i] = a[i].min(l[i]);
-                            b[i] = b[i].max(h[i]);
-                        }
-                    }
-                    // A box body sits at the object's centre; offset it to the hull's.
-                    let centre = |i: usize| (lo[i] + hi[i]) / 2.;
-                    let gd = |v: [f64; 3]| [v[0], v[2], v[1]];
-                    let extent = gd([0, 1, 2].map(|i| f64::from(b[i] - a[i]) * s * scale[i].abs()));
-                    let offset = gd([0, 1, 2]
-                        .map(|i| ((f64::from(a[i] + b[i])) / 2. - centre(i)) * s * scale[i]));
-                    behaviors.push(physics("Kinematic", "Box", extent, offset, ""));
+                    behaviors.push(box_body(boxes, lo, hi, scale));
                 }
             }
             let mut object = model_object(&name, &resource_name, size, behaviors, Vec::new());
@@ -411,6 +443,37 @@ pub fn write(
             instances.push(instance(&name, index as i64));
             hidden.push(name.clone());
             entity_objects.push(name);
+        }
+        // A convex solid that draws nothing, such as a clip brush, still blocks: a
+        // hidden object made of its hulls' boxes carries the box body a drawn one has.
+        if entity_objects.is_empty() && mover && !sensor {
+            if let Some(boxes) = shape.filter(|c| !c.boxes.is_empty()).map(|c| &c.boxes) {
+                let name = unique(format!("{}_collision", identifier(&entity.name)));
+                let file = format!("{prefix}{}_collision.glb", identifier(&entity.name));
+                let glb = collision_glb(&box_triangles(boxes));
+                let (lo, hi) = bounds_with_origin(&glb)
+                    .ok_or_else(|| format!("{}: unreadable collision", entity.name))?;
+                let size = [
+                    (hi[0] - lo[0]) * s * scale[0].abs(),
+                    (hi[2] - lo[2]) * s * scale[2].abs(),
+                    (hi[1] - lo[1]) * s * scale[1].abs(),
+                ];
+                files.push(GDevelopFile {
+                    path: file.clone(),
+                    contents: glb,
+                });
+                objects.push(model_object(
+                    &name,
+                    &file,
+                    size,
+                    vec![box_body(boxes, lo, hi, scale)],
+                    Vec::new(),
+                ));
+                resources.push(resource(&file));
+                instances.push(instance(&name, index as i64));
+                hidden.push(name.clone());
+                entity_objects.push(name);
+            }
         }
         if entity_objects.is_empty() {
             points = true;
@@ -766,6 +829,69 @@ mod tests {
             .join("\n");
         assert!(
             script.contains("\"hidden\":[\"worldspawn_collision\"]"),
+            "{script}"
+        );
+    }
+
+    #[test]
+    fn a_clip_brush_that_draws_nothing_still_gets_a_hidden_box_body() {
+        let mut level = level();
+        level.entities.push(Entity {
+            name: "func_clip".into(),
+            classname: "func_clip".into(),
+            mesh: Some("arena/func_clip.glb".into()),
+            collision: Some(Collision {
+                kind: CollisionShape::Convex,
+                mesh: 0,
+                parts: 1,
+                sensor: false,
+            }),
+            ..Default::default()
+        });
+        let collision = vec![CollisionMesh {
+            triangles: vec![],
+            boxes: vec![[[-1., -1.5, -1.], [1., 1.5, 1.]]],
+            hulls: vec![],
+        }];
+        let files = write(
+            &level,
+            &collision,
+            &GDevelopOptions { sky: None },
+            &[],
+            None,
+        )
+        .expect("the level writes");
+        let p = project(&files);
+        let objects = p["layouts"][0]["objects"]
+            .as_array()
+            .expect("the scene has objects");
+        let clip = objects
+            .iter()
+            .find(|o| o["name"] == "func_clip_collision")
+            .expect("the clip brush has an object");
+        let body = &clip["behaviors"][0];
+        assert_eq!(body["shape"], "Box");
+        assert_eq!(
+            (
+                &body["shapeDimensionA"],
+                &body["shapeDimensionB"],
+                &body["shapeDimensionC"]
+            ),
+            (&json!(200.), &json!(200.), &json!(300.))
+        );
+        assert!(files
+            .iter()
+            .any(|f| f.path == "arena/func_clip_collision.glb"));
+        assert!(!objects.iter().any(|o| o["name"] == "HeronPoint"));
+        let script = p["layouts"][0]["events"][0]["inlineCode"]
+            .as_array()
+            .expect("the event has code")
+            .iter()
+            .filter_map(|l| l.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            script.contains("\"hidden\":[\"func_clip_collision\"]"),
             "{script}"
         );
     }
