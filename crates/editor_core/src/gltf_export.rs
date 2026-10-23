@@ -112,7 +112,7 @@ impl Scene<'_> {
         if let Some(index) = image {
             pbr["baseColorTexture"] = json!({"index":index});
         }
-        let mut value = json!({"name":name,"pbrMetallicRoughness":pbr,"doubleSided":double,"alphaMode":if alpha {"BLEND"} else {"OPAQUE"}});
+        let mut value = json!({"name":material_label(name),"pbrMetallicRoughness":pbr,"doubleSided":double,"alphaMode":if alpha {"BLEND"} else {"OPAQUE"}});
         if emission > 0.0 {
             let rgb = solid.map(|rgb| rgb.map(linear)).unwrap_or([1.0; 3]);
             value["emissiveFactor"] = json!(rgb);
@@ -723,6 +723,25 @@ pub(super) fn build(
     }
     Ok((scene.report, files))
 }
+/// The name a material is written under. An imported model's skins are looked up by
+/// the model's source path, which would put the author's own folders in the file.
+fn material_label(name: &str) -> String {
+    let Some(rest) = name.strip_prefix("#model/") else {
+        return name.to_string();
+    };
+    let (path, skin) = match rest.split_once("#skin/") {
+        Some((path, skin)) => (path, Some(skin)),
+        None => (rest, None),
+    };
+    let stem = Path::new(path)
+        .file_stem()
+        .map_or_else(|| path.to_string(), |s| s.to_string_lossy().into_owned());
+    match skin {
+        Some(skin) => format!("{stem} skin {skin}"),
+        None => stem,
+    }
+}
+
 fn uri(path: &str) -> String {
     path.bytes()
         .map(|b| {
@@ -823,6 +842,19 @@ mod tests {
                     .collect()
             })
             .collect()
+    }
+
+    #[test]
+    fn imported_model_materials_are_named_without_the_source_folder() {
+        assert_eq!(
+            material_label("#model//home/someone/props/crate.glb"),
+            "crate"
+        );
+        assert_eq!(
+            material_label("#model//home/someone/props/crate.glb#skin/1"),
+            "crate skin 1"
+        );
+        assert_eq!(material_label("stone"), "stone");
     }
 
     #[test]
