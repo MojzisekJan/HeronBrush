@@ -26,12 +26,9 @@ wgpu = ["eframe/wgpu_no_default_features", "dep:egui-wgpu", "dep:wgpu", "dep:ren
 web-time = "1"
 rustc-hash = "2"
 editor_core = { path = "../editor_core" }
-# The controls drawn in the manner of the system (macOS, WinUI), and text centred on its capitals.
-# The controls in the manner of the system: its own project. To work on it beside the
-# editor, point a `[patch."https://github.com/MojzisekJan/egui_native_look"]` at a checkout.
-# The version is what a published Heron Brush asks crates.io for; until egui_native_look is
-# published there, cargo takes the git repository. Drop `git` once it is.
-egui_native_look = { version = "0.1", git = "https://github.com/MojzisekJan/egui_native_look" }
+# The controls drawn in the manner of the system (macOS, WinUI, GTK), its own project on
+# crates.io. To work on it beside the editor, point a `[patch.crates-io]` at a checkout.
+egui_native_look = "0.2.0"
 map_model = { path = "../map_model" }
 geometry_math = { path = "../geometry_math" }
 render = { path = "../render" }

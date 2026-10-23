@@ -1513,8 +1513,9 @@ dependencies = [
 
 [[package]]
 name = "egui_native_look"
-version = "0.1.0"
-source = "git+https://github.com/MojzisekJan/egui_native_look#ad5e0e3ed05ddbd6c7a5d5c496f37fb5709b65c7"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bfd79554d5fd5b654c10fd4980ec3b1220553a7becafb5f61378141425d3041"
 dependencies = [
  "egui",
  "objc2 0.6.4",

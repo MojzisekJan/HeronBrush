@@ -846,6 +846,24 @@ fn corner_number<T: egui::emath::Numeric>(
 mod tests {
     use super::*;
 
+    /// The centres of the number fields' + buttons in a frame: the sign is drawn as two
+    /// short strokes, the upright one only on +. Longer upright lines are the seams
+    /// between a field and its buttons.
+    fn plus_buttons(output: &egui::FullOutput) -> Vec<egui::Pos2> {
+        output
+            .shapes
+            .iter()
+            .filter_map(|s| match &s.shape {
+                egui::Shape::LineSegment { points: [a, b], .. }
+                    if (a.x - b.x).abs() < 0.01 && (4.0..20.0).contains(&(b.y - a.y).abs()) =>
+                {
+                    Some(egui::pos2(a.x, (a.y + b.y) / 2.0))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     fn settings_frame(
         ctx: &egui::Context,
         dialogs: &mut ShapeDialogs,
@@ -938,15 +956,8 @@ mod tests {
         let output = settings_frame(&ctx, &mut dialogs, &editor, vec![]);
         assert_eq!(editor.document.borrow().to_map_text(), inserted);
         // The second numeric row is the arch's thickness.
-        let plus = output
-            .shapes
-            .iter()
-            .filter_map(|s| match &s.shape {
-                egui::Shape::Text(t) if t.galley.text() == "+" => {
-                    Some(t.pos + t.galley.size() * 0.5)
-                }
-                _ => None,
-            })
+        let plus = plus_buttons(&output)
+            .into_iter()
             .max_by(|a, b| a.y.total_cmp(&b.y))
             .expect("thickness step button");
         settings_click(&ctx, &mut dialogs, &editor, plus);
@@ -1001,15 +1012,8 @@ mod tests {
         settings_frame(&ctx, &mut dialogs, &editor, vec![]);
         for count in [24, 28] {
             let output = settings_frame(&ctx, &mut dialogs, &editor, vec![]);
-            let plus = output
-                .shapes
-                .iter()
-                .filter_map(|s| match &s.shape {
-                    egui::Shape::Text(t) if t.galley.text() == "+" => {
-                        Some(t.pos + t.galley.size() * 0.5)
-                    }
-                    _ => None,
-                })
+            let plus = plus_buttons(&output)
+                .into_iter()
                 .max_by(|a, b| a.y.total_cmp(&b.y))
                 .unwrap();
             settings_click(&ctx, &mut dialogs, &editor, plus);
@@ -1047,15 +1051,8 @@ mod tests {
         dialogs.open_settings();
         settings_frame(&ctx, &mut dialogs, &editor, vec![]);
         let output = settings_frame(&ctx, &mut dialogs, &editor, vec![]);
-        let plus = output
-            .shapes
-            .iter()
-            .filter_map(|s| match &s.shape {
-                egui::Shape::Text(t) if t.galley.text() == "+" => {
-                    Some(t.pos + t.galley.size() * 0.5)
-                }
-                _ => None,
-            })
+        let plus = plus_buttons(&output)
+            .into_iter()
             .min_by(|a, b| a.y.total_cmp(&b.y))
             .expect("thickness step button");
         settings_click(&ctx, &mut dialogs, &editor, plus);
