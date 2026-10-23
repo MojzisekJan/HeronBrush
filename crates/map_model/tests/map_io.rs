@@ -287,8 +287,10 @@ fn a_heretic2_tall_wall_keeps_its_lighting_through_a_round_trip() {
         let mut copy = map.clone();
         copy.format = format;
         let written = write_map(&copy);
+        // The numbers end the line, or come before a Valve line's note about its axes.
         assert!(
-            written.contains(" 0 1024 0 1 0.5 0.25 1\n"),
+            written.contains(" 0 1024 0 1 0.5 0.25 1\n")
+                || written.contains(" 0 1024 0 1 0.5 0.25 1 //"),
             "{format}: {written}"
         );
         let again = read_map(&written, None).expect("it reads back");
@@ -405,7 +407,12 @@ fn a_daikatana_face_keeps_its_light_colour_through_a_save() {
         let mut map = map.clone();
         map.format = format;
         let written = write_map(&map);
-        let lines: Vec<&str> = written.lines().filter(|l| l.starts_with('(')).collect();
+        // A Valve line may end in a note about its UV axes after the numbers.
+        let lines: Vec<&str> = written
+            .lines()
+            .filter(|l| l.starts_with('('))
+            .map(|l| l.split(" //").next().unwrap_or(l).trim_end())
+            .collect();
         assert!(
             lines[0].ends_with(" 0 5 600 255 255 204"),
             "{format}: {}",
@@ -674,7 +681,13 @@ fn a_quake2_dialect_leaves_out_flags_a_face_does_not_have() {
     for format in [MapFormat::Quake2, MapFormat::Quake2Valve] {
         map.format = format;
         let written = write_map(&map);
-        let faces: Vec<&str> = written.lines().filter(|l| l.starts_with('(')).collect();
+        // The face lines without the editor's notes, which a paraxial face in Quake 2
+        // (Valve) carries.
+        let faces: Vec<&str> = written
+            .lines()
+            .filter(|l| l.starts_with('('))
+            .map(|l| l.split(" // ").next().unwrap_or(l))
+            .collect();
         assert!(faces[0].ends_with(" 1 1"), "{format}: {}", faces[0]);
         assert!(faces[1].ends_with(" 1 4 0"), "{format}: {}", faces[1]);
         let reread = read(&written);

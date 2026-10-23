@@ -129,6 +129,28 @@ impl Document {
         self.selection.len()
     }
 
+    /// The properties a new entity of the class starts with besides its classname.
+    ///
+    /// Those the class defines with a default are written out, so the entity looks in
+    /// the editor the way it will behave in the game, when the game profile asks for it
+    /// (`setDefaultProperties`, which Half-Life's sets and the Quake lineage's do not).
+    pub(crate) fn new_entity_defaults(&self, classname: &str) -> Vec<(String, String)> {
+        if !self.writes_default_properties {
+            return Vec::new();
+        }
+        let Some(definition) = self.definitions.as_ref().and_then(|d| d.find(classname)) else {
+            return Vec::new();
+        };
+        definition
+            .properties
+            .iter()
+            .filter_map(|property| {
+                let default = property.default.as_ref().filter(|d| !d.is_empty())?;
+                Some((property.key.clone(), default.clone()))
+            })
+            .collect()
+    }
+
     /// Places a point entity of the given class at the given position, and selects it.
     ///
     /// The origin is snapped by the caller; this puts it where it is told.
@@ -142,19 +164,9 @@ impl Document {
         };
         entity.set_origin(origin);
 
-        // Properties the class defines with a default are written out, so the entity
-        // looks in the editor the way it will behave in the game.
-        if let Some(definition) = self.definitions.as_ref().and_then(|d| d.find(classname)) {
-            for property in &definition.properties {
-                if let Some(default) = &property.default {
-                    if !default.is_empty() {
-                        entity
-                            .properties
-                            .push((property.key.clone(), default.clone()));
-                    }
-                }
-            }
-        }
+        entity
+            .properties
+            .extend(self.new_entity_defaults(classname));
 
         let node = Node::new(NodeKind::Entity(entity));
         let id = node.id;

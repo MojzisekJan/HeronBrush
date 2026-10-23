@@ -9,6 +9,13 @@
 //
 
 //
+// oct 23 2026 - Heron Brush
+//	- added func_detail, the detail brush entity of VHLT and its forks
+//	  (SDHLT among them), with the keys their hlcsg and hlbsp read
+//	- trigger_changelevel's landmark names an info_landmark, so it is a
+//	  target_destination: the link is drawn and the landmark is not
+//	  reported as named by nothing
+//
 // apr 15 2003 - 3.1.0.0
 //	- updated with studio() references to enable model display
 //	  in 3D view
@@ -1148,6 +1155,17 @@
     ]
     speed(string) : "Conveyor Speed" : "100"
     _minlight(string) : "Minimum light level"
+]
+
+// Compiled into the world like any brush, but kept out of the vis tree, so small or
+// detailed shapes do not split it. VHLT, SDHLT; the game never sees the entity.
+@SolidClass = func_detail : "Detail brushes (VHLT)"
+[
+    zhlt_detaillevel(integer) : "Detail level" : 1
+    zhlt_chopdown(integer) : "Lower its level to chop others" : 0
+    zhlt_chopup(integer) : "Raise its level to get chopped" : 0
+    zhlt_coplanarpriority(integer) : "Priority when faces overlap" : 0
+    zhlt_clipnodedetaillevel(integer) : "Detail level of cliphulls" : 1
 ]
 
 @SolidClass base(Door, ZHLT) = func_door : "Basic door" []
@@ -2541,7 +2559,7 @@
 [
     targetname(target_source) : "Name"
     map(string) : "New map name"
-    landmark(string) : "Landmark name"
+    landmark(target_destination) : "Landmark name"
     changetarget(target_destination) : "Change Target"
     changedelay(string) : "Delay before change target" : "0"
     spawnflags(flags) =

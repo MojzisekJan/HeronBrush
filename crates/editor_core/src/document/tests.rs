@@ -2556,6 +2556,50 @@ fn the_class_defaults_can_be_put_back_or_filled_in() {
     let _ = std::fs::remove_file(&fgd);
 }
 
+/// `setDefaultProperties` in the game profile: Half-Life's editors give a new entity
+/// every default its class has, and the Quake lineage's give it none, which is what
+/// TrenchBroom does for each.
+#[test]
+fn new_entities_get_their_class_defaults_only_when_the_game_asks() {
+    let fgd = std::env::temp_dir().join("heron-document-new-defaults.fgd");
+    std::fs::write(
+        &fgd,
+        "@PointClass size(-8 -8 -8, 8 8 8) = lamp : \"A lamp\" [\n\
+         \tstyle(integer) : \"Style\" : 0\n\
+         ]\n\
+         @SolidClass = door : \"A door\" [\n\
+         \tspeed(integer) : \"Speed\" : 100\n\
+         ]\n",
+    )
+    .expect("a written fgd");
+
+    for writes in [true, false] {
+        let mut document = one_box();
+        document
+            .load_definitions(&fgd)
+            .expect("the definitions load");
+        document.set_writes_default_properties(writes);
+
+        document.select_all();
+        let door = document
+            .create_brush_entity("door")
+            .expect("the door is made");
+        let lamp = document.create_point_entity("lamp", Vec3d::zero());
+
+        let property = |id, key| match &map_model::node::find_node(&document.tree.world, id)
+            .expect("the entity")
+            .kind
+        {
+            NodeKind::Entity(entity) => entity.property(key).map(str::to_string),
+            _ => None,
+        };
+        let expected = |value: &str| writes.then(|| value.to_string());
+        assert_eq!(property(lamp, "style"), expected("0"), "writes: {writes}");
+        assert_eq!(property(door, "speed"), expected("100"), "writes: {writes}");
+    }
+    let _ = std::fs::remove_file(&fgd);
+}
+
 #[test]
 fn selected_brushes_become_a_brush_entity_and_undo_takes_it_back() {
     let mut document = one_box();

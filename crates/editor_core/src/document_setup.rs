@@ -138,6 +138,7 @@ pub fn apply_game(document: &mut Document, game: Option<&games::Game>, opened: b
         game.content_flag_names.clone(),
     );
     document.set_merge_groups_on_export(game.merge_groups_on_export);
+    document.set_writes_default_properties(game.set_default_properties);
     document.set_default_uv_scale(game.default_uv_scale);
     // A map that was opened keeps whatever it was read as, since that is what it
     // is. A new one is the dialect that holds everything -- it used to take the

@@ -55,6 +55,10 @@ pub struct GameConfig {
     /// `entities.scale`. The format allows an expression; a plain number is
     /// the only form that carries over to the build.
     pub entity_scale: Option<f64>,
+    /// `entities.setDefaultProperties`: whether a new entity is given every property its
+    /// class has a default for, as Half-Life's editors do. Without it a new entity has
+    /// its classname and origin only.
+    pub set_default_properties: bool,
     pub brush_tags: Vec<FaceTag>,
     pub face_tags: Vec<FaceTag>,
     pub default_uv_scale: Option<(f64, f64)>,
@@ -164,6 +168,10 @@ pub fn parse(text: &str, path: &str) -> Result<GameConfig, GameConfigError> {
                 .map(str::to_string)
                 .collect();
         }
+        config.set_default_properties = entities
+            .get("setDefaultProperties")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
         config.entity_scale = match entities.get("scale") {
             Some(Value::Number(n)) => n.as_f64(),
             Some(Value::String(s)) => s.trim().parse().ok(),
@@ -475,6 +483,20 @@ mod tests {
         )
         .expect("the config parses");
         assert_eq!(cfg.search_path_alternatives, vec!["baseoa"]);
+    }
+
+    #[test]
+    fn reads_whether_new_entities_get_their_defaults() {
+        let cfg = parse(
+            r#"{ "version": 9, "name": "Half-Life",
+                 "entities": { "definitions": [ "HalfLife.fgd" ], "setDefaultProperties": true } }"#,
+            "GameConfig.cfg",
+        )
+        .expect("the config parses");
+        assert!(cfg.set_default_properties);
+        // The Quake lineage's profiles do not say, and TrenchBroom then writes none.
+        let cfg = parse(CFG, "GameConfig.cfg").expect("the config parses");
+        assert!(!cfg.set_default_properties);
     }
 
     #[test]

@@ -19,6 +19,7 @@ each folder writes the engine project again.
 | [Heretic II: Heron Wharf](heretic2_heron/README.md) | Heretic II (the demo) | A door, a button, an ambush of plague elves and rats that lights the yard and an exit, compiled with q2tools-220 |
 | [Quetoo: Heron Yard](quetoo_heron/README.md) | Quetoo 1.0.133 | A deathmatch hall with a ledge, a jump pad, a teleporter, weapons and bots, compiled with quemap |
 | [Daikatana: Heron Marsh Gate](daikatana_heron/README.md) | Daikatana (the demo's data) | A door, a button, a trigger that switches lamps on, monsters and an exit, compiled with Ion Storm's tools |
+| [Half-Life: Heron Lab](halflife_heron/README.md) | Half-Life: Uplink on Xash3D FWGS | A button and a door, a trigger that sends in houndeyes, a level change through a landmark and the demo's end, compiled with SDHLT |
 | Feature Lab | all 16 targets | One station per export feature, for [the feature matrix](../docs/feature-matrix.md) |
 
 Lantern Lane, Motion Lab and Water Lab are also in the editor's welcome window, under

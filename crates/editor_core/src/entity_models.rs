@@ -128,6 +128,17 @@ impl ModelStore {
                     read(&relative).or_else(|| read(name))
                 };
                 map_model::obj_model::read(&bytes, &mut sibling).map_err(|why| why.to_string())
+            } else if map_model::studio_model::is_studio_model(&bytes) {
+                // A Half-Life model may keep its textures in `<name>t.mdl` beside it.
+                let stem = &named[..named.len() - ".mdl".len()];
+                let companion = format!("{stem}t.mdl");
+                map_model::studio_model::read(&bytes, &mut || {
+                    if explicit {
+                        crate::files::read(Path::new(&companion)).ok()
+                    } else {
+                        self.read(&companion)
+                    }
+                })
             } else {
                 let palette = self.palette.clone();
                 map_model::entity_model::read(&bytes, palette.as_deref())

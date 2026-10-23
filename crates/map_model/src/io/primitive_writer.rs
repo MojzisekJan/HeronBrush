@@ -203,7 +203,7 @@ fn write_primitive_map(
                     " {} {} {}",
                     flags.content_flags, flags.surface_flags, flags.value
                 );
-                write_face_notes(&mut out, face, color.is_none(), false);
+                write_face_notes(&mut out, face, color.is_none(), false, false);
             }
             let _ = writeln!(out, "}}\n}}");
         }

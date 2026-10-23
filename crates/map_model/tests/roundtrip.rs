@@ -679,6 +679,54 @@ fn valve_carries_both_uv_systems_and_neither_face_changes() {
     assert_eq!(round_trip(&once, MapFormat::Valve), once);
 }
 
+/// Every face line of a Valve map carries axes, because that is the dialect: hlcsg stops
+/// with "Missing '[' in texturedef" at the first line without them, and every brush made
+/// in the editor was written that way. A paraxial face now writes the axes it maps with,
+/// and a note that brings it back paraxial.
+#[test]
+fn a_paraxial_face_writes_axes_that_map_the_same() {
+    use map_model::uv::UvCoordSystem;
+
+    let source = MIXED_UV.replace("west 4 8 0 1 1", "west 4 8 30 0.5 -2");
+    let once = round_trip(&source, MapFormat::Valve);
+    for line in once.lines().filter(|line| line.starts_with('(')) {
+        assert!(line.contains(" [ "), "a face line without axes: {line}");
+    }
+
+    let map = read_map(&once, None).expect("what was written reads back");
+    let faces = &map.entities[0].brushes[0].faces;
+    let paraxial: Vec<&str> = faces
+        .iter()
+        .filter(|face| matches!(face.uv_coord_system, UvCoordSystem::Paraxial))
+        .map(|face| face.material_name.as_str())
+        .collect();
+    assert_eq!(paraxial, ["west", "south", "floor"], "in {once}");
+
+    // Read the way a compiler reads it, without the note, each face maps every point to
+    // the same texture coordinates as the paraxial face it was.
+    let plain: String = once
+        .lines()
+        .map(|line| line.split(" // ").next().unwrap_or(line))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let compiled = read_map(&plain, None).expect("the plain lines read");
+    let point = geometry_math::vec::Vec3d::new(-64.0, 40.0, 7.0);
+    for (paraxial, parallel) in faces.iter().zip(&compiled.entities[0].brushes[0].faces) {
+        assert!(matches!(
+            parallel.uv_coord_system,
+            UvCoordSystem::Parallel { .. }
+        ));
+        let expected = paraxial.uv_coords(point);
+        let actual = parallel.uv_coords(point);
+        assert!(
+            (expected.x() - actual.x()).abs() < 1e-4 && (expected.y() - actual.y()).abs() < 1e-4,
+            "{}: {expected:?} became {actual:?}",
+            paraxial.material_name
+        );
+    }
+    assert_eq!(round_trip(&once, MapFormat::Valve), once);
+}
+
 /// The Standard dialect has no axes on a face line, so a face that carries its own
 /// loses them. This is why it cannot be what the editor works in.
 #[test]

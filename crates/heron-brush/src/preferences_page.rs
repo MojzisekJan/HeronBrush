@@ -1681,6 +1681,7 @@ mod tests {
             merge_groups_on_export: false,
             default_uv_scale: None,
             builtin_entities: false,
+            set_default_properties: false,
         };
         let mut document = Document::new(Default::default());
         apply_game(&mut document, Some(&game));

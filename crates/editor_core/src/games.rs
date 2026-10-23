@@ -68,6 +68,8 @@ pub struct Game {
     /// own: `heron.builtinEntities`, or by default only for Heron's own profile and
     /// Generic.
     pub builtin_entities: bool,
+    /// `entities.setDefaultProperties`: whether a new entity gets its class's defaults.
+    pub set_default_properties: bool,
 }
 
 /// A name a configuration gives to the brushes or faces that match a rule.
@@ -457,6 +459,7 @@ pub fn read(config: &Path) -> Result<Game, scene_export::gameconfig::GameConfigE
         builtin_entities: read
             .builtin_entities
             .unwrap_or(read.name == "heron_brush" || read.name == "Generic"),
+        set_default_properties: read.set_default_properties,
         directory,
     })
 }

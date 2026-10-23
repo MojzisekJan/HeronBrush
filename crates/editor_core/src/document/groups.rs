@@ -126,16 +126,19 @@ impl Document {
             })
             .map(|(id, _)| id);
         if let Some(group_id) = group {
+            let defaults = self.new_entity_defaults(classname);
             let before = node::find_node(&self.tree.world, group_id)?.clone();
             let mut after = before.clone();
             let NodeKind::Group(group) = &mut after.kind else {
                 unreachable!()
             };
             let entity = Node::new(NodeKind::Entity(EntityNode {
-                properties: vec![(
+                properties: std::iter::once((
                     map_model::entity_properties::keys::CLASSNAME.into(),
                     classname.into(),
-                )],
+                ))
+                .chain(defaults)
+                .collect(),
                 children: std::mem::take(&mut group.children),
             }));
             let id = entity.id;
@@ -168,10 +171,12 @@ impl Document {
         }
 
         let entity = Node::new(NodeKind::Entity(EntityNode {
-            properties: vec![(
+            properties: std::iter::once((
                 map_model::entity_properties::keys::CLASSNAME.to_string(),
                 classname.to_string(),
-            )],
+            ))
+            .chain(self.new_entity_defaults(classname))
+            .collect(),
             children: taken.clone(),
         }));
         let id = entity.id;
