@@ -40,8 +40,9 @@ pub struct Material {
     pub normal_map: Option<NormalMap>,
     /// Imported glTF material, including original PBR images and factors.
     pub model_pbr: Option<Arc<crate::model_pbr::ModelPbr>>,
-    /// The flags a Quake 2 `.wal` gives a face that names none of its own: the compiler
-    /// makes a face wearing `sky1` sky because the texture says so, not the map.
+    /// The flags a Quake 2 `.wal` or a Heretic II `.m8` gives a face that names none of
+    /// its own: the compiler makes a face wearing `sky1` sky because the texture says so,
+    /// not the map.
     pub surface_defaults: Option<crate::uv::SurfaceAttributes>,
 }
 
@@ -227,6 +228,8 @@ impl Pixels {
                                 .ok()?
                                 .pixels
                                 .into()
+                        } else if is_m8(&path) {
+                            crate::m8::read(&encoded).ok()?.pixels.into()
                         } else if is_pcx(&path) {
                             crate::pcx::read(&encoded).ok()?.pixels.into()
                         } else {
@@ -439,7 +442,7 @@ impl Material {
             let header = if asset.is_archived() {
                 asset.read().ok()
             } else {
-                wal_header_bytes(&asset.origin)
+                header_bytes(&asset.origin, 100)
             };
             surface_defaults = header.and_then(|bytes| crate::wal::surface_defaults(&bytes));
             let palette = palette.ok_or_else(|| MaterialError::Decode {
@@ -447,6 +450,14 @@ impl Material {
                 message: "WAL requires an external palette (pics/colormap.pcx)".into(),
             })?;
             Pixels::indexed(Source::Asset(asset), palette)
+        } else if is_m8(Path::new(&asset.name)) {
+            let header = if asset.is_archived() {
+                asset.read().ok()
+            } else {
+                header_bytes(&asset.origin, crate::m8::HEADER_LEN)
+            };
+            surface_defaults = header.and_then(|bytes| crate::m8::surface_defaults(&bytes));
+            Pixels::asset(asset, true)
         } else {
             Pixels::asset(asset, !alpha && !name.starts_with('{'))
         };
@@ -600,7 +611,7 @@ impl From<std::io::Error> for MaterialError {
 ///
 /// Enough for what a game ships, and no more: every one of these is a format the decoder
 /// already has, so adding one here is not a promise the loader cannot keep.
-const EXTENSIONS: [&str; 6] = ["png", "jpg", "jpeg", "tga", "pcx", "wal"];
+const EXTENSIONS: [&str; 7] = ["png", "jpg", "jpeg", "tga", "pcx", "wal", "m8"];
 
 /// The materials a map may use.
 #[derive(Debug, Clone, Default)]
@@ -705,7 +716,7 @@ impl MaterialCollection {
             for suffix in ["_normal_gl", "_normal", "_n", "_normal_dx"] {
                 let Some(normal) = images
                     .get(&format!("{base}{suffix}"))
-                    .filter(|n| n.name != asset.name && !is_wal(Path::new(&n.name)))
+                    .filter(|n| n.name != asset.name && !is_indexed(Path::new(&n.name)))
                 else {
                     continue;
                 };
@@ -871,7 +882,7 @@ impl MaterialCollection {
             for suffix in ["_normal_gl", "_normal", "_n", "_normal_dx"] {
                 let Some(path) =
                     collection_normal_path(&by_stem, &material.path, &format!("{base}{suffix}"))
-                        .filter(|path| path != &material.path && !is_wal(path))
+                        .filter(|path| path != &material.path && !is_indexed(path))
                 else {
                     continue;
                 };
@@ -1185,6 +1196,17 @@ fn is_wal(path: &Path) -> bool {
         .is_some_and(|ext| ext.eq_ignore_ascii_case("wal"))
 }
 
+fn is_m8(path: &Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("m8"))
+}
+
+/// A Quake 2 `.wal` or Heretic II `.m8`: indexed pixels that are never a normal map.
+fn is_indexed(path: &Path) -> bool {
+    is_wal(path) || is_m8(path)
+}
+
 fn is_pcx(path: &Path) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())
@@ -1198,12 +1220,20 @@ fn pcx_header(bytes: &[u8]) -> Result<(u32, u32, bool), String> {
 /// Reads image dimensions and alpha availability without expanding pixels.
 fn read_header(path: &Path) -> Result<(u32, u32, bool), String> {
     use image::ImageDecoder;
-    if is_pcx(path) || is_wal(path) {
+    if is_pcx(path) || is_wal(path) || is_m8(path) {
         #[cfg(not(target_arch = "wasm32"))]
-        let length = if is_wal(path) { 100 } else { 128 };
+        let length = if is_wal(path) {
+            100
+        } else if is_m8(path) {
+            crate::m8::HEADER_LEN
+        } else {
+            128
+        };
         let header = |bytes: &[u8]| {
             if is_wal(path) {
                 crate::wal::header(bytes).map(|(w, h, _)| (w, h, true))
+            } else if is_m8(path) {
+                crate::m8::header(bytes).map(|(w, h, _)| (w, h, false))
             } else {
                 pcx_header(bytes)
             }
@@ -1211,7 +1241,7 @@ fn read_header(path: &Path) -> Result<(u32, u32, bool), String> {
         #[cfg(not(target_arch = "wasm32"))]
         {
             use std::io::Read;
-            let mut bytes = [0; 128];
+            let mut bytes = [0; crate::m8::HEADER_LEN];
             std::fs::File::open(path)
                 .and_then(|mut file| file.read_exact(&mut bytes[..length]))
                 .map_err(|error| error.to_string())?;
@@ -1250,6 +1280,9 @@ fn asset_header(asset: &crate::asset_fs::AssetFile) -> Result<(u32, u32, bool), 
     }
     if is_wal(Path::new(&asset.name)) {
         return crate::wal::header(&bytes).map(|(w, h, _)| (w, h, true));
+    }
+    if is_m8(Path::new(&asset.name)) {
+        return crate::m8::header(&bytes).map(|(w, h, _)| (w, h, false));
     }
     let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes));
     if let Ok(format) = image::ImageFormat::from_path(&asset.name) {
@@ -1356,17 +1389,21 @@ fn read_material_with_palette(
             })?;
         material.pixels = Pixels::indexed(Source::File(path.to_path_buf()), palette);
         material.surface_defaults =
-            wal_header_bytes(path).and_then(|bytes| crate::wal::surface_defaults(&bytes));
+            header_bytes(path, 100).and_then(|bytes| crate::wal::surface_defaults(&bytes));
+    } else if is_m8(path) {
+        material.surface_defaults = header_bytes(path, crate::m8::HEADER_LEN)
+            .and_then(|bytes| crate::m8::surface_defaults(&bytes));
     }
     Ok(material)
 }
 
-/// The first 100 bytes of a loose `.wal`, which is its whole header.
-fn wal_header_bytes(path: &Path) -> Option<Vec<u8>> {
+/// The first `length` bytes of a loose file: the whole header of a `.wal` (100) or an
+/// `.m8` (1040).
+fn header_bytes(path: &Path, length: usize) -> Option<Vec<u8>> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         use std::io::Read;
-        let mut bytes = vec![0; 100];
+        let mut bytes = vec![0; length];
         std::fs::File::open(path)
             .and_then(|mut file| file.read_exact(&mut bytes))
             .ok()?;
@@ -1972,6 +2009,48 @@ mod wal_material_tests {
         }
         assert_eq!(mounted.get("base/plain").unwrap().surface_defaults, None);
         std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn an_m8_brings_its_own_palette_and_flags_from_every_source() {
+        let root = root("m8");
+        let mut wood = crate::m8::tests::fixture();
+        wood[1028..1032].copy_from_slice(&0x0300_0000i32.to_le_bytes());
+        // Heretic II's demo keeps its textures in folders named like `Silverspring`.
+        std::fs::create_dir_all(root.join("textures/Silverspring")).expect("mkdir");
+        std::fs::write(root.join("textures/Silverspring/beam.m8"), &wood).expect("write");
+        std::fs::write(
+            root.join("pak0.pak"),
+            pak(&[("textures/base/packed.M8", wood)]),
+        )
+        .expect("write");
+        let folder =
+            MaterialCollection::load_directory(root.join("textures")).expect("the folder reads");
+        assert!(folder.warnings().is_empty(), "{:?}", folder.warnings());
+        let assets = crate::asset_fs::AssetFileSystem::mount(std::slice::from_ref(&root));
+        let mounted = MaterialCollection::load_assets(&assets, "textures");
+        assert!(mounted.warnings().is_empty(), "{:?}", mounted.warnings());
+        let expected = Some(crate::uv::SurfaceAttributes {
+            content_flags: 0,
+            surface_flags: 0x0300_0000,
+            value: 0,
+        });
+        for material in [
+            folder
+                .get("Silverspring/beam")
+                .expect("loose, from the folder"),
+            mounted.get("Silverspring/beam").expect("loose, mounted"),
+            mounted.get("base/packed").expect("in the pak"),
+        ] {
+            assert_eq!(material.size(), (8, 4), "{}", material.name);
+            assert_eq!(material.surface_defaults, expected, "{}", material.name);
+            assert!(material.resident_pixels().is_none());
+            assert_eq!(
+                &material.pixels().expect("the pixels decode")[..8],
+                &[0, 0, 0, 255, 12, 34, 56, 255]
+            );
+            assert_eq!(material.alpha(), Alpha::Opaque, "{}", material.name);
+        }
+        std::fs::remove_dir_all(root).expect("cleanup");
     }
     #[test]
     fn wal_materials_decode_lazily_from_directories_and_pak_with_shared_palette() {

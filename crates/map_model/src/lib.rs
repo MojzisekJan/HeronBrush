@@ -30,6 +30,7 @@ pub mod ids;
 pub mod io;
 pub mod leak;
 pub mod legacy_model_definition;
+pub mod m8;
 pub mod map_format;
 pub mod material;
 pub mod md2_model;
