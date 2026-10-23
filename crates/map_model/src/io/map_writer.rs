@@ -173,6 +173,11 @@ fn write_face(out: &mut String, face: &BrushFace, format: MapFormat, with_color:
             " {} {} {}",
             surface.content_flags, surface.surface_flags, surface.value
         );
+    } else if format.has_surface_attributes() {
+        // A face that never had flags still writes the trio in a dialect that has one,
+        // as TrenchBroom does. Neverball's mapc reads a face line only if it is there,
+        // and leaves out the whole face otherwise.
+        let _ = write!(out, " 0 0 0");
     }
 
     write_face_notes(out, face, with_color, true);
