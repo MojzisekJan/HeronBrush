@@ -21,3 +21,6 @@ __pycache__/
 # LibreQuake wads and compiler output for the Quake demo.
 /demos/quake_libre/wads/
 /demos/quake_libre/build/
+
+# mapc's output for the Neverball demo.
+/demos/neverball_heron/build/
