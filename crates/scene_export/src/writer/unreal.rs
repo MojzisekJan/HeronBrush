@@ -78,7 +78,9 @@ pub fn write(level: &Level, options: &UnrealOptions) -> String {
             "    (\"{name}\", \"{classname}\", {mesh}, ({ux:.6}, {uy:.6}, {uz:.6}), ({qx:.9}, {qy:.9}, {qz:.9}, {qw:.9}), ({sx:.6}, {sy:.6}, {sz:.6})),\n",
             name = escape(&entity.name),
             classname = escape(&entity.classname),
-            mesh = match &entity.mesh {
+            // A clip brush or trigger draws nothing: its GLB holds only collision,
+            // which the glTF importer would make into a visible static mesh.
+            mesh = match entity.mesh.as_ref().filter(|_| !entity.surfaces.is_empty()) {
                 Some(path) => format!("\"{}\"", escape(path)),
                 None => "None".to_string(),
             },
@@ -202,7 +204,10 @@ mod tests {
                 },
                 solid: true,
                 mesh: Some("arena/worldspawn.glb".into()),
-                surfaces: Vec::new(),
+                surfaces: vec![crate::level::Surface {
+                    primitive: 0,
+                    texture: "stone".into(),
+                }],
                 collision: None,
                 properties: Default::default(),
                 targets: Vec::new(),
@@ -222,6 +227,21 @@ mod tests {
         );
         assert!(script.contains("/Game/arena"));
         assert!(script.contains("arena/worldspawn.glb"));
+    }
+
+    #[test]
+    fn a_collision_only_glb_is_not_imported_as_a_mesh() {
+        let mut level = a_level();
+        level.entities[0].name = "func_clip".into();
+        level.entities[0].classname = "func_clip".into();
+        level.entities[0].mesh = Some("arena/func_clip.glb".into());
+        level.entities[0].surfaces.clear();
+        let script = write(&level, &UnrealOptions::for_level("arena"));
+        let entry = script
+            .lines()
+            .find(|l| l.trim_start().starts_with("(\"func_clip\""))
+            .expect("the clip brush has an entry");
+        assert!(entry.contains("\"func_clip\", None,"), "{entry}");
     }
 
     #[test]
