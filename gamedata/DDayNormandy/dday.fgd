@@ -36,7 +36,7 @@
 
 @PointClass = info_team_start : "Configures info for a team. There should be 2 of these on your map."
 [
-    obj_owner(integer) : "Owning team (0-allies or 10-axis)"
+    obj_owner(integer) : "Owning team: 0 for the Allies, 1 for the Axis"
     message(string) :"Team Name (required)"
     dll(choices) : "Team DLL" =
     [
@@ -61,7 +61,7 @@
 @PointClass base(PlayerClass) color(0 255 0) = info_reinforcements_start : "All players on team will spawn here, unless there is a class-specific spawn for that player's current class. If there are multiple info_reinforcements_start entities for a given team the player will spawn at a random one."
 [
     obj_owner(integer) : "Owning Team" : 0
-    angle(string) : "Direction the player will face when spawning" : "0 0 0"
+    angle(integer) : "Direction the player will face when spawning, in degrees" : 0
 ]
 
 
@@ -70,55 +70,55 @@
 @PointClass base(PlayerClass) color(0 0 255) = info_infantry_start : "Infantry class spawns here"
 [
     obj_owner(integer) : "Owning Team" : 0
-    angle(string) : "Direction the player will face when spawning" : "0 0 0"
+    angle(integer) : "Direction the player will face when spawning, in degrees" : 0
 ]
 
 @PointClass base(PlayerClass) color(0 0 255) = info_officer_start : "Officer class spawns here"
 [
     obj_owner(integer) : "Owning Team" : 0
-    angle(string) : "Direction the player will face when spawning" : "0 0 0"
+    angle(integer) : "Direction the player will face when spawning, in degrees" : 0
 ]
 
 @PointClass base(PlayerClass) color(0 0 255) = info_lgunner_start : "Light Machinegun class spawns here"
 [
     obj_owner(integer) : "Owning Team" : 0
-    angle(string) : "Direction the player will face when spawning" : "0 0 0"
+    angle(integer) : "Direction the player will face when spawning, in degrees" : 0
 ]
 
 @PointClass base(PlayerClass) color(0 0 255) = info_hgunner_start : "Heavy Machinegun class spawns here"
 [
     obj_owner(integer) : "Owning Team" : 0
-    angle(string) : "Direction the player will face when spawning" : "0 0 0"
+    angle(integer) : "Direction the player will face when spawning, in degrees" : 0
 ]
 
 @PointClass base(PlayerClass) color(0 0 255) = info_sniper_start : "Sniper class spawns here"
 [
     obj_owner(integer) : "Owning Team" : 0
-    angle(string) : "Direction the player will face when spawning" : "0 0 0"
+    angle(integer) : "Direction the player will face when spawning, in degrees" : 0
 ]
 
 @PointClass base(PlayerClass) color(0 0 255) = info_special_start : "Special class spawns here (usually Airborne, but varies for different team dlls"
 [
     obj_owner(integer) : "Owning Team" : 0
-    angle(string) : "Direction the player will face when spawning" : "0 0 0"
+    angle(integer) : "Direction the player will face when spawning, in degrees" : 0
 ]
 
 @PointClass base(PlayerClass) color(0 0 255) = info_engineer_start : "Engineer class spawns here"
 [
     obj_owner(integer) : "Owning Team" : 0
-    angle(string) : "Direction the player will face when spawning" : "0 0 0"
+    angle(integer) : "Direction the player will face when spawning, in degrees" : 0
 ]
 
 @PointClass base(PlayerClass) color(0 0 255) = info_medic_start : "Medic Class spawns here"
 [
     obj_owner(integer) : "Owning Team" : 0
-    angle(string) : "Direction the player will face when spawning" : "0 0 0"
+    angle(integer) : "Direction the player will face when spawning, in degrees" : 0
 ]
 
 @PointClass base(PlayerClass) color(0 0 255) = info_flamethrower_start : "Flamethrower class spawns here"
 [
     obj_owner(integer) : "Owning Team" : 0
-    angle(string) : "Direction the player will face when spawning" : "0 0 0"
+    angle(integer) : "Direction the player will face when spawning, in degrees" : 0
 ]
 
 
