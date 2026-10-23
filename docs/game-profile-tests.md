@@ -126,6 +126,12 @@ ironwail's GL 4.3.
   Neverball run) puts a material on one face, and the new `set_face_attributes` sets a
   face's UV offset, scale and rotation, and its flags and surface value, through the same
   edit the Face tab's fields make. Each call is one undo step.
+- **Removing a wad left it named in the map.** Taking a wad out of the Materials tab's
+  collections did not touch worldspawn's `wad`, so `qbsp` still loaded it. With a
+  profile that has `"attribute": "wad"` the removal now also takes every name that leads
+  to that file out of the key, or the key itself when nothing else is named, as one
+  undo step. Undo names the wad again but does not load it back into the collections;
+  reopening the map or editing the key in the Entity tab does.
 
 ### Mapping mistakes, not Heron's
 

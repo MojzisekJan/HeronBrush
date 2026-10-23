@@ -287,54 +287,56 @@ impl Document {
         else {
             return Vec::new();
         };
-        let game_path = crate::preferences::pref(|p| p.game_path.clone());
+        named
+            .split(';')
+            .map(str::trim)
+            .filter(|n| !n.is_empty())
+            .filter_map(|name| self.find_named_wad(name))
+            .collect()
+    }
 
-        let mut paths = Vec::new();
-        for name in named.split(';').map(str::trim).filter(|n| !n.is_empty()) {
-            let written = PathBuf::from(name);
-            let file_name = written.file_name().map(PathBuf::from);
-            if !written.is_absolute() {
-                if let Some(asset) = self.model_store.shared_assets().and_then(|fs| {
-                    fs.resolve(name).or_else(|| {
-                        file_name
-                            .as_ref()
-                            .and_then(|file| fs.resolve(&file.to_string_lossy()))
-                    })
-                }) {
-                    if !asset.is_archived() {
-                        paths.push(asset.origin.clone());
-                        continue;
-                    }
+    /// Where one name in worldspawn's `wad` is on disk, looked for as
+    /// [`Self::wads_named_by_the_map`] describes.
+    fn find_named_wad(&self, name: &str) -> Option<PathBuf> {
+        let game_path = crate::preferences::pref(|p| p.game_path.clone());
+        let written = PathBuf::from(name);
+        let file_name = written.file_name().map(PathBuf::from);
+        if !written.is_absolute() {
+            if let Some(asset) = self.model_store.shared_assets().and_then(|fs| {
+                fs.resolve(name).or_else(|| {
+                    file_name
+                        .as_ref()
+                        .and_then(|file| fs.resolve(&file.to_string_lossy()))
+                })
+            }) {
+                if !asset.is_archived() {
+                    return Some(asset.origin.clone());
                 }
             }
-            // The compilers resolve a relative name against the map's own folder, so
-            // that is the first place to look; the working directory is a last resort.
-            let map_directory = self.path.as_ref().and_then(|map| map.parent());
-            let candidates = [
-                map_directory
-                    .filter(|_| !written.is_absolute())
-                    .map(|directory| directory.join(&written)),
-                Some(written.clone()),
-                (!game_path.is_empty()).then(|| PathBuf::from(&game_path).join(&written)),
-                file_name
-                    .as_ref()
-                    .map(|name| PathBuf::from(&game_path).join(name))
-                    .filter(|_| !game_path.is_empty()),
-                self.path
-                    .as_ref()
-                    .and_then(|map| map.parent())
-                    .zip(file_name.as_ref())
-                    .map(|(directory, name)| directory.join(name)),
-            ];
-            if let Some(found) = candidates
-                .into_iter()
-                .flatten()
-                .find(|candidate| crate::files::is_file(candidate))
-            {
-                paths.push(found);
-            }
         }
-        paths
+        // The compilers resolve a relative name against the map's own folder, so
+        // that is the first place to look; the working directory is a last resort.
+        let map_directory = self.path.as_ref().and_then(|map| map.parent());
+        let candidates = [
+            map_directory
+                .filter(|_| !written.is_absolute())
+                .map(|directory| directory.join(&written)),
+            Some(written.clone()),
+            (!game_path.is_empty()).then(|| PathBuf::from(&game_path).join(&written)),
+            file_name
+                .as_ref()
+                .map(|name| PathBuf::from(&game_path).join(name))
+                .filter(|_| !game_path.is_empty()),
+            self.path
+                .as_ref()
+                .and_then(|map| map.parent())
+                .zip(file_name.as_ref())
+                .map(|(directory, name)| directory.join(name)),
+        ];
+        candidates
+            .into_iter()
+            .flatten()
+            .find(|candidate| crate::files::is_file(candidate))
     }
 
     /// Reads a collection of materials from a directory of images.
@@ -414,6 +416,55 @@ impl Document {
         }
         self.material_sources.remove(at);
         self.rebuild_materials();
+        true
+    }
+
+    /// [`Self::remove_material_source`], and for a `.wad`, takes it out of worldspawn's
+    /// `wad` property too, so the compiler stops loading it: the other half of
+    /// [`Self::add_wad_to_map`]. Every name in the property that leads to the same file
+    /// goes; the property goes when it names nothing else. That change is one undo step.
+    pub fn remove_material_source_from_map(&mut self, at: usize) -> bool {
+        let package = match self.material_sources.get(at) {
+            Some(MaterialSource::Package(path)) => Some(path.clone()),
+            Some(MaterialSource::Folder(_)) => None,
+            None => return false,
+        };
+        let named = self
+            .tree
+            .world
+            .properties
+            .iter()
+            .find(|(key, _)| key == "wad")
+            .map(|(_, value)| value.clone());
+        // Resolved before the source goes, while the package is still mounted the way it
+        // was found.
+        let kept = package.zip(named).map(|(package, named)| {
+            let package = absolute_material_path(&package);
+            let names: Vec<&str> = named
+                .split(';')
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .collect();
+            let kept: Vec<&str> = names
+                .iter()
+                .copied()
+                .filter(|name| {
+                    self.find_named_wad(name)
+                        .is_none_or(|found| absolute_material_path(&found) != package)
+                })
+                .collect();
+            (kept.len() != names.len()).then(|| kept.join(";"))
+        });
+        self.remove_material_source(at);
+        match kept.flatten() {
+            Some(value) if value.is_empty() => {
+                self.remove_entity_property_on(&[Self::WORLDSPAWN], "wad");
+            }
+            Some(value) => {
+                self.set_entity_property_on(&[Self::WORLDSPAWN], "wad", &value);
+            }
+            None => {}
+        }
         true
     }
 

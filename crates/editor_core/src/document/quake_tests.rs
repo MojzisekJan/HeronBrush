@@ -136,6 +136,52 @@ fn a_wad_added_to_a_saved_map_is_named_relative_to_it_once() {
     assert_eq!(world_value(&document, "wad"), None);
 }
 
+/// Removing a wad from the Materials tab takes it out of `wad`, or the compiler would
+/// still load it; the other wads stay named, and undo names it again.
+#[test]
+fn a_wad_removed_from_the_map_is_no_longer_named() {
+    let directory = scratch("remove-wad");
+    let bricks = directory.join("wads").join("bricks.wad");
+    let metal = directory.join("wads").join("metal.wad");
+    write_wad(&bricks, "brick1");
+    write_wad(&metal, "metal1");
+    let map = directory.join("level.map");
+    let mut document = Document::new(Default::default());
+    document.save_as(&map).expect("save");
+    document.add_wad_to_map(&bricks).expect("bricks");
+    document.add_wad_to_map(&metal).expect("metal");
+    assert_eq!(
+        world_value(&document, "wad").as_deref(),
+        Some("wads/bricks.wad;wads/metal.wad")
+    );
+
+    let at = |document: &Document, path: &Path| {
+        document
+            .material_sources()
+            .iter()
+            .position(|source| source.path() == path)
+            .expect("the wad is a source")
+    };
+    let first = at(&document, &bricks);
+    assert!(document.remove_material_source_from_map(first));
+    assert_eq!(
+        world_value(&document, "wad").as_deref(),
+        Some("wads/metal.wad")
+    );
+    assert!(document.materials().get("brick1").is_none());
+    document.undo();
+    assert_eq!(
+        world_value(&document, "wad").as_deref(),
+        Some("wads/bricks.wad;wads/metal.wad")
+    );
+    document.redo();
+
+    let last = at(&document, &metal);
+    assert!(document.remove_material_source_from_map(last));
+    assert_eq!(world_value(&document, "wad"), None, "nothing left to name");
+    assert!(!document.remove_material_source_from_map(0));
+}
+
 #[test]
 fn a_wad_named_relative_to_the_map_loads_once_when_it_opens() {
     let directory = scratch("open-wad");

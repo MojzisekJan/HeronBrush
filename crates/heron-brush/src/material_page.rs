@@ -335,7 +335,16 @@ impl MaterialPage {
                         &sources,
                         tr("Stop using this collection"),
                         |at| {
-                            document.borrow_mut().remove_material_source(at);
+                            // A game whose compiler reads the wads worldspawn names stops
+                            // being told about this one too, as adding it named it.
+                            let names_it = editor_core::games::current()
+                                .and_then(|game| game.materials_attribute)
+                                .is_some_and(|key| key == "wad");
+                            if names_it {
+                                document.borrow_mut().remove_material_source_from_map(at);
+                            } else {
+                                document.borrow_mut().remove_material_source(at);
+                            }
                         },
                     );
                 },
