@@ -684,24 +684,24 @@ fn draw_join(
     }
 }
 
-/// The corner's own grid, halved by − and doubled by +, between 1/8 and 256 as the
-/// editor's grid sizes go. Returns whether it changed.
+/// The corner's own grid, picked from the sizes the editor's grid offers, in the same
+/// drop-down. Returns whether it changed.
 fn corner_grid(ui: &mut egui::Ui, grid: &mut f64) -> bool {
-    let before = *grid;
-    if ui
-        .add_enabled(*grid > 0.125, egui::Button::new("−"))
-        .clicked()
-    {
-        *grid /= 2.0;
+    let exponents: Vec<i32> = crate::chrome::GRID_EXPONENTS.collect();
+    let labels: Vec<String> = exponents
+        .iter()
+        .map(|exponent| crate::chrome::grid_label(2f64.powi(*exponent)))
+        .collect();
+    let names: Vec<&str> = labels.iter().map(String::as_str).collect();
+    let mut index = exponents
+        .iter()
+        .position(|exponent| 2f64.powi(*exponent) >= *grid)
+        .unwrap_or(exponents.len() - 1);
+    let changed = crate::widgets::dropdown(ui, "corner-grid", &mut index, &names, 120.0);
+    if changed {
+        *grid = 2f64.powi(exponents[index]);
     }
-    ui.add(egui::DragValue::new(grid).range(0.125..=256.0));
-    if ui
-        .add_enabled(*grid < 256.0, egui::Button::new("+"))
-        .clicked()
-    {
-        *grid *= 2.0;
-    }
-    *grid != before
+    changed
 }
 
 fn corner_number<T: egui::emath::Numeric>(
