@@ -12,6 +12,9 @@
 // oct 23 2026 - Heron Brush
 //	- added func_detail, the detail brush entity of VHLT and its forks
 //	  (SDHLT among them), with the keys their hlcsg and hlbsp read
+//	- trigger_changelevel's landmark names an info_landmark, so it is a
+//	  target_destination: the link is drawn and the landmark is not
+//	  reported as named by nothing
 //
 // apr 15 2003 - 3.1.0.0
 //	- updated with studio() references to enable model display
@@ -2556,7 +2559,7 @@
 [
     targetname(target_source) : "Name"
     map(string) : "New map name"
-    landmark(string) : "Landmark name"
+    landmark(target_destination) : "Landmark name"
     changetarget(target_destination) : "Change Target"
     changedelay(string) : "Delay before change target" : "0"
     spawnflags(flags) =
