@@ -144,8 +144,12 @@ impl Scene<'_> {
             let alpha = pixels.as_chunks::<4>().0.iter().any(|p| p[3] < 255);
             (Some(self.image(m.width, m.height, pixels, true)), alpha)
         } else {
-            if name != "__TB_empty" {
-                self.report.warnings.push(format!("Texture '{name}' is not loaded in the editor; exported with a neutral material."));
+            let warning = format!(
+                "Texture '{name}' is not loaded in the editor; exported with a neutral material."
+            );
+            // One warning a texture, however many surface or sidedness variants use it.
+            if name != "__TB_empty" && !self.report.warnings.contains(&warning) {
+                self.report.warnings.push(warning);
             }
             (None, false)
         };
@@ -819,6 +823,38 @@ mod tests {
                     .collect()
             })
             .collect()
+    }
+
+    #[test]
+    fn a_missing_texture_is_reported_once() {
+        // Found in the relay_yard GLB export: one missing texture used with several
+        // surface materials gave the same warning once for each.
+        let mut doc = Document::new(WorldBounds::default());
+        for (offset, roughness) in [(0.0, 10), (128.0, 90)] {
+            let brush = map_model::shapes::create_cuboid(
+                &doc.world_bounds(),
+                &Bbox3d::from_scalars(offset, offset + 32.0),
+                "missing",
+            )
+            .unwrap();
+            doc.clear_selection();
+            doc.add_brushes(vec![brush]);
+            doc.edit_faces(|face| {
+                face.surface_material = Some(map_model::brush_face::SurfaceMaterial {
+                    roughness,
+                    metallic: 0,
+                    emission: 0,
+                });
+            });
+        }
+        let (report, json, _) = glb(&doc);
+        assert_eq!(json["materials"].as_array().unwrap().len(), 2);
+        let missing = report
+            .warnings
+            .iter()
+            .filter(|w| w.contains("'missing'"))
+            .count();
+        assert_eq!(missing, 1, "{:?}", report.warnings);
     }
 
     #[test]
