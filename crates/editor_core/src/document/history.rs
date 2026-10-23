@@ -450,6 +450,9 @@ impl Document {
                     layer.name = after.name.clone();
                 }
             }
+            Edit::WorldChanged { after, .. } => {
+                self.tree.world.properties = after.clone();
+            }
             Edit::Batch(parts) => {
                 for part in parts {
                     self.apply_flattened(part, removing);
@@ -651,6 +654,7 @@ fn collect_before<'a>(edit: &'a Edit, into: &mut HashMap<NodeId, &'a Node>) {
         | Edit::Reordered { .. }
         | Edit::LayerInserted { .. }
         | Edit::LayerRemoved { .. }
-        | Edit::LayerChanged { .. } => {}
+        | Edit::LayerChanged { .. }
+        | Edit::WorldChanged { .. } => {}
     }
 }

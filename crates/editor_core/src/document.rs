@@ -1025,7 +1025,7 @@ fn touched_ids(edit: &Edit) -> HashSet<NodeId> {
             Edit::Added { nodes, .. } | Edit::Removed { nodes, .. } => {
                 nodes.iter().for_each(|n| add_ids_under(n, out));
             }
-            Edit::Reordered { .. } | Edit::LayerChanged { .. } => {}
+            Edit::Reordered { .. } | Edit::LayerChanged { .. } | Edit::WorldChanged { .. } => {}
             Edit::LayerInserted { layer, .. } | Edit::LayerRemoved { layer, .. } => {
                 layer.children.iter().for_each(|n| add_ids_under(n, out));
             }
@@ -2800,7 +2800,8 @@ impl Document {
             | Edit::Reordered { .. }
             | Edit::LayerInserted { .. }
             | Edit::LayerRemoved { .. }
-            | Edit::LayerChanged { .. } => false,
+            | Edit::LayerChanged { .. }
+            | Edit::WorldChanged { .. } => false,
         }
     }
 
@@ -3220,3 +3221,7 @@ mod tool_upgrade_tests;
 #[cfg(test)]
 #[path = "document/basic_workflow_tests.rs"]
 mod basic_workflow_tests;
+
+#[cfg(test)]
+#[path = "document/quake_tests.rs"]
+pub(crate) mod quake_tests;

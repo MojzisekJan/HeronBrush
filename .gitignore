@@ -17,3 +17,7 @@ __pycache__/
 /demos/motion_lab/godot/verification.json
 /demos/motion_lab/godot/**/*.uid
 /crates/heron-brush-web/dist
+
+# LibreQuake wads and compiler output for the Quake demo.
+/demos/quake_libre/wads/
+/demos/quake_libre/build/

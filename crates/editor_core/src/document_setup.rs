@@ -110,9 +110,8 @@ pub fn load(
 
     // Loads texture archives listed in the map worldspawn `wad` property.
     {
-        let named = document.wads_named_by_the_map();
-        for wad in named {
-            match document.load_wad(&wad) {
+        for (wad, loaded) in document.load_named_wads() {
+            match loaded {
                 Ok(warnings) => {
                     crate::say!("loaded textures from {}", wad.display());
                     for warning in warnings {

@@ -5,6 +5,11 @@ use super::{
 };
 
 impl Document {
+    /// Stands for worldspawn in the entity property calls, which name entities by node
+    /// and worldspawn has none: `set_entity_property_on(&[Document::WORLDSPAWN], ...)`
+    /// sets a key of the map itself. Minted ids never take it.
+    pub const WORLDSPAWN: NodeId = NodeId(0);
+
     /// The class of the entity with the given id, if it is one.
     pub fn classname_of(&self, id: NodeId) -> Option<String> {
         node::entities_with_ids(&self.tree.world)
@@ -264,7 +269,31 @@ impl Document {
 
     /// Applies the same change to every entity in `ids`, as one undo step. The `edit`
     /// closure runs once per entity. Returns whether any were changed.
+    ///
+    /// [`Document::WORLDSPAWN`] among `ids` changes worldspawn's own properties, in the
+    /// same step; its classname stays what it is.
     fn change_entities(&mut self, ids: &[NodeId], mut edit: impl FnMut(&mut EntityNode)) -> bool {
+        let mut world = None;
+        if ids.contains(&Self::WORLDSPAWN) {
+            let mut changed = self.worldspawn();
+            edit(&mut changed);
+            let classname = map_model::entity_properties::keys::CLASSNAME;
+            changed.properties.retain(|(key, _)| key != classname);
+            let before = self.tree.world.properties.clone();
+            // A map read from a file holds its classname among the keys; it stays put.
+            if let Some(at) = before.iter().position(|(key, _)| key == classname) {
+                let entry = before[at].clone();
+                changed
+                    .properties
+                    .insert(at.min(changed.properties.len()), entry);
+            }
+            if changed.properties != before {
+                world = Some(Edit::WorldChanged {
+                    before,
+                    after: changed.properties,
+                });
+            }
+        }
         let mut before = Vec::new();
         let mut after = Vec::new();
         for &id in ids {
@@ -282,11 +311,34 @@ impl Document {
                 kind: NodeKind::Entity(changed),
             });
         }
-        if before.is_empty() {
-            return false;
+        let nodes = (!before.is_empty()).then_some(Edit::Changed { before, after });
+        match (world, nodes) {
+            (None, None) => return false,
+            (Some(edit), None) | (None, Some(edit)) => self.apply_and_record(edit),
+            (Some(world), Some(nodes)) => self.apply_and_record(Edit::Batch(vec![world, nodes])),
         }
-        self.apply_and_record(Edit::Changed { before, after });
         true
+    }
+
+    /// Worldspawn as an entity: its properties, classname first, and no brushes. What the
+    /// Entity panel shows when nothing is selected.
+    pub fn worldspawn(&self) -> EntityNode {
+        let mut properties = vec![(
+            map_model::entity_properties::keys::CLASSNAME.to_string(),
+            map_model::entity_properties::values::WORLDSPAWN.to_string(),
+        )];
+        properties.extend(
+            self.tree
+                .world
+                .properties
+                .iter()
+                .filter(|(key, _)| key != map_model::entity_properties::keys::CLASSNAME)
+                .cloned(),
+        );
+        EntityNode {
+            properties,
+            children: Vec::new(),
+        }
     }
 
     /// The entities that are selected -- one, or several for a multi-entity property edit.

@@ -275,6 +275,11 @@ impl Collab {
 
 /// Runs the server until stdin closes, then exits.
 pub fn serve() -> ! {
+    // The user's game, game path and mods, as the window reads them: a wad's palette and
+    // the entity models come from the game's own files.
+    crate::preferences::set_current(crate::preferences::Preferences::load(
+        &crate::preferences::Preferences::default_path(),
+    ));
     let stdin = std::io::stdin();
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
@@ -700,6 +705,12 @@ pub(crate) fn call_tool(
             }
             document.replace_for_agent(opened);
             extensions::reconnect(document, collab);
+            // The textures the map names, as the window loads them when it opens one.
+            for (wad, loaded) in document.load_named_wads() {
+                if let Err(error) = loaded {
+                    crate::complain!("{}: {error}", wad.display());
+                }
+            }
             Ok(extensions::with_warnings(
                 format!("opened {path}, {} brushes", brush_list(document).len()),
                 &document.warnings(),
@@ -981,6 +992,75 @@ pub(crate) fn call_tool(
                     warnings.join("; ")
                 )
             })
+        }
+        "load_wad" => {
+            let path = string_or(args, "path", "");
+            if path.is_empty() {
+                return Err("`path` is required (a .wad file)".into());
+            }
+            let warnings = document
+                .add_wad_to_map(std::path::Path::new(path))
+                .map_err(|error| format!("could not read {path}: {error}"))?;
+            let named = document
+                .worldspawn()
+                .property("wad")
+                .unwrap_or_default()
+                .to_string();
+            Ok(extensions::with_warnings(
+                format!(
+                    "loaded {} materials; worldspawn wad is now \"{named}\"",
+                    document.materials().len()
+                ),
+                &warnings,
+            ))
+        }
+        "set_entity_property" => {
+            let key = string_or(args, "key", "");
+            if key.is_empty() {
+                return Err("`key` is required".into());
+            }
+            let ids = match args.get("entity") {
+                Some(Value::String(name)) if name == "worldspawn" => vec![Document::WORLDSPAWN],
+                Some(id) => vec![map_model::node::NodeId(extensions::node_id(id)?)],
+                // The selected entities, and the ones whose brushes are selected: what
+                // make_brush_entity leaves selected is the door's brush.
+                None => {
+                    let mut ids: Vec<_> = document
+                        .selection_ids()
+                        .iter()
+                        .filter_map(|id| document.entity_around(*id))
+                        .map(|entity| entity.id)
+                        .collect();
+                    ids.sort();
+                    ids.dedup();
+                    ids
+                }
+            };
+            if ids.is_empty() {
+                return Err("name an entity, or select one".into());
+            }
+            let changed = match args.get("value") {
+                Some(Value::String(value)) => document.set_entity_property_on(&ids, key, value),
+                Some(Value::Null) | None => document.remove_entity_property_on(&ids, key),
+                Some(_) => return Err("`value` must be a string, or null to remove".into()),
+            };
+            if changed {
+                let mut notes = Vec::new();
+                if key == "wad" {
+                    for (wad, loaded) in document.load_named_wads() {
+                        match loaded {
+                            Ok(warnings) => notes.extend(warnings),
+                            Err(error) => notes.push(format!("{}: {error}", wad.display())),
+                        }
+                    }
+                }
+                Ok(extensions::with_warnings(
+                    format!("set {key} on {} entities", ids.len()),
+                    &notes,
+                ))
+            } else {
+                Err("no such entity".into())
+            }
         }
         "list_materials" => {
             let materials = document.materials();
@@ -1784,6 +1864,25 @@ fn tool_definitions() -> Vec<Value> {
             &["path"],
         ),
         tool(
+            "load_wad",
+            "Load the textures in a Quake .wad and name it in worldspawn's wad property, \
+             which is where qbsp finds them. Relative to the map's folder once saved.",
+            json!({ "path": { "type": "string" } }),
+            &["path"],
+        ),
+        tool(
+            "set_entity_property",
+            "Set one property on an entity: `entity` is an id, or \"worldspawn\" for the \
+             map's own keys (message, wad, worldtype); without it, every selected entity. \
+             A null `value` removes the property.",
+            json!({
+                "entity": { "type": "string" },
+                "key": { "type": "string" },
+                "value": { "type": ["string", "null"] },
+            }),
+            &["key"],
+        ),
+        tool(
             "list_materials",
             "The loaded materials: name and pixel size of each.",
             json!({}),
@@ -2246,6 +2345,93 @@ mod tests {
             2,
             "the host saw the guest's box"
         );
+    }
+
+    /// A Quake map's keys: worldspawn's, a brush entity's, and the wad qbsp reads.
+    #[test]
+    fn entity_properties_and_wads_are_set_for_a_quake_map() {
+        let mut document = Document::new(WorldBounds::default());
+        let directory =
+            std::env::temp_dir().join(format!("heron-mcp-quake-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&directory);
+        let map = directory.join("level.map");
+        crate::document::quake_tests::write_wad(&directory.join("tex.wad"), "door1");
+        call(&mut document, "save", &json!({ "path": map })).expect("save");
+        let loaded = call(
+            &mut document,
+            "load_wad",
+            &json!({ "path": directory.join("tex.wad") }),
+        )
+        .expect("load the wad");
+        assert!(loaded.contains("\"tex.wad\""), "{loaded}");
+        assert!(call(
+            &mut document,
+            "load_wad",
+            &json!({ "path": "/nowhere.wad" })
+        )
+        .is_err());
+
+        call(
+            &mut document,
+            "set_entity_property",
+            &json!({ "entity": "worldspawn", "key": "message", "value": "Hi" }),
+        )
+        .expect("worldspawn");
+        assert!(
+            call(
+                &mut document,
+                "set_entity_property",
+                &json!({ "key": "a", "value": "b" })
+            )
+            .is_err(),
+            "nothing selected and no entity named"
+        );
+        call(
+            &mut document,
+            "add_shape",
+            &json!({"kind":"cuboid","min":[0,0,0],"max":[16,64,128],"material":"door1"}),
+        )
+        .expect("a brush");
+        let made = call(
+            &mut document,
+            "make_brush_entity",
+            &json!({"classname":"func_door"}),
+        )
+        .expect("a door");
+        let id = made
+            .rsplit("id ")
+            .next()
+            .expect("an id")
+            .trim_end_matches(')');
+        call(
+            &mut document,
+            "set_entity_property",
+            &json!({ "entity": id, "key": "targetname", "value": "door1" }),
+        )
+        .expect("by id");
+        call(
+            &mut document,
+            "set_entity_property",
+            &json!({ "key": "angle", "value": "-1" }),
+        )
+        .expect("the selected door");
+        let text = call(&mut document, "get_map", &json!({})).expect("the map");
+        for line in [
+            "\"wad\" \"tex.wad\"",
+            "\"message\" \"Hi\"",
+            "\"targetname\" \"door1\"",
+            "\"angle\" \"-1\"",
+        ] {
+            assert!(text.contains(line), "{line} in {text}");
+        }
+        call(
+            &mut document,
+            "set_entity_property",
+            &json!({ "entity": id, "key": "angle", "value": null }),
+        )
+        .expect("removed");
+        let text = call(&mut document, "get_map", &json!({})).expect("the map");
+        assert!(!text.contains("\"angle\""));
     }
 
     #[test]
