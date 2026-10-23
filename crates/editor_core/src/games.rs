@@ -61,6 +61,10 @@ pub struct Game {
     pub merge_groups_on_export: bool,
     /// `faceattribs.defaults.scale`, the UV scale new faces get.
     pub default_uv_scale: Option<(f32, f32)>,
+    /// Whether the entity browser offers Heron's built-in classes beside the profile's
+    /// own: `heron.builtinEntities`, or by default only for Heron's own profile and
+    /// Generic.
+    pub builtin_entities: bool,
 }
 
 /// A name a configuration gives to the brushes or faces that match a rule.
@@ -325,6 +329,9 @@ pub fn read(config: &Path) -> Result<Game, scene_export::gameconfig::GameConfigE
         content_flag_names: read.content_flags.clone(),
         merge_groups_on_export: read.merge_groups_on_export,
         default_uv_scale: read.default_uv_scale.map(|(u, v)| (u as f32, v as f32)),
+        builtin_entities: read
+            .builtin_entities
+            .unwrap_or(read.name == "heron_brush" || read.name == "Generic"),
         directory,
     })
 }
@@ -504,6 +511,12 @@ mod tests {
                 "{folder}"
             );
             assert!(game.definition_file().is_some(), "{folder}");
+            // Heron's built-in classes are offered only where the game knows them.
+            assert_eq!(
+                game.builtin_entities,
+                folder == "heron_brush" || folder == "Generic",
+                "{folder}"
+            );
             for path in &game.definitions {
                 let source = std::fs::read_to_string(path).unwrap();
                 let definitions = match path.extension().and_then(|ext| ext.to_str()) {

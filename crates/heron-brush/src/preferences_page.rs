@@ -607,6 +607,7 @@ fn scheme_defaults() -> Preferences {
 /// change: the game is what names the tags, and its path is where a class's model is
 /// looked for. With no game the tags stay as they are.
 pub fn apply_game(document: &mut Document, game: Option<&Game>) {
+    document.set_offer_builtin_entities(game.is_none_or(|game| game.builtin_entities));
     if let Some(game) = game {
         document.set_tags(game.brush_tags.clone(), game.face_tags.clone());
         document.set_face_flag_names(
@@ -1662,6 +1663,7 @@ mod tests {
             content_flag_names: vec!["solid".into()],
             merge_groups_on_export: false,
             default_uv_scale: None,
+            builtin_entities: false,
         };
         let mut document = Document::new(Default::default());
         apply_game(&mut document, Some(&game));

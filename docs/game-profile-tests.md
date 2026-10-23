@@ -115,6 +115,13 @@ ironwail's GL 4.3.
 - **UV values gained digits on save.** Heron keeps offsets, rotation and scale as `f32`
   and wrote them as `f64`, so TrenchBroom's `0.948473` came back as `0.9484729766845703`.
   They are now written in the fewest digits that read back the same.
+- **The entity browser offered classes Quake does not know.** Heron's built-in classes
+  (`light_spot`, `prop_static`, `info_waypoint` and others) were listed beside Quake's,
+  in the browser, the make-entity menu and MCP's `list_entity_classes`. They are now
+  offered only with Heron's own profile and Generic, or with a profile whose
+  configuration sets `"heron": { "builtinEntities": true }`. A class the game's FGD
+  defines is always offered, and a map that already has a `light_spot` still shows it
+  and edits its keys.
 
 ### Mapping mistakes, not Heron's
 
@@ -130,8 +137,6 @@ ironwail's GL 4.3.
 - Heron writes brushes that have no UV axes of their own as Standard face lines under
   `// Format: Valve` and `"mapversion" "220"`. ericw-tools reads that fine. Whether
   TrenchBroom opens such a file was not checked.
-- The entity browser lists Heron's built-in classes (`light_spot`, `prop_static`,
-  `info_waypoint` and others) beside Quake's, though Quake does not know them.
 - MCP has no tool to set one face's material or UV, so a brush made through MCP wears
   one material on every face.
 - Placing a light writes the FGD's defaults (`"wait" "1"`, `"style" "0"`) into it.
@@ -406,6 +411,9 @@ the other team a player so the match starts.
   being sky (checked with `qbsp`: `sky1 ... 0 1 300` compiles without `is_sky`). Heron
   now reads the flags in a `.wal`'s header, shows them for a face that has none, and
   starts from them when one is changed.
+- **The entity browser listed Heron's built-in classes beside Paintball 2's.** As for
+  Quake, a game profile other than Heron's own and Generic is now offered only its own
+  classes.
 
 ### Mapping mistakes, not Heron's
 
@@ -429,7 +437,6 @@ the other team a player so the match starts.
   MCP relies on the textures' own flags (as this one does for its sky).
 - Heron's tags that match on content flags (Liquid, Detail) do not yet see the flags a
   face takes from its `.wal`.
-- The entity browser lists Heron's built-in classes beside Paintball 2's.
 
 ## Hexen II
 

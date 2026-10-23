@@ -348,6 +348,12 @@ pub struct Document {
     material_folders: HashMap<PathBuf, (u64, Vec<String>)>,
     /// The entity definitions in use, if an FGD has been loaded.
     definitions: Option<map_model::fgd::EntityDefinitions>,
+    /// The built-in classes the loaded definitions do not define themselves. Empty until
+    /// a file is loaded, since until then the built-ins are all there is to place.
+    builtin_only_classes: Vec<String>,
+    /// Whether the game profile wants the built-in classes offered beside its own; see
+    /// [`Self::set_offer_builtin_entities`].
+    offer_builtin_entities: bool,
     /// The file those definitions were read from.
     ///
     /// Kept so the export can hand the same file to the builder, which reads it with its
@@ -1378,6 +1384,8 @@ impl Document {
             material_defaults: HashSet::new(),
             material_folders: HashMap::new(),
             definitions: Some(crate::builtin_entities::definitions()),
+            builtin_only_classes: Vec::new(),
+            offer_builtin_entities: true,
             definitions_path: None,
             export_classes_override: None,
             last_selection_bounds: None,
@@ -2522,13 +2530,41 @@ impl Document {
         };
 
         let warnings = definitions.warnings.clone();
+        self.builtin_only_classes = crate::builtin_entities::definitions()
+            .placeable()
+            .filter(|builtin| definitions.find(&builtin.name).is_none())
+            .map(|builtin| builtin.name.clone())
+            .collect();
         self.definitions = Some(crate::builtin_entities::with_project(definitions));
+        self.hide_unoffered_builtins();
         self.definitions_path = Some(path.to_path_buf());
         self.export_classes_override = None;
         self.revision = self.revision.wrapping_add(1);
         // The definitions are what name the models, so this is where they are loaded.
         self.load_entity_models();
         Ok(warnings)
+    }
+
+    /// Takes the game profile's choice of whether the entity browser, the make-entity
+    /// menu and MCP's class list offer Heron's built-in classes beside the classes the
+    /// profile's definitions name. A Quake map gets only Quake's. The built-ins stay
+    /// known either way, so a map that already has a `light_spot` still shows it and its
+    /// keys still edit.
+    pub fn set_offer_builtin_entities(&mut self, offer: bool) {
+        self.offer_builtin_entities = offer;
+        self.hide_unoffered_builtins();
+    }
+
+    fn hide_unoffered_builtins(&mut self) {
+        let hidden = if self.offer_builtin_entities {
+            Vec::new()
+        } else {
+            self.builtin_only_classes.clone()
+        };
+        if let Some(definitions) = &mut self.definitions {
+            definitions.set_unoffered(hidden);
+        }
+        self.revision = self.revision.wrapping_add(1);
     }
 
     /// The file the entity definitions were read from, if any were.

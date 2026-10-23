@@ -128,6 +128,7 @@ pub fn load(
 /// Prints nothing, since the MCP server calls it too and its standard output is the
 /// protocol.
 pub fn apply_game(document: &mut Document, game: Option<&games::Game>, opened: bool) {
+    document.set_offer_builtin_entities(game.is_none_or(|game| game.builtin_entities));
     let Some(game) = game else {
         return;
     };

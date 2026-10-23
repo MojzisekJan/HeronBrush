@@ -1,6 +1,6 @@
 # Common entities and engine exports
 
-The editor embeds `gamedata/heron_brush/heron_brush.fgd`. Its point and brush entities are available in new maps, the entity browser and MCP without choosing a game or loading an FGD. A project FGD replaces classes with the same name and keeps unrelated built-in classes available.
+The editor embeds `gamedata/heron_brush/heron_brush.fgd`. Its point and brush entities are available in new maps, the entity browser and MCP without choosing a game or loading an FGD. A project FGD replaces classes with the same name. The other built-in classes are offered for placement only with the Heron Brush and Generic profiles, or with a profile whose `GameConfig.cfg` sets `"heron": { "builtinEntities": true }`; with Quake's profile the browser lists Quake's classes alone. A map that already has an entity of a built-in class still shows it and edits its keys.
 
 The catalogue includes point, spot and sun lights; player starts; doors, buttons and platforms; one-shot and repeatable triggers; waypoints, cameras, sounds and static props. At the default 32 map units per metre, the 64-unit player-start box is 2 metres tall.
 

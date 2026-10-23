@@ -67,6 +67,10 @@ pub struct GameConfig {
     /// read `func_group`, so an exported map has its groups and layers merged into the
     /// worldspawn. TrenchBroom's copies of the profiles do not have it.
     pub merge_groups_on_export: bool,
+    /// `heron.builtinEntities`, a key of Heron's own: whether the entity browser offers
+    /// Heron's built-in classes beside the profile's. Unset leaves the choice to the
+    /// editor.
+    pub builtin_entities: Option<bool>,
 }
 
 impl GameConfig {
@@ -167,6 +171,9 @@ pub fn parse(text: &str, path: &str) -> Result<GameConfig, GameConfigError> {
         .pointer("/heron/mergeGroupsOnExport")
         .and_then(Value::as_bool)
         .unwrap_or(false);
+    config.builtin_entities = root
+        .pointer("/heron/builtinEntities")
+        .and_then(Value::as_bool);
 
     config.surface_flags = parse_flag_names(root.pointer("/faceattribs/surfaceflags"));
     config.content_flags = parse_flag_names(root.pointer("/faceattribs/contentflags"));
@@ -430,6 +437,17 @@ mod tests {
         )
         .expect("the config parses");
         assert!(cfg.merge_groups_on_export);
+        assert_eq!(cfg.builtin_entities, None);
+    }
+
+    #[test]
+    fn reads_whether_the_builtin_entities_are_offered() {
+        let cfg = parse(
+            r#"{ "version": 9, "name": "Mine", "heron": { "builtinEntities": true } }"#,
+            "GameConfig.cfg",
+        )
+        .expect("the config parses");
+        assert_eq!(cfg.builtin_entities, Some(true));
     }
 
     #[test]

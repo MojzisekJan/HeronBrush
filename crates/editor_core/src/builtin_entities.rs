@@ -86,4 +86,33 @@ mod tests {
         assert!(merged.find("func_door").is_some());
         assert_eq!(merged.all().iter().filter(|d| d.name == "light").count(), 1);
     }
+
+    /// A Quake map is offered Quake's classes, not `light_spot` or `prop_static`, but an
+    /// entity of a built-in class it already has still finds its definition.
+    #[test]
+    fn a_game_without_the_builtins_is_not_offered_them_but_still_knows_them() {
+        let fgd =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../gamedata/Quake/Quake.fgd");
+        let mut document = crate::document::Document::new(crate::world::WorldBounds::default());
+        document.set_offer_builtin_entities(false);
+        document.load_definitions(&fgd).expect("Quake's FGD loads");
+        let offered = |document: &crate::document::Document| -> Vec<String> {
+            document
+                .definitions()
+                .expect("definitions are loaded")
+                .placeable()
+                .map(|definition| definition.name.clone())
+                .collect()
+        };
+        let names = offered(&document);
+        assert!(names.iter().any(|name| name == "light"));
+        assert!(names.iter().any(|name| name == "monster_army"));
+        assert!(!names.iter().any(|name| name == "light_spot"));
+        assert!(!names.iter().any(|name| name == "prop_static"));
+        let definitions = document.definitions().expect("definitions are loaded");
+        assert!(definitions.find("light_spot").is_some());
+
+        document.set_offer_builtin_entities(true);
+        assert!(offered(&document).iter().any(|name| name == "light_spot"));
+    }
 }

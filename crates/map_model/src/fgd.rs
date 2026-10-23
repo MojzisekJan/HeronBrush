@@ -137,6 +137,9 @@ pub struct EntityDefinitions {
     definitions: Vec<EntityDefinition>,
     /// Things the reader worked around rather than failing on.
     pub warnings: Vec<String>,
+    /// Classes that are known, so an entity of that class still shows and edits, but
+    /// that [`Self::placeable`] does not offer.
+    unoffered: Vec<String>,
 }
 
 impl EntityDefinitions {
@@ -149,12 +152,22 @@ impl EntityDefinitions {
         Self {
             definitions,
             warnings,
+            unoffered: Vec::new(),
         }
     }
 
-    /// Returns every placeable class, in the order the file defined them.
+    /// Returns every placeable class, in the order the file defined them, leaving out
+    /// the ones [`Self::set_unoffered`] names.
     pub fn placeable(&self) -> impl Iterator<Item = &EntityDefinition> {
-        self.definitions.iter().filter(|d| d.is_placeable())
+        self.definitions
+            .iter()
+            .filter(|d| d.is_placeable() && !self.unoffered.contains(&d.name))
+    }
+
+    /// Names the classes [`Self::placeable`] leaves out. They stay in [`Self::all`] and
+    /// [`Self::find`].
+    pub fn set_unoffered(&mut self, names: Vec<String>) {
+        self.unoffered = names;
     }
 
     /// Returns every class, including the base classes.
@@ -356,10 +369,7 @@ pub(crate) fn resolve_inheritance(
         })
         .collect();
 
-    EntityDefinitions {
-        definitions: resolved,
-        warnings,
-    }
+    EntityDefinitions::new(resolved, warnings)
 }
 
 /// The `spawnflags` key, the one `flags` property that is merged across inheritance.
