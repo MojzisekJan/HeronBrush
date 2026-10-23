@@ -36,7 +36,7 @@ export async function loadLevel(url, {blocks = isBlocking, factories = {}} = {})
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 4;
     tex.flipY = false;
-    if (t.name.startsWith("bbpaint_")) tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    if (t.clamp) tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
     textures.set(t.name, tex);
   }
 

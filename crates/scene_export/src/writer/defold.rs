@@ -1139,6 +1139,7 @@ mod tests {
                 image: Some("textures/wall.png".into()),
                 maps: vec![],
                 size: [64.0, 64.0],
+                clamp: false,
             }],
             entities: vec![
                 Entity {
