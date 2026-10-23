@@ -720,6 +720,12 @@ impl<'a> Parser<'a> {
                 surface_flags,
                 value,
             });
+            // Daikatana's surface light colour, which no export uses.
+            if self.peek_is_number() {
+                for _ in 0..3 {
+                    self.number()?;
+                }
+            }
         }
 
         // A degenerate plane means the three points are collinear. Warn and drop
@@ -877,6 +883,23 @@ mod tests {
         assert_eq!(face.offset, Vec2::new(8.0, 16.0));
         assert_eq!(face.rotation, 45.0);
         assert_eq!(face.scale, Vec2::new(2.0, -2.0));
+    }
+
+    #[test]
+    fn steps_over_a_daikatana_light_colour() {
+        let text = r#"
+{
+"classname" "worldspawn"
+{
+( 0 0 0 ) ( 1 0 0 ) ( 0 1 0 ) sky 0 0 0 1 1 0 5 600 255 255 204
+( 0 0 0 ) ( 0 1 0 ) ( 0 0 1 ) wall 0 0 0 1 1
+}
+}
+"#;
+        let map = parse(text, "t.map").expect("it parses");
+        let faces = &map.entities[0].brushes[0].faces;
+        assert_eq!(faces.len(), 2);
+        assert_eq!(faces[0].surface.map(|s| s.value), Some(600));
     }
 
     #[test]

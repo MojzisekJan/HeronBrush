@@ -1190,7 +1190,8 @@ impl<'a> Reader<'a> {
         Ok((Vec3d::new(x, y, z), offset))
     }
 
-    /// Reads the `content_flags surface_flags value` trio, if it is there.
+    /// Reads the `content_flags surface_flags value` trio, if it is there, and the
+    /// `r g b` light colour Daikatana may put after it.
     ///
     /// It is optional even within a format that allows it, so this looks ahead rather
     /// than committing: three numbers in a row can only be the trio, since the next thing
@@ -1206,11 +1207,26 @@ impl<'a> Reader<'a> {
             return Ok(None);
         }
 
-        Ok(Some(SurfaceAttributes {
+        let mut surface = SurfaceAttributes {
             content_flags: self.expect_number()? as i32,
             surface_flags: self.expect_number()? as i32,
             value: self.expect_number()? as i32,
-        }))
+            color: None,
+        };
+        // Daikatana's light colour, three more numbers, which no other dialect has there.
+        let colored = (0..3).all(|offset| {
+            matches!(
+                self.tokens.borrow_mut().peek(offset).map(|t| t.token),
+                Some(Token::Number(_))
+            )
+        });
+        if colored {
+            // A channel is a byte; anything outside is held to the nearest end.
+            let mut channel =
+                || -> Result<u8, ReadError> { Ok(self.expect_number()?.clamp(0.0, 255.0) as u8) };
+            surface.color = Some([channel()?, channel()?, channel()?]);
+        }
+        Ok(Some(surface))
     }
 
     /// Reads Heretic II's four lighting numbers when all four are there.

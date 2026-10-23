@@ -67,7 +67,7 @@ impl AssetFile {
                     if bytes.len() > crate::pak::MAX_MEMBER_BYTES {
                         return Err("PAK member exceeds 256 MiB".into());
                     }
-                    Ok(bytes.to_vec())
+                    Ok(bytes.into_owned())
                 }
                 #[cfg(not(target_arch = "wasm32"))]
                 Archive::PakFile(pak) => pak.read_index(*index),

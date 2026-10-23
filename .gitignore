@@ -40,3 +40,6 @@ __pycache__/
 
 # q2tools output for the Heretic II demo map.
 /demos/heretic2_heron/build/
+
+# Compiler output for the Daikatana demo.
+/demos/daikatana_heron/build/

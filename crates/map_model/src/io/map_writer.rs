@@ -183,6 +183,10 @@ fn write_face(out: &mut String, face: &BrushFace, format: MapFormat, with_color:
             " {} {} {}",
             surface.content_flags, surface.surface_flags, surface.value
         );
+        // Daikatana's light colour of a face goes after the value.
+        if let Some([red, green, blue]) = surface.color {
+            let _ = write!(out, " {red} {green} {blue}");
+        }
         // Heretic II's lighting of a `tall_wall` face goes after the flags, as HereticEd
         // writes it. Quake 3's compilers have no room for it.
         if let Some(lighting) = face

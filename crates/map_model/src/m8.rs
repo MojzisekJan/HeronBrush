@@ -62,6 +62,7 @@ pub fn surface_defaults(bytes: &[u8]) -> Option<crate::uv::SurfaceAttributes> {
         surface_flags: word(1028)?,
         content_flags: word(1032)?,
         value: word(1036)?,
+        color: None,
     };
     (defaults != crate::uv::SurfaceAttributes::default()).then_some(defaults)
 }
@@ -129,6 +130,7 @@ pub(crate) mod tests {
                 surface_flags: 0x0200_0004,
                 content_flags: 0x20,
                 value: 15,
+                color: None,
             })
         );
         assert_eq!(surface_defaults(&bytes[..1039]), None);
