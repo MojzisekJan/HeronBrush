@@ -1841,6 +1841,56 @@ mod tests {
         }
     }
 
+    #[test]
+    fn godot_takes_the_normal_map_the_editor_paired_and_flips_a_directx_one() {
+        let scratch = Scratch::new("godot-normal-maps");
+        let textures = scratch.0.join("textures");
+        std::fs::create_dir_all(&textures).expect("texture folder");
+        let png = |rgba: [u8; 4]| crate::assets::encode_png(2, 2, &rgba.repeat(4)).expect("png");
+        std::fs::write(textures.join("stone.png"), png([90, 90, 90, 255])).expect("albedo");
+        let export_with = |normal: &str| {
+            for old in ["stone_n.png", "stone_normal_dx.png"] {
+                let _ = std::fs::remove_file(textures.join(old));
+            }
+            std::fs::write(textures.join(normal), png([140, 200, 250, 255])).expect("normal");
+            let mut document = one_cube();
+            document.load_materials(&textures).expect("materials");
+            let out = scratch.0.join("level");
+            let options = Options {
+                target: Target::Godot,
+                name: "arena".into(),
+                project_dir: scratch.0.to_string_lossy().into_owned(),
+                texture_dir: "textures".into(),
+                ..Options::default()
+            };
+            export(&document, &out, &options).expect("export");
+            std::fs::read_to_string(out.join("arena.tscn")).expect("scene")
+        };
+
+        // `_n` is one of the editor's suffixes; the image is used where it is.
+        let scene = export_with("stone_n.png");
+        assert!(
+            scene.contains(r#"path="res://textures/stone_n.png""#),
+            "{scene}"
+        );
+        assert!(scene.contains("normal_enabled = true"), "{scene}");
+        assert!(!scratch
+            .0
+            .join("level/arena_paint/stone_normal.png")
+            .exists());
+
+        // A DirectX map goes out converted, its green flipped for Godot's OpenGL convention.
+        let scene = export_with("stone_normal_dx.png");
+        assert!(
+            scene.contains(r#"path="res://level/arena_paint/stone_normal.png""#),
+            "{scene}"
+        );
+        let written = image::open(scratch.0.join("level/arena_paint/stone_normal.png"))
+            .expect("converted normal map")
+            .to_rgba8();
+        assert_eq!(written.get_pixel(0, 0).0, [140, 55, 250, 255]);
+    }
+
     /// A directory of this test's own, cleaned up as the test ends.
     struct Scratch(std::path::PathBuf);
 

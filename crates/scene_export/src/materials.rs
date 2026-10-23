@@ -281,7 +281,7 @@ pub fn build(
                     name.clone(),
                     Material::FromTextures {
                         albedo: generated.path.clone(),
-                        maps: Vec::new(),
+                        maps: editor_normal_map(name, settings).into_iter().collect(),
                     },
                 );
                 library.sizes.insert(
@@ -347,7 +347,11 @@ pub fn build(
                     None => res_path,
                 };
                 library.sizes.insert(name, size);
-                let maps = find_pbr_maps(root, name, settings);
+                let mut maps = find_pbr_maps(root, name, settings);
+                if let Some(normal) = editor_normal_map(name, settings) {
+                    maps.retain(|(property, _)| *property != normal.0);
+                    maps.push(normal);
+                }
                 library.materials.insert(
                     name.clone(),
                     Material::FromTextures {
@@ -452,6 +456,14 @@ fn find_pbr_maps(root: &Path, name: &str, settings: &Settings) -> Vec<(&'static 
     out
 }
 
+/// The normal map the editor draws `name` with, when it handed one over.
+fn editor_normal_map(name: &str, settings: &Settings) -> Option<(&'static str, String)> {
+    settings
+        .normal_map_paths
+        .get(name)
+        .map(|path| ("normal_texture", path.clone()))
+}
+
 fn leaf(name: &str) -> &str {
     name.rsplit('/').next().unwrap_or(name)
 }
@@ -539,6 +551,48 @@ mod tests {
         // Something that is not there at all is not this function's business.
         assert_eq!(real_spelling(&root, "res://Textures/nothing.png"), None);
 
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_editors_normal_map_replaces_the_one_found_by_name() {
+        let root = std::env::temp_dir().join("heron_brush_normal_probe");
+        let dir = root.join("textures");
+        std::fs::create_dir_all(&dir).expect("texture folder");
+        std::fs::write(dir.join("stone.png"), []).expect("albedo");
+        std::fs::write(dir.join("stone_normal.png"), []).expect("normal");
+        let mut settings = Settings {
+            project_root: Some(root.clone()),
+            texture_dir: "res://textures".into(),
+            ..Settings::default()
+        };
+        let lib = build(&["stone".to_string()], &settings, &[]);
+        let Some(Material::FromTextures { maps, .. }) = lib.get("stone") else {
+            panic!("stone is not built from textures");
+        };
+        assert_eq!(
+            maps,
+            &[(
+                "normal_texture",
+                "res://textures/stone_normal.png".to_string()
+            )]
+        );
+
+        // The editor paired `stone_normal_dx` and wrote it out flipped: that one counts.
+        settings
+            .normal_map_paths
+            .insert("stone".into(), "res://level_paint/stone_normal.png".into());
+        let lib = build(&["stone".to_string()], &settings, &[]);
+        let Some(Material::FromTextures { maps, .. }) = lib.get("stone") else {
+            panic!("stone is not built from textures");
+        };
+        assert_eq!(
+            maps,
+            &[(
+                "normal_texture",
+                "res://level_paint/stone_normal.png".to_string()
+            )]
+        );
         let _ = std::fs::remove_dir_all(&root);
     }
 

@@ -17,6 +17,10 @@ GODOT=/path/to/godot python3 examples/engine-checks/godot/verify.py
 `verify_demo.gd`, `verify_portal.gd`, `verify_doors.gd`, `verify_damage.gd`), with
 logs in `evidence/`.
 
+`verify_feature_lab.py` runs the feature lab's own export in Godot, feature by
+feature, and with `--shots` saves pictures of each station; see
+[the Godot feature lab run](../../../docs/feature-runtime-godot.md).
+
 Play the map, or save a screenshot to `evidence/demo.png`:
 
 ```sh

@@ -303,6 +303,45 @@ fn prepare_image(
     Ok(image)
 }
 
+/// Tells the Godot scene where `name`'s normal map is: the editor's own image when it
+/// is already in the project and in the OpenGL convention Godot reads, otherwise the
+/// converted `png` (a DirectX map's green flipped), returned to be written beside the
+/// face paint.
+fn godot_normal_map(
+    material: &Material,
+    name: &str,
+    png: &[u8],
+    directory: &Path,
+    options: &Options,
+    settings: &mut scene_export::settings::Settings,
+) -> Result<Option<(PathBuf, Contents)>, Error> {
+    let Some(map) = material.normal_map.as_ref() else {
+        return Ok(None);
+    };
+    let root = settings
+        .project_root
+        .clone()
+        .unwrap_or_else(|| directory.to_path_buf());
+    let in_project = (!map.flip_y && map.path.is_file())
+        .then(|| {
+            let path = map.path.canonicalize().ok()?;
+            scene_export::materials::fs_to_res(&root.canonicalize().ok()?, &path)
+        })
+        .flatten();
+    if let Some(resource) = in_project {
+        settings.normal_map_paths.insert(name.to_owned(), resource);
+        return Ok(None);
+    }
+    let path = directory
+        .join(format!("{}_paint", options.name))
+        .join(format!("{name}_normal.png"));
+    let resource = scene_export::materials::fs_to_res(&root, &path).ok_or_else(|| {
+        Error::Map("export texture must be inside the chosen engine project".into())
+    })?;
+    settings.normal_map_paths.insert(name.to_owned(), resource);
+    Ok(Some((path, Contents::Bytes(png.to_vec()))))
+}
+
 pub fn prepare(
     document: &Document,
     directory: &Path,
@@ -416,8 +455,15 @@ pub fn prepare_text(
         if settings.normal_maps.contains_key(name) || settings.is_tool_texture(name) {
             continue;
         }
-        if let Some(png) = materials.get(name).and_then(normal_png) {
-            settings.normal_maps.insert(name.to_string(), png);
+        if let Some(material) = materials.get(name) {
+            if let Some(png) = normal_png(material) {
+                if options.target == super::Target::Godot {
+                    files.extend(godot_normal_map(
+                        material, name, &png, directory, options, settings,
+                    )?);
+                }
+                settings.normal_maps.insert(name.to_string(), png);
+            }
         }
     }
     let unity = options.target == super::Target::Unity;
@@ -527,10 +573,15 @@ pub fn prepare_text(
                             repeat: face.color.is_none() && material.is_some(),
                         },
                     );
-                    if let Some(png) = material
+                    if let Some((material, png)) = material
                         .filter(|_| face.color.is_none())
-                        .and_then(normal_png)
+                        .and_then(|m| normal_png(m).map(|png| (m, png)))
                     {
+                        if options.target == super::Target::Godot {
+                            files.extend(godot_normal_map(
+                                material, &name, &png, directory, options, settings,
+                            )?);
+                        }
                         settings.normal_maps.insert(name.clone(), png);
                     }
                     files.push((path, Contents::Bytes(png.clone())));
