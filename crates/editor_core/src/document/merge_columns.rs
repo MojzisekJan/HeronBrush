@@ -279,6 +279,10 @@ fn looks_alike(a: &map_model::brush_face::BrushFace, b: &map_model::brush_face::
 }
 
 #[cfg(test)]
+#[path = "merge_keeping_shape_tests.rs"]
+mod keeping_shape_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::sculpt::ColumnShape;
