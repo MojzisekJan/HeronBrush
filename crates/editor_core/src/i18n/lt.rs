@@ -581,6 +581,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Merge", "Sulieti"),
     ("Merge columns", "Sujungti stulpus"),
     ("Merge groups", "Sulieti grupes"),
+    ("Merge keeping shape", "Sujungti išlaikant formą"),
     ("Merged the brushes into one convex brush", "Brašai sulieti į vieną iškilą brašą"),
     ("Merged {} into one", "Sulieta į vieną grupę: {}"),
     ("Metallic", "Metališkumas"),

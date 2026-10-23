@@ -581,6 +581,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Merge", "合併"),
     ("Merge columns", "合併柱體"),
     ("Merge groups", "合併群組"),
+    ("Merge keeping shape", "保持形狀合併"),
     ("Merged the brushes into one convex brush", "已將筆刷合併為一個凸筆刷"),
     ("Merged {} into one", "已將 {} 合併為一個"),
     ("Metallic", "金屬度"),

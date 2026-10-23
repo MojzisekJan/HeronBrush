@@ -581,6 +581,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Merge", "マージ"),
     ("Merge columns", "柱を結合"),
     ("Merge groups", "グループをマージ"),
+    ("Merge keeping shape", "形を保って結合"),
     ("Merged the brushes into one convex brush", "ブラシを 1 つの凸ブラシにマージしました"),
     ("Merged {} into one", "{} を 1 つにマージしました"),
     ("Metallic", "金属度"),

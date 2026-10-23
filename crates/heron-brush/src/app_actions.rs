@@ -79,6 +79,9 @@ pub enum Action {
     /// Cut the selected box into columns of this shape, one grid step across, to sculpt.
     SplitColumns(editor_core::sculpt::ColumnShape),
     MergeColumns,
+    /// Merge the selected brushes wherever the outside keeps its shape, whatever their
+    /// faces look like.
+    MergeKeepingShape,
     Preferences,
     Plugins,
     Export,
@@ -573,13 +576,23 @@ impl App {
                     Err(why) => editor_core::say!("{}", tr(why)),
                 }
             }
-            Action::MergeColumns => {
+            Action::MergeColumns | Action::MergeKeepingShape => {
+                let keeping_shape = action == Action::MergeKeepingShape;
                 let before = self.editor.document.borrow().selection_count();
-                let result = self.editor.document.borrow_mut().merge_columns();
+                let result = if keeping_shape {
+                    self.editor.document.borrow_mut().merge_keeping_shape()
+                } else {
+                    self.editor.document.borrow_mut().merge_columns()
+                };
+                let name = if keeping_shape {
+                    "Merge keeping shape"
+                } else {
+                    "Merge columns"
+                };
                 match result {
                     Ok(removed) => editor_core::say!(
                         "{}: {} → {}",
-                        tr("Merge columns"),
+                        tr(name),
                         before,
                         counted(before - removed, "brush")
                     ),

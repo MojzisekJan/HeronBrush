@@ -590,6 +590,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Merge", "Združi"),
     ("Merge columns", "Združi stebre"),
     ("Merge groups", "Združi skupine"),
+    ("Merge keeping shape", "Združi z ohranitvijo oblike"),
     ("Merged the brushes into one convex brush", "Brushi so združeni v en konveksen brush"),
     ("Merged {} into one", "Združeno v eno skupino: {}"),
     ("Metallic", "Kovinskost"),

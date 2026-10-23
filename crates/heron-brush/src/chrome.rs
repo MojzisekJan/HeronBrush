@@ -328,6 +328,7 @@ pub fn menus(
             )
             .icon(icon::MOUNTAINS),
             item(tr("Merge columns"), Action::MergeColumns).icon(icon::UNITE),
+            item(tr("Merge keeping shape"), Action::MergeKeepingShape).icon(icon::UNITE_SQUARE),
             Entry::Separator,
             item(tr("Convert faces to patches"), Action::Patches).icon(icon::BEZIER_CURVE),
             item(tr("Move selection out of its entity"), Action::Structural)

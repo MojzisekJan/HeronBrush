@@ -532,6 +532,9 @@ pub fn sculpt_controls(ui: &mut egui::Ui, cell: f64) -> Option<crate::app_action
         if ui.button(tr("Merge columns")).clicked() {
             chosen = Some(Action::MergeColumns);
         }
+        if ui.button(tr("Merge keeping shape")).clicked() {
+            chosen = Some(Action::MergeKeepingShape);
+        }
     });
     chosen
 }

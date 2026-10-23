@@ -581,6 +581,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Merge", "Egyesítés"),
     ("Merge columns", "Oszlopok egyesítése"),
     ("Merge groups", "Csoportok egyesítése"),
+    ("Merge keeping shape", "Egyesítés alakmegtartással"),
     ("Merged the brushes into one convex brush", "Brush-ok egyesítve egyetlen konvex brush-sá"),
     ("Merged {} into one", "Egyesítve egybe: {}"),
     ("Metallic", "Fémes"),

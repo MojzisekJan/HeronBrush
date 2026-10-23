@@ -581,6 +581,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Merge", "Hợp nhất"),
     ("Merge columns", "Gộp cột"),
     ("Merge groups", "Hợp nhất nhóm"),
+    ("Merge keeping shape", "Gộp giữ nguyên hình dạng"),
     ("Merged the brushes into one convex brush", "Đã hợp nhất các brush thành một brush lồi"),
     ("Merged {} into one", "Đã hợp nhất {} thành một"),
     ("Metallic", "Độ kim loại"),

@@ -284,7 +284,10 @@ impl Document {
             .unwrap_or_else(|| self.current_material.clone().into());
         let merge = |brushes: Vec<Brush>| {
             let mut brushes: Vec<Option<Brush>> = brushes.into_iter().map(Some).collect();
-            super::super::merge_columns::merge_neighbours(&mut brushes);
+            super::super::merge_columns::merge_neighbours(
+                &mut brushes,
+                super::super::merge_columns::Faces::Alike,
+            );
             brushes.into_iter().flatten().collect::<Vec<Brush>>()
         };
         let cuboid = |bounds: &Bbox3d| {

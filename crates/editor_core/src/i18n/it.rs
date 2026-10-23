@@ -584,6 +584,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Merge", "Unisci"),
     ("Merge columns", "Unisci colonne"),
     ("Merge groups", "Fondi i gruppi"),
+    ("Merge keeping shape", "Unisci mantenendo la forma"),
     ("Merged the brushes into one convex brush", "Brush uniti in un unico brush convesso"),
     ("Merged {} into one", "Fusi in uno solo: {}"),
     ("Metallic", "Metallicità"),

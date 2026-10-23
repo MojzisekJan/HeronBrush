@@ -581,6 +581,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Merge", "Συγχώνευση"),
     ("Merge columns", "Συγχώνευση στηλών"),
     ("Merge groups", "Συγχώνευση ομάδων"),
+    ("Merge keeping shape", "Συγχώνευση με διατήρηση σχήματος"),
     ("Merged the brushes into one convex brush", "Τα brush συγχωνεύτηκαν σε ένα κυρτό brush"),
     ("Merged {} into one", "Συγχωνεύτηκαν σε μία: {}"),
     ("Metallic", "Μεταλλικότητα"),

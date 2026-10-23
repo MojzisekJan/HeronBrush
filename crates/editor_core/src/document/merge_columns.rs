@@ -1,10 +1,20 @@
-//! Merging sculpted terrain back into fewer brushes: two neighbours become one wherever
-//! together they make a convex brush that looks the same, so the surface does not move.
+//! Merging brushes into fewer: two neighbours become one wherever together they make a
+//! convex brush, so the outside does not move. Merge columns also keeps every face's
+//! look; Merge keeping shape lets the faces' looks go.
 use super::*;
 use crate::i18n::translation_key;
 
 /// How far apart two numbers may be and still count as the same, for planes and volumes.
 const SAME: f64 = 1e-6;
+
+/// What a merge asks of the faces of two brushes that end up in one face.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(in crate::document) enum Faces {
+    /// They must look alike, so the merge changes nothing that shows.
+    Alike,
+    /// Any look will do: the merged face wears the first one's.
+    Any,
+}
 
 impl Document {
     /// Merges the selected brushes, two neighbours at a time, wherever the pair together
@@ -17,6 +27,19 @@ impl Document {
     /// The merged brushes stay where the first of each pair was, in its group, and the
     /// whole merge undoes in one step. Returns how many brushes there are fewer.
     pub fn merge_columns(&mut self) -> Result<usize, &'static str> {
+        self.merge_selected(Faces::Alike)
+    }
+
+    /// Merges the selected brushes as [`Self::merge_columns`] does, but whatever their
+    /// faces look like: where two faces become one, it takes the look of one of them. The
+    /// outside keeps its exact shape, so four brushes that pair up into two convex ones
+    /// become two, and a whole stretch of terrain becomes as few brushes as merging
+    /// neighbours finds.
+    pub fn merge_keeping_shape(&mut self) -> Result<usize, &'static str> {
+        self.merge_selected(Faces::Any)
+    }
+
+    fn merge_selected(&mut self, faces: Faces) -> Result<usize, &'static str> {
         let selected: Vec<(NodeId, Brush)> = self
             .selected_brushes_with_ids()
             .into_iter()
@@ -25,29 +48,64 @@ impl Document {
         if selected.len() < 2 {
             return Err(translation_key("Select brushes first"));
         }
-        let ids: Vec<NodeId> = selected.iter().map(|(id, _)| *id).collect();
-        let mut brushes: Vec<Option<Brush>> =
-            selected.into_iter().map(|(_, brush)| Some(brush)).collect();
-
-        let merged_into = merge_neighbours(&mut brushes);
-
-        if merged_into.is_empty() {
-            return Ok(0);
+        // Only brushes with one parent merge: the merged brush stays where the first was,
+        // so one from a door merged with one from the world would make the world part of
+        // the door.
+        let parents = self.brush_parents();
+        let mut families: HashMap<Option<NodeId>, Vec<(NodeId, Brush)>> = HashMap::new();
+        for (id, brush) in selected {
+            let parent = parents.get(&id).copied().flatten();
+            families.entry(parent).or_default().push((id, brush));
         }
         let mut replacements: HashMap<NodeId, Vec<Brush>> = HashMap::new();
         let mut removed = 0;
-        for (i, absorbed) in &merged_into {
-            let Some(brush) = brushes[*i].take() else {
-                continue;
-            };
-            replacements.insert(ids[*i], vec![brush]);
-            for j in absorbed {
-                replacements.insert(ids[*j], Vec::new());
-                removed += 1;
+        for family in families.into_values() {
+            let ids: Vec<NodeId> = family.iter().map(|(id, _)| *id).collect();
+            let mut brushes: Vec<Option<Brush>> =
+                family.into_iter().map(|(_, brush)| Some(brush)).collect();
+            for (i, absorbed) in merge_neighbours(&mut brushes, faces) {
+                let Some(brush) = brushes[i].take() else {
+                    continue;
+                };
+                replacements.insert(ids[i], vec![brush]);
+                for j in absorbed {
+                    replacements.insert(ids[j], Vec::new());
+                    removed += 1;
+                }
             }
+        }
+        if replacements.is_empty() {
+            return Ok(0);
         }
         self.run_as_one_edit(|document| document.replace_geometry_in_place(replacements));
         Ok(removed)
+    }
+
+    /// Each brush's parent: the group or entity it is directly in, or `None` for one
+    /// lying in a layer.
+    fn brush_parents(&self) -> HashMap<NodeId, Option<NodeId>> {
+        fn walk(
+            children: &[Node],
+            parent: Option<NodeId>,
+            out: &mut HashMap<NodeId, Option<NodeId>>,
+        ) {
+            for node in children {
+                match &node.kind {
+                    NodeKind::Brush(_) => {
+                        out.insert(node.id, parent);
+                    }
+                    NodeKind::Group(group) => walk(&group.children, Some(node.id), out),
+                    NodeKind::Entity(entity) => walk(&entity.children, Some(node.id), out),
+                    NodeKind::Layer(layer) => walk(&layer.children, Some(node.id), out),
+                    _ => {}
+                }
+            }
+        }
+        let mut out = HashMap::new();
+        for layer in &self.tree.world.layers {
+            walk(&layer.children, None, &mut out);
+        }
+        out
     }
 }
 
@@ -56,6 +114,7 @@ impl Document {
 /// for each brush that took others in, which ones.
 pub(in crate::document) fn merge_neighbours(
     brushes: &mut [Option<Brush>],
+    faces: Faces,
 ) -> HashMap<usize, Vec<usize>> {
     // Each brush in the cells its bounds cover, to find its neighbours quickly. A
     // merged brush is added to the cells it grew into; one that is gone is skipped. The
@@ -115,7 +174,7 @@ pub(in crate::document) fn merge_neighbours(
             if !other.bounds().intersects(&bounds) {
                 return None;
             }
-            Some((j, merged(&brush, other)?))
+            Some((j, merged(&brush, other, faces)?))
         });
         let Some((j, joined)) = found else {
             continue;
@@ -136,9 +195,10 @@ pub(in crate::document) fn merge_neighbours(
     merged_into
 }
 
-/// `a` and `b` as one brush, when they share a face, together are convex, and every
-/// face of the result lies on faces of theirs that look alike; `None` otherwise.
-fn merged(a: &Brush, b: &Brush) -> Option<Brush> {
+/// `a` and `b` as one brush, when they share a face, together are convex, and, when
+/// `faces` asks for it, every face of the result lies on faces of theirs that look
+/// alike; `None` otherwise.
+fn merged(a: &Brush, b: &Brush, faces: Faces) -> Option<Brush> {
     // Touching across a face: anything less leaves a gap or a notch the hull would fill.
     let touching = a.faces().iter().any(|fa| {
         b.faces()
@@ -189,24 +249,24 @@ fn merged(a: &Brush, b: &Brush) -> Option<Brush> {
     if (joined.volume() - (va + vb)).abs() > SAME * (va + vb).max(1.0) {
         return None;
     }
-    // Each face of the result wears the look of the faces of the two it stands on, which
-    // have to agree, or the merge would change a material, an alignment or what is
-    // exported.
-    let mut faces = Vec::with_capacity(joined.faces().len());
+    // Each face of the result wears the look of the faces of the two it stands on. For
+    // Merge columns they have to agree, or the merge would change a material, an
+    // alignment or what is exported.
+    let mut worn_faces = Vec::with_capacity(joined.faces().len());
     for face in joined.faces() {
         let mut on = sources
             .iter()
             .filter(|f| geometry_math::plane::is_equal(&f.plane, &face.plane, SAME));
         let first = on.next()?;
-        if !on.all(|f| looks_alike(first, f)) {
+        if faces == Faces::Alike && !on.all(|f| looks_alike(first, f)) {
             return None;
         }
         let mut worn = (*first).clone();
         worn.points = face.points;
         worn.plane = face.plane;
-        faces.push(worn);
+        worn_faces.push(worn);
     }
-    joined.with_exact_face_attributes(&faces)
+    joined.with_exact_face_attributes(&worn_faces)
 }
 
 /// Whether two faces in one plane look the same: everything but where their plane's
@@ -335,6 +395,84 @@ mod tests {
         }
         d.select_all();
         assert_eq!(d.merge_columns(), Ok(0));
+        assert_eq!(brushes(&d).len(), 2);
+    }
+
+    #[test]
+    fn merging_keeping_shape_lets_the_looks_go() {
+        let mut d = Document::new(Default::default());
+        for (x, material) in [(0.0, "rock"), (64.0, "grass")] {
+            let bounds = Bbox3d::new(Vec3d::new(x, 0.0, 0.0), Vec3d::new(x + 64.0, 64.0, 32.0));
+            d.add_brushes(vec![map_model::shapes::create_cuboid(
+                &d.world_bounds(),
+                &bounds,
+                material,
+            )
+            .unwrap()]);
+        }
+        d.select_all();
+        assert_eq!(d.merge_keeping_shape(), Ok(1));
+        assert_eq!(brushes(&d).len(), 1);
+        assert!((total_volume(&d) - 2.0 * 64.0 * 64.0 * 32.0).abs() < 1e-6);
+    }
+
+    /// Four boxes in an L, each with its own material: they pair up into two convex
+    /// brushes, and the L is never filled in.
+    #[test]
+    fn four_brushes_in_an_l_become_two() {
+        let mut d = Document::new(Default::default());
+        let boxes = [
+            ([0.0, 0.0], [32.0, 32.0], "a"),
+            ([32.0, 0.0], [64.0, 32.0], "b"),
+            ([0.0, 32.0], [32.0, 64.0], "c"),
+            ([0.0, 64.0], [32.0, 96.0], "d"),
+        ];
+        for (min, max, material) in boxes {
+            let bounds = Bbox3d::new(
+                Vec3d::new(min[0], min[1], 0.0),
+                Vec3d::new(max[0], max[1], 32.0),
+            );
+            d.add_brushes(vec![map_model::shapes::create_cuboid(
+                &d.world_bounds(),
+                &bounds,
+                material,
+            )
+            .unwrap()]);
+        }
+        let volume = total_volume(&d);
+        let probes: Vec<Vec3d> = (0..16)
+            .flat_map(|x| {
+                (0..16).map(move |y| Vec3d::new(x as f64 * 6.0 + 1.0, y as f64 * 6.0 + 1.0, 16.0))
+            })
+            .collect();
+        let inside: Vec<bool> = probes.iter().map(|p| solid_at(&d, *p)).collect();
+        d.select_all();
+        assert_eq!(d.merge_keeping_shape(), Ok(2));
+        assert_eq!(brushes(&d).len(), 2);
+        assert!((total_volume(&d) - volume).abs() < 1e-6);
+        let after: Vec<bool> = probes.iter().map(|p| solid_at(&d, *p)).collect();
+        assert_eq!(inside, after, "the outside did not move");
+    }
+
+    /// A brush of a door and one of the world side by side stay apart, so the world
+    /// does not become part of the door.
+    #[test]
+    fn brushes_with_different_parents_stay_apart() {
+        let mut d = Document::new(Default::default());
+        for x in [0.0, 64.0] {
+            let bounds = Bbox3d::new(Vec3d::new(x, 0.0, 0.0), Vec3d::new(x + 64.0, 64.0, 32.0));
+            d.add_brushes(vec![map_model::shapes::create_cuboid(
+                &d.world_bounds(),
+                &bounds,
+                map_model::shapes::DEFAULT_MATERIAL,
+            )
+            .unwrap()]);
+        }
+        let first = node::brushes_with_ids(d.tree_world())[0].0;
+        d.select_only(first);
+        assert!(d.create_brush_entity("func_door").is_some());
+        d.select_all();
+        assert_eq!(d.merge_keeping_shape(), Ok(0));
         assert_eq!(brushes(&d).len(), 2);
     }
 
