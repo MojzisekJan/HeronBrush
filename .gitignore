@@ -37,3 +37,6 @@ __pycache__/
 
 # quemap's output for the Quetoo demo.
 /demos/quetoo_heron/build/
+
+# Compiler output for the Daikatana demo.
+/demos/daikatana_heron/build/

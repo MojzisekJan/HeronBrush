@@ -19,9 +19,10 @@ Games that are free to download come first, one at a time.
 | Quake2 | the freely distributed demo, Yamagi Quake II, ericw-tools | [done](#quake-2) |
 | DDayNormandy | D-Day: Normandy, which needs no Quake 2 data, ericw-tools | [done](#d-day-normandy) |
 | Hexen2 | the freely distributed demo | [done](#hexen-ii) |
+| Daikatana | the freely distributed demo, Ion Storm's tools from the 1.3 project | [compiled, not played](#daikatana) |
 
-Not tried, because the game has to be bought: Halflife, Kingpin, SoF, Heretic2,
-Daikatana and Wrath. `Generic` and `heron_brush` are Heron's own profiles.
+Not tried, because the game has to be bought: Halflife, Kingpin, SoF, Heretic2 and
+Wrath. `Generic` and `heron_brush` are Heron's own profiles.
 
 ## Quake
 
@@ -1135,3 +1136,152 @@ alias loop". The log goes to `logs/console.log` in the homedir.
 - No briefing picture was made for the map.
 - Heron does not read 24-bit `.pcx` textures. Quake 2 engines draw `.wal`, so this
   matters only for the two leftover files in `ed/`.
+
+## Daikatana
+
+Tried on 2026-10-23 and 24 with the Daikatana demo that Eidos released in April 2000,
+Ion Storm's compilers from the Daikatana 1.3 project's Linux tools, and the 1.3 Linux
+build as the engine. The level is [demos/daikatana_heron](../demos/daikatana_heron/README.md):
+a fortified hall and a courtyard open to the sky, a door that a button opens, a trigger
+that switches the courtyard's lamps on, froginators and protopods, steps to a platform
+and the exit to the demo's first map. It compiles sealed and lights. The 1.3 engine
+refuses the demo's data, so the level was not played in Daikatana; it was looked at in
+Yamagi Quake II Remaster, which reads Daikatana's paks and maps, and there the button
+opens the door and the trigger fires.
+
+### What was installed
+
+Everything is under `~/.local/opt/daikatana/`, without root. The downloads stay in
+`downloads/`.
+
+| What | From | Unpacked to |
+| --- | --- | --- |
+| The demo, `dkdemo.exe` (107 MB, sha256 `2a4d3791...c3d`), opened with `7z` and its InstallShield cabinets with `unshield`: `data/pak1.pak` (textures, sounds, skins), `pak2.pak` (the maps) and `pak3.pak` (the models) | archive.org/details/DaikatanaDemo | `demo-data/` |
+| Daikatana 1.3, Linux x64 beta of 2025-12-21, `Daikatana-Linux-2025-12-21-x64.tar.bz2` | github.com/maraakate/daikatana releases | `daikatana/`, copied with the demo's data into `game/` |
+| The 1.3 project's Linux tools, `dktools_11f_test2_linux.tar.bz2` (2018: `qbsp3`, `qvis3`, `qrad3`, `arghrad`, `dkpak`, all 32-bit) | github.com/maraakate/daikatana, `assets/` | `dktools-linux/` |
+| The Windows tools, `dktools_11i.7z` (2026), for their readme, `dk_ents.def` and Ion Storm's `.map` sources: `example.map` and `e3m1a.map` to `e3m1c.map` | same | `dktools-win/` |
+| `libc6`, `libstdc++6`, `libgcc-s1` for i386 from Ubuntu 24.04, fetched with `apt-get download` | archive.ubuntu.com | unpacked with `dpkg-deb -x` into `i386-root/` |
+| Yamagi Quake II Remaster, commit bce5c05 (2026-10-20), built from source against the SDL2 headers from the Quake 2 test | github.com/yquake2/yquake2remaster | `yq2remaster/src`, the demo's files linked into `yq2remaster/data/daikatana` |
+
+`run-dktool` starts a tool through `i386-root`'s `ld-linux.so.2 --library-path`, the
+way the Paintball 2 test runs its client. `run-daikatana` starts the 1.3 build on
+`game/`; with `DK_HOME` set it uses that folder as the home. `run-yq2remaster` starts
+the remaster on `yq2remaster/data` with `+set game daikatana`; with `YQ2_HOME` set
+that folder is the home.
+
+The demo's paks have Daikatana's 72-byte directory entries, and most files in them are
+compressed. `pak1.pak` holds 766 `.wal` textures in five sets, `e1m1`, `e2m2`,
+`e3m2`, `e1dm1` and `e3dm2`, each `.wal` carrying its own palette. `pak2.pak` holds
+the maps `e1m1a` to `e1m1c`, `e2m2a` to `e2m2c`, `e3m2a`, `e1dm1` and `e3dm2`.
+
+### Why the game does not run
+
+The 1.3 engine starts, mounts the four paks (its own `pak4.pak` and the demo's three),
+then stops in `Qcommon_Init` with "Verifying official game PAK files... Failed!
+Please update your Daikatana PAKs to v1.2!". It checks `pak1.pak`, `pak2.pak` and
+`pak3.pak` against the retail 1.2 files by length and by the MD5 of their first,
+middle and last 2 MB, and the demo's three paks are different files. There is no
+setting to skip the check. Playing a map in Daikatana needs those three retail
+files, from the GOG or Steam release or a patched CD install; they were not used here.
+The demo's own `daikatana.exe` is a Windows program, and there is no Wine here.
+
+### Setting Heron up
+
+The preferences name the Daikatana profile and the game path
+`~/.local/opt/daikatana/game`, whose `data` folder the profile's search path names.
+Heron then mounts `data` and its four paks, reads the textures out of `pak1.pak` (and
+1.3's `pak4.pak`, 1427 materials in all) with each `.wal`'s own palette, and loads
+`Episode 1.fgd`, which includes `Common.fgd`: 174 classes, among them the 24 monsters
+of the first episode. The 3D view draws the level with its textures.
+
+### How a Daikatana map is made
+
+The DK tools' readme, `dk_ents.def` and the demo's own entities say:
+
+- A face line is Quake 2's, and may end in three more numbers after the value: the
+  colour of the light the face gives off, as `qrad3` and `arghrad` read it
+  (`e1m1/sky2a 0 0 0 1 1 0 5 600 255 255 204` in `example.map`). The demo's `.wal`
+  files give no flags, so a sky or a light panel needs them on the face.
+- Worldspawn needs `palette`, the texture set whose colours the engine uses, and
+  `episode`, which picks the weapons. `sky` and `cloudname` name the sky.
+- `func_door` with a `targetname` gets no touch field and waits to be fired; `angle -1`
+  opens it upwards and `wait -1` keeps it open. `func_button` spawnflag 1, PUSH_TOUCH,
+  lets the player push it by walking into it.
+- `trigger_changelevel` takes `map` and, in `target`, the `targetname` of the
+  `info_player_start` to use there (`primary` in `e1m1a`).
+- The tools take `-gamedir` with a trailing `/`: they glue `pak1.pak` straight onto it,
+  and without the slash every texture is "Couldn't load".
+
+### Rerunning it
+
+    cd demos/daikatana_heron
+    ./build.sh                  # qbsp3, qvis3 -level 3, arghrad; installs the bsp
+    YQ2_HOME=/some/scratch ~/.local/opt/daikatana/run-yq2remaster +set vid_fullscreen 0 \
+        +set vid_renderer gl1 +set s_initsound 0 +set in_grab 0 +set cheats 1 \
+        +map heron_marsh +exec playtest.cfg
+
+`build.sh --remake` builds the map again in Heron first, through `make_map.py` and the
+MCP server, with the Daikatana preferences in `XDG_CONFIG_HOME`. It saves
+`heron_marsh.map` in Heron's Valve dialect and exports `heron_marsh_dk.map` in Quake 2's
+face lines, which is what `qbsp3` is given. The viewer ran in a nested Xephyr display
+with Mesa's llvmpipe and the `gl1` renderer. It runs Quake 2's game code on the map,
+which has `func_door`, `func_button`, `trigger_once` and switchable lights, some
+Daikatana monsters, and none of Daikatana's items or `trigger_changelevel`.
+
+### What worked
+
+- `qbsp3` found every texture in `pak1.pak` and reported no leak. `qrad3 -v` found the
+  8 point lights and 118 emitting patches on the sky and the two panels; `arghrad`
+  lights the bsp that `build.sh` installs.
+- In the viewer the hall and the courtyard have the textures Heron shows, the sky lid
+  is Daikatana's `e1m1` sky, and the panels light the hall. Walking into the button
+  opens the door; crossing the trigger prints "The lamps come on."; a froginator is in
+  the courtyard, and the protopods are there but drawn black, without their skins.
+- Ion Storm's `example.map`, opened in Heron through MCP and exported as Quake 2,
+  compiles with `qbsp3` to a bsp identical to the original's in every lump, the face
+  colours included. Of `e3m1a.map` (2100 brushes, made in IonRadiant) Heron drops one
+  brush, a 19-sided rock; with that brush taken out of the original too, the two bsps
+  are again identical in every lump.
+
+### What was fixed in Heron
+
+- **Heron could not read a Daikatana pak.** It knew only Quake's 64-byte directory
+  entries and refused a directory of 72-byte ones as cut short, so the profile's
+  `dkpak` package format found no textures at all. Heron now tells the two layouts
+  apart from the directory and expands Daikatana's compressed files, in memory and
+  from disk.
+- **Heron could not read a Daikatana `.wal`.** Daikatana's starts with a version byte,
+  keeps its size and mips at other offsets and carries its own palette; Heron read the
+  size from Quake 2's offsets, found zero and dropped every texture, and would have
+  wanted a `colormap.pcx` the game does not have. It now reads both layouts, draws a
+  Daikatana texture with its own palette, reads its flags and value from Daikatana's
+  places, and accepts the power-of-two mips Daikatana gives a 96 by 64 texture.
+- **A face's light colour stopped the map from opening.** Three numbers after the
+  value were not expected, and `example.map` failed to parse. Surface attributes now
+  keep the colour, the writer puts it back, and the exporters' parser steps over it.
+- **MCP could not give a face flags.** New tool `set_face_flags`: content flags,
+  surface flags, value and Daikatana's colour on faces picked as `set_face_material`
+  picks them, or `reset` to drop them.
+
+### Mapping mistakes, not Heron's
+
+- The first build's hall was dim: point lights of 200 and panels of 800 in a room 192
+  high. 400 and 3000 read well.
+- The viewer's frames are short, so a timed walk in `playtest.cfg` overshot the
+  courtyard; the config now walks through the trigger and then teleports.
+
+### What remains
+
+- The level has not been played in Daikatana itself; that needs the retail 1.2 paks.
+  `playtest.cfg` is written for the viewer, not the game.
+- Heron drops one brush of `e3m1a.map` that `qbsp3` builds ("a face of the built
+  geometry ... does not match any of the brush's own faces"). That is Heron's brush
+  building, not the Daikatana dialect.
+- Heron does not read `.dkm` models, so monsters and items are boxes in the editor.
+- The profile lists four episode FGDs and Heron loads the first; there is no choice of
+  episode yet.
+- Heron's map check warns that `trigger_changelevel`'s `target` names nothing, but in
+  Daikatana it names the start spot in the next map.
+- The exported map's header says `// Format: Quake2`, not Daikatana. `qbsp3` ignores
+  it; whether TrenchBroom then reads the colours was not checked.
+- The face panel shows the flags and value but has no field for the colour.
