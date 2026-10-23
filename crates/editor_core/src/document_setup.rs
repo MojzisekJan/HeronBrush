@@ -136,6 +136,7 @@ pub fn apply_game(document: &mut Document, game: Option<&games::Game>, opened: b
         game.surface_flag_names.clone(),
         game.content_flag_names.clone(),
     );
+    document.set_default_uv_scale(game.default_uv_scale);
     // A map that was opened keeps whatever it was read as, since that is what it
     // is. A new one is the dialect that holds everything -- it used to take the
     // first format the game listed, which for a Quake-lineage game is the Standard

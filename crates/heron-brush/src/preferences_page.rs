@@ -613,6 +613,7 @@ pub fn apply_game(document: &mut Document, game: Option<&Game>) {
             game.surface_flag_names.clone(),
             game.content_flag_names.clone(),
         );
+        document.set_default_uv_scale(game.default_uv_scale);
     }
     document.load_entity_models();
 }
@@ -1658,6 +1659,7 @@ mod tests {
             face_tags: vec![tag("clip"), tag("skip")],
             surface_flag_names: vec!["light".into(), "slick".into()],
             content_flag_names: vec!["solid".into()],
+            default_uv_scale: None,
         };
         let mut document = Document::new(Default::default());
         apply_game(&mut document, Some(&game));

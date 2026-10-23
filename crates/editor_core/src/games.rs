@@ -56,6 +56,8 @@ pub struct Game {
     pub surface_flag_names: Vec<String>,
     /// `faceattribs.contentflags` names, in bit order.
     pub content_flag_names: Vec<String>,
+    /// `faceattribs.defaults.scale`, the UV scale new faces get.
+    pub default_uv_scale: Option<(f32, f32)>,
 }
 
 /// A name a configuration gives to the brushes or faces that match a rule.
@@ -318,6 +320,7 @@ pub fn read(config: &Path) -> Result<Game, scene_export::gameconfig::GameConfigE
         face_tags: read_tags(&read.face_tags),
         surface_flag_names: read.surface_flags.clone(),
         content_flag_names: read.content_flags.clone(),
+        default_uv_scale: read.default_uv_scale.map(|(u, v)| (u as f32, v as f32)),
         directory,
     })
 }

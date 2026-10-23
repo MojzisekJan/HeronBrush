@@ -270,6 +270,9 @@ pub struct Document {
     /// bit order. What the face attribute editor labels its ticks with.
     surface_flag_names: Vec<String>,
     content_flag_names: Vec<String>,
+    /// `faceattribs.defaults.scale`: the UV scale the shape tools give new faces, for a
+    /// game whose textures are drawn finer than one texel to a unit.
+    default_uv_scale: Option<Vec2f>,
     /// Where a class's model is looked for, and what has been loaded from there.
     ///
     /// `EntityModelManager`. See [`crate::entity_models`].
@@ -1346,6 +1349,7 @@ impl Document {
             hidden_tags: HashSet::new(),
             surface_flag_names: Vec::new(),
             content_flag_names: Vec::new(),
+            default_uv_scale: None,
             model_store: crate::entity_models::ModelStore::default(),
             game_asset_key: None,
             game_materials: Vec::new(),

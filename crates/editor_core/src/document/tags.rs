@@ -1,6 +1,8 @@
 //! Document operations for tags.
 
 use super::{flags_match, node, Document, HashSet, NodeId, TagFlagField, TagOutcome};
+use geometry_math::vec::Vec2f;
+use map_model::brush::Brush;
 
 impl Document {
     /// Takes the tags the game configuration lists.
@@ -26,6 +28,30 @@ impl Document {
     pub fn set_face_flag_names(&mut self, surface: Vec<String>, content: Vec<String>) {
         self.surface_flag_names = surface;
         self.content_flag_names = content;
+    }
+
+    /// Takes the game configuration's default UV scale for new faces.
+    pub fn set_default_uv_scale(&mut self, scale: Option<(f32, f32)>) {
+        self.default_uv_scale = scale.map(|(u, v)| Vec2f::new(u, v));
+    }
+
+    /// Gives every face of freshly made brushes the game's default UV scale, as
+    /// TrenchBroom's brush builder does. Without a default the brushes are unchanged.
+    pub fn with_default_uv_scale(&self, brushes: Vec<Brush>) -> Vec<Brush> {
+        let Some(scale) = self.default_uv_scale else {
+            return brushes;
+        };
+        let world = self.world_bounds();
+        brushes
+            .into_iter()
+            .map(|brush| {
+                let mut faces = brush.faces().to_vec();
+                for face in &mut faces {
+                    face.uv_attributes.scale = scale;
+                }
+                Brush::from_faces(&world, faces).unwrap_or(brush)
+            })
+            .collect()
     }
 
     /// The surface-flag names the face attribute editor labels its ticks with.
