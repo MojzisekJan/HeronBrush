@@ -1650,6 +1650,7 @@ mod tests {
             definitions: Vec::new(),
             materials_root: None,
             materials_palette: None,
+            materials_attribute: None,
             clip_material: None,
             skip_material: None,
             brush_tags: vec![tag("trigger")],

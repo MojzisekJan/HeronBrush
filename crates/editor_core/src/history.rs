@@ -117,6 +117,13 @@ pub enum Edit {
         /// What it became.
         after: Layer,
     },
+    /// Worldspawn's properties changed: the map's own keys, such as `wad` and `message`.
+    WorldChanged {
+        /// What they were.
+        before: Vec<(String, String)>,
+        /// What they became.
+        after: Vec<(String, String)>,
+    },
     /// Several edits that are one thing to the user.
     ///
     /// A CSG operation takes brushes out and puts others in, and someone who asked for
@@ -139,6 +146,11 @@ impl Edit {
                 weigh(&layer.children) + std::mem::size_of::<Layer>()
             }
             Edit::LayerChanged { .. } => 2 * std::mem::size_of::<Layer>(),
+            Edit::WorldChanged { before, after } => before
+                .iter()
+                .chain(after)
+                .map(|(key, value)| key.len() + value.len())
+                .sum(),
             Edit::Batch(parts) => parts.iter().map(Edit::weight).sum(),
         }
     }
@@ -166,6 +178,10 @@ impl Edit {
                 after: before,
             },
             Edit::Removed { layer, nodes } => Edit::Added { layer, nodes },
+            Edit::WorldChanged { before, after } => Edit::WorldChanged {
+                before: after,
+                after: before,
+            },
             Edit::Reordered {
                 layer,
                 before,
@@ -191,6 +207,8 @@ impl Edit {
             Edit::LayerInserted { layer, .. } => fill("add layer {}", &[&layer.name]),
             Edit::LayerRemoved { layer, .. } => fill("remove layer {}", &[&layer.name]),
             Edit::LayerChanged { after, .. } => fill("rename layer to {}", &[&after.name]),
+            // Worldspawn is one object to the user, like any entity.
+            Edit::WorldChanged { .. } => fill("change {}", &[&counted(1, "object")]),
             // The last part is what the operation left behind, which is the half worth
             // naming: "add six objects" says more than "a batch of two".
             Edit::Batch(parts) => parts

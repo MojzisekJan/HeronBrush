@@ -336,6 +336,13 @@ pub enum WireEdit {
         /// What it became.
         after: WireLayer,
     },
+    /// Worldspawn's properties changed.
+    WorldChanged {
+        /// What they were.
+        before: Vec<(String, String)>,
+        /// What they became.
+        after: Vec<(String, String)>,
+    },
     /// Several edits that are one step.
     Batch(Vec<WireEdit>),
 }
@@ -382,6 +389,10 @@ impl WireEdit {
                 before: wire_layer(before),
                 after: wire_layer(after),
             },
+            Edit::WorldChanged { before, after } => WireEdit::WorldChanged {
+                before: before.clone(),
+                after: after.clone(),
+            },
             Edit::Batch(parts) => WireEdit::Batch(parts.iter().map(WireEdit::from_edit).collect()),
         }
     }
@@ -427,6 +438,7 @@ impl WireEdit {
                 before: unwire_layer(before, bounds)?,
                 after: unwire_layer(after, bounds)?,
             },
+            WireEdit::WorldChanged { before, after } => Edit::WorldChanged { before, after },
             WireEdit::Batch(parts) => Edit::Batch(
                 parts
                     .into_iter()

@@ -276,13 +276,22 @@ impl MaterialPage {
             }
             // A `.wad` is how the Quake lineage ships its textures, and a map names the ones
             // it uses in worldspawn's `wad` property; those are loaded when the map opens.
-            // This is for one that is not named there.
+            // A game whose configuration says so (`materials.attribute`) gets the package
+            // named there too, since its compiler reads no other textures.
             let picked = FileDialog::new()
                 .set_title(tr("Texture package"))
                 .add_filter(tr("Texture packages"), &["wad", "WAD"])
                 .pick_file(clicked == Some(1));
             if let Some(path) = picked {
-                match document.borrow_mut().load_wad(&path) {
+                let names_it = editor_core::games::current()
+                    .and_then(|game| game.materials_attribute)
+                    .is_some_and(|key| key == "wad");
+                let loaded = if names_it {
+                    document.borrow_mut().add_wad_to_map(&path)
+                } else {
+                    document.borrow_mut().load_wad(&path)
+                };
+                match loaded {
                     Ok(warnings) => {
                         for warning in warnings {
                             editor_core::complain!("wad: {warning}");

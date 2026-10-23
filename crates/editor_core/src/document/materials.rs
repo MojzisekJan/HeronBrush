@@ -156,11 +156,76 @@ impl Document {
         Ok(warnings)
     }
 
+    /// [`Self::load_wad`], and names the package in worldspawn's `wad` property, which is
+    /// where the compiler looks for the textures the map uses (`qbsp` reads no others).
+    ///
+    /// A map that has been saved names it relative to its own folder, which is how both
+    /// the compilers and [`Self::wads_named_by_the_map`] resolve it; an unsaved one by its
+    /// absolute path. A package the property already names is not named twice. The
+    /// property change is one undo step.
+    pub fn add_wad_to_map(&mut self, path: &Path) -> Result<Vec<String>, String> {
+        let warnings = self.load_wad(path)?;
+        let written = match &self.path {
+            Some(map) => relative_material_path(path, map),
+            None => absolute_material_path(path)
+                .to_string_lossy()
+                .replace('\\', "/"),
+        };
+        let named = self
+            .tree
+            .world
+            .properties
+            .iter()
+            .find(|(key, _)| key == "wad")
+            .map(|(_, value)| value.clone())
+            .unwrap_or_default();
+        let mut packages: Vec<&str> = named
+            .split(';')
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+            .collect();
+        let already = self
+            .wads_named_by_the_map()
+            .iter()
+            .any(|found| absolute_material_path(found) == absolute_material_path(path));
+        if !already {
+            packages.push(&written);
+            let value = packages.join(";");
+            self.set_entity_property_on(&[Self::WORLDSPAWN], "wad", &value);
+        }
+        Ok(warnings)
+    }
+
+    /// Loads each package worldspawn's `wad` names that is not loaded yet: after the map
+    /// opens, and after the property is edited. Returns each package tried, with what it
+    /// skipped or why it failed.
+    pub fn load_named_wads(&mut self) -> Vec<(PathBuf, Result<Vec<String>, String>)> {
+        let mut tried = Vec::new();
+        for wad in self.wads_named_by_the_map() {
+            // The same file may be spelled differently by the map's own note on its
+            // material sources, which is read first.
+            let same = |path: &Path| {
+                path == wad || absolute_material_path(path) == absolute_material_path(&wad)
+            };
+            let loaded = self
+                .material_sources
+                .iter()
+                .any(|source| matches!(source, MaterialSource::Package(path) if same(path)));
+            if !loaded {
+                let result = self.load_wad(&wad);
+                tried.push((wad, result));
+            }
+        }
+        tried
+    }
+
     /// Reads one `.wad` into the collection, without touching the list of sources.
     ///
     /// What both the loader above and the rebuild below do; the difference between them
     /// is the bookkeeping, not the reading.
     fn read_wad(&mut self, path: &Path) -> Result<Vec<String>, String> {
+        // A WAD2's palette may be in the game's packages, which are mounted lazily.
+        self.sync_game_assets();
         let wad = scene_export::wad::Wad::open(path).map_err(|why| why.to_string())?;
 
         let palette = [
@@ -237,7 +302,13 @@ impl Document {
                     }
                 }
             }
+            // The compilers resolve a relative name against the map's own folder, so
+            // that is the first place to look; the working directory is a last resort.
+            let map_directory = self.path.as_ref().and_then(|map| map.parent());
             let candidates = [
+                map_directory
+                    .filter(|_| !written.is_absolute())
+                    .map(|directory| directory.join(&written)),
                 Some(written.clone()),
                 (!game_path.is_empty()).then(|| PathBuf::from(&game_path).join(&written)),
                 file_name

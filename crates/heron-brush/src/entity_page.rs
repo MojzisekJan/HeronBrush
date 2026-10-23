@@ -44,12 +44,17 @@ impl EntityPage {
     }
 
     fn properties(&mut self, ui: &mut egui::Ui, document: &Rc<RefCell<Document>>) {
-        let entities: Vec<(NodeId, map_model::node::EntityNode)> = document
+        let mut entities: Vec<(NodeId, map_model::node::EntityNode)> = document
             .borrow()
             .selected_entities()
             .into_iter()
             .map(|(id, entity)| (id, entity.clone()))
             .collect();
+        // With nothing selected the panel edits worldspawn, which holds the map's own
+        // keys: `wad`, `message`, `worldtype`. It is how TrenchBroom reaches them too.
+        if document.borrow().selection_count() == 0 {
+            entities.push((Document::WORLDSPAWN, document.borrow().worldspawn()));
+        }
         // Entities of the same class are edited together. Mixed-class selections have no
         // shared property panel.
         let all_one_class = entities.first().is_some_and(|(_, first)| {
@@ -134,12 +139,16 @@ impl EntityPage {
             // Adding a property the class does not define is how a map uses a key the FGD
             // has not caught up with, so it has to be possible.
             if theme::button(ui, tr("Add property"), half, enabled).clicked() {
-                let ids: Vec<NodeId> = document
-                    .borrow()
+                let document_ref = document.borrow();
+                let mut ids: Vec<NodeId> = document_ref
                     .selected_entities()
                     .iter()
                     .map(|(id, _)| *id)
                     .collect();
+                if document_ref.selection_count() == 0 {
+                    ids.push(Document::WORLDSPAWN);
+                }
+                drop(document_ref);
                 if !ids.is_empty() {
                     // A blank key is a placeholder the user then types over.
                     document
@@ -412,9 +421,14 @@ impl EntityPage {
             .map(str::to_string)
             .collect();
         let write = |packages: Vec<String>| {
-            document
-                .borrow_mut()
-                .set_entity_property(id, "wad", &packages.join(";"));
+            let mut document = document.borrow_mut();
+            document.set_entity_property_on(&[id], "wad", &packages.join(";"));
+            // A package just named is drawn with straight away, as it is on opening.
+            for (wad, loaded) in document.load_named_wads() {
+                if let Err(error) = loaded {
+                    editor_core::complain!("{}: {error}", wad.display());
+                }
+            }
         };
         if !packages.is_empty() {
             widgets::list(ui, 0.0, |ui| {

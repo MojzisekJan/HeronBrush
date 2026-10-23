@@ -37,6 +37,9 @@ pub struct Game {
     pub materials_root: Option<String>,
     /// Game-relative indexed texture palette.
     pub materials_palette: Option<String>,
+    /// The worldspawn key naming the map's texture packages (`wad`), when the game keeps
+    /// its materials in packages the map has to name for the compiler.
+    pub materials_attribute: Option<String>,
     /// The material a clip brush wears, when the config names one.
     pub clip_material: Option<String>,
     /// The material a skipped face wears, when the config names one.
@@ -282,6 +285,7 @@ pub fn read(config: &Path) -> Result<Game, scene_export::gameconfig::GameConfigE
             .collect(),
         materials_root: read.materials_root.clone(),
         materials_palette: read.materials_palette.clone(),
+        materials_attribute: read.materials_attribute.clone(),
         clip_material: read.tool_texture("clip"),
         skip_material: read.tool_texture("skip"),
         brush_tags: read_tags(&read.brush_tags),

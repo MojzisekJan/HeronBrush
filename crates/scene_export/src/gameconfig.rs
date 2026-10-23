@@ -44,6 +44,9 @@ pub struct GameConfig {
     pub materials_extensions: Vec<String>,
     /// External palette resource used by indexed textures.
     pub materials_palette: Option<String>,
+    /// `materials.attribute`: the worldspawn key that lists the map's texture packages,
+    /// `wad` for the Quake lineage.
+    pub materials_attribute: Option<String>,
     /// FGD or DEF files listed under `entities.definitions`.
     pub definitions: Vec<String>,
     /// `entities.scale`. The format allows an expression; a plain number is
@@ -110,6 +113,10 @@ pub fn parse(text: &str, path: &str) -> Result<GameConfig, GameConfigError> {
     let materials = root.get("materials").or_else(|| root.get("textures"));
     if let Some(m) = materials {
         config.materials_palette = m.get("palette").and_then(Value::as_str).map(str::to_string);
+        config.materials_attribute = m
+            .get("attribute")
+            .and_then(Value::as_str)
+            .map(str::to_string);
         config.materials_root = m
             .get("root")
             .and_then(Value::as_str)
@@ -380,6 +387,7 @@ mod tests {
         assert_eq!(cfg.materials_root.as_deref(), Some("textures"));
         assert_eq!(cfg.materials_extensions, vec!["png", "jpg"]);
         assert_eq!(cfg.materials_palette.as_deref(), Some("pics/colormap.pcx"));
+        assert_eq!(cfg.materials_attribute.as_deref(), Some("wad"));
         assert_eq!(cfg.definitions, vec!["heron_brush.fgd"]);
         assert_eq!(cfg.icon.as_deref(), Some("Icon.png"));
         assert_eq!(cfg.search_path.as_deref(), Some("."));
