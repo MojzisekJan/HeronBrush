@@ -159,6 +159,7 @@ impl Inspector {
             (Tab::Assets, tr("Assets")),
         ];
         let mut x = rect.left() + 6.0;
+        let mut responses = Vec::with_capacity(all.len());
         for (index, (tab, label)) in all.into_iter().enumerate() {
             let width = crate::chrome::text_width(ui, label, theme::body()) + 22.0;
             let slot =
@@ -168,6 +169,7 @@ impl Inspector {
             if response.clicked() {
                 self.tab = tab;
             }
+            responses.push((tab, response.clone()));
             let painter = ui.painter();
             let current = self.tab == tab;
             if current {
@@ -219,6 +221,13 @@ impl Inspector {
                 font,
                 colour,
             );
+            // Over the tab's own fill, or the current tab would hide its ring.
+            crate::widgets::row_focus(ui, &response);
+        }
+        // Left and Right go through the tabs while one has the keyboard.
+        let rows: Vec<egui::Response> = responses.iter().map(|(_, r)| r.clone()).collect();
+        if let Some(next) = crate::widgets::tab_keys(ui, &rows) {
+            self.tab = responses[next].0;
         }
     }
 }

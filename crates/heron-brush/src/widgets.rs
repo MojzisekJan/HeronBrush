@@ -95,12 +95,27 @@ pub fn row_focus(ui: &egui::Ui, response: &egui::Response) {
 /// caller to pick. egui's own arrow navigation is held back, or it would move the keyboard
 /// a second time.
 pub fn list_keys(ui: &egui::Ui, rows: &[egui::Response]) -> Option<usize> {
+    keys_along(ui, rows, egui::Key::ArrowUp, egui::Key::ArrowDown)
+}
+
+/// [`list_keys`] for a row of tabs: Left and Right move along it.
+pub fn tab_keys(ui: &egui::Ui, tabs: &[egui::Response]) -> Option<usize> {
+    keys_along(ui, tabs, egui::Key::ArrowLeft, egui::Key::ArrowRight)
+}
+
+/// [`list_keys`] with `back` and `on` for the keys that move to the previous and next.
+fn keys_along(
+    ui: &egui::Ui,
+    rows: &[egui::Response],
+    back: egui::Key,
+    on: egui::Key,
+) -> Option<usize> {
     let focused = rows.iter().position(egui::Response::has_focus)?;
     let none = egui::Modifiers::NONE;
     let (up, down, home, end) = ui.input_mut(|i| {
         (
-            i.consume_key(none, egui::Key::ArrowUp),
-            i.consume_key(none, egui::Key::ArrowDown),
+            i.consume_key(none, back),
+            i.consume_key(none, on),
             i.consume_key(none, egui::Key::Home),
             i.consume_key(none, egui::Key::End),
         )

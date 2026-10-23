@@ -181,8 +181,16 @@ impl MapPage {
         let note = layers.len().to_string();
         widgets::section_noted(ui, "map-layers", tr("Layers"), Some(&note), true, |ui| {
             widgets::list(ui, 2.0 * widgets::LIST_ROW + 4.0, |ui| {
-                for (index, layer) in layers.iter().enumerate() {
-                    self.layer_row(ui, document, index, layer, layer.index == current);
+                let rows: Vec<egui::Response> = layers
+                    .iter()
+                    .enumerate()
+                    .map(|(index, layer)| {
+                        self.layer_row(ui, document, index, layer, layer.index == current)
+                    })
+                    .collect();
+                // Up and Down make the layer before or after the current one.
+                if let Some(next) = widgets::list_keys(ui, &rows) {
+                    document.borrow_mut().set_current_layer(layers[next].index);
                 }
             });
             ui.add_space(4.0);
@@ -256,8 +264,9 @@ impl MapPage {
         index: usize,
         layer: &editor_core::document::LayerSummary,
         is_current: bool,
-    ) {
+    ) -> egui::Response {
         let (row, response) = widgets::list_row(ui, widgets::LIST_ROW, is_current, Sense::click());
+        widgets::row_focus(ui, &response);
         let flags = 3.0 * 24.0 + 4.0;
         // The current layer is where a new brush lands, which is worth seeing without
         // having to check the selection.
@@ -336,6 +345,7 @@ impl MapPage {
         if response.clicked() && !switched {
             document.borrow_mut().set_current_layer(layer.index);
         }
+        response
     }
 
     fn groups(&mut self, ui: &mut egui::Ui, document: &Rc<RefCell<Document>>) {
