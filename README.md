@@ -56,7 +56,7 @@ for tablets. The interface and the offline manual are translated into 30 languag
 ## Export
 
 - Engines: Godot, Unity, Unreal Engine, Flax Engine, Stride, Defold, Cocos Creator,
-  GDevelop, Bevy, three.js and raylib. Formats: glTF, GLB and OBJ.
+  GDevelop, Bevy, three.js, Babylon.js and raylib. Formats: glTF, GLB and OBJ.
 - Exports carry collision, entities and their properties, animation, materials, water
   volumes, the sky and lightmap UVs; what each engine receives is listed in the
   [export contract](docs/engine-export-contract.md).
@@ -84,7 +84,8 @@ The Help menu opens the manual, whose sources are in `docs/manual/` (for example
 - [Map format](docs/map-format.md), [plugins](docs/plugins.md),
   [common entities](docs/common-entities.md)
 - [Engine export contract](docs/engine-export-contract.md) and the
-  [engine checks](examples/engine-checks/README.md)
+  [engine checks](examples/engine-checks/README.md); the
+  [feature matrix](docs/feature-matrix.md); [Babylon.js export](docs/babylon-export.md)
 - Live links: [Godot](docs/godot-live-link.md), [Unity](docs/unity-live-link.md),
   [Defold](docs/defold-live-link.md), [Flax](docs/flax-live-link.md)
 - [Keyframe animation](docs/keyframe-animation.md),

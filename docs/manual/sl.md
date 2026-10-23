@@ -319,7 +319,7 @@ Izvoz za raylib doda `<map>_animation.h` s predvajalnikom v C in `<map>_preview.
 Med Primeri na pozdravnem zaslonu odprite `motion_lab`. Vsebuje ploščad s potjo v obliki črke L, dvigalo, vrtečo se ploščad in vrata na tečajih z gumbi. V Godotu odprite `godot/project.godot`, ki je poleg njega, in pritisnite `F5`. WASD in miška premikata igralca, preslednica skoči, 1 do 4 obiščejo postaje, R pa znova zažene trenutno postajo. Stopite na obarvano ploščico, da aktivirate njen cilj. Priložena datoteka README razloži ponovni izvoz.
 
 # Izvoz v pogon
-Datoteka → Izvoz odpre okno Izvoz. Pogoni so navedeni na levi z logotipi: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb in na koncu `.map`. Stran na desni pove, kaj bo cilj prejel. **Zapiši** ga zapiše, **Preveri** zgradi stopnjo, ne da bi jo zapisal, in navede težave, **Zapri** pa zapre okno.
+Datoteka → Izvoz odpre okno Izvoz. Pogoni so navedeni na levi z logotipi: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb in na koncu `.map`. Stran na desni pove, kaj bo cilj prejel. **Zapiši** ga zapiše, **Preveri** zgradi stopnjo, ne da bi jo zapisal, in navede težave, **Zapri** pa zapre okno.
 
 Izvoz je ločen od shranjevanja: `.map` ostane vaš urejljivi izvor. Vsak kontrolnik shrani nastavitve svojega pogona takoj, ko se spremeni, zato vsak pogon ohrani svoje odgovore in okno se odpre tako, kot ste ga pustili.
 
@@ -340,7 +340,7 @@ Statične celice brushe sveta razporedijo po njihovih središčih in jih znotraj
 - Unity: mreže OBJ in uvoznik za urejevalnik; izvozite v mapo Assets projekta.
 - Unreal Engine: ustvarjen uvozni skript in pot vsebine, običajno /Game/<level>.
 - Flax Engine: pot vsebine modela glede na mapo Content projekta.
-- three.js, Bevy, raylib in Cocos Creator: scene ali koda za ta izvajalna okolja z navodili poleg izvoza.
+- three.js, Babylon.js, Bevy, raylib in Cocos Creator: scene ali koda za ta izvajalna okolja z navodili poleg izvoza.
 - glTF / GLB: prenosljiva geometrija za združljiva orodja; GLB je binarna oblika. OBJ: geometrija in materiali za orodja za modeliranje.
 - `.map`: **Zapiši kot** izbere Valve 220, Standardno, Quake 2 ali Quake 2 (Valve). Okno pove, kaj bi izbrana različica izgubila.
 

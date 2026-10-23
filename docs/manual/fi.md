@@ -319,7 +319,7 @@ Raylib-vienti lisää tiedoston `<map>_animation.h`, jossa on C-kielinen toistin
 Avaa `motion_lab` aloitusnäkymän esimerkeistä. Siinä on L-polkua kulkeva taso, hissi, pyörivä taso ja saranoitu ovi painikkeineen. Avaa sen vieressä oleva `godot/project.godot` Godotissa ja paina `F5`. WASD ja hiiri liikuttavat pelaajaa, välilyönti hyppää, 1–4 vierailevat asemilla ja R aloittaa nykyisen aseman alusta. Astu värilliselle alustalle aktivoidaksesi sen kohteen. Mukana oleva README selittää uudelleenviennin.
 
 # Vienti pelimoottoriin
-Tiedosto → Vie avaa Vie-ikkunan. Pelimoottorit on lueteltu vasemmalla logoineen: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb ja viimeisenä `.map`. Oikealla oleva sivu kertoo, mitä kohde saa. **Kirjoita** kirjoittaa sen, **Tarkista** rakentaa kentän kirjoittamatta sitä ja luettelee ongelmat, ja **Sulje** sulkee ikkunan.
+Tiedosto → Vie avaa Vie-ikkunan. Pelimoottorit on lueteltu vasemmalla logoineen: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb ja viimeisenä `.map`. Oikealla oleva sivu kertoo, mitä kohde saa. **Kirjoita** kirjoittaa sen, **Tarkista** rakentaa kentän kirjoittamatta sitä ja luettelee ongelmat, ja **Sulje** sulkee ikkunan.
 
 Vienti on erillään tallentamisesta: `.map` pysyy muokattavana lähteenäsi. Jokainen säädin tallentaa pelimoottorinsa asetukset heti muuttuessaan, joten kukin pelimoottori säilyttää omat vastauksensa ja ikkuna avautuu sellaisena kuin sen jätit.
 
@@ -340,7 +340,7 @@ Staattiset solut jakavat maailman brushit niiden keskipisteiden mukaan ja yhdist
 - Unity: OBJ-verkot ja editorin tuoja; vie projektin Assets-kansion alle.
 - Unreal Engine: luotu tuontiskripti ja sisältöpolku, tavallisesti /Game/<level>.
 - Flax Engine: mallin sisältöpolku suhteessa projektin Content-kansioon.
-- three.js, Bevy, raylib ja Cocos Creator: näkymiä tai koodia näille ajoympäristöille, ohjeet viennin vieressä.
+- three.js, Babylon.js, Bevy, raylib ja Cocos Creator: näkymiä tai koodia näille ajoympäristöille, ohjeet viennin vieressä.
 - glTF / GLB: siirrettävää geometriaa yhteensopiville työkaluille; GLB on binäärimuoto. OBJ: geometriaa ja materiaaleja mallinnustyökaluille.
 - `.map`: **Kirjoitusmuoto** valitsee vaihtoehdoista Valve 220, Vakio, Quake 2 ja Quake 2 (Valve). Ikkuna kertoo, mitä valittu murre menettäisi.
 

@@ -319,7 +319,7 @@ Bản xuất raylib thêm `<map>_animation.h` với trình phát viết bằng C
 Mở `motion_lab` từ mục Ví dụ trên màn hình chào mừng. Nó có một bệ di chuyển theo đường chữ L, một thang nâng, một bệ xoay và một cửa có bản lề cùng các nút bấm. Mở `godot/project.godot` nằm cạnh nó trong Godot và nhấn `F5`. WASD và chuột di chuyển người chơi, Space để nhảy, 1 đến 4 đến các trạm và R khởi động lại trạm hiện tại. Bước lên một tấm đệm màu để kích hoạt đích của nó. README đi kèm giải thích cách xuất lại.
 
 # Xuất sang engine
-Tệp → Xuất mở cửa sổ Xuất. Các engine được liệt kê dọc bên trái kèm logo: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb, và cuối cùng là `.map`. Trang bên phải cho biết đích xuất sẽ nhận được gì. **Ghi** ghi nó ra, **Kiểm tra** dựng màn chơi mà không ghi và liệt kê các vấn đề, còn **Đóng** đóng cửa sổ.
+Tệp → Xuất mở cửa sổ Xuất. Các engine được liệt kê dọc bên trái kèm logo: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb, và cuối cùng là `.map`. Trang bên phải cho biết đích xuất sẽ nhận được gì. **Ghi** ghi nó ra, **Kiểm tra** dựng màn chơi mà không ghi và liệt kê các vấn đề, còn **Đóng** đóng cửa sổ.
 
 Xuất tách biệt với lưu: tệp `.map` vẫn là bản nguồn có thể chỉnh sửa của bạn. Mỗi điều khiển lưu cài đặt của engine ngay khi thay đổi, nên mỗi engine giữ lựa chọn riêng và cửa sổ mở lại đúng như khi bạn rời đi.
 
@@ -340,7 +340,7 @@ Xuất tách biệt với lưu: tệp `.map` vẫn là bản nguồn có thể c
 - Unity: lưới OBJ và một trình nhập cho editor; hãy xuất vào thư mục Assets của dự án.
 - Unreal Engine: một script nhập được tạo sẵn và đường dẫn nội dung, thường là /Game/<level>.
 - Flax Engine: đường dẫn nội dung của mô hình, tương đối với thư mục Content của dự án.
-- three.js, Bevy, raylib và Cocos Creator: cảnh hoặc mã cho các runtime đó, kèm hướng dẫn nằm cạnh bản xuất.
+- three.js, Babylon.js, Bevy, raylib và Cocos Creator: cảnh hoặc mã cho các runtime đó, kèm hướng dẫn nằm cạnh bản xuất.
 - glTF / GLB: hình học di động cho các công cụ tương thích; GLB là dạng nhị phân. OBJ: hình học và vật liệu cho các công cụ dựng hình.
 - `.map`: **Ghi dạng** chọn Valve 220, Tiêu chuẩn, Quake 2 hoặc Quake 2 (Valve). Cửa sổ cho biết phương ngữ được chọn sẽ mất gì.
 

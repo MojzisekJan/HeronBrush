@@ -319,7 +319,7 @@ Raylib-eksporten legger til `<map>_animation.h` med en avspiller i C og `<map>_p
 Åpne `motion_lab` fra Eksempler på velkomstskjermen. Det har en plattform med L-bane, en heis, en roterende plattform og en hengslet dør med knapper. Åpne `godot/project.godot` ved siden av det i Godot og trykk `F5`. WASD og musen flytter spilleren, Space hopper, 1 til 4 besøker stasjonene og R starter den gjeldende stasjonen på nytt. Tråkk på en farget plate for å aktivere målet dens. Den medfølgende README-filen forklarer ny eksport.
 
 # Eksportere til en motor
-Fil → Eksporter åpner Eksporter-vinduet. Motorene står i en liste ned langs venstre side med logoene sine: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb og til slutt `.map`. Siden til høyre forteller hva målet vil få. **Skriv** skriver det, **Kontroller** bygger banen uten å skrive den og viser problemene, og **Lukk** lukker vinduet.
+Fil → Eksporter åpner Eksporter-vinduet. Motorene står i en liste ned langs venstre side med logoene sine: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb og til slutt `.map`. Siden til høyre forteller hva målet vil få. **Skriv** skriver det, **Kontroller** bygger banen uten å skrive den og viser problemene, og **Lukk** lukker vinduet.
 
 Eksport er atskilt fra lagring: `.map` forblir den redigerbare kilden din. Hver kontroll lagrer innstillingene for motoren sin så snart den endres, slik at hver motor beholder sine egne svar og vinduet åpnes slik du forlot det.
 
@@ -340,7 +340,7 @@ Statiske celler tilordner verdensbrusher etter sentrum og slår dem sammen etter
 - Unity: OBJ-mesher og en importør for redigeringsprogrammet; eksporter under prosjektets Assets-mappe.
 - Unreal Engine: et generert importskript og en innholdssti, vanligvis /Game/<level>.
 - Flax Engine: en innholdssti for modeller relativt til prosjektets Content-mappe.
-- three.js, Bevy, raylib og Cocos Creator: scener eller kode for disse kjøretidene, med instruksjoner ved siden av eksporten.
+- three.js, Babylon.js, Bevy, raylib og Cocos Creator: scener eller kode for disse kjøretidene, med instruksjoner ved siden av eksporten.
 - glTF / GLB: flyttbar geometri for kompatible verktøy; GLB er den binære formen. OBJ: geometri og materialer for modelleringsverktøy.
 - `.map`: **Skriv som** velger Valve 220, Standard, Quake 2 eller Quake 2 (Valve). Vinduet forteller hva den valgte dialekten ville miste.
 

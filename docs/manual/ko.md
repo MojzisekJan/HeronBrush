@@ -319,7 +319,7 @@ Raylib 내보내기는 C 플레이어가 들어 있는 `<map>_animation.h`와 �
 시작 화면의 예제에서 `motion_lab`을 여세요. L자 경로 플랫폼, 리프트, 회전 플랫폼, 버튼이 달린 경첩 문이 있습니다. 옆에 있는 `godot/project.godot`를 Godot에서 열고 `F5`를 누르세요. WASD와 마우스로 플레이어를 움직이고, Space로 점프하며, 1~4로 각 스테이션으로 이동하고, R로 현재 스테이션을 다시 시작합니다. 색깔 패드를 밟으면 대상이 활성화됩니다. 함께 들어 있는 README에 다시 내보내는 방법이 설명되어 있습니다.
 
 # 엔진으로 내보내기
-파일 → 내보내기는 내보내기 창을 엽니다. 왼쪽에는 로고와 함께 엔진 목록이 있습니다. Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb, 그리고 마지막으로 `.map`입니다. 오른쪽 페이지에는 대상이 받게 될 내용이 설명되어 있습니다. **쓰기**는 출력하고, **검사**는 출력하지 않고 레벨을 빌드해 문제를 나열하며, **닫기**는 창을 닫습니다.
+파일 → 내보내기는 내보내기 창을 엽니다. 왼쪽에는 로고와 함께 엔진 목록이 있습니다. Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb, 그리고 마지막으로 `.map`입니다. 오른쪽 페이지에는 대상이 받게 될 내용이 설명되어 있습니다. **쓰기**는 출력하고, **검사**는 출력하지 않고 레벨을 빌드해 문제를 나열하며, **닫기**는 창을 닫습니다.
 
 내보내기는 저장과 별개입니다. `.map`은 계속 편집 가능한 원본으로 남습니다. 모든 컨트롤은 값이 바뀌는 즉시 해당 엔진의 설정을 저장하므로, 엔진마다 자체 설정을 유지하고 창은 마지막 상태 그대로 열립니다.
 
@@ -340,7 +340,7 @@ Raylib 내보내기는 C 플레이어가 들어 있는 `<map>_animation.h`와 �
 - Unity: OBJ 메시와 에디터 임포터. 프로젝트의 Assets 폴더 아래로 내보내세요.
 - Unreal Engine: 생성된 임포트 스크립트와 콘텐츠 경로(보통 /Game/<level>).
 - Flax Engine: 프로젝트의 Content 폴더를 기준으로 한 모델 콘텐츠 경로.
-- three.js, Bevy, raylib, Cocos Creator: 해당 런타임용 씬 또는 코드, 그리고 내보낸 파일 옆에 놓이는 설명서.
+- three.js, Babylon.js, Bevy, raylib, Cocos Creator: 해당 런타임용 씬 또는 코드, 그리고 내보낸 파일 옆에 놓이는 설명서.
 - glTF / GLB: 호환 도구용 이식 가능한 지오메트리. GLB는 바이너리 형식입니다. OBJ: 모델링 도구용 지오메트리와 재질.
 - `.map`: **출력 형식**에서 Valve 220, 표준, Quake 2, Quake 2 (Valve) 중 하나를 고릅니다. 선택한 형식에서 잃게 되는 정보는 창에 표시됩니다.
 

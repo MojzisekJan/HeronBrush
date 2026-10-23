@@ -319,7 +319,7 @@ Raylib dışa aktarımı, C oynatıcısını içeren `<map>_animation.h` dosyas�
 Karşılama ekranındaki Örnekler'den `motion_lab` haritasını açın. Haritada L biçimli bir yolda giden bir platform, bir asansör, dönen bir platform ve düğmeli, menteşeli bir kapı bulunur. Yanındaki `godot/project.godot` dosyasını Godot'ta açın ve `F5` tuşuna basın. WASD ve fare oyuncuyu hareket ettirir, Space zıplatır, 1 ile 4 arası tuşlar istasyonlara götürür, R ise geçerli istasyonu yeniden başlatır. Hedefini etkinleştirmek için renkli bir pedin üzerine basın. Birlikte gelen README yeniden dışa aktarmayı açıklar.
 
 # Bir motora dışa aktarma
-Dosya → Dışa aktar, Dışa aktar penceresini açar. Motorlar logolarıyla birlikte solda sıralanır: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb ve en sonda `.map`. Sağdaki sayfa hedefin ne alacağını açıklar. **Yaz** dışa aktarımı yazar, **Denetle** seviyeyi yazmadan oluşturur ve sorunları listeler, **Kapat** ise pencereyi kapatır.
+Dosya → Dışa aktar, Dışa aktar penceresini açar. Motorlar logolarıyla birlikte solda sıralanır: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb ve en sonda `.map`. Sağdaki sayfa hedefin ne alacağını açıklar. **Yaz** dışa aktarımı yazar, **Denetle** seviyeyi yazmadan oluşturur ve sorunları listeler, **Kapat** ise pencereyi kapatır.
 
 Dışa aktarma kaydetmeden ayrıdır: `.map` düzenlenebilir kaynağınız olarak kalır. Her denetim, değiştiği anda kendi motorunun ayarlarını kaydeder; böylece her motor kendi seçimlerini korur ve pencere bıraktığınız gibi açılır.
 
@@ -340,7 +340,7 @@ Statik hücreler dünya fırçalarını merkezlerine göre atar ve her 1024 biri
 - Unity: OBJ ağları ve bir düzenleyici içe aktarıcısı; projenin Assets klasörü altına dışa aktarın.
 - Unreal Engine: oluşturulan bir içe aktarma betiği ve genellikle /Game/<level> olan bir içerik yolu.
 - Flax Engine: projenin Content klasörüne göre bir model içerik yolu.
-- three.js, Bevy, raylib ve Cocos Creator: bu çalışma zamanları için sahneler ya da kod; talimatlar dışa aktarımın yanında bulunur.
+- three.js, Babylon.js, Bevy, raylib ve Cocos Creator: bu çalışma zamanları için sahneler ya da kod; talimatlar dışa aktarımın yanında bulunur.
 - glTF / GLB: uyumlu araçlar için taşınabilir geometri; GLB ikili biçimdir. OBJ: modelleme araçları için geometri ve malzemeler.
 - `.map`: **Şu biçimde yaz** ile Valve 220, Standart, Quake 2 ya da Quake 2 (Valve) seçilir. Pencere, seçilen lehçede nelerin kaybolacağını belirtir.
 

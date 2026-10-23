@@ -319,7 +319,7 @@ De raylib-export voegt `<map>_animation.h` toe met een speler in C en `<map>_pre
 Open `motion_lab` via Voorbeelden op het welkomstscherm. Het bevat een platform met een L-vormig pad, een lift, een draaiend platform en een scharnierende deur met knoppen. Open het `godot/project.godot` ernaast in Godot en druk op `F5`. WASD en de muis bewegen de speler, Space springt, 1 tot 4 bezoeken de stations en R start het huidige station opnieuw. Stap op een gekleurde plaat om het doel ervan te activeren. De bijgeleverde README legt uit hoe je opnieuw exporteert.
 
 # Exporteren naar een engine
-Bestand → Exporteren opent het exportvenster. De engines staan links onder elkaar met hun logo's: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb en als laatste `.map`. De pagina rechts zegt wat het doel krijgt. **Schrijven** schrijft het, **Controleren** bouwt het level zonder te schrijven en somt de problemen op, en **Sluiten** sluit het venster.
+Bestand → Exporteren opent het exportvenster. De engines staan links onder elkaar met hun logo's: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb en als laatste `.map`. De pagina rechts zegt wat het doel krijgt. **Schrijven** schrijft het, **Controleren** bouwt het level zonder te schrijven en somt de problemen op, en **Sluiten** sluit het venster.
 
 Exporteren staat los van opslaan: de `.map` blijft je bewerkbare bron. Elk bedieningselement slaat de instellingen van zijn engine op zodra het verandert, zodat elke engine zijn eigen antwoorden houdt en het venster opent zoals je het hebt achtergelaten.
 
@@ -340,7 +340,7 @@ Statische cellen wijzen wereldbrushes toe op basis van hun middelpunt en combine
 - Unity: OBJ-meshes en een editor-importer; exporteer onder de map Assets van het project.
 - Unreal Engine: een gegenereerd importscript en een contentpad, normaal /Game/<level>.
 - Flax Engine: een contentpad voor modellen, relatief aan de map Content van het project.
-- three.js, Bevy, raylib en Cocos Creator: scènes of code voor die runtimes, met instructies naast de export.
+- three.js, Babylon.js, Bevy, raylib en Cocos Creator: scènes of code voor die runtimes, met instructies naast de export.
 - glTF / GLB: overdraagbare geometrie voor compatibele tools; GLB is de binaire vorm. OBJ: geometrie en materialen voor modelleerprogramma's.
 - `.map`: **Schrijven als** kiest Valve 220, Standaard, Quake 2 of Quake 2 (Valve). Het venster zegt wat het gekozen dialect zou verliezen.
 

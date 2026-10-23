@@ -319,7 +319,7 @@ Export pre raylib pridá `<map>_animation.h` s prehrávačom v C a `<map>_previe
 Otvorte `motion_lab` v sekcii Príklady na uvítacej obrazovke. Obsahuje plošinu s dráhou v tvare L, výťah, otáčavú plošinu a dvere na pántoch s tlačidlami. Otvorte susedný `godot/project.godot` v Godote a stlačte `F5`. WASD a myš ovládajú hráča, medzerník skáče, 1 až 4 prenesú na stanovištia a R reštartuje aktuálne stanovište. Šliapnutím na farebnú plôšku spustíte jej cieľ. Priložené README opisuje opätovný export.
 
 # Export do enginu
-Súbor → Export otvorí okno Export. Vľavo sú enginy s logami: Godot, Defold, three.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb a nakoniec `.map`. Stránka vpravo hovorí, čo cieľ dostane. **Zapísať** ho zapíše, **Skontrolovať** úroveň zostaví bez zápisu a vypíše problémy a **Zavrieť** okno zatvorí.
+Súbor → Export otvorí okno Export. Vľavo sú enginy s logami: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb a nakoniec `.map`. Stránka vpravo hovorí, čo cieľ dostane. **Zapísať** ho zapíše, **Skontrolovať** úroveň zostaví bez zápisu a vypíše problémy a **Zavrieť** okno zatvorí.
 
 Export je oddelený od ukladania: `.map` zostáva vaším upraviteľným zdrojom. Každý ovládací prvok ukladá nastavenia svojho enginu hneď pri zmene, takže si každý engine pamätá vlastné voľby a okno sa otvorí tak, ako ste ho opustili.
 
@@ -340,7 +340,7 @@ Statické bunky priradia brushe sveta podľa ich stredov a v každej bunke s ve�
 - Unity: siete OBJ a importér pre editor; exportujte do priečinka Assets projektu.
 - Unreal Engine: vygenerovaný importný skript a cesta k obsahu, obvykle /Game/<level>.
 - Flax Engine: cesta k modelom relatívna k priečinku Content projektu.
-- three.js, Bevy, raylib a Cocos Creator: scény alebo kód pre tieto prostredia, s návodom vedľa exportu.
+- three.js, Babylon.js, Bevy, raylib a Cocos Creator: scény alebo kód pre tieto prostredia, s návodom vedľa exportu.
 - glTF / GLB: prenosná geometria pre kompatibilné nástroje; GLB je binárna podoba. OBJ: geometria a materiály pre modelovacie nástroje.
 - `.map`: **Zapísať ako** volí Valve 220, Štandardné, Quake 2 alebo Quake 2 (Valve). Okno povie, čo by zvolený dialekt stratil.
 

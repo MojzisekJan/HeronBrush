@@ -319,7 +319,7 @@ raylib 导出会添加带 C 语言播放器的 `<map>_animation.h` 和带自由�
 从欢迎界面的“示例”中打开 `motion_lab`。其中有一个沿 L 形路径移动的平台、一部升降机、一个旋转平台和一扇带按钮的铰链门。在 Godot 中打开旁边的 `godot/project.godot` 并按 `F5`。WASD 和鼠标控制玩家移动，空格键跳跃，1 到 4 前往各个展台，R 重新开始当前展台。踩上彩色踏板即可激活它的目标。附带的 README 说明了如何重新导出。
 
 # 导出到引擎
-文件 → 导出 会打开“导出”窗口。左侧列出各个引擎及其徽标：Godot、Defold、three.js、Bevy、raylib、Unity、Unreal Engine、Flax Engine、Cocos Creator、Wavefront .obj、glTF .gltf、GLB .glb，最后是 `.map`。右侧页面说明目标将得到什么。**写入** 执行写出，**检查** 构建关卡但不写出，并列出问题，**关闭** 关闭窗口。
+文件 → 导出 会打开“导出”窗口。左侧列出各个引擎及其徽标：Godot、Defold、three.js、Babylon.js、Bevy、raylib、Unity、Unreal Engine、Flax Engine、Cocos Creator、Wavefront .obj、glTF .gltf、GLB .glb，最后是 `.map`。右侧页面说明目标将得到什么。**写入** 执行写出，**检查** 构建关卡但不写出，并列出问题，**关闭** 关闭窗口。
 
 导出与保存相互独立：`.map` 始终是你的可编辑源文件。每个控件在更改后会立即保存对应引擎的设置，因此每个引擎都会记住自己的选项，窗口也会保持你上次离开时的状态。
 
@@ -340,7 +340,7 @@ raylib 导出会添加带 C 语言播放器的 `<map>_animation.h` 和带自由�
 - Unity：OBJ 网格和一个编辑器导入器；请导出到项目的 Assets 文件夹下。
 - Unreal Engine：生成的导入脚本和内容路径，通常为 /Game/<level>。
 - Flax Engine：相对于项目 Content 文件夹的模型内容路径。
-- three.js、Bevy、raylib 和 Cocos Creator：适用于这些运行时的场景或代码，导出文件旁附有说明。
+- three.js、Babylon.js、Bevy、raylib 和 Cocos Creator：适用于这些运行时的场景或代码，导出文件旁附有说明。
 - glTF / GLB：供兼容工具使用的可移植几何体；GLB 是二进制形式。OBJ：供建模工具使用的几何体和材质。
 - `.map`：**写入为** 可选择 Valve 220、Standard、Quake 2 或 Quake 2 (Valve)。窗口会说明所选格式会丢失哪些内容。
 
