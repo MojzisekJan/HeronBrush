@@ -114,14 +114,15 @@ try {
     camera.setRotation(rotationYXZ(pc, pitch, yaw, 0));
   }
   // The floor under the player: the highest of five rays down from its middle that
-  // ends on a walkable face within reach of the feet, or null.
+  // ends on a walkable face within reach of the feet, or null. A face up to a Quake
+  // step (18 units) above the feet is a floor to step up on; a higher one is a wall.
   function support(middle, feet) {
     let best = null;
-    const reach = 16 * unit;
+    const reach = 16 * unit, stepHeight = 18 * unit;
     for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const from = middle.clone().add(new pc.Vec3(dx * radius * 0.7, 0, dz * radius * 0.7));
       const hit = ray(from, new pc.Vec3(from.x, feet.y - reach, from.z));
-      if (hit && hit.normal.y > 0.7 && (!best || hit.point.y > best.point.y)) best = hit;
+      if (hit && hit.normal.y > 0.7 && hit.point.y <= feet.y + stepHeight && (!best || hit.point.y > best.point.y)) best = hit;
     }
     return best;
   }
