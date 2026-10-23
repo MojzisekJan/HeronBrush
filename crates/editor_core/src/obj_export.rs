@@ -11,6 +11,7 @@
 //! The window that asks for this is [`crate::export_dialog`], which offers it as one
 //! target among the engines.
 
+use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::fs;
 use std::io;
@@ -18,9 +19,13 @@ use std::path::{Path, PathBuf};
 
 use geometry_math::vec::Vec3d;
 
+use map_model::node::Node;
+use map_model::node::NodeId;
+use map_model::node::NodeKind;
 use scene_export::settings::Settings;
 
 use crate::document::Document;
+use crate::export::PortableVisuals;
 
 /// What to put in the file.
 #[derive(Debug, Clone, Copy)]
@@ -65,17 +70,27 @@ pub fn files(
     obj_path: &Path,
     options: ObjOptions,
 ) -> (ObjReport, Vec<(PathBuf, Vec<u8>)>) {
-    files_scaled(document, obj_path, options, 1., &Settings::default())
+    let (classes, _) = crate::export::entity_classes(document);
+    files_scaled(
+        document,
+        obj_path,
+        options,
+        1.,
+        &Settings::default(),
+        &classes,
+    )
 }
 
 /// Engine export units; the standalone mesh writer retains map units by default.
 /// `tools` names the clip, skip and origin materials, whose faces are not written.
+/// `classes` says which entities draw nothing (`visuals=false`, such as triggers).
 pub fn files_scaled(
     document: &Document,
     obj_path: &Path,
     options: ObjOptions,
     scale_factor: f64,
     tools: &Settings,
+    classes: &Classes,
 ) -> (ObjReport, Vec<(PathBuf, Vec<u8>)>) {
     let stem = obj_path
         .file_stem()
@@ -84,7 +99,7 @@ pub fn files_scaled(
     let mtl_name = format!("{stem}.mtl");
 
     let (obj, mtl, report, images) =
-        generate_painted_scaled(document, obj_path, options, scale_factor, tools);
+        generate_painted_scaled(document, obj_path, options, scale_factor, tools, classes);
     let directory = obj_path.parent().unwrap_or(Path::new("."));
     let mut files: Vec<(PathBuf, Vec<u8>)> = images
         .into_iter()
@@ -113,7 +128,60 @@ fn generate_painted(
     options: ObjOptions,
 ) -> (String, String, ObjReport, Vec<(String, Vec<u8>)>) {
     let obj_path = Path::new(mtl_name).with_extension("obj");
-    generate_painted_scaled(document, &obj_path, options, 1., &Settings::default())
+    let (classes, _) = crate::export::entity_classes(document);
+    generate_painted_scaled(
+        document,
+        &obj_path,
+        options,
+        1.,
+        &Settings::default(),
+        &classes,
+    )
+}
+
+/// Whether the polygon's first corners turn clockwise seen from where `normal` points.
+fn clockwise(polygon: &[Vec3d], normal: Vec3d) -> bool {
+    let turn = geometry_math::vec::cross(polygon[1] - polygon[0], polygon[2] - polygon[0]);
+    geometry_math::vec::dot(turn, normal) < 0.0
+}
+
+type Classes = scene_export::indexmap::IndexMap<String, scene_export::fgd::EntityClass>;
+
+/// The entities that draw less than all of themselves, with the brushes and patches
+/// inside them; everything not in the map draws in full.
+fn limited_visuals(
+    document: &Document,
+    classes: &Classes,
+) -> HashMap<map_model::node::NodeId, PortableVisuals> {
+    fn mark(nodes: &[Node], visuals: PortableVisuals, out: &mut HashMap<NodeId, PortableVisuals>) {
+        for node in nodes {
+            out.insert(node.id, visuals);
+            if let NodeKind::Group(group) = &node.kind {
+                mark(&group.children, visuals, out);
+            }
+        }
+    }
+    fn walk(nodes: &[Node], classes: &Classes, out: &mut HashMap<NodeId, PortableVisuals>) {
+        for node in nodes {
+            match &node.kind {
+                NodeKind::Entity(entity) => {
+                    let visuals = crate::export::portable_visuals(entity, classes);
+                    if visuals != PortableVisuals::All {
+                        out.insert(node.id, visuals);
+                        mark(&entity.children, visuals, out);
+                    }
+                }
+                NodeKind::Group(group) => walk(&group.children, classes, out),
+                NodeKind::Layer(layer) => walk(&layer.children, classes, out),
+                NodeKind::Brush(_) | NodeKind::Patch(_) => {}
+            }
+        }
+    }
+    let mut out = HashMap::new();
+    for layer in &document.tree_world().layers {
+        walk(&layer.children, classes, &mut out);
+    }
+    out
 }
 
 fn generate_painted_scaled(
@@ -122,7 +190,9 @@ fn generate_painted_scaled(
     options: ObjOptions,
     scale_factor: f64,
     tools: &Settings,
+    classes: &Classes,
 ) -> (String, String, ObjReport, Vec<(String, Vec<u8>)>) {
+    let limited = limited_visuals(document, classes);
     let stem = obj_path
         .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
@@ -166,11 +236,20 @@ fn generate_painted_scaled(
         if (options.selection_only && !document.is_selected(id)) || omitted(layer) {
             continue;
         }
+        // Counted even when not drawn, as a clip brush is, so `brush_N` stays the
+        // map's Nth brush.
         brush_count += 1;
+        let visuals = limited.get(&id).copied().unwrap_or(PortableVisuals::All);
+        if visuals == PortableVisuals::Nothing {
+            continue;
+        }
         let mut named = false;
 
         for (index, face) in brush.faces().iter().enumerate() {
-            if face.export_hidden || tools.is_tool_texture(&face.material_name) {
+            if face.export_hidden
+                || tools.is_tool_texture(&face.material_name)
+                || (visuals == PortableVisuals::WaterSurface && face.plane.normal.z() <= 0.5)
+            {
                 continue;
             }
             let Some(polygon) = brush.face_polygon(index) else {
@@ -263,12 +342,17 @@ fn generate_painted_scaled(
             }
 
             // A convex polygon as a triangle fan from its first vertex. Each vertex got a
-            // `vt` in step with its `v`, so the two indices are the same.
+            // `vt` in step with its `v`, so the two indices are the same. OBJ's front
+            // faces wind counter-clockwise around their normal; a brush polygon runs the
+            // other way, so the fan is turned when it does.
             let n = normal_index;
+            let backwards = clockwise(&polygon, face.plane.normal);
             for offset in 1..polygon.len() - 1 {
                 let a = first_vertex;
-                let b = first_vertex + offset;
-                let c = first_vertex + offset + 1;
+                let (mut b, mut c) = (first_vertex + offset, first_vertex + offset + 1);
+                if backwards {
+                    std::mem::swap(&mut b, &mut c);
+                }
                 let _ = writeln!(faces, "f {a}/{a}/{n} {b}/{b}/{n} {c}/{c}/{n}");
                 triangle_count += 1;
             }
@@ -282,6 +366,7 @@ fn generate_painted_scaled(
         if (options.selection_only && !document.is_selected(id))
             || omitted(layer)
             || tools.is_tool_texture(&patch.material_name)
+            || limited.contains_key(&id)
         {
             continue;
         }
@@ -329,7 +414,10 @@ fn generate_painted_scaled(
                 let _ = writeln!(uvs, "vt {:.6} {:.6}", uv.x(), -uv.y());
             }
 
-            let (a, b, c) = (first_vertex, first_vertex + 1, first_vertex + 2);
+            let (a, mut b, mut c) = (first_vertex, first_vertex + 1, first_vertex + 2);
+            if clockwise(&triangle.positions, triangle.normal) {
+                std::mem::swap(&mut b, &mut c);
+            }
             let _ = writeln!(faces, "f {a}/{a}/{n} {b}/{b}/{n} {c}/{c}/{n}");
             triangle_count += 1;
         }
@@ -338,6 +426,7 @@ fn generate_painted_scaled(
     for (id, entity, layer) in map_model::node::point_entities_by_layer(document.tree_world()) {
         if (options.selection_only && !document.is_selected(id))
             || document.tree_world().layers[layer].omit_from_export
+            || limited.get(&id) == Some(&PortableVisuals::Nothing)
         {
             continue;
         }
@@ -690,6 +779,69 @@ common/caulk
         );
         assert_eq!(obj.matches("o brush_").count(), 1);
         assert!(!mtl.contains("clip") && !mtl.contains("skip"));
+    }
+
+    #[test]
+    fn faces_wind_counter_clockwise_around_their_normals() {
+        // Found reading the feature lab's .obj: every brush face was wound clockwise, so
+        // a viewer that culls back faces showed the inside of each box.
+        let (obj, _, _) = generate(&one_cube(), "m.mtl", opts());
+        let parse = |prefix: &str| -> Vec<[f64; 3]> {
+            obj.lines()
+                .filter_map(|l| l.strip_prefix(prefix))
+                .map(|l| {
+                    let v: Vec<f64> = l.split(' ').map(|x| x.parse().expect("a number")).collect();
+                    [v[0], v[1], v[2]]
+                })
+                .collect()
+        };
+        let (positions, normals) = (parse("v "), parse("vn "));
+        let mut faces = 0;
+        for line in obj.lines().filter_map(|l| l.strip_prefix("f ")) {
+            let corners: Vec<Vec<usize>> = line
+                .split(' ')
+                .map(|c| c.split('/').map(|i| i.parse().expect("an index")).collect())
+                .collect();
+            let p = |i: usize| {
+                let [x, y, z] = positions[corners[i][0] - 1];
+                Vec3d::new(x, y, z)
+            };
+            let [x, y, z] = normals[corners[0][2] - 1];
+            assert!(
+                !clockwise(&[p(0), p(1), p(2)], Vec3d::new(x, y, z)),
+                "{line}"
+            );
+            faces += 1;
+        }
+        assert_eq!(faces, 12);
+    }
+
+    #[test]
+    fn a_trigger_is_left_out_and_water_draws_only_its_top() {
+        // Found checking the feature lab's .obj: the trigger drew as a solid box and the
+        // water as a closed cube, although both classes draw nothing in the engines.
+        let source = format!(
+            "{{\n\"classname\" \"worldspawn\"\n{}}}\n\
+             {{\n\"classname\" \"trigger_multiple\"\n{}}}\n\
+             {{\n\"classname\" \"water_volume\"\n{}}}\n",
+            cube_text(0, 32, "stone"),
+            cube_text(64, 96, "hazard"),
+            cube_text(128, 160, "water"),
+        );
+        let (obj, mtl, report) = generate(&open_map("volumes", &source), "m.mtl", opts());
+        assert_eq!(
+            report.triangles,
+            12 + 2,
+            "the stone cube and the water's top"
+        );
+        assert!(obj.contains("o brush_1\n") && obj.contains("o brush_3\n"));
+        assert!(!obj.contains("o brush_2\n"));
+        assert!(!obj.contains("usemtl hazard") && !mtl.contains("hazard"));
+        let water = obj
+            .split("usemtl water")
+            .nth(1)
+            .expect("the water is drawn");
+        assert_eq!(water.matches("\nf ").count(), 2);
     }
 
     #[test]

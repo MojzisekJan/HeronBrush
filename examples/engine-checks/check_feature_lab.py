@@ -73,7 +73,9 @@ NOT_CLAIMED = {
     "sky": scope({"unity", "unreal", "flax", "obj", "gltf", "glb"}, SKY),
     "animation": scope({"unreal", "obj", "gltf", "glb"}, NO_PLAYER),
     "door": scope({"unreal", "obj", "gltf", "glb"}, NO_PLAYER),
-    "water": scope({"unreal", "obj", "gltf", "glb"}, "not in the adapter list of docs/water-export.md"),
+    # OBJ, glTF and GLB are checked in check_water itself: N/A, or FAIL when they draw
+    # more than the water's surface.
+    "water": scope({"unreal"}, "not in the adapter list of docs/water-export.md"),
     "normal": {
         "unity": "Unity's OBJ and MTL path has no normal-map slot for brush textures; its "
                  "material adapter applies normal maps to imported GLB models only",
@@ -1479,8 +1481,16 @@ def check_hidden(level):
 def check_trigger(level):
     e = station(level, "fl_trigger")
     if level.target in PORTABLE:
-        drawn = len(all_triangles(e.render)) if e.render else 0
-        return NA(f"no sensors in the format; the volume is {'drawn as ' + str(drawn) + ' triangles' if drawn else 'not drawn'}")
+        # docs/gltf-export.md: a `visuals=false` class draws nothing; glTF keeps its
+        # shape in the node's extras.
+        if e.render and all_triangles(e.render):
+            return FAIL(f"trigger is drawn ({len(all_triangles(e.render))} triangles)")
+        if level.target == "obj":
+            return NA("no sensors in the format; the trigger is left out")
+        planes = [b.get("planes", []) for b in e.extra["heron"].get("volume", {}).get("brushes", [])]
+        if len(planes) != 1 or len(planes[0]) != 6:
+            return FAIL(f"trigger node lacks its 6-plane volume in extras ({planes})")
+        return NA("no sensors in the format; not drawn, its 6 planes are in extras.heron.volume")
     problems = []
     if e.render:
         problems.append(f"trigger is drawn ({len(all_triangles(e.render))} triangles)")
@@ -1865,6 +1875,15 @@ def check_lights(level):
 def check_water(level):
     t = level.target
     e = station(level, "fl_water")
+    if t in PORTABLE:
+        # docs/gltf-export.md: only the upward faces are drawn; glTF keeps the volume.
+        tris = all_triangles(e.render) if e.render else []
+        if len(tris) != 2 or any(normal(tri)[1] < 0.99 for tri in tris):
+            return FAIL(f"water should draw its top face only; it draws {len(tris)} triangles")
+        if t != "obj" and not e.extra["heron"].get("volume", {}).get("brushes"):
+            return FAIL("water node lacks its volume in extras")
+        return NA("not in the adapter list of docs/water-export.md; the surface alone is drawn"
+                  + ("" if t == "obj" else " and the volume is in extras.heron.volume"))
     if t == "godot":
         node = e.extra.get("water_node")
         problems = []

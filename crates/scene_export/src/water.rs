@@ -6,17 +6,22 @@ use crate::{
 use serde::Serialize;
 
 pub fn enabled(entity: &map::Entity) -> bool {
-    match entity.get("water_enabled") {
+    enabled_by(entity.classname(), entity.get("water_enabled"))
+}
+/// [`enabled`] for an entity known only by its classname and `water_enabled` value.
+pub fn enabled_by(classname: &str, water_enabled: Option<&str>) -> bool {
+    match water_enabled {
         Some(value) => matches!(value.trim(), "1" | "true" | "yes"),
-        None => matches!(
-            entity.classname(),
-            "water_volume" | "fps_water" | "func_water"
-        ),
+        None => matches!(classname, "water_volume" | "fps_water" | "func_water"),
     }
 }
 pub fn baseline(source: &map::Entity) -> bool {
+    baseline_by(source.get("water_surface_material"))
+}
+/// [`baseline`] from the entity's `water_surface_material` value.
+pub fn baseline_by(water_surface_material: Option<&str>) -> bool {
     !matches!(
-        source.get("water_surface_material").map(str::trim),
+        water_surface_material.map(str::trim),
         Some("0" | "false" | "no")
     )
 }

@@ -20,6 +20,8 @@ struct Scene<'a> {
     /// Materials given a `normalTexture`, whose primitives also get `TANGENT`.
     normal_materials: std::collections::HashSet<usize>,
     report: Report,
+    /// Inside a water volume, whose brushes draw only their upward faces.
+    water_top: bool,
     settings: scene_export::settings::Settings,
     classes: scene_export::indexmap::IndexMap<String, scene_export::fgd::EntityClass>,
 }
@@ -246,7 +248,7 @@ impl Scene<'_> {
                 *id
             } else {
                 let id = self.material(
-                    &key,
+                    &paint_label(color, face.surface_material),
                     Some(color.to_f32()),
                     None,
                     false,
@@ -342,6 +344,36 @@ impl Scene<'_> {
         }
         primitive
     }
+    /// The brushes of a volume that draws nothing, or only its water surface, so a game
+    /// can still find it: each brush as its outward planes `[x, y, z, d]`, inside where
+    /// `x*px + y*py + z*pz <= d`, and its corners, in the file's metres and axes.
+    fn volume(&self, children: &[Node]) -> Option<Value> {
+        let to_gltf = |v: Vec3d| [v.x(), v.z(), -v.y()];
+        let brushes: Vec<Value> = children
+            .iter()
+            .filter_map(|node| match &node.kind {
+                NodeKind::Brush(brush) => Some(brush),
+                _ => None,
+            })
+            .map(|brush| {
+                let planes: Vec<[f64; 4]> = brush
+                    .faces()
+                    .iter()
+                    .map(|face| {
+                        let [x, y, z] = to_gltf(face.plane.normal);
+                        [x, y, z, face.plane.distance / self.options.scale]
+                    })
+                    .collect();
+                let vertices: Vec<[f64; 3]> = brush
+                    .vertex_positions()
+                    .into_iter()
+                    .map(|p| to_gltf(p / self.options.scale))
+                    .collect();
+                json!({"planes":planes,"vertices":vertices})
+            })
+            .collect();
+        (!brushes.is_empty()).then(|| json!({"brushes":brushes}))
+    }
     fn children(&mut self, children: &[Node]) -> Vec<usize> {
         children.iter().flat_map(|n| self.node(n)).collect()
     }
@@ -369,7 +401,19 @@ impl Scene<'_> {
                 (g.name.clone(), children, vec![], Value::Null, None)
             }
             NodeKind::Entity(e) => {
-                let children = self.children(&e.children);
+                // A class with `visuals=false` (a trigger) draws nothing, and a water
+                // volume draws only its surface. Both keep their shape in the extras.
+                let visuals = super::portable_visuals(e, &self.classes);
+                let hidden = visuals == super::PortableVisuals::Nothing;
+                let water = visuals == super::PortableVisuals::WaterSurface;
+                let children = if hidden {
+                    Vec::new()
+                } else {
+                    let outer = std::mem::replace(&mut self.water_top, water);
+                    let children = self.children(&e.children);
+                    self.water_top = outer;
+                    children
+                };
                 let key = if self.options.name_property.is_empty() {
                     "targetname"
                 } else {
@@ -432,7 +476,7 @@ impl Scene<'_> {
                         .expect("class directives serialize")
                 });
                 let mut primitives = Vec::new();
-                if e.property("_heron_model").is_some() {
+                if e.property("_heron_model").is_some() && !hidden {
                     if let Some(baked) = self.document.imported_model(e) {
                         let path = self.document.imported_model_path(e).unwrap();
                         let raw = e
@@ -521,18 +565,23 @@ impl Scene<'_> {
                         );
                     }
                 }
-                (
-                    name,
-                    children,
-                    primitives,
-                    json!({"entity":properties,"heron":{"version":1,"classname":e.classname(),"properties":typed,"build":build}}),
-                    translation,
-                )
+                let mut extras = json!({"entity":properties,"heron":{"version":1,"classname":e.classname(),"properties":typed,"build":build}});
+                let volume = hidden
+                    || scene_export::water::enabled_by(
+                        e.classname().unwrap_or_default(),
+                        e.property("water_enabled"),
+                    );
+                if volume {
+                    if let Some(volume) = self.volume(&e.children) {
+                        extras["heron"]["volume"] = volume;
+                    }
+                }
+                (name, children, primitives, extras, translation)
             }
             NodeKind::Brush(brush) => {
                 let mut primitives = Vec::new();
                 for (i, face) in brush.faces().iter().enumerate() {
-                    if face.export_hidden {
+                    if face.export_hidden || (self.water_top && face.plane.normal.z() <= 0.5) {
                         continue;
                     }
                     if self.tool(&face.material_name) {
@@ -559,7 +608,7 @@ impl Scene<'_> {
                 )
             }
             NodeKind::Patch(patch) => {
-                if self.tool(&patch.material_name) {
+                if self.tool(&patch.material_name) || self.water_top {
                     return vec![];
                 }
                 let material = self.texture_material(&patch.material_name, true, None);
@@ -638,6 +687,7 @@ pub(super) fn build(
         materials: HashMap::new(),
         normal_materials: Default::default(),
         report: Report::default(),
+        water_top: false,
         settings: options.settings(directory),
         classes,
     };
@@ -740,6 +790,22 @@ fn material_label(name: &str) -> String {
         Some(skin) => format!("{stem} skin {skin}"),
         None => stem,
     }
+}
+
+/// The name of a material that is one solid paint colour: its hex code, and the
+/// surface factors in percent when it has any.
+fn paint_label(
+    color: map_model::brush_face::Rgb,
+    surface: Option<map_model::brush_face::SurfaceMaterial>,
+) -> String {
+    let mut label = format!("Paint #{:02X}{:02X}{:02X}", color.r, color.g, color.b);
+    if let Some(s) = surface {
+        label.push_str(&format!(
+            " roughness {} metallic {} emission {}",
+            s.roughness, s.metallic, s.emission
+        ));
+    }
+    label
 }
 
 fn uri(path: &str) -> String {
@@ -855,6 +921,26 @@ mod tests {
             "crate skin 1"
         );
         assert_eq!(material_label("stone"), "stone");
+    }
+
+    #[test]
+    fn solid_paint_materials_are_named_by_colour() {
+        // The feature lab's glTF named them `paint:Rgb { r: 220, g: 30, b: 40 }:None`.
+        let mut doc = cube();
+        doc.select_all();
+        doc.set_face_color(Some(FaceColor::solid(Rgb::new(220, 30, 40))));
+        let (_, json, _) = glb(&doc);
+        assert_eq!(json["materials"][0]["name"], "Paint #DC1E28");
+        doc.set_surface_material(Some(map_model::brush_face::SurfaceMaterial {
+            roughness: 20,
+            metallic: 80,
+            emission: 250,
+        }));
+        let (_, json, _) = glb(&doc);
+        assert_eq!(
+            json["materials"][0]["name"],
+            "Paint #DC1E28 roughness 20 metallic 80 emission 250"
+        );
     }
 
     #[test]
@@ -1241,6 +1327,83 @@ mod tests {
             .iter()
             .any(|n| n["name"] == "Geometry"));
     }
+    /// A map whose worldspawn holds a 64-unit cube, with a trigger and a water volume
+    /// as 64-unit cubes beside it.
+    fn volumes() -> Document {
+        let cube = |min: i32, max: i32| {
+            let (a, b, c, d) = (min, max, min + 1, max + 1);
+            format!(
+                "{{\n( {a} {a} {a} ) ( {a} {c} {a} ) ( {a} {a} {c} ) stone 0 0 0 1 1\n\
+                 ( {b} {b} {b} ) ( {b} {b} {d} ) ( {b} {d} {b} ) stone 0 0 0 1 1\n\
+                 ( {a} {a} {a} ) ( {a} {a} {c} ) ( {c} {a} {a} ) stone 0 0 0 1 1\n\
+                 ( {b} {b} {b} ) ( {d} {b} {b} ) ( {b} {b} {d} ) stone 0 0 0 1 1\n\
+                 ( {b} {b} {b} ) ( {b} {d} {b} ) ( {d} {b} {b} ) stone 0 0 0 1 1\n\
+                 ( {a} {a} {a} ) ( {c} {a} {a} ) ( {a} {c} {a} ) stone 0 0 0 1 1\n}}\n"
+            )
+        };
+        let source = format!(
+            "{{\n\"classname\" \"worldspawn\"\n{}}}\n\
+             {{\n\"classname\" \"trigger_multiple\"\n\"targetname\" \"gate\"\n\"target\" \"door\"\n{}}}\n\
+             {{\n\"classname\" \"water_volume\"\n\"targetname\" \"pool\"\n{}}}\n",
+            cube(0, 64),
+            cube(128, 192),
+            cube(256, 320)
+        );
+        let path =
+            std::env::temp_dir().join(format!("heron-gltf-volumes-{}.map", std::process::id()));
+        std::fs::write(&path, source).unwrap();
+        let doc = Document::open(&path, WorldBounds::default()).unwrap();
+        std::fs::remove_file(path).unwrap();
+        doc
+    }
+    fn named<'a>(json: &'a Value, name: &str) -> &'a Value {
+        json["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|n| n["name"] == name)
+            .unwrap()
+    }
+
+    #[test]
+    fn a_trigger_is_an_empty_node_with_its_volume_in_the_extras() {
+        // The class's `visuals=false` used to be ignored, so the trigger drew as a box.
+        let (report, json, _) = glb(&volumes());
+        let trigger = named(&json, "gate");
+        assert!(trigger.get("mesh").is_none() && trigger.get("children").is_none());
+        assert_eq!(trigger["extras"]["entity"]["target"], "door");
+        let brush = &trigger["extras"]["heron"]["volume"]["brushes"][0];
+        assert_eq!(brush["planes"].as_array().unwrap().len(), 6);
+        assert_eq!(brush["vertices"].as_array().unwrap().len(), 8);
+        // 128..192 units at 32 a metre: X 4..6, glTF Z is -Y, so -6..-4.
+        let planes: Vec<Vec<f64>> = serde_json::from_value(brush["planes"].clone()).unwrap();
+        assert!(planes.contains(&vec![1.0, 0.0, 0.0, 6.0]));
+        assert!(planes.contains(&vec![0.0, 0.0, 1.0, -4.0]));
+        assert!(planes.contains(&vec![0.0, -1.0, 0.0, -4.0]));
+        // The worldspawn cube and the water's top are all that is drawn.
+        assert_eq!(report.triangles, 12 + 2);
+    }
+
+    #[test]
+    fn water_draws_only_its_top_and_keeps_its_volume_in_the_extras() {
+        let (_, json, bin) = glb(&volumes());
+        let water = named(&json, "pool");
+        assert!(water.get("mesh").is_none());
+        let volume = &water["extras"]["heron"]["volume"]["brushes"][0];
+        assert_eq!(volume["planes"].as_array().unwrap().len(), 6);
+        let children = water["children"].as_array().unwrap();
+        assert_eq!(children.len(), 1);
+        let mesh = &json["meshes"][json["nodes"][children[0].as_u64().unwrap() as usize]["mesh"]
+            .as_u64()
+            .unwrap() as usize];
+        let primitives = mesh["primitives"].as_array().unwrap();
+        assert_eq!(primitives.len(), 1);
+        let normal = primitives[0]["attributes"]["NORMAL"].as_u64().unwrap() as usize;
+        for n in read(&json, &bin, normal, 3) {
+            assert_eq!(n, [0.0, 1.0, 0.0]);
+        }
+    }
+
     #[test]
     fn patch_exports_its_tessellation_as_double_sided_geometry() {
         let path =

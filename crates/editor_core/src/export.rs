@@ -644,6 +644,12 @@ fn build(
                 );
                 return Ok((report, Vec::new()));
             }
+            let map = scene_export::map::parse(&document.to_map_text(), &options.name)
+                .map_err(|error| Error::Map(error.to_string()))?;
+            let (mut classes, class_warnings) = entity_classes(document);
+            crate::export_bindings::apply(&map, &mut classes, &options.entities)
+                .map_err(Error::Map)?;
+            report.warnings.extend(class_warnings);
             let (written, obj_files) = crate::obj_export::files_scaled(
                 document,
                 &path,
@@ -653,6 +659,7 @@ fn build(
                 },
                 1. / options.scale,
                 &settings,
+                &classes,
             );
             report.triangles = written.triangles;
             return Ok((
@@ -1398,6 +1405,38 @@ pub fn godot_import_defaults(mesh_path: &Path) -> Option<(PathBuf, String)> {
 /// a reader for the file, and a conversion between two shapes of the same thing is a third
 /// thing to keep right. Without a file the map still exports -- the builder falls back to
 /// the bundled HERON_BRUSH definitions -- so a failure to read one is a warning rather than an error.
+/// How much of an entity the portable OBJ, glTF and GLB writers draw. Engine targets
+/// decide this in the builder, which also writes the collision and sensors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PortableVisuals {
+    All,
+    /// A class with `visuals=false`, such as a trigger.
+    Nothing,
+    /// A water volume: only the faces that point up, which are its surface. With
+    /// `water_surface_material=0` a water volume draws in full, as in the engines.
+    WaterSurface,
+}
+
+pub(crate) fn portable_visuals(
+    entity: &map_model::node::EntityNode,
+    classes: &scene_export::indexmap::IndexMap<String, scene_export::fgd::EntityClass>,
+) -> PortableVisuals {
+    let classname = entity.classname().unwrap_or_default();
+    if classes
+        .get(classname)
+        .and_then(|class| class.directives.bool("visuals"))
+        == Some(false)
+    {
+        PortableVisuals::Nothing
+    } else if scene_export::water::enabled_by(classname, entity.property("water_enabled"))
+        && scene_export::water::baseline_by(entity.property("water_surface_material"))
+    {
+        PortableVisuals::WaterSurface
+    } else {
+        PortableVisuals::All
+    }
+}
+
 pub fn entity_classes(
     document: &Document,
 ) -> (
