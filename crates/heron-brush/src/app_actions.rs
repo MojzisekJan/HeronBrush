@@ -76,8 +76,8 @@ pub enum Action {
     Corner,
     /// The Array window (array_dialog.rs).
     Array,
-    /// Cut the selected box into columns one grid step across, to sculpt.
-    SplitColumns,
+    /// Cut the selected box into columns of this shape, one grid step across, to sculpt.
+    SplitColumns(editor_core::sculpt::ColumnShape),
     MergeColumns,
     Preferences,
     Plugins,
@@ -555,9 +555,12 @@ impl App {
             }
             Action::Corner => self.shapes.corner(&self.editor),
             Action::Array => self.arrays.open(&self.editor),
-            Action::SplitColumns => {
+            Action::SplitColumns(shape) => {
                 let cell = self.editor.grid.borrow().actual_size();
-                let shape = editor_core::sculpt::parameters().columns;
+                // The Sculpt window's Column shape follows the last one used.
+                let mut parameters = editor_core::sculpt::parameters();
+                parameters.columns = shape;
+                editor_core::sculpt::set_parameters(parameters);
                 let result = self
                     .editor
                     .document

@@ -33,14 +33,23 @@ pub enum Entry<A> {
     },
     /// A hairline between groups.
     Separator,
-    /// A menu opened beside this row.
+    /// A menu opened beside this row, with an optional icon like an item's.
     Sub {
         label: String,
         entries: Vec<Entry<A>>,
+        icon: &'static str,
     },
 }
 
 impl<A> Entry<A> {
+    /// A submenu without an icon.
+    pub fn sub(label: impl Into<String>, entries: Vec<Entry<A>>) -> Self {
+        Entry::Sub {
+            label: label.into(),
+            entries,
+            icon: "",
+        }
+    }
     /// An enabled item without a shortcut.
     pub fn item(label: impl Into<String>, action: A) -> Self {
         Entry::Item {
@@ -52,10 +61,10 @@ impl<A> Entry<A> {
             icon: "",
         }
     }
-    /// Gives an item an icon from `egui_phosphor::regular`. A toggle's check mark takes
-    /// the same place, so a checked item shows the check instead.
+    /// Gives an item or a submenu an icon from `egui_phosphor::regular`. A toggle's check
+    /// mark takes the same place, so a checked item shows the check instead.
     pub fn icon(mut self, glyph: &'static str) -> Self {
-        if let Entry::Item { icon, .. } = &mut self {
+        if let Entry::Item { icon, .. } | Entry::Sub { icon, .. } = &mut self {
             *icon = glyph;
         }
         self
@@ -269,14 +278,18 @@ pub fn show<A: Clone>(ui: &mut Ui, id: Id, entries: &[Entry<A>]) -> Option<A> {
                     picked = Some(action.clone());
                 }
             }
-            Entry::Sub { label, entries } => {
+            Entry::Sub {
+                label,
+                entries,
+                icon,
+            } => {
                 let lit = current == Some(index);
                 if lit && open_by_keys {
                     ui.data_mut(|d| d.insert_temp(open_sub, index));
                     focus_first(ui.ctx(), Id::unique((id, "sub", index)), entries);
                 }
                 let open = ui.data(|d| d.get_temp::<usize>(open_sub)) == Some(index);
-                let response = row(ui, width, label, "", "", true, None, true, open, lit);
+                let response = row(ui, width, label, "", icon, true, None, true, open, lit);
                 if response.hovered() || response.clicked() {
                     ui.data_mut(|d| d.insert_temp(open_sub, index));
                 }

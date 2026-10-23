@@ -49,7 +49,7 @@ fn flatten<A: Clone>(path: &str, entries: &[Entry<A>], out: &mut Vec<Command<A>>
                 shortcut: shortcut.clone(),
                 action: action.clone(),
             }),
-            Entry::Sub { label, entries } => {
+            Entry::Sub { label, entries, .. } => {
                 flatten(&format!("{path} › {label}"), entries, out);
             }
             Entry::Item { .. } | Entry::Separator => {}
@@ -237,10 +237,7 @@ mod tests {
             Entry::item("Undo", 1u8),
             Entry::item("Redo", 2u8).enabled(false),
             Entry::Separator,
-            Entry::Sub {
-                label: "Grid".into(),
-                entries: vec![Entry::item("Snap", 3u8)],
-            },
+            Entry::sub("Grid", vec![Entry::item("Snap", 3u8)]),
         ];
         let mut out = Vec::new();
         flatten("Edit", &entries, &mut out);

@@ -527,7 +527,7 @@ pub fn sculpt_controls(ui: &mut egui::Ui, cell: f64) -> Option<crate::app_action
     ui.horizontal(|ui| {
         ui.add_space(label_width + gap - ui.spacing().item_spacing.x);
         if ui.button(tr("Split into columns")).clicked() {
-            chosen = Some(Action::SplitColumns);
+            chosen = Some(Action::SplitColumns(parameters.columns));
         }
         if ui.button(tr("Merge columns")).clicked() {
             chosen = Some(Action::MergeColumns);

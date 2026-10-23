@@ -200,6 +200,7 @@ pub fn menus(
     grid: &editor_core::grid::Grid,
     filters: &editor_core::view_filters::ViewFilters,
 ) -> Vec<Vec<Entry<Action>>> {
+    use editor_core::sculpt::ColumnShape;
     use egui_phosphor::regular as icon;
     use menu::ctrl;
     let item = |label: &'static str, action| Entry::item(label, action);
@@ -311,7 +312,21 @@ pub fn menus(
             item(tr("Insert 3D text"), Action::Text).icon(icon::TEXT_T),
             item(tr("Join corner"), Action::Corner).icon(icon::ANGLE),
             item(tr("Array"), Action::Array).icon(icon::DOTS_NINE),
-            item(tr("Split into columns"), Action::SplitColumns).icon(icon::MOUNTAINS),
+            Entry::sub(
+                tr("Split into columns"),
+                ColumnShape::ALL
+                    .into_iter()
+                    .map(|shape| {
+                        let glyph = match shape {
+                            ColumnShape::Triangles => icon::TRIANGLE,
+                            ColumnShape::Squares => icon::SQUARE,
+                            ColumnShape::Hexagons => icon::HEXAGON,
+                        };
+                        item(tr(shape.name()), Action::SplitColumns(shape)).icon(glyph)
+                    })
+                    .collect(),
+            )
+            .icon(icon::MOUNTAINS),
             item(tr("Merge columns"), Action::MergeColumns).icon(icon::UNITE),
             Entry::Separator,
             item(tr("Convert faces to patches"), Action::Patches).icon(icon::BEZIER_CURVE),
@@ -679,10 +694,7 @@ impl Chrome {
                     &self.grid.borrow(),
                     &self.filters.borrow(),
                 ))
-                .map(|(name, entries)| Entry::Sub {
-                    label: tr(name).to_string(),
-                    entries,
-                })
+                .map(|(name, entries)| Entry::sub(tr(name), entries))
                 .collect(),
             Popup::GridSize => grid_sizes(&self.grid.borrow()),
             Popup::GridSettings => grid_settings(

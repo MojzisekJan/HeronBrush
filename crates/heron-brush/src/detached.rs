@@ -129,16 +129,16 @@ pub fn entries(filters_now: &ViewFilters, has_selection: bool, fullscreen: bool)
         .into_iter()
         .map(|mode| Entry::item(mode.label(), Do::Shading(mode)).checked(shading == mode))
         .collect();
-    entries.push(Entry::Sub {
-        label: tr("View").into(),
-        entries: filters()
+    entries.push(Entry::sub(
+        tr("View"),
+        filters()
             .iter()
             .enumerate()
             .map(|(index, (label, read, _))| {
                 Entry::item(*label, Do::Filter(index)).checked(read(filters_now))
             })
             .collect(),
-    });
+    ));
     entries.push(Entry::Separator);
     entries.push(
         Entry::item(tr("Focus on selection"), Do::Focus)

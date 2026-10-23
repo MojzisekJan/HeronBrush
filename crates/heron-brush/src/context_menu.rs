@@ -21,10 +21,7 @@ fn entries(items: &[Item]) -> Vec<Entry<Action>> {
         .iter()
         .map(|item| match item {
             Item::Action(label, action) => Entry::item(label.clone(), action.clone()),
-            Item::Submenu(label, children) => Entry::Sub {
-                label: label.clone(),
-                entries: entries(children),
-            },
+            Item::Submenu(label, children) => Entry::sub(label.clone(), entries(children)),
         })
         .collect()
 }
