@@ -884,6 +884,32 @@ pub fn sync(ctx: &egui::Context) {
 
 /// Puts this thread's interface in the light or the dark palette without consulting or
 /// changing the preferences, for headless tests.
+/// [`text`] for a glyph of the icon font ([`icon`]). A centred anchor centres the glyph's
+/// ink rather than its capitals: the icon glyphs sit at different heights in their line,
+/// and centring their capitals left some of them up to 2 points low in their rows.
+pub fn icon_text(
+    painter: &egui::Painter,
+    pos: egui::Pos2,
+    anchor: egui::Align2,
+    glyph: &str,
+    font: FontId,
+    color: Color32,
+) -> Rect {
+    let galley = painter.layout_no_wrap(glyph.to_string(), font, color);
+    let mut rect = anchor.anchor_size(pos, galley.size());
+    let ink = galley.mesh_bounds;
+    if ink.is_positive() {
+        if anchor.y() == egui::Align::Center {
+            rect = rect.translate(egui::vec2(0.0, pos.y - (rect.top() + ink.center().y)));
+        }
+        if anchor.x() == egui::Align::Center {
+            rect = rect.translate(egui::vec2(pos.x - (rect.left() + ink.center().x), 0.0));
+        }
+    }
+    painter.galley(rect.min, galley, color);
+    rect
+}
+
 #[cfg(test)]
 pub fn use_scheme(ctx: &egui::Context, dark: bool) {
     DARK.set(dark);
@@ -921,30 +947,4 @@ mod fallback_tests {
         assert_eq!(first(Language::English), group(Language::Chinese));
         assert_eq!(fallback_order(Language::Czech).len(), FALLBACK_FONTS.len());
     }
-}
-
-/// [`text`] for a glyph of the icon font ([`icon`]). A centred anchor centres the glyph's
-/// ink rather than its capitals: the icon glyphs sit at different heights in their line,
-/// and centring their capitals left some of them up to 2 points low in their rows.
-pub fn icon_text(
-    painter: &egui::Painter,
-    pos: egui::Pos2,
-    anchor: egui::Align2,
-    glyph: &str,
-    font: FontId,
-    color: Color32,
-) -> Rect {
-    let galley = painter.layout_no_wrap(glyph.to_string(), font, color);
-    let mut rect = anchor.anchor_size(pos, galley.size());
-    let ink = galley.mesh_bounds;
-    if ink.is_positive() {
-        if anchor.y() == egui::Align::Center {
-            rect = rect.translate(egui::vec2(0.0, pos.y - (rect.top() + ink.center().y)));
-        }
-        if anchor.x() == egui::Align::Center {
-            rect = rect.translate(egui::vec2(pos.x - (rect.left() + ink.center().x), 0.0));
-        }
-    }
-    painter.galley(rect.min, galley, color);
-    rect
 }
