@@ -319,7 +319,7 @@ Eksport do raylib dodaje `<map>_animation.h` z odtwarzaczem w C i `<map>_preview
 Otwórz `motion_lab` z sekcji Przykłady na ekranie powitalnym. Zawiera platformę poruszającą się po ścieżce w kształcie L, windę, obracającą się platformę i drzwi na zawiasach z przyciskami. Otwórz w Godocie leżący obok plik `godot/project.godot` i naciśnij `F5`. WASD i mysz poruszają graczem, Spacja to skok, 1 do 4 przenoszą do kolejnych stanowisk, a R uruchamia bieżące stanowisko od nowa. Wejdź na kolorową płytkę, aby aktywować jej cel. Dołączony plik README wyjaśnia, jak eksportować ponownie.
 
 # Eksport do silnika
-Plik → Eksport otwiera okno Eksport. Silniki są wymienione po lewej wraz z logo: Godot, Defold, three.js, Babylon.js, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb i na końcu `.map`. Strona po prawej opisuje, co otrzyma wybrany cel. **Zapisz** zapisuje eksport, **Sprawdź** buduje poziom bez zapisywania i wyświetla problemy, a **Zamknij** zamyka okno.
+Plik → Eksport otwiera okno Eksport. Silniki są wymienione po lewej wraz z logo: Godot, Defold, three.js, Babylon.js, PlayCanvas, Bevy, raylib, Unity, Unreal Engine, Flax Engine, Cocos Creator, Wavefront .obj, glTF .gltf, GLB .glb i na końcu `.map`. Strona po prawej opisuje, co otrzyma wybrany cel. **Zapisz** zapisuje eksport, **Sprawdź** buduje poziom bez zapisywania i wyświetla problemy, a **Zamknij** zamyka okno.
 
 Eksport jest niezależny od zapisywania: plik `.map` pozostaje twoim edytowalnym źródłem. Każda kontrolka zapisuje ustawienia swojego silnika od razu po zmianie, więc każdy silnik pamięta własne odpowiedzi, a okno otwiera się tak, jak je zostawiłeś.
 
@@ -340,7 +340,7 @@ Komórki statyczne przydzielają brushe świata według ich środków i łączą
 - Unity: siatki OBJ i importer edytora; eksportuj do folderu Assets projektu.
 - Unreal Engine: wygenerowany skrypt importu i ścieżka zawartości, zwykle /Game/<level>.
 - Flax Engine: ścieżka zawartości modelu względem folderu Content projektu.
-- three.js, Babylon.js, Bevy, raylib i Cocos Creator: sceny lub kod dla tych środowisk, z instrukcjami obok eksportu.
+- three.js, Babylon.js, PlayCanvas, Bevy, raylib i Cocos Creator: sceny lub kod dla tych środowisk, z instrukcjami obok eksportu.
 - glTF / GLB: przenośna geometria dla zgodnych narzędzi; GLB to postać binarna. OBJ: geometria i materiały dla programów do modelowania.
 - `.map`: **Zapisz jako** wybiera Valve 220, Standard, Quake 2 lub Quake 2 (Valve). Okno informuje, co wybrany dialekt by utracił.
 

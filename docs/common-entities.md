@@ -49,7 +49,8 @@ does not preview audio playback.
 ## Water volumes
 
 `water_volume` is a built-in brush class with a water icon and inspector parameters.
-Custom brush classes can opt in with `water_enabled=1`. Bevy, Three.js, Babylon.js, Defold,
-Unity and Flax consume a versioned, exact-volume water payload. Surface and player
-adapters are optional; `water_surface_material=0` preserves game-owned appearance.
+Custom brush classes can opt in with `water_enabled=1`. Bevy, Three.js, Babylon.js,
+PlayCanvas, Defold, Unity and Flax consume a versioned, exact-volume water payload.
+Surface and player adapters are optional; `water_surface_material=0` preserves
+game-owned appearance.
 See [water export](water-export.md) and the bundled Water Lab example.
