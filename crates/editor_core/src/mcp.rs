@@ -830,6 +830,7 @@ pub(crate) fn call_tool(
                 concentric: args["concentric"].as_bool().unwrap_or(false),
                 wedges: args["wedges"].as_bool().unwrap_or(false),
                 preserve_thickness: args["preserve_thickness"].as_bool().unwrap_or(false),
+                snap: None,
             };
             let draft = document.preview_corner_join_options(rounding)?;
             let [a, b] = draft.join.before.each_ref().map(|brush| brush.bounds());

@@ -16,6 +16,9 @@ pub struct Join {
     pub axes: [usize; 2],
     pub plane: Plane3d,
     pub removed_volume: f64,
+    /// How many added brushes snapping to the corner grid left without volume, and so
+    /// left out.
+    pub snapped_away: usize,
 }
 fn rectangular(brush: &Brush) -> bool {
     brush.faces().len() == 6
@@ -94,6 +97,7 @@ pub fn preview(a: &Brush, b: &Brush) -> Result<Join, String> {
                 axes: [u, v],
                 plane,
                 removed_volume: overlap,
+                snapped_away: 0,
             });
         }
     }
@@ -171,10 +175,52 @@ pub struct Rounding {
     pub wedges: bool,
     /// Offset polygon facets to preserve perpendicular wall thickness.
     pub preserve_thickness: bool,
+    /// The grid the corner's new vertices snap to, in the corner's plane, if any.
+    pub snap: Option<f64>,
+}
+
+/// The joined corner with `rounding`, its new vertices snapped to `rounding.snap`.
+pub fn preview_with_rounding(a: &Brush, b: &Brush, rounding: Rounding) -> Result<Join, String> {
+    let mut join = rounded(a, b, rounding)?;
+    if let Some(size) = rounding.snap {
+        snap(&mut join, size)?;
+    }
+    Ok(join)
+}
+
+/// Moves the vertices the join made onto a grid `size` apart, in the corner's plane only,
+/// so the depth of the members stays as it was. A member's own corners away from the join
+/// stay put. Neighbouring pieces share their vertices and snap them alike, so no gap
+/// opens between them; an added piece left without volume is dropped and counted.
+fn snap(join: &mut Join, size: f64) -> Result<(), String> {
+    if !size.is_finite() || size <= 0.0 {
+        return Err("Use a positive corner grid.".into());
+    }
+    let [u, v] = join.axes;
+    let place = |mut p: Vec3d| {
+        p[u] = (p[u] / size).round() * size;
+        p[v] = (p[v] / size).round() * size;
+        p
+    };
+    for (after, before) in join.after.iter_mut().zip(&join.before) {
+        let old = before.vertex_positions();
+        let made = |p: Vec3d| !old.iter().any(|o| vec::squared_distance(*o, p) < EPS * EPS);
+        *after = after
+            .map_vertices(|p| if made(p) { place(p) } else { p })
+            .map_err(|_| "The corner grid is too coarse for this corner.".to_string())?;
+    }
+    let count = join.added.len();
+    join.added = std::mem::take(&mut join.added)
+        .into_iter()
+        .filter_map(|brush| brush.map_vertices(place).ok())
+        .filter(|brush| brush.volume() > 1e-9)
+        .collect();
+    join.snapped_away = count - join.added.len();
+    Ok(())
 }
 
 /// Adds a concave quarter-circle fillet as non-overlapping triangular prisms.
-pub fn preview_with_rounding(a: &Brush, b: &Brush, rounding: Rounding) -> Result<Join, String> {
+fn rounded(a: &Brush, b: &Brush, rounding: Rounding) -> Result<Join, String> {
     if rounding.wedges {
         return preview_wedges(a, b, rounding);
     }
@@ -485,6 +531,7 @@ mod tests {
                         concentric,
                         wedges,
                         preserve_thickness,
+                        snap: None,
                     },
                 )
                 .unwrap();
@@ -565,6 +612,58 @@ mod tests {
         )
         .unwrap()
     }
+    #[test]
+    fn snapping_puts_the_corner_on_its_grid_and_keeps_the_depth() {
+        let a = cube(Vec3d::zero(), Vec3d::new(256.0, 32.0, 100.0), "a");
+        let b = cube(Vec3d::zero(), Vec3d::new(32.0, 256.0, 100.0), "b");
+        let rounding = Rounding {
+            outer: Some((28.0, 8)),
+            inner: Some((24.0, 8)),
+            ..Rounding::default()
+        };
+        let volume = |join: &Join| -> f64 {
+            join.after
+                .iter()
+                .chain(&join.added)
+                .map(|brush| brush.volume())
+                .sum()
+        };
+        let free = preview_with_rounding(&a, &b, rounding).unwrap();
+        let snapped = preview_with_rounding(
+            &a,
+            &b,
+            Rounding {
+                snap: Some(1.0),
+                ..rounding
+            },
+        )
+        .unwrap();
+        for brush in snapped.after.iter().chain(&snapped.added) {
+            for p in brush.vertex_positions() {
+                let on = |x: f64, step: f64| (x / step - (x / step).round()).abs() < 1e-6;
+                assert!(on(p[0], 1.0) && on(p[1], 1.0), "off the grid: {p:?}");
+                assert!(on(p[2], 100.0), "depth moved: {p:?}");
+            }
+        }
+        // Near an arc's ends one coordinate moves less than half a step, so the first
+        // pieces flatten into the wall even on a fine grid.
+        assert_eq!(snapped.added.len() + snapped.snapped_away, free.added.len());
+        assert!((volume(&snapped) - volume(&free)).abs() < volume(&free) * 0.01);
+
+        // Arc points a coarse grid puts on top of each other leave pieces without volume.
+        let coarse = preview_with_rounding(
+            &a,
+            &b,
+            Rounding {
+                snap: Some(32.0),
+                ..rounding
+            },
+        )
+        .unwrap();
+        assert!(coarse.snapped_away > snapped.snapped_away);
+        assert_eq!(coarse.added.len() + coarse.snapped_away, free.added.len());
+    }
+
     #[test]
     fn mitres_preserve_union_in_all_planes_quadrants_and_widths() {
         for u in 0..3 {
@@ -741,6 +840,7 @@ mod tests {
                                     concentric: false,
                                     wedges: false,
                                     preserve_thickness: false,
+                                    snap: None,
                                 },
                                 Rounding {
                                     outer: Some((1.0, 1)),
@@ -748,6 +848,7 @@ mod tests {
                                     concentric: true,
                                     wedges: false,
                                     preserve_thickness: false,
+                                    snap: None,
                                 },
                             ] {
                                 let join = preview_with_rounding(a, b, options).unwrap();
@@ -844,7 +945,8 @@ mod tests {
                 inner: Some((8.0, 8)),
                 concentric: true,
                 wedges: false,
-                preserve_thickness: false
+                preserve_thickness: false,
+                snap: None,
             }
         )
         .is_err());
@@ -869,6 +971,7 @@ mod tests {
                     concentric: true,
                     wedges: false,
                     preserve_thickness: false,
+                    snap: None,
                 },
             )
             .unwrap();

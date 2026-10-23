@@ -31,6 +31,9 @@ pub struct ShapeDialogs {
     corner_concentric: bool,
     corner_wedges: bool,
     corner_preserve_thickness: bool,
+    /// Whether the corner's new vertices snap to `corner_grid`, a grid of its own.
+    corner_snap: bool,
+    corner_grid: f64,
     corner_steps: [[bool; 2]; 4],
     corner_zoom: f32,
     corner_pan: egui::Vec2,
@@ -59,6 +62,8 @@ impl Default for ShapeDialogs {
             corner_concentric: false,
             corner_wedges: false,
             corner_preserve_thickness: false,
+            corner_snap: false,
+            corner_grid: 1.0,
             corner_steps: [[true; 2]; 4],
             corner_zoom: 1.0,
             corner_pan: egui::Vec2::ZERO,
@@ -93,6 +98,7 @@ impl ShapeDialogs {
                 && !self.corner_wedges,
             wedges: self.corner_wedges,
             preserve_thickness: self.corner_preserve_thickness,
+            snap: self.corner_snap.then_some(self.corner_grid),
         }
     }
     pub fn corner(&mut self, editor: &Editor) {
@@ -411,6 +417,12 @@ impl ShapeDialogs {
                     ui.add_enabled_ui(self.corner_wedges, |ui| {
                         changed |= crate::widgets::checkbox(ui, &mut self.corner_preserve_thickness, tr("Preserve wall thickness")).changed();
                     });
+                    ui.horizontal(|ui| {
+                        changed |= crate::widgets::checkbox(ui, &mut self.corner_snap, tr("Snap to grid")).changed();
+                        ui.add_enabled_ui(self.corner_snap, |ui| {
+                            changed |= corner_grid(ui, &mut self.corner_grid);
+                        });
+                    });
                     ui.label(tr(if self.corner_wedges {
                         "Inner radius and segments define the wedges. Thickness mode offsets the outer facets."
                     } else {
@@ -442,6 +454,10 @@ impl ShapeDialogs {
                                 self.corner_concentric = old_options.concentric;
                                 self.corner_wedges = old_options.wedges;
                                 self.corner_preserve_thickness = old_options.preserve_thickness;
+                                self.corner_snap = old_options.snap.is_some();
+                                if let Some(grid) = old_options.snap {
+                                    self.corner_grid = grid;
+                                }
                                 self.status = error;
                             }
                         }
@@ -476,6 +492,13 @@ impl ShapeDialogs {
                                 tr("Added brushes"),
                                 draft.join.added.len()
                             ));
+                            if draft.join.snapped_away > 0 {
+                                ui.label(format!(
+                                    "{}: {}",
+                                    tr("Left out by the grid"),
+                                    draft.join.snapped_away
+                                ));
+                            }
                         });
                         ui.horizontal(|ui| {
                             ui.label(tr("Preview zoom"));
@@ -659,6 +682,26 @@ fn draw_join(
             painter.line_segment([project(a), project(b)], egui::Stroke::new(2.0, colour));
         }
     }
+}
+
+/// The corner's own grid, halved by − and doubled by +, between 1/8 and 256 as the
+/// editor's grid sizes go. Returns whether it changed.
+fn corner_grid(ui: &mut egui::Ui, grid: &mut f64) -> bool {
+    let before = *grid;
+    if ui
+        .add_enabled(*grid > 0.125, egui::Button::new("−"))
+        .clicked()
+    {
+        *grid /= 2.0;
+    }
+    ui.add(egui::DragValue::new(grid).range(0.125..=256.0));
+    if ui
+        .add_enabled(*grid < 256.0, egui::Button::new("+"))
+        .clicked()
+    {
+        *grid *= 2.0;
+    }
+    *grid != before
 }
 
 fn corner_number<T: egui::emath::Numeric>(

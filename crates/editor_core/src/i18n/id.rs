@@ -522,6 +522,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Leak check", "Pemeriksaan kebocoran"),
     ("Leak trace", "Jejak kebocoran"),
     ("Leave session", "Tinggalkan sesi"),
+    ("Left out by the grid", "Dihilangkan oleh grid"),
     ("Left out of exports", "Dikecualikan dari ekspor"),
     ("Length (seconds)", "Durasi (detik)"),
     ("Length from animation", "Durasi dari animasi"),

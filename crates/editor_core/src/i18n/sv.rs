@@ -522,6 +522,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Leak check", "Läckkontroll"),
     ("Leak trace", "Läckspår"),
     ("Leave session", "Lämna session"),
+    ("Left out by the grid", "Utelämnade av rutnätet"),
     ("Left out of exports", "Utelämnas vid export"),
     ("Length (seconds)", "Längd (sekunder)"),
     ("Length from animation", "Längd från animering"),

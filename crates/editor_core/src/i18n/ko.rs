@@ -522,6 +522,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Leak check", "누출 검사"),
     ("Leak trace", "누출 경로"),
     ("Leave session", "세션 나가기"),
+    ("Left out by the grid", "그리드로 빠진 브러시"),
     ("Left out of exports", "내보내기에서 제외"),
     ("Length (seconds)", "길이(초)"),
     ("Length from animation", "애니메이션에서 길이 가져오기"),

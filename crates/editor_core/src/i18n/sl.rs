@@ -531,6 +531,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Leak check", "Preverjanje puščanj"),
     ("Leak trace", "Sled puščanja"),
     ("Leave session", "Zapusti sejo"),
+    ("Left out by the grid", "Izpuščeno zaradi mreže"),
     ("Left out of exports", "Izpuščeno iz izvozov"),
     ("Length (seconds)", "Dolžina (sekunde)"),
     ("Length from animation", "Dolžina iz animacije"),

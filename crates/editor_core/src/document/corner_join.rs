@@ -18,6 +18,7 @@ impl Document {
             concentric: false,
             wedges: false,
             preserve_thickness: false,
+            snap: None,
         })
     }
     pub fn preview_corner_join_options(
@@ -65,6 +66,7 @@ impl Document {
                 concentric: false,
                 wedges: false,
                 preserve_thickness: false,
+                snap: None,
             },
         )
     }
@@ -268,6 +270,7 @@ mod inner_tests {
                     concentric: !wedges,
                     wedges,
                     preserve_thickness,
+                    snap: None,
                 };
                 let preview = d.preview_corner_join_options(options).unwrap();
                 assert_eq!(preview.join.added.len(), 8);

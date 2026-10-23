@@ -522,6 +522,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Leak check", "Nuotėkių patikra"),
     ("Leak trace", "Nuotėkio pėdsakas"),
     ("Leave session", "Palikti seansą"),
+    ("Left out by the grid", "Praleista dėl tinklelio"),
     ("Left out of exports", "Neįtraukiama į eksportą"),
     ("Length (seconds)", "Trukmė (sekundės)"),
     ("Length from animation", "Trukmė pagal animaciją"),

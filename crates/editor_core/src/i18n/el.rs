@@ -522,6 +522,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Leak check", "Έλεγχος διαρροών"),
     ("Leak trace", "Ίχνος διαρροής"),
     ("Leave session", "Αποχώρηση από τη συνεδρία"),
+    ("Left out by the grid", "Παραλείφθηκαν από το πλέγμα"),
     ("Left out of exports", "Εξαιρείται από τις εξαγωγές"),
     ("Length (seconds)", "Διάρκεια (δευτερόλεπτα)"),
     ("Length from animation", "Διάρκεια από την κίνηση"),

@@ -522,6 +522,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Leak check", "洩漏檢查"),
     ("Leak trace", "洩漏路徑"),
     ("Leave session", "離開工作階段"),
+    ("Left out by the grid", "因網格省略"),
     ("Left out of exports", "不納入匯出"),
     ("Length (seconds)", "長度（秒）"),
     ("Length from animation", "依動畫設定長度"),
