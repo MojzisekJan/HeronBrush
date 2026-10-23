@@ -19,9 +19,10 @@ Games that are free to download come first, one at a time.
 | Quake2 | the freely distributed demo, Yamagi Quake II, ericw-tools | [done](#quake-2) |
 | DDayNormandy | D-Day: Normandy, which needs no Quake 2 data, ericw-tools | [done](#d-day-normandy) |
 | Hexen2 | the freely distributed demo | [done](#hexen-ii) |
+| Halflife | Half-Life: Uplink, the free demo, on Xash3D FWGS, SDHLT | [done](#half-life-uplink) |
 
-Not tried, because the game has to be bought: Halflife, Kingpin, SoF, Heretic2,
-Daikatana and Wrath. `Generic` and `heron_brush` are Heron's own profiles.
+Not tried, because the game has to be bought: Kingpin, SoF, Heretic2, Daikatana and
+Wrath. `Generic` and `heron_brush` are Heron's own profiles.
 
 ## Quake
 
@@ -1135,3 +1136,209 @@ alias loop". The log goes to `logs/console.log` in the homedir.
 - No briefing picture was made for the map.
 - Heron does not read 24-bit `.pcx` textures. Quake 2 engines draw `.wal`, so this
   matters only for the two leftover files in `ed/`.
+
+## Half-Life: Uplink
+
+Tried on 2026-10-24 with Half-Life: Uplink, the demo Valve gave away in 1999, on Xash3D
+FWGS with FWGS's hlsdk-portable as the game code, and SDHLT 1.3.1 for the compile. The
+level is [demos/halflife_heron](../demos/halflife_heron/README.md), two maps joined by a
+level change. In `heron_lab` the player picks up the HEV suit and a pistol, presses a
+button that lifts the lab's door, walks through a passage whose trigger switches a lamp
+on and sends in two houndeyes, past headcrabs and a zombie in a yard under the desert
+sky, up a ramp of `CLIP` over the steps and into a corridor whose `trigger_changelevel`
+leads through the landmark `heron_gate` to `heron_lab2`. There a rotating door on an
+`ORIGIN` brush opens onto a room, and a `trigger_endsection` ends the demo the way
+Uplink's own maps do. Both maps compile sealed and a scripted run plays them from the
+spawn to the end.
+
+### What was installed
+
+Everything is under `~/.local/opt/halflife/`, without root. The downloads stay in
+`downloads/`.
+
+| What | From | Unpacked to |
+| --- | --- | --- |
+| Half-Life: Uplink, `hluplink.exe` (50.9 MB, md5 `498afa6a...0b18`, the same file in two archive.org items) | archive.org, items `Half-lifeUplink` and `hluplink` | `uplink/` |
+| Xash3D FWGS, the continuous build of 2026-10-21, `xash3d-fwgs-linux-amd64.tar.gz` | github.com/FWGS/xash3d-fwgs releases | `xash3d/` |
+| hlsdk-portable, `git clone --depth 1` (commit 8a09758) with its `freevgui` submodule, built with its own `waf` (`./waf configure -T release -8`) | github.com/FWGS/hlsdk-portable | `downloads/src/`, the two libraries into `uplink/valve/dlls` and `cl_dlls` |
+| SDHLT 1.3.1, `sdhlt-v1.3.1.zip`, which has Linux builds of `sdHLCSG`, `sdHLBSP`, `sdHLVIS`, `sdHLRAD` and `sdhlt.wad` | github.com/seedee/SDHLT releases | `sdhlt/` |
+| `delta.lst`, from Valve's own Half-Life dedicated server 1.1.x (`valve/hlds.zip` in archive.org's `hl_shareware_data`, files Valve gave away) | archive.org | `uplink/valve/` |
+| Four map sources of the Half-Life Unified SDK (MIT), made in J.A.C.K., for the round trip | github.com/twhl-community/halflife-unified-sdk-assets, `mapsrc/` | `downloads/hlu-mapsrc/` |
+
+The demo is a Wise installer, which 7-Zip cannot open and no Wise extractor was at hand
+for. Its files are raw deflate streams, each followed by its CRC-32, in the order the
+installer's script lists them, so they were carved out with a short Python script and
+named from that list: `valve/pak0.pak` (1952 files, the maps `hldemo1` to `hldemo3` and
+the training maps), `cached.wad`, `decals.wad`, `gfx.wad`, the configs and Valve's
+Windows `hl.dll` and `client.dll`, which Xash3D on Linux cannot load.
+
+Xash3D runs Uplink's data with hlsdk-portable's `hl_amd64.so` and `client_amd64.so` and
+a `liblist.gam` that names `dlls/hl.so` for Linux (Uplink's names a Windows path on
+Valve's machine; it is kept as `liblist.gam.uplink`). The engine stops at once with
+"couldn't load file delta.lst" without the network field list that Half-Life 1.1 added
+and Uplink does not have; the copy from Valve's free dedicated server is enough. Valve's
+demo itself is the data, so nothing from the full game was used. Valve's free dedicated
+server also holds the full `halflife.wad`, `liquids.wad` and `xeno.wad`; they were not
+used either, and the map uses only Uplink's textures. The game code is newer than
+Uplink's and precaches the weapons Uplink lacks (the gauss, the crossbow and others),
+so every map, Uplink's own too, prints about 70 "Could not load" lines for their models
+and sounds.
+
+`run-xash` starts the engine with `XASH3D_BASEDIR` on `uplink/` and Xash3D's
+`extras.pk3`. The engine writes its config, logs, saves and screenshots into
+`uplink/valve`, not the home folder; with `XASH_HOME` set, `run-xash` also points `HOME`
+and the XDG folders there, where only Mesa's shader cache, a PulseAudio cookie and an id
+file landed. Nothing was written into the real home.
+
+### How a GoldSrc map is made
+
+From SDHLT's and VHLT's documentation, TWHL's tutorials, Valve's FGD and the game code
+in hlsdk-portable:
+
+- A face names a texture in a WAD3, which carries its own palette per texture. The
+  worldspawn's `wad` key lists the wads; hlcsg opens them by the path written there,
+  relative to the folder it runs in or under `WADROOT`, and `-wadinclude name` copies
+  every texture the map uses from a wad into the bsp. Uplink's maps carry all their
+  textures inside the bsp, and its wads (`halflife.wad`, `hldemo.wad`) never shipped, so
+  `extract_wad.py` gathers the 427 textures out of the maps into `uplink.wad`: a bsp's
+  miptex and a WAD3 lump are the same bytes. The bsp is compiled with
+  `-wadinclude uplink.wad`.
+- Tool textures come from SDHLT's `sdhlt.wad`: `AAATRIGGER` for triggers, `CLIP` (solid
+  to the player, not drawn), `NULL` (no face at all), `SKIP` and `HINT` for vis,
+  `ORIGIN` for the centre a rotating brush entity turns about. `func_detail` brushes are
+  compiled into the world but left out of the vis tree.
+- A texture whose name starts with `+0` animates, `+a` is its toggled frame (a button
+  lights up when pressed), `{` is masked, `!` is water and `~` marks a light texture,
+  which gives off light only when `lights.rad` beside the map names it.
+- The sky is the `sky` texture with worldspawn `skyname` naming a box in `gfx/env`
+  (Uplink has `desert`, `2desert` and `night`). `light_environment` lights every sky
+  face from its `pitch` and `angles`. A `light` with a `targetname` gets a switchable
+  style from hlrad; spawnflag 1 starts it dark.
+- A `func_door` with a `targetname` opens only when fired. `angles "-90 0 0"` moves it
+  up, `wait -1` keeps it open. A `func_button` is pressed with `+use` and fires its
+  `target`; `func_door_rotating` turns `distance` degrees about its `ORIGIN` brush.
+- `monstermaker` spawns `monstercount` of `monstertype` when fired. Monsters and items
+  are placed on the floor; Uplink's pak has models for the scientist, Barney, the
+  headcrab, houndeye, zombie, vortigaunt, soldier and gargantua, and for the 9 mm
+  pistol, shotgun, crowbar, MP5 and grenades.
+- `trigger_changelevel` with `map` and `landmark` changes level, and an `info_landmark`
+  of that name in both maps keeps the player's place relative to it. The game links two
+  maps only when each has a `trigger_changelevel` to the other through the same
+  landmark; Uplink's maps give the way back spawnflag 2, "USE Only", so it is never
+  touched. `trigger_endsection` with `_oem_end_demo` ends the demo.
+
+### Setting Heron up
+
+In the welcome window the profile is set to Half-Life, and in Preferences, Games, the
+game path is `~/.local/opt/halflife/uplink`. Heron lists `uplink` and `uplink/valve` as
+the project paths and mounts `pak0.pak`, which is where the models come from, and loads
+`gamedata/Halflife/HalfLife.fgd`. The wads are added from the Materials tab, or with
+MCP's `load_wad`, and named in worldspawn's `wad` key relative to the map. A scripted
+run of the window did the setup; the preferences it wrote are what the MCP runs use.
+
+### Rerunning it
+
+    cd demos/halflife_heron
+    ./build.sh          # the wads, then SDHLT on both maps, then installs them
+    XASH_HOME=/some/scratch ~/.local/opt/halflife/run-xash -windowed \
+        +sv_cheats 1 +sv_enttools_enable 1 +map heron_lab
+    python3 console.py "$DISPLAY" "exec playtest.cfg"   # once the map is up
+
+`build.sh --remake` builds both maps again in Heron first, through `make_map.py` and the
+MCP server; set `HERON_BRUSH` to the binary and `XDG_CONFIG_HOME` to a scratch folder
+whose preferences have the Half-Life game path. `playtest.cfg` fixes the frame time with
+`host_framerate 0.02` and walks the player with `+forward`, `+moveleft` and turns: to
+the button, turns to face it, presses `+use`, steps back to see the door, walks through
+the passage and the yard onto the platform and into the level change, and carries on in
+`heron_lab2` through the rotating door into the end. It prints `ent_info` of the player
+and the door at each step and takes a screenshot. The player does not move while the
+console is open, so `console.py` gives the game window the keyboard through XTest, types
+the command and closes the console again. The engine ran in a nested Xephyr display
+with Mesa's llvmpipe.
+
+### What worked
+
+- SDHLT compiled both maps with no leak and no warning about the maps (only hlbsp's
+  "No entities exist in hull 2"). `[uplink.wad] 16/427 textures` went into the bsp,
+  hlrad read the lamp texture from `lights.rad` and found 36 direct lights in
+  `heron_lab`.
+- In the engine the console shows nothing from the map. The button prints "Firing:
+  (door1)" and the door's origin goes from `0 0 0` to `0 0 108`; the passage's trigger
+  fires the lamp and the monstermaker, and `ent_list` shows a houndeye; `CHANGE LEVEL:
+  heron_lab2 heron_gate` loads the second map with the player on the same line through
+  the corridor (`y` 176 before, 175 after); the rotating door lets the player into the
+  room, and the end trigger gives "Host_EndGame". The HUD, the pistol, the zombie, the
+  headcrabs and the sky are as expected, and the textures are where Heron draws them.
+- Heron's 3D view draws the zombie, the headcrabs and the other monsters and items with
+  their Uplink models, textured.
+- A round trip of four J.A.C.K. maps of the Half-Life Unified SDK through Heron's MCP
+  server (`hlu_technology_demonstration` with 372 brushes and 139 entities, and three
+  level change tests) compiles with hlcsg and hlbsp to the same planes, faces, nodes,
+  clip nodes, leaves, models and entities as the originals. The only difference is in
+  58 of the 131 texinfos of the large map, whose axes have `-0` where the original wrote
+  it and Heron writes `0`. The maps' textures came from a stand-in wad of grey 64 by 64
+  textures, the same for both compiles, since `halflife.wad` is not part of the demo.
+
+### What was fixed in Heron
+
+- **No map made in Heron compiled.** A brush with no UV axes of its own, which is every
+  brush made in the editor or through MCP, was written as a Standard face line under
+  `// Format: Valve` and `"mapversion" "220"`. hlcsg reads every face line of a 220 map
+  as Valve's and stopped with "Missing '[' in texturedef (U)". Such a face now writes
+  the axes it maps with, rotation applied, which give the same texture coordinates, and
+  a `// heron_brush paraxial` note that brings it back as the face it was when Heron
+  opens the file. This also answers the question the Quake section left open: every
+  line of a Heron map is now a line TrenchBroom's Valve reader expects.
+- **Monsters and items were boxes.** Heron read only Quake's `.mdl`, so every studio
+  model (`IDST`, version 10) was refused as "not a Quake model", one line each on the
+  MCP server's output. A new reader plays frame 0 of sequence 0 to place the bones,
+  puts each vertex in its bone's space, turns the triangle strips and fans into
+  triangles and colours each texture with its own palette, masked ones with their hole.
+  Textures kept in a `<name>t.mdl` are read from there.
+- **Every new point entity got all its defaults, and no brush entity did.** The profile
+  sets `entities.setDefaultProperties`, which Heron did not read: it wrote the defaults
+  for any game and only for point entities. It now follows the flag for both, as
+  TrenchBroom does. Half-Life's doors and buttons get their defaults; the Quake
+  lineage's profiles do not set it, so their lights no longer get `style`, `wait` or
+  `_cone` and OpenArena's weapons no longer get a `wait`. Heron's own profile sets the
+  flag, so its entities start as before.
+- **The FGD lacked `func_detail`,** VHLT's detail brush entity, which SDHLT reads. It is
+  added with its `zhlt_` keys.
+- **Every landmark was reported as named by nothing.** `trigger_changelevel`'s
+  `landmark` was a plain string in the FGD, so the Issues panel said "info_landmark is
+  called heron_gate, which nothing targets" and no link was drawn. It is a
+  `target_destination` now.
+
+### Mapping mistakes, not Heron's
+
+- The first `heron_lab2` had no `trigger_changelevel` back to `heron_lab`; the game
+  then says "Can't find connection to heron_lab from heron_lab2". A "USE Only" one is
+  there now, as in Uplink's maps. Its exit was a level change to `hldemo1` without a
+  landmark, which the game also complains about; it is Uplink's own
+  `trigger_endsection` now.
+- A headcrab placed on the walking line stopped the scripted walk; monsters block the
+  player.
+- The button stood out of the wall into the player's way, so walking along the wall
+  stops beside it and the script turns to face it before `+use`.
+- `timeout` does not stop Xash3D: it ignores SIGTERM in its loop, so the runs end with
+  `kill -9` (or `timeout -k`).
+
+### What remains
+
+- The editor draws a studio model in frame 0 of sequence 0 and the first model of each
+  body part. The FGD's `"frame": sequence` and `skin` keys and a sequence kept in a
+  `<name>01.mdl` are not read, so a monster placed in another pose shows its first one.
+- Heron's own lighting ignores `lights.rad`: the lamp textures do not glow in the 3D
+  view.
+- MCP's `new_map` writes no `// Game: Half-Life` header, as noted for Neverball.
+- `HINT` and `SKIP` were not used in the demo; `func_detail`, `CLIP`, `NULL`, `ORIGIN`
+  and `AAATRIGGER` were.
+- Only Xash3D was tried. Valve's own engine and other compilers (ZHLT, VHLT itself) were
+  not, nor was J.A.C.K. or TrenchBroom opening a map Heron saved.
+- The yard's lamp switching on was seen in the log, not compared in screenshots.
+
+The profile could drop "experimental": Uplink's textures load with their own palettes,
+Heron's save is what SDHLT compiles, J.A.C.K.'s maps survive the round trip, the FGD
+works for doors, buttons, triggers, monsters, level changes and lights, and the models
+are drawn. That is left to the coordinator, together with the caveat that only Xash3D
+and SDHLT were tried.
