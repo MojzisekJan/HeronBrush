@@ -364,6 +364,12 @@ impl ShapeDialogs {
                     {
                         self.refresh_corner_steps(editor);
                     }
+                    // The controls and the previews scroll together when the window is
+                    // shorter than they are.
+                    egui::ScrollArea::vertical()
+                        .id_salt("corner-controls")
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
                     let old_options = self.corner_rounding();
                     let mut changed = false;
                     ui.allocate_ui(egui::vec2(ui.available_width(), 190.0), |ui| {
@@ -537,6 +543,7 @@ impl ShapeDialogs {
                     if !self.status.is_empty() {
                         ui.add(egui::Label::new(&self.status).wrap().selectable(true));
                     }
+                        });
                 },
             ) && !close;
             if apply {
