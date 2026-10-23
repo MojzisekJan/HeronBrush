@@ -142,27 +142,34 @@ fn write_face(out: &mut String, face: &BrushFace, format: MapFormat, with_color:
     }
     let _ = write!(out, "{}", face.material_name);
 
-    match (&face.uv_coord_system, format.has_explicit_uv_axes()) {
-        (UvCoordSystem::Parallel { u_axis, v_axis }, true) => {
-            let _ = write!(
-                out,
-                " [ {} {} ] [ {} {} ]",
-                Axis(*u_axis),
-                UvScalar(face.uv_attributes.offset.x()),
-                Axis(*v_axis),
-                UvScalar(face.uv_attributes.offset.y()),
-            );
-        }
-        _ => {
-            // Either the format has no axes to write, or the face has none to give; in
-            // both cases the offsets go out on their own, as the Standard format wants.
-            let _ = write!(
-                out,
-                " {} {}",
-                UvScalar(face.uv_attributes.offset.x()),
-                UvScalar(face.uv_attributes.offset.y()),
-            );
-        }
+    // A paraxial face in a dialect with axes on every line, which is what Valve 220 is
+    // to every compiler that reads it: hlcsg stops at the first face line without a `[`.
+    let paraxial_with_axes =
+        format.has_explicit_uv_axes() && matches!(face.uv_coord_system, UvCoordSystem::Paraxial);
+    if format.has_explicit_uv_axes() {
+        // A paraxial face writes the axes it maps with, its rotation already applied,
+        // which give the same texture coordinates. A note says the face was paraxial, so
+        // the editor reads it back as it was; other tools ignore the comment.
+        let (u_axis, v_axis) = face
+            .uv_coord_system
+            .axes(face.normal(), &face.uv_attributes);
+        let _ = write!(
+            out,
+            " [ {} {} ] [ {} {} ]",
+            Axis(u_axis),
+            UvScalar(face.uv_attributes.offset.x()),
+            Axis(v_axis),
+            UvScalar(face.uv_attributes.offset.y()),
+        );
+    } else {
+        // The format has no axes to write, so the offsets go out on their own, as the
+        // Standard format wants.
+        let _ = write!(
+            out,
+            " {} {}",
+            UvScalar(face.uv_attributes.offset.x()),
+            UvScalar(face.uv_attributes.offset.y()),
+        );
     }
 
     let _ = write!(
@@ -191,17 +198,36 @@ fn write_face(out: &mut String, face: &BrushFace, format: MapFormat, with_color:
         let _ = write!(out, " 0 0 0");
     }
 
-    write_face_notes(out, face, with_color, true);
+    write_face_notes(out, face, with_color, true, paraxial_with_axes);
 }
 
-fn write_face_notes(out: &mut String, face: &BrushFace, with_color: bool, with_pending_uv: bool) {
+/// Writes the editor's notes on a face as one comment at the end of its line.
+///
+/// `paraxial` marks a face whose axes were written only because the dialect needs them.
+pub(super) fn write_face_notes(
+    out: &mut String,
+    face: &BrushFace,
+    with_color: bool,
+    with_pending_uv: bool,
+    paraxial: bool,
+) {
     if with_color {
         write_face_color(out, face);
     }
-    if let Some(surface) = face.surface_material {
-        if !with_color || face.color.is_none() {
+    // The colour, when there is one, has opened the comment with the marker already.
+    let mut opened = with_color && face.color.is_some();
+    let mut open = |out: &mut String| {
+        if !opened {
             let _ = write!(out, " // {METADATA_MARKER}");
+            opened = true;
         }
+    };
+    if paraxial {
+        open(out);
+        let _ = write!(out, " paraxial");
+    }
+    if let Some(surface) = face.surface_material {
+        open(out);
         let _ = write!(
             out,
             " pbr {} {} {}",
@@ -211,18 +237,11 @@ fn write_face_notes(out: &mut String, face: &BrushFace, with_color: bool, with_p
         );
     }
     if face.export_hidden {
-        if face.surface_material.is_none() && (!with_color || face.color.is_none()) {
-            let _ = write!(out, " // {METADATA_MARKER}");
-        }
+        open(out);
         let _ = write!(out, " export_hidden");
     }
     if let Some(matrix) = face.primitive_uv.as_ref().filter(|_| with_pending_uv) {
-        if face.surface_material.is_none()
-            && !face.export_hidden
-            && (!with_color || face.color.is_none())
-        {
-            let _ = write!(out, " // {METADATA_MARKER}");
-        }
+        open(out);
         let _ = write!(out, " primitive_uv");
         for value in matrix.iter().flatten() {
             let _ = write!(out, " {}", Scalar(*value));

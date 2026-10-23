@@ -567,7 +567,13 @@ fn a_quake2_dialect_leaves_out_flags_a_face_does_not_have() {
     for format in [MapFormat::Quake2, MapFormat::Quake2Valve] {
         map.format = format;
         let written = write_map(&map);
-        let faces: Vec<&str> = written.lines().filter(|l| l.starts_with('(')).collect();
+        // The face lines without the editor's notes, which a paraxial face in Quake 2
+        // (Valve) carries.
+        let faces: Vec<&str> = written
+            .lines()
+            .filter(|l| l.starts_with('('))
+            .map(|l| l.split(" // ").next().unwrap_or(l))
+            .collect();
         assert!(faces[0].ends_with(" 1 1"), "{format}: {}", faces[0]);
         assert!(faces[1].ends_with(" 1 4 0"), "{format}: {}", faces[1]);
         let reread = read(&written);

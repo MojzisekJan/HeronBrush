@@ -209,7 +209,7 @@ fn parse_face_color(comment: &str) -> Option<FaceColor> {
     // Surface metadata shares the comment but is not part of the colour payload.
     let mut words = comment
         .split_whitespace()
-        .take_while(|word| !matches!(*word, "pbr" | "export_hidden" | "primitive_uv"));
+        .take_while(|word| !matches!(*word, "pbr" | "export_hidden" | "primitive_uv" | "paraxial"));
     if words.next()? != METADATA_MARKER {
         return None;
     }
@@ -376,12 +376,14 @@ struct Reader<'a> {
     saw_hexen2_value: bool,
 }
 
-/// A face's notes: its colour, surface material, export_hidden flag and primitive UV matrix.
+/// A face's notes: its colour, surface material, export_hidden flag, primitive UV matrix
+/// and whether the face is paraxial though its line carries axes.
 type FaceNotes = (
     Option<FaceColor>,
     Option<crate::brush_face::SurfaceMaterial>,
     bool,
     Option<Box<[[f64; 3]; 2]>>,
+    bool,
 );
 
 impl<'a> Reader<'a> {
@@ -966,7 +968,7 @@ impl<'a> Reader<'a> {
             },
         )?;
 
-        let (color, surface_material, export_hidden, _) = self.read_face_notes(line);
+        let (color, surface_material, export_hidden, _, _) = self.read_face_notes(line);
         Ok(BrushFace {
             points,
             plane,
@@ -1026,7 +1028,15 @@ impl<'a> Reader<'a> {
             },
         )?;
 
-        let (color, surface_material, export_hidden, primitive_uv) = self.read_face_notes(line);
+        let (color, surface_material, export_hidden, primitive_uv, paraxial) =
+            self.read_face_notes(line);
+        // The editor writes a paraxial face's axes into a Valve line, because the dialect
+        // has no line without them, and notes that it did.
+        let uv_coord_system = if paraxial {
+            UvCoordSystem::Paraxial
+        } else {
+            uv_coord_system
+        };
 
         Ok(BrushFace {
             points,
@@ -1047,16 +1057,19 @@ impl<'a> Reader<'a> {
         // A colour is written as a comment on the face's own line, so that a file with
         // colours in it is still a plain `.map`. Only a comment on that line and carrying
         // the editor's own marker is one; anything else is somebody's note.
-        let export_hidden = self
-            .peek()
-            .filter(|token| token.line == line)
-            .is_some_and(|token| {
-                let Token::Comment(text) = token.token else {
-                    return false;
-                };
-                let mut words = text.split_whitespace();
-                words.next() == Some(METADATA_MARKER) && words.any(|word| word == "export_hidden")
-            });
+        let has_word = |wanted: &str| {
+            self.peek()
+                .filter(|token| token.line == line)
+                .is_some_and(|token| {
+                    let Token::Comment(text) = token.token else {
+                        return false;
+                    };
+                    let mut words = text.split_whitespace();
+                    words.next() == Some(METADATA_MARKER) && words.any(|word| word == wanted)
+                })
+        };
+        let export_hidden = has_word("export_hidden");
+        let paraxial = has_word("paraxial");
         let surface_material = self
             .peek()
             .filter(|token| token.line == line)
@@ -1097,13 +1110,19 @@ impl<'a> Reader<'a> {
             self.warn("brush-primitive UV matrices are preserved; texturing uses placeholder alignment until material dimensions are available", line);
         }
         let color = self.read_face_color(line);
-        if (surface_material.is_some() || export_hidden || primitive_uv.is_some())
+        if (surface_material.is_some() || export_hidden || paraxial || primitive_uv.is_some())
             && color.is_none()
         {
             self.advance();
         }
 
-        (color, surface_material, export_hidden, primitive_uv)
+        (
+            color,
+            surface_material,
+            export_hidden,
+            primitive_uv,
+            paraxial,
+        )
     }
 
     /// Reads the colour comment that may follow a face on its own line.

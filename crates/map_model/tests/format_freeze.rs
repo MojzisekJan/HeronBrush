@@ -72,7 +72,10 @@ fn the_fixture_carries_one_of_everything() {
             "a Valve face, with its own UV axes",
             "[ 0 1 0 4 ] [ 0 0 -1 8 ]",
         ),
-        ("a Standard face, deriving them", "south 12 16 0 1 1"),
+        (
+            "a paraxial face, with the axes it derives and a note saying so",
+            "south [ 1 0 0 12 ] [ 0 0 -1 16 ] 0 1 1 1 8 700 // heron_brush paraxial",
+        ),
         ("the Quake 2 surface flag trio", "1 8 700"),
         (
             "a colour shared by every face of a brush",
