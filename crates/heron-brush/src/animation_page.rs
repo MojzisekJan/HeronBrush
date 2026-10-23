@@ -702,9 +702,10 @@ impl AnimationPage {
             }
         }
         let more = icon_button(ui, tr("Animation"), |p, r, stroke| {
-            // A stack of clips.
+            // A stack of clips, from 1.5 below the square's top to 1.5 above its bottom,
+            // so the drawing sits on the button's middle.
             for (i, inset) in [(0.0, 0.0), (1.0, 2.0), (2.0, 4.0)] {
-                let y = r.top() + 3.0 + i * 4.5;
+                let y = r.top() + 1.5 + i * 4.5;
                 p.line_segment(
                     [
                         egui::pos2(r.left() + inset, y),
@@ -714,7 +715,10 @@ impl AnimationPage {
                 );
             }
             p.rect_stroke(
-                egui::Rect::from_min_max(egui::pos2(r.left(), r.top() + 12.0), r.max),
+                egui::Rect::from_min_max(
+                    egui::pos2(r.left(), r.top() + 10.5),
+                    r.max - egui::vec2(0.0, 1.5),
+                ),
                 1.5,
                 stroke,
                 egui::StrokeKind::Middle,
