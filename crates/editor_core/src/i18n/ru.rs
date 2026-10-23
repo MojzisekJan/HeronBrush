@@ -9,18 +9,22 @@ pub(super) const PLURAL: PluralRule = PluralRule::EastSlavic;
 
 /// The nouns [`super::counted`] puts after a number, by their English singular: one form
 /// for each of [`PLURAL`]'s categories, in the order given there.
-pub(super) const NOUNS: [(&str, &[&str]); 13] = [
+pub(super) const NOUNS: [(&str, &[&str]); 17] = [
     ("brush", &["браш", "браша", "брашей"]),
     ("edge", &["ребро", "ребра", "рёбер"]),
     ("entity", &["сущность", "сущности", "сущностей"]),
     ("face", &["грань", "грани", "граней"]),
     ("file", &["файл", "файла", "файлов"]),
     ("group", &["группа", "группы", "групп"]),
+    ("handle", &["маркер", "маркера", "маркеров"]),
     ("issue", &["проблема", "проблемы", "проблем"]),
+    ("layer", &["слой", "слоя", "слоёв"]),
     ("material", &["материал", "материала", "материалов"]),
     ("object", &["объект", "объекта", "объектов"]),
     ("patch", &["патч", "патча", "патчей"]),
     ("point", &["точка", "точки", "точек"]),
+    ("portal", &["портал", "портала", "порталов"]),
+    ("property", &["свойство", "свойства", "свойств"]),
     (
         "triangle",
         &["треугольник", "треугольника", "треугольников"],

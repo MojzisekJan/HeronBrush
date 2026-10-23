@@ -18,9 +18,10 @@ pub(super) const PLURAL: PluralRule = PluralRule::EastSlavic;
 
 /// The nouns [`super::counted`] puts after a number, by their English singular: one form
 /// for each of [`PLURAL`]'s categories, in the order given there.
-pub(super) const NOUNS: [(&str, &[&str]); 13] = [
+pub(super) const NOUNS: [(&str, &[&str]); 17] = [
     ("brush", &["браш", "браша", "брашей"]),
-    // ... edge, entity, face, file, group, issue, material, object, patch, point, triangle, vertex
+    // ... edge, entity, face, file, group, handle, issue, layer, material, object, patch,
+    // point, portal, property, triangle, vertex
 ];
 
 /// The Russian for each of the editor's own strings, sorted by the English.
@@ -32,7 +33,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
 
 - `TABLE` maps each English string to its translation, **sorted by the English**
   (byte order, as the list below prints it) with no repeats.
-- `NOUNS` are the thirteen nouns the editor counts ("3 faces"). Keep the English keys and
+- `NOUNS` are the seventeen nouns the editor counts ("3 faces"). Keep the English keys and
   their order; give exactly as many forms as `PLURAL` has categories, in the order its
   comment lists them. `counted()` writes `"{number} {form}"`, so a language that puts a
   measure word or a preposition after the number includes it in the form (Chinese
@@ -54,7 +55,8 @@ pub(super) const TABLE: &[(&str, &str)] = &[
    counted nouns still in English.
 2. Translate, keeping:
    - every `{}` placeholder, exactly as many as the English has (the tests check the
-     count); move them where your language wants the value;
+     count); move them where your language wants the value, but keep several in the
+     English order, since the values fill them from left to right;
    - key names and shortcuts (`Ctrl`, `Shift`, `Alt`, `Tab`, `F2`, `Ctrl+Z` …), command
      line flags (anything starting `--`), file extensions and formats (`.map`, `.glb`, `.obj`,
      `.tscn`), program and engine names (Quake, Godot, Blender) and symbols
@@ -64,7 +66,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
 3. Use the terminology your language's 3D and level-design software already uses —
    Blender's and Godot's localisations are good references — and keep mapper jargon the
    community keeps in English (many keep "brush", "patch", "UV").
-4. Translate the thirteen `NOUNS` and remove their `// TODO translate` marks.
+4. Translate the seventeen `NOUNS` and remove their `// TODO translate` marks.
 5. When nothing is missing, set `complete: true` on the language's line in `LANGUAGES`
    (`../i18n.rs`). Until then it is hidden from the language choosers and not chosen
    for the desktop's locale, though it can be tried by writing `ui/Language=<stored

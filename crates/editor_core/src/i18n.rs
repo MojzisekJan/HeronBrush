@@ -200,7 +200,7 @@ pub struct LanguageInfo {
     pub plural: PluralRule,
     /// The nouns [`counted`] knows, by their English singular, each with
     /// [`PluralRule::forms`] forms.
-    pub nouns: &'static [(&'static str, &'static [&'static str]); 13],
+    pub nouns: &'static [(&'static str, &'static [&'static str]); 17],
 }
 
 /// One line of [`LANGUAGES`]: the variant, code, stored name, native name, locales, file
@@ -634,7 +634,10 @@ mod missing {
             })
             .count();
         if untranslated > 0 {
-            println!("// {untranslated} of the 13 counted nouns (NOUNS) still start with the English word; fine only where it is borrowed.");
+            println!(
+                "// {untranslated} of the {} counted nouns (NOUNS) still start with the English word; fine only where it is borrowed.",
+                info.nouns.len()
+            );
         }
     }
 }

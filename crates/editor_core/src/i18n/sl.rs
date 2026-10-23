@@ -9,14 +9,16 @@ pub(super) const PLURAL: PluralRule = PluralRule::Slovenian;
 
 /// The nouns [`super::counted`] puts after a number, by their English singular: one form
 /// for each of [`PLURAL`]'s categories, in the order given there.
-pub(super) const NOUNS: [(&str, &[&str]); 13] = [
+pub(super) const NOUNS: [(&str, &[&str]); 17] = [
     ("brush", &["brush", "brusha", "brushi", "brushev"]),
     ("edge", &["rob", "roba", "robovi", "robov"]),
     ("entity", &["entiteta", "entiteti", "entitete", "entitet"]),
     ("face", &["ploskev", "ploskvi", "ploskve", "ploskev"]),
     ("file", &["datoteka", "datoteki", "datoteke", "datotek"]),
     ("group", &["skupina", "skupini", "skupine", "skupin"]),
+    ("handle", &["ročica", "ročici", "ročice", "ročic"]),
     ("issue", &["težava", "težavi", "težave", "težav"]),
+    ("layer", &["plast", "plasti", "plasti", "plasti"]),
     (
         "material",
         &["material", "materiala", "materiali", "materialov"],
@@ -24,6 +26,11 @@ pub(super) const NOUNS: [(&str, &[&str]); 13] = [
     ("object", &["objekt", "objekta", "objekti", "objektov"]),
     ("patch", &["patch", "patcha", "patchi", "patchev"]),
     ("point", &["točka", "točki", "točke", "točk"]),
+    ("portal", &["portal", "portala", "portali", "portalov"]),
+    (
+        "property",
+        &["lastnost", "lastnosti", "lastnosti", "lastnosti"],
+    ),
     (
         "triangle",
         &["trikotnik", "trikotnika", "trikotniki", "trikotnikov"],

@@ -9,18 +9,22 @@ pub(super) const PLURAL: PluralRule = PluralRule::Lithuanian;
 
 /// The nouns [`super::counted`] puts after a number, by their English singular: one form
 /// for each of [`PLURAL`]'s categories, in the order given there.
-pub(super) const NOUNS: [(&str, &[&str]); 13] = [
+pub(super) const NOUNS: [(&str, &[&str]); 17] = [
     ("brush", &["brašas", "brašai", "brašų"]),
     ("edge", &["briauna", "briaunos", "briaunų"]),
     ("entity", &["esybė", "esybės", "esybių"]),
     ("face", &["sienelė", "sienelės", "sienelių"]),
     ("file", &["failas", "failai", "failų"]),
     ("group", &["grupė", "grupės", "grupių"]),
+    ("handle", &["rankenėlė", "rankenėlės", "rankenėlių"]),
     ("issue", &["problema", "problemos", "problemų"]),
+    ("layer", &["sluoksnis", "sluoksniai", "sluoksnių"]),
     ("material", &["medžiaga", "medžiagos", "medžiagų"]),
     ("object", &["objektas", "objektai", "objektų"]),
     ("patch", &["lopas", "lopai", "lopų"]),
     ("point", &["taškas", "taškai", "taškų"]),
+    ("portal", &["portalas", "portalai", "portalų"]),
+    ("property", &["savybė", "savybės", "savybių"]),
     ("triangle", &["trikampis", "trikampiai", "trikampių"]),
     ("vertex", &["viršūnė", "viršūnės", "viršūnių"]),
 ];

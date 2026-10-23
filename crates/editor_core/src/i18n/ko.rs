@@ -9,18 +9,22 @@ pub(super) const PLURAL: PluralRule = PluralRule::NoPlural;
 
 /// The nouns [`super::counted`] puts after a number, by their English singular: one form
 /// for each of [`PLURAL`]'s categories, in the order given there.
-pub(super) const NOUNS: [(&str, &[&str]); 13] = [
+pub(super) const NOUNS: [(&str, &[&str]); 17] = [
     ("brush", &["브러시"]),
     ("edge", &["모서리"]),
     ("entity", &["엔티티"]),
     ("face", &["면"]),
     ("file", &["파일"]),
     ("group", &["그룹"]),
+    ("handle", &["핸들"]),
     ("issue", &["문제"]),
+    ("layer", &["레이어"]),
     ("material", &["재질"]),
     ("object", &["오브젝트"]),
     ("patch", &["패치"]),
     ("point", &["점"]),
+    ("portal", &["포털"]),
+    ("property", &["속성"]),
     ("triangle", &["삼각형"]),
     ("vertex", &["정점"]),
 ];

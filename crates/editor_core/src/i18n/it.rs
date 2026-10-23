@@ -9,18 +9,22 @@ pub(super) const PLURAL: PluralRule = PluralRule::OneOther;
 
 /// The nouns [`super::counted`] puts after a number, by their English singular: one form
 /// for each of [`PLURAL`]'s categories, in the order given there.
-pub(super) const NOUNS: [(&str, &[&str]); 13] = [
+pub(super) const NOUNS: [(&str, &[&str]); 17] = [
     ("brush", &["brush", "brush"]),
     ("edge", &["spigolo", "spigoli"]),
     ("entity", &["entità", "entità"]),
     ("face", &["faccia", "facce"]),
     ("file", &["file", "file"]),
     ("group", &["gruppo", "gruppi"]),
+    ("handle", &["maniglia", "maniglie"]),
     ("issue", &["problema", "problemi"]),
+    ("layer", &["livello", "livelli"]),
     ("material", &["materiale", "materiali"]),
     ("object", &["oggetto", "oggetti"]),
     ("patch", &["patch", "patch"]),
     ("point", &["punto", "punti"]),
+    ("portal", &["portale", "portali"]),
+    ("property", &["proprietà", "proprietà"]),
     ("triangle", &["triangolo", "triangoli"]),
     ("vertex", &["vertice", "vertici"]),
 ];

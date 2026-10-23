@@ -9,18 +9,25 @@ pub(super) const PLURAL: PluralRule = PluralRule::Romanian;
 
 /// The nouns [`super::counted`] puts after a number, by their English singular: one form
 /// for each of [`PLURAL`]'s categories, in the order given there.
-pub(super) const NOUNS: [(&str, &[&str]); 13] = [
+pub(super) const NOUNS: [(&str, &[&str]); 17] = [
     ("brush", &["brush", "brush-uri", "de brush-uri"]),
     ("edge", &["muchie", "muchii", "de muchii"]),
     ("entity", &["entitate", "entități", "de entități"]),
     ("face", &["față", "fețe", "de fețe"]),
     ("file", &["fișier", "fișiere", "de fișiere"]),
     ("group", &["grup", "grupuri", "de grupuri"]),
+    ("handle", &["mâner", "mânere", "de mânere"]),
     ("issue", &["problemă", "probleme", "de probleme"]),
+    ("layer", &["strat", "straturi", "de straturi"]),
     ("material", &["material", "materiale", "de materiale"]),
     ("object", &["obiect", "obiecte", "de obiecte"]),
     ("patch", &["patch", "patch-uri", "de patch-uri"]),
     ("point", &["punct", "puncte", "de puncte"]),
+    ("portal", &["portal", "portaluri", "de portaluri"]),
+    (
+        "property",
+        &["proprietate", "proprietăți", "de proprietăți"],
+    ),
     ("triangle", &["triunghi", "triunghiuri", "de triunghiuri"]),
     ("vertex", &["vârf", "vârfuri", "de vârfuri"]),
 ];
