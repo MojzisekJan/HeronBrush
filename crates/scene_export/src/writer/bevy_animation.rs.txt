@@ -59,6 +59,10 @@ impl Plugin for HeronAnimationFixedPlugin {fn build(&self,app:&mut App){app.add_
 
 /// Attach to the player root; a point-in-convex-volume test detects entrances.
 #[derive(Component)] pub struct HeronActivator;
+/// Optional beside HeronActivator: the actor's height in metres up from its point.
+/// Its feet, middle and top are then tested, so a volume that starts above the floor,
+/// as a raised trigger brush does, still catches a player standing in it.
+#[derive(Component)] pub struct HeronActivatorHeight(pub f32);
 #[derive(Component)] pub struct HeronAnimationName(pub String);
 #[derive(Deserialize)] struct TriggerData {#[serde(default)] action:String,#[serde(default)] clip:String,targets:Vec<String>,once:bool,wait:f64,origin:[f64;3],volumes:Vec<Vec<[f64;4]>>}
 #[derive(Component)] pub struct HeronAnimationTrigger {data:TriggerData,inside:std::collections::HashSet<Entity>,wait:f64,fired:bool,pending:bool}
@@ -67,14 +71,17 @@ impl HeronAnimationTrigger {
     /// Use from an interaction or physics system for explicit button presses.
     pub fn activate(&mut self){self.pending=true;}
 }
-fn activate_triggers(time:Res<Time>,actors:Query<(Entity,&GlobalTransform),With<HeronActivator>>,mut triggers:Query<(&mut HeronAnimationTrigger,&GlobalTransform)>,mut animations:Query<(&HeronAnimationName,&mut HeronAnimation)>) {
+fn activate_triggers(time:Res<Time>,actors:Query<(Entity,&GlobalTransform,Option<&HeronActivatorHeight>),With<HeronActivator>>,mut triggers:Query<(&mut HeronAnimationTrigger,&GlobalTransform)>,mut animations:Query<(&HeronAnimationName,&mut HeronAnimation)>) {
     let mut targets=Vec::new();
     for (mut trigger,transform) in &mut triggers {
         trigger.wait=(trigger.wait-time.delta_secs_f64()).max(0.);
         let mut inside=std::collections::HashSet::new();
-        for (entity,actor) in &actors {
-            let p=transform.affine().inverse().transform_point3(actor.translation());let o=trigger.data.origin;
-            if trigger.data.volumes.iter().any(|planes|!planes.is_empty()&&planes.iter().all(|v|v[0]*(p.x as f64+o[0])+v[1]*(p.y as f64+o[1])+v[2]*(p.z as f64+o[2])<=v[3]+1e-5)){inside.insert(entity);}
+        for (entity,actor,height) in &actors {
+            let height=height.map_or(0.,|h|h.0);let o=trigger.data.origin;
+            for along in [0.,0.5,1.] {
+                let p=transform.affine().inverse().transform_point3(actor.translation()+actor.up()*height*along);
+                if trigger.data.volumes.iter().any(|planes|!planes.is_empty()&&planes.iter().all(|v|v[0]*(p.x as f64+o[0])+v[1]*(p.y as f64+o[1])+v[2]*(p.z as f64+o[2])<=v[3]+1e-5)){inside.insert(entity);}
+            }
         }
         let entered=inside.iter().any(|entity|!trigger.inside.contains(entity));trigger.inside=inside;
         let requested=trigger.pending||entered;trigger.pending=false;

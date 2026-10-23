@@ -36,7 +36,7 @@ fn exported_colliders(app: &mut App, directory: &Path) -> HashMap<String, Entity
     exported_colliders_for(app,directory,"motion_lab.json")
 }
 
-fn exported_colliders_for(app:&mut App,directory:&Path,name:&str)->HashMap<String,Entity>{
+pub(super) fn exported_colliders_for(app:&mut App,directory:&Path,name:&str)->HashMap<String,Entity>{
     let level = level::load(&directory.join(name)).unwrap();
     let scope=app.world_mut().spawn_empty().id();
     let mut roots = HashMap::new();

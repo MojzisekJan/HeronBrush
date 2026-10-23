@@ -297,8 +297,12 @@ fn spawn_level(
     let mut surfaces: HashMap<&str, Handle<StandardMaterial>> = HashMap::new();
     let mut images: HashMap<&str, Option<Handle<Image>>> = HashMap::new();
     for texture in &level.textures {
-        let image = texture.image.as_ref().map(|path| load_image(&assets, path, texture.name.starts_with("bbpaint_")));
+        let image = texture.image.as_ref().map(|path| load_image(&assets, path, texture.clamp, true));
         let mut painted = material(image.clone());
+        // A brush texture's normal map; the GLB primitives carry the tangents.
+        if let Some((_, path)) = texture.maps.iter().find(|(slot, _)| slot == "normal_texture") {
+            painted.normal_map_texture = Some(load_image(&assets, path, false, false));
+        }
         if let Some([roughness, metallic, emission]) = texture.surface {
             painted.perceptual_roughness = roughness;
             painted.metallic = metallic;
@@ -500,9 +504,8 @@ fn material(image: Option<Handle<Image>>) -> StandardMaterial {
             ..default()
         };
     };
-    // `maps` may name a normal or roughness image next to this one. Nothing
-    // does in the example maps, and a normal map needs tangents the `.glb`
-    // does not carry, so they are left alone rather than half wired.
+    // `maps` may name a normal map next to this one, which spawn_level adds.
+    // Roughness and the other maps are left to the game.
     StandardMaterial {
         base_color_texture: Some(image),
         perceptual_roughness: 0.9,
@@ -513,10 +516,11 @@ fn material(image: Option<Handle<Image>>) -> StandardMaterial {
 /// Brush UVs run well past 0..1, so the sampler has to repeat; Bevy's default
 /// clamps and would smear the edge pixel along a wall. The 64 pixel textures
 /// these maps use are drawn to be seen as pixels, hence nearest.
-fn load_image(assets: &AssetServer, path: &str, paint: bool) -> Handle<Image> {
+fn load_image(assets: &AssetServer, path: &str, paint: bool, srgb: bool) -> Handle<Image> {
     assets
         .load_builder()
         .with_settings(move |settings: &mut ImageLoaderSettings| {
+            settings.is_srgb = srgb;
             settings.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
                 address_mode_u: if paint { ImageAddressMode::ClampToEdge } else { ImageAddressMode::Repeat },
                 address_mode_v: if paint { ImageAddressMode::ClampToEdge } else { ImageAddressMode::Repeat },
@@ -798,4 +802,104 @@ fn attach_animations(mut commands:Commands,level:Res<level::Level>,roots:Query<(
 fn prepare_water_surfaces(mut commands:Commands,mut meshes:ResMut<Assets<Mesh>>,children:Query<(Entity,&ChildOf,&Mesh3d),Without<heron_water_render::HeronWaterSurface>>,roots:Query<&heron_water::HeronWater>,cameras:Query<Entity,(With<Camera3d>,Without<heron_water_render::HeronWaterCamera>)>){
     for camera in &cameras {commands.entity(camera).insert(heron_water_render::HeronWaterCamera::default());}
     for (entity,parent,handle) in &children {let Ok(water)=roots.get(parent.parent())else{continue};if !water.0.surface_material{continue;}let Some(source)=meshes.get(&handle.0)else{continue};let Some(bevy::mesh::VertexAttributeValues::Float32x3(rest))=source.attribute(Mesh::ATTRIBUTE_POSITION)else{continue};let rest=rest.clone();let upward=match source.attribute(Mesh::ATTRIBUTE_NORMAL){Some(bevy::mesh::VertexAttributeValues::Float32x3(normals))=>normals.iter().map(|n|n[1]>0.5).collect(),_=>vec![true;rest.len()]};let copy=source.clone();commands.entity(entity).insert((Mesh3d(meshes.add(copy)),heron_water_render::HeronWaterSurface{data:water.0.clone(),rest,upward}));}
+}
+
+/// The feature lab's GLBs through Bevy's own glTF loader, without a window or GPU.
+/// Export with examples/engine-checks/export_feature_lab.py first.
+#[cfg(test)]
+mod feature_materials {
+    use bevy::gltf::{Gltf, GltfMaterial, GltfMesh};
+    use bevy::image::ImageSampler;
+    use bevy::render::settings::{RenderCreation, WgpuSettings};
+    use bevy::render::RenderPlugin;
+    use bevy::window::ExitCondition;
+    use bevy::prelude::*;
+
+    fn load(app: &mut App, file: &str) -> Handle<Gltf> {
+        let handle: Handle<Gltf> = app.world().resource::<AssetServer>().load(file.to_owned());
+        for _ in 0..2000 {
+            app.update();
+            let server = app.world().resource::<AssetServer>();
+            if server.is_loaded_with_dependencies(handle.id()) {
+                break;
+            }
+            assert!(!server.load_state(handle.id()).is_failed(), "{file} failed to load");
+        }
+        handle
+    }
+
+    fn gltf<'a>(app: &'a App, handle: &Handle<Gltf>) -> &'a Gltf {
+        app.world().resource::<Assets<Gltf>>().get(handle).expect("loaded")
+    }
+
+    fn material(app: &App, handle: &Handle<Gltf>, name: &str) -> GltfMaterial {
+        let handle = gltf(app, handle).named_materials.get(name).expect("the material is named");
+        app.world().resource::<Assets<GltfMaterial>>().get(handle).expect("a material").clone()
+    }
+
+    fn wrap(app: &App, image: &Option<Handle<Image>>) -> Option<bevy::image::ImageAddressMode> {
+        let image = app.world().resource::<Assets<Image>>().get(image.as_ref()?)?;
+        match &image.sampler {
+            ImageSampler::Descriptor(d) => Some(d.address_mode_u),
+            ImageSampler::Default => None,
+        }
+    }
+
+    #[test]
+    #[ignore = "export the feature lab with examples/engine-checks/export_feature_lab.py bevy first"]
+    fn exported_feature_lab_glbs_keep_their_materials_in_bevy() {
+        let directory = std::env::var("HERON_BEVY_FEATURE").unwrap_or_else(|_| "/tmp/heron-feature-bevy".into());
+        let mut app = App::new();
+        app.add_plugins(
+            DefaultPlugins
+                .build()
+                .disable::<bevy::winit::WinitPlugin>()
+                .set(WindowPlugin { primary_window: None, exit_condition: ExitCondition::DontExit, ..default() })
+                .set(AssetPlugin { file_path: directory, ..default() })
+                .set(RenderPlugin {
+                    render_creation: RenderCreation::Automatic(Box::new(WgpuSettings { backends: None, ..default() })),
+                    ..default()
+                }),
+        );
+        app.finish();
+        app.cleanup();
+
+        let normal = load(&mut app, "feature_lab/func_detail_4.glb");
+        let brick = material(&app, &normal, "brick_wall");
+        let mesh = app.world().resource::<Assets<GltfMesh>>().get(&gltf(&app, &normal).meshes[0]).expect("a mesh").clone();
+        let primitive = app.world().resource::<Assets<Mesh>>().get(&mesh.primitives[0].mesh).expect("a primitive");
+        let tangents = primitive.attribute(Mesh::ATTRIBUTE_TANGENT).is_some();
+        let normal_map = brick
+            .normal_map_texture
+            .as_ref()
+            .and_then(|h| app.world().resource::<Assets<Image>>().get(h))
+            .map(|i| (i.width(), i.height(), i.texture_descriptor.format.is_srgb()));
+        println!("normal map: {normal_map:?}, tangents {tangents}");
+        assert_eq!(normal_map, Some((512, 512, false)));
+        assert!(tangents);
+
+        let surface = load(&mut app, "feature_lab/func_detail_3.glb");
+        let glowing = material(&app, &surface, "bbpaint_747068d3d47ef28b");
+        println!("emissive {:?} with a map {}", glowing.emissive, glowing.emissive_texture.is_some());
+        assert!((glowing.emissive.red - 3.0).abs() < 1e-4 && glowing.emissive_texture.is_some());
+
+        let colours = load(&mut app, "feature_lab/func_detail_1.glb");
+        let clamped = gltf(&app, &colours)
+            .named_materials
+            .keys()
+            .map(|name| wrap(&app, &material(&app, &colours, name).base_color_texture))
+            .collect::<Vec<_>>();
+        println!("paint wrapping {clamped:?}");
+        assert!(clamped.iter().all(|w| *w == Some(bevy::image::ImageAddressMode::ClampToEdge)));
+
+        let model = load(&mut app, "feature_lab/heron_model.glb");
+        let names: Vec<_> = gltf(&app, &model).named_materials.keys().cloned().collect();
+        for name in &names {
+            let m = material(&app, &model, name);
+            assert!(m.normal_map_texture.is_some() && m.metallic_roughness_texture.is_some());
+            assert!(m.occlusion_texture.is_some() && m.emissive_texture.is_some());
+        }
+        println!("model: {} materials with normal, metal-roughness, occlusion and emissive maps", names.len());
+        println!("FEATURE_LAB Bevy glTF PASS");
+    }
 }
