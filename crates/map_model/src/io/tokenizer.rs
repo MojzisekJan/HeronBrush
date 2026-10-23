@@ -244,6 +244,12 @@ impl<'a> Tokenizer<'a> {
     ///
     /// Only `\"` and `\\` are escapes; anything else after a backslash is kept as it is,
     /// so a Windows path in a property value survives unmangled.
+    ///
+    /// A `\"` at the end of a line closes the string, and the backslash is part of the
+    /// value. Compilers have no escapes, so a value may end in a backslash: Neverball's
+    /// messages break lines with `\`, and 59 of its 368 maps end one that way.
+    /// TrenchBroom reads it the same way, and also before a `}`, which this does not: a
+    /// JSON value such as `{\"version\":1}` ends in `\"}`.
     fn read_string(&mut self) -> Result<Token<'a>, TokenizeError> {
         self.advance(); // the opening quote
 
@@ -259,6 +265,13 @@ impl<'a> Tokenizer<'a> {
                     let text = &self.source[start..self.position];
                     self.advance();
                     return Ok(Token::String(text));
+                }
+                Some(b'\\')
+                    if !self.literal_strings
+                        && self.peek_at(1) == Some(b'"')
+                        && matches!(self.peek_at(2), Some(b'\n' | b'\r')) =>
+                {
+                    self.advance(); // the backslash, which is the value's last character
                 }
                 Some(b'\\') if !self.literal_strings => {
                     self.advance();

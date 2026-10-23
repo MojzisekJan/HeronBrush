@@ -774,6 +774,7 @@ pub(crate) fn call_tool(
         }
         "select" => select(document, args),
         "set_face_color" => set_face_color(document, args),
+        "set_face_material" => set_face_material(document, args),
         "omit_covered_faces" => Ok(format!(
             "Omitted {} fully covered static faces",
             document.omit_covered_faces()
@@ -1123,6 +1124,7 @@ pub(crate) fn call_tool(
                     .collect();
             Ok(extensions::with_warnings(format!("saved {path}"), &exports))
         }
+        "export_map" => export_map(document, args),
         "export" => extensions::export(document, args, false),
         "check_export" => extensions::export(document, args, true),
         "get_export_settings" => extensions::export_settings(document, args),
@@ -1627,6 +1629,71 @@ fn set_face_color(document: &mut Document, args: &Value) -> Result<String, Strin
     Ok(format!("updated {changed} faces"))
 }
 
+/// Puts a material on faces of one brush: the face `face`, or every face whose normal
+/// points along `facing`, so a script can give a floor its turf on top alone.
+fn set_face_material(document: &mut Document, args: &Value) -> Result<String, String> {
+    let material = string_or(args, "material", "");
+    if material.is_empty() {
+        return Err("`material` is required".into());
+    }
+    let node = map_model::node::NodeId(extensions::node_id(
+        args.get("brush").ok_or("`brush` is required")?,
+    )?);
+    let faces: Vec<FaceRef> = match (args.get("face"), args.get("facing")) {
+        (Some(face), None) => vec![FaceRef {
+            node,
+            face: face.as_u64().ok_or("invalid face")? as usize,
+        }],
+        (None, Some(_)) => {
+            let facing = vec3(args, "facing")?;
+            let length = geometry_math::vec::length(facing);
+            if length.is_nan() || length <= 1e-9 {
+                return Err("`facing` must not be zero".into());
+            }
+            let facing = geometry_math::vec::normalize(facing);
+            let mut found = Vec::new();
+            for (id, brush) in map_model::node::brushes_with_ids(document.tree_world()) {
+                if id == node {
+                    brush.for_each_geometry_face(|index, face, _| {
+                        if geometry_math::vec::dot(face.plane.normal, facing) > 0.999 {
+                            found.push(FaceRef { node, face: index });
+                        }
+                    });
+                }
+            }
+            found
+        }
+        _ => return Err("give `face` or `facing`, not both".into()),
+    };
+    if faces.is_empty() || faces.iter().any(|face| document.face_at(*face).is_none()) {
+        return Err("no such brush face".into());
+    }
+    document.set_current_material(material);
+    let changed = document.apply_current_material_on(&faces);
+    Ok(format!("put {material} on {changed} faces"))
+}
+
+/// Writes the map in a classic dialect, as `Menu/File/Export/Map` does: Heron saves in
+/// Valve 220, and a compiler such as Neverball's mapc reads only Quake 2 face lines.
+fn export_map(document: &mut Document, args: &Value) -> Result<String, String> {
+    let path = string_or(args, "path", "");
+    if path.is_empty() {
+        return Err("`path` is required".into());
+    }
+    let format = match args.get("format").and_then(Value::as_str) {
+        Some(name) => name
+            .parse::<map_model::map_format::MapFormat>()
+            .map_err(|error| error.to_string())?,
+        None => crate::games::current()
+            .and_then(|game| game.formats.first().map(|format| format.format))
+            .unwrap_or(document.format),
+    };
+    document
+        .export_map_to(path, format)
+        .map_err(|error| format!("could not write {path}: {error}"))?;
+    Ok(format!("exported {path} as {format}"))
+}
+
 fn scale_selection(document: &mut Document, args: &Value) -> Result<String, String> {
     let factors = vec3(args, "factors")?;
     if factors.v.iter().any(|value| value.abs() < 1e-12) {
@@ -1752,6 +1819,19 @@ fn tool_definitions() -> Vec<Value> {
                 "reset":{"type":"boolean"},
                 "brush":{"type":"integer"}, "face":{"type":"integer","minimum":0}
             }), &[],
+        ),
+        tool(
+            "set_face_material",
+            "Put a material on faces of one brush: `face` is an index from describe_brush, \
+             or `facing` [x,y,z] takes every face whose normal points that way, such as \
+             [0,0,1] for its top.",
+            json!({
+                "brush": { "type": "string", "description": "an id from list_brushes" },
+                "face": { "type": "integer" },
+                "facing": vec3_schema("a direction"),
+                "material": { "type": "string" },
+            }),
+            &["brush", "material"],
         ),
         tool(
             "set_face_color",
@@ -1918,6 +1998,17 @@ fn tool_definitions() -> Vec<Value> {
             "save",
             "Write the map to a .map file.",
             json!({ "path": { "type": "string" } }),
+            &["path"],
+        ),
+        tool(
+            "export_map",
+            "Write the map in a classic .map dialect for a compiler: standard, valve, quake2 \
+             (Quake 2 and 3 face lines, which Neverball's mapc reads) or quake2_valve. \
+             Without a format, the first one the current game lists.",
+            json!({
+                "path": { "type": "string" },
+                "format": { "type": "string", "enum": ["standard", "valve", "quake2", "quake2_valve"] },
+            }),
             &["path"],
         ),
         tool(
@@ -2399,6 +2490,77 @@ mod tests {
             2,
             "the host saw the guest's box"
         );
+    }
+
+    /// A Neverball floor: turf on top, grey on the sides, exported in the face lines
+    /// mapc reads.
+    #[test]
+    fn a_floor_gets_its_top_material_and_exports_for_mapc() {
+        let mut document = Document::new(WorldBounds::default());
+        let added = call(
+            &mut document,
+            "add_shape",
+            &json!({"kind":"cuboid","min":[0,0,-16],"max":[128,128,0],"material":"mtrl/turf-grey"}),
+        )
+        .expect("a slab");
+        let brush: Vec<String> =
+            serde_json::from_str(added.split("selected: ").nth(1).expect("ids")).expect("ids");
+        let done = call(
+            &mut document,
+            "set_face_material",
+            &json!({"brush": brush[0], "facing": [0, 0, 2], "material": "mtrl/turf-green"}),
+        )
+        .expect("the top");
+        assert!(done.contains("on 1 faces"), "{done}");
+        call(
+            &mut document,
+            "set_face_material",
+            &json!({"brush": brush[0], "face": 0, "material": "mtrl/goal"}),
+        )
+        .expect("by index");
+        for wrong in [
+            json!({"brush": brush[0], "facing": [0, 0, 0], "material": "x"}),
+            json!({"brush": brush[0], "face": 99, "material": "x"}),
+            json!({"brush": brush[0], "face": 0, "facing": [0, 0, 1], "material": "x"}),
+            json!({"brush": brush[0], "face": 0}),
+        ] {
+            assert!(
+                call(&mut document, "set_face_material", &wrong).is_err(),
+                "{wrong}"
+            );
+        }
+
+        let directory =
+            std::env::temp_dir().join(format!("heron-mcp-neverball-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).expect("a directory");
+        let path = directory.join("level.map");
+        let done = call(
+            &mut document,
+            "export_map",
+            &json!({"path": path, "format": "quake2"}),
+        )
+        .expect("exported");
+        assert!(done.ends_with("as Quake2"), "{done}");
+        let text = std::fs::read_to_string(&path).expect("written");
+        let faces: Vec<&str> = text.lines().filter(|l| l.starts_with('(')).collect();
+        assert_eq!(faces.len(), 6, "{text}");
+        assert_eq!(
+            faces
+                .iter()
+                .filter(|l| l.contains(" mtrl/turf-green 0 0 0 1 1 0 0 0"))
+                .count(),
+            1,
+            "{text}"
+        );
+        assert!(faces.iter().any(|l| l.contains(" mtrl/goal ")), "{text}");
+        assert!(!text.contains("mapversion"), "{text}");
+        assert!(call(
+            &mut document,
+            "export_map",
+            &json!({"path": path, "format": "hexen2"})
+        )
+        .is_err());
+        let _ = std::fs::remove_dir_all(&directory);
     }
 
     /// A Quake map's keys: worldspawn's, a brush entity's, and the wad qbsp reads.

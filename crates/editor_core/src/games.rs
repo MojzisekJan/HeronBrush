@@ -155,13 +155,22 @@ impl Game {
         }
     }
 
-    /// Ordered roots: configured base game, installation root, then mods separated by `;`.
-    /// Later roots override earlier roots, including their loose files.
+    /// Ordered roots: the profile's own `assets` folder, configured base game,
+    /// installation root, then mods separated by `;`. Later roots override earlier roots,
+    /// including their loose files.
+    ///
+    /// The profile's folder holds editor-only files the game does not have, such as the
+    /// models Neverball's FGD draws its ball start, goal and coins with. TrenchBroom
+    /// mounts it the same way, under everything else.
     pub fn asset_roots(&self, game_path: &Path, mods: &str) -> Vec<PathBuf> {
-        if game_path.as_os_str().is_empty() {
-            return Vec::new();
-        }
         let mut roots = Vec::new();
+        let own = self.directory.join("assets");
+        if crate::files::is_dir(&own) {
+            roots.push(own);
+        }
+        if game_path.as_os_str().is_empty() {
+            return roots;
+        }
         if let Some(base) = self
             .search_path
             .as_deref()
@@ -328,6 +337,16 @@ fn read_formats(config: &Path) -> Vec<Format> {
             spelling if spelling.to_ascii_lowercase().contains("valve") => {
                 map_model::map_format::MapFormat::Valve
             }
+            // Quake 2's face lines, flags and all, which Quake 3's non-primitive brushes
+            // and Daikatana's share. Neverball's mapc reads nothing else, and its
+            // profile's initial map is listed under "Quake3".
+            spelling
+                if ["Quake2", "Quake3", "Quake3 (legacy)", "Daikatana"]
+                    .iter()
+                    .any(|known| spelling.eq_ignore_ascii_case(known)) =>
+            {
+                map_model::map_format::MapFormat::Quake2
+            }
             _ => continue,
         };
 
@@ -461,6 +480,34 @@ mod tests {
                 assert_eq!(game.display_name(), "Heron Brush");
             }
         }
+    }
+
+    #[test]
+    fn neverball_starts_from_its_initial_map_and_mounts_its_models() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../gamedata");
+        let neverball = read(&root.join("Neverball/GameConfig.cfg")).expect("it reads");
+        let first = &neverball.formats[0];
+        assert_eq!(first.name, "Quake3");
+        assert_eq!(first.format, map_model::map_format::MapFormat::Quake2);
+        assert!(
+            first.initial_map.as_ref().is_some_and(|map| map.is_file()),
+            "{:?}",
+            first.initial_map
+        );
+        // The editor models its FGD names live beside the profile, under the game's files.
+        let own = neverball.directory.join("assets");
+        assert!(own.join("__tb_info_player_start.obj").is_file());
+        assert_eq!(neverball.asset_roots(Path::new(""), ""), vec![own.clone()]);
+        let install = std::env::temp_dir().join("heron-neverball-data");
+        assert_eq!(
+            neverball.asset_roots(&install, ""),
+            vec![own, install.clone()]
+        );
+        let quake2 = read(&root.join("Quake2/GameConfig.cfg")).expect("it reads");
+        assert_eq!(
+            quake2.formats[0].format,
+            map_model::map_format::MapFormat::Quake2
+        );
     }
 
     #[test]

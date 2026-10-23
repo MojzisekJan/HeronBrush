@@ -292,9 +292,14 @@ impl<'a> Lexer<'a> {
                 let start = self.at;
                 let line = self.line;
                 while self.at < bytes.len() && bytes[self.at] != b'"' {
+                    // A `\"` that ends a line, as map_model's tokenizer reads it, ends
+                    // the string: the backslash is the value's last character.
+                    let closes = bytes.get(self.at + 1) == Some(&b'"')
+                        && matches!(bytes.get(self.at + 2), Some(b'\n' | b'\r'));
                     if bytes[self.at] == b'\\'
                         && self.at + 1 < bytes.len()
                         && matches!(bytes[self.at + 1], b'"' | b'\\')
+                        && !closes
                     {
                         self.at += 2;
                     } else {
@@ -936,5 +941,15 @@ mod tests {
             map.entities[0].brushes[0].faces[0].texture,
             "my tex/with space"
         );
+    }
+
+    #[test]
+    fn a_value_may_end_in_a_backslash() {
+        // A Neverball message: `\` breaks the line, and the last one ends the value.
+        let text = "{\n\"classname\" \"worldspawn\"\n\"message\" \"One.\\Two.\\\"\n\"say\" \"\\\"hi\\\"\"\n}\n";
+        let map = parse(text, "t.map").expect("it parses");
+        let properties = &map.entities[0].properties;
+        assert_eq!(properties["message"], "One.\\Two.\\");
+        assert_eq!(properties["say"], "\"hi\"");
     }
 }

@@ -73,9 +73,8 @@ impl Document {
             return false;
         }
         let path = PathBuf::from(&key.1);
-        let game = (!path.as_os_str().is_empty())
-            .then(crate::games::current)
-            .flatten();
+        // Without a game path the profile's own assets folder is still mounted.
+        let game = crate::games::current();
         let roots = game
             .as_ref()
             .map(|game| game.asset_roots(&path, &key.2))

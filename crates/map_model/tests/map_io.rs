@@ -456,6 +456,60 @@ fn quotes_in_a_property_value_are_escaped() {
     assert_eq!(reread.entities[0].property("message"), Some("say \"hi\""));
 }
 
+#[test]
+fn a_quake2_dialect_writes_flags_on_every_face() {
+    // Neverball's mapc reads a face line only with all three numbers after the scale.
+    let mut map = read(STANDARD_SAMPLE);
+    assert!(map.entities[0].brushes[0].faces[0]
+        .surface_attributes
+        .is_none());
+    map.format = MapFormat::Quake2;
+    let written = write_map(&map);
+    let faces: Vec<&str> = written.lines().filter(|l| l.starts_with('(')).collect();
+    assert!(!faces.is_empty());
+    for line in faces {
+        assert!(line.ends_with(" 0 0 0"), "{line}");
+    }
+
+    map.format = MapFormat::Standard;
+    assert!(
+        !write_map(&map).contains(" 0 0 0\n"),
+        "Standard has no flags"
+    );
+}
+
+#[test]
+fn a_neverball_message_keeps_its_single_backslashes() {
+    // map-easy/mover.map: lines break at `\`, and the last one ends in `\"`.
+    let line = "\"message\" \"A moving platform can be tricky.\\Use precise timing.\\\"";
+    let source = format!("{{\n\"classname\" \"worldspawn\"\n{line}\n}}\n");
+    let map = read_map(&source, Some(MapFormat::Quake2)).expect("it parses");
+    assert_eq!(
+        map.entities[0].property("message"),
+        Some("A moving platform can be tricky.\\Use precise timing.\\")
+    );
+
+    let written = write_map(&map);
+    assert!(written.contains(line), "{written}");
+}
+
+#[test]
+fn backslashes_that_look_like_escapes_survive_a_round_trip() {
+    for (key, value) in [
+        ("path\\", "C:\\\\share\\"),
+        ("a", "say \\\"hi\\\""),
+        ("b", "\\\\"),
+        ("c", "ends in a quote\""),
+    ] {
+        let mut map = read_map("{\n\"classname\" \"worldspawn\"\n}\n", None).expect("it parses");
+        map.entities[0]
+            .properties
+            .push((key.to_string(), value.to_string()));
+        let reread = read_map(&write_map(&map), None).expect("it parses again");
+        assert_eq!(reread.entities[0].property(key), Some(value), "{key}");
+    }
+}
+
 /* ========== errors ========== */
 
 #[test]
@@ -572,7 +626,11 @@ fn pending_primitive_matrices_survive_all_map_dialects_and_face_metadata() {
                         emission: 80,
                     });
                     face.export_hidden = hidden;
-                    let expected = face.clone();
+                    let mut expected = face.clone();
+                    if format.has_surface_attributes() {
+                        // The dialect writes a face's flags whether it had any or not.
+                        expected.surface_attributes.get_or_insert_default();
+                    }
                     let written = write_map(&map);
                     assert!(written.contains("// heron_brush format 3"));
                     let reopened = read(&written);

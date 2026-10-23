@@ -68,5 +68,12 @@ commercial games or download their assets.
 Configuration adaptations quote Generic's unquoted keys, escape literal glob
 backslashes for JSON, quote runtime scale identifiers, and omit Generic's missing
 initial-map references. Definition-file line endings, indentation and trailing
-whitespace are normalized. Neverball's supplied starting map is kept with its
-profile, though its Quake 3 dialect is outside the current profile-format chooser.
+whitespace are normalized. Neverball's starting map is kept with its profile, and a
+new Neverball map starts from it: the profile's "Quake3" format reads as Quake 2 face
+lines, which is what Neverball's `mapc` compiles.
+
+A profile's own `assets` folder is mounted under the game's files, as TrenchBroom
+does, so the editor models its definitions name are found. Neverball's models there
+are converted from TrenchBroom's copies, which are Y-up and in metres, to Z-up map
+units (64 to the metre), since Heron reads an OBJ as it is and the profile sets no
+model scale.

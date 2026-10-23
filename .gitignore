@@ -24,3 +24,6 @@ __pycache__/
 
 # Compiler output for the Paintball 2 demo.
 /demos/paintball_heron/build/
+
+# mapc's output for the Neverball demo.
+/demos/neverball_heron/build/
