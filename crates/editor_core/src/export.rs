@@ -389,6 +389,37 @@ pub fn export(document: &Document, directory: &Path, options: &Options) -> Resul
     Ok(report)
 }
 
+/// A warning when entity property `values` name files by Godot's `res://` paths, which an
+/// export for `target`, another engine, passes on but that engine cannot find. Lists a
+/// few of them.
+fn godot_paths_warning<'a>(
+    values: impl Iterator<Item = &'a scene_export::level::Value>,
+    target: Target,
+) -> Option<String> {
+    const LISTED: usize = 5;
+    let paths: std::collections::BTreeSet<&str> = values
+        .filter_map(|value| match value {
+            scene_export::level::Value::String(text) if text.starts_with("res://") => {
+                Some(text.as_str())
+            }
+            _ => None,
+        })
+        .collect();
+    if paths.is_empty() {
+        return None;
+    }
+    let mut listed: Vec<&str> = paths.iter().copied().take(LISTED).collect();
+    if paths.len() > LISTED {
+        listed.push("…");
+    }
+    Some(format!(
+        "{} entity properties name Godot project files (res://), which {} cannot load: {}",
+        paths.len(),
+        target.name(),
+        listed.join(", ")
+    ))
+}
+
 /// What [`export`] would write into `directory`, as paths and contents, without writing
 /// any of it: the web build zips them for a download.
 pub fn export_files(
@@ -698,6 +729,14 @@ fn build(
             }
 
             crate::portable_animation::prepare_triggers(&mut built.level);
+            report.warnings.extend(godot_paths_warning(
+                built
+                    .level
+                    .entities
+                    .iter()
+                    .flat_map(|entity| entity.properties.values()),
+                target,
+            ));
             let unity_mtl = format!("{}_paint.mtl", options.name);
             for mesh in &built.meshes {
                 let bytes = if target == Target::Unity && mesh.file_name.ends_with(".obj") {
@@ -1364,6 +1403,19 @@ pub fn entity_classes(
 mod tests {
     use super::*;
     use crate::world::WorldBounds;
+
+    #[test]
+    fn godot_paths_in_properties_are_named_for_other_engines() {
+        let values = [
+            scene_export::level::Value::String("res://models/grass.glb".into()),
+            scene_export::level::Value::String("models/tree.glb".into()),
+        ];
+        let warning = godot_paths_warning(values.iter(), Target::Defold).expect("a warning");
+        assert!(warning.contains("res://models/grass.glb") && warning.contains("Defold"));
+        assert!(!warning.contains("tree.glb"));
+        assert!(godot_paths_warning(std::iter::empty(), Target::Bevy).is_none());
+    }
+
     use geometry_math::bbox::Bbox3d;
     use geometry_math::vec::Vec3d;
 
