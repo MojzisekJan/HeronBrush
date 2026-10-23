@@ -672,10 +672,19 @@ impl State {
         let flag = st.playhead_flag.map(|_| {
             let label = format!("{:.0}", s.frame);
             cr.set_font_bold(true);
-            let advance = cr.text_extents(&label, st.ruler_font_size).x_advance;
+            let extents = cr.text_extents(&label, st.ruler_font_size);
             cr.set_font_bold(false);
+            let advance = extents.x_advance;
             let width = (advance + 10.0).max(18.0).round();
-            (label, advance, (px(playhead) - width / 2.0).round(), width)
+            // How far the middle of the digits' ink lies from their baseline.
+            let ink_middle = extents.y_bearing + extents.height / 2.0;
+            (
+                label,
+                advance,
+                (px(playhead) - width / 2.0).round(),
+                width,
+                ink_middle,
+            )
         });
         let first = (s.start / step).floor() * step;
         for tick in 0..=(((s.span / step).ceil() as usize) + 2).min(500) {
@@ -694,7 +703,7 @@ impl State {
             let dx = if st.crisp { 4.0 } else { 3.0 };
             let label = format!("{:.0}", t * s.clip.fps as f64);
             let at = (x + dx).round_if(st.crisp);
-            if let Some((_, _, left, width)) = &flag {
+            if let Some((_, _, left, width, _)) = &flag {
                 // A number the flag would cover is left out rather than shown cut.
                 let advance = cr.text_extents(&label, st.ruler_font_size).x_advance;
                 if at < left + width + 2.0 && at + advance > left - 2.0 {
@@ -858,7 +867,7 @@ impl State {
             }
             Some(label_colour) => {
                 let x = px(x);
-                let (label, advance, left, width) = flag.unwrap_or_default();
+                let (label, advance, left, width, ink_middle) = flag.unwrap_or_default();
                 let height = (g.top - 8.0).max(10.0);
                 rounded(cr, left, 3.0, width, height, 3.0);
                 cr.fill();
@@ -869,10 +878,12 @@ impl State {
                 cr.close_path();
                 cr.fill();
                 cr.set_font_bold(true);
+                // The digits on the flag's middle. On the ruler's baseline they sat a point low.
+                let baseline = 3.0 + height / 2.0 - ink_middle;
                 text(
                     cr,
                     (left + (width - advance) / 2.0).round(),
-                    st.ruler_baseline,
+                    baseline,
                     &label,
                     label_colour,
                     st.ruler_font_size,
