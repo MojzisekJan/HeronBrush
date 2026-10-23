@@ -607,7 +607,8 @@ fn build(
                 // the geometry checks to look at: a face becomes a polygon and that is
                 // the whole of it.
                 report.warnings.push(
-                    "a plain .obj is written face by face, so there is nothing here for                      the geometry checks to find"
+                    "a plain .obj is written face by face, so there is nothing here for \
+                     the geometry checks to find"
                         .to_string(),
                 );
                 return Ok((report, Vec::new()));
