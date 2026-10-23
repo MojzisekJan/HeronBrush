@@ -236,20 +236,29 @@ impl MapPage {
                     .clicked()
                     && document.borrow_mut().remove_layer(current)
                 {
-                    editor_core::say!("removed the layer; what was on it is on the default one");
+                    editor_core::say!(
+                        "{}",
+                        tr("Removed the layer. What was on it is on the default layer now")
+                    );
                 }
                 widgets::toolbar_gap(ui);
                 if widgets::icon_button(ui, size, tr("Move here"), true, false, icons::move_here)
                     .clicked()
                 {
                     let moved = document.borrow_mut().move_selection_to_layer(current);
-                    editor_core::say!("moved {moved} objects");
+                    editor_core::say!(
+                        "{}",
+                        fill("Moved {} to the layer", &[&counted(moved, "object")])
+                    );
                 }
                 if widgets::icon_button(ui, size, tr("Select"), true, false, icons::select)
                     .clicked()
                 {
                     let selected = document.borrow_mut().select_layer(current);
-                    editor_core::say!("selected {selected} objects");
+                    editor_core::say!(
+                        "{}",
+                        fill("Selected {} on the layer", &[&counted(selected, "object")])
+                    );
                 }
             });
         });
@@ -381,7 +390,7 @@ impl MapPage {
                 (translation_key("Group"), "", has_selection, |d, _| {
                     let count = d.groups().len();
                     if d.group_selection(format!("Group {}", count + 1)).is_some() {
-                        editor_core::say!("grouped the selection");
+                        editor_core::say!("{}", tr("Grouped the selection"));
                     }
                 }),
                 (
@@ -390,7 +399,10 @@ impl MapPage {
                     has_selection && !groups.is_empty(),
                     |d, _| {
                         let dissolved = d.ungroup_selection();
-                        editor_core::say!("took apart {dissolved} groups");
+                        editor_core::say!(
+                            "{}",
+                            fill("Ungrouped {}", &[&counted(dissolved, "group")])
+                        );
                     },
                 ),
                 (
@@ -400,9 +412,15 @@ impl MapPage {
                     |d, _| {
                         let folded = d.merge_selected_groups();
                         if folded > 0 {
-                            editor_core::say!("merged {folded} groups into one");
+                            editor_core::say!(
+                                "{}",
+                                fill("Merged {} into one", &[&counted(folded, "group")])
+                            );
                         } else {
-                            editor_core::complain!("select two or more unlinked groups to merge");
+                            editor_core::complain!(
+                                "{}",
+                                tr("Select two or more unlinked groups to merge")
+                            );
                         }
                     },
                 ),
@@ -412,7 +430,7 @@ impl MapPage {
                     true,
                     |d, name| {
                         let renamed = d.rename_selected_groups(name);
-                        editor_core::say!("renamed {renamed} groups");
+                        editor_core::say!("{}", fill("Renamed {}", &[&counted(renamed, "group")]));
                     },
                 ),
                 (
@@ -432,7 +450,10 @@ impl MapPage {
                     open.is_some() && has_selection,
                     |d, _| {
                         let moved = d.add_selection_to_open_group();
-                        editor_core::say!("moved {moved} objects into the group");
+                        editor_core::say!(
+                            "{}",
+                            fill("Moved {} into the open group", &[&counted(moved, "object")])
+                        );
                     },
                 ),
                 (
@@ -441,7 +462,13 @@ impl MapPage {
                     open.is_some() && has_selection,
                     |d, _| {
                         let moved = d.remove_selection_from_open_group();
-                        editor_core::say!("moved {moved} objects out of the group");
+                        editor_core::say!(
+                            "{}",
+                            fill(
+                                "Moved {} out of the open group",
+                                &[&counted(moved, "object")]
+                            )
+                        );
                     },
                 ),
                 (
@@ -458,7 +485,7 @@ impl MapPage {
                     true,
                     |d, _| {
                         let freed = d.separate_selected_linked_groups();
-                        editor_core::say!("separated {freed} groups");
+                        editor_core::say!("{}", fill("Unlinked {}", &[&counted(freed, "group")]));
                     },
                 ),
                 (
@@ -467,10 +494,17 @@ impl MapPage {
                     open.is_some() && has_selection,
                     |d, _| match d.extract_linked_groups() {
                         Some(groups) => {
-                            editor_core::say!("extracted a linked set of {} groups", groups.len())
+                            editor_core::say!(
+                                "{}",
+                                fill(
+                                    "Extracted a linked set of {}",
+                                    &[&counted(groups.len(), "group")]
+                                )
+                            )
                         }
                         None => editor_core::complain!(
-                            "open a linked group and select some but not all of it to extract"
+                            "{}",
+                            tr("Open a linked group and select some but not all of it to extract")
                         ),
                     },
                 ),

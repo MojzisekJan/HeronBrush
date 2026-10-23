@@ -1010,8 +1010,11 @@ pub(crate) fn call_tool(
             document
                 .save_as(std::path::PathBuf::from(path))
                 .map_err(|error| format!("could not save {path}: {error}"))?;
-            let exports =
-                crate::export::export_on_save(document, &crate::export_settings::Settings::load());
+            let exports: Vec<String> =
+                crate::export::export_on_save(document, &crate::export_settings::Settings::load())
+                    .into_iter()
+                    .map(|done| done.map_or_else(|why| why, |written| written.to_string()))
+                    .collect();
             Ok(extensions::with_warnings(format!("saved {path}"), &exports))
         }
         "export" => extensions::export(document, args, false),

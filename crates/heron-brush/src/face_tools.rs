@@ -1084,15 +1084,20 @@ impl SweepPage {
         let width = ui.available_width();
         if theme::button(ui, tr("Sweep"), width, source.is_some()).clicked() {
             if inputs.transform.is_no_op() {
-                editor_core::say!("the sweep goes nowhere, so there is nothing to make");
+                editor_core::say!(
+                    "{}",
+                    tr("The sweep goes nowhere, so there is nothing to make")
+                );
             } else {
                 let result = editor
                     .document
                     .borrow_mut()
                     .sweep_selection_checked(&inputs.transform, &inputs.parameters);
                 match result {
-                    Ok(made) => editor_core::say!("swept {made} brushes"),
-                    Err(error) => editor_core::say!("{error}"),
+                    Ok(made) => {
+                        editor_core::say!("{}", fill("Swept {}", &[&counted(made, "brush")]))
+                    }
+                    Err(error) => editor_core::complain!("{error}"),
                 }
                 self.preview = None;
             }

@@ -1163,7 +1163,10 @@ impl App {
         self.render_page.tick(ui.ctx(), &self.editor, &self.gpu);
         self.session.poll(&self.editor, &mut self.mcp_state);
         if let Some(path) = self.autosaver.trigger(&self.editor.document.borrow()) {
-            editor_core::say!("autosaved to {}", path.display());
+            editor_core::say!(
+                "{}",
+                editor_core::i18n::fill("Autosaved to {}", &[&path.display().to_string()])
+            );
         }
         // Woken only for what waits on a clock, rather than every second regardless.
         let waiting = idle::Waiting {
@@ -1221,7 +1224,10 @@ impl App {
             self.render_page.finish_navigation(&self.editor);
             // The safety net under the whole session, whatever the answer turns out to be.
             if let Some(path) = self.autosaver.trigger(&self.editor.document.borrow()) {
-                editor_core::say!("autosaved to {}", path.display());
+                editor_core::say!(
+                    "{}",
+                    editor_core::i18n::fill("Autosaved to {}", &[&path.display().to_string()])
+                );
             }
             if !app_actions::can_leave(&mut self.editor.document.borrow_mut()) {
                 ui.ctx()
@@ -1341,7 +1347,10 @@ impl App {
             if let Some(valid) = self.editor.document.borrow().shape_preview_parameters() {
                 *self.editor.shape_parameters.borrow_mut() = valid;
             }
-            editor_core::complain!("could not update the shape: {error}");
+            editor_core::complain!(
+                "{}",
+                editor_core::i18n::fill("Could not update the shape: {}", &[&error.to_string()])
+            );
         }
 
         // The status strip along the bottom, and the output pane over it when shown.

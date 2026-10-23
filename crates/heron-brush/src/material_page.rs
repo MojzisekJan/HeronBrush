@@ -265,7 +265,13 @@ impl MaterialPage {
                             editor_core::complain!("materials: {warning}");
                         }
                     }
-                    Err(error) => editor_core::complain!("{}: {error}", path.display()),
+                    Err(error) => editor_core::complain!(
+                        "{}",
+                        fill(
+                            "Could not load {}: {}",
+                            &[&path.display().to_string(), &error.to_string()]
+                        )
+                    ),
                 }
             }
             // A `.wad` is how the Quake lineage ships its textures, and a map names the ones
@@ -282,7 +288,13 @@ impl MaterialPage {
                             editor_core::complain!("wad: {warning}");
                         }
                     }
-                    Err(error) => editor_core::complain!("{}: {error}", path.display()),
+                    Err(error) => editor_core::complain!(
+                        "{}",
+                        fill(
+                            "Could not load {}: {}",
+                            &[&path.display().to_string(), &error.to_string()]
+                        )
+                    ),
                 }
             }
         }
@@ -417,7 +429,10 @@ impl MaterialPage {
                 document.apply_current_material()
             };
             if changed > 0 {
-                editor_core::say!("put the material on {changed} faces");
+                editor_core::say!(
+                    "{}",
+                    fill("Put the material on {}", &[&counted(changed, "face")])
+                );
             }
             ui.ctx().request_repaint();
         }
@@ -442,7 +457,10 @@ impl MaterialPage {
                 .clicked()
             {
                 let changed = document.borrow_mut().apply_current_material();
-                editor_core::say!("put the material on {changed} faces");
+                editor_core::say!(
+                    "{}",
+                    fill("Put the material on {}", &[&counted(changed, "face")])
+                );
             }
             let select = theme::button(ui, tr("Select"), side, true);
             egui::Popup::menu(&select).show(|ui| {
@@ -453,7 +471,13 @@ impl MaterialPage {
                 {
                     document.borrow_mut().select_brushes_with_material(&current);
                     let count = document.borrow().selection_count();
-                    editor_core::say!("selected {count} brushes wearing {current}");
+                    editor_core::say!(
+                        "{}",
+                        fill(
+                            "Selected {} with the material {}",
+                            &[&counted(count, "brush"), &current]
+                        )
+                    );
                     ui.close();
                 }
                 if ui
@@ -462,7 +486,13 @@ impl MaterialPage {
                     .clicked()
                 {
                     let count = document.borrow_mut().select_faces_with_material(&current);
-                    editor_core::say!("selected {count} faces wearing {current}");
+                    editor_core::say!(
+                        "{}",
+                        fill(
+                            "Selected {} with the material {}",
+                            &[&counted(count, "face"), &current]
+                        )
+                    );
                     ui.close();
                 }
             });

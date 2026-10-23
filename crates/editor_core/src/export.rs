@@ -1277,7 +1277,8 @@ pub enum Contents {
     Bytes(Vec<u8>),
 }
 
-/// Writes every engine that is set to keep up with the map, and says what it did.
+/// Writes every engine that is set to keep up with the map, and returns what each one
+/// wrote or why it could not.
 ///
 /// A successful map save triggers exports into the configured engine projects.
 /// Engines with project watchers can then reload the updated files.
@@ -1288,9 +1289,9 @@ pub enum Contents {
 pub fn export_on_save(
     document: &Document,
     settings: &crate::export_settings::Settings,
-) -> Vec<String> {
+) -> Vec<Result<SavedExport, String>> {
     if let Err(error) = settings.validate() {
-        return vec![error];
+        return vec![Err(error)];
     }
     let mut said = Vec::new();
     for target in Target::ALL {
@@ -1301,16 +1302,38 @@ pub fn export_on_save(
         let directory = std::path::PathBuf::from(&options.directory);
         options.name = document.level_name();
         match export(document, &directory, &options) {
-            Ok(report) => said.push(format!(
-                "{} {} ({} files)",
-                target.name(),
-                directory.display(),
-                report.files.len()
-            )),
-            Err(why) => said.push(format!("{}: {why}", target.name())),
+            Ok(report) => said.push(Ok(SavedExport {
+                target,
+                directory,
+                files: report.files.len(),
+            })),
+            Err(why) => said.push(Err(format!("{}: {why}", target.name()))),
         }
     }
     said
+}
+
+/// One engine's export that [`export_on_save`] wrote.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SavedExport {
+    /// The engine it was for.
+    pub target: Target,
+    /// The folder it was written into.
+    pub directory: std::path::PathBuf,
+    /// How many files it wrote.
+    pub files: usize,
+}
+
+impl std::fmt::Display for SavedExport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {} ({} files)",
+            self.target.name(),
+            self.directory.display(),
+            self.files
+        )
+    }
 }
 
 /// Where a Defold level's meshes will sit, as the `/`-rooted resource path Defold names
@@ -2241,7 +2264,8 @@ mod tests {
             1,
             "only the engine with the switch on: {said:?}"
         );
-        assert!(said[0].starts_with("Godot"), "{said:?}");
+        let written = said[0].as_ref().expect("the export was written");
+        assert!(written.to_string().starts_with("Godot"), "{said:?}");
         assert!(out.join("level.tscn").is_file(), "the scene was written");
 
         let _ = std::fs::remove_dir_all(&dir);

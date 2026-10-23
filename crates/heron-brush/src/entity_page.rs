@@ -157,7 +157,13 @@ impl EntityPage {
                     let written = document
                         .borrow_mut()
                         .set_default_properties(DefaultProperties::Existing);
-                    editor_core::say!("wrote {written} default properties");
+                    editor_core::say!(
+                        "{}",
+                        fill(
+                            "Set {} to the class defaults",
+                            &[&counted(written, "property")]
+                        )
+                    );
                     ui.close();
                 }
                 if ui
@@ -167,16 +173,31 @@ impl EntityPage {
                     let written = document
                         .borrow_mut()
                         .set_default_properties(DefaultProperties::Missing);
-                    editor_core::say!("wrote {written} default properties");
+                    editor_core::say!(
+                        "{}",
+                        fill(
+                            "Set {} to the class defaults",
+                            &[&counted(written, "property")]
+                        )
+                    );
                     ui.close();
                 }
                 ui.separator();
                 if ui.button(tr("Clear protected properties")).clicked() {
                     let cleared = document.borrow_mut().clear_protected_properties();
                     if cleared > 0 {
-                        editor_core::say!("cleared protected properties on {cleared} entities");
+                        editor_core::say!(
+                            "{}",
+                            fill(
+                                "Cleared the protected properties on {}",
+                                &[&counted(cleared, "entity")]
+                            )
+                        );
                     } else {
-                        editor_core::complain!("nothing selected has a protected property");
+                        editor_core::complain!(
+                            "{}",
+                            tr("Nothing selected has a protected property")
+                        );
                     }
                     ui.close();
                 }
@@ -494,12 +515,24 @@ impl EntityPage {
         if let Some(path) = picked {
             match document.borrow_mut().load_definitions(&path) {
                 Ok(warnings) => {
-                    editor_core::say!("loaded entity definitions from {}", path.display());
+                    editor_core::say!(
+                        "{}",
+                        fill(
+                            "Loaded entity definitions from {}",
+                            &[&path.display().to_string()]
+                        )
+                    );
                     for warning in warnings {
                         editor_core::complain!("warning: {warning}");
                     }
                 }
-                Err(error) => editor_core::complain!("{}: {error}", path.display()),
+                Err(error) => editor_core::complain!(
+                    "{}",
+                    fill(
+                        "Could not load {}: {}",
+                        &[&path.display().to_string(), &error.to_string()]
+                    )
+                ),
             }
         }
         widgets::search(ui, &mut self.filter, tr("Filter classes"));
@@ -594,9 +627,12 @@ impl EntityPage {
                     .create_brush_entity(&classname)
                     .is_some();
                 if made {
-                    editor_core::say!("made a {classname} out of the selection");
+                    editor_core::say!("{}", fill("Made {} out of the selection", &[&classname]));
                 } else {
-                    editor_core::say!("select some brushes to make one out of");
+                    editor_core::say!(
+                        "{}",
+                        fill("Select some brushes to make {} from", &[&classname])
+                    );
                 }
             } else {
                 let size = grid.borrow().actual_size();

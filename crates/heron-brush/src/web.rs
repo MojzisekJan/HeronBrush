@@ -377,7 +377,10 @@ pub fn open_playtest() {
         });
     } else {
         editor_core::complain!(
-            "The browser blocked the playtest tab. Allow popups for this editor."
+            "{}",
+            editor_core::i18n::tr(
+                "The browser blocked the playtest tab. Allow pop-ups for this editor"
+            )
         );
     }
 }
@@ -412,14 +415,20 @@ pub fn update_playtest(ctx: &egui::Context, document: &editor_core::document::Do
                     .ok()
                     .and_then(|v| v.as_string())
                 {
-                    editor_core::complain!("Playtest: {error}");
+                    editor_core::complain!(
+                        "{}",
+                        editor_core::i18n::fill("The playtest export failed: {}", &[&error])
+                    );
                 } else {
                     if let Ok(warnings) = js_sys::Reflect::get(&answer, &"warnings".into()) {
                         for warning in js_sys::Array::from(&warnings)
                             .iter()
                             .filter_map(|v| v.as_string())
                         {
-                            editor_core::say!("Playtest: {warning}");
+                            editor_core::say!(
+                                "{}",
+                                editor_core::i18n::fill("Playtest warning: {}", &[&warning])
+                            );
                         }
                     }
                     if !publish_playtest_export(&answer) {
@@ -443,7 +452,10 @@ pub fn update_playtest(ctx: &egui::Context, document: &editor_core::document::Do
         let settings = editor_core::export_settings::Settings::for_map(document.path.as_deref());
         if let Err(error) = settings.validate() {
             state.sent = Some(revision);
-            editor_core::complain!("Playtest: {error}");
+            editor_core::complain!(
+                "{}",
+                editor_core::i18n::fill("The playtest export failed: {}", &[&error])
+            );
             return;
         }
         let mut options = settings.for_target(editor_core::export::Target::ThreeJs);

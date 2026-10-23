@@ -36,7 +36,7 @@ fn point_file_chooser(point: bool) -> FileDialog {
             if point { &["pts", "lin"] } else { &["prt"] },
         )
 }
-use editor_core::i18n::tr;
+use editor_core::i18n::{counted, fill, tr};
 use eframe::egui;
 
 /// A 2D cursor carries NaN on its unknown depth axis, like paste placement.
@@ -185,23 +185,38 @@ fn finish_save(
             if let Some(path) = &document.path {
                 editor_core::recent_documents::record(path);
                 if chosen {
-                    editor_core::say!("saved {}", path.display());
+                    editor_core::say!("{}", fill("Saved {}", &[&path.display().to_string()]));
                 } else {
-                    editor_core::say!("saved");
+                    editor_core::say!("{}", tr("Saved"));
                 }
             }
             // The web build has no folder to write a level into on every save.
             #[cfg(not(target_arch = "wasm32"))]
-            for message in editor_core::export::export_on_save(
+            for exported in editor_core::export::export_on_save(
                 document,
                 &editor_core::export_settings::Settings::for_map(document.path.as_deref()),
             ) {
-                editor_core::say!("wrote {message}");
+                match exported {
+                    Ok(written) => editor_core::say!(
+                        "{}",
+                        fill(
+                            "Exported {} to {} ({})",
+                            &[
+                                written.target.name(),
+                                &written.directory.display().to_string(),
+                                &counted(written.files, "file"),
+                            ]
+                        )
+                    ),
+                    Err(why) => {
+                        editor_core::complain!("{}", fill("The export on save failed: {}", &[&why]))
+                    }
+                }
             }
             true
         }
         Err(error) => {
-            editor_core::complain!("could not save: {error}");
+            editor_core::complain!("{}", fill("Could not save: {}", &[&error.to_string()]));
             false
         }
     }
@@ -307,17 +322,26 @@ pub fn revert_answer() -> bool {
 pub fn revert(editor: &Editor) -> Option<editor_core::document_setup::Sources> {
     let path = editor.document.borrow().path.clone();
     let Some(path) = path else {
-        editor_core::say!("revert: the map has never been saved");
+        editor_core::say!(
+            "{}",
+            tr("The map has never been saved, so there is nothing to revert to")
+        );
         return None;
     };
     // Checked first: loading falls back to an empty map on a read error.
     if let Err(error) = editor_core::document::Document::open(&path, editor.bounds) {
-        editor_core::complain!("{}: {error}", path.display());
+        editor_core::complain!(
+            "{}",
+            fill(
+                "Could not open {}: {}",
+                &[&path.display().to_string(), &error.to_string()]
+            )
+        );
         return None;
     }
     let loaded = editor_core::document_setup::load(Some(path.clone()), None, None);
     *editor.document.borrow_mut() = loaded.document;
-    editor_core::say!("reverted to {}", path.display());
+    editor_core::say!("{}", fill("Reverted to {}", &[&path.display().to_string()]));
     Some(loaded.sources)
 }
 
@@ -326,44 +350,67 @@ pub fn run_document_command(editor: &Editor, action: Action) {
     let mut document = editor.document.borrow_mut();
     match action {
         Action::ReloadPoint => match document.reload_point_file() {
-            Some(Ok(points)) => editor_core::say!("point file: {points} points"),
-            Some(Err(error)) => {
-                editor_core::complain!("the point file could not be read again: {error}")
-            }
-            None => editor_core::say!("no point file to read again"),
+            Some(Ok(points)) => editor_core::say!(
+                "{}",
+                fill("Read {} from the point file", &[&counted(points, "point")])
+            ),
+            Some(Err(error)) => editor_core::complain!(
+                "{}",
+                fill(
+                    "Could not read the point file again: {}",
+                    &[&error.to_string()]
+                )
+            ),
+            None => editor_core::say!("{}", tr("There is no point file to read again")),
         },
         Action::ReloadPortal => match document.reload_portal_file() {
-            Some(Ok(portals)) => editor_core::say!("portal file: {portals} portals"),
-            Some(Err(why)) => {
-                editor_core::complain!("the portal file could not be read again: {why}")
-            }
-            None => editor_core::say!("no portal file to read again"),
+            Some(Ok(portals)) => editor_core::say!(
+                "{}",
+                fill(
+                    "Read {} from the portal file",
+                    &[&counted(portals, "portal")]
+                )
+            ),
+            Some(Err(why)) => editor_core::complain!(
+                "{}",
+                fill(
+                    "Could not read the portal file again: {}",
+                    &[&why.to_string()]
+                )
+            ),
+            None => editor_core::say!("{}", tr("There is no portal file to read again")),
         },
         Action::UnloadPoint => document.unload_point_file(),
         Action::UnloadPortal => document.unload_portal_file(),
         Action::ClearRepeat => {
             document.clear_repeatable();
-            editor_core::say!("forgot what Repeat would do again");
+            editor_core::say!("{}", tr("Cleared what Repeat would do"));
         }
         Action::Sync => {
             let synced = document.sync_linked_groups();
-            editor_core::say!("synced {synced} linked groups");
+            editor_core::say!("{}", fill("Synced {}", &[&counted(synced, "group")]));
         }
         Action::Patches => {
             let made =
                 document.convert_selection_to_patches(map_model::face_to_patch::DEFAULT_POINTS);
             if made > 0 {
-                editor_core::say!("convert faces to patches: {made} patches");
+                editor_core::say!(
+                    "{}",
+                    fill("Converted the faces to {}", &[&counted(made, "patch")])
+                );
             } else {
-                editor_core::say!("convert faces to patches: select some brush faces first");
+                editor_core::say!("{}", tr("Select some brush faces first"));
             }
         }
         Action::Structural => {
             let moved = document.make_structural();
             if moved > 0 {
-                editor_core::say!("moved {moved} objects out of their entity");
+                editor_core::say!(
+                    "{}",
+                    fill("Moved {} out of their entity", &[&counted(moved, "object")])
+                );
             } else {
-                editor_core::complain!("select brushes that are inside a brush entity");
+                editor_core::complain!("{}", tr("Select brushes that are inside a brush entity"));
             }
         }
         _ => {}
@@ -517,10 +564,9 @@ impl App {
                     .borrow_mut()
                     .split_into_columns(cell, shape);
                 match result {
-                    Ok(count) => editor_core::say!(
-                        "{}",
-                        editor_core::i18n::fill("Columns: {}", &[&count.to_string()])
-                    ),
+                    Ok(count) => {
+                        editor_core::say!("{}", fill("Columns: {}", &[&count.to_string()]))
+                    }
                     Err(why) => editor_core::say!("{}", tr(why)),
                 }
             }
@@ -532,7 +578,7 @@ impl App {
                         "{}: {} → {}",
                         tr("Merge columns"),
                         before,
-                        editor_core::i18n::counted(before - removed, "brush")
+                        counted(before - removed, "brush")
                     ),
                     Err(why) => editor_core::say!("{}", tr(why)),
                 }
@@ -549,7 +595,13 @@ impl App {
                     match editor_core::live_mcp::Server::start() {
                         Ok(server) => self.mcp = Some(server),
                         Err(error) => {
-                            editor_core::complain!("the MCP endpoint could not start: {error}")
+                            editor_core::complain!(
+                                "{}",
+                                fill(
+                                    "The MCP endpoint could not start: {}",
+                                    &[&error.to_string()]
+                                )
+                            )
                         }
                     }
                 }
@@ -632,7 +684,10 @@ impl App {
             .borrow_mut()
             .import_model_copy(path, at)
         {
-            Ok(_) => editor_core::say!("Imported model {}", path.display()),
+            Ok(_) => editor_core::say!(
+                "{}",
+                fill("Imported the model {}", &[&path.display().to_string()])
+            ),
             Err(error) => editor_core::complain!("{}", error),
         }
     }
@@ -686,14 +741,38 @@ impl App {
         let mut document = self.editor.document.borrow_mut();
         if point {
             match document.load_point_file(path) {
-                Ok(0) => editor_core::say!("{}: no points in it", path.display()),
-                Ok(points) => editor_core::say!("point file: {points} points"),
-                Err(error) => editor_core::complain!("{}: {error}", path.display()),
+                Ok(0) => editor_core::say!(
+                    "{}",
+                    fill("{} has no points in it", &[&path.display().to_string()])
+                ),
+                Ok(points) => editor_core::say!(
+                    "{}",
+                    fill("Read {} from the point file", &[&counted(points, "point")])
+                ),
+                Err(error) => editor_core::complain!(
+                    "{}",
+                    fill(
+                        "Could not read {}: {}",
+                        &[&path.display().to_string(), &error.to_string()]
+                    )
+                ),
             }
         } else {
             match document.load_portal_file(path) {
-                Ok(portals) => editor_core::say!("portal file: {portals} portals"),
-                Err(why) => editor_core::complain!("{}: {why}", path.display()),
+                Ok(portals) => editor_core::say!(
+                    "{}",
+                    fill(
+                        "Read {} from the portal file",
+                        &[&counted(portals, "portal")]
+                    )
+                ),
+                Err(why) => editor_core::complain!(
+                    "{}",
+                    fill(
+                        "Could not read {}: {}",
+                        &[&path.display().to_string(), &why.to_string()]
+                    )
+                ),
             }
         }
     }
@@ -721,7 +800,13 @@ impl App {
         // empty map on a read error, which is suitable at startup but not for File/Open.
         if let Some(path) = &path {
             if let Err(error) = editor_core::document::Document::open(path, self.editor.bounds) {
-                editor_core::complain!("could not open {}: {error}", path.display());
+                editor_core::complain!(
+                    "{}",
+                    fill(
+                        "Could not open {}: {}",
+                        &[&path.display().to_string(), &error.to_string()]
+                    )
+                );
                 return;
             }
         }
@@ -761,7 +846,10 @@ impl App {
                 self.render_page.destroy();
                 *self = next;
             }
-            Err(error) => editor_core::complain!("could not open editor: {error}"),
+            Err(error) => editor_core::complain!(
+                "{}",
+                fill("Could not open the editor: {}", &[&error.to_string()])
+            ),
         }
     }
 

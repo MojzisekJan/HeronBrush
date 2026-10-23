@@ -215,8 +215,9 @@ impl View3d {
                         }))
                     }
                     Err(why) => {
-                        let why = format!(
-                            "The 3D view cannot run on this GPU: {why}. The 2D views work."
+                        let why = editor_core::i18n::fill(
+                            "The 3D view cannot run on this GPU: {}. The 2D views work.",
+                            &[&why.to_string()],
                         );
                         editor_core::complain!("{why}");
                         Backend::Unavailable(why)

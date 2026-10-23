@@ -1,7 +1,7 @@
 //! Offline manual with chapter navigation, search and reader preferences.
 use crate::{dialog, form, theme, widgets};
 use editor_core::{
-    i18n::{tr, Language},
+    i18n::{fill, tr, Language},
     manual::{self, chapters, matches, Chapter},
     preferences,
 };
@@ -78,7 +78,10 @@ impl ManualPage {
                 if let Err(error) =
                     preferences::current().save(&preferences::Preferences::default_path())
                 {
-                    editor_core::complain!("{error}");
+                    editor_core::complain!(
+                        "{}",
+                        fill("Could not save the preferences: {}", &[&error.to_string()])
+                    );
                 }
             }
             ui.add_space(4.0);
@@ -93,7 +96,10 @@ impl ManualPage {
                     if let Err(error) =
                         preferences::current().save(&preferences::Preferences::default_path())
                     {
-                        editor_core::complain!("{error}");
+                        editor_core::complain!(
+                            "{}",
+                            fill("Could not save the preferences: {}", &[&error.to_string()])
+                        );
                     }
                 }
             }

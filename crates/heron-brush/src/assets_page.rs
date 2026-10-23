@@ -468,7 +468,7 @@ impl AssetsPage {
     /// Called every frame, since an in-app chooser answers frames later.
     fn save_selection(&mut self, document: &Rc<RefCell<Document>>, open: bool) {
         if open && document.borrow().copy_selection().is_none() {
-            editor_core::complain!("select something to save as an asset");
+            editor_core::complain!("{}", tr("Select something to save as an asset"));
             return;
         }
         let mut dialog = crate::file_dialog::FileDialog::new()
@@ -488,8 +488,14 @@ impl AssetsPage {
             path.set_extension("map");
         }
         match std::fs::write(&path, &text) {
-            Ok(()) => editor_core::say!("saved {}", path.display()),
-            Err(error) => editor_core::complain!("{}: {error}", path.display()),
+            Ok(()) => editor_core::say!("{}", fill("Saved {}", &[&path.display().to_string()])),
+            Err(error) => editor_core::complain!(
+                "{}",
+                fill(
+                    "Could not save {}: {}",
+                    &[&path.display().to_string(), &error.to_string()]
+                )
+            ),
         }
         self.rescan(true);
     }

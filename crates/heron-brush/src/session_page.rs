@@ -150,7 +150,7 @@ impl SessionPage {
             let result = match result {
                 Ok(Connected::Host(token, inbox)) => state.host_frontend(self.name.trim().to_string(), token, inbox).map(|token| {
                     self.details = token;
-                    editor_core::say!("live session ready -- connection details are in Live session. Waiting for guests");
+                    editor_core::say!("{}", tr("The live session is ready. The connection details are in Live session. Waiting for guests"));
                 }),
                 Ok(Connected::Guest(session)) => {
                     let changed = self.join_revision.take().is_some_and(|revision| revision != editor.document.borrow().revision());
@@ -159,14 +159,17 @@ impl SessionPage {
                     } else {
                         let peer = session.peer().to_string();
                         state.join_frontend(&mut editor.document.borrow_mut(), self.name.trim().to_string(), session).map(|()| {
-                            editor_core::say!("joined the live session at {peer}");
+                            editor_core::say!("{}", fill("Joined the live session at {}", &[&peer]));
                         })
                     }
                 }
                 Err(error) => Err(error),
             };
             if let Err(error) = result {
-                editor_core::complain!("the live session could not start: {error}");
+                editor_core::complain!(
+                    "{}",
+                    fill("The live session could not start: {}", &[&error])
+                );
                 if connecting == Some(Connecting::Rejoin) {
                     state.leave_frontend(&mut editor.document.borrow_mut());
                 }
@@ -184,7 +187,7 @@ impl SessionPage {
             // A guest tries to come back on its own; the world is sent again on the rejoin,
             // so a drop costs at most the edits made while apart, which are held for it.
             if let Some(target) = self.joined.clone() {
-                editor_core::say!("connection lost -- trying to rejoin");
+                editor_core::say!("{}", tr("The connection was lost. Trying to rejoin"));
                 self.connecting = Some(Connecting::Rejoin);
                 self.start(move || {
                     let mut last = String::new();

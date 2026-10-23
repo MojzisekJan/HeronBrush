@@ -10,7 +10,7 @@ use crate::{colour_picker, dialog, theme, widgets};
 use editor_core::{
     document::Document,
     games::Game,
-    i18n::{tr, translation_key},
+    i18n::{fill, tr, translation_key},
     preferences::{self, Color, ColorScheme, Keymap, Layout, Preferences},
 };
 use eframe::egui::{self, Rect, Sense, Stroke};
@@ -746,9 +746,9 @@ impl PreferencesPage {
         match preferences::current().save(path) {
             Ok(()) => self.error.clear(),
             Err(error) => {
-                self.error = format!(
-                    "the preferences could not be written to {}: {error}",
-                    path.display()
+                self.error = fill(
+                    "Could not save the preferences to {}: {}",
+                    &[&path.display().to_string(), &error.to_string()],
                 );
                 editor_core::complain!("{}", self.error);
             }
@@ -1680,7 +1680,7 @@ mod tests {
         assert!(page.commit(&before, after, &blocker.join("preferences")));
         assert_eq!(preferences::pref(|p| p.game.clone()), "Quake");
         assert!(
-            page.error.contains("could not be written"),
+            page.error.contains("Could not save the preferences"),
             "{}",
             page.error
         );
