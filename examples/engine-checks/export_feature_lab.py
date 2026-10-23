@@ -3,7 +3,7 @@
 
 Run from any directory after `cargo build -p heron-brush`:
 
-    python3 examples/engine-checks/export_feature_lab.py            # all 15 targets
+    python3 examples/engine-checks/export_feature_lab.py            # all 16 targets
     python3 examples/engine-checks/export_feature_lab.py godot glb  # some of them
 
 Each target goes to its own folder, /tmp/heron-feature-<target> unless --root
@@ -23,8 +23,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 MAP = ROOT / "demos/feature_lab/feature_lab.map"
 TEXTURES = ROOT / "demos/feature_lab/textures"
-TARGETS = ["godot", "defold", "three", "babylon", "bevy", "raylib", "unity", "unreal",
-           "flax", "stride", "cocos", "gdevelop", "obj", "gltf", "glb"]
+TARGETS = ["godot", "defold", "three", "babylon", "playcanvas", "bevy", "raylib", "unity",
+           "unreal", "flax", "stride", "cocos", "gdevelop", "obj", "gltf", "glb"]
 NAME = "feature_lab"
 # A project class without an FGD entry: typed defaults the authored map overrides
 # (charge) or leaves alone (armed, sequence, label).
