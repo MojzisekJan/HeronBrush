@@ -71,6 +71,13 @@ pub fn bake(face: &BrushFace, polygon: &[Vec3d], material: Option<&Material>) ->
     let mut pixels = Vec::with_capacity((width * height * 4) as usize);
     let alpha = paint.alpha() as f32 / 255.0;
     let texels = material.and_then(|m| m.pixels());
+    // The first and last rows and columns lie on the face's edges, which are often
+    // texel boundaries: the far edge would take the next tile's texel. Sampling the
+    // texture a quarter of a bake pixel inside the face keeps them on it.
+    let inset = [
+        span[0] / (width - 1) as f32 / 4.0,
+        span[1] / (height - 1) as f32 / 4.0,
+    ];
     for y in 0..height {
         for x in 0..width {
             let uv = [
@@ -91,8 +98,9 @@ pub fn bake(face: &BrushFace, polygon: &[Vec3d], material: Option<&Material>) ->
                 .filter(|m| m.width > 0 && m.height > 0)
                 .zip(texels.as_deref())
                 .map(|(m, texels)| {
-                    let px = (uv[0].floor() as i64).rem_euclid(m.width as i64) as usize;
-                    let py = (uv[1].floor() as i64).rem_euclid(m.height as i64) as usize;
+                    let [u, v] = [0, 1].map(|i| uv[i].clamp(lo[i] + inset[i], hi[i] - inset[i]));
+                    let px = (u.floor() as i64).rem_euclid(m.width as i64) as usize;
+                    let py = (v.floor() as i64).rem_euclid(m.height as i64) as usize;
                     &texels[(py * m.width as usize + px) * 4..][..4]
                 })
                 .unwrap_or(&[255, 255, 255, 255]);
@@ -661,6 +669,35 @@ mod tests {
         assert!(images.is_empty());
         assert_eq!(text, document.to_map_text());
         assert!(settings.generated_materials.is_empty());
+    }
+
+    #[test]
+    fn translucent_paint_keeps_every_texel_of_a_face_one_tile_wide() {
+        // A 64-unit face over a 64-texel texture: the bake's last row and column lie
+        // on the far edge and once took the opposite edge's texels from the next tile.
+        let brush = map_model::shapes::create_cuboid(
+            &Bbox3d::new(Vec3d::fill(-1024.0), Vec3d::fill(1024.0)),
+            &Bbox3d::new(Vec3d::zero(), Vec3d::fill(64.0)),
+            "stone",
+        )
+        .expect("a cube fits the world");
+        let polygon = brush.face_polygon(0).expect("the face has a polygon");
+        let mut face = brush.faces()[0].clone();
+        face.set_paint(Some(FaceColor::Solid {
+            color: Rgb::new(0, 0, 0),
+            alpha: 0,
+        }));
+        let texels: Vec<u8> = (0..64u8)
+            .flat_map(|y| (0..64u8).flat_map(move |x| [x * 4, y * 4, 0, 255]))
+            .collect();
+        let base = Material::rgba("stone".into(), PathBuf::new(), 64, 64, texels);
+        let image = bake(&face, &polygon, Some(&base)).expect("translucent paint bakes");
+        assert_eq!((image.width, image.height), (64, 64));
+        let pixels = image.pixels.as_chunks::<4>().0;
+        let columns: std::collections::BTreeSet<u8> = pixels.iter().map(|p| p[0]).collect();
+        let rows: std::collections::BTreeSet<u8> = pixels.iter().map(|p| p[1]).collect();
+        assert_eq!(columns.len(), 64, "a texel column is lost or doubled");
+        assert_eq!(rows.len(), 64, "a texel row is lost or doubled");
     }
 }
 
