@@ -130,6 +130,12 @@ impl Document {
             crate::complain!("game assets: {warning}");
         }
         self.game_materials = collection.into_materials();
+        // Quetoo keeps each texture's normal, specular and glow maps beside it; the
+        // profile's excludes say which images those are.
+        if let Some(game) = &game {
+            self.game_materials
+                .retain(|material| !game.excludes_material(&material.name));
+        }
         self.model_store = crate::entity_models::ModelStore::with_assets(path, assets);
         self.models.clear();
         self.sprites.clear();

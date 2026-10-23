@@ -1649,6 +1649,7 @@ mod tests {
             formats: Vec::new(),
             definitions: Vec::new(),
             materials_root: None,
+            materials_excludes: Vec::new(),
             materials_palette: None,
             materials_attribute: None,
             clip_material: None,

@@ -42,6 +42,9 @@ pub struct GameConfig {
     /// Directory holding textures, relative to the game's search path.
     pub materials_root: Option<String>,
     pub materials_extensions: Vec<String>,
+    /// `materials.excludes`: globs naming the images that are not materials of their own,
+    /// such as Quetoo's `*_norm` and `*_spec` maps.
+    pub materials_excludes: Vec<String>,
     /// External palette resource used by indexed textures.
     pub materials_palette: Option<String>,
     /// `materials.attribute`: the worldspawn key that lists the map's texture packages,
@@ -130,6 +133,13 @@ pub fn parse(text: &str, path: &str) -> Result<GameConfig, GameConfigError> {
                 .iter()
                 .filter_map(Value::as_str)
                 .map(|e| e.trim_start_matches('.').to_ascii_lowercase())
+                .collect();
+        }
+        if let Some(Value::Array(list)) = m.get("excludes") {
+            config.materials_excludes = list
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
                 .collect();
         }
     }
@@ -361,6 +371,7 @@ mod tests {
         "extensions": [".png", ".jpg"],
         "attribute": "wad",
         "palette": "pics/colormap.pcx",
+        "excludes": [ "*_norm", "*_glow" ],
     },
     "entities": {
         "definitions": [ "heron_brush.fgd" ],
@@ -388,6 +399,7 @@ mod tests {
         assert_eq!(cfg.materials_extensions, vec!["png", "jpg"]);
         assert_eq!(cfg.materials_palette.as_deref(), Some("pics/colormap.pcx"));
         assert_eq!(cfg.materials_attribute.as_deref(), Some("wad"));
+        assert_eq!(cfg.materials_excludes, vec!["*_norm", "*_glow"]);
         assert_eq!(cfg.definitions, vec!["heron_brush.fgd"]);
         assert_eq!(cfg.icon.as_deref(), Some("Icon.png"));
         assert_eq!(cfg.search_path.as_deref(), Some("."));
