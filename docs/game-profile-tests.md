@@ -1702,8 +1702,7 @@ with Mesa's llvmpipe.
   not, nor was J.A.C.K. or TrenchBroom opening a map Heron saved.
 - The yard's lamp switching on was seen in the log, not compared in screenshots.
 
-The profile could drop "experimental": Uplink's textures load with their own palettes,
-Heron's save is what SDHLT compiles, J.A.C.K.'s maps survive the round trip, the FGD
-works for doors, buttons, triggers, monsters, level changes and lights, and the models
-are drawn. That is left to the coordinator, together with the caveat that only Xash3D
-and SDHLT were tried.
+The profile is no longer marked experimental: Uplink's textures load with their own
+palettes, Heron's save is what SDHLT compiles, J.A.C.K.'s maps survive the round trip,
+the FGD works for doors, buttons, triggers, monsters, level changes and lights, and the
+models are drawn. Only Xash3D and SDHLT were tried, not Valve's engine or tools.
