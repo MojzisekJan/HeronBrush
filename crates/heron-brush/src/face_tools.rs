@@ -490,7 +490,7 @@ impl ColourPage {
                 }
                 if colour_picker::button(
                     ui,
-                    Id::new("colour-mix"),
+                    Id::unique("colour-mix"),
                     &mut self.color,
                     Some(&mut alpha),
                 )
@@ -779,7 +779,7 @@ impl ColourPage {
                 }
             }
         }
-        let menu_id = Id::new("colour-stop-menu");
+        let menu_id = Id::unique("colour-stop-menu");
         if response.secondary_clicked() {
             if let Some(pointer) = response.interact_pointer_pos() {
                 let (t, span) = rail(rect, pointer.x);
@@ -877,7 +877,7 @@ impl ColourPage {
 
 /// The picker of the stop at `index`, which the rail opens when its marker is clicked.
 fn stop_picker_id(index: usize) -> Id {
-    Id::new(("colour-stop", index))
+    Id::unique(("colour-stop", index))
 }
 
 /// The Sweep page.

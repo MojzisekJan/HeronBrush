@@ -437,7 +437,7 @@ impl Chrome {
         if folded {
             let slot =
                 Rect::from_min_size(Pos2::new(x, rect.center().y - 14.0), egui::vec2(36.0, 28.0));
-            let response = ui.interact(slot, ui.id().with("menu-bar-folded"), Sense::click());
+            let response = ui.interact(slot, ui.scope_id().with("menu-bar-folded"), Sense::click());
             let open = matches!(self.popup, Some((Popup::AllMenus, _)));
             if response.clicked() {
                 self.toggle(Popup::AllMenus, slot);
@@ -467,7 +467,11 @@ impl Chrome {
                 Pos2::new(x, rect.center().y - 12.0),
                 egui::vec2(width, 24.0),
             );
-            let response = ui.interact(slot, ui.id().with(("menu-bar", index)), Sense::click());
+            let response = ui.interact(
+                slot,
+                ui.scope_id().with(("menu-bar", index)),
+                Sense::click(),
+            );
             let open = open_menu == Some(index);
             // With a menu open, pointing at another title opens that one, as menu bars do.
             if response.clicked() || (open_menu.is_some() && !open && response.hovered()) {
@@ -507,7 +511,7 @@ impl Chrome {
                 egui::vec2(36.0, 28.0),
             );
             let response = ui
-                .interact(slot, ui.id().with("inspector-toggle"), Sense::click())
+                .interact(slot, ui.scope_id().with("inspector-toggle"), Sense::click())
                 .on_hover_text(tr("Show inspector"));
             if response.clicked() {
                 self.action = Some(Action::ToggleInspector);
@@ -551,7 +555,11 @@ impl Chrome {
                 egui::vec2(width, 22.0),
             );
             let response = ui
-                .interact(slot, ui.id().with(("indicator", index)), Sense::click())
+                .interact(
+                    slot,
+                    ui.scope_id().with(("indicator", index)),
+                    Sense::click(),
+                )
                 .on_hover_text(&indicator.tooltip);
             let fill = if response.hovered() {
                 theme::accent_hover()
@@ -649,7 +657,7 @@ impl Chrome {
         };
         if let Some(action) = menu::popup_aligned(
             &ctx,
-            Id::new(("bar-popup", format!("{popup:?}"))),
+            Id::unique(("bar-popup", format!("{popup:?}"))),
             at,
             pivot,
             &entries,
@@ -715,7 +723,7 @@ impl Chrome {
                 egui::Vec2::splat(theme::TOOL_BUTTON),
             );
             let response = ui
-                .interact(slot, ui.id().with(icon.0), Sense::click())
+                .interact(slot, ui.scope_id().with(icon.0), Sense::click())
                 .on_hover_text(tip);
             if response.clicked() {
                 self.document.borrow_mut().flip_selection(axis);
@@ -747,7 +755,7 @@ impl Chrome {
             let width = text_width(ui, label, theme::small_bold()) + 18.0;
             let slot = Rect::from_min_size(Pos2::new(x, cy - 11.0), egui::vec2(width, 22.0));
             let response = ui
-                .interact(slot, ui.id().with(("lock", label)), Sense::click())
+                .interact(slot, ui.scope_id().with(("lock", label)), Sense::click())
                 .on_hover_text(tip);
             if response.clicked() {
                 edit(|p| set(p, !on));
@@ -765,7 +773,11 @@ impl Chrome {
             let width = text_width(ui, label, theme::small_bold()) + 38.0;
             let slot = Rect::from_min_size(Pos2::new(x, cy - 11.0), egui::vec2(width, 22.0));
             let response = ui
-                .interact(slot, ui.id().with("simulation-preview"), Sense::click())
+                .interact(
+                    slot,
+                    ui.scope_id().with("simulation-preview"),
+                    Sense::click(),
+                )
                 .on_hover_text(tr("Preview animations"));
             if response.clicked() {
                 self.action = Some(Action::PreviewAnimations);
@@ -810,7 +822,7 @@ impl Chrome {
         let mut right = rect.right() - 6.0;
         let slot = Rect::from_min_size(Pos2::new(right - 26.0, cy - 12.0), egui::vec2(26.0, 24.0));
         let response = ui
-            .interact(slot, ui.id().with("grid-menu"), Sense::click())
+            .interact(slot, ui.scope_id().with("grid-menu"), Sense::click())
             .on_hover_text(tr("Grid settings"));
         let open = matches!(self.popup, Some((Popup::GridSettings, _)));
         paint_flat(ui, slot, &response, open);
@@ -825,7 +837,7 @@ impl Chrome {
         let slot =
             Rect::from_min_size(Pos2::new(right - width, cy - 12.0), egui::vec2(width, 24.0));
         let response = ui
-            .interact(slot, ui.id().with("grid-size"), Sense::click())
+            .interact(slot, ui.scope_id().with("grid-size"), Sense::click())
             .on_hover_text(tr("Grid size (+ and -)"));
         let open = matches!(self.popup, Some((Popup::GridSize, _)));
         paint_flat(ui, slot, &response, open);
@@ -974,7 +986,11 @@ impl Chrome {
 
     fn tool_button(&mut self, ui: &mut Ui, slot: Rect, tool: Tool) {
         let response = ui
-            .interact(slot, ui.id().with(("tool", tool.name())), Sense::click())
+            .interact(
+                slot,
+                ui.scope_id().with(("tool", tool.name())),
+                Sense::click(),
+            )
             .on_hover_text(tr(tool.tooltip()));
         if response.clicked() {
             self.pick(tool);
@@ -1002,7 +1018,7 @@ pub fn title_bar_drag(ui: &Ui, rect: Rect, id: &str, maximized: bool) {
     if cfg!(target_arch = "wasm32") {
         return;
     }
-    let bar = ui.interact(rect, ui.id().with(id), Sense::click_and_drag());
+    let bar = ui.interact(rect, ui.scope_id().with(id), Sense::click_and_drag());
     if bar.drag_started_by(egui::PointerButton::Primary) {
         ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
     }
@@ -1083,7 +1099,11 @@ pub fn window_buttons(ui: &Ui, rect: Rect, maximized: bool) -> f32 {
             )
         };
         right -= width + gap;
-        let response = ui.interact(slot, ui.id().with(("window-button", index)), Sense::click());
+        let response = ui.interact(
+            slot,
+            ui.scope_id().with(("window-button", index)),
+            Sense::click(),
+        );
         let close = kind == "close";
         let down = response.is_pointer_button_down_on();
         let p = ui.painter();

@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = ["crates/expression_lang", "crates/text_utils", "crates/map_model", "crates/render", "crates/geometry_math", "crates/scene_export", "crates/heron-brush", "crates/editor_core", "crates/render_wgpu", "crates/heron-brush-android", "crates/heron-brush-web", "crates/file_store", "crates/heron-brush-export-web"]
+# Third-party crates patched for this build, not part of the workspace.
+exclude = ["vendor"]
 
 [workspace.package]
 version = "0.1.0-alpha.2"
@@ -43,3 +45,8 @@ codegen-units = 1
 # 25.9 MB of binary become 21.3. Nothing here reads its own symbols, and a
 # backtrace from a release build was never going to name a line anyway.
 strip = true
+
+# egui-phosphor has no release for egui 0.37 yet; vendor/egui-phosphor is 0.14.0 with egui
+# raised. Drop this once upstream publishes one.
+[patch.crates-io]
+egui-phosphor = { path = "vendor/egui-phosphor" }

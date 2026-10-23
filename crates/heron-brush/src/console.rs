@@ -22,7 +22,11 @@ fn colour(kind: Kind) -> egui::Color32 {
 /// The status strip: the editor's latest line, and a chevron that opens the pane.
 /// Returns whether it was clicked.
 pub fn strip(ui: &mut egui::Ui, rect: egui::Rect, open: bool) -> bool {
-    let response = ui.interact(rect, ui.id().with("status-strip"), egui::Sense::click());
+    let response = ui.interact(
+        rect,
+        ui.scope_id().with("status-strip"),
+        egui::Sense::click(),
+    );
     let painter = ui.painter_at(rect);
     painter.rect_filled(
         rect,

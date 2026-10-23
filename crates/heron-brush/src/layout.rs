@@ -225,7 +225,11 @@ fn splitter(ui: &egui::Ui, id: &str, line: egui::Rect, vertical_line: bool) -> O
     } else {
         line.expand2(egui::vec2(0.0, 4.0))
     };
-    let response = ui.interact(grab, ui.id().with(("splitter", id)), egui::Sense::drag());
+    let response = ui.interact(
+        grab,
+        ui.scope_id().with(("splitter", id)),
+        egui::Sense::drag(),
+    );
     let active = response.hovered() || response.dragged();
     ui.painter().rect_filled(
         line,

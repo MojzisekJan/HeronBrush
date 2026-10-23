@@ -96,7 +96,7 @@ pub fn frame(style: &egui::Style) -> egui::Frame {
 /// The rectangles every menu took this frame, so a press outside all of them closes the
 /// menu that is open.
 fn rects_id() -> Id {
-    Id::new("heron-menu-rects")
+    Id::unique("heron-menu-rects")
 }
 
 /// Forgets last frame's menu rectangles. Call before showing this frame's menus.
@@ -165,7 +165,7 @@ pub fn popup_aligned<A: Clone>(
 pub fn show<A: Clone>(ui: &mut Ui, id: Id, entries: &[Entry<A>]) -> Option<A> {
     let width = width(ui, entries);
     ui.spacing_mut().item_spacing.y = 0.0;
-    let open_sub = Id::new((id, "open-sub"));
+    let open_sub = Id::unique((id, "open-sub"));
     let mut picked = None;
     for (index, entry) in entries.iter().enumerate() {
         match entry {
@@ -203,7 +203,8 @@ pub fn show<A: Clone>(ui: &mut Ui, id: Id, entries: &[Entry<A>]) -> Option<A> {
                 }
                 if open || response.hovered() {
                     let at = egui::pos2(response.rect.right() + 6.0, response.rect.top() - 4.0);
-                    if let Some(action) = popup(ui.ctx(), Id::new((id, "sub", index)), at, entries)
+                    if let Some(action) =
+                        popup(ui.ctx(), Id::unique((id, "sub", index)), at, entries)
                     {
                         picked = Some(action);
                     }

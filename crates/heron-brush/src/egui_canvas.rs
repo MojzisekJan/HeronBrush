@@ -84,6 +84,7 @@ impl Capture {
                         .map(|shape| egui::epaint::ClippedShape {
                             clip_rect: clip,
                             shape,
+                            transform_after_tessellation: egui::emath::TSTransform::IDENTITY,
                         })
                         .collect();
                     for primitive in ctx.tessellate(clipped, pixels_per_point) {
@@ -625,7 +626,7 @@ impl Canvas for EguiCanvas<'_> {
         // pixels, so a material is sent to the GPU once rather than every frame, and again
         // when it is reloaded with new pixels under the same name and size.
         let ctx = self.painter.ctx().clone();
-        let id = egui::Id::new(("tiled-image", key));
+        let id = egui::Id::unique(("tiled-image", key));
         let signature = pixel_signature(width, height, pixels);
         let cached = ctx.data_mut(|d| d.get_temp::<(u64, egui::TextureHandle)>(id));
         let texture = match cached {

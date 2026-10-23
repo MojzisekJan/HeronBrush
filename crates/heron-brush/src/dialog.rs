@@ -60,7 +60,7 @@ fn show_window(
     on_top: bool,
     mut contents: impl FnMut(&mut egui::Ui, Part),
 ) -> bool {
-    let placement_id = egui::Id::new(("dialog-placement", id));
+    let placement_id = egui::Id::unique(("dialog-placement", id));
     let frame = ctx.cumulative_frame_nr();
     let previous = ctx.data_mut(|d| d.get_temp::<Placement>(placement_id));
     let opening =
@@ -130,7 +130,7 @@ fn show_window(
                     pending = false;
                 }
             }
-            egui::Panel::bottom(egui::Id::new((id, "actions")))
+            egui::Panel::bottom(egui::Id::unique((id, "actions")))
                 .frame(egui::Frame::new().fill(theme::bg()).inner_margin(12.0))
                 .show_separator_line(true)
                 .show(ui, |ui| {
@@ -180,7 +180,7 @@ fn tool_level(ctx: &egui::Context, viewport: egui::ViewportId) -> egui::WindowLe
             i.raw.viewports.values().any(|v| v.focused == Some(true)),
         )
     });
-    let id = egui::Id::new(("tool-window-level", viewport));
+    let id = egui::Id::unique(("tool-window-level", viewport));
     let (mut last_focused, was) = ctx
         .data(|d| d.get_temp::<(f64, bool)>(id))
         .unwrap_or((now, true));
@@ -229,7 +229,7 @@ fn embedded(
     let mut open = true;
     let room = dialog_room(ctx);
     let size = size.min(room);
-    let measured = ctx.memory(|m| m.area_rect(egui::Id::new(id)));
+    let measured = ctx.memory(|m| m.area_rect(egui::Id::unique(id)));
     let mut window = egui::Window::new(title);
     if opening || *pending {
         let actual = measured.map(|r| r.size()).unwrap_or(size).min(room);
@@ -248,7 +248,7 @@ fn embedded(
         .fill(theme::bg())
         .inner_margin(0);
     window
-        .id(egui::Id::new(id))
+        .id(egui::Id::unique(id))
         .title_bar(false)
         .collapsible(false)
         .frame(frame)
@@ -320,7 +320,7 @@ fn header(ui: &mut egui::Ui, id: &str, title: &str) -> bool {
         theme::fg(),
     );
     let response = ui
-        .interact(close, egui::Id::new((id, "close")), egui::Sense::click())
+        .interact(close, egui::Id::unique((id, "close")), egui::Sense::click())
         .on_hover_text(editor_core::i18n::tr("Close"));
     let painter = ui.painter();
     if response.hovered() {
@@ -364,7 +364,7 @@ fn block_main_window(ctx: &egui::Context, id: &str) {
         // block too.
         return;
     }
-    let blocker = egui::Modal::new(egui::Id::new((id, "modal-blocker")))
+    let blocker = egui::Modal::new(egui::Id::unique((id, "modal-blocker")))
         .backdrop_color(egui::Color32::TRANSPARENT)
         .frame(egui::Frame::NONE)
         .show(ctx, |_| {});
@@ -438,7 +438,7 @@ mod tests {
             },
         );
         output.textures_delta.clear();
-        id.and_then(|id| ctx.memory(|m| m.area_rect(egui::Id::new(id))))
+        id.and_then(|id| ctx.memory(|m| m.area_rect(egui::Id::unique(id))))
     }
     #[test]
     fn dialogs_center_on_open_and_reopen_but_stay_movable() {

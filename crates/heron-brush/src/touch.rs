@@ -44,15 +44,15 @@ pub fn enabled(ctx: &egui::Context) -> bool {
 }
 
 fn seen_id() -> egui::Id {
-    egui::Id::new("touch-seen")
+    egui::Id::unique("touch-seen")
 }
 
 fn views_id() -> egui::Id {
-    egui::Id::new("touch-views")
+    egui::Id::unique("touch-views")
 }
 
 fn motion_id() -> egui::Id {
-    egui::Id::new("touch-motion")
+    egui::Id::unique("touch-motion")
 }
 
 /// Tells the gestures where the map views are this frame, by view number (0 the 3D view).
@@ -61,11 +61,11 @@ pub fn set_views(ctx: &egui::Context, views: &[(usize, Rect)]) {
 }
 
 fn modifiers_id() -> egui::Id {
-    egui::Id::new("touch-modifiers")
+    egui::Id::unique("touch-modifiers")
 }
 
 fn strip_id() -> egui::Id {
-    egui::Id::new("touch-modifier-strip")
+    egui::Id::unique("touch-modifier-strip")
 }
 
 /// The keys the strip holds down.
@@ -567,7 +567,7 @@ pub fn style(ctx: &egui::Context) {
     if !enabled(ctx) {
         return;
     }
-    let done = egui::Id::new("touch-style");
+    let done = egui::Id::unique("touch-style");
     if ctx.data(|d| d.get_temp::<bool>(done).unwrap_or(false)) {
         return;
     }

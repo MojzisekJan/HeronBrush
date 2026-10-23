@@ -29,7 +29,9 @@ editor_core = { path = "../editor_core" }
 # The controls drawn in the manner of the system (macOS, WinUI), and text centred on its capitals.
 # The controls in the manner of the system: its own project. To work on it beside the
 # editor, point a `[patch."https://github.com/MojzisekJan/egui_native_look"]` at a checkout.
-egui_native_look = { git = "https://github.com/MojzisekJan/egui_native_look" }
+# The version is what a published Heron Brush asks crates.io for; until egui_native_look is
+# published there, cargo takes the git repository. Drop `git` once it is.
+egui_native_look = { version = "0.1", git = "https://github.com/MojzisekJan/egui_native_look" }
 map_model = { path = "../map_model" }
 geometry_math = { path = "../geometry_math" }
 render = { path = "../render" }
@@ -44,13 +46,13 @@ serde_json = "1"
 # The engine logos in the export window are PNGs.
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 
-eframe = { version = "0.36.2", default-features = false, features = ["glow", "default_fonts"] }
-egui_extras = { version = "0.36.2", default-features = false, features = ["svg"] }
+eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"] }
+egui_extras = { version = "0.37.0", default-features = false, features = ["svg"] }
 # Icons beside the menu items, drawn as glyphs of a font so they take the text colour.
 egui-phosphor = "0.14.0"
 
 [target.'cfg(not(any(target_os = "android", target_arch = "wasm32")))'.dependencies]
-eframe = { version = "0.36.2", default-features = false, features = ["wayland", "x11", "accesskit"] }
+eframe = { version = "0.37.0", default-features = false, features = ["wayland", "x11", "accesskit"] }
 # Native file choosers: the system dialog on Windows and macOS, the desktop portal on
 # Linux, so choosing a file needs no toolkit libraries. Android has its own in-app
 # browser (src/file_dialog.rs).
@@ -59,7 +61,7 @@ rfd = "0.17"
 # Android: winit's NativeActivity backend, which needs no Java code of its own (eframe's
 # accesskit support needs GameActivity, so it stays desktop-only). See docs/android.md.
 [target.'cfg(target_os = "android")'.dependencies]
-eframe = { version = "0.36.2", default-features = false, features = ["android-native-activity"] }
+eframe = { version = "0.37.0", default-features = false, features = ["android-native-activity"] }
 winit = { version = "0.30.13", default-features = false }
 log = "0.4"
 android_logger = "0.15"
@@ -68,10 +70,10 @@ android_logger = "0.15"
 # See docs/web.md.
 # The desktop and Android keep egui-wgpu's defaults, as eframe's `wgpu` feature gave them.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-egui-wgpu = { version = "0.36.2", optional = true }
+egui-wgpu = { version = "0.37.0", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-egui-wgpu = { version = "0.36.2", optional = true, default-features = false, features = ["fragile-send-sync-non-atomic-wasm"] }
+egui-wgpu = { version = "0.37.0", optional = true, default-features = false, features = ["fragile-send-sync-non-atomic-wasm"] }
 wgpu = { version = "30.0", optional = true, default-features = false, features = ["std", "wgsl", "webgpu", "fragile-send-sync-non-atomic-wasm"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"

@@ -226,7 +226,7 @@ impl EntityPage {
                 }
                 // A key the class does not define is the map's own, so it can be renamed.
                 None => {
-                    if let Some(new) = field(ui, ui.id().with("key"), key, "", columns.key) {
+                    if let Some(new) = field(ui, ui.scope_id().with("key"), key, "", columns.key) {
                         if !new.is_empty() {
                             document
                                 .borrow_mut()
@@ -286,7 +286,7 @@ impl EntityPage {
                                 ui.spacing_mut().item_spacing.x = columns.gap;
                                 if let Some(text) = field(
                                     ui,
-                                    ui.id().with("value"),
+                                    ui.scope_id().with("value"),
                                     value,
                                     "",
                                     value_width - 36.0 - columns.gap,
@@ -300,8 +300,13 @@ impl EntityPage {
                                 let mut rgb = parse_colour(value)
                                     .map(|c| c.map(|v| (v * 255.0).round().clamp(0.0, 255.0) as u8))
                                     .unwrap_or([255, 255, 255]);
-                                if colour_picker::button(ui, ui.id().with("colour"), &mut rgb, None)
-                                    .changed()
+                                if colour_picker::button(
+                                    ui,
+                                    ui.scope_id().with("colour"),
+                                    &mut rgb,
+                                    None,
+                                )
+                                .changed()
                                 {
                                     // Three numbers from 0 to 255, which is what the games read.
                                     let text = format!("{} {} {}", rgb[0], rgb[1], rgb[2]);
@@ -313,7 +318,7 @@ impl EntityPage {
                         }
                         _ => {
                             let committed =
-                                field(ui, ui.id().with("value"), value, "", value_width);
+                                field(ui, ui.scope_id().with("value"), value, "", value_width);
                             // Leaving an untouched "<multiple>" field alone must not write that
                             // literal onto every selected entity.
                             if let Some(text) = committed.filter(|text| text != MULTIPLE_VALUES) {
@@ -732,7 +737,8 @@ fn default_row(
                     }
                 }
                 let hint = property.default.clone().unwrap_or_default();
-                if let Some(text) = field(ui, ui.id().with("value"), "", &hint, columns.value) {
+                if let Some(text) = field(ui, ui.scope_id().with("value"), "", &hint, columns.value)
+                {
                     if !text.trim().is_empty() {
                         document
                             .borrow_mut()

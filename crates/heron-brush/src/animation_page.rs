@@ -729,7 +729,7 @@ impl AnimationPage {
                     .desired_width(130.0)
                     .margin(crate::widgets::body_entry_margin(ui, 6, 6))
                     .min_size(egui::vec2(0.0, widgets::ROW_HEIGHT))
-                    .vertical_align(egui::Align::Center),
+                    .align(egui::Align2::LEFT_CENTER),
             );
             if button(ui, tr("Save as"), true).clicked() {
                 action = Some(("save_as", self.library_name.trim().to_owned()));

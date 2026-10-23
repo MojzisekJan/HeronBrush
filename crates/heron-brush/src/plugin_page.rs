@@ -344,7 +344,8 @@ fn body(ui: &mut egui::Ui, plugin: &Plugin, cards: &mut Cards, document: &Rc<Ref
                         }
                     }
                     SettingValue::Text(text) => {
-                        if let Some(new) = widgets::field(ui, ui.id().with("text"), text, "", width)
+                        if let Some(new) =
+                            widgets::field(ui, ui.scope_id().with("text"), text, "", width)
                         {
                             *text = new;
                         }
@@ -579,7 +580,7 @@ impl PluginPage {
         let full = form::body_rect(ui, embedded);
         let mut ui = form::region(ui, full);
         let edit = egui::TextEdit::singleline(&mut self.query)
-            .id(egui::Id::new("plugins-search"))
+            .id(egui::Id::unique("plugins-search"))
             .hint_text(tr("Search by name or description"))
             .desired_width(f32::INFINITY)
             .margin(crate::widgets::body_entry_margin(&ui, 26, 6))

@@ -396,7 +396,7 @@ fn header_bar(
         let slot = Rect::from_min_size(Pos2::new(x, cy - 12.0), egui::vec2(width, 24.0));
         let response = ui.interact(
             slot,
-            Id::new(("detached-shading", mode.label())),
+            Id::unique(("detached-shading", mode.label())),
             Sense::click(),
         );
         let on = mode == current;
@@ -428,7 +428,7 @@ fn header_bar(
     let mut right = rect.right() - 8.0;
     let slot = Rect::from_min_size(Pos2::new(right - 28.0, cy - 12.0), egui::vec2(28.0, 24.0));
     let response = ui
-        .interact(slot, Id::new("detached-menu"), Sense::click())
+        .interact(slot, Id::unique("detached-menu"), Sense::click())
         .on_hover_text(tr("3D view"));
     flat(
         ui,
@@ -449,7 +449,7 @@ fn header_bar(
     right = slot.left() - 4.0;
     let slot = Rect::from_min_size(Pos2::new(right - 26.0, cy - 12.0), egui::vec2(26.0, 24.0));
     let response = ui
-        .interact(slot, Id::new("detached-grid-menu"), Sense::click())
+        .interact(slot, Id::unique("detached-grid-menu"), Sense::click())
         .on_hover_text(tr("Grid settings"));
     flat(
         ui,
@@ -468,7 +468,7 @@ fn header_bar(
     let width = text_width(ui, &label, theme::body()) + 30.0;
     let slot = Rect::from_min_size(Pos2::new(right - width, cy - 12.0), egui::vec2(width, 24.0));
     let response = ui
-        .interact(slot, Id::new("detached-grid-size"), Sense::click())
+        .interact(slot, Id::unique("detached-grid-size"), Sense::click())
         .on_hover_text(tr("Grid size (+ and -)"));
     flat(
         ui,
@@ -511,7 +511,7 @@ fn header_bar(
                 );
                 menu::popup_aligned(
                     &ctx,
-                    Id::new("detached-popup-menu"),
+                    Id::unique("detached-popup-menu"),
                     Pos2::new(from.right(), from.bottom() + 4.0),
                     egui::Align2::RIGHT_TOP,
                     &entries,
@@ -529,7 +529,7 @@ fn header_bar(
                 };
                 menu::popup_aligned(
                     &ctx,
-                    Id::new(("detached-popup", format!("{popup:?}"))),
+                    Id::unique(("detached-popup", format!("{popup:?}"))),
                     Pos2::new(from.right(), from.bottom() + 4.0),
                     egui::Align2::RIGHT_TOP,
                     &entries,

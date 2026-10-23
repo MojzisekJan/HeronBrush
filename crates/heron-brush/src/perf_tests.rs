@@ -325,6 +325,7 @@ fn perf_egui_material_browser() {
             delta: egui::vec2(0.0, -240.0),
             phase: egui::TouchPhase::Move,
             modifiers: egui::Modifiers::NONE,
+            source: egui::MouseWheelSource::Wheel,
         };
         rows.push(bench::measure(
             &format!("{count} materials: frame while scrolling the grid"),

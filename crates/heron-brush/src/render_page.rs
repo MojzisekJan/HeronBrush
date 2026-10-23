@@ -964,7 +964,8 @@ impl RenderPage {
                     widgets::row(ui, tr(label), None, |ui| {
                         let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
                         let mut rgb = [byte(colour[0]), byte(colour[1]), byte(colour[2])];
-                        if colour_picker::button(ui, ui.id().with(*label), &mut rgb, None).changed()
+                        if colour_picker::button(ui, ui.scope_id().with(*label), &mut rgb, None)
+                            .changed()
                         {
                             *colour = rgb.map(|c| f32::from(c) / 255.0);
                         }

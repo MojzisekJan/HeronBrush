@@ -266,7 +266,8 @@ impl View3d {
 
         let response = ui.interact(
             rect,
-            ui.id().with(("view3d", Rc::as_ptr(&self.scene) as usize)),
+            ui.scope_id()
+                .with(("view3d", Rc::as_ptr(&self.scene) as usize)),
             egui::Sense::click_and_drag(),
         );
         let size = (f64::from(rect.width()), f64::from(rect.height()));

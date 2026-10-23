@@ -263,7 +263,7 @@ impl ShapeDialogs {
         if self.text_open {
             let mut close = false;
             let mut insert = false;
-            let entry_id = egui::Id::new("text-dialog-entry");
+            let entry_id = egui::Id::unique("text-dialog-entry");
             self.text_open = dialog::show_modal(
                 ctx,
                 "text",
@@ -286,7 +286,7 @@ impl ShapeDialogs {
                                 .desired_width(ui.available_width())
                                 .margin(crate::widgets::body_entry_margin(ui, 6, 6))
                                 .min_size(egui::vec2(0.0, widgets::ROW_HEIGHT))
-                                .vertical_align(egui::Align::Center),
+                                .align(egui::Align2::LEFT_CENTER),
                         )
                     });
                     if opening {

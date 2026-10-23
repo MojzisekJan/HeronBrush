@@ -103,7 +103,7 @@ impl UvPanel {
             },
         );
         response.widget_info(|| {
-            egui::WidgetInfo::selected(egui::WidgetType::Button, true, self.window_open, label)
+            egui::WidgetInfo::selected(egui::Role::Button, true, self.window_open, label)
         });
         if response.clicked() {
             self.toggle_window(document);

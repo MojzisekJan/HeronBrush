@@ -713,7 +713,7 @@ impl App {
                 && ui
                     .interact(
                         pill.expand(6.0),
-                        ui.id().with(("view-label", view)),
+                        ui.scope_id().with(("view-label", view)),
                         egui::Sense::click(),
                     )
                     .clicked()
@@ -1002,7 +1002,7 @@ fn resize_edges(ui: &egui::Ui, window: egui::Rect) {
     for (index, (direction, rect, cursor)) in zones.into_iter().enumerate() {
         let response = ui.interact(
             rect,
-            egui::Id::new(("window-edge", index)),
+            egui::Id::unique(("window-edge", index)),
             egui::Sense::drag(),
         );
         if response.hovered() || response.dragged() {
@@ -1376,7 +1376,7 @@ impl App {
             self.inspector.show(ui, panel, &self.editor);
             let response = ui.interact(
                 divider.expand2(egui::vec2(0.0, 8.0)),
-                ui.id().with("split-inspector-below"),
+                ui.scope_id().with("split-inspector-below"),
                 egui::Sense::drag(),
             );
             if let Some(pointer) = response
@@ -1420,7 +1420,7 @@ impl App {
             self.inspector.show(ui, column, &self.editor);
             let response = ui.interact(
                 divider.expand2(egui::vec2(4.0, 0.0)),
-                ui.id().with("split-inspector"),
+                ui.scope_id().with("split-inspector"),
                 egui::Sense::drag(),
             );
             if response.hovered() || response.dragged() {

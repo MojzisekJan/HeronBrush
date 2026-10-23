@@ -164,7 +164,7 @@ impl Inspector {
             let slot =
                 Rect::from_min_size(Pos2::new(x, rect.top()), egui::vec2(width, rect.height()));
             x += width;
-            let response = ui.interact(slot, ui.id().with(("tab", index)), Sense::click());
+            let response = ui.interact(slot, ui.scope_id().with(("tab", index)), Sense::click());
             if response.clicked() {
                 self.tab = tab;
             }

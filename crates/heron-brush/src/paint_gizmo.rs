@@ -806,7 +806,7 @@ impl Drag {
 }
 
 fn picker_id() -> egui::Id {
-    egui::Id::new("paint-gizmo-picker")
+    egui::Id::unique("paint-gizmo-picker")
 }
 
 #[cfg(test)]

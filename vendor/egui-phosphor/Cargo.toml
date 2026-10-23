@@ -1,0 +1,24 @@
+[package]
+name = "egui-phosphor"
+description = "Phosphor icons for egui"
+version = "0.14.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/amPerl/egui-phosphor"
+
+
+# Vendored by Heron Brush from amPerl/egui-phosphor 0.14.0 (5a46560), with egui raised
+# to 0.37: upstream has no release for it yet. Only the regular weight is kept. Remove
+# this copy and the [patch.crates-io] entry once egui-phosphor supports egui 0.37.
+[dependencies]
+egui = { version = "0.37", default-features = false }
+
+[features]
+default = ["regular"]
+regular = []
+# Declared so the source's cfgs check, but their fonts are not in this copy.
+thin = []
+light = []
+bold = []
+fill = []
+subset = []

@@ -759,7 +759,7 @@ impl App {
                                     8,
                                 ))
                                 .min_size(egui::vec2(0.0, theme::CONTROL_HEIGHT))
-                                .vertical_align(egui::Align::Center),
+                                .align(egui::Align2::LEFT_CENTER),
                         );
                         if theme::button(ui, tr("Copy"), 80.0, true).clicked() {
                             ui.ctx().copy_text(address);

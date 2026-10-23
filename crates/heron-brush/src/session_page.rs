@@ -293,7 +293,7 @@ impl SessionPage {
                     widgets::row(ui, tr("Your name"), None, |ui| {
                         let width = ui.available_width().min(260.0);
                         let hint = editor_core::collab::default_nickname();
-                        if let Some(text) = widgets::field(ui, ui.id().with("session-name"), &self.name, &hint, width) {
+                        if let Some(text) = widgets::field(ui, ui.scope_id().with("session-name"), &self.name, &hint, width) {
                             self.name = text;
                         }
                     });
@@ -341,7 +341,7 @@ impl SessionPage {
                 .show(ui, |ui| {
                     ui.add(
                         egui::TextEdit::multiline(&mut self.details)
-                            .id(egui::Id::new("session-details"))
+                            .id(egui::Id::unique("session-details"))
                             .font(egui::TextStyle::Monospace)
                             .frame(egui::Frame::NONE)
                             .desired_width(f32::INFINITY)

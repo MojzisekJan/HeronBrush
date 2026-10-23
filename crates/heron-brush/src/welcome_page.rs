@@ -536,7 +536,7 @@ impl WelcomePage {
                 let position = rect.center() - galley.size() * 0.5;
                 ui.painter().galley(position, galley, colour);
                 response.widget_info(|| {
-                    egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label)
+                    egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), label)
                 });
                 if response.clicked() {
                     request = Some(Request::Action(action));
@@ -785,10 +785,18 @@ fn map_row(
         egui::Vec2::splat(28.0),
     );
     let star = ui
-        .interact(star_rect, ui.id().with((path, "star")), Sense::click())
+        .interact(
+            star_rect,
+            ui.scope_id().with((path, "star")),
+            Sense::click(),
+        )
         .on_hover_text(tr("Keep at the top"));
     let trash = ui
-        .interact(trash_rect, ui.id().with((path, "trash")), Sense::click())
+        .interact(
+            trash_rect,
+            ui.scope_id().with((path, "trash")),
+            Sense::click(),
+        )
         .on_hover_text(tr("Move to the trash"));
     let hovered = response.hovered() || star.hovered() || trash.hovered();
     let painter = ui.painter();

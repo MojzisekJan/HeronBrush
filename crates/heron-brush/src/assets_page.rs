@@ -303,7 +303,7 @@ impl AssetsPage {
                                     ) {
                                         let layer = egui::LayerId::new(
                                             egui::Order::Tooltip,
-                                            egui::Id::new("asset-drag-icon"),
+                                            egui::Id::unique("asset-drag-icon"),
                                         );
                                         let half = THUMBNAIL as f32 / 2.0;
                                         paint_thumbnail(

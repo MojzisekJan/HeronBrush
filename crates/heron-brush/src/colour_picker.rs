@@ -383,7 +383,7 @@ pub(crate) fn contents(
             .char_limit(9)
             .margin(egui::vec2(6.0, 4.0))
             .min_size(egui::vec2(0.0, 24.0))
-            .vertical_align(egui::Align::Center)
+            .align(egui::Align2::LEFT_CENTER)
             .desired_width(220.0 + spacing + 16.0 - 36.0 - spacing)
             .font(egui::TextStyle::Monospace);
         if !valid {
@@ -550,7 +550,7 @@ mod tests {
     #[test]
     fn opens_and_takes_a_typed_hex_code() {
         let ctx = egui::Context::default();
-        let id = Id::new("test-picker");
+        let id = Id::unique("test-picker");
         let mut rgb = [10u8, 20, 30];
         let mut alpha = 0.5f32;
         let frame = |events: Vec<egui::Event>, rgb: &mut [u8; 3], alpha: &mut f32| {

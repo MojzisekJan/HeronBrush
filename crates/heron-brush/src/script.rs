@@ -91,6 +91,8 @@ pub struct Script {
     shots: PathBuf,
     /// The window screenshot asked for, and when to stop waiting for it.
     pending_shot: Option<(String, Instant)>,
+    /// Where egui leaves the screenshot when it is taken, for the next frame to write.
+    taken: std::sync::Arc<std::sync::Mutex<Option<std::sync::Arc<egui::ColorImage>>>>,
 }
 
 /// Where the 3D view should write its picture, set by a `shot` step (wgpu builds).
@@ -272,14 +274,16 @@ impl Script {
             not_before: Instant::now() + Duration::from_secs(2),
             shots,
             pending_shot: None,
+            taken: Default::default(),
         })
     }
 
     /// Feeds this frame's share of the script into `raw`.
     pub fn feed(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
         ctx.request_repaint();
-        for event in &raw.events {
-            if let Event::Screenshot { image, .. } = event {
+        let taken = self.taken.lock().ok().and_then(|mut slot| slot.take());
+        if let Some(image) = taken {
+            {
                 if let Some((name, _)) = self.pending_shot.take() {
                     let path = self.shots.join(format!("{name}.png"));
                     let [w, h] = image.size;
@@ -293,9 +297,8 @@ impl Script {
                 }
             }
         }
-        // Keep desktop input out, but retain responses to screenshot/clipboard requests.
-        raw.events
-            .retain(|e| matches!(e, Event::Screenshot { .. } | Event::Paste(_)));
+        // Keep desktop input out, but retain responses to clipboard requests.
+        raw.events.retain(|e| matches!(e, Event::Paste(_)));
         // The window counts as focused, or drags that cancel on focus loss never run.
         raw.focused = true;
         if let Some((name, deadline)) = &self.pending_shot {
@@ -362,6 +365,7 @@ impl Script {
                     delta: egui::vec2(0.0, lines),
                     modifiers: Modifiers::NONE,
                     phase: egui::TouchPhase::Move,
+                    source: egui::MouseWheelSource::Wheel,
                 },
             ]),
             Step::Key(key, modifiers) => self.queue.extend([
@@ -390,7 +394,12 @@ impl Script {
                     }
                 }
                 self.pending_shot = Some((name, Instant::now() + Duration::from_secs(4)));
-                ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
+                let taken = std::sync::Arc::clone(&self.taken);
+                ctx.request_screenshot(move |image| {
+                    if let Ok(mut slot) = taken.lock() {
+                        *slot = Some(image);
+                    }
+                });
             }
             Step::Burst(name, count) => {
                 if let Ok(mut burst) = BURST.lock() {
@@ -428,6 +437,7 @@ mod tests {
             not_before: Instant::now() + Duration::from_secs(1),
             shots: PathBuf::new(),
             pending_shot: None,
+            taken: Default::default(),
         };
         let mut raw = egui::RawInput {
             events: vec![

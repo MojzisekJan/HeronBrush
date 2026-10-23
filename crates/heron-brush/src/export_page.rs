@@ -816,9 +816,13 @@ impl ExportPage {
                 };
                 let width = (ui.available_width() - button).max(60.0);
                 let current = field.value(&mut self.options).clone();
-                if let Some(text) =
-                    widgets::field(ui, ui.id().with("text"), &current, &placeholder, width)
-                {
+                if let Some(text) = widgets::field(
+                    ui,
+                    ui.scope_id().with("text"),
+                    &current,
+                    &placeholder,
+                    width,
+                ) {
                     *field.value(&mut self.options) = text.trim().to_string();
                 }
                 if folder {

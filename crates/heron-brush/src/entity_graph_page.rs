@@ -205,7 +205,7 @@ impl EntityGraphPage {
             let area = boxes[&node.id];
             let response = ui.interact(
                 area,
-                ui.id().with(("graph-node", node.id.0)),
+                ui.scope_id().with(("graph-node", node.id.0)),
                 Sense::click_and_drag(),
             );
             if response.dragged() && self.linking.is_none() {
@@ -260,7 +260,7 @@ impl EntityGraphPage {
             let dot = area.right_center();
             let dot_response = ui.interact(
                 Rect::from_center_size(dot, Vec2::splat(14.0)),
-                ui.id().with(("graph-dot", node.id.0)),
+                ui.scope_id().with(("graph-dot", node.id.0)),
                 Sense::drag(),
             );
             painter.circle(

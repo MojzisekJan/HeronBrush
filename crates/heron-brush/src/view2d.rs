@@ -183,7 +183,7 @@ impl Pane2d {
         let plane = self.flat.state.borrow().camera.plane;
         let response = ui.interact(
             rect,
-            ui.id().with(("view2d", plane.name())),
+            ui.scope_id().with(("view2d", plane.name())),
             egui::Sense::click_and_drag(),
         );
         let viewport = (f64::from(rect.width()), f64::from(rect.height()));

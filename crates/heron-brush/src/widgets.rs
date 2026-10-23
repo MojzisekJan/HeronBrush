@@ -184,7 +184,7 @@ pub fn axis_spins(
     let each = ((ui.available_width() - gap * (n - 1.0)) / n)
         .floor()
         .max(40.0);
-    let salt = egui::Id::new(id_salt);
+    let salt = egui::Id::unique(id_salt);
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = gap;
         values
@@ -447,7 +447,7 @@ pub fn game_dropdown(
     let mut icons = vec![None];
     icons.extend(games.iter().map(|game| {
         let path = game.icon.as_ref()?;
-        let key = egui::Id::new(("game-icon", path));
+        let key = egui::Id::unique(("game-icon", path));
         if let Some(cached) = ui
             .ctx()
             .data_mut(|data| data.get_temp::<Option<egui::TextureHandle>>(key))
@@ -489,7 +489,7 @@ fn dropdown_with_icons(
     let height = ui.spacing().interact_size.y;
     let (rect, response) = ui.allocate_exact_size(egui::vec2(width, height), Sense::click());
     let enabled = ui.is_enabled();
-    let open = egui::Popup::is_id_open(ui.ctx(), egui::Id::new(&id).with("dropdown"));
+    let open = egui::Popup::is_id_open(ui.ctx(), egui::Id::unique(&id).with("dropdown"));
     let painter = ui.painter();
     let arrows = egui_native_look::paint_popup_button(painter, rect, &response, enabled, open);
     let color = if enabled {
@@ -558,7 +558,7 @@ fn dropdown_with_icons(
             .min(screen.width())
     };
     egui::Popup::menu(&response)
-        .id(egui::Id::new(&id).with("dropdown"))
+        .id(egui::Id::unique(&id).with("dropdown"))
         .width(menu_width)
         .align(align)
         .align_alternatives(&[])
@@ -969,7 +969,7 @@ pub fn segmented_width(
     let (rect, _) = ui.allocate_exact_size(egui::vec2(width, ROW_HEIGHT), Sense::hover());
     let n = items.len().max(1);
     let each = rect.width() / n as f32;
-    let id = ui.id().with(("segmented", egui::Id::new(id)));
+    let id = ui.scope_id().with(("segmented", egui::Id::unique(id)));
     let r = theme::radius();
     let mut clicked = None;
     for (i, (label, tip, enabled)) in items.iter().enumerate() {

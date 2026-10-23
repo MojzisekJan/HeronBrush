@@ -8,7 +8,7 @@ use eframe::egui;
 pub fn control(ui: &mut egui::Ui, stored: &mut String) {
     let button = ui.button(tr("Edit shortcuts"));
     egui::Popup::menu(&button).width(590.0).show(|ui|{
-        let id=ui.id().with("shortcut-draft");
+        let id=ui.scope_id().with("shortcut-draft");
         let mut draft=ui.ctx().data_mut(|data|data.get_temp::<Bindings>(id)).unwrap_or_else(||custom_shortcuts::load(stored).unwrap_or_default());
         ui.label(tr("Global commands also work in text fields. Map commands leave text entry alone."));
         ui.label(tr("Example: Ctrl+Shift+B or F5. Clear a binding to disable it; Reset restores the preset."));

@@ -776,7 +776,7 @@ impl PreferencesPage {
         let inner = rect.shrink(6.0);
         ui.scope_builder(egui::UiBuilder::new().max_rect(inner), |ui| {
             let edit = egui::TextEdit::singleline(&mut self.query)
-                .id(egui::Id::new("preferences-search"))
+                .id(egui::Id::unique("preferences-search"))
                 .hint_text(tr("Search by name or description"))
                 .desired_width(f32::INFINITY)
                 .margin(crate::widgets::body_entry_margin(ui, 26, 6))
@@ -1166,7 +1166,7 @@ fn choose<T: Copy + PartialEq>(
     let mut index = all.iter().position(|v| v == value).unwrap_or(0);
     if widgets::dropdown(
         ui,
-        ui.id().with("choice"),
+        ui.scope_id().with("choice"),
         &mut index,
         &borrowed,
         control_width(ui),
@@ -1201,7 +1201,13 @@ impl Control for String {
                         .iter()
                         .position(|game| game.name == *self)
                         .map_or(0, |at| at + 1);
-                    if widgets::game_dropdown(ui, ui.id().with("game"), &mut index, &games, width) {
+                    if widgets::game_dropdown(
+                        ui,
+                        ui.scope_id().with("game"),
+                        &mut index,
+                        &games,
+                        width,
+                    ) {
                         *self = if index == 0 {
                             String::new()
                         } else {
@@ -1218,9 +1224,13 @@ impl Control for String {
                         .x
                 }) + 24.0;
                 let text_width = (width - button - ui.spacing().item_spacing.x).max(60.0);
-                if let Some(text) =
-                    widgets::field(ui, ui.id().with("path"), self, tr("Choose"), text_width)
-                {
+                if let Some(text) = widgets::field(
+                    ui,
+                    ui.scope_id().with("path"),
+                    self,
+                    tr("Choose"),
+                    text_width,
+                ) {
                     *self = text;
                 }
                 let browse = theme::button(ui, browse, button, true).clicked();
@@ -1235,19 +1245,22 @@ impl Control for String {
             }
             "game_mods" => {
                 if let Some(text) =
-                    widgets::field(ui, ui.id().with("text"), self, "mod_a;mod_b", width)
+                    widgets::field(ui, ui.scope_id().with("text"), self, "mod_a;mod_b", width)
                 {
                     *self = text;
                 }
             }
             "collab_nickname" => {
                 let hint = editor_core::collab::default_nickname();
-                if let Some(text) = widgets::field(ui, ui.id().with("text"), self, &hint, width) {
+                if let Some(text) =
+                    widgets::field(ui, ui.scope_id().with("text"), self, &hint, width)
+                {
                     *self = text;
                 }
             }
             _ => {
-                if let Some(text) = widgets::field(ui, ui.id().with("text"), self, "", width) {
+                if let Some(text) = widgets::field(ui, ui.scope_id().with("text"), self, "", width)
+                {
                     *self = text;
                 }
             }
@@ -1299,7 +1312,7 @@ impl Control for u32 {
             .unwrap_or(sizes.len() - 1);
         if widgets::dropdown(
             ui,
-            ui.id().with("size"),
+            ui.scope_id().with("size"),
             &mut index,
             &borrowed,
             control_width(ui),
@@ -1320,7 +1333,9 @@ impl Control for Color {
     fn control(&mut self, ui: &mut egui::Ui, _field: &str) {
         let (mut rgb, _) = bytes(self);
         let mut alpha = self.a;
-        if colour_picker::button(ui, ui.id().with("colour"), &mut rgb, Some(&mut alpha)).changed() {
+        if colour_picker::button(ui, ui.scope_id().with("colour"), &mut rgb, Some(&mut alpha))
+            .changed()
+        {
             *self = Color::rgba(
                 f32::from(rgb[0]) / 255.0,
                 f32::from(rgb[1]) / 255.0,

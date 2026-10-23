@@ -234,7 +234,7 @@ pub fn fold<R>(
     default_open: bool,
     contents: impl FnOnce(&mut egui::Ui) -> R,
 ) -> Option<R> {
-    let id = ui.id().with(("fold", id));
+    let id = ui.scope_id().with(("fold", id));
     let mut open = ui.data_mut(|d| *d.get_temp_mut_or(id, default_open));
     let (rect, response) = ui.allocate_exact_size(
         egui::vec2(ui.available_width(), widgets::ROW_HEIGHT),
