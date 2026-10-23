@@ -328,6 +328,16 @@ fn read_formats(config: &Path) -> Vec<Format> {
             spelling if spelling.to_ascii_lowercase().contains("valve") => {
                 map_model::map_format::MapFormat::Valve
             }
+            // Quake 2's face lines, flags and all, which Quake 3's non-primitive brushes
+            // and Daikatana's share. Neverball's mapc reads nothing else, and its
+            // profile's initial map is listed under "Quake3".
+            spelling
+                if ["Quake2", "Quake3", "Quake3 (legacy)", "Daikatana"]
+                    .iter()
+                    .any(|known| spelling.eq_ignore_ascii_case(known)) =>
+            {
+                map_model::map_format::MapFormat::Quake2
+            }
             _ => continue,
         };
 
@@ -461,6 +471,25 @@ mod tests {
                 assert_eq!(game.display_name(), "Heron Brush");
             }
         }
+    }
+
+    #[test]
+    fn neverball_starts_from_its_initial_map_in_quake2_face_lines() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../gamedata");
+        let neverball = read(&root.join("Neverball/GameConfig.cfg")).expect("it reads");
+        let first = &neverball.formats[0];
+        assert_eq!(first.name, "Quake3");
+        assert_eq!(first.format, map_model::map_format::MapFormat::Quake2);
+        assert!(
+            first.initial_map.as_ref().is_some_and(|map| map.is_file()),
+            "{:?}",
+            first.initial_map
+        );
+        let quake2 = read(&root.join("Quake2/GameConfig.cfg")).expect("it reads");
+        assert_eq!(
+            quake2.formats[0].format,
+            map_model::map_format::MapFormat::Quake2
+        );
     }
 
     #[test]

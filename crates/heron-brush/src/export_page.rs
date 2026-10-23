@@ -89,6 +89,21 @@ const DIALECTS: [(MapDialect, &str); 6] = [
     (MapDialect::Doom3Primitive, "Doom 3 (brushDef3)"),
 ];
 
+/// The `.map` tab's first choice: the dialect the map was read as, so a Quake 2 map
+/// offers to go back out as one. A map in Heron's own dialect, which is every map started
+/// here, offers the first one its game lists instead: Neverball's mapc reads only Quake 2
+/// face lines.
+fn default_dialect(document: MapFormat, game: Option<MapFormat>) -> usize {
+    let format = match game {
+        Some(game) if document == MapFormat::LOSSLESS => game,
+        _ => document,
+    };
+    DIALECTS
+        .iter()
+        .position(|(dialect, _)| *dialect == MapDialect::Classic(format))
+        .unwrap_or(0)
+}
+
 /// Which parts of an engine's page it shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Shown {
@@ -386,11 +401,9 @@ impl ExportPage {
                 editor_core::preferences::edit(|p| p.export_target = target);
             }
             Tab::Map => {
-                // The dialect the map was read as, so a Quake map offers to go back out as one.
-                self.dialect = DIALECTS
-                    .iter()
-                    .position(|(format, _)| *format == MapDialect::Classic(document.format))
-                    .unwrap_or(0);
+                let game = editor_core::games::current()
+                    .and_then(|game| game.formats.first().map(|format| format.format));
+                self.dialect = default_dialect(document.format, game);
             }
         }
     }
@@ -1241,6 +1254,24 @@ mod tests {
             "the level name is the map's, never saved"
         );
         let _ = std::fs::remove_file(&store);
+    }
+
+    /// A map started in Heron offers its game's dialect; a map read as one keeps it.
+    #[test]
+    fn the_map_tab_offers_the_games_dialect_for_a_new_map() {
+        let name = |index: usize| DIALECTS[index].1;
+        assert_eq!(
+            name(default_dialect(MapFormat::Valve, Some(MapFormat::Quake2))),
+            "Quake 2"
+        );
+        assert_eq!(name(default_dialect(MapFormat::Valve, None)), "Valve 220");
+        assert_eq!(
+            name(default_dialect(
+                MapFormat::Quake2Valve,
+                Some(MapFormat::Quake2)
+            )),
+            "Quake 2 (Valve)"
+        );
     }
 
     /// Each engine shows the controls that apply to it.
