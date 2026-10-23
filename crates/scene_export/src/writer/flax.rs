@@ -391,7 +391,9 @@ namespace Game
                     if (includeCollision == null || includeCollision(placement))
                         collisions.Add(placement.Name, CollisionFor(placement));
             if (Level.ScenesCount == 0 || Level.GetScene(0) == null) throw new InvalidOperationException("Open a scene before importing the level.");
-            var root = new EmptyActor {{ Name = "{level}", IsActive = false }};
+            // The root is active from the start: Flax 1.12 builds colliders spawned under an
+            // inactive parent so that rays hit them but rigid bodies and triggers do not.
+            var root = new EmptyActor {{ Name = "{level}" }};
             if (Level.SpawnActor(root)) throw new InvalidOperationException("Could not spawn level root.");
 
             root.AddScript<HeronBrushLevelRoot>().SourceKey = SourceKey;
@@ -462,7 +464,6 @@ namespace Game
             if (configure != null)
                 foreach (var placement in Placements)
                     configure(actors[placement.Name], placement, actors);
-            root.IsActive = true;
             LastBuiltRoot = root;
             Debug.Log("Heron Brush: built " + actors.Count + " actors");
             return actors;
@@ -702,6 +703,19 @@ mod tests {
             script.contains("\"trigger_multiple\", \"trigger_multiple\", null"),
             "{script}"
         );
+    }
+
+    #[test]
+    fn colliders_are_spawned_under_an_active_root() {
+        // Under an inactive root, Flax's colliders answer raycasts but take no part
+        // in the simulation, so dynamic bodies fall through them.
+        let files = write(&level(), &FlaxOptions::for_level("arena"));
+        let script = &files[0].contents;
+        assert!(
+            script.contains("var root = new EmptyActor { Name = \"arena\" };"),
+            "{script}"
+        );
+        assert!(!script.contains("IsActive = false"), "{script}");
     }
 
     #[test]
