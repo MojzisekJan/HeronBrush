@@ -137,9 +137,9 @@ fn write_face(out: &mut String, face: &BrushFace, format: MapFormat, with_color:
                 out,
                 " [ {} {} ] [ {} {} ]",
                 Axis(*u_axis),
-                Scalar(f64::from(face.uv_attributes.offset.x())),
+                UvScalar(face.uv_attributes.offset.x()),
                 Axis(*v_axis),
-                Scalar(f64::from(face.uv_attributes.offset.y())),
+                UvScalar(face.uv_attributes.offset.y()),
             );
         }
         _ => {
@@ -148,8 +148,8 @@ fn write_face(out: &mut String, face: &BrushFace, format: MapFormat, with_color:
             let _ = write!(
                 out,
                 " {} {}",
-                Scalar(f64::from(face.uv_attributes.offset.x())),
-                Scalar(f64::from(face.uv_attributes.offset.y())),
+                UvScalar(face.uv_attributes.offset.x()),
+                UvScalar(face.uv_attributes.offset.y()),
             );
         }
     }
@@ -157,9 +157,9 @@ fn write_face(out: &mut String, face: &BrushFace, format: MapFormat, with_color:
     let _ = write!(
         out,
         " {} {} {}",
-        Scalar(f64::from(face.uv_attributes.rotation)),
-        Scalar(f64::from(face.uv_attributes.scale.x())),
-        Scalar(f64::from(face.uv_attributes.scale.y())),
+        UvScalar(face.uv_attributes.rotation),
+        UvScalar(face.uv_attributes.scale.x()),
+        UvScalar(face.uv_attributes.scale.y()),
     );
 
     if let Some(surface) = &face.surface_attributes {
@@ -367,6 +367,20 @@ impl std::fmt::Display for Scalar {
     }
 }
 
+/// A UV offset, rotation or scale, which the editor keeps as `f32`: written in the
+/// fewest digits that read back as the same `f32`, so a `0.948473` read from a file is
+/// not saved again as `0.9484729766845703`.
+struct UvScalar(f32);
+
+impl std::fmt::Display for UvScalar {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0 == self.0.trunc() {
+            return Scalar(f64::from(self.0)).fmt(out);
+        }
+        write!(out, "{}", self.0)
+    }
+}
+
 /// Remove intersection noise close to the finest editor grid, only for geometry.
 /// UVs, angles and other scalar properties retain their full precision.
 struct Coordinate(f64);
@@ -458,5 +472,23 @@ mod coordinate_tests {
         }
         let uv = 7.9999999999990905;
         assert_eq!(Scalar(uv).to_string().parse::<f64>().unwrap(), uv);
+    }
+
+    #[test]
+    fn uv_values_keep_the_digits_the_file_gave_them() {
+        // LibreQuake's lq_e0m1.map, written by TrenchBroom: an f32 read from it used to
+        // come back out as 0.9484729766845703 and 142.6842041015625.
+        for (value, expected) in [
+            (0.948473_f32, "0.948473"),
+            (142.6842, "142.6842"),
+            (-0.0, "0"),
+            (16.0, "16"),
+            (0.5, "0.5"),
+        ] {
+            assert_eq!(UvScalar(value).to_string(), expected);
+        }
+        let value = 1.0_f32 / 3.0;
+        let written = UvScalar(value).to_string();
+        assert_eq!(written.parse::<f32>().expect("a number"), value);
     }
 }
