@@ -73,6 +73,7 @@ Arrastra con el botón central para desplazar la vista y usa la rueda para hacer
 `+` y `-` cambian el tamaño de la cuadrícula, y las teclas numéricas de `1` a `9` eligen un tamaño directamente, de 1 a 256 unidades. `0` o `#` muestran u ocultan la cuadrícula, y `Alt+0` activa o desactiva el ajuste. `S` ajusta los vértices de los brushes seleccionados a la cuadrícula actual, `Ctrl+Shift+V` los ajusta a unidades enteras y `Ctrl+Alt+Shift+V` a la cuadrícula.
 
 ## Atajos habituales
+- `F3` o `Ctrl+Shift+P`: busca cualquier orden de los menús por su nombre y la ejecuta con `Enter`. `F10` abre los menús y las flechas se mueven por ellos.
 - `Ctrl+S`: guardar el mapa. `Ctrl+Shift+S`: guardar como.
 - `Ctrl+Z`: deshacer. `Ctrl+Shift+Z` o `Ctrl+Y`: rehacer.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: copiar, cortar y pegar. Pegar coloca los objetos en el puntero; `Ctrl+Alt+V` conserva sus coordenadas originales. Con caras seleccionadas, copiar toma su material y sus ajustes de UV.

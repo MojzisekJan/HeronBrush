@@ -73,6 +73,7 @@ Seret dengan tombol tengah untuk menggeser pandangan dan gunakan roda mouse untu
 `+` dan `-` mengubah ukuran kisi, dan tombol angka `1` hingga `9` langsung memilih ukuran, dari 1 hingga 256 unit. `0` atau `#` menampilkan atau menyembunyikan kisi, dan `Alt+0` menyalakan atau mematikan pelekatan. `S` melekatkan verteks brush yang dipilih ke kisi saat ini, `Ctrl+Shift+V` melekatkannya ke unit bulat, dan `Ctrl+Alt+Shift+V` ke kisi.
 
 ## Pintasan umum
+- `F3` atau `Ctrl+Shift+P`: cari perintah menu apa pun menurut nama dan jalankan dengan `Enter`. `F10` membuka menu, dan tombol panah bergerak di dalamnya.
 - `Ctrl+S`: simpan peta. `Ctrl+Shift+S`: simpan sebagai.
 - `Ctrl+Z`: batalkan. `Ctrl+Shift+Z` atau `Ctrl+Y`: ulangi.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: salin, potong, dan tempel. Tempel meletakkan objek di posisi penunjuk; `Ctrl+Alt+V` mempertahankan koordinat aslinya. Jika permukaan yang dipilih, salin mengambil material dan pengaturan UV-nya.

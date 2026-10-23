@@ -73,6 +73,7 @@ Træk med midterste knap for at panorere, og brug hjulet til at zoome omkring ma
 `+` og `-` ændrer gitterstørrelsen, og taltasterne `1` til `9` vælger en størrelse direkte, fra 1 til 256 enheder. `0` eller `#` viser eller skjuler gitteret, og `Alt+0` slår fastgørelse til eller fra. `S` fastgør de markerede brushes' hjørnepunkter til det aktuelle gitter, `Ctrl+Shift+V` fastgør dem til hele enheder og `Ctrl+Alt+Shift+V` til gitteret.
 
 ## Almindelige genveje
+- `F3` eller `Ctrl+Shift+P`: søg efter enhver menukommando ved navn og kør den med `Enter`. `F10` åbner menuerne, og piletasterne flytter rundt i dem.
 - `Ctrl+S`: gem kortet. `Ctrl+Shift+S`: gem som.
 - `Ctrl+Z`: fortryd. `Ctrl+Shift+Z` eller `Ctrl+Y`: annuller fortryd.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopiér, klip ud og indsæt. Indsæt placerer objekterne ved markøren; `Ctrl+Alt+V` bevarer deres oprindelige koordinater. Med flader markeret tager kopiering deres materiale og UV-indstillinger.

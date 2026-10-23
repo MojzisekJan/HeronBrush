@@ -73,6 +73,7 @@ Sleep met de middelste knop om te pannen en gebruik het muiswiel om rond de aanw
 `+` en `-` veranderen de rastergrootte, en de cijfertoetsen `1` tot `9` kiezen direct een grootte, van 1 tot 256 eenheden. `0` of `#` toont of verbergt het raster, en `Alt+0` zet het kleven aan of uit. `S` laat de vertices van de geselecteerde brushes aan het huidige raster kleven, `Ctrl+Shift+V` aan hele eenheden en `Ctrl+Alt+Shift+V` aan het raster.
 
 ## Veelgebruikte sneltoetsen
+- `F3` of `Ctrl+Shift+P`: zoek elke menuopdracht op naam en voer hem uit met `Enter`. `F10` opent de menu's en de pijltoetsen bewegen erdoorheen.
 - `Ctrl+S`: map opslaan. `Ctrl+Shift+S`: opslaan als.
 - `Ctrl+Z`: ongedaan maken. `Ctrl+Shift+Z` of `Ctrl+Y`: opnieuw.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopiëren, knippen en plakken. Plakken zet de objecten bij de aanwijzer; `Ctrl+Alt+V` behoudt hun oorspronkelijke coördinaten. Zijn er vlakken geselecteerd, dan kopieert kopiëren hun materiaal en UV-instellingen.

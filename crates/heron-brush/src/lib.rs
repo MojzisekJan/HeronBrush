@@ -14,6 +14,7 @@ mod array_dialog;
 mod assets_page;
 mod build_page;
 mod chrome;
+mod command_palette;
 mod console;
 mod context_menu;
 mod detached;
@@ -558,6 +559,7 @@ impl App {
             sculpt_window: false,
             menu_titles: Vec::new(),
             menu_from_keys: false,
+            palette: Default::default(),
         };
         let flat = [
             Pane2d::new(&editor, ViewPlane::Top),

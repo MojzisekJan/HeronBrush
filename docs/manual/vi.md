@@ -73,6 +73,7 @@ Kéo bằng nút giữa để lia và dùng con lăn để thu phóng quanh con 
 `+` và `-` thay đổi kích thước lưới, còn các phím số `1` đến `9` chọn trực tiếp một kích thước, từ 1 đến 256 đơn vị. `0` hoặc `#` hiện hoặc ẩn lưới, và `Alt+0` bật hoặc tắt bám lưới. `S` bám các đỉnh của brush đang chọn vào lưới hiện tại, `Ctrl+Shift+V` bám chúng vào đơn vị nguyên và `Ctrl+Alt+Shift+V` vào lưới.
 
 ## Phím tắt thông dụng
+- `F3` hoặc `Ctrl+Shift+P`: tìm bất kỳ lệnh menu nào theo tên và chạy bằng `Enter`. `F10` mở các menu, và phím mũi tên di chuyển trong đó.
 - `Ctrl+S`: lưu bản đồ. `Ctrl+Shift+S`: lưu thành.
 - `Ctrl+Z`: hoàn tác. `Ctrl+Shift+Z` hoặc `Ctrl+Y`: làm lại.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: sao chép, cắt và dán. Dán đặt đối tượng tại con trỏ; `Ctrl+Alt+V` giữ nguyên tọa độ gốc của chúng. Khi đang chọn mặt, sao chép sẽ lấy vật liệu và cài đặt UV của chúng.

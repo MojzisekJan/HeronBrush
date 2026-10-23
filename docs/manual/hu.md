@@ -73,6 +73,7 @@ A `Ctrl+U` minden nézetben bekeretezi a kijelölést. A Nézet → Ugrás (`Ctr
 A `+` és a `-` módosítja a rácsméretet, az `1`–`9` számbillentyűk pedig közvetlenül választanak méretet 1 és 256 egység között. A `0` vagy a `#` megjeleníti vagy elrejti a rácsot, az `Alt+0` pedig be- vagy kikapcsolja az illesztést. Az `S` a kijelölt brush-ok csúcsait az aktuális rácshoz illeszti, a `Ctrl+Shift+V` egész egységekhez, a `Ctrl+Alt+Shift+V` pedig a rácshoz.
 
 ## Gyakori billentyűparancsok
+- `F3` vagy `Ctrl+Shift+P`: bármely menüparancs keresése név szerint, futtatás `Enter`-rel. Az `F10` megnyitja a menüket, a nyilakkal lehet bennük mozogni.
 - `Ctrl+S`: a térkép mentése. `Ctrl+Shift+S`: mentés másként.
 - `Ctrl+Z`: visszavonás. `Ctrl+Shift+Z` vagy `Ctrl+Y`: újra.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: másolás, kivágás és beillesztés. A beillesztés a mutatóhoz teszi az objektumokat; a `Ctrl+Alt+V` megtartja az eredeti koordinátáikat. Kijelölt lapok esetén a másolás az anyagukat és az UV-beállításaikat veszi át.

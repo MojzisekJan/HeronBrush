@@ -73,6 +73,7 @@ Przeciągaj środkowym przyciskiem, aby przesuwać widok, a kółkiem przybliża
 `+` i `-` zmieniają rozmiar siatki, a klawisze cyfr od `1` do `9` wybierają rozmiar bezpośrednio, od 1 do 256 jednostek. `0` lub `#` pokazuje albo ukrywa siatkę, a `Alt+0` włącza lub wyłącza przyciąganie. `S` przyciąga wierzchołki zaznaczonych brushów do bieżącej siatki, `Ctrl+Shift+V` do całych jednostek, a `Ctrl+Alt+Shift+V` do siatki.
 
 ## Najczęstsze skróty
+- `F3` lub `Ctrl+Shift+P`: wyszukuje dowolne polecenie z menu po nazwie, a `Enter` je uruchamia. `F10` otwiera menu, a strzałki się po nich poruszają.
 - `Ctrl+S`: zapisz mapę. `Ctrl+Shift+S`: zapisz jako.
 - `Ctrl+Z`: cofnij. `Ctrl+Shift+Z` lub `Ctrl+Y`: ponów.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopiuj, wytnij i wklej. Wklejanie umieszcza obiekty przy kursorze; `Ctrl+Alt+V` zachowuje ich pierwotne współrzędne. Gdy zaznaczone są ściany, kopiowanie pobiera ich materiał i ustawienia UV.

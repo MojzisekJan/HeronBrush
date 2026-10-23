@@ -73,6 +73,7 @@ Trage cu butonul din mijloc pentru a deplasa vederea și folosește rotița pent
 `+` și `-` schimbă dimensiunea grilei, iar tastele numerice de la `1` la `9` aleg direct o dimensiune, de la 1 la 256 de unități. `0` sau `#` arată sau ascunde grila, iar `Alt+0` activează sau dezactivează alinierea. `S` aliniază vârfurile brush-urilor selectate la grila curentă, `Ctrl+Shift+V` le aliniază la unități întregi, iar `Ctrl+Alt+Shift+V` la grilă.
 
 ## Scurtături uzuale
+- `F3` sau `Ctrl+Shift+P`: caută orice comandă din meniuri după nume și o rulează cu `Enter`. `F10` deschide meniurile, iar săgețile se mișcă prin ele.
 - `Ctrl+S`: salvează harta. `Ctrl+Shift+S`: salvează ca.
 - `Ctrl+Z`: anulează. `Ctrl+Shift+Z` sau `Ctrl+Y`: refă.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: copiază, decupează și lipește. Lipirea pune obiectele la cursor; `Ctrl+Alt+V` le păstrează coordonatele originale. Când sunt selectate fețe, copierea preia materialul și setările UV ale acestora.

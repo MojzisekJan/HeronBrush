@@ -73,6 +73,7 @@ Z vlečenjem s srednjim gumbom pomikate pogled, s kolescem pa povečujete okoli 
 `+` in `-` spreminjata velikost mreže, številske tipke `1` do `9` pa velikost izberejo neposredno, od 1 do 256 enot. `0` ali `#` prikaže ali skrije mrežo, `Alt+0` pa vklopi ali izklopi pripenjanje. `S` pripne oglišča izbranih brushev na trenutno mrežo, `Ctrl+Shift+V` jih pripne na cele enote, `Ctrl+Alt+Shift+V` pa na mrežo.
 
 ## Pogoste bližnjice
+- `F3` ali `Ctrl+Shift+P`: poišče katerikoli ukaz menija po imenu in ga zažene z `Enter`. `F10` odpre menije, puščice pa se premikajo po njih.
 - `Ctrl+S`: shrani zemljevid. `Ctrl+Shift+S`: shrani kot.
 - `Ctrl+Z`: razveljavi. `Ctrl+Shift+Z` ali `Ctrl+Y`: uveljavi znova.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopiraj, izreži in prilepi. Lepljenje postavi predmete na mesto kazalca; `Ctrl+Alt+V` ohrani njihove prvotne koordinate. Če so izbrane ploskve, kopiranje prevzame njihov material in nastavitve UV.

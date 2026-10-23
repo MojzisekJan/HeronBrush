@@ -73,6 +73,7 @@ Arraste com o botão do meio para deslocar a vista e use a roda para aplicar zoo
 `+` e `-` mudam o tamanho da grade, e as teclas numéricas de `1` a `9` escolhem um tamanho diretamente, de 1 a 256 unidades. `0` ou `#` mostra ou oculta a grade, e `Alt+0` liga ou desliga o ajuste à grade. `S` ajusta os vértices dos brushes selecionados à grade atual, `Ctrl+Shift+V` os ajusta a unidades inteiras e `Ctrl+Alt+Shift+V` à grade.
 
 ## Atalhos comuns
+- `F3` ou `Ctrl+Shift+P`: procura qualquer comando dos menus pelo nome e o executa com `Enter`. `F10` abre os menus e as setas navegam por eles.
 - `Ctrl+S`: salvar o mapa. `Ctrl+Shift+S`: salvar como.
 - `Ctrl+Z`: desfazer. `Ctrl+Shift+Z` ou `Ctrl+Y`: refazer.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: copiar, recortar e colar. Colar põe os objetos no ponteiro; `Ctrl+Alt+V` mantém as coordenadas originais. Com faces selecionadas, copiar pega o material e as configurações de UV delas.

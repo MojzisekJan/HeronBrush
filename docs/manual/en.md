@@ -75,6 +75,7 @@ Drag with the middle button to pan and use the wheel to zoom around the pointer.
 `+` and `-` change the grid size, and the number keys `1` to `9` choose a size directly, from 1 to 256 units. `0` or `#` shows or hides the grid, and `Alt+0` turns snapping on or off. `S` snaps the selected brushes' vertices to the current grid, `Ctrl+Shift+V` snaps them to whole units and `Ctrl+Alt+Shift+V` to the grid.
 
 ## Common shortcuts
+- `F3` or `Ctrl+Shift+P`: search every menu command by name and run it with `Enter`. `F10` opens the menus, and the arrow keys move through them.
 - `Ctrl+S`: save the map. `Ctrl+Shift+S`: save as.
 - `Ctrl+Z`: undo. `Ctrl+Shift+Z` or `Ctrl+Y`: redo.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: copy, cut and paste. Paste puts the objects at the pointer; `Ctrl+Alt+V` keeps their original coordinates. With faces selected, copy takes their material and UV settings.

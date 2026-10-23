@@ -75,6 +75,7 @@ Tažením prostředním tlačítkem posouváte pohled, kolečko přibližuje kol
 `+` a `-` mění velikost mřížky a číselné klávesy `1` až `9` volí velikost přímo, od 1 do 256 jednotek. `0` nebo `#` zobrazí či skryje mřížku a `Alt+0` zapne nebo vypne přichytávání. `S` přichytí vrcholy vybraných brushů k aktuální mřížce, `Ctrl+Shift+V` k celým jednotkám a `Ctrl+Alt+Shift+V` k mřížce.
 
 ## Běžné zkratky
+- `F3` nebo `Ctrl+Shift+P`: vyhledá kterýkoli příkaz z menu podle názvu a `Enter` ho spustí. `F10` otevře menu a šipky se v nich pohybují.
 - `Ctrl+S`: uložit mapu. `Ctrl+Shift+S`: uložit jako.
 - `Ctrl+Z`: zpět. `Ctrl+Shift+Z` nebo `Ctrl+Y`: znovu.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopírovat, vyjmout a vložit. Vložení umístí objekty k ukazateli; `Ctrl+Alt+V` zachová původní souřadnice. Jsou-li vybrané stěny, kopíruje se jejich materiál a nastavení UV.

@@ -73,6 +73,7 @@ Držte pravé tlačidlo myši a ťahaním sa rozhliadajte. Ťahaním stredným t
 `+` a `-` menia veľkosť mriežky a číselné klávesy `1` až `9` volia veľkosť priamo, od 1 do 256 jednotiek. `0` alebo `#` zobrazí či skryje mriežku a `Alt+0` zapne alebo vypne prichytávanie. `S` prichytí vrcholy vybraných brushov k aktuálnej mriežke, `Ctrl+Shift+V` k celým jednotkám a `Ctrl+Alt+Shift+V` k mriežke.
 
 ## Bežné skratky
+- `F3` alebo `Ctrl+Shift+P`: vyhľadá ľubovoľný príkaz z menu podľa názvu a `Enter` ho spustí. `F10` otvorí menu a šípky sa v nich pohybujú.
 - `Ctrl+S`: uložiť mapu. `Ctrl+Shift+S`: uložiť ako.
 - `Ctrl+Z`: späť. `Ctrl+Shift+Z` alebo `Ctrl+Y`: znova.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopírovať, vystrihnúť a prilepiť. Prilepenie umiestni objekty k ukazovateľu; `Ctrl+Alt+V` zachová ich pôvodné súradnice. Ak sú vybrané steny, kopíruje sa ich materiál a nastavenie UV.

@@ -137,6 +137,8 @@ pub struct Chrome {
     /// Whether the menu just opened from the keyboard, to start with its first row
     /// highlighted.
     pub menu_from_keys: bool,
+    /// The command palette, F3 or Ctrl+Shift+P.
+    pub palette: crate::command_palette::Palette,
 }
 
 /// `format_size`: whole sizes without a fraction, the small ones as they are.
@@ -632,6 +634,24 @@ impl Chrome {
     /// with a menu open Left and Right move to the menu beside it, as menu bars do.
     pub fn popups(&mut self, ui: &mut Ui, status: &Status) {
         let ctx = ui.ctx().clone();
+        // The palette takes its keys only while no field has the keyboard, so F3 in a
+        // text field stays the field's.
+        if !ctx.egui_wants_keyboard_input() && crate::command_palette::Palette::requested(&ctx) {
+            self.palette.open();
+            self.popup = None;
+        }
+        if self.palette.open {
+            let all = menus(
+                status,
+                self.detach_3d,
+                &self.grid.borrow(),
+                &self.filters.borrow(),
+            );
+            if let Some(action) = self.palette.show(&ctx, ctx.content_rect(), &MENUS, &all) {
+                self.action = Some(action);
+            }
+            return;
+        }
         let titles = self.menu_titles.len();
         if titles > 0 && self.popup.is_none() && ctx.memory(|m| m.focused().is_none()) {
             let f10 = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::F10));
@@ -1466,6 +1486,7 @@ mod shape_preview_tests {
             sculpt_window: false,
             menu_titles: Vec::new(),
             menu_from_keys: false,
+            palette: Default::default(),
             tool: editor.tool.clone(),
             grid: editor.grid.clone(),
             document: editor.document.clone(),

@@ -73,6 +73,7 @@ Dra med mittknappen för att panorera och använd hjulet för att zooma runt pek
 `+` och `-` ändrar rutnätsstorleken, och sifferknapparna `1` till `9` väljer en storlek direkt, från 1 till 256 enheter. `0` eller `#` visar eller döljer rutnätet, och `Alt+0` slår på eller av fästning. `S` fäster de markerade brusharnas hörnpunkter mot det aktuella rutnätet, `Ctrl+Shift+V` fäster dem mot hela enheter och `Ctrl+Alt+Shift+V` mot rutnätet.
 
 ## Vanliga kortkommandon
+- `F3` eller `Ctrl+Shift+P`: sök efter valfritt menykommando med namn och kör det med `Enter`. `F10` öppnar menyerna, och piltangenterna flyttar i dem.
 - `Ctrl+S`: spara kartan. `Ctrl+Shift+S`: spara som.
 - `Ctrl+Z`: ångra. `Ctrl+Shift+Z` eller `Ctrl+Y`: gör om.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopiera, klipp ut och klistra in. Inklistring placerar objekten vid pekaren; `Ctrl+Alt+V` behåller deras ursprungliga koordinater. När ytor är markerade kopieras deras material och UV-inställningar.

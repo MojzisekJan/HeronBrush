@@ -73,6 +73,7 @@ Vilkite viduriniu mygtuku, kad paslinktumėte, ir ratuku keiskite mastelį aplin
 `+` ir `-` keičia tinklelio dydį, o skaičių klavišai nuo `1` iki `9` tiesiogiai parenka dydį nuo 1 iki 256 vienetų. `0` arba `#` parodo ar paslepia tinklelį, o `Alt+0` įjungia arba išjungia pritraukimą. `S` pritraukia pažymėtų brašų viršūnes prie dabartinio tinklelio, `Ctrl+Shift+V` – prie sveikųjų vienetų, o `Ctrl+Alt+Shift+V` – prie tinklelio.
 
 ## Dažniausi spartieji klavišai
+- `F3` arba `Ctrl+Shift+P`: ieško bet kurios meniu komandos pagal pavadinimą, o `Enter` ją vykdo. `F10` atveria meniu, o rodyklės juose juda.
 - `Ctrl+S`: išsaugoti žemėlapį. `Ctrl+Shift+S`: išsaugoti kaip.
 - `Ctrl+Z`: atšaukti. `Ctrl+Shift+Z` arba `Ctrl+Y`: grąžinti.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopijuoti, iškirpti ir įklijuoti. Įklijuojant objektai padedami ties žymekliu; `Ctrl+Alt+V` išlaiko jų pradines koordinates. Pažymėjus sieneles, kopijuojama jų medžiaga ir UV nustatymai.

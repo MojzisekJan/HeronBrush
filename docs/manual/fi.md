@@ -73,6 +73,7 @@ Panoroi vetämällä keskipainikkeella ja zoomaa osoittimen ympäriltä rullalla
 `+` ja `-` muuttavat ruudukon kokoa, ja numeronäppäimet `1`–`9` valitsevat koon suoraan, 1:stä 256 yksikköön. `0` tai `#` näyttää tai piilottaa ruudukon, ja `Alt+0` kytkee kohdistuksen päälle tai pois. `S` kohdistaa valittujen brushien verteksit nykyiseen ruudukkoon, `Ctrl+Shift+V` kokonaisiin yksiköihin ja `Ctrl+Alt+Shift+V` ruudukkoon.
 
 ## Yleiset pikanäppäimet
+- `F3` tai `Ctrl+Shift+P`: hae mitä tahansa valikkokomentoa nimellä ja suorita se `Enter`-näppäimellä. `F10` avaa valikot, ja nuolinäppäimet liikkuvat niissä.
 - `Ctrl+S`: tallenna kartta. `Ctrl+Shift+S`: tallenna nimellä.
 - `Ctrl+Z`: kumoa. `Ctrl+Shift+Z` tai `Ctrl+Y`: tee uudelleen.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopioi, leikkaa ja liitä. Liittäminen sijoittaa objektit osoittimen kohdalle; `Ctrl+Alt+V` säilyttää niiden alkuperäiset koordinaatit. Kun tahkoja on valittuna, kopiointi ottaa niiden materiaalin ja UV-asetukset.

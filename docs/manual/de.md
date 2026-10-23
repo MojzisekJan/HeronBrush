@@ -73,6 +73,7 @@ Ziehen Sie mit der mittleren Taste, um die Ansicht zu verschieben, und zoomen Si
 `+` und `-` ändern die Rastergröße, und die Zifferntasten `1` bis `9` wählen direkt eine Größe von 1 bis 256 Einheiten. `0` oder `#` blendet das Raster ein oder aus, und `Alt+0` schaltet das Einrasten ein oder aus. `S` rastet die Eckpunkte der ausgewählten Brushes am aktuellen Raster ein, `Ctrl+Shift+V` rastet sie auf ganze Einheiten und `Ctrl+Alt+Shift+V` am Raster ein.
 
 ## Häufige Tastenkürzel
+- `F3` oder `Ctrl+Shift+P`: jeden Menübefehl nach Namen suchen und mit `Enter` ausführen. `F10` öffnet die Menüs, die Pfeiltasten bewegen sich darin.
 - `Ctrl+S`: Map speichern. `Ctrl+Shift+S`: speichern unter.
 - `Ctrl+Z`: rückgängig. `Ctrl+Shift+Z` oder `Ctrl+Y`: wiederholen.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopieren, ausschneiden und einfügen. Einfügen setzt die Objekte am Mauszeiger ab; `Ctrl+Alt+V` behält ihre ursprünglichen Koordinaten. Sind Flächen ausgewählt, kopiert Kopieren ihr Material und ihre UV-Einstellungen.

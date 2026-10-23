@@ -73,6 +73,7 @@ Dra med midtknappen for å panorere, og bruk hjulet for å zoome rundt pekeren. 
 `+` og `-` endrer rutenettstørrelsen, og talltastene `1` til `9` velger en størrelse direkte, fra 1 til 256 enheter. `0` eller `#` viser eller skjuler rutenettet, og `Alt+0` slår festing av eller på. `S` fester hjørnepunktene til de valgte brushene til gjeldende rutenett, `Ctrl+Shift+V` fester dem til hele enheter og `Ctrl+Alt+Shift+V` til rutenettet.
 
 ## Vanlige hurtigtaster
+- `F3` eller `Ctrl+Shift+P`: søk etter enhver menykommando etter navn og kjør den med `Enter`. `F10` åpner menyene, og piltastene beveger seg i dem.
 - `Ctrl+S`: lagre kartet. `Ctrl+Shift+S`: lagre som.
 - `Ctrl+Z`: angre. `Ctrl+Shift+Z` eller `Ctrl+Y`: gjør om.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopier, klipp ut og lim inn. Lim inn plasserer objektene ved pekeren; `Ctrl+Alt+V` beholder de opprinnelige koordinatene. Når flater er valgt, kopierer kopier materialet og UV-innstillingene deres.

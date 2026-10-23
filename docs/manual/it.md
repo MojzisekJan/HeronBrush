@@ -73,6 +73,7 @@ Trascina con il tasto centrale per fare il pan e usa la rotellina per zoomare at
 `+` e `-` cambiano la dimensione della griglia, e i tasti numerici da `1` a `9` scelgono direttamente una dimensione, da 1 a 256 unità. `0` o `#` mostra o nasconde la griglia, e `Alt+0` attiva o disattiva l'aggancio. `S` aggancia i vertici dei brush selezionati alla griglia corrente, `Ctrl+Shift+V` li aggancia a unità intere e `Ctrl+Alt+Shift+V` alla griglia.
 
 ## Scorciatoie comuni
+- `F3` o `Ctrl+Shift+P`: cerca qualsiasi comando dei menu per nome e lo esegue con `Invio`. `F10` apre i menu e le frecce vi si spostano.
 - `Ctrl+S`: salva la mappa. `Ctrl+Shift+S`: salva con nome.
 - `Ctrl+Z`: annulla. `Ctrl+Shift+Z` o `Ctrl+Y`: ripeti.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: copia, taglia e incolla. Incolla mette gli oggetti al puntatore; `Ctrl+Alt+V` mantiene le loro coordinate originali. Con delle facce selezionate, la copia prende il loro materiale e le impostazioni UV.

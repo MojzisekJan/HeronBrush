@@ -73,6 +73,7 @@ Kaydırmak için orta tuşla sürükleyin, imlecin çevresinde yakınlaştırmak
 `+` ve `-` ızgara boyutunu değiştirir; `1` ile `9` arasındaki rakam tuşları 1 ile 256 birim arasında bir boyutu doğrudan seçer. `0` ya da `#` ızgarayı gösterir veya gizler, `Alt+0` tutturmayı açar ya da kapatır. `S` seçili fırçaların köşelerini geçerli ızgaraya tutturur; `Ctrl+Shift+V` tam birimlere, `Ctrl+Alt+Shift+V` ise ızgaraya tutturur.
 
 ## Sık kullanılan kısayollar
+- `F3` veya `Ctrl+Shift+P`: herhangi bir menü komutunu adıyla arar, `Enter` çalıştırır. `F10` menüleri açar, ok tuşları menülerde gezinir.
 - `Ctrl+S`: haritayı kaydet. `Ctrl+Shift+S`: farklı kaydet.
 - `Ctrl+Z`: geri al. `Ctrl+Shift+Z` ya da `Ctrl+Y`: yinele.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopyala, kes ve yapıştır. Yapıştırma nesneleri imlecin bulunduğu yere koyar; `Ctrl+Alt+V` özgün koordinatlarını korur. Yüzeyler seçiliyken kopyalama onların malzeme ve UV ayarlarını alır.

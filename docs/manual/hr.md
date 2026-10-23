@@ -73,6 +73,7 @@ Povlačenjem srednjom tipkom pomičete pogled, a kotačićem zumirate oko pokazi
 `+` i `-` mijenjaju veličinu mreže, a brojčane tipke `1` do `9` izravno biraju veličinu od 1 do 256 jedinica. `0` ili `#` prikazuje ili skriva mrežu, a `Alt+0` uključuje ili isključuje prianjanje. `S` prianja vrhove odabranih brusheva uz trenutačnu mrežu, `Ctrl+Shift+V` uz cijele jedinice, a `Ctrl+Alt+Shift+V` uz mrežu.
 
 ## Uobičajeni prečaci
+- `F3` ili `Ctrl+Shift+P`: traži bilo koju naredbu iz izbornika po nazivu i pokreće je tipkom `Enter`. `F10` otvara izbornike, a strelice se kreću po njima.
 - `Ctrl+S`: spremi mapu. `Ctrl+Shift+S`: spremi kao.
 - `Ctrl+Z`: poništi. `Ctrl+Shift+Z` ili `Ctrl+Y`: ponovi.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V`: kopiraj, izreži i zalijepi. Lijepljenje stavlja objekte na mjesto pokazivača; `Ctrl+Alt+V` zadržava njihove izvorne koordinate. Kad su odabrane plohe, kopiranje uzima njihov materijal i UV postavke.

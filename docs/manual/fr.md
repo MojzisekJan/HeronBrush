@@ -73,6 +73,7 @@ Faites glisser avec le bouton central pour vous déplacer et utilisez la molette
 `+` et `-` changent la taille de la grille, et les touches numériques `1` à `9` choisissent directement une taille, de 1 à 256 unités. `0` ou `#` affiche ou masque la grille, et `Alt+0` active ou désactive le magnétisme. `S` aligne les sommets des brushes sélectionnés sur la grille actuelle, `Ctrl+Shift+V` les arrondit à l’unité entière et `Ctrl+Alt+Shift+V` les aligne sur la grille.
 
 ## Raccourcis courants
+- `F3` ou `Ctrl+Shift+P` : chercher n'importe quelle commande de menu par son nom et la lancer avec `Entrée`. `F10` ouvre les menus, et les flèches s'y déplacent.
 - `Ctrl+S` : enregistrer la carte. `Ctrl+Shift+S` : enregistrer sous.
 - `Ctrl+Z` : annuler. `Ctrl+Shift+Z` ou `Ctrl+Y` : rétablir.
 - `Ctrl+C`, `Ctrl+X`, `Ctrl+V` : copier, couper et coller. Le collage place les objets sous le pointeur ; `Ctrl+Alt+V` conserve leurs coordonnées d’origine. Avec des faces sélectionnées, la copie prend leur matériau et leurs réglages UV.
