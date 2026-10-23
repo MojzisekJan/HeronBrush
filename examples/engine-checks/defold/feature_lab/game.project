@@ -1,0 +1,29 @@
+[project]
+title = Heron feature lab check
+version = 0.1
+custom_resources = /feature_lab.json,/check/poses.json
+
+[bootstrap]
+main_collection = /check/main.collectionc
+render = /check/check.renderc
+
+[input]
+game_binding = /builtins/input/all.input_bindingc
+
+[physics]
+type = 3D
+gravity_y = -10
+scale = 1
+use_fixed_timestep = 1
+max_collision_object_count = 256
+
+[display]
+width = 1280
+height = 720
+update_frequency = 60
+
+[engine]
+fixed_update_frequency = 60
+
+[script]
+shared_state = 1
