@@ -37,3 +37,6 @@ __pycache__/
 
 # quemap's output for the Quetoo demo.
 /demos/quetoo_heron/build/
+
+# q2tools output for the Heretic II demo map.
+/demos/heretic2_heron/build/

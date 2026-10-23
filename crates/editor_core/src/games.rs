@@ -263,19 +263,32 @@ impl Game {
             .search_path
             .as_deref()
             .filter(|base| !base.is_empty() && *base != ".")?;
-        if game_path.ends_with(base)
+        // A game path that is the base folder itself, whatever its case, mounts nothing
+        // more.
+        let names = |folder: &str| {
+            game_path.ends_with(folder)
+                || game_path
+                    .file_name()
+                    .is_some_and(|name| name.eq_ignore_ascii_case(folder))
+        };
+        if names(base)
             || self
                 .search_path_alternatives
                 .iter()
-                .any(|alternative| game_path.ends_with(alternative))
+                .any(|alternative| names(alternative))
         {
             return None;
         }
+        // The folder as it is spelled on disk: Heretic II's demo has `Base` for `base`.
+        let found = child_ignoring_case(game_path, base);
         let configured = BaseFolder {
             configured: base.to_string(),
-            mounted: base.to_string(),
+            mounted: found.file_name().map_or_else(
+                || base.to_string(),
+                |name| name.to_string_lossy().into_owned(),
+            ),
         };
-        if crate::files::is_dir(&game_path.join(base)) || !crate::files::is_dir(game_path) {
+        if crate::files::is_dir(&found) || !crate::files::is_dir(game_path) {
             return Some(configured);
         }
         let stand_in = self
@@ -320,6 +333,29 @@ impl Game {
             )
         })
     }
+}
+
+/// `directory/name`, spelt as it is on disk when only the case differs.
+///
+/// A game made for Windows names its folders in any case: the Heretic II demo installs
+/// `Base`, and its profile's search path is `base`. Windows and TrenchBroom find either;
+/// a case-sensitive file system needs the spelling that is there.
+fn child_ignoring_case(directory: &Path, name: &str) -> PathBuf {
+    let exact = directory.join(name);
+    if crate::files::is_dir(&exact) {
+        return exact;
+    }
+    crate::files::read_dir(directory)
+        .ok()
+        .and_then(|children| {
+            children.into_iter().find(|child| {
+                crate::files::is_dir(child)
+                    && child
+                        .file_name()
+                        .is_some_and(|found| found.eq_ignore_ascii_case(name))
+            })
+        })
+        .unwrap_or(exact)
 }
 
 /// The directories a game configuration is looked for in.
@@ -743,6 +779,39 @@ mod tests {
         let base = quake.base_folder(&install).expect("a base folder");
         assert!(!base.substituted(), "two candidates, so neither is guessed");
         let _ = std::fs::remove_dir_all(&install);
+    }
+
+    #[test]
+    fn a_search_path_is_found_whatever_its_case_on_disk() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../gamedata");
+        let heretic2 = read(&root.join("Heretic2/GameConfig.cfg")).expect("it reads");
+        assert_eq!(heretic2.search_path.as_deref(), Some("base"));
+        // The footstep material every .m8 carries has ticks of its own.
+        assert_eq!(heretic2.surface_flag_names[10], "tall_wall");
+        assert_eq!(heretic2.surface_flag_names[24], "metal");
+        assert_eq!(heretic2.surface_flag_names[25], "stone");
+        // item_spitter's model expression once used `=>`, which does not parse.
+        let fgd = heretic2.definition_file().expect("the profile has its FGD");
+        let definitions = map_model::fgd::read_fgd_file(&fgd).expect("it reads");
+        assert!(
+            definitions.warnings.is_empty(),
+            "{:?}",
+            definitions.warnings
+        );
+        // The demo's installer writes `Base`.
+        let install = std::env::temp_dir().join(format!("heron-h2-case-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&install);
+        std::fs::create_dir_all(install.join("Base")).expect("mkdir");
+        assert_eq!(
+            heretic2.asset_roots(&install, ""),
+            vec![install.join("Base"), install.clone()]
+        );
+        // A game path that is the base folder itself is not given it twice.
+        assert_eq!(
+            heretic2.asset_roots(&install.join("Base"), ""),
+            vec![install.join("Base")]
+        );
+        std::fs::remove_dir_all(&install).expect("cleanup");
     }
 
     #[test]

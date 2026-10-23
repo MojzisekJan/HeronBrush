@@ -740,6 +740,16 @@ pub struct BrushFace {
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub primitive_uv: Option<Box<[[f64; 3]; 2]>>,
+    /// The four numbers Heretic II's editor writes after the surface flags of a face
+    /// with the `tall_wall` flag: red, green, blue and alpha from 0 to 1, which Raven's
+    /// `qbsp3` stores as the face's own light. Kept so that a map from HereticEd comes
+    /// back with them; `None` on every other face, and boxed for the same reason as
+    /// [`Self::primitive_uv`].
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    pub heretic2_lighting: Option<Box<[f32; 4]>>,
     /// The line in the source file this face was read from, for diagnostics.
     pub line: usize,
 }
@@ -765,6 +775,7 @@ impl PartialEq for BrushFace {
             && self.surface_material == other.surface_material
             && self.export_hidden == other.export_hidden
             && self.primitive_uv == other.primitive_uv
+            && self.heretic2_lighting == other.heretic2_lighting
     }
 }
 
@@ -842,6 +853,7 @@ impl BrushFace {
             surface_material: None,
             export_hidden: false,
             primitive_uv: None,
+            heretic2_lighting: None,
             line: 0,
         })
     }
@@ -1436,10 +1448,12 @@ mod size_tests {
     ///
     /// PBR parameters add 8 bytes including alignment, bringing the face to 248 bytes.
     /// This costs 0.8 MB per 100,000 faces without any per-face heap allocation.
+    /// Heretic II's `tall_wall` lighting adds the 8 of an empty box, another 0.8 MB, so
+    /// that a HereticEd map keeps what `qrad3` would otherwise compute over.
     /// Keep the bound exact so future additions must account for their memory cost.
     #[test]
     fn a_face_stays_small() {
         let size = std::mem::size_of::<BrushFace>();
-        assert!(size <= 248, "BrushFace has grown to {size} bytes");
+        assert!(size <= 256, "BrushFace has grown to {size} bytes");
     }
 }

@@ -101,3 +101,13 @@ keeps them there. The 2026.1 definitions named worldspawn keys the game no longe
 limits, and lacked `func_bob` and `misc_portal`. The newer configuration lists the
 "Quake3 (Valve)" format the game's own maps are saved in, a Ladder tag, and the
 `portal` and `reflect` surface flags.
+
+Heretic 2's configuration names surface flag bits 24 and 25, `metal` and `stone`, which
+TrenchBroom's leaves out. They are the footstep material Raven's `qfiles.h` calls
+`SURF_TYPE_*` (both set is wood), and nearly every `.m8` sets them. A face that writes
+flags of its own replaces the texture's; the face panel starts those from the texture's,
+so the bits were kept, but they had no tick to see or change them by. They also matter
+beyond footsteps: Yamagi-based engines tell a Heretic II bsp from a Quake 2 one by
+finding both bits among its faces. Its definitions' `item_spitter` model chose by `target =>`,
+which the model-expression parser rejects, so every load warned and the spawner had no
+model; it is `target ==` now.

@@ -28,11 +28,11 @@ DKPAK are unsupported. All browser archive backends still retain archive bytes
 in memory. These are per-member and per-directory limits, not a total game-memory
 limit.
 
-The MDL, MD2, MD3, OBJ, GLB and SPR loaders use this filesystem, including OBJ/MTL
-relative dependencies and MDL palettes. PNG, JPEG, TGA, indexed PCX and Quake II WAL previews, normal-map
+The MDL, MD2, MD3, FM, OBJ, GLB and SPR loaders use this filesystem, including OBJ/MTL
+relative dependencies and MDL palettes. PNG, JPEG, TGA, indexed PCX, Quake II WAL and Heretic II M8 previews, normal-map
 companions and supported `scripts/*.shader` editor-image directives are indexed.
 MD2 also decodes PCX skins; [scope and checks](md2-models.md). This does not add
-DKM or MIP/M8/M32 decoding, arbitrary game
+DKM or MIP/M32 decoding, arbitrary game
 shaders, or MDL/MD2 frame/skin selection. Explicit WAD collections remain available; loose WAD
 search and palette fallback use the active roots, but WAD files inside archives
 are not automatically opened as collections.
@@ -143,6 +143,22 @@ including test-code compilation also pass. Evidence:
 `/tmp/heron-wal-native-regressions-final.log`, `/tmp/heron-wal-wasm-check.log` and
 `/tmp/heron-wal-desktop-check.log`. Full native Quake II gameplay and a visual
 editor session with WAL materials remain unverified.
+
+## Heretic II M8 materials and FM models
+
+An `.m8` is Raven's `.wal`: an indexed image whose 256-colour palette is in its own
+1040-byte header, so it needs no `colormap.pcx`. It is found in folders, mounted game
+folders and paks like a `.wal`, after it in the extension order. The first mip is
+decoded when pixels are asked for, every pixel opaque. The header's surface flags,
+content flags and value become the material's surface defaults, the flags a face gets
+when its line in the map gives none, as for a `.wal`. Animation chains are not followed.
+
+A Heretic II flex model (`.fm`) previews like an MD2: the first frame of the `frames`
+chunk and the first skin, an `.m8` read through its own palette. Raven wrote skin names
+with backslashes, which are read as slashes. Mesh nodes are not applied, so a model
+draws every part it has, including ones the game hides; the FGD's `frame` and `skin`
+are not applied either. Tests: `m8.rs`, `fm_model.rs`, and the demo run in
+[the game profile tests](game-profile-tests.md#heretic-ii).
 
 ## Native PAK residency
 
