@@ -8,7 +8,7 @@ on the far deck. Ten coins open the goal, there are fifteen to find, and the clo
 ![The level's intro view in Neverball](preview.jpg)
 
 - `heron_lift.heron.map` is the map as Heron saves it (Valve 220).
-- `heron_lift.map` is the same map exported in the Quake 2 dialect, which is what `mapc`
+- `heron_lift.map` is the same map exported in the Quake 3 dialect, which is what `mapc`
   reads. Its textures are Neverball's own `mtrl/...` materials. The saved map has the
   start pad's walls in a group and the goal deck on a layer; the export has them in the
   worldspawn, since Neverball 1.6's `mapc` loses the brushes of a `func_group`.

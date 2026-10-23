@@ -7,7 +7,7 @@ A start pad, a ramp up to a deck, a switch that starts a lift across a gap, a sh
 teleporter and the goal on the far deck. Fifteen coins' worth of coins, ten to open the
 goal, and 90 seconds.
 
-The map is saved in Heron's own dialect (Valve 220) and exported in the Quake 2 one,
+The map is saved in Heron's own dialect (Valve 220) and exported in the Quake 3 one,
 which is what Neverball's mapc reads: heron_lift.map is the export, and
 heron_lift.heron.map is what Heron edits. The start pad's walls are a group and the
 goal deck is a layer of its own; the export merges both into the worldspawn, because
@@ -190,7 +190,7 @@ def main():
     heron.entity("light", [0, 800, 80], light="5")
 
     print(heron.call("save", path=SOURCE))
-    print(heron.call("export_map", path=EXPORT, format="quake2"))
+    print(heron.call("export_map", path=EXPORT, format="quake3"))
     heron.close()
 
 

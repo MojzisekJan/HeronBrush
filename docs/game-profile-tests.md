@@ -16,8 +16,8 @@ Games that are free to download come first, one at a time.
 | Quake3 | OpenArena, q3map2 | [done](#openarena-quake-3) |
 | Quetoo | Quetoo and its `quemap` | [done](#quetoo) |
 | DigitalPaintball2 | Digital Paint: Paintball 2, ericw-tools | [done](#digital-paint-paintball-2) |
-| Quake2 | the freely distributed demo, a source port | planned |
-| DDayNormandy | the free mod on the Quake 2 demo | planned |
+| Quake2 | the freely distributed demo, Yamagi Quake II, ericw-tools | [done](#quake-2) |
+| DDayNormandy | D-Day: Normandy, which needs no Quake 2 data, ericw-tools | [done](#d-day-normandy) |
 | Hexen2 | the freely distributed demo | [done](#hexen-ii) |
 
 Not tried, because the game has to be bought: Halflife, Kingpin, SoF, Heretic2,
@@ -890,3 +890,248 @@ takes a screenshot each time with the diagnostics overlay showing the origin.
   among 4151), not looked at in the window.
 - MCP has no tool to set a face's flags or UV, so a map built through MCP relies on the
   tool materials' names, as this one does for its sky and triggers.
+
+## Quake 2
+
+Tried on 2026-10-23 with the Quake 2 demo that id gave away in 1998, Yamagi Quake II
+8.70 built from source as the engine and ericw-tools 2.0 for the compile. The level is
+[demos/quake2_heron](../demos/quake2_heron/README.md): a hall and a courtyard open to
+the sky, a door that a button opens, a trigger that brings in two guards and an
+enforcer and switches the courtyard's lamps on, a teleporter, steps to a platform and
+the exit, which loads the demo's first map. It compiles sealed, lights and plays
+through to the next map.
+
+### What was installed
+
+Everything is under `~/.local/opt/quake2/`, without root. The downloads stay in
+`downloads/`.
+
+| What | From | Unpacked to |
+| --- | --- | --- |
+| The demo, `q2-314-demo-x86.exe` (39 MB, sha256 `7ace5a43...a1e`), unpacked with `7z`: `Install/Data/baseq2/pak0.pak` and the player skins | deponie.yamagi.org/quake2/idstuff, Yamagi's copy of id's idstuff folder | `yquake2/baseq2/` |
+| Yamagi Quake II 8.70 source, `QUAKE2_8_70` | github.com/yquake2/yquake2 tags | `src/`, built into `yquake2/` |
+| `libsdl2-dev` from Ubuntu 24.04, fetched with `apt-get download`, for the headers | the distribution's archive | `dev-root/` |
+| ericw-tools 2.0.0-alpha11, the copy from the Quake test | | `~/.local/opt/quake/ericw-tools/` |
+| Seven of ericw-tools' Quake 2 test maps, for the round trip | github.com/ericwa/ericw-tools, tag 2.0.0-alpha11, `testmaps/` | `downloads/ericw-testmaps/` |
+
+Yamagi publishes no Linux binary. The machine has SDL2 (2.30) but not its headers, so
+the build takes them from the unpacked `libsdl2-dev` through a small `sdl2-config` in
+`dev-root/bin`, and links the system's `libSDL2`. It is built without cURL and OpenAL
+(`make WITH_CURL=no WITH_OPENAL=no`), which the demo does not need; sound is off in the
+runs anyway. `run-yquake2` starts it on `yquake2/` and, with `Q2_HOME` set, uses that
+folder as the home, so the config, saves and screenshots go to
+`$Q2_HOME/.local/share/YamagiQ2` instead of the real home.
+
+The demo's pak holds three maps (`demo1` to `demo3`, the first unit's three levels),
+303 textures under `textures/e1u1` and a few other folders, `pics/colormap.pcx`, the
+sky `env/unit1_` and the models of seven monsters: the light guard, guard and shotgun
+guard (`monster_soldier*`), enforcer (`monster_infantry`), gunner, berserker, parasite,
+flyer and tank. The demo ships no `.map` sources, and id never published Quake 2's.
+
+### Setting Heron up
+
+In the welcome window the profile is set to Quake 2, and in Preferences, Games, the game
+path is `~/.local/opt/quake2/yquake2`. Heron then lists `yquake2` and `yquake2/baseq2`
+as the project paths, reads the textures and the palette out of `pak0.pak` and loads
+`gamedata/Quake2/Quake2.fgd`. Both steps were done with a scripted run of the window,
+in a nested Xephyr display; the preferences it wrote are the ones the MCP runs use.
+
+### How a Quake 2 map is made
+
+- There is no wad. A face names a texture under `textures/` in the game's folder or
+  pak, such as `e1u1/metal1_2`, and each `.wal` carries the texture's default surface
+  flags, content flags and value. A face line that ends after the scale takes them from
+  there: `e1u1/sky1` is sky, `e1u1/clip` is player and monster clip, `e1u1/trigger` is
+  not drawn, and the `baselt` and `ceil1` panels give off light at the value in the
+  `.wal` (5000 for `baselt_3`). A face line with its own three numbers uses those
+  instead, all of them.
+- Worldspawn's `sky` names the sky box under `env/` (`unit1_` in the demo). ericw's
+  `light` lights through the sky faces from `_sunlight` and `_sun_mangle`, and from a
+  dome with `_sunlight2`.
+- A `func_door` with a `targetname` stays shut until something fires it; `angle -1`
+  opens it upwards and `wait -1` keeps it open. A `func_button` is pushed in the
+  direction of its `angle` and fires its `target`.
+- A monster with spawnflag 2 (trigger spawn) and a `targetname` is not in the level
+  until it is fired. A `light` with a `targetname` can be switched; ericw's `light`
+  gives each such light a style from 32 up, which the game code needs, and spawnflag 1
+  starts it off.
+- The exit is a `trigger_multiple` that fires a `target_changelevel`, whose `map` is
+  the next map, optionally with `$` and the `targetname` of the start spot to use there
+  (`demo2$base1`).
+- A `misc_teleporter` sends the player to the `misc_teleporter_dest` its `target`
+  names, and turns them to the destination's `angle`.
+
+### Rerunning it
+
+    cd demos/quake2_heron
+    ./build.sh                  # qbsp -q2bsp, vis, light; installs the bsp and the configs
+    Q2_HOME=/some/scratch ~/.local/opt/quake2/run-yquake2 +set vid_fullscreen 0 \
+        +set vid_renderer gl1 +set s_initsound 0 +map heron_outpost +exec playtest.cfg
+
+`build.sh --remake` builds the map again in Heron first, through `make_map.py` and the
+MCP server; set `HERON_BRUSH` to the binary and `XDG_CONFIG_HOME` to a scratch folder
+whose preferences have the Quake 2 game path. It saves `heron_outpost.map` in Heron's
+own Valve dialect and exports `heron_outpost_q2.map` in Quake 2's, which is what `qbsp`
+is given. The configs use Yamagi's `teleport` cheat (allowed in single player) to put
+the player at each step, facing east. `playtest.cfg` presses the button, looks at the
+open door, walks through the door and the trigger, and walks from the platform into the
+exit. `lamps.cfg` looks along the courtyard before and after the trigger, and
+`teleporter.cfg` steps onto the pad. The engine ran in a nested Xephyr display with
+Mesa's llvmpipe and the `gl1` renderer.
+
+### What worked
+
+- `qbsp` reported no leak and found all 11 textures in `pak0.pak`. `light` found the
+  8 lights, the sun and the dome, made 10 surface lights of the two ceiling panels and
+  one switchable style for the courtyard's lamps. The only warnings are `qbsp` not
+  finding a texture for its own `skip`, and `sky1.wal` asking for sky and nodraw at once,
+  which comes from id's texture.
+- In the engine the map loads as "Heron Outpost" with nothing from the map in the
+  console. The button opens the door. The trigger prints "Intruder alert!", the guards
+  and the enforcer appear (`listentities monsters` lists all three) and the courtyard's
+  south wall goes from dark to lit. The pad takes the player from `64 384` to
+  `1056 447` on the platform, facing west. The exit loads `demo1`.
+- Four of ericw-tools' own Quake 2 test maps (`q2_liquids`, `q2_door`, `q2_detail`,
+  `q2_playerclip`, with water, lava, slime, detail and clip flags) were opened in Heron
+  through MCP and exported as Quake 2 (Valve). Each compiles to the same lump sizes and
+  the same texinfos, flags and axes as the original. The only change in the text is
+  `-0` written as `0`.
+
+### What was fixed in Heron
+
+- **A map exported for Quake 2 lost its sky, its clip and its light panels.** Since the
+  Neverball fix every face in the Quake 2 dialect was written with `0 0 0` after its
+  scale. Explicit numbers replace the `.wal`'s, so `e1u1/sky1` compiled as a plain wall
+  (texinfo flags `0x0` instead of `0x4`) and the game drew the courtyard's lid as the
+  yellow sky texture, and the hall's panels gave no light (`light`: "0 surface light
+  points in use", 10 after the fix). Quake 3 now has a dialect of its own, which keeps the trio on every
+  face for Neverball's `mapc`. Quake 2, Quake 2 (Valve) and Daikatana write it only for a
+  face that has flags, as TrenchBroom does and as ericw's test maps are written.
+  "Quake3" in a profile or a header now reads as the Quake 3 dialect, and the export
+  window and MCP's `export_map` offer it.
+- **Mirroring a brush turned its texture upside down.** With texture lock on, the sign
+  of each new scale was taken against the face's old axes, not the new ones as in
+  TrenchBroom's `ParaxialUVCoordSystem::transform`. The exit sign, mirrored across Y to
+  read the right way round, came out upside down instead; a face turned half round on
+  itself had its turn undone by two negative scales.
+
+### Mapping mistakes, not Heron's
+
+- `EXIT` on a face that looks west reads backwards: Quake 2 maps such a face with U
+  running north, so from the courtyard the word is mirrored. id's maps flip such faces by
+  hand. Here the sign's brush is mirrored across Y, which with texture lock mirrors the
+  texture with it.
+- The first play-test loaded `demo1` 31 times in a row. The config was still
+  waiting when the player reached the exit, the changelevel's `gamemap` command queued
+  behind the waits, and the `trigger_multiple` kept firing it while the player stood in
+  it. A config must end with the walk into the exit.
+- A walk up the steps was blocked by the enforcer; the config now teleports onto the
+  platform instead.
+
+### What remains
+
+- Placing a light writes the FGD's defaults, `"style" "0"` and `"_cone" "10"`. The game
+  skips keys that start with `_`, and style 0 is the default, so they change nothing.
+- The monster and item models in Heron's 3D view were not looked at from inside the
+  level; the screenshots show it from outside.
+- Heron saves in Valve 220 with `"mapversion" "220"`; the Quake 2 export leaves it out.
+  The saved map itself was not compiled.
+
+## D-Day: Normandy
+
+Tried on 2026-10-23 with D-Day: Normandy 5.03.3.1 and ericw-tools 2.0 for the compile.
+The mod is standalone: it ships its own client (q2pro r666) and data and needs nothing
+from Quake 2, so the demo's limits do not matter. The level is
+[demos/dday_heron](../demos/dday_heron/README.md): a field with an Allied end and an
+Axis end, each behind a low wall with a spawn for every class, a bunker in the middle
+whose roof is the objective, crates and hedges, under a sky lit by a sun. It compiles
+sealed, and in the game a player joins the Allies through the menus, spawns as
+infantry, walks onto the bunker and takes it for 10 points.
+
+### What was installed
+
+Everything is under `~/.local/opt/quake2/`, beside Quake 2, without root.
+
+| What | From | Unpacked to |
+| --- | --- | --- |
+| D-Day: Normandy 5.03.3.1, `D-Day.Normandy5.03.3.1.zip` (279 MB): the Linux and Windows clients and dedicated servers, `dday/gamex86_64.so` and the data, 75 maps | github.com/PowaBanga/DDaynormandyFPS releases (the same file Lutris installs) | `dday-normandy/` |
+| The game code's source, for reading only | github.com/InFerYes/dday | `downloads/src/dday-src/` |
+
+The 64-bit client runs with the system's libraries. `run-dday` starts it with the
+mod's folder as `basedir`; with `DDAY_HOME` set it passes `+set homedir`, and q2pro then
+writes its config, logs and screenshots there, not in the real home.
+
+### Setting Heron up
+
+In the welcome window the profile is set to D-Day Normandy, and in Preferences, Games,
+the game path is `~/.local/opt/quake2/dday-normandy`. Heron mounts `dday`, finds the
+`.wal` textures under `dday/textures` with `dday/pics/colormap.pcx` and loads
+`gamedata/DDayNormandy/dday.fgd`. It warns about three files: `loosebob/sky1.wal`, whose
+mip offsets overlap (the file is broken), and two 24-bit `.pcx` files in `ed/` that it
+does not read.
+
+### How a D-Day map is made
+
+The mod's mapping briefing (on dday.planetquake.gamespy.com, now only in the web
+archive) and the game code say:
+
+- Two `info_team_start` entities make the teams. `obj_owner` is 0 for the Allies and 1
+  for the Axis, `message` is the team's name and is required, `dll` picks the army
+  (`usa`, `grm`, `gbr`, `rus` and others), and `points` and `kills` are what wins.
+- Every class has its own spawn (`info_infantry_start`, `info_officer_start` and seven
+  more) with the team's `obj_owner`. A player whose class has none spawns at the team's
+  `info_reinforcements_start`. `info_player_start` is where a player waits as an
+  observer.
+- An `objective_touch` brush is taken by whoever touches it. `obj_owner` is the team
+  that holds it at the start (99 for nobody), `health` is what the taker scores, `dmg`
+  what the loser gives back, and `message` names it in "... taken by".
+- The stock maps also ship a briefing picture, `dday/pics/objectives/<map>.pcx`, and
+  bot navigation in `dday/navigation`; without them the console says so and the game
+  goes on.
+
+### Rerunning it
+
+    cd demos/dday_heron
+    ./build.sh                  # qbsp -q2bsp, vis, light; installs the bsp and playtest.cfg
+    DDAY_HOME=/some/scratch ~/.local/opt/quake2/run-dday +set vid_fullscreen 0 \
+        +set s_enable 0 +set logfile 1 +set deathmatch 1 +map heron_hedgerow +exec playtest.cfg
+
+`build.sh --remake` builds the map again in Heron first, with the D-Day profile's
+preferences in `XDG_CONFIG_HOME`; it writes the Valve map and the Quake 2 export as for
+Quake 2. `playtest.cfg` picks Join, the Allies and infantry in the menus with `invnext`
+and `invuse`, waits for the reinforcement wave, then walks east up the ramp onto the
+bunker. q2pro's `wait` takes a frame count; nested aliases of waits stop with "Runaway
+alias loop". The log goes to `logs/console.log` in the homedir.
+
+### What worked
+
+- `qbsp` reported no leak and found all 9 textures; the warnings are the same as for
+  Quake 2.
+- In the game the map loads as "Heron Hedgerow". The console has only the missing
+  briefing picture and bot nodes. The menus offer both teams with their counts and all
+  nine classes; the player joins the Allies, becomes infantry and spawns in the gap of
+  the Allied wall. On the roof the screen shows "The bunker taken by: Tuxnewbie Allies"
+  and the Allies' points go to 10.
+
+### What was fixed in Heron
+
+- **The FGD said the Axis is team 10.** `info_team_start`'s `obj_owner` was described as
+  "0-allies or 10-axis". The game code indexes its two-entry team list with it, so 10
+  writes past the end; the stock maps and the briefing use 1. The spawn classes also
+  gave `angle` the default `"0 0 0"`, three numbers for a key the game reads as one yaw.
+
+### Mapping mistakes, not Heron's
+
+- The first runs spawned the player looking at a wall. D-Day 5.03 puts a new player at
+  the class spawn but keeps the view they had as an observer at `info_player_start`,
+  whose `angle` was 90. That start now looks east, the Allies' way.
+- A hedge on the centre line stopped the walk to the bunker; the hedges now flank it.
+- The team menu's first line is Auto Select, which put the first runs on the Axis.
+
+### What remains
+
+- Only one player was in the game. No bots were tried and no Axis player took the bunker
+  back; the map has no bot navigation.
+- No briefing picture was made for the map.
+- Heron does not read 24-bit `.pcx` textures. Quake 2 engines draw `.wal`, so this
+  matters only for the two leftover files in `ed/`.

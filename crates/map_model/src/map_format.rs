@@ -21,10 +21,20 @@ pub enum MapFormat {
     /// the material rotates the axes; the `rot` field is carried along for compatibility
     /// but does not drive the mapping.
     Valve,
-    /// Valve 220 UV axes plus the Quake 2 surface flags trio.
+    /// Valve 220 UV axes plus the Quake 2 surface flags trio, left out of a face that
+    /// has no flags, as in [`MapFormat::Quake2`].
     Quake2Valve,
     /// Standard UV plus the Quake 2 surface flags trio.
+    ///
+    /// A face with no flags of its own leaves the trio out. Quake 2's compilers then take
+    /// the flags from the texture's `.wal`, and that is what makes `sky1` sky and `clip`
+    /// clip; written as `0 0 0` it would clear them.
     Quake2,
+    /// Standard UV plus the trio, which every face line has, flags or not.
+    ///
+    /// Neverball's mapc reads a face line only when all three numbers are there and
+    /// leaves the face out otherwise.
+    Quake3,
     /// Standard UV plus one more number, Hexen II's: `<material> xoff yoff rot xscale yscale value`.
     ///
     /// Raven's `qbsp` reads the number as the brush's light value and stops with "line is
@@ -71,7 +81,16 @@ impl MapFormat {
     /// Returns whether faces in this format may carry the surface flags trio.
     #[inline]
     pub fn has_surface_attributes(self) -> bool {
-        matches!(self, MapFormat::Quake2 | MapFormat::Quake2Valve)
+        matches!(
+            self,
+            MapFormat::Quake2 | MapFormat::Quake2Valve | MapFormat::Quake3
+        )
+    }
+
+    /// Returns whether a face without flags still writes the trio, as `0 0 0`.
+    #[inline]
+    pub fn writes_empty_surface_attributes(self) -> bool {
+        self == MapFormat::Quake3
     }
 
     /// Returns the name written into the `// Format:` header comment.
@@ -82,6 +101,7 @@ impl MapFormat {
             MapFormat::Valve => "Valve",
             MapFormat::Quake2 => "Quake2",
             MapFormat::Quake2Valve => "Quake2 (Valve)",
+            MapFormat::Quake3 => "Quake3",
             MapFormat::Hexen2 => "Hexen2",
         }
     }
@@ -128,7 +148,8 @@ impl FromStr for MapFormat {
             "valve" => Ok(MapFormat::Valve),
             // Quake 3 and Daikatana share Quake 2's face grammar for a non-primitive
             // brush; a `brushDef` primitive is skipped whatever the header says.
-            "quake2" | "quake3" | "daikatana" => Ok(MapFormat::Quake2),
+            "quake2" | "daikatana" => Ok(MapFormat::Quake2),
+            "quake3" | "quake3 (legacy)" => Ok(MapFormat::Quake3),
             "quake2 (valve)" | "quake2_valve" | "quake3 (valve)" | "quake3_valve" => {
                 Ok(MapFormat::Quake2Valve)
             }
@@ -149,6 +170,7 @@ mod tests {
             MapFormat::Valve,
             MapFormat::Quake2,
             MapFormat::Quake2Valve,
+            MapFormat::Quake3,
             MapFormat::Hexen2,
         ] {
             assert_eq!(format.name().parse(), Ok(format), "{format}");
@@ -157,7 +179,8 @@ mod tests {
         assert_eq!("STANDARD".parse(), Ok(MapFormat::Standard));
         assert_eq!("Quake2 (Valve)".parse(), Ok(MapFormat::Quake2Valve));
         // Quake 3 and Daikatana share Quake 2's face grammar.
-        assert_eq!("Quake3".parse(), Ok(MapFormat::Quake2));
+        assert_eq!("Quake3".parse(), Ok(MapFormat::Quake3));
+        assert_eq!("Quake3 (legacy)".parse(), Ok(MapFormat::Quake3));
         assert_eq!("quake3 (valve)".parse(), Ok(MapFormat::Quake2Valve));
         assert_eq!("Daikatana".parse(), Ok(MapFormat::Quake2));
         assert_eq!("Hexen2".parse(), Ok(MapFormat::Hexen2));

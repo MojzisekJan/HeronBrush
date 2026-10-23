@@ -7,6 +7,7 @@ use geometry_math::vec::{Vec2f, Vec3d};
 use map_model::io::map_reader::{read_map, MapFile};
 use map_model::io::map_writer::write_map;
 use map_model::map_format::MapFormat;
+use map_model::uv::SurfaceAttributes;
 use map_model::uv::UvCoordSystem;
 
 const VALVE_SAMPLE: &str = r#"// Game: heron_brush-fps
@@ -531,14 +532,15 @@ fn quotes_in_a_property_value_are_escaped() {
 }
 
 #[test]
-fn a_quake2_dialect_writes_flags_on_every_face() {
+fn a_quake3_dialect_writes_flags_on_every_face() {
     // Neverball's mapc reads a face line only with all three numbers after the scale.
     let mut map = read(STANDARD_SAMPLE);
     assert!(map.entities[0].brushes[0].faces[0]
         .surface_attributes
         .is_none());
-    map.format = MapFormat::Quake2;
+    map.format = MapFormat::Quake3;
     let written = write_map(&map);
+    assert!(written.contains("\n// Format: Quake3\n"), "{written}");
     let faces: Vec<&str> = written.lines().filter(|l| l.starts_with('(')).collect();
     assert!(!faces.is_empty());
     for line in faces {
@@ -550,6 +552,33 @@ fn a_quake2_dialect_writes_flags_on_every_face() {
         !write_map(&map).contains(" 0 0 0\n"),
         "Standard has no flags"
     );
+}
+
+#[test]
+fn a_quake2_dialect_leaves_out_flags_a_face_does_not_have() {
+    // qbsp takes a face's flags from its texture's .wal only when the line has none:
+    // `e1u1/sky1 ... 0 0 0` compiles to a face that is not sky.
+    let mut map = read(STANDARD_SAMPLE);
+    map.entities[0].brushes[0].faces[1].surface_attributes = Some(SurfaceAttributes {
+        content_flags: 1,
+        surface_flags: 4,
+        value: 0,
+    });
+    for format in [MapFormat::Quake2, MapFormat::Quake2Valve] {
+        map.format = format;
+        let written = write_map(&map);
+        let faces: Vec<&str> = written.lines().filter(|l| l.starts_with('(')).collect();
+        assert!(faces[0].ends_with(" 1 1"), "{format}: {}", faces[0]);
+        assert!(faces[1].ends_with(" 1 4 0"), "{format}: {}", faces[1]);
+        let reread = read(&written);
+        let faces = &reread.entities[0].brushes[0].faces;
+        assert_eq!(faces[0].surface_attributes, None, "{format}");
+        assert_eq!(
+            faces[1].surface_attributes.map(|s| s.surface_flags),
+            Some(4),
+            "{format}"
+        );
+    }
 }
 
 #[test]
@@ -665,6 +694,7 @@ fn pending_primitive_matrices_survive_all_map_dialects_and_face_metadata() {
         MapFormat::Valve,
         MapFormat::Quake2,
         MapFormat::Quake2Valve,
+        MapFormat::Quake3,
     ] {
         for paint in [
             None,
@@ -701,7 +731,7 @@ fn pending_primitive_matrices_survive_all_map_dialects_and_face_metadata() {
                     });
                     face.export_hidden = hidden;
                     let mut expected = face.clone();
-                    if format.has_surface_attributes() {
+                    if format.writes_empty_surface_attributes() {
                         // The dialect writes a face's flags whether it had any or not.
                         expected.surface_attributes.get_or_insert_default();
                     }
