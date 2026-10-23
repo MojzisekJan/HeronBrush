@@ -632,6 +632,21 @@ impl App {
         let field_focused = ui.ctx().egui_wants_keyboard_input();
         let mut events = std::mem::take(&mut self.tabs);
         events.extend(ui.input(|i| i.events.clone()));
+        // A dialog drawn inside the main window (the web build, input scripts) has the
+        // keys while the pointer is over it: Enter there must not also apply a tool, nor
+        // Escape clear the selection. Chords with Ctrl or Cmd still reach the editor.
+        let ctx = ui.ctx();
+        let over_floating = ctx.input(|i| i.pointer.interact_pos()).is_some_and(|at| {
+            ctx.layer_id_at(at)
+                .is_some_and(|layer| layer.order != egui::Order::Background)
+        });
+        if ctx.embed_viewports() && dialog::any_open(ctx) && over_floating {
+            events.retain(|event| match event {
+                egui::Event::Key { modifiers, .. } => modifiers.command || modifiers.ctrl,
+                egui::Event::Text(_) => false,
+                _ => true,
+            });
+        }
         // While a menu is open its keys are its own: they move through it and pick from
         // it, and must not also nudge the selection or change the layout.
         if self.chrome.popup.is_some() {
