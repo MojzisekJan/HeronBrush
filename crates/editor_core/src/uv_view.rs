@@ -983,8 +983,12 @@ pub fn draw(document: &Document, cr: &mut dyn Canvas, width: f64, height: f64, v
 
     let Some((_, face)) = document.face_to_edit() else {
         cr.set_source_rgb(0.5, 0.5, 0.55);
-        cr.move_to(8.0, height / 2.0);
-        crate::view2d::draw_text(cr, tr("No face selected"), 10.0);
+        // The message in the middle of the canvas, as an empty list shows its own.
+        let text = tr("No face selected");
+        let extents = cr.text_extents(text, 10.0);
+        let x = ((width - extents.width) / 2.0 - extents.x_bearing).max(8.0);
+        cr.move_to(x, height / 2.0 - extents.y_bearing - extents.height / 2.0);
+        crate::view2d::draw_text(cr, text, 10.0);
         return;
     };
 
