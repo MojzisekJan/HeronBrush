@@ -542,7 +542,7 @@ impl Browser {
                                 } else {
                                     theme::dim()
                                 };
-                                crate::theme::text(
+                                crate::theme::icon_text(
                                     ui.painter(),
                                     rect.left_center() + egui::vec2(18.0, 0.0),
                                     egui::Align2::CENTER_CENTER,

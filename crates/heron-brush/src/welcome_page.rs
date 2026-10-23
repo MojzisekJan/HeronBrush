@@ -513,28 +513,28 @@ impl WelcomePage {
                         .rect_filled(rect, CornerRadius::same(5), theme::button_hover());
                 }
                 let colour = if active { theme::fg() } else { theme::dim() };
-                let mut text = egui::text::LayoutJob::default();
-                text.append(
+                // The glyph and the name each centred on the row on their own. In one
+                // layout they shared a baseline, which set the glyph low.
+                let gap = crate::chrome::text_width(ui, "  ", theme::body());
+                let glyph_width = crate::chrome::text_width(ui, glyph, theme::icon());
+                let label_width = crate::chrome::text_width(ui, label, theme::body());
+                let left = rect.center().x - (glyph_width + gap + label_width) / 2.0;
+                theme::icon_text(
+                    ui.painter(),
+                    egui::pos2(left, rect.center().y),
+                    egui::Align2::LEFT_CENTER,
                     glyph,
-                    0.0,
-                    egui::TextFormat {
-                        font_id: theme::icon(),
-                        color: colour,
-                        ..Default::default()
-                    },
+                    theme::icon(),
+                    colour,
                 );
-                text.append(
-                    &format!("  {label}"),
-                    0.0,
-                    egui::TextFormat {
-                        font_id: theme::body(),
-                        color: colour,
-                        ..Default::default()
-                    },
+                theme::text(
+                    ui.painter(),
+                    egui::pos2(left + glyph_width + gap, rect.center().y),
+                    egui::Align2::LEFT_CENTER,
+                    label,
+                    theme::body(),
+                    colour,
                 );
-                let galley = ui.fonts_mut(|fonts| fonts.layout_job(text));
-                let position = rect.center() - galley.size() * 0.5;
-                ui.painter().galley(position, galley, colour);
                 response.widget_info(|| {
                     egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), label)
                 });

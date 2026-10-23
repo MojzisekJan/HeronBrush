@@ -63,7 +63,7 @@ pub fn icon_label_button(ui: &mut egui::Ui, icon: &str, name: &str, on: bool) ->
     theme::paint_button(ui, rect, &response, "", true, on);
     let colour = if on { theme::on_accent() } else { theme::fg() };
     let left = rect.center().x - (icon_width + gap + text_width) / 2.0;
-    theme::text(
+    theme::icon_text(
         ui.painter(),
         egui::pos2(left, rect.center().y),
         egui::Align2::LEFT_CENTER,

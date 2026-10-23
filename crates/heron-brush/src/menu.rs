@@ -300,7 +300,7 @@ fn row(
     if checked == Some(true) {
         check_mark(painter, column, text);
     } else if !icon.is_empty() {
-        crate::theme::text(
+        crate::theme::icon_text(
             painter,
             column,
             egui::Align2::CENTER_CENTER,

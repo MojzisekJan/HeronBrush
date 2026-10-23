@@ -92,7 +92,7 @@ impl UvPanel {
             true,
             self.window_open,
             |p, rect, color| {
-                crate::theme::text(
+                crate::theme::icon_text(
                     p,
                     rect.center(),
                     egui::Align2::CENTER_CENTER,

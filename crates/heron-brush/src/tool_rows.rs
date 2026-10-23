@@ -356,6 +356,25 @@ pub fn fillet_controls(ui: &mut egui::Ui, parameters: &Rc<RefCell<FilletParamete
     });
 }
 
+/// A dim glyph in front of a control in a strip, its ink on the row's middle. A label
+/// centres the glyph's line box instead, which put it a point high.
+fn strip_icon(ui: &mut egui::Ui, glyph: &str) -> egui::Response {
+    let width = crate::chrome::text_width(ui, glyph, theme::icon());
+    let (rect, response) = ui.allocate_exact_size(
+        egui::vec2(width, widgets::row_height(ui)),
+        egui::Sense::hover(),
+    );
+    theme::icon_text(
+        ui.painter(),
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        glyph,
+        theme::icon(),
+        theme::dim(),
+    );
+    response
+}
+
 /// The sculpt brush's strip in the tool bar: what a dab does, its radius and strength,
 /// and the button for the settings window. Returns whether that button was clicked.
 pub fn sculpt_row(ui: &mut egui::Ui, open: bool) -> bool {
@@ -373,12 +392,7 @@ pub fn sculpt_row(ui: &mut egui::Ui, open: bool) -> bool {
     if widgets::segmented_choice(ui, "sculpt-mode", &modes, &mut mode, 240.0) {
         parameters.mode = SculptMode::ALL[mode];
     }
-    ui.label(
-        egui::RichText::new(icon::CIRCLE_DASHED)
-            .font(theme::icon())
-            .color(theme::dim()),
-    )
-    .on_hover_text(tr("Radius (units)"));
+    strip_icon(ui, icon::CIRCLE_DASHED).on_hover_text(tr("Radius (units)"));
     widgets::spin_width(
         ui,
         &mut parameters.radius,
@@ -388,12 +402,7 @@ pub fn sculpt_row(ui: &mut egui::Ui, open: bool) -> bool {
         60.0,
     )
     .on_hover_text(tr("Radius (units)"));
-    ui.label(
-        egui::RichText::new(icon::GAUGE)
-            .font(theme::icon())
-            .color(theme::dim()),
-    )
-    .on_hover_text(tr("Strength (%)"));
+    strip_icon(ui, icon::GAUGE).on_hover_text(tr("Strength (%)"));
     let mut percent = parameters.strength * 100.0;
     if widgets::spin_width(ui, &mut percent, 1.0..=100.0, 5.0, 0, 52.0)
         .on_hover_text(tr("Strength (%)"))
