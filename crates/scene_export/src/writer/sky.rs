@@ -379,6 +379,20 @@ pub fn babylon_panorama_direction(u: f32, v: f32) -> V {
     ]
 }
 
+/// The direction a panorama pixel looks along as PlayCanvas's skybox and environment
+/// atlas sample it: `u` turns from -Z through +X, half a turn on from Babylon.js's
+/// layout, and `v` runs from straight up to straight down. Measured in Chromium by
+/// drawing panoramas with one bright spot and finding it in the skybox
+/// (`examples/engine-checks/playcanvas`).
+pub fn playcanvas_panorama_direction(u: f32, v: f32) -> V {
+    let (phi, latitude) = (u * std::f32::consts::TAU, (0.5 - v) * std::f32::consts::PI);
+    [
+        phi.sin() * latitude.cos(),
+        latitude.sin(),
+        -phi.cos() * latitude.cos(),
+    ]
+}
+
 /// The view's exposure multiplier ahead of AgX (render_wgpu `post.wgsl`).
 const AGX_EXPOSURE: f32 = 1.8;
 
@@ -646,6 +660,30 @@ mod tests {
             assert!(close(
                 babylon_panorama_direction(u, v),
                 three_panorama_direction(turned, v)
+            ));
+        }
+    }
+
+    #[test]
+    fn playcanvas_reads_babylon_s_panorama_half_a_turn_on() {
+        // A bright spot drawn at u = 0.1 on the horizon showed in PlayCanvas's skybox
+        // along (0.60, 0, -0.80), one at u = 0.35 along (0.80, 0, 0.60), and spots at
+        // (0.6, 0.3) and (0.9, 0.7) along (-0.48, 0.59, 0.66) and (-0.48, -0.59, -0.66).
+        let close = |a: V, b: V, e: f32| (0..3).all(|i| (a[i] - b[i]).abs() < e);
+        for ((u, v), seen) in [
+            ((0.1, 0.5), [0.602, 0., -0.799]),
+            ((0.35, 0.5), [0.799, 0., 0.602]),
+            ((0.6, 0.3), [-0.476, 0.588, 0.655]),
+            ((0.9, 0.7), [-0.476, -0.588, -0.655]),
+        ] {
+            assert!(close(playcanvas_panorama_direction(u, v), seen, 0.02));
+        }
+        for (u, v) in [(0.1, 0.3), (0.6, 0.7), (0.9, 0.1)] {
+            let turned = (u + 0.5f32).fract();
+            assert!(close(
+                playcanvas_panorama_direction(u, v),
+                babylon_panorama_direction(turned, v),
+                1e-5
             ));
         }
     }

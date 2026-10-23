@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Heron Brush playtest</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#18212b;color:#edf3f7;font:16px system-ui}canvas{display:block;width:100%;height:100%;outline:none}#menu{position:fixed;inset:0;display:grid;place-items:center;background:#101820b3}#panel{max-width:420px;padding:32px;border:1px solid #ffffff24;border-radius:12px;background:#18212bed}h1{margin:0 0 12px;font-size:26px}p{line-height:1.6;color:#c2ced8}button{padding:12px 24px;border:0;border-radius:6px;background:#79e0bf;color:#11251f;font:600 16px system-ui;cursor:pointer}button:disabled{opacity:.5;cursor:wait}#crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;color:white;font:20px monospace}#hint{position:fixed;bottom:16px;left:16px;font-size:13px;color:white;text-shadow:0 1px 3px black} [hidden]{display:none!important}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/playcanvas@__PLAYCANVAS_VERSION__/build/playcanvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/playcanvas/engine@v__PLAYCANVAS_VERSION__/examples/assets/wasm/ammo/ammo.wasm.js"></script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="crosshair" hidden>+</div>
+<div id="hint">WASD · Mouse · Space jump · Shift run · E use · R restart · Esc pause</div>
+<div id="menu"><div id="panel"><h1 id="title">Playtest</h1><p id="status">Loading the level. Internet access is needed to load PlayCanvas and ammo.js.</p><button id="play" disabled>Play</button> <button id="fallback" hidden>Play with drag-to-look</button><p>Click Play to capture the mouse. Press Esc to release it.</p></div></div>
+<script id="level-data" type="application/json">__LEVEL_DATA__</script>
+<script>
+window.playerError = error => {
+  document.getElementById('menu').hidden = false;
+  document.getElementById('status').textContent = 'Could not start the level: ' + (error.message || error);
+};
+window.addEventListener('error', event => window.playerError(event.error || event.message));
+window.addEventListener('unhandledrejection', event => window.playerError(event.reason));
+</script>
+<script type="module">
+__RUNTIME__
+try {
+  if (!window.pc || typeof window.Ammo !== 'function') throw new Error('PlayCanvas or ammo.js did not load. Check the internet connection.');
+  const ammo = 'https://cdn.jsdelivr.net/gh/playcanvas/engine@v__PLAYCANVAS_VERSION__/examples/assets/wasm/ammo/';
+  globalThis.Ammo = await window.Ammo({locateFile: file => ammo + file});
+  const data = JSON.parse(document.getElementById('level-data').textContent);
+  document.title = data.level.name + ' · Playtest';
+  document.getElementById('title').textContent = data.level.name;
+  const canvas = document.getElementById('view');
+  const app = new pc.Application(canvas, {graphicsDeviceOptions: {preserveDrawingBuffer: true, antialias: true}});
+  app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+  app.setCanvasResolution(pc.RESOLUTION_AUTO);
+  const unit = 1 / data.level.scale;
+  // Quake-sized player: 56 units high, 16 units wide, eyes at 50. Scale follows the export.
+  const radius = 8 * unit, height = 56 * unit, eye = 50 * unit;
+  const gravity = new pc.Vec3(0, -600 * unit, 0);
+  const physics = app.systems.rigidbody;
+  // The page steps physics itself, after the player and the animations.
+  physics.timeScale = 0;
+  physics.fixedTimeStep = 1 / 60;
+  const camera = new pc.Entity('player-camera');
+  camera.addComponent('camera', {clearColor: new pc.Color(0.57, 0.66, 0.73), fov: 75, nearClip: 0.03, farClip: 10000, toneMapping: pc.TONEMAP_ACES});
+  app.root.addChild(camera);
+  const decode = text => typeof Uint8Array.fromBase64 === 'function' ? Uint8Array.fromBase64(text) : Uint8Array.from(atob(text), c => c.charCodeAt(0));
+  const meshes = Object.fromEntries(Object.entries(data.meshes).map(([path, text]) => [path, decode(text)]));
+  const level = await loadLevel(pc, app, {level: data.level, meshes, sky: data.sky ? decode(data.sky) : null});
+  if (!data.level.environment) {
+    app.scene.ambientLight = new pc.Color(0.35, 0.39, 0.46);
+    const fill = new pc.Entity('fill');
+    fill.addComponent('light', {type: 'directional', intensity: 0.8});
+    fill.setLocalEulerAngles(30, 40, 0);
+    app.root.addChild(fill);
+  }
+  const animations = level.animations;
+  const hasCollision = level.bodies.some(entity => entity.rigidbody);
+  // The player is a capsule body the page drives by its velocity: friction 0 against
+  // walls, no gravity of ammo.js's, kept upright.
+  const player = new pc.Entity('player');
+  player.addComponent('rigidbody', {type: 'dynamic', mass: 70, friction: 0, restitution: 0, linearDamping: 0, angularDamping: 0, angularFactor: pc.Vec3.ZERO});
+  player.addComponent('collision', {type: 'capsule', radius, height, axis: 1});
+  player.rigidbody.gravityScale = 0;
+  app.root.addChild(player);
+  const ray = (from, to, mask = WORLD_MASK) => physics.raycastFirst(from, to, {filterCollisionMask: mask});
+  // Where the player stands: on the floor under the start entity, or above the middle.
+  const spawnEntity = data.level.entities.find(e => ['info_player_start', 'info_player_deathmatch', 'player_start', 'fps_player'].includes(e.classname));
+  function bounds() {
+    const box = new pc.BoundingBox();
+    let first = true;
+    for (const record of level.entities) for (const instance of record.meshes) {
+      if (first) box.copy(instance.aabb); else box.add(instance.aabb);
+      first = false;
+    }
+    return first ? null : box;
+  }
+  function spawnPoint() {
+    let spawn;
+    if (spawnEntity) spawn = new pc.Vec3(...spawnEntity.transform.translation);
+    else {
+      const box = bounds();
+      spawn = box ? new pc.Vec3(box.center.x, box.getMax().y + height, box.center.z) : new pc.Vec3(0, 1, 0);
+    }
+    const floor = ray(spawn, spawn.clone().add(new pc.Vec3(0, -(spawnEntity ? height * 2 : 1e4), 0)));
+    if (floor) spawn.y = floor.point.y + 0.02 * unit;
+    return spawn;
+  }
+  const spawn = spawnPoint();
+  let yaw = 0, pitch = 0, jumping = false;
+  const keys = new Set();
+  const velocity = new pc.Vec3();
+  const centre = () => player.getPosition().clone();
+  const feetPoint = () => centre().add(new pc.Vec3(0, -height / 2, 0));
+  function teleport(feet) {
+    player.rigidbody.teleport(feet.clone().add(new pc.Vec3(0, height / 2, 0)));
+    velocity.set(0, 0, 0);
+    player.rigidbody.linearVelocity = velocity;
+    jumping = false;
+    keys.clear();
+  }
+  function reset() {
+    teleport(spawn);
+    const r = spawnEntity?.transform.rotation_yxz ?? [0, 0, 0];
+    pitch = r[0]; yaw = r[1];
+  }
+  reset();
+  function look() {
+    camera.setPosition(feetPoint().add(new pc.Vec3(0, eye, 0)));
+    camera.setRotation(rotationYXZ(pc, pitch, yaw, 0));
+  }
+  // The floor under the player: the highest of five rays down from its middle that
+  // ends on a walkable face within reach of the feet, or null.
+  function support(middle, feet) {
+    let best = null;
+    const reach = 16 * unit;
+    for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const from = middle.clone().add(new pc.Vec3(dx * radius * 0.7, 0, dz * radius * 0.7));
+      const hit = ray(from, new pc.Vec3(from.x, feet.y - reach, from.z));
+      if (hit && hit.normal.y > 0.7 && (!best || hit.point.y > best.point.y)) best = hit;
+    }
+    return best;
+  }
+  // How fast a point on an animated entity moved over the last step.
+  const lastPose = new Map();
+  function surfaceVelocity(hit, dt) {
+    const record = hit?.entity.heron;
+    const before = record && lastPose.get(record.name);
+    if (!before || dt <= 0) return new pc.Vec3();
+    const local = before.clone().invert().transformPoint(hit.point, new pc.Vec3());
+    return record.node.getWorldTransform().transformPoint(local, new pc.Vec3()).sub(hit.point).mulScalar(1 / dt);
+  }
+  function step(dt) {
+    const middle = centre();
+    const feet = middle.clone().add(new pc.Vec3(0, -height / 2, 0)), head = middle.clone().add(new pc.Vec3(0, height / 2, 0));
+    // The whole player's height, not the feet alone: a volume that starts above the
+    // floor, as a raised trigger brush does, still catches a player standing in it.
+    const body = [['player', feet], ['player', middle], ['player', head]];
+    for (const [name, animation] of animations) lastPose.set(name, animation.entity.getWorldTransform().clone());
+    for (const trigger of level.triggers) trigger.update(dt, body, animations);
+    for (const animation of animations.values()) animation.update(dt);
+    level.time += dt;
+    for (const water of level.waters) water.animate(level.time);
+    const forward = new pc.Vec3(-Math.sin(yaw), 0, -Math.cos(yaw)), right = new pc.Vec3(Math.cos(yaw), 0, -Math.sin(yaw));
+    const wish = new pc.Vec3();
+    if (keys.has('KeyW')) wish.add(forward);
+    if (keys.has('KeyS')) wish.sub(forward);
+    if (keys.has('KeyD')) wish.add(right);
+    if (keys.has('KeyA')) wish.sub(right);
+    if (wish.lengthSq() > 0) wish.normalize();
+    const water = level.water(middle);
+    const speed = water ? water.data.swim_speed : (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 240 : 150) * unit;
+    wish.mulScalar(speed);
+    velocity.copy(player.rigidbody.linearVelocity);
+    if (!hasCollision) {
+      velocity.copy(wish); velocity.y = ((keys.has('Space') ? 1 : 0) - (keys.has('ControlLeft') ? 1 : 0)) * speed;
+      player.rigidbody.teleport(middle.add(velocity.clone().mulScalar(dt)));
+      return;
+    }
+    const floor = support(middle, feet), surface = surfaceVelocity(floor, dt);
+    if (water) {
+      const d = water.data, vertical = (keys.has('Space') ? 1 : 0) - (keys.has('ControlLeft') ? 1 : 0);
+      const blend = 1 - Math.exp(-d.drag * dt);
+      velocity.x += (wish.x - velocity.x) * blend; velocity.z += (wish.z - velocity.z) * blend;
+      velocity.y += (vertical * d.rise_speed - (vertical === 0 ? d.sink_speed : 0) - velocity.y) * blend;
+    } else if (floor && !jumping) {
+      // Walk along the floor, carried by whatever it is standing on, reaching the
+      // wanted speed as quickly as the three.js page does.
+      const blend = 1 - Math.exp(-14 * dt);
+      velocity.x += (wish.x + surface.x - velocity.x) * blend; velocity.z += (wish.z + surface.z - velocity.z) * blend;
+      // Close the gap to the floor over this step, so the feet rest on it.
+      velocity.y = surface.y + Math.max(Math.min((floor.point.y - feet.y) / dt, 240 * unit), -900 * unit);
+      if (keys.has('Space')) { velocity.y = surface.y + 230 * unit; jumping = true; keys.delete('Space'); }
+    } else {
+      // A jump ends at its height; the floor takes the player again on the way down.
+      if (velocity.y <= 0) jumping = false;
+      const blend = 1 - Math.exp(-4 * dt);
+      velocity.x += (wish.x - velocity.x) * blend; velocity.z += (wish.z - velocity.z) * blend;
+      velocity.add(gravity.clone().mulScalar(dt));
+      velocity.y = Math.max(velocity.y, -900 * unit);
+    }
+    player.rigidbody.linearVelocity = velocity;
+    physics.step(dt);
+    const box = bounds();
+    if (box && player.getPosition().y < box.getMin().y - height * 10) reset();
+  }
+  // E presses the button the player looks at, within reach.
+  function use() {
+    const from = camera.getPosition().clone(), reach = camera.forward.clone().mulScalar(96 * unit);
+    const buttons = level.triggers.filter(trigger => level.byName.get(trigger.entityName)?.classname === 'func_button');
+    for (let f = 0; f <= 1; f += 1 / 32) {
+      const button = buttons.find(trigger => trigger.contains(from.clone().add(reach.clone().mulScalar(f))));
+      if (button) { button.activate(); return button; }
+    }
+    return null;
+  }
+  look();
+  if (new URLSearchParams(location.search).has('verify')) {
+    window.heronPlaytest = {pc, app, camera, level, player, keys, step, reset, teleport, look, use, spawn, ray,
+      feet: feetPoint, centre, face(nextYaw, nextPitch = 0) { yaw = nextYaw; pitch = nextPitch; look(); }};
+  }
+  const menu = document.getElementById('menu'), play = document.getElementById('play'), crosshair = document.getElementById('crosshair'), status = document.getElementById('status');
+  let playing = false, dragLook = false, dragging = false;
+  play.disabled = false;
+  status.textContent = hasCollision ? 'Ready. Walk around the level with WASD and look with the mouse.' : 'No collision geometry. Fly with WASD, Space up and Ctrl down.';
+  function start() { playing = true; menu.hidden = true; crosshair.hidden = false; canvas.focus(); }
+  function pause() { playing = false; dragging = false; menu.hidden = false; crosshair.hidden = true; keys.clear(); play.textContent = 'Resume'; }
+  function captureFailed() {
+    status.textContent = 'Mouse capture is unavailable in this browser. Use drag-to-look, or open the HTML in a desktop browser.';
+    document.getElementById('fallback').hidden = false;
+  }
+  play.addEventListener('click', async () => { dragLook = false; try { await canvas.requestPointerLock(); } catch (_) { captureFailed(); } });
+  document.getElementById('fallback').addEventListener('click', () => {
+    dragLook = true; start();
+    document.getElementById('hint').textContent = 'WASD · Drag mouse to look · Space jump · Shift run · E use · R restart · Esc pause';
+  });
+  document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement === canvas) start(); else if (!dragLook) pause(); });
+  document.addEventListener('pointerlockerror', captureFailed);
+  const turn = (dx, dy) => { yaw -= dx * 0.002; pitch = Math.min(Math.max(pitch - dy * 0.002, -1.55), 1.55); };
+  canvas.addEventListener('pointerdown', event => { if (playing && dragLook) { dragging = true; canvas.setPointerCapture(event.pointerId); } });
+  canvas.addEventListener('pointerup', () => { dragging = false; });
+  document.addEventListener('pointermove', event => {
+    if (playing && (document.pointerLockElement === canvas || (dragLook && dragging))) turn(event.movementX, event.movementY);
+  });
+  const movementKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight', 'ControlLeft', 'KeyR', 'KeyE']);
+  document.addEventListener('keydown', event => {
+    if (event.code === 'Escape') { pause(); document.exitPointerLock?.(); return; }
+    if (!playing || !movementKeys.has(event.code)) return;
+    event.preventDefault();
+    if (event.code === 'KeyR') reset(); else if (event.code === 'KeyE') use(); else keys.add(event.code);
+  });
+  document.addEventListener('keyup', event => keys.delete(event.code));
+  window.addEventListener('blur', () => { pause(); document.exitPointerLock?.(); });
+  const env = data.level.environment;
+  app.on('update', frame => {
+    const dt = Math.min(frame, 1 / 30);
+    if (playing && dt > 0) step(dt);
+    look();
+    // Under water the view takes the water's colour and fog.
+    const under = level.water(camera.getPosition());
+    const fog = app.scene.fog;
+    if (under) { fog.type = pc.FOG_EXP2; fog.color = new pc.Color(...under.data.color); fog.density = under.data.fog_density; }
+    else if (env?.fog) { fog.type = pc.FOG_EXP2; fog.color = new pc.Color(...env.fog.color); fog.density = env.fog.density; }
+    else fog.type = pc.FOG_NONE;
+  });
+  app.start();
+} catch (error) { window.playerError(error); }
+</script>
+</body>
+</html>

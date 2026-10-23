@@ -7,6 +7,7 @@ pub mod gltf;
 pub mod godot_sky;
 pub mod godot_water;
 pub mod obj;
+pub mod playcanvas;
 pub mod raylib;
 pub mod sky;
 pub mod stride;

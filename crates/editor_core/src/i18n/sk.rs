@@ -748,6 +748,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Play on start", "Prehrať pri štarte"),
     ("Playable HTML with FPS controls and collisions. Open it in a browser; internet is needed for Three.js. JSON and .glb files are included.", "Hrateľné HTML s ovládaním FPS a kolíziami. Otvorte ho v prehliadači; pre Three.js je potrebný internet. Súbory JSON a .glb sú priložené."),
     ("Playable HTML with a Havok character controller, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for Babylon.js. The JSON, .glb files and a runtime module for your own game are included.", "Hrateľné HTML s ovládačom postavy Havok, dverami, spúšťačmi, vodou, svetlami a oblohou. Otvorte ho v prehliadači; pre Babylon.js je potrebný internet. Priložený je JSON, súbory .glb a behový modul pre vašu hru."),
+    ("Playable HTML with ammo.js physics, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for PlayCanvas. The JSON, .glb files and a runtime module for your own game are included.", "Hrateľné HTML s fyzikou ammo.js, dverami, spúšťačmi, vodou, svetlami a oblohou. Otvorte ho v prehliadači; pre PlayCanvas je potrebný internet. Priložený je JSON, súbory .glb a behový modul pre vašu hru."),
     ("Playback", "Prehrávanie"),
     ("Plays the map's animations from the start, as the 3D view's preview does.", "Prehrá animácie mapy od začiatku, rovnako ako náhľad v 3D pohľade."),
     ("Playtest warning: {}", "Upozornenie testu hry: {}"),

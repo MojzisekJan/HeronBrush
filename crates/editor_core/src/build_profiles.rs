@@ -129,6 +129,7 @@ pub fn target(name: &str) -> Result<crate::export::Target, String> {
         "defold" => Ok(Target::Defold),
         "three" | "threejs" => Ok(Target::ThreeJs),
         "babylon" | "babylonjs" => Ok(Target::Babylon),
+        "playcanvas" => Ok(Target::PlayCanvas),
         "bevy" => Ok(Target::Bevy),
         "raylib" => Ok(Target::Raylib),
         "unity" => Ok(Target::Unity),
@@ -181,8 +182,22 @@ pub mod runner {
             let settings = crate::export_settings::Settings::for_map(Some(&map));
             settings.validate()?;
             let exports = [
-                "godot", "defold", "three", "babylon", "bevy", "raylib", "unity", "unreal", "flax",
-                "stride", "cocos", "gdevelop", "obj", "gltf", "glb",
+                "godot",
+                "defold",
+                "three",
+                "babylon",
+                "playcanvas",
+                "bevy",
+                "raylib",
+                "unity",
+                "unreal",
+                "flax",
+                "stride",
+                "cocos",
+                "gdevelop",
+                "obj",
+                "gltf",
+                "glb",
             ]
             .into_iter()
             .map(|key| (key.into(), settings.for_target(target(key).unwrap())))

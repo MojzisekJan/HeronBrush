@@ -745,6 +745,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Play on start", "Putar saat mulai"),
     ("Playable HTML with FPS controls and collisions. Open it in a browser; internet is needed for Three.js. JSON and .glb files are included.", "HTML yang bisa dimainkan dengan kontrol FPS dan tabrakan. Buka di peramban; Three.js memerlukan internet. Berkas JSON dan .glb disertakan."),
     ("Playable HTML with a Havok character controller, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for Babylon.js. The JSON, .glb files and a runtime module for your own game are included.", "HTML yang bisa dimainkan dengan pengendali karakter Havok, pintu, pemicu, air, lampu, dan langit. Buka di peramban; Babylon.js memerlukan internet. JSON, berkas .glb, dan modul runtime untuk game Anda sendiri disertakan."),
+    ("Playable HTML with ammo.js physics, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for PlayCanvas. The JSON, .glb files and a runtime module for your own game are included.", "HTML yang bisa dimainkan dengan fisika ammo.js, pintu, pemicu, air, lampu, dan langit. Buka di peramban; PlayCanvas memerlukan internet. JSON, berkas .glb, dan modul runtime untuk game Anda sendiri disertakan."),
     ("Playback", "Pemutaran"),
     ("Plays the map's animations from the start, as the 3D view's preview does.", "Memutar animasi peta dari awal, seperti pratinjau tampilan 3D."),
     ("Playtest warning: {}", "Peringatan uji main: {}"),

@@ -6433,6 +6433,7 @@ fn water_volume_contract_and_runtime_adapters_export_to_all_five_targets() {
             // Cocos, GDevelop and Stride read the same payload with runtimes of their own.
             for (target, sub) in [
                 (Target::Babylon, "babylon"),
+                (Target::PlayCanvas, "playcanvas"),
                 (Target::Cocos, "cocos"),
                 (Target::GDevelop, "gdevelop"),
                 (Target::Stride, "stride"),
@@ -6467,6 +6468,17 @@ fn water_volume_contract_and_runtime_adapters_export_to_all_five_targets() {
                         assert!(
                             runtime.contains("export class HeronWater")
                                 && runtime.contains("CUSTOM_VERTEX_UPDATE_POSITION")
+                        );
+                    }
+                    Target::PlayCanvas => {
+                        assert!(std::fs::read_to_string(path.join("water.json"))
+                            .unwrap()
+                            .contains("_heron_water"));
+                        let runtime =
+                            std::fs::read_to_string(path.join("heron_playcanvas.js")).unwrap();
+                        assert!(
+                            runtime.contains("export class HeronWater")
+                                && runtime.contains("transformVS")
                         );
                     }
                     Target::Cocos => {

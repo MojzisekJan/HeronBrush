@@ -745,6 +745,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Play on start", "Phát khi bắt đầu"),
     ("Playable HTML with FPS controls and collisions. Open it in a browser; internet is needed for Three.js. JSON and .glb files are included.", "HTML chơi được với điều khiển FPS và va chạm. Mở bằng trình duyệt; cần internet để tải Three.js. Bao gồm các tệp JSON và .glb."),
     ("Playable HTML with a Havok character controller, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for Babylon.js. The JSON, .glb files and a runtime module for your own game are included.", "HTML chơi được với bộ điều khiển nhân vật Havok, cửa, trigger, nước, đèn và bầu trời. Mở nó trong trình duyệt; Babylon.js cần internet. Kèm theo JSON, các tệp .glb và một mô-đun runtime cho game của bạn."),
+    ("Playable HTML with ammo.js physics, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for PlayCanvas. The JSON, .glb files and a runtime module for your own game are included.", "HTML chơi được với vật lý ammo.js, cửa, trigger, nước, đèn và bầu trời. Mở nó trong trình duyệt; PlayCanvas cần internet. Kèm theo JSON, các tệp .glb và một mô-đun runtime cho game của bạn."),
     ("Playback", "Phát lại"),
     ("Plays the map's animations from the start, as the 3D view's preview does.", "Phát các hoạt ảnh của bản đồ từ đầu, giống bản xem trước của khung nhìn 3D."),
     ("Playtest warning: {}", "Cảnh báo chạy thử: {}"),

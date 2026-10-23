@@ -745,6 +745,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Play on start", "시작 시 재생"),
     ("Playable HTML with FPS controls and collisions. Open it in a browser; internet is needed for Three.js. JSON and .glb files are included.", "FPS 조작과 충돌이 있는 플레이 가능한 HTML. 브라우저에서 여세요. Three.js에는 인터넷 연결이 필요합니다. JSON과 .glb 파일이 포함됩니다."),
     ("Playable HTML with a Havok character controller, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for Babylon.js. The JSON, .glb files and a runtime module for your own game are included.", "Havok 캐릭터 컨트롤러, 문, 트리거, 물, 조명, 하늘이 포함된 플레이 가능한 HTML입니다. 브라우저에서 여세요. Babylon.js에는 인터넷이 필요합니다. JSON, .glb 파일, 직접 만드는 게임용 런타임 모듈이 포함됩니다."),
+    ("Playable HTML with ammo.js physics, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for PlayCanvas. The JSON, .glb files and a runtime module for your own game are included.", "ammo.js 물리, 문, 트리거, 물, 조명, 하늘이 포함된 플레이 가능한 HTML입니다. 브라우저에서 여세요. PlayCanvas에는 인터넷이 필요합니다. JSON, .glb 파일, 직접 만드는 게임용 런타임 모듈이 포함됩니다."),
     ("Playback", "재생"),
     ("Plays the map's animations from the start, as the 3D view's preview does.", "3D 뷰 미리보기처럼 맵의 애니메이션을 처음부터 재생합니다."),
     ("Playtest warning: {}", "플레이테스트 경고: {}"),

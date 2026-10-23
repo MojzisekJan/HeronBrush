@@ -745,6 +745,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Play on start", "啟動時播放"),
     ("Playable HTML with FPS controls and collisions. Open it in a browser; internet is needed for Three.js. JSON and .glb files are included.", "可遊玩的 HTML，具備 FPS 操控與碰撞。以瀏覽器開啟；Three.js 需要網際網路連線。內含 JSON 與 .glb 檔案。"),
     ("Playable HTML with a Havok character controller, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for Babylon.js. The JSON, .glb files and a runtime module for your own game are included.", "可遊玩的 HTML，附 Havok 角色控制器、門、觸發器、水、燈光和天空。請在瀏覽器中開啟；Babylon.js 需要連網。附有 JSON、.glb 檔案，以及供你自己的遊戲使用的執行階段模組。"),
+    ("Playable HTML with ammo.js physics, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for PlayCanvas. The JSON, .glb files and a runtime module for your own game are included.", "可遊玩的 HTML，附 ammo.js 物理、門、觸發器、水、燈光和天空。請在瀏覽器中開啟；PlayCanvas 需要連網。附有 JSON、.glb 檔案，以及供你自己的遊戲使用的執行階段模組。"),
     ("Playback", "播放"),
     ("Plays the map's animations from the start, as the 3D view's preview does.", "像 3D 檢視的預覽一樣，從頭播放地圖中的動畫。"),
     ("Playtest warning: {}", "試玩警告：{}"),
