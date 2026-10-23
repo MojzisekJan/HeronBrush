@@ -201,6 +201,10 @@ impl ManualPage {
                             }
                             if code {
                                 ui.label(egui::RichText::new(line).monospace().size(size));
+                            } else if let Some(heading) = line.strip_prefix("### ") {
+                                // A step below a section heading, as large as the text.
+                                ui.add_space(size * 0.3);
+                                ui.label(egui::RichText::new(heading).size(size).strong());
                             } else if let Some(heading) = line.strip_prefix("## ") {
                                 ui.add_space(size * 0.5);
                                 ui.label(egui::RichText::new(heading).size(size * 1.15).strong());
