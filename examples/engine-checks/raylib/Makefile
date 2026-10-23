@@ -5,6 +5,7 @@
 #   make RAYLIB=/path    use a raylib built somewhere other than the system
 #   make anim-check      build ./heron_brush-raylib-anim with motion_lab's animations and
 #                        check them against the collision (src/anim_check.c)
+#   make feature-check   check the feature lab export (src/verify_feature_lab.c)
 #   make ANIM=path/to/map_animation.h
 #                        play another map's editor animations (src/animated.h);
 #                        the default is the demo map's, which has none
@@ -70,4 +71,15 @@ game-check:
 	$(CC) $(CFLAGS) src/verify_game.c src/level.c src/collision.c src/player.c src/movers.c src/game.c src/animated.c -o /tmp/heron-raylib-game-check $(LDFLAGS)
 	/tmp/heron-raylib-game-check
 
-.PHONY: run clean anim-check game-check
+# The feature lab, exported by export_feature_lab.py, with the editor's poses from
+# feature_lab_poses.py --text: `make feature-check FEATURE=/tmp/heron-feature-raylib
+# POSES=/tmp/poses.txt [SHOT=/tmp/raylib.png]`. Needs an OpenGL context for its GPU half.
+FEATURE ?= /tmp/heron-feature-raylib
+POSES   ?= /tmp/feature-lab-poses.txt
+SHOT    ?=
+feature-check:
+	$(CC) $(CFLAGS) -I$(FEATURE) -UHERON_BRUSH_ANIMATION_HEADER -DHERON_BRUSH_ANIMATION_HEADER='"feature_lab_animation.h"' \
+		src/verify_feature_lab.c src/level.c src/collision.c src/animated.c -o /tmp/heron-raylib-feature-check $(LDFLAGS)
+	cd $(FEATURE) && /tmp/heron-raylib-feature-check $(abspath $(POSES)) $(if $(SHOT),$(abspath $(SHOT)))
+
+.PHONY: run clean anim-check game-check feature-check

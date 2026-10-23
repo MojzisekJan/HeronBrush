@@ -52,6 +52,9 @@ pub struct Texture {
     pub maps: Vec<(String, String)>,
     #[serde(default)]
     pub size: [f32; 2],
+    /// Baked face paint: draw it clamped to its edges, not repeated.
+    #[serde(default)]
+    pub clamp: bool,
 }
 
 #[derive(Serialize,Deserialize)]

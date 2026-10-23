@@ -644,6 +644,12 @@ fn build(
                 );
                 return Ok((report, Vec::new()));
             }
+            let map = scene_export::map::parse(&document.to_map_text(), &options.name)
+                .map_err(|error| Error::Map(error.to_string()))?;
+            let (mut classes, class_warnings) = entity_classes(document);
+            crate::export_bindings::apply(&map, &mut classes, &options.entities)
+                .map_err(Error::Map)?;
+            report.warnings.extend(class_warnings);
             let (written, obj_files) = crate::obj_export::files_scaled(
                 document,
                 &path,
@@ -653,6 +659,7 @@ fn build(
                 },
                 1. / options.scale,
                 &settings,
+                &classes,
             );
             report.triangles = written.triangles;
             return Ok((
@@ -967,7 +974,7 @@ fn build(
                         )),
                     ));
                     files.push((directory.join(format!("{}_raylib.md",options.name)),Contents::Text(format!(
-                        "# Raylib animation export\n\nBuild with raylib 5+ installed:\n\n```sh\ncc -std=c99 -O2 \"{}_preview.c\" -o preview $(pkg-config --cflags --libs raylib) -lm\n./preview\n```\n\nRun from this exported directory. SPACE pauses, R plays/restarts all default clips (including disabled autoplay), N selects the next named clip. This is a free-camera visual preview, without gameplay or physics.\n\nInclude `{header}` in your game. HbInit initializes each HbPlayer and respects start_on. HbUpdate advances seconds. HbPlay selects a named clip; HbSeek, HbPause, HbResume, HbStop control playback. HbStop restores rest geometry; once holds its final pose. hb_animations[a].entity is the entity index in the .level/.json. HbMatrix yields the animation transform to apply AFTER the entity rest transform. HbPoint transforms WORLD engine-space vertices; use the same transform for collision vertices/hulls and update your physics body's pose/broadphase each frame. Never transform the previous frame's vertices again.\n\nLinear, Hold and Bezier curves, pivots, once/loop/ping-pong, and named clips are included. Group members in one animated brush entity share playback. Exported func_button, trigger_once and trigger_multiple targets are included. Keep HbTriggerState states[HB_TRIGGER_COUNT+1] = {{0}} and call HbCheckTriggers(states, players, player_position, seconds) each frame. The preview uses its camera position. HbActivateTrigger handles explicit button presses, wait cooldowns and trigger_once. HbActivateAnimation toggles named open/close clips or restarts the selected clip.\n\nWith Sky and sun on, `{name}/sky.png` is the map's sky as the editor's view shows it, tone mapped, in raylib's CUBEMAP_LAYOUT_LINE_VERTICAL for LoadTextureCubemap; sample it with the world direction, as the preview does. The level JSON's `environment` holds the sun's direction (to_sun), colour and intensity, the ambient intensity and any fog.\n\nWith water volumes, `{name}_water.h` holds them as C data. HbWaterFind(point, &depth) gives the volume a world point is in (higher water_priority wins, then the deeper) and HbWaterSample its depth below the surface; HbWaterVelocity(water, velocity, walk, rise, dive, dt, out) is the swim velocity. The volumes' collision is marked sensor. Included after raylib.h, HbWaterLoadShader, HbWaterView and HbWaterDrawModel draw the baseline surface (waving, see-through, after the opaque models) and fog the view under water, as the preview does.\n",options.name,name=options.name))));
+                        "# Raylib animation export\n\nBuild with raylib 5+ installed:\n\n```sh\ncc -std=c99 -O2 \"{}_preview.c\" -o preview $(pkg-config --cflags --libs raylib) -lm\n./preview\n```\n\nRun from this exported directory. SPACE pauses, R plays/restarts all default clips (including disabled autoplay), N selects the next named clip. This is a free-camera visual preview, without gameplay or physics.\n\nInclude `{header}` in your game. HbInit initializes each HbPlayer and respects start_on. HbUpdate advances seconds. HbPlay selects a named clip; HbSeek, HbPause, HbResume, HbStop control playback. HbStop restores rest geometry; once holds its final pose. hb_animations[a].entity is the entity index in the .level/.json. HbMatrix yields the animation transform to apply AFTER the entity rest transform. HbPoint transforms WORLD engine-space vertices; use the same transform for collision vertices/hulls and update your physics body's pose/broadphase each frame. Never transform the previous frame's vertices again.\n\nLinear, Hold and Bezier curves, pivots, once/loop/ping-pong, and named clips are included. Group members in one animated brush entity share playback. Exported func_button, trigger_once and trigger_multiple targets are included. Keep HbTriggerState states[HB_TRIGGER_COUNT+1] = {{0}} and call HbCheckTriggersSpan(states, players, feet, height, seconds) each frame for a standing player, so a volume that starts above the floor still catches it, or HbCheckTriggers(states, players, point, seconds) for a single point. The preview uses its camera position. HbActivateTrigger handles explicit button presses, wait cooldowns and trigger_once. HbActivateAnimation toggles named open/close clips or restarts the selected clip.\n\nWith Sky and sun on, `{name}/sky.png` is the map's sky as the editor's view shows it, tone mapped, in raylib's CUBEMAP_LAYOUT_LINE_VERTICAL for LoadTextureCubemap; sample it with the world direction, as the preview does. The level JSON's `environment` holds the sun's direction (to_sun), colour and intensity, the ambient intensity and any fog.\n\nWith water volumes, `{name}_water.h` holds them as C data. HbWaterFind(point, &depth) gives the volume a world point is in (higher water_priority wins, then the deeper) and HbWaterSample its depth below the surface; HbWaterVelocity(water, velocity, walk, rise, dive, dt, out) is the swim velocity. The volumes' collision is marked sensor. Included after raylib.h, HbWaterLoadShader, HbWaterView and HbWaterDrawModel draw the baseline surface (waving, see-through, after the opaque models) and fog the view under water, as the preview does.\n",options.name,name=options.name))));
                     files.push((
                         directory.join(format!("{}.level", options.name)),
                         Contents::Text(writer::raylib::write(&built.level, &built.collision)),
@@ -1429,6 +1436,38 @@ pub fn godot_import_defaults(mesh_path: &Path) -> Option<(PathBuf, String)> {
 /// a reader for the file, and a conversion between two shapes of the same thing is a third
 /// thing to keep right. Without a file the map still exports -- the builder falls back to
 /// the bundled HERON_BRUSH definitions -- so a failure to read one is a warning rather than an error.
+/// How much of an entity the portable OBJ, glTF and GLB writers draw. Engine targets
+/// decide this in the builder, which also writes the collision and sensors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PortableVisuals {
+    All,
+    /// A class with `visuals=false`, such as a trigger.
+    Nothing,
+    /// A water volume: only the faces that point up, which are its surface. With
+    /// `water_surface_material=0` a water volume draws in full, as in the engines.
+    WaterSurface,
+}
+
+pub(crate) fn portable_visuals(
+    entity: &map_model::node::EntityNode,
+    classes: &scene_export::indexmap::IndexMap<String, scene_export::fgd::EntityClass>,
+) -> PortableVisuals {
+    let classname = entity.classname().unwrap_or_default();
+    if classes
+        .get(classname)
+        .and_then(|class| class.directives.bool("visuals"))
+        == Some(false)
+    {
+        PortableVisuals::Nothing
+    } else if scene_export::water::enabled_by(classname, entity.property("water_enabled"))
+        && scene_export::water::baseline_by(entity.property("water_surface_material"))
+    {
+        PortableVisuals::WaterSurface
+    } else {
+        PortableVisuals::All
+    }
+}
+
 pub fn entity_classes(
     document: &Document,
 ) -> (

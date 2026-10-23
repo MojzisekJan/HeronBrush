@@ -263,6 +263,7 @@ mod tests {
                     image: Some("textures/wall.png".into()),
                     maps: vec![],
                     size: [64.0, 64.0],
+                    clamp: false,
                 },
                 Texture {
                     surface: None,
@@ -270,6 +271,7 @@ mod tests {
                     image: None,
                     maps: vec![],
                     size: [0.0, 0.0],
+                    clamp: false,
                 },
             ],
             entities: vec![Entity {

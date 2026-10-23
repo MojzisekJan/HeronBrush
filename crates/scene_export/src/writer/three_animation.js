@@ -96,6 +96,8 @@ export class HeronAnimationTrigger {
     this.inside=new Set(state.inside); this.wait=state.wait; this.fired=state.fired; this.pending=state.pending; return true;
   }
   activate() { this.pending = true; }
+  // actors: [id, point] pairs, as a Map or an array. One id may give several points
+  // (a player's feet, middle and head); it is inside when any of them is.
   update(dt, actors, animations) {
     this.wait = Math.max(0, this.wait - dt);
     this.object.updateWorldMatrix(true, false);

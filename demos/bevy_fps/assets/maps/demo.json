@@ -3061,6 +3061,7 @@
   "scale": 32.0,
   "textures": [
     {
+      "clamp": true,
       "image": "maps/demo_paint/bbpaint_58746627617e1457.png",
       "name": "bbpaint_58746627617e1457",
       "size": [
@@ -3069,6 +3070,7 @@
       ]
     },
     {
+      "clamp": true,
       "image": "maps/demo_paint/bbpaint_37e4acaa9504e424.png",
       "name": "bbpaint_37e4acaa9504e424",
       "size": [

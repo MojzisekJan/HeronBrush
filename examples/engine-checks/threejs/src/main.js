@@ -86,7 +86,7 @@ function step(dt) {
     support = collider.support;
   }
   const previous = support?.matrixWorld.clone();
-  level.advance(Math.min(dt,0.05), feet);
+  level.advance(Math.min(dt,0.05), feet, 1.8);
   if (support) {
     player.pos.applyMatrix4(new THREE.Matrix4().multiplyMatrices(support.matrixWorld, previous.invert()));
   }

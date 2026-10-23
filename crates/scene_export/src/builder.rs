@@ -1474,6 +1474,47 @@ mod tests {
     use super::*;
 
     #[test]
+    fn baked_paint_is_marked_clamped_in_the_level_textures() {
+        // Found running the feature lab's three.js page: it repeated every texture it
+        // read from the level, so baked paint lost the clamp its GLB sampler asks for.
+        let mut library = MaterialLibrary::default();
+        for (name, repeat) in [("tinted", true), ("paint", false)] {
+            library.materials.insert(
+                name.into(),
+                Material::FromTextures {
+                    albedo: format!("res://{name}.png"),
+                    maps: Vec::new(),
+                },
+            );
+            library.generated.insert(
+                name.into(),
+                materials::GeneratedMaterial {
+                    path: format!("res://{name}.png"),
+                    width: 1,
+                    height: 1,
+                    png: Vec::new(),
+                    alpha: false,
+                    surface: None,
+                    repeat,
+                    pbr: None,
+                },
+            );
+        }
+        let (textures, _) = level_textures(&library, &Settings::default());
+        let clamp = |name: &str| {
+            textures
+                .iter()
+                .find(|t| t.name == name)
+                .expect("the texture is listed")
+                .clamp
+        };
+        assert!(!clamp("tinted"));
+        assert!(clamp("paint"));
+        let json = serde_json::to_value(&textures).expect("textures serialize");
+        assert!(json[0].get("clamp").is_none() && json[1]["clamp"] == true);
+    }
+
+    #[test]
     fn static_cells_preserve_geometry_collision_and_entity_links() {
         fn cube(x: f64) -> crate::map::Brush {
             use crate::map::{Face, UvFormat};
@@ -2385,6 +2426,7 @@ fn level_textures(
             maps,
             size: [size.x, size.y],
             surface: library.generated.get(name).and_then(|m| m.surface),
+            clamp: library.generated.get(name).is_some_and(|m| !m.repeat),
         });
     }
 

@@ -30,6 +30,10 @@ Other checks:
 - `make anim-check RAYLIB=...`: motion lab animations with player carrying
   (export first with `export_motion_lab.py`). `make ANIM=assets/maps/<map>_animation.h`
   builds the game with another map's animations; `--play` skips the scripted input.
+- `make feature-check RAYLIB=... FEATURE=... POSES=... SHOT=...`: the feature lab
+  export through `src/level.c`, the generated animation, trigger and water headers,
+  `LoadModel` and the sky cube, with a picture; see
+  [feature runtime checks](../../../docs/feature-runtime-web.md).
 - `prepare_custom_game.py` with `src/verify_custom_game.c`: a separate puzzle game
   without the FPS code.
 

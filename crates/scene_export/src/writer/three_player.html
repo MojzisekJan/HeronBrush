@@ -153,6 +153,8 @@ try {
     const visuals=new THREE.Group(), colliders=new THREE.Group(),staticColliders=new THREE.Group(),movingColliders=new THREE.Group();
     colliders.add(staticColliders,movingColliders);
     const textures=new Map(await Promise.all(Object.entries(data.textures).map(async([name,uri])=>[name,await picture(name,uri)])));
+    // Baked paint clamps at its edges, as the GLBs' samplers say; everything else repeats.
+    for(const t of level.textures){const texture=textures.get(t.name),wrap=t.clamp?THREE.ClampToEdgeWrapping:THREE.RepeatWrapping;if(texture&&texture.wrapS!==wrap){texture.wrapS=texture.wrapT=wrap;texture.needsUpdate=true;}}
     const animations=new Map(),triggers=[],animatedColliders=[],waters=[];
   for (const entity of level.entities) {
     const root = transform(new THREE.Group(), entity);
@@ -267,7 +269,11 @@ try {
   function step(dt) {
     const wasGrounded = grounded;
     const feet = capsule.start.clone().addScaledVector(THREE.Object3D.DEFAULT_UP, -radius);
-    for (const trigger of triggers) trigger.update(dt, new Map([['player', feet]]), animations);
+    // The whole capsule's height, not the feet alone: a volume that starts above the
+    // floor, as a raised trigger brush does, still catches a player standing in it.
+    const body = [['player', feet], ['player', capsule.start.clone().lerp(capsule.end, 0.5)],
+      ['player', capsule.end.clone().addScaledVector(THREE.Object3D.DEFAULT_UP, radius)]];
+    for (const trigger of triggers) trigger.update(dt, body, animations);
     let support = null;
     if (grounded && !keys.has('Space')) {
       const ray = new THREE.Raycaster(feet.clone().add(new THREE.Vector3(0, radius, 0)), new THREE.Vector3(0,-1,0), 0, radius + 0.05);

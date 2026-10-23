@@ -207,9 +207,11 @@ fn spawn_player(
             GravityScale(1.0),
         ))
         .with_children(|player| {
-            // Trigger pads test the feet, not the camera above the player's head.
+            // Trigger volumes test the player from the feet up to the top of the
+            // capsule, not the camera point alone.
             player.spawn((
                 crate::heron_animation::HeronActivator,
+                crate::heron_animation::HeronActivatorHeight(2.0),
                 Transform::from_xyz(0.0, -1.0, 0.0),
             ));
         });
@@ -480,6 +482,10 @@ fn check_physics(
 #[cfg(test)]
 #[path = "motion_check.rs"]
 mod motion_check;
+
+#[cfg(test)]
+#[path = "feature_check.rs"]
+mod feature_check;
 
 #[cfg(test)]
 mod tests {

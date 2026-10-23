@@ -12,6 +12,7 @@
 //!   "name": "arena",
 //!   "scale": 32,
 //!   "textures": [{ "name": "wall", "image": "textures/wall.png", "size": [64, 64] }],
+//!   // Baked face paint adds "clamp": true: draw it clamped, not repeated.
 //!   "entities": [
 //!     {
 //!       "name": "worldspawn",
@@ -339,6 +340,7 @@ mod tests {
                 image: Some("textures/wall.png".into()),
                 maps: vec![],
                 size: [64.0, 64.0],
+                clamp: false,
             }],
             entities: vec![
                 Entity {
@@ -418,6 +420,23 @@ mod tests {
                 .len(),
             9
         );
+    }
+
+    #[test]
+    fn the_playtest_tests_triggers_along_the_whole_player() {
+        // Found running the feature lab's page: its trigger brush starts 0.25 m above
+        // the floor, and the page tested only the player's feet, so standing in the
+        // trigger never opened the door.
+        let html = write_html(&level(), &[], &[], &Default::default(), None);
+        let call = html
+            .split("trigger.update(dt, ")
+            .nth(1)
+            .expect("the page updates triggers");
+        assert!(call.starts_with("body,"), "{}", &call[..40]);
+        assert!(html.contains("['player', capsule.start.clone().lerp(capsule.end, 0.5)]"));
+        assert!(html.contains(
+            "['player', capsule.end.clone().addScaledVector(THREE.Object3D.DEFAULT_UP, radius)]"
+        ));
     }
 
     #[test]

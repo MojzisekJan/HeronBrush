@@ -1,4 +1,5 @@
 #include "animated.h"
+#include "player.h"
 
 #include "raymath.h"
 
@@ -82,9 +83,10 @@ Vector3 HeronBrushAnimatedUpdate(HeronBrushCollider *col, Vector3 feet, bool gro
     int under = grounded ? Under(col, feet) : -1;
     Matrix before = under >= 0 ? gCurrent[under] : MatrixIdentity();
 
-    // The triggers' volumes are pads on the floor: the feet, just above it, are in them.
+    // From just above the feet to the top of the capsule: pads on the floor and
+    // volumes that start higher up both catch the player.
     double point[3] = {feet.x, feet.y + 0.05, feet.z};
-    HbCheckTriggers(gTriggers, gPlayers, point, now);
+    HbCheckTriggersSpan(gTriggers, gPlayers, point, 2 * HERON_BRUSH_PLAYER_HALF - 0.05, now);
     for (int a = 0; a < HB_ANIMATION_COUNT; a++) {
         HbUpdate(&gPlayers[a], dt);
         gCurrent[a] = Posed(a);

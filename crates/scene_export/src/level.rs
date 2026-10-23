@@ -238,6 +238,10 @@ pub struct Texture {
     pub maps: Vec<(String, String)>,
     /// Pixel size the UVs were worked out against.
     pub size: [f64; 2],
+    /// Baked face paint, drawn clamped to its edges rather than repeated, as the
+    /// GLBs' samplers say. A loader that sets its own wrapping reads it here.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub clamp: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
