@@ -27,6 +27,25 @@ and `verify_*.mjs` scripts cover animation, motion lab, water, custom games and
 the web playtest; see [target parity](../../../docs/target-parity.md) and
 [web](../../../docs/web.md) for their commands.
 
+## Feature lab check
+
+`verify_feature_lab.cjs` loads the feature lab's three.js export the way a game
+does (level JSON, GLTFLoader per GLB, `heron_animation.js`, `heron_water.js`,
+`sky.hdr` through HDRLoader), runs the generated playtest page, and reads the
+portable GLB and glTF through GLTFLoader alone. It checks each feature and writes
+screenshots; see [feature runtime checks](../../../docs/feature-runtime-web.md).
+
+```sh
+python3 examples/engine-checks/export_feature_lab.py --root /tmp/fl three gltf glb
+python3 examples/engine-checks/feature_lab_poses.py /tmp/fl/poses.json
+node examples/engine-checks/threejs/verify_feature_lab.cjs /tmp/fl /tmp/fl/poses.json /tmp/fl/out
+```
+
+It needs `playwright` for Node. Without Node, Python's Playwright package ships one:
+`uv run --with playwright python -c "import playwright"` once, then run the
+`node` inside its `playwright/driver` folder with `NODE_PATH` pointing at a folder
+that holds a `playwright` link to `driver/package`.
+
 ## Loader API
 
 `loadLevel(url, {factories, blocks})` returns the scene, entity records, collision,
