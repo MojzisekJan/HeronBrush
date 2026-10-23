@@ -68,26 +68,9 @@ pub fn load(
     let game = games::current();
     if let Some(game) = &game {
         crate::say!("game: {}", game.name);
-        // The tags it names, which is what the view panel offers to hide.
-        document.set_tags(game.brush_tags.clone(), game.face_tags.clone());
-        document.set_face_flag_names(
-            game.surface_flag_names.clone(),
-            game.content_flag_names.clone(),
-        );
-        // A map that was opened keeps whatever it was read as, since that is what it
-        // is. A new one is the dialect that holds everything -- it used to take the
-        // first format the game listed, which for a Quake-lineage game is the Standard
-        // one, and that quietly decided at the moment of creation that no face in this
-        // map may ever carry its own UV axes. Nothing about a new map should have to be
-        // chosen before there is a map, and the flavour a level is *written* for belongs
-        // to the export, not to the hours of editing before it.
-        if path.is_none() {
-            document.format = map_model::map_format::MapFormat::LOSSLESS;
-        }
     }
-    let fgd = fgd
-        .or_else(|| path.as_deref().and_then(sibling_fgd))
-        .or_else(|| game.as_ref().and_then(|game| game.definition_file()));
+    apply_game(&mut document, game.as_ref(), path.is_some());
+    let fgd = fgd.or_else(|| definition_file(path.as_deref(), game.as_ref()));
     let materials = materials.or_else(|| document.project_material_folder());
 
     // What was loaded, so F5 and F6 can load it again after it has been edited.
@@ -137,6 +120,41 @@ pub fn load(
 
     crate::assets::load_library_materials(&mut document);
     LoadedDocument { document, sources }
+}
+
+/// Gives a document what its game profile says about maps: the tags the view panel
+/// offers to hide, the names of the face flags and, for a new map, its dialect.
+///
+/// Prints nothing, since the MCP server calls it too and its standard output is the
+/// protocol.
+pub fn apply_game(document: &mut Document, game: Option<&games::Game>, opened: bool) {
+    let Some(game) = game else {
+        return;
+    };
+    document.set_tags(game.brush_tags.clone(), game.face_tags.clone());
+    document.set_face_flag_names(
+        game.surface_flag_names.clone(),
+        game.content_flag_names.clone(),
+    );
+    // A map that was opened keeps whatever it was read as, since that is what it
+    // is. A new one is the dialect that holds everything -- it used to take the
+    // first format the game listed, which for a Quake-lineage game is the Standard
+    // one, and that quietly decided at the moment of creation that no face in this
+    // map may ever carry its own UV axes. Nothing about a new map should have to be
+    // chosen before there is a map, and the flavour a level is *written* for belongs
+    // to the export, not to the hours of editing before it.
+    if !opened {
+        document.format = map_model::map_format::MapFormat::LOSSLESS;
+    }
+}
+
+/// The entity definitions a map should use: the one `.fgd` beside it, or else the game's.
+pub fn definition_file(
+    map: Option<&std::path::Path>,
+    game: Option<&games::Game>,
+) -> Option<PathBuf> {
+    map.and_then(sibling_fgd)
+        .or_else(|| game.and_then(|game| game.definition_file()))
 }
 
 /// Finds portable project textures beside a map or beside its enclosing `maps` directory.

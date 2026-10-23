@@ -15,7 +15,7 @@ Games that are free to download come first, one at a time.
 | Neverball | Neverball and its `mapc` | planned |
 | Quake3 | OpenArena, q3map2 | planned |
 | Quetoo | Quetoo and its tools | planned |
-| DigitalPaintball2 | Digital Paint: Paintball 2 | planned |
+| DigitalPaintball2 | Digital Paint: Paintball 2, ericw-tools | [done](#digital-paint-paintball-2) |
 | Quake2 | the freely distributed demo, a source port | planned |
 | DDayNormandy | the free mod on the Quake 2 demo | planned |
 | Hexen2 | the freely distributed demo | planned |
@@ -138,3 +138,122 @@ ironwail's GL 4.3.
   Harmless, but it is noise TrenchBroom does not add.
 - The GUI wad list was checked in screenshots, but the file dialog route of the
   Materials tab was not driven by a script.
+
+## Digital Paint: Paintball 2
+
+Tried on 2026-10-23 with Paintball 2 build 48 for Linux and ericw-tools 2.0 for the
+compile. The level is [demos/paintball_heron](../demos/paintball_heron/README.md): a
+capture-the-flag field with a raised base at each end (the team's flag, the capture
+trigger around it, a ramp and four team spawns), barrels, crates, two low walls and a
+centre tower with two ramps, under a sky lit by a sun. It compiles sealed, lights, and
+loads in the game as "Team Flag CTF" with both teams' spawns, flags and bases working.
+
+### What was installed
+
+Everything is under `~/.local/opt/paintball2/`, without root. The archives stay in
+`downloads/`.
+
+| What | From | Unpacked to |
+| --- | --- | --- |
+| Paintball 2 build 48, `paintball2_build048_linux_full.tar.gz` | digitalpaint.org/files (SourceForge mirror) | `paintball2/` |
+| Paintball 2 mapping resources, `paintball2_mapping_resources_b48.zip` | digitalpaint.org/files | `paintball2_mapping_resources/` |
+| 47 i386 Ubuntu 24.04 packages (glibc, X11, libglvnd, Mesa with llvmpipe, libjpeg62 and their dependencies), fetched with `apt-get download` | archive.ubuntu.com | unpacked with `dpkg-deb -x` into `i386-root/` |
+| `libpng12-0_1.2.54-1ubuntu1.1_i386.deb` (the game links libpng12, gone since Ubuntu 18.04) | archive.ubuntu.com, xenial | `i386-root/` |
+| Paintball 2 alpha 040 engine source, for reading only | SourceForge | `downloads/src/` |
+
+The Linux build is 32-bit only (the engine, `ref_pbgl.so` and `pball/gamei386.so`), and
+this machine has no 32-bit libraries. The kernel runs 32-bit programs, so
+`run-paintball2` starts the game through the unpacked `i386-root/.../ld-linux.so.2` with
+`LD_LIBRARY_PATH` and `LIBGL_DRIVERS_PATH` pointing into `i386-root`. ericw-tools 2.0 was
+already installed for Quake, at `~/.local/opt/quake/ericw-tools`; the mapping resources
+ship the Windows build of the same tools, so it is what Paintball 2 mappers use. The
+mapping guides on dplogin.com were not reachable (404s and a certificate for another
+host), so the mapping rules came from the shipped `pb2ents_b41.c`, the FGD, the
+resources' `sample.map` and the entities of the stock maps.
+
+### Setting Heron up
+
+In the welcome window the profile is set to Digital Paint: Paintball 2, and in
+Preferences, Games, the game path is `~/.local/opt/paintball2/paintball2`. Heron mounts
+it and `pball`, finds 637 textures under `pball/textures` (mostly `.jpg`, a few `.wal`
+coloured with `pball/pics/colormap.pcx`) and loads `gamedata/DigitalPaintball2/pball2.fgd`.
+
+### How a Paintball 2 map is made
+
+- Worldspawn names the modes it supports in `gamemode` (1 deathmatch, 2 one-flag, 4 CTF,
+  8 siege, 16 KOTH, 64 pong), the team count in `maxteams` and the colours in `team1` to
+  `team4`. `sky` picks one of the skies in `pball/env` (`pbsky1` to `pbsky4`, `unit1_`,
+  `riverscape1`, `arctic1`).
+- `info_player_deathmatch` is the spawn; `teamnumber` makes it a team's. A `flag` with a
+  `teamnumber` is that team's flag, and a `base` brush entity with the same `teamnumber`,
+  usually made of `pball/trigger` around the flag, is where a carried flag scores.
+- Any entity can carry `gamemode` to exist only in some modes.
+- Textures are `pball/<name>`. A face picks up its surface flags from a `.wal` when the
+  map gives it none: `sky1`, `sky2` and `sky3` are sky, `ltwhite` and `lit2_*` give
+  light. Most textures exist only as `.jpg`, which `qbsp` reads for the size.
+
+### Rerunning it
+
+    cd demos/paintball_heron
+    ./build.sh                  # qbsp -q2bsp, vis, light; installs the bsp and playtest.cfg
+    cd ~/.local/opt/paintball2 && ./run-paintball2 +set vid_fullscreen 0 +set s_initsound 0 \
+        +map heron_bases +exec playtest.cfg
+
+`build.sh --remake` builds the map again in Heron first, through `make_map.py` and the
+MCP server; set `HERON_BRUSH` to the binary and `XDG_CONFIG_HOME` to a scratch folder
+whose preferences have the Paintball 2 game path. The game ran in a nested Xephyr display
+with Mesa's llvmpipe. `+set autojoin 0` keeps the player an observer, and `addbot` gives
+the other team a player so the match starts.
+
+### What worked
+
+- `qbsp` reported no leak and found every texture; `sky1.wal`'s flags made the lid sky.
+  `light` found the 13 point lights, the sun and the sky dome. The only warnings are `qbsp` not finding a texture
+  for its own `skip`, and `light` finding no `.wal` metadata for the `.jpg` textures,
+  which is expected.
+- In the game the console shows the map loading as "Team Flag CTF" with no errors from
+  it. The player spawns on a team's spawn facing up the field; textures, the team-colour
+  barrels, the flags on the decks, the sky and the sunlight are as in Heron. Bots join
+  both teams and the "match begins" countdown starts.
+- The resources' `sample.map` (a TrenchBroom Quake 2 map with light flags on faces) opened
+  in Heron and saved again compiles to the same texinfos, planes and faces; the only
+  difference is the `mapversion` key Heron adds.
+
+### What was fixed in Heron
+
+- **`heron-brush --mcp` did not set a map up for the game.** `new_map` and `open_map`
+  never loaded the game's entity definitions, tags or face flag names, so a `light`
+  placed through MCP got the keys of Heron's own `light` class (`light_energy`,
+  `omni_range`, `shadow_enabled` and five more), which the game reports as bad fields
+  on every load. Both now set the map up as the window does, with the game's FGD or the
+  one `.fgd` beside the map.
+- **Editing a face's flags threw away the texture's.** A face with no flags of its own
+  showed zeroes, and setting one value gave it `0 0 <value>`. Once a face line carries
+  flags `qbsp` no longer reads the `.wal`'s, so a sky face given a light value stopped
+  being sky (checked with `qbsp`: `sky1 ... 0 1 300` compiles without `is_sky`). Heron
+  now reads the flags in a `.wal`'s header, shows them for a face that has none, and
+  starts from them when one is changed.
+
+### Mapping mistakes, not Heron's
+
+- A comment in a Paintball 2 `.cfg` must not contain `;`: the console splits on it first,
+  and the rest of the comment was sent to the server as chat.
+- `qbsp`'s `-gamedir` has to be absolute: a relative one is taken from the basedir's
+  parent, and then no texture is found and `sky1` loses its sky flag.
+
+### What remains
+
+- **The Linux client is kicked about eight seconds into a game,** with "failed build
+  check", and is then banned from the local server for a minute. The game code sends the
+  client a hidden check that this build 48 client does not answer here. It happens on the
+  stock `midnight` too, so it is not the map, and it was not worked around: the
+  screenshots were taken in that window, each run a new start of the game.
+- Heron saves every map as `// Format: Valve` with `"mapversion" "220"`. `qbsp` reads it,
+  but the game reports `mapversion` as a bad field on load (harmless). The header names
+  no game and a format the Paintball 2 profile does not list ("Quake2" and "Quake2
+  (Valve)"); whether TrenchBroom opens it without asking was not checked.
+- MCP has no tool to set a face's flags or one face's material, so a map built through
+  MCP relies on the textures' own flags (as this one does for its sky).
+- Heron's tags that match on content flags (Liquid, Detail) do not yet see the flags a
+  face takes from its `.wal`.
+- The entity browser lists Heron's built-in classes beside Paintball 2's.

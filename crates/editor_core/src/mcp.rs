@@ -273,6 +273,24 @@ impl Collab {
     }
 }
 
+/// Sets a map the agent starts or opens up for the game the preferences name, as the
+/// window does: the game's tags and face flag names, and its entity definitions (or the
+/// one `.fgd` beside the map). Without this a Paintball 2 `light` was placed with the
+/// keys of Heron's own `light` class, which the game reports as bad fields.
+///
+/// Returns what loading the definitions had to say, for the reply.
+fn set_up_for_game(document: &mut Document, map: Option<&std::path::Path>) -> Vec<String> {
+    let game = crate::games::current();
+    crate::document_setup::apply_game(document, game.as_ref(), map.is_some());
+    let Some(fgd) = crate::document_setup::definition_file(map, game.as_ref()) else {
+        return Vec::new();
+    };
+    match document.load_definitions(&fgd) {
+        Ok(warnings) => warnings,
+        Err(error) => vec![format!("{}: {error}", fgd.display())],
+    }
+}
+
 /// Runs the server until stdin closes, then exits.
 pub fn serve() -> ! {
     // The user's game, game path and mods, as the window reads them: a wad's palette and
@@ -665,9 +683,14 @@ pub(crate) fn call_tool(
                 document.clear_on_edit();
                 collab.outage_active = false;
             }
-            document.replace_for_agent(Document::new(WorldBounds::default()));
+            let mut fresh = Document::new(WorldBounds::default());
+            let notes = set_up_for_game(&mut fresh, None);
+            document.replace_for_agent(fresh);
             extensions::reconnect(document, collab);
-            Ok("started a new map".into())
+            Ok(extensions::with_warnings(
+                "started a new map".into(),
+                &notes,
+            ))
         }
         "host_session" => host_session(document, collab, args),
         "join_session" => join_session(document, collab, args),
@@ -696,8 +719,9 @@ pub(crate) fn call_tool(
             if path.is_empty() {
                 return Err("`path` is required".into());
             }
-            let opened = Document::open(path, WorldBounds::default())
+            let mut opened = Document::open(path, WorldBounds::default())
                 .map_err(|error| format!("could not open {path}: {error}"))?;
+            let mut notes = set_up_for_game(&mut opened, Some(std::path::Path::new(path)));
             collab.outage_edits.borrow_mut().clear();
             if collab.outage_active {
                 document.clear_on_edit();
@@ -711,9 +735,10 @@ pub(crate) fn call_tool(
                     crate::complain!("{}: {error}", wad.display());
                 }
             }
+            notes.extend(document.warnings());
             Ok(extensions::with_warnings(
                 format!("opened {path}, {} brushes", brush_list(document).len()),
-                &document.warnings(),
+                &notes,
             ))
         }
         "add_shape" => add_shape(document, args),
@@ -1962,6 +1987,35 @@ mod tests {
     /// `call_tool` with a throwaway collab state, for the tests that do not use a session.
     fn call(document: &mut Document, name: &str, args: &Value) -> Result<String, String> {
         call_tool(document, &mut Collab::default(), name, args)
+    }
+
+    /// A new map is set up for the game in the preferences, as the window sets it up: a
+    /// light placed in a Paintball 2 map is the game's `light`, not Heron's own one with
+    /// its Godot keys, and the game's classes are on offer.
+    #[test]
+    fn a_new_map_takes_the_game_s_entity_definitions() {
+        let original = crate::preferences::current();
+        let mut preferences = original.clone();
+        preferences.game = "Digital Paint: Paintball 2".to_string();
+        crate::preferences::set_current(preferences);
+
+        let mut document = Document::new(WorldBounds::default());
+        call(&mut document, "new_map", &json!({})).expect("new map");
+        call(
+            &mut document,
+            "add_point_entity",
+            &json!({"classname":"light","origin":[0,0,64],"properties":{"light":"300"}}),
+        )
+        .expect("light");
+        let map = call(&mut document, "get_map", &json!({})).expect("map");
+        let classes = call(&mut document, "list_entity_classes", &json!({})).expect("classes");
+        crate::preferences::set_current(original);
+
+        assert!(map.contains("\"light\" \"300\""), "{map}");
+        assert!(!map.contains("light_energy"), "{map}");
+        assert!(!map.contains("omni_range"), "{map}");
+        assert!(classes.contains("info_player_deathmatch"), "{classes}");
+        assert!(classes.contains("flag"), "{classes}");
     }
 
     /// The person's selection reaches the agent: ids, then the brushes in detail, and the

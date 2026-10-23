@@ -21,3 +21,6 @@ __pycache__/
 # LibreQuake wads and compiler output for the Quake demo.
 /demos/quake_libre/wads/
 /demos/quake_libre/build/
+
+# Compiler output for the Paintball 2 demo.
+/demos/paintball_heron/build/

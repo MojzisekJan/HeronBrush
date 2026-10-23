@@ -40,6 +40,9 @@ pub struct Material {
     pub normal_map: Option<NormalMap>,
     /// Imported glTF material, including original PBR images and factors.
     pub model_pbr: Option<Arc<crate::model_pbr::ModelPbr>>,
+    /// The flags a Quake 2 `.wal` gives a face that names none of its own: the compiler
+    /// makes a face wearing `sky1` sky because the texture says so, not the map.
+    pub surface_defaults: Option<crate::uv::SurfaceAttributes>,
 }
 
 /// A linear tangent-space normal image associated with an albedo texture.
@@ -393,6 +396,7 @@ impl Material {
             surface_parms: Vec::new(),
             normal_map: None,
             model_pbr: None,
+            surface_defaults: None,
         }
     }
 
@@ -410,6 +414,7 @@ impl Material {
             surface_parms: Vec::new(),
             normal_map: None,
             model_pbr: None,
+            surface_defaults: None,
         }
     }
 
@@ -429,7 +434,14 @@ impl Material {
                 path: path.clone(),
                 message,
             })?;
+        let mut surface_defaults = None;
         let pixels = if is_wal(Path::new(&asset.name)) {
+            let header = if asset.is_archived() {
+                asset.read().ok()
+            } else {
+                wal_header_bytes(&asset.origin)
+            };
+            surface_defaults = header.and_then(|bytes| crate::wal::surface_defaults(&bytes));
             let palette = palette.ok_or_else(|| MaterialError::Decode {
                 path: path.clone(),
                 message: "WAL requires an external palette (pics/colormap.pcx)".into(),
@@ -447,6 +459,7 @@ impl Material {
             surface_parms: Vec::new(),
             normal_map: None,
             model_pbr: None,
+            surface_defaults,
         })
     }
 
@@ -1331,8 +1344,25 @@ fn read_material_with_palette(
                 message: "WAL requires an external palette (pics/colormap.pcx)".into(),
             })?;
         material.pixels = Pixels::indexed(Source::File(path.to_path_buf()), palette);
+        material.surface_defaults =
+            wal_header_bytes(path).and_then(|bytes| crate::wal::surface_defaults(&bytes));
     }
     Ok(material)
+}
+
+/// The first 100 bytes of a loose `.wal`, which is its whole header.
+fn wal_header_bytes(path: &Path) -> Option<Vec<u8>> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use std::io::Read;
+        let mut bytes = vec![0; 100];
+        std::fs::File::open(path)
+            .and_then(|mut file| file.read_exact(&mut bytes))
+            .ok()?;
+        Some(bytes)
+    }
+    #[cfg(target_arch = "wasm32")]
+    file_store::read(path).ok()
 }
 
 /// A shader as a material: the first of its images that is on disk, under the shader's
@@ -1857,6 +1887,47 @@ mod wal_material_tests {
         bytes[8..12].copy_from_slice(&(directory.len() as u32).to_le_bytes());
         bytes.extend(directory);
         bytes
+    }
+    #[test]
+    fn a_wal_s_header_flags_reach_the_material_from_every_source() {
+        let root = root("flags");
+        let mut sky = crate::wal::tests::fixture();
+        sky[88..92].copy_from_slice(&4i32.to_le_bytes());
+        sky[96..100].copy_from_slice(&300i32.to_le_bytes());
+        let pcx = palette([12, 34, 56]);
+        std::fs::create_dir_all(root.join("pics")).unwrap();
+        std::fs::write(root.join("pics/colormap.pcx"), &pcx).unwrap();
+        std::fs::write(root.join("textures/base/sky.wal"), &sky).unwrap();
+        std::fs::write(
+            root.join("textures/base/plain.wal"),
+            crate::wal::tests::fixture(),
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("pak0.pak"),
+            pak(&[
+                ("textures/base/packed_sky.wal", sky),
+                ("pics/colormap.pcx", pcx),
+            ]),
+        )
+        .unwrap();
+        let folder = MaterialCollection::load_directory(root.join("textures")).unwrap();
+        let assets = crate::asset_fs::AssetFileSystem::mount(std::slice::from_ref(&root));
+        let mounted = MaterialCollection::load_assets(&assets, "textures");
+        let expected = Some(crate::uv::SurfaceAttributes {
+            content_flags: 0,
+            surface_flags: 4,
+            value: 300,
+        });
+        for material in [
+            folder.get("base/sky").unwrap(),
+            mounted.get("base/sky").unwrap(),
+            mounted.get("base/packed_sky").unwrap(),
+        ] {
+            assert_eq!(material.surface_defaults, expected, "{}", material.name);
+        }
+        assert_eq!(mounted.get("base/plain").unwrap().surface_defaults, None);
+        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn wal_materials_decode_lazily_from_directories_and_pak_with_shared_palette() {

@@ -582,11 +582,11 @@ impl Field {
         }
     }
 
-    /// What the edited face has in this field. A face with no surface attributes shows
-    /// zeroes.
-    pub fn value(self, face: &map_model::brush_face::BrushFace) -> f64 {
+    /// What the edited face has in this field. A face with no surface attributes of its
+    /// own shows the ones its texture gives it, which is what the compiler will use.
+    pub fn value(self, document: &Document, face: &map_model::brush_face::BrushFace) -> f64 {
         let attributes = face.uv_attributes;
-        let surface = face.surface_attributes.unwrap_or_default();
+        let surface = surface_of(document, face);
         match self {
             Field::OffsetX => f64::from(attributes.offset.x()),
             Field::OffsetY => f64::from(attributes.offset.y()),
@@ -600,12 +600,24 @@ impl Field {
     }
 
     /// Sets the field on every selected face. Setting a surface attribute gives the face
-    /// the lot, which is what the format writes.
+    /// the lot, which is what the format writes, starting from what its texture gives it:
+    /// once a face line carries flags, `qbsp` no longer reads the `.wal`'s, so a sky face
+    /// given a light value from zeroes would stop being sky.
     pub fn set(self, document: &mut Document, value: f64) {
+        let defaults: std::collections::HashMap<String, map_model::uv::SurfaceAttributes> =
+            document
+                .materials()
+                .materials()
+                .iter()
+                .filter_map(|m| Some((m.name.clone(), m.surface_defaults?)))
+                .collect();
         document.edit_faces(|face| {
             let offset = face.uv_attributes.offset;
             let scale = face.uv_attributes.scale;
-            let mut surface = face.surface_attributes.unwrap_or_default();
+            let mut surface = face
+                .surface_attributes
+                .or_else(|| defaults.get(face.material_name.as_ref()).copied())
+                .unwrap_or_default();
             match self {
                 Field::OffsetX => face.uv_attributes.offset = Vec2f::new(value as f32, offset.y()),
                 Field::OffsetY => face.uv_attributes.offset = Vec2f::new(offset.x(), value as f32),
@@ -636,6 +648,22 @@ pub const ROWS: [(&str, &[Field]); 6] = [
     (translation_key("Surface flags"), &[Field::SurfaceFlags]),
     (translation_key("Surface value"), &[Field::SurfaceValue]),
 ];
+
+/// The surface attributes a face carries: its own, or else the ones its texture's header
+/// gives it, or none.
+pub fn surface_of(
+    document: &Document,
+    face: &map_model::brush_face::BrushFace,
+) -> map_model::uv::SurfaceAttributes {
+    face.surface_attributes
+        .or_else(|| {
+            document
+                .materials()
+                .get(&face.material_name)
+                .and_then(|material| material.surface_defaults)
+        })
+        .unwrap_or_default()
+}
 
 /// `FaceAttribsEditor`'s flag list: a tick per named bit, as the mask and the name.
 /// `names[i]` names bit `1 << i`; an empty name is a bit the configuration does not use
@@ -1092,6 +1120,60 @@ mod tests {
         document.add_brushes(vec![brush]);
         document.select_all();
         document
+    }
+
+    /// A face on a `.wal` that is sky by its header shows the sky flag, and giving it a
+    /// light value keeps the flag: once the face line carries flags `qbsp` stops reading
+    /// the texture's, so starting from zeroes would quietly turn the sky into a wall.
+    #[test]
+    fn surface_fields_start_from_the_texture_s_own_flags() {
+        let root = std::env::temp_dir().join(format!("heron-uv-wal-flags-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("pics")).expect("pics");
+        std::fs::create_dir_all(root.join("textures/e1")).expect("textures");
+        let mut pcx = vec![0; 128];
+        pcx[..4].copy_from_slice(&[10, 5, 1, 8]);
+        pcx[8] = 1;
+        pcx[65] = 1;
+        pcx[66] = 2;
+        pcx.extend_from_slice(&[1, 0xc1, 255, 12]);
+        pcx.extend_from_slice(&[0; 768]);
+        std::fs::write(root.join("pics/colormap.pcx"), pcx).expect("palette");
+        let mut wal = vec![0; 100];
+        wal[32..36].copy_from_slice(&8u32.to_le_bytes());
+        wal[36..40].copy_from_slice(&8u32.to_le_bytes());
+        for level in 0..4 {
+            let offset = wal.len() as u32;
+            wal[40 + level * 4..44 + level * 4].copy_from_slice(&offset.to_le_bytes());
+            wal.extend(vec![1; (8 >> level) * (8 >> level)]);
+        }
+        wal[88..92].copy_from_slice(&4i32.to_le_bytes());
+        std::fs::write(root.join("textures/e1/sky.wal"), wal).expect("wal");
+
+        let mut document = Document::new(WorldBounds::default());
+        document
+            .load_materials(root.join("textures"))
+            .expect("materials");
+        let world = document.world_bounds();
+        let brush =
+            map_model::shapes::create_cuboid(&world, &Bbox3d::from_scalars(-32.0, 32.0), "e1/sky")
+                .expect("a cube");
+        document.add_brushes(vec![brush]);
+        document.select_all();
+
+        let face = document.face_to_edit().expect("a face").1.clone();
+        assert_eq!(Field::SurfaceFlags.value(&document, &face), 4.0);
+        Field::SurfaceValue.set(&mut document, 300.0);
+        let face = document.face_to_edit().expect("a face").1;
+        assert_eq!(
+            face.surface_attributes,
+            Some(map_model::uv::SurfaceAttributes {
+                content_flags: 0,
+                surface_flags: 4,
+                value: 300,
+            })
+        );
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]

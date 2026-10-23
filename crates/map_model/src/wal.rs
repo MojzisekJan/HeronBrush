@@ -44,6 +44,21 @@ pub fn header(bytes: &[u8]) -> Result<(u32, u32, [usize; 4]), String> {
     Ok((width, height, offsets))
 }
 
+/// The surface flags, content flags and value a WAL's header gives the faces that wear
+/// it, if it gives them any.
+///
+/// `qbsp` uses these for a face whose line in the map has no flags of its own, which is
+/// how `sky1.wal` makes a face sky and `ltwhite.wal` makes one shine.
+pub fn surface_defaults(bytes: &[u8]) -> Option<crate::uv::SurfaceAttributes> {
+    let word = |at: usize| Some(i32::from_le_bytes(bytes.get(at..at + 4)?.try_into().ok()?));
+    let defaults = crate::uv::SurfaceAttributes {
+        surface_flags: word(88)?,
+        content_flags: word(92)?,
+        value: word(96)?,
+    };
+    (defaults != crate::uv::SurfaceAttributes::default()).then_some(defaults)
+}
+
 /// Uses the highest-resolution mip; other mips are range-checked, not expanded.
 pub fn read(bytes: &[u8], palette: &[u8; 768]) -> Result<Skin, String> {
     let (width, height, offsets) = header(bytes)?;
@@ -95,6 +110,22 @@ pub(crate) mod tests {
         let skin = read(&fixture(), &palette).unwrap();
         assert_eq!((skin.width, skin.height), (8, 8));
         assert_eq!(&skin.pixels[..8], &[0, 0, 0, 0, 12, 34, 56, 255]);
+    }
+    #[test]
+    fn the_header_s_flags_are_the_faces_defaults() {
+        let mut bytes = fixture();
+        assert_eq!(surface_defaults(&bytes), None);
+        bytes[88..92].copy_from_slice(&133i32.to_le_bytes());
+        bytes[96..100].copy_from_slice(&300i32.to_le_bytes());
+        assert_eq!(
+            surface_defaults(&bytes),
+            Some(crate::uv::SurfaceAttributes {
+                content_flags: 0,
+                surface_flags: 133,
+                value: 300,
+            })
+        );
+        assert_eq!(surface_defaults(&bytes[..99]), None);
     }
     #[test]
     fn malformed_dimensions_offsets_and_all_truncations_are_rejected() {

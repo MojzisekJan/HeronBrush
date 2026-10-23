@@ -451,10 +451,12 @@ impl UvPanel {
         width: f32,
         caption: Option<(&str, usize)>,
     ) {
-        let current = document
-            .borrow()
-            .face_to_edit()
-            .map_or(0.0, |(_, face)| field.value(face));
+        let current = {
+            let document = document.borrow();
+            document
+                .face_to_edit()
+                .map_or(0.0, |(_, face)| field.value(&document, face))
+        };
         let (low, high, step, digits) = field.range();
         let mut value = current;
         let response = ui
@@ -538,7 +540,7 @@ fn flag_ticks(ui: &mut egui::Ui, document: &Rc<RefCell<Document>>, field: Field)
         };
         let value = document
             .face_to_edit()
-            .map_or(0, |(_, face)| field.value(face) as i32);
+            .map_or(0, |(_, face)| field.value(&document, face) as i32);
         (names, value)
     };
     for (mask, name) in uv_view::flag_ticks(&names) {
