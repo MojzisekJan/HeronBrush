@@ -430,6 +430,11 @@ section { padding: var(--section) 0 0; }
 .fmt::before { content: ""; }
 .logo-wall .name { margin-top: 0.85rem; color: var(--text); font-size: var(--fs-small); font-weight: 600; line-height: 1.3; }
 .logo-wall.small li { width: 7rem; }
+/* A linked name covers the whole tile. */
+.logo-wall a.name { text-decoration: none; }
+.logo-wall a.name::after { content: ""; position: absolute; inset: -14px 0 0; border-radius: var(--radius); }
+.logo-wall li:has(a.name:focus-visible) { outline: 2px solid var(--accent-2); outline-offset: 4px; border-radius: var(--radius); }
+.logo-wall a.name:focus-visible { outline: none; }
 .logo-wall .fmt {
   height: auto; margin: 11px 0; padding: 0.55rem 0.8rem; border: 1px solid var(--line-strong); border-radius: 9px;
   background: var(--icon-bg);

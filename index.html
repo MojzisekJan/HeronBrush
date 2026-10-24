@@ -242,17 +242,52 @@
       <div class="feature flip reveal">
         <div class="feature-text">
           <div class="feature-title"><span class="tool-icons" aria-hidden="true"><img src="images/tools/join-corner.svg" width="24" height="24" alt=""></span><h3>Join corner</h3></div>
-          <p>Join corner joins two members that meet at a corner, such as the beams of a frame, into a mitred or rounded corner of the same thickness. The dialog shows the corner before and after, with the radius and number of segments for the outer and inner arc.</p>
+          <p>Join corner joins two members that meet at a corner, such as the beams of a frame, into a mitred or rounded corner of the same thickness. The window previews the result as you set the radius and number of segments of each arc.</p>
         </div>
-        <img class="shot" src="images/join-corner.webp" width="1200" height="852" alt="The Join corner dialog with rounded outer and inner corners and before and after previews of two beams">
+        <img class="shot" src="images/join-corner.webp" width="1756" height="1056" alt="The Join corner window with concentric rounded corners and a preview of two beams joined over grey lines of the corner before">
       </div>
 
       <div class="feature reveal">
+        <div class="feature-text">
+          <div class="feature-title"><span class="tool-icons" aria-hidden="true"><img src="images/tools/join-brushes.svg" width="24" height="24" alt=""></span><h3>Join brushes</h3></div>
+          <p>Join brushes turns the selected brushes into as few convex brushes as possible without changing the overall shape. It tidies up geometry built from many small pieces, such as a sculpted terrain.</p>
+        </div>
+        <div class="shot-pair">
+          <img class="shot" src="images/join-before.webp?v=3" width="1060" height="728" loading="lazy" alt="A low-poly sculpted terrain selected in the 3D view, made of 64 square columns, with one hill at the far corner">
+          <img class="shot small" src="images/join-after.webp?v=3" width="1060" height="728" loading="lazy" alt="The same terrain after Join brushes: the same surface in 27 brushes, the flat ground joined into large boxes">
+        </div>
+      </div>
+
+      <div class="feature flip reveal">
         <div class="feature-text">
           <div class="feature-title"><span class="tool-icons" aria-hidden="true"><img src="images/tools/sweep.svg" width="24" height="24" alt=""></span><h3>Sweep, inset and bevel</h3></div>
           <p>Sweep selected faces along an arc, a straight path or an S-bend, with travel, turn and scale; materials, paint and UVs follow the new faces. Inset and bevel draw faces in from their edges and push them out or cut a recess.</p>
         </div>
         <img class="shot" src="images/sweep.webp" width="1515" height="450" alt="The end face of a block swept 256 units along a 90-degree arc in 12 steps, with the Sweep section of the Face tab">
+      </div>
+
+      <div class="feature reveal">
+        <div class="feature-text">
+          <div class="feature-title"><span class="tool-icons" aria-hidden="true"><img src="images/tools/sculpt.svg" width="24" height="24" alt=""></span><h3>Terrain sculpting</h3></div>
+          <p>The Sculpt tool shapes terrain by painting over it in the 3D view: raise, lower, smooth or flatten. The ground is split into columns first, or into blocks for stepped, voxel-style terrain.</p>
+        </div>
+        <img class="shot" src="images/terrain.webp" width="1560" height="1092" loading="lazy" alt="Hills sculpted into a hexagon-column terrain in the 3D view, with the Sculpt tool's Raise, Lower, Smooth and Flatten strip">
+      </div>
+
+      <div class="feature flip reveal">
+        <div class="feature-text">
+          <div class="feature-title"><span class="tool-icons" aria-hidden="true"><img src="images/tools/sculpt.svg" width="24" height="24" alt=""></span><h3>Freeform sculpting</h3></div>
+          <p>Freeform sculpts any brushes, not only terrain: grow a mound out of a box, dig through a wall, pull a ridge out over an edge. The result is ordinary convex brushes that keep their colours and materials.</p>
+        </div>
+        <img class="shot" src="images/sculpt-freeform.webp?v=3" width="960" height="620" loading="lazy" alt="A green slab sculpted in Freeform mode on a coarse grid: a faceted mound, a pit cut through its edge and a ridge reaching out past the edge">
+      </div>
+
+      <div class="feature reveal">
+        <div class="feature-text">
+          <div class="feature-title"><span class="tool-icons" aria-hidden="true"><img src="images/tools/array.svg" width="24" height="24" alt=""></span><h3>Array</h3></div>
+          <p>Array copies the selection in a row, a grid, a ring or scattered at random, and shows the copies in the map while you change the values. Copies of a group can be linked, so an edit to one reaches them all.</p>
+        </div>
+        <img class="shot" src="images/array.webp" width="1170" height="760" loading="lazy" alt="Twelve pillars in a ring on a floor in the 3D view, previewed by the Array window in Ring mode">
       </div>
     </div>
   </section>
@@ -342,17 +377,17 @@
       <div class="logo-group reveal-group">
         <h3 class="group-title">Engines</h3>
         <ul class="logo-wall">
-          <li style="--i:0"><img class="logo logo-godot" src="images/logos/godot.png" alt=""><span class="name">Godot</span></li>
-          <li style="--i:1"><img class="logo logo-unity" src="images/logos/unity.png" alt=""><span class="name">Unity</span></li>
-          <li style="--i:2"><img class="logo logo-unreal" src="images/logos/unreal.png" alt=""><span class="name">Unreal Engine</span></li>
-          <li style="--i:3"><img class="logo logo-flax" src="images/logos/flax.png" alt=""><span class="name">Flax Engine</span></li>
-          <li style="--i:4"><img class="logo logo-defold" src="images/logos/defold.png" alt=""><span class="name">Defold</span></li>
-          <li style="--i:5"><img class="logo logo-stride" src="images/logos/stride.png" alt=""><span class="name">Stride</span></li>
-          <li style="--i:6"><img class="logo logo-cocos" src="images/logos/cocos.png" alt=""><span class="name">Cocos Creator</span></li>
-          <li style="--i:7"><img class="logo logo-gdevelop" src="images/logos/gdevelop.png" alt=""><span class="name">GDevelop</span></li>
-          <li style="--i:8"><img class="logo logo-bevy" src="images/logos/bevy.png" alt=""><span class="name">Bevy</span></li>
-          <li style="--i:9"><img class="logo logo-threejs" src="images/logos/threejs.png" alt=""><span class="name">three.js</span></li>
-          <li style="--i:10"><img class="logo logo-raylib" src="images/logos/raylib.png" alt=""><span class="name">raylib</span></li>
+          <li style="--i:0"><img class="logo logo-godot" src="images/logos/godot.png" alt=""><a class="name" href="https://godotengine.org/" rel="noopener">Godot</a></li>
+          <li style="--i:1"><img class="logo logo-unity" src="images/logos/unity.png" alt=""><a class="name" href="https://unity.com/" rel="noopener">Unity</a></li>
+          <li style="--i:2"><img class="logo logo-unreal" src="images/logos/unreal.png" alt=""><a class="name" href="https://www.unrealengine.com/" rel="noopener">Unreal Engine</a></li>
+          <li style="--i:3"><img class="logo logo-flax" src="images/logos/flax.png" alt=""><a class="name" href="https://flaxengine.com/" rel="noopener">Flax Engine</a></li>
+          <li style="--i:4"><img class="logo logo-defold" src="images/logos/defold.png" alt=""><a class="name" href="https://defold.com/" rel="noopener">Defold</a></li>
+          <li style="--i:5"><img class="logo logo-stride" src="images/logos/stride.png" alt=""><a class="name" href="https://www.stride3d.net/" rel="noopener">Stride</a></li>
+          <li style="--i:6"><img class="logo logo-cocos" src="images/logos/cocos.png" alt=""><a class="name" href="https://www.cocos.com/en/creator" rel="noopener">Cocos Creator</a></li>
+          <li style="--i:7"><img class="logo logo-gdevelop" src="images/logos/gdevelop.png" alt=""><a class="name" href="https://gdevelop.io/" rel="noopener">GDevelop</a></li>
+          <li style="--i:8"><img class="logo logo-bevy" src="images/logos/bevy.png" alt=""><a class="name" href="https://bevy.org/" rel="noopener">Bevy</a></li>
+          <li style="--i:9"><img class="logo logo-threejs" src="images/logos/threejs.png" alt=""><a class="name" href="https://threejs.org/" rel="noopener">three.js</a></li>
+          <li style="--i:10"><img class="logo logo-raylib" src="images/logos/raylib.png" alt=""><a class="name" href="https://www.raylib.com/" rel="noopener">raylib</a></li>
         </ul>
       </div>
       <div class="logo-group reveal-group">
@@ -385,19 +420,19 @@
       <div class="logo-group reveal-group">
         <h3 class="group-title">Game profiles</h3>
         <ul class="logo-wall">
-          <li style="--i:0"><img class="logo logo-game" src="images/games/quake.png" width="32" height="32" alt=""><span class="name">Quake</span></li>
+          <li style="--i:0"><img class="logo logo-game" src="images/games/quake.png" width="32" height="32" alt=""><a class="name" href="https://quake.bethesda.net/" rel="noopener">Quake</a></li>
           <li style="--i:1"><img class="logo logo-game" src="images/games/quake2.png" width="32" height="32" alt=""><span class="name">Quake 2</span></li>
           <li style="--i:2"><img class="logo logo-game" src="images/games/quake3.png" width="32" height="32" alt=""><span class="name">Quake 3</span></li>
-          <li style="--i:3"><img class="logo logo-game" src="images/games/halflife.png" width="32" height="32" alt=""><span class="name">Half-Life</span></li>
+          <li style="--i:3"><img class="logo logo-game" src="images/games/halflife.png" width="32" height="32" alt=""><a class="name" href="https://www.half-life.com/" rel="noopener">Half-Life</a></li>
           <li style="--i:4"><img class="logo logo-game" src="images/games/hexen2.png" width="32" height="32" alt=""><span class="name">Hexen 2</span></li>
           <li style="--i:5"><img class="logo logo-game" src="images/games/heretic2.png" width="32" height="32" alt=""><span class="name">Heretic 2</span></li>
           <li style="--i:6"><img class="logo logo-game" src="images/games/daikatana.png" width="32" height="32" alt=""><span class="name">Daikatana</span></li>
           <li style="--i:7"><img class="logo logo-game" src="images/games/kingpin.png" width="32" height="32" alt=""><span class="name">Kingpin</span></li>
           <li style="--i:8"><img class="logo logo-game" src="images/games/sof.png" width="32" height="32" alt=""><span class="name">Soldier of Fortune</span></li>
-          <li style="--i:9"><img class="logo logo-game" src="images/games/wrath.png" width="32" height="32" alt=""><span class="name">Wrath</span></li>
-          <li style="--i:10"><img class="logo logo-game" src="images/games/quetoo.png" width="32" height="32" alt=""><span class="name">Quetoo</span></li>
+          <li style="--i:9"><img class="logo logo-game" src="images/games/wrath.png" width="32" height="32" alt=""><a class="name" href="https://3drealms.com/games/wrath-aeon-of-ruin/" rel="noopener">Wrath</a></li>
+          <li style="--i:10"><img class="logo logo-game" src="images/games/quetoo.png" width="32" height="32" alt=""><a class="name" href="https://quetoo.org/" rel="noopener">Quetoo</a></li>
           <li style="--i:11"><img class="logo logo-game" src="images/games/ddaynormandy.png" width="32" height="32" alt=""><span class="name">D-Day Normandy</span></li>
-          <li style="--i:12"><img class="logo logo-game" src="images/games/digitalpaintball2.png" width="32" height="32" alt=""><span class="name">Digital Paint: Paintball 2</span></li>
+          <li style="--i:12"><img class="logo logo-game" src="images/games/digitalpaintball2.png" width="32" height="32" alt=""><a class="name" href="https://www.digitalpaint.org/" rel="noopener">Digital Paint: Paintball 2</a></li>
           <li style="--i:13"><span class="fmt" aria-hidden="true">.fgd</span><span class="name">Your own game</span></li>
         </ul>
       </div>
