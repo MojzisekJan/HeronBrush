@@ -7,7 +7,8 @@ opens the door between them, a trigger in the courtyard's doorway switches the
 courtyard's lamps on and says so, froginators and protopods wait there, and steps lead
 up to a platform where the exit loads the demo's first map.
 
-![The courtyard, seen in Yamagi Quake II Remaster](preview.jpg)
+There is no preview image: it would show the demo's textures, which belong to the
+game's publisher.
 
 - `heron_marsh.map` is the map as Heron Brush saves it (Valve 220).
   `heron_marsh_dk.map` is the same map exported in the Quake 2 face lines that
