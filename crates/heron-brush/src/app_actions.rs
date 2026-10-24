@@ -81,7 +81,7 @@ pub enum Action {
     MergeColumns,
     /// Merge the selected brushes wherever the outside keeps its shape, whatever their
     /// faces look like.
-    MergeKeepingShape,
+    JoinBrushes,
     Preferences,
     Plugins,
     Export,
@@ -576,16 +576,16 @@ impl App {
                     Err(why) => editor_core::say!("{}", tr(why)),
                 }
             }
-            Action::MergeColumns | Action::MergeKeepingShape => {
-                let keeping_shape = action == Action::MergeKeepingShape;
+            Action::MergeColumns | Action::JoinBrushes => {
+                let joining = action == Action::JoinBrushes;
                 let before = self.editor.document.borrow().selection_count();
-                let result = if keeping_shape {
-                    self.editor.document.borrow_mut().merge_keeping_shape()
+                let result = if joining {
+                    self.editor.document.borrow_mut().join_brushes()
                 } else {
                     self.editor.document.borrow_mut().merge_columns()
                 };
-                let name = if keeping_shape {
-                    "Merge keeping shape"
+                let name = if joining {
+                    "Join brushes"
                 } else {
                     "Merge columns"
                 };

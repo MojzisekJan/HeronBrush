@@ -174,7 +174,7 @@ Dve števili sta **Polmer (enote)** in **Moč (%)**. Premikajo se le koti na str
 
 Ko končate z oblikovanjem, izberite teren in nato Geometrija → **Združi stebre** ali gumb v oknu **Oblikovanje**. Sosednji stebri, ki skupaj tvorijo konveksen brush in so videti enako, postanejo en brush, zato ravni deli postanejo nekaj velikih brushev. Površina se ne premakne, združevanje pa razveljavite v enem koraku.
 
-**Združi z ohranitvijo oblike**, takoj zraven v meniju in v oknu, združuje enako, a se ne meni za videz ploskev: kjer dve ploskvi postaneta ena, ta dobi material ene od njiju. Deluje na poljubnih izbranih brushih, ne le na terenu. Štirje kvadri v obliki črke L postanejo dva, nikoli eden, ki bi zapolnil L, celoten oblikovan teren pa se skrči na toliko brushev, kolikor jih najde združevanje sosedov. Združijo se le brushi v isti skupini ali entiteti, zato vrata nikoli ne pogoltnejo stene ob sebi.
+**Spoji brushe**, takoj zraven v meniju in v oknu, združuje enako, a se ne meni za videz ploskev: kjer dve ploskvi postaneta ena, ta dobi material ene od njiju. Deluje na poljubnih izbranih brushih, ne le na terenu. Štirje kvadri v obliki črke L postanejo dva, nikoli eden, ki bi zapolnil L, celoten oblikovan teren pa se skrči na toliko brushev, kolikor jih najde združevanje sosedov. Združijo se le brushi v isti skupini ali entiteti, zato vrata nikoli ne pogoltnejo stene ob sebi.
 
 Za teren kot v voxel igrah razdelite na stebre **Kvadrat** in v oknu **Oblikovanje** pri **Poteza** izberite **Kocke**. Poteza tedaj premika ves vrh vsakega stebra za cele korake mreže in pusti stranice navpične, zato teren raste v stopnicah. Vsi načini delujejo kot prej; majhne poteze se seštevajo, dokler steber ne zraste za cel korak. Stebri drugih oblik ostanejo nespremenjeni.
 

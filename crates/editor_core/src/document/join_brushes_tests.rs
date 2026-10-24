@@ -1,4 +1,4 @@
-//! Tests of Merge keeping shape: known shapes with the count they should come to, the
+//! Tests of Join brushes: known shapes with the count they should come to, the
 //! rules about what may merge, and seeded random layouts checked point by point.
 //!
 //! Every test that merges checks the same three things through `merge_and_check`: the
@@ -105,7 +105,65 @@ fn probes(d: &Document, n: usize) -> Vec<Vec3d> {
     out
 }
 
-/// Runs Merge keeping shape on the selection and checks that the shape held. Returns how
+/// Points on each face of `brush` that `keep` picks, with the face's normal: its middle
+/// and a third of the way from there to each corner, clear of the edges.
+fn face_samples(
+    brush: &Brush,
+    keep: impl Fn(&map_model::brush_face::BrushFace) -> bool,
+) -> Vec<(Vec3d, Vec3d)> {
+    let mut out = Vec::new();
+    for (face, corners) in brush.geometry_faces() {
+        if !keep(face) || corners.is_empty() {
+            continue;
+        }
+        let middle = corners.iter().fold(Vec3d::zero(), |sum, p| sum + *p) / corners.len() as f64;
+        out.push((middle, face.plane.normal));
+        for corner in &corners {
+            out.push((middle + (*corner - middle) / 3.0, face.plane.normal));
+        }
+    }
+    out
+}
+
+/// The surface's marks after a merge: every point of `before` that showed still lies on
+/// a face that shows, and every face left out of exports has something right in front
+/// of it.
+fn check_marks(before: &[Brush], after: &[Brush]) {
+    let shows = |brushes: &[Brush], p: Vec3d, n: Vec3d| !solid_at(brushes, p + n * 0.01);
+    for (p, n) in before
+        .iter()
+        .flat_map(|brush| face_samples(brush, |face| !face.export_hidden))
+    {
+        if !shows(before, p, n) {
+            continue;
+        }
+        let on: Vec<&map_model::brush_face::BrushFace> = after
+            .iter()
+            .filter(|brush| solid_at(std::slice::from_ref(*brush), p))
+            .flat_map(|brush| brush.faces())
+            .filter(|face| {
+                vec::dot(face.plane.normal, n) > 1.0 - 1e-6
+                    && (vec::dot(face.plane.normal, p) - face.plane.distance).abs() < 1e-4
+            })
+            .collect();
+        assert!(!on.is_empty(), "no face shows at {p:?}");
+        assert!(
+            on.iter().all(|face| !face.export_hidden),
+            "a face that shows at {p:?} is left out of exports"
+        );
+    }
+    for (p, n) in after
+        .iter()
+        .flat_map(|brush| face_samples(brush, |face| face.export_hidden))
+    {
+        assert!(
+            !shows(after, p, n),
+            "a face left out of exports shows at {p:?}"
+        );
+    }
+}
+
+/// Runs Join brushes on the selection and checks that the shape held. Returns how
 /// many brushes are left.
 fn merge_and_check(d: &mut Document) -> usize {
     let before_count = brushes(d).len();
@@ -114,7 +172,7 @@ fn merge_and_check(d: &mut Document) -> usize {
     let old = brushes(d);
     let inside: Vec<bool> = points.iter().map(|p| solid_at(&old, *p)).collect();
 
-    let removed = d.merge_keeping_shape().expect("a selection to merge");
+    let removed = d.join_brushes().expect("a selection to merge");
 
     let after = brushes(d);
     assert_eq!(after.len(), before_count - removed, "the count it reports");
@@ -135,6 +193,7 @@ fn merge_and_check(d: &mut Document) -> usize {
         assert!(brush.volume() > 0.0, "a brush without volume");
         assert!(brush.faces().len() >= 4, "a brush with too few faces");
     }
+    check_marks(&old, &after);
     after.len()
 }
 
@@ -445,7 +504,7 @@ fn different_materials_merge_and_one_of_them_is_kept() {
     }
 }
 
-/// Merge columns refuses where the looks differ; Merge keeping shape does not.
+/// Merge columns refuses where the looks differ; Join brushes does not.
 #[test]
 fn merge_columns_still_keeps_looks_apart() {
     let mut d = document_with(|d| {
@@ -455,7 +514,7 @@ fn merge_columns_still_keeps_looks_apart() {
         ]
     });
     assert_eq!(d.merge_columns(), Ok(0));
-    assert_eq!(d.merge_keeping_shape(), Ok(1));
+    assert_eq!(d.join_brushes(), Ok(1));
 }
 
 #[test]
@@ -511,9 +570,9 @@ fn brushes_in_different_groups_stay_apart_and_each_group_merges() {
 #[test]
 fn fewer_than_two_brushes_is_refused() {
     let mut d = document_with(|d| cells(d, 16.0, &[[0, 0, 0]]));
-    assert!(d.merge_keeping_shape().is_err());
+    assert!(d.join_brushes().is_err());
     let mut empty = Document::new(Default::default());
-    assert!(empty.merge_keeping_shape().is_err());
+    assert!(empty.join_brushes().is_err());
 }
 
 #[test]
@@ -548,7 +607,7 @@ fn a_second_merge_finds_nothing_more() {
     });
     merge_and_check(&mut d);
     d.select_all();
-    assert_eq!(d.merge_keeping_shape(), Ok(0));
+    assert_eq!(d.join_brushes(), Ok(0));
 }
 
 // Terrain.
@@ -780,4 +839,149 @@ fn random_flat_shapes_come_close_to_the_fewest() {
         ours * 100 <= fewest * 101,
         "{ours} brushes where {fewest} would do"
     );
+}
+
+// The base cut.
+
+/// How many brushes Join brushes leaves of the selection without cutting off a base.
+fn left_without_a_cut(d: &Document) -> usize {
+    let family: Vec<(NodeId, Brush)> = d.selected_brushes_with_ids();
+    merge_family(&family, Faces::Any).left
+}
+
+/// Columns 16 across on an `n` × `n` grid, standing on z = 0 with their tops through the
+/// heights `height` gives the grid's corners, then turned by `place` to stand along
+/// another axis.
+fn heightfield(
+    n: usize,
+    height: impl Fn(usize, usize) -> f64,
+    place: impl Fn([f64; 3]) -> [f64; 3],
+) -> Vec<Brush> {
+    let mut out = Vec::new();
+    for i in 0..n {
+        for j in 0..n {
+            let mut points = Vec::new();
+            for (a, b) in [(i, j), (i + 1, j), (i, j + 1), (i + 1, j + 1)] {
+                let (x, y) = (a as f64 * 16.0, b as f64 * 16.0);
+                points.push(place([x, y, 0.0]));
+                points.push(place([x, y, height(a, b)]));
+            }
+            out.push(hull(&points, "grass"));
+        }
+    }
+    out
+}
+
+/// A hill at the far corner of flat ground: 1 unit high above 32 everywhere but within
+/// three cells of corner (n, n).
+fn hill(n: usize) -> impl Fn(usize, usize) -> f64 {
+    move |a, b| {
+        let dx = n as f64 - a as f64;
+        let dy = n as f64 - b as f64;
+        32.0 + 24.0 * (1.0 - (dx * dx + dy * dy).sqrt() / 3.0).max(0.0)
+    }
+}
+
+/// A brush of `brushes` covering the whole `side` × `side` ground below `top` along `up`
+/// with no more than that height: the base block.
+fn has_base_block(brushes: &[Brush], up: usize, top: f64, side: f64) -> bool {
+    brushes.iter().any(|brush| {
+        let b = brush.bounds();
+        let across: Vec<usize> = (0..3).filter(|i| *i != up).collect();
+        across.iter().all(|i| (b.max[*i] - b.min[*i] - side).abs() < 1e-6)
+            && (b.max[up] - b.min[up] - top).abs() < 1e-6
+    })
+}
+
+/// Columns standing along each of the six axis directions, a hill at the far corner of
+/// each ground: the base below the hill's foot becomes one block, and fewer brushes are
+/// left than merging the columns whole leaves.
+#[test]
+fn a_hill_on_columns_along_any_axis_stands_on_one_base_block() {
+    let n = 6;
+    for up in 0..3 {
+        for sign in [1.0, -1.0] {
+            let place = move |p: [f64; 3]| {
+                let mut out = [0.0; 3];
+                out[up] = p[2] * sign;
+                out[(up + 1) % 3] = p[0];
+                out[(up + 2) % 3] = p[1];
+                out
+            };
+            let mut d = document_with(|_| heightfield(n, hill(n), place));
+            let whole = left_without_a_cut(&d);
+            let left = merge_and_check(&mut d);
+            assert!(
+                left < whole,
+                "up {up} sign {sign}: {left} left, {whole} without the cut"
+            );
+            assert!(
+                has_base_block(&brushes(&d), up, 32.0, n as f64 * 16.0),
+                "up {up} sign {sign}: no base block"
+            );
+        }
+    }
+}
+
+/// Columns sculpted into a hill at one corner, as the Sculpt tool leaves them: the cut
+/// leaves fewer brushes than merging whole columns, and the surface and its marks hold.
+#[test]
+fn sculpted_hills_of_every_shape_merge_further_with_the_cut() {
+    for shape in ColumnShape::ALL {
+        let mut d = terrain(shape);
+        d.clear_selection();
+        let mut stroke = d.begin_sculpt_stroke();
+        let parameters = SculptParameters {
+            radius: 40.0,
+            strength: 0.8,
+            mode: SculptMode::Raise,
+            ..Default::default()
+        };
+        d.sculpt_dab(Vec3d::new(104.0, 104.0, 32.0), &parameters, &mut stroke);
+        d.select_all();
+        let whole = left_without_a_cut(&d);
+        let left = merge_and_check(&mut d);
+        assert!(left < whole, "{shape:?}: {left} left, {whole} without the cut");
+        assert!(has_base_block(&brushes(&d), 2, 32.0, 128.0), "{shape:?}");
+    }
+}
+
+/// A pit dug nearly through the ground leaves no base worth cutting: the merge goes on
+/// as without the cut.
+#[test]
+fn a_pit_down_to_the_floor_leaves_the_columns_whole() {
+    let n = 4;
+    let pit = |a: usize, b: usize| if (a, b) == (2, 2) { 0.5 } else { 32.0 };
+    let mut d = document_with(|_| heightfield(n, pit, |p| p));
+    let brushes_now: Vec<Brush> = brushes(&d);
+    assert!(cut_off_base(&brushes_now).is_none());
+    let whole = left_without_a_cut(&d);
+    assert_eq!(merge_and_check(&mut d), whole);
+}
+
+/// Brushes that do not stand on the floor are left whole by the cut, and the parts the
+/// cut makes cover each brush exactly.
+#[test]
+fn the_cut_splits_only_what_stands_on_the_floor() {
+    let n = 4;
+    let mut d = document_with(|d| {
+        let mut out = heightfield(n, hill(n), |p| p);
+        out.push(cuboid(d, [0.0, 0.0, 100.0], [16.0, 16.0, 116.0], "m"));
+        out
+    });
+    let all = brushes(&d);
+    let parts = cut_off_base(&all).expect("a base to cut");
+    for (i, brush) in all.iter().enumerate() {
+        let mine: Vec<&Brush> = parts
+            .iter()
+            .filter(|(from, _)| *from == i)
+            .map(|(_, part)| part)
+            .collect();
+        let volume: f64 = mine.iter().map(|part| part.volume()).sum();
+        assert!((volume - brush.volume()).abs() < 1e-6, "brush {i}");
+        if brush.bounds().min.z() > 50.0 {
+            assert_eq!(mine.len(), 1, "the floating box stays whole");
+        }
+    }
+    merge_and_check(&mut d);
 }

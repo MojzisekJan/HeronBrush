@@ -95,6 +95,45 @@ fn spread_over(corners: &[Vec3d], normal: Vec3d, spacing: f64, within: &Bbox3d) 
     points
 }
 
+/// `brush` with each face looking like the face of `sources` in its plane, or else the
+/// one that looks most its way: material, colour and mapping alike, so a dab keeps the
+/// ground's paint.
+fn dressed_like(brush: &Brush, sources: &[&Brush]) -> Brush {
+    let mut faces = brush.faces().to_vec();
+    for face in &mut faces {
+        let normal = face.plane.normal;
+        let best = sources
+            .iter()
+            .flat_map(|source| source.faces())
+            .max_by(|a, b| {
+                let score = |f: &map_model::brush_face::BrushFace| {
+                    let along = vec::dot(f.plane.normal, normal);
+                    let coplanar = along > 1.0 - 1e-7
+                        && (f.plane.distance - face.plane.distance).abs() < 1e-6;
+                    (coplanar, along)
+                };
+                let (a, b) = (score(a), score(b));
+                a.0.cmp(&b.0).then(a.1.total_cmp(&b.1))
+            });
+        let Some(best) = best else {
+            return brush.clone();
+        };
+        face.material_name = best.material_name.clone();
+        face.color = best.color.clone();
+        face.surface_material = best.surface_material;
+        face.uv_attributes = best.uv_attributes;
+        face.surface_attributes = best.surface_attributes;
+        face.uv_coord_system = best.uv_coord_system.updated_for_normal(
+            best.plane.normal,
+            normal,
+            map_model::uv::WrapStyle::Projection,
+        );
+    }
+    brush
+        .with_exact_face_attributes(&faces)
+        .unwrap_or_else(|| brush.clone())
+}
+
 impl Document {
     /// Starts a free stroke on a grid `step` units apart: Raise adds ground, Lower takes
     /// it away, Smooth evens it out, and Flatten moves it to the plane square to `along`
@@ -303,6 +342,25 @@ impl Document {
         let raw = field.to_brushes_where(&material, |cell| crossed.contains(&cell));
         let mut pieces = merge(raw);
         pieces.extend(field.boxes_of(&full).iter().filter_map(cuboid));
+        // Each piece wears the look of the brushes it grew out of, or of all of them
+        // when it grew into the air.
+        let pieces: Vec<Brush> = pieces
+            .iter()
+            .map(|piece| {
+                let reach = piece.bounds().expand(step);
+                let near: Vec<&Brush> = candidates
+                    .iter()
+                    .map(|(_, brush)| brush)
+                    .filter(|brush| brush.bounds().intersects(&reach))
+                    .collect();
+                if near.is_empty() {
+                    let all: Vec<&Brush> = candidates.iter().map(|(_, brush)| brush).collect();
+                    dressed_like(piece, &all)
+                } else {
+                    dressed_like(piece, &near)
+                }
+            })
+            .collect();
         // The changed cells as a few boxes, to cut out of the brushes they reach.
         let cutters: Vec<Brush> = field.boxes_of(&changed).iter().filter_map(cuboid).collect();
         let mut replacements: Vec<(NodeId, Vec<Brush>)> = candidates
@@ -312,7 +370,10 @@ impl Document {
                     .iter()
                     .any(|cutter| cutter.bounds().intersects(&brush.bounds()))
             })
-            .map(|(id, brush)| (*id, map_model::csg::subtract_all(brush, &cutters)))
+            .map(|(id, brush)| {
+                let left = map_model::csg::subtract_all(brush, &cutters);
+                (*id, left.iter().map(|part| dressed_like(part, &[brush])).collect())
+            })
             .collect();
         let Some((_, first)) = replacements.first_mut() else {
             return false;
@@ -513,6 +574,23 @@ mod tests {
         );
         assert!(solid_at(&d, Vec3d::new(64.0, 64.0, 31.0)));
         assert!(!solid_at(&d, Vec3d::new(64.0, 64.0, 33.0)));
+    }
+
+    #[test]
+    fn the_sculpted_ground_keeps_its_paint() {
+        let mut d = slab();
+        d.select_all();
+        d.set_face_color(Some(map_model::brush_face::FaceColor::solid(
+            map_model::brush_face::Rgb::new(112, 158, 84),
+        )));
+        d.clear_selection();
+        dabs(&mut d, SculptMode::Raise, Vec3d::new(40.0, 40.0, 32.0), 2);
+        dabs(&mut d, SculptMode::Lower, Vec3d::new(96.0, 96.0, 32.0), 2);
+        assert!(brushes(&d).len() > 1);
+        assert!(brushes(&d)
+            .iter()
+            .flat_map(|brush| brush.faces())
+            .all(|face| face.color.is_some()));
     }
 
     #[test]

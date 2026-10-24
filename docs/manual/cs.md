@@ -245,7 +245,7 @@ Dvě čísla jsou **Poloměr (jednotky)** a **Síla (%)**. Posouvají se jen roh
 
 Až budete se sochaním hotovi, vyberte terén a zvolte Geometrie → **Sloučit sloupce**, nebo tlačítko v okně **Sochat**. Sousední sloupce, které spolu tvoří konvexní brush a vypadají stejně, se sloučí do jednoho, takže z rovných ploch zbude pár velkých brushů. Povrch se nepohne a sloučení se vrací jedním krokem zpět.
 
-**Sloučit se zachováním tvaru**, hned vedle v menu i v okně, slučuje stejně, ale nehledí na vzhled stěn: kde se dvě stěny spojí v jednu, dostane materiál jedné z nich. Funguje na jakýchkoli vybraných brushích, nejen na terénu. Čtyři kvádry do L se sloučí do dvou, nikdy do jednoho, který by L vyplnil, a celý vytvarovaný terén klesne na tolik brushů, kolik slučování sousedů najde. Slučují se jen brushe ve stejné skupině nebo entitě, takže dveře nikdy nepohltí zeď vedle sebe.
+**Spojit brushe**, hned vedle v menu i v okně, slučuje stejně, ale nehledí na vzhled stěn: kde se dvě stěny spojí v jednu, dostane materiál jedné z nich. Funguje na jakýchkoli vybraných brushích, nejen na terénu. Čtyři kvádry do L se sloučí do dvou, nikdy do jednoho, který by L vyplnil, a celý vytvarovaný terén klesne na tolik brushů, kolik slučování sousedů najde. Slučují se jen brushe ve stejné skupině nebo entitě, takže dveře nikdy nepohltí zeď vedle sebe.
 
 Pro terén jako ve voxelových hrách rozdělte na sloupce **Čtverec** a v okně **Sochat** zvolte u **Tah** možnost **Kostky**. Tah pak posouvá celý vršek každého sloupce po celých krocích mřížky a boky nechává svislé, takže terén stoupá ve schodech. Zvednout, Snížit, Vyhladit i Zarovnat fungují jako dřív; malé tahy se sčítají, dokud sloupec nevystoupá o celý krok. Sloupce jiných tvarů zůstanou, jak jsou.
 

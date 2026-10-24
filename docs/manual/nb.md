@@ -174,7 +174,7 @@ De to tallene er **Radius (enheter)** og **Styrke (%)**. Bare hjørnene på den 
 
 Når modelleringen er ferdig, merker du terrenget og velger Geometri → **Slå sammen søyler**, eller knappen i vinduet **Modeller**. Nabosøyler som sammen danner en konveks brush og ser like ut, blir én brush, så flate partier blir noen få store brushes. Overflaten flytter seg ikke, og sammenslåingen angres i ett steg.
 
-**Slå sammen og behold formen**, rett ved siden av i menyen og i vinduet, slår sammen på samme måte, men bryr seg ikke om hvordan flatene ser ut: der to flater blir én, får den materialet til en av dem. Den virker på alle merkede brushes, ikke bare terreng. Fire kasser i en L blir to, aldri én som fyller ut L-en, og et helt modellert terreng blir så få brushes som sammenslåing av naboer kan finne. Bare brushes i samme gruppe eller entitet slås sammen, så en dør sluker aldri veggen ved siden av.
+**Sammenføy brusher**, rett ved siden av i menyen og i vinduet, slår sammen på samme måte, men bryr seg ikke om hvordan flatene ser ut: der to flater blir én, får den materialet til en av dem. Den virker på alle merkede brushes, ikke bare terreng. Fire kasser i en L blir to, aldri én som fyller ut L-en, og et helt modellert terreng blir så få brushes som sammenslåing av naboer kan finne. Bare brushes i samme gruppe eller entitet slås sammen, så en dør sluker aldri veggen ved siden av.
 
 For terreng som i voxelspill deler du i **Kvadrat**-søyler og velger **Blokker** under **Strøk** i vinduet **Modeller**. Et strøk flytter da hele toppen av hver søyle i hele rutetrinn og holder sidene loddrette, så bakken stiger i trinn. Alle modusene virker som før; små strøk legges sammen til en søyle har steget et helt trinn. Søyler med andre former røres ikke.
 

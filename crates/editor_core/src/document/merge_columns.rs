@@ -1,6 +1,6 @@
 //! Merging brushes into fewer: two neighbours become one wherever together they make a
 //! convex brush, so the outside does not move. Merge columns also keeps every face's
-//! look; Merge keeping shape lets the faces' looks go.
+//! look; Join brushes lets the faces' looks go.
 use super::*;
 use crate::i18n::translation_key;
 
@@ -35,7 +35,7 @@ impl Document {
     /// outside keeps its exact shape, so four brushes that pair up into two convex ones
     /// become two, and a whole stretch of terrain becomes as few brushes as merging
     /// neighbours finds.
-    pub fn merge_keeping_shape(&mut self) -> Result<usize, &'static str> {
+    pub fn join_brushes(&mut self) -> Result<usize, &'static str> {
         self.merge_selected(Faces::Any)
     }
 
@@ -60,19 +60,25 @@ impl Document {
         let mut replacements: HashMap<NodeId, Vec<Brush>> = HashMap::new();
         let mut removed = 0;
         for family in families.into_values() {
-            let ids: Vec<NodeId> = family.iter().map(|(id, _)| *id).collect();
-            let mut brushes: Vec<Option<Brush>> =
-                family.into_iter().map(|(_, brush)| Some(brush)).collect();
-            for (i, absorbed) in merge_neighbours(&mut brushes, faces, Effort::Thorough) {
-                let Some(brush) = brushes[i].take() else {
-                    continue;
-                };
-                replacements.insert(ids[i], vec![brush]);
-                for j in absorbed {
-                    replacements.insert(ids[j], Vec::new());
-                    removed += 1;
+            let mut best = merge_family(&family, faces);
+            // Join brushes also tries cutting off the base the brushes stand on: columns
+            // reaching down to one floor merge there into one block, and what stands on
+            // it merges on its own. Whichever leaves fewer brushes wins.
+            if faces == Faces::Any {
+                let brushes: Vec<Brush> = family.iter().map(|(_, brush)| brush.clone()).collect();
+                if let Some(cut) = cut_off_base(&brushes) {
+                    let parts: Vec<(NodeId, Brush)> = cut
+                        .into_iter()
+                        .map(|(i, brush)| (family[i].0, brush))
+                        .collect();
+                    let other = merge_family(&parts, faces);
+                    if other.left < best.left {
+                        best = other;
+                    }
                 }
             }
+            removed += family.len() - best.left;
+            replacements.extend(best.replacements);
         }
         if replacements.is_empty() {
             return Ok(0);
@@ -107,6 +113,136 @@ impl Document {
         }
         out
     }
+}
+
+/// What merging one family of brushes comes to: what each original that changed becomes,
+/// and how many brushes are left of the family.
+struct Outcome {
+    replacements: HashMap<NodeId, Vec<Brush>>,
+    left: usize,
+}
+
+/// Merges `parts`, each named by the original it came from; an original may have been cut
+/// into several parts. An original changes when it was cut or a part of it merged, and
+/// then becomes the merged brushes that kept the place of one of its parts.
+fn merge_family(parts: &[(NodeId, Brush)], faces: Faces) -> Outcome {
+    let mut brushes: Vec<Option<Brush>> =
+        parts.iter().map(|(_, brush)| Some(brush.clone())).collect();
+    let merged = merge_neighbours(&mut brushes, faces, Effort::Thorough);
+    let mut count: HashMap<NodeId, usize> = HashMap::new();
+    for (id, _) in parts {
+        *count.entry(*id).or_default() += 1;
+    }
+    let mut replacements: HashMap<NodeId, Vec<Brush>> = count
+        .into_iter()
+        .filter(|(_, n)| *n > 1)
+        .map(|(id, _)| (id, Vec::new()))
+        .collect();
+    for (i, absorbed) in &merged {
+        for m in std::iter::once(i).chain(absorbed) {
+            replacements.entry(parts[*m].0).or_default();
+        }
+    }
+    for (i, brush) in brushes.iter().enumerate() {
+        if let (Some(brush), Some(list)) = (brush, replacements.get_mut(&parts[i].0)) {
+            list.push(brush.clone());
+        }
+    }
+    Outcome {
+        replacements,
+        left: brushes.iter().flatten().count(),
+    }
+}
+
+/// `brushes` with the base they stand on cut off, each part named by the brush it came
+/// from; `None` when there is no such base. The floor is the outermost plane along one
+/// of the six axis directions that two or more brushes have a face in, the one most
+/// brushes stand on. The cut lies as high above it as it can while every brush standing
+/// there keeps upright sides below it: the lowest corner of any face that is not a side
+/// or the floor. Below the cut each such brush is then a straight prism, and the prisms
+/// side by side merge into one block, which columns reaching all the way down never do
+/// under a hill whose foot curves in. A brush that ends at the cut is left whole; the
+/// faces the cut makes lie against each other and are left out of exports.
+fn cut_off_base(brushes: &[Brush]) -> Option<Vec<(usize, Brush)>> {
+    let along = |b: &Brush, n: Vec3d| -> (f64, f64) {
+        b.vertex_positions()
+            .iter()
+            .map(|p| vec::dot(n, *p))
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), h| {
+                (lo.min(h), hi.max(h))
+            })
+    };
+    let floor_plane = |n: Vec3d, floor: f64| Plane3d::new(-floor, -n);
+    let stands_on = |b: &Brush, n: Vec3d, floor: f64| {
+        let plane = floor_plane(n, floor);
+        b.faces()
+            .iter()
+            .any(|face| geometry_math::plane::is_equal(&face.plane, &plane, SAME))
+    };
+    let mut best: Option<(usize, Vec3d, f64)> = None;
+    for axis in 0..3 {
+        for sign in [1.0, -1.0] {
+            let mut n = Vec3d::zero();
+            n[axis] = sign;
+            let floor = brushes
+                .iter()
+                .map(|b| along(b, n).0)
+                .fold(f64::INFINITY, f64::min);
+            let on = brushes.iter().filter(|b| stands_on(b, n, floor)).count();
+            if on >= 2 && best.is_none_or(|(most, _, _)| on > most) {
+                best = Some((on, n, floor));
+            }
+        }
+    }
+    let (_, n, floor) = best?;
+    let plane = floor_plane(n, floor);
+    let level = brushes
+        .iter()
+        .filter(|b| stands_on(b, n, floor))
+        .flat_map(|b| {
+            b.geometry_faces()
+                .filter(|(face, _)| {
+                    vec::dot(face.plane.normal, n).abs() > SAME
+                        && !geometry_math::plane::is_equal(&face.plane, &plane, SAME)
+                })
+                .flat_map(|(_, corners)| corners.into_iter().map(|p| vec::dot(n, p)))
+                .collect::<Vec<f64>>()
+        })
+        .fold(f64::INFINITY, f64::min);
+    // A base thinner than a unit is not worth a cut, and makes slivers.
+    if !level.is_finite() || level - floor < 1.0 {
+        return None;
+    }
+    let hidden_on = |brush: Brush, plane: &Plane3d| -> Option<Brush> {
+        let mut faces = brush.faces().to_vec();
+        for face in &mut faces {
+            if geometry_math::plane::is_equal(&face.plane, plane, SAME) {
+                face.export_hidden = true;
+            }
+        }
+        brush.with_exact_face_attributes(&faces)
+    };
+    let mut out = Vec::with_capacity(brushes.len() * 2);
+    for (i, brush) in brushes.iter().enumerate() {
+        if !stands_on(brush, n, floor) || along(brush, n).1 <= level + SAME {
+            out.push((i, brush.clone()));
+            continue;
+        }
+        let (below, above) = (Plane3d::new(level, n), Plane3d::new(-level, -n));
+        let (
+            map_model::brush::ClipOutcome::Clipped(base),
+            map_model::brush::ClipOutcome::Clipped(top),
+        ) = (brush.clip(&below), brush.clip(&above))
+        else {
+            return None;
+        };
+        if base.volume() < 1e-3 || top.volume() < 1e-3 {
+            return None;
+        }
+        out.push((i, hidden_on(base, &below)?));
+        out.push((i, hidden_on(top, &above)?));
+    }
+    Some(out)
 }
 
 /// How hard [`merge_neighbours`] looks for the fewest brushes.
@@ -446,13 +582,17 @@ fn merged(a: &Brush, b: &Brush, faces: Faces) -> Option<Brush> {
     // alignment or what is exported.
     let mut worn_faces = Vec::with_capacity(joined.faces().len());
     for face in joined.faces() {
-        let mut on = sources
+        let on = sources
             .iter()
             .filter(|f| geometry_math::plane::is_equal(&f.plane, &face.plane, SAME));
-        let first = on.next()?;
-        if faces == Faces::Alike && !on.all(|f| looks_alike(first, f)) {
+        let on: Vec<&&map_model::brush_face::BrushFace> = on.collect();
+        let first = *on.first()?;
+        if faces == Faces::Alike && !on.iter().all(|f| looks_alike(first, f)) {
             return None;
         }
+        // A face that shows anywhere shows: it wears the look of a part of it that
+        // shows, and is left out of exports only when all of it was.
+        let first = on.iter().find(|f| !f.export_hidden).copied().unwrap_or(first);
         let mut worn = (*first).clone();
         worn.points = face.points;
         worn.plane = face.plane;
@@ -471,8 +611,8 @@ fn looks_alike(a: &map_model::brush_face::BrushFace, b: &map_model::brush_face::
 }
 
 #[cfg(test)]
-#[path = "merge_keeping_shape_tests.rs"]
-mod keeping_shape_tests;
+#[path = "join_brushes_tests.rs"]
+mod join_brushes_tests;
 
 #[cfg(test)]
 mod tests {
@@ -595,7 +735,7 @@ mod tests {
     }
 
     #[test]
-    fn merging_keeping_shape_lets_the_looks_go() {
+    fn joining_brushes_lets_the_looks_go() {
         let mut d = Document::new(Default::default());
         for (x, material) in [(0.0, "rock"), (64.0, "grass")] {
             let bounds = Bbox3d::new(Vec3d::new(x, 0.0, 0.0), Vec3d::new(x + 64.0, 64.0, 32.0));
@@ -607,7 +747,7 @@ mod tests {
             .unwrap()]);
         }
         d.select_all();
-        assert_eq!(d.merge_keeping_shape(), Ok(1));
+        assert_eq!(d.join_brushes(), Ok(1));
         assert_eq!(brushes(&d).len(), 1);
         assert!((total_volume(&d) - 2.0 * 64.0 * 64.0 * 32.0).abs() < 1e-6);
     }
@@ -643,7 +783,7 @@ mod tests {
             .collect();
         let inside: Vec<bool> = probes.iter().map(|p| solid_at(&d, *p)).collect();
         d.select_all();
-        assert_eq!(d.merge_keeping_shape(), Ok(2));
+        assert_eq!(d.join_brushes(), Ok(2));
         assert_eq!(brushes(&d).len(), 2);
         assert!((total_volume(&d) - volume).abs() < 1e-6);
         let after: Vec<bool> = probes.iter().map(|p| solid_at(&d, *p)).collect();
@@ -668,7 +808,7 @@ mod tests {
         d.select_only(first);
         assert!(d.create_brush_entity("func_door").is_some());
         d.select_all();
-        assert_eq!(d.merge_keeping_shape(), Ok(0));
+        assert_eq!(d.join_brushes(), Ok(0));
         assert_eq!(brushes(&d).len(), 2);
     }
 
@@ -715,7 +855,7 @@ mod tests {
         );
     }
 
-    /// How long Merge keeping shape takes on sculpted terrain the size of the column
+    /// How long Join brushes takes on sculpted terrain the size of the column
     /// limit, hills and hollows all over:
     /// `cargo test --release -p editor_core --lib merge_columns::tests::speed_sculpted -- --ignored --nocapture`.
     #[test]

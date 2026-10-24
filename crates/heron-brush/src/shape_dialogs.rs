@@ -37,6 +37,9 @@ pub struct ShapeDialogs {
     corner_steps: [[bool; 2]; 4],
     corner_zoom: f32,
     corner_pan: egui::Vec2,
+    /// The map's grid when the window opened, drawn under the preview unless the corner
+    /// snaps to a grid of its own.
+    corner_map_grid: f64,
     /// The corner dialog's error, if any.
     status: String,
 }
@@ -67,6 +70,7 @@ impl Default for ShapeDialogs {
             corner_steps: [[true; 2]; 4],
             corner_zoom: 1.0,
             corner_pan: egui::Vec2::ZERO,
+            corner_map_grid: 16.0,
             status: String::new(),
         }
     }
@@ -105,6 +109,7 @@ impl ShapeDialogs {
         self.corner_open = true;
         self.corner_zoom = 1.0;
         self.corner_pan = egui::Vec2::ZERO;
+        self.corner_map_grid = editor.grid.borrow().actual_size();
         self.status.clear();
         self.corner = match editor
             .document
@@ -299,7 +304,12 @@ impl ShapeDialogs {
             self.corner_zoom = 1.0;
             self.corner_pan = egui::Vec2::ZERO;
         }
-        draw_join(ui, rect, &join, self.corner_zoom, self.corner_pan);
+        let grid = if self.corner_snap {
+            self.corner_grid
+        } else {
+            self.corner_map_grid
+        };
+        draw_join(ui, rect, &join, grid, self.corner_zoom, self.corner_pan);
     }
 
     fn refresh_corner_steps(&mut self, editor: &Editor) {
@@ -699,6 +709,7 @@ fn draw_join(
     ui: &egui::Ui,
     rect: egui::Rect,
     join: &editor_core::corner_join::Join,
+    grid: f64,
     zoom: f32,
     pan: egui::Vec2,
 ) {
@@ -722,6 +733,33 @@ fn draw_join(
         )
     };
     let painter = ui.painter_at(rect);
+    // The grid faintly under it all, doubled until its lines stand at least 8 points
+    // apart, so zooming out does not fill the well with lines.
+    let mut step = grid.max(1.0 / 64.0);
+    while step * scale < 8.0 {
+        step *= 2.0;
+    }
+    let centre = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];
+    let at = |x: f32, y: f32| {
+        [
+            centre[0] + f64::from(x - rect.center().x - pan.x) / scale,
+            centre[1] - f64::from(y - rect.center().y - pan.y) / scale,
+        ]
+    };
+    let (low, high) = (at(rect.left(), rect.bottom()), at(rect.right(), rect.top()));
+    let line = egui::Stroke::new(1.0, theme::grid().gamma_multiply(0.6));
+    let mut k = (low[0] / step).ceil();
+    while k * step <= high[0] {
+        let x = rect.center().x + pan.x + ((k * step - centre[0]) * scale) as f32;
+        painter.vline(x, rect.y_range(), line);
+        k += 1.0;
+    }
+    let mut k = (low[1] / step).ceil();
+    while k * step <= high[1] {
+        let y = rect.center().y + pan.y - ((k * step - centre[1]) * scale) as f32;
+        painter.hline(rect.x_range(), y, line);
+        k += 1.0;
+    }
     // The brushes as they were, faint and thin, then what the join makes of them.
     for brush in &join.before {
         for (a, b) in brush.edge_positions() {
