@@ -1516,6 +1516,24 @@ pub struct DragState {
     pub extruding: Option<Extruding>,
     /// Where a split drag took hold, which is where the new corner is measured from.
     pub splitting: Option<Vec3d>,
+    /// What the press would select if it ends as a click rather than a drag. Selection
+    /// waits for the release, as in `SelectionTool`, so a drag can still draw a brush over
+    /// an unselected one, or pull a face of the selected brush, instead.
+    pub click: Option<Click>,
+}
+
+/// What a press that never became a drag selects.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Click {
+    /// Only this object, or with Ctrl, this object toggled.
+    Object {
+        node: map_model::node::NodeId,
+        toggle: bool,
+    },
+    /// Only this face, or with Ctrl, this face toggled.
+    Face { face: FaceRef, toggle: bool },
+    /// Nothing: a click on empty space deselects.
+    Nothing,
 }
 
 /// A drag that is stretching a face out of a brush.
@@ -2167,6 +2185,7 @@ impl SelectAndMove {
                 shearing: None,
                 extruding: None,
                 splitting: None,
+                click: None,
             };
             redraw();
             return;
@@ -2205,6 +2224,7 @@ impl SelectAndMove {
                 shearing: None,
                 extruding: None,
                 splitting: None,
+                click: None,
             };
             redraw();
             return;
@@ -2231,8 +2251,10 @@ impl SelectAndMove {
             return;
         }
 
-        // Shift activates extrusion except in a handle tool, where it splits vertices.
-        if modifiers.shift && HandleKind::of(*tool.borrow()).is_none() {
+        // Shift extrudes with the Select or Brush tool. A handle tool splits vertices with
+        // it, and Rotate, Scale, Shear, Sweep and Clip switch extruding off
+        // (`MapViewToolBox`), Scale for its own proportional Shift.
+        if modifiers.shift && matches!(*tool.borrow(), Tool::Select | Tool::Brush) {
             let camera = state.borrow().camera;
             let ray = camera.ray_through(Vec2d::new(x, y), viewport, PICK_REACH);
             let started = {
@@ -2247,22 +2269,21 @@ impl SelectAndMove {
             };
             if let Some(extruding) = started {
                 document.borrow_mut().begin_transaction();
-                // Preparing a Shift-drag must still select a face on a plain click.
-                let picked = document
+                // A Shift-click that never moves still selects the face under it, but
+                // only on release: selecting it now would drop the brushes the drag pulls.
+                let click = document
                     .borrow()
                     .pick_flat(&ray)
-                    .filter(|hit| hit.face.is_some());
-                if let Some(hit) = picked {
-                    let face = FaceRef {
-                        node: hit.node,
-                        face: hit.face.unwrap(),
-                    };
-                    if modifiers.control {
-                        document.borrow_mut().toggle_face_selected(face);
-                    } else {
-                        document.borrow_mut().select_face_only(face);
-                    }
-                }
+                    .and_then(|hit| {
+                        hit.face.map(|face| FaceRef {
+                            node: hit.node,
+                            face,
+                        })
+                    })
+                    .map(|face| Click::Face {
+                        face,
+                        toggle: modifiers.control,
+                    });
                 *drag.borrow_mut() = DragState {
                     origin: Vec2d::new(x, y),
                     current: Vec2d::new(x, y),
@@ -2273,6 +2294,7 @@ impl SelectAndMove {
                     shearing: None,
                     extruding: Some(extruding),
                     splitting: None,
+                    click,
                 };
                 redraw();
                 return;
@@ -2314,6 +2336,7 @@ impl SelectAndMove {
                 shearing: caught,
                 extruding: None,
                 splitting: None,
+                click: None,
             };
             redraw();
             return;
@@ -2344,6 +2367,7 @@ impl SelectAndMove {
                 shearing: None,
                 extruding: None,
                 splitting: None,
+                click: None,
             };
             redraw();
             return;
@@ -2432,6 +2456,7 @@ impl SelectAndMove {
                 shearing: None,
                 extruding: None,
                 splitting,
+                click: None,
             };
             redraw();
             // Which handles are picked is what the fillet panel works from,
@@ -2453,7 +2478,9 @@ impl SelectAndMove {
         let hit = if modified_pick {
             document.pick_flat(&ray)
         } else {
-            document.pick_selected_flat(&ray).or_else(|| document.pick_flat(&ray))
+            document
+                .pick_selected_flat(&ray)
+                .or_else(|| document.pick_flat(&ray))
         };
         // Whether anything was selected before the click below clears it: a drag
         // from empty space draws a brush, but not on the same drag that deselects.
@@ -2464,32 +2491,39 @@ impl SelectAndMove {
         let add_to_selection = modifiers.control;
         let pick_face = modifiers.shift;
 
-        match (hit, pick_face) {
+        // `SelectionTool::mouseClick`: what a press selects is decided on release, if it
+        // stays a click, so the press is free to start a drag instead.
+        // `MoveObjectsToolController` moves only what is already selected, and a drag over
+        // anything else draws a brush (`DrawShapeToolController2D`), square with Shift.
+        let click = match hit {
             // Shift picks a face, which only a brush has.
-            (Some(hit), true) if hit.face.is_some() => {
-                let face = FaceRef {
+            Some(hit) if pick_face && hit.face.is_some() => Some(Click::Face {
+                face: FaceRef {
                     node: hit.node,
                     face: hit.face.expect("checked just above"),
-                };
-                if add_to_selection {
-                    document.toggle_face_selected(face);
-                } else {
-                    document.select_face_only(face);
-                }
-            }
-            (Some(hit), true) if add_to_selection => document.toggle_selected(hit.node),
-            (Some(hit), true) => document.select_only(hit.node),
-            (Some(hit), false) if add_to_selection => document.toggle_selected(hit.node),
-            (Some(hit), false) => {
-                // Clicking something already selected keeps the whole selection, so a
-                // drag can move several brushes at once.
-                if !document.is_selected(hit.node) {
-                    document.select_only(hit.node);
-                }
-            }
-            (None, _) if !add_to_selection => document.clear_selection(),
-            (None, _) => {}
+                },
+                toggle: add_to_selection,
+            }),
+            Some(hit) => Some(Click::Object {
+                node: document
+                    .pick_flat(&ray)
+                    .map_or(hit.node, |nearest| nearest.node),
+                toggle: add_to_selection,
+            }),
+            None => None,
+        };
+        // `DrawShapeToolController2D` draws only while nothing is selected; with a
+        // selection, a press elsewhere is a click, deselecting or selecting on release.
+        let draws = !had_selection || *tool.borrow() == Tool::Brush;
+        let click = match click {
+            None if !add_to_selection && !draws => Some(Click::Nothing),
+            other => other,
+        };
+        if hit.is_none() && !add_to_selection && draws {
+            document.clear_selection();
         }
+        let grabbed_selected =
+            hit.is_some_and(|hit| !modified_pick && document.is_selected(hit.node));
 
         *drag.borrow_mut() = DragState {
             origin: Vec2d::new(x, y),
@@ -2501,16 +2535,19 @@ impl SelectAndMove {
             extruding: None,
             splitting: None,
             mode: match hit {
-                Some(_) if document.has_selection() => {
+                Some(_) if grabbed_selected => {
                     // The whole drag is one step in the history. Without this every
                     // motion event recorded its own, and a drag across the window
                     // left a hundred of them to undo one at a time.
                     document.begin_transaction();
                     DragMode::Moving
                 }
+                // Ctrl toggles on release; a Ctrl-drag does nothing yet.
+                Some(_) if add_to_selection || !draws => DragMode::Idle,
+                Some(_) => DragMode::Creating,
                 None => empty_space_drag_mode(had_selection, add_to_selection, *tool.borrow()),
-                _ => DragMode::Idle,
             },
+            click,
         };
         state.borrow_mut().moving = drag.borrow().mode == DragMode::Moving;
 
@@ -2890,6 +2927,13 @@ impl SelectAndMove {
             return;
         }
 
+        // A press that has not moved past the threshold is still a click: no box yet
+        // (`DrawShapeToolController2D` starts only on a real drag).
+        if drag.mode == DragMode::Creating && vec::length(Vec2d::new(dx, dy)) < DRAG_THRESHOLD {
+            state.borrow_mut().creating = None;
+            *pending_shape.borrow_mut() = None;
+            return;
+        }
         if drag.mode == DragMode::Creating {
             // Show the box that would be made -- snapped, and with the depth this
             // view cannot speak for -- rather than the rectangle the pointer swept.
@@ -2979,6 +3023,35 @@ impl SelectAndMove {
         *pending_shape.borrow_mut() = None;
 
         let mut drag = drag.borrow_mut();
+
+        // A press that never became a drag is a click, and selects what it was on.
+        if let Some(click) = drag.click {
+            if vec::length(Vec2d::new(dx, dy)) < DRAG_THRESHOLD {
+                drag.mode = DragMode::Idle;
+                drop(drag);
+                let mut document = document.borrow_mut();
+                // A Shift-press opened the extrude's transaction.
+                document.cancel_transaction();
+                match click {
+                    Click::Object { node, toggle: true } => document.toggle_selected(node),
+                    Click::Object {
+                        node,
+                        toggle: false,
+                    } => document.select_only(node),
+                    Click::Face { face, toggle: true } => document.toggle_face_selected(face),
+                    Click::Face {
+                        face,
+                        toggle: false,
+                    } => document.select_face_only(face),
+                    Click::Nothing => document.clear_selection(),
+                }
+                drop(document);
+                redraw_everywhere();
+                redraw();
+                refresh_panels();
+                return;
+            }
+        }
 
         if matches!(
             drag.mode,
@@ -3122,7 +3195,7 @@ impl SelectAndMove {
             return;
         }
 
-        if mode != DragMode::Creating {
+        if mode != DragMode::Creating || vec::length(Vec2d::new(dx, dy)) < DRAG_THRESHOLD {
             return;
         }
         let camera = state.borrow().camera;
@@ -3143,8 +3216,10 @@ impl SelectAndMove {
         };
 
         let mut document = document.borrow_mut();
+        // The tool stays as it was, as in TrenchBroom: drawing with Select leaves Select in
+        // hand, and the frontend makes the shape at once.
         match document.begin_shape_preview(bounds, *shape_parameters.borrow()) {
-            Ok(_) => *tool.borrow_mut() = Tool::Brush,
+            Ok(_) => {}
             Err(error) => crate::complain!(
                 "{}",
                 fill("Could not draw the shape: {}", &[&error.to_string()])
@@ -3192,13 +3267,18 @@ impl SelectAndMove {
                 document.borrow_mut().restore_selection(&initial);
             }
         } else {
-            document.borrow_mut().commit_transaction();
+            // A tracker's `cancel` undoes the gesture (`cancelTransaction`).
+            document.borrow_mut().cancel_transaction();
         }
         drag.mode = DragMode::Idle;
         drag.scaling = None;
         drag.shearing = None;
         drag.extruding = None;
+        drag.click = None;
+        *pending_shape.borrow_mut() = None;
         let mut state = state.borrow_mut();
+        state.creating = None;
+        state.lasso = None;
         state.scaling = None;
         state.rotating = false;
         state.moving = false;
@@ -3232,18 +3312,13 @@ impl SelectAndMove {
             marquee,
         } = self;
 
-        let selecting = drag.borrow().mode == DragMode::Lassoing;
-        if selecting {
-            if let Some(initial) = marquee.borrow_mut().take() {
-                document.borrow_mut().restore_selection(&initial);
-            }
-            drag.borrow_mut().mode = DragMode::Idle;
-            state.borrow_mut().lasso = None;
-            redraw_everywhere();
-            redraw();
-            return true;
+        // Esc ends whatever drag is under way and undoes it, as `ToolChain::cancel` does;
+        // a lasso puts the selection back.
+        if drag.borrow().mode == DragMode::Idle {
+            return false;
         }
-        false
+        self.cancel();
+        true
     }
 }
 
@@ -3497,7 +3572,10 @@ impl FlatView {
     }
 
     pub fn face_under_pointer(&self, x: f64, y: f64, viewport: (f64, f64)) -> Option<FaceRef> {
-        let hit = self.document.borrow().pick_flat(&self.ray(x, y, viewport))?;
+        let hit = self
+            .document
+            .borrow()
+            .pick_flat(&self.ray(x, y, viewport))?;
         Some(FaceRef {
             node: hit.node,
             face: hit.face?,
@@ -4018,6 +4096,338 @@ mod tests {
             assert!(single.second_polygon.is_none());
             assert_eq!(single.mode, extrude_tool::mode_for(ctrl, alt));
         }
+    }
+
+    /// A flat view's drag handler over `document`, looking down from the top.
+    fn top_view(document: Document) -> (SelectAndMove, Camera2d) {
+        let bounds = WorldBounds::default();
+        let mut camera = Camera2d::new(ViewPlane::Top, bounds.half_extent());
+        camera.zoom = 1.;
+        let state = ViewportState {
+            camera,
+            cursor: None,
+            bounds,
+            framed_generation: None,
+            creating: None,
+            creating_elsewhere: None,
+            lasso: None,
+            scaling: None,
+            rotating: false,
+            moving: false,
+            dragging_handle: None,
+            entity_drop: None,
+        };
+        let drag = SelectAndMove {
+            state: Rc::new(RefCell::new(state)),
+            grid: Rc::new(RefCell::new(Grid::new(4))),
+            document: Rc::new(RefCell::new(document)),
+            shape_parameters: Rc::new(RefCell::new(ShapeParameters::default())),
+            tool: Rc::new(RefCell::new(Tool::Select)),
+            clip: Rc::new(RefCell::new(ClipTool::new())),
+            handles: Rc::new(RefCell::new(HandleManager::new())),
+            rotate: Rc::new(RefCell::new(RotateTool::new())),
+            fillet: Rc::new(RefCell::new(crate::fillet_tool::FilletParameters::default())),
+            pending_shape: Rc::new(RefCell::new(None)),
+            redraw_everywhere: Rc::new(|| {}),
+            sweep: Rc::new(RefCell::new(crate::sweep_tool::SweepInputs::default())),
+            refresh_panels: Rc::new(|| {}),
+            redraw: Rc::new(|| {}),
+            focus: Rc::new(|| {}),
+            drag: Rc::new(RefCell::new(DragState::default())),
+            marquee: Rc::new(RefCell::new(None)),
+        };
+        (drag, camera)
+    }
+
+    /// A floor under everything and a cube standing on it.
+    fn floor_and_cube() -> (Document, map_model::node::NodeId, map_model::node::NodeId) {
+        let mut document = Document::new(WorldBounds::default());
+        let world = document.world_bounds();
+        let mut ids = Vec::new();
+        for (min, max) in [
+            (
+                Vec3d::new(-512.0, -512.0, -16.0),
+                Vec3d::new(512.0, 512.0, 0.0),
+            ),
+            (Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(64.0, 64.0, 64.0)),
+        ] {
+            let brush = map_model::shapes::create_cuboid(&world, &Bbox3d::new(min, max), "stone")
+                .expect("a cuboid");
+            document.add_brushes(vec![brush]);
+            ids.push(
+                *document
+                    .selection_ids()
+                    .iter()
+                    .next()
+                    .expect("the new brush is selected"),
+            );
+            document.clear_selection();
+        }
+        (document, ids[0], ids[1])
+    }
+
+    fn drag_from(
+        drag: &SelectAndMove,
+        from: Vec2d,
+        by: Vec2d,
+        modifiers: Modifiers,
+        viewport: (f64, f64),
+    ) {
+        drag.begin(from.x(), from.y(), modifiers, viewport);
+        let steps = 4;
+        for i in 1..=steps {
+            let t = f64::from(i) / f64::from(steps);
+            drag.update(by.x() * t, by.y() * t, modifiers, viewport);
+        }
+        drag.end(by.x(), by.y(), modifiers, viewport);
+    }
+
+    /// `MoveObjectsToolController` only moves what is selected; a drag that starts over
+    /// an unselected brush -- the floor, in a top view, is under everything -- draws a
+    /// new brush, as one over empty space does.
+    #[test]
+    fn a_drag_over_an_unselected_brush_draws_rather_than_moves_it() {
+        let (document, floor, _) = floor_and_cube();
+        let floor_bounds = document.brush(floor).unwrap().bounds();
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let from = camera.world_to_screen(Vec3d::new(-200.0, -200.0, 0.0), viewport);
+        let to = camera.world_to_screen(Vec3d::new(-100.0, -100.0, 0.0), viewport);
+        drag_from(&drag, from, to - from, Modifiers::default(), viewport);
+        let document = drag.document.borrow();
+        assert_eq!(
+            document.brush(floor).unwrap().bounds(),
+            floor_bounds,
+            "the floor moved"
+        );
+        assert!(document.has_shape_preview(), "no brush was drawn");
+    }
+
+    /// A click on an unselected brush still selects it.
+    #[test]
+    fn a_click_on_an_unselected_brush_selects_it() {
+        let (document, floor, _) = floor_and_cube();
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let at = camera.world_to_screen(Vec3d::new(-200.0, -200.0, 0.0), viewport);
+        drag_from(
+            &drag,
+            at,
+            Vec2d::new(0.0, 0.0),
+            Modifiers::default(),
+            viewport,
+        );
+        let document = drag.document.borrow();
+        assert_eq!(
+            document.selection_ids().iter().copied().collect::<Vec<_>>(),
+            vec![floor]
+        );
+        assert!(!document.has_shape_preview());
+    }
+
+    /// A drag on a selected brush moves it, even with the floor in front of it.
+    #[test]
+    fn a_drag_on_a_selected_brush_moves_it() {
+        let (mut document, _, cube) = floor_and_cube();
+        document.select_only(cube);
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let from = camera.world_to_screen(Vec3d::new(32.0, 32.0, 0.0), viewport);
+        let to = camera.world_to_screen(Vec3d::new(96.0, 32.0, 0.0), viewport);
+        drag_from(&drag, from, to - from, Modifiers::default(), viewport);
+        let bounds = drag.document.borrow().brush(cube).unwrap().bounds();
+        assert_eq!(bounds.min.x(), 64.0);
+    }
+
+    /// `ExtrudeTool`: Shift-dragging a selected brush's edge in a flat view pulls its face.
+    #[test]
+    fn shift_dragging_a_selected_brushs_edge_resizes_it() {
+        let (mut document, _, cube) = floor_and_cube();
+        document.select_only(cube);
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let from = camera.world_to_screen(Vec3d::new(64.0, 32.0, 0.0), viewport);
+        let to = camera.world_to_screen(Vec3d::new(96.0, 32.0, 0.0), viewport);
+        let shift = Modifiers {
+            shift: true,
+            ..Modifiers::default()
+        };
+        drag_from(&drag, from, to - from, shift, viewport);
+        let bounds = drag.document.borrow().brush(cube).unwrap().bounds();
+        assert_eq!((bounds.min.x(), bounds.max.x()), (0.0, 96.0));
+    }
+
+    fn entity_origin(document: &Document, id: map_model::node::NodeId) -> Vec3d {
+        match &map_model::node::find_node(document.tree_world(), id)
+            .unwrap()
+            .kind
+        {
+            map_model::node::NodeKind::Entity(entity) => entity.origin().unwrap(),
+            _ => panic!("not an entity"),
+        }
+    }
+
+    /// A click on empty space only deselects; it draws no one-cell brush.
+    #[test]
+    fn a_click_on_empty_space_draws_nothing() {
+        let (document, _, _) = floor_and_cube();
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let at = camera.world_to_screen(Vec3d::new(900.0, 900.0, 0.0), viewport);
+        drag_from(
+            &drag,
+            at,
+            Vec2d::new(1.0, 1.0),
+            Modifiers::default(),
+            viewport,
+        );
+        assert!(!drag.document.borrow().has_shape_preview());
+        assert_eq!(*drag.tool.borrow(), Tool::Select);
+    }
+
+    /// `SelectionTool::mouseClick` selects what is under the click even when something
+    /// selected is under it too: the cube on a selected floor.
+    #[test]
+    fn a_click_on_a_cube_over_a_selected_floor_selects_the_cube() {
+        let (mut document, floor, cube) = floor_and_cube();
+        document.select_only(floor);
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let at = camera.world_to_screen(Vec3d::new(32.0, 32.0, 0.0), viewport);
+        drag_from(
+            &drag,
+            at,
+            Vec2d::new(0.0, 0.0),
+            Modifiers::default(),
+            viewport,
+        );
+        let document = drag.document.borrow();
+        assert_eq!(
+            document.selection_ids().iter().copied().collect::<Vec<_>>(),
+            vec![cube]
+        );
+    }
+
+    /// Shift-drag over the floor with nothing selected draws a brush, as without Shift.
+    #[test]
+    fn a_shift_drag_over_an_unselected_brush_draws() {
+        let (document, floor, _) = floor_and_cube();
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let from = camera.world_to_screen(Vec3d::new(-200.0, -200.0, 0.0), viewport);
+        let to = camera.world_to_screen(Vec3d::new(-100.0, -150.0, 0.0), viewport);
+        let shift = Modifiers {
+            shift: true,
+            ..Modifiers::default()
+        };
+        drag_from(&drag, from, to - from, shift, viewport);
+        let document = drag.document.borrow();
+        assert!(document.has_shape_preview());
+        assert!(!document.is_selected(floor));
+    }
+
+    /// A dragged entity follows the pointer, and the move is one undo step.
+    #[test]
+    fn a_dragged_entity_moves_once_and_undoes() {
+        let (mut document, _, _) = floor_and_cube();
+        let entity =
+            document.create_point_entity("info_player_start", Vec3d::new(200.0, 200.0, 0.0));
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let from = camera.world_to_screen(Vec3d::new(200.0, 200.0, 0.0), viewport);
+        let to = camera.world_to_screen(Vec3d::new(264.0, 200.0, 0.0), viewport);
+        drag_from(&drag, from, to - from, Modifiers::default(), viewport);
+        let mut document = drag.document.borrow_mut();
+        assert_eq!(
+            entity_origin(&document, entity),
+            Vec3d::new(264.0, 200.0, 0.0)
+        );
+        document.undo();
+        assert_eq!(
+            entity_origin(&document, entity),
+            Vec3d::new(200.0, 200.0, 0.0)
+        );
+    }
+
+    /// Esc in the middle of a move puts the selection back and ends the drag.
+    #[test]
+    fn escape_ends_a_move_and_puts_it_back() {
+        let (mut document, _, cube) = floor_and_cube();
+        document.select_only(cube);
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let from = camera.world_to_screen(Vec3d::new(32.0, 32.0, 0.0), viewport);
+        let to = camera.world_to_screen(Vec3d::new(96.0, 32.0, 0.0), viewport);
+        let by = to - from;
+        drag.begin(from.x(), from.y(), Modifiers::default(), viewport);
+        drag.update(by.x(), by.y(), Modifiers::default(), viewport);
+        assert!(drag.escape());
+        drag.update(by.x() * 2.0, by.y(), Modifiers::default(), viewport);
+        drag.end(by.x() * 2.0, by.y(), Modifiers::default(), viewport);
+        let document = drag.document.borrow();
+        assert_eq!(document.brush(cube).unwrap().bounds().min.x(), 0.0);
+        assert!(!document.in_transaction());
+    }
+
+    /// Shift in the Scale tool is proportional scaling, not an extrude.
+    #[test]
+    fn shift_in_the_scale_tool_does_not_extrude() {
+        let (mut document, _, cube) = floor_and_cube();
+        document.select_only(cube);
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        *drag.tool.borrow_mut() = Tool::Scale;
+        let at = camera.world_to_screen(Vec3d::new(64.0, 32.0, 0.0), viewport);
+        let shift = Modifiers {
+            shift: true,
+            ..Modifiers::default()
+        };
+        drag.begin(at.x(), at.y(), shift, viewport);
+        assert_ne!(drag.drag.borrow().mode, DragMode::Extruding);
+        drag.cancel();
+    }
+
+    /// `DrawShapeToolController2D` draws only while nothing is selected: with the cube
+    /// selected, a drag over the floor does nothing, and a click on the floor selects it.
+    #[test]
+    fn with_a_selection_a_drag_elsewhere_draws_nothing_and_a_click_selects() {
+        let (mut document, floor, cube) = floor_and_cube();
+        document.select_only(cube);
+        let floor_bounds = document.brush(floor).unwrap().bounds();
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let from = camera.world_to_screen(Vec3d::new(-200.0, -200.0, 0.0), viewport);
+        let to = camera.world_to_screen(Vec3d::new(-100.0, -100.0, 0.0), viewport);
+        drag_from(&drag, from, to - from, Modifiers::default(), viewport);
+        {
+            let document = drag.document.borrow();
+            assert!(!document.has_shape_preview());
+            assert_eq!(document.brush(floor).unwrap().bounds(), floor_bounds);
+            assert!(document.is_selected(cube));
+        }
+        drag_from(
+            &drag,
+            from,
+            Vec2d::new(0.0, 0.0),
+            Modifiers::default(),
+            viewport,
+        );
+        let document = drag.document.borrow();
+        assert_eq!(
+            document.selection_ids().iter().copied().collect::<Vec<_>>(),
+            vec![floor]
+        );
+        // And a click on empty space deselects, on release.
+        drop(document);
+        let empty = camera.world_to_screen(Vec3d::new(900.0, 900.0, 0.0), viewport);
+        drag_from(
+            &drag,
+            empty,
+            Vec2d::new(0.0, 0.0),
+            Modifiers::default(),
+            viewport,
+        );
+        assert!(!drag.document.borrow().has_selection());
     }
 
     /// Two cubes, one at the origin and one well away from it.

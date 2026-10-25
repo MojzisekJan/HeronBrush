@@ -58,6 +58,23 @@ pub struct MaterialGpu {
     model_emissive: [f32; 4],
 }
 
+/// Object-table flag bits, as `common.wgsl` names them.
+const OBJECT_HIDDEN: u32 = 4;
+/// Drawn, but left out of every shadow map.
+const OBJECT_SHADOWLESS: u32 = 8;
+
+/// The object-table flags for `state`.
+fn object_flags(state: ObjectState) -> u32 {
+    u32::from(state.selected)
+        | (u32::from(state.locked) << 1)
+        | if state.hidden { OBJECT_HIDDEN } else { 0 }
+        | if state.shadowless {
+            OBJECT_SHADOWLESS
+        } else {
+            0
+        }
+}
+
 /// Which pass a run of triangles belongs to.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub enum Phase {
@@ -275,7 +292,7 @@ pub struct RenderScene {
     moving: HashSet<ObjectKey>,
     /// Counts syncs that reached [`RenderScene::finish`].
     pub(crate) sync_epoch: u64,
-    /// Bumped when any object's hidden flag changes: hidden objects cast no shadow.
+    /// Bumped when any object's hidden or shadowless flag changes: neither casts a shadow.
     pub(crate) hidden_generation: u64,
     /// Bumped when the material collection is replaced (masked casters change).
     pub(crate) materials_generation: u64,
@@ -635,11 +652,11 @@ impl RenderScene {
     }
 
     fn write_state(&mut self, slot: u32, state: ObjectState) {
-        let flags = u32::from(state.selected)
-            | (u32::from(state.locked) << 1)
-            | (u32::from(state.hidden) << 2);
+        let flags = object_flags(state);
         let entry = &mut self.object_table[slot as usize];
-        if (entry.flags ^ flags) & 4 != 0 {
+        // Hidden and shadowless objects are left out of the shadow maps: a change to either
+        // redraws the cached ones.
+        if (entry.flags ^ flags) & (OBJECT_HIDDEN | OBJECT_SHADOWLESS) != 0 {
             self.hidden_generation += 1;
         }
         if entry.flags != flags {
@@ -1552,5 +1569,30 @@ impl RenderScene {
         }
         self.textures_generation += 1;
         self.flush();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_shadowless_object_gets_the_bit_the_shadow_pass_skips() {
+        let flags = object_flags(ObjectState {
+            shadowless: true,
+            ..Default::default()
+        });
+        assert_eq!(flags, OBJECT_SHADOWLESS);
+        // The shader's constants are the same bits.
+        let common = include_str!("shaders/common.wgsl");
+        assert!(common.contains(&format!(
+            "const OBJECT_SHADOWLESS: u32 = {OBJECT_SHADOWLESS}u;"
+        )));
+        assert!(common.contains(&format!("const OBJECT_HIDDEN: u32 = {OBJECT_HIDDEN}u;")));
+        let shadow = include_str!("shaders/shadow.wgsl");
+        assert_eq!(
+            shadow.matches("OBJECT_HIDDEN | OBJECT_SHADOWLESS").count(),
+            2
+        );
     }
 }

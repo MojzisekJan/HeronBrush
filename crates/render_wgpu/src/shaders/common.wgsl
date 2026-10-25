@@ -110,6 +110,8 @@ struct Material {
 const OBJECT_SELECTED: u32 = 1u;
 const OBJECT_LOCKED: u32 = 2u;
 const OBJECT_HIDDEN: u32 = 4u;
+// Drawn but casts no shadow: an editor-only symbol such as a light's bulb.
+const OBJECT_SHADOWLESS: u32 = 8u;
 
 const MATERIAL_OWN_FACTORS: u32 = 1u;
 const MATERIAL_NORMAL_MAP: u32 = 4u;

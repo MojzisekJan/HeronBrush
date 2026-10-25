@@ -9,7 +9,7 @@
 //
 // PlayCanvas and ammo.js load from jsDelivr at the versions the exported page names.
 // Set HERON_CDN_CACHE to a folder to keep them between runs.
-const {chromium} = require('playwright');
+const playwright = require('playwright');
 const fs = require('node:fs'), http = require('node:http'), path = require('node:path');
 
 (async () => {
@@ -58,7 +58,15 @@ const fs = require('node:fs'), http = require('node:http'), path = require('node
     }
   };
   try {
-    browser = await chromium.launch({headless: true, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
+    // HERON_BROWSER picks another browser: msedge (the installed Edge), firefox or webkit.
+    const wanted = process.env.HERON_BROWSER || 'chromium';
+    browser = wanted === 'firefox' || wanted === 'webkit'
+      ? await playwright[wanted].launch({headless: true})
+      : await playwright.chromium.launch({
+        headless: true,
+        channel: wanted === 'msedge' ? 'msedge' : undefined,
+        args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+      });
     const errors = [];
     const open = async url => {
       const tab = await browser.newPage({viewport: {width: 1280, height: 720}});
@@ -95,7 +103,7 @@ const fs = require('node:fs'), http = require('node:http'), path = require('node
     show('playtest', report.playtest);
 
     report.browser = browser.version();
-    console.log(`Chromium ${report.browser}`);
+    console.log(`${process.env.HERON_BROWSER || "chromium"} ${report.browser}`);
     fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(report, null, 1));
     console.log(failed ? 'FEATURE_LAB PlayCanvas FAIL' : 'FEATURE_LAB PlayCanvas PASS', output);
     process.exitCode = failed ? 1 : 0;

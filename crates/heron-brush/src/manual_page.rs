@@ -44,6 +44,7 @@ impl ManualPage {
             let mut size = preferences::pref(|p| p.manual_font_size);
             let mut contents = preferences::pref(|p| p.manual_show_contents);
             let mut settings_changed = false;
+            let mut search = None;
             ui.horizontal(|ui| {
                 ui.set_min_height(widgets::ROW_HEIGHT);
                 settings_changed |= widgets::switch(ui, &mut contents)
@@ -69,7 +70,15 @@ impl ManualPage {
                     self.language = languages[index];
                     self.chapters = chapters(self.language);
                 }
+                // The search takes the rest of the row, on the right.
+                widgets::toolbar_gap(ui);
+                search = Some(widgets::search(
+                    ui,
+                    &mut self.query,
+                    manual::manual(self.language).search,
+                ));
             });
+            let search = search.expect("the row draws the search box");
             if settings_changed {
                 preferences::edit(|p| {
                     p.manual_font_size = size;
@@ -84,8 +93,6 @@ impl ManualPage {
                     );
                 }
             }
-            ui.add_space(4.0);
-            let search = widgets::search(ui, &mut self.query, manual::manual(self.language).search);
             ui.add_space(6.0);
             // Ctrl+F searches, and shows the contents the matches are listed in.
             if ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::F)) {

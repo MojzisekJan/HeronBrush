@@ -48,6 +48,22 @@ impl Document {
         if selected.len() < 2 {
             return Err(translation_key("Select brushes first"));
         }
+        let (replacements, removed) = self.merged_brushes(selected, faces);
+        if replacements.is_empty() {
+            return Ok(0);
+        }
+        self.run_as_one_edit(|document| document.replace_geometry_in_place(replacements));
+        Ok(removed)
+    }
+
+    /// What merging `brushes` as [`Self::merge_selected`] does comes to: what each that
+    /// changes becomes, and how many brushes there are fewer.
+    pub(super) fn merged_brushes(
+        &self,
+        brushes: Vec<(NodeId, Brush)>,
+        faces: Faces,
+    ) -> (HashMap<NodeId, Vec<Brush>>, usize) {
+        let selected = brushes;
         // Only brushes with one parent merge: the merged brush stays where the first was,
         // so one from a door merged with one from the world would make the world part of
         // the door.
@@ -80,11 +96,7 @@ impl Document {
             removed += family.len() - best.left;
             replacements.extend(best.replacements);
         }
-        if replacements.is_empty() {
-            return Ok(0);
-        }
-        self.run_as_one_edit(|document| document.replace_geometry_in_place(replacements));
-        Ok(removed)
+        (replacements, removed)
     }
 
     /// Each brush's parent: the group or entity it is directly in, or `None` for one

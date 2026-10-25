@@ -7103,9 +7103,15 @@ fn a_flat_view_takes_the_nearer_of_two_faces_alike() {
     let cuboid = |min: Vec3d, max: Vec3d| {
         map_model::shapes::create_cuboid(&bounds, &Bbox3d::new(min, max), "m").unwrap()
     };
-    document.add_brushes(vec![cuboid(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(64.0, 64.0, 16.0))]);
+    document.add_brushes(vec![cuboid(
+        Vec3d::new(0.0, 0.0, 0.0),
+        Vec3d::new(64.0, 64.0, 16.0),
+    )]);
     let low = node::brushes_with_ids(&document.tree.world)[0].0;
-    document.add_brushes(vec![cuboid(Vec3d::new(0.0, 0.0, 64.0), Vec3d::new(64.0, 64.0, 80.0))]);
+    document.add_brushes(vec![cuboid(
+        Vec3d::new(0.0, 0.0, 64.0),
+        Vec3d::new(64.0, 64.0, 80.0),
+    )]);
     let high = node::brushes_with_ids(&document.tree.world)
         .into_iter()
         .map(|(id, _)| id)

@@ -55,6 +55,9 @@ pub struct NodeSurface {
     pub stamp: u64,
     /// On a locked layer.
     pub locked: bool,
+    /// An editor-only symbol (a light entity's bulb) that casts no shadow: it stands
+    /// where the light is, so it would otherwise shadow its own light and the sun's.
+    pub shadowless: bool,
     /// The walk that last found the node drawn; older ones are dropped after a walk.
     walk: u64,
 }
@@ -494,12 +497,15 @@ impl Document {
                     }
                     let locked = !self.layer_is_editable(layer);
                     if !keep(cache, id, locked) {
-                        let Some((triangles, faces)) =
+                        let Some((triangles, faces, shadowless)) =
                             self.entity_surface(id, entity, locked, &filters)
                         else {
                             continue;
                         };
                         commit(cache, id, locked, triangles, faces);
+                        if let Some(surface) = cache.nodes.get_mut(&id) {
+                            surface.shadowless = shadowless;
+                        }
                     }
                     order.push(id);
                 }
@@ -699,20 +705,22 @@ impl Document {
 
     /// A point entity: the model its class names, where there is one to draw, and
     /// otherwise the box, in the class's own colour, which is what says one entity from
-    /// another when there is no model. `None` for one without an origin.
+    /// another when there is no model. `None` for one without an origin. The flag says
+    /// the triangles are an editor-only symbol that casts no shadow (a light's bulb).
     fn entity_surface(
         &self,
         id: NodeId,
         entity: &EntityNode,
         locked: bool,
         filters: &ViewFilters,
-    ) -> Option<(Vec<Triangle>, Vec<FaceRun>)> {
+    ) -> Option<(Vec<Triangle>, Vec<FaceRun>, bool)> {
         let entity_box = self.entity_box_of(id, entity)?;
         let color = entity_box.color.map(|channel| f32::from(channel) / 255.0);
         let model = filters
             .show_point_entity_models
             .then(|| self.model_of_entity(entity))
             .flatten();
+        let mut shadowless = false;
         let triangles = match model {
             Some((model, material, scale)) => model_triangles(
                 &model,
@@ -728,6 +736,7 @@ impl Document {
                     light_marker::triangles(entity, &entity_box.bounds, entity_box.selected, locked)
                 })
                 .flatten()
+                .inspect(|_| shadowless = true)
                 .unwrap_or_else(|| {
                     box_triangles(
                         &entity_box.bounds,
@@ -738,7 +747,7 @@ impl Document {
                     )
                 }),
         };
-        Some((triangles, Vec::new()))
+        Some((triangles, Vec::new(), shadowless))
     }
 }
 
@@ -787,6 +796,7 @@ fn commit(
                     faces,
                     stamp,
                     locked,
+                    shadowless: false,
                     walk,
                 },
             );

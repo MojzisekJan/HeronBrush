@@ -1,4 +1,5 @@
-// Shadow-map depth, honoring imported face rules and mask cutoff.
+// Shadow-map depth, honoring imported face rules and mask cutoff. Hidden and shadowless
+// objects are collapsed out of the way.
 // Prefixed with common.wgsl.
 
 @group(1) @binding(0) var albedo: texture_2d<f32>;
@@ -27,7 +28,7 @@ fn vs_shadow(v: VertexIn, @builtin(instance_index) material: u32) -> VertexOut {
     let object = objects[v.object & 0x00ffffffu];
     out.uv = v.uv;
     out.material = material;
-    if ((object.flags & OBJECT_HIDDEN) != 0u) {
+    if ((object.flags & (OBJECT_HIDDEN | OBJECT_SHADOWLESS)) != 0u) {
         out.clip = vec4<f32>(0.0, 0.0, -2.0, 1.0);
     } else {
         out.clip = cascade.view_proj * vec4<f32>(v.position, 1.0);
@@ -46,7 +47,7 @@ fn vs_shadow_cube(v: VertexIn, @builtin(instance_index) material: u32) -> Vertex
     let object = objects[v.object & 0x00ffffffu];
     out.uv = v.uv;
     out.material = material;
-    if ((object.flags & OBJECT_HIDDEN) != 0u) {
+    if ((object.flags & (OBJECT_HIDDEN | OBJECT_SHADOWLESS)) != 0u) {
         out.clip = vec4<f32>(0.0, 0.0, -2.0, 1.0);
     } else {
         out.clip = cascade.view_proj * vec4<f32>(v.position, 1.0);

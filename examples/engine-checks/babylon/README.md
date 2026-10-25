@@ -26,3 +26,6 @@ The check needs Node with `playwright`. Without Node, Python's Playwright packag
 ships one: run `uv run --with playwright python -c "import playwright"` once, then
 use the `node` inside its `playwright/driver` folder, with `NODE_PATH` pointing at a
 folder that holds a `playwright` link to `driver/package`.
+
+It runs in headless Chromium. `HERON_BROWSER=msedge` uses the installed Microsoft Edge,
+and `firefox` or `webkit` Playwright's own builds of those engines.

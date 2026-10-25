@@ -16,6 +16,8 @@ pub(super) struct Free {
     /// dab after dab adds up exactly; measured again, a small change to a narrow pit is
     /// mostly lost and the pit stops deepening.
     samples: HashMap<[i64; 3], f32>,
+    /// The box round the grids of the dabs so far, where the stroke built brushes.
+    reached: Option<Bbox3d>,
 }
 
 /// A face of the terrain with some of it on the outside.
@@ -147,10 +149,17 @@ const HELD_REACH: f64 = 1024.0;
 /// at a slant, the pointer finds the near side of a column, which moving up leaves as
 /// it was; the column grows only from its top. Likewise a pit deepens only from its
 /// bottom. Seen from the way the surface moves, the hit is where the dab lands.
-fn landing(around: &Around, hit: Vec3d, along: Vec3d, raise: bool, reach: f64, step: f64) -> Vec3d {
+fn landing(
+    ground: &dyn Fn(Vec3d) -> bool,
+    hit: Vec3d,
+    along: Vec3d,
+    raise: bool,
+    reach: f64,
+    step: f64,
+) -> Vec3d {
     // A point beside the hit on the side the line runs through: in the ground for Raise,
     // in the air for Lower.
-    let wanted = |p: Vec3d| around.covers(p) == raise;
+    let wanted = |p: Vec3d| ground(p) == raise;
     if wanted(hit) {
         // A held dab aims where the last one did, which the ground has since grown over
         // or been dug away from.
@@ -220,10 +229,59 @@ impl Document {
             free: Some(Free {
                 step: step.max(MIN_CELL),
                 samples: HashMap::new(),
+                reached: None,
             }),
             along: vec::normalize(along),
             ..self.begin_sculpt_stroke()
         }
+    }
+
+    /// Ends a free stroke: the brushes it built merge with their neighbours wherever
+    /// the two together are convex and look alike. A dab merges only the pieces it made
+    /// and the brushes it cut, so pieces of neighbouring dabs stay apart until now. The
+    /// shape is exactly as it was, and the merge is part of the stroke's undo step.
+    pub fn end_free_stroke(&mut self, stroke: &mut SculptStroke) {
+        let Some(reached) = stroke.free.as_mut().and_then(|free| free.reached.take()) else {
+            return;
+        };
+        // An edit since the last dab ended the stroke already.
+        if stroke.revision != self.revision() {
+            return;
+        }
+        let everything = self.selection.is_empty();
+        let open = self.open_group_contents();
+        let brushes: Vec<(NodeId, Brush)> = node::brushes_by_layer(&self.tree.world)
+            .iter()
+            .filter(|(id, brush, layer)| {
+                (everything || self.selection.contains(id))
+                    && brush.bounds().intersects(&reached)
+                    && self.is_editable_on(*id, *layer, &open)
+            })
+            .map(|(id, brush, _)| (*id, (*brush).clone()))
+            .collect();
+        let (replacements, _) =
+            self.merged_brushes(brushes, super::super::merge_columns::Faces::Alike);
+        if replacements.is_empty() {
+            return;
+        }
+        let selected = self.selection.clone();
+        let replaced: HashSet<NodeId> = replacements.keys().copied().collect();
+        let length = self.history.undo_len();
+        self.replace_geometry_in_place(replacements);
+        if everything {
+            self.selection.clear();
+        } else {
+            let made = std::mem::take(&mut self.selection);
+            self.selection = selected
+                .difference(&replaced)
+                .copied()
+                .chain(made)
+                .collect();
+        }
+        let evicted = (length + 1).saturating_sub(self.history.undo_len());
+        stroke.mark = stroke.mark.saturating_sub(evicted);
+        self.history.coalesce_since(stroke.mark);
+        stroke.revision = self.revision();
     }
 
     /// One dab of a free stroke at `centre`. See [`Self::begin_free_stroke`].
@@ -267,7 +325,38 @@ impl Document {
                         .map(|(_, brush, _)| *brush),
                     step.max(8.0),
                 );
-                landing(&around, centre, along, raise, reach, step)
+                // Where the stroke remembers the samples round a point, they say whether
+                // it is ground: the brushes show a sample near the surface on it, so a
+                // dab that moved the surface less than that would leave the brushes, and
+                // the next dab's landing, where they were, and the stroke would stall.
+                let samples = stroke.free.as_ref().map(|free| &free.samples);
+                let remembered = |p: Vec3d| -> Option<bool> {
+                    let samples = samples?;
+                    let cell = [0, 1, 2].map(|a| (p[a] / step).floor());
+                    let mut value = 0.0;
+                    for n in 0..8 {
+                        let corner = [
+                            cell[0] + (n & 1) as f64,
+                            cell[1] + ((n >> 1) & 1) as f64,
+                            cell[2] + (n >> 2) as f64,
+                        ];
+                        let sample = f64::from(*samples.get(&corner.map(|c| c as i64))?);
+                        let weight: f64 = (0..3)
+                            .map(|a| {
+                                let t = p[a] / step - cell[a];
+                                if corner[a] > cell[a] {
+                                    t
+                                } else {
+                                    1.0 - t
+                                }
+                            })
+                            .product();
+                        value += sample * weight;
+                    }
+                    Some(value >= 0.0)
+                };
+                let ground = |p: Vec3d| remembered(p).unwrap_or_else(|| around.covers(p));
+                landing(&ground, centre, along, raise, reach, step)
             }
             None => centre,
         };
@@ -409,7 +498,6 @@ impl Document {
         let Ok(mut field) = VoxelField::sampled(region.min, step, dims, remembered) else {
             return false;
         };
-        drop(around);
         let tool = match parameters.mode {
             SculptMode::Raise => VoxelTool::Add { along },
             SculptMode::Lower => VoxelTool::Remove { along },
@@ -430,6 +518,10 @@ impl Document {
             return false;
         }
         if let Some(free) = stroke.free.as_mut() {
+            free.reached = Some(
+                free.reached
+                    .map_or(region, |reached| reached.merged(&region)),
+            );
             for &[i, j, k] in &changed {
                 for n in 0..8 {
                     let at = [i + (n & 1), j + ((n >> 1) & 1), k + (n >> 2)];
@@ -473,7 +565,47 @@ impl Document {
             .iter()
             .filter(|cell| field.ground_corners(**cell) > 0)
             .partition(|cell| field.ground_corners(**cell) == 8);
-        let raw = field.to_brushes_where(&material, |cell| crossed.contains(&cell));
+        // Where the dab left both samples of an edge as they were, the surface crosses it
+        // where the brushes it reshapes do: their samples, measured again, may put it
+        // elsewhere, and a cell built again would then not meet the kept one beside it.
+        let moved = |at: [usize; 3]| field.value(at) != before.value(at);
+        let place = |at: [usize; 3]| {
+            region.min + Vec3d::new(at[0] as f64, at[1] as f64, at[2] as f64) * step
+        };
+        let raw = field.to_brushes_meeting(
+            &material,
+            |cell| crossed.contains(&cell),
+            |a, b| {
+                if moved(a) || moved(b) {
+                    return None;
+                }
+                let (from, to) = (place(a), place(b));
+                let ground = around.covers(from);
+                if ground != (field.value(a) >= 0.0) || around.covers(to) == ground {
+                    return None;
+                }
+                // The first change along the edge from `from`, then halved down to a
+                // hair.
+                const PARTS: usize = 8;
+                let at = |t: f64| from + (to - from) * t;
+                let first =
+                    (1..=PARTS).find(|&n| around.covers(at(n as f64 / PARTS as f64)) != ground)?;
+                let (mut near, mut far) = (
+                    (first - 1) as f64 / PARTS as f64,
+                    first as f64 / PARTS as f64,
+                );
+                for _ in 0..30 {
+                    let middle = (near + far) / 2.0;
+                    if around.covers(at(middle)) == ground {
+                        near = middle;
+                    } else {
+                        far = middle;
+                    }
+                }
+                Some(at(if ground { near } else { far }))
+            },
+        );
+        drop(around);
         let mut pieces = merge(raw, super::super::merge_columns::Effort::Quick);
         pieces.extend(field.boxes_of(&full).iter().filter_map(cuboid));
         // Each piece wears the look of the brushes it grew out of, or of all of them
@@ -645,9 +777,11 @@ mod tests {
             ..Default::default()
         };
         let mut stroke = d.begin_free_stroke(16.0, Vec3d::new(0.0, 0.0, 1.0));
-        (0..count)
+        let made = (0..count)
             .filter(|_| d.sculpt_dab(at, &params, &mut stroke))
-            .count()
+            .count();
+        d.end_free_stroke(&mut stroke);
+        made
     }
 
     #[test]
@@ -818,6 +952,7 @@ mod tests {
             let at = d.sculpt_target(&ray).expect("the ray meets the ground");
             d.sculpt_dab(at, &params, &mut stroke);
         }
+        d.end_free_stroke(&mut stroke);
         vec::dot(
             d.sculpt_target(&ray).expect("the ray meets the ground"),
             towards,
@@ -851,7 +986,7 @@ mod tests {
         }
         assert!(!solid_at(&d, Vec3d::new(256.0 + 72.0, 256.0, 150.0)));
         assert!(
-            brushes(&d).len() < 300,
+            brushes(&d).len() < 150,
             "{} brushes for one column",
             brushes(&d).len()
         );
@@ -902,6 +1037,55 @@ mod tests {
             "the roof holds"
         );
         assert!(solid_at(&d, Vec3d::new(250.0, 30.0, 124.0 - 48.0)));
+    }
+
+    #[test]
+    fn drilling_through_a_wall_leaves_few_brushes_and_none_tiny() {
+        // A selected wall 256 by 32 by 192 drilled through on a grid of 8, as the Freeform
+        // demo does it.
+        let mut d = Document::new(Default::default());
+        let wall = Bbox3d::new(
+            Vec3d::new(-128.0, -16.0, 0.0),
+            Vec3d::new(128.0, 16.0, 192.0),
+        );
+        d.add_brushes(vec![map_model::shapes::create_cuboid(
+            &d.world_bounds(),
+            &wall,
+            map_model::shapes::DEFAULT_MATERIAL,
+        )
+        .unwrap()]);
+        let params = SculptParameters {
+            mode: SculptMode::Lower,
+            radius: 40.0,
+            strength: 0.5,
+            ..Default::default()
+        };
+        let ray = geometry_math::ray::Ray3d::new(
+            Vec3d::new(0.3, -1000.0, 96.7),
+            Vec3d::new(0.0, 1.0, 0.0),
+        );
+        let mut stroke = d.begin_free_stroke(8.0, Vec3d::new(0.0, -1.0, 0.0));
+        let at = d.sculpt_target(&ray).unwrap();
+        for _ in 0..30 {
+            d.sculpt_dab(at, &params, &mut stroke);
+        }
+        d.end_free_stroke(&mut stroke);
+        assert!(
+            !solid_at(&d, Vec3d::new(0.0, 0.0, 96.0)),
+            "the hole goes through"
+        );
+        // Before the cells met their neighbours and a stroke's pieces merged at its end,
+        // this came to 196 brushes, two of them under half a cell thick.
+        let sizes: Vec<Vec3d> = brushes(&d)
+            .iter()
+            .map(|brush| brush.bounds().size())
+            .collect();
+        let thin = sizes
+            .iter()
+            .filter(|size| size.x().min(size.y()).min(size.z()) < 4.0)
+            .count();
+        assert!(sizes.len() <= 160, "{} brushes", sizes.len());
+        assert_eq!(thin, 0, "brushes under half a cell thick");
     }
 
     #[test]
@@ -966,5 +1150,91 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// Faces that show though they lie on a plane of the sculpt grid, other than the planes
+    /// of the block the ground started as: steps where a rebuilt cell does not meet the
+    /// one beside it, standing out of the surface as slivers or opening it as cracks.
+    fn steps_on_the_grid(d: &Document, step: f64, block: &Bbox3d) -> Vec<(Vec3d, Vec3d, f64)> {
+        let all = brushes(d);
+        let around = Around::new(all.iter(), 16.0);
+        let mut found = Vec::new();
+        for brush in &all {
+            for (index, face) in brush.faces().iter().enumerate() {
+                let Some(corners) = brush.face_polygon(index) else {
+                    continue;
+                };
+                let normal = face.normal();
+                let Some(axis) = (0..3).find(|&a| normal[a].abs() > 1.0 - 1e-9) else {
+                    continue;
+                };
+                let at = corners[0][axis];
+                let on_grid = ((at / step) - (at / step).round()).abs() < 1e-9;
+                let on_block =
+                    (at - block.min[axis]).abs() < 1e-9 || (at - block.max[axis]).abs() < 1e-9;
+                // A face whose corners are all corners of the grid's cells is the
+                // surface lying in the plane, where the samples there are all zero.
+                let lattice = |p: &Vec3d| {
+                    (0..3).all(|a| ((p[a] / step) - (p[a] / step).round()).abs() < 1e-9)
+                };
+                if !on_grid
+                    || on_block
+                    || corners.iter().all(lattice)
+                    || covered(&face.plane, &corners, &around)
+                {
+                    continue;
+                }
+                let area: f64 = (1..corners.len() - 1)
+                    .map(|k| {
+                        vec::length(vec::cross(
+                            corners[k] - corners[0],
+                            corners[k + 1] - corners[0],
+                        )) / 2.0
+                    })
+                    .sum();
+                // How far the step stands out: its area over its longest side.
+                let longest = (0..corners.len())
+                    .map(|k| vec::length(corners[(k + 1) % corners.len()] - corners[k]))
+                    .fold(0.0, f64::max);
+                found.push((corners[0], normal, area / longest.max(1e-9)));
+            }
+        }
+        found
+    }
+
+    #[test]
+    fn strokes_side_by_side_meet_without_steps() {
+        let size = Vec3d::new(512.0, 512.0, 64.0);
+        let mut d = block(size);
+        column(&mut d);
+        // A second stroke beside the first, and smoothing over both: each rebuilds cells
+        // beside brushes an earlier stroke built.
+        hold(
+            &mut d,
+            SculptMode::Raise,
+            40.0,
+            Vec3d::new(300.3, 230.7, 1000.0),
+            Vec3d::new(0.0, 0.0, -1.0),
+            12,
+        );
+        for (x, y) in [(256.3, 256.7), (290.3, 240.7), (230.3, 280.7)] {
+            hold(
+                &mut d,
+                SculptMode::Smooth,
+                48.0,
+                Vec3d::new(x, y, 1000.0),
+                Vec3d::new(0.0, 0.0, -1.0),
+                6,
+            );
+        }
+        let steps = steps_on_the_grid(&d, 16.0, &Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), size));
+        let most = steps.iter().map(|step| step.2).fold(0.0, f64::max);
+        // What is left is where a piece too small for a map file was left out: a hair.
+        assert!(
+            most <= 2.0,
+            "{} steps: {:?}",
+            steps.len(),
+            &steps[..steps.len().min(8)]
+        );
     }
 }

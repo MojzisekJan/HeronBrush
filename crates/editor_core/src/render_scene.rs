@@ -37,6 +37,9 @@ pub struct ObjectState {
     pub locked: bool,
     /// Not drawn, though kept.
     pub hidden: bool,
+    /// Drawn but casts no shadow: an editor-only symbol such as a light's bulb, which
+    /// would otherwise shadow the very light it stands for.
+    pub shadowless: bool,
 }
 
 /// Map units per metre, which light entities' ranges (in engine units) are converted
@@ -306,6 +309,7 @@ impl SceneTracker {
                             selected: selection.contains(id),
                             locked: surface.locked,
                             hidden: false,
+                            shadowless: surface.shadowless,
                         };
                         let key = key_of(*id);
                         self.objects.insert(
@@ -371,6 +375,7 @@ impl SceneTracker {
             selected: selection.contains(&id),
             locked: surface.locked,
             hidden: false,
+            shadowless: surface.shadowless,
         };
         let flags = hash_flags(&surface.triangles, state.selected);
         match self.objects.get_mut(&key) {
@@ -533,6 +538,7 @@ mod tests {
     struct Log {
         cleared: usize,
         upserts: Vec<ObjectKey>,
+        upserted_states: Vec<ObjectState>,
         removes: Vec<ObjectKey>,
         states: Vec<(ObjectKey, ObjectState)>,
     }
@@ -545,8 +551,9 @@ mod tests {
         fn remove(&mut self, key: ObjectKey) {
             self.removes.push(key);
         }
-        fn upsert(&mut self, key: ObjectKey, _: &[Triangle], _: ObjectState) {
+        fn upsert(&mut self, key: ObjectKey, _: &[Triangle], state: ObjectState) {
             self.upserts.push(key);
+            self.upserted_states.push(state);
         }
         fn set_state(&mut self, key: ObjectKey, state: ObjectState) {
             self.states.push((key, state));
@@ -591,6 +598,59 @@ mod tests {
             &mut again
         ));
         assert!(again.upserts.is_empty() && again.states.is_empty());
+    }
+
+    #[test]
+    fn a_light_bulb_is_sent_shadowless_and_brushes_are_not() {
+        // The bulb stands where the light is: drawn into the shadow maps it would shadow
+        // its own light (and throw a sun shadow onto nearby walls).
+        let mut document = two_brushes();
+        let light = document
+            .create_point_entity("light", geometry_math::vec::Vec3d::new(32.0, -96.0, 32.0));
+        let start = document.create_point_entity(
+            "info_player_start",
+            geometry_math::vec::Vec3d::new(160.0, -96.0, 32.0),
+        );
+        document.clear_selection();
+        let mut tracker = SceneTracker::new();
+        let mut log = Log::default();
+        tracker.sync(
+            &document,
+            &ViewFilters::default(),
+            None,
+            Pose::Rest,
+            &mut log,
+        );
+        let state_of = |id: map_model::node::NodeId| {
+            let at = log.upserts.iter().position(|key| *key == key_of(id));
+            log.upserted_states[at.expect("sent")]
+        };
+        assert!(state_of(light).shadowless);
+        assert!(!state_of(start).shadowless);
+        for (id, _) in document.selectable_brushes() {
+            assert!(!state_of(id).shadowless);
+        }
+        // Selecting the light keeps it shadowless.
+        document.select_only(light);
+        let mut again = Log::default();
+        tracker.sync(
+            &document,
+            &ViewFilters::default(),
+            None,
+            Pose::Rest,
+            &mut again,
+        );
+        let sent: Vec<ObjectState> = again
+            .states
+            .iter()
+            .map(|(_, state)| *state)
+            .chain(again.upserted_states.iter().copied())
+            .collect();
+        assert!(!sent.is_empty());
+        assert!(
+            sent.iter().all(|state| state.selected && state.shadowless),
+            "{sent:?}"
+        );
     }
 
     #[test]

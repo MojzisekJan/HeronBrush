@@ -26,8 +26,37 @@ fn on_lattice(p: Vec3d) -> Vec3d {
     Vec3d::new(round(p.x()), round(p.y()), round(p.z()))
 }
 
-/// How near a corner, as a share of the edge, a crossing of the surface is put on it.
-const SNAP: f64 = 0.1;
+/// How much of `brush`'s surface lies on side `side` of the box `bounds`: 0 and 1 are its
+/// low and high x, 2 and 3 y, 4 and 5 z.
+fn area_on_side(brush: &crate::brush::Brush, bounds: &Bbox3d, side: usize) -> f64 {
+    let axis = side / 2;
+    let at = if side.is_multiple_of(2) {
+        bounds.min[axis]
+    } else {
+        bounds.max[axis]
+    };
+    (0..brush.faces().len())
+        .filter_map(|index| brush.face_polygon(index))
+        .filter(|corners| corners.iter().all(|p| (p[axis] - at).abs() < 1e-9))
+        .map(|corners| {
+            (1..corners.len() - 1)
+                .map(|n| {
+                    vec::length(vec::cross(
+                        corners[n] - corners[0],
+                        corners[n + 1] - corners[0],
+                    )) / 2.0
+                })
+                .sum::<f64>()
+        })
+        .sum()
+}
+
+/// How near zero, in cells, a sample is taken as on the surface. A crossing near a corner
+/// makes slivers whose faces a map file cannot carry back, and snapping each edge's
+/// crossing on its own tilts the pieces of a cell apart, leaving thin steps and spikes in
+/// the planes between cells. A sample on the surface puts every crossing beside it on its
+/// corner at once, so the pieces stay whole and the cells round it agree.
+const SNAP: f64 = 0.2;
 
 /// How much ground, as a share of a cell, the hull of a cell's pieces may add for it to
 /// stand in for them.
@@ -270,6 +299,19 @@ impl VoxelField {
         material: &str,
         wanted: impl Fn([usize; 3]) -> bool,
     ) -> Vec<crate::brush::Brush> {
+        self.to_brushes_meeting(material, wanted, |_, _| None)
+    }
+
+    /// [`Self::to_brushes_where`], with the surface crossing the edge between two samples,
+    /// by their places in the grid, where `crossing` says when it says. A cell built again
+    /// beside one that is kept meets it only if both put the surface on their shared
+    /// edges alike; the kept cell's brushes say where, its samples may no longer.
+    pub fn to_brushes_meeting(
+        &self,
+        material: &str,
+        wanted: impl Fn([usize; 3]) -> bool,
+        crossing: impl Fn([usize; 3], [usize; 3]) -> Option<Vec3d>,
+    ) -> Vec<crate::brush::Brush> {
         use crate::brush::Brush;
         use crate::polyhedron::Polyhedron;
         // Corner `n` of a cell is offset by its bits: 1 along x, 2 along y, 4 along z.
@@ -309,7 +351,13 @@ impl VoxelField {
                         continue;
                     }
                     let d: [f32; 8] = std::array::from_fn(|n| {
-                        self.density[self.index(i + (n & 1), j + ((n >> 1) & 1), k + (n >> 2))]
+                        let v =
+                            self.density[self.index(i + (n & 1), j + ((n >> 1) & 1), k + (n >> 2))];
+                        if f64::from(v.abs()) < SNAP {
+                            0.0
+                        } else {
+                            v
+                        }
                     });
                     let ground = d.iter().filter(|v| solid(**v)).count();
                     if ground == 0 {
@@ -317,14 +365,16 @@ impl VoxelField {
                     }
                     let corner =
                         |n: usize| on_lattice(self.position(i, j, k) + offset(n) * self.cell);
+                    let place = |n: usize| [i + (n & 1), j + ((n >> 1) & 1), k + (n >> 2)];
                     if ground == 8 {
                         brushes.extend(make(&std::array::from_fn::<_, 8, _>(corner)));
                         continue;
                     }
                     // The cell's ground as one brush where the hull of its pieces adds
                     // next to nothing, as it does wherever the surface runs flat or bulges
-                    // out through the cell; else the pieces themselves. A hull meets its
-                    // neighbours where the pieces would, on the cell's faces.
+                    // out through the cell; else the pieces themselves. The hull must cover
+                    // just what the pieces do on each of the cell's faces, or it would stand
+                    // out past the neighbour there as a thin step.
                     let first = brushes.len();
                     let mut all: Vec<Vec3d> = Vec::new();
                     for tetra in TETRAHEDRA {
@@ -335,17 +385,11 @@ impl VoxelField {
                             }
                             for &b in &tetra[x + 1..] {
                                 if solid(d[a]) != solid(d[b]) {
-                                    // A crossing within a tenth of a corner is put on it:
-                                    // nearer, it makes slivers whose faces a map file cannot
-                                    // carry back. Both cells round an edge snap it alike.
+                                    if let Some(at) = crossing(place(a), place(b)) {
+                                        points.push(on_lattice(at));
+                                        continue;
+                                    }
                                     let t = f64::from(d[a] / (d[a] - d[b]));
-                                    let t = if t < SNAP {
-                                        0.0
-                                    } else if t > 1.0 - SNAP {
-                                        1.0
-                                    } else {
-                                        t
-                                    };
                                     points
                                         .push(on_lattice(corner(a) + (corner(b) - corner(a)) * t));
                                 }
@@ -359,7 +403,16 @@ impl VoxelField {
                     if brushes.len() - first > 1 {
                         let pieces: f64 = brushes[first..].iter().map(Brush::volume).sum();
                         if let Some(hull) = make(&all) {
+                            let bounds = self.cell_bounds([i, j, k]);
                             if hull.volume() - pieces <= self.cell.powi(3) * HULL_SLACK
+                                && (0..6).all(|side| {
+                                    let pieces: f64 = brushes[first..]
+                                        .iter()
+                                        .map(|piece| area_on_side(piece, &bounds, side))
+                                        .sum();
+                                    (area_on_side(&hull, &bounds, side) - pieces).abs()
+                                        <= self.cell * self.cell * 1e-6
+                                })
                                 && hull.survives_a_file()
                             {
                                 brushes.truncate(first);

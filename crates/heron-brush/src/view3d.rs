@@ -410,7 +410,7 @@ impl View3d {
             })
         {
             scene.drag_cancel();
-            scene.stroke_end();
+            scene.stroke_cancel();
             self.presses.primary = None;
         }
         if pressed(egui::PointerButton::Primary)

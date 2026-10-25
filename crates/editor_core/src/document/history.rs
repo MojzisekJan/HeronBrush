@@ -242,7 +242,7 @@ impl Document {
     }
 
     pub fn begin_transaction(&mut self) {
-        self.transaction = Some(self.selected_brush_nodes());
+        self.transaction = Some(self.transaction_nodes());
     }
 
     /// Runs `run`, then folds every undo step it recorded into one, so whatever it did
@@ -285,11 +285,12 @@ impl Document {
             return false;
         };
 
-        let after = self.selected_brush_nodes();
-        // Nothing to record if the brushes came back to where they started.
+        let after = self.transaction_nodes();
+        // Nothing to record if everything came back to where it started.
         let unchanged = before.len() == after.len()
             && before.iter().zip(&after).all(|(was, now)| {
-                brush_vertices(was) == brush_vertices(now)
+                same_unless_brush(was, now)
+                    && brush_vertices(was) == brush_vertices(now)
                     && match (was.as_brush(), now.as_brush()) {
                         (Some(a), Some(b)) => {
                             a.faces().len() == b.faces().len()
@@ -330,6 +331,38 @@ impl Document {
     /// Returns whether a transaction is open.
     pub fn in_transaction(&self) -> bool {
         self.transaction.is_some()
+    }
+
+    /// What a drag can change, as it was: the selected brushes, and the selected
+    /// entities, groups and patches whole. `Map::startTransaction` snapshots every node
+    /// the command touches; with brushes alone, a dragged entity was never put back
+    /// before the next step and ran away from the pointer, and its move was not recorded.
+    fn transaction_nodes(&self) -> Vec<Node> {
+        let mut whole: Vec<Node> = self
+            .selection
+            .iter()
+            .filter_map(|id| node::find_node(&self.tree.world, *id))
+            .filter(|node| !matches!(node.kind, super::NodeKind::Brush(_)))
+            .cloned()
+            .collect();
+        // A node inside another one that is kept whole is already in it.
+        let inside: std::collections::HashSet<NodeId> = whole
+            .iter()
+            .flat_map(|node| {
+                let mut ids = super::ids_under(std::slice::from_ref(node));
+                ids.remove(&node.id);
+                ids
+            })
+            .collect();
+        whole.retain(|node| !inside.contains(&node.id));
+        let mut nodes: Vec<Node> = self
+            .selected_brush_nodes()
+            .into_iter()
+            .filter(|node| !inside.contains(&node.id))
+            .collect();
+        nodes.append(&mut whole);
+        nodes.sort_by_key(|node| node.id);
+        nodes
     }
 
     /// Brushes selected directly or through their faces, in a stable order.
@@ -656,5 +689,14 @@ fn collect_before<'a>(edit: &'a Edit, into: &mut HashMap<NodeId, &'a Node>) {
         | Edit::LayerRemoved { .. }
         | Edit::LayerChanged { .. }
         | Edit::WorldChanged { .. } => {}
+    }
+}
+
+/// Whether two snapshots of a node that is not a brush are the same; brushes are compared
+/// by their vertices and faces instead.
+fn same_unless_brush(was: &Node, now: &Node) -> bool {
+    match (&was.kind, &now.kind) {
+        (node::NodeKind::Brush(_), node::NodeKind::Brush(_)) => true,
+        _ => format!("{:?}", was.kind) == format!("{:?}", now.kind),
     }
 }

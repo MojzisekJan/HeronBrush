@@ -91,8 +91,6 @@ pub struct WelcomePage {
     /// The render behind the banner, and the banner as last drawn and for what.
     source: Option<crate::welcome_banner::Source>,
     banner: Option<(crate::welcome_banner::Layout, egui::TextureHandle)>,
-    /// The halftone laid over the foot of a card's thumbnail, by its size in pixels.
-    dots: HashMap<[usize; 2], egui::TextureHandle>,
     refreshed: Option<Instant>,
     thumbnails: HashMap<PathBuf, Thumbnail>,
     previews: PreviewPool,
@@ -125,7 +123,6 @@ impl Default for WelcomePage {
             examples: false,
             source: crate::welcome_banner::Source::bundled(),
             banner: None,
-            dots: HashMap::new(),
             refreshed: None,
             thumbnails: HashMap::new(),
             previews,
@@ -299,9 +296,23 @@ impl WelcomePage {
         }
         items.extend([Item::Open, Item::Switch, Item::Manual, Item::Preferences]);
 
-        // The banner takes four tenths of the height, between 210 and 330 points, and
-        // what sits on it scales with it.
-        let banner_height = (area.height() * 0.41).clamp(210.0, 330.0);
+        // The banner takes four tenths of the height, up to 330 points, and what sits on
+        // it scales with it; in a low window it gives way first, so the menu under it fits
+        // without scrolling. Down to 150 points, below which the menu scrolls instead.
+        let menu_height = items
+            .iter()
+            .map(|item| match item {
+                Item::New | Item::Continue => 50.0 + 8.0,
+                Item::Open | Item::Switch => 42.0 + 8.0,
+                // Manual and Preferences share a 40-point row.
+                Item::Manual => 40.0 + 8.0,
+                Item::Preferences => 0.0,
+            })
+            .sum::<f32>()
+            // The profile: its caption, the dropdown and the line under it.
+            + 92.0;
+        let room = area.height() - 44.0 - 12.0 - 4.0 - menu_height;
+        let banner_height = (area.height() * 0.41).min(room).clamp(150.0, 330.0);
         let u = banner_height / 330.0;
         let banner = Rect::from_min_size(area.min, egui::vec2(area.width(), banner_height));
         let logo = (76.0 + 60.0 * u, 172.0 * u, 60.0 * u);
@@ -769,7 +780,6 @@ impl WelcomePage {
                                     .send((path.clone(), modified, ui.ctx().clone()));
                             }
                             let image = self.thumbnails.get(&path).and_then(|s| s.image.clone());
-                            let dots = self.dots(ui.ctx(), card_width, thumb_height);
                             let focused = self.focus == Some(Focus::Card(card));
                             let (clicked, star, trash) = map_card(
                                 ui,
@@ -777,7 +787,6 @@ impl WelcomePage {
                                 thumb_height,
                                 &path,
                                 image.as_ref(),
-                                &dots,
                                 favourite_maps::is_favourite(&path),
                                 focused,
                             );
@@ -843,45 +852,6 @@ impl WelcomePage {
         );
         self.trashing = Some(path);
         self.trash_answer(answer)
-    }
-
-    /// The halftone over the foot of a thumbnail `width` by `height` points, made once
-    /// for each size.
-    fn dots(&mut self, ctx: &egui::Context, width: f32, height: f32) -> egui::TextureHandle {
-        let scale = ctx.pixels_per_point();
-        let size = [
-            (width * scale).round().max(1.0) as usize,
-            (height * scale).round().max(1.0) as usize,
-        ];
-        self.dots
-            .entry(size)
-            .or_insert_with(|| {
-                let cell = 4.0 * scale;
-                let pixels = (0..size[0] * size[1])
-                    .map(|at| {
-                        let (x, y) = ((at % size[0]) as f32, (at / size[0]) as f32);
-                        let up = 1.0 - y / size[1] as f32;
-                        let radius = 1.1 * scale * (1.0 - up / 0.55).clamp(0.0, 1.0);
-                        let (cx, cy) = (
-                            ((x / cell).floor() + 0.5) * cell,
-                            ((y / cell).floor() + 0.5) * cell,
-                        );
-                        let d = ((x - cx).powi(2) + (y - cy).powi(2)).sqrt();
-                        let cover = (radius - d + 0.5).clamp(0.0, 1.0);
-                        Color32::from_rgba_unmultiplied(20, 21, 23, (cover * 150.0) as u8)
-                    })
-                    .collect();
-                ctx.load_texture(
-                    format!("welcome-dots-{}x{}", size[0], size[1]),
-                    egui::ColorImage {
-                        size,
-                        source_size: egui::vec2(size[0] as f32, size[1] as f32),
-                        pixels,
-                    },
-                    egui::TextureOptions::NEAREST,
-                )
-            })
-            .clone()
     }
 
     /// The strip of shortcuts at the foot.
@@ -1092,7 +1062,7 @@ fn menu_button(
     response
 }
 
-/// One map as a card: its thumbnail with the halftone over the foot, its name and folder,
+/// One map as a card: its thumbnail, its name and folder,
 /// the accent arrow at the corner, and the star and trash buttons over the thumbnail.
 /// Returns whether the card, the star or the trash was clicked.
 #[allow(
@@ -1105,7 +1075,6 @@ fn map_card(
     thumb_height: f32,
     path: &Path,
     image: Option<&egui::TextureHandle>,
-    dots: &egui::TextureHandle,
     starred: bool,
     focused: bool,
 ) -> (bool, bool, bool) {
@@ -1164,12 +1133,6 @@ fn map_card(
         };
         painter.image(image.id(), thumb, uv, Color32::WHITE);
     }
-    painter.image(
-        dots.id(),
-        thumb,
-        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-        Color32::WHITE,
-    );
     // The cut corner over the thumbnail too, in the page's colour.
     painter.add(egui::Shape::convex_polygon(
         vec![
