@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Heron Brush: a level editor for any engine</title>
-<meta name="description" content="Heron Brush: a level editor for any engine. It builds levels and props from convex brushes, saves them as .map files and exports them to Godot, Unity, Unreal Engine and eight other engines, or to glTF and OBJ. Desktop, web and Android; free and open source.">
+<meta name="description" content="Heron Brush: a level editor for any engine. It builds levels and props from convex brushes, saves them as .map files and exports them to Godot, Unity, Unreal Engine and ten other engines, or to glTF and OBJ. Desktop, web and Android; free and open source.">
 <link rel="icon" type="image/svg+xml" href="images/logo.svg">
 <link rel="icon" type="image/png" href="images/favicon.png" sizes="32x32">
 <link rel="canonical" href="https://mojzisekjan.github.io/HeronBrush/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Heron Brush">
 <meta property="og:title" content="Heron Brush: a level editor for any engine">
-<meta property="og:description" content="Build levels and props from convex brushes and export them to Godot, Unity, Unreal Engine and eight other engines, or to glTF and OBJ. Free and open source.">
+<meta property="og:description" content="Build levels and props from convex brushes and export them to Godot, Unity, Unreal Engine and ten other engines, or to glTF and OBJ. Free and open source.">
 <meta property="og:url" content="https://mojzisekjan.github.io/HeronBrush/">
 <meta property="og:image" content="https://mojzisekjan.github.io/HeronBrush/images/social-preview.jpg">
 <meta property="og:image:width" content="1200">
@@ -39,7 +39,7 @@
 </script>
 <meta name="color-scheme" content="dark light">
 <link rel="preload" href="fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=grain4">
 </head>
 <body>
 
@@ -137,7 +137,7 @@
           <path class="facet" style="--n:10;--dx:0px;--dy:-8px" d="m68 30 6 1 2 5-5 3-5-4Z" fill="#233c50"/>
           <g clip-path="url(#bill)"><rect class="glint" x="60" y="20" width="22" height="50" fill="url(#glint)"/></g>
         </svg></span><span class="wordmark">Heron Brush</span></span><span class="sr-only">: </span><span class="tagline">A level editor for any engine</span></h1>
-      <p class="lead">Heron Brush builds levels and props from convex brushes, saves them as <code>.map</code> files and exports them to Godot, Unity, Unreal Engine and eight other engines, or to glTF&nbsp;and&nbsp;OBJ.</p>
+      <p class="lead">Heron Brush builds levels and props from convex brushes, saves them as <code>.map</code> files and exports them to Godot, Unity, Unreal Engine and ten other engines, or to glTF&nbsp;and&nbsp;OBJ.</p>
       <div class="cta">
         <a class="btn btn-primary" href="editor/">Try in the browser</a>
         <a class="btn btn-ghost" href="https://github.com/MojzisekJan/HeronBrush">Source code on GitHub</a>
@@ -187,7 +187,7 @@
       <div class="highlight reveal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h11M11 7l5 5-5 5"/><path d="M20 4v16"/></svg>
         <h3>Exports to engines</h3>
-        <p>Eleven engines plus glTF, GLB and OBJ, with collision, entities, animation and materials. Live links send unsaved edits to Godot, Unity, Defold and Flax.</p>
+        <p>Thirteen engines plus glTF, GLB and OBJ, with collision, entities, animation and materials. Live links send unsaved edits to Godot, Unity, Defold and Flax.</p>
       </div>
       <div class="highlight reveal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg>
@@ -277,9 +277,12 @@
       <div class="feature flip reveal">
         <div class="feature-text">
           <div class="feature-title"><span class="tool-icons" aria-hidden="true"><img src="images/tools/sculpt.svg" width="24" height="24" alt=""></span><h3>Freeform sculpting</h3></div>
-          <p>Freeform sculpts any brushes, not only terrain: grow a mound out of a box, dig through a wall, pull a ridge out over an edge. The result is ordinary convex brushes that keep their colours and materials.</p>
+          <p>Freeform sculpts any brushes, not only terrain: hold it on a wall to drill a hole straight through, or on the ground to raise a column, then grow a branch out of its side until it meets another and forms an arch. Smooth and Flatten tidy the faces afterwards, and Join brushes merges the pieces back into fewer brushes. The result is ordinary convex brushes that keep their colours and materials.</p>
         </div>
-        <img class="shot" src="images/sculpt-freeform.webp?v=3" width="960" height="620" loading="lazy" alt="A green slab sculpted in Freeform mode on a coarse grid: a faceted mound, a pit cut through its edge and a ridge reaching out past the edge">
+        <div class="shot-pair">
+          <video class="shot" src="images/freeform-drill.mp4?v=1" poster="images/freeform-drill-poster.webp" width="984" height="692" autoplay muted loop playsinline preload="metadata" aria-label="Freeform in Lower mode held on one brick wall brush drills a straight hole through it, then Join brushes merges the pieces it was split into"></video>
+          <img class="shot small" src="images/sculpt-freeform.webp?v=9" width="1200" height="800" loading="lazy" alt="A low-poly rock arch sculpted and smoothed in Freeform over a clear pond ringed by stones, with bamboo, bushes and trees from the asset library; the Sculpt tool is active and its brush outline lies on the arch">
+        </div>
       </div>
 
       <div class="feature reveal">
@@ -388,6 +391,8 @@
           <li style="--i:8"><img class="logo logo-bevy" src="images/logos/bevy.png" alt=""><a class="name" href="https://bevy.org/" rel="noopener">Bevy</a></li>
           <li style="--i:9"><img class="logo logo-threejs" src="images/logos/threejs.png" alt=""><a class="name" href="https://threejs.org/" rel="noopener">three.js</a></li>
           <li style="--i:10"><img class="logo logo-raylib" src="images/logos/raylib.png" alt=""><a class="name" href="https://www.raylib.com/" rel="noopener">raylib</a></li>
+          <li style="--i:11"><img class="logo logo-babylon" src="images/logos/babylon.png" alt=""><a class="name" href="https://www.babylonjs.com/" rel="noopener">Babylon.js</a></li>
+          <li style="--i:12"><img class="logo logo-playcanvas" src="images/logos/playcanvas.svg" alt=""><a class="name" href="https://playcanvas.com/" rel="noopener">PlayCanvas</a></li>
         </ul>
       </div>
       <div class="logo-group reveal-group">
@@ -553,6 +558,66 @@
   </div>
 </footer>
 
+<script>
+  // The hero's glows, grainy: each pixel is the soft glow plus a little white noise, pushed
+  // through a curve, so the heart reads smooth and the edges dissolve into scattered grains
+  // instead of fading out. Seeded, so a redraw for a new size or theme looks the same.
+  (function () {
+    var hero = document.querySelector('.hero');
+    if (!hero) return;
+    var canvas = document.createElement('canvas');
+    canvas.className = 'hero-grain';
+    canvas.setAttribute('aria-hidden', 'true');
+    hero.prepend(canvas);
+    hero.classList.add('grainy');
+    function draw() {
+      var ratio = Math.min(window.devicePixelRatio || 1, 2), w = hero.clientWidth, h = hero.clientHeight;
+      canvas.width = Math.round(w * ratio); canvas.height = Math.round(h * ratio);
+      var context = canvas.getContext('2d'), image = context.createImageData(canvas.width, canvas.height), px = image.data;
+      var light = document.documentElement.dataset.theme === 'light';
+      // Overlapping blobs in the wordmark's colours, mixed by weight where they meet, as a
+      // mesh gradient: blue by the heron, violet and pink across the top, orange on the right.
+      var glows = light ? [
+        { x: 0.2 * w, y: 0.3 * h, rx: 0.3 * w, ry: 0.5 * h, c: [37, 99, 235] },
+        { x: 0.42 * w, y: 0.02 * h, rx: 0.26 * w, ry: 0.3 * h, c: [139, 63, 224] },
+        { x: 0.66 * w, y: 0.12 * h, rx: 0.24 * w, ry: 0.32 * h, c: [217, 36, 107] },
+        { x: 0.84 * w, y: 0.42 * h, rx: 0.26 * w, ry: 0.45 * h, c: [217, 119, 6] }
+      ] : [
+        { x: 0.2 * w, y: 0.3 * h, rx: 0.3 * w, ry: 0.5 * h, c: [79, 141, 255] },
+        { x: 0.42 * w, y: 0.02 * h, rx: 0.26 * w, ry: 0.3 * h, c: [176, 108, 255] },
+        { x: 0.66 * w, y: 0.12 * h, rx: 0.24 * w, ry: 0.32 * h, c: [255, 92, 154] },
+        { x: 0.84 * w, y: 0.42 * h, rx: 0.26 * w, ry: 0.45 * h, c: [255, 179, 71] }
+      ];
+      var strength = light ? 0.24 : 0.34, seed = 21;
+      for (var y = 0; y < canvas.height; y++) {
+        for (var x = 0; x < canvas.width; x++) {
+          seed = (seed * 1664525 + 1013904223) >>> 0;
+          var noise = seed / 4294967296 - 0.5, cx = x / ratio, cy = y / ratio, total = 0, r = 0, gg = 0, b = 0;
+          for (var i = 0; i < glows.length; i++) {
+            var g = glows[i], dx = (cx - g.x) / g.rx, dy = (cy - g.y) / g.ry, v = Math.exp(-(dx * dx + dy * dy) * 1.8);
+            total += v; r += g.c[0] * v; gg += g.c[1] * v; b += g.c[2] * v;
+          }
+          if (total < 0.004) continue;
+          // Fade out toward the bottom, where the screenshot starts.
+          var level = Math.min(1, total) * Math.min(1, Math.max(0, 1.15 - cy / h));
+          var a = Math.min(1, Math.max(0, level + noise * 0.36));
+          a = a * a * (3 - 2 * a);
+          if (a <= 0) continue;
+          var at = (y * canvas.width + x) * 4, red = r / total, green = gg / total, blue = b / total;
+          // Partway to grey: the colours are a tint behind the page, not a poster.
+          var grey = (red + green + blue) / 3;
+          px[at] = grey + (red - grey) * 0.6; px[at + 1] = grey + (green - grey) * 0.6; px[at + 2] = grey + (blue - grey) * 0.6; px[at + 3] = Math.round(a * strength * 255);
+        }
+      }
+      context.putImageData(image, 0, 0);
+    }
+    var pending = 0;
+    function later() { clearTimeout(pending); pending = setTimeout(draw, 150); }
+    draw();
+    addEventListener('resize', later);
+    new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  })();
+</script>
 <script>
   // Motion: an IntersectionObserver reveal where CSS scroll-driven animations are missing, and
   // a slight tilt of the hero screenshot under a fine pointer. Content is visible without it.

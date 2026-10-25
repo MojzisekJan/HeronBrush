@@ -34,7 +34,7 @@
   --icon-bg: rgba(255, 255, 255, 0.04);
   --nav-bg: rgba(13, 15, 20, 0.86);
   --stripe-1: #141820; --stripe-2: #171b24;
-  --glow-blue: #2f8cff; --glow-warm: #ff6a3d; --glow-opacity: 0.45;
+  --glow-blue: #2f8cff; --glow-warm: #ff6a3d; --glow-opacity: 0.6;
   --halo: rgba(47, 140, 255, 0.34);
   --wm1: #ffffff; --wm2: #e6f0ff; --wm3: #a9d0ff; --wm4: #ffc08f;
   --tagline: #c9cfdb;
@@ -85,7 +85,7 @@
   --icon-bg: #ffffff;
   --nav-bg: rgba(246, 247, 250, 0.86);
   --stripe-1: #eef1f5; --stripe-2: #e8ecf2;
-  --glow-blue: #6aa8ff; --glow-warm: #ffb08a; --glow-opacity: 0.32;
+  --glow-blue: #6aa8ff; --glow-warm: #ffb08a; --glow-opacity: 0.45;
   --halo: rgba(31, 111, 224, 0.18);
   --wm1: #0f131b; --wm2: #1b2a4a; --wm3: #1f5fc0; --wm4: #c25a17;
   --tagline: #3a4252;
@@ -222,11 +222,15 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-2); outl
 
 /* Hero */
 .hero { position: relative; isolation: isolate; overflow: hidden; padding: clamp(3.5rem, 2rem + 5vw, 6.5rem) 0 3rem; text-align: center; }
+/* The two glows behind the hero, drawn grainy by a script into a canvas: smooth at the
+   heart, breaking up into fine grain toward the edges. Without the script, plain blurred glows. */
 .hero::before, .hero::after {
   content: ""; position: absolute; z-index: -1; filter: blur(90px); opacity: var(--glow-opacity); border-radius: 50%;
 }
 .hero::before { width: 520px; height: 380px; left: 8%; top: 40px; background: radial-gradient(circle, var(--glow-blue), transparent 70%); }
 .hero::after { width: 480px; height: 360px; right: 6%; top: 120px; background: radial-gradient(circle, var(--glow-warm), transparent 70%); }
+.hero.grainy::before, .hero.grainy::after { content: none; }
+.hero-grain { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
 /* Heron and wordmark side by side; on a phone the heron sits above. */
 .lockup {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.14em;
@@ -391,13 +395,14 @@ section { padding: var(--section) 0 0; }
 }
 .logo-wall li {
   position: relative; isolation: isolate;
-  width: 8.5rem; display: flex; flex-direction: column; align-items: center; text-align: center;
+  width: 7.75rem; display: flex; flex-direction: column; align-items: center; text-align: center;
 }
 /* Each mark sits on the page itself, sized by eye rather than by its box. */
 .logo { width: 60px; height: 60px; object-fit: contain; transform: scale(var(--s, 1)); }
 .logo-godot { --s: 0.9; } .logo-unity { --s: 0.88; } .logo-unreal { --s: 0.84; } .logo-flax { --s: 0.84; }
 .logo-defold { --s: 0.9; } .logo-stride { --s: 0.76; } .logo-cocos { --s: 0.98; } .logo-gdevelop { --s: 0.84; }
 .logo-bevy { --s: 1; } .logo-threejs { --s: 0.92; } .logo-raylib { --s: 0.8; }
+.logo-babylon { --s: 0.86; } .logo-playcanvas { --s: 0.8; }
 /* Each mark glows faintly in its own colour, more on hover. */
 .logo-wall li:has(.logo-godot) { --glow: rgba(71, 140, 191, 0.55); }
 .logo-wall li:has(.logo-unity), .logo-wall li:has(.logo-unreal), .logo-wall li:has(.logo-threejs),
@@ -406,6 +411,8 @@ section { padding: var(--section) 0 0; }
 .logo-wall li:has(.logo-defold) { --glow: rgba(250, 120, 40, 0.45); }
 .logo-wall li:has(.logo-stride) { --glow: rgba(150, 120, 240, 0.5); }
 .logo-wall li:has(.logo-gdevelop) { --glow: rgba(110, 70, 230, 0.55); }
+.logo-wall li:has(.logo-babylon) { --glow: rgba(200, 70, 70, 0.45); }
+.logo-wall li:has(.logo-playcanvas) { --glow: rgba(240, 100, 35, 0.45); }
 .logo-wall.small li { --glow: rgba(95, 176, 255, 0.4); }
 /* The game profile icons are 32 px pixel art: scaled up whole, never smoothed. */
 .logo-game { image-rendering: pixelated; border-radius: 4px; }
@@ -451,6 +458,7 @@ section { padding: var(--section) 0 0; }
 .asset-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .asset-grid picture { display: block; }
 .shot > img { display: block; width: 100%; }
+video.shot { display: block; width: 100%; height: auto; }
 .asset-grid img { border-radius: 10px; border: 1px solid var(--line); aspect-ratio: 4 / 3; object-fit: cover; }
 
 /* More */
@@ -599,3 +607,4 @@ footer a:hover { color: var(--text); }
   .hero-shot, .btn:hover, .btn:active, .logo-wall li:hover .fmt { transform: none !important; }
   .logo-wall li:hover .logo { transform: scale(var(--s, 1)) !important; }
 }
+
