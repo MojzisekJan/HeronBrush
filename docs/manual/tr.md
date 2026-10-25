@@ -125,6 +125,7 @@ Bir fırçayı seçmek için tıklayın, seçime eklemek için `Ctrl` ile tıkla
 
 ## Fırçaları birleştirme
 - `Ctrl+J`: seçili fırçaları dışbükey zarflarında birleştir.
+- `Ctrl+Shift+J`: Fırçaları birleştir; aynı şekli koruyan en az sayıda dışbükey fırça.
 - `Ctrl+K`: seçili fırçaları dokundukları fırçalardan çıkar.
 - `Ctrl+Shift+K`: seçimin içini bir ızgara adımı kalınlığında duvarlar bırakarak boşalt.
 - `Ctrl+L`: seçimin kesişimini al.

@@ -751,18 +751,21 @@ pub fn begin_extrude(
     ctrl: bool,
     alt: bool,
 ) -> Option<Drag> {
-    let hit = document.pick(ray)?;
-    if !document.is_selected(hit.node) {
-        return None;
-    }
-    let face_index = hit.face?;
+    // Only the selection counts, as `ResizeBrushesTool` picks it: a brush in front of the
+    // selected one, or the floor a crate stands on, does not take the press.
+    let (node, face_index, hit_point) = match document
+        .pick_selected(ray)
+        .and_then(|hit| Some((hit.node, hit.face?, ray.point_at_distance(hit.distance))))
+    {
+        Some(hit) => hit,
+        None => proximate_face(camera, viewport_height, ray, document)?,
+    };
 
-    let brush = document.brush(hit.node)?.clone();
+    let brush = document.brush(node)?.clone();
     let polygon = brush.face_polygon(face_index)?;
     let normal = brush.faces()[face_index].plane.normal;
     let face = brush.geometry_face_of(face_index)?;
 
-    let hit_point = ray.point_at_distance(hit.distance);
     let offset = offset_of(ray, camera, viewport_height, hit_point);
 
     Some(Drag {
@@ -778,6 +781,74 @@ pub fn begin_extrude(
         offset,
         applied: Vec3d::zero(),
     })
+}
+
+/// A press just off a selected brush, near one of its edges: the face behind that edge,
+/// facing away from the camera, so a box's side can be dragged from its outline even where
+/// the brush it stands on fills the view behind. As `ResizeBrushesTool::pickProximateFace`.
+/// Returns the brush, the face and the point on the edge nearest the ray.
+fn proximate_face(
+    camera: &Camera3d,
+    viewport_height: f64,
+    ray: &Ray3d,
+    document: &Document,
+) -> Option<(map_model::node::NodeId, usize, Vec3d)> {
+    let mut best: Option<(f64, map_model::node::NodeId, usize, Vec3d)> = None;
+    for (node, brush) in document.selected_brushes_with_ids() {
+        let polygons: Vec<Vec<Vec3d>> = (0..brush.faces().len())
+            .map(|index| brush.face_polygon(index).unwrap_or_default())
+            .collect();
+        for (index, polygon) in polygons.iter().enumerate() {
+            // Only a face turned away from the camera: its edges outline the brush, and it
+            // is the one hidden behind it.
+            if vec::dot(brush.faces()[index].plane.normal, ray.direction) <= 0.0 {
+                continue;
+            }
+            for i in 0..polygon.len() {
+                let (a, b) = (polygon[i], polygon[(i + 1) % polygon.len()]);
+                // The edge has to divide this face from one facing the camera.
+                let outline = polygons.iter().enumerate().any(|(other, corners)| {
+                    other != index
+                        && vec::dot(brush.faces()[other].plane.normal, ray.direction) < 0.0
+                        && [a, b]
+                            .iter()
+                            .all(|p| corners.iter().any(|q| vec::length(*q - *p) < 1e-6))
+                });
+                if !outline {
+                    continue;
+                }
+                let near = nearest_on_segment(ray, a, b);
+                let Some(distance) =
+                    handle_drag::pick_point_handle(camera, viewport_height, ray, near, pick_radius())
+                else {
+                    continue;
+                };
+                if best.as_ref().is_none_or(|(d, ..)| distance < *d) {
+                    best = Some((distance, node, index, near));
+                }
+            }
+        }
+    }
+    best.map(|(_, node, index, near)| (node, index, near))
+}
+
+/// The point of the segment from `a` to `b` nearest the ray.
+fn nearest_on_segment(ray: &Ray3d, a: Vec3d, b: Vec3d) -> Vec3d {
+    let along = b - a;
+    let across = a - ray.origin;
+    let (aa, ab, bb) = (
+        vec::dot(along, along),
+        vec::dot(along, ray.direction),
+        vec::dot(ray.direction, ray.direction),
+    );
+    let (ad, bd) = (vec::dot(along, across), vec::dot(ray.direction, across));
+    let denominator = aa * bb - ab * ab;
+    let t = if denominator.abs() < 1e-12 {
+        0.0
+    } else {
+        (ab * bd - bb * ad) / denominator
+    };
+    a + along * t.clamp(0.0, 1.0)
 }
 
 /// Where the press landed relative to the handle it caught.
@@ -961,6 +1032,8 @@ pub fn update_drag(
             // Every step starts again from the brushes as they were, so the result depends
             // only on where the pointer is and not on how it got there.
             document.rollback_transaction();
+            // How far the face went, so the release can tell a drag from a click.
+            drag.applied = delta;
             match mode {
                 ExtrudeMode::Extrude => document.extrude_faces(polygon, delta),
                 ExtrudeMode::Slide => document.slide_faces(polygon, delta),
@@ -1892,7 +1965,13 @@ impl Scene3d {
                 document.sculpt_axis(&ray, parameters.direction),
             ) {
                 let colour = [0.9, 0.38, 0.0, 1.0];
-                let ring = document.sculpt_ring(at, parameters.radius, along);
+                let radius = match parameters.form {
+                    crate::sculpt::SculptForm::Free => {
+                        parameters.free_radius(grid.borrow().actual_size())
+                    }
+                    _ => parameters.radius,
+                };
+                let ring = document.sculpt_ring(at, radius, along);
                 for pair in ring.windows(2) {
                     guides.push((pair[0], colour));
                     guides.push((pair[1], colour));
@@ -3000,6 +3079,20 @@ impl Scene3d {
             document.borrow_mut().commit_transaction();
             render();
         }
+        // A Shift press on a selected face that never moved it was a click after all:
+        // Shift-click selects the face under the pointer, as `SelectionTool` does on
+        // release.
+        if let Some(Drag {
+            what: DragKind::Extrude { .. },
+            applied,
+            ..
+        }) = ended
+        {
+            if applied == Vec3d::zero() && modifiers.shift {
+                let (x, y) = press.get();
+                self.click(1, x, y, modifiers, (width, height));
+            }
+        }
     }
 
     /// The primary drag was taken away without a release.
@@ -3124,15 +3217,14 @@ impl Scene3d {
         // Transform handles extend outside the brush: selecting here would clear
         // or replace the selection before the drag starts. These tools own the
         // primary-button press, including when their handle has not been caught.
+        // A Shift press that took hold of a selected face for resizing is a click only if
+        // it is let go where it was: `drag_end` selects the face then. Selecting it now
+        // would throw away the very selection the resize works on.
         if matches!(*tool.borrow(), Tool::Rotate | Tool::Scale | Tool::Shear)
-            || drag.borrow().as_ref().is_some_and(|active| {
-                !(modifiers.shift && matches!(active.what, DragKind::Extrude { .. }))
-            })
+            || drag.borrow().is_some()
         {
             return;
         }
-        // Shift-click selects the face even when the press prepared an extrusion.
-        // A later drag still uses the original extrusion source captured at press.
         let ray = camera.borrow().ray_through(x, y, width, height);
 
         let mut document = document.borrow_mut();
@@ -3567,9 +3659,17 @@ impl Scene3d {
             return true;
         }
         *rested = 0.0;
-        let ray = camera.borrow().ray_through(x, y, width, height);
-        let Some(at) = document.borrow().sculpt_target(&ray) else {
-            return true;
+        // A free stroke keeps working the spot the last dab was aimed at, and the dab
+        // lands from there on the ground along the stroke: aimed again, the pointer would
+        // find the near side of what it grows and wander off towards the camera.
+        let at = if state.is_free() {
+            *last
+        } else {
+            let ray = camera.borrow().ray_through(x, y, width, height);
+            let Some(at) = document.borrow().sculpt_target(&ray) else {
+                return true;
+            };
+            at
         };
         *last = at;
         if document
@@ -3968,6 +4068,41 @@ mod pick_tests {
             pick_radius(),
         );
         assert_eq!(caught, Some(handle), "the press was right on it");
+    }
+
+    #[test]
+    fn shift_resizes_a_crate_from_just_off_its_outline_not_the_floor_under_it() {
+        let camera = crate::camera3d::Camera3d::default();
+        let (width, height) = (435.0, 315.0);
+        let mut document = Document::new(Default::default());
+        let bounds = document.world_bounds();
+        let cuboid = |min: Vec3d, max: Vec3d| {
+            map_model::shapes::create_cuboid(&bounds, &Bbox3d::new(min, max), "m").unwrap()
+        };
+        document.add_brushes(vec![cuboid(
+            Vec3d::new(-512.0, -512.0, -16.0),
+            Vec3d::new(512.0, 512.0, 0.0),
+        )]);
+        let crate_box = cuboid(Vec3d::new(-32.0, -32.0, 0.0), Vec3d::new(32.0, 32.0, 64.0));
+        document.add_brushes(vec![crate_box.clone()]);
+        // The crate's corner furthest right on screen, at its top, and a little past it:
+        // the ray misses the crate and meets the floor behind.
+        let corner = crate_box
+            .vertex_positions()
+            .into_iter()
+            .filter(|p| p.z() > 32.0)
+            .filter_map(|p| camera.project(p, width, height))
+            .max_by(|a, b| a.x().total_cmp(&b.x()))
+            .unwrap();
+        let ray = camera.ray_through(corner.x() + 3.0, corner.y(), width, height);
+        assert!(document.pick_selected(&ray).is_none(), "the ray misses the crate");
+        assert!(document.pick(&ray).is_some(), "and meets the floor");
+        let drag = begin_extrude(&camera, height, &ray, &document, false, false)
+            .expect("Shift takes hold of the crate");
+        let DragKind::Extrude { brush, .. } = drag.what else {
+            panic!("not a resize");
+        };
+        assert_eq!(brush.bounds(), crate_box.bounds(), "the crate, not the floor");
     }
 
     #[test]
@@ -4544,14 +4679,32 @@ mod pick_tests {
             shift: true,
             ..Modifiers::default()
         };
+        // A Shift drag on the selected brush resizes it and keeps it selected: the click
+        // the press also sends must not trade the brush for a face first.
         scene.drag_begin(on_screen[0], on_screen[1], shift, (640.0, 480.0));
         scene.click(1, on_screen[0], on_screen[1], shift, (640.0, 480.0));
+        assert!(document.borrow().is_selected(id), "the press keeps the brush");
+        // Along the face's normal on screen, two grid steps out.
+        let out = scene
+            .camera
+            .borrow()
+            .project(Vec3d::new(64.0, 32.0, 8.0), 640.0, 480.0)
+            .expect("visible");
+        let (dx, dy) = (out[0] - on_screen[0], out[1] - on_screen[1]);
+        scene.drag_update(dx, dy, shift, (640.0, 480.0));
+        scene.drag_end(dx, dy, shift, (640.0, 480.0));
+        assert_ne!(document.borrow().to_map_text(), before, "the drag resized it");
+        assert!(document.borrow().is_selected(id), "and it is still selected");
+        assert!(document.borrow_mut().undo().is_some());
+        // Let go where it was pressed, it is a Shift-click, which selects the face.
+        scene.drag_begin(on_screen[0], on_screen[1], shift, (640.0, 480.0));
+        scene.click(1, on_screen[0], on_screen[1], shift, (640.0, 480.0));
+        scene.drag_end(0.0, 0.0, shift, (640.0, 480.0));
         assert_eq!(
             document.borrow().face_selection_count(),
             1,
-            "prepared extrusion must allow Shift-click face selection"
+            "a Shift-click without a drag selects the face"
         );
-        scene.drag_end(0.0, 0.0, shift, (640.0, 480.0));
         assert_eq!(
             document.borrow().to_map_text(),
             before,

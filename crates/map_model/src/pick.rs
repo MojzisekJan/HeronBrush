@@ -25,6 +25,27 @@ pub struct Hit {
     pub point: Vec3d,
 }
 
+/// The area of the convex `polygon` seen along `axis`: its shadow on the plane square to
+/// that axis.
+pub fn projected_area(polygon: &[Vec3d], axis: usize) -> f64 {
+    let (u, v) = ((axis + 1) % 3, (axis + 2) % 3);
+    let n = polygon.len();
+    (0..n)
+        .map(|i| {
+            let (a, b) = (polygon[i], polygon[(i + 1) % n]);
+            a[u] * b[v] - b[u] * a[v]
+        })
+        .sum::<f64>()
+        .abs()
+        / 2.0
+}
+
+/// The area of `bounds` seen along `axis`.
+pub fn projected_box_area(bounds: &geometry_math::bbox::Bbox3d, axis: usize) -> f64 {
+    let size = bounds.size();
+    size[(axis + 1) % 3] * size[(axis + 2) % 3]
+}
+
 /// Returns everything the given ray hits, nearest first.
 ///
 /// The ray is tested against each brush's bounding box before its faces, since most

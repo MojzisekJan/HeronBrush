@@ -7057,3 +7057,60 @@ fn doom3_native_export_preserves_world_geometry_and_rejects_unhandled_rotation_b
     assert_eq!(std::fs::read_to_string(&path).unwrap(), text);
     std::fs::remove_dir_all(root).unwrap();
 }
+
+/// A wall 512 wide standing in front of a crate 64 wide, as the front view sees them.
+fn wall_before_crate() -> (Document, NodeId, NodeId) {
+    let mut document = Document::new(WorldBounds::default());
+    let bounds = document.world_bounds();
+    let cuboid = |min: Vec3d, max: Vec3d| {
+        map_model::shapes::create_cuboid(&bounds, &Bbox3d::new(min, max), "m").unwrap()
+    };
+    document.add_brushes(vec![cuboid(
+        Vec3d::new(-256.0, -128.0, 0.0),
+        Vec3d::new(256.0, -112.0, 256.0),
+    )]);
+    let wall = node::brushes_with_ids(&document.tree.world)[0].0;
+    document.add_brushes(vec![cuboid(
+        Vec3d::new(-32.0, -32.0, 0.0),
+        Vec3d::new(32.0, 32.0, 64.0),
+    )]);
+    let crate_id = node::brushes_with_ids(&document.tree.world)
+        .into_iter()
+        .map(|(id, _)| id)
+        .find(|id| *id != wall)
+        .unwrap();
+    document.clear_selection();
+    (document, wall, crate_id)
+}
+
+#[test]
+fn a_flat_view_picks_the_smaller_face_though_a_bigger_one_is_in_front() {
+    // As `MapView2D::pick` sorts by size: in the front view a click where a big wall
+    // covers a crate takes the crate. In perspective the wall in front is what shows.
+    let (document, wall, crate_id) = wall_before_crate();
+    let ray = Ray3d::new(Vec3d::new(0.5, -1000.0, 32.5), Vec3d::new(0.0, 1.0, 0.0));
+    assert_eq!(document.pick_flat(&ray).map(|hit| hit.node), Some(crate_id));
+    assert_eq!(document.pick(&ray).map(|hit| hit.node), Some(wall));
+    // Where only the wall is, the wall.
+    let beside = Ray3d::new(Vec3d::new(200.5, -1000.0, 32.5), Vec3d::new(0.0, 1.0, 0.0));
+    assert_eq!(document.pick_flat(&beside).map(|hit| hit.node), Some(wall));
+}
+
+#[test]
+fn a_flat_view_takes_the_nearer_of_two_faces_alike() {
+    let mut document = Document::new(WorldBounds::default());
+    let bounds = document.world_bounds();
+    let cuboid = |min: Vec3d, max: Vec3d| {
+        map_model::shapes::create_cuboid(&bounds, &Bbox3d::new(min, max), "m").unwrap()
+    };
+    document.add_brushes(vec![cuboid(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(64.0, 64.0, 16.0))]);
+    let low = node::brushes_with_ids(&document.tree.world)[0].0;
+    document.add_brushes(vec![cuboid(Vec3d::new(0.0, 0.0, 64.0), Vec3d::new(64.0, 64.0, 80.0))]);
+    let high = node::brushes_with_ids(&document.tree.world)
+        .into_iter()
+        .map(|(id, _)| id)
+        .find(|id| *id != low)
+        .unwrap();
+    let down = Ray3d::new(Vec3d::new(32.5, 32.5, 1000.0), Vec3d::new(0.0, 0.0, -1.0));
+    assert_eq!(document.pick_flat(&down).map(|hit| hit.node), Some(high));
+}

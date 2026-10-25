@@ -89,7 +89,7 @@ impl Document {
 
     /// Each brush's parent: the group or entity it is directly in, or `None` for one
     /// lying in a layer.
-    fn brush_parents(&self) -> HashMap<NodeId, Option<NodeId>> {
+    pub(super) fn brush_parents(&self) -> HashMap<NodeId, Option<NodeId>> {
         fn walk(
             children: &[Node],
             parent: Option<NodeId>,
@@ -592,13 +592,20 @@ fn merged(a: &Brush, b: &Brush, faces: Faces) -> Option<Brush> {
         }
         // A face that shows anywhere shows: it wears the look of a part of it that
         // shows, and is left out of exports only when all of it was.
-        let first = on.iter().find(|f| !f.export_hidden).copied().unwrap_or(first);
+        let first = on
+            .iter()
+            .find(|f| !f.export_hidden)
+            .copied()
+            .unwrap_or(first);
         let mut worn = (*first).clone();
         worn.points = face.points;
         worn.plane = face.plane;
         worn_faces.push(worn);
     }
-    joined.with_exact_face_attributes(&worn_faces)
+    let joined = joined.with_exact_face_attributes(&worn_faces)?;
+    // Faces too near alike, as two pieces of a gently curved surface make, cannot be
+    // built back from their planes when the map is read: such a merge is not made.
+    joined.survives_a_file().then_some(joined)
 }
 
 /// Whether two faces in one plane look the same: everything but where their plane's

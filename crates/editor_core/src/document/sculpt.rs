@@ -44,6 +44,14 @@ pub struct SculptStroke {
     free: Option<free::Free>,
 }
 
+impl SculptStroke {
+    /// Whether this is a free stroke, whose dabs land along the stroke from where they
+    /// are aimed.
+    pub fn is_free(&self) -> bool {
+        self.free.is_some()
+    }
+}
+
 /// A vertex position as a key, so the corner several brushes share moves once.
 type Key = [i64; 3];
 
@@ -148,8 +156,50 @@ fn open_faces(
 fn covered(plane: &Plane3d, on: &[Vec3d], around: &Around) -> bool {
     let middle =
         on.iter().fold(Vec3d::new(0.0, 0.0, 0.0), |sum, p| sum + *p) * (1.0 / on.len() as f64);
-    on.iter()
-        .all(|p| around.covers(middle + (*p - middle) * 0.61 + plane.normal * 0.01))
+    // A lattice over the face, a little in from its edges, so a face covered only in
+    // part, as by a thin sliver of a neighbour, still shows.
+    let (u, v) = square_to(plane.normal);
+    let mut ring: Vec<Vec3d> = on.to_vec();
+    ring.sort_by(|a, b| {
+        let angle = |p: &Vec3d| vec::dot(*p - middle, v).atan2(vec::dot(*p - middle, u));
+        angle(a).total_cmp(&angle(b))
+    });
+    let ring: Vec<Vec3d> = ring.iter().map(|p| middle + (*p - middle) * 0.9).collect();
+    let n = ring.len();
+    let inside = |p: Vec3d| {
+        let side = |i: usize| {
+            let (a, b) = (ring[i], ring[(i + 1) % n]);
+            vec::dot(vec::cross(b - a, p - a), plane.normal)
+        };
+        (0..n).all(|i| side(i) >= -1e-9) || (0..n).all(|i| side(i) <= 1e-9)
+    };
+    let (lo, hi) = ring.iter().fold(
+        (
+            (f64::INFINITY, f64::INFINITY),
+            (f64::NEG_INFINITY, f64::NEG_INFINITY),
+        ),
+        |(lo, hi), p| {
+            let (a, b) = (vec::dot(*p - middle, u), vec::dot(*p - middle, v));
+            ((lo.0.min(a), lo.1.min(b)), (hi.0.max(a), hi.1.max(b)))
+        },
+    );
+    let spacing = ((hi.0 - lo.0).max(hi.1 - lo.1) / 24.0).max(2.0);
+    let steps = |from: f64, to: f64| ((to - from) / spacing).ceil().max(0.0) as usize;
+    let lift = plane.normal * 0.01;
+    if !around.covers(middle + lift) || !ring.iter().all(|p| around.covers(*p + lift)) {
+        return false;
+    }
+    for i in 0..=steps(lo.0, hi.0) {
+        for j in 0..=steps(lo.1, hi.1) {
+            let a = (lo.0 + i as f64 * spacing).min(hi.0);
+            let b = (lo.1 + j as f64 * spacing).min(hi.1);
+            let p = middle + u * a + v * b;
+            if inside(p) && !around.covers(p + lift) {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 /// The corners of `brush` lying in `plane`.

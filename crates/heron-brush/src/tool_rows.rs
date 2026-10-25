@@ -526,15 +526,19 @@ pub fn sculpt_controls(ui: &mut egui::Ui, cell: f64) -> Option<crate::app_action
     let mut chosen = None;
     ui.horizontal(|ui| {
         ui.add_space(label_width + gap - ui.spacing().item_spacing.x);
-        if ui.button(tr("Split into columns")).clicked() {
-            chosen = Some(Action::SplitColumns(parameters.columns));
-        }
-        if ui.button(tr("Merge columns")).clicked() {
-            chosen = Some(Action::MergeColumns);
-        }
-        if ui.button(tr("Join brushes")).clicked() {
-            chosen = Some(Action::JoinBrushes);
-        }
+        // Wrapped, so long labels move to a second line rather than past the edge.
+        ui.horizontal_wrapped(|ui| {
+            ui.set_max_width(control);
+            if ui.button(tr("Split into columns")).clicked() {
+                chosen = Some(Action::SplitColumns(parameters.columns));
+            }
+            if ui.button(tr("Merge columns")).clicked() {
+                chosen = Some(Action::MergeColumns);
+            }
+            if ui.button(tr("Join brushes")).clicked() {
+                chosen = Some(Action::JoinBrushes);
+            }
+        });
     });
     chosen
 }

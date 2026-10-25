@@ -860,87 +860,135 @@ impl Document {
 
     /// Returns what the given ray hits first, whether a brush or a point entity.
     pub fn pick(&self, ray: &Ray3d) -> Option<Picked> {
-        self.pick_matching(ray, |_| true)
+        self.pick_matching(ray, |_| true, None)
     }
 
     /// Hits selected geometry even when an unselected object is in front of it.
     /// Orthographic move gestures use this to retain the existing selection.
     pub fn pick_selected(&self, ray: &Ray3d) -> Option<Picked> {
-        self.pick_matching(ray, |id| self.is_selected(id))
+        self.pick_matching(ray, |id| self.is_selected(id), None)
     }
 
-    fn pick_matching(&self, ray: &Ray3d, accepts: impl Fn(NodeId) -> bool) -> Option<Picked> {
-        let brush = pick::pick(&self.tree.world, ray)
+    /// What a click in a flat view picks along `ray`: the hit whose face looks smallest
+    /// from the view, nearest of those alike, as `MapView2D::pick` sorts hits by size.
+    /// A crate behind a wall in the front view is what a click on it means, though the
+    /// wall is nearer.
+    pub fn pick_flat(&self, ray: &Ray3d) -> Option<Picked> {
+        self.pick_matching(ray, |_| true, Some(flat_axis(ray)))
+    }
+
+    /// [`Self::pick_flat`] among the selected objects alone.
+    pub fn pick_selected_flat(&self, ray: &Ray3d) -> Option<Picked> {
+        self.pick_matching(ray, |id| self.is_selected(id), Some(flat_axis(ray)))
+    }
+
+    /// Hits sorted by distance, or with `by_size` the axis a flat view looks along, by
+    /// how big each looks along it first.
+    fn pick_matching(
+        &self,
+        ray: &Ray3d,
+        accepts: impl Fn(NodeId) -> bool,
+        by_size: Option<usize>,
+    ) -> Option<Picked> {
+        // How big a hit looks along the flat view's axis; nothing to sort by in 3D.
+        let looks = |area: &dyn Fn(usize) -> f64| by_size.map_or(0.0, area);
+        // A hidden layer cannot be seen and a locked one cannot be changed, so neither is
+        // what a click meant; the same for something hidden by "Hide", and for anything
+        // outside a group that is open.
+        let brushes = pick::pick(&self.tree.world, ray)
             .into_iter()
-            // A hidden layer cannot be seen and a locked one cannot be changed, so
-            // neither is what a click meant; the same for something hidden by "Hide", and
-            // for anything outside a group that is open.
-            .find(|hit| self.is_editable(hit.node) && accepts(hit.node))
-            .map(|hit| Picked {
-                node: hit.node,
-                face: Some(hit.face),
-                distance: hit.distance,
+            .filter(|hit| self.is_editable(hit.node) && accepts(hit.node))
+            .map(|hit| {
+                let size = looks(&|axis| {
+                    let mut area = 0.0;
+                    if let Some(brush) = self.brush(hit.node) {
+                        brush.for_each_geometry_face(|index, _, polygon| {
+                            if index == hit.face {
+                                area = pick::projected_area(polygon, axis);
+                            }
+                        });
+                    }
+                    area
+                });
+                let picked = Picked {
+                    node: hit.node,
+                    face: Some(hit.face),
+                    distance: hit.distance,
+                };
+                (picked, size)
             });
 
         // A point entity has no geometry, so it is picked by the box it is drawn as.
         // The ray is asked first: it is cheap, and few boxes are on it, where whether an
         // entity can be edited walks the tree.
-        let entity = self
+        let entities = self
             .entity_boxes()
             .into_iter()
             .filter_map(|entity| {
                 geometry_math::intersection::intersect_ray_bbox(ray, &entity.bounds).map(
-                    |distance| Picked {
-                        node: entity.node,
-                        face: None,
-                        distance,
+                    |distance| {
+                        let picked = Picked {
+                            node: entity.node,
+                            face: None,
+                            distance,
+                        };
+                        let size = looks(&|axis| pick::projected_box_area(&entity.bounds, axis));
+                        (picked, size)
                     },
                 )
             })
-            .filter(|hit| self.is_editable(hit.node) && accepts(hit.node))
-            .min_by(|a, b| {
-                a.distance
-                    .partial_cmp(&b.distance)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
+            .filter(|(hit, _)| self.is_editable(hit.node) && accepts(hit.node));
 
         // A patch is picked against the surface it is drawn as, since that is what a
         // click is aiming at; its control points sit off the surface and are not it.
         let open = self.open_group_contents();
-        let patch = node::patches_by_layer(&self.tree.world)
+        let patches = node::patches_by_layer(&self.tree.world)
             .into_iter()
             .filter(|(id, _, layer)| self.is_editable_on(*id, *layer, &open) && accepts(*id))
             .filter_map(|(id, patch, _)| {
-                map_model::patch_mesh::tessellate(
+                let triangles = map_model::patch_mesh::tessellate(
                     patch,
                     map_model::patch_mesh::DEFAULT_SUBDIVISIONS,
-                )
-                .into_iter()
-                .filter_map(|triangle| {
-                    geometry_math::intersection::intersect_ray_triangle(
-                        ray,
-                        triangle.positions[0],
-                        triangle.positions[1],
-                        triangle.positions[2],
-                    )
-                })
-                .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-                .map(|distance| Picked {
+                );
+                let distance = triangles
+                    .iter()
+                    .filter_map(|triangle| {
+                        geometry_math::intersection::intersect_ray_triangle(
+                            ray,
+                            triangle.positions[0],
+                            triangle.positions[1],
+                            triangle.positions[2],
+                        )
+                    })
+                    .min_by(|a, b| a.total_cmp(b))?;
+                let size = looks(&|axis| {
+                    Bbox3d::merge_all(triangles.iter().flat_map(|t| t.positions))
+                        .map_or(0.0, |bounds| pick::projected_box_area(&bounds, axis))
+                });
+                let picked = Picked {
                     node: id,
                     face: None,
                     distance,
-                })
-            })
-            .min_by(|a, b| {
-                a.distance
-                    .partial_cmp(&b.distance)
-                    .unwrap_or(std::cmp::Ordering::Equal)
+                };
+                Some((picked, size))
             });
 
-        [brush, entity, patch].into_iter().flatten().min_by(|a, b| {
-            a.distance
-                .partial_cmp(&b.distance)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        })
+        brushes
+            .chain(entities)
+            .chain(patches)
+            .min_by(|(a, size_a), (b, size_b)| {
+                size_a
+                    .total_cmp(size_b)
+                    .then(a.distance.total_cmp(&b.distance))
+            })
+            .map(|(hit, _)| hit)
     }
+}
+
+/// The axis a flat view looks along: the ray's largest component.
+fn flat_axis(ray: &Ray3d) -> usize {
+    let d = ray.direction;
+    (0..3)
+        .max_by(|a, b| d[*a].abs().total_cmp(&d[*b].abs()))
+        .unwrap_or(2)
 }

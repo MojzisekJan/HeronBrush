@@ -201,6 +201,23 @@ const PLANE_MATCH_NORMAL_TOLERANCE: f64 = 0.001;
 const PLANE_MATCH_DISTANCE_TOLERANCE: f64 = 0.01;
 
 impl Brush {
+    /// Whether the brush comes back from a map file: built again from the planes its faces'
+    /// written points define, as a reader builds it. Faces too near alike, such as two
+    /// pieces of a gently curved surface, can fail to.
+    pub fn survives_a_file(&self) -> bool {
+        let faces: Option<Vec<BrushFace>> = self
+            .faces()
+            .iter()
+            .map(|face| {
+                let [a, b, c] = face.points;
+                let mut face = face.clone();
+                face.plane = geometry_math::plane::from_points(a, b, c)?;
+                Some(face)
+            })
+            .collect();
+        faces.is_some_and(|faces| Self::from_faces(&self.bounds().expand(64.0), faces).is_ok())
+    }
+
     /// Builds a brush from its faces.
     ///
     /// The geometry is the part of `world_bounds` behind every face's plane. Faces whose

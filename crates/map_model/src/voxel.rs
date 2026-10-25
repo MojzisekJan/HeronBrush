@@ -17,6 +17,22 @@ pub const RANGE: f32 = 3.0;
 /// The most samples one field holds, 256 × 256 × 64: about 8 MB in memory.
 pub const MAX_SAMPLES: usize = 256 * 256 * 64;
 
+/// `p` on the eighth-unit lattice brushes are written on. A brush whose corners all lie
+/// on it is read back as the hull of them, however alike its faces; off it, faces of a
+/// gently curved surface can be too near alike to build back from their planes. Both
+/// cells round an edge round its crossing alike.
+fn on_lattice(p: Vec3d) -> Vec3d {
+    let round = |v: f64| (v * 8.0).round() / 8.0;
+    Vec3d::new(round(p.x()), round(p.y()), round(p.z()))
+}
+
+/// How near a corner, as a share of the edge, a crossing of the surface is put on it.
+const SNAP: f64 = 0.1;
+
+/// How much ground, as a share of a cell, the hull of a cell's pieces may add for it to
+/// stand in for them.
+const HULL_SLACK: f64 = 0.02;
+
 /// The start of a field's file, and the version of its layout.
 const MAGIC: &[u8; 4] = b"HVOX";
 const VERSION: u32 = 1;
@@ -33,10 +49,20 @@ pub struct VoxelField {
 /// What a dab does to a field.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum VoxelTool {
-    /// Grows the ground outwards, most at the centre.
-    Add,
-    /// Takes ground away, most at the centre.
-    Remove,
+    /// Moves the surface `along`, adding ground: up out of a floor, out of a wall. The
+    /// ball's half behind a plane a little in front of its centre becomes ground, so held
+    /// on the surface it grows a column as wide as the ball.
+    Add {
+        /// The way the surface moves.
+        along: Vec3d,
+    },
+    /// Moves the surface against `along`, taking ground away: down into a floor, into a
+    /// wall. The ball's half in front of a plane a little behind its centre becomes air,
+    /// so held on the surface it digs a tunnel as wide as the ball.
+    Remove {
+        /// The way out of the ground; the surface moves the other way.
+        along: Vec3d,
+    },
     /// Evens out bumps and dents.
     Smooth,
     /// Moves the surface towards a plane through `at` facing `normal`: ground below it,
@@ -260,7 +286,7 @@ impl VoxelField {
         ];
         let smallest = self.cell.powi(3) * 1e-4;
         let mut brushes = Vec::new();
-        let mut keep = |points: &[Vec3d]| {
+        let make = |points: &[Vec3d]| -> Option<Brush> {
             // A sample of exactly zero puts a crossing on a corner already in the list,
             // and the hull refuses a point twice.
             let mut unique: Vec<Vec3d> = Vec::with_capacity(points.len());
@@ -270,15 +296,11 @@ impl VoxelField {
                 }
             }
             if unique.len() < 4 {
-                return;
+                return None;
             }
-            let Ok(geometry) = Polyhedron::from_points(&unique, 1e-9) else {
-                return;
-            };
+            let geometry = Polyhedron::from_points(&unique, 1e-9).ok()?;
             let brush = Brush::from_polyhedron(geometry, material);
-            if brush.volume() > smallest {
-                brushes.push(brush);
-            }
+            (brush.volume() > smallest).then_some(brush)
         };
         for k in 0..self.dims[2] - 1 {
             for j in 0..self.dims[1] - 1 {
@@ -293,11 +315,18 @@ impl VoxelField {
                     if ground == 0 {
                         continue;
                     }
-                    let corner = |n: usize| self.position(i, j, k) + offset(n) * self.cell;
+                    let corner =
+                        |n: usize| on_lattice(self.position(i, j, k) + offset(n) * self.cell);
                     if ground == 8 {
-                        keep(&std::array::from_fn::<_, 8, _>(corner));
+                        brushes.extend(make(&std::array::from_fn::<_, 8, _>(corner)));
                         continue;
                     }
+                    // The cell's ground as one brush where the hull of its pieces adds
+                    // next to nothing, as it does wherever the surface runs flat or bulges
+                    // out through the cell; else the pieces themselves. A hull meets its
+                    // neighbours where the pieces would, on the cell's faces.
+                    let first = brushes.len();
+                    let mut all: Vec<Vec3d> = Vec::new();
                     for tetra in TETRAHEDRA {
                         let mut points = Vec::with_capacity(8);
                         for (x, &a) in tetra.iter().enumerate() {
@@ -306,13 +335,36 @@ impl VoxelField {
                             }
                             for &b in &tetra[x + 1..] {
                                 if solid(d[a]) != solid(d[b]) {
+                                    // A crossing within a tenth of a corner is put on it:
+                                    // nearer, it makes slivers whose faces a map file cannot
+                                    // carry back. Both cells round an edge snap it alike.
                                     let t = f64::from(d[a] / (d[a] - d[b]));
-                                    points.push(corner(a) + (corner(b) - corner(a)) * t);
+                                    let t = if t < SNAP {
+                                        0.0
+                                    } else if t > 1.0 - SNAP {
+                                        1.0
+                                    } else {
+                                        t
+                                    };
+                                    points
+                                        .push(on_lattice(corner(a) + (corner(b) - corner(a)) * t));
                                 }
                             }
                         }
                         if points.len() >= 4 {
-                            keep(&points);
+                            all.extend_from_slice(&points);
+                            brushes.extend(make(&points));
+                        }
+                    }
+                    if brushes.len() - first > 1 {
+                        let pieces: f64 = brushes[first..].iter().map(Brush::volume).sum();
+                        if let Some(hull) = make(&all) {
+                            if hull.volume() - pieces <= self.cell.powi(3) * HULL_SLACK
+                                && hull.survives_a_file()
+                            {
+                                brushes.truncate(first);
+                                brushes.push(hull);
+                            }
                         }
                     }
                 }
@@ -360,6 +412,11 @@ impl VoxelField {
         }
     }
 
+    /// The sample at grid point `[i, j, k]`.
+    pub fn value(&self, [i, j, k]: [usize; 3]) -> f32 {
+        self.density[self.index(i, j, k)]
+    }
+
     /// Whether the point `p` is inside the ground, by the nearest sample.
     pub fn is_solid(&self, p: Vec3d) -> bool {
         let at = (p - self.origin) / self.cell;
@@ -371,8 +428,8 @@ impl VoxelField {
     }
 
     /// One dab of `tool` at `centre`, reaching `radius` units, with `strength` from 0 to 1.
-    /// Add and Remove move the surface by a tenth of the radius at full strength, Smooth
-    /// and Flatten go all the way there. Returns the samples it changed as a box, or
+    /// Add and Remove move the surface at the centre by a tenth of the radius at full
+    /// strength; Smooth and Flatten go all the way there, most at the centre. Returns the samples it changed as a box, or
     /// `None` when it changed nothing.
     pub fn sculpt(
         &mut self,
@@ -395,21 +452,48 @@ impl VoxelField {
         }
         // Smooth reads the samples as they were before the dab.
         let before = matches!(tool, VoxelTool::Smooth).then(|| self.density.clone());
-        let step = (radius * 0.1 * strength / self.cell) as f32;
+        let shift = radius * 0.1 * strength;
         let mut changed: Option<Bbox3d> = None;
         for k in rk.clone() {
             for j in rj.clone() {
                 for i in ri.clone() {
                     let p = self.position(i, j, k);
-                    let weight = falloff(vec::length(p - centre), radius) as f32;
+                    let distance = vec::length(p - centre);
+                    let weight = match tool {
+                        VoxelTool::Add { .. } | VoxelTool::Remove { .. } => {
+                            if distance < radius {
+                                1.0
+                            } else {
+                                0.0
+                            }
+                        }
+                        _ => falloff(distance, radius) as f32,
+                    };
                     if weight <= 0.0 {
                         continue;
                     }
                     let at = self.index(i, j, k);
                     let d = self.density[at];
                     let next = match tool {
-                        VoxelTool::Add => d + step * weight,
-                        VoxelTool::Remove => d - step * weight,
+                        // Depths to the half ball, measured exactly rather than read off the
+                        // samples round about, which on a coarse grid would blur the move
+                        // away dab after dab.
+                        VoxelTool::Add { along } => {
+                            let along = vec::normalize(along);
+                            let behind = vec::dot(centre + along * shift - p, along);
+                            let inside = behind.min(radius - distance) / self.cell;
+                            d.max(inside as f32)
+                        }
+                        VoxelTool::Remove { along } => {
+                            let along = vec::normalize(along);
+                            let ahead = vec::dot(p - (centre - along * shift), along);
+                            let inside = ahead.min(radius - distance) / self.cell;
+                            d.min(-inside as f32)
+                        }
+                        // Only the samples within a cell of the surface place it.
+                        // Averaging those further in would wear away the ridge inside a
+                        // thin wall, and with it the wall, dab after dab.
+                        VoxelTool::Smooth if d.abs() >= 1.0 => d,
                         VoxelTool::Smooth => {
                             let old = before.as_ref().expect("kept for Smooth");
                             let read = |di: i64, dj: i64, dk: i64| {
@@ -754,8 +838,19 @@ mod tests {
         let mut field = sky;
         let middle = Vec3d::new(128.0, 128.0, 32.0);
         let flat = top_at(&field, 128.0, 128.0);
+        // Each dab where the last left the surface, as the editor aims them.
         for _ in 0..6 {
-            assert!(field.sculpt(middle, 64.0, 1.0, VoxelTool::Add).is_some());
+            let top = Vec3d::new(128.0, 128.0, top_at(&field, 128.0, 128.0));
+            assert!(field
+                .sculpt(
+                    top,
+                    64.0,
+                    1.0,
+                    VoxelTool::Add {
+                        along: Vec3d::new(0.0, 0.0, 1.0)
+                    }
+                )
+                .is_some());
         }
         let raised = top_at(&field, 128.0, 128.0);
         assert!(raised > flat + 8.0, "{flat} {raised}");
@@ -763,10 +858,12 @@ mod tests {
             (top_at(&field, 16.0, 16.0) - flat).abs() < 1e-6,
             "far away stays"
         );
+        // The column's rim rounds off.
+        let rim = top_at(&field, 184.0, 128.0);
         for _ in 0..6 {
-            field.sculpt(middle, 64.0, 1.0, VoxelTool::Smooth);
+            field.sculpt(Vec3d::new(184.0, 128.0, rim), 48.0, 1.0, VoxelTool::Smooth);
         }
-        assert!(top_at(&field, 128.0, 128.0) < raised);
+        assert!(top_at(&field, 184.0, 128.0) < rim);
         for _ in 0..12 {
             field.sculpt(
                 middle,
@@ -780,7 +877,15 @@ mod tests {
         }
         assert!((top_at(&field, 128.0, 128.0) - flat).abs() < 2.0);
         for _ in 0..12 {
-            field.sculpt(middle, 64.0, 1.0, VoxelTool::Remove);
+            let bottom = Vec3d::new(128.0, 128.0, top_at(&field, 128.0, 128.0));
+            field.sculpt(
+                bottom,
+                64.0,
+                1.0,
+                VoxelTool::Remove {
+                    along: Vec3d::new(0.0, 0.0, 1.0),
+                },
+            );
         }
         assert!(top_at(&field, 128.0, 128.0) < flat - 8.0);
         assert!(closed(&field.mesh()));
@@ -790,13 +895,27 @@ mod tests {
     fn a_dab_can_hollow_out_a_cave() {
         let bounds = Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(256.0, 256.0, 128.0));
         let mut field = VoxelField::solid_box(&bounds, 8.0).unwrap();
-        let inside = Vec3d::new(128.0, 128.0, 64.0);
-        for _ in 0..40 {
-            field.sculpt(inside, 40.0, 1.0, VoxelTool::Remove);
+        // Dabs into the side of the box, each where the last left the wall, as a held
+        // button does.
+        let mut face = 0.0;
+        for _ in 0..10 {
+            let at = Vec3d::new(face, 128.0, 64.0);
+            field.sculpt(
+                at,
+                48.0,
+                1.0,
+                VoxelTool::Remove {
+                    along: Vec3d::new(-1.0, 0.0, 0.0),
+                },
+            );
+            while face < 256.0 && !field.is_solid(Vec3d::new(face, 128.0, 64.0)) {
+                face += 0.5;
+            }
         }
-        assert!(!field.is_solid(inside));
+        assert!(face > 48.0, "the cave reaches {face}");
+        assert!(!field.is_solid(Vec3d::new(24.0, 128.0, 64.0)));
         assert!(
-            field.is_solid(Vec3d::new(128.0, 128.0, 120.0)),
+            field.is_solid(Vec3d::new(24.0, 128.0, 120.0)),
             "the roof holds"
         );
         assert!(closed(&field.mesh()));
@@ -861,6 +980,25 @@ mod tests {
             })
             .sum();
         assert!((got - enclosed).abs() / exact < 0.03, "{got} {enclosed}");
+    }
+
+    #[test]
+    fn a_ball_off_the_grid_becomes_brushes_a_map_file_carries_back() {
+        // Off the grid's samples, so the surface crosses edges anywhere along them.
+        let field = ball(Vec3d::new(3.3, -2.7, 1.9), 61.7, 16.0);
+        let brushes = field.to_brushes("m");
+        assert!(!brushes.is_empty());
+        for brush in &brushes {
+            assert!(brush.survives_a_file(), "{:?}", brush.bounds());
+            for p in brush.vertex_positions() {
+                for v in [p.x(), p.y(), p.z()] {
+                    assert!(
+                        (v * 8.0 - (v * 8.0).round()).abs() < 1e-9,
+                        "{v} is off the lattice"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

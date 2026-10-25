@@ -888,7 +888,9 @@ fn has_base_block(brushes: &[Brush], up: usize, top: f64, side: f64) -> bool {
     brushes.iter().any(|brush| {
         let b = brush.bounds();
         let across: Vec<usize> = (0..3).filter(|i| *i != up).collect();
-        across.iter().all(|i| (b.max[*i] - b.min[*i] - side).abs() < 1e-6)
+        across
+            .iter()
+            .all(|i| (b.max[*i] - b.min[*i] - side).abs() < 1e-6)
             && (b.max[up] - b.min[up] - top).abs() < 1e-6
     })
 }
@@ -941,7 +943,10 @@ fn sculpted_hills_of_every_shape_merge_further_with_the_cut() {
         d.select_all();
         let whole = left_without_a_cut(&d);
         let left = merge_and_check(&mut d);
-        assert!(left < whole, "{shape:?}: {left} left, {whole} without the cut");
+        assert!(
+            left < whole,
+            "{shape:?}: {left} left, {whole} without the cut"
+        );
         assert!(has_base_block(&brushes(&d), 2, 32.0, 128.0), "{shape:?}");
     }
 }

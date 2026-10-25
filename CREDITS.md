@@ -29,6 +29,8 @@ licence (`crates/heron-brush-web/vendor/three/LICENSE`).
 
 - Inter, copyright The Inter Project Authors, SIL Open Font License 1.1
   (`crates/heron-brush/fonts/Inter-LICENSE.txt`).
+- Chakra Petch, for the welcome screen's headings, copyright The Chakra Petch Project
+  Authors, SIL Open Font License 1.1 (`crates/heron-brush/fonts/ChakraPetch-LICENSE.txt`).
 - Noto Sans CJK (SC, TC, JP and KR, cut down to the characters the editor shows), in the
   web build only, copyright Adobe, SIL Open Font License 1.1
   (`crates/heron-brush-web/fonts/NotoSansCJK-LICENSE.txt`).

@@ -125,6 +125,7 @@ In der 3D-Ansicht extrudiert `Shift`-Ziehen an einer Fläche eines ausgewählten
 
 ## Brushes kombinieren
 - `Ctrl+J`: die ausgewählten Brushes zu ihrer konvexen Hülle verschmelzen.
+- `Ctrl+Shift+J`: Brushes verbinden – so wenige konvexe Brushes wie möglich bei gleicher Form.
 - `Ctrl+K`: die ausgewählten Brushes von den Brushes abziehen, die sie berühren.
 - `Ctrl+Shift+K`: die Auswahl aushöhlen, mit Wänden von einem Rasterschritt Dicke.
 - `Ctrl+L`: die Schnittmenge der Auswahl bilden.

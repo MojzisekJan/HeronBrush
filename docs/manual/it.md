@@ -125,6 +125,7 @@ Nella vista 3D, trascina con `Shift` una faccia di un brush selezionato per estr
 
 ## Combinare i brush
 - `Ctrl+J`: unisce i brush selezionati nel loro inviluppo convesso.
+- `Ctrl+Shift+J`: Unisci brush, il minor numero di brush convessi che mantenga la forma.
 - `Ctrl+K`: sottrae i brush selezionati dai brush che toccano.
 - `Ctrl+Shift+K`: svuota la selezione, con pareti spesse un passo di griglia.
 - `Ctrl+L`: interseca la selezione.

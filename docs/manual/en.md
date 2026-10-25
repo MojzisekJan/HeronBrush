@@ -156,6 +156,7 @@ Open **Shape settings** from the toolbar to configure any drawn shape. Selecting
 
 ## Combining brushes
 - `Ctrl+J`: merge the selected brushes into their convex hull.
+- `Ctrl+Shift+J`: Join brushes, as few convex brushes as keep the shape.
 - `Ctrl+K`: subtract the selected brushes from the brushes they touch.
 - `Ctrl+Shift+K`: hollow the selection, with walls one grid step thick.
 - `Ctrl+L`: intersect the selection.
@@ -250,7 +251,7 @@ When the sculpting is done, select the terrain and choose Geometry → **Merge c
 
 For terrain like a voxel game's, split into **Square** columns and choose **Blocks** under **Stroke** in the **Sculpt** window. A stroke then moves each column's whole top by whole grid steps and keeps its sides upright, so the ground rises in steps. Raise, Lower, Smooth and Flatten work as before; small dabs add up until a column has risen a whole step. Columns of other shapes are left alone.
 
-**Freeform** needs no columns: it works on any brushes. Raise adds ground in a ball round the pointer and Lower takes it away, so the ground can hang over and hollow out into caves. Smooth evens it out and Flatten levels it to where the stroke began. Each dab rebuilds the brushes it reaches on the grid, rounded, and leaves everything outside its ball as it was, sharp edges included. The result is ordinary brushes, so every other tool works on it, and **Merge columns** makes them fewer afterwards. A finer grid gives a smoother surface and more brushes.
+**Freeform** needs no columns: it works on any brushes. Raise moves the surface the way **Direction** says, adding ground, and Lower moves it back, taking ground away, both as wide as the ring; held on one spot they grow a column or dig a tunnel. A held dab works the spot the pointer first found and lands on the ground along the direction from there, so with **Up** a column grows straight up even seen at a slant. **Normal** pushes out of the face under the pointer, so a column's side grows a branch that hangs over the ground, and **Camera** pushes towards the view. Smooth evens the surface out and Flatten levels it to where the stroke began. Each dab rebuilds the brushes it reaches on the grid and leaves everything else as it was, sharp edges included. The ring reaches at least two grid steps, as the grid cannot shape anything narrower. The result is ordinary brushes, so every other tool works on it, and **Join brushes** makes them fewer afterwards. A finer grid gives a smoother surface and more brushes.
 
 # Materials and UVs
 ## Loading and applying materials

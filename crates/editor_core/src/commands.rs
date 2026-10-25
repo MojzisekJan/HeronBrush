@@ -626,6 +626,21 @@ impl Commands {
                 Key::Letter('z') if ctrl && shift => report(document.borrow_mut().redo(), true),
                 Key::Letter('z') if ctrl => report(document.borrow_mut().undo(), false),
                 Key::Letter('y') if ctrl => report(document.borrow_mut().redo(), true),
+                // Join brushes, beside Ctrl+J's merge into one: as few convex brushes as
+                // keep the shape.
+                Key::Letter('j') if ctrl && shift => {
+                    let before = document.borrow().selection_count();
+                    let result = document.borrow_mut().join_brushes();
+                    match result {
+                        Ok(removed) => crate::say!(
+                            "{}: {} → {}",
+                            tr("Join brushes"),
+                            before,
+                            counted(before - removed, "brush")
+                        ),
+                        Err(why) => crate::say!("{}", tr(why)),
+                    }
+                }
                 // `ActionManager`'s CSG menu: Ctrl+J merge, Ctrl+K subtract,
                 // Ctrl+Shift+K hollow, Ctrl+L intersect.
                 Key::Letter('j') if ctrl && !shift => {

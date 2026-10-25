@@ -125,6 +125,7 @@ Dans la vue 3D, faites `Shift`-glisser une face d’un brush sélectionné pour 
 
 ## Combiner des brushes
 - `Ctrl+J` : fusionner les brushes sélectionnés en leur enveloppe convexe.
+- `Ctrl+Shift+J` : Joindre les brushes, aussi peu de brushes convexes que possible pour la même forme.
 - `Ctrl+K` : soustraire les brushes sélectionnés des brushes qu’ils touchent.
 - `Ctrl+Shift+K` : évider la sélection, avec des parois d’un pas de grille d’épaisseur.
 - `Ctrl+L` : intersection de la sélection.

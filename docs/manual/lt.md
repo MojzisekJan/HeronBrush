@@ -125,6 +125,7 @@ Spustelėkite brašą, kad jį pažymėtumėte, ir spustelėkite su `Ctrl`, kad 
 
 ## Brašų jungimas
 - `Ctrl+J`: sulieti pažymėtus brašus į jų iškiląjį apvalkalą.
+- `Ctrl+Shift+J`: Sujungti brašus – kuo mažiau iškilųjų brašų, išlaikant formą.
 - `Ctrl+K`: atimti pažymėtus brašus iš brašų, kuriuos jie liečia.
 - `Ctrl+Shift+K`: padaryti pažymėtus objektus tuščiavidurius, su vieno tinklelio žingsnio storio sienomis.
 - `Ctrl+L`: pažymėtų objektų sankirta.

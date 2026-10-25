@@ -125,6 +125,7 @@ I 3D-visningen kan du `Shift`-trække i en flade på en markeret brush for at ek
 
 ## Kombinering af brushes
 - `Ctrl+J`: flet de markerede brushes til deres konvekse hylster.
+- `Ctrl+Shift+J`: Sammenføj brushes – så få konvekse brushes som muligt med samme form.
 - `Ctrl+K`: træk de markerede brushes fra de brushes, de rører.
 - `Ctrl+Shift+K`: udhul markeringen med vægge, der er ét gittertrin tykke.
 - `Ctrl+L`: dan fællesmængden af markeringen.

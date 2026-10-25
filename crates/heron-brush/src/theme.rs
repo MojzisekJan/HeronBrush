@@ -349,6 +349,21 @@ pub fn bold() -> FontFamily {
     FontFamily::Name("bold".into())
 }
 
+/// The welcome screen's heading face, Chakra Petch: `DISPLAY` semibold, `DISPLAY_BOLD`
+/// bold.
+const DISPLAY: &str = "display";
+const DISPLAY_BOLD: &str = "display-bold";
+
+/// Chakra Petch SemiBold at `size`.
+pub fn display(size: f32) -> FontId {
+    FontId::new(size, FontFamily::Name(DISPLAY.into()))
+}
+
+/// Chakra Petch Bold at `size`.
+pub fn display_bold(size: f32) -> FontId {
+    FontId::new(size, FontFamily::Name(DISPLAY_BOLD.into()))
+}
+
 /// Body text.
 pub fn body() -> FontId {
     FontId::new(text_size(), FontFamily::Proportional)
@@ -498,6 +513,25 @@ pub fn install(ctx: &egui::Context) {
             .cloned()
             .unwrap_or_default(),
     );
+    // Chakra Petch for the welcome screen's headings, the bold family behind it for
+    // what it has no glyph for.
+    for (name, bytes) in [
+        (
+            DISPLAY,
+            include_bytes!("../fonts/ChakraPetch-SemiBold.ttf").as_slice(),
+        ),
+        (
+            DISPLAY_BOLD,
+            include_bytes!("../fonts/ChakraPetch-Bold.ttf").as_slice(),
+        ),
+    ] {
+        fonts
+            .font_data
+            .insert(name.into(), egui::FontData::from_static(bytes).into());
+        let mut family = vec![name.to_string()];
+        family.extend(bold_family.iter().cloned());
+        fonts.families.insert(FontFamily::Name(name.into()), family);
+    }
     fonts.families.insert(bold(), bold_family);
     // Phosphor's icons in a family of their own, Phosphor first: the icons sit in the
     // private use area, where Inter has glyphs of its own that would otherwise win. The

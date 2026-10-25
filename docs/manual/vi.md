@@ -125,6 +125,7 @@ Trong khung nhìn 3D, kéo kèm `Shift` một mặt của brush đang chọn đ�
 
 ## Kết hợp brush
 - `Ctrl+J`: gộp các brush đang chọn thành bao lồi của chúng.
+- `Ctrl+Shift+J`: Nối brush, ít brush lồi nhất có thể mà vẫn giữ hình dạng.
 - `Ctrl+K`: trừ các brush đang chọn khỏi các brush mà chúng chạm vào.
 - `Ctrl+Shift+K`: làm rỗng vùng chọn, với thành dày một bước lưới.
 - `Ctrl+L`: lấy giao của vùng chọn.

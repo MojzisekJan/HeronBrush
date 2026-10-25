@@ -31,6 +31,7 @@ mod preferences_page;
 mod shape_dialogs;
 mod shortcut_editor;
 mod update_page;
+mod welcome_banner;
 mod welcome_page;
 // The web build has one page per tab and no command line to hand over.
 mod colour_picker;
@@ -1605,40 +1606,27 @@ impl App {
         let title = tr("Welcome to Heron Brush");
         self.set_title(&ctx, title.into());
         ui.painter().rect_filled(window, 0.0, theme::bg());
+        // No title bar of its own: the banner runs to the top of the window, which drags
+        // by its top strip, and the window's buttons sit on it.
         let bar_height = if cfg!(target_arch = "wasm32") {
             0.0
         } else {
             theme::HEADER_HEIGHT
         };
         let bar = egui::Rect::from_min_size(window.min, egui::vec2(window.width(), bar_height));
+        let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
         if bar_height > 0.0 {
-            ui.painter().rect_filled(bar, 0.0, theme::base());
-            ui.painter().hline(
-                bar.x_range(),
-                bar.bottom() - 0.5,
-                egui::Stroke::new(1.0, theme::border()),
-            );
-            let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
             chrome::title_bar_drag(ui, bar, "welcome-title", maximized);
-            // No logo here: the welcome screen's own column starts with a large one.
-            crate::theme::text(
-                ui.painter(),
-                bar.center(),
-                egui::Align2::CENTER_CENTER,
-                title,
-                theme::body(),
-                theme::dim(),
-            );
-            chrome::window_buttons(ui, bar, maximized);
         }
-
-        let body = egui::Rect::from_min_max(egui::pos2(window.left(), bar.bottom()), window.max);
         let mut child = ui.new_child(
             egui::UiBuilder::new()
-                .max_rect(body)
+                .max_rect(window)
                 .layout(egui::Layout::top_down(egui::Align::Min)),
         );
         let request = self.welcome.show_in(&mut child);
+        if bar_height > 0.0 {
+            chrome::window_buttons(ui, bar, maximized);
+        }
         if let Some(request) = request {
             self.welcome_request(&ctx, request);
         }

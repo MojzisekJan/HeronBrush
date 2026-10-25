@@ -125,6 +125,7 @@ En la vista 3D, `Shift`-arrastra una cara de un brush seleccionado para extruirl
 
 ## Combinar brushes
 - `Ctrl+J`: fusionar los brushes seleccionados en su envolvente convexa.
+- `Ctrl+Shift+J`: Unir brushes: el menor número de brushes convexos que conserve la forma.
 - `Ctrl+K`: restar los brushes seleccionados de los brushes que tocan.
 - `Ctrl+Shift+K`: ahuecar la selección, con paredes de un paso de cuadrícula de grosor.
 - `Ctrl+L`: intersecar la selección.

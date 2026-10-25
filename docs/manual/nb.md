@@ -125,6 +125,7 @@ I 3D-visningen kan du `Shift`-dra en flate på en valgt brush for å ekstrudere 
 
 ## Kombinere brusher
 - `Ctrl+J`: slå sammen de valgte brushene til deres konvekse hylster.
+- `Ctrl+Shift+J`: Sammenføy brusher – så få konvekse brusher som mulig med samme form.
 - `Ctrl+K`: trekk de valgte brushene fra brushene de berører.
 - `Ctrl+Shift+K`: gjør utvalget hult, med vegger som er ett rutenettsteg tykke.
 - `Ctrl+L`: finn snittet av utvalget.

@@ -125,6 +125,7 @@ I 3D-vyn `Shift`-drar du en yta på en markerad brush för att extrudera den. `A
 
 ## Kombinera brushar
 - `Ctrl+J`: slå ihop de markerade brusharna till deras konvexa hölje.
+- `Ctrl+Shift+J`: Sammanfoga brushar – så få konvexa brushar som möjligt med samma form.
 - `Ctrl+K`: subtrahera de markerade brusharna från de brushar de rör vid.
 - `Ctrl+Shift+K`: gör markeringen ihålig, med väggar som är ett rutnätssteg tjocka.
 - `Ctrl+L`: bilda skärningen av markeringen.

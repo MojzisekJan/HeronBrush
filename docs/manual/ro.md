@@ -125,6 +125,7 @@ Fă clic pe un brush pentru a-l selecta și `Ctrl`-clic pentru a-l adăuga la se
 
 ## Combinarea brush-urilor
 - `Ctrl+J`: unește brush-urile selectate în învelitoarea lor convexă.
+- `Ctrl+Shift+J`: Îmbinare brush-uri – cât mai puține brush-uri convexe cu aceeași formă.
 - `Ctrl+K`: scade brush-urile selectate din brush-urile pe care le ating.
 - `Ctrl+Shift+K`: golește selecția, cu pereți groși de un pas de grilă.
 - `Ctrl+L`: intersectează selecția.

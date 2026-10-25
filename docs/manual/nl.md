@@ -125,6 +125,7 @@ In de 3D-weergave extrudeer je een vlak van een geselecteerde brush met `Shift`-
 
 ## Brushes combineren
 - `Ctrl+J`: de geselecteerde brushes samenvoegen tot hun convexe omhulsel.
+- `Ctrl+Shift+J`: Brushes verbinden: zo weinig mogelijk convexe brushes met dezelfde vorm.
 - `Ctrl+K`: de geselecteerde brushes aftrekken van de brushes die ze raken.
 - `Ctrl+Shift+K`: de selectie uithollen, met wanden van één rasterstap dik.
 - `Ctrl+L`: de doorsnede van de selectie nemen.

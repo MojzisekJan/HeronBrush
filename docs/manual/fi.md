@@ -125,6 +125,7 @@ Napsauta brushia valitaksesi sen ja lisää valintaan `Ctrl`-napsautuksella. Tyh
 
 ## Brushien yhdistäminen
 - `Ctrl+J`: yhdistä valitut brushit niiden kuperaksi verhoksi.
+- `Ctrl+Shift+J`: Yhdistä brushit – mahdollisimman vähän kuperia brusheja samalla muodolla.
 - `Ctrl+K`: vähennä valitut brushit niistä brusheista, joita ne koskettavat.
 - `Ctrl+Shift+K`: tee valinnasta ontto, seinät yhden ruudukon askeleen paksuisina.
 - `Ctrl+L`: muodosta valinnan leikkaus eli yhteinen osa.

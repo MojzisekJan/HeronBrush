@@ -125,6 +125,7 @@ V 3D pohľade `Shift`-ťahaním steny vybraného brushu stenu vytiahnete. `Alt`-
 
 ## Kombinovanie brushov
 - `Ctrl+J`: zlúčiť vybrané brushe do ich konvexného obalu.
+- `Ctrl+Shift+J`: Spojiť brushe – čo najmenej konvexných brushov s rovnakým tvarom.
 - `Ctrl+K`: odčítať vybrané brushe od brushov, ktorých sa dotýkajú.
 - `Ctrl+Shift+K`: vydutiť výber so stenami hrubými jeden krok mriežky.
 - `Ctrl+L`: prienik výberu.

@@ -156,6 +156,7 @@ Nastavení všech kreslených tvarů otevřete tlačítkem **Nastavení tvaru** 
 
 ## Kombinace brushů
 - `Ctrl+J`: sloučit vybrané brushe do jejich konvexního obalu.
+- `Ctrl+Shift+J`: Spojit brushe, co nejméně konvexních brushů se stejným tvarem.
 - `Ctrl+K`: odečíst vybrané brushe od brushů, kterých se dotýkají.
 - `Ctrl+Shift+K`: vyhloubit výběr se stěnami silnými jeden krok mřížky.
 - `Ctrl+L`: průnik výběru.
@@ -249,7 +250,7 @@ Až budete se sochaním hotovi, vyberte terén a zvolte Geometrie → **Sloučit
 
 Pro terén jako ve voxelových hrách rozdělte na sloupce **Čtverec** a v okně **Sochat** zvolte u **Tah** možnost **Kostky**. Tah pak posouvá celý vršek každého sloupce po celých krocích mřížky a boky nechává svislé, takže terén stoupá ve schodech. Zvednout, Snížit, Vyhladit i Zarovnat fungují jako dřív; malé tahy se sčítají, dokud sloupec nevystoupá o celý krok. Sloupce jiných tvarů zůstanou, jak jsou.
 
-**Volně** nepotřebuje sloupce, funguje na jakýchkoli brushích. Zvednout přidává hmotu v kouli kolem ukazatele a Snížit ji ubírá, takže terén může tvořit převisy a jeskyně. Vyhladit ho vyrovná a Zarovnat srovná do roviny, kde tah začal. Každý dab přestaví zasažené brushe na mřížce se zaoblením a vše mimo kouli nechá, jak bylo, včetně ostrých hran. Výsledkem jsou obyčejné brushe, takže na ně fungují všechny ostatní nástroje, a **Sloučit sloupce** jejich počet potom sníží. Jemnější mřížka dává hladší povrch a víc brushů.
+**Volně** nepotřebuje sloupce, funguje na jakýchkoli brushích. Zvednout posouvá povrch tam, kam ukazuje **Směr**, a přidává hmotu; Snížit ho posouvá zpět a hmotu ubírá, obojí v šířce kruhu. Podržené na jednom místě vytáhnou sloup nebo vyvrtají tunel. Podržený dab pracuje na místě, které ukazatel našel na začátku, a odtud dopadá na povrch ve směru tahu, takže se **Nahoru** sloup zvedá svisle, i když se na něj díváte šikmo. **Normála** tlačí ven z plochy pod ukazatelem, takže z boku sloupu vyroste odbočka s převisem, a **Kamera** tlačí směrem k pohledu. Vyhladit povrch vyrovná a Zarovnat ho srovná do roviny, kde tah začal. Každý dab přestaví zasažené brushe na mřížce a vše ostatní nechá, jak bylo, včetně ostrých hran. Kruh sahá aspoň na dva kroky mřížky, protože nic užšího mřížka vytvarovat neumí. Výsledkem jsou obyčejné brushe, takže na ně fungují všechny ostatní nástroje, a **Spojit brushe** jejich počet potom sníží. Jemnější mřížka dává hladší povrch a víc brushů.
 
 # Materiály a UV
 ## Načtení a použití materiálů

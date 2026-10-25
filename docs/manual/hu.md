@@ -125,6 +125,7 @@ A 3D nézetben egy kijelölt brush lapját `Shift`-húzással kihúzhatja. Egy m
 
 ## Brush-ok kombinálása
 - `Ctrl+J`: a kijelölt brush-ok egyesítése a konvex burkukba.
+- `Ctrl+Shift+J`: Brush-ok összekötése – a lehető legkevesebb konvex brush ugyanazzal az alakkal.
 - `Ctrl+K`: a kijelölt brush-ok kivonása azokból a brush-okból, amelyekhez hozzáérnek.
 - `Ctrl+Shift+K`: a kijelölés kiüregesítése egy rácslépés vastag falakkal.
 - `Ctrl+L`: a kijelölés metszete.

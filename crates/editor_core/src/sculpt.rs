@@ -163,6 +163,12 @@ impl SculptParameters {
     pub const RADIUS: std::ops::RangeInclusive<f64> = 8.0..=4096.0;
     pub const STRENGTH: std::ops::RangeInclusive<f64> = 0.01..=1.0;
 
+    /// The radius a free stroke reaches on a grid `step` units apart: at least two steps,
+    /// as a smaller ball takes in too few of the grid's samples to move the surface.
+    pub fn free_radius(&self, step: f64) -> f64 {
+        self.radius.max(2.0 * step)
+    }
+
     /// How far apart dabs fall along a stroke.
     pub fn spacing(&self) -> f64 {
         self.radius * 0.25

@@ -125,6 +125,7 @@ Na vista 3D, arraste com `Shift` uma face de um brush selecionado para extrudá-
 
 ## Combinando brushes
 - `Ctrl+J`: mesclar os brushes selecionados em seu fecho convexo.
+- `Ctrl+Shift+J`: Unir brushes, o menor número de brushes convexos que mantenha a forma.
 - `Ctrl+K`: subtrair os brushes selecionados dos brushes em que eles tocam.
 - `Ctrl+Shift+K`: tornar a seleção oca, com paredes da espessura de um passo da grade.
 - `Ctrl+L`: interseção da seleção.

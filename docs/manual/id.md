@@ -125,6 +125,7 @@ Di tampilan 3D, seret permukaan brush yang dipilih sambil menahan `Shift` untuk 
 
 ## Menggabungkan brush
 - `Ctrl+J`: gabungkan brush yang dipilih menjadi selubung cembungnya (convex hull).
+- `Ctrl+Shift+J`: Sambungkan brush, sesedikit mungkin brush cembung dengan bentuk yang sama.
 - `Ctrl+K`: kurangkan brush yang dipilih dari brush yang disentuhnya.
 - `Ctrl+Shift+K`: jadikan pilihan berongga, dengan dinding setebal satu langkah kisi.
 - `Ctrl+L`: ambil irisan pilihan.

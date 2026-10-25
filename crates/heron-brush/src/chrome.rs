@@ -328,7 +328,9 @@ pub fn menus(
             )
             .icon(icon::MOUNTAINS),
             item(tr("Merge columns"), Action::MergeColumns).icon(icon::UNITE),
-            item(tr("Join brushes"), Action::JoinBrushes).icon(icon::UNITE_SQUARE),
+            item(tr("Join brushes"), Action::JoinBrushes)
+                .icon(icon::UNITE_SQUARE)
+                .keys(&menu::ctrl("Shift+J")),
             Entry::Separator,
             item(tr("Convert faces to patches"), Action::Patches).icon(icon::BEZIER_CURVE),
             item(tr("Move selection out of its entity"), Action::Structural)
@@ -1022,7 +1024,9 @@ impl Chrome {
                     ui.ctx(),
                     "sculpt-settings",
                     tr("Sculpt"),
-                    [420.0, 200.0],
+                    // Room for the three rows, the notes under them, a warning about a
+                    // fine grid and the buttons, in longer languages too.
+                    [620.0, 340.0],
                     |ui, part| match part {
                         crate::dialog::Part::Body => {
                             let cell = self.grid.borrow().actual_size();

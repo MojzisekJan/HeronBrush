@@ -8,7 +8,7 @@
 //! wait 0.5                 # seconds
 //! move 400 300
 //! click 400 300 [right|double] [shift,alt,cmd]  # modifiers held through the click
-//! drag 400 300 500 320 [right|middle]
+//! drag 400 300 500 320 [right|middle] [shift,alt,cmd]
 //! down 400 300 [right|middle]  # a press held until `up`, for a slow drag made of moves
 //! up 450 300 [right|middle]
 //! scroll 400 300 -3        # lines, negative scrolls down
@@ -47,7 +47,7 @@ enum Step {
     Wait(f32),
     Move(Pos2),
     Click(Pos2, PointerButton, bool, Modifiers),
-    Drag(Pos2, Pos2, PointerButton),
+    Drag(Pos2, Pos2, PointerButton, Modifiers),
     /// A button pressed or let go at a point.
     Press(Pos2, PointerButton, bool),
     Scroll(Pos2, f32),
@@ -191,6 +191,12 @@ fn parse(text: &str) -> Result<VecDeque<Step>, String> {
                 Pos2::new(num(0)?, num(1)?),
                 Pos2::new(num(2)?, num(3)?),
                 button(rest.get(4)),
+                rest.get(4..)
+                    .unwrap_or_default()
+                    .iter()
+                    .filter(|w| !matches!(**w, "left" | "right" | "middle"))
+                    .map(|w| modifiers(w))
+                    .fold(Modifiers::NONE, |a, b| a | b),
             ),
             "down" | "up" => Step::Press(
                 Pos2::new(num(0)?, num(1)?),
@@ -329,7 +335,7 @@ impl Script {
         };
         let pause = Duration::from_millis(30);
         let held = match &step {
-            Step::Click(.., m) => *m,
+            Step::Click(.., m) | Step::Drag(.., m) => *m,
             _ => Modifiers::NONE,
         };
         let press = |pos, button, pressed| Event::PointerButton {
@@ -358,14 +364,20 @@ impl Script {
                 self.queue
                     .push_back(Event::ModifiersChanged(Modifiers::NONE));
             }
-            Step::Drag(a, b, button) => {
-                self.queue
-                    .extend([Event::PointerMoved(a), press(a, button, true)]);
+            Step::Drag(a, b, button, _) => {
+                self.queue.extend([
+                    Event::ModifiersChanged(held),
+                    Event::PointerMoved(a),
+                    press(a, button, true),
+                ]);
                 for i in 1..=12 {
                     self.queue
                         .push_back(Event::PointerMoved(a + (b - a) * (i as f32 / 12.0)));
                 }
-                self.queue.push_back(press(b, button, false));
+                self.queue.extend([
+                    press(b, button, false),
+                    Event::ModifiersChanged(Modifiers::NONE),
+                ]);
             }
             Step::Press(p, button, down) => self
                 .queue

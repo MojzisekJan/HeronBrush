@@ -125,6 +125,7 @@ V 3D-pogledu z vlečenjem ploskve izbranega brusha ob `Shift` ploskev izvlečete
 
 ## Združevanje brushev
 - `Ctrl+J`: združi izbrane brushe v njihovo konveksno ovojnico.
+- `Ctrl+Shift+J`: Spoji brushe – čim manj konveksnih brushev z isto obliko.
 - `Ctrl+K`: odštej izbrane brushe od brushev, ki se jih dotikajo.
 - `Ctrl+Shift+K`: izvotli izbor s stenami debeline enega koraka mreže.
 - `Ctrl+L`: presek izbora.

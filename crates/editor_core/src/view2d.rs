@@ -386,7 +386,7 @@ pub fn draw_size_labels(
         && !state.rotating
         && state.cursor.is_some_and(|cursor| {
             let ray = state.camera.ray_through(cursor, viewport, PICK_REACH);
-            document.pick_selected(&ray).is_some()
+            document.pick_selected_flat(&ray).is_some()
         });
     if !selection_guide_shown(tool, hovering_selected, state.moving, state.rotating) {
         return;
@@ -2250,7 +2250,7 @@ impl SelectAndMove {
                 // Preparing a Shift-drag must still select a face on a plain click.
                 let picked = document
                     .borrow()
-                    .pick(&ray)
+                    .pick_flat(&ray)
                     .filter(|hit| hit.face.is_some());
                 if let Some(hit) = picked {
                     let face = FaceRef {
@@ -2374,7 +2374,7 @@ impl SelectAndMove {
                             viewport,
                             PICK_REACH,
                         );
-                        let hit = document.borrow().pick(&ray).map(|hit| hit.node);
+                        let hit = document.borrow().pick_flat(&ray).map(|hit| hit.node);
                         crate::fillet_tool::select_brush(
                             &mut document.borrow_mut(),
                             &mut handles,
@@ -2451,9 +2451,9 @@ impl SelectAndMove {
         // selected geometry. Modified clicks still pick the nearest object.
         let modified_pick = modifiers.control || modifiers.shift;
         let hit = if modified_pick {
-            document.pick(&ray)
+            document.pick_flat(&ray)
         } else {
-            document.pick_selected(&ray).or_else(|| document.pick(&ray))
+            document.pick_selected_flat(&ray).or_else(|| document.pick_flat(&ray))
         };
         // Whether anything was selected before the click below clears it: a drag
         // from empty space draws a brush, but not on the same drag that deselects.
@@ -3316,7 +3316,7 @@ impl FlatView {
     ) -> Option<map_model::node::NodeId> {
         self.document
             .borrow()
-            .pick(&self.ray(x, y, viewport))
+            .pick_flat(&self.ray(x, y, viewport))
             .map(|hit| hit.node)
     }
 
@@ -3451,7 +3451,7 @@ impl FlatView {
         }
         let ray = self.ray(x, y, viewport);
         let mut document = self.document.borrow_mut();
-        let Some(hit) = document.pick(&ray) else {
+        let Some(hit) = document.pick_flat(&ray) else {
             return;
         };
         let Some(index) = hit.face else {
@@ -3497,7 +3497,7 @@ impl FlatView {
     }
 
     pub fn face_under_pointer(&self, x: f64, y: f64, viewport: (f64, f64)) -> Option<FaceRef> {
-        let hit = self.document.borrow().pick(&self.ray(x, y, viewport))?;
+        let hit = self.document.borrow().pick_flat(&self.ray(x, y, viewport))?;
         Some(FaceRef {
             node: hit.node,
             face: hit.face?,
@@ -3521,7 +3521,7 @@ impl FlatView {
         }
         let ray = self.ray(x, y, viewport);
         let mut document = self.document.borrow_mut();
-        let Some(hit) = document.pick(&ray) else {
+        let Some(hit) = document.pick_flat(&ray) else {
             return;
         };
         let Some(face) = hit.face else {
@@ -3552,7 +3552,7 @@ impl FlatView {
         let ray = self.ray(x, y, viewport);
         let at = self.snapped_point(x, y, viewport);
         let document = self.document.borrow();
-        let hit = document.pick(&ray);
+        let hit = document.pick_flat(&ray);
         Probe {
             entity: hit.and_then(|hit| document.entity_around(hit.node)),
             material: hit.and_then(|hit| {

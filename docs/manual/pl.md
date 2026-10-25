@@ -125,6 +125,7 @@ W widoku 3D przeciągnij z `Shift` ścianę zaznaczonego brusha, aby ją wyciąg
 
 ## Łączenie brushów
 - `Ctrl+J`: scal zaznaczone brushe w ich otoczkę wypukłą.
+- `Ctrl+Shift+J`: Połącz brushe – jak najmniej wypukłych brushy o tym samym kształcie.
 - `Ctrl+K`: odejmij zaznaczone brushe od brushów, których dotykają.
 - `Ctrl+Shift+K`: wydrąż zaznaczenie, ze ściankami o grubości jednego kroku siatki.
 - `Ctrl+L`: część wspólna zaznaczenia.

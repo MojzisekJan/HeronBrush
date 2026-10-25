@@ -125,6 +125,7 @@ U 3D prikazu `Shift`-povlačenjem plohe odabranog brusha istiskujete je. `Alt`-k
 
 ## Kombiniranje brusheva
 - `Ctrl+J`: spoji odabrane brusheve u njihovu konveksnu ljusku.
+- `Ctrl+Shift+J`: Spoji brusheve – što manje konveksnih brusheva istog oblika.
 - `Ctrl+K`: oduzmi odabrane brusheve od brusheva koje dodiruju.
 - `Ctrl+Shift+K`: izdubi odabir, sa stijenkama debljine jednog koraka mreže.
 - `Ctrl+L`: presjek odabira.
