@@ -71,10 +71,10 @@ async function __trunkInitializer(init, source, sourceSize, initializer, initWit
 }
 
 
-import init, * as bindings from './heron-brush-web-6b24cb662bd0f58e.js';
+import init, * as bindings from './heron-brush-web-5e401abcb686693b.js';
 import initializer from './b6abbfacfb296fef-loader.mjs';
 
-const wasm = await __trunkInitializer(init, './heron-brush-web-6b24cb662bd0f58e_bg.wasm', 28385563, initializer(), true);
+const wasm = await __trunkInitializer(init, './heron-brush-web-5e401abcb686693b_bg.wasm', 28425466, initializer(), true);
 
 
 window.wasmBindings = bindings;
@@ -130,7 +130,7 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
       loading.classList.toggle("failed", Boolean(failed));
     };
   </script>
-<link rel="modulepreload" href="./heron-brush-web-6b24cb662bd0f58e.js" crossorigin="anonymous" integrity="sha384-08SRBh+qhxJmTLutHa5Ih1bLAq7WPmbRR3L8gKbqaYkEo45ZbhpHEUo4Fa90OmUT"><link rel="modulepreload" href="./snippets/heron-brush-1158badfa40b3c1e/src/web_files.js" crossorigin="anonymous" integrity="sha384-ojW0hQPR3CshadlOC5jxW3Hfbc+rObnsvh+zgmAP3/riyWhzA27d6jI97pa+WESA"><link rel="modulepreload" href="./snippets/heron-brush-export-web-e3a22fe81bd2e037/inline0.js" crossorigin="anonymous" integrity="sha384-VF/GQdbXuVLP1LX/lcq5ZX6O3NWyHNY7jAP1UjbKCRzi61cS69BSPPbde+qwYAlP"><link rel="modulepreload" href="./b6abbfacfb296fef-loader.mjs" crossorigin="anonymous" integrity="sha384-iMi/uETUbOz5EElf9ihnhMUsT9ukZ8/rnW1qYZUUg7mFfej7ehMFo3AqvTnzlQ6E"><link rel="preload" href="./heron-brush-web-6b24cb662bd0f58e_bg.wasm" crossorigin="anonymous" integrity="sha384-bjkc+NgXA3DQffSKalmTpTi44/UuLM7Cq0ZNWX4HVPR/JeLLjJ23vqhNUrcIkoi3" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="./heron-brush-web-5e401abcb686693b.js" crossorigin="anonymous" integrity="sha384-VKXNQ4XGYK/80Y8Pp/MJRAyggjXSUAhIjNLMJ2CfLp6cb4/1/wcpLnG6BMulC6D4"><link rel="modulepreload" href="./snippets/heron-brush-export-web-e3a22fe81bd2e037/inline0.js" crossorigin="anonymous" integrity="sha384-VF/GQdbXuVLP1LX/lcq5ZX6O3NWyHNY7jAP1UjbKCRzi61cS69BSPPbde+qwYAlP"><link rel="modulepreload" href="./snippets/heron-brush-1158badfa40b3c1e/src/web_files.js" crossorigin="anonymous" integrity="sha384-ojW0hQPR3CshadlOC5jxW3Hfbc+rObnsvh+zgmAP3/riyWhzA27d6jI97pa+WESA"><link rel="modulepreload" href="./b6abbfacfb296fef-loader.mjs" crossorigin="anonymous" integrity="sha384-iMi/uETUbOz5EElf9ihnhMUsT9ukZ8/rnW1qYZUUg7mFfej7ehMFo3AqvTnzlQ6E"><link rel="preload" href="./heron-brush-web-5e401abcb686693b_bg.wasm" crossorigin="anonymous" integrity="sha384-Iw3cxD1vhsVXAO7qjOIi99t89JnKb4cPi0RsaZUIYaA4vvsAUGkmASDlyxseyW1l" as="fetch" type="application/wasm"></head>
 <body>
   <canvas id="heron-brush"></canvas>
   <div id="loading" class="waiting">
