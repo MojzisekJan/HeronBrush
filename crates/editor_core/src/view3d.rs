@@ -417,6 +417,10 @@ pub enum DragKind {
         pending: bool,
         /// The selection at the press, which Esc puts back.
         before: crate::document::SelectionSnapshot,
+        /// The edge or face handle the press was on, which a Ctrl-click picks or
+        /// unpicks. Those tools do not move a handle with Ctrl held, so the drag goes
+        /// to the selection (`NodeHandleToolMovePartBase::shouldStartMove`).
+        handle: Option<Vec3d>,
     },
     /// The assemble tool's rectangle, drawn on the face the press landed on
     /// (`AssembleBrushToolController3D`'s `DrawFacePart`).
@@ -598,6 +602,24 @@ pub fn begin_drag(
                 positions,
                 pick_radius(),
             )?;
+
+            if ctrl && matches!(tool, Tool::Edge | Tool::Face) {
+                return Some(Drag {
+                    what: DragKind::PaintSelect {
+                        faces: false,
+                        pending: true,
+                        before: document.selection_snapshot(),
+                        handle: Some(caught),
+                    },
+                    picker: HandlePicker::plane(
+                        geometry_math::plane::horizontal_plane(Vec3d::zero()),
+                        Vec3d::zero(),
+                    ),
+                    initial: caught,
+                    offset: Vec3d::zero(),
+                    applied: Vec3d::zero(),
+                });
+            }
 
             // Dragging a handle that is not selected makes it the selection first, so a
             // drag always moves what is under the pointer. Ctrl adds it to what is picked
@@ -3015,6 +3037,7 @@ impl Scene3d {
                             faces: false,
                             pending: true,
                             before: document.borrow().selection_snapshot(),
+                            handle: None,
                         }
                     } else {
                         DragKind::Click
@@ -3184,6 +3207,7 @@ impl Scene3d {
                     faces: true,
                     pending: true,
                     before: document.borrow().selection_snapshot(),
+                    handle: None,
                 },
                 picker: HandlePicker::plane(
                     geometry_math::plane::horizontal_plane(Vec3d::zero()),
@@ -3553,6 +3577,20 @@ impl Scene3d {
         {
             *pending_shape.borrow_mut() = None;
             document.borrow_mut().cancel_transaction();
+            if let Some(Drag {
+                what:
+                    DragKind::PaintSelect {
+                        handle: Some(handle),
+                        ..
+                    },
+                ..
+            }) = &ended
+            {
+                handles.borrow_mut().select(*handle, true);
+                redraw();
+                refresh_panels();
+                return;
+            }
             let (x, y) = press.get();
             self.click_at(1, x, y, modifiers, (width, height), true);
             render();
@@ -5516,6 +5554,40 @@ mod pick_tests {
         assert!(document.borrow().is_selected(cube));
         assert!(scene.escape());
         assert!(!document.borrow().has_selection());
+    }
+
+    /// `NodeHandleToolMovePartBase::shouldStartMove`: the edge tool does not move a handle
+    /// with Ctrl held, so a Ctrl-drag from one paints the selection, and a Ctrl-click
+    /// picks or unpicks it.
+    #[test]
+    fn a_ctrl_drag_from_an_edge_handle_paints_the_selection() {
+        let (scene, document, tool, floor, cube) = floor_and_cube_scene();
+        document.borrow_mut().select_only(cube);
+        *tool.borrow_mut() = Tool::Edge;
+        scene.handles.borrow_mut().collect(
+            HandleKind::Edge,
+            document.borrow().selected_brushes().into_iter(),
+        );
+        let before = document.borrow().to_map_text();
+        let size = (800.0, 600.0);
+        let project = |at: Vec3d| scene.camera.borrow().project(at, size.0, size.1).unwrap();
+        let edge = Vec3d::new(32.0, 0.0, 64.0);
+        let from = project(edge);
+        let to = project(Vec3d::new(-150.0, -60.0, 0.0));
+        let ctrl = Modifiers {
+            control: true,
+            ..Modifiers::default()
+        };
+        press_drag_with(&scene, edge, (to.x() - from.x(), to.y() - from.y()), ctrl);
+        assert!(document.borrow().is_selected(floor) && document.borrow().is_selected(cube));
+        assert!(!scene.handles.borrow().is_selected(edge));
+        document.borrow_mut().select_only(cube);
+        assert_eq!(document.borrow().to_map_text(), before);
+
+        press_drag_with(&scene, edge, (0.0, 0.0), ctrl);
+        assert!(scene.handles.borrow().is_selected(edge));
+        press_drag_with(&scene, edge, (0.0, 0.0), ctrl);
+        assert!(!scene.handles.borrow().is_selected(edge));
     }
 
     /// `AssembleBrushToolController3D`: a drag on a face draws a rectangle of four points

@@ -1553,7 +1553,7 @@ pub enum Click {
     Face { face: FaceRef, toggle: bool },
     /// Nothing: a click on empty space deselects.
     Nothing,
-    /// A Ctrl-click on a picked handle takes it out of what is picked.
+    /// A Ctrl-click on a handle picks it or takes it out of what is picked.
     UnpickHandle(Vec3d),
 }
 
@@ -2504,6 +2504,21 @@ impl SelectAndMove {
             } else {
                 None
             };
+            // The edge and face tools do not move a handle with Ctrl held, so a Ctrl-drag
+            // from one paints the selection (`NodeHandleToolMovePartBase::shouldStartMove`).
+            if let Some(position) =
+                under.filter(|_| matches!(*tool.borrow(), Tool::Edge | Tool::Face))
+            {
+                drop(handles);
+                *drag.borrow_mut() = DragState {
+                    origin: Vec2d::new(x, y),
+                    current: Vec2d::new(x, y),
+                    mode: DragMode::PaintingSelection,
+                    click: Some(Click::UnpickHandle(position)),
+                    ..DragState::default()
+                };
+                return;
+            }
             let unpick = under.filter(|position| handles.is_selected(*position));
             let unpicked = under.filter(|position| !handles.is_selected(*position));
             let mode = begin_handle_drag(
@@ -3078,6 +3093,15 @@ impl SelectAndMove {
             let mut changed = match drag.click.take() {
                 Some(Click::Object { node, .. }) if !faces => document.paint_select(node),
                 Some(Click::Face { face, .. }) if faces => document.paint_select_face(face),
+                Some(Click::UnpickHandle(_)) => {
+                    let ray = state
+                        .borrow()
+                        .camera
+                        .ray_through(drag.origin, viewport, PICK_REACH);
+                    document
+                        .pick_flat(&ray)
+                        .is_some_and(|hit| document.paint_select(hit.node))
+                }
                 _ => false,
             };
             if let Some(hit) = document.pick_flat(&ray) {
@@ -5012,6 +5036,37 @@ mod tests {
             vertices.contains(&Vec3d::new(-16.0, 0.0, 0.0)),
             "the dragged corner stayed"
         );
+    }
+
+    /// `NodeHandleToolMovePartBase::shouldStartMove`: the edge tool does not move a handle
+    /// with Ctrl held, so a Ctrl-drag from one paints the selection, and a Ctrl-click
+    /// picks or unpicks it.
+    #[test]
+    fn a_ctrl_drag_from_an_edge_handle_paints_the_selection_in_a_flat_view() {
+        let (mut document, floor, cube) = floor_and_cube();
+        document.select_only(cube);
+        let before = document.to_map_text();
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        *drag.tool.borrow_mut() = Tool::Edge;
+        let edge = Vec3d::new(32.0, 0.0, 0.0);
+        let from = camera.world_to_screen(edge, viewport);
+        let to = camera.world_to_screen(Vec3d::new(-150.0, -60.0, 0.0), viewport);
+        let ctrl = Modifiers {
+            control: true,
+            ..Modifiers::default()
+        };
+        drag_from(&drag, from, to - from, ctrl, viewport);
+        assert!(drag.document.borrow().is_selected(floor));
+        assert!(drag.document.borrow().is_selected(cube));
+        assert_eq!(drag.handles.borrow().selected_count(), 0);
+        drag.document.borrow_mut().select_only(cube);
+        assert_eq!(drag.document.borrow().to_map_text(), before);
+
+        drag_from(&drag, from, Vec2d::new(0.0, 0.0), ctrl, viewport);
+        assert_eq!(drag.handles.borrow().selected_count(), 1);
+        drag_from(&drag, from, Vec2d::new(0.0, 0.0), ctrl, viewport);
+        assert_eq!(drag.handles.borrow().selected_count(), 0);
     }
 
     /// `SelectionTool::drillSelection`: Ctrl and the wheel move the selection to the next
