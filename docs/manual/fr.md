@@ -108,16 +108,16 @@ Les brushes sont des solides convexes définis par des plans. Construisez les ob
 Choisissez l’outil Brush (`B`) et faites glisser dans une vue. La barre d’outils affiche **Forme à dessiner** : Pavé, Escalier, Arche, Cylindre, Cône, Sphéroïde (UV), Sphéroïde (icosaèdre) et Insérer du texte 3D. `Alt+1` à `Alt+7` choisissent directement une forme. Selon la forme, la barre affiche **Évider** et **Épaisseur :**, **Hauteur des marches :** et **Direction :** pour les escaliers, **Axe :**, **Côtés :** et le mode de cercle pour les formes rondes, **Anneaux :** pour les sphères et **Précision :** pour l’icosaèdre. Réglez les options avant de faire glisser. Vérifiez le résultat dans plusieurs vues.
 
 ## Sélectionner
-Cliquez sur un brush pour le sélectionner, et `Ctrl`-clic pour l’ajouter à la sélection. Un glissement depuis un espace vide trace un rectangle de sélection. Dans la vue 3D, `Shift`-clic sélectionne une seule face et `Ctrl+Shift`-clic ajoute d’autres faces. Faire glisser un brush sélectionné le déplace ; faire glisser un brush non sélectionné sélectionne et déplace uniquement celui-ci.
+Cliquez sur un brush pour le sélectionner, et `Ctrl`-clic pour l’ajouter à la sélection. Un glissement depuis un espace vide trace un rectangle de sélection. Dans la vue 3D, `Shift`-clic sélectionne une seule face et `Ctrl+Shift`-clic ajoute d’autres faces. Un `Ctrl`-glisser qui commence sur un objet non sélectionné ajoute tout ce que le pointeur survole, et un `Ctrl+Shift`-glisser ajoute des faces de la même façon. Faire glisser un brush sélectionné le déplace ; faire glisser un brush non sélectionné sélectionne et déplace uniquement celui-ci.
 
 Dans la vue 3D, faites `Shift`-glisser une face d’un brush sélectionné pour l’extruder. `Alt`-cliquez sur une autre face pour y copier le matériau et l’alignement de la face sélectionnée ; `Alt+Ctrl` ne copie que le matériau et `Alt+Shift` copie la rotation.
 
 ## Outils de modelage
 - **Sélectionner** (`Esc`) : sélectionner et déplacer.
-- **Sommet** (`V`), **Arête** (`E`), **Face** (`F`) : faire glisser des sommets, des arêtes ou des faces. `Shift`-glisser depuis le milieu d’une arête ou d’une face y ajoute un sommet. `Delete` supprime les sommets choisis.
+- **Sommet** (`V`), **Arête** (`E`), **Face** (`F`) : faire glisser des sommets, des arêtes ou des faces. `Shift`-glisser depuis le milieu d’une arête ou d’une face y ajoute un sommet. Avec `Ctrl`, un sommet déplacé se pose sur la grille elle-même au lieu d’avancer par pas de grille. `Delete` supprime les sommets choisis.
 - **Rotation** (`R`), **Échelle** (`T`), **Cisaillement** (`G`) : transformer la sélection à l’aide de poignées.
 - **Découpe** (`C`) : cliquez deux ou trois points pour définir un plan de coupe. `Enter` coupe, `Ctrl+Enter` choisit le côté à conserver, et `Backspace` ou `Esc` supprime le dernier point.
-- **Assembler** (`N`) : placez des points autour d’un volume et appuyez sur `Enter` pour en faire un brush convexe. `Backspace` supprime le dernier point.
+- **Assembler** (`N`) : cliquez pour placer des points autour d’un volume et appuyez sur `Enter` pour en faire un brush convexe. Dans la vue 3D, un glissement sur une face y trace un rectangle de quatre points, un `Shift`-glisser extrude en prisme des points situés dans un même plan, et un double-clic ajoute les sommets de la face. `Backspace` supprime le dernier point et `Esc` les supprime tous.
 - **Balayage** (`Y`) : voir la section Balayage ci-dessous.
 - **Point de contrôle** (`P`) : remodeler la grille de contrôle d’une surface courbe.
 - **Arrondi** (`O`) : cliquez sur une arête pour l’arrondir, ou choisissez des arêtes ou des sommets avec leurs outils et appuyez sur `Enter`. Plus de faces donnent un résultat plus lisse, mais plus de géométrie.

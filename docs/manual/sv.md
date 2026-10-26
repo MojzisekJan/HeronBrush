@@ -108,16 +108,16 @@ Brushar är konvexa solider som definieras av plan. Bygg sammansatta objekt av f
 Välj brushverktyget (`B`) och dra i en vy. Verktygsfältet visar **Form att rita**: Rätblock, Trappa, Valvbåge, Cylinder, Kon, Sfäroid (UV), Sfäroid (ikosaeder) och Infoga 3D-text. `Alt+1` till `Alt+7` väljer en form direkt. Beroende på formen visar fältet **Gör ihålig** och **Tjocklek:**, **Steghöjd:** och **Riktning:** för trappor, **Axel:**, **Sidor:** och cirkelläget för runda former, **Ringar:** för sfärer och **Noggrannhet:** för ikosaedern. Ställ in alternativen innan du drar. Kontrollera resultatet i mer än en vy.
 
 ## Markera
-Klicka på en brush för att markera den och `Ctrl`-klicka för att lägga till i markeringen. En dragning från tom yta ritar en markeringsruta. I 3D-vyn markerar `Shift`-klick en enskild yta och `Ctrl+Shift`-klick lägger till fler ytor. Om du drar en markerad brush flyttas den; om du drar en omarkerad brush markeras och flyttas bara den.
+Klicka på en brush för att markera den och `Ctrl`-klicka för att lägga till i markeringen. En dragning från tom yta ritar en markeringsruta. I 3D-vyn markerar `Shift`-klick en enskild yta och `Ctrl+Shift`-klick lägger till fler ytor. En `Ctrl`-dragning som börjar på ett omarkerat objekt lägger till allt som pekaren passerar, och en `Ctrl+Shift`-dragning lägger till ytor på samma sätt. Om du drar en markerad brush flyttas den; om du drar en omarkerad brush markeras och flyttas bara den.
 
 I 3D-vyn `Shift`-drar du en yta på en markerad brush för att extrudera den. `Alt`-klicka på en annan yta för att kopiera den markerade ytans material och justering till den; `Alt+Ctrl` kopierar bara materialet och `Alt+Shift` kopierar rotationen.
 
 ## Formverktyg
 - **Markera** (`Esc`): markera och flytta.
-- **Hörnpunkt** (`V`), **Kant** (`E`), **Yta** (`F`): dra hörn, kanter eller ytor. `Shift`-dragning från mitten av en kant eller yta lägger till ett hörn där. `Delete` tar bort de valda hörnen.
+- **Hörnpunkt** (`V`), **Kant** (`E`), **Yta** (`F`): dra hörn, kanter eller ytor. `Shift`-dragning från mitten av en kant eller yta lägger till ett hörn där. Med `Ctrl` hamnar ett draget hörn på själva rutnätet i stället för att flyttas i rutnätssteg. `Delete` tar bort de valda hörnen.
 - **Rotera** (`R`), **Skala** (`T`), **Skjuva** (`G`): transformera markeringen med handtag.
 - **Klipp** (`C`): klicka på två eller tre punkter för att definiera ett klipplan. `Enter` klipper, `Ctrl+Enter` väljer vilken sida som behålls, och `Backspace` eller `Esc` tar bort den senaste punkten.
-- **Montera** (`N`): placera punkter runt en volym och tryck på `Enter` för att skapa en konvex brush av dem. `Backspace` tar bort den senaste punkten.
+- **Montera** (`N`): klicka ut punkter runt en volym och tryck på `Enter` för att skapa en konvex brush av dem. I 3D-vyn ritar en dragning på en yta en rektangel av fyra punkter på den, en `Shift`-dragning drar ut punkter som ligger plant till ett prisma, och ett dubbelklick lägger till ytans hörn. `Backspace` tar bort den senaste punkten och `Esc` tar bort alla.
 - **Svep** (`Y`): se avsnittet om svep nedan.
 - **Kontrollpunkt** (`P`): forma om en patchs kontrollrutnät.
 - **Avrundning** (`O`): klicka på en kant för att runda av den, eller välj kanter eller hörnpunkter med deras verktyg och tryck på `Enter`. Fler ytor ger ett mjukare resultat och mer geometri.

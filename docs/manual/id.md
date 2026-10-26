@@ -108,16 +108,16 @@ Brush adalah benda padat cembung yang didefinisikan oleh bidang-bidang. Bangun o
 Pilih alat Brush (`B`) lalu seret di sebuah tampilan. Bilah alat menampilkan **Bentuk yang digambar**: Balok, Tangga, Lengkung, Silinder, Kerucut, Sferoid (UV), Sferoid (ikosahedron), dan Sisipkan teks 3D. `Alt+1` hingga `Alt+7` langsung memilih bentuk. Bergantung pada bentuknya, bilah menampilkan **Buat berongga** dan **Ketebalan:**, **Tinggi anak tangga:** dan **Arah:** untuk tangga, **Sumbu:**, **Sisi:** dan mode lingkaran untuk bentuk bulat, **Cincin:** untuk bola, serta **Ketelitian:** untuk ikosahedron. Atur opsinya sebelum menyeret. Periksa hasilnya di lebih dari satu tampilan.
 
 ## Memilih
-Klik brush untuk memilihnya, dan klik dengan `Ctrl` untuk menambahkannya ke pilihan. Menyeret dari ruang kosong menggambar kotak pilihan. Di tampilan 3D, klik dengan `Shift` memilih satu permukaan dan klik dengan `Ctrl+Shift` menambahkan permukaan lain. Menyeret brush yang dipilih akan memindahkannya; menyeret brush yang tidak dipilih akan memilih dan memindahkan brush itu saja.
+Klik brush untuk memilihnya, dan klik dengan `Ctrl` untuk menambahkannya ke pilihan. Menyeret dari ruang kosong menggambar kotak pilihan. Di tampilan 3D, klik dengan `Shift` memilih satu permukaan dan klik dengan `Ctrl+Shift` menambahkan permukaan lain. Menyeret dengan `Ctrl` yang dimulai dari objek yang tidak dipilih menambahkan semua yang dilewati penunjuk, dan menyeret dengan `Ctrl+Shift` menambahkan permukaan dengan cara yang sama. Menyeret brush yang dipilih akan memindahkannya; menyeret brush yang tidak dipilih akan memilih dan memindahkan brush itu saja.
 
 Di tampilan 3D, seret permukaan brush yang dipilih sambil menahan `Shift` untuk mengekstrusinya. Klik permukaan lain sambil menahan `Alt` untuk menyalin material dan perataan permukaan yang dipilih ke permukaan tersebut; `Alt+Ctrl` hanya menyalin material dan `Alt+Shift` menyalin rotasinya.
 
 ## Alat pembentuk
 - **Pilih** (`Esc`): memilih dan memindahkan.
-- **Verteks** (`V`), **Tepi** (`E`), **Permukaan** (`F`): menyeret sudut, tepi, atau permukaan. Menyeret dengan `Shift` dari tengah tepi atau permukaan menambahkan sudut di sana. `Delete` menghapus sudut yang dipilih.
+- **Verteks** (`V`), **Tepi** (`E`), **Permukaan** (`F`): menyeret sudut, tepi, atau permukaan. Menyeret dengan `Shift` dari tengah tepi atau permukaan menambahkan sudut di sana. Dengan `Ctrl`, sudut yang diseret mendarat tepat pada kisi, bukan bergerak per langkah kisi. `Delete` menghapus sudut yang dipilih.
 - **Putar** (`R`), **Skala** (`T`), **Geser miring** (`G`): mentransformasi pilihan dengan handle.
 - **Potong** (`C`): klik dua atau tiga titik untuk menentukan bidang potong. `Enter` memotong, `Ctrl+Enter` memilih sisi yang dipertahankan, dan `Backspace` atau `Esc` menghapus titik terakhir.
-- **Rakit** (`N`): tempatkan titik-titik di sekitar sebuah volume dan tekan `Enter` untuk membuat brush cembung darinya. `Backspace` menghapus titik terakhir.
+- **Rakit** (`N`): klik untuk menempatkan titik-titik di sekitar sebuah volume dan tekan `Enter` untuk membuat brush cembung darinya. Di tampilan 3D, menyeret pada permukaan menggambar persegi panjang dari empat titik di atasnya, menyeret dengan `Shift` menarik titik-titik yang terletak datar menjadi prisma, dan klik ganda menambahkan sudut-sudut permukaan itu. `Backspace` menghapus titik terakhir dan `Esc` menghapus semuanya.
 - **Sweep** (`Y`): lihat bagian Sweep di bawah.
 - **Titik kendali** (`P`): membentuk ulang kisi kendali sebuah patch.
 - **Pembulatan** (`O`): klik sebuah tepi untuk membulatkannya, atau pilih tepi atau verteks dengan alatnya lalu tekan `Enter`. Semakin banyak permukaan, semakin halus hasilnya dan semakin banyak pula geometrinya.

@@ -108,16 +108,16 @@ Brushit ovat tasojen määrittämiä kuperia kappaleita. Rakenna monimutkaiset o
 Valitse Brush-työkalu (`B`) ja vedä näkymässä. Työkalurivillä näkyy **Piirrettävä muoto**: Suorakulmainen särmiö, Portaat, Holvikaari, Lieriö, Kartio, Pallo (UV), Pallo (ikosaedri) ja Lisää 3D-teksti. `Alt+1`–`Alt+7` valitsevat muodon suoraan. Muodosta riippuen rivillä näkyvät **Tee ontoksi** ja **Paksuus:**, portaille **Askelman korkeus:** ja **Suunta:**, pyöreille muodoille **Akseli:**, **Sivut:** ja ympyrätila, palloille **Renkaat:** ja ikosaedrille **Tarkkuus:**. Aseta valinnat ennen vetämistä. Tarkista tulos useammasta kuin yhdestä näkymästä.
 
 ## Valitseminen
-Napsauta brushia valitaksesi sen ja lisää valintaan `Ctrl`-napsautuksella. Tyhjästä kohdasta aloitettu veto piirtää valintalaatikon. 3D-näkymässä `Shift`-napsautus valitsee yksittäisen tahkon ja `Ctrl+Shift`-napsautus lisää tahkoja. Valitun brushin vetäminen siirtää sitä; valitsemattoman vetäminen valitsee ja siirtää vain sen.
+Napsauta brushia valitaksesi sen ja lisää valintaan `Ctrl`-napsautuksella. Tyhjästä kohdasta aloitettu veto piirtää valintalaatikon. 3D-näkymässä `Shift`-napsautus valitsee yksittäisen tahkon ja `Ctrl+Shift`-napsautus lisää tahkoja. Valitsemattomasta objektista aloitettu `Ctrl`-veto lisää kaiken, minkä yli osoitin kulkee, ja `Ctrl+Shift`-veto lisää tahkoja samalla tavalla. Valitun brushin vetäminen siirtää sitä; valitsemattoman vetäminen valitsee ja siirtää vain sen.
 
 3D-näkymässä valitun brushin tahkoa `Shift`-vetämällä se pursotetaan. `Alt`-napsauta toista tahkoa kopioidaksesi siihen valitun tahkon materiaalin ja kohdistuksen; `Alt+Ctrl` kopioi vain materiaalin ja `Alt+Shift` kopioi kierron.
 
 ## Muotoilutyökalut
 - **Valitse** (`Esc`): valitse ja siirrä.
-- **Verteksi** (`V`), **Särmä** (`E`), **Tahko** (`F`): vedä kulmia, särmiä tai tahkoja. `Shift`-veto särmän tai tahkon keskeltä lisää siihen kulman. `Delete` poistaa poimitut kulmat.
+- **Verteksi** (`V`), **Särmä** (`E`), **Tahko** (`F`): vedä kulmia, särmiä tai tahkoja. `Shift`-veto särmän tai tahkon keskeltä lisää siihen kulman. `Ctrl`-näppäimen kanssa vedetty kulma osuu suoraan ruudukkoon sen sijaan, että se liikkuisi ruudukon askelin. `Delete` poistaa poimitut kulmat.
 - **Kierrä** (`R`), **Skaalaa** (`T`), **Vinouta** (`G`): muunna valintaa kahvoilla.
 - **Leikkaus** (`C`): napsauta kaksi tai kolme pistettä määrittääksesi leikkaustason. `Enter` leikkaa, `Ctrl+Enter` valitsee säilytettävän puolen ja `Backspace` tai `Esc` poistaa viimeisen pisteen.
-- **Kokoa** (`N`): sijoita pisteitä tilavuuden ympärille ja paina `Enter` tehdäksesi niistä kuperan brushin. `Backspace` poistaa viimeisen pisteen.
+- **Kokoa** (`N`): napsauta pisteitä tilavuuden ympärille ja paina `Enter` tehdäksesi niistä kuperan brushin. 3D-näkymässä veto tahkon päällä piirtää siihen neljän pisteen suorakulmion, `Shift`-veto vetää samassa tasossa olevat pisteet ulos prismaksi ja kaksoisnapsautus lisää tahkon kulmat. `Backspace` poistaa viimeisen pisteen ja `Esc` poistaa ne kaikki.
 - **Pyyhkäisy** (`Y`): katso alla oleva Pyyhkäisy-osio.
 - **Ohjauspiste** (`P`): muotoile patchin ohjausruudukkoa.
 - **Pyöristys** (`O`): napsauta särmää pyöristääksesi sen, tai poimi särmiä tai verteksejä niiden työkaluilla ja paina `Enter`. Useampi tahko antaa pehmeämmän tuloksen ja enemmän geometriaa.

@@ -108,16 +108,16 @@ Brusher er konvekse legemer definert av plan. Bygg sammensatte objekter av flere
 Velg Brushverktøyet (`B`) og dra i en visning. Verktøylinjen viser **Form som skal tegnes**: Rett prisme, Trapp, Hvelving, Sylinder, Kjegle, Kule (UV), Kule (ikosaeder) og Sett inn 3D-tekst. `Alt+1` til `Alt+7` velger en form direkte. Avhengig av formen viser linjen **Hul** og **Tykkelse:**, **Trinnhøyde:** og **Retning:** for trapper, **Akse:**, **Sider:** og sirkelmodusen for runde former, **Ringer:** for kuler og **Nøyaktighet:** for ikosaederet. Angi alternativene før du drar. Kontroller resultatet i mer enn én visning.
 
 ## Velge
-Klikk på en brush for å velge den, og `Ctrl`-klikk for å legge til i utvalget. Drar du fra et tomt område, tegnes en utvalgsramme. I 3D-visningen velger `Shift`-klikk én enkelt flate, og `Ctrl+Shift`-klikk legger til flere flater. Drar du en valgt brush, flyttes den; drar du en som ikke er valgt, velges og flyttes bare den.
+Klikk på en brush for å velge den, og `Ctrl`-klikk for å legge til i utvalget. Drar du fra et tomt område, tegnes en utvalgsramme. I 3D-visningen velger `Shift`-klikk én enkelt flate, og `Ctrl+Shift`-klikk legger til flere flater. Et `Ctrl`-drag som starter på et objekt som ikke er valgt, legger til alt pekeren passerer over, og et `Ctrl+Shift`-drag legger til flater på samme måte. Drar du en valgt brush, flyttes den; drar du en som ikke er valgt, velges og flyttes bare den.
 
 I 3D-visningen kan du `Shift`-dra en flate på en valgt brush for å ekstrudere den. `Alt`-klikk på en annen flate for å kopiere materialet og justeringen fra den valgte flaten over på den; `Alt+Ctrl` kopierer bare materialet, og `Alt+Shift` kopierer rotasjonen.
 
 ## Formingsverktøy
 - **Velg** (`Esc`): velg og flytt.
-- **Hjørnepunkt** (`V`), **Kant** (`E`), **Flate** (`F`): dra hjørner, kanter eller flater. `Shift`-dra fra midten av en kant eller flate for å legge til et hjørne der. `Delete` fjerner de valgte hjørnene.
+- **Hjørnepunkt** (`V`), **Kant** (`E`), **Flate** (`F`): dra hjørner, kanter eller flater. `Shift`-dra fra midten av en kant eller flate for å legge til et hjørne der. Med `Ctrl` havner et dratt hjørne på selve rutenettet i stedet for å flytte seg i rutenettsteg. `Delete` fjerner de valgte hjørnene.
 - **Roter** (`R`), **Skaler** (`T`), **Skjær** (`G`): transformer utvalget med håndtak.
 - **Klipp** (`C`): klikk to eller tre punkter for å definere et snittplan. `Enter` klipper, `Ctrl+Enter` velger hvilken side som skal beholdes, og `Backspace` eller `Esc` fjerner det siste punktet.
-- **Sett sammen** (`N`): plasser punkter rundt et volum og trykk `Enter` for å lage en konveks brush av dem. `Backspace` fjerner det siste punktet.
+- **Sett sammen** (`N`): klikk ut punkter rundt et volum og trykk `Enter` for å lage en konveks brush av dem. I 3D-visningen tegner et drag på en flate et rektangel med fire punkter på den, et `Shift`-drag trekker punkter som ligger flatt, ut til et prisme, og et dobbeltklikk legger til hjørnene på flaten. `Backspace` fjerner det siste punktet og `Esc` fjerner alle.
 - **Sveip** (`Y`): se avsnittet om sveip nedenfor.
 - **Kontrollpunkt** (`P`): endre formen på kontrollnettet til en patch.
 - **Avrunding** (`O`): klikk på en kant for å runde den av, eller velg kanter eller hjørnepunkter med verktøyene deres og trykk `Enter`. Flere flater gir et jevnere resultat og mer geometri.

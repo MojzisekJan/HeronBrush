@@ -135,7 +135,7 @@ with vertically measured thickness. The landing connects to both flights.
 Advanced layouts use equal riser heights and at most 512 steps.
 
 ## Selecting
-Click a brush to select it, and `Ctrl`-click to add to the selection. A drag from empty space draws a selection box. In the 3D view, `Shift`-click selects a single face and `Ctrl+Shift`-click adds more faces. Dragging a selected brush moves it; dragging an unselected one selects and moves just that one.
+Click a brush to select it, and `Ctrl`-click to add to the selection. A drag from empty space draws a selection box. In the 3D view, `Shift`-click selects a single face and `Ctrl+Shift`-click adds more faces. A `Ctrl`-drag that starts on an unselected object adds everything the pointer passes over, and a `Ctrl+Shift`-drag adds faces the same way. Dragging a selected brush moves it; dragging an unselected one selects and moves just that one.
 
 In the 3D view, `Shift`-drag a face of a selected brush to extrude it. `Alt`-click another face to copy the selected face's material and alignment onto it; `Alt+Ctrl` copies only the material and `Alt+Shift` copies the material with UV rotated to follow the target face.
 
@@ -143,10 +143,10 @@ If the window manager uses `Alt` to move windows, press `Ctrl+C` on the source f
 
 ## Shaping tools
 - **Select** (`Esc`): select and move.
-- **Vertex** (`V`), **Edge** (`E`), **Face** (`F`): drag corners, edges or faces. `Shift`-drag from the middle of an edge or face adds a corner there. `Delete` removes the picked corners.
+- **Vertex** (`V`), **Edge** (`E`), **Face** (`F`): drag corners, edges or faces. `Shift`-drag from the middle of an edge or face adds a corner there. With `Ctrl` a dragged corner lands on the grid itself rather than moving in grid steps. `Delete` removes the picked corners.
 - **Rotate** (`R`), **Scale** (`T`), **Shear** (`G`): transform the selection with handles.
 - **Clip** (`C`): click two or three points to define a cutting plane. `Enter` cuts, `Ctrl+Enter` chooses which side to keep, and `Backspace` or `Esc` removes the last point.
-- **Assemble** (`N`): place points around a volume and press `Enter` to make a convex brush from them. `Backspace` removes the last point.
+- **Assemble** (`N`): click points around a volume and press `Enter` to make a convex brush from them. In the 3D view a drag on a face draws a rectangle of four points on it, a `Shift`-drag pulls points that lie flat out into a prism, and a double click adds the corners of the face. `Backspace` removes the last point and `Esc` removes them all.
 - **Sweep** (`Y`): see the Sweep section below.
 - **Control point** (`P`): reshape a patch's control grid.
 - **Fillet** (`O`): click an edge to pin its preview, adjust radius, faces and corners, then confirm with **Apply** or `Enter`. With edges picked in the Edge or Fillet tool, the right-click menu offers **Fillet**, which switches to the Fillet tool with those edges and opens its settings. Click a brush body to select it while the tool stays active; `Ctrl`-click a body to add or remove a brush. On edge handles, `Ctrl` adds or removes edges. Clicking empty space clears brushes and preview edges. This works in both 2D and 3D. More faces make a smoother result and more geometry.

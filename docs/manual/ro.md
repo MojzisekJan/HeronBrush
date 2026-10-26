@@ -108,16 +108,16 @@ Brush-urile sunt corpuri convexe definite de plane. Construiește obiectele comp
 Alege unealta Brush (`B`) și trage într-o vizualizare. Bara de unelte arată **Forma de desenat**: Cuboid, Scări, Arcadă, Cilindru, Con, Sferoid (UV), Sferoid (icosaedru) și Inserează text 3D. `Alt+1` până la `Alt+7` aleg direct o formă. În funcție de formă, bara arată **Gol** și **Grosime:**, **Înălțimea treptei:** și **Direcție:** pentru scări, **Axă:**, **Laturi:** și modul cercului pentru formele rotunde, **Inele:** pentru sfere și **Precizie:** pentru icosaedru. Setează opțiunile înainte să tragi. Verifică rezultatul în mai multe vizualizări.
 
 ## Selectarea
-Fă clic pe un brush pentru a-l selecta și `Ctrl`-clic pentru a-l adăuga la selecție. O tragere dintr-un spațiu gol desenează un dreptunghi de selecție. În vizualizarea 3D, `Shift`-clic selectează o singură față, iar `Ctrl+Shift`-clic adaugă alte fețe. Tragerea unui brush selectat îl mută; tragerea unuia neselectat selectează și mută doar brush-ul respectiv.
+Fă clic pe un brush pentru a-l selecta și `Ctrl`-clic pentru a-l adăuga la selecție. O tragere dintr-un spațiu gol desenează un dreptunghi de selecție. În vizualizarea 3D, `Shift`-clic selectează o singură față, iar `Ctrl+Shift`-clic adaugă alte fețe. O `Ctrl`-tragere care începe pe un obiect neselectat adaugă tot ce traversează cursorul, iar o `Ctrl+Shift`-tragere adaugă fețe în același fel. Tragerea unui brush selectat îl mută; tragerea unuia neselectat selectează și mută doar brush-ul respectiv.
 
 În vizualizarea 3D, `Shift`-tragerea unei fețe a unui brush selectat o extrudează. `Alt`-clic pe altă față copiază pe ea materialul și alinierea feței selectate; `Alt+Ctrl` copiază doar materialul, iar `Alt+Shift` copiază rotația.
 
 ## Unelte de modelare
 - **Selectează** (`Esc`): selectează și mută.
-- **Vârf** (`V`), **Muchie** (`E`), **Față** (`F`): trag colțuri, muchii sau fețe. `Shift`-tragerea din mijlocul unei muchii sau al unei fețe adaugă acolo un colț. `Delete` elimină colțurile alese.
+- **Vârf** (`V`), **Muchie** (`E`), **Față** (`F`): trag colțuri, muchii sau fețe. `Shift`-tragerea din mijlocul unei muchii sau al unei fețe adaugă acolo un colț. Cu `Ctrl`, un colț tras ajunge chiar pe grilă, în loc să se miște în pași de grilă. `Delete` elimină colțurile alese.
 - **Rotește** (`R`), **Scalare** (`T`), **Forfecare** (`G`): transformă selecția cu ajutorul mânerelor.
 - **Tăiere** (`C`): fă clic pe două sau trei puncte pentru a defini un plan de tăiere. `Enter` taie, `Ctrl+Enter` alege partea care se păstrează, iar `Backspace` sau `Esc` elimină ultimul punct.
-- **Asamblare** (`N`): plasează puncte în jurul unui volum și apasă `Enter` pentru a face din ele un brush convex. `Backspace` elimină ultimul punct.
+- **Asamblare** (`N`): fă clic pentru a plasa puncte în jurul unui volum și apasă `Enter` pentru a face din ele un brush convex. În vizualizarea 3D, o tragere pe o față desenează pe ea un dreptunghi din patru puncte, o `Shift`-tragere extrage punctele aflate în același plan într-o prismă, iar un dublu clic adaugă colțurile feței. `Backspace` elimină ultimul punct, iar `Esc` le elimină pe toate.
 - **Baleiere** (`Y`): vezi secțiunea Baleiere de mai jos.
 - **Punct de control** (`P`): remodelează grila de control a unui patch.
 - **Rotunjire** (`O`): fă clic pe o muchie pentru a o rotunji sau alege muchii ori vârfuri cu uneltele lor și apasă `Enter`. Mai multe fețe dau un rezultat mai neted și mai multă geometrie.

@@ -432,9 +432,14 @@ impl Commands {
                     // point before it does anything else, so a misplaced point costs one
                     // key rather than the whole plane, and once the last one is gone the
                     // tool starts over.
-                    // The assemble tool takes back a point before it gives up the tool.
+                    // `AssembleBrushToolController3D::cancel`: the assemble tool forgets all
+                    // its points before it gives up the tool. Backspace takes back one.
                     let cancelled_assemble = *tool.borrow() == tool::Tool::Assemble
-                        && assemble.borrow_mut().remove_last_point();
+                        && !assemble.borrow().points().is_empty()
+                        && {
+                            assemble.borrow_mut().reset();
+                            true
+                        };
                     let cancelled_clip =
                         !cancelled_assemble && *tool.borrow() == tool::Tool::Clip && {
                             let mut clip = clip.borrow_mut();

@@ -108,16 +108,16 @@ Brushe to wypukłe bryły wyznaczone przez płaszczyzny. Złożone obiekty buduj
 Wybierz narzędzie Brush (`B`) i przeciągnij w widoku. Pasek narzędzi pokazuje **Rysowany kształt**: Prostopadłościan, Schody, Łuk (sklepienie), Walec, Stożek, Sferoida (UV), Sferoida (dwudziestościan) i Wstaw tekst 3D. `Alt+1` do `Alt+7` wybierają kształt bezpośrednio. Zależnie od kształtu pasek pokazuje **Wydrąż** i **Grubość:**, dla schodów **Wysokość stopnia:** i **Kierunek:**, dla kształtów obłych **Oś:**, **Boki:** i tryb okręgu, dla sfer **Pierścienie:**, a dla dwudziestościanu **Dokładność:**. Ustaw opcje przed przeciągnięciem. Sprawdź wynik w więcej niż jednym widoku.
 
 ## Zaznaczanie
-Kliknij brush, aby go zaznaczyć, a kliknij z `Ctrl`, aby dodać go do zaznaczenia. Przeciągnięcie od pustego miejsca rysuje prostokąt zaznaczenia. W widoku 3D kliknięcie z `Shift` zaznacza pojedynczą ścianę, a kliknięcie z `Ctrl+Shift` dodaje kolejne ściany. Przeciąganie zaznaczonego brusha go przesuwa; przeciągnięcie niezaznaczonego zaznacza i przesuwa tylko ten jeden.
+Kliknij brush, aby go zaznaczyć, a kliknij z `Ctrl`, aby dodać go do zaznaczenia. Przeciągnięcie od pustego miejsca rysuje prostokąt zaznaczenia. W widoku 3D kliknięcie z `Shift` zaznacza pojedynczą ścianę, a kliknięcie z `Ctrl+Shift` dodaje kolejne ściany. Przeciągnięcie z `Ctrl` zaczęte na niezaznaczonym obiekcie dodaje wszystko, nad czym przejdzie wskaźnik, a przeciągnięcie z `Ctrl+Shift` w ten sam sposób dodaje ściany. Przeciąganie zaznaczonego brusha go przesuwa; przeciągnięcie niezaznaczonego zaznacza i przesuwa tylko ten jeden.
 
 W widoku 3D przeciągnij z `Shift` ścianę zaznaczonego brusha, aby ją wyciągnąć. Kliknij z `Alt` inną ścianę, aby skopiować na nią materiał i wyrównanie zaznaczonej ściany; `Alt+Ctrl` kopiuje tylko materiał, a `Alt+Shift` kopiuje obrót.
 
 ## Narzędzia kształtowania
 - **Zaznacz** (`Esc`): zaznaczanie i przesuwanie.
-- **Wierzchołek** (`V`), **Krawędź** (`E`), **Ściana** (`F`): przeciąganie narożników, krawędzi lub ścian. Przeciągnięcie z `Shift` od środka krawędzi lub ściany dodaje w tym miejscu narożnik. `Delete` usuwa wybrane narożniki.
+- **Wierzchołek** (`V`), **Krawędź** (`E`), **Ściana** (`F`): przeciąganie narożników, krawędzi lub ścian. Przeciągnięcie z `Shift` od środka krawędzi lub ściany dodaje w tym miejscu narożnik. Z `Ctrl` przeciągany narożnik trafia dokładnie na siatkę, zamiast przesuwać się o kroki siatki. `Delete` usuwa wybrane narożniki.
 - **Obróć** (`R`), **Skala** (`T`), **Pochyl** (`G`): przekształcanie zaznaczenia za pomocą uchwytów.
 - **Cięcie** (`C`): kliknij dwa lub trzy punkty, aby wyznaczyć płaszczyznę cięcia. `Enter` tnie, `Ctrl+Enter` wybiera, którą stronę zachować, a `Backspace` lub `Esc` usuwa ostatni punkt.
-- **Złóż** (`N`): rozmieść punkty wokół bryły i naciśnij `Enter`, aby utworzyć z nich wypukły brush. `Backspace` usuwa ostatni punkt.
+- **Złóż** (`N`): klikając, rozmieść punkty wokół bryły i naciśnij `Enter`, aby utworzyć z nich wypukły brush. W widoku 3D przeciągnięcie po ścianie rysuje na niej prostokąt z czterech punktów, przeciągnięcie z `Shift` wyciąga punkty leżące w jednej płaszczyźnie w graniastosłup, a dwuklik dodaje narożniki ściany. `Backspace` usuwa ostatni punkt, a `Esc` usuwa wszystkie.
 - **Wyciąganie** (`Y`): zob. sekcję o wyciąganiu poniżej.
 - **Punkt kontrolny** (`P`): zmiana kształtu siatki kontrolnej patcha.
 - **Zaokrąglenie** (`O`): kliknij krawędź, aby ją zaokrąglić, albo wybierz krawędzie lub wierzchołki ich narzędziami i naciśnij `Enter`. Więcej ścian daje gładszy wynik, ale też więcej geometrii.

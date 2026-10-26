@@ -108,16 +108,16 @@ I brush sono solidi convessi definiti da piani. Costruisci gli oggetti complessi
 Scegli lo strumento Brush (`B`) e trascina in una vista. La barra degli strumenti mostra **Forma da disegnare**: Parallelepipedo, Scala a gradini, Arco (volta), Cilindro, Cono, Sferoide (UV), Sferoide (icosaedro) e Inserisci testo 3D. Da `Alt+1` ad `Alt+7` scegli direttamente una forma. A seconda della forma, la barra mostra **Svuota** e **Spessore:**, **Altezza del gradino:** e **Direzione:** per le scale, **Asse:**, **Lati:** e la modalità del cerchio per le forme rotonde, **Anelli:** per le sfere e **Precisione:** per l'icosaedro. Imposta le opzioni prima di trascinare. Controlla il risultato in più di una vista.
 
 ## Selezionare
-Fai clic su un brush per selezionarlo e `Ctrl`-clic per aggiungerlo alla selezione. Un trascinamento da uno spazio vuoto disegna un riquadro di selezione. Nella vista 3D, `Shift`-clic seleziona una singola faccia e `Ctrl+Shift`-clic aggiunge altre facce. Trascinando un brush selezionato lo sposti; trascinandone uno non selezionato selezioni e sposti solo quello.
+Fai clic su un brush per selezionarlo e `Ctrl`-clic per aggiungerlo alla selezione. Un trascinamento da uno spazio vuoto disegna un riquadro di selezione. Nella vista 3D, `Shift`-clic seleziona una singola faccia e `Ctrl+Shift`-clic aggiunge altre facce. Un trascinamento con `Ctrl` che parte da un oggetto non selezionato aggiunge tutto ciò su cui passa il puntatore, e un trascinamento con `Ctrl+Shift` aggiunge facce allo stesso modo. Trascinando un brush selezionato lo sposti; trascinandone uno non selezionato selezioni e sposti solo quello.
 
 Nella vista 3D, trascina con `Shift` una faccia di un brush selezionato per estruderla. `Alt`-clic su un'altra faccia copia su di essa il materiale e l'allineamento della faccia selezionata; `Alt+Ctrl` copia solo il materiale e `Alt+Shift` copia la rotazione.
 
 ## Strumenti di modellazione
 - **Seleziona** (`Esc`): seleziona e sposta.
-- **Vertice** (`V`), **Spigolo** (`E`), **Faccia** (`F`): trascina vertici, spigoli o facce. Trascinando con `Shift` dal centro di uno spigolo o di una faccia vi aggiungi un vertice. `Delete` rimuove i vertici scelti.
+- **Vertice** (`V`), **Spigolo** (`E`), **Faccia** (`F`): trascina vertici, spigoli o facce. Trascinando con `Shift` dal centro di uno spigolo o di una faccia vi aggiungi un vertice. Con `Ctrl` un vertice trascinato si posa sulla griglia stessa invece di muoversi a passi di griglia. `Delete` rimuove i vertici scelti.
 - **Ruota** (`R`), **Scala** (`T`), **Inclina** (`G`): trasformano la selezione tramite maniglie.
 - **Taglio** (`C`): fai clic su due o tre punti per definire un piano di taglio. `Enter` taglia, `Ctrl+Enter` sceglie quale parte tenere e `Backspace` o `Esc` rimuove l'ultimo punto.
-- **Assembla** (`N`): posiziona dei punti attorno a un volume e premi `Enter` per crearne un brush convesso. `Backspace` rimuove l'ultimo punto.
+- **Assembla** (`N`): fai clic per posizionare dei punti attorno a un volume e premi `Enter` per crearne un brush convesso. Nella vista 3D un trascinamento su una faccia vi disegna un rettangolo di quattro punti, un trascinamento con `Shift` estrude in un prisma i punti che giacciono su un piano, e un doppio clic aggiunge i vertici della faccia. `Backspace` rimuove l'ultimo punto e `Esc` li rimuove tutti.
 - **Trascinamento** (`Y`): vedi la sezione Trascinamento più avanti.
 - **Punto di controllo** (`P`): rimodella la griglia di controllo di una patch.
 - **Raccordo** (`O`): fai clic su uno spigolo per arrotondarlo, oppure scegli spigoli o vertici con i rispettivi strumenti e premi `Enter`. Più facce danno un risultato più morbido e più geometria.

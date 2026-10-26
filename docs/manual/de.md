@@ -108,16 +108,16 @@ Brushes sind konvexe Körper, die durch Ebenen definiert sind. Bauen Sie komplex
 Wählen Sie das Brush-Werkzeug (`B`) und ziehen Sie in einer Ansicht. Die Werkzeugleiste zeigt **Zu zeichnende Form**: Quader, Treppe, Torbogen, Zylinder, Kegel, Sphäroid (UV), Sphäroid (Ikosaeder) und 3D-Text einfügen. `Alt+1` bis `Alt+7` wählen eine Form direkt. Je nach Form zeigt die Leiste **Aushöhlen** und **Dicke:**, für Treppen **Stufenhöhe:** und **Richtung:**, für runde Formen **Achse:**, **Seiten:** und den Kreismodus, für Kugeln **Ringe:** und für das Ikosaeder **Genauigkeit:**. Stellen Sie die Optionen vor dem Ziehen ein. Prüfen Sie das Ergebnis in mehr als einer Ansicht.
 
 ## Auswählen
-Klicken Sie auf einen Brush, um ihn auszuwählen, und klicken Sie mit `Ctrl`, um ihn zur Auswahl hinzuzufügen. Ziehen von einer leeren Stelle aus zieht einen Auswahlrahmen auf. In der 3D-Ansicht wählt `Shift`-Klick eine einzelne Fläche aus, und `Ctrl+Shift`-Klick fügt weitere Flächen hinzu. Ziehen an einem ausgewählten Brush verschiebt ihn; Ziehen an einem nicht ausgewählten wählt nur diesen aus und verschiebt ihn.
+Klicken Sie auf einen Brush, um ihn auszuwählen, und klicken Sie mit `Ctrl`, um ihn zur Auswahl hinzuzufügen. Ziehen von einer leeren Stelle aus zieht einen Auswahlrahmen auf. In der 3D-Ansicht wählt `Shift`-Klick eine einzelne Fläche aus, und `Ctrl+Shift`-Klick fügt weitere Flächen hinzu. Ein `Ctrl`-Ziehen, das auf einem nicht ausgewählten Objekt beginnt, fügt alles hinzu, worüber der Mauszeiger fährt, und ein `Ctrl+Shift`-Ziehen fügt auf dieselbe Weise Flächen hinzu. Ziehen an einem ausgewählten Brush verschiebt ihn; Ziehen an einem nicht ausgewählten wählt nur diesen aus und verschiebt ihn.
 
 In der 3D-Ansicht extrudiert `Shift`-Ziehen an einer Fläche eines ausgewählten Brushes diese Fläche. `Alt`-Klick auf eine andere Fläche überträgt Material und Ausrichtung der ausgewählten Fläche darauf; `Alt+Ctrl` überträgt nur das Material und `Alt+Shift` die Drehung.
 
 ## Formwerkzeuge
 - **Auswählen** (`Esc`): auswählen und verschieben.
-- **Eckpunkt** (`V`), **Kante** (`E`), **Fläche** (`F`): Ecken, Kanten oder Flächen ziehen. `Shift`-Ziehen von der Mitte einer Kante oder Fläche aus fügt dort eine Ecke hinzu. `Delete` entfernt die gewählten Ecken.
+- **Eckpunkt** (`V`), **Kante** (`E`), **Fläche** (`F`): Ecken, Kanten oder Flächen ziehen. `Shift`-Ziehen von der Mitte einer Kante oder Fläche aus fügt dort eine Ecke hinzu. Mit `Ctrl` landet eine gezogene Ecke direkt auf dem Raster, statt sich in Rasterschritten zu bewegen. `Delete` entfernt die gewählten Ecken.
 - **Drehen** (`R`), **Skalierung** (`T`), **Scheren** (`G`): die Auswahl mit Anfassern transformieren.
 - **Schneiden** (`C`): klicken Sie zwei oder drei Punkte, um eine Schnittebene festzulegen. `Enter` schneidet, `Ctrl+Enter` wählt, welche Seite erhalten bleibt, und `Backspace` oder `Esc` entfernt den letzten Punkt.
-- **Zusammenbauen** (`N`): setzen Sie Punkte rund um ein Volumen und drücken Sie `Enter`, um daraus einen konvexen Brush zu erzeugen. `Backspace` entfernt den letzten Punkt.
+- **Zusammenbauen** (`N`): klicken Sie Punkte rund um ein Volumen und drücken Sie `Enter`, um daraus einen konvexen Brush zu erzeugen. In der 3D-Ansicht zeichnet Ziehen auf einer Fläche ein Rechteck aus vier Punkten darauf, `Shift`-Ziehen zieht flach liegende Punkte zu einem Prisma aus, und ein Doppelklick fügt die Ecken der Fläche hinzu. `Backspace` entfernt den letzten Punkt und `Esc` alle Punkte.
 - **Ziehen** (`Y`): siehe den Abschnitt zu Ziehen weiter unten.
 - **Kontrollpunkt** (`P`): das Kontrollgitter eines Patches umformen.
 - **Verrundung** (`O`): klicken Sie auf eine Kante, um sie abzurunden, oder wählen Sie Kanten oder Eckpunkte mit deren Werkzeugen und drücken Sie `Enter`. Mehr Flächen ergeben ein glatteres Ergebnis und mehr Geometrie.

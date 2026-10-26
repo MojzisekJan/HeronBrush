@@ -108,16 +108,16 @@ Los brushes son sólidos convexos definidos por planos. Construye los objetos co
 Elige la herramienta Brush (`B`) y arrastra en una vista. La barra de herramientas muestra **Forma a dibujar**: Ortoedro, Escalera, Arco (bóveda), Cilindro, Cono, Esferoide (UV), Esferoide (icosaedro) e Insertar texto 3D. De `Alt+1` a `Alt+7` eligen una forma directamente. Según la forma, la barra muestra **Ahuecar** y **Grosor:**, **Altura del escalón:** y **Dirección:** para las escaleras, **Eje:**, **Lados:** y el modo de círculo para las formas redondas, **Anillos:** para las esferas y **Precisión:** para el icosaedro. Configura las opciones antes de arrastrar. Comprueba el resultado en más de una vista.
 
 ## Seleccionar
-Haz clic en un brush para seleccionarlo y `Ctrl`-clic para añadirlo a la selección. Un arrastre desde un espacio vacío dibuja un rectángulo de selección. En la vista 3D, `Shift`-clic selecciona una sola cara y `Ctrl+Shift`-clic añade más caras. Arrastrar un brush seleccionado lo mueve; arrastrar uno no seleccionado selecciona y mueve solo ese.
+Haz clic en un brush para seleccionarlo y `Ctrl`-clic para añadirlo a la selección. Un arrastre desde un espacio vacío dibuja un rectángulo de selección. En la vista 3D, `Shift`-clic selecciona una sola cara y `Ctrl+Shift`-clic añade más caras. Arrastrar con `Ctrl` desde un objeto no seleccionado añade todo lo que recorre el puntero, y arrastrar con `Ctrl+Shift` añade caras del mismo modo. Arrastrar un brush seleccionado lo mueve; arrastrar uno no seleccionado selecciona y mueve solo ese.
 
 En la vista 3D, `Shift`-arrastra una cara de un brush seleccionado para extruirla. `Alt`-clic en otra cara copia en ella el material y la alineación de la cara seleccionada; `Alt+Ctrl` copia solo el material y `Alt+Shift` copia la rotación.
 
 ## Herramientas de modelado
 - **Seleccionar** (`Esc`): seleccionar y mover.
-- **Vértice** (`V`), **Arista** (`E`), **Cara** (`F`): arrastrar esquinas, aristas o caras. `Shift`-arrastrar desde el centro de una arista o cara añade una esquina en ese punto. `Delete` elimina las esquinas elegidas.
+- **Vértice** (`V`), **Arista** (`E`), **Cara** (`F`): arrastrar esquinas, aristas o caras. `Shift`-arrastrar desde el centro de una arista o cara añade una esquina en ese punto. Con `Ctrl`, una esquina arrastrada cae sobre la propia cuadrícula en lugar de moverse en pasos de cuadrícula. `Delete` elimina las esquinas elegidas.
 - **Rotar** (`R`), **Escala** (`T`), **Cizallar** (`G`): transformar la selección con tiradores.
 - **Corte** (`C`): haz clic en dos o tres puntos para definir un plano de corte. `Enter` corta, `Ctrl+Enter` elige qué lado conservar, y `Backspace` o `Esc` quitan el último punto.
-- **Ensamblar** (`N`): coloca puntos alrededor de un volumen y pulsa `Enter` para crear con ellos un brush convexo. `Backspace` quita el último punto.
+- **Ensamblar** (`N`): haz clic para colocar puntos alrededor de un volumen y pulsa `Enter` para crear con ellos un brush convexo. En la vista 3D, un arrastre sobre una cara dibuja en ella un rectángulo de cuatro puntos, `Shift`-arrastrar extruye en un prisma los puntos que están en un mismo plano, y un doble clic añade las esquinas de la cara. `Backspace` quita el último punto y `Esc` los quita todos.
 - **Barrido** (`Y`): consulta la sección Barrido más abajo.
 - **Punto de control** (`P`): remodelar la rejilla de control de un patch.
 - **Redondeo** (`O`): haz clic en una arista para redondearla, o elige aristas o vértices con sus herramientas y pulsa `Enter`. Más caras dan un resultado más suave y más geometría.

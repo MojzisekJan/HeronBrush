@@ -108,16 +108,16 @@ Brushes er konvekse legemer defineret af planer. Byg komplekse objekter af flere
 Vælg Brush-værktøjet (`B`), og træk i en visning. Værktøjslinjen viser **Form, der skal tegnes**: Kasse, Trappe, Buegang, Cylinder, Kegle, Sfæroide (UV), Sfæroide (ikosaeder) og Indsæt 3D-tekst. `Alt+1` til `Alt+7` vælger en form direkte. Afhængigt af formen viser linjen **Udhul** og **Tykkelse:**, **Trinhøjde:** og **Retning:** for trapper, **Akse:**, **Sider:** og cirkeltilstanden for runde former, **Ringe:** for kugler og **Nøjagtighed:** for ikosaederet. Indstil valgmulighederne, før du trækker. Kontrollér resultatet i mere end én visning.
 
 ## Markering
-Klik på en brush for at markere den, og `Ctrl`-klik for at føje til markeringen. Et træk fra et tomt område tegner en markeringsramme. I 3D-visningen markerer `Shift`-klik en enkelt flade, og `Ctrl+Shift`-klik tilføjer flere flader. Når du trækker i en markeret brush, flyttes den; når du trækker i en umarkeret, markeres og flyttes kun den.
+Klik på en brush for at markere den, og `Ctrl`-klik for at føje til markeringen. Et træk fra et tomt område tegner en markeringsramme. I 3D-visningen markerer `Shift`-klik en enkelt flade, og `Ctrl+Shift`-klik tilføjer flere flader. Et `Ctrl`-træk, der starter på et umarkeret objekt, tilføjer alt, som markøren passerer, og et `Ctrl+Shift`-træk tilføjer flader på samme måde. Når du trækker i en markeret brush, flyttes den; når du trækker i en umarkeret, markeres og flyttes kun den.
 
 I 3D-visningen kan du `Shift`-trække i en flade på en markeret brush for at ekstrudere den. `Alt`-klik på en anden flade for at kopiere den markerede flades materiale og justering over på den; `Alt+Ctrl` kopierer kun materialet, og `Alt+Shift` kopierer rotationen.
 
 ## Formningsværktøjer
 - **Markér** (`Esc`): markér og flyt.
-- **Hjørnepunkt** (`V`), **Kant** (`E`), **Flade** (`F`): træk i hjørner, kanter eller flader. `Shift`-træk fra midten af en kant eller flade tilføjer et hjørne der. `Delete` fjerner de valgte hjørner.
+- **Hjørnepunkt** (`V`), **Kant** (`E`), **Flade** (`F`): træk i hjørner, kanter eller flader. `Shift`-træk fra midten af en kant eller flade tilføjer et hjørne der. Med `Ctrl` lander et trukket hjørne på selve gitteret i stedet for at flytte sig i gittertrin. `Delete` fjerner de valgte hjørner.
 - **Rotér** (`R`), **Skalér** (`T`), **Forskyd** (`G`): transformér markeringen med håndtag.
 - **Klip** (`C`): klik på to eller tre punkter for at definere et snitplan. `Enter` skærer, `Ctrl+Enter` vælger, hvilken side der beholdes, og `Backspace` eller `Esc` fjerner det sidste punkt.
-- **Saml** (`N`): placér punkter rundt om et volumen, og tryk på `Enter` for at lave en konveks brush af dem. `Backspace` fjerner det sidste punkt.
+- **Saml** (`N`): klik punkter rundt om et volumen, og tryk på `Enter` for at lave en konveks brush af dem. I 3D-visningen tegner et træk på en flade et rektangel af fire punkter på den, et `Shift`-træk trækker punkter, der ligger fladt, ud til et prisme, og et dobbeltklik tilføjer fladens hjørner. `Backspace` fjerner det sidste punkt, og `Esc` fjerner dem alle.
 - **Fej** (`Y`): se afsnittet om fejning nedenfor.
 - **Kontrolpunkt** (`P`): omform en patchs kontrolgitter.
 - **Afrunding** (`O`): klik på en kant for at runde den af, eller vælg kanter eller hjørnepunkter med deres værktøjer, og tryk på `Enter`. Flere flader giver et blødere resultat og mere geometri.

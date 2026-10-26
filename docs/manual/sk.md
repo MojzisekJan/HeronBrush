@@ -108,16 +108,16 @@ Brushe sú konvexné telesá definované rovinami. Zložité objekty skladajte z
 Zvoľte nástroj Brush (`B`) a ťahajte v pohľade. Lišta nástrojov ukazuje **Kreslený tvar**: Kváder, Schodisko, Klenba, Valec, Kužeľ, Sféroid (UV), Sféroid (dvadsaťsten) a Vložiť 3D text. `Alt+1` až `Alt+7` volia tvar priamo. Podľa tvaru lišta ukazuje **Dutý** a **Hrúbka:**, pri schodoch **Výška schodu:** a **Smer:**, pri okrúhlych tvaroch **Os:**, **Strany:** a režim kružnice, pri guliach **Prstence:** a pri dvadsaťstene **Presnosť:**. Voľby nastavte pred ťahaním. Výsledok skontrolujte vo viacerých pohľadoch.
 
 ## Výber
-Kliknutím brush vyberiete, `Ctrl`-kliknutím ho pridáte do výberu. Ťahanie z prázdneho miesta kreslí výberový obdĺžnik. V 3D pohľade `Shift`-kliknutie vyberie jednu stenu a `Ctrl+Shift`-kliknutie pridá ďalšie steny. Ťahaním vybraného brushu ho presuniete; ťahaním nevybraného vyberiete a presuniete len ten.
+Kliknutím brush vyberiete, `Ctrl`-kliknutím ho pridáte do výberu. Ťahanie z prázdneho miesta kreslí výberový obdĺžnik. V 3D pohľade `Shift`-kliknutie vyberie jednu stenu a `Ctrl+Shift`-kliknutie pridá ďalšie steny. `Ctrl`-ťahanie, ktoré začne na nevybranom objekte, pridá všetko, cez čo kurzor prejde, a `Ctrl+Shift`-ťahanie rovnako pridáva steny. Ťahaním vybraného brushu ho presuniete; ťahaním nevybraného vyberiete a presuniete len ten.
 
 V 3D pohľade `Shift`-ťahaním steny vybraného brushu stenu vytiahnete. `Alt`-kliknutím na inú stenu na ňu prenesiete materiál a zarovnanie vybranej steny; `Alt+Ctrl` prenesie len materiál a `Alt+Shift` otočenie.
 
 ## Tvarovacie nástroje
 - **Vybrať** (`Esc`): výber a posun.
-- **Vrchol** (`V`), **Hrana** (`E`), **Stena** (`F`): ťahanie rohov, hrán alebo stien. `Shift`-ťahanie zo stredu hrany alebo steny tam pridá roh. `Delete` odoberie vybrané rohy.
+- **Vrchol** (`V`), **Hrana** (`E`), **Stena** (`F`): ťahanie rohov, hrán alebo stien. `Shift`-ťahanie zo stredu hrany alebo steny tam pridá roh. S `Ctrl` ťahaný roh dopadne priamo na mriežku namiesto posúvania po krokoch mriežky. `Delete` odoberie vybrané rohy.
 - **Otočiť** (`R`), **Mierka** (`T`), **Skosiť** (`G`): transformácia výberu pomocou úchytov.
 - **Rez** (`C`): dvoma alebo troma kliknutiami určte reznú rovinu. `Enter` reže, `Ctrl+Enter` volí, ktorá strana zostane, a `Backspace` alebo `Esc` odoberie posledný bod.
-- **Skladať** (`N`): rozmiestnite body okolo objemu a `Enter` z nich vytvorí konvexný brush. `Backspace` odoberie posledný bod.
+- **Skladať** (`N`): naklikajte body okolo objemu a `Enter` z nich vytvorí konvexný brush. V 3D pohľade ťahanie po stene na ňu nakreslí obdĺžnik zo štyroch bodov, `Shift`-ťahanie vytiahne body ležiace v jednej rovine do hranola a dvojklik pridá rohy steny. `Backspace` odoberie posledný bod a `Esc` odoberie všetky.
 - **Pretiahnutie** (`Y`): pozri sekciu o pretiahnutí nižšie.
 - **Riadiaci bod** (`P`): úprava riadiacej mriežky patchu.
 - **Zaoblenie** (`O`): kliknutím na hranu ju zaoblíte, alebo vyberte hrany či vrcholy ich nástrojmi a stlačte `Enter`. Viac stien dáva hladší výsledok a viac geometrie.

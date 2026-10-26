@@ -108,16 +108,16 @@ Brushi so konveksna telesa, določena z ravninami. Zapletene predmete sestavite 
 Izberite orodje Brush (`B`) in povlecite v pogledu. Vrstica orodij prikaže **Oblika za risanje**: Kvader, Stopnice, Obok, Valj, Stožec, Sferoid (UV), Sferoid (ikozaeder) in Vstavi 3D-besedilo. `Alt+1` do `Alt+7` obliko izberejo neposredno. Glede na obliko vrstica prikaže **Izvotli** in **Debelina:**, za stopnice **Višina stopnice:** in **Smer:**, za okrogle oblike **Os:**, **Stranic:** in način kroga, za krogle **Obročev:** in za ikozaeder **Natančnost:**. Možnosti nastavite pred vlečenjem. Rezultat preverite v več kot enem pogledu.
 
 ## Izbiranje
-Brush izberete s klikom, s klikom ob `Ctrl` ga dodate v izbor. Vlečenje iz praznega prostora nariše izbirni okvir. V 3D-pogledu klik ob `Shift` izbere posamezno ploskev, klik ob `Ctrl+Shift` pa doda več ploskev. Vlečenje izbranega brusha ga premakne; vlečenje neizbranega izbere in premakne samo tega.
+Brush izberete s klikom, s klikom ob `Ctrl` ga dodate v izbor. Vlečenje iz praznega prostora nariše izbirni okvir. V 3D-pogledu klik ob `Shift` izbere posamezno ploskev, klik ob `Ctrl+Shift` pa doda več ploskev. Vlečenje ob `Ctrl`, ki se začne na neizbranem predmetu, doda vse, prek česar gre kazalec, vlečenje ob `Ctrl+Shift` pa na enak način doda ploskve. Vlečenje izbranega brusha ga premakne; vlečenje neizbranega izbere in premakne samo tega.
 
 V 3D-pogledu z vlečenjem ploskve izbranega brusha ob `Shift` ploskev izvlečete. Klik ob `Alt` na drugo ploskev nanjo prenese material in poravnavo izbrane ploskve; `Alt+Ctrl` prenese le material, `Alt+Shift` pa zasuk.
 
 ## Orodja za oblikovanje
 - **Izberi** (`Esc`): izbiranje in premikanje.
-- **Oglišče** (`V`), **Rob** (`E`), **Ploskev** (`F`): vlečenje oglišč, robov ali ploskev. Vlečenje ob `Shift` s sredine roba ali ploskve tam doda oglišče. `Delete` odstrani izbrana oglišča.
+- **Oglišče** (`V`), **Rob** (`E`), **Ploskev** (`F`): vlečenje oglišč, robov ali ploskev. Vlečenje ob `Shift` s sredine roba ali ploskve tam doda oglišče. Ob `Ctrl` vlečeno oglišče pristane neposredno na mreži, namesto da bi se premikalo po korakih mreže. `Delete` odstrani izbrana oglišča.
 - **Zasukaj** (`R`), **Merilo** (`T`), **Striži** (`G`): preoblikovanje izbora z ročicami.
 - **Rez** (`C`): s klikom na dve ali tri točke določite rezalno ravnino. `Enter` prereže, `Ctrl+Enter` izbere, katero stran ohraniti, `Backspace` ali `Esc` pa odstrani zadnjo točko.
-- **Sestavi** (`N`): postavite točke okoli prostornine in pritisnite `Enter`, da iz njih nastane konveksen brush. `Backspace` odstrani zadnjo točko.
+- **Sestavi** (`N`): s klikom postavite točke okoli prostornine in pritisnite `Enter`, da iz njih nastane konveksen brush. V 3D-pogledu vlečenje po ploskvi nanjo nariše pravokotnik iz štirih točk, vlečenje ob `Shift` izvleče točke, ki ležijo v isti ravnini, v prizmo, dvoklik pa doda oglišča ploskve. `Backspace` odstrani zadnjo točko, `Esc` pa vse.
 - **Izvlek** (`Y`): glejte razdelek o izvleku spodaj.
 - **Kontrolna točka** (`P`): preoblikovanje kontrolne mreže patcha.
 - **Zaobljanje** (`O`): kliknite rob, da ga zaoblite, ali izberite robove ali oglišča z njihovimi orodji in pritisnite `Enter`. Več ploskev da bolj gladek rezultat in več geometrije.

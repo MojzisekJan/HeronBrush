@@ -108,16 +108,16 @@ Brushes são sólidos convexos definidos por planos. Construa objetos complexos 
 Escolha a ferramenta Brush (`B`) e arraste em uma vista. A barra de ferramentas mostra **Forma para desenhar**: Paralelepípedo, Escada, Arco (abóbada), Cilindro, Cone, Esferoide (UV), Esferoide (icosaedro) e Inserir texto 3D. `Alt+1` a `Alt+7` escolhem uma forma diretamente. Dependendo da forma, a barra mostra **Criar cavidade** e **Espessura:**, **Altura dos degraus:** e **Direção:** para escadas, **Eixo:**, **Lados:** e o modo de círculo para formas redondas, **Anéis:** para esferas e **Precisão:** para o icosaedro. Defina as opções antes de arrastar. Confira o resultado em mais de uma vista.
 
 ## Selecionando
-Clique em um brush para selecioná-lo e clique com `Ctrl` para adicioná-lo à seleção. Arrastar a partir de um espaço vazio desenha um retângulo de seleção. Na vista 3D, clicar com `Shift` seleciona uma única face e clicar com `Ctrl+Shift` adiciona mais faces. Arrastar um brush selecionado o move; arrastar um não selecionado seleciona e move apenas esse.
+Clique em um brush para selecioná-lo e clique com `Ctrl` para adicioná-lo à seleção. Arrastar a partir de um espaço vazio desenha um retângulo de seleção. Na vista 3D, clicar com `Shift` seleciona uma única face e clicar com `Ctrl+Shift` adiciona mais faces. Arrastar com `Ctrl` a partir de um objeto não selecionado adiciona tudo por onde o ponteiro passa, e arrastar com `Ctrl+Shift` adiciona faces da mesma forma. Arrastar um brush selecionado o move; arrastar um não selecionado seleciona e move apenas esse.
 
 Na vista 3D, arraste com `Shift` uma face de um brush selecionado para extrudá-la. Clique com `Alt` em outra face para copiar para ela o material e o alinhamento da face selecionada; `Alt+Ctrl` copia só o material e `Alt+Shift` copia a rotação.
 
 ## Ferramentas de modelagem
 - **Selecionar** (`Esc`): selecionar e mover.
-- **Vértice** (`V`), **Aresta** (`E`), **Face** (`F`): arrastar cantos, arestas ou faces. Arrastar com `Shift` a partir do meio de uma aresta ou face adiciona um canto ali. `Delete` remove os cantos escolhidos.
+- **Vértice** (`V`), **Aresta** (`E`), **Face** (`F`): arrastar cantos, arestas ou faces. Arrastar com `Shift` a partir do meio de uma aresta ou face adiciona um canto ali. Com `Ctrl`, um canto arrastado cai sobre a própria grade em vez de se mover em passos da grade. `Delete` remove os cantos escolhidos.
 - **Girar** (`R`), **Escala** (`T`), **Cisalhamento** (`G`): transformar a seleção com alças.
 - **Recorte** (`C`): clique em dois ou três pontos para definir um plano de corte. `Enter` corta, `Ctrl+Enter` escolhe qual lado manter, e `Backspace` ou `Esc` remove o último ponto.
-- **Montar** (`N`): posicione pontos ao redor de um volume e pressione `Enter` para criar um brush convexo a partir deles. `Backspace` remove o último ponto.
+- **Montar** (`N`): clique para posicionar pontos ao redor de um volume e pressione `Enter` para criar um brush convexo a partir deles. Na vista 3D, arrastar sobre uma face desenha nela um retângulo de quatro pontos, arrastar com `Shift` puxa pontos que estão num mesmo plano para formar um prisma, e um clique duplo adiciona os cantos da face. `Backspace` remove o último ponto e `Esc` remove todos.
 - **Varredura** (`Y`): veja a seção sobre varredura abaixo.
 - **Ponto de controle** (`P`): remodelar a grade de controle de um patch.
 - **Arredondamento** (`O`): clique em uma aresta para arredondá-la ou escolha arestas ou vértices com as ferramentas correspondentes e pressione `Enter`. Mais faces dão um resultado mais suave e mais geometria.

@@ -108,16 +108,16 @@ Fırçalar, düzlemlerle tanımlanan dışbükey katılardır. Tek bir fırçay�
 Fırça aracını (`B`) seçin ve bir görünümde sürükleyin. Araç şeridinde **Çizilecek şekil** görünür: Dikdörtgenler prizması, Merdiven, Kemer, Silindir, Koni, Sferoit (UV), Sferoit (ikozahedron) ve 3B metin ekle. `Alt+1` ile `Alt+7` arası tuşlar bir şekli doğrudan seçer. Şekle göre şeritte **İçini boşalt** ve **Kalınlık:**, merdivenler için **Basamak yüksekliği:** ve **Yön:**, yuvarlak şekiller için **Eksen:**, **Kenar sayısı:** ve daire kipi, küreler için **Halkalar:**, ikosahedron için de **Hassasiyet:** görünür. Seçenekleri sürüklemeden önce ayarlayın. Sonucu birden fazla görünümde kontrol edin.
 
 ## Seçme
-Bir fırçayı seçmek için tıklayın, seçime eklemek için `Ctrl` ile tıklayın. Boş bir alandan başlayan sürükleme bir seçim kutusu çizer. 3B görünümde `Shift` ile tıklama tek bir yüzey seçer, `Ctrl+Shift` ile tıklama başka yüzeyler ekler. Seçili bir fırçayı sürüklemek onu taşır; seçili olmayan bir fırçayı sürüklemek yalnızca o fırçayı seçip taşır.
+Bir fırçayı seçmek için tıklayın, seçime eklemek için `Ctrl` ile tıklayın. Boş bir alandan başlayan sürükleme bir seçim kutusu çizer. 3B görünümde `Shift` ile tıklama tek bir yüzey seçer, `Ctrl+Shift` ile tıklama başka yüzeyler ekler. Seçili olmayan bir nesneden başlayan `Ctrl` ile sürükleme, işaretçinin üzerinden geçtiği her şeyi ekler; `Ctrl+Shift` ile sürükleme de aynı şekilde yüzey ekler. Seçili bir fırçayı sürüklemek onu taşır; seçili olmayan bir fırçayı sürüklemek yalnızca o fırçayı seçip taşır.
 
 3B görünümde seçili bir fırçanın bir yüzeyini `Shift` ile sürükleyerek dışarı doğru uzatın (ekstrüzyon). Seçili yüzeyin malzemesini ve hizalamasını başka bir yüzeye kopyalamak için o yüzeye `Alt` ile tıklayın; `Alt+Ctrl` yalnızca malzemeyi, `Alt+Shift` ise dönüşü kopyalar.
 
 ## Şekillendirme araçları
 - **Seç** (`Esc`): seçin ve taşıyın.
-- **Köşe** (`V`), **Kenar** (`E`), **Yüzey** (`F`): köşeleri, kenarları ya da yüzeyleri sürükleyin. Bir kenarın ya da yüzeyin ortasından `Shift` ile sürüklemek oraya yeni bir köşe ekler. `Delete` seçilen köşeleri kaldırır.
+- **Köşe** (`V`), **Kenar** (`E`), **Yüzey** (`F`): köşeleri, kenarları ya da yüzeyleri sürükleyin. Bir kenarın ya da yüzeyin ortasından `Shift` ile sürüklemek oraya yeni bir köşe ekler. `Ctrl` ile sürüklenen köşe ızgara adımlarıyla ilerlemek yerine doğrudan ızgaranın üzerine oturur. `Delete` seçilen köşeleri kaldırır.
 - **Döndür** (`R`), **Ölçek** (`T`), **Eğ** (`G`): seçimi tutamaçlarla dönüştürün.
 - **Kes** (`C`): bir kesme düzlemi tanımlamak için iki ya da üç noktaya tıklayın. `Enter` keser, `Ctrl+Enter` hangi tarafın kalacağını seçer, `Backspace` ya da `Esc` son noktayı kaldırır.
-- **Birleştir** (`N`): bir hacmin çevresine noktalar yerleştirin ve bunlardan dışbükey bir fırça oluşturmak için `Enter` tuşuna basın. `Backspace` son noktayı kaldırır.
+- **Birleştir** (`N`): bir hacmin çevresine tıklayarak noktalar yerleştirin ve bunlardan dışbükey bir fırça oluşturmak için `Enter` tuşuna basın. 3B görünümde bir yüzey üzerinde sürüklemek o yüzeye dört noktalı bir dikdörtgen çizer, `Shift` ile sürüklemek aynı düzlemde duran noktaları bir prizmaya çeker, çift tıklama ise yüzeyin köşelerini ekler. `Backspace` son noktayı, `Esc` ise tüm noktaları kaldırır.
 - **Süpür** (`Y`): aşağıdaki Süpürme bölümüne bakın.
 - **Kontrol noktası** (`P`): bir yamanın kontrol ızgarasını yeniden şekillendirin.
 - **Yuvarlat** (`O`): yuvarlatmak için bir kenara tıklayın ya da kenarları veya köşeleri kendi araçlarıyla seçip `Enter` tuşuna basın. Daha fazla yüzey daha pürüzsüz bir sonuç ama daha fazla geometri demektir.

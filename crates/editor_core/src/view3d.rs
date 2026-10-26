@@ -3708,6 +3708,30 @@ impl Scene3d {
         modifiers: Modifiers,
         (width, height): (f64, f64),
     ) -> bool {
+        // `AssembleBrushToolController3D::mouseDoubleClick`: a plain double click adds
+        // the corners of the face under it to the assemble tool's points.
+        if *self.tool.borrow() == Tool::Assemble {
+            if modifiers.shift || modifiers.control || modifiers.alt {
+                return false;
+            }
+            let ray = self.camera.borrow().ray_through(x, y, width, height);
+            let document = self.document.borrow();
+            let corners = document.pick(&ray).and_then(|hit| {
+                let face = map_model::polyhedron::FaceId(u32::try_from(hit.face?).ok()?);
+                Some(document.brush(hit.node)?.geometry().face_positions(face))
+            });
+            drop(document);
+            let mut assemble = self.assemble.borrow_mut();
+            let mut changed = false;
+            for corner in corners.unwrap_or_default() {
+                changed |= assemble.add_point(corner);
+            }
+            drop(assemble);
+            if changed {
+                (self.render)();
+            }
+            return changed;
+        }
         if !matches!(*self.tool.borrow(), Tool::Select | Tool::Brush) {
             return false;
         }
@@ -5540,6 +5564,32 @@ mod pick_tests {
         assert_eq!(
             scene.assemble.borrow().points(),
             &[Vec3d::new(-144.0, -64.0, 0.0)]
+        );
+    }
+
+    /// `AssembleBrushToolController3D::mouseDoubleClick`: a double click adds the corners
+    /// of the face under it.
+    #[test]
+    fn an_assemble_double_click_adds_the_corners_of_a_face() {
+        let (scene, _, tool, _, _) = floor_and_cube_scene();
+        *tool.borrow_mut() = Tool::Assemble;
+        let size = (800.0, 600.0);
+        let at = scene
+            .camera
+            .borrow()
+            .project(Vec3d::new(32.0, 32.0, 64.0), size.0, size.1)
+            .unwrap();
+        assert!(scene.double_click(at.x(), at.y(), Modifiers::default(), size));
+        let mut points = scene.assemble.borrow().points().to_vec();
+        points.sort_by(|a, b| a.x().total_cmp(&b.x()).then(a.y().total_cmp(&b.y())));
+        assert_eq!(
+            points,
+            vec![
+                Vec3d::new(0.0, 0.0, 64.0),
+                Vec3d::new(0.0, 64.0, 64.0),
+                Vec3d::new(64.0, 0.0, 64.0),
+                Vec3d::new(64.0, 64.0, 64.0),
+            ]
         );
     }
 

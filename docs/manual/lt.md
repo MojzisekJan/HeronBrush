@@ -108,16 +108,16 @@ Brašai yra iškilieji kūnai, apibrėžti plokštumomis. Sudėtingus objektus k
 Pasirinkite brašo įrankį (`B`) ir vilkite vaizde. Įrankių juostoje rodoma **Piešiama forma**: Stačiakampis gretasienis, Laiptai, Arka, Cilindras, Kūgis, Sferoidas (UV), Sferoidas (ikosaedras) ir Įterpti 3D tekstą. Nuo `Alt+1` iki `Alt+7` formą parenka tiesiogiai. Priklausomai nuo formos, juostoje rodoma **Tuščiaviduris** ir **Storis:**, laiptams – **Pakopos aukštis:** ir **Kryptis:**, apvalioms formoms – **Ašis:**, **Kraštinės:** ir apskritimo režimas, sferoms – **Žiedai:**, o ikosaedrui – **Tikslumas:**. Parinktis nustatykite prieš vilkdami. Rezultatą patikrinkite daugiau nei viename vaizde.
 
 ## Žymėjimas
-Spustelėkite brašą, kad jį pažymėtumėte, ir spustelėkite su `Ctrl`, kad pridėtumėte prie žymėjimo. Vilkimas nuo tuščios vietos piešia žymėjimo stačiakampį. 3D vaizde spustelėjimas su `Shift` pažymi vieną sienelę, o su `Ctrl+Shift` prideda daugiau sienelių. Vilkdami pažymėtą brašą jį perkeliate; vilkdami nepažymėtą, pažymite ir perkeliate tik jį.
+Spustelėkite brašą, kad jį pažymėtumėte, ir spustelėkite su `Ctrl`, kad pridėtumėte prie žymėjimo. Vilkimas nuo tuščios vietos piešia žymėjimo stačiakampį. 3D vaizde spustelėjimas su `Shift` pažymi vieną sienelę, o su `Ctrl+Shift` prideda daugiau sienelių. Vilkimas su `Ctrl`, pradėtas nuo nepažymėto objekto, prideda viską, virš ko praeina žymeklis, o vilkimas su `Ctrl+Shift` taip pat prideda sieneles. Vilkdami pažymėtą brašą jį perkeliate; vilkdami nepažymėtą, pažymite ir perkeliate tik jį.
 
 3D vaizde vilkite pažymėto brašo sienelę su `Shift`, kad ją ištemptumėte. Spustelėkite kitą sienelę su `Alt`, kad nukopijuotumėte į ją pažymėtos sienelės medžiagą ir lygiavimą; `Alt+Ctrl` kopijuoja tik medžiagą, o `Alt+Shift` – pasukimą.
 
 ## Formavimo įrankiai
 - **Pažymėti** (`Esc`): žymėti ir perkelti.
-- **Viršūnė** (`V`), **Briauna** (`E`), **Sienelė** (`F`): vilkti kampus, briaunas arba sieneles. Vilkimas su `Shift` nuo briaunos ar sienelės vidurio ten prideda kampą. `Delete` pašalina pasirinktus kampus.
+- **Viršūnė** (`V`), **Briauna** (`E`), **Sienelė** (`F`): vilkti kampus, briaunas arba sieneles. Vilkimas su `Shift` nuo briaunos ar sienelės vidurio ten prideda kampą. Su `Ctrl` vilktas kampas atsiduria tiesiai ant tinklelio, užuot judėjęs tinklelio žingsniais. `Delete` pašalina pasirinktus kampus.
 - **Sukti** (`R`), **Mastelis** (`T`), **Kreipti** (`G`): transformuoti pažymėtus objektus rankenėlėmis.
 - **Pjūvis** (`C`): spustelėkite du ar tris taškus, kad apibrėžtumėte pjovimo plokštumą. `Enter` pjauna, `Ctrl+Enter` parenka, kurią pusę palikti, o `Backspace` arba `Esc` pašalina paskutinį tašką.
-- **Surinkimas** (`N`): išdėstykite taškus aplink tūrį ir paspauskite `Enter`, kad iš jų būtų sukurtas iškilasis brašas. `Backspace` pašalina paskutinį tašką.
+- **Surinkimas** (`N`): spustelėdami išdėstykite taškus aplink tūrį ir paspauskite `Enter`, kad iš jų būtų sukurtas iškilasis brašas. 3D vaizde vilkimas sienele nupiešia ant jos keturių taškų stačiakampį, vilkimas su `Shift` ištraukia vienoje plokštumoje gulinčius taškus į prizmę, o dvigubas spustelėjimas prideda sienelės kampus. `Backspace` pašalina paskutinį tašką, o `Esc` pašalina visus.
 - **Protraukimas** (`Y`): žr. skyrių apie protraukimą žemiau.
 - **Valdymo taškas** (`P`): keisti lopo valdymo tinklelio formą.
 - **Suapvalinimas** (`O`): spustelėkite briauną, kad ją suapvalintumėte, arba pasirinkite briaunas ar viršūnes jų įrankiais ir paspauskite `Enter`. Daugiau sienelių duoda glotnesnį rezultatą ir daugiau geometrijos.

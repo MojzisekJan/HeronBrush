@@ -108,16 +108,16 @@ Brush là khối đặc lồi được xác định bởi các mặt phẳng. H�
 Chọn công cụ Brush (`B`) và kéo trong một khung nhìn. Dải công cụ hiển thị **Hình để vẽ**: Hình hộp, Cầu thang, Vòm, Hình trụ, Hình nón, Khối cầu (UV), Khối cầu (Khối hai mươi mặt) và Chèn chữ 3D. `Alt+1` đến `Alt+7` chọn trực tiếp một hình. Tùy theo hình, dải công cụ hiển thị **Làm rỗng** và **Độ dày:**, **Chiều cao bậc:** và **Hướng:** cho cầu thang, **Trục:**, **Số cạnh bên:** và chế độ hình tròn cho các hình tròn, **Số vòng:** cho khối cầu và **Độ chính xác:** cho khối hai mươi mặt. Đặt các tùy chọn trước khi kéo. Kiểm tra kết quả trong nhiều khung nhìn.
 
 ## Chọn
-Nhấp vào một brush để chọn nó, và nhấp kèm `Ctrl` để thêm vào vùng chọn. Kéo từ chỗ trống sẽ vẽ một hộp chọn. Trong khung nhìn 3D, nhấp kèm `Shift` chọn một mặt riêng lẻ và nhấp kèm `Ctrl+Shift` thêm nhiều mặt hơn. Kéo một brush đang chọn sẽ di chuyển nó; kéo một brush chưa chọn sẽ chọn và chỉ di chuyển brush đó.
+Nhấp vào một brush để chọn nó, và nhấp kèm `Ctrl` để thêm vào vùng chọn. Kéo từ chỗ trống sẽ vẽ một hộp chọn. Trong khung nhìn 3D, nhấp kèm `Shift` chọn một mặt riêng lẻ và nhấp kèm `Ctrl+Shift` thêm nhiều mặt hơn. Kéo kèm `Ctrl` bắt đầu từ một đối tượng chưa chọn sẽ thêm mọi thứ con trỏ đi qua, và kéo kèm `Ctrl+Shift` thêm các mặt theo cách tương tự. Kéo một brush đang chọn sẽ di chuyển nó; kéo một brush chưa chọn sẽ chọn và chỉ di chuyển brush đó.
 
 Trong khung nhìn 3D, kéo kèm `Shift` một mặt của brush đang chọn để đùn nó ra. Nhấp kèm `Alt` vào một mặt khác để sao chép vật liệu và căn chỉnh của mặt đang chọn sang mặt đó; `Alt+Ctrl` chỉ sao chép vật liệu và `Alt+Shift` sao chép góc xoay.
 
 ## Công cụ tạo hình
 - **Chọn** (`Esc`): chọn và di chuyển.
-- **Đỉnh** (`V`), **Cạnh** (`E`), **Mặt** (`F`): kéo các góc, cạnh hoặc mặt. Kéo kèm `Shift` từ giữa một cạnh hoặc mặt sẽ thêm một góc ở đó. `Delete` xóa các góc đã chọn.
+- **Đỉnh** (`V`), **Cạnh** (`E`), **Mặt** (`F`): kéo các góc, cạnh hoặc mặt. Kéo kèm `Shift` từ giữa một cạnh hoặc mặt sẽ thêm một góc ở đó. Với `Ctrl`, góc được kéo sẽ nằm ngay trên lưới thay vì di chuyển theo từng bước lưới. `Delete` xóa các góc đã chọn.
 - **Xoay** (`R`), **Tỷ lệ** (`T`), **Xô nghiêng** (`G`): biến đổi vùng chọn bằng tay nắm.
 - **Xén** (`C`): nhấp hai hoặc ba điểm để xác định mặt phẳng cắt. `Enter` cắt, `Ctrl+Enter` chọn phía cần giữ, và `Backspace` hoặc `Esc` xóa điểm cuối cùng.
-- **Lắp ghép** (`N`): đặt các điểm quanh một khối và nhấn `Enter` để tạo một brush lồi từ chúng. `Backspace` xóa điểm cuối cùng.
+- **Lắp ghép** (`N`): nhấp để đặt các điểm quanh một khối và nhấn `Enter` để tạo một brush lồi từ chúng. Trong khung nhìn 3D, kéo trên một mặt sẽ vẽ một hình chữ nhật bốn điểm trên mặt đó, kéo kèm `Shift` kéo các điểm nằm trên cùng một mặt phẳng ra thành một lăng trụ, và nhấp đúp thêm các góc của mặt. `Backspace` xóa điểm cuối cùng và `Esc` xóa tất cả.
 - **Quét** (`Y`): xem phần Quét bên dưới.
 - **Điểm điều khiển** (`P`): tạo lại hình cho lưới điểm điều khiển của patch.
 - **Bo tròn** (`O`): nhấp vào một cạnh để bo tròn nó, hoặc chọn các cạnh hoặc đỉnh bằng công cụ của chúng rồi nhấn `Enter`. Nhiều mặt hơn cho kết quả mượt hơn và nhiều hình học hơn.

@@ -108,16 +108,16 @@ A brush-ok síkokkal határolt konvex testek. Az összetett objektumokat több e
 Válassza a Brush eszközt (`B`), és húzzon egy nézetben. Az eszközsáv a **Rajzolandó alakzat** listát mutatja: Téglatest, Lépcső, Boltív, Henger, Kúp, Gömbtest (UV), Gömbtest (ikozaéder) és 3D szöveg beszúrása. Az `Alt+1`–`Alt+7` közvetlenül választ alakzatot. Az alakzattól függően a sáv az **Üreges** és **Vastagság:** beállítást, lépcsőnél a **Lépcsőfok magassága:** és **Irány:**, kerek alakzatoknál a **Tengely:**, **Oldalak:** beállítást és a körmódot, gömböknél a **Gyűrűk:**, ikozaédernél a **Pontosság:** beállítást mutatja. A beállításokat a húzás előtt adja meg. Az eredményt több nézetben is ellenőrizze.
 
 ## Kijelölés
-Egy brush-ra kattintva kijelöli, `Ctrl`-kattintással pedig hozzáadja a kijelöléshez. Üres helyről húzva kijelölő téglalapot rajzol. A 3D nézetben a `Shift`-kattintás egyetlen lapot jelöl ki, a `Ctrl+Shift`-kattintás további lapokat ad hozzá. Egy kijelölt brush húzása mozgatja azt; egy nem kijelölt brush húzása csak azt az egyet jelöli ki és mozgatja.
+Egy brush-ra kattintva kijelöli, `Ctrl`-kattintással pedig hozzáadja a kijelöléshez. Üres helyről húzva kijelölő téglalapot rajzol. A 3D nézetben a `Shift`-kattintás egyetlen lapot jelöl ki, a `Ctrl+Shift`-kattintás további lapokat ad hozzá. Egy nem kijelölt objektumon kezdett `Ctrl`-húzás mindent hozzáad, amin a mutató áthalad, a `Ctrl+Shift`-húzás pedig ugyanígy lapokat ad hozzá. Egy kijelölt brush húzása mozgatja azt; egy nem kijelölt brush húzása csak azt az egyet jelöli ki és mozgatja.
 
 A 3D nézetben egy kijelölt brush lapját `Shift`-húzással kihúzhatja. Egy másik lapra `Alt`-kattintva rámásolja a kijelölt lap anyagát és igazítását; az `Alt+Ctrl` csak az anyagot, az `Alt+Shift` a forgatást másolja.
 
 ## Alakító eszközök
 - **Kijelölés** (`Esc`): kijelölés és mozgatás.
-- **Csúcs** (`V`), **Él** (`E`), **Lap** (`F`): sarkok, élek vagy lapok húzása. Egy él vagy lap közepéről `Shift`-húzással ott új sarkot ad hozzá. A `Delete` eltávolítja a kiválasztott sarkokat.
+- **Csúcs** (`V`), **Él** (`E`), **Lap** (`F`): sarkok, élek vagy lapok húzása. Egy él vagy lap közepéről `Shift`-húzással ott új sarkot ad hozzá. A `Ctrl` billentyűvel a húzott sarok pontosan a rácsra kerül, ahelyett hogy rácslépésekben mozogna. A `Delete` eltávolítja a kiválasztott sarkokat.
 - **Forgatás** (`R`), **Méretezés** (`T`), **Nyírás** (`G`): a kijelölés átalakítása fogantyúkkal.
 - **Vágás** (`C`): két vagy három pontra kattintva vágósíkot határoz meg. Az `Enter` vág, a `Ctrl+Enter` kiválasztja, melyik oldal maradjon meg, a `Backspace` vagy az `Esc` pedig eltávolítja az utolsó pontot.
-- **Összeállítás** (`N`): helyezzen el pontokat egy térfogat körül, és az `Enter` megnyomásával konvex brush-t készít belőlük. A `Backspace` eltávolítja az utolsó pontot.
+- **Összeállítás** (`N`): kattintással helyezzen el pontokat egy térfogat körül, és az `Enter` megnyomásával konvex brush-t készít belőlük. A 3D nézetben egy lapon húzva négy pontból álló téglalapot rajzol rá, a `Shift`-húzás az egy síkban fekvő pontokat prizmává húzza ki, a dupla kattintás pedig hozzáadja a lap sarkait. A `Backspace` eltávolítja az utolsó pontot, az `Esc` pedig az összeset.
 - **Söprés** (`Y`): lásd lent a Söprés szakaszt.
 - **Vezérlőpont** (`P`): egy patch vezérlőrácsának átformálása.
 - **Lekerekítés** (`O`): egy élre kattintva lekerekíti, vagy válasszon ki éleket vagy csúcsokat a saját eszközeikkel, és nyomja meg az `Enter` billentyűt. Több lap simább eredményt és több geometriát ad.

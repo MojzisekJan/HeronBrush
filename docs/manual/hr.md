@@ -108,16 +108,16 @@ Brushevi su konveksna tijela određena ravninama. Složene objekte gradite od ne
 Odaberite alat Brush (`B`) i povucite u prikazu. Traka alata prikazuje **Oblik za crtanje**: Kvadar, Stepenice, Svod, Valjak, Stožac, Sferoid (UV), Sferoid (ikosaedar) i Umetni 3D tekst. `Alt+1` do `Alt+7` izravno biraju oblik. Ovisno o obliku traka prikazuje **Šuplje** i **Debljina:**, **Visina stube:** i **Smjer:** za stepenice, **Os:**, **Stranica:** i način kruga za oble oblike, **Prstenova:** za sfere te **Preciznost:** za ikosaedar. Opcije postavite prije povlačenja. Rezultat provjerite u više prikaza.
 
 ## Odabir
-Kliknite brush da ga odaberete, a `Ctrl`-klikom dodajete u odabir. Povlačenje iz praznog prostora crta okvir odabira. U 3D prikazu `Shift`-klik odabire jednu plohu, a `Ctrl+Shift`-klik dodaje još ploha. Povlačenje odabranog brusha pomiče ga; povlačenje neodabranog odabire i pomiče samo njega.
+Kliknite brush da ga odaberete, a `Ctrl`-klikom dodajete u odabir. Povlačenje iz praznog prostora crta okvir odabira. U 3D prikazu `Shift`-klik odabire jednu plohu, a `Ctrl+Shift`-klik dodaje još ploha. `Ctrl`-povlačenje koje počinje na neodabranom objektu dodaje sve preko čega pokazivač prijeđe, a `Ctrl+Shift`-povlačenje na isti način dodaje plohe. Povlačenje odabranog brusha pomiče ga; povlačenje neodabranog odabire i pomiče samo njega.
 
 U 3D prikazu `Shift`-povlačenjem plohe odabranog brusha istiskujete je. `Alt`-klik na drugu plohu kopira na nju materijal i poravnanje odabrane plohe; `Alt+Ctrl` kopira samo materijal, a `Alt+Shift` kopira rotaciju.
 
 ## Alati za oblikovanje
 - **Odaberi** (`Esc`): odabir i pomicanje.
-- **Vrh** (`V`), **Brid** (`E`), **Ploha** (`F`): povlačenje kutova, bridova ili ploha. `Shift`-povlačenje iz sredine brida ili plohe ondje dodaje kut. `Delete` uklanja odabrane kutove.
+- **Vrh** (`V`), **Brid** (`E`), **Ploha** (`F`): povlačenje kutova, bridova ili ploha. `Shift`-povlačenje iz sredine brida ili plohe ondje dodaje kut. S `Ctrl` povučeni kut pada točno na mrežu umjesto da se pomiče u koracima mreže. `Delete` uklanja odabrane kutove.
 - **Rotiraj** (`R`), **Skaliranje** (`T`), **Smicanje** (`G`): transformiranje odabira ručkama.
 - **Rez** (`C`): kliknite dvije ili tri točke da odredite ravninu reza. `Enter` reže, `Ctrl+Enter` bira koja strana ostaje, a `Backspace` ili `Esc` uklanja posljednju točku.
-- **Sastavi** (`N`): postavite točke oko volumena i pritisnite `Enter` da od njih napravite konveksni brush. `Backspace` uklanja posljednju točku.
+- **Sastavi** (`N`): klikom postavite točke oko volumena i pritisnite `Enter` da od njih napravite konveksni brush. U 3D prikazu povlačenje po plohi na njoj crta pravokutnik od četiri točke, `Shift`-povlačenje izvlači točke koje leže u jednoj ravnini u prizmu, a dvoklik dodaje kutove plohe. `Backspace` uklanja posljednju točku, a `Esc` uklanja sve.
 - **Provlačenje** (`Y`): vidi odjeljak o provlačenju u nastavku.
 - **Kontrolna točka** (`P`): preoblikovanje kontrolne mreže patcha.
 - **Zaobljenje** (`O`): kliknite brid da ga zaoblite ili odaberite bridove ili vrhove njihovim alatima i pritisnite `Enter`. Više ploha daje glatkiji rezultat i više geometrije.

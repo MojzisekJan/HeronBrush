@@ -135,7 +135,7 @@ Přímé rameno má volitelnou **Podestu**, otočené varianty **Šířku ramene
 varianty mají rovnoměrnou výšku stupňů; celkem lze vytvořit nejvýše 512 stupňů.
 
 ## Výběr
-Kliknutím brush vyberete, `Ctrl`-kliknutím přidáte do výběru. Tažení z prázdného místa kreslí výběrový obdélník. Ve 3D pohledu `Shift`-kliknutí vybere jednu stěnu a `Ctrl+Shift`-kliknutí přidá další stěny. Tažením vybraného brushe ho přesunete; tažením nevybraného vyberete a přesunete jen ten.
+Kliknutím brush vyberete, `Ctrl`-kliknutím přidáte do výběru. Tažení z prázdného místa kreslí výběrový obdélník. Ve 3D pohledu `Shift`-kliknutí vybere jednu stěnu a `Ctrl+Shift`-kliknutí přidá další stěny. `Ctrl`-tažení, které začne na nevybraném objektu, přidá vše, přes co kurzor přejede, a `Ctrl+Shift`-tažení stejně přidává stěny. Tažením vybraného brushe ho přesunete; tažením nevybraného vyberete a přesunete jen ten.
 
 Ve 3D pohledu `Shift`-tažením stěny vybraného brushe stěnu vytáhnete. `Alt`-kliknutím na jinou stěnu na ni přenesete materiál a zarovnání vybrané stěny; `Alt+Ctrl` přenese jen materiál a `Alt+Shift` materiál s UV otočeným podle cílové stěny.
 
@@ -143,10 +143,10 @@ Pokud správce oken používá `Alt` pro přesouvání oken, použijte `Ctrl+C` 
 
 ## Tvarovací nástroje
 - **Vybrat** (`Esc`): výběr a posun.
-- **Vrchol** (`V`), **Hrana** (`E`), **Stěna** (`F`): tažení rohů, hran nebo stěn. `Shift`-tažení ze středu hrany nebo stěny tam přidá roh. `Delete` odebere vybrané rohy.
+- **Vrchol** (`V`), **Hrana** (`E`), **Stěna** (`F`): tažení rohů, hran nebo stěn. `Shift`-tažení ze středu hrany nebo stěny tam přidá roh. S `Ctrl` tažený roh dopadne přímo na mřížku, místo aby se posouval po krocích mřížky. `Delete` odebere vybrané rohy.
 - **Otočit** (`R`), **Měřítko** (`T`), **Zkosit** (`G`): transformace výběru pomocí úchytů.
 - **Řez** (`C`): dvěma nebo třemi kliknutími určete řeznou rovinu. `Enter` řízne, `Ctrl+Enter` volí, která strana zůstane, a `Backspace` nebo `Esc` odebere poslední bod.
-- **Skládat** (`N`): rozmístěte body kolem objemu a `Enter` z nich vytvoří konvexní brush. `Backspace` odebere poslední bod.
+- **Skládat** (`N`): naklikejte body kolem objemu a `Enter` z nich vytvoří konvexní brush. Ve 3D pohledu tažení po stěně na ni nakreslí obdélník ze čtyř bodů, `Shift`-tažení vytáhne body ležící v jedné rovině do hranolu a dvojklik přidá rohy stěny. `Backspace` odebere poslední bod a `Esc` odebere všechny.
 - **Protažení** (`Y`): viz sekce o protažení níže.
 - **Řídicí bod** (`P`): úprava řídicí mřížky plátu.
 - **Zaoblení** (`O`): kliknutím vyberete hranu pro náhled. Upravte poloměr, počet ploch a rohy a potvrďte přes **Použít** nebo `Enter`. Kliknutí na tělo brushe ho vybere i s aktivním nástrojem; `Ctrl`-kliknutí na tělo přidá nebo odebere brush. Na hranách `Ctrl` přidává nebo odebírá hrany. Kliknutí do prázdna zruší výběr brushů i náhledu. Platí ve 2D i 3D. Více ploch dá hladší výsledek a více geometrie.

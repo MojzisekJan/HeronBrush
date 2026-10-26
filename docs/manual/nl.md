@@ -108,16 +108,16 @@ Brushes zijn convexe lichamen die door vlakken worden begrensd. Bouw complexe ob
 Kies het Brush-gereedschap (`B`) en sleep in een weergave. De gereedschapsbalk toont **Te tekenen vorm**: Balk, Trap, Poortboog, Cilinder, Kegel, Bol (UV), Bol (icosaëder) en 3D-tekst invoegen. `Alt+1` tot `Alt+7` kiezen direct een vorm. Afhankelijk van de vorm toont de balk **Uithollen** en **Dikte:**, **Trede-hoogte:** en **Richting:** voor trappen, **As:**, **Zijden:** en de cirkelmodus voor ronde vormen, **Ringen:** voor bollen en **Nauwkeurigheid:** voor de icosaëder. Stel de opties in voordat je sleept. Controleer het resultaat in meer dan één weergave.
 
 ## Selecteren
-Klik op een brush om hem te selecteren, en `Ctrl`-klik om hem aan de selectie toe te voegen. Slepen vanuit een lege plek tekent een selectiekader. In de 3D-weergave selecteert `Shift`-klik één vlak en voegt `Ctrl+Shift`-klik meer vlakken toe. Slepen aan een geselecteerde brush verplaatst hem; slepen aan een niet-geselecteerde brush selecteert en verplaatst alleen die brush.
+Klik op een brush om hem te selecteren, en `Ctrl`-klik om hem aan de selectie toe te voegen. Slepen vanuit een lege plek tekent een selectiekader. In de 3D-weergave selecteert `Shift`-klik één vlak en voegt `Ctrl+Shift`-klik meer vlakken toe. `Ctrl`-slepen vanaf een niet-geselecteerd object voegt alles toe waar de aanwijzer overheen gaat, en `Ctrl+Shift`-slepen voegt op dezelfde manier vlakken toe. Slepen aan een geselecteerde brush verplaatst hem; slepen aan een niet-geselecteerde brush selecteert en verplaatst alleen die brush.
 
 In de 3D-weergave extrudeer je een vlak van een geselecteerde brush met `Shift`-slepen. `Alt`-klik op een ander vlak kopieert het materiaal en de uitlijning van het geselecteerde vlak daarnaartoe; `Alt+Ctrl` kopieert alleen het materiaal en `Alt+Shift` kopieert de rotatie.
 
 ## Vormgereedschappen
 - **Selecteren** (`Esc`): selecteren en verplaatsen.
-- **Vertex** (`V`), **Rand** (`E`), **Vlak** (`F`): hoeken, randen of vlakken verslepen. `Shift`-slepen vanuit het midden van een rand of vlak voegt daar een hoekpunt toe. `Delete` verwijdert de gekozen hoekpunten.
+- **Vertex** (`V`), **Rand** (`E`), **Vlak** (`F`): hoeken, randen of vlakken verslepen. `Shift`-slepen vanuit het midden van een rand of vlak voegt daar een hoekpunt toe. Met `Ctrl` komt een gesleept hoekpunt op het raster zelf terecht in plaats van in rasterstappen te bewegen. `Delete` verwijdert de gekozen hoekpunten.
 - **Roteren** (`R`), **Schalen** (`T`), **Schuintrekken** (`G`): de selectie met handgrepen transformeren.
 - **Knippen** (`C`): klik twee of drie punten aan om een snijvlak te bepalen. `Enter` snijdt, `Ctrl+Enter` kiest welke kant blijft, en `Backspace` of `Esc` verwijdert het laatste punt.
-- **Samenstellen** (`N`): plaats punten rond een volume en druk op `Enter` om er een convexe brush van te maken. `Backspace` verwijdert het laatste punt.
+- **Samenstellen** (`N`): klik punten rond een volume en druk op `Enter` om er een convexe brush van te maken. In de 3D-weergave tekent slepen op een vlak er een rechthoek van vier punten op, trekt `Shift`-slepen punten die plat liggen uit tot een prisma en voegt een dubbelklik de hoekpunten van het vlak toe. `Backspace` verwijdert het laatste punt en `Esc` verwijdert ze allemaal.
 - **Vegen** (`Y`): zie de sectie over vegen hieronder.
 - **Controlepunt** (`P`): het controlerooster van een patch vervormen.
 - **Afronden** (`O`): klik op een rand om hem af te ronden, of kies randen of vertices met hun gereedschappen en druk op `Enter`. Meer vlakken geven een gladder resultaat en meer geometrie.
