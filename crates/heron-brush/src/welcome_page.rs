@@ -108,7 +108,7 @@ impl Default for WelcomePage {
             "map previews",
             1,
             move |(path, modified, ctx): (PathBuf, SystemTime, egui::Context)| {
-                let image = assets::thumbnail_cached(&path, &cache);
+                let image = assets::thumbnail_cached_sized(&path, &cache, THUMBNAIL);
                 ctx.request_repaint();
                 (path, modified, image)
             },
@@ -248,7 +248,11 @@ impl WelcomePage {
                             [image.width as usize, image.height as usize],
                             &image.pixels,
                         ),
-                        egui::TextureOptions::LINEAR,
+                        // Mipmapped, so a small card on a phone shrinks it smoothly.
+                        egui::TextureOptions {
+                            mipmap_mode: Some(egui::TextureFilter::Linear),
+                            ..egui::TextureOptions::LINEAR
+                        },
                     )
                 });
             }
@@ -295,10 +299,24 @@ impl WelcomePage {
             items.push(Item::Continue);
         }
         items.extend([Item::Open, Item::Switch, Item::Manual, Item::Preferences]);
+        if area.width() < NARROW {
+            return self.stacked_page(ui, area, &items, last, examples, &shown);
+        }
+
+        // A low window, a phone on its side, drops the strip of shortcuts and lets the
+        // banner shrink further. A touch screen has no use for the shortcuts either.
+        let short = area.height() < SHORT;
+        let footer_height = if short || crate::touch::enabled(ui.ctx()) {
+            0.0
+        } else {
+            44.0
+        };
+        let (left, right) = if short { (24.0, 24.0) } else { (64.0, 48.0) };
 
         // The banner takes four tenths of the height, up to 330 points, and what sits on
         // it scales with it; in a low window it gives way first, so the menu under it fits
-        // without scrolling. Down to 150 points, below which the menu scrolls instead.
+        // without scrolling. Down to 150 points (110 in a short window), below which the
+        // menu scrolls instead.
         let menu_height = items
             .iter()
             .map(|item| match item {
@@ -311,17 +329,21 @@ impl WelcomePage {
             .sum::<f32>()
             // The profile: its caption, the dropdown and the line under it.
             + 92.0;
-        let room = area.height() - 44.0 - 12.0 - 4.0 - menu_height;
-        let banner_height = (area.height() * 0.41).min(room).clamp(150.0, 330.0);
+        let room = area.height() - footer_height - 12.0 - 4.0 - menu_height;
+        let lowest = if short { 110.0 } else { 150.0 };
+        let banner_height = (area.height() * 0.41).min(room).clamp(lowest, 330.0);
         let u = banner_height / 330.0;
         let banner = Rect::from_min_size(area.min, egui::vec2(area.width(), banner_height));
-        let logo = (76.0 + 60.0 * u, 172.0 * u, 60.0 * u);
+        let logo = (left + 12.0 + 60.0 * u, 172.0 * u, 60.0 * u);
         self.banner(ui, banner, logo);
 
-        let footer = Rect::from_min_max(egui::pos2(area.left(), area.bottom() - 44.0), area.max);
+        let footer = Rect::from_min_max(
+            egui::pos2(area.left(), area.bottom() - footer_height),
+            area.max,
+        );
         let body = Rect::from_min_max(
-            egui::pos2(area.left() + 64.0, banner.bottom() + 4.0),
-            egui::pos2(area.right() - 48.0, footer.top() - 12.0),
+            egui::pos2(area.left() + left, banner.bottom() + 4.0),
+            egui::pos2(area.right() - right, footer.top() - 12.0),
         );
         let menu_width = 262.0_f32.min(body.width() * 0.32);
         let menu = Rect::from_min_size(body.min, egui::vec2(menu_width, body.height()));
@@ -351,11 +373,84 @@ impl WelcomePage {
                 .max_rect(grid)
                 .layout(egui::Layout::top_down(egui::Align::Min)),
         );
-        if let Some(r) = self.grid(&mut list, &shown, columns, examples, activated) {
+        heading(
+            &mut list,
+            examples,
+            if short { 24.0 } else { 32.0 },
+            shown.is_empty(),
+        );
+        if let Some(r) = self.grid(&mut list, &shown, columns, activated, true) {
             request = Some(r);
         }
-        self.footer(ui, footer);
+        if footer_height > 0.0 {
+            self.footer(ui, footer);
+        }
         request
+    }
+
+    /// The page in a narrow window, a phone held upright: the banner, the menu and the
+    /// cards one under another, scrolled together.
+    fn stacked_page(
+        &mut self,
+        ui: &mut egui::Ui,
+        area: Rect,
+        items: &[Item],
+        last: Option<PathBuf>,
+        examples: bool,
+        shown: &[usize],
+    ) -> Option<Request> {
+        let margin = 16.0;
+        // The banner scales until the logo and the name fit across it, as they stand on
+        // the wide page but closer to the edge.
+        let title = ui
+            .painter()
+            .layout_no_wrap(
+                "HERON BRUSH".into(),
+                theme::display_bold(72.0),
+                Color32::WHITE,
+            )
+            .size()
+            .x;
+        let u = ((area.width() - 2.0 * margin - 4.0) / (160.0 + title)).min(0.7);
+        // Lower by `drop`, to keep the name clear of the version above it.
+        let drop = 24.0;
+        let logo = (margin + 4.0 + 60.0 * u, drop + 172.0 * u, 60.0 * u);
+        let width = area.width() - 2.0 * margin;
+        let columns = ((width + 12.0) / 160.0).floor().clamp(1.0, 5.0) as usize;
+        let activated = self.keyboard(ui, items.len(), shown.len(), columns);
+        let mut page = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(area)
+                .layout(egui::Layout::top_down(egui::Align::Min)),
+        );
+        egui::ScrollArea::vertical()
+            .id_salt("welcome-page")
+            .auto_shrink([false, false])
+            .show(&mut page, |ui| {
+                let (banner, _) = ui.allocate_exact_size(
+                    egui::vec2(ui.available_width(), drop + 330.0 * u),
+                    Sense::hover(),
+                );
+                self.banner(ui, banner, logo);
+                let mut request = None;
+                egui::Frame::new()
+                    .inner_margin(egui::Margin {
+                        left: margin as i8,
+                        right: margin as i8,
+                        top: 4,
+                        bottom: margin as i8,
+                    })
+                    .show(ui, |ui| {
+                        request = self.menu(ui, items, last, examples, activated);
+                        ui.add_space(20.0);
+                        heading(ui, examples, 24.0, shown.is_empty());
+                        if let Some(r) = self.grid(ui, shown, columns, activated, false) {
+                            request = Some(r);
+                        }
+                    });
+                request
+            })
+            .inner
     }
 
     /// The banner across the top, with the logo, the name and the version on it.
@@ -437,8 +532,9 @@ impl WelcomePage {
         painter.circle_stroke(centre, radius + 1.5, Stroke::new(3.0, theme::base()));
         painter.circle_stroke(centre, radius + 4.0, Stroke::new(2.0, theme::accent()));
 
-        // The name with a hard shadow, and "level editor" spaced out under it.
-        let u = rect.height() / 330.0;
+        // The name with a hard shadow, and "level editor" spaced out under it, scaled with
+        // the logo.
+        let u = radius / 60.0;
         let left = centre.x + radius + 30.0 * u;
         let title = theme::display_bold(72.0 * u);
         for (offset, colour) in [
@@ -716,101 +812,85 @@ impl WelcomePage {
         request
     }
 
-    /// The grid on the right: the recent maps, or the examples.
+    /// The grid on the right: the recent maps, or the examples. Scrolls on its own if
+    /// `scroll`, else the page around it does.
     fn grid(
         &mut self,
         ui: &mut egui::Ui,
         shown: &[usize],
         columns: usize,
-        examples: bool,
         activated: Option<Activation>,
+        scroll: bool,
     ) -> Option<Request> {
         let mut request = None;
         let mut refresh = false;
-        let heading = if examples {
-            tr("Examples")
-        } else {
-            tr("Recent maps")
-        };
-        let heading = spaced(
-            ui.painter(),
-            &heading.to_uppercase(),
-            theme::display_bold(32.0),
-            theme::fg(),
-            3.0,
-        );
-        let (rect, _) = ui.allocate_exact_size(
-            egui::vec2(ui.available_width(), heading.size().y + 10.0),
-            Sense::hover(),
-        );
-        ui.painter().galley(rect.min, heading, theme::fg());
-        if shown.is_empty() {
-            ui.add_space(20.0);
-            ui.label(egui::RichText::new(tr("No recent documents")).color(theme::dim()));
-        }
         let gap = 12.0;
-        egui::ScrollArea::vertical()
-            .id_salt("welcome-maps")
-            .auto_shrink([false, false])
-            .show(ui, |ui| {
-                let width = ui.available_width();
-                let card_width = ((width - gap * (columns as f32 - 1.0)) / columns as f32).floor();
-                let thumb_height = (card_width * 0.45).round();
-                let size = egui::vec2(card_width, thumb_height + 50.0);
-                for (row, chunk) in shown.chunks(columns).enumerate() {
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = gap;
-                        for (column, &index) in chunk.iter().enumerate() {
-                            let card = row * columns + column;
-                            let path = self.maps[index].path.clone();
-                            let modified = assets::modified(&path);
-                            if self
-                                .thumbnails
-                                .get(&path)
-                                .is_none_or(|s| s.modified != modified)
-                            {
-                                self.thumbnails.insert(
-                                    path.clone(),
-                                    Thumbnail {
-                                        modified,
-                                        image: None,
-                                    },
-                                );
-                                self.previews
-                                    .send((path.clone(), modified, ui.ctx().clone()));
-                            }
-                            let image = self.thumbnails.get(&path).and_then(|s| s.image.clone());
-                            let focused = self.focus == Some(Focus::Card(card));
-                            let (clicked, star, trash) = map_card(
-                                ui,
-                                size,
-                                thumb_height,
-                                &path,
-                                image.as_ref(),
-                                favourite_maps::is_favourite(&path),
-                                focused,
+        let mut cards = |ui: &mut egui::Ui| {
+            let width = ui.available_width();
+            let card_width = ((width - gap * (columns as f32 - 1.0)) / columns as f32).floor();
+            let thumb_height = (card_width * 0.45).round();
+            let size = egui::vec2(card_width, thumb_height + 50.0);
+            for (row, chunk) in shown.chunks(columns).enumerate() {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = gap;
+                    for (column, &index) in chunk.iter().enumerate() {
+                        let card = row * columns + column;
+                        let path = self.maps[index].path.clone();
+                        let modified = assets::modified(&path);
+                        if self
+                            .thumbnails
+                            .get(&path)
+                            .is_none_or(|s| s.modified != modified)
+                        {
+                            self.thumbnails.insert(
+                                path.clone(),
+                                Thumbnail {
+                                    modified,
+                                    image: None,
+                                },
                             );
-                            if focused {
-                                ui.scroll_to_rect(ui.min_rect(), None);
-                            }
-                            if star || activated == Some(Activation::Star(card)) {
-                                favourite_maps::toggle(&path);
-                                refresh = true;
-                            } else if trash || activated == Some(Activation::Trash(card)) {
-                                refresh |= self.trash(path);
-                            } else if clicked
-                                || activated == Some(Activation::Open(Focus::Card(card)))
-                            {
-                                request = Some(Request::Map(path));
-                            }
+                            self.previews
+                                .send((path.clone(), modified, ui.ctx().clone()));
                         }
-                    });
-                    ui.add_space(gap - ui.spacing().item_spacing.y);
-                }
-                if !self.error.is_empty() {
-                    ui.label(egui::RichText::new(&self.error).color(theme::error()));
-                }
-            });
+                        let image = self.thumbnails.get(&path).and_then(|s| s.image.clone());
+                        let focused = self.focus == Some(Focus::Card(card));
+                        let (clicked, star, trash) = map_card(
+                            ui,
+                            size,
+                            thumb_height,
+                            &path,
+                            image.as_ref(),
+                            favourite_maps::is_favourite(&path),
+                            focused,
+                        );
+                        if focused {
+                            ui.scroll_to_rect(ui.min_rect(), None);
+                        }
+                        if star || activated == Some(Activation::Star(card)) {
+                            favourite_maps::toggle(&path);
+                            refresh = true;
+                        } else if trash || activated == Some(Activation::Trash(card)) {
+                            refresh |= self.trash(path);
+                        } else if clicked || activated == Some(Activation::Open(Focus::Card(card)))
+                        {
+                            request = Some(Request::Map(path));
+                        }
+                    }
+                });
+                ui.add_space(gap - ui.spacing().item_spacing.y);
+            }
+            if !self.error.is_empty() {
+                ui.label(egui::RichText::new(&self.error).color(theme::error()));
+            }
+        };
+        if scroll {
+            egui::ScrollArea::vertical()
+                .id_salt("welcome-maps")
+                .auto_shrink([false, false])
+                .show(ui, cards);
+        } else {
+            cards(ui);
+        }
         refresh |= self.trash_answer(crate::file_dialog::question(
             TRASH_QUESTION,
             false,
@@ -882,7 +962,7 @@ impl WelcomePage {
         let galley = painter.layout_job(job);
         painter.galley(
             Pos2::new(
-                rect.right() - 48.0 - galley.size().x,
+                (rect.right() - 48.0 - galley.size().x).max(rect.left() + 16.0),
                 rect.center().y - galley.size().y / 2.0,
             ),
             galley,
@@ -923,6 +1003,19 @@ const TRASH_CAN: bool = cfg!(any(
     target_os = "windows"
 ));
 
+/// Narrower than this, the page stands its parts one under another, for a phone held
+/// upright.
+const NARROW: f32 = 640.0;
+
+/// Lower than this, the page drops the strip of shortcuts and the banner shrinks further,
+/// for a phone on its side.
+const SHORT: f32 = 480.0;
+
+/// How large a card's thumbnail is drawn, in pixels: a card is up to a few hundred points
+/// wide on a screen of two or three pixels to the point, and shows the middle of the square
+/// picture. The asset panel's small [`assets::THUMBNAIL`] blew up into blocks there.
+const THUMBNAIL: i32 = 512;
+
 /// The heron's beak: the version's mark and the keys in the strip of shortcuts.
 const ORANGE: Color32 = Color32::from_rgb(0xf3, 0x9a, 0x2b);
 
@@ -956,6 +1049,32 @@ fn spaced(
         },
     );
     painter.layout_job(job)
+}
+
+/// The grid's heading, Recent maps or Examples, `size` points high, and a line under it
+/// when there is nothing to show.
+fn heading(ui: &mut egui::Ui, examples: bool, size: f32, empty: bool) {
+    let text = if examples {
+        tr("Examples")
+    } else {
+        tr("Recent maps")
+    };
+    let galley = spaced(
+        ui.painter(),
+        &text.to_uppercase(),
+        theme::display_bold(size),
+        theme::fg(),
+        3.0 * size / 32.0,
+    );
+    let (rect, _) = ui.allocate_exact_size(
+        egui::vec2(ui.available_width(), galley.size().y + 10.0),
+        Sense::hover(),
+    );
+    ui.painter().galley(rect.min, galley, theme::fg());
+    if empty {
+        ui.add_space(20.0);
+        ui.label(egui::RichText::new(tr("No recent documents")).color(theme::dim()));
+    }
 }
 
 /// The outline of `rect` with its top-left and bottom-right corners cut off by `cut`,

@@ -441,7 +441,12 @@ impl Script {
                 });
             }
             Step::Size(w, h) => {
-                ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(w, h)));
+                // Below the window's usual minimum too, to look at a phone's size.
+                let size = egui::vec2(w, h);
+                ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(
+                    size.min(egui::vec2(640.0, 400.0)),
+                ));
+                ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
                 self.not_before = Instant::now() + Duration::from_millis(400);
             }
             Step::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),

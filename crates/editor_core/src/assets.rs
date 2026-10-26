@@ -129,6 +129,11 @@ pub fn thumbnail_candidates(prefab: &Path) -> Vec<PathBuf> {
 /// A prefab's thumbnail: its image scaled to fit [`THUMBNAIL`], or a drawn preview of its
 /// brushes when it has none. Safe to call off the UI thread.
 pub fn thumbnail(prefab: &Path) -> Option<Rgba> {
+    thumbnail_sized(prefab, THUMBNAIL)
+}
+
+/// [`thumbnail`] at `size` pixels square rather than [`THUMBNAIL`].
+pub fn thumbnail_sized(prefab: &Path, size: i32) -> Option<Rgba> {
     for candidate in thumbnail_candidates(prefab) {
         if let Ok(image) = crate::files::read(&candidate)
             .map_err(image::ImageError::IoError)
@@ -136,8 +141,8 @@ pub fn thumbnail(prefab: &Path) -> Option<Rgba> {
         {
             let image = image
                 .resize(
-                    THUMBNAIL as u32,
-                    THUMBNAIL as u32,
+                    size as u32,
+                    size as u32,
                     image::imageops::FilterType::Triangle,
                 )
                 .to_rgba8();
@@ -149,7 +154,7 @@ pub fn thumbnail(prefab: &Path) -> Option<Rgba> {
         }
     }
     let text = crate::files::read_to_string(prefab).ok()?;
-    preview(&text, THUMBNAIL)
+    preview(&text, size)
 }
 
 /// [`thumbnail`], kept on disk under `cache` keyed by the file's path, size and time
@@ -158,9 +163,14 @@ pub fn thumbnail(prefab: &Path) -> Option<Rgba> {
 /// again -- a preview of a big map takes a large fraction of a second. A changed file
 /// gets a new key; stale entries are simply never read again.
 pub fn thumbnail_cached(prefab: &Path, cache: &Path) -> Option<Rgba> {
+    thumbnail_cached_sized(prefab, cache, THUMBNAIL)
+}
+
+/// [`thumbnail_cached`] at `size` pixels square, kept apart from the other sizes.
+pub fn thumbnail_cached_sized(prefab: &Path, cache: &Path, size: i32) -> Option<Rgba> {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
-    THUMBNAIL.hash(&mut h);
+    size.hash(&mut h);
     for file in std::iter::once(prefab.to_path_buf()).chain(thumbnail_candidates(prefab)) {
         file.hash(&mut h);
         if let Ok(meta) = fs::metadata(&file) {
@@ -177,7 +187,7 @@ pub fn thumbnail_cached(prefab: &Path, cache: &Path) -> Option<Rgba> {
             pixels: image.into_raw(),
         });
     }
-    let made = thumbnail(prefab)?;
+    let made = thumbnail_sized(prefab, size)?;
     if fs::create_dir_all(cache).is_ok() {
         if let Ok(bytes) = encode_png(made.width, made.height, &made.pixels) {
             // Written aside and renamed, so a reader never sees half a file.
