@@ -135,7 +135,7 @@ Přímé rameno má volitelnou **Podestu**, otočené varianty **Šířku ramene
 varianty mají rovnoměrnou výšku stupňů; celkem lze vytvořit nejvýše 512 stupňů.
 
 ## Výběr
-Kliknutím brush vyberete, `Ctrl`-kliknutím přidáte do výběru. Tažení z prázdného místa kreslí výběrový obdélník. Ve 3D pohledu `Shift`-kliknutí vybere jednu stěnu a `Ctrl+Shift`-kliknutí přidá další stěny. `Ctrl`-tažení, které začne na nevybraném objektu, přidá vše, přes co kurzor přejede, a `Ctrl+Shift`-tažení stejně přidává stěny. Tažením vybraného brushe ho přesunete; tažením nevybraného vyberete a přesunete jen ten.
+Kliknutím brush vyberete, `Ctrl`-kliknutím ho přidáte do výběru nebo z něj odeberete. Když není nic vybráno, tažení nakreslí nový brush jako nástroj Brush; když je něco vybráno, kliknutí do prázdného místa výběr zruší. `Ctrl`-tažení z prázdného místa kreslí výběrový obdélník. Ve 3D pohledu `Shift`-kliknutí vybere jednu stěnu a `Ctrl+Shift`-kliknutí přidá další stěny. `Ctrl`-tažení, které začne na nevybraném objektu, přidá vše, přes co kurzor přejede, a `Ctrl+Shift`-tažení stejně přidává stěny. Tažením vybraného brushe ho přesunete, `Ctrl`-tažením přesunete jeho kopii.
 
 Ve 3D pohledu `Shift`-tažením stěny vybraného brushe stěnu vytáhnete. `Alt`-kliknutím na jinou stěnu na ni přenesete materiál a zarovnání vybrané stěny; `Alt+Ctrl` přenese jen materiál a `Alt+Shift` materiál s UV otočeným podle cílové stěny.
 

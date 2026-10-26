@@ -135,7 +135,7 @@ with vertically measured thickness. The landing connects to both flights.
 Advanced layouts use equal riser heights and at most 512 steps.
 
 ## Selecting
-Click a brush to select it, and `Ctrl`-click to add to the selection. A drag from empty space draws a selection box. In the 3D view, `Shift`-click selects a single face and `Ctrl+Shift`-click adds more faces. A `Ctrl`-drag that starts on an unselected object adds everything the pointer passes over, and a `Ctrl+Shift`-drag adds faces the same way. Dragging a selected brush moves it; dragging an unselected one selects and moves just that one.
+Click a brush to select it, and `Ctrl`-click to add it to the selection or take it out. With nothing selected, a drag draws a new brush, as with the Brush tool; with a selection, a click on empty space clears it. A `Ctrl`-drag from empty space draws a selection box. In the 3D view, `Shift`-click selects a single face and `Ctrl+Shift`-click adds more faces. A `Ctrl`-drag that starts on an unselected object adds everything the pointer passes over, and a `Ctrl+Shift`-drag adds faces the same way. Dragging a selected brush moves it, and a `Ctrl`-drag moves a copy of it.
 
 In the 3D view, `Shift`-drag a face of a selected brush to extrude it. `Alt`-click another face to copy the selected face's material and alignment onto it; `Alt+Ctrl` copies only the material and `Alt+Shift` copies the material with UV rotated to follow the target face.
 
