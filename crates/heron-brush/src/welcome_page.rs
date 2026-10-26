@@ -1200,11 +1200,15 @@ fn map_card(
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     let response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
     let thumb = Rect::from_min_size(rect.min, egui::vec2(rect.width(), thumb_height));
+    // A finger has no hover to bring the star and the trash out, so on a touch screen
+    // they stay in sight, and big enough to hit. Trashing still asks first.
+    let touch = crate::touch::enabled(ui.ctx());
+    let button = if touch { 36.0 } else { 26.0 };
     let trash_rect = Rect::from_min_size(
-        Pos2::new(thumb.right() - 30.0, thumb.top() + 4.0),
-        egui::Vec2::splat(26.0),
+        Pos2::new(thumb.right() - button - 4.0, thumb.top() + 4.0),
+        egui::Vec2::splat(button),
     );
-    let star_rect = trash_rect.translate(egui::vec2(-30.0, 0.0));
+    let star_rect = trash_rect.translate(egui::vec2(-button - 4.0, 0.0));
     let star = ui
         .interact(
             star_rect,
@@ -1319,7 +1323,7 @@ fn map_card(
     );
 
     for (slot, button, icon) in [(star_rect, &star, 1u8), (trash_rect, &trash, 2u8)] {
-        let visible = hovered || focused || (icon == 1 && starred);
+        let visible = touch || hovered || focused || (icon == 1 && starred);
         if !visible {
             continue;
         }
