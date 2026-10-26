@@ -45,7 +45,9 @@
   --shadow-panel: 0 20px 40px rgba(0, 0, 0, 0.45);
   --shadow-hero: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.03);
   --shadow-shot: 0 20px 60px rgba(0, 0, 0, 0.45);
-  --radius: 14px;
+  --radius: 0;  /* experiment: square boxes; 14px rounds them again */
+  --grid-minor: rgba(255, 255, 255, 0.022); --grid-major: rgba(255, 255, 255, 0.045);
+  --btn-radius: 0;  /* experiment: square buttons; 10px rounds them again */
   --max: 1160px;
 
   /* Type scale */
@@ -66,6 +68,7 @@
 
 /* The light theme: its own palette rather than the dark one turned over. */
 :root[data-theme="light"] {
+  --grid-minor: rgba(23, 27, 36, 0.03); --grid-major: rgba(23, 27, 36, 0.06);
   --bg: #f6f7fa;
   --bg-2: #eceff4;
   --card: #ffffff;
@@ -103,7 +106,14 @@
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
-  background: var(--bg);
+  /* A faint editor grid: a line every 24px and a stronger one every 96px. */
+  background:
+    linear-gradient(var(--grid-major) 1px, transparent 1px) 0 0 / 96px 96px,
+    linear-gradient(90deg, var(--grid-major) 1px, transparent 1px) 0 0 / 96px 96px,
+    linear-gradient(var(--grid-minor) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px) 0 0 / 24px 24px,
+    var(--bg);
+  background-position: center top;
   color: var(--text);
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: var(--fs-body);
@@ -155,7 +165,7 @@ h4 { font-size: var(--fs-body); line-height: 1.35; letter-spacing: -0.005em; }
 .menu-toggle {
   display: none; margin-left: auto; width: 42px; height: 42px; padding: 0;
   align-items: center; justify-content: center;
-  color: var(--text); background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+  color: var(--text); background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--btn-radius); cursor: pointer;
 }
 .menu-toggle:hover { border-color: var(--line-strong); }
 .menu-toggle path { transition: transform 0.2s ease, opacity 0.2s ease; transform-origin: 12px 12px; }
@@ -165,7 +175,7 @@ h4 { font-size: var(--fs-body); line-height: 1.35; letter-spacing: -0.005em; }
 /* Light and dark: the sun's rays draw in and a shadow slides across it to leave a crescent. */
 .theme-toggle {
   display: inline-flex; align-items: center; justify-content: center; flex: none;
-  width: 38px; height: 38px; padding: 0; border-radius: 10px; cursor: pointer;
+  width: 38px; height: 38px; padding: 0; border-radius: var(--btn-radius); cursor: pointer;
   color: var(--text); background: var(--bg-2); border: 1px solid var(--line);
   transition: border-color 0.18s ease-out, background-color 0.18s ease-out;
 }
@@ -182,16 +192,21 @@ h4 { font-size: var(--fs-body); line-height: 1.35; letter-spacing: -0.005em; }
   .theme-toggle .rays { transition: transform 0.45s cubic-bezier(0.3, 0.8, 0.3, 1), opacity 0.3s ease-out; }
 }
 .theme-label { display: none; }
+/* An icon-only nav button, the size of the theme toggle; the menu on narrow screens shows its label. */
+.nav .btn-icon { width: 38px; height: 38px; padding: 0; justify-content: center; }
+.btn-icon .gh { width: 20px; height: 20px; }
+.icon-label { display: none; }
 
 a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; border-radius: 8px; }
 
 .btn {
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 0.7rem 1.25rem; border-radius: 10px;
+  padding: 0.7rem 1.25rem; border-radius: var(--btn-radius);
   font-weight: 600; font-size: var(--fs-small); line-height: 1.2; border: 1px solid transparent;
   white-space: nowrap;
 }
 .btn:hover { text-decoration: none; }
+.btn .gh { width: 1.15em; height: 1.15em; flex: none; }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover { background: var(--accent-hover); }
 .btn-ghost { border-color: var(--line); color: var(--text); background: var(--bg-2); }
@@ -218,6 +233,8 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-2); outl
   .js .nav-actions .btn { justify-content: center; padding: 0.75rem 1rem; font-size: var(--fs-small); }
   .js .nav-actions .theme-toggle { width: 100%; height: 44px; gap: 0.6rem; font: 600 var(--fs-small)/1 inherit; font-family: inherit; }
   .js .nav-actions .theme-label { display: inline; }
+  .js .nav-actions .btn-icon { width: 100%; height: 44px; gap: 0.6rem; }
+  .js .nav-actions .icon-label { display: inline; }
 }
 
 /* Hero */
@@ -269,8 +286,10 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-2); outl
   max-width: var(--measure-lead); margin: 1.5rem auto 2.25rem; text-wrap: pretty;
 }
 .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+/* A whole-pixel height, so a button with an icon and one without round to the same size. */
+.cta .btn { height: 44px; padding-top: 0; padding-bottom: 0; }
 .hero-shot {
-  margin: clamp(2.5rem, 1.5rem + 3vw, 4rem) auto 0; border-radius: 10px; overflow: hidden;
+  margin: clamp(2.5rem, 1.5rem + 3vw, 4rem) auto 0; border-radius: var(--radius); overflow: hidden;
   border: 1px solid var(--line);
   box-shadow: var(--shadow-hero);
 }
@@ -284,11 +303,10 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-2); outl
 
 /* Platforms */
 .platforms { padding: 2.5rem 0 1rem; }
-.platforms p { text-align: center; color: var(--faint); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; margin: 0 0 1rem; }
 .platform-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
 .platform {
   display: flex; align-items: center; gap: 10px;
-  padding: 0.6rem 1.05rem; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2);
+  padding: 0.6rem 1.05rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-2);
   color: var(--text); font-size: var(--fs-small); line-height: 1.3;
 }
 .platform svg { width: auto; height: 20px; color: var(--accent-2); flex: none; }
@@ -307,6 +325,13 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-2); outl
 .highlight svg { width: 26px; height: 26px; color: var(--accent-2); }
 .highlight h3 { margin: 1rem 0 0.4rem; font-size: 1.125rem; letter-spacing: -0.01em; }
 .highlight p { color: var(--dim); font-size: var(--fs-small); line-height: 1.6; }
+/* Icon and heading on one line, the text below across the whole card. */
+.highlight, .more-group .more > div { display: grid; grid-template-columns: auto 1fr; column-gap: 0.7rem; align-items: center; align-content: start; }
+.highlight p, .more-group .more > div p { grid-column: 1 / -1; }
+.highlight svg, .more-group .more > div svg { margin: 0; }
+.highlight h3 { margin: 0; }
+.more-group .more > div h4 { margin: 0; }
+.highlight p, .more-group .more > div p { margin-top: 0.6rem; }
 
 /* Sections */
 section { padding: var(--section) 0 0; }
@@ -381,16 +406,17 @@ section { padding: var(--section) 0 0; }
 .placeholder b { color: var(--warm); font-size: var(--fs-xs); letter-spacing: 0.09em; text-transform: uppercase; }
 
 /* Export targets: a wall of the engines' own icon cards, no boxes around them */
-.logo-group { margin: 0 auto; max-width: 62rem; }
+/* Full width, so its title rule is as long as every other; the logos centre themselves. */
+.logo-group { margin: 0 auto; }
 .logo-group + .logo-group { margin-top: clamp(2rem, 1.5rem + 1.5vw, 3rem); }
 .group-title {
   display: flex; align-items: center; gap: 1rem;
   color: var(--faint); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
   margin: 0 0 1.5rem;
 }
-.group-title::before, .group-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.group-title::before, .group-title::after { content: ""; flex: 1; height: 1px; background: var(--line-strong); }
 .logo-wall {
-  list-style: none; margin: 0; padding: 0;
+  list-style: none; max-width: 62rem; margin: 0 auto; padding: 0;
   display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem 0.5rem;
 }
 .logo-wall li {
@@ -443,7 +469,7 @@ section { padding: var(--section) 0 0; }
 .logo-wall li:has(a.name:focus-visible) { outline: 2px solid var(--accent-2); outline-offset: 4px; border-radius: var(--radius); }
 .logo-wall a.name:focus-visible { outline: none; }
 .logo-wall .fmt {
-  height: auto; margin: 11px 0; padding: 0.55rem 0.8rem; border: 1px solid var(--line-strong); border-radius: 9px;
+  height: auto; margin: 11px 0; padding: 0.55rem 0.8rem; border: 1px solid var(--line-strong); border-radius: var(--radius);
   background: var(--icon-bg);
 }
 .tag {
@@ -459,9 +485,48 @@ section { padding: var(--section) 0 0; }
 .asset-grid picture { display: block; }
 .shot > img { display: block; width: 100%; }
 video.shot { display: block; width: 100%; height: auto; }
-.asset-grid img { border-radius: 10px; border: 1px solid var(--line); aspect-ratio: 4 / 3; object-fit: cover; }
+.asset-grid img { border-radius: var(--radius); border: 1px solid var(--line); aspect-ratio: 4 / 3; object-fit: cover; }
 
 /* More */
+/* Download panel: an intro beside the four systems. A tile without a release yet has the class "soon". */
+.dl-panel {
+  display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: clamp(1.75rem, 1rem + 3vw, 3.5rem); align-items: center;
+  padding: clamp(1.5rem, 1rem + 2.5vw, 2.75rem); border: 1px solid var(--line); border-radius: var(--radius);
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 55%),
+    radial-gradient(100% 120% at 100% 100%, color-mix(in srgb, var(--warm) 9%, transparent), transparent 55%),
+    var(--card);
+}
+.dl-intro img { width: 52px; height: 52px; }
+.dl-intro h3 { margin: 1rem 0 0.5rem; }
+.dl-intro p { color: var(--dim); font-size: var(--fs-small); line-height: 1.6; max-width: 26rem; }
+.dl-alt { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 1.5rem; font-size: var(--fs-small); font-weight: 600; }
+.downloads { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.dl {
+  display: flex; align-items: center; gap: 14px; height: 100%; padding: 16px 18px;
+  border: 1px solid var(--line); border-radius: var(--btn-radius); background: var(--bg-2); color: var(--text);
+  transition: border-color 0.15s ease-out, transform 0.15s ease-out, background-color 0.15s ease-out;
+}
+a.dl:hover { text-decoration: none; border-color: var(--line-strong); background: var(--ghost-hover); transform: translateY(-1px); }
+.dl-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--btn-radius); background: var(--icon-bg); border: 1px solid var(--line); }
+.dl-icon svg { width: 24px; height: 24px; color: var(--text); }
+.dl-text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.dl-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 600; }
+.dl-state { font-size: var(--fs-xs); color: var(--faint); }
+.dl-arrow { flex: none; width: 20px; height: 20px; color: var(--accent-2); }
+.dl.soon .dl-icon svg { opacity: 0.55; }
+.dl.soon .dl-arrow { color: var(--faint); opacity: 0.45; }
+.dl.mine { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+/* A tab in the corner, so the tile keeps the height of the others. */
+.dl { position: relative; }
+.dl-mine { position: absolute; top: -1px; right: -1px; padding: 0.1rem 0.5rem; border-radius: 0 var(--btn-radius) 0 var(--btn-radius); font-size: 0.6875rem; font-weight: 600; line-height: 1.4; color: #fff; background: var(--accent); }
+@media (max-width: 860px) {
+  .dl-panel { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .downloads { grid-template-columns: 1fr; }
+}
+
 .more { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 /* Six editor cards: three to a row rather than four and two. */
 #other-editors .more { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
@@ -608,3 +673,112 @@ footer a:hover { color: var(--text); }
   .logo-wall li:hover .logo { transform: scale(var(--s, 1)) !important; }
 }
 
+
+/* Reveal highlight, as in Windows 10: borders light up around the pointer. The script in
+   index.html marks boxes near the pointer with .lit and the pointer position in --rx/--ry.
+   border-image ignores border-radius, which is fine while boxes are square. */
+:root { --reveal: color-mix(in srgb, var(--text) 55%, var(--line)); --reveal-size: 170px; }
+:root[data-theme="light"] { --reveal: color-mix(in srgb, var(--text) 45%, var(--line)); }
+/* --reveal-base is the border colour the glow fades back into; a box with its own border colour sets it. */
+/* :root raises it over rules such as '.more div' whose border shorthand resets border-image. */
+:root .lit { border-image: radial-gradient(var(--reveal-size) circle at var(--rx) var(--ry), var(--reveal), var(--reveal-base, var(--line)) 100%) 1; }
+.dl.mine { --reveal-base: color-mix(in srgb, var(--accent) 55%, var(--line)); --reveal: var(--accent-2); }
+
+/* ===== Experiment: a column grid, as in the 960.gs and Bootstrap days =====
+   12 columns on a desktop, 8 on a tablet, 4 on a phone, over the same width as .wrap. The
+   layouts below span whole columns: three cards take
+   four columns each, two take six, the five platforms two each with one column free at each
+   side. Deleting this block brings back the earlier layout. */
+:root { --cols: 12; --pad: 24px; --grid-line: rgba(255, 255, 255, 0.032); }
+:root[data-theme="light"] { --grid-line: rgba(23, 27, 36, 0.045); }
+@media (max-width: 959px) { :root { --cols: 8; } }
+@media (max-width: 560px) { :root { --pad: 16px; } }
+@media (max-width: 499px) { :root { --cols: 4; } }
+
+/* One even grid of square cells as wide as the gutter: a column is three cells, the gutter
+   one, so both edges of every box sit on a line. The root is the size container, so 100cqw
+   is the page width without the scrollbar; the page background sits on the root too, as a
+   contained body would no longer hand its background to the canvas. */
+html { container-type: inline-size; }
+/* With the root contained, the body's overflow no longer passes to the viewport: hidden would
+   make the body its own scroller and unstick the header. clip cuts the overflow without that. */
+body { overflow-x: clip; }
+:root { --gutter: calc((min(100cqw, var(--max)) - 2 * var(--pad)) / (4 * var(--cols) - 1)); }
+/* --row is the gutter measured by the snapping script, so the rows match it to the pixel. */
+html { background: linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0 / 100% var(--row, var(--gutter)), var(--bg); }
+body { background: none; }
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  padding: 0 max(var(--pad), calc((100% - var(--max)) / 2 + var(--pad)));
+  background:
+    linear-gradient(to left, var(--grid-line) 0 1px, transparent 1px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px) 0 0 / calc(100% / (4 * var(--cols) - 1)) 100% repeat-x;
+  background-origin: content-box; background-clip: content-box;
+}
+
+.highlights { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gutter); }
+.more { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gutter); }
+.more:has(> :nth-child(2):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#other-editors .more { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.feature { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); column-gap: var(--gutter); }
+.feature.flip { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
+.feature > * { grid-row: 1; }
+.feature .feature-text { grid-column: 1 / span 5; }
+.feature > :not(.feature-text) { grid-column: 7 / span 6; }
+.feature.flip .feature-text { grid-column: 8 / span 5; }
+.feature.flip > :not(.feature-text) { grid-column: 1 / span 6; }
+
+.platform-row { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: var(--gutter); }
+.platform { grid-column: span 2; justify-content: center; }
+.platform:first-child { grid-column: 2 / span 2; }
+
+.dl-panel { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); column-gap: var(--gutter); padding-left: 0; padding-right: 0; }
+.dl-intro { grid-column: 2 / span 4; }
+.downloads { grid-column: 6 / span 6; gap: var(--gutter); }
+
+footer .wrap { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 32px var(--gutter); }
+footer .wrap > :first-child { grid-column: 1 / span 6; }
+footer .wrap > :not(:first-child) { grid-column: span 3; }
+
+/* Up to 1100px the download tiles are too narrow beside the intro, so they go below it. */
+@media (max-width: 1099px) {
+  .dl-panel { row-gap: 2rem; }
+  .dl-intro, .downloads { grid-column: 2 / span 10; }
+}
+/* Eight columns: two cards a row (an odd last card across both), the platforms back to a
+   centred row as two columns are too narrow for them, the panel one column in from each side. */
+@media (max-width: 959px) {
+  .platform-row { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gutter); }
+  .platform:first-child, .platform:nth-child(4), .platform:nth-child(5) { grid-column: auto; }
+  .feature > * { grid-row: auto; }
+  .feature .feature-text, .feature > :not(.feature-text),
+  .feature.flip .feature-text, .feature.flip > :not(.feature-text) { grid-column: 1 / -1; }
+  .highlights, .more, .more:has(> :nth-child(2):last-child), #other-editors .more { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .highlights > :last-child:nth-child(odd), .more > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .dl-intro, .downloads { grid-column: 2 / span 6; }
+  footer .wrap > :first-child { grid-column: 1 / -1; }
+  footer .wrap > :not(:first-child) { grid-column: span 4; }
+}
+/* Below 700px two download tiles side by side are too narrow. */
+@media (max-width: 699px) { .downloads { grid-template-columns: 1fr; } }
+/* Four columns: one card a row, the panel without the side columns. */
+@media (max-width: 499px) {
+  .highlights, .more, .more:has(> :nth-child(2):last-child), #other-editors .more { grid-template-columns: 1fr; }
+  .dl-panel { padding-left: 1.25rem; padding-right: 1.25rem; }
+  .dl-intro, .downloads { grid-column: 1 / -1; }
+  footer .wrap > :not(:first-child) { grid-column: span 2; }
+}
+
+/* Vertical snapping (the script in index.html): a cropped screenshot fills its rounded height
+   instead of stretching. */
+/* A group's first child keeps its own margin: flow-root stops it merging with the group's. */
+.more-group, .logo-group, .platforms .wrap { display: flow-root; }
+/* A group title two cells tall, starting on a line, has its rule on the line between them. */
+.group-title { height: calc(2 * var(--row, var(--gutter))); margin-bottom: var(--row, var(--gutter)); }
+/* The rule exactly one cell down, the pixel below the line like the grid draws it, not centred across it. */
+.group-title::before, .group-title::after { align-self: flex-start; margin-top: var(--row, var(--gutter)); }
+.grid-crop, .grid-crop img { object-fit: cover; object-position: center top; }
+.grid-crop img { height: 100%; }
+/* Rows of boxes are one grid cell apart, the whole-pixel cell the script measures. */
+.highlights, .more, .platform-row { row-gap: var(--row, var(--gutter)); }

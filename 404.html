@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found: Heron Brush</title>
+<meta name="robots" content="noindex">
+<!-- GitHub Pages serves this file for every missing address, at any depth, so every path is absolute. -->
+<link rel="icon" type="image/svg+xml" href="/HeronBrush/images/logo.svg">
+<link rel="icon" type="image/png" href="/HeronBrush/images/favicon.png" sizes="32x32">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="/HeronBrush/fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/HeronBrush/style.css?v=cols22">
+<style>
+  :root { --leak: #ff3b3b; --entity: #22c46e; --brush: var(--text); --view-minor: var(--stripe-2); --view-major: var(--line); --view-bg: var(--bg-2); }
+  :root[data-theme="light"] { --leak: #e5202a; --entity: #12965a; --view-bg: #fbfcfe; }
+
+  .lost { padding-bottom: clamp(3rem, 2rem + 4vw, 5rem); }
+  .lost h1 { margin-top: 0.9rem; }
+  .lost .lead { margin-bottom: 2rem; }
+  .lost .lead code { word-break: break-all; }
+
+  /* The top view: a window like the editor's, with the map drawn as brushes. */
+  .topview { max-width: 940px; margin: clamp(2.5rem, 1.5rem + 3vw, 3.5rem) auto 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--card); box-shadow: var(--shadow-hero); text-align: left; }
+  .topview-bar { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--line); font-size: var(--fs-xs); color: var(--faint); }
+  .topview-bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--line-strong); }
+  .topview-bar i:nth-child(1) { background: #ff5f57; } .topview-bar i:nth-child(2) { background: #febc2e; } .topview-bar i:nth-child(3) { background: #28c840; }
+  .topview-bar span { flex: 1; text-align: center; margin-right: 45px; }
+  .view { position: relative; background: var(--view-bg); }
+  .view-label { position: absolute; top: 10px; left: 12px; padding: 1px 8px; border-radius: var(--btn-radius); border: 1px solid var(--accent); color: var(--text); background: var(--card); font-size: var(--fs-xs); pointer-events: none; }
+  .view svg { display: block; width: 100%; height: auto; cursor: crosshair; }
+
+  .brush { fill: color-mix(in srgb, var(--brush) 4%, transparent); stroke: var(--brush); stroke-opacity: 0.85; stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-dasharray: 1200; stroke-dashoffset: 1200; animation: draw 0.6s ease-out forwards; animation-delay: calc(var(--i) * 0.1s); }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .brush.cracked { stroke: var(--leak); stroke-opacity: 0.7; transition: stroke 0.3s; }
+  .entity rect { fill: color-mix(in srgb, var(--entity) 18%, transparent); stroke: var(--entity); stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+  .entity path { stroke: var(--entity); stroke-width: 1.4; fill: none; vector-effect: non-scaling-stroke; }
+  .entity .leader { stroke-dasharray: 3 3; stroke-opacity: 0.7; }
+  .entity text { fill: var(--entity); font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .entity, .crack text { opacity: 0; animation: show 0.25s forwards; }
+  .entity { animation-delay: 1.2s; }
+  @keyframes show { to { opacity: 1; } }
+
+  .leak { fill: none; stroke: var(--leak); stroke-width: 2.4; vector-effect: non-scaling-stroke; stroke-linejoin: round; filter: drop-shadow(0 0 4px var(--leak)); stroke-dasharray: 1600; stroke-dashoffset: 1600; animation: draw 1.4s 1.5s linear forwards; }
+  .spark { fill: #fff; filter: drop-shadow(0 0 5px var(--leak)); offset-path: path("M400 190 L410 223 L480 223 L480 345 L690 345 L830 290"); opacity: 0; animation: travel 2.4s 2.9s linear infinite; }
+  @keyframes travel { 0% { offset-distance: 0%; opacity: 1; } 90% { opacity: 1; } 100% { offset-distance: 100%; opacity: 0; } }
+
+  .crack { cursor: pointer; outline: none; }
+  .crack .ring { fill: transparent; stroke: var(--leak); stroke-width: 1.4; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; opacity: 0; animation: pulse 1s 2.9s ease-in-out infinite alternate; }
+  @keyframes pulse { from { opacity: 0.3; } to { opacity: 1; } }
+  .crack:hover .ring, .crack:focus-visible .ring { stroke-dasharray: none; stroke-width: 2; animation: none; opacity: 1; }
+  .crack text { fill: var(--leak); font: 600 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; animation-delay: 2.9s; }
+  .patch { fill: var(--brush); opacity: 0; transition: opacity 0.3s; }
+
+  .sealed .leak, .sealed .spark, .sealed .crack { display: none; }
+  .sealed .patch { opacity: 0.85; }
+  .sealed .brush.cracked { stroke: var(--brush); stroke-opacity: 0.85; }
+
+  .topview-status { display: flex; gap: 16px; flex-wrap: wrap; justify-content: space-between; padding: 10px 14px; border-top: 1px solid var(--line); font: var(--fs-xs)/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--dim); }
+  .topview-status .bad { color: var(--leak); font-weight: 600; }
+  .topview-status .ok { color: var(--entity); font-weight: 600; }
+  #coords { color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 600px) {
+    .nav .btn-ghost { display: none; }
+    .entity text, .crack text { font-size: 16px; }
+    #coords { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .brush, .leak, .entity, .crack text, .crack .ring { animation-duration: 0.01s; animation-delay: 0s; animation-iteration-count: 1; }
+    .spark { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="/HeronBrush/"><img src="/HeronBrush/images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <div class="nav-actions" style="margin-left: auto">
+      <a class="btn btn-ghost" href="/HeronBrush/manual/">Manual</a>
+      <a class="btn btn-primary" href="/HeronBrush/editor/">Try in the browser</a>
+    </div>
+  </div>
+</header>
+
+<main class="hero lost">
+  <div class="wrap">
+    <span class="eyebrow">Error 404</span>
+    <h1>This page leaked into the void</h1>
+    <p class="lead">The address <code id="asked">you followed</code> points outside the map. There is no page here. The leak line below shows where it went.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="/HeronBrush/">Back to the home page</a>
+      <a class="btn btn-ghost" href="/HeronBrush/manual/">Read the manual</a>
+    </div>
+
+    <div class="topview">
+      <div class="topview-bar"><i></i><i></i><i></i><span>404.map — Heron Brush</span></div>
+      <div class="view">
+        <span class="view-label">Top</span>
+        <svg id="top-view" viewBox="60 70 680 320" role="img" aria-label="The top view of a map where brushes spell 404. A red leak line runs from the player start through a crack in the zero and out of the map.">
+          <defs>
+            <pattern id="minor" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="var(--view-minor)" stroke-width="1"/></pattern>
+            <pattern id="major" width="80" height="80" patternUnits="userSpaceOnUse"><rect width="80" height="80" fill="url(#minor)"/><path d="M80 0H0V80" fill="none" stroke="var(--view-major)" stroke-width="1"/></pattern>
+          </defs>
+          <rect x="60" y="70" width="680" height="320" fill="url(#major)"/>
+          <path d="M400 70V390M60 220H740" stroke="var(--accent)" stroke-opacity="0.35" stroke-width="1"/>
+
+          <!-- 4 -->
+          <rect class="brush" style="--i:0" x="180" y="110" width="40" height="80"/>
+          <rect class="brush" style="--i:1" x="180" y="190" width="80" height="40"/>
+          <rect class="brush" style="--i:2" x="260" y="110" width="40" height="200"/>
+          <!-- 0, with a crack in its right wall -->
+          <rect class="brush" style="--i:3" x="340" y="110" width="40" height="200"/>
+          <rect class="brush" style="--i:4" x="380" y="110" width="40" height="40"/>
+          <rect class="brush cracked" style="--i:5" x="420" y="110" width="40" height="110"/>
+          <rect class="brush cracked" style="--i:6" x="420" y="226" width="40" height="84"/>
+          <rect class="brush" style="--i:7" x="380" y="270" width="40" height="40"/>
+          <!-- 4 -->
+          <rect class="brush" style="--i:8" x="500" y="110" width="40" height="80"/>
+          <rect class="brush" style="--i:9" x="500" y="190" width="80" height="40"/>
+          <rect class="brush" style="--i:10" x="580" y="110" width="40" height="200"/>
+
+          <rect class="patch" x="420" y="220" width="40" height="6"/>
+
+          <g class="entity">
+            <rect x="389" y="179" width="22" height="22"/>
+            <path d="M400 190h16M411 185l5 5-5 5"/>
+            <path class="leader" d="M400 178V100"/>
+            <text x="346" y="94">info_player_start</text>
+          </g>
+
+          <polyline class="leak" points="400,190 410,223 480,223 480,345 690,345 830,290"/>
+          <circle class="spark" r="3"/>
+
+          <g class="crack" id="crack" tabindex="0" role="button" aria-label="Seal the leak">
+            <rect class="ring" x="414" y="212" width="52" height="22"/>
+            <text x="488" y="252">click to seal</text>
+          </g>
+        </svg>
+      </div>
+      <div class="topview-status" aria-live="polite">
+        <span id="status"><span class="bad">******* leaked *******</span> Leak line written to 404.pts</span>
+        <span id="coords">x 0  y 0</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  (function () {
+    document.getElementById('asked').textContent = location.pathname;
+
+    // Map coordinates under the cursor, snapped to the grid, like the editor's status bar.
+    var svg = document.getElementById('top-view');
+    var coords = document.getElementById('coords');
+    svg.addEventListener('pointermove', function (e) {
+      var pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
+      var snap = function (v) { return Math.round(v / 8) * 8; };
+      coords.textContent = 'x ' + snap((pt.x - 400) * 2) + '  y ' + snap((220 - pt.y) * 2);
+    });
+
+    // Sealing the crack fixes the map, which still does not make the page exist.
+    var crack = document.getElementById('crack');
+    function seal() {
+      if (svg.classList.contains('sealed')) return;
+      svg.classList.add('sealed');
+      document.getElementById('status').innerHTML = '<span class="ok">No leaks.</span> The map is sealed. The page still is not here, though.';
+      document.querySelector('.cta .btn-primary').focus();
+    }
+    crack.addEventListener('click', seal);
+    crack.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); seal(); }
+    });
+  })();
+</script>
+</body>
+</html>
