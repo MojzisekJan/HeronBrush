@@ -444,6 +444,12 @@ pub fn toggle(editor: &Editor, action: Action) {
         Action::GridSize(exponent) => {
             let resized = editor.grid.borrow().with_size(exponent);
             *editor.grid.borrow_mut() = resized;
+            // The status line says so, as the number keys do; it showed the size the
+            // keys last set otherwise.
+            editor_core::say!(
+                "{}",
+                fill("Grid size {}", &[&resized.actual_size().to_string()])
+            );
         }
         _ => {}
     }

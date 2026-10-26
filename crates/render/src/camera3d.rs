@@ -106,6 +106,30 @@ impl Camera3d {
         self.pitch = (self.pitch + pitch).clamp(-MAX_PITCH, MAX_PITCH);
     }
 
+    /// Turns the camera about `center` by `yaw` and `pitch`, its position going round with
+    /// its direction: `Camera::orbit`. Past straight up or down it stops turning that way.
+    pub fn orbit(&mut self, center: Vec3d, yaw: f64, pitch: f64) {
+        let mut offset = self.position - center;
+        let (sin, cos) = yaw.sin_cos();
+        offset = Vec3d::new(
+            offset.x() * cos - offset.y() * sin,
+            offset.x() * sin + offset.y() * cos,
+            offset.z(),
+        );
+        self.yaw = scalar::normalize_radians(self.yaw + yaw);
+        let wanted = (self.pitch + pitch).clamp(-MAX_PITCH, MAX_PITCH);
+        let turned = wanted - self.pitch;
+        // Rodrigues' rotation about the camera's right, which raises the view as the
+        // pitch rises.
+        let axis = self.right();
+        let (sin, cos) = turned.sin_cos();
+        offset = offset * cos
+            + vec::cross(axis, offset) * sin
+            + axis * (vec::dot(axis, offset) * (1.0 - cos));
+        self.pitch = wanted;
+        self.position = center + offset;
+    }
+
     /// Moves the camera by the given distances along its own axes.
     ///
     /// Forward follows the view direction, including its pitch, so looking down and moving
@@ -222,6 +246,19 @@ impl Camera3d {
 
 #[cfg(test)]
 mod tests {
+
+    /// `Camera::orbit`: the camera goes round the centre at the same distance, and a
+    /// camera looking at it keeps looking at it.
+    #[test]
+    fn orbiting_keeps_the_centre_in_view_at_the_same_distance() {
+        let mut camera = Camera3d::default();
+        let center = camera.position + camera.direction() * 200.0;
+        camera.orbit(center, 0.7, 0.3);
+        let offset = center - camera.position;
+        assert!((vec::length(offset) - 200.0).abs() < 1e-6);
+        assert!(vec::length(vec::normalize(offset) - camera.direction()) < 1e-6);
+    }
+
     use super::*;
     use geometry_math::assert_approx_eq;
 

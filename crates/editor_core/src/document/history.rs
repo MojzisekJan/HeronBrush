@@ -245,6 +245,17 @@ impl Document {
         self.transaction = Some(self.transaction_nodes());
     }
 
+    /// Where the history stands, for [`Document::fold_edits_since`].
+    pub fn edit_mark(&self) -> usize {
+        self.history.undo_len()
+    }
+
+    /// Folds every step recorded since `mark` into one: a Ctrl-drag's duplicate and the
+    /// move of the copies undo together, as `MoveObjectsTool`'s one transaction does.
+    pub fn fold_edits_since(&mut self, mark: usize) {
+        self.history.coalesce_since(mark);
+    }
+
     /// Runs `run`, then folds every undo step it recorded into one, so whatever it did
     /// undoes in a single press. Used by the plugin runner, whose script makes many small
     /// edits that are one action to the person who pressed the button.

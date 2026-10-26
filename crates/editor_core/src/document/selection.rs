@@ -778,6 +778,165 @@ impl Document {
         self.mark_selection_changed();
     }
 
+    /// A double click on `hit`, or on empty space: `SelectionTool::mouseDoubleClick`.
+    ///
+    /// Shift and Alt take the faces connected to the clicked one in its plane, Shift alone
+    /// every face of the brush, and Ctrl adds them to the face selection. A plain double
+    /// click opens the closed group the hit is in, or selects everything sharing the hit's
+    /// container -- its layer, group or brush entity -- added to the selection with Ctrl;
+    /// with a group open, one on anything outside it, or on empty space, closes it.
+    /// Returns whether anything changed.
+    pub fn double_click(
+        &mut self,
+        hit: Option<Picked>,
+        shift: bool,
+        alt: bool,
+        ctrl: bool,
+    ) -> bool {
+        if shift {
+            let Some(face) = hit.and_then(|hit| {
+                hit.face.map(|face| FaceRef {
+                    node: hit.node,
+                    face,
+                })
+            }) else {
+                return false;
+            };
+            let faces = if alt {
+                self.connected_coplanar_faces(face)
+            } else {
+                let count = self.brush(face.node).map_or(0, |brush| brush.faces().len());
+                (0..count)
+                    .map(|face_index| FaceRef {
+                        node: face.node,
+                        face: face_index,
+                    })
+                    .collect()
+            };
+            if !ctrl {
+                self.selection.clear();
+                self.face_selection.clear();
+            } else {
+                self.convert_selection_to_faces();
+            }
+            self.face_selection.extend(faces);
+            self.mark_selection_changed();
+            return true;
+        }
+        let Some(hit) = hit else {
+            return self.close_group();
+        };
+        if let Some(group) = node::outermost_group_of(&self.tree.world, hit.node, self.open_group) {
+            self.open_group = Some(group);
+            self.selection.clear();
+            self.face_selection.clear();
+            self.mark_changed();
+            return true;
+        }
+        let siblings = node::siblings_of(&self.tree.world, hit.node);
+        if !ctrl {
+            self.selection.clear();
+        }
+        self.face_selection.clear();
+        let open = self.open_group_contents();
+        for id in siblings {
+            if !node::layer_of(&self.tree.world, id)
+                .is_some_and(|layer| self.is_editable_on(id, layer, &open))
+            {
+                continue;
+            }
+            // A group among the siblings is selected as its contents, as a click on it is.
+            let group = node::find_node(&self.tree.world, id)
+                .is_some_and(|node| matches!(node.kind, map_model::node::NodeKind::Group(_)));
+            if group {
+                self.selection
+                    .extend(node::contents_of(&self.tree.world, id));
+            } else {
+                self.selection.extend(self.selection_for(id));
+            }
+        }
+        self.mark_selection_changed();
+        true
+    }
+
+    /// Every face that lies in the plane of `start` and can be reached from it across
+    /// shared edges, on any editable brush: `collectConnectedCoplanarFaces`.
+    pub fn connected_coplanar_faces(&self, start: FaceRef) -> Vec<FaceRef> {
+        const EPSILON: f64 = 0.01;
+        let Some(start_polygon) = self
+            .brush(start.node)
+            .and_then(|b| b.face_polygon(start.face))
+        else {
+            return Vec::new();
+        };
+        let normal = self
+            .brush(start.node)
+            .map(|b| b.faces()[start.face].normal());
+        let Some(normal) = normal else {
+            return Vec::new();
+        };
+        let distance = geometry_math::vec::dot(normal, start_polygon[0]);
+        let open = self.open_group_contents();
+        // Every coplanar face of an editable brush, with its edges.
+        let mut candidates: Vec<(FaceRef, Vec<(Vec3d, Vec3d)>)> = Vec::new();
+        for (id, brush, layer) in node::brushes_by_layer(&self.tree.world) {
+            if !self.is_editable_on(id, layer, &open) {
+                continue;
+            }
+            for (index, face) in brush.faces().iter().enumerate() {
+                let n = face.normal();
+                if geometry_math::vec::length(n - normal) > EPSILON {
+                    continue;
+                }
+                let Some(polygon) = brush.face_polygon(index) else {
+                    continue;
+                };
+                if (geometry_math::vec::dot(normal, polygon[0]) - distance).abs() > EPSILON {
+                    continue;
+                }
+                let edges = (0..polygon.len())
+                    .map(|i| (polygon[i], polygon[(i + 1) % polygon.len()]))
+                    .collect();
+                candidates.push((
+                    FaceRef {
+                        node: id,
+                        face: index,
+                    },
+                    edges,
+                ));
+            }
+        }
+        let Some(first) = candidates.iter().position(|(face, _)| *face == start) else {
+            return vec![start];
+        };
+        let mut reached = vec![false; candidates.len()];
+        reached[first] = true;
+        let mut queue = vec![first];
+        while let Some(at) = queue.pop() {
+            for other in 0..candidates.len() {
+                if reached[other] {
+                    continue;
+                }
+                let touching = candidates[at].1.iter().any(|a| {
+                    candidates[other]
+                        .1
+                        .iter()
+                        .any(|b| segments_overlap(*a, *b, EPSILON))
+                });
+                if touching {
+                    reached[other] = true;
+                    queue.push(other);
+                }
+            }
+        }
+        candidates
+            .into_iter()
+            .zip(reached)
+            .filter(|(_, reached)| *reached)
+            .map(|((face, _), _)| face)
+            .collect()
+    }
+
     /// Selects every brush that wears the given material on any face.
     ///
     /// Selects brushes using a material, comparing names case-insensitively.
@@ -860,13 +1019,15 @@ impl Document {
 
     /// Returns what the given ray hits first, whether a brush or a point entity.
     pub fn pick(&self, ray: &Ray3d) -> Option<Picked> {
-        self.pick_matching(ray, |_| true, None)
+        self.pick_matching(ray, |_| true, None).into_iter().next()
     }
 
     /// Hits selected geometry even when an unselected object is in front of it.
     /// Orthographic move gestures use this to retain the existing selection.
     pub fn pick_selected(&self, ray: &Ray3d) -> Option<Picked> {
         self.pick_matching(ray, |id| self.is_selected(id), None)
+            .into_iter()
+            .next()
     }
 
     /// What a click in a flat view picks along `ray`: the hit whose face looks smallest
@@ -875,21 +1036,25 @@ impl Document {
     /// wall is nearer.
     pub fn pick_flat(&self, ray: &Ray3d) -> Option<Picked> {
         self.pick_matching(ray, |_| true, Some(flat_axis(ray)))
+            .into_iter()
+            .next()
     }
 
     /// [`Self::pick_flat`] among the selected objects alone.
     pub fn pick_selected_flat(&self, ray: &Ray3d) -> Option<Picked> {
         self.pick_matching(ray, |id| self.is_selected(id), Some(flat_axis(ray)))
+            .into_iter()
+            .next()
     }
 
-    /// Hits sorted by distance, or with `by_size` the axis a flat view looks along, by
-    /// how big each looks along it first.
+    /// Every hit, sorted by distance, or with `by_size` the axis a flat view looks along,
+    /// by how big each looks along it first.
     fn pick_matching(
         &self,
         ray: &Ray3d,
         accepts: impl Fn(NodeId) -> bool,
         by_size: Option<usize>,
-    ) -> Option<Picked> {
+    ) -> Vec<Picked> {
         // How big a hit looks along the flat view's axis; nothing to sort by in 3D.
         let looks = |area: &dyn Fn(usize) -> f64| by_size.map_or(0.0, area);
         // A hidden layer cannot be seen and a locked one cannot be changed, so neither is
@@ -973,15 +1138,48 @@ impl Document {
                 Some((picked, size))
             });
 
-        brushes
-            .chain(entities)
-            .chain(patches)
-            .min_by(|(a, size_a), (b, size_b)| {
-                size_a
-                    .total_cmp(size_b)
-                    .then(a.distance.total_cmp(&b.distance))
-            })
-            .map(|(hit, _)| hit)
+        let mut hits: Vec<(Picked, f64)> = brushes.chain(entities).chain(patches).collect();
+        hits.sort_by(|(a, size_a), (b, size_b)| {
+            size_a
+                .total_cmp(size_b)
+                .then(a.distance.total_cmp(&b.distance))
+        });
+        hits.into_iter().map(|(hit, _)| hit).collect()
+    }
+
+    /// Ctrl and the wheel: the selection moves to the next thing under the pointer along
+    /// `ray`, or the one before going back (`SelectionTool::drillSelection`). What is in a
+    /// closed group counts as the group. Hits are in depth order, or in a flat view by how
+    /// small they look. Returns whether the selection changed.
+    pub fn drill_selection(&mut self, ray: &Ray3d, forward: bool, flat: bool) -> bool {
+        let hits = self.pick_matching(ray, |_| true, flat.then(|| flat_axis(ray)));
+        // Each hit as what a click on it selects, the same group once.
+        let mut targets: Vec<Vec<NodeId>> = Vec::new();
+        for hit in hits {
+            let mut target = self.selection_for(hit.node);
+            target.sort();
+            if !targets.contains(&target) {
+                targets.push(target);
+            }
+        }
+        if !forward {
+            targets.reverse();
+        }
+        let Some(first) = targets
+            .iter()
+            .position(|target| target.iter().all(|id| self.selection.contains(id)))
+        else {
+            return false;
+        };
+        let Some(next) = targets.get(first + 1) else {
+            return false;
+        };
+        for id in &targets[first] {
+            self.selection.remove(id);
+        }
+        self.selection.extend(next.iter().copied());
+        self.mark_selection_changed();
+        true
     }
 }
 
@@ -991,4 +1189,30 @@ fn flat_axis(ray: &Ray3d) -> usize {
     (0..3)
         .max_by(|a, b| d[*a].abs().total_cmp(&d[*b].abs()))
         .unwrap_or(2)
+}
+
+/// Whether two segments lie on one line and share more than a point:
+/// `vm::segments_overlap`.
+fn segments_overlap(a: (Vec3d, Vec3d), b: (Vec3d, Vec3d), epsilon: f64) -> bool {
+    use geometry_math::vec;
+    let along = a.1 - a.0;
+    let length = vec::length(along);
+    if length <= epsilon {
+        return false;
+    }
+    let direction = along / length;
+    // Both ends of `b` on `a`'s line.
+    let off_line = |p: Vec3d| {
+        let t = vec::dot(p - a.0, direction);
+        vec::length(p - (a.0 + direction * t))
+    };
+    if off_line(b.0) > epsilon || off_line(b.1) > epsilon {
+        return false;
+    }
+    let (s0, s1) = (
+        vec::dot(b.0 - a.0, direction),
+        vec::dot(b.1 - a.0, direction),
+    );
+    let (low, high) = (s0.min(s1), s0.max(s1));
+    high.min(length) - low.max(0.0) > epsilon
 }

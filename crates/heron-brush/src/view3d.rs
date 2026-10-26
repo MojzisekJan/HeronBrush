@@ -67,7 +67,12 @@ struct Target {
 #[derive(Default)]
 struct Presses {
     primary: Option<egui::Pos2>,
+    /// Whether the primary press held now is the second of a double click.
+    double: bool,
+    clicks: crate::view2d::DoublePress,
     secondary: Option<egui::Pos2>,
+    /// What an Alt+right drag orbits about, while it lasts.
+    orbit: Option<geometry_math::vec::Vec3d>,
     middle: Option<egui::Pos2>,
     middle_dragged: bool,
 }
@@ -422,10 +427,8 @@ impl View3d {
             if let Some(at) = press_origin.or(pointer) {
                 if !scene.edit_press() {
                     let (x, y) = local(at);
-                    let double = ui.input(|i| {
-                        i.pointer
-                            .button_double_clicked(egui::PointerButton::Primary)
-                    });
+                    let double = self.presses.clicks.press(ui.input(|i| i.time), at);
+                    self.presses.double = double;
                     scene.drag_begin(x, y, mods, size);
                     scene.stroke_begin(x, y, mods, size);
                     scene.click(if double { 2 } else { 1 }, x, y, mods, size);
@@ -448,6 +451,15 @@ impl View3d {
             if released(egui::PointerButton::Primary) {
                 scene.drag_end(dx, dy, mods, size);
                 scene.stroke_end();
+                // The second click of a double click, let go where it was pressed:
+                // `SelectionTool::mouseDoubleClick`.
+                if self.presses.double
+                    && delta.length() < editor_core::view3d::DRAG_THRESHOLD as f32
+                {
+                    let (x, y) = local(origin);
+                    scene.double_click(x, y, mods, size);
+                }
+                self.presses.double = false;
                 self.presses.primary = None;
             }
         }
@@ -490,12 +502,22 @@ impl View3d {
 
         // The right button looks around, the middle one pans.
         if pressed(egui::PointerButton::Secondary) && response.hovered() {
-            scene.look_begin();
             self.presses.secondary = press_origin.or(pointer);
+            self.presses.orbit = None;
+            match self.presses.secondary {
+                Some(at) if mods.alt => {
+                    let (x, y) = local(at);
+                    self.presses.orbit = Some(scene.orbit_begin(x, y, size));
+                }
+                _ => scene.look_begin(),
+            }
         }
         if let (Some(origin), Some(at)) = (self.presses.secondary, pointer) {
             let delta = at - origin;
-            scene.look_update(f64::from(delta.x), f64::from(delta.y));
+            match self.presses.orbit {
+                Some(center) => scene.orbit_update(center, f64::from(delta.x), f64::from(delta.y)),
+                None => scene.look_update(f64::from(delta.x), f64::from(delta.y)),
+            }
         }
         if released(egui::PointerButton::Secondary) {
             if let (Some(from), Some(at)) = (self.presses.secondary.take(), pointer) {
@@ -552,17 +574,25 @@ impl View3d {
 
         if response.hovered() {
             // The wheel, one step a notch; the tools count a step towards the user as positive.
+            // macOS turns Shift and the wheel into a sideways scroll, which is taken as the
+            // wheel when Shift is held.
             let steps: Vec<f32> = ui.input(|i| {
                 i.events
                     .iter()
                     .filter_map(|event| match event {
                         egui::Event::MouseWheel { delta, .. } if delta.y != 0.0 => Some(delta.y),
+                        egui::Event::MouseWheel {
+                            delta, modifiers, ..
+                        } if modifiers.shift && delta.x != 0.0 => Some(delta.x),
                         _ => None,
                     })
                     .collect()
             });
             for step in steps {
-                scene.scroll(-f64::from(step.signum()), size);
+                let dy = -f64::from(step.signum());
+                if !scene.scroll_with(dy, mods, size) {
+                    scene.scroll(dy, size);
+                }
             }
             if let Some(at) = ui.input(|i| i.pointer.hover_pos()) {
                 if moving || !self.hovered {

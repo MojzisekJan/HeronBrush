@@ -21,6 +21,30 @@ pub fn modifiers(ui: &egui::Ui) -> Modifiers {
     })
 }
 
+/// Counts a primary press as the second of a double click, by the time and distance from
+/// the press before it. egui reports a double click only on the frame it is released,
+/// which a press handler never sees, so the views count presses themselves.
+#[derive(Default)]
+pub(crate) struct DoublePress {
+    last: Option<(f64, egui::Pos2)>,
+}
+
+impl DoublePress {
+    /// How long and how far apart two presses may be and still make a double click.
+    const DELAY: f64 = 0.4;
+    const REACH: f32 = 6.0;
+
+    /// A press at `at` at `time`: whether it is the second of a double click. A third
+    /// press starts counting again.
+    pub(crate) fn press(&mut self, time: f64, at: egui::Pos2) -> bool {
+        let double = self.last.is_some_and(|(then, there)| {
+            time - then <= Self::DELAY && there.distance(at) <= Self::REACH
+        });
+        self.last = if double { None } else { Some((time, at)) };
+        double
+    }
+}
+
 /// One flat pane.
 pub struct Pane2d {
     target_pick: Rc<RefCell<crate::editor::TargetPick>>,
@@ -31,6 +55,9 @@ pub struct Pane2d {
     drag: SelectAndMove,
     /// Where the primary press began, while the button is held.
     pressed_at: Option<egui::Pos2>,
+    /// Whether the press held now is the second of a double click.
+    double: bool,
+    presses: DoublePress,
     paint_stroke: Option<(editor_core::document::MaterialStroke, egui::Pos2)>,
     /// Whether the pointer was over the view last frame.
     hovered: bool,
@@ -38,6 +65,8 @@ pub struct Pane2d {
     modifiers: Modifiers,
     /// Where a secondary press began, for the right-click menu.
     secondary: Option<egui::Pos2>,
+    /// Whether the secondary button has been dragged far enough to pan.
+    secondary_panned: bool,
     /// A right-click that stayed put: where, and what it was over.
     pub context_click: Option<(egui::Pos2, editor_core::view2d::Probe)>,
     pub material_paste: Option<editor_core::document::FaceRef>,
@@ -168,10 +197,13 @@ impl Pane2d {
             flat,
             drag,
             pressed_at: None,
+            double: false,
+            presses: DoublePress::default(),
             paint_stroke: None,
             hovered: false,
             modifiers: Modifiers::default(),
             secondary: None,
+            secondary_panned: false,
             context_click: None,
             material_paste: None,
             base: BaseCache::default(),
@@ -192,15 +224,14 @@ impl Pane2d {
 
         // The primary button: the press begins the drag at once, so a click that never
         // moves still selects.
-        let (pressed, released, pointer, double, press_origin, moved) = ui.input(|i| {
+        let (pressed, released, pointer, press_origin, moved, time) = ui.input(|i| {
             (
                 i.pointer.primary_pressed(),
                 i.pointer.primary_released(),
                 i.pointer.interact_pos(),
-                i.pointer
-                    .button_double_clicked(egui::PointerButton::Primary),
                 i.pointer.press_origin(),
                 pointer_moved(i),
+                i.time,
             )
         });
         let picking = self.target_pick.borrow().source.is_some();
@@ -218,10 +249,9 @@ impl Pane2d {
                 !i.focused || (!i.pointer.primary_down() && !i.pointer.primary_released())
             })
         {
-            // `cancel`: it closes the move's transaction.
-            // `escape` only drops a lasso, and the open transaction then swallowed every
-            // later edit from the history.
-            self.drag.cancel();
+            // `lose` closes the move's transaction, keeping what the drag did; left
+            // open, it swallowed every later edit from the history.
+            self.drag.lose();
             self.pressed_at = None;
             self.paint_stroke = None;
         }
@@ -234,6 +264,8 @@ impl Pane2d {
             // runs: a slow frame can carry the first motion along with the press.
             if let Some(at) = press_origin.or(pointer) {
                 let (x, y) = local(at);
+                let double = self.presses.press(time, at);
+                self.double = double;
                 // The press is a click about a face first, then the start of a drag.
                 self.paint_stroke = None;
                 if *self.flat.tool.borrow() == editor_core::tool::Tool::Paint && !modifiers.shift {
@@ -250,7 +282,12 @@ impl Pane2d {
                     self.flat
                         .face_click(if double { 2 } else { 1 }, x, y, modifiers, viewport);
                 }
-                self.drag.begin(x, y, modifiers, viewport);
+                // A double click with the Clip tool puts the clip plane on the face
+                // (`ClipToolController`), so it does not also add a point.
+                let clip_face = double && *self.flat.tool.borrow() == editor_core::tool::Tool::Clip;
+                if !clip_face {
+                    self.drag.begin(x, y, modifiers, viewport);
+                }
                 self.pressed_at = Some(at);
             }
         }
@@ -273,6 +310,13 @@ impl Pane2d {
             if released {
                 self.drag
                     .end(f64::from(delta.x), f64::from(delta.y), modifiers, viewport);
+                // The second click of a double click, let go where it was pressed:
+                // `SelectionTool::mouseDoubleClick`.
+                if self.double && delta.length() < editor_core::view2d::DRAG_THRESHOLD as f32 {
+                    let (x, y) = local(origin);
+                    self.flat.double_click(x, y, modifiers, viewport);
+                }
+                self.double = false;
                 self.pressed_at = None;
                 self.paint_stroke = None;
             }
@@ -292,10 +336,20 @@ impl Pane2d {
             && response.hovered()
         {
             self.secondary = pointer;
+            self.secondary_panned = false;
+        }
+        // Dragged further than a shaking click, the right button pans (`CameraTool2D`).
+        if let (Some(from), Some(at)) = (self.secondary, pointer) {
+            self.secondary_panned |= from.distance(at) > 4.0;
+            if self.secondary_panned && response.dragged_by(egui::PointerButton::Secondary) {
+                let delta = response.drag_delta();
+                self.flat.pan(f64::from(delta.x), f64::from(delta.y));
+            }
         }
         if ui.input(|i| i.pointer.button_released(egui::PointerButton::Secondary)) {
+            let panned = std::mem::take(&mut self.secondary_panned);
             if let (Some(from), Some(at)) = (self.secondary.take(), pointer) {
-                if from.distance(at) <= 4.0 {
+                if from.distance(at) <= 4.0 && !panned {
                     let (x, y) = local(at);
                     self.context_click = Some((at, self.flat.probe(x, y, viewport)));
                 }
@@ -370,8 +424,14 @@ impl Pane2d {
                     })
                     .collect()
             });
+            let at = pointer.map(local);
             for step in steps {
-                self.flat.scroll(-f64::from(step.signum()), viewport);
+                let dy = -f64::from(step.signum());
+                let taken =
+                    at.is_some_and(|(x, y)| self.flat.scroll_with(dy, modifiers, x, y, viewport));
+                if !taken {
+                    self.flat.scroll(dy, viewport);
+                }
             }
         }
 

@@ -467,8 +467,14 @@ impl Commands {
                         // Escape exits the active tool before clearing the selection.
                         clip.borrow_mut().reset();
                         *tool.borrow_mut() = tool::Tool::Select;
-                    } else {
+                    } else if document.borrow().has_selection()
+                        || document.borrow().has_face_selection()
+                    {
                         document.borrow_mut().clear_selection();
+                    } else {
+                        // `MapViewBase::cancel`: with nothing left to cancel or deselect,
+                        // Escape closes the open group.
+                        document.borrow_mut().close_group();
                     }
                 }
                 // `ActionManager`: Ctrl+G groups the selection, Ctrl+Shift+G takes the

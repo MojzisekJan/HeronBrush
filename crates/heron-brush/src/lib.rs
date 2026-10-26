@@ -680,6 +680,29 @@ impl App {
         } else {
             None
         };
+        // The fly keys move the camera for as long as they are held.
+        if let (Some(scene), false) = (&scene, field_focused) {
+            let (axes, seconds) = ui.input(|i| {
+                let down = |key| if i.key_down(key) { 1.0 } else { 0.0 };
+                (
+                    (
+                        down(egui::Key::W) - down(egui::Key::S),
+                        down(egui::Key::D) - down(egui::Key::A),
+                        down(egui::Key::Q) - down(egui::Key::X),
+                    ),
+                    f64::from(i.stable_dt.min(0.1)),
+                )
+            });
+            if axes != (0.0, 0.0, 0.0) {
+                let mods = editor_core::input::Modifiers {
+                    shift: held.shift,
+                    control: held.command || held.ctrl,
+                    alt: held.alt,
+                };
+                scene.fly_held(axes.0, axes.1, axes.2, mods, seconds);
+                ui.ctx().request_repaint();
+            }
+        }
         self.key_events(events, held, scene, field_focused);
     }
 

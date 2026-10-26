@@ -48,11 +48,20 @@ impl Document {
         if selected.len() < 2 {
             return Err(translation_key("Select brushes first"));
         }
+        let ids: Vec<NodeId> = selected.iter().map(|(id, _)| *id).collect();
         let (replacements, removed) = self.merged_brushes(selected, faces);
         if replacements.is_empty() {
             return Ok(0);
         }
         self.run_as_one_edit(|document| document.replace_geometry_in_place(replacements));
+        // Everything the merge leaves stays selected: the merged brushes, and those that
+        // had nothing to merge with, which the replacement alone would drop.
+        let kept: Vec<NodeId> = ids
+            .into_iter()
+            .filter(|id| self.brush(*id).is_some())
+            .collect();
+        self.selection.extend(kept);
+        self.mark_selection_changed();
         Ok(removed)
     }
 

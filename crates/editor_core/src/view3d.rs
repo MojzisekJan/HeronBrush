@@ -60,15 +60,7 @@ pub fn clip_surface_point(
     ))
 }
 
-/// How far the camera flies per key press at the default fly speed, in world units.
-///
-/// The movement step corresponding to the default `Preferences::CameraFlyMoveSpeed` of 0.5.
-pub const FLY_STEP: f64 = 32.0;
-
-/// The fly speed [`FLY_STEP`] is the step for.
-pub const DEFAULT_FLY_SPEED: f64 = 0.5;
-
-/// How much faster the camera flies with Shift held.
+/// How much faster the camera flies with Shift held, and slower with Alt.
 ///
 /// `FlyModeHelper::SpeedModifier`.
 pub const SPEED_MODIFIER: f64 = 2.0;
@@ -190,13 +182,6 @@ pub fn pan_per_pixel() -> (f64, f64) {
         speed
     };
     (horizontal, vertical)
-}
-
-/// How far the camera flies per key press.
-pub fn fly_step(fast: bool) -> f64 {
-    let speed =
-        f64::from(pref(|p| p.camera_fly_move_speed)) * if fast { SPEED_MODIFIER } else { 1.0 };
-    FLY_STEP * speed / DEFAULT_FLY_SPEED
 }
 
 /// The current handle position for drags that move one handle. Other operations draw their own
@@ -360,7 +345,12 @@ pub struct Drag {
 
 pub enum DragKind {
     /// Vertex, edge or face handles: the positions they move, as they were at the press.
-    Handles { vertices: Vec<Vec3d> },
+    Handles {
+        vertices: Vec<Vec3d>,
+        /// The handle the press took hold of, and whether it was picked before.
+        caught: Vec3d,
+        was_picked: bool,
+    },
     /// The middle of an edge or the centre of a face, taken with Shift by the vertex tool:
     /// the drag puts a corner where it goes.
     SplitHandle { at: Vec3d },
@@ -403,8 +393,15 @@ pub enum DragKind {
         start: Vec3d,
     },
     /// Moving the whole selection, `MoveObjectsToolController`. Slides across the ground by
-    /// default, straight up with Alt, along the dominant axis with Shift.
-    MoveObjects,
+    /// default, straight up with Alt, along the dominant axis with Shift; with Ctrl at the
+    /// press it moves a copy.
+    MoveObjects { duplicate: crate::view2d::Duplicate },
+    /// A press that only clicks: it selects on release if it stays put, and a drag does
+    /// nothing (`SelectionTool::mouseClick`).
+    Click,
+    /// The rotate tool's centre, moved on the ground or straight up with Alt
+    /// (`RotateToolController`'s centre handle).
+    RotationCenter,
 }
 
 /// The box a drawn brush would fill, from the two corners a 3D draw drag has swept out.
@@ -435,6 +432,38 @@ pub fn draw_bounds(
         return None;
     }
     Some(Bbox3d::new(min, max))
+}
+
+/// [`draw_bounds`] with the modifiers of `DrawShapeToolController3D::makeBounds`: Shift
+/// makes the base square, and with Alt a cube, growing away from where the drag began;
+/// the box is kept inside the world.
+pub fn shaped_draw_bounds(
+    start: Vec3d,
+    corner: Vec3d,
+    grid: &Grid,
+    camera_direction: Vec3d,
+    modifiers: Modifiers,
+    world: &Bbox3d,
+) -> Option<Bbox3d> {
+    let bounds = draw_bounds(start, corner, grid, camera_direction)?;
+    let bounds = if modifiers.shift {
+        let size = bounds.max - bounds.min;
+        let (axes, rest) = if modifiers.alt {
+            (Vec3d::one(), Vec3d::zero())
+        } else {
+            (Vec3d::new(1.0, 1.0, 0.0), Vec3d::new(0.0, 0.0, 1.0))
+        };
+        let longest = (size * axes).get_abs_max_component(0);
+        let extent = rest * size + axes * longest;
+        let direction = vec::step(start, corner);
+        Bbox3d::new(
+            vec::mix(bounds.min, bounds.max - extent, Vec3d::one() - direction),
+            vec::mix(bounds.max, bounds.min + extent, direction),
+        )
+    } else {
+        bounds
+    };
+    bounds.intersected(world)
 }
 
 /// How far the pointer must move before a press counts as a drag, in pixels.
@@ -539,7 +568,8 @@ pub fn begin_drag(
             // Dragging a handle that is not selected makes it the selection first, so a
             // drag always moves what is under the pointer. Ctrl adds to what is picked,
             // as `SelectionTool::isMultiClick` does for objects.
-            if !handles.is_selected(caught) {
+            let was_picked = handles.is_selected(caught);
+            if !was_picked {
                 handles.select(caught, ctrl);
             }
 
@@ -547,6 +577,8 @@ pub fn begin_drag(
             Some(Drag {
                 what: DragKind::Handles {
                     vertices: handles.selected_vertices(),
+                    caught,
+                    was_picked,
                 },
                 picker: handle_drag::picker_for_move(
                     handle_drag::MoveMode::Default,
@@ -605,7 +637,31 @@ pub fn begin_drag(
                 center,
                 radius,
                 pick_radius().max(6.0),
-            )?;
+            );
+            let Some(gesture) = gesture else {
+                // Off the rings, the centre handle: seen edge-on a ring passes through the
+                // centre, and the ring wins there.
+                if !shift && !ctrl {
+                    if let Some(caught) = handle_drag::nearest_handle(
+                        camera,
+                        viewport_height,
+                        ray,
+                        vec![center],
+                        pick_radius(),
+                    ) {
+                        let offset = offset_of(ray, camera, viewport_height, caught);
+                        let mode = handle_drag::move_mode(alt, false, caught, caught);
+                        return Some(Drag {
+                            what: DragKind::RotationCenter,
+                            picker: handle_drag::picker_for_move(mode, caught, caught, offset),
+                            initial: caught,
+                            offset,
+                            applied: Vec3d::zero(),
+                        });
+                    }
+                }
+                return None;
+            };
             Some(Drag {
                 what: DragKind::Rotate { gesture },
                 picker: HandlePicker::circle(center, gesture.axis, radius, Vec3d::zero()),
@@ -912,7 +968,7 @@ pub fn update_drag(
             true
         }
 
-        DragKind::Handles { vertices } => {
+        DragKind::Handles { vertices, .. } => {
             // Modifiers can change the drag constraint while the gesture is active.
             let current = drag.initial + drag.applied;
             let mode = handle_drag::move_mode(alt, shift, drag.initial, current);
@@ -1085,7 +1141,8 @@ pub fn update_drag(
             true
         }
 
-        DragKind::MoveObjects => {
+        DragKind::MoveObjects { duplicate } => {
+            let duplicate = *duplicate;
             // The modifier keys can change what the move is held to part way through:
             // Alt lifts it off the ground, Shift holds it to the axis it has gone
             // furthest in. Same as a handle drag.
@@ -1099,13 +1156,23 @@ pub fn update_drag(
             // Measured from where the drag began and snapped as one move, so snapping
             // does not eat a little of every step. Ctrl snaps the grabbed point to the
             // grid outright rather than snapping the distance.
-            let total = if ctrl {
+            let total = if ctrl && duplicate == crate::view2d::Duplicate::No {
                 grid.snap_point(proposed) - drag.initial
             } else {
                 grid.snap_point(proposed - drag.initial)
             };
             if total == drag.applied {
                 return false;
+            }
+            // A Ctrl-drag copies the selection on its first step and moves the copy; the
+            // transaction is opened over the copy, and folded with it at the end.
+            if duplicate == crate::view2d::Duplicate::Pending {
+                let mark = document.edit_mark();
+                document.duplicate_selection_by(Vec3d::zero());
+                document.begin_transaction();
+                drag.what = DragKind::MoveObjects {
+                    duplicate: crate::view2d::Duplicate::Made(mark),
+                };
             }
 
             document.rollback_transaction();
@@ -1114,8 +1181,25 @@ pub fn update_drag(
             true
         }
 
+        DragKind::RotationCenter => {
+            let current = drag.initial + drag.applied;
+            let mode = handle_drag::move_mode(alt, shift, drag.initial, current);
+            drag.picker = handle_drag::picker_for_move(mode, drag.initial, current, drag.offset);
+            let Some(proposed) = drag.picker.pick(ray) else {
+                return false;
+            };
+            let total = grid.snap_point(proposed) - drag.initial;
+            if total == drag.applied {
+                return false;
+            }
+            rotate.set_center(drag.initial + total);
+            drag.applied = total;
+            true
+        }
+
         // A draw drag is followed in the update closure, before this is reached.
         DragKind::Draw { .. } => false,
+        DragKind::Click => false,
     }
 }
 
@@ -1285,6 +1369,12 @@ pub struct Scene3d {
     pub pan_last: Rc<RefCell<(f64, f64)>>,
     /// Where the primary press happened.
     pub press: Rc<Cell<(f64, f64)>>,
+    /// Whether any handle was picked when a handle tool's press missed them all: a click
+    /// then selects the brush under it rather than only dropping what was picked.
+    pub handles_were_picked: Rc<Cell<bool>>,
+    /// Where the history stood before and after the last attribute sweep was applied, so
+    /// an Alt double click that follows folds the single-face copy into its own.
+    pub transfer_marks: Rc<Cell<Option<(usize, usize)>>>,
 }
 
 impl Scene3d {
@@ -1352,6 +1442,8 @@ impl Scene3d {
             look_last: Rc::new(RefCell::new((0.0, 0.0))),
             pan_last: Rc::new(RefCell::new((0.0, 0.0))),
             press: Rc::new(Cell::new((0.0, 0.0))),
+            handles_were_picked: Rc::new(Cell::new(false)),
+            transfer_marks: Rc::new(Cell::new(None)),
         }
     }
 
@@ -1492,6 +1584,32 @@ impl Scene3d {
         (self.render)();
     }
 
+    /// Alt and the right button orbit, as `CameraTool3D::shouldOrbit` does: about what is
+    /// under the press, or a point down the ray when it is over nothing.
+    pub fn orbit_begin(&self, x: f64, y: f64, size: (f64, f64)) -> Vec3d {
+        *self.look_last.borrow_mut() = (0.0, 0.0);
+        let ray = self.ray(x, y, size);
+        let hit = self
+            .document
+            .borrow()
+            .pick(&ray)
+            .filter(|hit| hit.distance >= 3.0)
+            .map(|hit| hit.distance);
+        ray.point_at_distance(hit.unwrap_or(DEFAULT_DRAW_DISTANCE))
+    }
+
+    /// The orbit: `(x, y)` from the press, at the look speed.
+    pub fn orbit_update(&self, center: Vec3d, x: f64, y: f64) {
+        let (lx, ly) = *self.look_last.borrow();
+        self.camera.borrow_mut().orbit(
+            center,
+            (x - lx) * turn_per_pixel().0,
+            (y - ly) * turn_per_pixel().1,
+        );
+        *self.look_last.borrow_mut() = (x, y);
+        (self.render)();
+    }
+
     /// Middle-drag to slide the view, as `CameraTool3D` does: its start.
     pub fn pan_begin(&self) {
         *self.pan_last.borrow_mut() = (0.0, 0.0);
@@ -1527,26 +1645,38 @@ impl Scene3d {
     }
 
     /// The camera's fly keys: W, S, A and D for horizontal flight, Q for rising and X for
-    /// descending. Returns whether the key was one of them. Control passes the window's
-    /// own shortcuts through, and the arrows are the window's, which move the selection.
+    /// descending. Returns whether the key was one of them, which the view keeps for
+    /// itself; the flight is [`Self::fly_held`], every frame the keys are held. Control
+    /// passes the window's own shortcuts through, and the arrows are the window's, which
+    /// move the selection.
     pub fn key(&self, key: Key, modifiers: Modifiers) -> bool {
-        if modifiers.control {
-            return false;
+        !modifiers.control
+            && ['w', 's', 'a', 'd', 'q', 'x']
+                .into_iter()
+                .any(|c| key.is(c))
+    }
+
+    /// Flies the camera for `seconds` with the fly keys held, `forward`, `right` and `up`
+    /// each -1, 0 or 1: `FlyModeHelper`, which moves by time rather than by the keyboard's
+    /// repeat, so the flight starts at once and runs smoothly. Shift flies faster and Alt
+    /// slower.
+    pub fn fly_held(&self, forward: f64, right: f64, up: f64, modifiers: Modifiers, seconds: f64) {
+        if modifiers.control || (forward == 0.0 && right == 0.0 && up == 0.0) {
+            return;
         }
-        let step = fly_step(modifiers.shift);
-        let mut camera = self.camera.borrow_mut();
-        match key {
-            k if k.is('w') => camera.fly(step, 0.0, 0.0),
-            k if k.is('s') => camera.fly(-step, 0.0, 0.0),
-            k if k.is('a') => camera.fly(0.0, -step, 0.0),
-            k if k.is('d') => camera.fly(0.0, step, 0.0),
-            k if k.is('q') => camera.fly(0.0, 0.0, step),
-            k if k.is('x') => camera.fly(0.0, 0.0, -step),
-            _ => return false,
-        }
-        drop(camera);
+        let modifier = if modifiers.shift {
+            SPEED_MODIFIER
+        } else if modifiers.alt {
+            1.0 / SPEED_MODIFIER
+        } else {
+            1.0
+        };
+        // The speed preference is in units a millisecond.
+        let distance = f64::from(pref(|p| p.camera_fly_move_speed)) * 1000.0 * seconds * modifier;
+        self.camera
+            .borrow_mut()
+            .fly(forward * distance, right * distance, up * distance);
         (self.render)();
-        true
     }
 
     /// A ray from the pointer into the scene.
@@ -1714,6 +1844,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
         // The renderer draws by what it is handed, not by reading the preference
         // store itself; this is the desktop frontend filling that in each frame.
@@ -1913,6 +2045,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
         let document = doc;
         let current_filters = *filters.borrow();
@@ -2474,7 +2608,7 @@ impl Scene3d {
             }
             if let Some(bounds) = document.selection_bounds() {
                 let (moving, rotating) = match drag.borrow().as_ref().map(|d| &d.what) {
-                    Some(DragKind::MoveObjects) => (true, false),
+                    Some(DragKind::MoveObjects { .. }) => (true, false),
                     Some(DragKind::Rotate { .. }) => (false, true),
                     _ => (false, false),
                 };
@@ -2576,6 +2710,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         *marquee.borrow_mut() = Some(document.borrow().selection_snapshot());
@@ -2650,26 +2786,34 @@ impl Scene3d {
             // `MoveObjectsToolController` moves only what is already selected, even behind
             // something unselected; what a press selects is decided on release, if it
             // stays a click (`drag_end`), so a drag over anything else draws a brush.
-            let grabbed = if tool_now == Tool::Select && !ctrl && !shift && !alt {
-                let document = document.borrow();
-                document
-                    .pick_selected(&ray)
-                    .map(|hit| (hit.node, ray.point_at_distance(hit.distance)))
-            } else {
-                None
-            };
-            if tool_now == Tool::Select && !ctrl && !shift && !alt {
+            // It takes no Shift, and leaves a face selection alone (`MoveObjectsTool::
+            // startMove`); Alt at the press lifts the move off the ground, and Ctrl moves
+            // a copy (`duplicateObjects`).
+            let grabbed =
+                if tool_now == Tool::Select && !shift && !document.borrow().has_face_selection() {
+                    let document = document.borrow();
+                    document
+                        .pick_selected(&ray)
+                        .map(|hit| (hit.node, ray.point_at_distance(hit.distance)))
+                } else {
+                    None
+                };
+            if tool_now == Tool::Select && !shift {
                 if let Some((_, hit_point)) = grabbed {
-                    document.borrow_mut().begin_transaction();
+                    if !ctrl {
+                        document.borrow_mut().begin_transaction();
+                    }
                     let offset = offset_of(&ray, &camera.borrow(), height, hit_point);
+                    let mode = handle_drag::move_mode(alt, false, hit_point, hit_point);
                     *drag.borrow_mut() = Some(Drag {
-                        what: DragKind::MoveObjects,
-                        picker: handle_drag::picker_for_move(
-                            handle_drag::MoveMode::Default,
-                            hit_point,
-                            hit_point,
-                            offset,
-                        ),
+                        what: DragKind::MoveObjects {
+                            duplicate: if ctrl {
+                                crate::view2d::Duplicate::Pending
+                            } else {
+                                crate::view2d::Duplicate::No
+                            },
+                        },
+                        picker: handle_drag::picker_for_move(mode, hit_point, hit_point, offset),
                         initial: hit_point,
                         offset,
                         applied: Vec3d::zero(),
@@ -2681,10 +2825,10 @@ impl Scene3d {
             }
 
             if (tool_now == Tool::Brush
-                // `DrawShapeToolController3D` draws only while nothing is selected.
+                // `DrawShapeToolController3D` draws only while nothing is selected, and
+                // takes Shift at the press for a square base.
                 || (tool_now == Tool::Select && !document.borrow().has_selection()))
                 && !ctrl
-                && !shift
                 && !alt
             {
                 let start = hit
@@ -2701,6 +2845,27 @@ impl Scene3d {
                     applied: Vec3d::zero(),
                 });
                 redraw();
+                return;
+            }
+
+            // Anything else the Select tool is pressed on is a click, decided on release:
+            // a plain one selects or deselects, a Ctrl one toggles what it is on. A
+            // Ctrl-drag from empty space is the marquee below.
+            if tool_now == Tool::Select
+                && !shift
+                && !alt
+                && (!ctrl || document.borrow().pick(&ray).is_some())
+            {
+                *drag.borrow_mut() = Some(Drag {
+                    what: DragKind::Click,
+                    picker: HandlePicker::plane(
+                        geometry_math::plane::horizontal_plane(Vec3d::zero()),
+                        Vec3d::zero(),
+                    ),
+                    initial: Vec3d::zero(),
+                    offset: Vec3d::zero(),
+                    applied: Vec3d::zero(),
+                });
                 return;
             }
         }
@@ -2800,24 +2965,48 @@ impl Scene3d {
             alt,
         );
 
-        // A sweep-cap drag changes no geometry, so it needs no transaction.
-        if started
-            .as_ref()
-            .is_some_and(|d| !matches!(d.what, DragKind::SweepCap { .. }))
-        {
+        // A sweep-cap or rotation-centre drag changes no geometry, so it needs no
+        // transaction.
+        if started.as_ref().is_some_and(|d| {
+            !matches!(d.what, DragKind::SweepCap { .. } | DragKind::RotationCenter)
+        }) {
             document.borrow_mut().begin_transaction();
         }
         // A press with a handle tool active belongs to the handles whether or not it
         // caught one: missing sweeps a lasso over them, the way dragging in a file
-        // list sweeps over files, and the click handler leaves the brush behind alone.
-        // Falling through was what made an edge impossible to pick -- a near miss
-        // threw the brush selection away, and the handles with it.
+        // list sweeps over files. Falling through was what made an edge impossible to
+        // pick -- a near miss threw the brush selection away, and the handles with it.
+        // Let go where it was pressed with nothing picked, it selects the brush under it
+        // (`drag_end`).
         if started.is_none() && HandleKind::of(*tool.borrow()).is_some() {
             *lasso.borrow_mut() = Some((Vec2d::new(x, y), Vec2d::new(x, y)));
+            handles_were_picked.set(handles.borrow().selected_count() > 0);
             if !ctrl {
                 handles.borrow_mut().clear_selection();
             }
         }
+        // A Rotate, Scale, Shear or Sweep press that missed the tool's handles is a
+        // selection click, decided on release; Alt with Sweep picks faces instead.
+        let missed = started.is_none()
+            && matches!(
+                *tool.borrow(),
+                Tool::Rotate | Tool::Scale | Tool::Shear | Tool::Sweep
+            )
+            && !(alt && *tool.borrow() == Tool::Sweep);
+        let started = if missed {
+            Some(Drag {
+                what: DragKind::Click,
+                picker: HandlePicker::plane(
+                    geometry_math::plane::horizontal_plane(Vec3d::zero()),
+                    Vec3d::zero(),
+                ),
+                initial: Vec3d::zero(),
+                offset: Vec3d::zero(),
+                applied: Vec3d::zero(),
+            })
+        } else {
+            started
+        };
 
         *drag.borrow_mut() = started;
         // What a press does to the handles shows in every view, not only in this
@@ -2873,6 +3062,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         // A lasso is not a drag of anything, so it is followed before the rest. The
@@ -2927,11 +3118,35 @@ impl Scene3d {
         // A draw drag changes nothing in the document yet: it only sweeps out the box
         // every view shows as the shape it would make.
         if let DragKind::Draw { start } = &drag.what {
-            let bounds = drag
-                .picker
-                .pick(&ray)
-                .and_then(|corner| draw_bounds(*start, corner, &grid.borrow(), camera_direction));
-            *pending_shape.borrow_mut() = bounds;
+            let start = *start;
+            // Alt raises the far corner straight up, setting the height; without it the
+            // corner slides on the level it is at (`DrawShapeToolController3D::
+            // modifierKeyChange`).
+            let current = start + drag.applied;
+            drag.picker = if modifiers.alt {
+                HandlePicker::line(
+                    geometry_math::line::Line3d::new(current, Vec3d::new(0.0, 0.0, 1.0)),
+                    Vec3d::zero(),
+                )
+            } else {
+                HandlePicker::plane(
+                    geometry_math::plane::horizontal_plane(current),
+                    Vec3d::zero(),
+                )
+            };
+            let Some(corner) = drag.picker.pick(&ray) else {
+                return;
+            };
+            drag.applied = corner - start;
+            let world = document.borrow().world_bounds();
+            *pending_shape.borrow_mut() = shaped_draw_bounds(
+                start,
+                corner,
+                &grid.borrow(),
+                camera_direction,
+                modifiers,
+                &world,
+            );
             redraw();
             return;
         }
@@ -2951,7 +3166,10 @@ impl Scene3d {
             if matches!(drag.what, DragKind::SweepCap { .. }) {
                 refresh_panels();
             }
-            if matches!(drag.what, DragKind::Rotate { .. }) {
+            if matches!(
+                drag.what,
+                DragKind::Rotate { .. } | DragKind::RotationCenter
+            ) {
                 redraw();
             } else {
                 render();
@@ -3004,6 +3222,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         if let Some((from, to)) = lasso.borrow_mut().take() {
@@ -3013,6 +3233,13 @@ impl Scene3d {
             // objects: `VertexToolController`'s own lasso, which is how several
             // vertices or edges are taken at once.
             if HandleKind::of(*tool.borrow()).is_some() {
+                // A click on no handle with none picked selects the brush under it
+                // (`NodeHandleToolControllerParts`: the chain falls through).
+                if vec::distance(from, to) < DRAG_THRESHOLD && !handles_were_picked.get() {
+                    let (x, y) = press.get();
+                    self.click_at(1, x, y, modifiers, (width, height), true);
+                    return;
+                }
                 if vec::distance(from, to) >= DRAG_THRESHOLD {
                     let camera = camera.borrow();
                     let mut handles = handles.borrow_mut();
@@ -3080,7 +3307,7 @@ impl Scene3d {
             && matches!(
                 &ended,
                 Some(Drag {
-                    what: DragKind::Draw { .. } | DragKind::MoveObjects,
+                    what: DragKind::Draw { .. } | DragKind::MoveObjects { .. } | DragKind::Click,
                     ..
                 })
             )
@@ -3088,9 +3315,30 @@ impl Scene3d {
             *pending_shape.borrow_mut() = None;
             document.borrow_mut().cancel_transaction();
             let (x, y) = press.get();
-            self.click(1, x, y, modifiers, (width, height));
+            self.click_at(1, x, y, modifiers, (width, height), true);
             render();
             return;
+        }
+        // A handle let go where it was taken: Ctrl unpicks one that was picked, and a
+        // plain click narrows what is picked to it (`NodeHandleToolControllerParts`).
+        if let Some(Drag {
+            what: DragKind::Handles {
+                caught, was_picked, ..
+            },
+            ..
+        }) = &ended
+        {
+            if still {
+                document.borrow_mut().cancel_transaction();
+                if modifiers.control && *was_picked {
+                    handles.borrow_mut().select(*caught, true);
+                } else if !modifiers.control && !modifiers.shift {
+                    handles.borrow_mut().select(*caught, false);
+                }
+                redraw();
+                refresh_panels();
+                return;
+            }
         }
         if let Some(Drag {
             what: DragKind::Draw { .. },
@@ -3100,7 +3348,7 @@ impl Scene3d {
             let bounds = pending_shape.borrow_mut().take();
             if let Some(bounds) = bounds {
                 let mut document = document.borrow_mut();
-                // The tool stays as it was, as in TrenchBroom.
+                // The tool stays as it was (`DrawShapeTool`).
                 match document.begin_shape_preview(bounds, *shape_parameters.borrow()) {
                     Ok(_) => {}
                     Err(error) => crate::complain!(
@@ -3115,6 +3363,17 @@ impl Scene3d {
         }
         if ended.is_some() {
             document.borrow_mut().commit_transaction();
+            // A Ctrl-drag's copy undoes with its move.
+            if let Some(Drag {
+                what:
+                    DragKind::MoveObjects {
+                        duplicate: crate::view2d::Duplicate::Made(mark),
+                    },
+                ..
+            }) = &ended
+            {
+                document.borrow_mut().fold_edits_since(*mark);
+            }
             render();
         }
         // A Shift press on a selected face that never moved it was a click after all:
@@ -3128,7 +3387,7 @@ impl Scene3d {
         {
             if applied == Vec3d::zero() && modifiers.shift {
                 let (x, y) = press.get();
-                self.click(1, x, y, modifiers, (width, height));
+                self.click_at(1, x, y, modifiers, (width, height), true);
             }
         }
     }
@@ -3178,6 +3437,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         if lasso.borrow_mut().take().is_some() {
@@ -3188,13 +3449,42 @@ impl Scene3d {
             }
             redraw();
         }
-        // A gesture taken away without a release is undone, as a tracker's `cancel` does
-        // (`cancelTransaction`), rather than kept half done.
+        // What the drag did is kept as one step, as a release would, and the transaction
+        // closed so it cannot swallow later edits; a brush being drawn is dropped. Esc
+        // undoes instead (`escape`).
         if drag.borrow_mut().take().is_some() {
-            document.borrow_mut().cancel_transaction();
+            document.borrow_mut().commit_transaction();
             render();
         }
         *pending_shape.borrow_mut() = None;
+    }
+
+    /// A double click released at `(x, y)`: [`Document::double_click`] on what is under
+    /// it, with the Select or Brush tool in hand. Alt with one face selected is the
+    /// attribute copy `click` already made. Returns whether anything changed.
+    pub fn double_click(
+        &self,
+        x: f64,
+        y: f64,
+        modifiers: Modifiers,
+        (width, height): (f64, f64),
+    ) -> bool {
+        if !matches!(*self.tool.borrow(), Tool::Select | Tool::Brush) {
+            return false;
+        }
+        if modifiers.alt && self.document.borrow().single_selected_face().is_some() {
+            return false;
+        }
+        let ray = self.camera.borrow().ray_through(x, y, width, height);
+        let mut document = self.document.borrow_mut();
+        let hit = document.pick(&ray);
+        let changed = document.double_click(hit, modifiers.shift, modifiers.alt, modifiers.control);
+        drop(document);
+        if changed {
+            (self.render)();
+            (self.refresh_panels)();
+        }
+        changed
     }
 
     /// Drops a Paint or attribute sweep without applying it, for a gesture taken away.
@@ -3208,13 +3498,20 @@ impl Scene3d {
     }
 
     /// A primary click, `presses` times, at `(x, y)`.
-    pub fn click(
+    pub fn click(&self, presses: i32, x: f64, y: f64, modifiers: Modifiers, size: (f64, f64)) {
+        self.click_at(presses, x, y, modifiers, size, false);
+    }
+
+    /// [`Self::click`], or with `released` the click a press turned out to be once let
+    /// go, which selects even with a tool in hand whose press the drag owns.
+    fn click_at(
         &self,
         presses: i32,
         x: f64,
         y: f64,
         modifiers: Modifiers,
         (width, height): (f64, f64),
+        released: bool,
     ) {
         #[allow(unused_variables)]
         let Self {
@@ -3259,6 +3556,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         // Clicking the view takes the keyboard off whatever number field or entry
@@ -3271,7 +3570,7 @@ impl Scene3d {
         // A Shift press that took hold of a selected face for resizing is a click only if
         // it is let go where it was: `drag_end` selects the face then. Selecting it now
         // would throw away the very selection the resize works on.
-        if matches!(*tool.borrow(), Tool::Rotate | Tool::Scale | Tool::Shear)
+        if (!released && matches!(*tool.borrow(), Tool::Rotate | Tool::Scale | Tool::Shear))
             || drag.borrow().is_some()
         {
             return;
@@ -3294,7 +3593,17 @@ impl Scene3d {
                             node: hit.node,
                             face,
                         };
+                        // The first click's single-face copy and this one undo together,
+                        // as `SetBrushFaceAttributesTool` undoes the first before it.
+                        let folded = transfer_marks
+                            .take()
+                            .filter(|(_, after)| *after == document.edit_mark());
                         if document.copy_face_attributes(source, target, mode, true) {
+                            if let Some((before, _)) = folded {
+                                document.fold_edits_since(before);
+                            }
+                            // The sweep this press began is the double click's.
+                            stroke.borrow_mut().take();
                             drop(document);
                             render();
                             return;
@@ -3373,7 +3682,25 @@ impl Scene3d {
         // The clip tool places its points here too, not only in the flat views. A point goes where the ray meets a surface, snapped;
         // the face's own normal is the help vector, which is what lets two points
         // placed in one view describe a plane -- `ClipToolController3D`.
-        if *tool.borrow() == Tool::Clip {
+        // A double click puts the plane on the face under it, and a click with any
+        // modifier is a selection click (`ClipToolController` takes only plain clicks).
+        let plain = !modifiers.shift && !modifiers.control && !modifiers.alt;
+        if *tool.borrow() == Tool::Clip && plain && presses == 2 {
+            let face = document.pick(&ray).and_then(|hit| {
+                hit.face.map(|face| FaceRef {
+                    node: hit.node,
+                    face,
+                })
+            });
+            if let Some(points) = face.and_then(|face| document.face_points(face)) {
+                clip.borrow_mut().set_face(points);
+                drop(document);
+                refresh_panels();
+                render();
+            }
+            return;
+        }
+        if *tool.borrow() == Tool::Clip && plain {
             if let Some((at, help_vectors)) = clip_surface_point(&document, &grid.borrow(), &ray) {
                 if clip.borrow_mut().add_point(at, help_vectors) {
                     drop(document);
@@ -3476,6 +3803,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         *stroke.borrow_mut() = None;
@@ -3588,6 +3917,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         let mut stroke = stroke.borrow_mut();
@@ -3777,6 +4108,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         let Some(stroke) = stroke.borrow_mut().take() else {
@@ -3796,9 +4129,10 @@ impl Scene3d {
         } = stroke
         {
             if !touched.is_empty() {
-                document
-                    .borrow_mut()
-                    .copy_face_attributes_across(source, &touched, mode);
+                let mut document = document.borrow_mut();
+                let before = document.edit_mark();
+                document.copy_face_attributes_across(source, &touched, mode);
+                transfer_marks.set(Some((before, document.edit_mark())));
             }
         }
         render();
@@ -3849,6 +4183,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         *pointer.borrow_mut() = (x, y);
@@ -3934,6 +4270,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         if *hover_selected.borrow() {
@@ -3987,6 +4325,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         // `CameraTool3D::moveSpeed`: the preference times twenty, over a wheel
@@ -4012,6 +4352,52 @@ impl Scene3d {
             camera.fly(distance, 0.0, 0.0);
         }
         render();
+    }
+
+    /// The wheel with modifiers, `dy` notches towards the user positive. Returns whether
+    /// a modifier made it something other than flying: Shift zooms the field of view
+    /// (`CameraTool3D`, `m_camera.zoom`), Ctrl drills the selection through what is under
+    /// the pointer, and Ctrl+Alt changes the grid (`SelectionTool::mouseScroll`).
+    pub fn scroll_with(&self, dy: f64, modifiers: Modifiers, size: (f64, f64)) -> bool {
+        let invert = pref(|p| p.invert_mouse_wheel);
+        let away = (dy < 0.0) != invert;
+        if modifiers.control && modifiers.alt && !modifiers.shift {
+            let mut grid = self.grid.borrow_mut();
+            if away {
+                grid.decrease();
+            } else {
+                grid.increase();
+            }
+            crate::say!(
+                "{}",
+                fill("Grid size {}", &[&grid.actual_size().to_string()])
+            );
+            drop(grid);
+            (self.redraw)();
+            (self.render)();
+            return true;
+        }
+        if modifiers.control && !modifiers.alt && !modifiers.shift {
+            let (x, y) = *self.pointer.borrow();
+            let ray = self.ray(x, y, size);
+            if self
+                .document
+                .borrow_mut()
+                .drill_selection(&ray, away, false)
+            {
+                (self.refresh_panels)();
+                (self.render)();
+            }
+            return true;
+        }
+        if modifiers.shift && !modifiers.control && !modifiers.alt {
+            // Narrower towards the scene, as a zoom lens.
+            let factor = if away { 1.0 / 1.08 } else { 1.08 };
+            crate::preferences::edit(|p| p.camera_fov = (p.camera_fov * factor).clamp(30.0, 140.0));
+            (self.render)();
+            return true;
+        }
+        false
     }
 
     /// The modifiers changed under a still pointer.
@@ -4059,6 +4445,8 @@ impl Scene3d {
             look_last,
             pan_last,
             press,
+            handles_were_picked,
+            transfer_marks,
         } = self;
 
         let (x, y) = *pointer.borrow();
@@ -4221,7 +4609,9 @@ mod pick_tests {
         // 48 units along +x from it.
         let initial = Vec3d::new(32.0, 32.0, 64.0);
         let mut drag = Drag {
-            what: DragKind::MoveObjects,
+            what: DragKind::MoveObjects {
+                duplicate: crate::view2d::Duplicate::No,
+            },
             picker: handle_drag::picker_for_move(
                 handle_drag::MoveMode::Default,
                 initial,
@@ -4791,6 +5181,247 @@ mod pick_tests {
         let bounds = document.borrow().brush(cube).unwrap().bounds();
         assert_ne!(bounds.min, Vec3d::zero(), "the cube did not move");
         assert!(!document.borrow().has_shape_preview());
+    }
+
+    /// Press, move and release with modifiers held throughout.
+    fn press_drag_with(scene: &Scene3d, at: Vec3d, by: (f64, f64), mods: Modifiers) {
+        let size = (800.0, 600.0);
+        let on_screen = scene.camera.borrow().project(at, size.0, size.1).unwrap();
+        let (x, y) = (on_screen.x(), on_screen.y());
+        scene.drag_begin(x, y, mods, size);
+        scene.click(1, x, y, mods, size);
+        for step in 1..=4 {
+            let t = f64::from(step) / 4.0;
+            scene.drag_update(by.0 * t, by.1 * t, mods, size);
+        }
+        scene.drag_end(by.0, by.1, mods, size);
+    }
+
+    /// A Ctrl-drag on the selected cube moves a copy, undone in one step; a Ctrl-click on
+    /// the floor adds it to the selection on release.
+    #[test]
+    fn ctrl_drag_copies_and_ctrl_click_toggles_in_3d() {
+        let (scene, document, _, floor, cube) = floor_and_cube_scene();
+        document.borrow_mut().select_only(cube);
+        let before = document.borrow().to_map_text();
+        let ctrl = Modifiers {
+            control: true,
+            ..Modifiers::default()
+        };
+        press_drag_with(&scene, Vec3d::new(32.0, 32.0, 64.0), (80.0, 0.0), ctrl);
+        assert_eq!(
+            document.borrow().brush(cube).unwrap().bounds().min,
+            Vec3d::zero()
+        );
+        assert_eq!(
+            map_model::node::brushes(document.borrow().tree_world()).len(),
+            3
+        );
+        document.borrow_mut().undo();
+        assert_eq!(document.borrow().to_map_text(), before);
+
+        document.borrow_mut().select_only(cube);
+        press_drag_with(&scene, Vec3d::new(-150.0, -60.0, 0.0), (0.0, 0.0), ctrl);
+        assert!(document.borrow().is_selected(floor) && document.borrow().is_selected(cube));
+    }
+
+    /// Alt at the press lifts a move off the ground.
+    #[test]
+    fn alt_at_the_press_moves_up() {
+        let (scene, document, _, _, cube) = floor_and_cube_scene();
+        document.borrow_mut().select_only(cube);
+        let alt = Modifiers {
+            alt: true,
+            ..Modifiers::default()
+        };
+        press_drag_with(&scene, Vec3d::new(32.0, 32.0, 32.0), (0.0, -80.0), alt);
+        let bounds = document.borrow().brush(cube).unwrap().bounds();
+        assert!(bounds.min.z() > 0.0, "the cube did not go up: {bounds:?}");
+        assert_eq!((bounds.min.x(), bounds.min.y()), (0.0, 0.0));
+    }
+
+    /// With something selected, a click on something else selects it on release, and a
+    /// drag from it does nothing.
+    #[test]
+    fn with_a_selection_a_3d_press_elsewhere_is_a_click() {
+        let (scene, document, _, floor, cube) = floor_and_cube_scene();
+        document.borrow_mut().select_only(cube);
+        let floor_bounds = document.borrow().brush(floor).unwrap().bounds();
+        press_drag(&scene, Vec3d::new(-150.0, -60.0, 0.0), (60.0, 30.0));
+        assert!(document.borrow().is_selected(cube));
+        assert_eq!(
+            document.borrow().brush(floor).unwrap().bounds(),
+            floor_bounds
+        );
+        press_drag(&scene, Vec3d::new(-150.0, -60.0, 0.0), (0.0, 0.0));
+        assert_eq!(
+            document
+                .borrow()
+                .selection_ids()
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
+            vec![floor]
+        );
+    }
+
+    /// A press that misses the Scale, Shear or Rotate tool's handles is a selection
+    /// click, made on release.
+    #[test]
+    fn a_3d_press_off_a_tools_handles_selects_on_release() {
+        for active in [Tool::Scale, Tool::Shear, Tool::Rotate] {
+            let (scene, document, tool, floor, cube) = floor_and_cube_scene();
+            document.borrow_mut().select_only(cube);
+            *tool.borrow_mut() = active;
+            press_drag(&scene, Vec3d::new(-200.0, -100.0, 0.0), (0.0, 0.0));
+            assert_eq!(
+                document
+                    .borrow()
+                    .selection_ids()
+                    .iter()
+                    .copied()
+                    .collect::<Vec<_>>(),
+                vec![floor],
+                "{active:?}"
+            );
+        }
+    }
+
+    /// `FlyModeHelper`: the fly keys move the camera by time, at the speed preference in
+    /// units a millisecond, twice as fast with Shift and half with Alt.
+    #[test]
+    fn held_fly_keys_move_by_time() {
+        let (scene, ..) = floor_and_cube_scene();
+        let speed = f64::from(pref(|p| p.camera_fly_move_speed));
+        let start = scene.camera.borrow().position;
+        let forward = scene.camera.borrow().direction();
+        scene.fly_held(1.0, 0.0, 0.0, Modifiers::default(), 0.1);
+        let moved = scene.camera.borrow().position - start;
+        assert!(vec::length(moved - forward * speed * 100.0) < 1e-6);
+        let start = scene.camera.borrow().position;
+        let fast = Modifiers {
+            shift: true,
+            ..Modifiers::default()
+        };
+        scene.fly_held(0.0, 0.0, 1.0, fast, 0.1);
+        let moved = scene.camera.borrow().position - start;
+        assert!((moved.z() - speed * 200.0).abs() < 1e-6);
+        assert!(scene.key(Key::Letter('w'), Modifiers::default()));
+    }
+
+    /// `DrawShapeToolController3D::makeBounds`: Shift squares the base, Shift+Alt makes a
+    /// cube, and the box stays inside the world.
+    #[test]
+    fn shift_and_alt_shape_a_3d_draw() {
+        let grid = Grid::new(4);
+        let down = Vec3d::new(0.3, 0.3, -1.0);
+        let world = Document::new(crate::world::WorldBounds::default()).world_bounds();
+        let start = Vec3d::new(0.0, 0.0, 0.0);
+        let corner = Vec3d::new(64.0, 32.0, 0.0);
+        let shift = Modifiers {
+            shift: true,
+            ..Modifiers::default()
+        };
+        let square = shaped_draw_bounds(start, corner, &grid, down, shift, &world).unwrap();
+        assert_eq!(square.max - square.min, Vec3d::new(64.0, 64.0, 16.0));
+        let cube_mods = Modifiers {
+            shift: true,
+            alt: true,
+            ..Modifiers::default()
+        };
+        let cube = shaped_draw_bounds(start, corner, &grid, down, cube_mods, &world).unwrap();
+        assert_eq!(cube.max - cube.min, Vec3d::new(64.0, 64.0, 64.0));
+        let far = Vec3d::new(world.max.x() + 512.0, 32.0, 0.0);
+        let clipped =
+            shaped_draw_bounds(start, far, &grid, down, Modifiers::default(), &world).unwrap();
+        assert!(clipped.max.x() <= world.max.x());
+    }
+
+    /// Alt during a draw drag sets the height: the far corner goes straight up.
+    #[test]
+    fn alt_during_a_3d_draw_sets_the_height() {
+        let (scene, document, ..) = floor_and_cube_scene();
+        document.borrow_mut().clear_selection();
+        let size = (800.0, 600.0);
+        let at = scene
+            .camera
+            .borrow()
+            .project(Vec3d::new(-150.0, -60.0, 0.0), size.0, size.1)
+            .unwrap();
+        scene.drag_begin(at.x(), at.y(), Modifiers::default(), size);
+        scene.drag_update(60.0, 30.0, Modifiers::default(), size);
+        let flat = scene.pending_shape.borrow().unwrap();
+        let alt = Modifiers {
+            alt: true,
+            ..Modifiers::default()
+        };
+        scene.drag_update(60.0, -60.0, alt, size);
+        let tall = scene.pending_shape.borrow().unwrap();
+        assert!(tall.max.z() > flat.max.z(), "{flat:?} -> {tall:?}");
+        assert_eq!((tall.min.x(), tall.max.x()), (flat.min.x(), flat.max.x()));
+        scene.drag_cancel();
+    }
+
+    /// The rotate tool's centre is a handle in 3D too: dragging it moves the centre.
+    #[test]
+    fn the_rotation_centre_drags_in_3d() {
+        let (scene, document, tool, _, cube) = floor_and_cube_scene();
+        document.borrow_mut().select_only(cube);
+        *tool.borrow_mut() = Tool::Rotate;
+        let center = Vec3d::new(32.0, 32.0, 32.0);
+        scene.rotate.borrow_mut().set_center(center);
+        press_drag(&scene, center, (80.0, 0.0));
+        let moved = scene.rotate.borrow().center().unwrap();
+        assert_ne!(moved, center);
+        assert_eq!(
+            document.borrow().brush(cube).unwrap().bounds().min,
+            Vec3d::zero()
+        );
+    }
+
+    /// `SetBrushFaceAttributesTool`: an Alt double click copies the selected face onto
+    /// the whole brush, and the first click's single-face copy undoes with it.
+    #[test]
+    fn an_alt_double_click_copy_undoes_in_one_step() {
+        let (scene, document, _, floor, cube) = floor_and_cube_scene();
+        document.borrow_mut().paint_brush(cube, "crate");
+        let top = {
+            let document = document.borrow();
+            let brush = document.brush(floor).unwrap();
+            (0..brush.faces().len())
+                .find(|i| brush.faces()[*i].normal().z() > 0.9)
+                .unwrap()
+        };
+        document.borrow_mut().select_face_only(FaceRef {
+            node: floor,
+            face: top,
+        });
+        let before = document.borrow().to_map_text();
+        let size = (800.0, 600.0);
+        let at = scene
+            .camera
+            .borrow()
+            .project(Vec3d::new(32.0, 32.0, 64.0), size.0, size.1)
+            .unwrap();
+        let alt = Modifiers {
+            alt: true,
+            ..Modifiers::default()
+        };
+        for presses in [1, 2] {
+            scene.drag_begin(at.x(), at.y(), alt, size);
+            scene.stroke_begin(at.x(), at.y(), alt, size);
+            scene.click(presses, at.x(), at.y(), alt, size);
+            scene.drag_end(0.0, 0.0, alt, size);
+            scene.stroke_end();
+        }
+        let copied = document.borrow().to_map_text();
+        assert_ne!(copied, before);
+        assert!(
+            !copied.contains("crate"),
+            "every face of the cube took the floor's material"
+        );
+        document.borrow_mut().undo();
+        assert_eq!(document.borrow().to_map_text(), before);
     }
 
     /// Esc in the middle of a 3D move undoes it and ends the drag.
