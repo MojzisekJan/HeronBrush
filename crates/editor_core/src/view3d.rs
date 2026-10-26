@@ -350,6 +350,11 @@ pub enum DragKind {
         /// The handle the press took hold of, and whether it was picked before.
         caught: Vec3d,
         was_picked: bool,
+        /// Whether the handle is to be the only one picked once the press becomes a drag.
+        /// A Ctrl-press adds an unpicked handle to what is picked, which is what a
+        /// Ctrl-click does, but a drag of it moves it alone (`NodeHandleToolBase::
+        /// startMove`).
+        narrow: bool,
     },
     /// The middle of an edge or the centre of a face, taken with Shift by the vertex tool:
     /// the drag puts a corner where it goes.
@@ -402,6 +407,35 @@ pub enum DragKind {
     /// The rotate tool's centre, moved on the ground or straight up with Alt
     /// (`RotateToolController`'s centre handle).
     RotationCenter,
+    /// A Ctrl-drag from something unselected adds whatever it passes over to the
+    /// selection, faces with Shift as well (`PaintSelectionDragTracker`). Let go where it
+    /// was pressed, it is a Ctrl-click.
+    PaintSelect {
+        faces: bool,
+        /// Whether what the press was on still has to be added, which happens once the
+        /// press has become a drag.
+        pending: bool,
+        /// The selection at the press, which Esc puts back.
+        before: crate::document::SelectionSnapshot,
+    },
+    /// The assemble tool's rectangle, drawn on the face the press landed on
+    /// (`AssembleBrushToolController3D`'s `DrawFacePart`).
+    AssembleFace {
+        /// The plane of that face, which the rectangle's corners lie in.
+        plane: geometry_math::plane::Plane3d,
+        /// The assemble tool's points when the press happened.
+        before: Vec<Vec3d>,
+    },
+    /// A copy of the assemble tool's polygon, pulled out along its normal with Shift
+    /// (`DuplicateFacePart`), which makes a prism of it.
+    AssembleExtrude {
+        /// The polygon's corners, in order around it.
+        polygon: Vec<Vec3d>,
+        /// The polygon's normal, facing the camera.
+        normal: Vec3d,
+        /// The assemble tool's points when the press happened.
+        before: Vec<Vec3d>,
+    },
 }
 
 /// The box a drawn brush would fill, from the two corners a 3D draw drag has swept out.
@@ -566,8 +600,8 @@ pub fn begin_drag(
             )?;
 
             // Dragging a handle that is not selected makes it the selection first, so a
-            // drag always moves what is under the pointer. Ctrl adds to what is picked,
-            // as `SelectionTool::isMultiClick` does for objects.
+            // drag always moves what is under the pointer. Ctrl adds it to what is picked
+            // until the press becomes a drag, so a Ctrl-click still adds it.
             let was_picked = handles.is_selected(caught);
             if !was_picked {
                 handles.select(caught, ctrl);
@@ -579,6 +613,7 @@ pub fn begin_drag(
                     vertices: handles.selected_vertices(),
                     caught,
                     was_picked,
+                    narrow: ctrl && !was_picked,
                 },
                 picker: handle_drag::picker_for_move(
                     handle_drag::MoveMode::Default,
@@ -940,6 +975,19 @@ pub fn update_drag(
     let shift = modifiers.shift;
     let ctrl = modifiers.control;
 
+    if let DragKind::Handles {
+        vertices,
+        caught,
+        narrow,
+        ..
+    } = &mut drag.what
+    {
+        if std::mem::take(narrow) {
+            handles.select(*caught, false);
+            *vertices = handles.selected_vertices();
+        }
+    }
+
     match &drag.what {
         DragKind::SplitHandle { at } => {
             let at = *at;
@@ -977,8 +1025,9 @@ pub fn update_drag(
             let Some(proposed) = drag.picker.pick(ray) else {
                 return false;
             };
-            // `makeRelativeHandleSnapper`, or the absolute one on Ctrl.
-            let total = if ctrl {
+            // `makeRelativeHandleSnapper`, or the absolute one on Ctrl, which only the vertex
+            // tool allows (`VertexTool::allowAbsoluteSnapping`).
+            let total = if ctrl && handles.kind() == Some(HandleKind::Vertex) {
                 grid.snap_point(proposed) - drag.initial
             } else {
                 grid.snap_point(proposed - drag.initial)
@@ -1197,10 +1246,49 @@ pub fn update_drag(
             true
         }
 
-        // A draw drag is followed in the update closure, before this is reached.
-        DragKind::Draw { .. } => false,
-        DragKind::Click => false,
+        // A draw drag and the assemble tool's drags are followed in the update closure,
+        // before this is reached.
+        DragKind::Draw { .. }
+        | DragKind::Click
+        | DragKind::PaintSelect { .. }
+        | DragKind::AssembleFace { .. }
+        | DragKind::AssembleExtrude { .. } => false,
     }
+}
+
+/// One step of an assemble tool drag: the points the tool has once the pointer is where
+/// `ray` points, or `None` if the drag cannot follow it there.
+///
+/// A face rectangle runs from the press to wherever the ray meets a brush
+/// (`makeSurfaceHandlePicker`), and a pulled polygon goes along its normal by whole grid
+/// steps (`makeRelativeLineHandleSnapper`).
+pub fn assemble_drag_points(
+    drag: &Drag,
+    ray: &Ray3d,
+    document: &Document,
+    grid: &Grid,
+) -> Option<Vec<Vec3d>> {
+    let (mut points, before) = match &drag.what {
+        DragKind::AssembleFace { plane, before } => {
+            let hit = document.pick(ray)?;
+            let to = ray.point_at_distance(hit.distance);
+            let rectangle = crate::assemble_tool::face_rectangle(plane, drag.initial, to, grid);
+            (rectangle.to_vec(), before)
+        }
+        DragKind::AssembleExtrude {
+            polygon,
+            normal,
+            before,
+        } => {
+            let proposed = drag.picker.pick(ray)?;
+            let distance = grid.snap_scalar(vec::dot(proposed - drag.initial, *normal));
+            let moved = polygon.iter().map(|point| *point + *normal * distance);
+            (moved.collect(), before)
+        }
+        _ => return None,
+    };
+    points.extend(before.iter().copied());
+    Some(points)
 }
 
 /// Breaks a line into the dashes that draw it as a dashed one.
@@ -1549,8 +1637,19 @@ impl Scene3d {
         // Esc in the middle of a drag undoes it and ends it, as `ToolChain::cancel` does;
         // closing only the transaction left the drag going, each later step applied
         // outside it and recorded on its own.
-        if self.drag.borrow_mut().take().is_some() {
+        if let Some(ended) = self.drag.borrow_mut().take() {
             document.borrow_mut().cancel_transaction();
+            // `DrawFaceDragDelegate::cancel`: the points go back to what they were.
+            if let DragKind::AssembleFace { before, .. }
+            | DragKind::AssembleExtrude { before, .. } = &ended.what
+            {
+                self.assemble.borrow_mut().set_points(before);
+            }
+            // Painting the selection is undone with it (`cancelTransaction`).
+            if let DragKind::PaintSelect { before, .. } = &ended.what {
+                document.borrow_mut().restore_selection(before);
+                (self.refresh_panels)();
+            }
             *self.pending_shape.borrow_mut() = None;
             (self.render)();
             redraw();
@@ -2769,6 +2868,59 @@ impl Scene3d {
             return;
         }
 
+        // `AssembleBrushToolController3D` takes a drag without Ctrl or Alt: from a face of
+        // a brush it draws a rectangle on that face, and with Shift from the polygon the
+        // points make it pulls a copy of the polygon out along its normal. What a press
+        // that stays put does is decided on release (`drag_end`), where it adds a point.
+        if *tool.borrow() == Tool::Assemble && !ctrl && !alt {
+            let before = assemble.borrow().points().to_vec();
+            let started = if shift {
+                let picked = assemble.borrow().pick_polygon(&ray);
+                let polygon = assemble.borrow().polygon();
+                picked
+                    .zip(polygon)
+                    .map(|((distance, normal), (polygon, _))| {
+                        let at = ray.point_at_distance(distance);
+                        let line = geometry_math::line::Line3d::new(at, normal);
+                        (
+                            DragKind::AssembleExtrude {
+                                polygon,
+                                normal,
+                                before,
+                            },
+                            HandlePicker::line(line, Vec3d::zero()),
+                            at,
+                        )
+                    })
+            } else {
+                let document = document.borrow();
+                document.pick(&ray).and_then(|hit| {
+                    let face = document.face_at(FaceRef {
+                        node: hit.node,
+                        face: hit.face?,
+                    })?;
+                    let at = ray.point_at_distance(hit.distance);
+                    let plane =
+                        geometry_math::plane::Plane3d::from_anchor_and_normal(at, face.normal());
+                    Some((
+                        DragKind::AssembleFace { plane, before },
+                        HandlePicker::plane(plane, Vec3d::zero()),
+                        at,
+                    ))
+                })
+            };
+            if let Some((what, picker, initial)) = started {
+                *drag.borrow_mut() = Some(Drag {
+                    what,
+                    picker,
+                    initial,
+                    offset: Vec3d::zero(),
+                    applied: Vec3d::zero(),
+                });
+                return;
+            }
+        }
+
         // Without modifiers, Select drags an existing selection when pressed on a brush, or
         // draws from empty space. Brush always draws. The starting corner is the ray hit, or a
         // default distance along the ray when nothing is hit.
@@ -2850,14 +3002,23 @@ impl Scene3d {
 
             // Anything else the Select tool is pressed on is a click, decided on release:
             // a plain one selects or deselects, a Ctrl one toggles what it is on. A
-            // Ctrl-drag from empty space is the marquee below.
+            // Ctrl-drag from it paints the selection, and a Ctrl-drag from empty space is
+            // the marquee below.
             if tool_now == Tool::Select
                 && !shift
                 && !alt
                 && (!ctrl || document.borrow().pick(&ray).is_some())
             {
                 *drag.borrow_mut() = Some(Drag {
-                    what: DragKind::Click,
+                    what: if ctrl {
+                        DragKind::PaintSelect {
+                            faces: false,
+                            pending: true,
+                            before: document.borrow().selection_snapshot(),
+                        }
+                    } else {
+                        DragKind::Click
+                    },
                     picker: HandlePicker::plane(
                         geometry_math::plane::horizontal_plane(Vec3d::zero()),
                         Vec3d::zero(),
@@ -2996,6 +3157,34 @@ impl Scene3d {
         let started = if missed {
             Some(Drag {
                 what: DragKind::Click,
+                picker: HandlePicker::plane(
+                    geometry_math::plane::horizontal_plane(Vec3d::zero()),
+                    Vec3d::zero(),
+                ),
+                initial: Vec3d::zero(),
+                offset: Vec3d::zero(),
+                applied: Vec3d::zero(),
+            })
+        } else {
+            started
+        };
+        // Ctrl+Shift with nothing else taking the press paints faces into the selection.
+        let paints_faces = started.is_none()
+            && *tool.borrow() == Tool::Select
+            && shift
+            && ctrl
+            && !alt
+            && document
+                .borrow()
+                .pick(&ray)
+                .is_some_and(|hit| hit.face.is_some());
+        let started = if paints_faces {
+            Some(Drag {
+                what: DragKind::PaintSelect {
+                    faces: true,
+                    pending: true,
+                    before: document.borrow().selection_snapshot(),
+                },
                 picker: HandlePicker::plane(
                     geometry_math::plane::horizontal_plane(Vec3d::zero()),
                     Vec3d::zero(),
@@ -3148,6 +3337,51 @@ impl Scene3d {
                 &world,
             );
             redraw();
+            return;
+        }
+
+        if let DragKind::PaintSelect { faces, pending, .. } = &mut drag.what {
+            let faces = *faces;
+            // What the press was on goes in first, as `SelectionTool::acceptMouseDrag`
+            // selects it before the tracker follows the pointer.
+            let mut rays = Vec::new();
+            if std::mem::take(pending) {
+                rays.push(camera.borrow().ray_through(start_x, start_y, width, height));
+            }
+            rays.push(ray);
+            let mut document = document.borrow_mut();
+            let mut changed = false;
+            for ray in &rays {
+                let Some(hit) = document.pick(ray) else {
+                    continue;
+                };
+                changed |= match (faces, hit.face) {
+                    (true, Some(face)) => document.paint_select_face(FaceRef {
+                        node: hit.node,
+                        face,
+                    }),
+                    (true, None) => false,
+                    (false, _) => document.paint_select(hit.node),
+                };
+            }
+            drop(document);
+            if changed {
+                redraw();
+                render();
+                refresh_panels();
+            }
+            return;
+        }
+
+        if matches!(
+            drag.what,
+            DragKind::AssembleFace { .. } | DragKind::AssembleExtrude { .. }
+        ) {
+            let points = assemble_drag_points(drag, &ray, &document.borrow(), &grid.borrow());
+            if let Some(points) = points {
+                assemble.borrow_mut().set_points(&points);
+                render();
+            }
             return;
         }
 
@@ -3307,7 +3541,12 @@ impl Scene3d {
             && matches!(
                 &ended,
                 Some(Drag {
-                    what: DragKind::Draw { .. } | DragKind::MoveObjects { .. } | DragKind::Click,
+                    what: DragKind::Draw { .. }
+                        | DragKind::MoveObjects { .. }
+                        | DragKind::Click
+                        | DragKind::PaintSelect { .. }
+                        | DragKind::AssembleFace { .. }
+                        | DragKind::AssembleExtrude { .. },
                     ..
                 })
             )
@@ -3716,10 +3955,9 @@ impl Scene3d {
         // The point goes where the ray meets a surface, snapped, since building a
         // shape against the geometry already there is what the tool is for.
         if *tool.borrow() == Tool::Assemble {
-            if let Some(hit) = document.pick(&ray) {
-                let at = grid
-                    .borrow()
-                    .snap_point(ray.point_at_distance(hit.distance));
+            // On the face's plane, as `AssembleBrushToolController3D::mouseClick` snaps
+            // it (`Grid::snap` with the face's boundary), which is the clip tool's point.
+            if let Some((at, _)) = clip_surface_point(&document, &grid.borrow(), &ray) {
                 if assemble.borrow_mut().add_point(at) {
                     drop(document);
                     render();
@@ -5223,6 +5461,113 @@ mod pick_tests {
         document.borrow_mut().select_only(cube);
         press_drag_with(&scene, Vec3d::new(-150.0, -60.0, 0.0), (0.0, 0.0), ctrl);
         assert!(document.borrow().is_selected(floor) && document.borrow().is_selected(cube));
+    }
+
+    /// `PaintSelectionDragTracker`: a Ctrl-drag from the unselected floor onto the cube
+    /// adds both, and Esc in the middle of one puts the selection back.
+    #[test]
+    fn a_ctrl_drag_paints_the_selection_in_3d() {
+        let (scene, document, _, floor, cube) = floor_and_cube_scene();
+        let size = (800.0, 600.0);
+        let project = |at: Vec3d| scene.camera.borrow().project(at, size.0, size.1).unwrap();
+        let from = project(Vec3d::new(-150.0, -60.0, 0.0));
+        let to = project(Vec3d::new(32.0, 32.0, 64.0));
+        let ctrl = Modifiers {
+            control: true,
+            ..Modifiers::default()
+        };
+        press_drag_with(
+            &scene,
+            Vec3d::new(-150.0, -60.0, 0.0),
+            (to.x() - from.x(), to.y() - from.y()),
+            ctrl,
+        );
+        assert!(document.borrow().is_selected(floor) && document.borrow().is_selected(cube));
+        assert!(!document.borrow().has_shape_preview());
+
+        document.borrow_mut().clear_selection();
+        scene.drag_begin(from.x(), from.y(), ctrl, size);
+        scene.click(1, from.x(), from.y(), ctrl, size);
+        scene.drag_update(to.x() - from.x(), to.y() - from.y(), ctrl, size);
+        assert!(document.borrow().is_selected(cube));
+        assert!(scene.escape());
+        assert!(!document.borrow().has_selection());
+    }
+
+    /// `AssembleBrushToolController3D`: a drag on a face draws a rectangle of four points
+    /// on it, snapped outwards to the grid, and a Shift-drag from that rectangle pulls a
+    /// copy of it up into a box. A click adds one point.
+    #[test]
+    fn assemble_drags_draw_a_face_and_pull_it_into_a_solid() {
+        let (scene, document, tool, _, _) = floor_and_cube_scene();
+        *tool.borrow_mut() = Tool::Assemble;
+        let size = (800.0, 600.0);
+        let project = |at: Vec3d| scene.camera.borrow().project(at, size.0, size.1).unwrap();
+        let from = project(Vec3d::new(-150.0, -60.0, 0.0));
+        let to = project(Vec3d::new(-100.0, -20.0, 0.0));
+        press_drag(
+            &scene,
+            Vec3d::new(-150.0, -60.0, 0.0),
+            (to.x() - from.x(), to.y() - from.y()),
+        );
+        let mut points = scene.assemble.borrow().points().to_vec();
+        points.sort_by(|a, b| a.x().total_cmp(&b.x()).then(a.y().total_cmp(&b.y())));
+        assert_eq!(
+            points,
+            vec![
+                Vec3d::new(-160.0, -64.0, 0.0),
+                Vec3d::new(-160.0, -16.0, 0.0),
+                Vec3d::new(-96.0, -64.0, 0.0),
+                Vec3d::new(-96.0, -16.0, 0.0),
+            ]
+        );
+        assert!(scene.assemble.borrow().polygon().is_some());
+        assert!(!document.borrow().has_selection());
+
+        let shift = Modifiers {
+            shift: true,
+            ..Modifiers::default()
+        };
+        press_drag_with(&scene, Vec3d::new(-128.0, -40.0, 0.0), (0.0, -120.0), shift);
+        let hull = scene.assemble.borrow().hull().expect("a box");
+        assert_eq!(hull.vertex_count(), 8);
+        assert_eq!(hull.bounds().min.z(), 0.0);
+        assert!(hull.bounds().max.z() > 0.0);
+        assert_eq!(hull.bounds().max.z() % 16.0, 0.0);
+
+        scene.assemble.borrow_mut().reset();
+        press_drag(&scene, Vec3d::new(-150.0, -60.0, 0.0), (0.0, 0.0));
+        assert_eq!(
+            scene.assemble.borrow().points(),
+            &[Vec3d::new(-144.0, -64.0, 0.0)]
+        );
+    }
+
+    /// Esc during an assemble drag puts the points back.
+    #[test]
+    fn escape_takes_back_an_assemble_drag() {
+        let (scene, _, tool, _, _) = floor_and_cube_scene();
+        *tool.borrow_mut() = Tool::Assemble;
+        scene
+            .assemble
+            .borrow_mut()
+            .add_point(Vec3d::new(0.0, 0.0, 128.0));
+        let size = (800.0, 600.0);
+        let at = scene
+            .camera
+            .borrow()
+            .project(Vec3d::new(-150.0, -60.0, 0.0), size.0, size.1)
+            .unwrap();
+        let mods = Modifiers::default();
+        scene.drag_begin(at.x(), at.y(), mods, size);
+        scene.click(1, at.x(), at.y(), mods, size);
+        scene.drag_update(40.0, 20.0, mods, size);
+        assert_eq!(scene.assemble.borrow().points().len(), 5);
+        assert!(scene.escape());
+        assert_eq!(
+            scene.assemble.borrow().points(),
+            &[Vec3d::new(0.0, 0.0, 128.0)]
+        );
     }
 
     /// Alt at the press lifts a move off the ground.

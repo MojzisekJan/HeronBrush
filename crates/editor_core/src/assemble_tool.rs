@@ -10,10 +10,17 @@
 //! everything, and neither is worth trying to track incrementally.
 
 use geometry_math::bbox::Bbox3d;
+use geometry_math::intersection;
+use geometry_math::plane::Plane3d;
+use geometry_math::ray::Ray3d;
 use geometry_math::scalar::Float;
-use geometry_math::vec::{self, Vec3d};
+use geometry_math::vec;
+use geometry_math::vec::Vec2d;
+use geometry_math::vec::Vec3d;
 use map_model::brush::Brush;
 use map_model::polyhedron::Polyhedron;
+
+use crate::grid::Grid;
 
 /// How close two points have to be to count as the same one.
 const SAME_POINT: f64 = 0.001;
@@ -80,12 +87,140 @@ impl AssembleBrushTool {
             .map(|hull| Brush::from_polyhedron(hull, material))
     }
 
-    /// The edges of the solid so far, for drawing what the points have come to.
-    pub fn edges(&self) -> Vec<(Vec3d, Vec3d)> {
-        self.hull()
-            .map(|hull| Brush::from_polyhedron(hull, "").edge_positions())
-            .unwrap_or_default()
+    /// Puts back the points as they were, for a drag that is undone or measured again
+    /// from where it began.
+    pub fn set_points(&mut self, points: &[Vec3d]) {
+        self.points.clear();
+        for point in points {
+            self.add_point(*point);
+        }
     }
+
+    /// The edges of the solid so far, for drawing what the points have come to. Points
+    /// that lie in one plane are drawn as the outline of the polygon they make.
+    pub fn edges(&self) -> Vec<(Vec3d, Vec3d)> {
+        if let Some(hull) = self.hull() {
+            return Brush::from_polyhedron(hull, "").edge_positions();
+        }
+        let Some((ring, _)) = self.polygon() else {
+            return Vec::new();
+        };
+        (0..ring.len())
+            .map(|index| (ring[index], ring[(index + 1) % ring.len()]))
+            .collect()
+    }
+
+    /// The polygon the points make when they lie in one plane without lying on one line:
+    /// its corners in order around it, and its normal. `Polyhedron3::polygon`, the state
+    /// a face drawn by dragging leaves the tool in.
+    pub fn polygon(&self) -> Option<(Vec<Vec3d>, Vec3d)> {
+        let first = *self.points.first()?;
+        let second = *self
+            .points
+            .iter()
+            .find(|point| vec::squared_distance(**point, first) > SAME_POINT * SAME_POINT)?;
+        let normal = self.points.iter().find_map(|point| {
+            let normal = vec::cross(second - first, *point - first);
+            (vec::length(normal) > SAME_POINT).then(|| vec::normalize(normal))
+        })?;
+        let plane = Plane3d::from_anchor_and_normal(first, normal);
+        if self
+            .points
+            .iter()
+            .any(|point| plane.point_distance(*point).abs() > SAME_POINT)
+        {
+            return None;
+        }
+        Some((convex_ring(&self.points, normal), normal))
+    }
+
+    /// Where `ray` meets the polygon the points make, as a distance along it, and the
+    /// polygon's normal facing the ray. `Polyhedron3::pickFace`.
+    pub fn pick_polygon(&self, ray: &Ray3d) -> Option<(f64, Vec3d)> {
+        let (ring, normal) = self.polygon()?;
+        let plane = Plane3d::from_anchor_and_normal(ring[0], normal);
+        let distance = intersection::intersect_ray_polygon_in_plane(ray, &plane, &ring)?;
+        let facing = if vec::dot(normal, ray.direction) > 0.0 {
+            -normal
+        } else {
+            normal
+        };
+        Some((distance, facing))
+    }
+}
+
+/// The four corners of the rectangle a drag from `from` to `to` draws on a face in
+/// `plane`: `DrawFaceDragDelegate::updatePolyhedron`. The two points are snapped outwards
+/// to the grid on the two axes the face is seen best along, and the corners put back on
+/// the face's plane along the third.
+pub fn face_rectangle(plane: &Plane3d, from: Vec3d, to: Vec3d, grid: &Grid) -> [Vec3d; 4] {
+    let axis = plane.normal.find_abs_max_component(0);
+    let swizzled = Plane3d::from_anchor_and_normal(
+        vec::swizzle(plane.anchor(), axis),
+        vec::swizzle(plane.normal, axis),
+    );
+    let low = vec::swizzle(grid.snap_down_point(vec::min(from, to)), axis);
+    let high = vec::swizzle(grid.snap_up_point(vec::max(from, to)), axis);
+    let corner = |x: f64, y: f64| {
+        let z = swizzled.z_at(Vec2d::new(x, y));
+        vec::unswizzle(Vec3d::new(x, y, z), axis)
+    };
+    [
+        corner(low.x(), low.y()),
+        corner(high.x(), low.y()),
+        corner(low.x(), high.y()),
+        corner(high.x(), high.y()),
+    ]
+}
+
+/// The corners of the convex polygon around `points`, which lie in the plane with
+/// `normal`, in order around it.
+fn convex_ring(points: &[Vec3d], normal: Vec3d) -> Vec<Vec3d> {
+    // Monotone chain on the two axes the plane is seen best along.
+    let axis = normal.find_abs_max_component(0);
+    let mut sorted: Vec<Vec3d> = Vec::new();
+    for point in points {
+        if !sorted
+            .iter()
+            .any(|kept| vec::squared_distance(*kept, *point) <= SAME_POINT * SAME_POINT)
+        {
+            sorted.push(*point);
+        }
+    }
+    let flat = |point: Vec3d| {
+        let swizzled = vec::swizzle(point, axis);
+        (swizzled.x(), swizzled.y())
+    };
+    sorted.sort_by(|a, b| {
+        let (ax, ay) = flat(*a);
+        let (bx, by) = flat(*b);
+        ax.total_cmp(&bx).then(ay.total_cmp(&by))
+    });
+    let turn = |o: Vec3d, a: Vec3d, b: Vec3d| {
+        let (ox, oy) = flat(o);
+        let (ax, ay) = flat(a);
+        let (bx, by) = flat(b);
+        (ax - ox) * (by - oy) - (ay - oy) * (bx - ox)
+    };
+    let mut ring: Vec<Vec3d> = Vec::new();
+    for pass in [false, true] {
+        let start = ring.len();
+        let ordered: Vec<Vec3d> = if pass {
+            sorted.iter().rev().copied().collect()
+        } else {
+            sorted.clone()
+        };
+        for point in ordered {
+            while ring.len() >= start + 2
+                && turn(ring[ring.len() - 2], ring[ring.len() - 1], point) <= SAME_POINT
+            {
+                ring.pop();
+            }
+            ring.push(point);
+        }
+        ring.pop();
+    }
+    ring
 }
 
 #[cfg(test)]

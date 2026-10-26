@@ -1467,6 +1467,11 @@ pub enum DragMode {
     Lassoing,
     /// Sweeping a rectangle over a tool's handles, with a handle tool in hand.
     LassoingHandles,
+    /// A Ctrl-drag from something unselected, adding whatever it passes over to the
+    /// selection (`PaintSelectionDragTracker`).
+    PaintingSelection,
+    /// [`Self::PaintingSelection`] with Shift, which adds faces.
+    PaintingFaces,
     /// The press took hold of the sweep tool's destination cap, so the drag moves it.
     MovingSweepCap,
 }
@@ -1518,6 +1523,10 @@ pub struct DragState {
     /// A Ctrl-drag's copy of the selection: wanted when the move begins, then made, with
     /// where the history stood before it, so the copy and its move undo as one.
     pub duplicate: Duplicate,
+    /// A handle a Ctrl-press added to what is picked, to be the only one picked once the
+    /// press becomes a drag (`NodeHandleToolBase::startMove`). Let go where it was, the
+    /// press was a Ctrl-click, which adds it.
+    pub narrow_to: Option<Vec3d>,
 }
 
 /// Where a Ctrl-drag's duplicate stands (`MoveObjectsTool::m_duplicateObjects`).
@@ -2200,6 +2209,7 @@ impl SelectAndMove {
                 Vec2d::new(x, y),
             );
             *drag.borrow_mut() = DragState {
+                narrow_to: None,
                 origin: Vec2d::new(x, y),
                 current: Vec2d::new(x, y),
                 applied: Vec3d::zero(),
@@ -2249,6 +2259,7 @@ impl SelectAndMove {
                 None
             };
             *drag.borrow_mut() = DragState {
+                narrow_to: None,
                 origin: Vec2d::new(x, y),
                 current: Vec2d::new(x, y),
                 applied: Vec3d::zero(),
@@ -2336,6 +2347,7 @@ impl SelectAndMove {
                         toggle: modifiers.control,
                     });
                 *drag.borrow_mut() = DragState {
+                    narrow_to: None,
                     origin: Vec2d::new(x, y),
                     current: Vec2d::new(x, y),
                     applied: Vec3d::zero(),
@@ -2375,6 +2387,7 @@ impl SelectAndMove {
                 document.borrow_mut().begin_transaction();
             }
             *drag.borrow_mut() = DragState {
+                narrow_to: None,
                 origin: Vec2d::new(x, y),
                 current: Vec2d::new(x, y),
                 applied: Vec3d::zero(),
@@ -2410,6 +2423,7 @@ impl SelectAndMove {
             }
             state.borrow_mut().scaling = picked.map(|(handle, _)| handle);
             *drag.borrow_mut() = DragState {
+                narrow_to: None,
                 origin: Vec2d::new(x, y),
                 current: Vec2d::new(x, y),
                 applied: Vec3d::zero(),
@@ -2485,12 +2499,13 @@ impl SelectAndMove {
             let had_picked = handles.selected_count() > 0;
             // `NodeHandleToolControllerParts`: a Ctrl-click on a picked handle unpicks it,
             // on release, so a Ctrl-drag from it still moves what is picked.
-            let unpick = if add_to_selection && !modifiers.shift {
+            let under = if add_to_selection && !modifiers.shift {
                 pick_handle(&state.borrow(), &handles, viewport, Vec2d::new(x, y))
-                    .filter(|position| handles.is_selected(*position))
             } else {
                 None
             };
+            let unpick = under.filter(|position| handles.is_selected(*position));
+            let unpicked = under.filter(|position| !handles.is_selected(*position));
             let mode = begin_handle_drag(
                 &state.borrow(),
                 &mut handles,
@@ -2535,6 +2550,7 @@ impl SelectAndMove {
                     None => None,
                 },
                 duplicate: Duplicate::No,
+                narrow_to: unpicked.filter(|_| mode == DragMode::MovingHandle),
             };
             redraw();
             // Which handles are picked is what the fillet panel works from,
@@ -2608,6 +2624,7 @@ impl SelectAndMove {
         let duplicate = grabbed_selected && modifiers.control;
 
         *drag.borrow_mut() = DragState {
+            narrow_to: None,
             origin: Vec2d::new(x, y),
             current: Vec2d::new(x, y),
             applied: Vec3d::zero(),
@@ -2627,8 +2644,10 @@ impl SelectAndMove {
                     }
                     DragMode::Moving
                 }
-                // Ctrl toggles on release; a Ctrl-drag does nothing yet.
-                Some(_) if add_to_selection || !draws => DragMode::Idle,
+                // Ctrl toggles on release, and a Ctrl-drag paints the selection.
+                Some(_) if add_to_selection && pick_face => DragMode::PaintingFaces,
+                Some(_) if add_to_selection => DragMode::PaintingSelection,
+                Some(_) if !draws => DragMode::Idle,
                 Some(_) => DragMode::Creating,
                 None => empty_space_drag_mode(had_selection, add_to_selection, *tool.borrow()),
             },
@@ -2948,15 +2967,23 @@ impl SelectAndMove {
 
             let grid = *grid.borrow();
             let mut handles = handles.borrow_mut();
+            if let Some(position) = drag.narrow_to.take() {
+                handles.select(position, false);
+            }
             if handles.selected_vertices().is_empty() {
                 return;
             }
 
             // Relative snapping rounds the drag delta, preserving the initial off-grid offset.
-            // Control enables absolute snapping of the handle position.
-            let ctrl = modifiers.control;
-            let total = if ctrl {
-                let anchor = handles.selected_anchor().unwrap_or(Vec3d::zero());
+            // Ctrl snaps the dragged handle itself to the grid, which only the vertex tool
+            // allows (`VertexTool::allowAbsoluteSnapping`).
+            let absolute = modifiers.control && handles.kind() == Some(HandleKind::Vertex);
+            let grabbed = state
+                .borrow()
+                .dragging_handle
+                .map(|at| at - drag.applied)
+                .or_else(|| handles.selected_anchor());
+            let total = if let (true, Some(anchor)) = (absolute, grabbed) {
                 grid.snap_point(anchor + asked) - anchor
             } else {
                 grid.snap_point(asked)
@@ -3028,6 +3055,48 @@ impl SelectAndMove {
             drop(document);
             drop(drag);
             redraw();
+            return;
+        }
+
+        if matches!(
+            drag.mode,
+            DragMode::PaintingSelection | DragMode::PaintingFaces
+        ) {
+            // Still a click until the pointer has moved off the spot.
+            if drag.click.is_some() && vec::length(Vec2d::new(dx, dy)) < DRAG_THRESHOLD {
+                return;
+            }
+            let faces = drag.mode == DragMode::PaintingFaces;
+            let ray = state
+                .borrow()
+                .camera
+                .ray_through(drag.current, viewport, PICK_REACH);
+            let mut document = document.borrow_mut();
+            // What the press was on goes in first, as `SelectionTool::acceptMouseDrag`
+            // selects it before the tracker follows the pointer; the press is no longer
+            // a click.
+            let mut changed = match drag.click.take() {
+                Some(Click::Object { node, .. }) if !faces => document.paint_select(node),
+                Some(Click::Face { face, .. }) if faces => document.paint_select_face(face),
+                _ => false,
+            };
+            if let Some(hit) = document.pick_flat(&ray) {
+                changed |= match (faces, hit.face) {
+                    (true, Some(face)) => document.paint_select_face(FaceRef {
+                        node: hit.node,
+                        face,
+                    }),
+                    (true, None) => false,
+                    (false, _) => document.paint_select(hit.node),
+                };
+            }
+            drop(document);
+            drop(drag);
+            if changed {
+                redraw_everywhere();
+                redraw();
+                refresh_panels();
+            }
             return;
         }
 
@@ -3430,10 +3499,17 @@ impl SelectAndMove {
         if drag.mode == DragMode::Idle {
             return;
         }
-        if drag.mode == DragMode::Lassoing {
+        let painting = matches!(
+            drag.mode,
+            DragMode::PaintingSelection | DragMode::PaintingFaces
+        );
+        if drag.mode == DragMode::Lassoing || (painting && !keep) {
+            // Esc while painting the selection undoes it, as `cancelTransaction` does.
             if let Some(initial) = marquee.borrow_mut().take() {
                 document.borrow_mut().restore_selection(&initial);
             }
+        } else if painting {
+            marquee.borrow_mut().take();
         } else if keep {
             document.borrow_mut().commit_transaction();
         } else {
@@ -4865,6 +4941,77 @@ mod tests {
         drag_from(&drag, corner, Vec2d::new(0.0, 0.0), ctrl, viewport);
         assert_eq!(drag.handles.borrow().selected_count(), 0);
         assert!(drag.document.borrow().is_selected(cube));
+    }
+
+    /// `PaintSelectionDragTracker`: a Ctrl-drag from the unselected floor over the cube
+    /// adds both and draws nothing; Esc in the middle of one puts the selection back.
+    #[test]
+    fn a_ctrl_drag_paints_the_selection_in_a_flat_view() {
+        let (document, floor, cube) = floor_and_cube();
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let from = camera.world_to_screen(Vec3d::new(-200.0, -200.0, 0.0), viewport);
+        let to = camera.world_to_screen(Vec3d::new(32.0, 32.0, 0.0), viewport);
+        let ctrl = Modifiers {
+            control: true,
+            ..Modifiers::default()
+        };
+        drag_from(&drag, from, to - from, ctrl, viewport);
+        {
+            let document = drag.document.borrow();
+            assert!(document.is_selected(floor) && document.is_selected(cube));
+            assert!(!document.has_shape_preview());
+        }
+
+        drag.document.borrow_mut().clear_selection();
+        drag.begin(from.x(), from.y(), ctrl, viewport);
+        let by = to - from;
+        drag.update(by.x(), by.y(), ctrl, viewport);
+        assert!(drag.document.borrow().is_selected(cube));
+        assert!(drag.escape());
+        assert!(!drag.document.borrow().has_selection());
+    }
+
+    /// `NodeHandleToolBase::startMove`: a Ctrl-drag of a vertex that is not picked moves
+    /// that vertex alone, though a Ctrl-click would have added it to what is picked.
+    #[test]
+    fn a_ctrl_drag_of_an_unpicked_vertex_moves_only_it() {
+        let (mut document, _, cube) = floor_and_cube();
+        document.select_only(cube);
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        *drag.tool.borrow_mut() = Tool::Vertex;
+        let picked = camera.world_to_screen(Vec3d::new(64.0, 64.0, 0.0), viewport);
+        drag_from(
+            &drag,
+            picked,
+            Vec2d::new(0.0, 0.0),
+            Modifiers::default(),
+            viewport,
+        );
+        assert!(drag.handles.borrow().selected_count() > 0);
+
+        let ctrl = Modifiers {
+            control: true,
+            ..Modifiers::default()
+        };
+        let from = camera.world_to_screen(Vec3d::new(0.0, 0.0, 0.0), viewport);
+        let to = camera.world_to_screen(Vec3d::new(-16.0, 0.0, 0.0), viewport);
+        drag_from(&drag, from, to - from, ctrl, viewport);
+        let vertices = drag
+            .document
+            .borrow()
+            .brush(cube)
+            .unwrap()
+            .vertex_positions();
+        assert!(
+            vertices.contains(&Vec3d::new(64.0, 64.0, 0.0)),
+            "the picked corner moved"
+        );
+        assert!(
+            vertices.contains(&Vec3d::new(-16.0, 0.0, 0.0)),
+            "the dragged corner stayed"
+        );
     }
 
     /// `SelectionTool::drillSelection`: Ctrl and the wheel move the selection to the next

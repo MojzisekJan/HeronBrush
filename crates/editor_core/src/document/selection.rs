@@ -522,6 +522,34 @@ impl Document {
         self.mark_selection_changed();
     }
 
+    /// Adds the given node to the selection as a Ctrl-drag passes over it, and never takes
+    /// anything out: `PaintSelectionDragTracker`. A selection of faces is dropped first,
+    /// since faces and objects are not selected together. Returns whether anything changed.
+    pub fn paint_select(&mut self, id: NodeId) -> bool {
+        let members = self.selection_for(id);
+        if self.face_selection.is_empty()
+            && members.iter().all(|member| self.selection.contains(member))
+        {
+            return false;
+        }
+        self.face_selection.clear();
+        self.selection.extend(members);
+        self.mark_selection_changed();
+        true
+    }
+
+    /// [`Self::paint_select`] for a face, which a Ctrl+Shift drag paints. Selected objects
+    /// are dropped first. Returns whether anything changed.
+    pub fn paint_select_face(&mut self, face: FaceRef) -> bool {
+        if self.selection.is_empty() && self.face_selection.contains(&face) {
+            return false;
+        }
+        self.selection.clear();
+        self.face_selection.insert(face);
+        self.mark_selection_changed();
+        true
+    }
+
     pub fn selection_snapshot(&self) -> SelectionSnapshot {
         SelectionSnapshot {
             nodes: self.selection.clone(),
