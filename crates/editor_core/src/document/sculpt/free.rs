@@ -10,7 +10,7 @@ use map_model::voxel::RANGE;
 /// What a free stroke remembers between dabs.
 pub(super) struct Free {
     /// How far apart the grid's samples are: the grid step.
-    step: f64,
+    pub(super) step: f64,
     /// The samples the stroke's brushes were last built from, by their place on the
     /// world's grid. A dab starts from these rather than measuring the brushes again, so
     /// dab after dab adds up exactly; measured again, a small change to a narrow pit is
@@ -89,8 +89,42 @@ fn spread_over(corners: &[Vec3d], normal: Vec3d, spacing: f64, within: &Bbox3d) 
         .filter(|p| within.contains_point(*p))
         .collect();
     let steps = |from: f64, to: f64| ((to - from) / spacing).ceil().max(0.0) as usize;
-    for i in 0..=steps(lo.0, hi.0) {
-        for j in 0..=steps(lo.1, hi.1) {
+    // Keep the face's original sampling lattice, but visit only its projection
+    // inside the dab's box. A small brush on a large wall must not scan the wall.
+    let (clip_lo, clip_hi) = (0..8)
+        .map(|n| {
+            across(Vec3d::new(
+                if n & 1 == 0 {
+                    within.min.x()
+                } else {
+                    within.max.x()
+                },
+                if n & 2 == 0 {
+                    within.min.y()
+                } else {
+                    within.max.y()
+                },
+                if n & 4 == 0 {
+                    within.min.z()
+                } else {
+                    within.max.z()
+                },
+            ))
+        })
+        .fold(
+            (
+                (f64::INFINITY, f64::INFINITY),
+                (f64::NEG_INFINITY, f64::NEG_INFINITY),
+            ),
+            |(lo, hi), (a, b)| ((lo.0.min(a), lo.1.min(b)), (hi.0.max(a), hi.1.max(b))),
+        );
+    let range = |from: f64, to: f64, clip_from: f64, clip_to: f64| {
+        let first = ((clip_from - from) / spacing).floor().max(0.0) as usize;
+        let last = (((clip_to - from) / spacing).ceil().max(0.0) as usize).min(steps(from, to));
+        first..=last
+    };
+    for i in range(lo.0, hi.0, clip_lo.0, clip_hi.0) {
+        for j in range(lo.1, hi.1, clip_lo.1, clip_hi.1) {
             let a = (lo.0 + i as f64 * spacing).min(hi.0);
             let b = (lo.1 + j as f64 * spacing).min(hi.1);
             let p = origin + u * a + v * b;
@@ -426,6 +460,9 @@ impl Document {
                 }
             }
         }
+        // Surface queries also protect the back of thin walls throughout the dab.
+        let exact = radius + 2.0 * step;
+        let query_reach = reach.max(exact);
         // The faces by where they reach, in cells two steps wide.
         let size = step * 2.0;
         let bucket = |p: Vec3d| [0, 1, 2].map(|a| (p[a] / size).floor() as i64);
@@ -435,8 +472,8 @@ impl Document {
                 continue;
             };
             let (lo, hi) = (
-                bucket(bounds.min - Vec3d::new(reach, reach, reach)),
-                bucket(bounds.max + Vec3d::new(reach, reach, reach)),
+                bucket(bounds.min - Vec3d::new(query_reach, query_reach, query_reach)),
+                bucket(bounds.max + Vec3d::new(query_reach, query_reach, query_reach)),
             );
             for x in lo[0]..=hi[0] {
                 for y in lo[1]..=hi[1] {
@@ -446,46 +483,60 @@ impl Document {
                 }
             }
         }
-        // Past the ball the dab changes nothing, so a sample there needs only its side of
-        // the surface, unless it is a corner of a cell the dab can change.
-        let exact = radius + 2.0 * step;
-        let depth = |p: Vec3d| {
-            let inside = around.covers(p);
-            if vec::length(p - centre) > exact {
-                return if inside { RANGE } else { -RANGE };
+        // The closest exposed surface, including its direction. The query extends
+        // throughout the brush radius so a large dab cannot start adding again beyond
+        // the narrow distance-field range on the back of a thin wall.
+        let surface_cache = std::cell::RefCell::new(HashMap::new());
+        let surface = |p: Vec3d| {
+            let at = [0, 1, 2].map(|axis| (p[axis] / step).round() as i64);
+            if let Some(cached) = surface_cache.borrow().get(&at).copied() {
+                return cached;
             }
-            // Faces by how far their boxes are, nearest first: a face whose box is
-            // further than the best found so far cannot do better.
             let mut near: Vec<(f64, usize)> = buckets
                 .get(&bucket(p))
                 .into_iter()
                 .flatten()
                 .map(|&index| (box_distance(p, &faces[index].bounds), index))
-                .filter(|(d, _)| *d < reach)
+                .filter(|(d, _)| *d < query_reach)
                 .collect();
             near.sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
-            // A face's nearest point is the surface where nothing covers it there; a face
-            // covered at that point counts by its nearest outside sample instead.
-            let mut distance = reach;
+            let mut distance = query_reach;
+            let mut normal = Vec3d::zero();
             for (lower, index) in near {
-                if lower >= distance {
+                if lower > distance {
                     break;
                 }
                 let face = &faces[index];
                 let q = nearest_on(p, &face.corners, face.normal);
                 let d = vec::length(p - q);
-                if d >= distance {
+                if d > distance {
                     continue;
                 }
-                distance = if around.covers(q + face.normal * 0.01) {
+                let d = if around.covers(q + face.normal * 0.01) {
                     face.samples
                         .iter()
                         .map(|s| vec::length(p - *s))
-                        .fold(distance, f64::min)
+                        .fold(query_reach, f64::min)
                 } else {
                     d
                 };
+                if d < distance
+                    || ((d - distance).abs() < 1e-9
+                        && vec::dot(face.normal, along) > vec::dot(normal, along))
+                {
+                    distance = d;
+                    normal = face.normal;
+                }
             }
+            surface_cache.borrow_mut().insert(at, (distance, normal));
+            (distance, normal)
+        };
+        let depth = |p: Vec3d| {
+            let inside = around.covers(p);
+            if vec::length(p - centre) > exact {
+                return if inside { RANGE } else { -RANGE };
+            }
+            let distance = surface(p).0.min(reach);
             ((if inside { distance } else { -distance }) / step) as f32
         };
         let samples = stroke.free.as_ref().map(|free| &free.samples);
@@ -508,7 +559,15 @@ impl Document {
             },
         };
         let before = field.clone();
-        if field.sculpt(centre, radius, strength, tool).is_none() {
+        // Add must not grow the opposite side of a thin ceiling or wall simply
+        // because the backing half-ball reaches through it. Side-facing surfaces
+        // remain available for overhangs, branches and lateral growth.
+        let affects =
+            |p| parameters.mode != SculptMode::Raise || vec::dot(surface(p).1, along) >= -1e-6;
+        if field
+            .sculpt_where(centre, radius, strength, tool, affects)
+            .is_none()
+        {
             return false;
         }
         // Only the cells the dab changed are built again; the rest keep the brushes as
@@ -829,6 +888,81 @@ mod tests {
         assert!(solid_at(&d, Vec3d::new(0.5, 0.5, 31.5)));
     }
 
+    #[test]
+    fn local_surface_sampling_keeps_the_original_lattice() {
+        for normal in [
+            Vec3d::new(0.0, 0.0, 1.0),
+            vec::normalize(Vec3d::new(1.0, 2.0, 3.0)),
+        ] {
+            let (u, v) = square_to(normal);
+            let corners = [-u - v, u - v, u + v, -u + v].map(|p| p * 128.0);
+            let all = spread_over(
+                &corners,
+                normal,
+                8.0,
+                &Bbox3d::new(Vec3d::fill(-512.0), Vec3d::fill(512.0)),
+            );
+            for bounds in [
+                Bbox3d::new(
+                    Vec3d::new(-31.1, -15.3, -20.0),
+                    Vec3d::new(37.0, 29.0, 20.0),
+                ),
+                Bbox3d::new(
+                    Vec3d::new(110.0, -140.0, -64.0),
+                    Vec3d::new(145.0, 3.0, 64.0),
+                ),
+                Bbox3d::new(Vec3d::fill(200.0), Vec3d::fill(220.0)),
+            ] {
+                let expected: Vec<_> = all
+                    .iter()
+                    .copied()
+                    .filter(|p| bounds.contains_point(*p))
+                    .collect();
+                assert_eq!(spread_over(&corners, normal, 8.0, &bounds), expected);
+            }
+        }
+    }
+
+    #[test]
+    #[ignore = "interactive latency measurement"]
+    fn small_dab_latency() {
+        let map = read_map(
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../gamedata/heron_brush/initial_valve.map"
+            )),
+            None,
+        )
+        .unwrap();
+        let mut d = Document::from_map_owned(map, Default::default(), None);
+        d.clear_selection();
+        let parameters = SculptParameters {
+            radius: 8.0,
+            ..Default::default()
+        };
+        let mut stroke = d.begin_free_stroke(16.0, Vec3d::new(0.0, 0.0, 1.0));
+        for i in 0..8 {
+            let started = std::time::Instant::now();
+            let changed = d.sculpt_dab(
+                Vec3d::new(0.3 + f64::from(i) * 8.0, 0.7, 144.0),
+                &parameters,
+                &mut stroke,
+            );
+            eprintln!(
+                "DAB {i}: {:?}, {} brushes, changed={changed}",
+                started.elapsed(),
+                brushes(&d).len()
+            );
+        }
+        let started = std::time::Instant::now();
+        d.end_free_stroke(&mut stroke);
+        eprintln!(
+            "END: {:?}, {} brushes",
+            started.elapsed(),
+            brushes(&d).len()
+        );
+    }
+
     /// How long a dab takes on a large flat slab:
     /// `cargo test --release -p editor_core --lib sculpt::free::tests::speed -- --ignored --nocapture`.
     #[test]
@@ -927,6 +1061,169 @@ mod tests {
         .unwrap()]);
         d.clear_selection();
         d
+    }
+
+    #[test]
+    fn normal_freeform_dabs_change_the_clicked_side_after_hull_rebuild() {
+        for axis in 0..3 {
+            for sign in [-1.0, 1.0] {
+                for mode in [SculptMode::Raise, SculptMode::Lower] {
+                    let mut d = Document::new(Default::default());
+                    let original = map_model::shapes::create_cuboid(
+                        &d.world_bounds(),
+                        &Bbox3d::new(Vec3d::zero(), Vec3d::fill(128.0)),
+                        "stone",
+                    )
+                    .unwrap()
+                    .map_vertices(|p| p)
+                    .unwrap();
+                    let mut faces = original.faces().to_vec();
+                    faces.reverse();
+                    faces.rotate_left(2);
+                    d.add_brushes(vec![Brush::from_faces(&d.world_bounds(), faces).unwrap()]);
+                    d.select_all();
+                    let before = d.to_map_text();
+                    let mut normal = Vec3d::zero();
+                    normal[axis] = sign;
+                    let ray =
+                        geometry_math::ray::Ray3d::new(Vec3d::fill(64.0) + normal * 256.0, -normal);
+                    let back_ray =
+                        geometry_math::ray::Ray3d::new(Vec3d::fill(64.0) - normal * 256.0, normal);
+                    let at = d.sculpt_target(&ray).unwrap();
+                    let back = d.sculpt_target(&back_ray).unwrap();
+                    let along = d.sculpt_axis(&ray, SculptDirection::Normal).unwrap();
+                    let mut stroke = d.begin_free_stroke(16.0, along);
+                    let parameters = SculptParameters {
+                        direction: SculptDirection::Normal,
+                        form: crate::sculpt::SculptForm::Free,
+                        mode,
+                        radius: 24.0,
+                        strength: 1.0,
+                        ..Default::default()
+                    };
+                    for _ in 0..3 {
+                        assert!(d.sculpt_dab(at, &parameters, &mut stroke));
+                    }
+                    d.end_free_stroke(&mut stroke);
+                    let changed = d.sculpt_target(&ray).unwrap();
+                    let delta = vec::dot(changed - at, normal);
+                    if mode == SculptMode::Raise {
+                        assert!(delta > 0.1, "axis {axis}, sign {sign}: Raise moved {delta}");
+                    } else {
+                        assert!(
+                            delta < -0.1,
+                            "axis {axis}, sign {sign}: Lower moved {delta}"
+                        );
+                    }
+                    assert!(
+                        vec::length(d.sculpt_target(&back_ray).unwrap() - back) < 1e-6,
+                        "the opposite side must stay put"
+                    );
+                    d.undo();
+                    assert_eq!(d.to_map_text(), before, "one Undo restores the stroke");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn raising_the_starting_room_ceiling_from_above_does_not_fill_the_room() {
+        for radius in [32.0, 128.0] {
+            let map = read_map(
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../../gamedata/heron_brush/initial_valve.map"
+                )),
+                None,
+            )
+            .unwrap();
+            let mut d = Document::from_map_owned(map, Default::default(), None);
+            d.clear_selection();
+            let ray = geometry_math::ray::Ray3d::new(
+                Vec3d::new(0.3, 0.7, 256.0),
+                Vec3d::new(0.0, 0.0, -1.0),
+            );
+            let hit = d.sculpt_target(&ray).unwrap();
+            let along = d.sculpt_axis(&ray, SculptDirection::Normal).unwrap();
+            assert!((hit.z() - 144.0).abs() < 1e-6);
+            assert!(vec::length(along - Vec3d::new(0.0, 0.0, 1.0)) < 1e-6);
+            let parameters = SculptParameters {
+                mode: SculptMode::Raise,
+                direction: SculptDirection::Normal,
+                form: crate::sculpt::SculptForm::Free,
+                radius,
+                strength: if radius == 32.0 { 1.0 } else { 0.25 },
+                ..Default::default()
+            };
+            // Undo can reinsert sibling brushes in a different order. Compare each
+            // original brush and all its face attributes by its stable node id.
+            let snapshot = |d: &Document| {
+                let mut brushes: Vec<_> = node::brushes_with_ids(d.tree_world())
+                    .into_iter()
+                    .map(|(id, brush)| (id, format!("{:?}", brush.faces())))
+                    .collect();
+                brushes.sort_by_key(|(id, _)| *id);
+                brushes
+            };
+            let before = snapshot(&d);
+            let mut stroke = d.begin_free_stroke(16.0, along);
+            assert!(d.sculpt_dab(hit, &parameters, &mut stroke));
+            d.end_free_stroke(&mut stroke);
+            assert!(
+                !solid_at(&d, Vec3d::new(0.3, 0.7, 127.0)),
+                "Raise on top of the ceiling must not grow its underside into the room"
+            );
+            assert!(
+                d.sculpt_target(&ray).unwrap().z() > 144.1,
+                "the outside top should grow"
+            );
+            d.undo();
+            assert_eq!(snapshot(&d), before);
+        }
+    }
+
+    #[test]
+    fn raising_thin_brushes_does_not_push_out_the_opposite_side() {
+        for axis in 0..3 {
+            for sign in [-1.0, 1.0] {
+                let mut size = Vec3d::fill(128.0);
+                size[axis] = 16.0;
+                let mut d = block(size);
+                if sign > 0.0 {
+                    d.select_all();
+                }
+                let before = d.to_map_text();
+                let mut normal = Vec3d::zero();
+                normal[axis] = sign;
+                let ray = geometry_math::ray::Ray3d::new(size * 0.5 + normal * 256.0, -normal);
+                let back_ray = geometry_math::ray::Ray3d::new(size * 0.5 - normal * 256.0, normal);
+                let hit = d.sculpt_target(&ray).unwrap();
+                let back = d.sculpt_target(&back_ray).unwrap();
+                let along = d.sculpt_axis(&ray, SculptDirection::Normal).unwrap();
+                let mut stroke = d.begin_free_stroke(16.0, along);
+                let parameters = SculptParameters {
+                    mode: SculptMode::Raise,
+                    radius: 40.0,
+                    strength: 1.0,
+                    ..Default::default()
+                };
+                for _ in 0..2 {
+                    assert!(d.sculpt_dab(hit, &parameters, &mut stroke));
+                }
+                d.end_free_stroke(&mut stroke);
+                assert!(vec::dot(d.sculpt_target(&ray).unwrap() - hit, normal) > 0.1);
+                assert!(
+                    vec::length(d.sculpt_target(&back_ray).unwrap() - back) < 0.01,
+                    "opposite side moved, axis={axis}, sign={sign}"
+                );
+                assert!(
+                    !solid_at(&d, back - normal * 0.5),
+                    "growth through thin brush, axis={axis}, sign={sign}"
+                );
+                d.undo();
+                assert_eq!(d.to_map_text(), before);
+            }
+        }
     }
 
     /// The button held over one spot with the Camera direction: `count` dabs, each where

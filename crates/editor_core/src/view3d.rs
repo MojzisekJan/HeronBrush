@@ -4325,7 +4325,7 @@ impl Scene3d {
                 let brush = sculpt_brush(*inverted);
                 // Dabs a spacing apart along the way, so a quick drag leaves no gaps.
                 let distance = geometry_math::vec::length(at - *last);
-                let steps = (distance / brush.spacing()).floor() as usize;
+                let steps = (distance / state.dab_spacing(&brush)).floor() as usize;
                 let mut changed = false;
                 for i in 1..=steps.min(64) {
                     let t = i as f64 / steps as f64;
@@ -5986,6 +5986,46 @@ mod pick_tests {
             }
             assert_eq!(document.borrow().to_map_text(), before);
         }
+    }
+
+    #[test]
+    fn small_freeform_drag_does_not_resculpt_each_two_units_on_a_coarse_grid() {
+        let (scene, document, tool, _, cube) = floor_and_cube_scene();
+        document.borrow_mut().select_only(cube);
+        *tool.borrow_mut() = Tool::Sculpt;
+        let previous = crate::sculpt::parameters();
+        crate::sculpt::set_parameters(crate::sculpt::SculptParameters {
+            radius: 8.0,
+            form: crate::sculpt::SculptForm::Free,
+            direction: crate::sculpt::SculptDirection::Normal,
+            ..Default::default()
+        });
+        let size = (800.0, 600.0);
+        let start = scene
+            .camera
+            .borrow()
+            .project(Vec3d::new(24.0, 32.0, 64.0), size.0, size.1)
+            .unwrap();
+        let end = scene
+            .camera
+            .borrow()
+            .project(Vec3d::new(48.0, 32.0, 64.0), size.0, size.1)
+            .unwrap();
+        scene.stroke_begin(start.x(), start.y(), Modifiers::default(), size);
+        let before = document.borrow().revision();
+        scene.stroke_update(
+            (start.x(), start.y()),
+            end.x() - start.x(),
+            end.y() - start.y(),
+            size,
+        );
+        let edits = document.borrow().revision() - before;
+        scene.stroke_end();
+        crate::sculpt::set_parameters(previous);
+        assert!(
+            edits > 0 && edits <= 3,
+            "a 24-unit move should need at most three dabs, got {edits}"
+        );
     }
 
     /// Esc in the middle of a 3D move undoes it and ends the drag.

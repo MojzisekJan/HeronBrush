@@ -76,6 +76,21 @@ Other suites:
   wasm32 with `wasm-bindgen --target nodejs`) and checks that mounting does not copy the
   archive.
 
+## Freeform sculpting
+
+Run the small-brush latency probe on the starting room:
+
+```sh
+cargo run --release -p editor_core --example sculpt_latency
+```
+
+It reports each dab, brush counts, final merging, and the number of dabs needed
+for a 64-unit drag. Use `--release` when measuring interactive performance;
+unoptimized geometry builds are substantially slower. A Freeform stroke uses
+its effective radius, including the minimum imposed by the grid, for its dab
+spacing. Surface sampling visits only the projection of the local dab region
+on each face and reuses per-sample distance queries within a dab.
+
 ## Web measurements
 
 - `examples/engine-checks/threejs/bench_web_exports.py` times repeated playtest exports

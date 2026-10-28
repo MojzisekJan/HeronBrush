@@ -17,8 +17,8 @@ impl SculptMode {
 
     pub fn name(self) -> &'static str {
         match self {
-            Self::Raise => translation_key("Raise"),
-            Self::Lower => translation_key("Lower"),
+            Self::Raise => translation_key("Add"),
+            Self::Lower => translation_key("Remove"),
             Self::Smooth => translation_key("Smooth"),
             Self::Flatten => translation_key("Flatten"),
         }
@@ -153,7 +153,7 @@ impl Default for SculptParameters {
             direction: SculptDirection::Up,
             columns: ColumnShape::Triangles,
             form: SculptForm::Bend,
-            radius: 128.0,
+            radius: 8.0,
             strength: 0.25,
         }
     }

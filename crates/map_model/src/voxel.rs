@@ -491,6 +491,19 @@ impl VoxelField {
         strength: f64,
         tool: VoxelTool,
     ) -> Option<Bbox3d> {
+        self.sculpt_where(centre, radius, strength, tool, |_| true)
+    }
+
+    /// A dab restricted to samples accepted by `affects`. Rejected samples retain
+    /// their original densities, including zero samples on protected surfaces.
+    pub fn sculpt_where(
+        &mut self,
+        centre: Vec3d,
+        radius: f64,
+        strength: f64,
+        tool: VoxelTool,
+        affects: impl Fn(Vec3d) -> bool,
+    ) -> Option<Bbox3d> {
         let strength = strength.clamp(0.0, 1.0);
         let lo = (centre - Vec3d::new(radius, radius, radius) - self.origin) / self.cell;
         let hi = (centre + Vec3d::new(radius, radius, radius) - self.origin) / self.cell;
@@ -522,7 +535,7 @@ impl VoxelField {
                         }
                         _ => falloff(distance, radius) as f32,
                     };
-                    if weight <= 0.0 {
+                    if weight <= 0.0 || !affects(p) {
                         continue;
                     }
                     let at = self.index(i, j, k);

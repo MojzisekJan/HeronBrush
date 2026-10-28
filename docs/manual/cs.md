@@ -232,7 +232,7 @@ Výběr jde rozdělit i v okně **Sochat**, které otevře tlačítko na konci l
 
 Zvolte nástroj **Sochat** (`J`) a táhněte po povrchu ve 3D pohledu. Když tlačítko držíte na místě, štětec dál pracuje na stejném místě, desetkrát za sekundu, takže kopec roste, dokud držíte. Oranžový kruh ukazuje štětec. Bez výběru štětec mění všechny brushe pod sebou, s výběrem jen ty vybrané. Lišta nahoře v okně určuje, co tah udělá:
 
-- **Zvednout** a **Snížit** posunou povrch ven nebo dovnitř, nejvíc uprostřed kruhu a na okraji vůbec. Podržením `Shift` je prohodíte.
+- **Přidat** a **Odebrat** posunou povrch ven nebo dovnitř, nejvíc uprostřed kruhu a na okraji vůbec. Podržením `Shift` je prohodíte.
 - **Vyhladit** srovná hrbolky.
 - **Zarovnat** zarovná povrch tam, kde tah začal.
 
@@ -248,9 +248,9 @@ Až budete se sochaním hotovi, vyberte terén a zvolte Geometrie → **Sloučit
 
 **Spojit brushe**, hned vedle v menu i v okně, slučuje stejně, ale nehledí na vzhled stěn: kde se dvě stěny spojí v jednu, dostane materiál jedné z nich. Funguje na jakýchkoli vybraných brushích, nejen na terénu. Čtyři kvádry do L se sloučí do dvou, nikdy do jednoho, který by L vyplnil, a celý vytvarovaný terén klesne na tolik brushů, kolik slučování sousedů najde. Slučují se jen brushe ve stejné skupině nebo entitě, takže dveře nikdy nepohltí zeď vedle sebe.
 
-Pro terén jako ve voxelových hrách rozdělte na sloupce **Čtverec** a v okně **Sochat** zvolte u **Tah** možnost **Kostky**. Tah pak posouvá celý vršek každého sloupce po celých krocích mřížky a boky nechává svislé, takže terén stoupá ve schodech. Zvednout, Snížit, Vyhladit i Zarovnat fungují jako dřív; malé tahy se sčítají, dokud sloupec nevystoupá o celý krok. Sloupce jiných tvarů zůstanou, jak jsou.
+Pro terén jako ve voxelových hrách rozdělte na sloupce **Čtverec** a v okně **Sochat** zvolte u **Tah** možnost **Kostky**. Tah pak posouvá celý vršek každého sloupce po celých krocích mřížky a boky nechává svislé, takže terén stoupá ve schodech. Přidat, Odebrat, Vyhladit i Zarovnat fungují jako dřív; malé tahy se sčítají, dokud sloupec nevystoupá o celý krok. Sloupce jiných tvarů zůstanou, jak jsou.
 
-**Volně** nepotřebuje sloupce, funguje na jakýchkoli brushích. Zvednout posouvá povrch tam, kam ukazuje **Směr**, a přidává hmotu; Snížit ho posouvá zpět a hmotu ubírá, obojí v šířce kruhu. Podržené na jednom místě vytáhnou sloup nebo vyvrtají tunel. Podržený dab pracuje na místě, které ukazatel našel na začátku, a odtud dopadá na povrch ve směru tahu, takže se **Nahoru** sloup zvedá svisle, i když se na něj díváte šikmo. **Normála** tlačí ven z plochy pod ukazatelem, takže z boku sloupu vyroste odbočka s převisem, a **Kamera** tlačí směrem k pohledu. Vyhladit povrch vyrovná a Zarovnat ho srovná do roviny, kde tah začal. Každý dab přestaví zasažené brushe na mřížce a vše ostatní nechá, jak bylo, včetně ostrých hran. Kruh sahá aspoň na dva kroky mřížky, protože nic užšího mřížka vytvarovat neumí. Výsledkem jsou obyčejné brushe, takže na ně fungují všechny ostatní nástroje, a **Spojit brushe** jejich počet potom sníží. Jemnější mřížka dává hladší povrch a víc brushů.
+**Volně** nepotřebuje sloupce, funguje na jakýchkoli brushích. Přidat posouvá povrch tam, kam ukazuje **Směr**, a přidává hmotu; Odebrat ho posouvá zpět a hmotu ubírá, obojí v šířce kruhu. Podržené na jednom místě vytáhnou sloup nebo vyvrtají tunel. Podržený dab pracuje na místě, které ukazatel našel na začátku, a odtud dopadá na povrch ve směru tahu, takže se **Nahoru** sloup zvedá svisle, i když se na něj díváte šikmo. **Normála** tlačí ven z plochy pod ukazatelem, takže z boku sloupu vyroste odbočka s převisem, a **Kamera** tlačí směrem k pohledu. Vyhladit povrch vyrovná a Zarovnat ho srovná do roviny, kde tah začal. Každý dab přestaví zasažené brushe na mřížce a vše ostatní nechá, jak bylo, včetně ostrých hran. Kruh sahá aspoň na dva kroky mřížky, protože nic užšího mřížka vytvarovat neumí. Výsledkem jsou obyčejné brushe, takže na ně fungují všechny ostatní nástroje, a **Spojit brushe** jejich počet potom sníží. Jemnější mřížka dává hladší povrch a víc brushů.
 
 # Materiály a UV
 ## Načtení a použití materiálů

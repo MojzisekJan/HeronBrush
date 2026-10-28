@@ -50,6 +50,15 @@ impl SculptStroke {
     pub fn is_free(&self) -> bool {
         self.free.is_some()
     }
+
+    /// Match the actual Freeform ball, which spans at least two grid cells even
+    /// when the displayed radius is smaller. Other stroke forms keep their spacing.
+    pub fn dab_spacing(&self, parameters: &SculptParameters) -> f64 {
+        self.free.as_ref().map_or_else(
+            || parameters.spacing(),
+            |free| parameters.free_radius(free.step) * 0.25,
+        )
+    }
 }
 
 /// A vertex position as a key, so the corner several brushes share moves once.
@@ -413,10 +422,11 @@ impl Document {
             self.pick_selected(ray)?
         };
         let brush = self.brush(picked.node)?;
-        let normal = picked
-            .face
-            .and_then(|face| brush.faces().get(face))
-            .map_or(Vec3d::new(0.0, 0.0, 1.0), |face| face.normal());
+        // Picking names a geometry face. Its source face may have a different index
+        // after rebuilding or loading a brush, so resolve the mapping before using
+        // the outward normal for both the stroke direction and its preview ring.
+        let source = brush.source_face_index(picked.face?)?;
+        let normal = brush.faces().get(source)?.normal();
         Some((
             geometry_math::abstract_line::AbstractLine::point_at_distance(ray, picked.distance),
             normal,
@@ -1427,6 +1437,44 @@ mod tests {
         // The outline lies on the wall's face, a little in front of it.
         let ring = d.sculpt_ring(Vec3d::new(16.0, 32.0, 32.0), 16.0, normal);
         assert!(ring.iter().all(|p| (p.x() - 16.5).abs() < 1e-6), "{ring:?}");
+    }
+
+    #[test]
+    fn sculpt_normal_tracks_the_hit_geometry_after_source_faces_are_reordered() {
+        let mut d = Document::new(Default::default());
+        let brush = map_model::shapes::create_cuboid(
+            &d.world_bounds(),
+            &Bbox3d::new(Vec3d::zero(), Vec3d::fill(128.0)),
+            "stone",
+        )
+        .unwrap();
+        let brush = brush.map_vertices(|p| p).unwrap();
+        let mut faces = brush.faces().to_vec();
+        faces.reverse();
+        faces.rotate_left(2);
+        let brush = Brush::from_faces(&d.world_bounds(), faces).unwrap();
+        assert!((0..brush.geometry().face_count()).any(|f| brush.source_face_index(f) != Some(f)));
+        d.add_brushes(vec![brush]);
+        for selected in [true, false] {
+            if selected {
+                d.select_all();
+            } else {
+                d.clear_selection();
+            }
+            for axis in 0..3 {
+                for sign in [-1.0, 1.0] {
+                    let mut normal = Vec3d::zero();
+                    normal[axis] = sign;
+                    let ray =
+                        geometry_math::ray::Ray3d::new(Vec3d::fill(64.0) + normal * 256.0, -normal);
+                    let actual = d.sculpt_axis(&ray, SculptDirection::Normal).unwrap();
+                    assert!(vec::length(actual - normal) < 1e-8,
+                    "selected={selected}, axis={axis}, sign={sign}: {actual:?} instead of {normal:?}");
+                    let hit = d.sculpt_target(&ray).unwrap();
+                    assert!((hit[axis] - if sign > 0.0 { 128.0 } else { 0.0 }).abs() < 1e-8);
+                }
+            }
+        }
     }
 
     /// Every face omitted at export that nothing covers: a hole the export would show.
