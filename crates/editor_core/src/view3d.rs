@@ -815,6 +815,8 @@ pub enum AttrStroke {
         source: FaceRef,
         mode: FaceAttributeTransfer,
         touched: Vec<FaceRef>,
+        mark: usize,
+        revision: u64,
     },
     Paint {
         state: crate::document::MaterialStroke,
@@ -3788,10 +3790,18 @@ impl Scene3d {
         changed
     }
 
-    /// Drops a Paint or attribute sweep without applying it, for a gesture taken away.
+    /// Ends painting, or rolls back a live attribute sweep taken away by Esc.
     pub fn stroke_cancel(&self) {
-        if let Some(AttrStroke::Transfer { .. }) = &*self.stroke.borrow() {
-            self.stroke.borrow_mut().take();
+        let transfer = matches!(*self.stroke.borrow(), Some(AttrStroke::Transfer { .. }));
+        if transfer {
+            if let Some(AttrStroke::Transfer { mark, revision, .. }) =
+                self.stroke.borrow_mut().take()
+            {
+                let mut document = self.document.borrow_mut();
+                if document.revision() == revision && document.edit_mark() > mark {
+                    document.undo();
+                }
+            }
             (self.render)();
             return;
         }
@@ -3896,9 +3906,13 @@ impl Scene3d {
                         };
                         // The first click's single-face copy and this one undo together,
                         // as `SetBrushFaceAttributesTool` undoes the first before it.
-                        let folded = transfer_marks
-                            .take()
-                            .filter(|(_, after)| *after == document.edit_mark());
+                        let folded = transfer_marks.take().filter(|(_, after)| {
+                            *after == document.edit_mark()
+                                || matches!(
+                                    stroke.borrow().as_ref(),
+                                    Some(AttrStroke::Transfer { mark, .. }) if mark == after
+                                )
+                        });
                         if document.copy_face_attributes(source, target, mode, true) {
                             if let Some((before, _)) = folded {
                                 document.fold_edits_since(before);
@@ -4161,15 +4175,17 @@ impl Scene3d {
         let Some(source) = document.single_selected_face() else {
             return;
         };
-        let mut touched = Vec::new();
-        if let Some(face) = face_under(&camera.borrow(), (width, height), &document, x, y) {
-            touched.push(face);
-        }
+        let mark = document.edit_mark();
+        let revision = document.revision();
+        drop(document);
         *stroke.borrow_mut() = Some(AttrStroke::Transfer {
             source,
             mode,
-            touched,
+            touched: Vec::new(),
+            mark,
+            revision,
         });
+        self.stroke_update((x, y), 0.0, 0.0, (width, height));
     }
 
     /// The face-attribute stroke moved; `start` is where it began.
@@ -4227,16 +4243,36 @@ impl Scene3d {
         };
         let point = (start.0 + dx, start.1 + dy);
         match stroke {
-            AttrStroke::Transfer { touched, .. } => {
-                if let Some(face) = face_under(
+            AttrStroke::Transfer {
+                source,
+                mode,
+                touched,
+                mark,
+                revision,
+            } => {
+                if document.borrow().revision() != *revision {
+                    return;
+                }
+                let face = face_under(
                     &camera.borrow(),
                     (width, height),
                     &document.borrow(),
                     point.0,
                     point.1,
-                ) {
+                );
+                if let Some(face) = face {
                     if !touched.contains(&face) {
                         touched.push(face);
+                        let mut document = document.borrow_mut();
+                        let before = document.edit_mark();
+                        if document.copy_face_attributes_across(*source, &[face], *mode) > 0 {
+                            let evicted = (before + 1).saturating_sub(document.edit_mark());
+                            *mark = mark.saturating_sub(evicted);
+                            document.fold_edits_since(*mark);
+                            *revision = document.revision();
+                            drop(document);
+                            render();
+                        }
                     }
                 }
             }
@@ -4422,17 +4458,10 @@ impl Scene3d {
             render();
             return;
         }
-        if let AttrStroke::Transfer {
-            source,
-            mode,
-            touched,
-        } = stroke
-        {
-            if !touched.is_empty() {
-                let mut document = document.borrow_mut();
-                let before = document.edit_mark();
-                document.copy_face_attributes_across(source, &touched, mode);
-                transfer_marks.set(Some((before, document.edit_mark())));
+        if let AttrStroke::Transfer { mark, revision, .. } = stroke {
+            let document = document.borrow();
+            if document.revision() == revision && document.edit_mark() > mark {
+                transfer_marks.set(Some((mark, document.edit_mark())));
             }
         }
         render();
@@ -5889,6 +5918,74 @@ mod pick_tests {
         );
         document.borrow_mut().undo();
         assert_eq!(document.borrow().to_map_text(), before);
+    }
+
+    #[test]
+    fn alt_transfer_is_live_and_undoes_or_cancels_as_one_stroke() {
+        for cancel in [false, true] {
+            let (scene, document, _, floor, cube) = floor_and_cube_scene();
+            document.borrow_mut().paint_brush(cube, "crate");
+            let source = {
+                let doc = document.borrow();
+                let brush = doc.brush(floor).unwrap();
+                FaceRef {
+                    node: floor,
+                    face: (0..brush.faces().len())
+                        .find(|i| brush.faces()[*i].normal().z() > 0.9)
+                        .unwrap(),
+                }
+            };
+            document.borrow_mut().select_face_only(source);
+            let before = document.borrow().to_map_text();
+            let mark = document.borrow().edit_mark();
+            let size = (800.0, 600.0);
+            let mut targets = Vec::new();
+            for y in (0..600).step_by(8) {
+                for x in (0..800).step_by(8) {
+                    if let Some(face) = face_under(
+                        &scene.camera.borrow(),
+                        size,
+                        &document.borrow(),
+                        x as f64,
+                        y as f64,
+                    ) {
+                        if face.node == cube && !targets.iter().any(|(f, _)| *f == face) {
+                            targets.push((face, (x as f64, y as f64)));
+                        }
+                    }
+                }
+            }
+            assert!(targets.len() >= 2);
+            let alt = Modifiers {
+                alt: true,
+                ..Modifiers::default()
+            };
+            let start = targets[0].1;
+            scene.stroke_begin(start.0, start.1, alt, size);
+            assert_eq!(
+                document
+                    .borrow()
+                    .face_at(targets[0].0)
+                    .unwrap()
+                    .material_name,
+                "stone"
+            );
+            for (face, at) in &targets[1..] {
+                scene.stroke_update(start, at.0 - start.0, at.1 - start.1, size);
+                assert_eq!(
+                    document.borrow().face_at(*face).unwrap().material_name,
+                    "stone"
+                );
+            }
+            assert_eq!(document.borrow().edit_mark(), mark + 1);
+            if cancel {
+                scene.stroke_cancel();
+            } else {
+                scene.stroke_end();
+                document.borrow_mut().undo();
+            }
+            assert_eq!(document.borrow().to_map_text(), before);
+        }
     }
 
     /// Esc in the middle of a 3D move undoes it and ends the drag.
