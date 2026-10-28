@@ -181,7 +181,9 @@ pub fn write(level: &Level, warnings: &mut Vec<String>) -> String {
 }
 
 fn trigger_data(level: &Level, names: &[String]) -> String {
-    let mut out=String::from("typedef struct {const double (*planes)[4];int count;} HbVolume;\ntypedef struct {const char *name;const HbVolume *volumes;int count;const int *targets;int target_count,once;double wait;const char *action,*clip;} HbTrigger;\n");
+    let mut out = String::from(
+        "typedef struct {const double (*planes)[4];int count;} HbVolume;\ntypedef struct {const char *name;const HbVolume *volumes;int count;const int *targets;int target_count,once;double wait;const char *action,*clip;} HbTrigger;\n",
+    );
     let mut triggers = Vec::new();
     for e in &level.entities {
         let Some(data) = string(e, "_heron_trigger")
@@ -263,7 +265,13 @@ fn trigger_data(level: &Level, names: &[String]) -> String {
 
 /// `sky` is the sky cube's image path, when the export wrote one; `water` the water
 /// header's, when the level has water.
-pub fn preview(level: &Level, header: &str, sky: Option<&str>, water: Option<&str>) -> String {
+pub fn preview(
+    level: &Level,
+    header: &str,
+    sky: Option<&str>,
+    water: Option<&str>,
+    lighting: Option<&str>,
+) -> String {
     let mut out = format!("#include \"raylib.h\"\n#include {}\n", quoted(header));
     if let Some(sky) = sky {
         out.push_str(&format!("#define HB_SKY {}\n", quoted(sky)));
@@ -271,12 +279,23 @@ pub fn preview(level: &Level, header: &str, sky: Option<&str>, water: Option<&st
     if let Some(water) = water {
         out.push_str(&format!("#define HB_WATER\n#include {}\n", quoted(water)));
     }
+    if let Some(lighting) = lighting {
+        out.push_str(&format!(
+            "#define HB_LIGHTING\n#include {}\n",
+            quoted(lighting)
+        ));
+    }
     out.push_str("typedef struct {const char *mesh; double pos[3],rot[3],scale[3];} PreviewEntity;\nstatic const PreviewEntity entities[]={\n");
     for e in &level.entities {
         let array = |v: [f64; 3]| format!("{{{:.17e},{:.17e},{:.17e}}}", v[0], v[1], v[2]);
         out.push_str(&format!(
             "{{{},{},{},{}}},\n",
-            quoted(e.mesh.as_deref().unwrap_or("")),
+            quoted(
+                e.mesh
+                    .as_deref()
+                    .filter(|_| !e.surfaces.is_empty())
+                    .unwrap_or("")
+            ),
             array(e.transform.translation),
             array(e.transform.rotation_yxz),
             array(e.transform.scale)
@@ -370,7 +389,9 @@ mod tests {
             report.warnings
         );
         assert!(dir.join("check_preview.c").exists());
-        let mut c=String::from("#include <assert.h>\n#include <stdio.h>\n#include \"check_animation.h\"\nint main(void){assert(HB_ANIMATION_COUNT==1);HbPlayer p;HbInit(&p,0);assert(!p.playing&&!p.posed);double in[3]={1,2,3},out[3],m[16];HbPoint(0,&p,in,out,0);assert(out[0]==1&&out[1]==2&&out[2]==3);\n");
+        let mut c = String::from(
+            "#include <assert.h>\n#include <stdio.h>\n#include \"check_animation.h\"\nint main(void){assert(HB_ANIMATION_COUNT==1);HbPlayer p;HbInit(&p,0);assert(!p.playing&&!p.posed);double in[3]={1,2,3},out[3],m[16];HbPoint(0,&p,in,out,0);assert(out[0]==1&&out[1]==2&&out[2]==3);\n",
+        );
         let pivot = Vec3d::new(16.0, -32.0, 48.0);
         for mode in ["once", "loop", "pingpong"] {
             let track =

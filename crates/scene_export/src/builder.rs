@@ -2404,11 +2404,18 @@ fn level_textures(
     let mut textures: Vec<level::Texture> = Vec::new();
 
     for (name, material) in &library.materials {
-        let (image, maps) = match material {
+        let (image, mut maps): (_, Vec<(String, String)>) = match material {
             Material::FromTextures { albedo, maps } => (
                 Some(strip_res(albedo)),
                 maps.iter()
-                    .map(|(slot, path)| (slot.trim_start_matches('_').to_string(), strip_res(path)))
+                    .map(|(slot, path)| {
+                        (
+                            slot.trim_start_matches('_')
+                                .trim_end_matches("_texture")
+                                .to_string(),
+                            strip_res(path),
+                        )
+                    })
                     .collect(),
             ),
             // A `.tres` is a Godot resource and holds no image an engine
@@ -2419,6 +2426,12 @@ fn level_textures(
             }
             Material::Missing => (None, Vec::new()),
         };
+        if let Some(pbr) = library.generated.get(name).and_then(|m| m.pbr.as_ref()) {
+            for image in &pbr.images {
+                maps.retain(|(slot, _)| slot != image.slot);
+                maps.push((image.slot.to_string(), strip_res(&image.path)));
+            }
+        }
         let size = library.sizes.get(name);
         textures.push(level::Texture {
             name: name.clone(),

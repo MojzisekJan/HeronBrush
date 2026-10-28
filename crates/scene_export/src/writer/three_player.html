@@ -27,6 +27,7 @@ window.addEventListener('unhandledrejection', event => window.playerError(event.
 __ANIMATION_RUNTIME__
 __WATER_RUNTIME__
 __COLLISION_RUNTIME__
+__LIGHT_RUNTIME__
 try {
   const [THREE, {GLTFLoader}, {PointerLockControls}, {Octree}, {Capsule}, {ConvexGeometry}] = await Promise.all([
     import('three'), import('three/addons/loaders/GLTFLoader.js'),
@@ -41,6 +42,7 @@ try {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x91a8bb);
   const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.shadowMap.enabled = true;
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
   document.body.prepend(renderer.domElement);
@@ -83,6 +85,8 @@ try {
   }
   let environmentKey, baseFog = null;
   function applyEnvironment(env) {
+    const explicitSun = level.entities.some(e => e.light?.kind === "Directional");
+    sun.visible = !explicitSun;
     const key = JSON.stringify(env ?? null);
     if (key === environmentKey) return;
     environmentKey = key;
@@ -159,6 +163,7 @@ try {
   for (const entity of level.entities) {
     const root = transform(new THREE.Group(), entity);
     visuals.add(root);
+    const light = createHeronLight(THREE, entity); if (light) root.add(light);
     const waterData=entity.properties?._heron_water?.value;
     const water=waterData ? new HeronWater(THREE,waterData,root) : null;if(water)waters.push(water);
     const animationData = entity.properties?._heron_animation?.value;
@@ -168,10 +173,11 @@ try {
     if (entity.mesh) {
       const mesh = (await model(entity.mesh, data.meshes[entity.mesh])).clone(true);
       mesh.traverse(object => {
+        if(object.isMesh){object.castShadow = !(water?.data.surface_material); object.receiveShadow = true;}
         if (object.isMesh) object.material=Array.isArray(object.material) ? object.material.map(m=>m.clone()) : object.material.clone();
         if (!object.isMesh) return;
         for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-          material.map = textures.get(material.name) || null;
+          material.map = textures.get(material.name) || material.map;
           const surface = level.textures.find(t => t.name === material.name)?.surface;
           if (surface) {
             material.roughness = surface[0];
@@ -373,12 +379,13 @@ try {
   }
 
   function resources(graph) {
-    const geometry=new Set(),materials=new Set(),textures=new Set();
-    graph.traverse(object=>{if(object.isMesh) {geometry.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material]) {materials.add(m);for(const value of Object.values(m)) if(value?.isTexture) textures.add(value);}}});
-    return {geometry,materials,textures};
+    const geometry=new Set(),materials=new Set(),textures=new Set(),lights=new Set();
+    graph.traverse(object=>{if(object.isLight)lights.add(object);if(object.isMesh) {geometry.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material]) {materials.add(m);for(const value of Object.values(m)) if(value?.isTexture) textures.add(value);}}});
+    return {geometry,materials,textures,lights};
   }
   function release(graph, keep) {
     const owned=resources(graph);
+    for(const light of owned.lights) if(!keep.lights.has(light)) light.dispose();
     for(const material of owned.materials) if(!keep.materials.has(material)) material.dispose();
     for(const geometry of owned.geometry) if(!keep.geometry.has(geometry)) geometry.dispose();
     for(const texture of owned.textures) if(!keep.textures.has(texture)) {texture.dispose();texture.image?.close?.();}

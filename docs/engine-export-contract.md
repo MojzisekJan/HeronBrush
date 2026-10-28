@@ -265,6 +265,8 @@ The hints remain in the complete JSON metadata, but do not become gameplay
 | `defold_linear_damping`, `defold_angular_damping` | Damping between zero and one |
 | `defold_locked_rotation` | Boolean or `true`/`false`/`0`/`1` |
 | `defold_material`, `defold_sampler` | Per-entity model material and colour sampler |
+| `defold_sampler_normal`, `defold_sampler_mr`, `defold_sampler_ao`, `defold_sampler_emissive` | Bind these image slots to explicitly named samplers in a project material |
+| `defold_sampler_roughness`, `defold_sampler_metallic` | Separate maps from loose texture collections |
 | `defold_component_<id>` | Attach a project component resource, for example `/main/relic.script` |
 
 Custom component ids use letters, digits and underscores. `mesh`, `collision`
@@ -408,3 +410,31 @@ Twenty small tests pass, including map-relative sources, external links, missing
 sources, declaration selection, bounded reads and CLI exit status. The canal_relay
 profile and all three maps pass the strict configured-path/declaration check.
 This validation uses only Python filesystem metadata and bounded header reads.
+
+### Project PBR samplers in Defold, 28 October 2026
+
+The final and live writers share material-map resolution. Declare the sampler
+hints above on an entity or in its class defaults and select a project
+`defold_material` whose shader has those samplers. For example,
+`defold_sampler_normal=tex_normal` binds the material's normal image to
+`tex_normal`. Normal companions use OpenGL green orientation, including conversion
+of `_normal_dx` sources. Hints stay in JSON but do not become `go.property` fields.
+
+Sampler names must be shader identifiers and unique, including the albedo
+sampler. Every surface on the entity must supply each requested map. Missing maps
+and duplicate samplers fail validation before publication. Native Bob compiled a
+production export with distinct albedo and normal samplers. The project's shader
+still owns channel interpretation, normal strength, emission factors and lighting;
+the default sample material does not become a PBR shader automatically.
+
+Reproduce the native material binding check:
+
+```sh
+python3 examples/engine-checks/defold/verify_material_samplers.py --output /tmp/heron-defold-material-check
+```
+
+The destination must be new or empty. The script uses the installed Defold SDK,
+creates a disposable project and keeps the Bob log beside the output.
+
+Neutral level texture metadata also now uses the documented map slot names
+without Godot's `_texture` suffix and includes imported PBR image references.

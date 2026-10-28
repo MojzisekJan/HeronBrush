@@ -274,9 +274,9 @@ Tests: `a_trigger_is_an_empty_node_with_its_volume_in_the_extras`,
 
 ## Open
 
-- raylib draws neither normal maps nor emission with its default shader. A game
-  needs its own lighting shader; `feature_lab_water.h`'s shader is a starting
-  point for a single pass.
+- raylib's built-in default shader does not supply PBR. The generated preview
+  now uses `<level>_lighting.h` for common lights, normal textures and basic
+  diffuse/specular response; full PBR and shadow maps remain project work.
 - The Bevy sample viewer still builds its own materials from the level's
   textures, so an imported model's PBR maps (in the GLB) are not drawn there. The
   level's `textures` entry for a model skin lists no maps. A game that takes the
@@ -293,3 +293,13 @@ Tests: `a_trigger_is_an_empty_node_with_its_volume_in_the_extras`,
   light, as the editor's view does (`writer/sky.rs`). Godot's `Color` reads the
   same numbers as sRGB. Whether `fog_light_color` means sRGB or linear is a
   decision for the format.
+
+## 28 October 2026 update
+
+Chromium passed the three.js, Babylon.js and PlayCanvas feature labs and their
+generated pages. Three.js additionally verified the production loader's retained
+PBR maps, shared geometry and native common lights. Bevy's native light-component
+regression passed and its feature lab rendered after asset loading. Raylib's new
+lighting shader compiled and rendered in OpenGL, including mip filtering; its
+inline collision no longer has an unused duplicate mesh in the GLB. These are
+scoped updates to the earlier table, not a claim of full cross-engine PBR parity.

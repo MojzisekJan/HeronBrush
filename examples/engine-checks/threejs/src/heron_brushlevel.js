@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 import {localCollisionTriangles,updateCollisionPart} from "./collision_mesh.js";
+import {createHeronLight} from "../assets/heron_lights.js";
 import {HeronWater} from "../assets/heron_water.js";
 import { HeronAnimation, HeronAnimationTrigger } from "../assets/heron_animation.js";
 
@@ -40,7 +41,7 @@ export async function loadLevel(url, {blocks = isBlocking, factories = {}} = {})
     textures.set(t.name, tex);
   }
 
-  const gltf = new GLTFLoader();
+  const gltf = new GLTFLoader(), models = new Map();
   const root = new THREE.Group();
   root.name = level.name;
   const colliderParts = [];
@@ -57,6 +58,7 @@ export async function loadLevel(url, {blocks = isBlocking, factories = {}} = {})
     object.rotation.set(...t.rotation_yxz, "YXZ");
     object.scale.set(...t.scale);
     root.add(object);
+    const light = createHeronLight(THREE, entity); if (light) object.add(light);
     const properties = flattenProps(entity.properties);
     const water=properties._heron_water?new HeronWater(THREE,properties._heron_water,object):null;if(water)waters.push(water);
     if (blocks(entity)) {
@@ -80,8 +82,9 @@ export async function loadLevel(url, {blocks = isBlocking, factories = {}} = {})
 
     if (!entity.mesh || !entity.surfaces || entity.surfaces.length === 0) return;
 
-    const data = await gltf.loadAsync(base + entity.mesh);
-    const model = data.scene;
+    if (!models.has(entity.mesh)) models.set(entity.mesh,gltf.loadAsync(base + entity.mesh));
+    const data = await models.get(entity.mesh);
+    const model = data.scene.clone(true);
     model.traverse(object=>{if(object.isMesh){ownedGeometry.add(object.geometry);for(const material of Array.isArray(object.material)?object.material:[object.material]){ownedMaterials.add(material);for(const value of Object.values(material))if(value?.isTexture)ownedTextures.add(value);}}});
 
     // Each `surface` line puts a texture on one glTF primitive.
@@ -92,17 +95,21 @@ export async function loadLevel(url, {blocks = isBlocking, factories = {}} = {})
       if (!m) continue;
       const tex = textures.get(s.texture);
       const surface = level.textures.find(t => t.name === s.texture)?.surface;
-      m.material = new THREE.MeshStandardMaterial({
-        map: tex || null,
-        color: tex ? 0xffffff : 0x8891a0,
-        roughness: surface?.[0] ?? 0.85,
-        metalness: surface?.[1] ?? 0,
-        emissive: surface ? 0xffffff : 0,
-        emissiveMap: surface ? tex : null,
-        emissiveIntensity: surface?.[2] ?? 0,
-      });
-      if(water)water.material(m.material);
-      ownedMaterials.add(m.material);
+      // GLTFLoader already maps normal, metallic/roughness, AO, emission and
+      // alpha modes. Clone its material rather than replacing those settings.
+      const adapt = original => {
+        const material = original.clone();
+        if (tex) material.map = tex;
+        if (surface) {
+          material.roughness = surface[0]; material.metalness = surface[1];
+          material.emissive.setRGB(1, 1, 1);
+          material.emissiveMap = material.map; material.emissiveIntensity = surface[2];
+        }
+        if (water) water.material(material);
+        ownedMaterials.add(material);
+        return material;
+      };
+      m.material = Array.isArray(m.material) ? m.material.map(adapt) : adapt(m.material);
       m.castShadow = !(water?.data.surface_material);
       m.receiveShadow = true;
     }
@@ -127,6 +134,7 @@ export async function loadLevel(url, {blocks = isBlocking, factories = {}} = {})
     dispose() {
       if(disposed)return;disposed=true;
       for(const release of cleanup)release();
+      root.traverse(object => { if (object.isLight) object.dispose(); });
       root.removeFromParent();
       for(const geometry of ownedGeometry)geometry.dispose();
       for(const material of ownedMaterials)material.dispose();

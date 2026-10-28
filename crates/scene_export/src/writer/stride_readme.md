@@ -11,7 +11,8 @@ Each level folder holds:
 - `<entity>.glb` and `<entity>.sdm3d`: the meshes and their model assets.
 - `Materials/*.sdmat` and `Textures/*`: one material per glTF material, with its
   base-colour image (textures, baked face paint and gradients), metalness,
-  roughness and double-sidedness. Face paint clamps; ordinary textures repeat.
+  roughness, normal maps, emission, ambient occlusion and double-sidedness. Each
+  texture keeps its U/V clamp or repeat settings.
 - `Sky/`: the editor's procedural sky as an HDR cube map and skybox asset.
 - `HeronBrushStrideLevel.cs`: the entity records and `Build`, which creates every
   entity under one root, attaches models and project prefabs, the editor's
@@ -43,5 +44,13 @@ bodies that follow their animation, and `trigger_*` volumes trigger colliders.
 The level JSON keeps every property, target and collision shape for project code.
 
 `stride_model` replaces an entity's model URL and `stride_prefab` adds a project
-prefab. A blended glTF material (a water surface) becomes a transparent one; emission,
-normal maps and alpha masks are not transferred yet.
+prefab. A blended glTF material becomes transparent; `MASK` becomes a native
+cutoff material with the authored threshold. Normal maps retain their strength
+and use OpenGL-to-Stride Y inversion. Metallic/roughness and AO textures are
+sampled in linear space, with the source factors and AO strength. Emission retains
+its image, colour and intensity. Same-named materials with different contents
+receive separate native assets.
+
+UV sets beyond UV0, mirrored-repeat wrapping and texture transforms need project
+mapping. The PBR additions have passed native YAML loading in Stride 4.4.1;
+rendering and asset compilation still need engine verification.

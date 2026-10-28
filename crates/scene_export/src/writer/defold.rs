@@ -40,7 +40,8 @@ fn number_property(entity: &crate::level::Entity, key: &str, default: f64) -> f6
     }
 }
 fn engine_hint(key: &str) -> bool {
-    key.starts_with("defold_component_")
+    key.starts_with("defold_sampler_")
+        || key.starts_with("defold_component_")
         || key.starts_with("defold_property_")
         || matches!(
             key,
@@ -124,7 +125,7 @@ fn property_override(
             _ => {
                 return Err(format!(
                     "{key}: property type {hint} is incompatible with the supplied value"
-                ))
+                ));
             }
         };
     }
@@ -143,7 +144,9 @@ pub fn validate(level: &Level) -> Result<(), String> {
                 return Err(fail("defold_go must name a project .go resource"));
             }
             if entity.solid || entity.properties.contains_key("_heron_animation") {
-                return Err(fail("defold_go replaces point entities; brush geometry and generated animations need embedded components instead"));
+                return Err(fail(
+                    "defold_go replaces point entities; brush geometry and generated animations need embedded components instead",
+                ));
             }
         }
         if let Some(value) = entity.properties.get("defold_body_type") {
@@ -211,6 +214,33 @@ pub fn validate(level: &Level) -> Result<(), String> {
                 }
             }
         }
+        let mut samplers = std::collections::HashSet::new();
+        if let Some(name) = text_property(entity, "defold_sampler") {
+            samplers.insert(name);
+        }
+        for (key, value) in &entity.properties {
+            if let Some(slot) = key.strip_prefix("defold_sampler_") {
+                if !matches!(
+                    slot,
+                    "normal" | "mr" | "ao" | "emissive" | "roughness" | "metallic"
+                ) {
+                    return Err(fail(&format!("unsupported material map slot {slot}")));
+                }
+                let Value::String(name) = value else {
+                    return Err(fail(&format!("{key} must be a string")));
+                };
+                if name.is_empty()
+                    || !name.chars().enumerate().all(|(i, c)| {
+                        c == '_' || c.is_ascii_alphabetic() || (i > 0 && c.is_ascii_digit())
+                    })
+                {
+                    return Err(fail(&format!("{key} must be a shader sampler identifier")));
+                }
+                if !samplers.insert(name) {
+                    return Err(fail(&format!("duplicate material sampler {name}")));
+                }
+            }
+        }
         for (key, value) in &entity.properties {
             if let Some(rest) = key.strip_prefix("defold_property_type_") {
                 if !matches!(value, Value::String(_))
@@ -241,7 +271,9 @@ pub fn validate(level: &Level) -> Result<(), String> {
                     || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
                     || matches!(id, "mesh" | "collision" | "properties")
                 {
-                    return Err(fail("custom component id must be unique and cannot be mesh, collision or properties"));
+                    return Err(fail(
+                        "custom component id must be unique and cannot be mesh, collision or properties",
+                    ));
                 }
                 let Value::String(path) = value else {
                     return Err(fail("custom component resource must be a string"));
@@ -266,6 +298,8 @@ pub struct DefoldOptions {
     /// Joined onto each texture's project-relative `image`. `/` turns
     /// `textures/wall.png` into `/textures/wall.png`.
     pub texture_prefix: String,
+    /// Additional portable material maps, keyed by material name.
+    pub material_maps: std::collections::BTreeMap<String, Vec<(String, String)>>,
     /// The material every model component gets.
     pub model_material: String,
     /// The sampler that material binds the colour texture to.
@@ -279,6 +313,7 @@ impl Default for DefoldOptions {
         DefoldOptions {
             asset_dir: "/main/level".to_string(),
             texture_prefix: "/".to_string(),
+            material_maps: Default::default(),
             model_material: "/builtins/materials/model.material".to_string(),
             model_sampler: "tex0".to_string(),
             sky: None,
@@ -291,6 +326,50 @@ impl Default for DefoldOptions {
 pub struct DefoldFile {
     pub path: String,
     pub contents: String,
+}
+
+/// Explicit shader samplers must be unique and every bound surface needs the map.
+pub fn validate_material_bindings(level: &Level, options: &DefoldOptions) -> Result<(), String> {
+    for entity in &level.entities {
+        let hints: Vec<_> = entity
+            .properties
+            .keys()
+            .filter_map(|k| {
+                k.strip_prefix("defold_sampler_")
+                    .map(|slot| (slot, k.as_str()))
+            })
+            .collect();
+        if hints.is_empty() {
+            continue;
+        }
+        let mut samplers = std::collections::HashSet::new();
+        samplers.insert(text_property(entity, "defold_sampler").unwrap_or(&options.model_sampler));
+        for (slot, key) in hints {
+            let sampler = text_property(entity, key)
+                .ok_or_else(|| format!("{}: {key} must name a sampler", entity.name))?;
+            if !samplers.insert(sampler) {
+                return Err(format!(
+                    "{}: duplicate material sampler {sampler}",
+                    entity.name
+                ));
+            }
+            for surface in &entity.surfaces {
+                let texture = level.textures.iter().find(|t| t.name == surface.texture);
+                let maps = options
+                    .material_maps
+                    .get(&surface.texture)
+                    .map(Vec::as_slice)
+                    .unwrap_or_else(|| texture.map(|t| t.maps.as_slice()).unwrap_or(&[]));
+                if !maps.iter().any(|(name, _)| name == slot) {
+                    return Err(format!(
+                        "{}: material {} has no {slot} map for sampler {sampler}",
+                        entity.name, surface.texture
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Renders `level` as a Defold collection and its component files.
@@ -339,7 +418,9 @@ pub fn write(level: &Level, collision: &[CollisionMesh], opts: &DefoldOptions) -
                 contents: contents.into(),
             });
         }
-        let material=format!("name: \"water\"\ntags: \"heron_water\"\nvertex_program: \"{parent}/{name}_water.vp\"\nfragment_program: \"{parent}/{name}_water.fp\"\nvertex_space: VERTEX_SPACE_LOCAL\nvertex_constants {{name: \"mtx_worldview\" type: CONSTANT_TYPE_WORLDVIEW}}\nvertex_constants {{name: \"mtx_proj\" type: CONSTANT_TYPE_PROJECTION}}\nvertex_constants {{name: \"water_params\" type: CONSTANT_TYPE_USER value {{x:0 y:.035 z:1.5 w:0}}}}\nfragment_constants {{name: \"water_tint\" type: CONSTANT_TYPE_USER value {{x:.05 y:.38 z:.48 w:.55}}}}\nsamplers {{name: \"tex0\" wrap_u: WRAP_MODE_REPEAT wrap_v: WRAP_MODE_REPEAT filter_min: FILTER_MODE_MIN_LINEAR filter_mag: FILTER_MODE_MAG_LINEAR}}\n");
+        let material = format!(
+            "name: \"water\"\ntags: \"heron_water\"\nvertex_program: \"{parent}/{name}_water.vp\"\nfragment_program: \"{parent}/{name}_water.fp\"\nvertex_space: VERTEX_SPACE_LOCAL\nvertex_constants {{name: \"mtx_worldview\" type: CONSTANT_TYPE_WORLDVIEW}}\nvertex_constants {{name: \"mtx_proj\" type: CONSTANT_TYPE_PROJECTION}}\nvertex_constants {{name: \"water_params\" type: CONSTANT_TYPE_USER value {{x:0 y:.035 z:1.5 w:0}}}}\nfragment_constants {{name: \"water_tint\" type: CONSTANT_TYPE_USER value {{x:.05 y:.38 z:.48 w:.55}}}}\nsamplers {{name: \"tex0\" wrap_u: WRAP_MODE_REPEAT wrap_v: WRAP_MODE_REPEAT filter_min: FILTER_MODE_MIN_LINEAR filter_mag: FILTER_MODE_MAG_LINEAR}}\n"
+        );
         files.push(DefoldFile {
             path: format!("{name}_water.material"),
             contents: material,
@@ -454,14 +535,24 @@ fn sky_files(name: &str, dir: &str, parent: &str, sky: &Sky) -> Vec<DefoldFile> 
     for face in SKY_FACES {
         cubemap.push_str(&format!("{face}: \"{dir}/sky_{face}.png\"\n"));
     }
-    let material = format!("name: \"heron_sky\"\ntags: \"heron_sky\"\nvertex_program: \"{parent}/{name}_sky.vp\"\nfragment_program: \"{parent}/{name}_sky.fp\"\nvertex_space: VERTEX_SPACE_LOCAL\nvertex_constants {{name: \"mtx_view\" type: CONSTANT_TYPE_VIEW}}\nvertex_constants {{name: \"mtx_proj\" type: CONSTANT_TYPE_PROJECTION}}\nsamplers {{name: \"sky\" wrap_u: WRAP_MODE_CLAMP_TO_EDGE wrap_v: WRAP_MODE_CLAMP_TO_EDGE filter_min: FILTER_MODE_MIN_LINEAR filter_mag: FILTER_MODE_MAG_LINEAR}}\n");
-    let model = format!("mesh: \"{dir}/sky.gltf\"\nmaterials {{\n  name: \"sky\"\n  material: \"{parent}/{name}_sky.material\"\n  textures {{\n    sampler: \"sky\"\n    texture: \"{dir}/sky.cubemap\"\n  }}\n}}\n");
+    let material = format!(
+        "name: \"heron_sky\"\ntags: \"heron_sky\"\nvertex_program: \"{parent}/{name}_sky.vp\"\nfragment_program: \"{parent}/{name}_sky.fp\"\nvertex_space: VERTEX_SPACE_LOCAL\nvertex_constants {{name: \"mtx_view\" type: CONSTANT_TYPE_VIEW}}\nvertex_constants {{name: \"mtx_proj\" type: CONSTANT_TYPE_PROJECTION}}\nsamplers {{name: \"sky\" wrap_u: WRAP_MODE_CLAMP_TO_EDGE wrap_v: WRAP_MODE_CLAMP_TO_EDGE filter_min: FILTER_MODE_MIN_LINEAR filter_mag: FILTER_MODE_MAG_LINEAR}}\n"
+    );
+    let model = format!(
+        "mesh: \"{dir}/sky.gltf\"\nmaterials {{\n  name: \"sky\"\n  material: \"{parent}/{name}_sky.material\"\n  textures {{\n    sampler: \"sky\"\n    texture: \"{dir}/sky.cubemap\"\n  }}\n}}\n"
+    );
     let v = |c: [f32; 3]| format!("vmath.vector3({}, {}, {})", c[0], c[1], c[2]);
     let fog = sky
         .fog
         .map(|(color, density)| format!("{{color = {}, density = {density}}}", v(color)))
         .unwrap_or_else(|| "nil".into());
-    let environment = format!("-- The map's sun, ambient light and fog, in the level's frame. Colours are linear.\nreturn {{\n  to_sun = {},\n  sun_color = {},\n  sun_intensity = {},\n  ambient_intensity = {},\n  fog = {fog},\n}}\n", v(sky.to_sun()), v(sky.sun_color), sky.sun_intensity, sky.ambient_intensity);
+    let environment = format!(
+        "-- The map's sun, ambient light and fog, in the level's frame. Colours are linear.\nreturn {{\n  to_sun = {},\n  sun_color = {},\n  sun_intensity = {},\n  ambient_intensity = {},\n  fog = {fog},\n}}\n",
+        v(sky.to_sun()),
+        v(sky.sun_color),
+        sky.sun_intensity,
+        sky.ambient_intensity
+    );
     vec![
         DefoldFile {
             path: format!("{name}/sky.cubemap"),
@@ -625,7 +716,22 @@ fn component_overrides(entity: &crate::level::Entity) -> String {
 fn native_instance(id: &str, entity: &crate::level::Entity, path: &str) -> String {
     let t = &entity.transform;
     let q = quat_yxz(t.rotation_yxz);
-    format!("instances {{\n  id: \"{}\"\n  prototype: \"{}\"\n  position {{ x: {} y: {} z: {} }}\n  rotation {{ x: {} y: {} z: {} w: {} }}\n  scale3 {{ x: {} y: {} z: {} }}\n{}}}\n",escape(id),escape(path),f(t.translation[0]),f(t.translation[1]),f(t.translation[2]),f(q[0]),f(q[1]),f(q[2]),f(q[3]),f(t.scale[0]),f(t.scale[1]),f(t.scale[2]),component_overrides(entity))
+    format!(
+        "instances {{\n  id: \"{}\"\n  prototype: \"{}\"\n  position {{ x: {} y: {} z: {} }}\n  rotation {{ x: {} y: {} z: {} w: {} }}\n  scale3 {{ x: {} y: {} z: {} }}\n{}}}\n",
+        escape(id),
+        escape(path),
+        f(t.translation[0]),
+        f(t.translation[1]),
+        f(t.translation[2]),
+        f(q[0]),
+        f(q[1]),
+        f(q[2]),
+        f(q[3]),
+        f(t.scale[0]),
+        f(t.scale[1]),
+        f(t.scale[2]),
+        component_overrides(entity)
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -688,6 +794,25 @@ fn model_file(
                 "  textures {{\n    sampler: \"{}\"\n    texture: \"{path}\"\n  }}\n",
                 escape(text_property(entity, "defold_sampler").unwrap_or(&opts.model_sampler))
             ));
+        }
+        let texture = level.textures.iter().find(|t| t.name == surface.texture);
+        let maps = opts
+            .material_maps
+            .get(&surface.texture)
+            .map(Vec::as_slice)
+            .unwrap_or_else(|| texture.map(|t| t.maps.as_slice()).unwrap_or(&[]));
+        let albedo_sampler = text_property(entity, "defold_sampler").unwrap_or(&opts.model_sampler);
+        for (slot, path) in maps {
+            if let Some(sampler) = text_property(entity, &format!("defold_sampler_{slot}")) {
+                if sampler == albedo_sampler {
+                    continue;
+                }
+                let path = join_resource(&opts.texture_prefix, path);
+                out.push_str(&format!(
+                    "  textures {{\n    sampler: \"{sampler}\"\n    texture: \"{}\"\n  }}\n",
+                    escape(&path)
+                ));
+            }
         }
         out.push_str("}\n");
     }
@@ -1076,6 +1201,72 @@ mod tests {
     }
 
     #[test]
+    fn project_materials_receive_explicit_pbr_samplers_without_game_properties() {
+        let mut level = level();
+        let entity = &mut level.entities[0];
+        for (slot, sampler) in [
+            ("normal", "tex_normal"),
+            ("mr", "tex_mr"),
+            ("ao", "tex_ao"),
+            ("emissive", "tex_emissive"),
+        ] {
+            entity.properties.insert(
+                format!("defold_sampler_{slot}"),
+                Value::String(sampler.into()),
+            );
+        }
+        entity.properties.insert(
+            "defold_material".into(),
+            Value::String("/main/pbr.material".into()),
+        );
+        let mut options = opts();
+        options.material_maps.insert(
+            "wall".into(),
+            ["normal", "mr", "ao", "emissive"]
+                .into_iter()
+                .map(|slot| (slot.into(), format!("textures/wall_{slot}.png")))
+                .collect(),
+        );
+        validate(&level).unwrap();
+        validate_material_bindings(&level, &options).unwrap();
+        let mut missing = options.clone();
+        missing.material_maps.clear();
+        assert!(validate_material_bindings(&level, &missing).is_err());
+        let files = write(&level, &[], &options);
+        let model = &files
+            .iter()
+            .find(|f| f.path == "arena/worldspawn.model")
+            .unwrap()
+            .contents;
+        for slot in ["normal", "mr", "ao", "emissive"] {
+            assert!(
+                model.contains(&format!("sampler: \"tex_{slot}\"")),
+                "{model}"
+            );
+            assert!(
+                model.contains(&format!("texture: \"/textures/wall_{slot}.png\"")),
+                "{model}"
+            );
+        }
+        assert!(
+            files
+                .iter()
+                .filter(|f| f.path.ends_with(".script"))
+                .all(|f| !f.contents.contains("go.property(\"defold_sampler_"))
+        );
+        level.entities[0].properties.insert(
+            "defold_sampler_normal".into(),
+            Value::String("invalid sampler".into()),
+        );
+        assert!(validate(&level).is_err());
+        level.entities[0].properties.insert(
+            "defold_sampler_normal".into(),
+            Value::String("tex_mr".into()),
+        );
+        assert!(validate(&level).is_err());
+    }
+
+    #[test]
     fn a_sky_is_a_cubemap_on_a_model_the_render_script_draws_first() {
         let sky = Sky {
             sky: [0.1, 0.4, 0.85],
@@ -1118,13 +1309,17 @@ mod tests {
         assert!(file("arena_environment.lua").contains("sun_intensity = 3"));
         let images = sky_binaries("arena", &sky);
         assert_eq!(images.len(), 6);
-        assert!(images
-            .iter()
-            .all(|(path, png)| path.starts_with("arena/sky_") && png.starts_with(b"\x89PNG")));
+        assert!(
+            images
+                .iter()
+                .all(|(path, png)| path.starts_with("arena/sky_") && png.starts_with(b"\x89PNG"))
+        );
         // Without a sky or water nothing replaces the project's renderer.
-        assert!(!write(&level(), &[], &opts())
-            .iter()
-            .any(|f| f.path.ends_with(".render")));
+        assert!(
+            !write(&level(), &[], &opts())
+                .iter()
+                .any(|f| f.path.ends_with(".render"))
+        );
     }
 
     fn level() -> Level {
@@ -1223,12 +1418,14 @@ mod tests {
         assert!(collision.contains("group: \"artifact\""));
         assert!(collision.contains("mask: \"geometry\""));
         assert!(files[0].contents.contains("/game/relic.script"));
-        assert!(files
-            .iter()
-            .find(|f| f.path.ends_with("worldspawn.model"))
-            .unwrap()
-            .contents
-            .contains("/game/stone.material"));
+        assert!(
+            files
+                .iter()
+                .find(|f| f.path.ends_with("worldspawn.model"))
+                .unwrap()
+                .contents
+                .contains("/game/stone.material")
+        );
         let script = &files
             .iter()
             .find(|f| f.path.ends_with("worldspawn.script"))
@@ -1274,9 +1471,11 @@ mod tests {
         let files = write(&level(), &cm, &opts());
         assert_eq!(files[0].path, "arena.collection");
         assert!(files[0].contents.starts_with("name: \"arena\"\n"));
-        assert!(files[0]
-            .contents
-            .contains("embedded_instances {\n  id: \"worldspawn\"\n"));
+        assert!(
+            files[0]
+                .contents
+                .contains("embedded_instances {\n  id: \"worldspawn\"\n")
+        );
     }
 
     #[test]
@@ -1287,9 +1486,11 @@ mod tests {
             .iter()
             .find(|f| f.path == "arena/worldspawn.model")
             .unwrap();
-        assert!(model
-            .contents
-            .contains("mesh: \"/main/arena/worldspawn.glb\"\n"));
+        assert!(
+            model
+                .contents
+                .contains("mesh: \"/main/arena/worldspawn.glb\"\n")
+        );
         assert!(model.contents.contains("name: \"wall\"\n"));
         assert!(model.contents.contains("texture: \"/textures/wall.png\"\n"));
 
@@ -1314,9 +1515,11 @@ mod tests {
             .iter()
             .find(|f| f.path == "arena/enemy0.script")
             .unwrap();
-        assert!(script
-            .contents
-            .contains("go.property(\"classname\", hash(\"fps_enemy\"))\n"));
+        assert!(
+            script
+                .contents
+                .contains("go.property(\"classname\", hash(\"fps_enemy\"))\n")
+        );
         assert!(script.contents.contains("go.property(\"health\", 100.0)\n"));
 
         let col = &files[0].contents;
@@ -1335,9 +1538,10 @@ mod tests {
             .iter()
             .find(|f| f.path.ends_with(".collisionobject"))
             .unwrap();
-        assert!(co
-            .contents
-            .contains("type: COLLISION_OBJECT_TYPE_TRIGGER\n"));
+        assert!(
+            co.contents
+                .contains("type: COLLISION_OBJECT_TYPE_TRIGGER\n")
+        );
     }
     #[test]
     fn custom_material_and_sampler_reach_model_resources() {

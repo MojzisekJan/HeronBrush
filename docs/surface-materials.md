@@ -11,10 +11,11 @@ The lit viewport and render cameras use per-material batches for these factors. 
 | Godot | StandardMaterial3D roughness, metallic, emission texture and energy. |
 | glTF / GLB | Core metallic/roughness factors; albedo-coloured emission with KHR_materials_emissive_strength. Solid opaque colours remain factors; gradients use images. |
 | Unity | Generated Build Level importer creates persistent materials for Standard or URP Lit, maps smoothness to 1 − roughness and sets emission. HDRP and custom shaders need their own property mapping. |
+| Stride | Native metalness, glossiness and emissive materials, including emission image and intensity. Verified with writer tests and Stride YAML loading; rendering remains unverified. |
 | three.js demo | Preserves exported factors and applies emission with the albedo texture. |
 | Bevy, Flax, Unreal and other GLB consumers | GLB contains the factors and emission extension. Actual appearance depends on the engine importer and its shader/extension support; native engine execution was not validated for this change. |
 | Defold / raylib | GLB and level metadata preserve the factors. Their default sample shaders do not implement full PBR; supply an appropriate material/shader to use them. |
-| OBJ / MTL | Writes Pr/Pm, approximate Ns/Ks and Ke/map_Ke. These extensions are importer-dependent; use GLB for portable PBR. |
+| OBJ / MTL | Writes Pr/Pm, approximate Ns/Ks and Ke/map_Ke. Imported models also retain normal/emissive images and scalar metallic/roughness images; the latter bake their source factors into the pixels. These extensions are importer-dependent; use GLB for portable PBR. |
 
 Generated material identity includes surface settings, so identically coloured matte and metallic faces do not merge into one material. Neutral level JSON carries optional `surface: [roughness, metallic, emission]` on each texture/material entry.
 

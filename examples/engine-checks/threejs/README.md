@@ -53,8 +53,9 @@ that holds a `playwright` link to `driver/package`.
 entities collide. Factories are chosen by `three_factory` or classname and may
 return a cleanup function that `dispose()` calls.
 
-Not covered: portals, enemies and FPS doors (game code), normal and roughness
-maps, and TGA/WebP textures inside GLB.
+Native common lights, imported PBR maps and shared model geometry now pass the
+production-loader regression. Not covered: portals, enemies and FPS doors beyond
+the animation adapter, and TGA/WebP textures inside GLB.
 
 Credits: loader and controller are MIT code from the earlier tbx project, see
 `LICENSE-TBX`. Textures are covered by `LICENSE-KENNEY`.

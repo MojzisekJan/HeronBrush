@@ -69,6 +69,7 @@ function drawnNormals(geometry) {
 // entity's GLB under it, collision built from the level JSON.
 export async function loadThree(base) {
   const level = await (await fetch(base + 'feature_lab.json')).json();
+  const {createHeronLight} = await import(base + 'heron_lights.js');
   const loader = new GLTFLoader(), cache = new Map();
   const scene = new THREE.Scene(), entities = new Map();
   for (const entity of level.entities) {
@@ -76,6 +77,7 @@ export async function loadThree(base) {
     const t = entity.transform;
     root.position.fromArray(t.translation); root.rotation.set(...t.rotation_yxz, 'YXZ'); root.scale.fromArray(t.scale);
     scene.add(root);
+    const light = createHeronLight(THREE,entity); if (light) root.add(light);
     if (entity.mesh) {
       if (!cache.has(entity.mesh)) cache.set(entity.mesh, loader.loadAsync(base + entity.mesh));
       const gltf = await cache.get(entity.mesh);
@@ -120,6 +122,16 @@ export async function checkThree(base, poses) {
   const {HeronWater} = await import(base + 'heron_water.js');
   const results = {};
   const at = name => entities.get(name);
+
+  {
+    const point = at('fl_light').root.children.find(o=>o.isPointLight);
+    const spotRoot = at('fl_spot').root;
+    const spot = spotRoot.children.find(o=>o.isSpotLight);
+    const expected = new THREE.Vector3(0,0,-1).applyQuaternion(spotRoot.quaternion).normalize();
+    const direction = spot?.target.getWorldPosition(new THREE.Vector3()).sub(spot.getWorldPosition(new THREE.Vector3())).normalize();
+    const valid = point && spot && near(point.intensity,2.5) && near(point.distance,8) && near(spot.distance,10) && near(spot.angle,Math.PI/6) && direction.distanceTo(expected) < 1e-6;
+    results.lights = valid ? PASS('native PointLight and SpotLight retain energy, range, half angle and transformed -Z direction') : FAIL('native common-light settings or orientation differ');
+  }
 
   // Textures: the GLB's own images, repeating, with the face's UV span.
   {

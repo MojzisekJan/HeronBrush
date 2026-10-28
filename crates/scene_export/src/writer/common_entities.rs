@@ -31,11 +31,7 @@ pub(super) fn light(entity: &Entity) -> Option<Light> {
             Some(Value::String(v)) => v.parse().unwrap_or(default),
             _ => default,
         };
-        if n.is_finite() {
-            n
-        } else {
-            default
-        }
+        if n.is_finite() { n } else { default }
     };
     let color = match entity.properties.get("light_color") {
         Some(Value::Color(v)) => *v,
@@ -113,6 +109,37 @@ mod tests {
                 },
             ],
         }
+    }
+
+    #[test]
+    fn native_three_and_flax_lights_share_normalized_metadata() {
+        let level = fixture();
+        let json: serde_json::Value =
+            serde_json::from_str(&crate::writer::three::write(&level, &[])).unwrap();
+        assert_eq!(json["entities"][0]["light"]["kind"], "Spot");
+        assert_eq!(json["entities"][0]["light"]["half_angle"], 30.);
+        assert_eq!(json["entities"][0]["light"]["range"], 7.);
+        assert_eq!(json["entities"][0]["light"]["shadows"], false);
+        assert!(json["entities"][1].get("light").is_none());
+        let live: serde_json::Value =
+            serde_json::from_str(&crate::writer::flax::live_snapshot(&level, &[])).unwrap();
+        assert_eq!(
+            live["placements"][0]["metadata"]["light"],
+            json["entities"][0]["light"]
+        );
+        let files = crate::writer::flax::write(
+            &level,
+            &crate::writer::flax::FlaxOptions::for_level("common"),
+        );
+        assert!(files[0].contents.contains("AddLight(actor, data)"));
+        assert!(
+            files[0]
+                .contents
+                .contains("Radius = (float)spec[\"range\"] * 100f")
+        );
+        let header = crate::writer::raylib::lighting(&level, None);
+        assert!(header.contains("#define HB_RENDER_LIGHT_COUNT 1"));
+        assert!(header.contains("0.866025404f")); // cos(30 degree half angle)
     }
 
     #[test]

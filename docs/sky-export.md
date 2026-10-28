@@ -27,6 +27,8 @@ the image; the sun itself is the engine's own directional light.
 | Bevy | `<level>/sky.ktx2`, an RGBA16F cube (Bevy samples cubes with Z negated, so it is baked mirrored); `heron_sky.rs` makes the camera's `Skybox`, `GeneratedEnvironmentMapLight`, HDR, AgX and the exposure that shows the editor's units | `DirectionalLight` with shadows, illuminance = the sun's intensity | `DistanceFog` |
 | raylib | `<level>/sky.png`, six faces in a vertical strip for `LoadTextureCubemap`, baked tone mapped because raylib draws colours as they are; the preview draws it round the camera; `environment` in `<level>.json` | Numbers in `environment` | Numbers in `environment` |
 | Defold | `<level>/sky.cubemap` from six faces baked tone mapped, drawn on `heron_sky` (a cube model) by the `heron_sky` predicate; `<level>.render` draws it before the models | Numbers in `<level>_environment.lua` and the level JSON | Numbers likewise |
+| Unity | HDR panorama and persistent `Skybox/Panoramic` material | Native directional sun unless the level already has one; skybox ambient lighting | `RenderSettings` exponential-squared fog in metres |
+| Flax | Linear DDS cube with a shared HDR intensity scale, native `Skybox` | `SkyLight` on the same cube and native directional sun unless the level already has one | Preserved in metadata; no homogeneous native fog adapter yet |
 | Stride | HDR cube `Sky.dds`, `Skybox` asset | `LightDirectional` with shadows | -- |
 | Cocos Creator | Six PNG faces, skybox with IBL | The scene's directional light, with shadows | Exponential fog |
 | GDevelop | Six PNG faces, `Skybox` effect | `DirectionalLight` with shadows; AgX | `ExponentialFog` |
@@ -47,4 +49,20 @@ macOS 26.5, Apple M4. Each check faces the camera at the sun and away from it.
 | three.js 0.186 (Edge) | motion_lab and lantern_lane HTML pages: the glow where the sun is, textures under the sky's light. `sky.hdr` loaded through `HDRLoader` draws the same sky as the page. |
 | Stride, Cocos, GDevelop | See their pages. |
 
-Flax, Unity and Unreal do not carry the sky yet. Defold's own render script does not draw `heron_sky`; use `<level>.render` or add the pass to the project's.
+Unreal does not carry the sky yet. Unity and Flax final exports now include their
+environments. Unity uses the Built-in/URP panoramic sky shader; HDRP needs project
+configuration. Their live links do not yet publish environment changes. Defold's own render script does not draw `heron_sky`; use `<level>.render` or add the pass to the project's.
+
+## Linux verification, 28 October 2026
+
+Unity 6 imported the panorama, built the native sun and retained fog density 0.02
+per metre. The complete feature lab passed edit/play mode checks with `-nographics`. A
+subsequent GPU check rendered the sky towards and away from the native sun and
+confirmed the glow faces the same direction.
+
+Flax imported and loaded the cube and instantiated native skybox, skylight, sun,
+point and spot lights. Its Linux DDS importer rejects RGBA16F, so Flax exports use
+linear RGBA8 normalized by a shared maximum. Sky exposure and skylight brightness
+restore that scale without clipping HDR values. Quantization is at most half a
+stored step per channel. This is separate from Stride's RGBA16F DDS path. The Flax
+feature lab passed with the Null renderer; rendered appearance remains unverified.

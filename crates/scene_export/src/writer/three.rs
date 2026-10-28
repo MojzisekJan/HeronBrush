@@ -38,7 +38,7 @@
 
 use super::sky::Sky;
 use crate::level::{CollisionMesh, Level};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// Renders `level` as the JSON described in the module docs.
 ///
@@ -50,6 +50,9 @@ pub fn write(level: &Level, collision: &[CollisionMesh]) -> String {
 
     if let Some(entities) = root.get_mut("entities").and_then(Value::as_array_mut) {
         for (index, entity) in entities.iter_mut().enumerate() {
+            if let Some(light) = super::common_entities::light(&level.entities[index]) {
+                entity["light"] = json!({"kind": light.kind, "color": light.color, "energy": light.energy, "range": light.range, "half_angle": light.half_angle, "shadows": light.shadows});
+            }
             let Some(mesh) = collision.get(index) else {
                 continue;
             };
@@ -320,6 +323,10 @@ pub fn write_html(
             "__WATER_RUNTIME__",
             &include_str!("three_water.js").replace("export class", "class"),
         )
+        .replace(
+            "__LIGHT_RUNTIME__",
+            &include_str!("three_lights.js").replace("export function", "function"),
+        )
         .replace("__LEVEL_DATA__", &json)
 }
 
@@ -514,9 +521,11 @@ mod preview_tests {
         assert_eq!(compact["images"].as_array().unwrap().len(), 1);
         assert_eq!(compact["images"][0]["bufferView"], 1);
         assert_eq!(compact["materials"][0]["normalTexture"]["index"], 0);
-        assert!(compact["materials"][0]["pbrMetallicRoughness"]
-            .get("baseColorTexture")
-            .is_none());
+        assert!(
+            compact["materials"][0]["pbrMetallicRoughness"]
+                .get("baseColorTexture")
+                .is_none()
+        );
         assert_eq!(&output[28 + length..32 + length], b"GEOM");
         assert_eq!(&output[32 + length..36 + length], b" NRM");
     }

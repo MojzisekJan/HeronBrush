@@ -108,3 +108,13 @@ failure [target parity](target-parity.md) put down to the shader include setup.
 - The runner now points the editor's config at the run folder. Before that, the
   first runs of this check wrote the check project's path into
   `~/.config/Flax/LastProject.txt`, replacing what was there.
+
+## 28 October 2026 update
+
+The native Null-renderer feature lab passed again with generated point and spot
+lights, correct centimetre ranges and half angles, and the skybox, skylight and
+sun. The Linux DDS importer rejected RGBA16F; the exporter now supplies a linear
+RGBA8 cube plus a shared scale restored through exposure and skylight brightness.
+This avoids clipping HDR values. The native importer still omits the model AO
+map, and this run does not establish rendered appearance. See
+[the local audit](export-audit-2026-10-28.md).

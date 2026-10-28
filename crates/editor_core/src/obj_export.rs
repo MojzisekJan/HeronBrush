@@ -105,6 +105,17 @@ pub fn files_scaled(
         .into_iter()
         .map(|(relative, png)| (directory.join(relative), png))
         .collect();
+    if mtl.lines().any(|line| line.starts_with("norm ")) {
+        let script = include_str!("obj_materials.py").replace(
+            "__OBJ_FILE__",
+            &serde_json::to_string(&obj_path.file_name().unwrap_or_default().to_string_lossy())
+                .expect("OBJ file name"),
+        );
+        files.push((
+            obj_path.with_file_name(format!("{stem}_materials.py")),
+            script.into_bytes(),
+        ));
+    }
     files.push((obj_path.to_path_buf(), obj.into_bytes()));
     files.push((obj_path.with_file_name(&mtl_name), mtl.into_bytes()));
     (report, files)
@@ -200,6 +211,7 @@ fn generate_painted_scaled(
     let mtl_name = &format!("{stem}.mtl");
     let omitted = |layer: usize| document.tree_world().layers[layer].omit_from_export;
     let mut surfaces = std::collections::BTreeMap::new();
+    let mut imported_pbr = std::collections::BTreeMap::new();
     let mut paint_images = std::collections::BTreeMap::<String, Vec<u8>>::new();
     let paint_dir = format!("{}_paint", mtl_name.trim_end_matches(".mtl"));
     // Texture files go beside the export, so it moves as one folder and opens on another
@@ -434,13 +446,17 @@ fn generate_painted_scaled(
             continue;
         };
         let mut names = Vec::new();
-        for skin in model.skins() {
+        for (material_index, skin) in model.skins().enumerate() {
             use std::hash::{Hash, Hasher};
             let mut hash = crate::export_hash::ExportHasher::default();
             skin.pixels.hash(&mut hash);
             skin.width.hash(&mut hash);
             skin.height.hash(&mut hash);
+            model.pbr_at(material_index).hash(&mut hash);
             let name = format!("heron_import_{:016x}", hash.finish());
+            if let Some(pbr) = model.pbr_at(material_index) {
+                imported_pbr.insert(name.clone(), pbr.clone());
+            }
             if !paint_images.contains_key(&name) {
                 if let Ok(png) = crate::assets::encode_png(skin.width, skin.height, &skin.pixels) {
                     paint_images.insert(name.clone(), png);
@@ -532,6 +548,49 @@ fn generate_painted_scaled(
                 }
             }
         }
+        if let Some(pbr) = imported_pbr.get(name) {
+            let [r, g, b] = pbr.emissive_factor;
+            let _ = writeln!(
+                mtl,
+                "Pr {}\nPm {}\nKe {r} {g} {b}",
+                pbr.roughness, pbr.metallic
+            );
+            for (slot, image) in [("normal", &pbr.normal), ("emissive", &pbr.emissive)] {
+                if let Some(image) = image {
+                    if let Ok(png) =
+                        crate::assets::encode_png(image.width, image.height, &image.pixels)
+                    {
+                        let path = format!("{paint_dir}/{name}.{slot}.png");
+                        textures.insert(path.clone(), png);
+                        if slot == "normal" {
+                            let _ = writeln!(mtl, "norm -bm {} {path}", pbr.normal_scale);
+                        } else {
+                            let _ = writeln!(mtl, "map_Ke {path}");
+                        }
+                    }
+                }
+            }
+            if let Some(image) = &pbr.metallic_roughness {
+                for (slot, channel, factor, directive) in [
+                    ("roughness", 1, pbr.roughness, "map_Pr"),
+                    ("metallic", 2, pbr.metallic, "map_Pm"),
+                ] {
+                    let pixels: Vec<u8> = image
+                        .pixels
+                        .chunks_exact(4)
+                        .flat_map(|p| {
+                            let v = (p[channel] as f32 * factor).round().clamp(0., 255.) as u8;
+                            [v, v, v, 255]
+                        })
+                        .collect();
+                    if let Ok(png) = crate::assets::encode_png(image.width, image.height, &pixels) {
+                        let path = format!("{paint_dir}/{name}.{slot}.png");
+                        textures.insert(path.clone(), png);
+                        let _ = writeln!(mtl, "{directive} {path}");
+                    }
+                }
+            }
+        }
         if paint_images.contains_key(name) {
             let _ = writeln!(mtl, "Kd 1 1 1\nmap_Kd {paint_dir}/{name}.png");
             continue;
@@ -543,6 +602,25 @@ fn generate_painted_scaled(
                 .map(|(name, _)| name.as_str())
                 .unwrap_or(name),
         ) {
+            if let Some(normal) = &material.normal_map {
+                if let Some(pixels) = normal.pixels() {
+                    let mut pixels = pixels.to_vec();
+                    if normal.flip_y {
+                        for p in pixels.chunks_exact_mut(4) {
+                            p[1] = 255 - p[1];
+                        }
+                    }
+                    if let Ok(png) = crate::assets::encode_png(normal.width, normal.height, &pixels)
+                    {
+                        use std::hash::{Hash, Hasher};
+                        let mut hash = crate::export_hash::ExportHasher::default();
+                        png.hash(&mut hash);
+                        let path = format!("{paint_dir}/normal_{:016x}.png", hash.finish());
+                        textures.insert(path.clone(), png);
+                        let _ = writeln!(mtl, "norm {path}");
+                    }
+                }
+            }
             // A copy beside the export when the file can be read; otherwise a path relative
             // to the `.mtl`, so the export can still move with the textures it uses.
             // A relative path would be read against the process's own directory, so only an
@@ -584,6 +662,7 @@ fn generate_painted_scaled(
             images: paint_images
                 .keys()
                 .map(|name| format!("{paint_dir}/{name}.png"))
+                .chain(textures.keys().cloned())
                 .collect(),
         },
         paint_images
@@ -642,6 +721,40 @@ common/caulk
     }
 
     #[test]
+    fn normal_maps_travel_with_obj_and_directx_green_is_converted() {
+        let root = std::env::temp_dir().join(format!("heron-obj-normals-{}", std::process::id()));
+        let textures = root.join("textures");
+        fs::create_dir_all(&textures).unwrap();
+        let png = |p: [u8; 4]| crate::assets::encode_png(2, 2, &p.repeat(4)).unwrap();
+        fs::write(textures.join("stone.png"), png([90, 90, 90, 255])).unwrap();
+        fs::write(
+            textures.join("stone_normal_dx.png"),
+            png([140, 200, 250, 255]),
+        )
+        .unwrap();
+        let mut document = one_cube();
+        document.load_materials(&textures).unwrap();
+        let (_, files) = files(&document, &root.join("export/arena.obj"), opts());
+        let mtl = String::from_utf8_lossy(
+            &files
+                .iter()
+                .find(|(p, _)| p.extension().is_some_and(|e| e == "mtl"))
+                .unwrap()
+                .1,
+        );
+        let normal = mtl.lines().find_map(|l| l.strip_prefix("norm ")).unwrap();
+        assert!(!normal.starts_with('/'));
+        let image = &files
+            .iter()
+            .find(|(p, _)| p == &root.join("export").join(normal))
+            .unwrap()
+            .1;
+        let decoded = image::load_from_memory(image).unwrap().to_rgba8();
+        assert_eq!(decoded.get_pixel(0, 0).0, [140, 55, 250, 255]);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn a_cube_writes_one_object_of_twelve_triangles() {
         let (obj, _, report) = generate(&one_cube(), "m.mtl", opts());
         assert_eq!(report.brushes, 1);
@@ -687,9 +800,11 @@ common/caulk
         assert_eq!(report.brushes, 1);
         assert!(obj.is_file());
         assert!(dir.join("room.mtl").is_file());
-        assert!(fs::read_to_string(&obj)
-            .unwrap()
-            .contains("mtllib room.mtl"));
+        assert!(
+            fs::read_to_string(&obj)
+                .unwrap()
+                .contains("mtllib room.mtl")
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }

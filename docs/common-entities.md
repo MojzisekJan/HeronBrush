@@ -10,7 +10,7 @@ The catalogue includes point, spot and sun lights; player starts; doors, buttons
 - **Unity:** common lights become native `Light` components. Entity properties and all target links are retained in a generated `HeronBrushEntity` component as JSON, as well as the level manifest. Player starts are markers, not player controllers. Native MeshColliders include invisible sensors. Optional animation, trigger, platform-walker and water adapters are generated separately; project-owned gameplay can use the complete metadata.
 - **Unreal:** common lights become native light actors, and player starts become `PlayerStart` actors. Full entity data is embedded in the Python importer and written beside it as `<level>.json`. Short `heron_brush_entity_index:N` actor tags identify records in that data; large JSON strings are not stored in Unreal name tags. Doors and triggers still need project gameplay and collision setup.
 - **Defold:** brush entities retain their properties in generated component scripts, including door speed and travel. Propertyless player starts retain their classname. The JSON manifest preserves all targets and typed values. Existing collision export uses trigger and kinematic collision objects. Rendering lights and executing gameplay require project scripts/materials.
-- **Flax:** the existing importer places models and generic entity actors; the JSON manifest carries the entity data. Current native adapters and their limits are recorded in [the export contract](engine-export-contract.md) and [water export](water-export.md).
+- **Flax:** common lights become native point/spot/directional actors below the entity root in final and live imports. Ranges convert metres to centimetres and spot angles remain half angles. The importer also places models and generic entity actors; the JSON manifest carries the entity data. Current native adapters and their limits are recorded in [the export contract](engine-export-contract.md) and [water export](water-export.md).
 
 Light ranges use metres in Unity and are converted to centimetres in Unreal. The HERON_BRUSH spotlight half-angle becomes Unity's full cone angle and Unreal's outer half-angle. Intensity values are transferred numerically, not calibrated for identical exposure across rendering pipelines.
 
@@ -29,7 +29,26 @@ Blank engine-specific fields retain the exporter defaults. Existing saved settin
 
 Automated tests cover bundled/custom definitions, MCP discovery, entity placement scale, generated native lights, preservation of properties and targets, Defold material options and settings persistence. Generated Unity, Unreal and Flax scripts still need execution in their respective editors; unit tests do not replace those checks.
 
-Next interoperability work: import invisible collision volumes in Unity, native Flax lights, and per-engine runtime adapters for doors/buttons/triggers with the same documented behaviour. Useful later options include Unity layers, Unreal light mobility, Defold collision groups/masks and Flax static flags; add them together with their actual importer support.
+Three.js exports include `heron_lights.js`, used by the generated playtest and the
+production example loader. Lights follow their entity roots, with local -Z as the
+emission direction. The loader also preserves imported PBR materials and shares
+geometry between repeated model instances.
+
+Bevy exports include the optional `heron_lights.rs` module. Add `HeronLightPlugin`
+alongside `HeronEntityPlugin`; it handles point, spot and sun classes on newly
+loaded metadata entities and preserves existing project-owned light components.
+Its energy mapping is 1000 lumens per unit for point/spot and 10000 lux per unit
+for sun lights. These are explicit sample conventions, not photometric calibration.
+The viewer now handles spotlights and keeps authored suns when a sky is present.
+
+Raylib exports include `<level>_lighting.h`, with `HbLightingLoad` and
+`HbLightingDraw`. The generated preview uses it for authored point, spot and sun
+lights, normal textures and basic diffuse/specular response. It supplies a sky
+sun when no authored sun exists. It does not generate shadow maps, full PBR or
+animated point-light transforms. Water view shading remains its separate adapter.
+
+Native regression results for these adapters are recorded in
+[the local export audit](export-audit-2026-10-28.md). Useful later options include Unity layers, Unreal light mobility, Defold collision groups/masks and Flax static flags; add them together with their actual importer support.
 
 ### Editor symbols and sound
 

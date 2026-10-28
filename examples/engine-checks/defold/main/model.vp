@@ -1,10 +1,9 @@
-// The map's meshes. World-space normal for the flat shading in the fragment
-// program; heron_brush bakes entity rotation into the mesh, so the model matrix is a
-// translation and the normal passes through.
+// World-space inverse-transpose normals for rotated and nonuniformly scaled roots.
 attribute highp vec4 position;
 attribute mediump vec3 normal;
 attribute mediump vec2 texcoord0;
 
+uniform highp mat4 mtx_world;
 uniform mediump mat4 mtx_worldview;
 uniform mediump mat4 mtx_proj;
 
@@ -13,6 +12,8 @@ varying mediump vec2 var_texcoord0;
 
 void main() {
     var_texcoord0 = texcoord0;
-    var_normal = normal;
+    mat3 m = mat3(mtx_world);
+    mat3 cofactors = mat3(cross(m[1],m[2]),cross(m[2],m[0]),cross(m[0],m[1]));
+    var_normal = normalize(cofactors * normal) * sign(dot(m[0],cross(m[1],m[2])));
     gl_Position = mtx_proj * (mtx_worldview * vec4(position.xyz, 1.0));
 }

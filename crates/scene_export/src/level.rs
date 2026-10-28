@@ -233,7 +233,8 @@ pub struct Texture {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
     /// Extra maps found next to the albedo image, as (slot, path) pairs.
-    /// Slots are `normal`, `roughness`, `metallic`, `emission`, `ao`, `orm`.
+    /// Slots are `normal`, `roughness`, `metallic`, `emission`, `ao`, `orm`;
+    /// imported glTF materials also use `mr` and `emissive`.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub maps: Vec<(String, String)>,
     /// Pixel size the UVs were worked out against.

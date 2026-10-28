@@ -44,6 +44,82 @@
 
 use crate::level::{CollisionMesh, CollisionShape, Level, Value};
 
+/// Optional baseline renderer for raylib's generated preview and project code.
+/// The source entity transforms are baked into these static light records.
+pub fn lighting(level: &Level, sky: Option<&super::sky::Sky>) -> String {
+    let mut lights = Vec::new();
+    for entity in &level.entities {
+        if let Some(light) = super::common_entities::light(entity) {
+            let t = &entity.transform;
+            let direction = glam::DQuat::from_euler(
+                glam::EulerRot::YXZ,
+                t.rotation_yxz[1],
+                t.rotation_yxz[0],
+                t.rotation_yxz[2],
+            ) * -glam::DVec3::Z;
+            lights.push((
+                light.kind,
+                t.translation,
+                direction.to_array(),
+                light.color,
+                light.energy,
+                light.range,
+                light.half_angle,
+            ));
+        }
+    }
+    if !lights.iter().any(|l| l.0 == "Directional") {
+        if let Some(sky) = sky {
+            lights.push((
+                "Directional",
+                [0.; 3],
+                sky.to_sun().map(|v| -f64::from(v)),
+                [
+                    f64::from(sky.sun_color[0]),
+                    f64::from(sky.sun_color[1]),
+                    f64::from(sky.sun_color[2]),
+                    1.,
+                ],
+                f64::from(sky.sun_intensity),
+                1.,
+                45.,
+            ));
+        }
+    }
+    let mut records = String::new();
+    for (kind, position, direction, color, energy, range, angle) in &lights {
+        let kind = match *kind {
+            "Spot" => 1,
+            "Directional" => 2,
+            _ => 0,
+        };
+        let a = |v: &[f64]| {
+            v.iter()
+                .take(3)
+                .map(|v| format!("{v:.9}f"))
+                .collect::<Vec<_>>()
+                .join(",")
+        };
+        records.push_str(&format!(
+            "{{{kind},{{{}}},{{{}}},{{{}}},{energy:.9}f,{range:.9}f,{:.9}f}},\n",
+            a(position),
+            a(direction),
+            a(color),
+            angle.to_radians().cos()
+        ));
+    }
+    if records.is_empty() {
+        records.push_str("{0},\n");
+    }
+    let data = format!(
+        "#define HB_RENDER_LIGHT_COUNT {}\nstatic const HbRenderLight hb_render_lights[]={{\n{records}}};",
+        lights.len()
+    );
+    include_str!("raylib_lighting.h")
+        .replace("__LIGHT_DATA__", &data)
+        .replace("__LIGHT_CAPACITY__", &lights.len().max(1).to_string())
+}
+
 /// Renders a [`Level`] as the flat text described in the module docs.
 ///
 /// `collision` is `LevelResult::collision`, aligned with `level.entities`.

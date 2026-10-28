@@ -21,6 +21,8 @@ mod heron_water_render;
 mod heron_animation;
 #[path = "../../../crates/scene_export/src/writer/bevy_entities.rs.txt"]
 mod heron_entities;
+#[path = "../../../crates/scene_export/src/writer/bevy_lights.rs.txt"]
+mod heron_lights;
 #[path = "../../../crates/scene_export/src/writer/bevy_sky.rs.txt"]
 mod heron_sky;
 
@@ -117,7 +119,7 @@ fn main() -> AppExit {
         .insert_resource(Sky(sky))
         .insert_resource(level)
         .insert_resource(args)
-        .add_plugins(heron_entities::HeronEntityPlugin)
+        .add_plugins((heron_entities::HeronEntityPlugin, heron_lights::HeronLightPlugin))
         .add_plugins(heron_water_render::HeronWaterPlugin)
         .add_systems(Update, prepare_water_surfaces)
         .add_plugins(heron_animation::HeronAnimationFixedPlugin)
@@ -335,7 +337,7 @@ fn spawn_level(
         let data=heron_entities::HeronEntityData::from_json(&serde_json::to_value(entity).expect("level entity serializes")).expect("validated level entity");
 
         // The exported sky brings the editor's own sun.
-        if entity.classname == "light_sun" && sky.0.is_none() {
+        if entity.classname == "light_sun" {
             commands.spawn((
                 Name::new(entity.name.clone()),
                 SourceEntity(source_index),
@@ -353,6 +355,10 @@ fn spawn_level(
             continue;
         }
 
+        if entity.classname == "light_spot" {
+            commands.spawn((Name::new(entity.name.clone()),SourceEntity(source_index),data,placement));
+            continue;
+        }
         if entity.classname == "light" {
             let c = entity.colour("light_color").unwrap_or([1.0; 4]);
             commands.spawn((
@@ -621,7 +627,7 @@ fn spawn_camera(
             ..default()
         });
     }
-    if let Some(sky) = &sky.0 {
+    if let Some(sky) = sky.0.as_ref().filter(|_| !level.entities.iter().any(|e|e.classname == "light_sun")) {
         commands.spawn((
             Name::new("sun"),
             sky.sun(),

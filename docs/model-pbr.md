@@ -36,7 +36,12 @@ to sRGB at the resource boundary, matching its native GLB importer. Since this
 material path has no independent glTF AO-strength scalar, the Godot AO companion
 image bakes that strength into R. The source and other exports stay unchanged.
 
-The standalone OBJ writer does not carry these PBR maps into runtime materials.
+The standalone OBJ writer now carries normal/emissive maps, PBR factors and
+separate metallic/roughness images with their factors baked into the pixels.
+MTL interpretation depends on the importer. Blender needs the generated
+`<level>_materials.py` helper for native tangent-space normal nodes and strength;
+raw OBJ import ignores MTL `norm`. AO and the complete glTF material semantics
+still require GLB or a project adapter.
 Unity's OBJ geometry export now has a companion material adapter. It converts
 MR.B times metallic into Unity's metallic R channel and one minus MR.G times
 roughness into smoothness A. AO.R and its strength become Unity occlusion G.
@@ -51,7 +56,7 @@ rebuild and scene save/reopen in batch/nographics mode. They do not prove render
 appearance or URP support in a running project. Godot and Three.js retain their
 separate native/browser material checks. Other engines need their own checks.
 
-OBJ MTL PBR extensions are not imported. Material extensions such as clearcoat,
+OBJ imports do not read MTL PBR extensions. Material extensions such as clearcoat,
 transmission, anisotropy and emissive strength are not implemented. Required glTF
 extensions remain rejected. Source tangent attributes are recomputed from geometry
 and UVs. Alpha-mode and double-sided material fidelity still need separate work.

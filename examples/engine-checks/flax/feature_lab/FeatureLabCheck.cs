@@ -117,6 +117,16 @@ namespace Game
             var metadata = placements.ToDictionary(p => p.Key, p => JObject.Parse(p.Value.MetadataJson));
             Check(actors.Count == 24, "importer built all 24 entities", actors.Count + " actors");
 
+            var point = actors["light"].GetChild<PointLight>();
+            var spot = actors["light_spot"].GetChild<SpotLight>();
+            Check(point != null && Math.Abs(point.Brightness - 2.5f) < 0.0001f && Math.Abs(point.Radius - 800f) < 0.001f, "native point light with energy and centimetre range");
+            Check(spot != null && Math.Abs(spot.OuterConeAngle - 30f) < 0.0001f && Math.Abs(spot.Radius - 1000f) < 0.001f, "native spotlight with half angle and centimetre range");
+            var root = HeronBrushLevel.LastBuiltRoot;
+            var sky = root.GetChild<Skybox>();
+            var ambient = root.GetChild<SkyLight>();
+            Check(sky != null && sky.CubeTexture != null && !sky.CubeTexture.WaitForLoaded(), "native HDR sky cube");
+            Check(ambient != null && ambient.CustomTexture != null, "native ambient sky light");
+            Check(root.GetChild<DirectionalLight>() != null, "native sky sun");
             Colliders(actors);
             Materials(actors);
             HiddenFace(actors);

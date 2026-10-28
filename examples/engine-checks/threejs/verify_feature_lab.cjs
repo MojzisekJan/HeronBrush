@@ -20,6 +20,7 @@ const CDN = 'https://cdn.jsdelivr.net/npm/three@0.186.0/';
     '/three/': path.join(featureRoot, 'heron-feature-three'),
     '/glb/': path.join(featureRoot, 'heron-feature-glb'),
     '/gltf/': path.join(featureRoot, 'heron-feature-gltf'),
+    '/check/assets/': path.join(featureRoot,'heron-feature-three'),
     '/check/': __dirname,
   };
   // The web build vendors only what the playtest needs; HDRLoader comes from the CDN.
@@ -93,7 +94,17 @@ const CDN = 'https://cdn.jsdelivr.net/npm/three@0.186.0/';
       // one-pixel emissive paint clamps, its 64-pixel tinted textures repeat).
       const wraps = (name, wide) => { const w = []; named(name).object.traverse(o => { if (o.isMesh) for (const m of [o.material].flat()) if (!wide || m.map?.image.width > 1) w.push(m.map?.wrapS); }); return w; };
       const baked = wraps('fl_colours'), tinted = wraps('fl_surface', true);
+      const geometry = object => { const result=[]; object.traverse(o=>{if(o.isMesh)result.push(o.geometry);}); return result; };
+      const a=geometry(named('fl_model_a').object), b=geometry(named('fl_model_b').object);
+      const pbr = []; named('fl_model_a').object.traverse(o=>{if(o.isMesh)pbr.push(...[o.material].flat());});
+      const lights = []; scene.root.traverse(o=>{if(o.isLight)lights.push(o);});
       return {
+        models: a.length && a.length===b.length && a.every((g,i)=>g===b[i])
+          ? {status:'PASS',detail:'repeated model instances share loaded geometry'} : {status:'FAIL',detail:'production loader duplicates model geometry'},
+        pbr: pbr.length && pbr.every(m=>m.normalMap && m.roughnessMap && m.metalnessMap && m.aoMap && m.emissiveMap)
+          ? {status:'PASS',detail:'production loader keeps imported normal, roughness, metalness, AO and emission maps'} : {status:'FAIL',detail:'production loader lost a PBR slot'},
+        lights: lights.some(l=>l.isPointLight) && lights.some(l=>l.isSpotLight)
+          ? {status:'PASS',detail:'production loader creates native point and spot lights'} : {status:'FAIL',detail:'production loader has no native common lights'},
         trigger: door.clip.name === 'open' && door.posed && door.time === 1
           ? {status: 'PASS', detail: 'advance(dt, feet, 1.8) with the feet on the floor opens the door'}
           : {status: 'FAIL', detail: `door ${door.clip.name} posed ${door.posed} at ${door.time}`},
@@ -129,6 +140,9 @@ const CDN = 'https://cdn.jsdelivr.net/npm/three@0.186.0/';
       result.clamp = wraps.length === 6 && wraps.every(w => w === 1001)
         ? {status: 'PASS', detail: 'the page draws all 6 fl_colours paint maps clamped'}
         : {status: 'FAIL', detail: `fl_colours paint maps wrap ${wraps.join(', ')} (1001 is clamp)`};
+      const lights=[]; h.scene.traverse(o=>{if(o.name==='HeronLight')lights.push(o);});
+      result.lights = lights.some(l=>l.isPointLight) && lights.some(l=>l.isSpotLight)
+        ? {status:'PASS',detail:'generated playtest creates native point and spot lights'} : {status:'FAIL',detail:'generated playtest has no native common lights'};
       // Then look at the lab from the start, for the screenshot.
       h.reset(); run(0.2);
       h.camera.position.set(-20, 16, -8); h.camera.lookAt(2, 0, -9);

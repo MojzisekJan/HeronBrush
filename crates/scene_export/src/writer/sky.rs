@@ -155,8 +155,43 @@ impl Sky {
     /// Direct3D samples cubes left-handed, so a right-handed engine that hands a
     /// direction straight to the sampler sees its own +Z on the -Z face; `flip_z`
     /// writes the faces for that.
+    /// Linear RGBA8 DDS accepted by Flax's Linux importer. A shared intensity
+    /// scale retains values above one without clipping; the engine restores it
+    /// through sky exposure and skylight brightness. Quantization is scale/255.
+    pub fn cube_dds_normalized(&self, size: u32, flip_z: bool) -> (Vec<u8>, f32) {
+        let mut pixels = Vec::new();
+        let mut scale = 1.0_f32;
+        for face in 0..6 {
+            for y in 0..size {
+                for x in 0..size {
+                    let mut d = cube_direction(
+                        face,
+                        (x as f32 + 0.5) / size as f32 * 2. - 1.,
+                        (y as f32 + 0.5) / size as f32 * 2. - 1.,
+                    );
+                    if flip_z {
+                        d[2] = -d[2];
+                    }
+                    let color = self.radiance(d);
+                    for value in color {
+                        scale = scale.max(value);
+                    }
+                    pixels.push(color);
+                }
+            }
+        }
+        let mut out = dds_header(size, 28, 4);
+        for color in pixels {
+            for value in color {
+                out.push((value / scale * 255.).round().clamp(0., 255.) as u8);
+            }
+            out.push(255);
+        }
+        (out, scale)
+    }
+
     pub fn cube_dds(&self, size: u32, flip_z: bool) -> Vec<u8> {
-        let mut out = dds_header(size);
+        let mut out = dds_header(size, 10, 8);
         for face in 0..6 {
             for y in 0..size {
                 for x in 0..size {
@@ -339,6 +374,18 @@ impl Sky {
     }
 }
 
+/// Unity's Skybox/Panoramic uses u = 0.5 - atan2(z,x)/TAU. File rows
+/// run top to bottom, and Unity's exported frame reflects the source X axis.
+pub fn unity_panorama_direction(u: f32, v: f32) -> V {
+    let phi = (0.5 - u) * std::f32::consts::TAU;
+    let theta = v * std::f32::consts::PI;
+    [
+        -theta.sin() * phi.cos(),
+        theta.cos(),
+        theta.sin() * phi.sin(),
+    ]
+}
+
 /// The direction a panorama pixel looks along as Godot's `PanoramaSkyMaterial` samples
 /// it: `u` turns from -Z through +X, `v` runs from straight up to straight down.
 pub fn godot_panorama_direction(u: f32, v: f32) -> V {
@@ -487,12 +534,12 @@ fn half(value: f32) -> u16 {
     sign | rounded.min(0x7bff) as u16
 }
 
-/// A DDS header with the DX10 extension for an RGBA16F cube map without mipmaps.
-fn dds_header(size: u32) -> Vec<u8> {
+/// A DDS header with the DX10 extension for an uncompressed cube without mipmaps.
+fn dds_header(size: u32, format: u32, bytes_per_pixel: u32) -> Vec<u8> {
     let mut h = Vec::with_capacity(148);
     h.extend(b"DDS ");
     let flags = 0x1 | 0x2 | 0x4 | 0x1000 | 0x8; // caps, height, width, pixelformat, pitch
-    for value in [124, flags, size, size, size * 8, 0, 1] {
+    for value in [124, flags, size, size, size * bytes_per_pixel, 0, 1] {
         h.extend(u32::to_le_bytes(value));
     }
     h.extend([0u8; 44]);
@@ -507,7 +554,7 @@ fn dds_header(size: u32) -> Vec<u8> {
         h.extend(u32::to_le_bytes(value));
     }
     // DX10: DXGI_FORMAT_R16G16B16A16_FLOAT, TEXTURE2D, misc TEXTURECUBE, one array element.
-    for value in [10u32, 3, 0x4, 1, 0] {
+    for value in [format, 3, 0x4, 1, 0] {
         h.extend(value.to_le_bytes());
     }
     h
@@ -530,6 +577,43 @@ mod tests {
             exposure: 1.,
             fog: None,
         }
+    }
+
+    #[test]
+    fn flax_cube_normalization_retains_hdr_range_and_unity_panorama_axes() {
+        let mut sky = sky();sky.sky=[10.,4.,2.];
+        let size = 8;
+        let (bytes, scale) = sky.cube_dds_normalized(size, true);
+        assert_eq!(&bytes[..4], b"DDS ");
+        assert_eq!(u32::from_le_bytes(bytes[128..132].try_into().unwrap()), 28);
+        assert_eq!(bytes.len(), 148 + 6 * size as usize * size as usize * 4);
+        let mut i = 148;
+        for face in 0..6 {
+            for y in 0..size {
+                for x in 0..size {
+                    let mut d = cube_direction(
+                        face,
+                        (x as f32 + 0.5) / size as f32 * 2. - 1.,
+                        (y as f32 + 0.5) / size as f32 * 2. - 1.,
+                    );
+                    d[2] = -d[2];
+                    let expected = sky.radiance(d);
+                    for c in 0..3 {
+                        assert!(
+                            (bytes[i + c] as f32 / 255. * scale - expected[c]).abs()
+                                <= scale / 255. + 1e-6
+                        );
+                    }
+                    assert_eq!(bytes[i + 3], 255);
+                    i += 4;
+                }
+            }
+        }
+        let left = unity_panorama_direction(0., 0.5);
+        assert!(left[0] > 0.999 && left[1].abs() < 1e-6 && left[2].abs() < 1e-6);
+        let center = unity_panorama_direction(0.5, 0.5);
+        assert!(center[0] < -0.999);
+        assert!(unity_panorama_direction(0.3, 0.)[1] > 0.999);
     }
 
     #[test]
@@ -582,11 +666,7 @@ mod tests {
         } else {
             (1. + m / 1024.) * 2f32.powi(e - 15)
         };
-        if h & 0x8000 != 0 {
-            -v
-        } else {
-            v
-        }
+        if h & 0x8000 != 0 { -v } else { v }
     }
 
     #[test]

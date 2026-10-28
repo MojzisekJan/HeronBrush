@@ -36,6 +36,8 @@ pub struct FlaxOptions {
     /// directory, e.g. `Levels/arena`. Only the generated script's own comments and its
     /// asset paths use it.
     pub content_dir: String,
+    pub sky: Option<super::sky::Sky>,
+    pub sky_scale: f32,
 }
 
 impl FlaxOptions {
@@ -43,6 +45,8 @@ impl FlaxOptions {
     pub fn for_level(name: &str) -> Self {
         FlaxOptions {
             content_dir: name.to_string(),
+            sky: None,
+            sky_scale: 1.,
         }
     }
 }
@@ -73,7 +77,10 @@ pub fn validate(level: &Level) -> Result<(), String> {
                         .as_ref()
                         .is_some_and(|shape| shape.kind != crate::level::CollisionShape::Convex))
             {
-                return Err(format!("{}: dynamic Flax bodies require convex collision and cannot use exported animation",entity.name));
+                return Err(format!(
+                    "{}: dynamic Flax bodies require convex collision and cannot use exported animation",
+                    entity.name
+                ));
             }
         }
         if let Some(value) = entity.properties.get("flax_mass") {
@@ -116,6 +123,47 @@ fn write_importer(
     let manifest = super::three::write(level, collision);
     let metadata_root: serde_json::Value =
         serde_json::from_str(&manifest).expect("serialized level");
+    let environment_helper = options
+        .sky
+        .as_ref()
+        .map(|sky| {
+            let [x, y, z] = sky.to_sun();
+            let [r, g, b] = sky.sun_color;
+            include_str!("flax_environment.cs")
+                .replace(
+                    "__EXPOSURE__",
+                    &format!(
+                        "{:.9}",
+                        (sky.exposure * 1.8 * options.sky_scale)
+                            .max(0.000001)
+                            .log2()
+                    ),
+                )
+                .replace("__SUN_COLOR__", &format!("{r:.9}f,{g:.9}f,{b:.9}f"))
+                .replace(
+                    "__SUN_DIRECTION__",
+                    &format!("{:.9}f,{:.9}f,{z:.9}f", -x, -y),
+                )
+                .replace(
+                    "__SUN_INTENSITY__",
+                    &format!("{:.9}", sky.sun_intensity / std::f32::consts::PI),
+                )
+                .replace(
+                    "__AMBIENT__",
+                    &format!("{:.9}", sky.ambient_intensity * options.sky_scale),
+                )
+        })
+        .unwrap_or_default();
+    let environment_import = if options.sky.is_some() {
+        "            ImportEnvironment();"
+    } else {
+        ""
+    };
+    let environment_setup = if options.sky.is_some() {
+        "            AddEnvironment(root, actors);"
+    } else {
+        ""
+    };
     let mut entries = String::new();
     for (index, entity) in level.entities.iter().enumerate() {
         let t = &entity.transform;
@@ -229,6 +277,8 @@ namespace Game
         public const string SourceKey = "{source_key}";
         public static Actor LastBuiltRoot {{ get; private set; }}
 {bindings_helper}
+{lights_helper}
+{environment_helper}
         public static Dictionary<string,Actor> Rebuild(Action<Actor, Placement, IReadOnlyDictionary<string, Actor>> configure = null)
         {{
             Actor previous=null;
@@ -267,6 +317,7 @@ namespace Game
 #if FLAX_EDITOR
         public static void ImportModels(bool preserveExistingMaterials = false)
         {{
+{environment_import}
             var imported = new HashSet<string>();
             foreach (var placement in Placements)
             {{
@@ -446,6 +497,7 @@ namespace Game
                 if(data["properties"] is JObject properties)
                     foreach(var property in properties.Properties())
                         if(property.Name.StartsWith("flax_script_"))actor.AddScript(ScriptType((string)property.Value["value"]));
+                AddLight(actor, data);
                 actors.Add(placement.Name, actor);
                 if (collisions.TryGetValue(placement.Name, out var parts))
                     for (int i = 0; i < parts.Count; i++)
@@ -459,6 +511,7 @@ namespace Game
             }}
 
 {animation_attach}
+{environment_setup}
             foreach(var placement in Placements)
                 ConfigureProperties(actors[placement.Name], metadata[placement.Name], actors);
             if (configure != null)
@@ -501,6 +554,7 @@ namespace Game
 "#,
         level = escape(&level.name),
         source_key = namespace(level, options),
+        lights_helper = include_str!("flax_lights.cs"),
         bindings_helper = include_str!("flax_bindings.cs"),
     );
 
@@ -744,14 +798,20 @@ mod tests {
             2.75
         );
         assert_eq!(json["entities"][1]["targets"][0], "worldspawn");
-        assert!(files[0]
-            .contents
-            .contains("new Vector3(2.000000000f, 0.500000000f, 3.000000000f)"));
-        assert!(files[0]
-            .contents
-            .contains("configure(actors[placement.Name], placement, actors)"));
-        assert!(files[0]
-            .contents
-            .contains("actor.LocalOrientation = placement.Orientation"));
+        assert!(
+            files[0]
+                .contents
+                .contains("new Vector3(2.000000000f, 0.500000000f, 3.000000000f)")
+        );
+        assert!(
+            files[0]
+                .contents
+                .contains("configure(actors[placement.Name], placement, actors)")
+        );
+        assert!(
+            files[0]
+                .contents
+                .contains("actor.LocalOrientation = placement.Orientation")
+        );
     }
 }

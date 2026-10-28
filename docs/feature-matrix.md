@@ -35,27 +35,30 @@ through the MCP animation and trigger tools.
 
 ## Result
 
+Updated from fresh file exports on 28 October 2026. These results inspect written
+assets; native evidence and limits are in [the local audit](export-audit-2026-10-28.md).
+
 | Feature | Godot | Defold | three.js | Babylon.js | PlayCanvas | Bevy | raylib | Unity | Unreal | Flax | Stride | Cocos | GDevelop | OBJ | glTF | GLB |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Textures and UVs | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | Face colours | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | Gradients | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | Surface materials | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| Brush normal maps | PASS | N/A | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | N/A | PASS | PASS | N/A | PASS | PASS |
+| Brush normal maps | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | Solid collision | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
 | Clip brushes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
 | Skip faces | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
 | Export-hidden faces | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | Trigger volumes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
-| Sky and fog | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | N/A | N/A | PASS | PASS | PASS | N/A | N/A | N/A |
+| Sky and fog | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
 | Keyframe animation | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
 | Door, button and trigger links | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
 | Typed properties | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS |
 | Target links | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS |
-| Lights | PASS | N/A | N/A | PASS | PASS | N/A | N/A | PASS | PASS | N/A | N/A | N/A | N/A | N/A | N/A | N/A |
+| Lights | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | N/A | N/A | N/A | N/A | N/A |
 | Water | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
 | Imported models, shared | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| Model PBR maps | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | N/A | PASS | PASS |
+| Model PBR maps | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS |
 
 Before the fixes below, the first run had 18 failures: face colours on all 14
 targets, the GDevelop clip brush, the Unreal clip brush and trigger, and the
@@ -131,19 +134,21 @@ The other targets read the level JSON and the GLBs beside it.
 
 | Feature | Targets | Why |
 | --- | --- | --- |
-| Sky and fog | Unity, Unreal, Flax, OBJ, glTF, GLB | `Target::exports_sky` is false; [sky export](sky-export.md) says so |
+| Sky and fog | Unreal, OBJ, glTF, GLB | `Target::exports_sky` is false; [sky export](sky-export.md) says so |
 | Keyframe animation, door links | Unreal, OBJ, glTF, GLB | The export warns that there is no playback controller |
 | Water | Unreal, OBJ, glTF, GLB | Not in [water export](water-export.md)'s adapter list |
-| Lights | all but Godot, Unity, Unreal, Babylon.js and PlayCanvas | [Common entities](common-entities.md) lists native lights for Godot, Unity and Unreal, and the [Babylon.js](babylon-export.md) and [PlayCanvas](playcanvas-export.md) exports their own; the others keep colour, energy and range in the entity data, which the check confirms |
-| Brush normal maps | Unity, Defold, Stride, OBJ | Unity's OBJ path has no slot for them; Defold's `.model` binds one colour sampler; [Stride export](stride-export.md) lists them as not transferred; OBJ writes none |
-| Model PBR maps | Defold, Stride, OBJ | As above; [model PBR](model-pbr.md) says the OBJ writer does not carry them |
+| Lights | Defold, Stride, Cocos, GDevelop, OBJ, glTF, GLB | These default adapters retain light properties without generating common-light rendering. Three.js, Bevy, Flax and raylib now have explicit adapters; see [common entities](common-entities.md). |
+| Brush normal maps | Defold default material | Project shaders can opt into `defold_sampler_normal`; the default sample uses albedo. Unity, Stride and OBJ now transfer companion maps. |
+| Model PBR maps | Defold default material, OBJ | Defold project samplers are opt-in. OBJ carries several PBR maps but has no full glTF/AO material equivalent; see [model PBR](model-pbr.md). |
 | Collision rows | Unreal | The importer spawns meshes and lights only; collision stays in the GLBs and JSON |
 | Collision rows | OBJ, glTF, GLB | Geometry formats; clip and skip faces are left out of the mesh as required |
 | Properties, links | OBJ | Geometry only |
 
 Defold and raylib keep the surface factors in the GLB and level JSON, and the
-export warns that their default shaders ignore them. Stride writes roughness and
-metalness into its materials but not emission, as its page says.
+export warns that the default shaders do not implement full PBR. Stride writes roughness and
+metalness, emission, normal maps, metallic/roughness maps and AO into native
+materials. The Stride PBR additions passed writer regressions and native YAML
+loading on 28 October 2026; the table above includes the new asset checks. See [Stride export](stride-export.md).
 
 ## Fixed
 
@@ -163,70 +168,23 @@ metalness into its materials but not emission, as its page says.
   portable glTF and GLB named the model's materials after its absolute source
   path. Test: `imported_model_materials_are_named_without_the_source_folder`.
 
-## Open
+## Remaining native and rendering work
 
-These pass or are N/A in the table, but are worth a decision:
+- Unreal has no installed supported editor here; its collision/gameplay and sky
+  adapters still need implementation and native verification.
+- Defold's default sample shader does not become full PBR. Explicit project
+  sampler bindings are supported and checked with Bob.
+- Raylib's forward preview shader has no shadow maps or complete PBR/IBL path.
+- Flax needs a rendered check, native imported-model AO mapping and a homogeneous
+  fog adapter. Its sky,
+  common lights and the rest of the feature lab passed the native Null renderer.
+- Stride needs a native rendered project on this machine. Its material assets
+  passed actual Stride YAML loading, not shader compilation or rendering.
+- Cocos Creator and GDevelop have no supported native installation found here.
+  Earlier macOS evidence remains documented on their target pages.
 
-- OBJ, glTF and GLB draw the trigger volume as a visible box and all six faces
-  of the water volume. The portable writers do not consult the class's
-  `visuals=false`, although glTF's `extras.heron.build` carries it. Leaving
-  gameplay volumes out of a portable scene is a design choice, not a contained
-  fix.
-- Unity has no normal maps for brush textures. Its OBJ and MTL path would need a
-  normal-map entry and the importer's material adapter would need to read it.
-- Godot finds a brush texture's normal map only as `<texture>_normal` in the
-  project's texture folder. The editor also pairs `_normal_gl`, `_n` and
-  `_normal_dx`, and flips the green channel of the last; Godot's companion
-  lookup does neither.
-- Unreal's importer sets up no collision, triggers or animation. Its collision
-  data is in each GLB's unreferenced second mesh and in the level JSON.
-- The portable glTF names painted materials after the editor's internal key,
-  such as `paint:Rgb { r: 220, g: 30, b: 40 }:None`. Harmless, but not a name a
-  person would pick.
-
-## What still needs an engine run
-
-File checks cannot show these. For each installed engine:
-
-- **Godot 4.7.1** (`~/.local/bin/godot`). The import of the OBJ meshes and of the
-  scene's relative `textures/` resource paths. Clamped paint and the normal,
-  roughness, metallic and emission settings as drawn. The ConcavePolygonShape3D
-  without the skip face, and the trigger's Area3D `body_entered`. AnimationPlayer
-  playback of the bezier and held tracks, and the button and trigger opening the
-  door through `HeronAnimationTrigger`. The water shader and view script. The
-  panorama sky and fog. The direction of the spot light at angles -60 45 0. The
-  shared mesh resource of the two model copies.
-- **Defold** (`~/.local/opt/Defold`). A Bob build of the `.model`, `.collisionobject`
-  and generated scripts. Static hulls, trigger messages and the kinematic door.
-  The baked animation script in `fixed_update`. The sky pass in `feature_lab.render`
-  and the water pass. That `/main/model.material` with `tex0` draws every
-  painted and textured surface.
-- **Unity 6000.3.24f1** (`~/Unity/Hub/Editor`). The Build Level importer on this
-  export: OBJ and MTL import with the paint PNGs, convex and triangle
-  MeshColliders, trigger colliders, `HeronBrushAnimation` and its triggers, the
-  Point and Spot lights' orientation, `ApplySurface` and `ApplyPbr` materials
-  and the water shader.
-- **Flax** (`~/Downloads/flax`). The generated importer building actors from the
-  GLBs and `feature_lab.level.json`: colliders from the inline hulls and
-  triangles, sensors, animation and water components, and whether its GLB import
-  keeps the normal and PBR maps.
-- **three.js** (through `~/.local/bin/chromium`). GLTFLoader on the GLBs: embedded
-  textures, clamped paint samplers, normal maps with tangents and
-  `KHR_materials_emissive_strength`. The Octree built from collision meshes and
-  inline hulls, with the trigger as a sensor that opens the door. Animation poses
-  against the editor's. `sky.hdr` through HDRLoader, FogExp2 and the water.
-- **Bevy** (cargo, `demos/bevy_fps`). GLB loading with the normal map and emissive
-  strength. Avian colliders from each GLB's collision mesh, sensors, and
-  `heron_animation.rs` playback driven by `HeronAnimationTrigger`. The KTX2 sky
-  from `heron_sky.rs` and the water adapters. Lights are entity data the game
-  has to turn into Bevy lights.
-- **raylib** (`~/.cache/heron-brush/raylib-6.0`). `LoadModel` on multi-material
-  GLBs with their embedded images. The `.level` reader's `ctri`, `chull` and
-  `sensor` lines, the C animation header against editor poses, the `sky.png`
-  cube and `feature_lab_water.h`.
-
-Stride, Cocos Creator and GDevelop have their own native checks on macOS (see
-their pages); Unreal has none on this machine. Babylon.js has had its run, in
-Chromium with Havok: see [feature runtime checks for Babylon.js](feature-runtime-babylon.md).
-So has PlayCanvas, in Chromium with ammo.js: see
-[feature runtime checks for PlayCanvas](feature-runtime-playcanvas.md).
+Godot, Unity, Defold, Three.js, Babylon.js, PlayCanvas, Bevy, raylib and Blender
+were exercised using their installed runtimes. The audit distinguishes full
+feature-lab runs, component state checks, asset loading and rendered smoke checks.
+Reproduction commands remain in [engine checks](../examples/engine-checks/README.md)
+and [the local audit](export-audit-2026-10-28.md).

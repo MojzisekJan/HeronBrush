@@ -1,0 +1,59 @@
+//! Optional native common lights. Bevy 0.19 with bevy_light; add this plugin after
+//! loading HeronEntityData. Existing project lights on an entity are preserved.
+use bevy::prelude::*;
+use crate::heron_entities::HeronEntityData;
+
+pub struct HeronLightPlugin;
+impl Plugin for HeronLightPlugin {
+    fn build(&self, app: &mut App) { app.add_systems(Update, configure_lights); }
+}
+
+pub fn configure_lights(
+    mut commands: Commands,
+    entities: Query<(Entity, &HeronEntityData, Option<&PointLight>, Option<&SpotLight>, Option<&DirectionalLight>), Added<HeronEntityData>>,
+) {
+    for (entity, data, point, spot, sun) in &entities {
+        if point.is_some() || spot.is_some() || sun.is_some() { continue; }
+        let number = |key: &str, default: f32| {
+            let value = data.properties.get(key);
+            let value = value.and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.parse().ok())).or_else(|| v.as_bool().map(|b| if b {1.} else {0.}))).unwrap_or(default as f64) as f32;
+            if value.is_finite() { value } else { default }
+        };
+        let color = data.properties.get("light_color").and_then(|v| v.as_array()).map(|a| {
+            let c = |i| a.get(i).and_then(serde_json::Value::as_f64).filter(|v| v.is_finite()).unwrap_or(1.).clamp(0., 1.) as f32;
+            Color::srgb(c(0), c(1), c(2))
+        }).unwrap_or(Color::WHITE);
+        let energy = number("light_energy", 1.).max(0.);
+        let shadows = number("shadow_enabled", 1.) != 0.;
+        match data.classname.as_str() {
+            "light" => { commands.entity(entity).insert(PointLight { color, intensity: energy * 1000., range: number("omni_range", 5.).max(0.001), shadow_maps_enabled: shadows, ..default() }); }
+            "light_spot" => { commands.entity(entity).insert(SpotLight { color, intensity: energy * 1000., range: number("spot_range", 5.).max(0.001), inner_angle: 0., outer_angle: number("spot_angle", 45.).clamp(0.5, 89.5).to_radians(), shadow_maps_enabled: shadows, ..default() }); }
+            "light_sun" => { commands.entity(entity).insert(DirectionalLight { color, illuminance: energy * 10000., shadow_maps_enabled: shadows, ..default() }); }
+            _ => {}
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn native_common_lights_preserve_cone_range_color_and_project_components() {
+        let mut app = App::new(); app.add_plugins((MinimalPlugins, HeronLightPlugin));
+        let data = |classname: &str| HeronEntityData::from_json(&serde_json::json!({"name":"fixture", "classname":classname,
+            "properties":{"light_color":{"type":"color","value":[1.,0.5,0.25,1.]},"light_energy":{"type":"float","value":2.5},
+                "spot_range":{"type":"float","value":10.},"spot_angle":{"type":"float","value":30.},"shadow_enabled":{"type":"bool","value":false}}})).unwrap();
+        let spot = app.world_mut().spawn((data("light_spot"), Transform::from_xyz(1.,2.,3.))).id();
+        let point = app.world_mut().spawn(data("light")).id();
+        let sun = app.world_mut().spawn(data("light_sun")).id();
+        let custom = app.world_mut().spawn((data("light"), PointLight { intensity: 42., ..default() })).id();
+        app.update();
+        let s = app.world().get::<SpotLight>(spot).unwrap();
+        assert_eq!(s.intensity, 2500.); assert_eq!(s.range, 10.); assert!((s.outer_angle - std::f32::consts::PI/6.).abs() < 1e-6); assert!(!s.shadow_maps_enabled);
+        assert_eq!(s.color.to_srgba().green, 0.5);
+        assert_eq!(app.world().get::<Transform>(spot).unwrap().translation, Vec3::new(1.,2.,3.));
+        assert_eq!(app.world().get::<PointLight>(point).unwrap().range, 5.);
+        assert_eq!(app.world().get::<DirectionalLight>(sun).unwrap().illuminance, 25000.);
+        assert_eq!(app.world().get::<PointLight>(custom).unwrap().intensity, 42.);
+    }
+}

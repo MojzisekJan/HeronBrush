@@ -4,6 +4,10 @@ vertex_program: "/main/model.vp"
 fragment_program: "/main/model.fp"
 vertex_space: VERTEX_SPACE_LOCAL
 vertex_constants {
+  name: "mtx_world"
+  type: CONSTANT_TYPE_WORLD
+}
+vertex_constants {
   name: "mtx_worldview"
   type: CONSTANT_TYPE_WORLDVIEW
 }

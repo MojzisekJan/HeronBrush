@@ -230,8 +230,9 @@ public static class VerifyFeatureLab
             var stations = Stations(root);
             var level = (Dictionary<string, object>)Json.Parse(File.ReadAllText(Path.Combine(export, "feature_lab.json")));
             var entities = (List<object>)level["entities"];
-            Report("importer", root.transform.childCount == entities.Count && messages.Count == 0,
-                $"Build Level made '{root.name}' with {root.transform.childCount} of {entities.Count} entities; warnings and errors: {(messages.Count == 0 ? "none" : string.Join(" | ", messages))}");
+            int entityCount = root.transform.Cast<Transform>().Count(t => t.GetComponent<HeronBrushEntity>() != null);
+            Report("importer", entityCount == entities.Count && messages.Count == 0,
+                $"Build Level made '{root.name}' with {entityCount} of {entities.Count} entities; warnings and errors: {(messages.Count == 0 ? "none" : string.Join(" | ", messages))}");
             Guard("obj import", () => CheckImport(root, entities, export));
             Guard("textures", () => CheckTextures(stations["fl_textures"], export));
             Guard("colours", () => CheckColours(stations["fl_colours"]));
@@ -247,6 +248,13 @@ public static class VerifyFeatureLab
             Guard("trigger", () => CheckTrigger(stations));
             Guard("animation", () => CheckPoses(stations));
             Guard("lights", () => CheckLights(stations));
+            Guard("sky", () => {
+                var material = RenderSettings.skybox;
+                Report("sky", material != null && material.shader.name == "Skybox/Panoramic" && material.GetTexture("_MainTex") != null,
+                    "native panoramic sky with imported HDR texture");
+                Report("sky", RenderSettings.sun != null && RenderSettings.sun.type == LightType.Directional, "native sky sun");
+                Report("sky", RenderSettings.fog && RenderSettings.fogMode == FogMode.ExponentialSquared && Mathf.Abs(RenderSettings.fogDensity - 0.02f) < 0.00001f, "map exponential fog density 0.02 per metre");
+            });
             Guard("water", () => CheckWater(stations["fl_water"]));
             Guard("properties", () => CheckProperties(stations));
             Guard("links", () => CheckLinks(stations));
@@ -761,8 +769,22 @@ public static class VerifyFeatureLab
                 Shoot(name + "_b", centre, centre + new Vector3(-3.2f, -1.2f, -3.2f));
             }
             Shoot("overview", new Vector3(0, 0, -12), new Vector3(10, 14, 8));
+            // Render the authored sky away from geometry. Its brightest glow must
+            // face the same direction as the native sun, including the axis mirror.
+            bool skyOk = RenderSettings.skybox != null && RenderSettings.sun != null;
+            if (skyOk) {
+                camera.clearFlags = CameraClearFlags.Skybox;
+                var from = new Vector3(0,100000,0);
+                var toSun = -RenderSettings.sun.transform.forward;
+                Shoot("sky_toward_sun",from+toSun*10,from);
+                var toward = image.GetPixel(320,240).grayscale;
+                Shoot("sky_away_from_sun",from-toSun*10,from);
+                var away = image.GetPixel(320,240).grayscale;
+                skyOk = toward > away + 0.03f;
+                Debug.Log($"HERON_SKY_RENDER {(skyOk ? "PASS" : "FAIL")}: toward {toward} versus away {away}");
+            }
             Debug.Log($"HERON_FEATURE_RENDER {(distinct > 100 ? "PASS" : "FAIL")}: {folder}, up to {distinct} colours per capture");
-            EditorApplication.Exit(distinct > 100 ? 0 : 1);
+            EditorApplication.Exit(distinct > 100 && skyOk ? 0 : 1);
         }
         catch (Exception e) { Debug.LogException(e); EditorApplication.Exit(2); }
     }

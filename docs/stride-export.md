@@ -9,7 +9,7 @@ See the README written beside each export for usage.
 | Written | Stride side |
 | --- | --- |
 | `<level>/<entity>.glb` + `.sdm3d` | Model assets, with `Materials` in glTF material order |
-| `<level>/Materials/*.sdmat`, `Textures/*` | Base colour image from the GLB (textures, face paint, gradients), tint, metalness, glossiness (1 − roughness), double-sided culling, glTF `BLEND` as a blended material of its own; paint clamps |
+| `<level>/Materials/*.sdmat`, `Textures/*` | Base colour image from the GLB (textures, face paint, gradients), tint, metallic/roughness maps and factors, emission, normal maps, AO, double-sided culling, glTF `BLEND` and `MASK`; each texture keeps its U/V sampler |
 | `<level>/Sky/Sky.dds`, `.sdtex`, `Skybox.sdsky` | The editor's procedural sky as a 128 px RGBA16F cube map |
 | `<level>/HeronBrushStrideLevel.cs` | Records, `Build`, `Rebuild`, `CreateEnvironment`, `HeronBrushStrideLevelLoader` |
 | `<level>/HeronBrushStrideRuntime.cs` | Keyframe animation, trigger volumes and water volumes, as the other runtimes |
@@ -59,7 +59,39 @@ uncompressed without mipmaps.
 
 ## Remaining
 
-- Emission, normal maps and the `MASK` alpha mode are not transferred to materials.
+- Imported materials using UV sets other than UV0, mirrored-repeat samplers or texture transforms still need separate mapping.
 - Game Studio was not run (Windows, or Linux through Proton/Wine). Assets written
   here were compiled by the CLI asset compiler, not opened in the editor.
 - Windows and Linux native runs; Bepu physics as an alternative to Bullet.
+
+## PBR material export, 28 October 2026
+
+Native materials now carry normal maps, emissive images and factors, including
+`KHR_materials_emissive_strength`, alpha masks and their cutoff. Missing mask
+cutoffs use glTF's 0.5 default. `BLEND` and opaque materials retain their modes.
+Metallic-roughness uses linear B/G channels and the source factors, with roughness
+inverted to glossiness. AO uses the linear R channel and mixes with white according
+to its strength. Colour and emission images stay sRGB and are not premultiplied.
+
+Normal textures use `NormalMapTextureType` with `InvertY: true` for glTF's OpenGL
+convention. The material scales signed X/Y by `normalTexture.scale`. Normal images
+are uncompressed to preserve Z; the material does not reconstruct Z from scaled
+XY. Each map keeps independent U/V clamp or repeat settings. Small PNGs still
+omit mipmaps when either dimension is below four pixels.
+
+Same-named materials from different meshes share an asset only when their factors,
+images and sampler settings match. Conflicting names receive a content fingerprint,
+independent of mesh order. Auxiliary texture names use `.normal`, `.mr`, `.ao` and
+`.emissive` before their file extension, so a material called `paint_normal` cannot
+overwrite the normal map of `paint`.
+
+Regression tests cover the native assets, default cutoffs, scalar emission,
+normal strength, PBR channels, asymmetric samplers and same-name materials.
+Stride 4.4.1's actual YAML serializer loaded the generated material and all five
+texture assets on Linux. This verifies deserialization and material state, not
+asset compilation, shader rendering or Game Studio integration.
+
+```sh
+HERON_STRIDE_MATERIAL_OUTPUT=/tmp/heron-stride-materials cargo test -p scene_export --lib --offline writer::stride
+dotnet run --project examples/engine-checks/stride/materials/StrideMaterialCheck.csproj -- /tmp/heron-stride-materials/arena
+```

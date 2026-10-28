@@ -46,3 +46,6 @@ cargo test -p editor_core --lib export_schema_tests
 
 Not covered: a rendered map does not prove gameplay, and data checks do not prove
 native physics. Each engine needs its own run on each platform you ship.
+
+The [28 October local audit](../../docs/export-audit-2026-10-28.md) records the
+available engines, current fixes and exact limits of native verification.

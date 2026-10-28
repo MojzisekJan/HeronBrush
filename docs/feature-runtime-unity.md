@@ -60,7 +60,7 @@ lines below come from `feature-lab-unity.txt`, which it writes into the project.
 | Target links | PASS | `fl_wp_a` to `fl_wp_b`, `fl_probe` to `fl_wp_a`, trigger and button to `fl_door` name scene nodes; both trigger components hold the door's `HeronBrushAnimation` |
 | Imported models, shared | PASS | Both `heron_model` copies draw the same mesh assets, at scales 32 and 48, the second turned 45 degrees |
 | Model PBR maps | PASS | `ApplyPbr` gives the model materials metallic-smoothness, NormalMap-type normal, occlusion and emission maps |
-| Sky and fog | N/A | `Target::exports_sky` is false for Unity, as before |
+| Sky and fog | PASS, 28 October update | HDR panoramic sky, native sun/ambient, map fog; GPU capture verifies the sun glow direction |
 
 The render pass drew every station from two sides into `captures/`. They show the
 textures, the brick normal map shading its mortar lines, the saturated emissive
@@ -110,7 +110,15 @@ or the Unity export, with a unit test. Commit `9eb3012` on `runtime-unity`.
   a baked image without one, the same as on the GLB targets.
 - **Render pipelines.** The run used the Built-in pipeline. `ApplyNormal` picks
   URP Lit under URP, as `ApplySurface` does, but URP and HDRP were not run.
-- **Sky and fog** stay out of the Unity export.
+- **Sky and fog** now reach final exports. Live environment updates and HDRP configuration remain project work.
 - **Unity's OBJ importer** ignores the `norm` line: the imported material has no
   `_BumpMap` until Build Level runs. The line is there for people and other MTL
   readers.
+
+## 28 October 2026 update
+
+The complete edit/play check passed again, including the new environment state.
+The GPU run passed its material captures and an additional sky check: looking
+along the native sun showed a brighter glow than looking away. The file checker
+now covers Unity's sky alongside its brush normal companions. See
+[the local audit](export-audit-2026-10-28.md).

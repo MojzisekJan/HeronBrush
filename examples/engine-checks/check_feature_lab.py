@@ -69,23 +69,20 @@ NO_PLAYER = ("the export warns that this target has no keyframe playback control
 UNREAL_COLLISION = ("docs/common-entities.md: the Unreal importer spawns meshes and lights; "
                     "doors, triggers and collision need project setup")
 OBJ_ONLY = "OBJ is geometry only (Target::Obj)"
-DEFOLD_SAMPLER = "Defold's .model binds only the colour sampler; the GLB keeps the map for a project material"
+DEFOLD_SAMPLER = "The default Defold sample material uses albedo; explicit defold_sampler_<slot> bindings support project shaders"
 NOT_CLAIMED = {
-    "sky": scope({"unity", "unreal", "flax", "obj", "gltf", "glb"}, SKY),
+    "sky": scope({"unreal", "obj", "gltf", "glb"}, SKY),
     "animation": scope({"unreal", "obj", "gltf", "glb"}, NO_PLAYER),
     "door": scope({"unreal", "obj", "gltf", "glb"}, NO_PLAYER),
     # OBJ, glTF and GLB are checked in check_water itself: N/A, or FAIL when they draw
     # more than the water's surface.
     "water": scope({"unreal"}, "not in the adapter list of docs/water-export.md"),
     "normal": {
-        "obj": "the OBJ writer writes no normal maps",
         "defold": DEFOLD_SAMPLER,
-        "stride": "docs/stride-export.md: normal maps are not transferred to Stride materials",
     },
     "model_pbr": {
         "obj": "docs/model-pbr.md: the standalone OBJ writer does not carry PBR maps",
         "defold": DEFOLD_SAMPLER,
-        "stride": "docs/stride-export.md: normal maps and emission are not transferred to Stride materials",
     },
     "properties": scope({"obj"}, OBJ_ONLY),
     "links": scope({"obj"}, OBJ_ONLY),
@@ -641,7 +638,7 @@ def defold_materials(root, e):
 
 
 def stride_materials(root, e):
-    """Stride draws its .sdmat materials: their texture, glossiness and metalness."""
+    """Read native Stride slots rather than crediting unused GLB material data."""
     model = root / NAME / f"{e.name}.sdm3d"
     if not e.render or not model.is_file():
         return
@@ -654,7 +651,8 @@ def stride_materials(root, e):
             prim.material = Material(m.name)
             continue
         text = sdmat.read_text()
-        texture = re.search(r"Texture: [\w-]+:Levels/\w+/Textures/(\w+)", text)
+        sections = dict(re.findall(r"^    (\w+): ([\s\S]*?)(?=^    \w+:|\Z)", text, re.M))
+        texture = re.search(r"Texture: [\w-]+:Levels/\w+/Textures/([\w.]+)", sections.get("Diffuse", ""))
         m.image = Image(path=root / NAME / "Textures" / f"{texture.group(1)}.png") if texture else None
         colour = re.search(r"DiffuseMap: !ComputeColor\n\s*Value: \{R: ([\d.]+), G: ([\d.]+), B: ([\d.]+)", text)
         m.factor = tuple(srgb_byte(float(c)) for c in colour.groups()) + (255,) if colour and not texture else None
@@ -662,10 +660,34 @@ def stride_materials(root, e):
         metal = re.search(r"MetalnessMap: !ComputeFloat\n\s*Value: ([\d.e-]+)", text)
         m.roughness = 1 - float(gloss.group(1)) if gloss else None
         m.metallic = float(metal.group(1)) if metal else None
-        m.emission = None
+        emission = re.search(r"Intensity: !ComputeFloat\n\s*Value: ([\d.e+-]+)", sections.get("Emissive", ""))
+        m.emission = float(emission.group(1)) if emission else None
         m.normal = None
         m.maps = set()
-        wrap = re.search(r"AddressModeU: (\w+)", text)
+        slots = {"normal": ("Surface", "MaterialNormalMapFeature"),
+                 "mr": ("MicroSurface", "MaterialGlossinessMapFeature"),
+                 "ao": ("Occlusion", "MaterialOcclusionMapFeature"),
+                 "emissive": ("Emissive", "MaterialEmissiveMapFeature")}
+        for slot, (section, feature) in slots.items():
+            block = sections.get(section, "")
+            reference = re.search(r"Texture: [\w-]+:Levels/\w+/Textures/([\w.]+)", block)
+            if feature not in block or not reference:
+                continue
+            image = root / NAME / "Textures" / f"{reference.group(1)}.png"
+            asset = image.with_suffix(".sdtex")
+            if not image.is_file() or not asset.is_file():
+                continue
+            config = asset.read_text()
+            if slot == "normal":
+                if "!NormalMapTextureType" not in config or "InvertY: true" not in config:
+                    continue
+                m.normal = Image(path=image)
+            if slot in {"mr", "ao"} and "UseSRgbSampling: false" not in config:
+                continue
+            if slot == "mr" and ("Channel: G" not in block or "Channel: B" not in sections.get("Specular", "")):
+                continue
+            m.maps.add(slot)
+        wrap = re.search(r"AddressModeU: (\w+)", sections.get("Diffuse", ""))
         m.wrap = {"Wrap": "repeat", "Clamp": "clamp"}.get(wrap.group(1)) if wrap else None
         prim.material.json_surface = None
 
@@ -1341,15 +1363,11 @@ def check_surface(level):
             got.append(tuple(surface))
         elif m.roughness is not None and m.metallic is not None:
             got.append((m.roughness, m.metallic, m.emission or 0.0))
-    # docs/stride-export.md: Stride materials take roughness and metalness, not emission.
-    compared = 2 if level.target == "stride" else 3
+    compared = 3
     missing = [s for s in SURFACES
                if not any(all(abs(s[i] - g[i]) < 0.01 for i in range(compared)) for g in got)]
     if missing:
         return FAIL(f"missing roughness/metallic/emission {missing}; found {sorted(set(got))}")
-    if level.target == "stride":
-        return PASS("glossiness = 1 - roughness and metalness in .sdmat for all 4 overrides; "
-                    "emission is not transferred, as docs/stride-export.md says")
     where = "level JSON surface entries" if any(getattr(p.material, "json_surface", None) for p in e.render) \
         else "material factors"
     note = {"defold": "; the default model material ignores them (export warning)",
@@ -1538,6 +1556,19 @@ def check_sky(level):
             problems.append("fog not enabled at density 0.02")
         if "fog_light_color = Color(0.705882, 0.745098, 0.784314, 1.0)" not in text:
             problems.append("fog colour differs")
+    elif t == "unity":
+        script = (root / "Editor/HeronBrushLevelImporter.cs").read_text()
+        if not (root / NAME / "sky.hdr").is_file(): problems.append("sky.hdr missing")
+        for token in ('Skybox/Panoramic', 'RenderSettings.skybox = material', 'FogMode.ExponentialSquared', 'RenderSettings.fogDensity = 0.020000000f'):
+            if token not in script: problems.append(f"environment mapping missing: {token}")
+        return FAIL("; ".join(problems)) if problems else PASS("HDR panorama, native sun/ambient settings and exponential fog")
+    elif t == "flax":
+        script = (root / "HeronBrushLevel.cs").read_text()
+        cube = root / NAME / "sky.dds"
+        if not cube.is_file() or cube.read_bytes()[:4] != b'DDS ': problems.append("sky cube missing")
+        for token in ('new Skybox', 'new SkyLight', 'new DirectionalLight', 'ImportEnvironment'):
+            if token not in script: problems.append(f"environment mapping missing: {token}")
+        return FAIL("; ".join(problems)) if problems else PASS("scaled linear sky cube, native skybox/ambient/sun; fog remains metadata")
     elif t == "stride":
         for f in ("Sky/Sky.dds", "Sky/Skybox.sdsky", "Sky/Sky.sdtex"):
             if not (root / NAME / f).is_file():
@@ -1830,6 +1861,7 @@ def check_links(level):
 
 def check_lights(level):
     t = level.target
+    root = level.root
     light = station(level, "fl_light")
     spot = station(level, "fl_spot")
     data_ok = light.props.get("light_energy", (None, None))[1] == 2.5 and \
@@ -1887,6 +1919,17 @@ def check_lights(level):
             f"range 10) that {runtime_file} makes native lights of")
     if t == "obj":
         return NA("OBJ is geometry only")
+    if t in {"three", "flax", "bevy", "raylib"}:
+        path, tokens = {
+            "three": ("heron_lights.js", ("new THREE.PointLight", "new THREE.SpotLight")),
+            "flax": ("HeronBrushLevel.cs", ("new PointLight", "new SpotLight", 'spec["range"] * 100f')),
+            "bevy": ("heron_lights.rs", ("PointLight", "SpotLight", "DirectionalLight")),
+            "raylib": (f"{NAME}_lighting.h", ("HbLightingLoad", "HbLightingDraw", "HB_RENDER_LIGHT_COUNT")),
+        }[t]
+        source = root / path
+        if not data_ok or not source.is_file() or any(token not in source.read_text() for token in tokens):
+            return FAIL("native common-light adapter or source properties missing")
+        return PASS(f"common-light adapter {path}; properties retain energy/range/cone (runtime checks are separate)")
     if not data_ok:
         return FAIL("light properties missing from the entity data")
     return NA("no native light; light colour, energy and range stay in the entity data for game code "

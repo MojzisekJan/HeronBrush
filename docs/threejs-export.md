@@ -27,3 +27,16 @@ follow the map's export scale.
 This is a geometry playtest. Entity scripts, enemies, doors and trigger actions
 are not simulated. Lighting uses a hemisphere light and a directional light;
 engine-specific materials and extra texture maps are not interpreted.
+
+## Common lights and model materials, 28 October 2026
+
+The export writes `heron_lights.js`. `createHeronLight(THREE, entity)` builds a
+native point, spot or directional light from the normalized `entity.light` data.
+Attach it below the entity root so transforms and parenting remain consistent.
+The generated playtest uses the same helper and disposes old light resources on
+live replacement. A native authored sun suppresses the playtest's fallback sun.
+
+The production example loader keeps GLTFLoader's PBR materials rather than
+replacing them with albedo-only materials. Repeated model paths share one load
+and geometry, with per-instance cloned materials. Chromium verified all PBR
+maps, shared geometry, light settings/directions and both browser entry points.

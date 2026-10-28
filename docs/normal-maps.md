@@ -36,10 +36,18 @@ Automatic pairing applies to materials loaded from image folders. Plain colours
 and gradients have no normal map input.
 
 Exports that write GLB meshes embed the normal map in the OpenGL convention,
-with tangents, as the material's `normalTexture`. Godot's StandardMaterial3D takes
-a `<texture>_normal` image from the project's texture folder; the other suffixes
-are not looked for there. Unity gets the map as `<material>_normal.png` beside the
+with tangents, as the material's `normalTexture`. Godot receives the normal image
+already paired by the editor, including `_normal_gl`, `_n` and converted
+`_normal_dx` sources. Unity gets the map as `<material>_normal.png` beside the
 albedo, also in the OpenGL convention, named on the MTL's `norm` line. Build Level
-imports it as a normal map and sets it as the material's `_BumpMap`. The plain
-OBJ writer, Defold's `.model` (one colour sampler) and Stride's materials do not
-carry it. See [the feature matrix](feature-matrix.md).
+imports it as a normal map and sets it as the material's `_BumpMap`.
+
+OBJ writes a portable OpenGL companion and an MTL `norm` entry. Importers differ:
+Blender ignores that extension, so the export also writes `<level>_materials.py`.
+Run that script in Blender to import the OBJ with native normal-map nodes and
+preserved normal strength. It leaves existing objects and materials in place.
+Defold project shaders can opt into `defold_sampler_normal`; the default sample
+material still uses albedo.
+
+Stride writes native normal texture assets, converts the Y convention at import and
+retains normal strength. See [Stride export](stride-export.md) for verification limits and [the feature matrix](feature-matrix.md) for target coverage.

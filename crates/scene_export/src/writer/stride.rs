@@ -4,7 +4,7 @@
 //! Stride compiles assets, not files. A `.glb` dropped into a project is nothing until a
 //! `.sdm3d` names it as a model source, and a model draws with the default material until
 //! its `Materials` list points at `.sdmat` assets. So every mesh gets a model asset, every
-//! glTF material a material asset, and every base-colour image a texture asset, all with
+//! glTF material a material asset, and every material image a texture asset, all with
 //! ids derived from their content URL so a re-export keeps the references stable.
 //!
 //! The images come out of the GLBs themselves rather than from wherever the editor found
@@ -124,6 +124,15 @@ fn asset_name(name: &str) -> String {
     }
 }
 
+#[derive(Debug)]
+struct GlbImage {
+    bytes: Vec<u8>,
+    extension: &'static str,
+    clamp_u: bool,
+    clamp_v: bool,
+}
+
+#[derive(Debug)]
 struct GlbMaterial {
     name: String,
     base_color: [f64; 4],
@@ -131,8 +140,65 @@ struct GlbMaterial {
     roughness: f64,
     double_sided: bool,
     blend: bool,
-    image: Option<(Vec<u8>, &'static str)>,
-    clamp: bool,
+    image: Option<GlbImage>,
+    normal: Option<GlbImage>,
+    normal_scale: f64,
+    metallic_roughness: Option<GlbImage>,
+    occlusion: Option<GlbImage>,
+    occlusion_strength: f64,
+    emissive: [f64; 3],
+    emissive_strength: f64,
+    emissive_image: Option<GlbImage>,
+    alpha_cutoff: Option<f64>,
+}
+
+impl GlbMaterial {
+    /// Names in different GLBs are not globally unique. Include pixels, factors and
+    /// samplers when deciding whether two named materials can share a native asset.
+    fn fingerprint(&self) -> u64 {
+        let mut hash = 0xcbf29ce484222325_u64;
+        let mut feed = |bytes: &[u8]| {
+            for &byte in bytes {
+                hash = (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3);
+            }
+        };
+        for value in self
+            .base_color
+            .into_iter()
+            .chain([
+                self.metallic,
+                self.roughness,
+                self.normal_scale,
+                self.emissive_strength,
+                self.occlusion_strength,
+            ])
+            .chain(self.emissive)
+        {
+            feed(&value.to_bits().to_le_bytes());
+        }
+        feed(&[
+            u8::from(self.double_sided),
+            u8::from(self.blend),
+            u8::from(self.alpha_cutoff.is_some()),
+        ]);
+        feed(&self.alpha_cutoff.unwrap_or(0.).to_bits().to_le_bytes());
+        for image in [
+            &self.image,
+            &self.normal,
+            &self.emissive_image,
+            &self.metallic_roughness,
+            &self.occlusion,
+        ] {
+            feed(&[u8::from(image.is_some())]);
+            if let Some(image) = image {
+                feed(&(image.bytes.len() as u64).to_le_bytes());
+                feed(&image.bytes);
+                feed(image.extension.as_bytes());
+                feed(&[u8::from(image.clamp_u), u8::from(image.clamp_v)]);
+            }
+        }
+        hash
+    }
 }
 
 fn glb_materials(glb: &[u8]) -> Vec<GlbMaterial> {
@@ -152,12 +218,13 @@ fn glb_materials(glb: &[u8]) -> Vec<GlbMaterial> {
         let length = u32::from_le_bytes(rest.get(0..4)?.try_into().ok()?) as usize;
         rest.get(8..8 + length)
     });
-    let image = |texture: &serde_json::Value| -> Option<((Vec<u8>, &'static str), bool)> {
+    let image = |texture: &serde_json::Value| -> Option<GlbImage> {
         let texture = &doc["textures"][texture["index"].as_u64()? as usize];
-        let clamp = texture["sampler"]
+        let sampler = texture["sampler"]
             .as_u64()
-            .map(|s| doc["samplers"][s as usize]["wrapS"] == 33071)
-            .unwrap_or(false);
+            .map(|s| &doc["samplers"][s as usize]);
+        let clamp_u = sampler.is_some_and(|s| s["wrapS"] == 33071);
+        let clamp_v = sampler.is_some_and(|s| s["wrapT"] == 33071);
         let image = &doc["images"][texture["source"].as_u64()? as usize];
         let view = &doc["bufferViews"][image["bufferView"].as_u64()? as usize];
         let start = view["byteOffset"].as_u64().unwrap_or(0) as usize;
@@ -169,7 +236,12 @@ fn glb_materials(glb: &[u8]) -> Vec<GlbMaterial> {
         } else {
             "png"
         };
-        Some(((bytes, extension), clamp))
+        Some(GlbImage {
+            bytes,
+            extension,
+            clamp_u,
+            clamp_v,
+        })
     };
     doc["materials"]
         .as_array()
@@ -196,8 +268,22 @@ fn glb_materials(glb: &[u8]) -> Vec<GlbMaterial> {
                         roughness: pbr["roughnessFactor"].as_f64().unwrap_or(1.),
                         double_sided: m["doubleSided"].as_bool().unwrap_or(false),
                         blend: m["alphaMode"] == "BLEND",
-                        clamp: found.as_ref().is_some_and(|f| f.1),
-                        image: found.map(|f| f.0),
+                        image: found,
+                        normal: image(&m["normalTexture"]),
+                        metallic_roughness: image(&pbr["metallicRoughnessTexture"]),
+                        occlusion: image(&m["occlusionTexture"]),
+                        occlusion_strength: m["occlusionTexture"]["strength"]
+                            .as_f64()
+                            .unwrap_or(1.),
+                        normal_scale: m["normalTexture"]["scale"].as_f64().unwrap_or(1.),
+                        emissive: [0, 1, 2].map(|i| m["emissiveFactor"][i].as_f64().unwrap_or(0.)),
+                        emissive_strength:
+                            m["extensions"]["KHR_materials_emissive_strength"]["emissiveStrength"]
+                                .as_f64()
+                                .unwrap_or(1.),
+                        emissive_image: image(&m["emissiveTexture"]),
+                        alpha_cutoff: (m["alphaMode"] == "MASK")
+                            .then(|| m["alphaCutoff"].as_f64().unwrap_or(0.5)),
                     }
                 })
                 .collect()
@@ -216,42 +302,218 @@ fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
     ))
 }
 
-fn material_asset(id: &str, material: &GlbMaterial, texture: Option<&str>) -> String {
-    let [r, g, b, a] = material.base_color;
+/// A colour map multiplied by a linear factor. Every slot keeps its own sampler.
+fn color_map(
+    text: &mut String,
+    key: &str,
+    factor: [f64; 4],
+    image: Option<&GlbImage>,
+    texture: Option<&str>,
+) {
+    let [r, g, b, a] = factor;
+    let tint = factor != [1.; 4];
+    if let Some((image, texture)) = image.zip(texture) {
+        let indent = if tint {
+            "                "
+        } else {
+            "            "
+        };
+        if tint {
+            let _ = write!(
+                text,
+                "        {key}: !ComputeBinaryColor\n            Operator: Multiply\n            LeftChild: !ComputeTextureColor\n"
+            );
+        } else {
+            let _ = write!(text, "        {key}: !ComputeTextureColor\n");
+        }
+        let u = if image.clamp_u { "Clamp" } else { "Wrap" };
+        let v = if image.clamp_v { "Clamp" } else { "Wrap" };
+        let _ = write!(
+            text,
+            "{indent}Texture: {texture}\n{indent}FallbackValue:\n{indent}    Value: {{R: 1.0, G: 1.0, B: 1.0, A: 1.0}}\n{indent}AddressModeU: {u}\n{indent}AddressModeV: {v}\n{indent}Scale: {{X: 1.0, Y: 1.0}}\n{indent}Offset: {{X: 0.0, Y: 0.0}}\n{indent}Swizzle: null\n"
+        );
+        if tint {
+            let _ = write!(
+                text,
+                "            RightChild: !ComputeColor\n                Value: {{R: {r}, G: {g}, B: {b}, A: {a}}}\n"
+            );
+        }
+    } else {
+        let _ = write!(
+            text,
+            "        {key}: !ComputeColor\n            Value: {{R: {r}, G: {g}, B: {b}, A: {a}}}\n"
+        );
+    }
+}
+
+/// A scalar map with glTF's factor, optionally mixed with white for AO strength.
+fn scalar_map(
+    text: &mut String,
+    key: &str,
+    image: &GlbImage,
+    texture: &str,
+    channel: &str,
+    factor: f64,
+    offset: f64,
+) {
+    let u = if image.clamp_u { "Clamp" } else { "Wrap" };
+    let v = if image.clamp_v { "Clamp" } else { "Wrap" };
+    let mut node = format!(
+        "!ComputeTextureScalar\n    Texture: {texture}\n    Channel: {channel}\n    AddressModeU: {u}\n    AddressModeV: {v}\n    FallbackValue: !ComputeFloat\n        Value: 1.0\n"
+    );
+    for (op, value, enabled) in [
+        ("Multiply", factor, factor != 1.),
+        ("Add", offset, offset != 0.),
+    ] {
+        if enabled {
+            let child = node
+                .lines()
+                .skip(1)
+                .map(|l| format!("    {l}\n"))
+                .collect::<String>();
+            node = format!(
+                "!ComputeBinaryScalar\n    Operator: {op}\n    LeftChild: {}\n{child}    RightChild: !ComputeFloat\n        Value: {value}\n",
+                node.lines().next().unwrap()
+            );
+        }
+    }
+    let _ = write!(text, "        {key}: {}\n", node.lines().next().unwrap());
+    for line in node.lines().skip(1) {
+        let _ = writeln!(text, "        {line}");
+    }
+}
+
+fn material_asset(
+    id: &str,
+    material: &GlbMaterial,
+    texture: Option<&str>,
+    normal: Option<&str>,
+    emissive: Option<&str>,
+    metallic_roughness: Option<&str>,
+    occlusion: Option<&str>,
+) -> String {
     let mut text = format!(
         "!MaterialAsset\nId: {id}\nSerializedVersion: {{Stride: 2.0.0.0}}\nTags: []\nAttributes:\n"
     );
-    let _ = write!(text, "    MicroSurface: !MaterialGlossinessMapFeature\n        GlossinessMap: !ComputeFloat\n            Value: {}\n", 1. - material.roughness.clamp(0., 1.));
+    text.push_str("    MicroSurface: !MaterialGlossinessMapFeature\n");
+    if let Some((image, texture)) = material.metallic_roughness.as_ref().zip(metallic_roughness) {
+        text.push_str("        Invert: true\n");
+        scalar_map(
+            &mut text,
+            "GlossinessMap",
+            image,
+            texture,
+            "G",
+            material.roughness.clamp(0., 1.),
+            0.,
+        );
+    } else {
+        let _ = write!(
+            text,
+            "        GlossinessMap: !ComputeFloat\n            Value: {}\n",
+            1. - material.roughness.clamp(0., 1.)
+        );
+    }
     text.push_str("    Diffuse: !MaterialDiffuseMapFeature\n");
-    match texture {
-        Some(texture) => {
-            let address = if material.clamp { "Clamp" } else { "Wrap" };
-            let tint = (r, g, b, a) != (1., 1., 1., 1.);
-            let indent = if tint {
-                "                "
-            } else {
-                "            "
-            };
-            if tint {
-                text.push_str("        DiffuseMap: !ComputeBinaryColor\n            Operator: Multiply\n            LeftChild: !ComputeTextureColor\n");
-            } else {
-                text.push_str("        DiffuseMap: !ComputeTextureColor\n");
+    color_map(
+        &mut text,
+        "DiffuseMap",
+        material.base_color,
+        material.image.as_ref(),
+        texture,
+    );
+    if normal.is_some() {
+        text.push_str("    Surface: !MaterialNormalMapFeature\n        ScaleAndBias: true\n        IsXYNormal: false\n");
+        // glTF scales signed XY before normalization. Apply the equivalent affine
+        // operation to unsigned texture values before Stride unpacks them.
+        let scale = material.normal_scale;
+        let mut map = String::new();
+        color_map(
+            &mut map,
+            "NormalMap",
+            [scale, scale, 1., 1.],
+            material.normal.as_ref(),
+            normal,
+        );
+        if scale == 1. {
+            text.push_str(&map);
+        } else {
+            text.push_str("        NormalMap: !ComputeBinaryColor\n            Operator: Add\n");
+            for (i, line) in map.lines().enumerate() {
+                if i == 0 {
+                    text.push_str(&line.replacen("NormalMap:", "    LeftChild:", 1));
+                } else {
+                    text.push_str("    ");
+                    text.push_str(line);
+                }
+                text.push('\n');
             }
-            let _ = write!(text, "{indent}Texture: {texture}\n{indent}FallbackValue:\n{indent}    Value: {{R: 1.0, G: 1.0, B: 1.0, A: 1.0}}\n{indent}AddressModeU: {address}\n{indent}AddressModeV: {address}\n{indent}Scale: {{X: 1.0, Y: 1.0}}\n{indent}Offset: {{X: 0.0, Y: 0.0}}\n{indent}Swizzle: null\n");
-            if tint {
-                let _ = write!(text, "            RightChild: !ComputeColor\n                Value: {{R: {r}, G: {g}, B: {b}, A: {a}}}\n");
-            }
-        }
-        None => {
-            let _ = write!(text, "        DiffuseMap: !ComputeColor\n            Value: {{R: {r}, G: {g}, B: {b}, A: {a}}}\n");
+            let offset = (1. - scale) * 0.5;
+            let _ = write!(
+                text,
+                "            RightChild: !ComputeColor\n                Value: {{R: {offset}, G: {offset}, B: 0.0, A: 0.0}}\n"
+            );
         }
     }
+    if material.emissive.iter().any(|v| *v > 0.) {
+        text.push_str("    Emissive: !MaterialEmissiveMapFeature\n");
+        let [r, g, b] = material.emissive;
+        color_map(
+            &mut text,
+            "EmissiveMap",
+            [r, g, b, 1.],
+            material.emissive_image.as_ref(),
+            emissive,
+        );
+        let _ = write!(
+            text,
+            "        Intensity: !ComputeFloat\n            Value: {}\n        UseAlpha: false\n",
+            material.emissive_strength
+        );
+    }
     text.push_str("    DiffuseModel: !MaterialDiffuseLambertModelFeature {}\n");
-    let _ = write!(text, "    Specular: !MaterialMetalnessMapFeature\n        MetalnessMap: !ComputeFloat\n            Value: {}\n", material.metallic.clamp(0., 1.));
+    text.push_str("    Specular: !MaterialMetalnessMapFeature\n");
+    if let Some((image, texture)) = material.metallic_roughness.as_ref().zip(metallic_roughness) {
+        scalar_map(
+            &mut text,
+            "MetalnessMap",
+            image,
+            texture,
+            "B",
+            material.metallic.clamp(0., 1.),
+            0.,
+        );
+    } else {
+        let _ = write!(
+            text,
+            "        MetalnessMap: !ComputeFloat\n            Value: {}\n",
+            material.metallic.clamp(0., 1.)
+        );
+    }
+    if let Some((image, texture)) = material.occlusion.as_ref().zip(occlusion) {
+        text.push_str("    Occlusion: !MaterialOcclusionMapFeature\n        CavityMap: null\n");
+        let strength = material.occlusion_strength.clamp(0., 1.);
+        scalar_map(
+            &mut text,
+            "AmbientOcclusionMap",
+            image,
+            texture,
+            "R",
+            strength,
+            1. - strength,
+        );
+    }
     text.push_str("    SpecularModel: !MaterialSpecularMicrofacetModelFeature\n        Fresnel: !MaterialSpecularMicrofacetFresnelSchlick {}\n        Visibility: !MaterialSpecularMicrofacetVisibilitySmithSchlickGGX {}\n        NormalDistribution: !MaterialSpecularMicrofacetNormalDistributionGGX {}\n        Environment: !MaterialSpecularMicrofacetEnvironmentGGXLUT {}\n");
     if material.blend {
         // See-through by the diffuse colour's alpha, as glTF's BLEND is.
         text.push_str("    Transparency: !MaterialTransparencyBlendFeature\n        Alpha: !ComputeFloat\n            Value: 1.0\n        Tint: !ComputeColor\n            Value: {R: 1.0, G: 1.0, B: 1.0, A: 1.0}\n");
+    }
+    if let Some(cutoff) = material.alpha_cutoff {
+        let _ = write!(
+            text,
+            "    Transparency: !MaterialTransparencyCutoffFeature\n        Alpha: !ComputeFloat\n            Value: {}\n",
+            cutoff.clamp(0., 1.)
+        );
     }
     if material.double_sided {
         text.push_str("    CullMode: None\n");
@@ -342,13 +604,32 @@ pub fn write(
 
     // Materials are shared between the meshes of a level, so each is written once.
     let mut materials: BTreeMap<String, String> = BTreeMap::new();
-    for mesh in meshes {
+    let parsed: Vec<_> = meshes
+        .iter()
+        .map(|mesh| (mesh, glb_materials(mesh.glb)))
+        .collect();
+    let mut variants: BTreeMap<String, std::collections::BTreeSet<u64>> = BTreeMap::new();
+    for (_, materials) in &parsed {
+        for material in materials {
+            variants
+                .entry(material.name.clone())
+                .or_default()
+                .insert(material.fingerprint());
+        }
+    }
+    for (mesh, parsed_materials) in &parsed {
         let stem = mesh.file_name.trim_end_matches(".glb");
         let mut list = String::new();
-        for material in glb_materials(mesh.glb) {
+        for (material_index, material) in parsed_materials.iter().enumerate() {
             // A see-through copy of a paint (water's surface) is a material of its own,
             // one per colour, beside the paint's opaque one.
-            let name = if material.blend {
+            let name = if variants[&material.name].len() > 1 {
+                asset_name(&format!(
+                    "{}_pbr_{:016x}",
+                    material.name,
+                    material.fingerprint()
+                ))
+            } else if material.blend {
                 asset_name(&format!(
                     "{}_blend_{:08x}",
                     material.name,
@@ -360,26 +641,70 @@ pub fn write(
             let url = format!("{content}/Materials/{name}");
             let id = asset_id(&url);
             if !materials.contains_key(&name) {
-                let texture = material.image.as_ref().map(|(bytes, extension)| {
-                    let texture_url = format!("{content}/Textures/{name}");
+                let mut write_texture = |image: &GlbImage, suffix: &str, kind: &str| {
+                    let texture_name = format!("{name}{suffix}");
+                    let texture_url = format!("{content}/Textures/{texture_name}");
                     let texture_id = asset_id(&texture_url);
-                    files.push(StrideFile { path: format!("{}/Textures/{name}.{extension}", level.name), contents: bytes.clone() });
+                    let extension = image.extension;
                     files.push(StrideFile {
-                        path: format!("{}/Textures/{name}.sdtex", level.name),
-                        contents: format!("!Texture\nId: {texture_id}\nSerializedVersion: {{Stride: 2.0.0.0}}\nTags: []\nSource: !file {name}.{extension}\n{}Type: !ColorTextureType\n    ColorKeyColor: {{R: 255, G: 0, B: 255, A: 255}}\n",
-                            // Stride's converter cannot build mipmaps or compressed blocks
-                            // below 4 pixels, which a solid face paint is: one pixel.
-                            if png_size(bytes).is_some_and(|(w, h)| w.min(h) < 4) { "IsCompressed: false\nGenerateMipmaps: false\n" } else { "" }).into_bytes(),
+                        path: format!("{}/Textures/{texture_name}.{extension}", level.name),
+                        contents: image.bytes.clone(),
+                    });
+                    let kind = if kind == "normal" {
+                        "Type: !NormalMapTextureType\n    InvertY: true\n"
+                    } else if kind == "linear" {
+                        "Type: !ColorTextureType\n    UseSRgbSampling: false\n    PremultiplyAlpha: false\n"
+                    } else {
+                        "Type: !ColorTextureType\n    PremultiplyAlpha: false\n    ColorKeyColor: {R: 255, G: 0, B: 255, A: 255}\n"
+                    };
+                    files.push(StrideFile {
+                        path: format!("{}/Textures/{texture_name}.sdtex", level.name),
+                        contents: format!("!Texture\nId: {texture_id}\nSerializedVersion: {{Stride: 2.0.0.0}}\nTags: []\nSource: !file {texture_name}.{extension}\n{}{kind}",
+                            if png_size(&image.bytes).is_some_and(|(w, h)| w.min(h) < 4) { "IsCompressed: false\nGenerateMipmaps: false\n" } else if kind.starts_with("Type: !NormalMap") { "IsCompressed: false\n" } else { "" }).into_bytes(),
                     });
                     format!("{texture_id}:{texture_url}")
-                });
+                };
+                let texture = material
+                    .image
+                    .as_ref()
+                    .map(|i| write_texture(i, "", "color"));
+                let normal = material
+                    .normal
+                    .as_ref()
+                    .map(|i| write_texture(i, ".normal", "normal"));
+                let emissive = material
+                    .emissive_image
+                    .as_ref()
+                    .map(|i| write_texture(i, ".emissive", "color"));
+                let metallic_roughness = material
+                    .metallic_roughness
+                    .as_ref()
+                    .map(|i| write_texture(i, ".mr", "linear"));
+                let occlusion = material
+                    .occlusion
+                    .as_ref()
+                    .map(|i| write_texture(i, ".ao", "linear"));
                 files.push(StrideFile {
                     path: format!("{}/Materials/{name}.sdmat", level.name),
-                    contents: material_asset(&id, &material, texture.as_deref()).into_bytes(),
+                    contents: material_asset(
+                        &id,
+                        material,
+                        texture.as_deref(),
+                        normal.as_deref(),
+                        emissive.as_deref(),
+                        metallic_roughness.as_deref(),
+                        occlusion.as_deref(),
+                    )
+                    .into_bytes(),
                 });
                 materials.insert(name.clone(), id.clone());
             }
-            let _ = write!(list, "    {}:\n        Name: {}\n        MaterialInstance:\n            Material: {id}:{url}\n", item_key(&format!("{stem}/{}", material.name)), literal(&material.name));
+            let _ = write!(
+                list,
+                "    {}:\n        Name: {}\n        MaterialInstance:\n            Material: {id}:{url}\n",
+                item_key(&format!("{stem}/{material_index}")),
+                literal(&material.name)
+            );
         }
         let url = format!("{content}/{stem}");
         let materials = if list.is_empty() {
@@ -433,7 +758,9 @@ pub fn write(
             literal(&data["entities"][index].to_string())
         ));
     }
-    let mut environment = String::from("        public const string SkyboxUrl = null, SkyTextureUrl = null;\n        public static readonly Color3 SunColor = new Color3(1f,1f,1f);\n        public const float SunIntensity = 0f, AmbientIntensity = 0f;\n        public static readonly Vector3 ToSun = Vector3.UnitY;\n");
+    let mut environment = String::from(
+        "        public const string SkyboxUrl = null, SkyTextureUrl = null;\n        public static readonly Color3 SunColor = new Color3(1f,1f,1f);\n        public const float SunIntensity = 0f, AmbientIntensity = 0f;\n        public static readonly Vector3 ToSun = Vector3.UnitY;\n",
+    );
     if let Some(sky) = &options.sky {
         let (texture_url, skybox_url) = (
             format!("{content}/Sky/Sky"),
@@ -450,8 +777,13 @@ pub fn write(
         files.push(StrideFile { path: format!("{}/Sky/Skybox.sdsky", level.name), contents: format!("!SkyboxAsset\nId: {}\nSerializedVersion: {{Stride: 2.0.0.0}}\nTags: []\nCubeMap: {texture_id}:{texture_url}\n", asset_id(&skybox_url)).into_bytes() });
         let [r, g, b] = sky.sun_color;
         let [x, y, z] = sky.to_sun();
-        environment = format!("        public const string SkyboxUrl = {}, SkyTextureUrl = {};\n        public static readonly Color3 SunColor = new Color3({r:.6}f,{g:.6}f,{b:.6}f);\n        public const float SunIntensity = {:.6}f, AmbientIntensity = {:.6}f;\n        public static readonly Vector3 ToSun = new Vector3({x:.9}f,{y:.9}f,{z:.9}f);\n",
-            literal(&skybox_url), literal(&texture_url), sky.sun_intensity, sky.ambient_intensity);
+        environment = format!(
+            "        public const string SkyboxUrl = {}, SkyTextureUrl = {};\n        public static readonly Color3 SunColor = new Color3({r:.6}f,{g:.6}f,{b:.6}f);\n        public const float SunIntensity = {:.6}f, AmbientIntensity = {:.6}f;\n        public static readonly Vector3 ToSun = new Vector3({x:.9}f,{y:.9}f,{z:.9}f);\n",
+            literal(&skybox_url),
+            literal(&texture_url),
+            sky.sun_intensity,
+            sky.ambient_intensity
+        );
     }
     let namespace = format!(
         "HeronBrush.Stride.Level_{:016x}",
@@ -564,15 +896,17 @@ mod tests {
         for value in [Value::Int(7), Value::String("../Other/Model".into())] {
             let mut entity = crate::level::Entity::default();
             entity.properties.insert("stride_model".into(), value);
-            assert!(validate(&Level {
-                format: 2,
-                generator: "test".into(),
-                name: "test".into(),
-                scale: 32.,
-                textures: vec![],
-                entities: vec![entity]
-            })
-            .is_err());
+            assert!(
+                validate(&Level {
+                    format: 2,
+                    generator: "test".into(),
+                    name: "test".into(),
+                    scale: 32.,
+                    textures: vec![],
+                    entities: vec![entity]
+                })
+                .is_err()
+            );
         }
     }
 
@@ -693,7 +1027,10 @@ mod tests {
             &["DDDD:Levels/arena/worldspawn".into()],
             "Levels/arena",
         );
-        assert_eq!(updated, "!Package\nAssetFolders:\n    -   Path: !dir Assets\nRootAssets:\n    - AAAA:MainScene\n    - CCCC:Levels/arenas/keep\n    - DDDD:Levels/arena/worldspawn\nOther: 1\n");
+        assert_eq!(
+            updated,
+            "!Package\nAssetFolders:\n    -   Path: !dir Assets\nRootAssets:\n    - AAAA:MainScene\n    - CCCC:Levels/arenas/keep\n    - DDDD:Levels/arena/worldspawn\nOther: 1\n"
+        );
         assert_eq!(
             update_package("!Package\nRootAssets: []\n", &["D:L/a/w".into()], "L/a"),
             "!Package\nRootAssets:\n    - D:L/a/w\n"
@@ -742,9 +1079,11 @@ mod tests {
             asset_id("Levels/arena/Sky/Sky")
         )));
         assert!(text(&files, "Sky/Sky.sdtex").contains("UseSRgbSampling: false"));
-        assert!(files
-            .iter()
-            .any(|f| f.path == "arena/Sky/Sky.dds" && f.contents.starts_with(b"DDS ")));
+        assert!(
+            files
+                .iter()
+                .any(|f| f.path == "arena/Sky/Sky.dds" && f.contents.starts_with(b"DDS "))
+        );
         let importer = text(&files, "HeronBrushStrideLevel.cs");
         assert!(
             importer.contains("SkyboxUrl = \"Levels/arena/Sky/Skybox\"")
@@ -758,11 +1097,211 @@ mod tests {
                 .any(|r| r.ends_with(":Levels/arena/Sky/Skybox"))
                 && roots.iter().any(|r| r.ends_with(":Levels/arena/Sky/Sky"))
         );
-        assert!(!text(
-            &write(&level, &[], &StrideOptions::for_level("arena"), &[]),
-            "HeronBrushStrideLevel.cs"
-        )
-        .contains("Sky/Skybox"));
+        assert!(
+            !text(
+                &write(&level, &[], &StrideOptions::for_level("arena"), &[]),
+                "HeronBrushStrideLevel.cs"
+            )
+            .contains("Sky/Skybox")
+        );
+    }
+
+    #[test]
+    fn pbr_maps_mask_and_independent_samplers_reach_native_assets() {
+        let mut png = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut png, 4, 4);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            encoder
+                .write_header()
+                .unwrap()
+                .write_image_data(&[128, 200, 255, 128].repeat(16))
+                .unwrap();
+        }
+        let bytes = glb(
+            serde_json::json!({
+                "asset": {"version": "2.0"},
+                "materials": [{"name": "pbr",
+                    "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}, "metallicRoughnessTexture": {"index": 1}, "roughnessFactor": 0.4, "metallicFactor": 0.8},
+                    "normalTexture": {"index": 1, "scale": 0.25},
+                    "occlusionTexture": {"index": 1, "strength": 0.3},
+                    "emissiveTexture": {"index": 1}, "emissiveFactor": [0.2, 0.4, 0.8],
+                    "extensions": {"KHR_materials_emissive_strength": {"emissiveStrength": 3.0}},
+                    "alphaMode": "MASK", "alphaCutoff": 0.7, "doubleSided": true}],
+                "textures": [{"source": 0, "sampler": 0}, {"source": 0, "sampler": 1}],
+                "samplers": [{"wrapS": 33071, "wrapT": 10497}, {"wrapS": 10497, "wrapT": 33071}],
+                "images": [{"bufferView": 0, "mimeType": "image/png"}],
+                "bufferViews": [{"byteLength": png.len()}]
+            }),
+            &png,
+        );
+        let level = Level {
+            format: 2,
+            generator: "test".into(),
+            name: "arena".into(),
+            scale: 32.,
+            textures: vec![],
+            entities: vec![],
+        };
+        let files = write(
+            &level,
+            &[],
+            &StrideOptions::for_level("arena"),
+            &[StrideMesh {
+                file_name: "world.glb",
+                glb: &bytes,
+            }],
+        );
+        let mat = text(&files, "Materials/pbr.sdmat");
+        assert!(mat.contains("!MaterialTransparencyCutoffFeature\n        Alpha: !ComputeFloat\n            Value: 0.7"), "{mat}");
+        assert!(!mat.contains("!MaterialTransparencyBlendFeature"));
+        assert!(
+            mat.contains("!MaterialEmissiveMapFeature")
+                && mat.contains("Value: 3\n        UseAlpha: false"),
+            "{mat}"
+        );
+        assert!(mat.contains("R: 0.2, G: 0.4, B: 0.8, A: 1"));
+        assert!(mat.contains("!MaterialNormalMapFeature") && mat.contains("IsXYNormal: false"));
+        assert!(
+            mat.contains("R: 0.25, G: 0.25, B: 1, A: 1")
+                && mat.contains("R: 0.375, G: 0.375, B: 0.0, A: 0.0"),
+            "{mat}"
+        );
+        assert!(
+            mat.contains("Invert: true")
+                && mat.contains("Channel: G")
+                && mat.contains("Channel: B")
+                && mat.contains("Channel: R")
+        );
+        assert!(
+            mat.contains("Value: 0.4")
+                && mat.contains("Value: 0.8")
+                && mat.contains("Value: 0.3")
+                && mat.contains("Value: 0.7")
+        );
+        assert!(mat.contains("AddressModeU: Clamp\n            AddressModeV: Wrap"));
+        assert!(mat.contains("AddressModeU: Wrap") && mat.contains("AddressModeV: Clamp"));
+        assert!(
+            text(&files, "Textures/pbr.normal.sdtex")
+                .contains("Type: !NormalMapTextureType\n    InvertY: true")
+        );
+        assert!(text(&files, "Textures/pbr.normal.sdtex").contains("IsCompressed: false"));
+        for slot in ["mr", "ao"] {
+            assert!(
+                text(&files, &format!("Textures/pbr.{slot}.sdtex"))
+                    .contains("UseSRgbSampling: false")
+            );
+        }
+        for slot in ["", ".normal", ".mr", ".ao", ".emissive"] {
+            assert_eq!(
+                files
+                    .iter()
+                    .find(|f| f.path == format!("arena/Textures/pbr{slot}.png"))
+                    .unwrap()
+                    .contents,
+                png
+            );
+        }
+        if let Ok(root) = std::env::var("HERON_STRIDE_MATERIAL_OUTPUT") {
+            for file in &files {
+                let path = std::path::Path::new(&root).join(&file.path);
+                std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+                std::fs::write(path, &file.contents).unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn mask_defaults_and_emissive_factors_without_images_are_preserved() {
+        let bytes = glb(
+            serde_json::json!({"materials": [{"name": "mask", "alphaMode": "MASK", "emissiveFactor": [0.1, 0.2, 0.3]}]}),
+            &[],
+        );
+        let material = glb_materials(&bytes).remove(0);
+        let mat = material_asset("test", &material, None, None, None, None, None);
+        assert!(mat.contains("!MaterialTransparencyCutoffFeature\n        Alpha: !ComputeFloat\n            Value: 0.5"));
+        assert!(mat.contains(
+            "EmissiveMap: !ComputeColor\n            Value: {R: 0.1, G: 0.2, B: 0.3, A: 1}"
+        ));
+        assert!(mat.contains("Intensity: !ComputeFloat\n            Value: 1"));
+        assert!(!mat.contains("!MaterialNormalMapFeature"));
+    }
+
+    #[test]
+    fn same_named_materials_from_different_meshes_do_not_overwrite_each_other() {
+        let a = glb(
+            serde_json::json!({"materials": [{"name": "Material", "emissiveFactor": [1., 0., 0.]}]}),
+            &[],
+        );
+        let b = glb(
+            serde_json::json!({"materials": [{"name": "Material", "alphaMode": "MASK"}]}),
+            &[],
+        );
+        let level = Level {
+            format: 2,
+            generator: "test".into(),
+            name: "arena".into(),
+            scale: 32.,
+            textures: vec![],
+            entities: vec![],
+        };
+        let meshes = [
+            StrideMesh {
+                file_name: "a.glb",
+                glb: &a,
+            },
+            StrideMesh {
+                file_name: "b.glb",
+                glb: &b,
+            },
+            StrideMesh {
+                file_name: "c.glb",
+                glb: &a,
+            },
+        ];
+        let options = StrideOptions::for_level("arena");
+        let files = write(&level, &[], &options, &meshes);
+        let materials: Vec<_> = files
+            .iter()
+            .filter(|f| f.path.ends_with(".sdmat"))
+            .collect();
+        assert_eq!(materials.len(), 2);
+        assert_ne!(materials[0].path, materials[1].path);
+        let model_material = |files: &[StrideFile], path: &str| {
+            text(files, path)
+                .lines()
+                .find(|l| l.trim_start().starts_with("Material:"))
+                .unwrap()
+                .to_owned()
+        };
+        assert_eq!(
+            model_material(&files, "arena/a.sdm3d"),
+            model_material(&files, "arena/c.sdm3d")
+        );
+        assert_ne!(
+            model_material(&files, "arena/a.sdm3d"),
+            model_material(&files, "arena/b.sdm3d")
+        );
+        let reversed = [
+            StrideMesh {
+                file_name: "b.glb",
+                glb: &b,
+            },
+            StrideMesh {
+                file_name: "a.glb",
+                glb: &a,
+            },
+        ];
+        let other = write(&level, &[], &options, &reversed);
+        assert_eq!(
+            model_material(&files, "arena/a.sdm3d"),
+            model_material(&other, "arena/a.sdm3d")
+        );
+        assert_eq!(
+            model_material(&files, "arena/b.sdm3d"),
+            model_material(&other, "arena/b.sdm3d")
+        );
     }
 
     #[test]

@@ -123,6 +123,8 @@ impl Target {
         matches!(
             self,
             Target::Godot
+                | Target::Unity
+                | Target::Flax
                 | Target::ThreeJs
                 | Target::Babylon
                 | Target::PlayCanvas
@@ -722,6 +724,7 @@ fn build(
                 mesh_collision: !matches!(
                     target,
                     Target::Defold
+                        | Target::Raylib
                         | Target::Unity
                         | Target::ThreeJs
                         | Target::Babylon
@@ -807,6 +810,7 @@ fn build(
             match target {
                 Target::ThreeJs | Target::Babylon | Target::PlayCanvas | Target::Bevy => {
                     if target == Target::Bevy {
+                        files.push((directory.join("heron_lights.rs"), Contents::Text(include_str!("../../scene_export/src/writer/bevy_lights.rs.txt").into())));
                         files.push((
                             directory.join("heron_water_render.rs"),
                             Contents::Text(
@@ -929,6 +933,7 @@ fn build(
                         ));
                     }
                     if target == Target::ThreeJs {
+                        files.push((directory.join("heron_lights.js"), Contents::Text(include_str!("../../scene_export/src/writer/three_lights.js").into())));
                         files.push((
                             directory.join("heron_water.js"),
                             Contents::Text(
@@ -1022,6 +1027,8 @@ fn build(
                             Contents::Bytes(sky.display_strip(256, writer::sky::cube_direction)),
                         ));
                     }
+                    let lighting_header = format!("{}_lighting.h",options.name);
+                    files.push((directory.join(&lighting_header),Contents::Text(writer::raylib::lighting(&built.level,sky.as_ref()))));
                     let water = crate::raylib_water::write(&built.level);
                     let water_header = format!("{}_water.h", options.name);
                     if let Some(text) = &water {
@@ -1034,6 +1041,7 @@ fn build(
                             &header,
                             sky.as_ref().map(|_| sky_path.as_str()),
                             water.as_ref().map(|_| water_header.as_str()),
+                            Some(&lighting_header),
                         )),
                     ));
                     files.push((directory.join(format!("{}_raylib.md",options.name)),Contents::Text(format!(
@@ -1077,6 +1085,11 @@ fn build(
                     if !options.model_sampler.is_empty() {
                         defold.model_sampler = options.model_sampler.clone();
                     }
+                    let project=settings.project_root.as_deref().unwrap_or(directory);
+                    for (path,bytes) in configure_defold_materials(&built.level,&settings,directory,&options.name,project,&mut defold)? {
+                        if !files.iter().any(|(p,_)|p==&path) {files.push((path,Contents::Bytes(bytes)));}
+                    }
+                    writer::defold::validate_material_bindings(&built.level,&defold).map_err(Error::Map)?;
                     defold.sky = options.sky.then(|| map_sky(document, &built.level));
                     for file in writer::defold::write(&built.level, &built.collision, &defold) {
                         files.push((
@@ -1093,9 +1106,13 @@ fn build(
                 Target::Unity => {
                     writer::unity::validate(&built.level).map_err(Error::Map)?;
                     let mut unity = writer::unity::UnityOptions {
+                        sky: options.sky.then(|| map_sky(document, &built.level)),
                         normal_maps: unity_normal_maps(&settings),
                         ..Default::default()
                     };
+                    if let Some(sky) = &unity.sky {
+                        files.push((directory.join(&options.name).join("sky.hdr"), Contents::Bytes(sky.panorama_hdr(1024,512,writer::sky::unity_panorama_direction))));
+                    }
                     if let Some(assets) = directory
                         .ancestors()
                         .find(|path| path.file_name().is_some_and(|name| name == "Assets"))
@@ -1134,6 +1151,12 @@ fn build(
                 Target::Flax => {
                     writer::flax::validate(&built.level).map_err(Error::Map)?;
                     let mut flax = writer::flax::FlaxOptions::for_level(&options.name);
+                    flax.sky = options.sky.then(|| map_sky(document, &built.level));
+                    if let Some(sky) = &flax.sky {
+                        let (cube,scale) = sky.cube_dds_normalized(128,true);
+                        flax.sky_scale = scale;
+                        files.push((directory.join(&options.name).join("sky.dds"),Contents::Bytes(cube)));
+                    }
                     if !options.content_dir.is_empty() {
                         flax.content_dir = options.content_dir.clone();
                     }
@@ -1250,10 +1273,38 @@ fn build(
             .values()
             .any(|m| m.surface.is_some())
     {
-        report.warnings.push("PBR surface settings are stored in GLB and level metadata. This target's default sample shader does not render roughness, metallic or emission; use a compatible shader.".into());
+        report.warnings.push("PBR surface settings are stored in GLB and level metadata. The default sample shaders do not implement full glTF PBR; use a compatible project shader for unsupported material features.".into());
     }
     report.warnings.splice(0..0, class_warnings);
     Ok((report, files))
+}
+
+/// Shared by final and live exports. Explicit project samplers see the same
+/// map paths, including a portable OpenGL normal companion when requested.
+pub(crate) fn configure_defold_materials(
+    level:&scene_export::level::Level, settings:&Settings, directory:&Path, name:&str,
+    project:&Path, options:&mut writer::defold::DefoldOptions,
+) -> Result<Vec<(PathBuf,Vec<u8>)>,Error> {
+    let mut files=Vec::new(); let mut normals=std::collections::BTreeMap::new();
+    if level.entities.iter().any(|e|e.properties.contains_key("defold_sampler_normal")) {
+        for (material,png) in &settings.normal_maps {
+            let path=directory.join(format!("{name}_paint")).join(format!("{material}_normal.png"));
+            let resource=scene_export::materials::fs_to_res(project,&path).ok_or_else(||Error::Map("Defold normal map must be inside the project".into()))?;
+            normals.insert(material.clone(),resource.trim_start_matches("res://").to_owned());files.push((path,png.to_vec()));
+        }
+    }
+    for texture in &level.textures {
+        let mut maps:Vec<_>=texture.maps.iter().map(|(slot,path)|(if slot=="emission" {"emissive".into()} else {slot.clone()},path.clone())).collect();
+        if let Some(pbr)=settings.generated_materials.get(&texture.name).and_then(|m|m.pbr.as_ref()) {
+            for image in &pbr.images {maps.retain(|(slot,_)|slot != image.slot);maps.push((image.slot.to_owned(),image.path.trim_start_matches("res://").to_owned()));}
+        }
+        if let Some(path)=normals.get(&texture.name) {maps.retain(|(slot,_)|slot != "normal");maps.push(("normal".into(),path.clone()));}
+        else if let Some(path)=settings.normal_map_paths.get(&texture.name) {
+            if !maps.iter().any(|(slot,_)|slot=="normal") {maps.push(("normal".into(),path.trim_start_matches("res://").into()));}
+        }
+        options.material_maps.insert(texture.name.clone(),maps);
+    }
+    Ok(files)
 }
 
 /// The sky and sun the map is lit with: its first render camera's, which a map saves,
@@ -1899,6 +1950,33 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+
+    #[test]
+    fn defold_project_shader_receives_requested_normal_texture() {
+        let scratch=Scratch::new("defold-normal-sampler");
+        let directory=std::env::var_os("HERON_DEFOLD_SAMPLER_OUTPUT").map(std::path::PathBuf::from).unwrap_or_else(||scratch.0.join("out"));
+        std::fs::create_dir_all(&directory).unwrap();
+        let textures=scratch.0.join("textures");std::fs::create_dir_all(&textures).unwrap();
+        let png=|p:[u8;4]|crate::assets::encode_png(2,2,&p.repeat(4)).unwrap();
+        std::fs::write(textures.join("stone.png"),png([90,90,90,255])).unwrap();
+        std::fs::write(textures.join("stone_normal_dx.png"),png([140,200,250,255])).unwrap();
+        let mut document=one_cube();document.load_materials(&textures).unwrap();
+        let options=Options {
+            target:Target::Defold,name:"arena".into(),project_dir:directory.to_string_lossy().into_owned(),model_material:"/normal.material".into(),
+            entities:[("worldspawn".into(),crate::export_bindings::Rule{defaults:[("defold_sampler_normal".into(),serde_json::json!("tex_normal"))].into(),..Default::default()})].into(),
+            ..Default::default()
+        };
+        let (_,files)=export_files(&document,&directory,&options).unwrap();
+        let model=files.iter().find(|(p,_)|p.ends_with("worldspawn.model")).unwrap();
+        let Contents::Text(model)=&model.1 else {panic!("model text")};
+        let texture=model.split("sampler: \"tex_normal\"").nth(1).unwrap().split("texture: \"").nth(1).unwrap().split('"').next().unwrap();
+        let expected=directory.join(texture.trim_start_matches('/'));
+        let (_,Contents::Bytes(bytes))=files.iter().find(|(p,_)|p==&expected).unwrap() else {panic!("normal image")};
+        let pixels=image::load_from_memory(bytes).unwrap().to_rgba8();assert_eq!(pixels.get_pixel(0,0).0,[140,55,250,255]);
+        if std::env::var_os("HERON_DEFOLD_SAMPLER_OUTPUT").is_some() {
+            for (path,data) in files {std::fs::create_dir_all(path.parent().unwrap()).unwrap();match data {Contents::Text(s)=>std::fs::write(path,s).unwrap(),Contents::Bytes(b)=>std::fs::write(path,b).unwrap()}}
         }
     }
 
@@ -2739,6 +2817,12 @@ mod tests {
             1,
             "what it draws, and nothing else"
         );
+
+        let raylib=dir.join("raylib");std::fs::create_dir_all(&raylib).unwrap();
+        export(&one_cube(),&raylib,&Options{target:Target::Raylib,name:"level".into(),..Default::default()}).unwrap();
+        let data:serde_json::Value=serde_json::from_str(&std::fs::read_to_string(raylib.join("level.json")).unwrap()).unwrap();
+        assert!(data["entities"][0]["collision"]["triangles"].is_array());
+        assert_eq!(gltf_mesh_count(&raylib.join("level/worldspawn.glb")),1,"raylib consumes inline collision, not an orphan mesh");
 
         // Bevy reads the collision out of the glTF mesh, so the level file does not
         // carry a copy of it.
