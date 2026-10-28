@@ -168,7 +168,7 @@ a skrývá vnitřní uzávěry. Zhroucení segmentu nebo objemový samoprůnik o
 celý výsledek. Nové díly zůstávají ve stejných entitách/skupinách jako zdroj,
 mají jeden krok Undo a celkem je omezuje limit 1024 buněk.
 
-Sekce **Zaoblení** zaoblí vybrané hrany podle hodnot **Poloměr**, **Stěny** a **Rohy** (Zaříznuté nebo Zaoblené); jedna plocha znamená sražení hrany. Poloměr i počet segmentů mají tlačítka −/+.
+Sekce **Zaoblení** zaoblí vybrané hrany podle hodnot **Poloměr**, **Stěny** a **Rohy** (Zaříznuté nebo Zaoblené); jedna plocha znamená sražení hrany. Poloměr i počet segmentů mají tlačítka −/+. **Přichytávat k mřížce** zapíná samostatnou **Mřížku**, stejně jako u Spojit roh. Přichytávají se nové vrcholy zaoblení; původní vrcholy a osově zarovnané koncové plochy zůstávají na místě. Hrubší mřížka může sloučit segmenty. Pokud by zaoblení zaniklo nebo vznikla neplatná geometrie, operace se odmítne. Nastavení platí i pro vnitřní roh L.
 **Vnitřní roh dvou ramen L** přidává výplň mezi dva překrývající se obdélníkové
 brushe se stejnou hloubkou a rodičem, včetně různých šířek ramen. Vnější
 3D náhled zaoblení zobrazuje výsledné plochy a zvýrazněné hrany včetně

@@ -6,7 +6,7 @@ key A cmd
 key O
 click 648 53
 wait 0.6
-click 718 397
+click 718 357
 key A cmd
 text 32
 key Enter

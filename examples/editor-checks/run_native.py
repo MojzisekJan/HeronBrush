@@ -66,6 +66,15 @@ def validate(script, output, working=None):
         assert sum(" stone " in line for line in faces) == 5, "Other face materials changed"
         assert snapshots["changed"]["map"] == snapshots["redo"]["map"]
         assert snapshots["changed"]["map"] == snapshots["saved"]["map"]
+    if Path(script).stem == "native-fillet-grid":
+        assert snapshots["preview"]["map"] == snapshots["base"]["map"], "Preview must not edit the map"
+        faces = [line for line in snapshots["changed"]["map"].splitlines() if line.startswith("( ")]
+        assert len(faces) > 6, "Fillet must add rounded faces"
+        for face in faces:
+            for point in face.split(")")[:3]:
+                for coordinate in point.strip(" (").split():
+                    value = float(coordinate)
+                    assert abs(value / 2.0 - round(value / 2.0)) < 1e-6, "Fillet UI must use the selected Grid 2"
     if Path(script).stem == "native-fillet":
         assert snapshots["preview"]["map"] == snapshots["base"]["map"], "Preview changed the map before apply"
         assert snapshots["preview"]["modified"] == snapshots["base"]["modified"]

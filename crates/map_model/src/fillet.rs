@@ -62,6 +62,8 @@ pub struct Fillet {
     pub faces: usize,
     /// What to do at a vertex where rounded edges meet.
     pub corners: Corners,
+    /// Snap new rounding vertices to this world grid; preserve original vertices and caps.
+    pub snap: Option<f64>,
 }
 
 impl Default for Fillet {
@@ -70,6 +72,7 @@ impl Default for Fillet {
             radius: 8.0,
             faces: 4,
             corners: Corners::default(),
+            snap: None,
         }
     }
 }
@@ -107,8 +110,12 @@ pub enum FilletError {
         /// The other end.
         to: Vec3d,
     },
-    /// The radius is larger than the brush can give up: rounding at it would cut the
-    /// brush away entirely.
+    /// The requested grid is invalid or cannot retain a solid rounding.
+    CannotSnap {
+        /// Requested grid spacing.
+        grid: f64,
+    },
+    /// The radius would cut the brush away entirely.
     RadiusTooLarge {
         /// What was asked for.
         given: f64,
@@ -132,6 +139,9 @@ impl std::fmt::Display for FilletError {
             }
             FilletError::EdgeIsFlat { from, to } => {
                 write!(f, "the edge from {from:?} to {to:?} has no corner to round")
+            }
+            FilletError::CannotSnap { grid } => {
+                write!(f, "cannot snap this fillet to grid {grid}; use a finer positive grid or turn snapping off")
             }
             FilletError::RadiusTooLarge { given } => {
                 write!(f, "a radius of {given} would cut the whole brush away")
@@ -160,6 +170,7 @@ pub fn fillet_edge(
             radius,
             faces,
             corners: Corners::Mitred,
+            snap: None,
         },
     )
 }
@@ -270,7 +281,67 @@ pub fn fillet_edges(
             }
         }
     }
-    Ok(rounded.with_exact_face_attributes(&attrs).unwrap())
+    let rounded = rounded.with_exact_face_attributes(&attrs).unwrap();
+    match fillet.snap {
+        Some(grid) => snap_rounding(brush, &rounded, grid, radius),
+        None => Ok(rounded),
+    }
+}
+
+/// Quantize the generated surface, leaving the rest of the source solid in place.
+/// Rebuilding its convex hull merges facets that a coarse grid makes coincident.
+fn snap_rounding(
+    source: &Brush,
+    rounded: &Brush,
+    grid: f64,
+    radius: f64,
+) -> Result<Brush, FilletError> {
+    let fail = || FilletError::CannotSnap { grid };
+    if !grid.is_finite() || grid <= 0.0 {
+        return Err(fail());
+    }
+    let original = source.vertex_positions();
+    let place = |point| {
+        if original
+            .iter()
+            .any(|old| vec::squared_distance(*old, point) < 1e-12)
+        {
+            return point;
+        }
+        let mut result = vec::round(point / grid) * grid;
+        // A straight end cap must not jump to another grid slice, even if the source
+        // is off grid. Only the coordinates free to move along that face are snapped.
+        for plane in source.face_planes() {
+            if (vec::dot(plane.normal, point) - plane.distance).abs() < 1e-6 {
+                for axis in 0..3 {
+                    if plane.normal[axis].abs() > 1.0 - 1e-8 {
+                        result[axis] = point[axis];
+                    }
+                }
+            }
+        }
+        result
+    };
+    if rounded.vertex_positions().iter().any(|point| {
+        let moved = place(*point);
+        moved.v.iter().any(|v| !v.is_finite()) || vec::length(moved - *point) > radius
+    }) {
+        return Err(fail());
+    }
+    let snapped = rounded.map_vertices(place).map_err(|_| fail())?;
+    // Snapping must neither extend outside neighbouring source surfaces nor restore
+    // the entire sharp source brush. Every preview and Apply shares this validation.
+    if snapped.vertex_positions().iter().any(|point| {
+        source
+            .face_planes()
+            .iter()
+            .any(|plane| vec::dot(plane.normal, *point) - plane.distance > 1e-6)
+    }) || snapped.volume() <= 1e-9
+        || source.volume() - snapped.volume() <= source.volume().abs().max(1.0) * 1e-9
+    {
+        return Err(fail());
+    }
+    Ok(snapped)
 }
 
 fn carry_fillet_uv(
@@ -586,6 +657,115 @@ mod tests {
     }
 
     #[test]
+    fn grid_snaps_new_vertices_and_preserves_old_corners_and_attributes() {
+        let brush = cube(64.0);
+        let edge = top_edge(64.0);
+        let fillet = Fillet {
+            radius: 12.0,
+            faces: 8,
+            snap: Some(2.0),
+            ..Default::default()
+        };
+        let rounded = fillet_edges(&brush, &[edge], &fillet).unwrap();
+        assert!(rounded.vertices_are_on_grid(2.0));
+        assert!(rounded.volume() < brush.volume());
+        for point in brush
+            .vertex_positions()
+            .into_iter()
+            .filter(|p| p.x() < 63.0 || p.z() < 63.0)
+        {
+            assert!(rounded
+                .vertex_positions()
+                .iter()
+                .any(|p| vec::squared_distance(*p, point) < 1e-12));
+        }
+        assert!(rounded.faces().iter().all(|f| f.material_name == "test"));
+        for face in rounded.faces() {
+            let (u, v) = face
+                .uv_coord_system
+                .axes(face.normal(), &face.uv_attributes);
+            assert!(u.v.iter().chain(&v.v).all(|value| value.is_finite()));
+        }
+    }
+
+    #[test]
+    fn snapping_preserves_off_grid_end_caps() {
+        let delta = Vec3d::new(0.0, 0.3, 0.0);
+        let brush = cube(64.0).map_vertices(|p| p + delta).unwrap();
+        let (a, b) = top_edge(64.0);
+        let rounded = fillet_edges(
+            &brush,
+            &[(a + delta, b + delta)],
+            &Fillet {
+                radius: 12.0,
+                snap: Some(2.0),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        for p in rounded.vertex_positions() {
+            assert!((p.y() - 0.3).abs() < 1e-6 || (p.y() - 64.3).abs() < 1e-6);
+            for axis in [0, 2] {
+                assert!((p[axis] / 2.0 - (p[axis] / 2.0).round()).abs() < 1e-6);
+            }
+        }
+        assert_eq!(rounded.bounds(), brush.bounds());
+    }
+
+    #[test]
+    fn snapped_multi_edge_corner_modes_keep_convex_grid_geometry() {
+        let brush = cube(64.0);
+        let c = Vec3d::fill(64.0);
+        let edges = [
+            (Vec3d::new(64.0, 0.0, 64.0), c),
+            (Vec3d::new(0.0, 64.0, 64.0), c),
+            (Vec3d::new(64.0, 64.0, 0.0), c),
+        ];
+        for corners in [
+            Corners::Mitred,
+            Corners::Rounded,
+            Corners::Chamfered,
+            Corners::Setback,
+        ] {
+            let rounded = fillet_edges(
+                &brush,
+                &edges,
+                &Fillet {
+                    radius: 12.0,
+                    faces: 4,
+                    corners,
+                    snap: Some(1.0),
+                },
+            )
+            .unwrap();
+            assert!(rounded.vertices_are_on_grid(1.0));
+            assert!(rounded.volume() > 0.0 && rounded.volume() < brush.volume());
+            assert!(rounded
+                .vertex_positions()
+                .iter()
+                .all(|p| brush.contains_point(*p)));
+        }
+    }
+
+    #[test]
+    fn invalid_or_coarse_grid_cannot_silently_remove_the_fillet() {
+        let brush = cube(64.0);
+        for grid in [0.0, -1.0, f64::NAN, f64::INFINITY, 128.0] {
+            assert!(matches!(
+                fillet_edges(
+                    &brush,
+                    &[top_edge(64.0)],
+                    &Fillet {
+                        snap: Some(grid),
+                        ..Default::default()
+                    }
+                ),
+                Err(FilletError::CannotSnap { .. })
+            ));
+        }
+    }
+
+    #[test]
     fn one_face_chamfers_the_edge() {
         let brush = cube(64.0);
         let (from, to) = top_edge(64.0);
@@ -667,6 +847,7 @@ mod tests {
                 radius: 8.0,
                 faces: 2,
                 corners: Corners::Mitred,
+                snap: None,
             },
         )
         .expect("the loop rounds");
@@ -692,6 +873,7 @@ mod tests {
                 radius: 8.0,
                 faces: 3,
                 corners: Corners::Mitred,
+                snap: None,
             },
         )
         .expect("both edges round");
@@ -721,6 +903,7 @@ mod tests {
                 radius: 8.0,
                 faces: 2,
                 corners: Corners::Mitred,
+                snap: None,
             },
         )
         .expect("the corner rounds");
@@ -759,6 +942,7 @@ mod tests {
                 radius,
                 faces: 2,
                 corners: Corners::Mitred,
+                snap: None,
             },
         )
         .expect("the corner rounds");
@@ -769,6 +953,7 @@ mod tests {
                 radius,
                 faces: 2,
                 corners: Corners::Rounded,
+                snap: None,
             },
         )
         .expect("the corner rounds");
@@ -813,6 +998,7 @@ mod tests {
                 radius: 12.0,
                 faces: 2,
                 corners,
+                snap: None,
             },
         )
         .expect("the corner rounds")
@@ -866,6 +1052,7 @@ mod tests {
                 radius: 8.0,
                 faces: 3,
                 corners: Corners::Mitred,
+                snap: None,
             },
         )
         .expect("it rounds");

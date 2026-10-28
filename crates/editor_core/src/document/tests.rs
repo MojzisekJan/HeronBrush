@@ -513,6 +513,7 @@ fn rounding_an_edge_replaces_the_brush_in_one_undoable_step() {
                 radius: 4.0,
                 faces: 3,
                 corners: map_model::fillet::Corners::Mitred,
+                snap: None,
             },
         )
         .expect("the edge rounds");
@@ -542,6 +543,7 @@ fn a_radius_the_brush_cannot_give_up_rounds_nothing() {
             radius: 512.0,
             faces: 3,
             corners: map_model::fillet::Corners::Mitred,
+            snap: None,
         },
     );
     assert!(outcome.is_err());

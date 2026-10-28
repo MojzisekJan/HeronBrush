@@ -965,7 +965,11 @@ mod tests {
         let id = document.selectable_brushes()[0].0;
         document.select_only(id);
         let edges = vec![document.brush(id).unwrap().edge_positions()[0]];
-        let settings = FilletParameters::default();
+        let settings = FilletParameters {
+            snap: true,
+            grid: 1.0,
+            ..Default::default()
+        };
         let filters = ViewFilters::default();
         let original = document.preview_mesh(&filters).triangles;
         let saved = document.to_map_text();

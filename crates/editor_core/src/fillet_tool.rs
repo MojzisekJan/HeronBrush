@@ -28,6 +28,9 @@ pub struct FilletParameters {
     pub faces: usize,
     /// What happens where two or three rounded edges meet at a vertex.
     pub corners: map_model::fillet::Corners,
+    /// Use the fillet grid independently of the editor movement grid.
+    pub snap: bool,
+    pub grid: f64,
 }
 
 impl Default for FilletParameters {
@@ -39,6 +42,8 @@ impl Default for FilletParameters {
             inner: false,
             faces: 4,
             corners: map_model::fillet::Corners::Mitred,
+            snap: false,
+            grid: 1.0,
         }
     }
 }
@@ -50,6 +55,7 @@ impl FilletParameters {
             radius: self.radius,
             faces: self.faces,
             corners: self.corners,
+            snap: self.snap.then_some(self.grid),
         }
     }
 }
@@ -163,6 +169,7 @@ pub fn apply(
 fn inner_options(parameters: FilletParameters) -> crate::corner_join::Rounding {
     crate::corner_join::Rounding {
         inner: Some((parameters.radius, parameters.faces)),
+        snap: parameters.snap.then_some(parameters.grid),
         ..Default::default()
     }
 }
@@ -698,6 +705,7 @@ mod tests {
             inner: false,
             faces: 4,
             corners: map_model::fillet::Corners::Mitred,
+            ..Default::default()
         };
         assert_eq!(
             press(&document, &mut handles, settings, position, false),

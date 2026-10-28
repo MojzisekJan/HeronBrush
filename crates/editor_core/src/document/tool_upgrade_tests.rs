@@ -261,3 +261,108 @@ fn outward_shells_cannot_silently_overlap_each_other() {
     d.undo();
     assert_eq!(d.to_map_text(), before);
 }
+
+#[test]
+fn snapped_fillet_preview_apply_save_and_one_undo_agree() {
+    let mut d = Document::new(Default::default());
+    add_box(&mut d, Vec3d::zero(), Vec3d::fill(64.0));
+    d.select_all();
+    let before = d.to_map_text();
+    let edges = vec![(Vec3d::new(64.0, 0.0, 64.0), Vec3d::fill(64.0))];
+    let parameters = crate::fillet_tool::FilletParameters {
+        radius: 12.0,
+        faces: 8,
+        snap: true,
+        grid: 2.0,
+        ..Default::default()
+    };
+    let preview = crate::fillet_tool::surface_preview(&d, &edges, parameters).unwrap();
+    assert_eq!(d.to_map_text(), before);
+    d.fillet_edges(&edges, &parameters.shape()).unwrap();
+    let brush = d.selected_brushes()[0];
+    assert_eq!(
+        brush.vertex_positions(),
+        preview.brushes[0].1[0].vertex_positions()
+    );
+    assert!(brush.vertices_are_on_grid(2.0));
+    assert!(brush
+        .faces()
+        .iter()
+        .all(|f| f.color.is_some() && f.surface_material.is_some()));
+    let after = d.to_map_text();
+    let loaded =
+        Document::from_map_owned(read_map(&after, None).unwrap(), Default::default(), None);
+    for brush in node::brushes(loaded.tree_world()) {
+        assert!(brush.vertices_are_on_grid(2.0));
+    }
+    d.undo();
+    assert_eq!(d.to_map_text(), before);
+    d.redo();
+    assert_eq!(d.to_map_text(), after);
+}
+
+#[test]
+fn refused_fillet_grid_leaves_all_brushes_and_history_unchanged() {
+    let mut d = Document::new(Default::default());
+    add_box(&mut d, Vec3d::zero(), Vec3d::fill(64.0));
+    add_box(
+        &mut d,
+        Vec3d::new(256.0, 0.0, 0.0),
+        Vec3d::new(320.0, 64.0, 64.0),
+    );
+    d.select_all();
+    let before = d.to_map_text();
+    let mark = d.edit_mark();
+    let edges = vec![
+        (Vec3d::new(64.0, 0.0, 64.0), Vec3d::fill(64.0)),
+        (Vec3d::new(320.0, 0.0, 64.0), Vec3d::new(320.0, 64.0, 64.0)),
+    ];
+    assert!(d
+        .fillet_edges(
+            &edges,
+            &map_model::fillet::Fillet {
+                snap: Some(128.0),
+                ..Default::default()
+            }
+        )
+        .is_err());
+    assert_eq!(d.to_map_text(), before);
+    assert_eq!(d.edit_mark(), mark);
+}
+
+#[test]
+fn inner_fillet_uses_its_own_grid() {
+    let mut d = Document::new(Default::default());
+    add_box(&mut d, Vec3d::zero(), Vec3d::new(128.0, 8.0, 8.0));
+    add_box(&mut d, Vec3d::zero(), Vec3d::new(24.0, 96.0, 8.0));
+    d.select_all();
+    let before = d.to_map_text();
+    let parameters = crate::fillet_tool::FilletParameters {
+        inner: true,
+        radius: 32.0,
+        faces: 8,
+        snap: true,
+        grid: 2.0,
+        ..Default::default()
+    };
+    let preview = crate::fillet_tool::surface_preview(&d, &[], parameters).unwrap();
+    assert!(preview
+        .brushes
+        .iter()
+        .flat_map(|(_, brushes)| brushes)
+        .all(|b| b.vertices_are_on_grid(2.0)));
+    let doc = Rc::new(RefCell::new(d));
+    assert!(matches!(
+        crate::fillet_tool::apply(
+            &doc,
+            &mut crate::handle_tool::HandleManager::new(),
+            parameters
+        ),
+        crate::fillet_tool::Outcome::Rounded(_)
+    ));
+    assert!(node::brushes(doc.borrow().tree_world())
+        .iter()
+        .all(|b| b.vertices_are_on_grid(2.0)));
+    doc.borrow_mut().undo();
+    assert_eq!(doc.borrow().to_map_text(), before);
+}

@@ -168,7 +168,7 @@ interior caps are hidden. A collapsed cell or solid self-intersection refuses
 the whole operation. New cells retain their source parent, use one Undo step
 and are limited to 1024 in total.
 
-The **Fillet** section rounds the picked edges with **Radius**, **Faces** and **Corners** (Mitred, Chamfered, Rounded or Setback); one face makes a chamfer. Radius and segment count have −/+ buttons.
+The **Fillet** section rounds the picked edges with **Radius**, **Faces** and **Corners** (Mitred, Chamfered, Rounded or Setback); one face makes a chamfer. Radius and segment count have −/+ buttons. **Snap to grid** enables a separate **Grid** size, like Join corner. It snaps the new rounding vertices, keeping original vertices and axis-aligned end caps in place. A coarse grid can merge segments; if it would remove the rounding or make invalid geometry, the operation is refused. The setting also applies to Inner L corner.
 **Inner L corner** fills the inside of two overlapping rectangular members
 with equal depth and the same parent, including unequal member widths.
 The 3D Fillet preview displays the resulting solid surfaces and highlighted edges,

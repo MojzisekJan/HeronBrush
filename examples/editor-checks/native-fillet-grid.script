@@ -1,0 +1,30 @@
+wait 0.8
+size 1360 900
+wait 0.3
+snapshot base
+key A cmd
+key O
+click 648 53
+wait 0.4
+click 718 357
+key A cmd
+text 32
+key Enter
+click 611 485
+click 710 517
+wait 0.2
+click 635 678
+click 254 343
+move 1100 850
+wait 0.4
+shot snapped-preview
+snapshot preview
+key Enter
+wait 0.3
+snapshot changed
+shot snapped-fillet
+key Z cmd
+snapshot undo
+key S cmd
+wait 0.2
+quit

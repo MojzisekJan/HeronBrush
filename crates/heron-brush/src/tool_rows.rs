@@ -295,7 +295,7 @@ pub fn fillet_bar(ui: &mut egui::Ui, open: bool) -> FilletBar {
 /// the controls.
 pub fn fillet_controls(ui: &mut egui::Ui, parameters: &Rc<RefCell<FilletParameters>>) {
     let mut settings = parameters.borrow_mut();
-    let labels = [tr("Radius:"), tr("Faces:"), tr("Corners:")];
+    let labels = [tr("Radius:"), tr("Faces:"), tr("Corners:"), tr("Grid")];
     let label_width = labels
         .iter()
         .map(|l| crate::chrome::text_width(ui, l, theme::body()))
@@ -356,6 +356,35 @@ pub fn fillet_controls(ui: &mut egui::Ui, parameters: &Rc<RefCell<FilletParamete
         ui.add_space(label_width + gap);
         crate::widgets::checkbox(ui, &mut settings.inner, tr("Inner L corner"));
     });
+    ui.horizontal(|ui| {
+        ui.add_space(label_width + gap);
+        crate::widgets::checkbox(ui, &mut settings.snap, tr("Snap to grid"));
+    });
+    ui.add_enabled_ui(settings.snap, |ui| {
+        row(ui, tr("Grid"), None, &mut |ui| {
+            rounding_grid(ui, "fillet-grid", &mut settings.grid, control);
+        });
+    });
+}
+
+/// A rounding tool's own grid, picked from the sizes the editor's grid offers, in the same
+/// drop-down. Returns whether it changed.
+pub(crate) fn rounding_grid(ui: &mut egui::Ui, id: &str, grid: &mut f64, width: f32) -> bool {
+    let exponents: Vec<i32> = crate::chrome::GRID_EXPONENTS.collect();
+    let labels: Vec<String> = exponents
+        .iter()
+        .map(|exponent| crate::chrome::grid_label(2f64.powi(*exponent)))
+        .collect();
+    let names: Vec<&str> = labels.iter().map(String::as_str).collect();
+    let mut index = exponents
+        .iter()
+        .position(|exponent| 2f64.powi(*exponent) >= *grid)
+        .unwrap_or(exponents.len() - 1);
+    let changed = crate::widgets::dropdown(ui, id, &mut index, &names, width);
+    if changed {
+        *grid = 2f64.powi(exponents[index]);
+    }
+    changed
 }
 
 /// A dim glyph in front of a control in a strip, its ink on the row's middle. A label

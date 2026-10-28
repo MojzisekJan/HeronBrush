@@ -1049,7 +1049,7 @@ impl Chrome {
                     ui.ctx(),
                     "fillet-settings",
                     tr("Fillet"),
-                    [320.0, 250.0],
+                    [320.0, 330.0],
                     |ui, part| match part {
                         crate::dialog::Part::Body => crate::tool_rows::fillet_controls(ui, &fillet),
                         crate::dialog::Part::Actions => {

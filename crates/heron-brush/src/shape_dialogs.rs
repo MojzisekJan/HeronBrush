@@ -197,7 +197,12 @@ impl ShapeDialogs {
             changed |= checkbox(ui, &mut self.corner_snap, tr("Snap to grid")).changed();
             ui.add_enabled_ui(self.corner_snap, |ui| {
                 row(ui, tr("Grid"), None, |ui| {
-                    changed |= corner_grid(ui, &mut self.corner_grid);
+                    changed |= crate::tool_rows::rounding_grid(
+                        ui,
+                        "corner-grid",
+                        &mut self.corner_grid,
+                        120.0,
+                    );
                 });
             });
         });
@@ -828,26 +833,6 @@ const CORNER_WIDE: f32 = 680.0;
 
 /// The width of the Join corner controls column beside the previews.
 const CORNER_CONTROLS: f32 = 340.0;
-
-/// The corner's own grid, picked from the sizes the editor's grid offers, in the same
-/// drop-down. Returns whether it changed.
-fn corner_grid(ui: &mut egui::Ui, grid: &mut f64) -> bool {
-    let exponents: Vec<i32> = crate::chrome::GRID_EXPONENTS.collect();
-    let labels: Vec<String> = exponents
-        .iter()
-        .map(|exponent| crate::chrome::grid_label(2f64.powi(*exponent)))
-        .collect();
-    let names: Vec<&str> = labels.iter().map(String::as_str).collect();
-    let mut index = exponents
-        .iter()
-        .position(|exponent| 2f64.powi(*exponent) >= *grid)
-        .unwrap_or(exponents.len() - 1);
-    let changed = crate::widgets::dropdown(ui, "corner-grid", &mut index, &names, 120.0);
-    if changed {
-        *grid = 2f64.powi(exponents[index]);
-    }
-    changed
-}
 
 fn corner_number<T: egui::emath::Numeric>(
     ui: &mut egui::Ui,
