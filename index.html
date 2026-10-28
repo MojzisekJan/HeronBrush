@@ -39,7 +39,7 @@
 </script>
 <meta name="color-scheme" content="dark light">
 <link rel="preload" href="fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=cols22">
+<link rel="stylesheet" href="style.css?v=collaboration6">
 </head>
 <body>
 
@@ -371,6 +371,22 @@
     </div>
   </section>
 
+  <section id="collaboration" aria-labelledby="collaboration-title">
+    <div class="wrap">
+      <div class="feature reveal">
+        <div class="feature-text">
+          <div class="feature-title"><span class="tool-icons" aria-hidden="true"><img src="images/tools/collaboration.svg" width="24" height="24" alt=""></span><h2 id="collaboration-title">Collaborative editing</h2></div>
+          <p>Edit one map together, with everyone's changes visible live and each person's camera and name in the 3D view.</p>
+          <p>Connect an AI agent through MCP to build geometry, set properties, animate and export alongside you in the editor.</p>
+        </div>
+        <div class="shot-pair collaboration-shots">
+          <img class="shot" src="images/collaboration-session.webp" width="640" height="599" loading="lazy" alt="Live session settings for hosting or joining other people">
+          <img class="shot small" src="images/collaboration-agent.webp" width="480" height="229" loading="lazy" alt="An active MCP server connecting an AI agent to the editor">
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="export">
     <div class="wrap">
       <div class="section-head reveal">
@@ -471,45 +487,20 @@
       <div class="section-head reveal">
         <h2>More features</h2>
       </div>
-      <div class="more-groups">
-        <div class="more-group">
-          <h3 class="group-title">Rendering</h3>
-          <div class="more">
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h13v9H3z"/><path d="M16 11l5-3v9l-5-3"/></svg><h4>Render cameras</h4><p>The render window sets up a camera with resolution, lighting presets and depth of field, previews it live and saves a PNG. Cameras are stored in the map.</p></div>
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3.5"/><path d="M3 18h18M12 2.5v1.8M4.5 10H3M21 10h-1.5M6.6 4.6l1.1 1.1M17.4 4.6l-1.1 1.1"/></svg><h4>Procedural sky</h4><p>A sky with sun, horizon and ground colours in the 3D view and in renders. It follows the scene lighting.</p></div>
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="12" height="9" rx="1.5"/><rect x="9.5" y="10" width="12" height="9" rx="1.5"/></svg><h4>A second 3D window</h4><p>Move the 3D view into a window of its own, for example on another monitor, with full screen and its own view options.</p></div>
-          </div>
-        </div>
-        <div class="more-group">
-          <h3 class="group-title">Gameplay and engines</h3>
-          <div class="more">
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/></svg><h4>Browser playtest</h4><p>Play the current map in a second browser tab. Unsaved edits reach the running level as you make them.</p></div>
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10"/><path d="M4 20h16"/></svg><h4>Compile, run and check</h4><p>Compile and run profiles for map compilers, and map and leak checks with point and portal files.</p></div>
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 3 2"/><path d="M3 19c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 3 2"/><path d="M12 3l3 5H9z"/></svg><h4>Water, light and collision</h4><p>Exports carry water volumes, collision, the sky and a second UV set for baked light.</p></div>
-          </div>
-        </div>
-        <div class="more-group">
-          <h3 class="group-title">Working together and with scripts</h3>
-          <div class="more">
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c0-3 2.5-5 5-5s5 2 5 5M14 18.5c.3-2.3 1.7-3.8 3.5-3.8 1.9 0 3.3 1.5 3.5 3.8"/></svg><h4>Live sessions</h4><p>Edit one map together over a local network or the internet, with each person's camera and name in the 3D view.</p></div>
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h.01M15 9h.01M8.5 14.5c1 1 2.2 1.5 3.5 1.5s2.5-.5 3.5-1.5"/></svg><h4>MCP server</h4><p>Build and edit maps from scripts or AI agents through the Model Context Protocol.</p></div>
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v4M15 3v4M7 7h10v5a5 5 0 0 1-10 0z"/><path d="M12 17v4"/></svg><h4>Plugins</h4><p>Extend the editor with plugins in a sandboxed scripting language.</p></div>
-          </div>
-        </div>
-        <div class="more-group">
-          <h3 class="group-title">Editing</h3>
-          <div class="more">
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17c4-8 14-8 18 0"/><path d="M3 17h18M7.5 11.5v5.5M12 9.8V17M16.5 11.5V17"/></svg><h4>Patches</h4><p>Bézier patches with a control point tool, and faces turned into patches.</p></div>
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><h4>Layers and linked groups</h4><p>Layers, groups and linked groups, where an edit to one copy reaches all of them.</p></div>
-          </div>
-        </div>
-        <div class="more-group">
-          <h3 class="group-title">Interface</h3>
-          <div class="more">
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h9M8.5 3v2M6 5c.5 3 2.5 5.5 5 7M11 5c-.5 3-3 6-6 7.5"/><path d="M13 21l4-9 4 9M14.5 18h5"/></svg><h4>30 languages</h4><p>The interface and the offline manual are translated into 30 languages.</p></div>
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M9 10h.01M12 10h.01M15 10h.01M18 10h.01M7 14h10"/></svg><h4>Blender keymap</h4><p>Use Blender's shortcuts by switching the keymap in Preferences.</p></div>
-            <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><h4>Touch and tablets</h4><p>The Android build has touch input and a layout for tablets.</p></div>
-          </div>
+      <div class="more-group">
+        <div class="more">
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h13v9H3z"/><path d="M16 11l5-3v9l-5-3"/></svg><h4>Render cameras</h4><p>The render window sets up a camera with resolution, lighting presets and depth of field, previews it live and saves a PNG. Cameras are stored in the map.</p></div>
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3.5"/><path d="M3 18h18M12 2.5v1.8M4.5 10H3M21 10h-1.5M6.6 4.6l1.1 1.1M17.4 4.6l-1.1 1.1"/></svg><h4>Procedural sky</h4><p>A sky with sun, horizon and ground colours in the 3D view and in renders. It follows the scene lighting.</p></div>
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="12" height="9" rx="1.5"/><rect x="9.5" y="10" width="12" height="9" rx="1.5"/></svg><h4>A second 3D window</h4><p>Move the 3D view into a window of its own, for example on another monitor, with full screen and its own view options.</p></div>
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/></svg><h4>Browser playtest</h4><p>Play the current map in a second browser tab. Unsaved edits reach the running level as you make them.</p></div>
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10"/><path d="M4 20h16"/></svg><h4>Compile, run and check</h4><p>Compile and run profiles for map compilers, and map and leak checks with point and portal files.</p></div>
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 3 2"/><path d="M3 19c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 3 2"/><path d="M12 3l3 5H9z"/></svg><h4>Water, light and collision</h4><p>Exports carry water volumes, collision, the sky and a second UV set for baked light.</p></div>
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17c4-8 14-8 18 0"/><path d="M3 17h18M7.5 11.5v5.5M12 9.8V17M16.5 11.5V17"/></svg><h4>Patches</h4><p>Bézier patches with a control point tool, and faces turned into patches.</p></div>
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><h4>Layers and linked groups</h4><p>Layers, groups and linked groups, where an edit to one copy reaches all of them.</p></div>
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v4M15 3v4M7 7h10v5a5 5 0 0 1-10 0z"/><path d="M12 17v4"/></svg><h4>Plugins</h4><p>Extend the editor with plugins in a sandboxed scripting language.</p></div>
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h9M8.5 3v2M6 5c.5 3 2.5 5.5 5 7M11 5c-.5 3-3 6-6 7.5"/><path d="M13 21l4-9 4 9M14.5 18h5"/></svg><h4>30 languages</h4><p>The interface and the offline manual are translated into 30 languages.</p></div>
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M9 10h.01M12 10h.01M15 10h.01M18 10h.01M7 14h10"/></svg><h4>Blender keymap</h4><p>Use Blender's shortcuts by switching the keymap in Preferences.</p></div>
+          <div class="reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><h4>Touch and tablets</h4><p>The Android build has touch input and a layout for tablets.</p></div>
         </div>
       </div>
     </div>

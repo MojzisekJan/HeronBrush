@@ -169,9 +169,9 @@ h4 { font-size: var(--fs-body); line-height: 1.35; letter-spacing: -0.005em; }
 }
 .menu-toggle:hover { border-color: var(--line-strong); }
 .menu-toggle path { transition: transform 0.2s ease, opacity 0.2s ease; transform-origin: 12px 12px; }
-.nav.open .bar-top { transform: translateY(5px) rotate(45deg); }
+.nav.open .bar-top { transform: rotate(45deg) translateY(5px); }
 .nav.open .bar-mid { opacity: 0; }
-.nav.open .bar-bot { transform: translateY(-5px) rotate(-45deg); }
+.nav.open .bar-bot { transform: rotate(-45deg) translateY(-5px); }
 /* Light and dark: the sun's rays draw in and a shadow slides across it to leave a crescent. */
 .theme-toggle {
   display: inline-flex; align-items: center; justify-content: center; flex: none;
@@ -367,13 +367,12 @@ section { padding: var(--section) 0 0; }
   width: 1.75rem; height: 1.75rem; padding: 0.2rem; border-radius: 8px;
   background: var(--icon-bg); border: 1px solid var(--line);
 }
-/* Feature headings carry the wordmark's gradient over a shorter span, its hue shifted per
-   section; h2 headings stay white so the order of headings stays clear. */
-.feature h3 { --g1: var(--h3-1); --g2: var(--h3-2); --g3: var(--h3-3); }
+/* Feature headings share the wordmark gradient; section headings stay white. */
+.feature h3, .feature-title h2 { --g1: var(--h3-1); --g2: var(--h3-2); --g3: var(--h3-3); }
 #materials .feature h3 { --g2: var(--h3-2b); --g3: var(--h3-3b); }
 #animation .feature h3 { --g2: var(--h3-2c); --g3: var(--h3-3c); }
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
-  .feature h3 {
+  .feature h3, .feature-title h2 {
     display: inline-block;
     background: linear-gradient(100deg, var(--g1) 0%, var(--g2) 55%, var(--g3) 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -392,6 +391,16 @@ section { padding: var(--section) 0 0; }
   border: 1px solid var(--line); background: var(--card);
   box-shadow: var(--shadow-shot);
 }
+/* Continue the feature rows without adding another section-sized gap. */
+#collaboration { padding-top: 0; }
+#collaboration .feature-title h2 {
+  font-size: var(--fs-h3); line-height: 1.25; letter-spacing: -0.015em; margin: 0;
+}
+.collaboration-shots {
+  width: 76%; max-width: 420px; margin-inline: auto;
+}
+.collaboration-shots img { display: block; width: 100%; height: auto; }
+
 .shot-pair { display: grid; grid-template-columns: 1fr; gap: 14px; }
 .shot-pair .shot.small { width: 62%; margin-left: auto; margin-top: -80px; }
 
