@@ -1,4 +1,4 @@
-import { report_export_panic } from './snippets/heron-brush-export-web-e3a22fe81bd2e037/inline0.js';
+import { report_export_panic } from './snippets/heron-brush-export-web-f58b65cd9099c750/inline0.js';
 
 
 /**
@@ -122,7 +122,7 @@ function __wbg_get_imports() {
             const ret = getObject(arg0).push(getObject(arg1));
             return ret;
         },
-        __wbg_report_export_panic_862e1426a51cfea2: function(arg0, arg1) {
+        __wbg_report_export_panic_45347455fa3723a4: function(arg0, arg1) {
             report_export_panic(getStringFromWasm0(arg0, arg1));
         },
         __wbg_set_8155bb79a948541b: function() { return handleError(function (arg0, arg1, arg2) {
