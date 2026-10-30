@@ -210,8 +210,8 @@ event loop twice in one process); a document not saved by then is in the autosav
 - Not edge-to-edge (targetSdk 34): Google Play requires 35 for new apps, which forces
   edge-to-edge; then the safe area needs the window insets (JNI), not only the content
   rectangle.
-- Release signing uses the debug key; a release keystore and an `.aab` for Play need the
-  Gradle route or `bundletool`.
+- Release APKs are signed with the key in `HERON_ANDROID_KEYSTORE`; an `.aab` for Play needs
+  the Gradle route or `bundletool`.
 
 ## Checklist for the first run
 

@@ -1,6 +1,6 @@
 # Project material paths
 
-Heron Brush 0.1.0-alpha.2 saves loaded material directories and WAD references
+Heron Brush saves loaded material directories and WAD references
 inside the map as editor metadata. Paths are relative to the saved map where
 possible, including when using Save As or saving a backup in a different folder.
 For a map in `maps/` with images in a sibling `textures/` folder, the header is:

@@ -2,8 +2,7 @@
 
 The version is defined once in `Cargo.toml` under `[workspace.package]` and inherited
 by every workspace crate. `heron-brush --version`, Welcome, About and MCP report it.
-The first numbered development release is `0.1.0-alpha.1`. Increment the alpha
-number for the next preview; use a stable version only once that release is ready.
+The first stable release is `0.1.0`.
 Update workspace package entries in `Cargo.lock` when changing the version.
 
 Build and install for the current user:

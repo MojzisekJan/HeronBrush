@@ -9,7 +9,7 @@ exports levels and props to game engines.
 
 ## Status
 
-Early alpha (0.1.0-alpha.2). Features, the interface, Heron's additions to the `.map`
+Version 0.1.0. Features, the interface, Heron's additions to the `.map`
 format and the export output may change between versions.
 
 ## Platforms

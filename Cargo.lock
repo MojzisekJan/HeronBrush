@@ -1342,7 +1342,7 @@ dependencies = [
 
 [[package]]
 name = "editor_core"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 dependencies = [
  "data-encoding",
  "file_store",
@@ -1704,7 +1704,7 @@ dependencies = [
 
 [[package]]
 name = "expression_lang"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 dependencies = [
  "text_utils",
 ]
@@ -1744,7 +1744,7 @@ checksum = "64cd1e32ddd350061ae6edb1b082d7c54915b5c672c389143b9a63403a109f24"
 
 [[package]]
 name = "file_store"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 
 [[package]]
 name = "find-msvc-tools"
@@ -1979,7 +1979,7 @@ dependencies = [
 
 [[package]]
 name = "geometry_math"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 dependencies = [
  "serde",
 ]
@@ -2304,7 +2304,7 @@ checksum = "e17592d60ebacc7d5e169f4663c5f84f9161cc90328abcfe8456f41e4dfcb284"
 
 [[package]]
 name = "heron-brush"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 dependencies = [
  "android_logger",
  "crc32fast",
@@ -2337,14 +2337,14 @@ dependencies = [
 
 [[package]]
 name = "heron-brush-android"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 dependencies = [
  "heron-brush",
 ]
 
 [[package]]
 name = "heron-brush-export-web"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 dependencies = [
  "editor_core",
  "js-sys",
@@ -2355,7 +2355,7 @@ dependencies = [
 
 [[package]]
 name = "heron-brush-web"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 dependencies = [
  "heron-brush",
  "wasm-bindgen",
@@ -3214,7 +3214,7 @@ checksum = "d3d25b0e0b648a86960ac23b7ad4abb9717601dec6f66c165f5b037f3f03065f"
 
 [[package]]
 name = "map_model"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 dependencies = [
  "crc32fast",
  "criterion",
@@ -4733,7 +4733,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "render"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 dependencies = [
  "geometry_math",
  "glow 0.18.0",
@@ -4742,7 +4742,7 @@ dependencies = [
 
 [[package]]
 name = "render_wgpu"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 dependencies = [
  "bytemuck",
  "editor_core",
@@ -5048,7 +5048,7 @@ dependencies = [
 
 [[package]]
 name = "scene_export"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 dependencies = [
  "criterion",
  "data-encoding",
@@ -5593,7 +5593,7 @@ dependencies = [
 
 [[package]]
 name = "text_utils"
-version = "0.1.0-alpha.2"
+version = "0.1.0"
 
 [[package]]
 name = "thin-vec"
