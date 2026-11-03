@@ -325,3 +325,103 @@ fn the_uv_lock_never_writes_a_mapping_with_no_scale() {
         }
     }
 }
+
+#[test]
+fn translating_sloped_faces_preserves_texture_scale_and_rotation() {
+    let turn = mat_ext::rotation_matrix_about_axis(vec::normalize(Vec3d::new(1.0, 2.0, 3.0)), 0.63);
+    let brush = cube().transform(&world_bounds(), &turn).unwrap();
+    let mut faces = brush.faces().to_vec();
+    for face in &mut faces {
+        face.uv_attributes.scale = Vec2f::new(0.5, -0.75);
+        face.uv_attributes.rotation = 33.0;
+        face.uv_attributes.offset = Vec2f::new(13.0, -7.0);
+    }
+    let brush = Brush::from_faces(&world_bounds(), faces).unwrap();
+    let delta = Vec3d::new(8.0, -16.0, 4.0);
+    for general_transform in [false, true] {
+        let mut moved = brush.clone();
+        for step in 1..=32 {
+            moved = if general_transform {
+                moved
+                    .transform_with_alignment(
+                        &world_bounds(),
+                        &mat_ext::translation_matrix(delta),
+                        true,
+                        material_size,
+                    )
+                    .unwrap()
+            } else {
+                moved
+                    .translate_with_alignment(&world_bounds(), delta, true, material_size)
+                    .unwrap()
+            };
+            for (before, after) in brush.faces().iter().zip(moved.faces()) {
+                assert_eq!(
+                    after.uv_attributes.scale,
+                    before.uv_attributes.scale,
+                    "translation {step}, normal {:?}",
+                    before.normal()
+                );
+                assert_eq!(after.uv_attributes.rotation, before.uv_attributes.rotation);
+                let point = before.points[0];
+                let original_uv = before.uv_coords(point);
+                let shifted_uv = after.uv_coords(point + delta * f64::from(step));
+                let difference = shifted_uv - original_uv;
+                for component in difference.v {
+                    let repeats = component / 64.0;
+                    assert!(
+                        (repeats - repeats.round()).abs() < 0.001,
+                        "texture slipped: {difference:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn sloped_faces_keep_their_texels_when_scaled_mirrored_or_turned_by_quarter_turns() {
+    let tilt = mat_ext::rotation_matrix_about_axis(vec::normalize(Vec3d::new(1.0, 2.0, 3.0)), 0.63);
+    let source = cube().transform(&world_bounds(), &tilt).unwrap();
+    let transforms = [
+        mat_ext::scaling_matrix(Vec3d::fill(2.0)),
+        mat_ext::scaling_matrix(Vec3d::fill(0.5)),
+        mat_ext::mirror_matrix(Axis::X),
+        mat_ext::mirror_matrix(Axis::Y),
+        mat_ext::mirror_matrix(Axis::Z),
+        mat_ext::rotation_matrix_about_axis(Vec3d::new(1.0, 0.0, 0.0), std::f64::consts::FRAC_PI_2),
+        mat_ext::rotation_matrix_about_axis(Vec3d::new(0.0, 1.0, 0.0), std::f64::consts::FRAC_PI_2),
+        mat_ext::rotation_matrix_about_axis(Vec3d::new(0.0, 0.0, 1.0), std::f64::consts::FRAC_PI_2),
+    ];
+    for scale in [
+        Vec2f::new(0.5, 0.75),
+        Vec2f::new(0.5, -0.75),
+        Vec2f::new(-0.5, -0.75),
+    ] {
+        let mut faces = source.faces().to_vec();
+        for face in &mut faces {
+            face.uv_attributes.scale = scale;
+            face.uv_attributes.rotation = 33.0;
+            face.uv_attributes.offset = Vec2f::new(13.0, -7.0);
+        }
+        let brush = Brush::from_faces(&world_bounds(), faces).unwrap();
+        for size in [Vec2f::new(128.0, 64.0), Vec2f::new(64.0, 128.0)] {
+            for transform in &transforms {
+                let changed = brush
+                    .transform_with_alignment(&world_bounds(), transform, true, |_| size)
+                    .unwrap();
+                for (before, after) in brush.faces().iter().zip(changed.faces()) {
+                    for point in before.points {
+                        let difference =
+                            after.uv_coords(*transform * point) - before.uv_coords(point);
+                        for (axis, component) in difference.v.into_iter().enumerate() {
+                            let repeats = component / size[axis];
+                            assert!((repeats - repeats.round()).abs() < 0.001,
+                            "texture slipped by {difference:?}, normal {:?}, scale {scale:?}, transform {transform:?}", before.normal());
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -397,6 +397,30 @@ impl UvCoordSystem {
             return (*self, *attributes);
         }
 
+        // A translation changes only the offset. Reprojecting the axes of a sloped
+        // paraxial face shortens them on every move and eventually shrinks its scale
+        // towards zero, even though the geometry never turns or changes size.
+        if lock_alignment {
+            if let Some(delta) = geometry_math::mat_ext::translation_of(transformation) {
+                let (u, v) = self.axes(old_boundary.normal, attributes);
+                let offset = Vec2f::new(
+                    (f64::from(attributes.offset.x())
+                        - vec::dot(delta, u) / f64::from(attributes.scale.x()))
+                        as f32,
+                    (f64::from(attributes.offset.y())
+                        - vec::dot(delta, v) / f64::from(attributes.scale.y()))
+                        as f32,
+                );
+                return (
+                    *self,
+                    UvAttributes {
+                        offset: correct_offset(mod_offset(offset, material_size)),
+                        ..*attributes
+                    },
+                );
+            }
+        }
+
         match self {
             UvCoordSystem::Paraxial => {
                 // The paraxial axes come from whichever coordinate plane the face most
@@ -459,11 +483,16 @@ impl UvCoordSystem {
         let (u_axis, v_axis) = self.axes(old_normal, attributes);
         let old_invariant_uv = self.uv_coords(old_invariant, old_normal, attributes);
 
-        // The UV axes projected onto the face's own plane, along the face's normal.
+        // Lift the texture basis onto the face along the texture projection axis.
+        // Projecting along the face normal instead shortens the in-plane UV steps on
+        // sloped faces, so even uniform scaling or a mirror changes the texture.
+        let projection_axis = BASE_AXES[plane_normal_index(old_normal)][0];
         let scale = attributes.scale;
-        let origin_on_plane = project_along(old_boundary, Vec3d::zero(), old_normal);
-        let u_on_plane = project_along(old_boundary, u_axis * f64::from(scale.x()), old_normal);
-        let v_on_plane = project_along(old_boundary, v_axis * f64::from(scale.y()), old_normal);
+        let origin_on_plane = project_along(old_boundary, Vec3d::zero(), projection_axis);
+        let u_on_plane =
+            project_along(old_boundary, u_axis * f64::from(scale.x()), projection_axis);
+        let v_on_plane =
+            project_along(old_boundary, v_axis * f64::from(scale.y()), projection_axis);
         let (Some(origin_on_plane), Some(u_on_plane), Some(v_on_plane)) =
             (origin_on_plane, u_on_plane, v_on_plane)
         else {
@@ -487,22 +516,17 @@ impl UvCoordSystem {
         let normalized_u = vec::normalize(projected_u);
         let normalized_v = vec::normalize(projected_v);
 
+        // Match rotate_paraxial_axes, including faces whose outward normal points
+        // against the texture rotation axis.
+        let rotation_axis = vec::cross(base_v, base_u);
         let angle_between = |base: Vec3d, axis: Vec3d| {
-            let mut radians = vec::dot(base, axis).clamp(-1.0, 1.0).acos();
-            if vec::dot(vec::cross(base, axis), uv_normal) < 0.0 {
-                radians = -radians;
-            }
-            radians
+            vec::dot(vec::cross(base, axis), rotation_axis).atan2(vec::dot(base, axis))
         };
-        let mut radians = if prefer_u {
+        let radians = if prefer_u {
             angle_between(base_u, normalized_u)
         } else {
             angle_between(base_v, normalized_v)
         };
-        // With the material plane's normal on the Y axis the rotation runs the other way.
-        if (new_index / 2) * 6 == 12 {
-            radians = -radians;
-        }
 
         let new_rotation = scalar::correct(
             scalar::normalize_degrees(scalar::to_degrees(radians)),
