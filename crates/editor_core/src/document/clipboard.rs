@@ -2,7 +2,7 @@
 
 use super::{
     apply_face_attributes, brush_node, collect_for_paste, entity_node, node, paste_bounds,
-    patch_node, renumber_for_paste, translate_paste, vec, Bbox3d, Brush, Document, Edit,
+    patch_node, renumber_for_paste, translate_paste, vec, Brush, Document, Edit,
     FaceAttributeTransfer, FaceRef, Group, Node, NodeId, NodeKind, Vec3d, FACE_CLIPBOARD_MARKER,
 };
 
@@ -60,7 +60,7 @@ impl Document {
         };
         Some(map_model::io::map_writer::write_map(&node::flatten_tree(
             &world,
-            self.format,
+            map_model::map_format::MapFormat::LOSSLESS,
             None,
         )))
     }
@@ -217,23 +217,12 @@ impl Document {
     /// Returns `None` when no face is selected.
     pub fn copy_face_attributes_text(&self) -> Option<String> {
         let reference = self.selected_edit_faces().into_iter().next()?;
-        let source = self.face_at(reference)?.clone();
-
-        let template = map_model::shapes::create_cuboid(
-            &self.world_bounds,
-            &Bbox3d::new(Vec3d::zero(), Vec3d::new(64.0, 64.0, 64.0)),
-            &source.material_name,
-        )
-        .ok()?;
-        let mut faces = template.faces().to_vec();
-        for face in &mut faces {
-            face.material_name = source.material_name.clone();
-            face.uv_attributes = source.uv_attributes;
-            face.uv_coord_system = source.uv_coord_system;
-            face.surface_attributes = source.surface_attributes;
-            face.surface_material = source.surface_material;
-            face.set_paint(source.paint());
-        }
+        let source = self.brush(reference.node)?;
+        let selected = source.source_face_index(reference.face)?;
+        // The first face is the copied one. Preserve its actual plane too: pending
+        // brush-primitive matrices are expressed in that plane's own UV basis.
+        let mut faces = source.faces().to_vec();
+        faces.swap(0, selected);
         let brush = Brush::from_faces(&self.world_bounds, faces).ok()?;
 
         let layer = map_model::node::Layer {
@@ -253,8 +242,11 @@ impl Document {
             )],
             layers: vec![layer],
         };
-        let body =
-            map_model::io::map_writer::write_map(&node::flatten_tree(&world, self.format, None));
+        let body = map_model::io::map_writer::write_map(&node::flatten_tree(
+            &world,
+            map_model::map_format::MapFormat::LOSSLESS,
+            None,
+        ));
         Some(format!("{FACE_CLIPBOARD_MARKER}\n{body}"))
     }
 

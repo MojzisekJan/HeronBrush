@@ -151,7 +151,7 @@ fn write_primitive_map(
                             face.material_name
                         )
                     })?;
-                    matrix_for_face(face, size).ok_or_else(|| {
+                    face.primitive_uv_matrix(size).ok_or_else(|| {
                         format!(
                             "Invalid UV mapping or texture dimensions for '{}'",
                             face.material_name
@@ -220,37 +220,6 @@ fn write_primitive_map(
     Ok(out)
 }
 
-fn matrix_for_face(face: &BrushFace, size: Vec2f) -> Option<[[f64; 3]; 2]> {
-    let (width, height) = (f64::from(size.x()), f64::from(size.y()));
-    if !width.is_finite() || !height.is_finite() || width <= 0. || height <= 0. {
-        return None;
-    }
-    let normal = face.normal();
-    let (s, t) = crate::uv::primitive_axis_base(normal);
-    let (u, v) = face.uv_coord_system.axes(normal, &face.uv_attributes);
-    let u = u / f64::from(crate::uv::safe_scale(face.uv_attributes.scale.x()));
-    let v = v / f64::from(crate::uv::safe_scale(face.uv_attributes.scale.y()));
-    // Projecting the axes onto the plane removes their normal component. Fold
-    // its constant contribution on this plane into the normalized offsets.
-    let distance = vec::dot(normal, face.points[0]);
-    let row = |axis: Vec3d, offset: f32, dimension: f64| {
-        [
-            vec::dot(axis, s) / dimension,
-            vec::dot(axis, t) / dimension,
-            (f64::from(offset) + vec::dot(axis, normal) * distance) / dimension,
-        ]
-    };
-    let matrix = [
-        row(u, face.uv_attributes.offset.x(), width),
-        row(v, face.uv_attributes.offset.y(), height),
-    ];
-    matrix
-        .iter()
-        .flatten()
-        .all(|v| v.is_finite())
-        .then_some(matrix)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -294,7 +263,7 @@ mod tests {
                     )
                     .unwrap();
                     let size = Vec2f::new(128., 64.);
-                    let matrix = matrix_for_face(&face, size).unwrap();
+                    let matrix = face.primitive_uv_matrix(size).unwrap();
                     let (s, t) = crate::uv::primitive_axis_base(face.normal());
                     for point in [
                         points[0],

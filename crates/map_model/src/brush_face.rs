@@ -791,6 +791,39 @@ impl BrushFace {
         self.color = color.map(Box::new);
     }
 
+    /// Expresses the current mapping as a normalized brush-primitive matrix.
+    /// Returns None for invalid dimensions or nonfinite mapping values.
+    pub fn primitive_uv_matrix(&self, size: Vec2f) -> Option<[[f64; 3]; 2]> {
+        let (width, height) = (f64::from(size.x()), f64::from(size.y()));
+        if !width.is_finite() || !height.is_finite() || width <= 0. || height <= 0. {
+            return None;
+        }
+        let normal = self.normal();
+        let (s, t) = crate::uv::primitive_axis_base(normal);
+        let (u, v) = self.uv_coord_system.axes(normal, &self.uv_attributes);
+        let u = u / f64::from(crate::uv::safe_scale(self.uv_attributes.scale.x()));
+        let v = v / f64::from(crate::uv::safe_scale(self.uv_attributes.scale.y()));
+        // Projecting the axes onto the plane removes their normal component. Fold
+        // its constant contribution on this plane into the normalized offsets.
+        let distance = vec::dot(normal, self.points[0]);
+        let row = |axis: Vec3d, offset: f32, dimension: f64| {
+            [
+                vec::dot(axis, s) / dimension,
+                vec::dot(axis, t) / dimension,
+                (f64::from(offset) + vec::dot(axis, normal) * distance) / dimension,
+            ]
+        };
+        let matrix = [
+            row(u, self.uv_attributes.offset.x(), width),
+            row(v, self.uv_attributes.offset.y(), height),
+        ];
+        matrix
+            .iter()
+            .flatten()
+            .all(|v| v.is_finite())
+            .then_some(matrix)
+    }
+
     /// Turns a pending brush-primitive texture matrix into real UV axes, now that the
     /// material's pixel size is known.
     ///

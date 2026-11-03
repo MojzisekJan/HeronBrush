@@ -781,6 +781,23 @@ fn apply_face_attributes(
             source
                 .uv_coord_system
                 .updated_for_normal(source.plane.normal, target_normal, style);
+        // Replace the target's deferred mapping as well. Otherwise a later texture
+        // load would restore its old UV matrix over the mapping just copied.
+        face.primitive_uv = source.primitive_uv.as_ref().and_then(|_| {
+            // Unit dimensions carry normalized UVs without guessing the missing
+            // texture size. Re-express them in the target plane's primitive basis.
+            let unit = Vec2f::new(1.0, 1.0);
+            let mut normalized = source.clone();
+            normalized.resolve_primitive_uv(unit);
+            normalized.uv_coord_system = normalized.uv_coord_system.updated_for_normal(
+                source.normal(),
+                target_normal,
+                style,
+            );
+            normalized.plane = face.plane;
+            normalized.points = face.points;
+            normalized.primitive_uv_matrix(unit).map(Box::new)
+        });
     }
 }
 

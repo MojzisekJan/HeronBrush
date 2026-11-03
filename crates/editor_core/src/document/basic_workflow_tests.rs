@@ -624,3 +624,170 @@ fn pointer_material_paste_targets_one_face_without_changing_selection_or_inserti
     assert_eq!(d.to_map_text(), before);
     assert_eq!(d.revision(), revision);
 }
+
+#[test]
+fn clipboard_preserves_free_uv_axes_in_every_document_format() {
+    use geometry_math::vec::Vec2f;
+    use map_model::map_format::MapFormat;
+    use map_model::uv::{parallel_axes, UvCoordSystem};
+    for format in [MapFormat::Standard, MapFormat::Valve, MapFormat::Quake3] {
+        let mut d = scene();
+        d.format = format;
+        let id = d.selectable_brushes()[0].0;
+        d.select_only(id);
+        d.edit_faces(|face| {
+            let (u_axis, v_axis) = parallel_axes(face.normal());
+            face.uv_coord_system = UvCoordSystem::Parallel { u_axis, v_axis };
+            face.uv_attributes.scale = Vec2f::new(0.5, -0.75);
+            face.rotate_uv(37.0);
+            face.shear_uv(Vec2f::new(0.3, -0.2));
+            face.move_uv(Vec2f::new(13.0, -7.0));
+        });
+        let original = d.brush(id).unwrap().clone();
+        let clipboard = d.copy_selection().unwrap();
+        assert_eq!(d.paste_at(&clipboard, None), 1);
+        for face in d.selected_brushes()[0].faces() {
+            let source = original
+                .faces()
+                .iter()
+                .find(|f| vec::dot(f.normal(), face.normal()) > 0.999)
+                .unwrap();
+            for point in face.points {
+                geometry_math::assert_approx_eq!(
+                    face.uv_coords(point),
+                    source.uv_coords(point),
+                    1e-3
+                );
+            }
+        }
+        d.undo().unwrap();
+        let source = FaceRef { node: id, face: 0 };
+        let target = FaceRef {
+            node: d.selectable_brushes()[1].0,
+            face: 2,
+        };
+        d.select_face_only(source);
+        let clipboard = d.copy_face_attributes_text().unwrap();
+        d.copy_face_attributes(source, target, FaceAttributeTransfer::Projection, false);
+        let expected = d.face_at(target).unwrap().clone();
+        d.undo().unwrap();
+        assert_eq!(d.paste_face_attributes_on(&clipboard, &[target]), 1);
+        let pasted = d.face_at(target).unwrap();
+        for point in pasted.points {
+            geometry_math::assert_approx_eq!(
+                pasted.uv_coords(point),
+                expected.uv_coords(point),
+                1e-3
+            );
+        }
+    }
+}
+
+#[test]
+fn texture_transfer_replaces_pending_uv_only_when_copying_the_mapping() {
+    for mode in [
+        FaceAttributeTransfer::MaterialOnly,
+        FaceAttributeTransfer::Projection,
+        FaceAttributeTransfer::Rotation,
+    ] {
+        let mut d = scene();
+        let nodes = d.selectable_brushes();
+        let source = FaceRef {
+            node: nodes[0].0,
+            face: 0,
+        };
+        let target = FaceRef {
+            node: nodes[1].0,
+            face: 2,
+        };
+        d.select_face_only(source);
+        d.edit_faces(|f| {
+            f.material_name = "stone".into();
+            f.rotate_uv(37.0);
+            f.move_uv(geometry_math::vec::Vec2f::new(13.0, -7.0));
+        });
+        d.select_face_only(target);
+        d.edit_faces(|f| f.primitive_uv = Some(Box::new([[0.02, 0.01, 0.3], [0.0, 0.04, -0.2]])));
+        let before = d.to_map_text();
+        assert!(d.copy_face_attributes(source, target, mode, false));
+        let copied = d.face_at(target).unwrap();
+        assert_eq!(
+            copied.primitive_uv.is_some(),
+            mode == FaceAttributeTransfer::MaterialOnly
+        );
+        if mode != FaceAttributeTransfer::MaterialOnly {
+            let mut discovered = copied.clone();
+            discovered.resolve_primitive_uv(geometry_math::vec::Vec2f::new(128.0, 64.0));
+            assert_eq!(discovered.uv_attributes, copied.uv_attributes);
+            assert_eq!(discovered.uv_coord_system, copied.uv_coord_system);
+        }
+        d.undo().unwrap();
+        assert_eq!(d.to_map_text(), before);
+    }
+}
+
+#[test]
+fn pending_texture_transfer_matches_resolving_the_source_first() {
+    use geometry_math::vec::Vec2f;
+    for mode in [
+        FaceAttributeTransfer::Projection,
+        FaceAttributeTransfer::Rotation,
+    ] {
+        let mut d = scene();
+        let turn = geometry_math::mat_ext::rotation_matrix_about_axis(
+            vec::normalize(Vec3d::new(1.0, 2.0, 3.0)),
+            0.63,
+        );
+        assert!(d.transform_selection(&turn));
+        let nodes = d.selectable_brushes();
+        let source = FaceRef {
+            node: nodes[0].0,
+            face: 0,
+        };
+        let target = FaceRef {
+            node: nodes[1].0,
+            face: 3,
+        };
+        d.select_face_only(source);
+        d.edit_faces(|f| {
+            f.material_name = "pending_mapping".into();
+            f.primitive_uv = Some(Box::new([[0.02, 0.01, 0.3], [-0.01, 0.04, -0.2]]));
+        });
+        let before = d.to_map_text();
+        let size = Vec2f::new(128.0, 64.0);
+        let mut resolved = d.face_at(source).unwrap().clone();
+        resolved.resolve_primitive_uv(size);
+        assert_eq!(d.set_faces_from(&resolved, &[target], mode), 1);
+        let expected = d.face_at(target).unwrap().clone();
+        d.undo().unwrap();
+        assert!(d.copy_face_attributes(source, target, mode, false));
+        let mut actual = d.face_at(target).unwrap().clone();
+        assert!(actual.primitive_uv.is_some());
+        actual.resolve_primitive_uv(size);
+        for point in actual.points {
+            geometry_math::assert_approx_eq!(
+                actual.uv_coords(point),
+                expected.uv_coords(point),
+                1e-3
+            );
+        }
+        d.undo().unwrap();
+        if mode == FaceAttributeTransfer::Projection {
+            d.select_face_only(source);
+            let clipboard = d.copy_face_attributes_text().unwrap();
+            assert_eq!(d.paste_face_attributes_on(&clipboard, &[target]), 1);
+            let mut actual = d.face_at(target).unwrap().clone();
+            assert!(actual.primitive_uv.is_some());
+            actual.resolve_primitive_uv(size);
+            for point in actual.points {
+                geometry_math::assert_approx_eq!(
+                    actual.uv_coords(point),
+                    expected.uv_coords(point),
+                    1e-3
+                );
+            }
+            d.undo().unwrap();
+        }
+        assert_eq!(d.to_map_text(), before);
+    }
+}
