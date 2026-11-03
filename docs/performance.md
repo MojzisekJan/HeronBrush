@@ -106,6 +106,41 @@ origins inside the bounds still tested against the surface. Brush picking carrie
 layer and brush references through the traversal instead of looking them up again
 for every hit. Bulk duplication resolves closed-group membership in one tree walk.
 
+## Appearance edits and nested copies
+
+```sh
+cargo run --release -p editor_core --example attribute_latency
+```
+
+The probe measures UV changes, painting one face and copying texture attributes on
+64 / 256 / 512-sided cylinders, a UV change on 10,000 boxes, copying 1,000 boxes
+inside 0 / 8 / 32 nested groups, and copying one box beside 9,999 unrelated groups.
+Each operation has five timed samples; construction, selection and Undo are outside
+the measured region. Only changed faces and nodes are committed, so every sample
+must make one undoable edit.
+
+Appearance edits retain the existing hull only when the face planes, defining points
+and face order are unchanged and the hull fits the requested world bounds. Other
+edits use the existing rebuild and validation path. Duplication copies child nodes
+once and allocates replacements for existing containers only after finding a changed
+descendant.
+
+Measurements on 2026-11-03 used release binaries pinned to the same CPU, with no
+concurrent test run. Each value below is the median of three runs of five samples;
+the old and new binaries ran in alternating order. These are document-operation
+timings, excluding rendering and UI event handling.
+
+| Operation | Before | After |
+| --- | ---: | ---: |
+| UV edit, 512-sided cylinder | 18.839 ms | 0.273 ms |
+| Paint one face, 512-sided cylinder | 13.552 ms | 0.187 ms |
+| Transfer texture, 512-sided cylinder | 14.452 ms | 0.245 ms |
+| UV edit, 10,000 boxes | 190.969 ms | 82.401 ms |
+| Duplicate 1,000 boxes, no group | 6.309 ms | 5.092 ms |
+| Duplicate 1,000 boxes, group depth 8 | 28.750 ms | 5.812 ms |
+| Duplicate 1,000 boxes, group depth 32 | 96.314 ms | 4.844 ms |
+| Duplicate one box beside 9,999 groups | 16.568 ms | 7.458 ms |
+
 ## Freeform sculpting
 
 Run the small-brush latency probe on the starting room:
