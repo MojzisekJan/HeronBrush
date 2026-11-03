@@ -1088,27 +1088,24 @@ impl Document {
         // A hidden layer cannot be seen and a locked one cannot be changed, so neither is
         // what a click meant; the same for something hidden by "Hide", and for anything
         // outside a group that is open.
-        let brushes = pick::pick(&self.tree.world, ray)
+        let open = self.open_group_contents();
+        let brushes = node::brushes_by_layer(&self.tree.world)
             .into_iter()
-            .filter(|hit| self.is_editable(hit.node) && accepts(hit.node))
-            .map(|hit| {
+            .filter(|(id, _, layer)| self.is_editable_on(*id, *layer, &open) && accepts(*id))
+            .filter_map(|(id, brush, _)| {
+                let hit = pick::pick_brush(id, brush, ray)?;
                 let size = looks(&|axis| {
-                    let mut area = 0.0;
-                    if let Some(brush) = self.brush(hit.node) {
-                        brush.for_each_geometry_face(|index, _, polygon| {
-                            if index == hit.face {
-                                area = pick::projected_area(polygon, axis);
-                            }
-                        });
-                    }
-                    area
+                    brush
+                        .source_face_index(hit.face)
+                        .and_then(|index| brush.face_polygon(index))
+                        .map_or(0.0, |polygon| pick::projected_area(&polygon, axis))
                 });
                 let picked = Picked {
                     node: hit.node,
                     face: Some(hit.face),
                     distance: hit.distance,
                 };
-                (picked, size)
+                Some((picked, size))
             });
 
         // A point entity has no geometry, so it is picked by the box it is drawn as.
@@ -1134,11 +1131,18 @@ impl Document {
 
         // A patch is picked against the surface it is drawn as, since that is what a
         // click is aiming at; its control points sit off the surface and are not it.
-        let open = self.open_group_contents();
         let patches = node::patches_by_layer(&self.tree.world)
             .into_iter()
             .filter(|(id, _, layer)| self.is_editable_on(*id, *layer, &open) && accepts(*id))
             .filter_map(|(id, patch, _)| {
+                // A Bezier surface stays inside its control-point bounds. Avoid
+                // allocating and tessellating patches that the ray cannot reach.
+                let bounds = Bbox3d::merge_all(patch.control_points.iter().map(|p| p.position))?;
+                if !bounds.contains_point(ray.origin)
+                    && geometry_math::intersection::intersect_ray_bbox(ray, &bounds).is_none()
+                {
+                    return None;
+                }
                 let triangles = map_model::patch_mesh::tessellate(
                     patch,
                     map_model::patch_mesh::DEFAULT_SUBDIVISIONS,

@@ -7,6 +7,7 @@ use geometry_math::intersection;
 use geometry_math::ray::Ray3d;
 use geometry_math::vec::Vec3d;
 
+use crate::brush::Brush;
 use crate::node::{brushes_with_ids, NodeId, World};
 
 /// Something a ray hit.
@@ -46,6 +47,26 @@ pub fn projected_box_area(bounds: &geometry_math::bbox::Bbox3d, axis: usize) -> 
     size[(axis + 1) % 3] * size[(axis + 2) % 3]
 }
 
+/// Picks one brush, checking its bounds before testing its geometry faces.
+/// Callers that already know the brush and its layer need no second tree lookup.
+pub fn pick_brush(node: NodeId, brush: &Brush, ray: &Ray3d) -> Option<Hit> {
+    intersection::intersect_ray_bbox(ray, &brush.bounds())?;
+    let mut nearest: Option<(usize, f64)> = None;
+    brush.for_each_geometry_face(|index, _, polygon| {
+        if let Some(distance) = intersection::intersect_ray_polygon(ray, polygon) {
+            if nearest.is_none_or(|(_, best)| distance < best) {
+                nearest = Some((index, distance));
+            }
+        }
+    });
+    nearest.map(|(face, distance)| Hit {
+        node,
+        face,
+        distance,
+        point: ray.point_at_distance(distance),
+    })
+}
+
 /// Returns everything the given ray hits, nearest first.
 ///
 /// The ray is tested against each brush's bounding box before its faces, since most
@@ -53,24 +74,7 @@ pub fn projected_box_area(bounds: &geometry_math::bbox::Bbox3d, axis: usize) -> 
 pub fn pick(world: &World, ray: &Ray3d) -> Vec<Hit> {
     let mut hits: Vec<Hit> = brushes_with_ids(world)
         .into_iter()
-        .filter(|(_, brush)| intersection::intersect_ray_bbox(ray, &brush.bounds()).is_some())
-        .filter_map(|(node, brush)| {
-            // The nearest face the ray enters through.
-            let mut nearest: Option<(usize, f64)> = None;
-            brush.for_each_geometry_face(|index, _, polygon| {
-                if let Some(distance) = intersection::intersect_ray_polygon(ray, polygon) {
-                    if nearest.is_none_or(|(_, best)| distance < best) {
-                        nearest = Some((index, distance));
-                    }
-                }
-            });
-            nearest.map(|(face, distance)| Hit {
-                node,
-                face,
-                distance,
-                point: ray.point_at_distance(distance),
-            })
-        })
+        .filter_map(|(node, brush)| pick_brush(node, brush, ray))
         .collect();
 
     hits.sort_by(|a, b| {

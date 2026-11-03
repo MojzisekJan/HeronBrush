@@ -7133,3 +7133,36 @@ fn a_flat_view_takes_the_nearer_of_two_faces_alike() {
     let down = Ray3d::new(Vec3d::new(32.5, 32.5, 1000.0), Vec3d::new(0.0, 0.0, -1.0));
     assert_eq!(document.pick_flat(&down).map(|hit| hit.node), Some(high));
 }
+
+#[test]
+fn patch_picking_handles_origins_inside_bounds_and_zero_thickness_patches() {
+    for flat in [false, true] {
+        let mut document = document_with_a_patch(if flat {
+            "flat-pick-bounds"
+        } else {
+            "curved-pick-bounds"
+        });
+        if flat {
+            let (id, patch, _) = node::patches_by_layer(&document.tree.world)[0];
+            let mut patch = patch.clone();
+            for point in &mut patch.control_points {
+                point.position[2] = 0.0;
+            }
+            node::replace_nodes_owned(&mut document.tree.world, vec![patch_node(id, patch)]);
+        }
+        for (height, direction) in [(256.0, -1.0), (48.0, -1.0), (-16.0, 1.0)] {
+            let ray = Ray3d::new(
+                Vec3d::new(0.0, 0.0, height),
+                Vec3d::new(0.0, 0.0, direction),
+            );
+            assert!(
+                document.pick(&ray).is_some(),
+                "flat={flat}, height={height}"
+            );
+            assert!(document.pick_flat(&ray).is_some());
+        }
+        let ray = Ray3d::new(Vec3d::new(128.0, 128.0, 256.0), Vec3d::new(0.0, 0.0, -1.0));
+        assert!(document.pick(&ray).is_none());
+        assert!(document.pick_flat(&ray).is_none());
+    }
+}
