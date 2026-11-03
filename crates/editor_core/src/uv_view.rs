@@ -314,7 +314,7 @@ impl UvCanvas {
                     if vertically { factors.y() } else { 0.0 },
                 );
                 let previous = self.applied;
-                if total == previous {
+                if total == previous || invert_2x2(shear_rows(total)).is_none() {
                     return false;
                 }
                 // Undo the previous shear with its inverse before applying the new one,
@@ -618,6 +618,14 @@ impl Field {
         value: f64,
         defaults: &HashMap<String, map_model::uv::SurfaceAttributes>,
     ) {
+        // Reject invalid edits here so both numeric controls and scripted edits keep
+        // the previous mapping. Negative scales remain valid for mirroring.
+        if !value.is_finite()
+            || !(value as f32).is_finite()
+            || (matches!(self, Field::ScaleX | Field::ScaleY) && value as f32 == 0.0)
+        {
+            return;
+        }
         let offset = face.uv_attributes.offset;
         let scale = face.uv_attributes.scale;
         let mut surface = face
@@ -1003,7 +1011,7 @@ pub fn shear_rows(factors: Vec2f) -> [[f64; 2]; 2] {
 
 pub fn invert_2x2(m: [[f64; 2]; 2]) -> Option<[[f64; 2]; 2]> {
     let det = m[0][0] * m[1][1] - m[0][1] * m[1][0];
-    if det.abs() < 1e-12 {
+    if !m.iter().flatten().all(|value| value.is_finite()) || !det.is_finite() || det.abs() < 1e-12 {
         return None;
     }
     Some([
@@ -1153,6 +1161,39 @@ mod tests {
         document.add_brushes(vec![brush]);
         document.select_all();
         document
+    }
+
+    #[test]
+    fn scale_fields_reject_zero_and_nonfinite_edits_without_history_changes() {
+        let mut document = cube_with_a_selected_face();
+        Field::ScaleX.set(&mut document, -0.5);
+        Field::ScaleY.set(&mut document, 0.75);
+        let before = document.to_map_text();
+        let revision = document.revision();
+        for value in [
+            0.0,
+            -0.0,
+            f64::INFINITY,
+            f64::NAN,
+            f64::MAX,
+            f64::MIN_POSITIVE,
+        ] {
+            Field::ScaleX.set(&mut document, value);
+            Field::ScaleY.set(&mut document, value);
+        }
+        assert_eq!(document.to_map_text(), before);
+        assert_eq!(document.revision(), revision);
+    }
+
+    #[test]
+    fn invalid_shear_steps_are_not_invertible() {
+        for matrix in [
+            [[1.0, 1.0], [1.0, 1.0]],
+            [[1.0, f64::INFINITY], [0.0, 1.0]],
+            [[1.0, f64::NAN], [0.0, 1.0]],
+        ] {
+            assert!(invert_2x2(matrix).is_none());
+        }
     }
 
     /// A face on a `.wal` that is sky by its header shows the sky flag, and giving it a

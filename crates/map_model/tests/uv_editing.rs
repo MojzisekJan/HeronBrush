@@ -395,3 +395,34 @@ fn turning_about_a_point_still_turns_the_material() {
     face.rotate_uv_about(Vec2f::new(8.0, 8.0), 90.0);
     assert_ne!(face.uv_attributes.rotation, before);
 }
+
+#[test]
+fn invalid_scale_products_leave_the_affected_axis_unchanged() {
+    for (scale, factor) in [
+        (1.0, f32::INFINITY),
+        (1.0, f32::NAN),
+        (f32::MAX, 2.0),
+        (f32::MIN_POSITIVE, 1e-20),
+    ] {
+        let mut face = top_face(&cube());
+        face.uv_attributes.scale = Vec2f::new(scale, 0.5);
+        face.scale_uv(Vec2f::new(factor, -2.0));
+        assert_eq!(face.uv_attributes.scale, Vec2f::new(scale, -1.0));
+    }
+}
+
+#[test]
+fn a_singular_or_nonfinite_shear_keeps_the_original_uv_mapping() {
+    let mut face = top_face(&cube());
+    let (u_axis, v_axis) = uv::parallel_axes(face.normal());
+    face.uv_coord_system = UvCoordSystem::Parallel { u_axis, v_axis };
+    let original = face.uv_coord_system;
+    for rows in [
+        [[1.0, 1.0], [1.0, 1.0]],
+        [[1.0, 0.0], [0.0, 0.0]],
+        [[1.0, f64::INFINITY], [0.0, 1.0]],
+        [[1.0, f64::NAN], [0.0, 1.0]],
+    ] {
+        assert_eq!(face.uv_coord_system.skewed(face.normal(), rows), original);
+    }
+}

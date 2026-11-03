@@ -184,6 +184,13 @@ impl UvCoordSystem {
     /// now, and that product is what this takes. `rows` is row-major: the new U
     /// coordinate is `rows[0]` dotted with the old (U, V).
     pub fn skewed(&self, normal: Vec3d, rows: [[f64; 2]; 2]) -> Self {
+        let determinant = rows[0][0] * rows[1][1] - rows[0][1] * rows[1][0];
+        if !rows.iter().flatten().all(|value| value.is_finite())
+            || !determinant.is_finite()
+            || determinant.abs() < 1e-12
+        {
+            return *self;
+        }
         let UvCoordSystem::Parallel { u_axis, v_axis } = self else {
             return *self;
         };

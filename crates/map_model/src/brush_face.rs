@@ -904,21 +904,21 @@ impl BrushFace {
 
     /// Multiplies the material's scale by the given factors.
     ///
-    /// A factor of zero is ignored on that axis, since a zero scale has no meaning and
-    /// would make the mapping undefined.
+    /// A zero or nonfinite result is ignored on that axis, including multiplication
+    /// overflow and underflow, since it would make the mapping undefined.
     pub fn scale_uv(&mut self, factors: Vec2f) {
+        let multiply = |value: f32, factor: f32| {
+            let product = value * factor;
+            if product.is_finite() && product != 0.0 {
+                product
+            } else {
+                value
+            }
+        };
         let scale = self.uv_attributes.scale;
         self.uv_attributes.scale = Vec2f::new(
-            if factors.x() == 0.0 {
-                scale.x()
-            } else {
-                scale.x() * factors.x()
-            },
-            if factors.y() == 0.0 {
-                scale.y()
-            } else {
-                scale.y() * factors.y()
-            },
+            multiply(scale.x(), factors.x()),
+            multiply(scale.y(), factors.y()),
         );
     }
 
