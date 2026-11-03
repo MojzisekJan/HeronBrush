@@ -6707,19 +6707,30 @@ fn water_volume_contract_and_runtime_adapters_export_to_all_five_targets() {
                         assert!(
                             level.contains("_heron_water") && level.contains("level.Waters.Add")
                         );
-                        let blended = std::fs::read_dir(path.join("water/Materials"))
+                        // Material variants use property fingerprints in their names.
+                        // Verify their actual transparency, not a filename convention.
+                        let materials = std::fs::read_dir(path.join("water/Materials"))
                             .unwrap()
-                            .filter_map(|f| f.ok())
-                            .filter(|f| f.file_name().to_string_lossy().contains("_blend_"))
+                            .map(|entry| entry.unwrap().path())
+                            .filter(|file| file.extension().is_some_and(|ext| ext == "sdmat"))
+                            .map(|file| std::fs::read_to_string(file).unwrap())
                             .collect::<Vec<_>>();
+                        let blended = materials
+                            .iter()
+                            .filter(|material| {
+                                material.contains("MaterialTransparencyBlendFeature")
+                            })
+                            .count();
                         assert_eq!(
-                            blended.len(),
-                            1,
+                            blended, 1,
                             "the pool's see-through surface is a material of its own"
                         );
-                        assert!(std::fs::read_to_string(blended[0].path())
-                            .unwrap()
-                            .contains("MaterialTransparencyBlendFeature"));
+                        assert!(
+                            materials.iter().any(|material| {
+                                !material.contains("MaterialTransparencyBlendFeature")
+                            }),
+                            "the opaque paint must keep its own material"
+                        );
                     }
                 }
             }
