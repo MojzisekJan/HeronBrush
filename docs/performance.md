@@ -76,6 +76,36 @@ Other suites:
   wasm32 with `wasm-bindgen --target nodejs`) and checks that mounting does not copy the
   archive.
 
+## Pointer picking and duplication
+
+```sh
+cargo run --release -p editor_core --example interaction_latency
+```
+
+This probe reports median and p95 latency for pointer hits and misses on 32 / 256 /
+2,048 curved patches, duplicating 1,000 / 10,000 selected boxes, and orthographic
+picking through 1,000 / 10,000 stacked boxes. Scene construction and Undo are outside
+the timed region. Picking uses 50 samples per patch case, and duplication and stacked
+picking use five samples each. The stacked boxes are a worst case where every brush
+intersects the ray, rather than a typical room layout.
+
+Measured on this workstation on 2026-11-03, with both release binaries pinned to
+one CPU. Values below are medians of three runs per binary, alternating the old and
+new versions; each run uses the sample counts above. These measure core operations,
+not complete editor frames or GPU rendering.
+
+| operation | before (ms) | after (ms) |
+|---|---:|---:|
+| 2,048 patches, ray misses | 11.960 | 0.102 |
+| 2,048 patches, ray hits one | 11.725 | 0.106 |
+| Duplicate 10,000 boxes | 238.626 | 75.118 |
+| Flat pick through 10,000 stacked boxes | 315.210 | 9.606 |
+
+Picking rejects patches outside their control-point bounds before tessellation, with
+origins inside the bounds still tested against the surface. Brush picking carries
+layer and brush references through the traversal instead of looking them up again
+for every hit. Bulk duplication resolves closed-group membership in one tree walk.
+
 ## Freeform sculpting
 
 Run the small-brush latency probe on the starting room:
