@@ -298,16 +298,25 @@ impl Document {
     ///
     /// Creates duplicates at their final positions so duplication and movement form one undo step.
     pub fn duplicate_selection_by(&mut self, delta: Vec3d) -> usize {
-        if !delta.v.iter().all(|v| v.is_finite()) {
+        if self.selection.is_empty() || !delta.v.iter().all(|v| v.is_finite()) {
             return 0;
         }
-        let roots: HashSet<NodeId> = self
-            .selection
-            .iter()
-            .map(|id| {
-                node::outermost_group_of(&self.tree.world, *id, self.open_group).unwrap_or(*id)
-            })
-            .collect();
+        // Resolve all selected objects' groups in one walk. A lookup per selected
+        // brush makes duplicating a large selection quadratic in the map size.
+        let roots: HashSet<NodeId> = if self.selection.len() <= 2 {
+            self.selection
+                .iter()
+                .map(|id| {
+                    node::outermost_group_of(&self.tree.world, *id, self.open_group).unwrap_or(*id)
+                })
+                .collect()
+        } else {
+            let (outermost, _) = node::outermost_groups(&self.tree.world, self.open_group);
+            self.selection
+                .iter()
+                .map(|id| outermost.get(id).copied().unwrap_or(*id))
+                .collect()
+        };
         let mut selected = HashSet::new();
 
         fn copy_node(

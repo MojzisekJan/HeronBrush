@@ -7135,6 +7135,47 @@ fn a_flat_view_takes_the_nearer_of_two_faces_alike() {
 }
 
 #[test]
+fn bulk_duplicate_preserves_closed_and_open_group_boundaries() {
+    for open in [false, true] {
+        let mut document = one_box();
+        let brush = document.selectable_brushes()[0].1.clone();
+        let mut more = Vec::new();
+        for i in 1..4 {
+            more.push(
+                brush
+                    .translate(
+                        &document.world_bounds(),
+                        Vec3d::new(i as f64 * 128.0, 0.0, 0.0),
+                    )
+                    .unwrap(),
+            );
+        }
+        document.add_brushes(more);
+        document.select_all();
+        document.group_selection("Four brushes").unwrap();
+        if open {
+            assert!(document.open_selected_group());
+        }
+        let before = document.to_map_text();
+        assert_eq!(document.selection_count(), 4);
+        assert_eq!(
+            document.duplicate_selection_by(Vec3d::new(0.0, 128.0, 0.0)),
+            4
+        );
+        assert_eq!(document.brush_count(), 8);
+        assert_eq!(
+            node::groups_with_ids(&document.tree.world).len(),
+            if open { 1 } else { 2 }
+        );
+        let after = document.to_map_text();
+        document.undo().unwrap();
+        assert_eq!(document.to_map_text(), before);
+        document.redo().unwrap();
+        assert_eq!(document.to_map_text(), after);
+    }
+}
+
+#[test]
 fn patch_picking_handles_origins_inside_bounds_and_zero_thickness_patches() {
     for flat in [false, true] {
         let mut document = document_with_a_patch(if flat {
