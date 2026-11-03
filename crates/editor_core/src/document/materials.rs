@@ -1,8 +1,8 @@
 //! Document operations for materials.
 
 use super::{
-    brush_node, node, Brush, Document, Edit, FaceRef, HashMap, MaterialCollection, MaterialSource,
-    NodeId, Path, PathBuf, Vec2f,
+    brush_node, node, Document, Edit, FaceRef, HashMap, MaterialCollection, MaterialSource, NodeId,
+    Path, PathBuf, Vec2f,
 };
 
 /// Editor helper textures are embedded so maps never depend on a project copy.
@@ -786,7 +786,7 @@ impl Document {
             return false;
         }
 
-        let Ok(edited) = Brush::from_faces(&self.world_bounds, faces) else {
+        let Ok(edited) = brush.with_updated_faces(&self.world_bounds, faces) else {
             return false;
         };
         self.apply_and_record(Edit::Changed {
@@ -888,7 +888,7 @@ impl Document {
                 continue;
             }
 
-            let Ok(edited) = Brush::from_faces(&self.world_bounds, faces) else {
+            let Ok(edited) = brush.with_updated_faces(&self.world_bounds, faces) else {
                 continue;
             };
             changed += here;
@@ -924,7 +924,7 @@ impl Document {
                     face
                 })
                 .collect();
-            let Ok(fitted) = Brush::from_faces(&self.world_bounds, faces) else {
+            let Ok(fitted) = brush.with_updated_faces(&self.world_bounds, faces) else {
                 continue;
             };
             before.push(brush_node(id, brush.clone()));

@@ -49,7 +49,7 @@ impl Document {
                 for face in &mut faces {
                     face.uv_attributes.scale = scale;
                 }
-                Brush::from_faces(&world, faces).unwrap_or(brush)
+                brush.with_updated_faces(&world, faces).unwrap_or(brush)
             })
             .collect()
     }

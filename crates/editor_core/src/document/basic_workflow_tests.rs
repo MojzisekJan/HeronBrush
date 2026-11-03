@@ -791,3 +791,205 @@ fn pending_texture_transfer_matches_resolving_the_source_first() {
         assert_eq!(d.to_map_text(), before);
     }
 }
+
+#[test]
+fn appearance_edits_keep_complex_brush_geometry_and_face_indices() {
+    use geometry_math::vec::Vec2f;
+    use map_model::brush_face::{FaceColor, Rgb};
+    let bounds = Document::new(Default::default()).world_bounds();
+    let brush = map_model::shapes::create_cylinder(
+        &bounds,
+        &Bbox3d::from_scalars(-128.0, 128.0),
+        map_model::shapes::CircleShape::EdgeAligned { num_sides: 64 },
+        Axis::Z,
+        "stone",
+    )
+    .unwrap();
+    let mut faces = brush.faces().to_vec();
+    faces[0].material_name = "source".into();
+    faces[0].rotate_uv(37.0);
+    let brush = brush.with_exact_face_attributes(&faces).unwrap();
+    for operation in 0..7 {
+        let mut d = Document::new(Default::default());
+        d.add_brushes(vec![brush.clone()]);
+        let id = d.selectable_brushes()[0].0;
+        d.select_only(id);
+        let before = d.to_map_text();
+        let source_face = brush.geometry_face_of(0).unwrap().0 as usize;
+        let target = FaceRef {
+            node: id,
+            face: (source_face + 1) % brush.geometry().face_count(),
+        };
+        let source = FaceRef {
+            node: id,
+            face: source_face,
+        };
+        match operation {
+            0 => d.edit_faces(|f| f.move_uv(Vec2f::new(8.0, 16.0))),
+            1 => {
+                assert_eq!(
+                    d.set_face_color_on(&[target], Some(FaceColor::solid(Rgb::new(30, 80, 150)))),
+                    1
+                );
+            }
+            2 => {
+                assert!(d.paint_face(target, "metal"));
+            }
+            3 => {
+                assert!(d.copy_face_attributes(
+                    source,
+                    target,
+                    FaceAttributeTransfer::Projection,
+                    false
+                ));
+            }
+            4 => {
+                assert_eq!(
+                    d.copy_face_attributes_across(
+                        source,
+                        &[target],
+                        FaceAttributeTransfer::Projection
+                    ),
+                    1
+                );
+            }
+            5 => {
+                assert!(d.replace_material("stone", "metal") > 0);
+            }
+            _ => {
+                d.set_surface_material(Some(map_model::brush_face::SurfaceMaterial::default()));
+            }
+        }
+        let after = d.to_map_text();
+        assert_ne!(after, before, "operation {operation} made no edit");
+        let changed = d.brush(id).unwrap();
+        assert_eq!(
+            changed.vertex_positions(),
+            brush.vertex_positions(),
+            "operation {operation}"
+        );
+        for index in 0..brush.geometry().face_count() {
+            assert_eq!(
+                changed.source_face_index(index),
+                brush.source_face_index(index)
+            );
+        }
+        d.undo().unwrap();
+        assert_eq!(d.to_map_text(), before);
+        d.redo().unwrap();
+        assert_eq!(d.to_map_text(), after);
+    }
+}
+
+#[test]
+fn face_edit_that_moves_a_plane_still_rebuilds_geometry() {
+    let mut d = scene();
+    let id = d.selectable_brushes()[0].0;
+    d.select_only(id);
+    let before = d.to_map_text();
+    let old_max = d.brush(id).unwrap().bounds().max.x();
+    d.edit_faces(|face| {
+        if face.normal().x() > 0.9 {
+            for point in &mut face.points {
+                point[0] += 8.0;
+            }
+            face.plane.distance += 8.0;
+        }
+    });
+    assert_eq!(d.brush(id).unwrap().bounds().max.x(), old_max + 8.0);
+    d.undo().unwrap();
+    assert_eq!(d.to_map_text(), before);
+}
+
+#[test]
+fn duplicating_mixed_group_preserves_entity_properties_patch_uvs_and_one_undo() {
+    use geometry_math::vec::Vec2f;
+    use map_model::io::map_reader::{Patch, PatchControlPoint};
+    let original = scene();
+    let mut world = original.tree_world().clone();
+    let brushes = std::mem::take(&mut world.layers[0].children);
+    let entity = Node::new(NodeKind::Entity(map_model::node::EntityNode {
+        properties: vec![
+            ("classname".into(), "func_detail".into()),
+            ("custom".into(), "kept".into()),
+        ],
+        children: brushes,
+    }));
+    let point = Node::new(NodeKind::Entity(map_model::node::EntityNode {
+        properties: vec![
+            ("classname".into(), "info_player_start".into()),
+            ("origin".into(), "16 32 48".into()),
+            ("custom".into(), "kept".into()),
+        ],
+        children: Vec::new(),
+    }));
+    let patch = Patch {
+        material_name: "patch_material".into(),
+        rows: 3,
+        columns: 3,
+        id: None,
+        line: 0,
+        control_points: (0..9)
+            .map(|i| PatchControlPoint {
+                position: Vec3d::new((i % 3) as f64 * 16.0, (i / 3) as f64 * 16.0, 8.0),
+                uv: Vec2f::new(i as f32 * 0.1, i as f32 * 0.2),
+            })
+            .collect(),
+    };
+    let patch_id = NodeId::next();
+    let inner = Node::new(NodeKind::Group(Group {
+        id: "100".into(),
+        name: "Inner".into(),
+        linked_group_id: None,
+        transformation: None,
+        children: vec![entity, point, patch_node(patch_id, patch.clone())],
+    }));
+    let root = Node::new(NodeKind::Group(Group {
+        id: "101".into(),
+        name: "Outer".into(),
+        linked_group_id: None,
+        transformation: None,
+        children: vec![inner],
+    }));
+    let root_id = root.id;
+    world.layers[0].children = vec![root];
+    let mut d = Document::from_world(
+        world,
+        Default::default(),
+        map_model::map_format::MapFormat::Valve,
+        None,
+    );
+    d.selection = node::contents_of(&d.tree.world, root_id)
+        .into_iter()
+        .collect();
+    let old_ids = node::all_node_ids(&d.tree.world);
+    let before = d.to_map_text();
+    let delta = Vec3d::new(0.0, 128.0, 64.0);
+    assert_eq!(d.duplicate_selection_by(delta), 5);
+    assert!(d.selection_ids().iter().all(|id| !old_ids.contains(id)));
+    let copied_patch = node::patches_by_layer(&d.tree.world)
+        .into_iter()
+        .find(|(id, _, _)| *id != patch_id)
+        .unwrap()
+        .1;
+    for (actual, old) in copied_patch
+        .control_points
+        .iter()
+        .zip(&patch.control_points)
+    {
+        assert_eq!(actual.position, old.position + delta);
+        assert_eq!(actual.uv, old.uv);
+    }
+    for (id, entity) in node::entities_with_ids(&d.tree.world) {
+        assert_eq!(entity.property("custom"), Some("kept"));
+        if d.selection_ids().contains(&id) && entity.children.is_empty() {
+            assert_eq!(entity.origin(), Some(Vec3d::new(16.0, 32.0, 48.0) + delta));
+        }
+    }
+    assert_eq!(node::groups_with_ids(&d.tree.world).len(), 4);
+    let after = d.to_map_text();
+    d.undo().unwrap();
+    assert_eq!(d.to_map_text(), before);
+    d.redo().unwrap();
+    assert_eq!(d.to_map_text(), after);
+}

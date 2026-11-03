@@ -1180,29 +1180,44 @@ impl Brush {
         Self::from_faces(world_bounds, faces)
     }
 
-    /// Copies each face's material and mapping from whichever of the given faces best
-    /// matches it.
-    ///
-    /// `Brush::cloneFaceAttributesFrom`. A face made by merging or hollowing has no
-    /// material of its own; taking it from the face it stands in for is what stops a
-    /// merge coming out in the default material.
-    ///
-    /// The best match is the largest face lying in the same plane, and failing that the
-    /// one whose middle is nearest this face's plane.
     /// Copies all attributes without rebuilding geometry. Plane-defining data must
     /// match exactly, so face indices and cached hull topology remain valid.
     pub fn with_exact_face_attributes(&self, faces: &[BrushFace]) -> Option<Self> {
-        if faces.len() != self.faces.len()
-            || faces
-                .iter()
-                .zip(&self.faces)
-                .any(|(a, b)| a.plane != b.plane || a.points != b.points)
-        {
+        if !self.faces_preserve_geometry(faces) {
             return None;
         }
-        let mut result = self.clone();
-        result.faces.clone_from_slice(faces);
-        Some(result)
+        Some(Self {
+            faces: faces.to_vec(),
+            geometry: self.geometry.clone(),
+            face_of_geometry: self.face_of_geometry.clone(),
+        })
+    }
+
+    /// Updates the faces, keeping the existing hull when only attributes changed.
+    /// Plane, defining points and face order must match exactly. Geometry changes or
+    /// tighter world bounds use the same validated rebuild as `from_faces`.
+    pub fn with_updated_faces(
+        &self,
+        world_bounds: &Bbox3d,
+        faces: Vec<BrushFace>,
+    ) -> Result<Self, BrushError> {
+        if self.faces_preserve_geometry(&faces) && world_bounds.contains(&self.bounds()) {
+            Ok(Self {
+                faces,
+                geometry: self.geometry.clone(),
+                face_of_geometry: self.face_of_geometry.clone(),
+            })
+        } else {
+            Self::from_faces(world_bounds, faces)
+        }
+    }
+
+    fn faces_preserve_geometry(&self, faces: &[BrushFace]) -> bool {
+        faces.len() == self.faces.len()
+            && faces
+                .iter()
+                .zip(&self.faces)
+                .all(|(a, b)| a.plane == b.plane && a.points == b.points)
     }
 
     /// Transfers attributes from coplanar candidates, with nearest-plane fallback.

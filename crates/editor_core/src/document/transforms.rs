@@ -325,51 +325,62 @@ impl Document {
             delta: Vec3d,
             selected: &mut HashSet<NodeId>,
         ) -> Option<Node> {
-            let mut copy = Node::new(source.kind.clone());
-            match &mut copy.kind {
+            let id = NodeId::next();
+            let kind = match &source.kind {
                 NodeKind::Brush(brush) => {
-                    *brush = brush.translate(&document.world_bounds, delta).ok()?;
-                    selected.insert(copy.id);
+                    let moved = brush.translate(&document.world_bounds, delta).ok()?;
+                    selected.insert(id);
+                    NodeKind::Brush(moved)
                 }
                 NodeKind::Patch(patch) => {
-                    for point in &mut patch.control_points {
+                    let mut moved = patch.clone();
+                    for point in &mut moved.control_points {
                         point.position += delta;
                         if !document.world_bounds.contains_point(point.position) {
                             return None;
                         }
                     }
-                    selected.insert(copy.id);
+                    selected.insert(id);
+                    NodeKind::Patch(moved)
                 }
                 NodeKind::Entity(entity) => {
-                    if let Some(origin) = entity.origin() {
-                        let moved = origin + delta;
-                        if !document.world_bounds.contains_point(moved) {
+                    let mut moved = node::EntityNode {
+                        properties: entity.properties.clone(),
+                        children: Vec::new(),
+                    };
+                    if let Some(origin) = moved.origin() {
+                        let origin = origin + delta;
+                        if !document.world_bounds.contains_point(origin) {
                             return None;
                         }
-                        entity.set_origin(moved);
+                        moved.set_origin(origin);
                     }
-                    entity.children = entity
+                    moved.children = entity
                         .children
                         .iter()
                         .map(|child| copy_node(document, child, delta, selected))
                         .collect::<Option<_>>()?;
-                    selected.insert(copy.id);
+                    selected.insert(id);
+                    NodeKind::Entity(moved)
                 }
                 NodeKind::Group(group) => {
-                    group.id = document.fresh_id();
-                    // Ordinary duplication creates an independent copy. Linked copies
-                    // have their own explicit command.
-                    group.linked_group_id = None;
-                    group.transformation = None;
-                    group.children = group
-                        .children
-                        .iter()
-                        .map(|child| copy_node(document, child, delta, selected))
-                        .collect::<Option<_>>()?;
+                    // Copy children once; cloning the group first would clone its
+                    // whole subtree again at every nesting level.
+                    NodeKind::Group(node::Group {
+                        id: document.fresh_id(),
+                        name: group.name.clone(),
+                        linked_group_id: None,
+                        transformation: None,
+                        children: group
+                            .children
+                            .iter()
+                            .map(|child| copy_node(document, child, delta, selected))
+                            .collect::<Option<_>>()?,
+                    })
                 }
                 NodeKind::Layer(_) => return None,
-            }
-            Some(copy)
+            };
+            Some(Node::with_id(id, kind))
         }
 
         fn duplicate_children(
@@ -385,33 +396,53 @@ impl Document {
                 NodeKind::Layer(l) => &l.children,
                 _ => return Some(None),
             };
-            let mut updated = Vec::new();
-            let mut changed = false;
-            for child in children {
+            // Leave unrelated containers borrowed. Copy the unchanged prefix only
+            // after finding the first selected descendant.
+            let mut updated: Option<Vec<Node>> = None;
+            for (index, child) in children.iter().enumerate() {
                 if roots.contains(&child.id) {
-                    updated.push(child.clone());
-                    updated.push(copy_node(document, child, delta, selected)?);
-                    changed = true;
+                    let copy = copy_node(document, child, delta, selected)?;
+                    let out = updated.get_or_insert_with(|| children[..index].to_vec());
+                    out.push(child.clone());
+                    out.push(copy);
                 } else if let Some(replacement) =
                     duplicate_children(document, child, roots, delta, selected)?
                 {
-                    updated.push(replacement);
-                    changed = true;
-                } else {
-                    updated.push(child.clone());
+                    updated
+                        .get_or_insert_with(|| children[..index].to_vec())
+                        .push(replacement);
+                } else if let Some(out) = &mut updated {
+                    out.push(child.clone());
                 }
             }
-            if !changed {
+            let Some(children) = updated else {
                 return Some(None);
-            }
-            let mut replacement = source.clone();
-            match &mut replacement.kind {
-                NodeKind::Group(g) => g.children = updated,
-                NodeKind::Entity(e) => e.children = updated,
-                NodeKind::Layer(l) => l.children = updated,
+            };
+            let kind = match &source.kind {
+                NodeKind::Group(group) => NodeKind::Group(node::Group {
+                    id: group.id.clone(),
+                    name: group.name.clone(),
+                    linked_group_id: group.linked_group_id.clone(),
+                    transformation: group.transformation.clone(),
+                    children,
+                }),
+                NodeKind::Entity(entity) => NodeKind::Entity(node::EntityNode {
+                    properties: entity.properties.clone(),
+                    children,
+                }),
+                NodeKind::Layer(layer) => NodeKind::Layer(node::Layer {
+                    id: layer.id.clone(),
+                    name: layer.name.clone(),
+                    sort_index: layer.sort_index,
+                    hidden: layer.hidden,
+                    locked: layer.locked,
+                    omit_from_export: layer.omit_from_export,
+                    color: layer.color.clone(),
+                    children,
+                }),
                 _ => unreachable!(),
-            }
-            Some(Some(replacement))
+            };
+            Some(Some(Node::with_id(source.id, kind)))
         }
 
         let mut edits = Vec::new();

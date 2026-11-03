@@ -327,7 +327,7 @@ impl Document {
             if faces.as_slice() == brush.faces() {
                 continue;
             }
-            let Ok(edited) = Brush::from_faces(&world_bounds, faces) else {
+            let Ok(edited) = brush.with_updated_faces(&world_bounds, faces) else {
                 continue;
             };
             changed += indices.len();

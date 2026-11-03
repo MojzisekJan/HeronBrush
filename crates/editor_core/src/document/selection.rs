@@ -166,7 +166,7 @@ impl Document {
             if faces.as_slice() == brush.faces() {
                 continue;
             }
-            let Ok(edited) = Brush::from_faces(&self.world_bounds, faces) else {
+            let Ok(edited) = brush.with_updated_faces(&self.world_bounds, faces) else {
                 continue;
             };
             before.push(brush_node(id, brush.clone()));
@@ -277,7 +277,7 @@ impl Document {
             if !touched {
                 continue;
             }
-            let Ok(edited) = Brush::from_faces(&self.world_bounds, painted) else {
+            let Ok(edited) = brush.with_updated_faces(&self.world_bounds, painted) else {
                 continue;
             };
             before.push(brush_node(id, brush));
@@ -457,7 +457,7 @@ impl Document {
             return false;
         }
 
-        let Ok(edited) = Brush::from_faces(&world_bounds, faces) else {
+        let Ok(edited) = brush.with_updated_faces(&world_bounds, faces) else {
             return false;
         };
         self.apply_and_record(Edit::Changed {

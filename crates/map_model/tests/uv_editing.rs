@@ -426,3 +426,69 @@ fn a_singular_or_nonfinite_shear_keeps_the_original_uv_mapping() {
         assert_eq!(face.uv_coord_system.skewed(face.normal(), rows), original);
     }
 }
+
+#[test]
+fn updating_only_face_attributes_keeps_vertices_and_face_handles_exact() {
+    let brush = shapes::create_cylinder(
+        &world_bounds(),
+        &Bbox3d::from_scalars(-128.0, 128.0),
+        shapes::CircleShape::EdgeAligned { num_sides: 64 },
+        geometry_math::util::Axis::Z,
+        "stone",
+    )
+    .unwrap();
+    let mut faces = brush.faces().to_vec();
+    for face in &mut faces {
+        face.material_name = "metal".into();
+        face.move_uv(Vec2f::new(13.0, -7.0));
+        face.rotate_uv(37.0);
+    }
+    let updated = brush
+        .with_updated_faces(&world_bounds(), faces.clone())
+        .unwrap();
+    assert_eq!(updated.vertex_positions(), brush.vertex_positions());
+    assert_eq!(updated.faces(), faces);
+    for index in 0..brush.geometry().face_count() {
+        assert_eq!(
+            updated.source_face_index(index),
+            brush.source_face_index(index)
+        );
+        let source = brush.source_face_index(index).unwrap();
+        assert_eq!(updated.face_polygon(source), brush.face_polygon(source));
+    }
+}
+
+#[test]
+fn updating_faces_rebuilds_changed_planes_face_order_and_world_bounds() {
+    let brush = cube();
+    let mut moved = brush.faces().to_vec();
+    let delta = moved[0].normal() * 8.0;
+    for point in &mut moved[0].points {
+        *point += delta;
+    }
+    moved[0].plane.distance += 8.0;
+    let mut reordered = brush.faces().to_vec();
+    reordered.rotate_left(1);
+    for (bounds, faces) in [
+        (world_bounds(), moved),
+        (world_bounds(), reordered),
+        (Bbox3d::from_scalars(-16.0, 16.0), brush.faces().to_vec()),
+    ] {
+        let expected = Brush::from_faces(&bounds, faces.clone());
+        let actual = brush.with_updated_faces(&bounds, faces);
+        match (expected, actual) {
+            (Ok(expected), Ok(actual)) => {
+                assert_eq!(actual.vertex_positions(), expected.vertex_positions());
+                assert_eq!(actual.faces(), expected.faces());
+                for index in 0..expected.geometry().face_count() {
+                    assert_eq!(
+                        actual.source_face_index(index),
+                        expected.source_face_index(index)
+                    );
+                }
+            }
+            (Err(_), Err(_)) => {}
+            _ => panic!("geometry validation changed"),
+        }
+    }
+}
