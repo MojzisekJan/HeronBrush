@@ -622,6 +622,8 @@ impl Document {
     /// and the preferences stay; the selection and the undo history do not, since they
     /// were about the tree that is gone.
     pub fn adopt_world(&mut self, world: node::World) {
+        // The snapshot belongs to the previous world and must never roll back this one.
+        self.transaction = None;
         self.tree = node::Tree {
             world,
             warnings: Vec::new(),
@@ -698,5 +700,34 @@ fn same_unless_brush(was: &Node, now: &Node) -> bool {
     match (&was.kind, &now.kind) {
         (node::NodeKind::Brush(_), node::NodeKind::Brush(_)) => true,
         _ => format!("{:?}", was.kind) == format!("{:?}", now.kind),
+    }
+}
+
+#[cfg(test)]
+mod adopt_tests {
+    use super::*;
+    use geometry_math::{bbox::Bbox3d, vec::Vec3d};
+    #[test]
+    fn adopting_world_discards_transaction_snapshot() {
+        let mut d = Document::new(Default::default());
+        let brush = map_model::shapes::create_cuboid(
+            &d.world_bounds(),
+            &Bbox3d::from_scalars(0., 8.),
+            "stone",
+        )
+        .unwrap();
+        d.add_brushes(vec![brush]);
+        let mut incoming = d.tree_world().clone();
+        let node::NodeKind::Brush(brush) = &mut incoming.layers[0].children[0].kind else {
+            panic!()
+        };
+        *brush = brush
+            .translate(&d.world_bounds(), Vec3d::new(64., 0., 0.))
+            .unwrap();
+        d.begin_transaction();
+        d.adopt_world(incoming);
+        assert!(!d.in_transaction());
+        d.cancel_transaction();
+        assert_eq!(d.bounds().unwrap().min.x(), 64.);
     }
 }
