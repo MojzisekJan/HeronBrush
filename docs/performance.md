@@ -141,6 +141,36 @@ timings, excluding rendering and UI event handling.
 | Duplicate 1,000 boxes, group depth 32 | 96.314 ms | 4.844 ms |
 | Duplicate one box beside 9,999 groups | 16.568 ms | 7.458 ms |
 
+## MCP selection requests
+
+```sh
+cargo run --release -p editor_core --example mcp_latency
+```
+
+The probe sends `tools/call` requests to the same `mcp::respond` handler used by the
+stdio and live servers. It selects explicit IDs for 1,000 or 10,000 brushes. Timings
+include JSON parsing, schema validation, group expansion and selection notification;
+they exclude map construction, clearing the previous selection, socket transport and
+GUI scheduling. Each request must finish with every requested brush selected.
+
+On 2026-11-03, release binaries pinned to the same CPU produced the following
+medians. Each value is the median of three runs of five samples, alternating the old
+and new binaries, with no concurrent build or tests.
+
+| Request | Before | After |
+| --- | ---: | ---: |
+| Select 1,000 explicit IDs | 22.059 ms | 0.411 ms |
+| Select 10,000 explicit IDs | 2,734.302 ms | 4.853 ms |
+
+Tool schemas are initialized once and borrowed for validation. Explicit selection
+validates IDs together and expands closed groups once, then replaces the selection
+with one notification. Selecting two members of the same group no longer toggles the
+group off. Missing IDs preserve both object and face selections.
+
+The editor's brush-to-face selection conversion also walks brushes once and uses
+geometry face indices. Redundant source planes cannot leave invalid face references
+in the selection.
+
 ## Freeform sculpting
 
 Run the small-brush latency probe on the starting room:
