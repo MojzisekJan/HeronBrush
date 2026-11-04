@@ -222,6 +222,10 @@ impl Edit {
 #[derive(Debug)]
 pub struct History {
     undo: Vec<Edit>,
+    /// Number of steps removed from the front; marks remain stable after eviction.
+    offset: usize,
+    /// Scoped operations retain their pending steps until they can be combined.
+    group_depth: usize,
     redo: Vec<Edit>,
     /// What the undo stack weighs, by [`Edit::weight`], kept as steps go on and come off
     /// rather than recomputed -- the estimate walks every node it holds.
@@ -236,6 +240,8 @@ impl Default for History {
     fn default() -> Self {
         History {
             undo: Vec::new(),
+            offset: 0,
+            group_depth: 0,
             redo: Vec::new(),
             weight: 0,
             budget: BUDGET,
@@ -266,15 +272,35 @@ impl History {
     /// budget is exactly the one a person most wants back, and refusing to hold it would
     /// make undo quietly do nothing.
     fn forget_the_oldest(&mut self) {
+        if self.group_depth > 0 {
+            return;
+        }
         while self.undo.len() > 1 && (self.undo.len() > CAPACITY || self.weight > self.budget) {
             let dropped = self.undo.remove(0);
+            self.offset += 1;
             self.weight = self.weight.saturating_sub(dropped.weight());
         }
     }
 
-    /// How many undo steps have been recorded, for [`Self::coalesce_since`].
+    /// How many undo steps are currently retained.
     pub fn undo_len(&self) -> usize {
         self.undo.len()
+    }
+
+    /// A position for coalescing subsequent edits, stable when old steps are evicted.
+    pub fn mark(&self) -> usize {
+        self.offset + self.undo.len()
+    }
+
+    pub(crate) fn begin_group(&mut self) -> usize {
+        self.group_depth += 1;
+        self.mark()
+    }
+
+    pub(crate) fn end_group(&mut self, mark: usize) {
+        self.coalesce_since(mark);
+        self.group_depth -= 1;
+        self.forget_the_oldest();
     }
 
     /// Folds every step recorded since `mark` into one, so a run of separate edits undoes
@@ -282,7 +308,7 @@ impl History {
     ///
     /// The weight does not change: the same nodes are held, in one step instead of many.
     pub fn coalesce_since(&mut self, mark: usize) {
-        let mark = mark.min(self.undo.len());
+        let mark = mark.saturating_sub(self.offset).min(self.undo.len());
         let steps: Vec<Edit> = self.undo.drain(mark..).collect();
         match steps.len() {
             0 => {}
@@ -361,6 +387,76 @@ impl History {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn coalescing_with_a_stable_mark_survives_capacity_eviction() {
+        let mut history = History::new();
+        for layer in 0..CAPACITY {
+            history.record(Edit::Added {
+                layer,
+                nodes: vec![],
+            });
+        }
+        let mark = history.mark();
+        history.record(Edit::Added {
+            layer: 1000,
+            nodes: vec![],
+        });
+        history.record(Edit::Added {
+            layer: 1001,
+            nodes: vec![],
+        });
+        history.coalesce_since(mark);
+        assert_eq!(history.undo_len(), CAPACITY - 1);
+        let Edit::Batch(parts) = history.undo().unwrap() else {
+            panic!("one combined undo")
+        };
+        assert_eq!(parts.len(), 2);
+        assert!(matches!(parts[0], Edit::Removed { layer: 1001, .. }));
+        assert!(matches!(parts[1], Edit::Removed { layer: 1000, .. }));
+        let Edit::Batch(parts) = history.redo().unwrap() else {
+            panic!("one combined redo")
+        };
+        assert!(matches!(parts[0], Edit::Added { layer: 1000, .. }));
+        assert!(matches!(parts[1], Edit::Added { layer: 1001, .. }));
+    }
+
+    #[test]
+    fn grouped_edits_survive_budget_eviction_and_nested_groups() {
+        let mut history = History {
+            budget: 1,
+            ..History::new()
+        };
+        let outer = history.begin_group();
+        history.record(Edit::WorldChanged {
+            before: vec![],
+            after: vec![("a".into(), "first".into())],
+        });
+        let inner = history.begin_group();
+        for _ in 0..CAPACITY + 2 {
+            history.record(Edit::WorldChanged {
+                before: vec![],
+                after: vec![("b".into(), "second".into())],
+            });
+        }
+        history.end_group(inner);
+        history.end_group(outer);
+        assert_eq!(history.undo_len(), 1);
+        let Edit::Batch(parts) = history.undo().unwrap() else {
+            panic!("outer batch")
+        };
+        assert_eq!(parts.len(), 2);
+        let Edit::Batch(inner) = &parts[0] else {
+            panic!("inner batch")
+        };
+        assert_eq!(inner.len(), CAPACITY + 2);
+        assert!(history.undo().is_none());
+        assert!(history.redo().is_some());
+        assert_eq!(
+            history.weight,
+            history.undo.iter().map(Edit::weight).sum::<usize>()
+        );
+    }
 
     fn edit(n: usize) -> Edit {
         Edit::Added {

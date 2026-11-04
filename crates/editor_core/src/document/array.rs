@@ -349,7 +349,7 @@ impl Document {
             .center();
         let transforms = array_transforms(parameters, centre)?;
         let linked = parameters.linked && linkable;
-        let mark = self.history.undo_len();
+        let mark = self.history.mark();
         let made = self.run_as_one_edit(|document| {
             let mut selected = originals.clone();
             for transform in &transforms {
@@ -372,7 +372,7 @@ impl Document {
             document.selection = selected;
             Ok(transforms.len())
         });
-        if made.is_err() && self.history.undo_len() > mark {
+        if made.is_err() && self.history.mark() > mark {
             self.undo();
         }
         if made.is_err() {

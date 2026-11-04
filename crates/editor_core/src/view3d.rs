@@ -4264,10 +4264,7 @@ impl Scene3d {
                     if !touched.contains(&face) {
                         touched.push(face);
                         let mut document = document.borrow_mut();
-                        let before = document.edit_mark();
                         if document.copy_face_attributes_across(*source, &[face], *mode) > 0 {
-                            let evicted = (before + 1).saturating_sub(document.edit_mark());
-                            *mark = mark.saturating_sub(evicted);
                             document.fold_edits_since(*mark);
                             *revision = document.revision();
                             drop(document);

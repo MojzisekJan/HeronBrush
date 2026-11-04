@@ -712,7 +712,7 @@ impl Document {
         super::MaterialStroke {
             material: self.current_material.clone(),
             visited: Default::default(),
-            mark: self.history.undo_len(),
+            mark: self.history.mark(),
             revision: self.revision(),
         }
     }
@@ -731,7 +731,6 @@ impl Document {
             .copied()
             .filter(|face| stroke.visited.insert(*face))
             .collect();
-        let before_len = self.history.undo_len();
         let changed = self.edit_faces_on(&targets, |face| {
             if face.material_name == stroke.material && face.color.is_none() {
                 return false;
@@ -741,8 +740,6 @@ impl Document {
             true
         });
         if changed > 0 {
-            let evicted = (before_len + 1).saturating_sub(self.history.undo_len());
-            stroke.mark = stroke.mark.saturating_sub(evicted);
             self.history.coalesce_since(stroke.mark);
             stroke.revision = self.revision();
         }

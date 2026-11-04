@@ -166,7 +166,9 @@ is. That is the right thing for "recolour what I see".
 
 In the window, a plugin's whole run is one undo press: `Document::run_as_one_edit` marks
 the undo stack, runs the plugin, and `History::coalesce_since` folds every step it
-recorded into one. The headless runner has no undo.
+recorded into one. Marks survive eviction of older history. Pending steps from a
+scoped run stay available until they are grouped, so reaching the count or memory
+limit cannot split the run into separate undo steps. The headless runner has no undo.
 
 ## Execution and limits
 

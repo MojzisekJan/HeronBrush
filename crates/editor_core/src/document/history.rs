@@ -23,7 +23,7 @@ impl Document {
                     && time.elapsed() < web_time::Duration::from_millis(600)
             })
             .map(|(_, mark, ..)| *mark)
-            .unwrap_or_else(|| self.history.undo_len());
+            .unwrap_or_else(|| self.history.mark());
         let changed = if picked.is_empty() {
             self.set_face_color(color)
         } else {
@@ -45,7 +45,7 @@ impl Document {
     /// Where a gesture that edits as it goes starts in the history, for
     /// [`Document::set_face_color_since`].
     pub fn history_mark(&self) -> usize {
-        self.history.undo_len()
+        self.history.mark()
     }
 
     /// Paints `picked`, folding this edit and every one since `mark` into one undo step:
@@ -58,7 +58,7 @@ impl Document {
         mark: usize,
     ) -> usize {
         let changed = self.set_face_color_on(picked, color);
-        if changed > 0 && self.history.undo_len() > mark {
+        if changed > 0 && self.history.mark() > mark {
             self.history.coalesce_since(mark);
         }
         changed
@@ -81,7 +81,7 @@ impl Document {
                     && time.elapsed() < web_time::Duration::from_millis(600)
             })
             .map(|(_, mark, ..)| *mark)
-            .unwrap_or_else(|| self.history.undo_len());
+            .unwrap_or_else(|| self.history.mark());
         let changed = if picked.is_empty() {
             self.set_surface_material(color)
         } else {
@@ -247,7 +247,7 @@ impl Document {
 
     /// Where the history stands, for [`Document::fold_edits_since`].
     pub fn edit_mark(&self) -> usize {
-        self.history.undo_len()
+        self.history.mark()
     }
 
     /// Folds every step recorded since `mark` into one: a Ctrl-drag's duplicate and the
@@ -260,9 +260,9 @@ impl Document {
     /// undoes in a single press. Used by the plugin runner, whose script makes many small
     /// edits that are one action to the person who pressed the button.
     pub fn run_as_one_edit<R>(&mut self, run: impl FnOnce(&mut Self) -> R) -> R {
-        let mark = self.history.undo_len();
+        let mark = self.history.begin_group();
         let result = run(self);
-        self.history.coalesce_since(mark);
+        self.history.end_group(mark);
         self.mark_changed();
         result
     }

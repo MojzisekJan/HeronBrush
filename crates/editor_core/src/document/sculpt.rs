@@ -361,7 +361,7 @@ impl Document {
     /// next begins is one undo step.
     pub fn begin_sculpt_stroke(&self) -> SculptStroke {
         SculptStroke {
-            mark: self.history.undo_len(),
+            mark: self.history.mark(),
             revision: self.revision(),
             along: Vec3d::new(0.0, 0.0, 1.0),
             ball: false,
@@ -656,11 +656,7 @@ impl Document {
 
     /// Applies a dab's change and folds it into the stroke's one undo step.
     fn record_dab(&mut self, stroke: &mut SculptStroke, before: Vec<Node>, after: Vec<Node>) {
-        let length = self.history.undo_len();
         self.apply_and_record(Edit::Changed { before, after });
-        // A full history drops its oldest step to make room, which moves the mark.
-        let evicted = (length + 1).saturating_sub(self.history.undo_len());
-        stroke.mark = stroke.mark.saturating_sub(evicted);
         self.history.coalesce_since(stroke.mark);
         stroke.revision = self.revision();
     }

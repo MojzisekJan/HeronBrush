@@ -993,3 +993,21 @@ fn duplicating_mixed_group_preserves_entity_properties_patch_uvs_and_one_undo() 
     d.redo().unwrap();
     assert_eq!(d.to_map_text(), after);
 }
+
+#[test]
+fn audit_combined_document_edit_undoes_once_at_history_capacity() {
+    let mut d = scene();
+    for _ in 0..crate::history::CAPACITY {
+        assert!(d.translate_selection(Vec3d::new(1.0, 0.0, 0.0)));
+    }
+    let before = d.to_map_text();
+    d.run_as_one_edit(|d| {
+        assert!(d.translate_selection(Vec3d::new(4.0, 0.0, 0.0)));
+        assert!(d.translate_selection(Vec3d::new(0.0, 8.0, 0.0)));
+    });
+    let after = d.to_map_text();
+    d.undo().unwrap();
+    assert_eq!(d.to_map_text(), before);
+    d.redo().unwrap();
+    assert_eq!(d.to_map_text(), after);
+}
