@@ -295,6 +295,13 @@ pub const DEFAULT_LAYER_NAME: &str = "Default Layer";
 /// Something [`build_tree`] worked around rather than giving up on.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TreeWarning {
+    /// A repeated persistent node id was reassigned to keep objects independently editable.
+    DuplicateNodeId {
+        /// The repeated id read from the map.
+        id: NodeId,
+        /// The fresh id assigned to the later object.
+        replacement: NodeId,
+    },
     /// A node named a parent that is not in the file, so it went to the default layer.
     MissingParent {
         /// The id that was named.
@@ -316,6 +323,7 @@ pub enum TreeWarning {
 impl std::fmt::Display for TreeWarning {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            TreeWarning::DuplicateNodeId { id, replacement } => write!(f, "duplicate node id {} was replaced with {}", id.0, replacement.0),
             TreeWarning::MissingParent { id, line } => write!(
                 f,
                 "line {line}: no layer or group has id \"{id}\", so its contents went to the default layer"
@@ -527,13 +535,44 @@ fn build_tree_with(
         .map(|(_, w)| game_properties(&w.properties))
         .unwrap_or_default();
 
-    Tree {
-        world: World {
-            properties,
-            layers: all_layers,
-        },
-        warnings,
+    let mut world = World {
+        properties,
+        layers: all_layers,
+    };
+    let mut reserved = all_node_ids(&world);
+    let mut seen = rustc_hash::FxHashSet::default();
+    fn repair(
+        nodes: &mut [Node],
+        seen: &mut rustc_hash::FxHashSet<NodeId>,
+        reserved: &mut rustc_hash::FxHashSet<NodeId>,
+        warnings: &mut Vec<TreeWarning>,
+    ) {
+        for node in nodes {
+            if !seen.insert(node.id) {
+                let id = node.id;
+                let mut replacement = NodeId::next();
+                while !reserved.insert(replacement) {
+                    replacement = NodeId::next();
+                }
+                node.id = replacement;
+                seen.insert(replacement);
+                if let NodeKind::Patch(patch) = &mut node.kind {
+                    patch.id = Some(replacement.0);
+                }
+                warnings.push(TreeWarning::DuplicateNodeId { id, replacement });
+            }
+            match &mut node.kind {
+                NodeKind::Group(group) => repair(&mut group.children, seen, reserved, warnings),
+                NodeKind::Entity(entity) => repair(&mut entity.children, seen, reserved, warnings),
+                NodeKind::Layer(layer) => repair(&mut layer.children, seen, reserved, warnings),
+                _ => {}
+            }
+        }
     }
+    for layer in &mut world.layers {
+        repair(&mut layer.children, &mut seen, &mut reserved, &mut warnings);
+    }
+    Tree { world, warnings }
 }
 
 /// A group together with where it belongs, while the tree is being assembled.
@@ -1837,4 +1876,39 @@ pub fn find_node(world: &World, id: NodeId) -> Option<&Node> {
         .layers
         .iter()
         .find_map(|layer| search(&layer.children, id))
+}
+
+#[cfg(test)]
+mod duplicate_id_tests {
+    use super::*;
+    #[test]
+    fn repeated_persistent_ids_are_repaired_in_both_load_paths() {
+        let bounds = Bbox3d::from_scalars(-4096., 4096.);
+        let brush =
+            crate::shapes::create_cuboid(&bounds, &Bbox3d::from_scalars(0., 8.), "stone").unwrap();
+        let mut world = build_tree(
+            &crate::io::map_reader::read_map("{\n\"classname\" \"worldspawn\"\n}", None).unwrap(),
+            &bounds,
+        )
+        .world;
+        let id = NodeId::next();
+        world.layers[0].children = vec![
+            Node::with_id(id, NodeKind::Brush(brush.clone())),
+            Node::with_id(id, NodeKind::Brush(brush)),
+        ];
+        let text = crate::io::map_writer::write_map(&flatten_tree(
+            &world,
+            crate::map_format::MapFormat::Valve,
+            None,
+        ));
+        let map = crate::io::map_reader::read_map(&text, None).unwrap();
+        for tree in [build_tree(&map, &bounds), build_tree_owned(map, &bounds)] {
+            assert_eq!(all_node_ids(&tree.world).len(), 2);
+            assert_eq!(tree.world.layers[0].children[0].id, id);
+            assert!(tree
+                .warnings
+                .iter()
+                .any(|w| matches!(w, TreeWarning::DuplicateNodeId { .. })));
+        }
+    }
 }
