@@ -25,6 +25,8 @@ pub enum WireError {
     Brush(String),
     /// A patch has an invalid grid, coordinates or world bounds.
     Patch(String),
+    /// The world has no default layer or contains duplicate node identities.
+    World(String),
 }
 
 impl std::fmt::Display for WireError {
@@ -33,6 +35,7 @@ impl std::fmt::Display for WireError {
             WireError::Json(m) => write!(f, "bad edit: {m}"),
             WireError::Brush(m) => write!(f, "a brush in the edit does not rebuild: {m}"),
             WireError::Patch(m) => write!(f, "invalid patch: {m}"),
+            WireError::World(m) => write!(f, "invalid world: {m}"),
         }
     }
 }
@@ -236,14 +239,39 @@ impl WireWorld {
 
     /// Rebuilds the world, every brush against `bounds`.
     pub fn into_world(self, bounds: &Bbox3d) -> Result<map_model::node::World, WireError> {
-        Ok(map_model::node::World {
+        if self.layers.first().is_none_or(|layer| layer.id.is_some()) {
+            return Err(WireError::World("a default layer is required".into()));
+        }
+        let world = map_model::node::World {
             properties: self.properties,
             layers: self
                 .layers
                 .into_iter()
                 .map(|l| unwire_layer(l, bounds))
                 .collect::<Result<_, _>>()?,
-        })
+        };
+        fn validate(
+            nodes: &[Node],
+            ids: &mut std::collections::HashSet<NodeId>,
+        ) -> Result<(), WireError> {
+            for node in nodes {
+                if !ids.insert(node.id) {
+                    return Err(WireError::World(format!("duplicate node id {}", node.id.0)));
+                }
+                match &node.kind {
+                    NodeKind::Group(group) => validate(&group.children, ids)?,
+                    NodeKind::Entity(entity) => validate(&entity.children, ids)?,
+                    NodeKind::Layer(layer) => validate(&layer.children, ids)?,
+                    _ => {}
+                }
+            }
+            Ok(())
+        }
+        let mut ids = std::collections::HashSet::new();
+        for layer in &world.layers {
+            validate(&layer.children, &mut ids)?;
+        }
+        Ok(world)
     }
 
     /// This world as one line of JSON.
@@ -692,5 +720,22 @@ mod tests {
             WireEdit::from_json("not json"),
             Err(WireError::Json(_))
         ));
+    }
+    #[test]
+    fn world_snapshot_requires_default_layer_and_unique_node_ids() {
+        assert!(WireWorld::from_json(r#"{"properties":[],"layers":[]}"#)
+            .unwrap()
+            .into_world(&bounds())
+            .is_err());
+        let mut world = a_world();
+        world.layers[0].id = Some("custom".into());
+        assert!(WireWorld::from_world(&world).into_world(&bounds()).is_err());
+        world.layers[0].id = None;
+        let node = world.layers[0].children[0].clone();
+        world.layers[0].children.push(node);
+        assert!(WireWorld::from_world(&world).into_world(&bounds()).is_err());
+        assert!(WireWorld::from_world(&a_world())
+            .into_world(&bounds())
+            .is_ok());
     }
 }
