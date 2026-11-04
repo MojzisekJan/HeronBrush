@@ -331,11 +331,15 @@ pub fn read(bytes: &[u8]) -> Result<EntityModel, String> {
         n: usize,
         parent: Matrix,
         path: &mut Vec<usize>,
+        visited: &mut std::collections::HashSet<usize>,
         triangles: &mut Vec<ModelTriangle>,
         material: &mut Vec<Option<usize>>,
     ) -> Result<(), String> {
         if path.len() >= 128 || path.contains(&n) {
             return Err("Cyclic or too deeply nested GLB nodes".into());
+        }
+        if visited.len() >= 100_000 || !visited.insert(n) {
+            return Err("Repeated or excessive GLB scene nodes".into());
         }
         path.push(n);
         let node = at(root, "nodes", n)?;
@@ -434,12 +438,22 @@ pub fn read(bytes: &[u8]) -> Result<EntityModel, String> {
         }
         if let Some(children) = node["children"].as_array() {
             for child in children {
-                visit(root, bin, index(child)?, matrix, path, triangles, material)?
+                visit(
+                    root,
+                    bin,
+                    index(child)?,
+                    matrix,
+                    path,
+                    visited,
+                    triangles,
+                    material,
+                )?
             }
         }
         path.pop();
         Ok(())
     }
+    let mut visited = std::collections::HashSet::new();
     for node in nodes {
         visit(
             &root,
@@ -447,6 +461,7 @@ pub fn read(bytes: &[u8]) -> Result<EntityModel, String> {
             index(node)?,
             identity(),
             &mut vec![],
+            &mut visited,
             &mut triangles,
             &mut material,
         )?
@@ -750,5 +765,29 @@ mod tests {
         data.pop();
         assert!(read(&data).is_err());
         assert!(read(b"not a model").is_err());
+    }
+    #[test]
+    fn repeated_node_dag_is_rejected_and_distinct_mesh_instances_work() {
+        let mut nodes: Vec<Value> = (0..28)
+            .map(|i| serde_json::json!({"children":[i+1,i+1]}))
+            .collect();
+        nodes.push(serde_json::json!({}));
+        let bytes = encode(
+            serde_json::json!({"asset":{"version":"2.0"},"scenes":[{"nodes":[0]}],"nodes":nodes}),
+            vec![],
+        );
+        assert!(read(&bytes).unwrap_err().contains("Repeated"));
+        let bytes = fixture(2);
+        let len = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
+        let mut root: Value = serde_json::from_slice(&bytes[20..20 + len]).unwrap();
+        root["nodes"] = serde_json::json!([{"mesh":0},{"mesh":0,"translation":[10,0,0]}]);
+        root["scenes"][0]["nodes"] = serde_json::json!([0, 1]);
+        assert_eq!(
+            read(&encode(root, bytes[28 + len..].to_vec()))
+                .unwrap()
+                .triangles
+                .len(),
+            2
+        );
     }
 }
