@@ -1,9 +1,9 @@
 //! Document operations for clipboard.
 
 use super::{
-    apply_face_attributes, brush_node, collect_for_paste, entity_node, node, paste_bounds,
-    patch_node, renumber_for_paste, translate_paste, vec, Brush, Document, Edit,
-    FaceAttributeTransfer, FaceRef, Group, Node, NodeId, NodeKind, Vec3d, FACE_CLIPBOARD_MARKER,
+    apply_face_attributes, brush_node, collect_for_paste, node, paste_bounds, renumber_for_paste,
+    translate_paste, vec, Brush, Document, Edit, FaceAttributeTransfer, FaceRef, Group, Node,
+    NodeId, NodeKind, Vec3d, FACE_CLIPBOARD_MARKER,
 };
 
 impl Document {
@@ -32,20 +32,42 @@ impl Document {
             color: None,
             children: Vec::new(),
         };
-        for (id, brush) in node::brushes_with_ids(&self.tree.world) {
-            if self.selection.contains(&id) {
-                layer.children.push(brush_node(id, brush.clone()));
+        fn collect(
+            nodes: &[Node],
+            selected: &super::HashSet<NodeId>,
+            all: bool,
+            out: &mut Vec<Node>,
+        ) {
+            for node in nodes {
+                let take = all || selected.contains(&node.id);
+                match &node.kind {
+                    NodeKind::Group(group) => collect(&group.children, selected, take, out),
+                    NodeKind::Layer(layer) => collect(&layer.children, selected, take, out),
+                    NodeKind::Entity(entity) if !take => {
+                        let mut children = Vec::new();
+                        collect(&entity.children, selected, false, &mut children);
+                        if !children.is_empty() {
+                            out.push(Node::with_id(
+                                node.id,
+                                NodeKind::Entity(node::EntityNode {
+                                    properties: entity.properties.clone(),
+                                    children,
+                                }),
+                            ));
+                        }
+                    }
+                    _ if take => out.push(node.clone()),
+                    _ => {}
+                }
             }
         }
-        for (id, patch, _) in node::patches_by_layer(&self.tree.world) {
-            if self.selection.contains(&id) {
-                layer.children.push(patch_node(id, patch.clone()));
-            }
-        }
-        for (id, entity) in node::entities_with_ids(&self.tree.world) {
-            if self.selection.contains(&id) {
-                layer.children.push(entity_node(id, entity.clone()));
-            }
+        for source in &self.tree.world.layers {
+            collect(
+                &source.children,
+                &self.selection,
+                false,
+                &mut layer.children,
+            );
         }
         if layer.children.is_empty() {
             return None;

@@ -29,7 +29,10 @@ impl Document {
     /// invalid is refused in full rather than in part, so the selection cannot end up
     /// half moved.
     pub fn translate_selection(&mut self, delta: Vec3d) -> bool {
-        if self.selection.is_empty() || delta == Vec3d::zero() {
+        if self.selection.is_empty()
+            || delta == Vec3d::zero()
+            || !delta.v.iter().all(|n| n.is_finite())
+        {
             return false;
         }
 
@@ -53,7 +56,10 @@ impl Document {
         self.push_brush_changes(moved, &mut before, &mut after);
 
         // A patch moves by the same matrix, which for a move is a pure translation.
-        for (was, is) in self.transformed_patches(&translation) {
+        let Some(patches) = self.transformed_patches(&translation) else {
+            return false;
+        };
+        for (was, is) in patches {
             before.push(was);
             after.push(is);
         }
@@ -119,7 +125,7 @@ impl Document {
     ///
     /// A patch is its control points, so transforming it is transforming those; the
     /// surface follows because it is drawn from them.
-    fn transformed_patches(&self, transform: &Mat4x4d) -> Vec<(Node, Node)> {
+    fn transformed_patches(&self, transform: &Mat4x4d) -> Option<Vec<(Node, Node)>> {
         node::patches_by_layer(&self.tree.world)
             .into_iter()
             .filter(|(id, _, _)| self.selection.contains(id))
@@ -127,8 +133,13 @@ impl Document {
                 let mut moved = patch.clone();
                 for point in &mut moved.control_points {
                     point.position = *transform * point.position;
+                    if !point.position.v.iter().all(|n| n.is_finite())
+                        || !self.world_bounds.contains_point(point.position)
+                    {
+                        return None;
+                    }
                 }
-                (patch_node(id, patch.clone()), patch_node(id, moved))
+                Some((patch_node(id, patch.clone()), patch_node(id, moved)))
             })
             .collect()
     }
@@ -219,6 +230,13 @@ impl Document {
     /// Returns whether it was applied. A transform that would leave any selected brush
     /// invalid is refused in full, so the selection cannot end up half transformed.
     pub fn transform_selection(&mut self, transform: &Mat4x4d) -> bool {
+        if !transform
+            .v
+            .iter()
+            .all(|column| column.v.iter().all(|n| n.is_finite()))
+        {
+            return false;
+        }
         // An entity node carries its own brushes, so putting one back puts back the
         // brushes it had. It goes in before them, so that a brush changed by the same
         // edit is the one that lands.
@@ -238,7 +256,10 @@ impl Document {
         };
         self.push_brush_changes(transformed, &mut before, &mut after);
 
-        for (was, is) in self.transformed_patches(transform) {
+        let Some(patches) = self.transformed_patches(transform) else {
+            return false;
+        };
+        for (was, is) in patches {
             before.push(was);
             after.push(is);
         }

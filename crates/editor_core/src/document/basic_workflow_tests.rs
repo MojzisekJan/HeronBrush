@@ -1097,3 +1097,193 @@ fn audit_combined_document_edit_undoes_once_at_history_capacity() {
     d.redo().unwrap();
     assert_eq!(d.to_map_text(), after);
 }
+
+fn next_audit_patch() -> map_model::io::map_reader::Patch {
+    use map_model::io::map_reader::{Patch, PatchControlPoint};
+    Patch {
+        material_name: "stone".into(),
+        rows: 3,
+        columns: 3,
+        control_points: (0..9)
+            .map(|i| PatchControlPoint {
+                position: Vec3d::new(14.0 + (i % 3) as f64, (i / 3) as f64, 0.0),
+                uv: geometry_math::vec::Vec2f::zero(),
+            })
+            .collect(),
+        id: None,
+        line: 0,
+    }
+}
+fn next_audit_patch_document() -> Document {
+    let d = Document::new(crate::world::WorldBounds::new(16.0));
+    let mut world = d.tree_world().clone();
+    let brush = map_model::shapes::create_cuboid(
+        &d.world_bounds(),
+        &Bbox3d::from_scalars(0.0, 2.0),
+        "stone",
+    )
+    .unwrap();
+    world.layers[0].children = vec![
+        Node::new(NodeKind::Brush(brush)),
+        Node::new(NodeKind::Patch(next_audit_patch())),
+    ];
+    let mut d = Document::from_world(
+        world,
+        crate::world::WorldBounds::new(16.0),
+        map_model::map_format::MapFormat::Valve,
+        None,
+    );
+    d.select_all();
+    d
+}
+
+#[test]
+fn next_audit_hidden_and_locked_layers_drop_patches_from_selection() {
+    for locked in [false, true] {
+        let mut d = next_audit_patch_document();
+        assert_eq!(d.selection_count(), 2);
+        if locked {
+            assert!(d.set_layer_locked(0, true));
+        } else {
+            assert!(d.set_layer_hidden(0, true));
+        }
+        assert_eq!(d.selection_count(), 0);
+        let before = d.to_map_text();
+        assert_eq!(
+            d.resize_selected_patches(map_model::patch_edit::add_rows),
+            0
+        );
+        assert!(!d.translate_selection(Vec3d::new(-1.0, 0.0, 0.0)));
+        assert_eq!(d.to_map_text(), before);
+    }
+}
+
+#[test]
+fn next_audit_invalid_patch_transforms_are_atomic_and_valid_moves_undo() {
+    let mut d = next_audit_patch_document();
+    let before = d.to_map_text();
+    let revision = d.revision();
+    let undo = d.history.undo_len();
+    // The brush can move right; only the patch at the boundary would leave the world.
+    assert!(!d.translate_selection(Vec3d::new(1.0, 0.0, 0.0)));
+    assert!(!d.translate_selection(Vec3d::new(f64::NAN, 0.0, 0.0)));
+    assert!(
+        !d.transform_selection(&geometry_math::mat_ext::translation_matrix(Vec3d::new(
+            1.0, 0.0, 0.0
+        )))
+    );
+    let mut invalid = Mat4x4d::identity();
+    invalid.v[0].v[0] = f64::INFINITY;
+    assert!(!d.transform_selection(&invalid));
+    assert_eq!(d.to_map_text(), before);
+    assert_eq!(d.revision(), revision);
+    assert_eq!(d.history.undo_len(), undo);
+    let patch = node::patches_by_layer(d.tree_world())[0].0;
+    d.select_only(patch);
+    assert!(
+        !d.transform_selection(&geometry_math::mat_ext::scaling_matrix(Vec3d::new(
+            f64::MAX,
+            1.0,
+            1.0
+        )))
+    );
+    assert_eq!(d.to_map_text(), before);
+    d.select_all();
+    assert!(d.translate_selection(Vec3d::new(-4.0, 0.0, 0.0)));
+    let after = d.to_map_text();
+    assert_ne!(after, before);
+    assert!(crate::collab::wire::WireWorld::from_world(d.tree_world())
+        .into_world(&d.world_bounds())
+        .is_ok());
+    d.undo().unwrap();
+    assert_eq!(d.to_map_text(), before);
+    d.redo().unwrap();
+    assert_eq!(d.to_map_text(), after);
+}
+
+fn next_audit_clipboard_document() -> (Document, NodeId) {
+    let d = Document::new(Default::default());
+    let mut world = d.tree_world().clone();
+    let brush = map_model::shapes::create_cuboid(
+        &d.world_bounds(),
+        &Bbox3d::from_scalars(0.0, 8.0),
+        "stone",
+    )
+    .unwrap();
+    let child = Node::new(NodeKind::Brush(brush.clone()));
+    let child_id = child.id;
+    let entity = Node::new(NodeKind::Entity(node::EntityNode {
+        properties: vec![
+            ("classname".into(), "func_door".into()),
+            ("targetname".into(), "door_a".into()),
+        ],
+        children: vec![child, Node::new(NodeKind::Brush(brush.clone()))],
+    }));
+    let point = Node::new(NodeKind::Entity(node::EntityNode {
+        properties: vec![
+            ("classname".into(), "light".into()),
+            ("origin".into(), "1 2 3".into()),
+        ],
+        children: vec![],
+    }));
+    world.layers[0].children = vec![Node::new(NodeKind::Group(Group {
+        id: "clipboard-group".into(),
+        name: "Clipboard".into(),
+        linked_group_id: None,
+        transformation: None,
+        children: vec![
+            entity,
+            Node::new(NodeKind::Brush(brush)),
+            Node::new(NodeKind::Patch(next_audit_patch())),
+            point,
+        ],
+    }))];
+    let mut d = Document::from_world(
+        world,
+        Default::default(),
+        map_model::map_format::MapFormat::Valve,
+        None,
+    );
+    d.select_only(child_id);
+    (d, child_id)
+}
+
+#[test]
+fn next_audit_copy_and_cut_grouped_entities_do_not_duplicate_their_contents() {
+    let (mut d, _) = next_audit_clipboard_document();
+    let before = d.to_map_text();
+    let text = d.cut_selection().unwrap();
+    assert_eq!(d.brush_count(), 0);
+    let mut pasted = Document::new(Default::default());
+    assert!(pasted.paste_at(&text, None) > 0);
+    assert_eq!(pasted.brush_count(), 3);
+    assert_eq!(node::patches_by_layer(pasted.tree_world()).len(), 1);
+    let entities = node::entities_with_ids(pasted.tree_world());
+    assert_eq!(entities.len(), 2);
+    let door = entities
+        .iter()
+        .find(|(_, e)| e.classname() == Some("func_door"))
+        .unwrap()
+        .1;
+    assert_eq!(door.property("targetname"), Some("door_a"));
+    assert_eq!(door.children.len(), 2);
+    d.undo().unwrap();
+    assert_eq!(d.to_map_text(), before);
+}
+
+#[test]
+fn next_audit_copy_partial_brush_entity_preserves_properties_and_only_selected_children() {
+    let (mut d, child) = next_audit_clipboard_document();
+    assert!(d.open_selected_group());
+    d.select_only(child);
+    assert_eq!(d.selection_count(), 1);
+    let text = d.copy_selection().unwrap();
+    let mut pasted = Document::new(Default::default());
+    assert!(pasted.paste_at(&text, None) > 0);
+    assert_eq!(pasted.brush_count(), 1);
+    let entities = node::entities_with_ids(pasted.tree_world());
+    assert_eq!(entities.len(), 1);
+    assert_eq!(entities[0].1.classname(), Some("func_door"));
+    assert_eq!(entities[0].1.property("targetname"), Some("door_a"));
+    assert_eq!(entities[0].1.children.len(), 1);
+}

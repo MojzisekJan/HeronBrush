@@ -186,17 +186,12 @@ impl Document {
 
     /// Drops everything on the given layer from the selection.
     fn deselect_layer(&mut self, index: usize) {
-        let on_layer: HashSet<NodeId> = node::brushes_by_layer(&self.tree.world)
-            .into_iter()
-            .filter(|(_, _, layer)| *layer == index)
-            .map(|(id, _, _)| id)
-            .chain(
-                node::point_entities_by_layer(&self.tree.world)
-                    .into_iter()
-                    .filter(|(_, _, layer)| *layer == index)
-                    .map(|(id, _, _)| id),
-            )
-            .collect();
+        let mut on_layer = HashSet::new();
+        if let Some(layer) = self.tree.world.layers.get(index) {
+            for root in &layer.children {
+                super::add_ids_under(root, &mut on_layer);
+            }
+        }
         self.selection.retain(|id| !on_layer.contains(id));
         self.face_selection
             .retain(|face| !on_layer.contains(&face.node));
