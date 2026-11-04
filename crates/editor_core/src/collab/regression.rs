@@ -222,3 +222,70 @@ fn stationary_cameras_reach_late_joiners_and_disappear_on_departure() {
     assert!(!host.cameras.borrow().contains_key(&1));
     assert_eq!(b.peer_name(1), "Peer 1");
 }
+
+#[test]
+fn guest_layer_add_remove_and_undo_echo_preserve_other_layer_geometry() {
+    let (host, guest) = pair();
+    let host = Rc::new(host);
+    let guest = Rc::new(guest);
+    let mut seed = Document::new(Default::default());
+    seed.add_layer("A");
+    add(&mut seed);
+    seed.add_layer("B");
+    add(&mut seed);
+    let mut h = wired(host.clone(), seed.tree_world());
+    let mut g = wired(guest.clone(), seed.tree_world());
+    g.add_layer("C");
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert_eq!(g.layers().len(), 4);
+    assert_eq!(h.to_map_text(), g.to_map_text());
+    g.undo();
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert_eq!(g.layers().len(), 3);
+    assert_eq!(h.to_map_text(), g.to_map_text());
+    g.redo();
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert_eq!(g.layers().len(), 4);
+    assert_eq!(h.to_map_text(), g.to_map_text());
+    let before = g.to_map_text();
+    assert!(g.remove_layer(1));
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert_eq!(g.layers().len(), 3);
+    assert_eq!(g.brush_count(), 2);
+    assert_eq!(h.to_map_text(), g.to_map_text());
+    g.undo();
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert_eq!(g.to_map_text(), before);
+    assert_eq!(h.to_map_text(), g.to_map_text());
+    g.redo();
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert_eq!(g.brush_count(), 2);
+    assert_eq!(h.to_map_text(), g.to_map_text());
+}
+
+#[test]
+fn concurrent_layer_insertions_reconcile_order_and_keep_optimistic_contents() {
+    let (host, first) = pair();
+    let (joined, second) = pair();
+    host.add_peer(joined);
+    let host = Rc::new(host);
+    let first = Rc::new(first);
+    let second = Rc::new(second);
+    let seed = Document::new(Default::default());
+    let mut h = wired(host.clone(), seed.tree_world());
+    let mut a = wired(first.clone(), seed.tree_world());
+    let mut b = wired(second.clone(), seed.tree_world());
+    a.add_layer("A");
+    add(&mut a);
+    b.add_layer("B");
+    add(&mut b);
+    pump(&mut [(&host, &mut h), (&first, &mut a), (&second, &mut b)]);
+    assert_eq!(h.layers().len(), 3);
+    assert_eq!(h.brush_count(), 2);
+    assert_eq!(h.to_map_text(), a.to_map_text());
+    assert_eq!(h.to_map_text(), b.to_map_text());
+    a.rename_layer(1, "renamed");
+    pump(&mut [(&host, &mut h), (&first, &mut a), (&second, &mut b)]);
+    assert_eq!(h.to_map_text(), a.to_map_text());
+    assert_eq!(h.to_map_text(), b.to_map_text());
+}

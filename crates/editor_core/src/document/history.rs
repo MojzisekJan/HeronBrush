@@ -670,6 +670,59 @@ impl Document {
                 }
                 self.insert_nodes(*layer, nodes);
             }
+            Edit::LayerInserted { index, layer } => {
+                let Some(id) = &layer.id else {
+                    return;
+                };
+                let active = self
+                    .tree
+                    .world
+                    .layers
+                    .get(self.current_layer())
+                    .and_then(|l| l.id.clone());
+                // Echoes reconcile order but keep newer contents already present locally.
+                let existing = self
+                    .tree
+                    .world
+                    .layers
+                    .iter()
+                    .position(|l| l.id.as_ref() == Some(id));
+                let layer = match existing {
+                    Some(at) => self.tree.world.layers.remove(at),
+                    None => layer.clone(),
+                };
+                let at = (*index).clamp(1, self.tree.world.layers.len());
+                self.tree.world.layers.insert(at, layer);
+                self.restore_remote_active_layer(active);
+            }
+            Edit::LayerRemoved { layer, .. } => {
+                let Some(id) = &layer.id else {
+                    return;
+                };
+                let active = self
+                    .tree
+                    .world
+                    .layers
+                    .get(self.current_layer())
+                    .and_then(|l| l.id.clone());
+                if let Some(at) = self
+                    .tree
+                    .world
+                    .layers
+                    .iter()
+                    .position(|l| l.id.as_ref() == Some(id))
+                {
+                    if at > 0 {
+                        self.tree.world.layers.remove(at);
+                    }
+                }
+                self.restore_remote_active_layer(active);
+            }
+            Edit::LayerChanged { after, .. } => {
+                if let Some(layer) = self.tree.world.layers.iter_mut().find(|l| l.id == after.id) {
+                    layer.name = after.name.clone();
+                }
+            }
             Edit::Batch(parts) => {
                 for part in parts {
                     self.apply_remote_parts(part);
@@ -677,6 +730,16 @@ impl Document {
             }
             _ => self.apply_parts(edit),
         }
+    }
+
+    fn restore_remote_active_layer(&mut self, id: Option<String>) {
+        self.current_layer = self
+            .tree
+            .world
+            .layers
+            .iter()
+            .position(|layer| layer.id == id)
+            .unwrap_or(0);
     }
 
     /// Returns what to call when the document changes, so a newly opened document can
