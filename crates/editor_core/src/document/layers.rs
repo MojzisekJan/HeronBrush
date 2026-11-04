@@ -67,7 +67,7 @@ impl Document {
             .map(|layer| layer.sort_index)
             .max()
             .unwrap_or(0)
-            + 1;
+            .saturating_add(1);
         let layer = map_model::node::Layer {
             // A `_tb_id` distinguishes this layer from the worldspawn when it is written.
             id: Some(self.fresh_id()),
@@ -544,5 +544,30 @@ mod tests {
             "back inside its group"
         );
         assert_eq!(layer_of(&d, grouped), Some(0));
+    }
+    #[test]
+    fn adding_layer_at_max_sort_index_preserves_order_through_save_and_undo() {
+        let mut d = Document::new(Default::default());
+        let index = d.add_layer("old");
+        d.tree.world.layers[index].sort_index = i32::MAX;
+        let before = d.to_map_text();
+        let index = d.add_layer("new");
+        assert_eq!(index, 2);
+        assert_eq!(d.tree.world.layers[index].sort_index, i32::MAX);
+        let map = map_model::io::map_reader::read_map(&d.to_map_text(), None).unwrap();
+        let restored = node::build_tree(&map, &d.world_bounds());
+        assert_eq!(
+            restored
+                .world
+                .layers
+                .iter()
+                .map(|l| l.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Default Layer", "old", "new"]
+        );
+        d.undo();
+        assert_eq!(d.to_map_text(), before);
+        d.redo();
+        assert_eq!(d.layers().len(), 3);
     }
 }
