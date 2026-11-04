@@ -100,6 +100,14 @@ impl Autosaver {
 
 /// Writes one backup and rotates the folder around it.
 fn autosave(document: &Document, map_path: &Path, max_backups: usize) -> std::io::Result<PathBuf> {
+    autosave_with(map_path, max_backups, |path| document.save_copy_to(path))
+}
+
+fn autosave_with(
+    map_path: &Path,
+    max_backups: usize,
+    write: impl FnOnce(&Path) -> std::io::Result<()>,
+) -> std::io::Result<PathBuf> {
     let dir = map_path
         .parent()
         .unwrap_or_else(|| Path::new("."))
@@ -112,12 +120,25 @@ fn autosave(document: &Document, map_path: &Path, max_backups: usize) -> std::io
         .unwrap_or("map");
 
     let mut backups = collect_backups(&dir, basename)?;
-    thin_backups(&mut backups, max_backups)?;
+    let last = backups
+        .last()
+        .and_then(|path| path.file_name())
+        .and_then(|name| name.to_str())
+        .and_then(|name| backup_number(name, basename))
+        .unwrap_or(0);
+    let next = last
+        .checked_add(1)
+        .ok_or_else(|| std::io::Error::other("backup number overflow"))?;
+    let path = dir.join(backup_name(basename, next));
+    // Preserve every known-good backup until the replacement is fully written.
+    write(&path)?;
+    backups.push(path);
+    thin_backups(&mut backups, max_backups.max(1))?;
     clean_backups(&dir, basename, &mut backups)?;
-
-    let path = dir.join(backup_name(basename, backups.len() + 1));
-    document.save_copy_to(&path)?;
-    Ok(path)
+    Ok(backups
+        .last()
+        .expect("at least the new backup remains")
+        .clone())
 }
 
 /// The name of the `index`th backup: `<basename>.<index>.map`.
@@ -159,15 +180,15 @@ fn collect_backups(dir: &Path, basename: &str) -> std::io::Result<Vec<PathBuf>> 
     Ok(found.into_iter().map(|(_, path)| path).collect())
 }
 
-/// Deletes the oldest backups until there is room for one more.
+/// Deletes the oldest backups after the new backup is safely on disk.
 ///
-/// `thinBackups`: with the folder already full, this drops enough from the front that
-/// adding the new backup lands back on the limit.
+/// The input includes the newly written backup, so cleanup never sacrifices a good
+/// copy to make room for a write that could fail.
 fn thin_backups(backups: &mut Vec<PathBuf>, max_backups: usize) -> std::io::Result<()> {
-    if backups.len() < max_backups {
+    if backups.len() <= max_backups {
         return Ok(());
     }
-    let surplus = backups.len() - max_backups + 1;
+    let surplus = backups.len() - max_backups;
     for path in backups.drain(..surplus) {
         crate::files::remove_file(&path)?;
     }
@@ -197,6 +218,41 @@ mod tests {
     use geometry_math::bbox::Bbox3d;
     use geometry_math::vec::Vec3d;
     use std::fs;
+
+    #[test]
+    fn next_audit_failed_backup_write_preserves_every_existing_backup() {
+        let dir = scratch("failure-preserves");
+        let backups = dir.join("autosave");
+        fs::create_dir_all(&backups).unwrap();
+        fs::write(backups.join("test.1.map"), b"one").unwrap();
+        fs::write(backups.join("test.3.map"), b"three").unwrap();
+        let result = autosave_with(&dir.join("test.map"), 1, |path| {
+            assert_eq!(path, backups.join("test.4.map"));
+            assert_eq!(fs::read(backups.join("test.1.map")).unwrap(), b"one");
+            assert_eq!(fs::read(backups.join("test.3.map")).unwrap(), b"three");
+            Err(std::io::Error::other("simulated write failure"))
+        });
+        assert!(result.is_err());
+        assert_eq!(fs::read_dir(&backups).unwrap().count(), 2);
+        assert_eq!(fs::read(backups.join("test.1.map")).unwrap(), b"one");
+        assert_eq!(fs::read(backups.join("test.3.map")).unwrap(), b"three");
+    }
+
+    #[test]
+    fn next_audit_single_backup_is_replaced_only_after_successful_write() {
+        let dir = scratch("single-rotation");
+        let (mut document, mut saver) = saved_document(&dir, 1);
+        add_cube(&mut document, -16.0, 16.0);
+        let first = saver.trigger(&document).unwrap();
+        let original = fs::read(&first).unwrap();
+        add_cube(&mut document, 0.0, 32.0);
+        let second = saver.trigger(&document).unwrap();
+        assert_eq!(first, second);
+        assert_ne!(fs::read(&second).unwrap(), original);
+        assert_eq!(fs::read_dir(dir.join("autosave")).unwrap().count(), 1);
+        let restored = Document::open(second, WorldBounds::default()).unwrap();
+        assert_eq!(restored.brush_count(), 2);
+    }
 
     fn scratch(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("heron-autosave-{name}"));
