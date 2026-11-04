@@ -1054,3 +1054,67 @@ fn doom3_native_writer_round_trips_local_planes_pending_uv_and_literal_strings()
             .contains("strings")
     );
 }
+
+fn next_audit_patch_source(dimensions: &str, grid: &str) -> String {
+    r#"{
+"classname" "worldspawn"
+{
+patchDef2
+{
+stone
+( DIMENSIONS 0 0 0 )
+(
+GRID
+)
+}
+}
+}
+"#
+    .replace("DIMENSIONS", dimensions)
+    .replace("GRID", grid)
+}
+
+#[test]
+fn next_audit_patch_dimensions_return_errors_without_panicking_or_large_allocations() {
+    for dimensions in [
+        "99999999999999999999 3",
+        "-1 3",
+        "0 3",
+        "1 3",
+        "2 3",
+        "4 3",
+        "3.5 3",
+        "3 4",
+        "99999999999999999 99999999999999999",
+        "501 501",
+    ] {
+        let source = next_audit_patch_source(dimensions, "");
+        let result = std::panic::catch_unwind(|| read_map(&source, None));
+        assert!(result.is_ok(), "parser panicked for {dimensions}");
+        assert!(result.unwrap().is_err(), "accepted {dimensions}");
+    }
+}
+
+#[test]
+fn next_audit_patch_grids_keep_valid_dimensions_and_reject_nonfinite_uvs() {
+    let mut grid = String::new();
+    for column in 0..5 {
+        grid.push_str("( ");
+        for row in 0..3 {
+            grid.push_str(&format!("( {column} {row} 0 0 0 ) "));
+        }
+        grid.push_str(")\n");
+    }
+    let source = next_audit_patch_source("5 3", &grid);
+    let map = read_map(&source, None).unwrap();
+    let patch = &map.entities[0].patches[0];
+    assert_eq!(
+        (patch.columns, patch.rows, patch.control_points.len()),
+        (5, 3, 15)
+    );
+    let restored = read_map(&write_map(&map), None).unwrap();
+    assert_eq!(restored.entities[0].patches[0], *patch);
+    let invalid = source.replacen("( 0 0 0 0 0 )", "( 0 0 0 1e100 0 )", 1);
+    assert_ne!(source, invalid);
+    assert!(read_map(&invalid, None).is_err());
+}

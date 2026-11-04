@@ -360,6 +360,7 @@ impl<'a> TokenCursor<'a> {
 }
 
 struct Reader<'a> {
+    source_len: usize,
     tokens: std::cell::RefCell<TokenCursor<'a>>,
     format: Option<MapFormat>,
     game: Option<String>,
@@ -389,6 +390,7 @@ type FaceNotes = (
 impl<'a> Reader<'a> {
     fn new(source: &'a str, format: Option<MapFormat>, literal_strings: bool) -> Self {
         Self {
+            source_len: source.len(),
             tokens: std::cell::RefCell::new(TokenCursor {
                 lexer: Tokenizer::new(source).with_literal_strings(literal_strings),
                 pending: std::collections::VecDeque::with_capacity(3),
@@ -1268,6 +1270,19 @@ impl<'a> Reader<'a> {
         Ok(Some(Box::new(lighting)))
     }
 
+    fn read_patch_dimension(&mut self) -> Result<usize, ReadError> {
+        let value = self.expect_number()?;
+        if !value.is_finite()
+            || value < 3.0
+            || value.fract() != 0.0
+            || value >= usize::MAX as f64
+            || (value as usize) % 2 == 0
+        {
+            return self.error("patch grid dimensions must be odd integers of at least 3");
+        }
+        Ok(value as usize)
+    }
+
     /// Reads a `patchDef2` or `patchDef3` body.
     ///
     /// The dimensions line is `( width height contents flags value )`, with `patchDef3`
@@ -1278,8 +1293,16 @@ impl<'a> Reader<'a> {
         let material_name = self.expect_material_name()?.to_string();
 
         self.expect(&Token::OpenParen)?;
-        let columns = self.expect_number()? as usize;
-        let rows = self.expect_number()? as usize;
+        let columns = self.read_patch_dimension()?;
+        let rows = self.read_patch_dimension()?;
+        let Some(points) = rows.checked_mul(columns) else {
+            return self.error("patch grid dimensions overflow");
+        };
+        // Each written control point needs several bytes. Even this loose bound
+        // prevents a short malformed header from requesting an enormous allocation.
+        if points > self.source_len {
+            return self.error("patch grid is too large for the input");
+        }
         if has_subdivisions {
             // The horizontal and vertical subdivision counts.
             self.expect_number()?;
@@ -1306,6 +1329,9 @@ impl<'a> Reader<'a> {
                 let u = self.expect_number()? as f32;
                 let v = self.expect_number()? as f32;
                 self.expect(&Token::CloseParen)?;
+                if ![x, y, z].iter().all(|n| n.is_finite()) || !u.is_finite() || !v.is_finite() {
+                    return self.error("patch control points and UVs must be finite");
+                }
                 column.push(PatchControlPoint {
                     position: Vec3d::new(x, y, z),
                     uv: Vec2f::new(u, v),
