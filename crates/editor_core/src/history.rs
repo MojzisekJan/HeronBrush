@@ -42,6 +42,19 @@ fn weigh(nodes: &[Node]) -> usize {
     nodes.iter().map(weigh_node).sum()
 }
 
+fn properties_weight(properties: &[(String, String)]) -> usize {
+    std::mem::size_of_val(properties)
+        + properties
+            .iter()
+            .map(|(k, v)| k.capacity() + v.capacity())
+            .sum::<usize>()
+}
+fn layer_weight(layer: &Layer) -> usize {
+    layer.id.as_ref().map_or(0, String::capacity)
+        + layer.name.capacity()
+        + layer.color.as_ref().map_or(0, String::capacity)
+        + weigh(&layer.children)
+}
 fn weigh_node(node: &Node) -> usize {
     let inside = match &node.kind {
         NodeKind::Brush(brush) => {
@@ -51,11 +64,35 @@ fn weigh_node(node: &Node) -> usize {
                 + std::mem::size_of_val(geometry.half_edges())
                 + std::mem::size_of_val(geometry.edges())
                 + std::mem::size_of_val(geometry.faces())
+                + brush
+                    .faces()
+                    .iter()
+                    .map(|face| {
+                        face.material_name.len()
+                            + face.color.as_deref().map_or(0, std::mem::size_of_val)
+                            + face
+                                .primitive_uv
+                                .as_deref()
+                                .map_or(0, std::mem::size_of_val)
+                            + face
+                                .heretic2_lighting
+                                .as_deref()
+                                .map_or(0, std::mem::size_of_val)
+                    })
+                    .sum::<usize>()
         }
-        NodeKind::Group(group) => weigh(&group.children),
-        NodeKind::Entity(entity) => weigh(&entity.children),
-        NodeKind::Layer(layer) => weigh(&layer.children),
-        NodeKind::Patch(patch) => std::mem::size_of_val(patch.control_points.as_slice()),
+        NodeKind::Group(group) => {
+            weigh(&group.children)
+                + group.id.capacity()
+                + group.name.capacity()
+                + group.linked_group_id.as_ref().map_or(0, String::capacity)
+                + group.transformation.as_ref().map_or(0, String::capacity)
+        }
+        NodeKind::Entity(entity) => weigh(&entity.children) + properties_weight(&entity.properties),
+        NodeKind::Layer(layer) => layer_weight(layer),
+        NodeKind::Patch(patch) => {
+            std::mem::size_of_val(patch.control_points.as_slice()) + patch.material_name.capacity()
+        }
     };
     std::mem::size_of::<Node>() + inside
 }
@@ -143,14 +180,14 @@ impl Edit {
                 (before.len() + after.len()) * std::mem::size_of::<NodeId>()
             }
             Edit::LayerInserted { layer, .. } | Edit::LayerRemoved { layer, .. } => {
-                weigh(&layer.children) + std::mem::size_of::<Layer>()
+                layer_weight(layer) + std::mem::size_of::<Layer>()
             }
-            Edit::LayerChanged { .. } => 2 * std::mem::size_of::<Layer>(),
-            Edit::WorldChanged { before, after } => before
-                .iter()
-                .chain(after)
-                .map(|(key, value)| key.len() + value.len())
-                .sum(),
+            Edit::LayerChanged { before, after, .. } => {
+                2 * std::mem::size_of::<Layer>() + layer_weight(before) + layer_weight(after)
+            }
+            Edit::WorldChanged { before, after } => {
+                properties_weight(before) + properties_weight(after)
+            }
             Edit::Batch(parts) => parts.iter().map(Edit::weight).sum(),
         }
     }
@@ -665,5 +702,24 @@ mod tests {
             .description(),
             "add 0 objects"
         );
+    }
+    #[test]
+    fn entity_property_payload_counts_towards_history_budget() {
+        let node = Node::new(NodeKind::Entity(map_model::node::EntityNode {
+            properties: vec![("payload".into(), "x".repeat(4096))],
+            children: vec![],
+        }));
+        let edit = Edit::Changed {
+            before: vec![node.clone()],
+            after: vec![node],
+        };
+        assert!(edit.weight() >= 8192);
+        let mut history = History {
+            budget: edit.weight() + 1,
+            ..History::new()
+        };
+        history.record(edit.clone());
+        history.record(edit);
+        assert_eq!(history.undo.len(), 1);
     }
 }
