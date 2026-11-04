@@ -23,6 +23,8 @@ pub enum WireError {
     Json(String),
     /// A brush's faces did not rebuild into a solid.
     Brush(String),
+    /// A patch has an invalid grid, coordinates or world bounds.
+    Patch(String),
 }
 
 impl std::fmt::Display for WireError {
@@ -30,6 +32,7 @@ impl std::fmt::Display for WireError {
         match self {
             WireError::Json(m) => write!(f, "bad edit: {m}"),
             WireError::Brush(m) => write!(f, "a brush in the edit does not rebuild: {m}"),
+            WireError::Patch(m) => write!(f, "invalid patch: {m}"),
         }
     }
 }
@@ -140,13 +143,43 @@ impl WireNode {
             WireKind::Brush { faces } => NodeKind::Brush(
                 Brush::from_faces(bounds, faces).map_err(|e| WireError::Brush(format!("{e:?}")))?,
             ),
-            WireKind::Patch(patch) => NodeKind::Patch(patch),
+            WireKind::Patch(patch) => {
+                validate_patch(&patch, bounds)?;
+                NodeKind::Patch(patch)
+            }
         };
         Ok(Node {
             id: NodeId(self.id),
             kind,
         })
     }
+}
+
+fn validate_patch(patch: &Patch, bounds: &Bbox3d) -> Result<(), WireError> {
+    if patch.rows < 3 || patch.columns < 3 || patch.rows % 2 == 0 || patch.columns % 2 == 0 {
+        return Err(WireError::Patch(
+            "grid dimensions must be odd and at least 3".into(),
+        ));
+    }
+    let count = patch
+        .rows
+        .checked_mul(patch.columns)
+        .ok_or_else(|| WireError::Patch("grid dimensions overflow".into()))?;
+    if patch.control_points.len() != count {
+        return Err(WireError::Patch(
+            "control point count does not match the grid".into(),
+        ));
+    }
+    if patch.control_points.iter().any(|point| {
+        !point.position.v.iter().all(|n| n.is_finite())
+            || !point.uv.v.iter().all(|n| n.is_finite())
+            || !bounds.contains_point(point.position)
+    }) {
+        return Err(WireError::Patch(
+            "control points must be finite and inside world bounds".into(),
+        ));
+    }
+    Ok(())
 }
 
 fn into_nodes(wire: Vec<WireNode>, bounds: &Bbox3d) -> Result<Vec<Node>, WireError> {
@@ -464,6 +497,78 @@ mod tests {
     use super::*;
     use map_model::io::map_reader::read_map;
     use map_model::node::{build_tree, World};
+
+    fn valid_patch() -> Patch {
+        use geometry_math::vec::{Vec2f, Vec3d};
+        Patch {
+            material_name: "stone".into(),
+            rows: 3,
+            columns: 3,
+            control_points: (0..9)
+                .map(|i| map_model::io::map_reader::PatchControlPoint {
+                    position: Vec3d::new((i % 3) as f64, (i / 3) as f64, 0.0),
+                    uv: Vec2f::zero(),
+                })
+                .collect(),
+            id: Some(42),
+            line: 0,
+        }
+    }
+
+    #[test]
+    fn patch_wire_rejects_invalid_grids_coordinates_and_world_bounds() {
+        let good = valid_patch();
+        let mut bad = Vec::new();
+        for (rows, columns) in [(0, 3), (1, 3), (4, 3), (3, 4), (usize::MAX, usize::MAX)] {
+            let mut patch = good.clone();
+            patch.rows = rows;
+            patch.columns = columns;
+            bad.push(patch);
+        }
+        let mut patch = good.clone();
+        patch.control_points.pop();
+        bad.push(patch);
+        let mut patch = good.clone();
+        patch.control_points.push(patch.control_points[0]);
+        bad.push(patch);
+        let mut patch = good.clone();
+        patch.control_points[0].position.v[0] = f64::NAN;
+        bad.push(patch);
+        let mut patch = good.clone();
+        patch.control_points[0].uv.v[0] = f32::INFINITY;
+        bad.push(patch);
+        let mut patch = good.clone();
+        patch.control_points[0].position.v[0] = bounds().max.x() + 1.0;
+        bad.push(patch);
+        for patch in bad {
+            let node = Node::new(NodeKind::Patch(patch));
+            let edit = Edit::Added {
+                layer: 0,
+                nodes: vec![node.clone()],
+            };
+            assert!(matches!(
+                WireEdit::from_edit(&edit).into_edit(&bounds()),
+                Err(WireError::Patch(_))
+            ));
+            let mut world = a_world();
+            world.layers[0].children = vec![node];
+            assert!(matches!(
+                WireWorld::from_world(&world).into_world(&bounds()),
+                Err(WireError::Patch(_))
+            ));
+        }
+        let patch = valid_patch();
+        let node = Node::new(NodeKind::Patch(patch.clone()));
+        let wire = WireNode::from_node(&node);
+        let encoded = serde_json::to_string(&wire).unwrap();
+        let wire: WireNode = serde_json::from_str(&encoded).unwrap();
+        let restored = wire.into_node(&bounds()).unwrap();
+        assert_eq!(restored.id, node.id);
+        let NodeKind::Patch(back) = restored.kind else {
+            panic!("patch")
+        };
+        assert_eq!(back, patch);
+    }
 
     fn bounds() -> Bbox3d {
         Bbox3d::from_scalars(-16384.0, 16384.0)
