@@ -224,17 +224,14 @@ pub fn translation_of<T: Float>(matrix: &Matrix<T, 4, 4>) -> Option<Vector<T, 3>
     let identity: Matrix<T, 4, 4> = Matrix::identity();
     for column in 0..3 {
         for row in 0..4 {
-            if !scalar::is_equal(
-                matrix.v[column].v[row],
-                identity.v[column].v[row],
-                T::ALMOST_ZERO,
-            ) {
+            // This shortcut must be exact: even a tiny scale changes the solid.
+            if matrix.v[column].v[row] != identity.v[column].v[row] {
                 return None;
             }
         }
     }
     // The last column is the translation, and its w must still be 1.
-    if !scalar::is_equal(matrix.v[3].v[3], T::ONE, T::ALMOST_ZERO) {
+    if matrix.v[3].v[3] != T::ONE {
         return None;
     }
     Some(Vector::<T, 3>::new(

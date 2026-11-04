@@ -1797,3 +1797,27 @@ mod bevel_tests {
             .any(|piece| piece.contains_point(Vec3d::new(0.0, 0.0, 24.0))));
     }
 }
+
+#[cfg(test)]
+mod small_transform_tests {
+    use super::*;
+    #[test]
+    fn near_identity_scale_keeps_hull_vertices_and_face_planes_consistent() {
+        let world = Bbox3d::from_scalars(-4096., 4096.);
+        let brush = crate::shapes::create_cuboid(&world, &Bbox3d::from_scalars(-64., 64.), "stone")
+            .unwrap();
+        let matrix = mat_ext::translation_matrix(Vec3d::new(13., 7., -19.))
+            * mat_ext::scaling_matrix(Vec3d::new(1.0001, 0.9999, 1.));
+        let moved = brush.transform(&world, &matrix).unwrap();
+        let size = moved.bounds().max - moved.bounds().min;
+        assert!((size.x() - 128.0128).abs() < 1e-8);
+        assert!((size.y() - 127.9872).abs() < 1e-8);
+        for vertex in moved.geometry().vertices() {
+            assert!(moved.faces().iter().all(|f| geometry_math::vec::dot(
+                f.plane.normal,
+                vertex.position
+            ) - f.plane.distance
+                < 1e-7));
+        }
+    }
+}
