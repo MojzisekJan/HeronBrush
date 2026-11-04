@@ -55,6 +55,54 @@ pub fn write(path: &Path, contents: impl AsRef<[u8]>) -> io::Result<()> {
     std::fs::write(path, contents)
 }
 
+/// Replaces a file only after the complete new contents have been written and synced.
+/// Native saves stage a file in the same directory, preserving existing permissions
+/// and following an existing symlink. Virtual files replace their immutable snapshot.
+pub fn write_atomic(path: &Path, contents: impl AsRef<[u8]>) -> io::Result<()> {
+    #[cfg(target_arch = "wasm32")]
+    return web::write(path, contents.as_ref());
+    #[cfg(not(target_arch = "wasm32"))]
+    return write_atomic_with(path, |file| {
+        use std::io::Write;
+        file.write_all(contents.as_ref())
+    });
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn write_atomic_with(
+    path: &Path,
+    write: impl FnOnce(&mut std::fs::File) -> io::Result<()>,
+) -> io::Result<()> {
+    let target = match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => std::fs::canonicalize(path)?,
+        _ => path.to_path_buf(),
+    };
+    let parent = target
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let mut staged = tempfile::Builder::new()
+        .prefix(".heron-save-")
+        .tempfile_in(parent)?;
+    match std::fs::metadata(&target) {
+        Ok(metadata) => {
+            if metadata.permissions().readonly() {
+                return Err(io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "target file is read-only",
+                ));
+            }
+            staged.as_file().set_permissions(metadata.permissions())?;
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error),
+    }
+    write(staged.as_file_mut())?;
+    staged.as_file().sync_all()?;
+    staged.persist(&target).map_err(|error| error.error)?;
+    Ok(())
+}
+
 /// Whether `path` is a file that can be read.
 pub fn is_file(path: &Path) -> bool {
     #[cfg(target_arch = "wasm32")]
@@ -351,5 +399,76 @@ mod web {
             assert_eq!(deletions, 1);
             assert_eq!(read(Path::new("/image.png")).unwrap().len(), 1024);
         }
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod atomic_tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn failed_atomic_write_preserves_the_original_and_cleans_staging() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("level.map");
+        std::fs::write(&path, "original map").unwrap();
+        let error = write_atomic_with(&path, |file| {
+            file.write_all(b"partial replacement")?;
+            Err(io::Error::other("simulated disk failure"))
+        })
+        .unwrap_err();
+        assert_eq!(error.to_string(), "simulated disk failure");
+        assert_eq!(std::fs::read(&path).unwrap(), b"original map");
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+        write_atomic(&path, b"complete replacement").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"complete replacement");
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn failed_atomic_create_or_rename_leaves_no_staged_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("new.map");
+        assert!(write_atomic_with(&path, |_| Err(io::Error::other("failed"))).is_err());
+        assert!(!path.exists());
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
+        let target = dir.path().join("directory.map");
+        std::fs::create_dir(&target).unwrap();
+        std::fs::write(target.join("keep"), b"original").unwrap();
+        assert!(write_atomic(&target, b"new").is_err());
+        assert_eq!(std::fs::read(target.join("keep")).unwrap(), b"original");
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+        write_atomic(&path, b"new").unwrap();
+        assert_eq!(std::fs::read(path).unwrap(), b"new");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn atomic_save_preserves_symlinks_permissions_and_readonly_files() {
+        use std::os::unix::fs::{symlink, PermissionsExt};
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target.map");
+        let link = dir.path().join("link.map");
+        std::fs::write(&target, b"old").unwrap();
+        std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o640)).unwrap();
+        symlink("target.map", &link).unwrap();
+        write_atomic(&link, b"new").unwrap();
+        assert!(std::fs::symlink_metadata(&link)
+            .unwrap()
+            .file_type()
+            .is_symlink());
+        assert_eq!(std::fs::read(&target).unwrap(), b"new");
+        assert_eq!(
+            std::fs::metadata(&target).unwrap().permissions().mode() & 0o777,
+            0o640
+        );
+        std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o440)).unwrap();
+        assert_eq!(
+            write_atomic(&link, b"forbidden").unwrap_err().kind(),
+            io::ErrorKind::PermissionDenied
+        );
+        assert_eq!(std::fs::read(&target).unwrap(), b"new");
+        // Restore write permission for cleanup on every supported Unix filesystem.
+        std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o640)).unwrap();
     }
 }

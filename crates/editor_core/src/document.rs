@@ -3271,7 +3271,7 @@ impl Document {
                 }
             }
         }
-        crate::files::write(
+        crate::files::write_atomic(
             path.as_ref(),
             format!(
                 "{}{}",
