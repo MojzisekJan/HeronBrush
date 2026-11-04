@@ -995,6 +995,51 @@ fn duplicating_mixed_group_preserves_entity_properties_patch_uvs_and_one_undo() 
 }
 
 #[test]
+fn converting_selection_uses_geometry_faces_and_skips_redundant_planes() {
+    let mut d = scene();
+    let brush = node::brushes_with_ids(d.tree_world())[0].1;
+    let mut faces = brush.faces().to_vec();
+    let mut redundant = faces[0].clone();
+    let offset = redundant.plane.normal * 128.0;
+    redundant.plane.distance += 128.0;
+    for point in &mut redundant.points {
+        *point += offset;
+    }
+    faces.insert(0, redundant);
+    let brush = Brush::from_faces(&d.world_bounds(), faces).unwrap();
+    assert_eq!(brush.faces().len(), 7);
+    assert_eq!(brush.geometry().face_count(), 6);
+    d.add_brushes(vec![brush]);
+    d.select_all();
+    let expected: HashSet<_> = node::brushes_with_ids(d.tree_world())
+        .into_iter()
+        .flat_map(|(node, brush)| {
+            (0..brush.geometry().face_count()).map(move |face| FaceRef { node, face })
+        })
+        .collect();
+    assert_eq!(d.convert_selection_to_faces(), expected.len());
+    assert!(!d.has_selection());
+    let actual: HashSet<_> = d.selected_faces().into_iter().collect();
+    assert_eq!(actual, expected);
+    assert!(actual.iter().all(|face| d.face_at(*face).is_some()));
+    let before = d.to_map_text();
+    d.edit_faces(|face| face.material_name = "painted".into());
+    for (id, brush) in node::brushes_with_ids(d.tree_world()) {
+        for face in 0..brush.geometry().face_count() {
+            assert_eq!(
+                d.face_at(FaceRef { node: id, face })
+                    .unwrap()
+                    .material_name
+                    .as_str(),
+                "painted"
+            );
+        }
+    }
+    d.undo().unwrap();
+    assert_eq!(d.to_map_text(), before);
+}
+
+#[test]
 fn audit_transaction_records_export_visibility_and_heretic_lighting() {
     for lighting in [false, true] {
         let mut d = scene();

@@ -35,6 +35,30 @@ impl Document {
         self.mark_selection_changed();
     }
 
+    /// Replaces the selection with the given objects, expanding closed groups once.
+    /// Missing ids leave both object and face selections unchanged.
+    pub fn select_nodes(&mut self, ids: &[NodeId]) -> Result<(), NodeId> {
+        if ids.len() <= 2 {
+            for id in ids {
+                if node::find_node(&self.tree.world, *id).is_none() {
+                    return Err(*id);
+                }
+            }
+        } else {
+            let present = node::all_node_ids(&self.tree.world);
+            for id in ids {
+                if !present.contains(id) {
+                    return Err(*id);
+                }
+            }
+        }
+        let selected = self.selection_for_many(ids);
+        self.face_selection.clear();
+        self.selection = selected;
+        self.mark_selection_changed();
+        Ok(())
+    }
+
     /// Selects only the given face.
     pub fn select_face_only(&mut self, face: FaceRef) {
         self.selection.clear();
@@ -59,19 +83,14 @@ impl Document {
     /// `convertToFaceSelection`. A selection that holds no brushes is simply dropped, as
     /// a patch or a point entity has no faces to convert to.
     pub fn convert_selection_to_faces(&mut self) -> usize {
-        let selected: Vec<NodeId> = self.selection.iter().copied().collect();
-        self.selection.clear();
         let mut faces = Vec::new();
-        for id in selected {
-            let Some(brush) = self.brush(id) else {
+        for (id, brush) in node::brushes_with_ids(&self.tree.world) {
+            if !self.selection.contains(&id) {
                 continue;
-            };
-            faces.extend(
-                (0..brush.faces().len())
-                    .filter(|index| brush.geometry_face_of(*index).is_some())
-                    .map(|face| FaceRef { node: id, face }),
-            );
+            }
+            faces.extend((0..brush.geometry().face_count()).map(|face| FaceRef { node: id, face }));
         }
+        self.selection.clear();
         self.face_selection.extend(faces);
         self.face_selection.len()
     }

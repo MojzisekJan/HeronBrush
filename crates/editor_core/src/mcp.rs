@@ -223,7 +223,7 @@ impl Collab {
         if adopted {
             parts.push(format!(
                 "adopted the shared map ({} brushes)",
-                brush_list(document).len()
+                document.brush_count()
             ));
         }
         if applied > 0 {
@@ -381,6 +381,14 @@ pub fn respond(
                 .cloned()
                 .unwrap_or_else(|| json!({}));
 
+            if !arguments.is_object() {
+                return Some(error_reply(
+                    id.unwrap_or(Value::Null),
+                    -32602,
+                    "arguments must be an object",
+                ));
+            }
+
             if !allow_collab
                 && matches!(
                     name,
@@ -516,13 +524,12 @@ fn brush_list(document: &Document) -> Vec<Value> {
 /// `set_face_color` takes, so an agent can look before it paints.
 fn describe_brush(document: &Document, args: &Value) -> Result<String, String> {
     let wanted = extensions::node_id(args.get("brush").ok_or("`brush` is required")?)?;
-    for (id, brush) in map_model::node::brushes_with_ids(document.tree_world()) {
-        if id.0 != wanted {
-            continue;
-        }
-        let bounds = brush.bounds();
-        let mut faces = Vec::new();
-        brush.for_each_geometry_face(|index, face, vertices| {
+    let brush = document
+        .brush(map_model::node::NodeId(wanted))
+        .ok_or_else(|| format!("no brush with id {wanted}"))?;
+    let bounds = brush.bounds();
+    let mut faces = Vec::new();
+    brush.for_each_geometry_face(|index, face, vertices| {
             let color = face.paint().as_ref().map(|color| match color {
                 map_model::brush_face::FaceColor::Solid { color, alpha } => {
                     json!({ "color": [color.r, color.g, color.b], "alpha": alpha })
@@ -568,15 +575,13 @@ fn describe_brush(document: &Document, args: &Value) -> Result<String, String> {
                     .collect::<Vec<_>>(),
             }));
         });
-        return Ok(serde_json::to_string_pretty(&json!({
-            "id": wanted.to_string(),
-            "min": [bounds.min.x(), bounds.min.y(), bounds.min.z()],
-            "max": [bounds.max.x(), bounds.max.y(), bounds.max.z()],
-            "faces": faces,
-        }))
-        .unwrap_or_default());
-    }
-    Err(format!("no brush with id {wanted}"))
+    Ok(serde_json::to_string_pretty(&json!({
+        "id": wanted.to_string(),
+        "min": [bounds.min.x(), bounds.min.y(), bounds.min.z()],
+        "max": [bounds.max.x(), bounds.max.y(), bounds.max.z()],
+        "faces": faces,
+    }))
+    .unwrap_or_default())
 }
 
 /// The entity classes the loaded definitions offer: summaries without a `classname`,
@@ -649,7 +654,7 @@ pub(crate) fn call_tool(
         );
     }
     let definition = tool_definitions()
-        .into_iter()
+        .iter()
         .find(|tool| tool["name"] == name)
         .ok_or_else(|| format!("no such tool: {name}"))?;
     extensions::validate(args, &definition["inputSchema"], "arguments")?;
@@ -737,7 +742,7 @@ pub(crate) fn call_tool(
             }
             notes.extend(document.warnings());
             Ok(extensions::with_warnings(
-                format!("opened {path}, {} brushes", brush_list(document).len()),
+                format!("opened {path}, {} brushes", document.brush_count()),
                 &notes,
             ))
         }
@@ -1459,18 +1464,13 @@ fn select(document: &mut Document, args: &Value) -> Result<String, String> {
             let mut chosen = std::collections::BTreeSet::new();
             for id in ids {
                 let id = extensions::node_id(id)?;
-                if map_model::node::find_node(document.tree_world(), map_model::node::NodeId(id))
-                    .is_none()
-                {
-                    return Err(format!("no object with id {id}"));
-                }
-                chosen.insert(id);
+                chosen.insert(map_model::node::NodeId(id));
             }
-            document.clear_selection();
             let taken = chosen.len();
-            for id in chosen {
-                document.toggle_selected(map_model::node::NodeId(id));
-            }
+            let ids: Vec<_> = chosen.into_iter().collect();
+            document
+                .select_nodes(&ids)
+                .map_err(|id| format!("no object with id {}", id.0))?;
             Ok(format!("selected {taken} objects"))
         }
     }
@@ -1908,7 +1908,12 @@ fn vec3_schema(what: &str) -> Value {
     json!({ "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": what })
 }
 
-fn tool_definitions() -> Vec<Value> {
+fn tool_definitions() -> &'static [Value] {
+    static TOOLS: std::sync::OnceLock<Vec<Value>> = std::sync::OnceLock::new();
+    TOOLS.get_or_init(build_tool_definitions)
+}
+
+fn build_tool_definitions() -> Vec<Value> {
     let mut tools = vec![
         tool("new_map", "Start over with an empty map.", json!({}), &[]),
         tool(
@@ -2288,6 +2293,110 @@ mod tests {
     /// `call_tool` with a throwaway collab state, for the tests that do not use a session.
     fn call(document: &mut Document, name: &str, args: &Value) -> Result<String, String> {
         call_tool(document, &mut Collab::default(), name, args)
+    }
+
+    #[test]
+    fn selecting_group_members_is_additive_and_notifies_once() {
+        let mut document = Document::new(WorldBounds::default());
+        let brush = map_model::shapes::create_cuboid(
+            &document.world_bounds(),
+            &Bbox3d::from_scalars(0.0, 32.0),
+            "stone",
+        )
+        .unwrap();
+        document.add_brushes(vec![brush.clone(), brush.clone(), brush]);
+        document.select_all();
+        document.group_selection("Together").unwrap();
+        let ids: Vec<_> = map_model::node::brushes_with_ids(document.tree_world())
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        let events = Rc::new(std::cell::Cell::new(0));
+        let changed = Rc::clone(&events);
+        document.set_on_changed(Rc::new(move || changed.set(changed.get() + 1)));
+        // One member expands to the whole group, and further members cannot toggle it off.
+        for chosen in [vec![ids[0]], vec![ids[0], ids[1]], ids.clone()] {
+            let before = events.get();
+            call(
+                &mut document,
+                "select",
+                &json!({"ids": chosen.iter().map(|id| id.0.to_string()).collect::<Vec<_>>()}),
+            )
+            .unwrap();
+            assert_eq!(document.selection_count(), 3);
+            assert!(ids.iter().all(|id| document.is_selected(*id)));
+            assert_eq!(events.get(), before + 1);
+        }
+        assert!(document.open_selected_group());
+        call(
+            &mut document,
+            "select",
+            &json!({"ids":[ids[0].0.to_string(), ids[1].0.to_string(), ids[0].0.to_string()]}),
+        )
+        .unwrap();
+        assert_eq!(document.selection_count(), 2);
+        assert!(!document.is_selected(ids[2]));
+    }
+
+    #[test]
+    fn invalid_bulk_selection_preserves_faces_and_revision() {
+        let mut document = Document::new(WorldBounds::default());
+        let brush = map_model::shapes::create_cuboid(
+            &document.world_bounds(),
+            &Bbox3d::from_scalars(0.0, 32.0),
+            "stone",
+        )
+        .unwrap();
+        document.add_brushes(vec![brush]);
+        let id = map_model::node::brushes_with_ids(document.tree_world())[0].0;
+        let face = FaceRef { node: id, face: 0 };
+        document.select_face_only(face);
+        let revision = document.revision();
+        for ids in [
+            json!([id.0.to_string(), u64::MAX.to_string()]),
+            json!([id.0.to_string(), id.0.to_string(), u64::MAX.to_string()]),
+            json!([id.0.to_string(), "invalid"]),
+        ] {
+            assert!(call(&mut document, "select", &json!({"ids":ids})).is_err());
+            assert_eq!(document.selected_faces(), vec![face]);
+            assert_eq!(document.selection_count(), 0);
+            assert_eq!(document.revision(), revision);
+        }
+        call(&mut document, "select", &json!({"ids":[]})).unwrap();
+        assert!(!document.has_face_selection());
+        assert!(!document.has_selection());
+    }
+
+    #[test]
+    fn malformed_tool_arguments_cannot_replace_the_map() {
+        let mut document = Document::new(WorldBounds::default());
+        call(
+            &mut document,
+            "add_shape",
+            &json!({"kind":"cuboid","min":[0,0,0],"max":[32,32,32]}),
+        )
+        .unwrap();
+        let before = document.to_map_text();
+        let revision = document.revision();
+        for arguments in [
+            Value::Null,
+            json!([]),
+            json!("bad"),
+            json!(42),
+            json!(false),
+        ] {
+            let request = json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"new_map","arguments":arguments}}).to_string();
+            let response = respond(&mut document, &mut Collab::default(), &request, true).unwrap();
+            assert_eq!(response["error"]["code"], -32602, "{response}");
+            assert_eq!(document.to_map_text(), before);
+            assert_eq!(document.revision(), revision);
+        }
+        let request =
+            json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_selection"}})
+                .to_string();
+        let response = respond(&mut document, &mut Collab::default(), &request, false).unwrap();
+        assert!(response.get("error").is_none(), "{response}");
+        assert_ne!(response["result"]["isError"], true);
     }
 
     /// A new map is set up for the game in the preferences, as the window sets it up: a
