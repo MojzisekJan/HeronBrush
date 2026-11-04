@@ -50,24 +50,14 @@ impl Document {
         let merged = Brush::from_polyhedron(geometry, &self.current_material)
             .with_face_attributes_from(&candidates);
 
-        let removed: Vec<Node> = selected
-            .iter()
-            .map(|(id, brush)| brush_node(*id, brush.clone()))
-            .collect();
-        let node = Node::new(NodeKind::Brush(merged));
-        let id = node.id;
-
-        self.selection = std::iter::once(id).collect();
-        self.apply_and_record(Edit::Batch(vec![
-            Edit::Removed {
-                layer: self.current_layer,
-                nodes: removed,
-            },
-            Edit::Added {
-                layer: self.current_layer,
-                nodes: vec![node],
-            },
-        ]));
+        // Deleting through the document records each layer and enclosing container,
+        // so Undo restores the sources exactly where they came from.
+        let ids = selected.iter().map(|(id, _)| *id).collect();
+        self.run_as_one_edit(|document| {
+            document.selection = ids;
+            document.delete_selection();
+            document.add_brushes(vec![merged]);
+        });
         true
     }
 
@@ -1348,5 +1338,39 @@ impl Document {
         self.selection = new_ids.into_iter().collect();
         self.mark_changed();
         count
+    }
+}
+
+#[cfg(test)]
+mod merge_audit_tests {
+    use super::*;
+    #[test]
+    fn merge_undo_restores_layers_and_group_membership() {
+        let mut d = Document::new(Default::default());
+        for (i, x) in [0., 8.].into_iter().enumerate() {
+            if i > 0 {
+                d.add_layer("second");
+            }
+            d.add_brushes(vec![map_model::shapes::create_cuboid(
+                &d.world_bounds(),
+                &Bbox3d::new(Vec3d::new(x, 0., 0.), Vec3d::new(x + 8., 8., 8.)),
+                "stone",
+            )
+            .unwrap()]);
+            if i == 0 {
+                d.group_selection("original parent");
+            }
+        }
+        d.select_all();
+        let before = d.to_map_text();
+        let mark = d.edit_mark();
+        assert!(d.merge_selection());
+        assert_eq!(d.edit_mark(), mark + 1);
+        assert_eq!(d.brush_count(), 1);
+        let after = d.to_map_text();
+        d.undo();
+        assert_eq!(d.to_map_text(), before);
+        d.redo();
+        assert_eq!(d.to_map_text(), after);
     }
 }
