@@ -476,4 +476,50 @@ mod tests {
         );
         assert!(autosave.join("test.2.map").is_file());
     }
+    #[test]
+    fn provisional_text_is_not_autosaved_and_confirmed_text_is() {
+        let dir = scratch("text-preview");
+        let (mut document, mut saver) = saved_document(&dir, MAX_BACKUPS);
+        add_cube(&mut document, -16., 16.);
+        let before = document.to_map_text();
+        assert!(document.begin_text_preview());
+        document.update_text_preview(
+            "O8",
+            64.,
+            16.,
+            Vec3d::new(128., 0., 0.),
+            &crate::grid::Grid::default(),
+        );
+        assert!(saver.trigger(&document).is_none());
+        assert!(!dir.join("autosave").exists());
+        document.cancel_text_preview();
+        let backup = saver
+            .trigger(&document)
+            .expect("original pending edit can be backed up");
+        assert_eq!(
+            Document::open(backup, WorldBounds::default())
+                .unwrap()
+                .to_map_text(),
+            before
+        );
+        document.begin_text_preview();
+        document.update_text_preview(
+            "O8",
+            64.,
+            16.,
+            Vec3d::new(128., 0., 0.),
+            &crate::grid::Grid::default(),
+        );
+        assert!(saver.trigger(&document).is_none());
+        document.finish_text_preview("O8");
+        let backup = saver
+            .trigger(&document)
+            .expect("confirmed text is backed up");
+        assert_eq!(
+            Document::open(backup, WorldBounds::default())
+                .unwrap()
+                .to_map_text(),
+            document.to_map_text()
+        );
+    }
 }

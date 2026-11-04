@@ -13,6 +13,7 @@ mod export_snapshot;
 mod geometry;
 mod imported_models;
 mod omit_faces;
+mod text;
 pub use export_snapshot::ExportSnapshot;
 mod groups;
 mod history;
@@ -387,6 +388,7 @@ pub struct Document {
     /// gesture as one undo step.
     transaction: Option<Vec<Node>>,
     shape_preview: Option<shape_preview::ShapePreview>,
+    text_preview: Option<text::TextPreview>,
     array_preview: Option<array::ArrayPreview>,
     /// Called whenever anything the views draw has changed.
     ///
@@ -1417,6 +1419,7 @@ impl Document {
             materials_revision: 0,
             transaction: None,
             shape_preview: None,
+            text_preview: None,
             array_preview: None,
             on_changed: None,
             on_edit: None,

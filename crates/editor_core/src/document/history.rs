@@ -330,7 +330,7 @@ impl Document {
 
     /// Returns whether a transaction is open.
     pub fn in_transaction(&self) -> bool {
-        self.transaction.is_some()
+        self.transaction.is_some() || self.text_preview.is_some()
     }
 
     /// What a drag can change, as it was: the selected brushes, and the selected
@@ -504,6 +504,9 @@ impl Document {
     /// Undoes the last edit. Returns what it undid, or `None` if there was nothing to
     /// undo.
     pub fn undo(&mut self) -> Option<String> {
+        if self.has_text_preview() {
+            return None;
+        }
         self.reset_trigger_preview();
         let edit = self.history.undo()?;
         let description = edit.description();
@@ -520,6 +523,9 @@ impl Document {
 
     /// Redoes the last undone edit.
     pub fn redo(&mut self) -> Option<String> {
+        if self.has_text_preview() {
+            return None;
+        }
         self.reset_trigger_preview();
         let edit = self.history.redo()?;
         let description = edit.description();
@@ -624,6 +630,7 @@ impl Document {
     pub fn adopt_world(&mut self, world: node::World) {
         // The snapshot belongs to the previous world and must never roll back this one.
         self.transaction = None;
+        self.text_preview = None;
         self.tree = node::Tree {
             world,
             warnings: Vec::new(),

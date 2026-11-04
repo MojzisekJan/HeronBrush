@@ -481,13 +481,20 @@ pub fn brushes_from_outlines(
     origin: Vec3d,
     world_bounds: &Bbox3d,
 ) -> Vec<Brush> {
-    let mut brushes = Vec::new();
-    for piece in convex_pieces(outlines) {
-        if let Some(brush) = prism(&piece, height, depth, material, origin, world_bounds) {
-            brushes.push(brush);
-        }
+    if !height.is_finite()
+        || height <= 0.0
+        || !depth.is_finite()
+        || depth <= 0.0
+        || (0..3).any(|axis| !origin[axis].is_finite())
+    {
+        return Vec::new();
     }
-    brushes
+    // A text object is indivisible: dropping an invalid prism changes the letters.
+    convex_pieces(outlines)
+        .iter()
+        .map(|piece| prism(piece, height, depth, material, origin, world_bounds))
+        .collect::<Option<Vec<_>>>()
+        .unwrap_or_default()
 }
 
 /// Extrudes one convex polygon in glyph space into a brush.

@@ -17,6 +17,7 @@ pub struct ShapeDialogs {
     /// Whether the text dialog was open last frame, so an opening can be told apart.
     text_was_open: bool,
     text: String,
+    text_position: [f64; 3],
     height: f64,
     depth: f64,
     /// The text dialog's status line.
@@ -52,6 +53,7 @@ impl Default for ShapeDialogs {
             corner_open: false,
             text_was_open: false,
             text: String::new(),
+            text_position: [0.; 3],
             height: 64.0,
             depth: 16.0,
             text_status: tr(TEXT_HINT).to_string(),
@@ -349,29 +351,48 @@ impl ShapeDialogs {
     /// Inserts the text as brushes, grouped under its own name, and says how it went.
     fn insert_text(&mut self, editor: &Editor) {
         if self.text.trim().is_empty() {
+            editor.document.borrow_mut().update_text_preview(
+                "",
+                self.height,
+                self.depth,
+                Vec3d::zero(),
+                &editor.grid.borrow(),
+            );
             self.text_status = tr("Type something to insert.").into();
             return;
         }
-        let origin = text_origin(*editor.paste_target.borrow());
-        let mut document = editor.document.borrow_mut();
-        let brushes = map_model::stylized_text::brushes(
-            &self.text,
-            self.height,
-            self.depth,
-            document.current_material(),
-            origin,
-            &document.world_bounds(),
+        let origin = Vec3d::new(
+            self.text_position[0],
+            self.text_position[1],
+            self.text_position[2],
         );
-        if brushes.is_empty() {
-            self.text_status = tr("None of those characters are in the font.").into();
+        let mut document = editor.document.borrow_mut();
+        let count = if document.has_text_preview() {
+            document.update_text_preview(
+                &self.text,
+                self.height,
+                self.depth,
+                origin,
+                &editor.grid.borrow(),
+            );
+            document.finish_text_preview(&self.text)
+        } else {
+            document.insert_text(
+                &self.text,
+                self.height,
+                self.depth,
+                origin,
+                &editor.grid.borrow(),
+            )
+        };
+        if count == 0 {
+            self.text_status =
+                tr("Text could not be generated. Check the characters, dimensions and position.")
+                    .into();
             return;
         }
-        let count = brushes.len();
-        document.run_as_one_edit(|d| {
-            d.add_brushes(brushes);
-            d.group_selection(self.text.trim());
-        });
         self.text_status = format!("Inserted {count} brushes.");
+        self.text_open = false;
     }
 
     pub fn open_settings(&mut self) {
@@ -464,8 +485,20 @@ impl ShapeDialogs {
         if opening {
             // Each opening starts with the hint.
             self.text_status = tr(TEXT_HINT).to_string();
+            let origin = text_origin(*editor.paste_target.borrow());
+            self.text_position = [origin.x(), origin.y(), origin.z()];
+            if !editor.document.borrow_mut().begin_text_preview() {
+                self.text_status = tr("Finish the current drag first.").into();
+                self.text_open = false;
+            }
         }
         if self.text_open {
+            let previous = (
+                self.text.clone(),
+                self.height,
+                self.depth,
+                self.text_position,
+            );
             let mut close = false;
             let mut insert = false;
             let entry_id = egui::Id::unique("text-dialog-entry");
@@ -473,7 +506,7 @@ impl ShapeDialogs {
                 ctx,
                 "text",
                 tr("Insert 3D text"),
-                [600.0, 380.0],
+                [600.0, 420.0],
                 |ui, part| {
                     if part == dialog::Part::Actions {
                         // Right to left: Insert is the rightmost, the default.
@@ -507,6 +540,17 @@ impl ShapeDialogs {
                     widgets::row(ui, tr("Depth"), None, |ui| {
                         widgets::spin(ui, &mut self.depth, 1.0..=256.0, 1.0, 0)
                     });
+                    widgets::row(ui, tr("Position"), None, |ui| {
+                        widgets::axis_spins(
+                            ui,
+                            "text-position",
+                            &mut self.text_position,
+                            &["X", "Y", "Z"],
+                            -65536.0..=65536.0,
+                            editor.grid.borrow().actual_size(),
+                            3,
+                        )
+                    });
                     ui.add_space(4.0);
                     let (rect, _) = ui.allocate_exact_size(
                         egui::vec2(ui.available_width(), 130.0),
@@ -536,9 +580,42 @@ impl ShapeDialogs {
                     );
                 },
             ) && !close;
-            if insert {
+            if !self.text_open {
+                editor.document.borrow_mut().cancel_text_preview();
+            } else if insert {
                 self.insert_text(editor);
+            } else if opening
+                || previous
+                    != (
+                        self.text.clone(),
+                        self.height,
+                        self.depth,
+                        self.text_position,
+                    )
+            {
+                let origin = Vec3d::new(
+                    self.text_position[0],
+                    self.text_position[1],
+                    self.text_position[2],
+                );
+                let count = editor.document.borrow_mut().update_text_preview(
+                    &self.text,
+                    self.height,
+                    self.depth,
+                    origin,
+                    &editor.grid.borrow(),
+                );
+                if !self.text.trim().is_empty() {
+                    self.text_status = if count == 0 {
+                        tr("Text could not be generated. Check the characters, dimensions and position.").into()
+                    } else {
+                        tr(TEXT_HINT).into()
+                    };
+                }
+                ctx.request_repaint_of(egui::ViewportId::ROOT);
             }
+        } else if self.text_was_open {
+            editor.document.borrow_mut().cancel_text_preview();
         }
         self.text_was_open = self.text_open;
 
@@ -1252,5 +1329,81 @@ mod tests {
             tr(TEXT_HINT),
             "the status starts afresh"
         );
+    }
+    #[test]
+    fn typing_previews_text_in_the_map_and_escape_cancels_it() {
+        let ctx = egui::Context::default();
+        ctx.set_embed_viewports(true);
+        crate::theme::install(&ctx);
+        let editor = Editor::open(&ctx, None);
+        let before = editor.document.borrow().to_map_text();
+        let mark = editor.document.borrow().edit_mark();
+        let mut dialogs = ShapeDialogs {
+            text_open: true,
+            ..Default::default()
+        };
+        let mut frame = |events| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    events,
+                    ..Default::default()
+                },
+                |ui| dialogs.show(ui.ctx(), &editor),
+            );
+            output.textures_delta.clear();
+        };
+        frame(vec![]);
+        frame(vec![egui::Event::Text("HI".into())]);
+        assert!(editor.document.borrow().has_text_preview());
+        assert_ne!(editor.document.borrow().to_map_text(), before);
+        assert_eq!(editor.document.borrow().edit_mark(), mark);
+        frame(vec![egui::Event::Key {
+            key: egui::Key::Escape,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }]);
+        assert!(!dialogs.text_open);
+        assert!(!editor.document.borrow().has_text_preview());
+        assert_eq!(editor.document.borrow().to_map_text(), before);
+    }
+    #[test]
+    fn enter_confirms_preview_and_one_undo_restores_the_map() {
+        let ctx = egui::Context::default();
+        ctx.set_embed_viewports(true);
+        crate::theme::install(&ctx);
+        let editor = Editor::open(&ctx, None);
+        let before = editor.document.borrow().to_map_text();
+        let mark = editor.document.borrow().edit_mark();
+        let mut dialogs = ShapeDialogs {
+            text_open: true,
+            ..Default::default()
+        };
+        let mut frame = |events| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    events,
+                    ..Default::default()
+                },
+                |ui| dialogs.show(ui.ctx(), &editor),
+            );
+            output.textures_delta.clear();
+        };
+        frame(vec![]);
+        frame(vec![egui::Event::Text("O8Á".into())]);
+        assert!(editor.document.borrow().has_text_preview());
+        frame(vec![egui::Event::Key {
+            key: egui::Key::Enter,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }]);
+        assert!(!dialogs.text_open);
+        assert!(!editor.document.borrow().has_text_preview());
+        assert_eq!(editor.document.borrow().edit_mark(), mark + 1);
+        editor.document.borrow_mut().undo();
+        assert_eq!(editor.document.borrow().to_map_text(), before);
     }
 }

@@ -2,10 +2,6 @@
 use super::*;
 impl Document {
     pub fn omit_covered_faces(&mut self) -> usize {
-        use scene_export::{
-            map,
-            math::{Plane, Vec2, Vec3},
-        };
         let entity_brushes: HashSet<_> = node::entities_with_ids(&self.tree.world)
             .into_iter()
             .flat_map(|(id, _)| node::contents_of(&self.tree.world, id))
@@ -34,30 +30,7 @@ impl Document {
                     })
             })
             .collect();
-        let convert = |p: Vec3d| Vec3::new(p.x(), p.y(), p.z());
-        let brushes: Vec<_> = candidates
-            .iter()
-            .map(|(_, b, _)| map::Brush {
-                faces: b
-                    .faces()
-                    .iter()
-                    .map(|f| map::Face {
-                        plane: Plane {
-                            normal: convert(f.normal()),
-                            d: f.plane.distance,
-                        },
-                        points: f.points.map(convert),
-                        texture: f.material_name.to_string(),
-                        format: map::UvFormat::Standard,
-                        uv_axes: [Vec3::X, Vec3::Y],
-                        offset: Vec2::ZERO,
-                        rotation: 0.0,
-                        scale: Vec2::ONE,
-                        surface: None,
-                    })
-                    .collect(),
-            })
-            .collect();
+        let brushes = export_brushes(candidates.iter().map(|(_, b, _)| *b));
         let mut hidden = scene_export::hidden::covered_faces(&brushes, |_| false);
         for b in scene_export::hidden::swallowed(&brushes) {
             hidden.extend((0..brushes[b].faces.len()).map(|f| (b, f)));
@@ -142,4 +115,37 @@ mod tests {
         d.clear_selection();
         assert_eq!(d.omit_covered_faces(), 0);
     }
+}
+
+pub(super) fn export_brushes<'a>(
+    brushes: impl IntoIterator<Item = &'a Brush>,
+) -> Vec<scene_export::map::Brush> {
+    use scene_export::{
+        map,
+        math::{Plane, Vec2, Vec3},
+    };
+    let convert = |p: Vec3d| Vec3::new(p.x(), p.y(), p.z());
+    brushes
+        .into_iter()
+        .map(|b| map::Brush {
+            faces: b
+                .faces()
+                .iter()
+                .map(|f| map::Face {
+                    plane: Plane {
+                        normal: convert(f.normal()),
+                        d: f.plane.distance,
+                    },
+                    points: f.points.map(convert),
+                    texture: f.material_name.to_string(),
+                    format: map::UvFormat::Standard,
+                    uv_axes: [Vec3::X, Vec3::Y],
+                    offset: Vec2::ZERO,
+                    rotation: 0.0,
+                    scale: Vec2::ONE,
+                    surface: None,
+                })
+                .collect(),
+        })
+        .collect()
 }
