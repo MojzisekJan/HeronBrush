@@ -34,18 +34,17 @@ const MAX_CALL_LEVELS: usize = 64;
 #[derive(Default)]
 struct Handles {
     brushes: Vec<NodeId>,
+    by_id: std::collections::HashMap<NodeId, i64>,
 }
 
 impl Handles {
     /// The handle for a node, adding it to the table if it is new.
     fn handle_of(&mut self, node: NodeId) -> i64 {
-        match self.brushes.iter().position(|known| *known == node) {
-            Some(index) => index as i64,
-            None => {
-                self.brushes.push(node);
-                (self.brushes.len() - 1) as i64
-            }
-        }
+        *self.by_id.entry(node).or_insert_with(|| {
+            let index = self.brushes.len() as i64;
+            self.brushes.push(node);
+            index
+        })
     }
 
     /// The node a handle stands for.
@@ -917,6 +916,22 @@ mod tests {
     use crate::world::WorldBounds;
     use geometry_math::bbox::Bbox3d;
     use geometry_math::vec::Vec3d;
+
+    #[test]
+    fn handle_mapping_stays_stable_across_repeated_and_reordered_lookups() {
+        let mut handles = Handles::default();
+        let ids: Vec<_> = (0..10000).map(|_| NodeId::next()).collect();
+        for (i, id) in ids.iter().enumerate() {
+            assert_eq!(handles.handle_of(*id), i as i64);
+        }
+        for (i, id) in ids.iter().enumerate().rev() {
+            assert_eq!(handles.handle_of(*id), i as i64);
+            assert_eq!(handles.node_of(i as i64).unwrap(), *id);
+        }
+        assert_eq!(handles.brushes.len(), ids.len());
+        assert!(handles.node_of(-1).is_err());
+        assert!(handles.node_of(10000).is_err());
+    }
 
     fn cube_with_colours() -> Document {
         let mut document = Document::new(WorldBounds::default());
