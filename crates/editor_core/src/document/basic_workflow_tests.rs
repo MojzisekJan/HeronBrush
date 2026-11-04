@@ -995,6 +995,47 @@ fn duplicating_mixed_group_preserves_entity_properties_patch_uvs_and_one_undo() 
 }
 
 #[test]
+fn audit_transaction_records_export_visibility_and_heretic_lighting() {
+    for lighting in [false, true] {
+        let mut d = scene();
+        if lighting {
+            d.edit_faces(|face| {
+                face.surface_attributes = Some(map_model::uv::SurfaceAttributes {
+                    surface_flags: 0x400,
+                    ..Default::default()
+                })
+            });
+        }
+        let before = d.to_map_text();
+        d.begin_transaction();
+        d.edit_faces(|face| {
+            if lighting {
+                face.heretic2_lighting = Some(Box::new([0.2, 0.3, 0.4, 0.5]));
+            } else {
+                face.export_hidden = true;
+            }
+        });
+        assert!(d.commit_transaction());
+        let after = d.to_map_text();
+        assert_ne!(before, after);
+        d.undo().unwrap();
+        assert_eq!(d.to_map_text(), before);
+        d.redo().unwrap();
+        assert_eq!(d.to_map_text(), after);
+        d.begin_transaction();
+        d.edit_faces(|face| {
+            if lighting {
+                face.heretic2_lighting = None;
+            } else {
+                face.export_hidden = false;
+            }
+        });
+        d.cancel_transaction();
+        assert_eq!(d.to_map_text(), after);
+    }
+}
+
+#[test]
 fn audit_combined_document_edit_undoes_once_at_history_capacity() {
     let mut d = scene();
     for _ in 0..crate::history::CAPACITY {

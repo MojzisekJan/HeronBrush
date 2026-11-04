@@ -303,18 +303,7 @@ impl Document {
                 same_unless_brush(was, now)
                     && brush_vertices(was) == brush_vertices(now)
                     && match (was.as_brush(), now.as_brush()) {
-                        (Some(a), Some(b)) => {
-                            a.faces().len() == b.faces().len()
-                                && a.faces().iter().zip(b.faces()).all(|(a, b)| {
-                                    a.uv_attributes == b.uv_attributes
-                                        && a.uv_coord_system == b.uv_coord_system
-                                        && a.primitive_uv == b.primitive_uv
-                                        && a.material_name == b.material_name
-                                        && a.color == b.color
-                                        && a.surface_material == b.surface_material
-                                        && a.surface_attributes == b.surface_attributes
-                                })
-                        }
+                        (Some(a), Some(b)) => a.faces() == b.faces(),
                         _ => true,
                     }
             });
