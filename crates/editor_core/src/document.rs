@@ -849,36 +849,57 @@ fn paste_bounds(nodes: &[Node]) -> Option<Bbox3d> {
 }
 
 /// Moves a node about to be pasted, and everything under it, by a delta.
-fn translate_paste(node: &mut Node, delta: Vec3d, world_bounds: &Bbox3d) {
+fn translate_paste(node: &mut Node, delta: Vec3d, world_bounds: &Bbox3d) -> bool {
+    if (0..3).any(|axis| !delta[axis].is_finite()) {
+        return false;
+    }
     match &mut node.kind {
         NodeKind::Brush(brush) => {
-            if let Ok(moved) = brush.translate(world_bounds, delta) {
-                *brush = moved;
+            let bounds = brush.bounds();
+            if !world_bounds.contains(&Bbox3d::new(bounds.min + delta, bounds.max + delta)) {
+                return false;
             }
+            let Ok(moved) = brush.translate(world_bounds, delta) else {
+                return false;
+            };
+            *brush = moved;
+            true
         }
         NodeKind::Patch(patch) => {
+            if patch.control_points.iter().any(|p| {
+                let moved = p.position + delta;
+                (0..3).any(|axis| !moved[axis].is_finite()) || !world_bounds.contains_point(moved)
+            }) {
+                return false;
+            }
             for point in &mut patch.control_points {
                 point.position += delta;
             }
+            true
         }
         NodeKind::Entity(entity) => {
             if let Some(origin) = entity.origin() {
-                entity.set_origin(origin + delta);
+                let moved = origin + delta;
+                if (0..3).any(|axis| !moved[axis].is_finite())
+                    || !world_bounds.contains_point(moved)
+                {
+                    return false;
+                }
+                entity.set_origin(moved);
             }
-            for child in &mut entity.children {
-                translate_paste(child, delta, world_bounds);
-            }
+            entity
+                .children
+                .iter_mut()
+                .all(|child| translate_paste(child, delta, world_bounds))
         }
-        NodeKind::Group(group) => {
-            for child in &mut group.children {
-                translate_paste(child, delta, world_bounds);
-            }
-        }
-        NodeKind::Layer(layer) => {
-            for child in &mut layer.children {
-                translate_paste(child, delta, world_bounds);
-            }
-        }
+        NodeKind::Group(group) => group
+            .children
+            .iter_mut()
+            .all(|child| translate_paste(child, delta, world_bounds)),
+        NodeKind::Layer(layer) => layer
+            .children
+            .iter_mut()
+            .all(|child| translate_paste(child, delta, world_bounds)),
     }
 }
 

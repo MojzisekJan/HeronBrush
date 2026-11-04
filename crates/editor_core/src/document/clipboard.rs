@@ -208,7 +208,9 @@ impl Document {
             }
             let world_bounds = self.world_bounds;
             for node in &mut pasted {
-                translate_paste(node, delta, &world_bounds);
+                if !translate_paste(node, delta, &world_bounds) {
+                    return 0;
+                }
             }
         }
 
@@ -227,7 +229,7 @@ impl Document {
         }
         self.face_selection.clear();
         self.apply_and_record(Edit::Added {
-            layer: self.current_layer,
+            layer: self.current_layer(),
             nodes: pasted,
         });
         count
@@ -371,5 +373,103 @@ impl Document {
         let text = self.copy_selection()?;
         self.delete_selection();
         Some(text)
+    }
+}
+
+#[cfg(test)]
+mod audit_tests {
+    use super::*;
+    use geometry_math::bbox::Bbox3d;
+    fn source() -> String {
+        let mut d = Document::new(crate::world::WorldBounds::new(128.));
+        for x in [-30., 20.] {
+            d.add_brushes(vec![map_model::shapes::create_cuboid(
+                &d.world_bounds(),
+                &Bbox3d::new(Vec3d::new(x, 0., 0.), Vec3d::new(x + 8., 8., 8.)),
+                "stone",
+            )
+            .unwrap()]);
+        }
+        d.select_all();
+        d.copy_selection().unwrap()
+    }
+    #[test]
+    fn clipboard_boundary_failure_preserves_map_selection_and_history() {
+        let text = source();
+        let mut d = Document::new(crate::world::WorldBounds::new(128.));
+        assert_eq!(d.paste_at(&text, None), 2);
+        let before = d.to_map_text();
+        let selection = d.selection.clone();
+        let mark = d.edit_mark();
+        for target in [120., 100., -120.] {
+            assert_eq!(d.paste_at(&text, Some(Vec3d::new(target, 4., 4.))), 0);
+            assert_eq!(d.to_map_text(), before);
+            assert_eq!(d.selection, selection);
+            assert_eq!(d.edit_mark(), mark);
+        }
+        assert_eq!(d.paste_at(&text, Some(Vec3d::new(40., 4., 4.))), 2);
+        let added: Vec<_> = node::brushes_with_ids(d.tree_world())
+            .into_iter()
+            .filter(|(id, _)| d.selection.contains(id))
+            .collect();
+        assert!((added[1].1.bounds().min.x() - added[0].1.bounds().min.x() - 50.).abs() < 1e-8);
+        d.undo();
+        assert_eq!(d.to_map_text(), before);
+    }
+    #[test]
+    fn clipboard_after_adopting_fewer_layers_inserts_real_objects() {
+        let mut d = Document::new(Default::default());
+        d.add_layer("old");
+        d.adopt_world(Document::new(Default::default()).tree_world().clone());
+        assert_eq!(d.current_layer, 0);
+        assert_eq!(d.paste_at(&source(), None), 2);
+        assert_eq!(d.brush_count(), 2);
+        assert_eq!(d.selection_count(), 2);
+        d.undo();
+        assert_eq!(d.brush_count(), 0);
+    }
+    #[test]
+    fn paste_patch_and_linked_duplicate_cannot_partly_leave_world_bounds() {
+        use map_model::io::map_reader::{Patch, PatchControlPoint};
+        let mut source_doc = Document::new(crate::world::WorldBounds::new(128.));
+        let patch = Patch {
+            material_name: "stone".into(),
+            rows: 3,
+            columns: 3,
+            control_points: (0..3)
+                .flat_map(|row| {
+                    (0..3).map(move |column| PatchControlPoint {
+                        position: Vec3d::new(column as f64 * 8. - 8., row as f64 * 8. - 8., 0.),
+                        uv: geometry_math::vec::Vec2f::new(column as f32 / 2., row as f32 / 2.),
+                    })
+                })
+                .collect(),
+            id: None,
+            line: 0,
+        };
+        source_doc.tree.world.layers[0]
+            .children
+            .push(Node::new(NodeKind::Patch(patch)));
+        source_doc.select_all();
+        let text = source_doc.copy_selection().unwrap();
+        let mut d = Document::new(crate::world::WorldBounds::new(128.));
+        let before = d.to_map_text();
+        assert_eq!(d.paste_at(&text, Some(Vec3d::new(124., 0., 0.))), 0);
+        assert_eq!(d.to_map_text(), before);
+        assert_eq!(d.paste_at(&text, Some(Vec3d::new(32., 0., 0.))), 1);
+        assert!(node::patches_by_layer(d.tree_world())
+            .iter()
+            .all(|(_, p, _)| p
+                .control_points
+                .iter()
+                .all(|point| d.world_bounds().contains_point(point.position))));
+        let mut d = Document::new(crate::world::WorldBounds::new(128.));
+        d.paste_at(&source(), Some(Vec3d::new(64., 4., 4.)));
+        d.group_selection("edge");
+        let before = d.to_map_text();
+        let mark = d.edit_mark();
+        assert!(d.create_linked_duplicate(64.).is_none());
+        assert_eq!(d.to_map_text(), before);
+        assert_eq!(d.edit_mark(), mark);
     }
 }

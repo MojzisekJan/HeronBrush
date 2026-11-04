@@ -631,6 +631,7 @@ impl Document {
         // The snapshot belongs to the previous world and must never roll back this one.
         self.transaction = None;
         self.text_preview = None;
+        self.current_layer = 0;
         self.tree = node::Tree {
             world,
             warnings: Vec::new(),

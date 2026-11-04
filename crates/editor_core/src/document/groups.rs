@@ -702,7 +702,9 @@ impl Document {
             .collect();
         let world_bounds = self.world_bounds;
         let mut copy_node = Node::new(NodeKind::Group(copy_group));
-        translate_paste(&mut copy_node, delta, &world_bounds);
+        if !translate_paste(&mut copy_node, delta, &world_bounds) {
+            return None;
+        }
         let copy_id = copy_node.id;
 
         // The original keeps its contents; it only gains the link id, and an identity
