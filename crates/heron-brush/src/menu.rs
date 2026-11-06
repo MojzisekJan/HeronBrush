@@ -17,6 +17,55 @@ const CHECK_COLUMN: f32 = 28.0;
 const SHORTCUT_GAP: f32 = 28.0;
 /// The padding at a row's right end.
 const RIGHT_PAD: f32 = 10.0;
+const STATE_COLUMN: f32 = 22.0;
+
+/// Sparse semantic accents; labels and disabled items keep the normal menu palette.
+#[derive(Clone, Copy)]
+pub enum IconTone {
+    Run,
+    Destructive,
+    Save,
+    View,
+    Animation,
+    Geometry,
+    Reference,
+}
+impl IconTone {
+    fn color(self) -> Color32 {
+        match self {
+            Self::Run => theme::success(),
+            Self::Destructive => theme::error(),
+            Self::Save | Self::View => {
+                if theme::is_dark() {
+                    Color32::from_rgb(109, 177, 255)
+                } else {
+                    Color32::from_rgb(23, 105, 179)
+                }
+            }
+            Self::Animation => {
+                if theme::is_dark() {
+                    Color32::from_rgb(193, 156, 255)
+                } else {
+                    Color32::from_rgb(123, 63, 178)
+                }
+            }
+            Self::Geometry => {
+                if theme::is_dark() {
+                    Color32::from_rgb(243, 164, 94)
+                } else {
+                    Color32::from_rgb(169, 74, 8)
+                }
+            }
+            Self::Reference => {
+                if theme::is_dark() {
+                    Color32::from_rgb(231, 198, 92)
+                } else {
+                    Color32::from_rgb(133, 99, 0)
+                }
+            }
+        }
+    }
+}
 
 /// One line of a menu.
 #[derive(Clone)]
@@ -30,6 +79,7 @@ pub enum Entry<A> {
         enabled: bool,
         checked: Option<bool>,
         icon: &'static str,
+        icon_tone: Option<IconTone>,
     },
     /// A hairline between groups.
     Separator,
@@ -59,6 +109,7 @@ impl<A> Entry<A> {
             enabled: true,
             checked: None,
             icon: "",
+            icon_tone: None,
         }
     }
     /// Gives an item or a submenu an icon from `egui_phosphor::regular`. A toggle's check
@@ -66,6 +117,12 @@ impl<A> Entry<A> {
     pub fn icon(mut self, glyph: &'static str) -> Self {
         if let Entry::Item { icon, .. } | Entry::Sub { icon, .. } = &mut self {
             *icon = glyph;
+        }
+        self
+    }
+    pub fn icon_tone(mut self, tone: IconTone) -> Self {
+        if let Entry::Item { icon_tone, .. } = &mut self {
+            *icon_tone = Some(tone);
         }
         self
     }
@@ -203,6 +260,7 @@ pub fn focus_first<A>(ctx: &egui::Context, id: Id, entries: &[Entry<A>]) {
 /// submenu with its first row highlighted. Moving the pointer drops the highlight.
 pub fn show<A: Clone>(ui: &mut Ui, id: Id, entries: &[Entry<A>]) -> Option<A> {
     let width = width(ui, entries);
+    let state_column = has_state_column(entries);
     ui.spacing_mut().item_spacing.y = 0.0;
     let open_sub = Id::unique((id, "open-sub"));
     let mut picked = None;
@@ -266,10 +324,22 @@ pub fn show<A: Clone>(ui: &mut Ui, id: Id, entries: &[Entry<A>]) -> Option<A> {
                 enabled,
                 checked,
                 icon,
+                icon_tone,
             } => {
                 let lit = current == Some(index);
                 let response = row(
-                    ui, width, label, shortcut, icon, *enabled, *checked, false, false, lit,
+                    ui,
+                    width,
+                    label,
+                    shortcut,
+                    icon,
+                    *icon_tone,
+                    state_column,
+                    *enabled,
+                    *checked,
+                    false,
+                    false,
+                    lit,
                 );
                 if response.hovered() {
                     ui.data_mut(|d| d.remove::<usize>(open_sub));
@@ -289,7 +359,20 @@ pub fn show<A: Clone>(ui: &mut Ui, id: Id, entries: &[Entry<A>]) -> Option<A> {
                     focus_first(ui.ctx(), Id::unique((id, "sub", index)), entries);
                 }
                 let open = ui.data(|d| d.get_temp::<usize>(open_sub)) == Some(index);
-                let response = row(ui, width, label, "", icon, true, None, true, open, lit);
+                let response = row(
+                    ui,
+                    width,
+                    label,
+                    "",
+                    icon,
+                    None,
+                    state_column,
+                    true,
+                    None,
+                    true,
+                    open,
+                    lit,
+                );
                 if response.hovered() || response.clicked() {
                     ui.data_mut(|d| d.insert_temp(open_sub, index));
                 }
@@ -309,6 +392,12 @@ pub fn show<A: Clone>(ui: &mut Ui, id: Id, entries: &[Entry<A>]) -> Option<A> {
 
 /// The width every row of `entries` takes: the widest label and shortcut, with room for
 /// the check column and the gap between them.
+fn has_state_column<A>(entries: &[Entry<A>]) -> bool {
+    entries.iter().any(
+        |entry| matches!(entry, Entry::Item { checked: Some(_), icon, .. } if !icon.is_empty()),
+    )
+}
+
 fn width<A>(ui: &Ui, entries: &[Entry<A>]) -> f32 {
     let measure = |text: &str| {
         if text.is_empty() {
@@ -341,9 +430,18 @@ fn width<A>(ui: &Ui, entries: &[Entry<A>]) -> f32 {
         }
     }
     let gap = if shortcut > 0.0 { SHORTCUT_GAP } else { 12.0 };
-    (CHECK_COLUMN + widest + gap + shortcut + RIGHT_PAD)
-        .max(200.0)
-        .ceil()
+    (CHECK_COLUMN
+        + widest
+        + gap
+        + shortcut
+        + RIGHT_PAD
+        + if has_state_column(entries) {
+            STATE_COLUMN
+        } else {
+            0.0
+        })
+    .max(200.0)
+    .ceil()
 }
 
 /// One row. `arrow` marks a submenu row, `open` one whose submenu is showing, and `lit`
@@ -355,6 +453,8 @@ fn row(
     label: &str,
     shortcut: &str,
     icon: &str,
+    icon_tone: Option<IconTone>,
+    state_column: bool,
     enabled: bool,
     checked: Option<bool>,
     arrow: bool,
@@ -396,16 +496,31 @@ fn row(
         theme::dim()
     };
     let column = egui::pos2(rect.left() + CHECK_COLUMN / 2.0, rect.center().y);
-    if checked == Some(true) {
+    if checked == Some(true) && icon.is_empty() {
         check_mark(painter, column, text);
-    } else if !icon.is_empty() {
+    }
+    if !icon.is_empty() {
         crate::theme::icon_text(
             painter,
             column,
             egui::Align2::CENTER_CENTER,
             icon,
             theme::icon(),
-            weak,
+            if enabled && !hot {
+                icon_tone.map_or(weak, IconTone::color)
+            } else {
+                weak
+            },
+        );
+    }
+    if checked == Some(true) && !icon.is_empty() {
+        check_mark(
+            painter,
+            egui::pos2(
+                rect.right() - RIGHT_PAD - STATE_COLUMN / 2.0,
+                rect.center().y,
+            ),
+            text,
         );
     }
     crate::theme::text(
@@ -419,7 +534,10 @@ fn row(
     if !shortcut.is_empty() {
         crate::theme::text(
             painter,
-            egui::pos2(rect.right() - RIGHT_PAD, rect.center().y),
+            egui::pos2(
+                rect.right() - RIGHT_PAD - if state_column { STATE_COLUMN } else { 0.0 },
+                rect.center().y,
+            ),
             egui::Align2::RIGHT_CENTER,
             shortcut,
             theme::body(),
@@ -487,5 +605,102 @@ pub fn ctrl(rest: &str) -> String {
         format!("Ctrl+{key}")
     } else {
         format!("Ctrl+{modifiers}+{key}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn luminance(color: Color32) -> f64 {
+        let linear = |v: u8| {
+            let v = f64::from(v) / 255.0;
+            if v <= 0.04045 {
+                v / 12.92
+            } else {
+                ((v + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * linear(color.r()) + 0.7152 * linear(color.g()) + 0.0722 * linear(color.b())
+    }
+    #[test]
+    fn checked_actions_keep_their_icon_and_a_separate_state_mark() {
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let glyph = egui_phosphor::regular::FILM_STRIP;
+        for checked in [false, true] {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(400.0, 240.0))),
+                    ..Default::default()
+                },
+                |ui| {
+                    let entries = [Entry::item("Keyframe animation", ())
+                        .icon(glyph)
+                        .icon_tone(IconTone::Animation)
+                        .checked(checked)];
+                    let width = width(ui, &entries);
+                    row(
+                        ui,
+                        width,
+                        "Keyframe animation",
+                        "",
+                        glyph,
+                        Some(IconTone::Animation),
+                        true,
+                        true,
+                        Some(checked),
+                        false,
+                        false,
+                        false,
+                    );
+                },
+            );
+            output.textures_delta.clear();
+            assert!(
+                output
+                    .shapes
+                    .iter()
+                    .any(|s| matches!(&s.shape, egui::Shape::Text(t) if t.galley.text() == glyph))
+            );
+            if checked {
+                assert!(output.shapes.iter().any(
+                    |s| matches!(&s.shape, egui::Shape::Path(path) if path.points.len() == 3)
+                ));
+            }
+        }
+    }
+    #[test]
+    fn sparse_menu_accents_have_icon_contrast_in_both_appearances() {
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let mut palettes = Vec::new();
+        for dark in [false, true] {
+            theme::use_scheme(&ctx, dark);
+            let mut colors = Vec::new();
+            for tone in [
+                IconTone::Run,
+                IconTone::Save,
+                IconTone::Destructive,
+                IconTone::View,
+                IconTone::Animation,
+                IconTone::Geometry,
+                IconTone::Reference,
+            ] {
+                let color = tone.color();
+                let (a, b) = (luminance(color), luminance(theme::surface()));
+                let contrast = (a.max(b) + 0.05) / (a.min(b) + 0.05);
+                assert!(
+                    contrast >= 3.0,
+                    "menu icon needs contrast in dark={dark}: {contrast}"
+                );
+                colors.push(color);
+            }
+            palettes.push(colors);
+        }
+        assert_ne!(
+            palettes[0], palettes[1],
+            "semantic colors must adapt to appearance"
+        );
+        theme::use_scheme(&ctx, true);
     }
 }

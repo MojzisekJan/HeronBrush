@@ -73,9 +73,7 @@ impl MapPage {
         self.selected(ui, document);
         self.layers(ui, document);
         self.groups(ui, document);
-        ui.add_space(4.0);
         self.plugins(ui, document);
-        ui.separator();
         self.issues(ui, document);
         view(ui, document, filters);
     }

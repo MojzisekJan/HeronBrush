@@ -301,3 +301,40 @@ fn a_layout_change_drops_the_maximised_view() {
         "the detached 3D view has no pane to cycle"
     );
 }
+
+#[test]
+fn animation_preview_has_one_menu_bar_home_and_window_actions_have_icons() {
+    use crate::app_actions::Action;
+    use crate::menu::Entry;
+    let (_ctx, editor) = setup();
+    editor_core::preferences::edit(|p| p.keyboard_bindings = r#"{"preview":"F9"}"#.to_string());
+    let status = crate::chrome::Status::default();
+    let menus = crate::chrome::menus(
+        &status,
+        false,
+        &editor.grid.borrow(),
+        &editor.filters.borrow(),
+    );
+    let previews: Vec<_> = menus
+        .iter()
+        .enumerate()
+        .flat_map(|(menu, entries)| {
+            entries.iter().filter_map(move |entry| match entry {
+                Entry::Item {
+                    action: Action::PreviewAnimations,
+                    shortcut,
+                    icon,
+                    ..
+                } => Some((menu, shortcut, icon)),
+                _ => None,
+            })
+        })
+        .collect();
+    assert_eq!(previews.len(), 1);
+    assert_eq!(previews[0].0, 4, "Preview animations belongs in Animation");
+    assert_eq!(previews[0].1, "F9", "keep the configured shortcut");
+    assert!(!previews[0].2.is_empty());
+    for wanted in [Action::Animation, Action::UvEditor, Action::Detach3d] {
+        assert!(menus.iter().flatten().any(|entry| matches!(entry, Entry::Item { action, icon, .. } if *action == wanted && !icon.is_empty())));
+    }
+}

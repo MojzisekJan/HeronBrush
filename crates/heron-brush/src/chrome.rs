@@ -218,9 +218,11 @@ pub fn menus(
             Entry::Separator,
             item(tr("Save"), Action::Save)
                 .icon(icon::FLOPPY_DISK)
+                .icon_tone(crate::menu::IconTone::Save)
                 .keys(&shortcut("save")),
             item(tr("Save as"), Action::SaveAs)
                 .icon(icon::FLOPPY_DISK_BACK)
+                .icon_tone(crate::menu::IconTone::Save)
                 .keys(&shortcut("save_as")),
             item(tr("Revert to saved map"), Action::Revert).icon(icon::ARROW_COUNTER_CLOCKWISE),
             Entry::Separator,
@@ -230,9 +232,12 @@ pub fn menus(
             #[cfg(not(target_arch = "wasm32"))]
             item(tr("Build and run"), Action::Build)
                 .icon(icon::PLAY)
+                .icon_tone(crate::menu::IconTone::Run)
                 .keys(&shortcut("build")),
             #[cfg(target_arch = "wasm32")]
-            item(tr("Play in a new tab"), Action::Playtest).icon(icon::PLAY),
+            item(tr("Play in a new tab"), Action::Playtest)
+                .icon(icon::PLAY)
+                .icon_tone(crate::menu::IconTone::Run),
             item(tr("Render image"), Action::Render).icon(icon::IMAGE),
             Entry::Separator,
             item(tr("Plugins"), Action::Plugins).icon(icon::PUZZLE_PIECE),
@@ -263,6 +268,7 @@ pub fn menus(
                 .keys(&shortcut("duplicate")),
             item(tr("Delete"), Action::Delete)
                 .icon(icon::TRASH)
+                .icon_tone(crate::menu::IconTone::Destructive)
                 .keys(&shortcut("delete")),
             Entry::Separator,
             item(tr("Select all"), Action::SelectAll)
@@ -280,8 +286,12 @@ pub fn menus(
         // View
         vec![
             item(tr("UV editor in separate window"), Action::UvEditor)
+                .icon(icon::GRID_FOUR)
+                .icon_tone(menu::IconTone::View)
                 .checked(status.uv_window_open),
             item(tr("3D view in separate window"), Action::Detach3d)
+                .icon(icon::CUBE_FOCUS)
+                .icon_tone(menu::IconTone::View)
                 .checked(detached)
                 .enabled(!cfg!(target_os = "android")),
             item(tr("Go to"), Action::GoTo).icon(icon::CROSSHAIR),
@@ -299,17 +309,17 @@ pub fn menus(
                 .keys("0")
                 .checked(grid.visible()),
             Entry::Separator,
-            item(tr("Preview animations"), Action::PreviewAnimations)
-                .keys(&shortcut("preview"))
-                .checked(filters.preview_motion),
             item(tr("Show omitted faces"), Action::ShowOmitted).checked(filters.show_export_hidden),
         ],
         // Geometry
         vec![
             item(tr("Import model"), Action::ImportModel)
                 .icon(icon::CUBE)
+                .icon_tone(menu::IconTone::Geometry)
                 .enabled(!cfg!(target_arch = "wasm32")),
-            item(tr("Insert 3D text"), Action::Text).icon(icon::TEXT_T),
+            item(tr("Insert 3D text"), Action::Text)
+                .icon(icon::TEXT_T)
+                .icon_tone(menu::IconTone::Geometry),
             item(tr("Join corner"), Action::Corner).icon(icon::ANGLE),
             item(tr("Array"), Action::Array).icon(icon::DOTS_NINE),
             Entry::sub(
@@ -339,13 +349,19 @@ pub fn menus(
         ],
         // Animation
         vec![
-            item(tr("Keyframe animation"), Action::Animation).checked(status.animation_open),
+            item(tr("Keyframe animation"), Action::Animation)
+                .icon(icon::FILM_STRIP)
+                .icon_tone(menu::IconTone::Animation)
+                .checked(status.animation_open),
             item(tr("Preview animations"), Action::PreviewAnimations)
+                .icon(icon::PLAY_CIRCLE)
+                .icon_tone(menu::IconTone::Run)
                 .keys(&shortcut("preview"))
                 .checked(filters.preview_motion),
             Entry::Separator,
             item(tr("Place camera from 3D view"), Action::PlaceCamera)
                 .icon(icon::VIDEO_CAMERA)
+                .icon_tone(menu::IconTone::Animation)
                 .keys(&ctrl("Alt+0")),
         ],
         // Map
@@ -373,7 +389,9 @@ pub fn menus(
         ],
         // Help
         vec![
-            item(tr("Manual"), Action::Manual).icon(icon::BOOK_OPEN),
+            item(tr("Manual"), Action::Manual)
+                .icon(icon::BOOK_OPEN)
+                .icon_tone(menu::IconTone::Reference),
             item(tr("Application updates"), Action::Updates).icon(icon::ARROW_CIRCLE_DOWN),
             Entry::Separator,
             item(tr("About"), Action::About).icon(icon::INFO),
@@ -392,11 +410,16 @@ pub fn grid_settings(
         Entry::item(tr("Show grid"), Action::ShowGrid).checked(grid.visible()),
         Entry::Separator,
         Entry::item(tr("Preview animations"), Action::PreviewAnimations)
+            .icon(egui_phosphor::regular::PLAY_CIRCLE)
+            .icon_tone(menu::IconTone::Run)
             .keys(&shortcut("preview"))
             .checked(filters.preview_motion),
         Entry::item(tr("Show omitted faces"), Action::ShowOmitted)
             .checked(filters.show_export_hidden),
-        Entry::item(tr("Keyframe animation"), Action::Animation).checked(animation_open),
+        Entry::item(tr("Keyframe animation"), Action::Animation)
+            .icon(egui_phosphor::regular::FILM_STRIP)
+            .icon_tone(menu::IconTone::Animation)
+            .checked(animation_open),
     ]
 }
 

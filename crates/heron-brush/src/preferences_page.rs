@@ -860,12 +860,14 @@ impl PreferencesPage {
         } else {
             usize::MAX
         };
+        ui.spacing_mut().scroll = egui::style::ScrollStyle::solid();
+        ui.spacing_mut().scroll.bar_width = 14.0;
         egui::ScrollArea::vertical()
             .id_salt(("preferences-content", salt))
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                // Clear of the scroll bar, which floats over the right edge.
-                ui.set_max_width(ui.available_width() - 10.0);
+                // The solid scrollbar reserves its own space beside the settings.
+                ui.set_max_width(ui.available_width());
                 if searching(&self.query) {
                     if hits.is_empty() {
                         ui.add_space(24.0);

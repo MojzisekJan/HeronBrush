@@ -132,6 +132,8 @@ impl ManualPage {
                 return;
             }
             let old = self.selected;
+            ui.spacing_mut().scroll = egui::style::ScrollStyle::solid();
+            ui.spacing_mut().scroll.bar_width = 14.0;
             ui.horizontal_top(|ui| {
                 if contents {
                     let sidebar = self.sidebar;
@@ -140,7 +142,7 @@ impl ManualPage {
                         .max_width(sidebar)
                         .show(ui, |ui| {
                             ui.vertical(|ui| {
-                                ui.set_width(sidebar);
+                                ui.set_width(ui.available_width().min(sidebar));
                                 ui.spacing_mut().item_spacing.y = 2.0;
                                 let mut rows = Vec::with_capacity(shown.len());
                                 for &index in &shown {

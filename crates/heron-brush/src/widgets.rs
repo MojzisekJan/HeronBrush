@@ -219,7 +219,13 @@ pub fn row_height(ui: &egui::Ui) -> f32 {
 /// An on/off switch in the look of the system ([`egui_native_look::Switch`]). The value
 /// has changed when `response.changed()`.
 pub fn switch(ui: &mut egui::Ui, on: &mut bool) -> egui::Response {
-    ui.add(egui_native_look::Switch::new(on))
+    ui.scope(|ui| {
+        if ui.spacing().interact_size.y >= ROW_HEIGHT {
+            ui.spacing_mut().interact_size.y *= 0.8;
+        }
+        ui.add(egui_native_look::Switch::new(on))
+    })
+    .inner
 }
 
 pub use egui_native_look::radio_value;
@@ -745,8 +751,18 @@ pub fn row<R>(
     tooltip: Option<&str>,
     control: impl FnOnce(&mut egui::Ui) -> R,
 ) -> R {
-    let width = ui.available_width();
-    let label_w = (width * LABEL_SHARE).floor();
+    let label_width = (ui.available_width() * LABEL_SHARE).floor();
+    row_with_label_width(ui, label, tooltip, label_width, control)
+}
+
+/// A labelled row with a compact label column chosen by the caller.
+pub fn row_with_label_width<R>(
+    ui: &mut egui::Ui,
+    label: &str,
+    tooltip: Option<&str>,
+    label_w: f32,
+    control: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
     ui.horizontal(|ui| {
         let height = row_height(ui);
         ui.set_min_height(height);
@@ -877,16 +893,60 @@ pub fn section_noted<R>(
     default_open: bool,
     contents: impl FnOnce(&mut egui::Ui) -> R,
 ) -> Option<R> {
+    section_header(ui, id, title, note, default_open, None, 0.0, contents)
+}
+
+/// A section with a compact action at the right of its header.
+pub fn section_with_action<R>(
+    ui: &mut egui::Ui,
+    id: impl std::hash::Hash + std::fmt::Debug,
+    title: &str,
+    default_open: bool,
+    mut action: impl FnMut(&mut egui::Ui),
+    contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> Option<R> {
+    section_header(
+        ui,
+        id,
+        title,
+        None,
+        default_open,
+        Some(&mut action),
+        SECTION_HEIGHT,
+        contents,
+    )
+}
+
+fn section_header<R>(
+    ui: &mut egui::Ui,
+    id: impl std::hash::Hash + std::fmt::Debug,
+    title: &str,
+    note: Option<&str>,
+    default_open: bool,
+    mut action: Option<&mut dyn FnMut(&mut egui::Ui)>,
+    button_width: f32,
+    contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> Option<R> {
     let id = ui.make_persistent_id(("section", id));
     let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
         id,
         default_open,
     );
-    let (rect, response) = ui.allocate_exact_size(
+    let (rect, _) = ui.allocate_exact_size(
         egui::vec2(ui.available_width(), SECTION_HEIGHT),
-        Sense::click(),
+        Sense::hover(),
     );
+    let action_width = if action.is_some() {
+        button_width + 4.0
+    } else {
+        0.0
+    };
+    let title_rect = Rect::from_min_max(
+        rect.min,
+        egui::pos2(rect.right() - action_width, rect.bottom()),
+    );
+    let response = ui.interact(title_rect, id.with("header"), Sense::click());
     if response.clicked() {
         state.toggle(ui);
     }
@@ -911,7 +971,7 @@ pub fn section_noted<R>(
         .map(|v| c + rot * *v)
         .collect();
         painter.add(egui::Shape::line(points, Stroke::new(1.5, theme::dim())));
-        let mut right = rect.right() - 8.0;
+        let mut right = rect.right() - 8.0 - action_width;
         if let Some(note) = note {
             let (galley, _) = truncated(ui, note, theme::body(), theme::dim(), rect.width() * 0.45);
             right -= galley.size().x;
@@ -938,6 +998,19 @@ pub fn section_noted<R>(
         if cut {
             response.on_hover_text(title);
         }
+    }
+    if let Some(action) = action.as_mut() {
+        let slot = Rect::from_min_size(
+            egui::pos2(rect.right() - button_width, rect.top()),
+            egui::vec2(button_width, SECTION_HEIGHT),
+        );
+        ui.scope_builder(
+            egui::UiBuilder::new()
+                .max_rect(slot)
+                .id_salt(id.with("action"))
+                .layout(egui::Layout::left_to_right(egui::Align::Center)),
+            |ui| action(ui),
+        );
     }
     let body = state.show_body_unindented(ui, |ui| {
         ui.add_space(2.0);
@@ -1226,17 +1299,11 @@ pub fn toggle_row(
     let width = ui.available_width();
     let (rect, mut response) =
         ui.allocate_exact_size(egui::vec2(width, row_height(ui)), Sense::click());
-    let knob = Rect::from_min_max(
-        egui::pos2(
-            rect.right() - egui_native_look::switch_width(theme::look()),
-            rect.top(),
-        ),
-        rect.max,
-    );
+    // Place the switch from the right: its native size may scale with control metrics.
     let mut child = ui.new_child(
         egui::UiBuilder::new()
-            .max_rect(knob)
-            .layout(egui::Layout::left_to_right(egui::Align::Center)),
+            .max_rect(rect)
+            .layout(egui::Layout::right_to_left(egui::Align::Center)),
     );
     let switched = switch(&mut child, on);
     if response.clicked() && ui.is_enabled() {
@@ -1253,7 +1320,7 @@ pub fn toggle_row(
         label,
         theme::body(),
         colour,
-        rect.width() - egui_native_look::switch_width(theme::look()) - 12.0,
+        rect.width() - switched.rect.width() - 12.0,
     );
     ui.painter().galley(
         egui::pos2(
@@ -1541,6 +1608,47 @@ pub fn number_buttons_step<T: egui::emath::Numeric>(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn regular_switch_is_smaller_and_vertically_centered() {
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let mut on = false;
+        frame(&ctx, vec![], |ui| {
+            let top = ui.cursor().top();
+            ui.allocate_ui_with_layout(
+                egui::vec2(160.0, ROW_HEIGHT),
+                egui::Layout::left_to_right(egui::Align::Center),
+                |ui| {
+                    let response = switch(ui, &mut on);
+                    assert!((response.rect.center().y - (top + ROW_HEIGHT / 2.0)).abs() < 0.6);
+                    if theme::look() == egui_native_look::Look::Mac {
+                        let original_width =
+                            egui_native_look::switch_width(theme::look()) * ROW_HEIGHT / 24.0;
+                        assert!((response.rect.width() - original_width * 0.8).abs() < 1.0);
+                    }
+                },
+            );
+        });
+    }
+    #[test]
+    fn scaled_toggle_stays_inside_its_row() {
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let mut on = false;
+        for height in [24.0, 28.0, 36.0] {
+            frame(&ctx, vec![], |ui| {
+                ui.set_width(300.0);
+                ui.spacing_mut().interact_size.y = height;
+                let right = ui.max_rect().right();
+                let response = toggle_row(ui, "Omit face from export", None, &mut on);
+                assert!(
+                    response.rect.right() <= right + 0.5,
+                    "scaled switch must respect the row's right edge"
+                );
+            });
+        }
+    }
+
     use super::*;
 
     fn frame<R>(
@@ -1578,6 +1686,72 @@ mod tests {
 
     /// The check box, the radio button and the segmented choice of the current look
     /// (`HERON_BRUSH_LOOK` picks another) draw and take a click.
+    #[test]
+    fn section_action_shares_header_row_and_does_not_collapse_the_section() {
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let draw = |events: Vec<egui::Event>| {
+            let mut button = egui::Pos2::ZERO;
+            let mut body_y = 0.0;
+            let mut clicked = false;
+            let mut open = false;
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(320.0, 240.0),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    open = section_with_action(
+                        ui,
+                        "header-action-test",
+                        "UV",
+                        true,
+                        |ui| {
+                            let (rect, response) = ui.allocate_exact_size(
+                                egui::vec2(SECTION_HEIGHT, SECTION_HEIGHT),
+                                Sense::click(),
+                            );
+                            button = rect.center();
+                            clicked = response.clicked();
+                        },
+                        |ui| {
+                            body_y = ui.cursor().top();
+                            ui.label("Canvas");
+                        },
+                    )
+                    .is_some();
+                },
+            );
+            output.textures_delta.clear();
+            (button, body_y, clicked, open)
+        };
+        let (at, body_y, _, _) = draw(vec![]);
+        assert!(
+            body_y < 45.0,
+            "header action must not allocate an extra row: {body_y}"
+        );
+        assert!(at.y < body_y);
+        for pressed in [true, false] {
+            let (_, _, clicked, open) = draw(vec![
+                egui::Event::PointerMoved(at),
+                egui::Event::PointerButton {
+                    pos: at,
+                    button: egui::PointerButton::Primary,
+                    pressed,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ]);
+            if !pressed {
+                assert!(clicked);
+                assert!(open, "clicking the action must not fold the section");
+            }
+        }
+    }
+
     #[test]
     fn marks_and_choices_take_clicks_in_this_look() {
         let ctx = egui::Context::default();
