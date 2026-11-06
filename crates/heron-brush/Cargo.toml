@@ -26,9 +26,8 @@ wgpu = ["eframe/wgpu_no_default_features", "dep:egui-wgpu", "dep:wgpu", "dep:ren
 web-time = "1"
 rustc-hash = "2"
 editor_core = { path = "../editor_core" }
-# The controls drawn in the manner of the system (macOS, WinUI, GTK), its own project on
-# crates.io. To work on it beside the editor, point a `[patch.crates-io]` at a checkout.
-egui_native_look = "0.2.0"
+# Native controls. Pin the v0.3.0 release until it is available on crates.io.
+egui_native_look = { version = "0.3.0", git = "https://github.com/MojzisekJan/egui_native_look", rev = "d48cc7bdf4d412f6bf2793012e613384de90e168" }
 map_model = { path = "../map_model" }
 geometry_math = { path = "../geometry_math" }
 render = { path = "../render" }

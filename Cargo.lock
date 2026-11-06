@@ -1513,13 +1513,13 @@ dependencies = [
 
 [[package]]
 name = "egui_native_look"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bfd79554d5fd5b654c10fd4980ec3b1220553a7becafb5f61378141425d3041"
+version = "0.3.0"
+source = "git+https://github.com/MojzisekJan/egui_native_look?rev=d48cc7bdf4d412f6bf2793012e613384de90e168#d48cc7bdf4d412f6bf2793012e613384de90e168"
 dependencies = [
  "egui",
  "objc2 0.6.4",
  "objc2-app-kit 0.3.2",
+ "unicode-segmentation",
  "web-sys",
  "windows-sys 0.61.2",
 ]
