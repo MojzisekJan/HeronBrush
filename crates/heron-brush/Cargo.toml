@@ -83,3 +83,10 @@ workspace = true
 
 [dev-dependencies]
 editor_core = { path = "../editor_core", features = ["test-support"] }
+
+# Finder document-open events, delivered through NSApplicationDelegate.
+[target.'cfg(target_os = "macos")'.dependencies]
+winit = { version = "0.30.13", default-features = false }
+objc2 = "0.5.2"
+objc2-app-kit = { version = "0.2.2", default-features = false, features = ["NSApplication"] }
+objc2-foundation = { version = "0.2.2", default-features = false, features = ["NSArray", "NSString", "NSURL"] }

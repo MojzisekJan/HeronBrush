@@ -52,6 +52,23 @@ cat > "$app/Contents/Info.plist" <<EOF
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.graphics-design</string>
     <key>LSMinimumSystemVersion</key><string>11.0</string>
+    <key>CFBundleDocumentTypes</key>
+    <array><dict>
+        <key>CFBundleTypeName</key><string>Quake Map</string>
+        <key>CFBundleTypeRole</key><string>Editor</string>
+        <key>LSHandlerRank</key><string>Default</string>
+        <key>CFBundleTypeExtensions</key><array><string>map</string></array>
+        <key>LSItemContentTypes</key><array><string>io.github.mojzisekjan.HeronBrush.quake-map</string></array>
+    </dict></array>
+    <key>UTImportedTypeDeclarations</key>
+    <array><dict>
+        <key>UTTypeIdentifier</key><string>io.github.mojzisekjan.HeronBrush.quake-map</string>
+        <key>UTTypeDescription</key><string>Quake Map</string>
+        <key>UTTypeConformsTo</key><array><string>public.plain-text</string></array>
+        <key>UTTypeTagSpecification</key><dict>
+            <key>public.filename-extension</key><array><string>map</string></array>
+        </dict>
+    </dict></array>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
 </dict>

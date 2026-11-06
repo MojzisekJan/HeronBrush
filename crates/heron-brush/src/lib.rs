@@ -24,6 +24,8 @@ mod egui_canvas;
 mod entity_graph_page;
 mod entity_page;
 mod export_page;
+#[cfg(target_os = "macos")]
+mod macos;
 mod manual_page;
 mod menu;
 mod plugin_page;
@@ -1170,6 +1172,13 @@ impl App {
                 then(text);
             }
         }
+        #[cfg(target_os = "macos")]
+        if let Some(path) = macos::take_open(ui.ctx()) {
+            self.pending_map = Some(Some(path));
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+            ui.ctx().send_viewport_cmd(egui::ViewportCommand::Focus);
+        }
         self.instance_requests(ui.ctx());
         self.chooser_answers(ui.ctx());
         if let Some(path) = self.pending_map.take() {
@@ -1816,13 +1825,13 @@ pub fn run_desktop() -> eframe::Result {
     };
     #[cfg(feature = "wgpu")]
     request_device(&mut options.wgpu_options);
-    eframe::run_native(
-        "heron-brush",
-        options,
-        Box::new(move |cc| {
-            let mut app = App::new(cc, startup)?;
-            app.instance = server.map(|server| Instance::serve(server, &cc.egui_ctx));
-            Ok(Box::new(app))
-        }),
-    )
+    let creator: eframe::AppCreator = Box::new(move |cc| {
+        let mut app = App::new(cc, startup)?;
+        app.instance = server.map(|server| Instance::serve(server, &cc.egui_ctx));
+        Ok(Box::new(app))
+    });
+    #[cfg(target_os = "macos")]
+    return macos::run(options, creator);
+    #[cfg(not(target_os = "macos"))]
+    eframe::run_native("heron-brush", options, creator)
 }
