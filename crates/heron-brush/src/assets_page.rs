@@ -32,6 +32,8 @@ enum Thumbnail {
 /// The Assets tab's own state.
 pub struct AssetsPage {
     filter: String,
+    #[cfg(test)]
+    grid_viewport: Option<egui::Rect>,
     /// The prefab picked in the grid.
     selected: Option<PathBuf>,
     /// Whether the grid was the last thing clicked, so the arrows and Enter work it.
@@ -69,6 +71,8 @@ impl Default for AssetsPage {
         );
         Self {
             filter: String::new(),
+            #[cfg(test)]
+            grid_viewport: None,
             selected: None,
             grid_focused: false,
             prefabs: Vec::new(),
@@ -159,21 +163,40 @@ impl AssetsPage {
         let shown = self.shown();
         let mut insert = false;
         let mut scroll_to_selected = false;
+        let status = (!library.is_empty()).then(|| {
+            fill(
+                "{} of {} assets shown",
+                &[&shown.len().to_string(), &self.prefabs.len().to_string()],
+            )
+        });
+        let gap = ui.spacing().item_spacing.y;
+        let status_height = status.as_ref().map_or(0.0, |text| {
+            ui.painter()
+                .layout(text.clone(), theme::body(), theme::dim(), width)
+                .size()
+                .y
+                + gap
+        });
+        let footer = 2.0 * (widgets::row_height(ui) + gap) + status_height + 10.0;
+        let viewport_height = (ui.available_height() - footer).max(1.0);
         let grid_area = widgets::list(ui, 0.0, |ui| {
-            if shown.is_empty() {
-                let text = if library.is_empty() {
-                    tr("No folders yet. Add one above.")
-                } else if self.prefabs.is_empty() {
-                    tr("No assets")
-                } else {
-                    tr("No matching assets")
-                };
-                widgets::empty(ui, text);
-            }
-            egui::ScrollArea::vertical()
+            let viewport = egui::ScrollArea::vertical()
                 .id_salt("asset-grid")
-                .max_height(360.0)
+                .auto_shrink([false, false])
+                .max_height(viewport_height)
+                .min_scrolled_height(viewport_height)
                 .show(ui, |ui| {
+                    if shown.is_empty() {
+                        let text = if library.is_empty() {
+                            tr("No folders yet. Add one above.")
+                        } else if self.prefabs.is_empty() {
+                            tr("No assets")
+                        } else {
+                            tr("No matching assets")
+                        };
+                        widgets::empty(ui, text);
+                    }
+
                     ui.set_width(ui.available_width());
                     // The keyboard, while the grid has it: arrows move the pick a cell or a line,
                     // Enter inserts it.
@@ -327,7 +350,12 @@ impl AssetsPage {
                             }
                         });
                     }
-                })
+                });
+            #[cfg(test)]
+            {
+                self.grid_viewport = Some(viewport.inner_rect);
+            }
+            viewport
         });
         // The grid keeps the keyboard until a press lands somewhere else.
         if ui.input(|i| {
@@ -338,15 +366,8 @@ impl AssetsPage {
         }) {
             self.grid_focused = false;
         }
-        // An empty library says so in the grid.
-        if !library.is_empty() {
-            widgets::status(
-                ui,
-                &fill(
-                    "{} of {} assets shown",
-                    &[&shown.len().to_string(), &self.prefabs.len().to_string()],
-                ),
-            );
+        if let Some(status) = status {
+            widgets::status(ui, &status);
         }
 
         let width = ui.available_width();
@@ -529,6 +550,48 @@ mod tests {
                 .collect(),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn grid_fills_the_panel_and_resizes_without_hiding_footer_buttons() {
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let d = Rc::new(RefCell::new(Document::new(Default::default())));
+        let grid = Rc::new(RefCell::new(Grid::default()));
+        let mut page = page(&["a"; 120]);
+        page.scanned = Some(Instant::now());
+        for prefab in &page.prefabs {
+            page.thumbnails.insert(prefab.path.clone(), Thumbnail::None);
+        }
+        let mut heights = Vec::new();
+        for height in [600.0, 1000.0, 600.0] {
+            let mut bottom = 0.0;
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(320.0, height),
+                    )),
+                    ..Default::default()
+                },
+                |ui| {
+                    page.show(ui, &d, &grid);
+                    bottom = ui.min_rect().bottom();
+                },
+            );
+            output.textures_delta.clear();
+            heights.push(page.grid_viewport.unwrap().height());
+            assert!(
+                bottom <= height,
+                "footer must remain inside panel: {bottom} > {height}"
+            );
+        }
+        assert!(
+            heights[1] > 700.0,
+            "grid must grow beyond the old 360px cap"
+        );
+        assert!((heights[1] - heights[0] - 400.0).abs() < 1.0);
+        assert!((heights[2] - heights[0]).abs() < 1.0);
     }
 
     #[test]

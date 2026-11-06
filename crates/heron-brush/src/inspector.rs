@@ -119,6 +119,12 @@ impl Inspector {
                 .max_rect(body)
                 .layout(egui::Layout::top_down(egui::Align::Min)),
         );
+        // Assets owns a scrollable grid that fills this bounded panel.
+        if self.tab == Tab::Assets {
+            child.set_width(body.width() - 12.0);
+            self.assets.show(&mut child, document, grid);
+            return;
+        }
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(&mut child, |ui| {
