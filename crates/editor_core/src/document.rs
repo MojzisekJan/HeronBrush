@@ -28,6 +28,8 @@ mod merge_columns;
 mod scene_lights;
 mod sculpt;
 mod selection;
+mod similar_faces;
+pub use similar_faces::FaceSelection;
 mod shape_preview;
 pub use array::{array_transforms, ArrayKind, ArrayParameters, MAX_COPIES as MAX_ARRAY_COPIES};
 pub use sculpt::{SculptStroke, COARSE_CELL, MAX_COLUMNS, MIN_CELL};
@@ -331,6 +333,7 @@ pub struct Document {
     /// Objects hidden by "Hide" or "Isolate". Not written to the map -- a view state, the
     /// way the leak trace is -- and cleared by "Show All".
     hidden_nodes: HashSet<NodeId>,
+    isolation_before: Option<HashSet<NodeId>>,
     /// What the other person in a live session has selected, so their work area shows in
     /// the views. Empty when there is no session.
     peer_selection: std::collections::HashMap<u32, HashSet<NodeId>>,
@@ -1421,6 +1424,7 @@ impl Document {
             face_selection: HashSet::new(),
             face_edit_targets: Vec::new(),
             hidden_nodes: HashSet::new(),
+            isolation_before: None,
             peer_selection: std::collections::HashMap::new(),
             peer_cameras: std::collections::HashMap::new(),
             peer_names: std::collections::HashMap::new(),

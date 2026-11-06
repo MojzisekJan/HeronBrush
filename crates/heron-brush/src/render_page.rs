@@ -53,9 +53,9 @@ pub const NUMBERS: [(&str, f64, f64, f64); 22] = [
     (translation_key("Far clip"), 64., 1_000_000., 32.),
     (translation_key("Width (px)"), 16., 4096., 1.),
     (translation_key("Height (px)"), 16., 4096., 1.),
-    (translation_key("Samples"), 1., 64., 1.),
+    (translation_key("Samples"), 1., 4096., 1.),
     (translation_key("Vertical field of view"), 10., 120., 1.),
-    (translation_key("Exposure"), 0.1, 5., 0.1),
+    (translation_key("Exposure (EV)"), -10., 10., 0.1),
     (translation_key("Sun elevation"), 0., 90., 1.),
     (translation_key("Sun azimuth"), 0., 360., 1.),
     (translation_key("Sun intensity"), 0., 10., 0.1),
@@ -402,7 +402,27 @@ impl RenderPage {
             let document = editor.document.borrow();
             (document.generation(), document.content_revision())
         };
-        let key = self.preview_key(content);
+        let environment = {
+            let document = editor.document.borrow();
+            let mut settings = editor_core::render_settings::from_preferences();
+            editor_core::environment::apply(&document, &mut settings);
+            (settings.environment, settings.probes)
+        };
+        let (environment, probes) = environment;
+        if !editor_core::light_probes::settings(&editor.document.borrow())
+            .probes
+            .is_empty()
+        {
+            ctx.request_repaint_after(std::time::Duration::from_millis(100));
+        }
+        if !editor_core::environment::settings(&editor.document.borrow())
+            .path
+            .as_os_str()
+            .is_empty()
+        {
+            ctx.request_repaint_after(std::time::Duration::from_millis(500));
+        }
+        let key = format!("{}{environment:?}{probes:?}", self.preview_key(content));
         let (camera, settings) = self.read();
         let preview = self.wgpu.get_or_insert_with(|| WgpuPreview::new(state));
         let document = editor.document.borrow();
@@ -433,30 +453,74 @@ impl RenderPage {
                 job.settings.width.max(16) as u32,
                 job.settings.height.max(16) as u32,
             );
-            let render_settings = job.settings.render();
-            preview.renderer.accumulate(&view(
-                &job.camera,
-                size,
-                &render_settings,
-                Some(job.completed),
-            ));
+            let mut render_settings = job.settings.render();
+            render_settings.environment = job.environment.clone();
+            render_settings.probes = job.probes.clone();
+            let started = std::time::Instant::now();
+            let batch = if job.settings.samples > 64 {
+                ctx.input(|input| {
+                    if input.stable_dt < 0.025 {
+                        4
+                    } else if input.stable_dt < 0.05 {
+                        2
+                    } else {
+                        1
+                    }
+                })
+            } else {
+                1
+            };
+            let mut finished = false;
+            let camera_for_samples = job.camera;
+            for _ in 0..batch {
+                preview.renderer.accumulate(&view(
+                    &camera_for_samples,
+                    size,
+                    &render_settings,
+                    Some(job.completed),
+                ));
+                finished = job.advance();
+                if finished || started.elapsed() > std::time::Duration::from_millis(8) {
+                    break;
+                }
+            }
             preview.track_output();
-            let finished = job.advance();
             self.progress = progress(job);
             if finished {
                 // `write_png` and `Video::push` take rows bottom first, as GL reads them.
-                let pixels = preview.renderer.read_output().map(|(width, _, pixels)| {
-                    let row = width as usize * 4;
-                    pixels
-                        .chunks_exact(row)
-                        .rev()
-                        .flatten()
-                        .copied()
-                        .collect::<Vec<u8>>()
-                });
-                let done = match pixels {
-                    Some(pixels) => finish_frame(job, &pixels),
-                    None => Some(tr("Render failed").to_string()),
+                let pixels = (!job.hdr)
+                    .then(|| preview.renderer.read_output())
+                    .flatten()
+                    .map(|(width, _, pixels)| {
+                        let row = width as usize * 4;
+                        pixels
+                            .chunks_exact(row)
+                            .rev()
+                            .flatten()
+                            .copied()
+                            .collect::<Vec<u8>>()
+                    });
+                let done = if job.hdr {
+                    Some(match preview.renderer.read_hdr() {
+                        Some((width, height, pixels)) => {
+                            match render_camera::write_exr(&job.path, width, height, &pixels) {
+                                Ok(()) => format!(
+                                    "{}: {} ({} × {})",
+                                    tr("Saved"),
+                                    job.path.display(),
+                                    width,
+                                    height
+                                ),
+                                Err(error) => format!("{}: {error}", tr("Render failed")),
+                            }
+                        }
+                        None => tr("Render failed").to_owned(),
+                    })
+                } else {
+                    match pixels {
+                        Some(pixels) => finish_frame(job, &pixels),
+                        None => Some(tr("Render failed").to_string()),
+                    }
                 };
                 if let Some(status) = done {
                     self.status = status;
@@ -473,6 +537,8 @@ impl RenderPage {
                 self.uploaded = Some(content);
             }
             let mut render_settings = settings.render();
+            render_settings.environment = environment;
+            render_settings.probes = probes;
             render_settings.accumulate = false;
             preview.renderer.render(&view(
                 &camera,
@@ -917,6 +983,7 @@ impl RenderPage {
             translation_key("Camera position"),
             translation_key("Output and lens"),
             translation_key("Lighting"),
+            translation_key("Color management"),
             translation_key("Depth of field"),
             translation_key("Animation"),
         ];
@@ -949,7 +1016,33 @@ impl RenderPage {
         };
         match index {
             0 => numbers(self, ui, 0..6),
-            1 => numbers(self, ui, 6..10),
+            1 => {
+                numbers(self, ui, 6..10);
+                let samples = [16, 64, 256, 1024, 4096];
+                let mut selected = samples
+                    .iter()
+                    .position(|value| *value == self.settings.samples)
+                    .map_or(0, |index| index + 1);
+                widgets::row(ui, tr("Sampling quality"), None, |ui| {
+                    if widgets::dropdown(
+                        ui,
+                        "sampling-quality",
+                        &mut selected,
+                        &[
+                            tr("Custom"),
+                            tr("Draft"),
+                            tr("Balanced"),
+                            tr("High"),
+                            tr("Very high"),
+                            tr("Maximum"),
+                        ],
+                        ui.available_width(),
+                    ) && selected > 0
+                    {
+                        self.settings.samples = samples[selected - 1];
+                    }
+                });
+            }
             2 => {
                 numbers(self, ui, 10..17);
                 let lighting = self.settings.lighting.get_or_insert_with(|| {
@@ -985,8 +1078,20 @@ impl RenderPage {
                 form::switch_row(ui, tr("Shadows"), None, &mut self.settings.shadows);
                 form::switch_row(ui, tr("Ambient occlusion"), None, &mut self.settings.ao);
                 form::switch_row(ui, tr("Bloom"), None, &mut self.settings.bloom);
+                crate::environment_controls::show(ui, &editor.document);
+                crate::probe_controls::show(
+                    ui,
+                    &editor.document,
+                    *editor.camera.borrow(),
+                    &self.settings.render(),
+                );
             }
             3 => {
+                if cfg!(feature = "wgpu") {
+                    crate::imaging_controls::show(ui, &mut self.settings.imaging);
+                }
+            }
+            4 => {
                 form::switch_row(
                     ui,
                     tr("Enable depth of field"),
@@ -1054,7 +1159,7 @@ impl RenderPage {
             7 => f64::from(s.height),
             8 => f64::from(s.samples),
             9 => s.fov,
-            10 => f64::from(s.exposure),
+            10 => f64::from(s.exposure.log2() + s.imaging.exposure_ev),
             11 => f64::from(s.sun_elevation),
             12 => f64::from(s.sun_azimuth),
             13 => f64::from(lighting.sun_intensity),
@@ -1083,7 +1188,10 @@ impl RenderPage {
             7 => s.height = value.round() as i32,
             8 => s.samples = value.round() as u32,
             9 => s.fov = value,
-            10 => s.exposure = value as f32,
+            10 => {
+                s.exposure = 1.0;
+                s.imaging.exposure_ev = value as f32;
+            }
             11 => s.sun_elevation = value as f32,
             12 => s.sun_azimuth = value as f32,
             13..=16 => {
@@ -1127,9 +1235,10 @@ impl RenderPage {
 
     /// The preview, the status line and the render controls.
     fn output(&mut self, ui: &mut egui::Ui, editor: &Editor) {
-        let stale = self.stale(editor);
+        let stale =
+            self.stale(editor) || !editor_core::light_probes::ready(&editor.document.borrow());
         let area = ui.max_rect();
-        let below = 4.0 * theme::CONTROL_HEIGHT + 22.0 + 5.0 * 8.0 + 36.0;
+        let below = 5.0 * theme::CONTROL_HEIGHT + 22.0 + 5.0 * 8.0 + 36.0;
         let space = egui::Rect::from_min_size(
             area.min,
             egui::vec2(area.width(), (area.height() - below).max(120.0)),
@@ -1235,7 +1344,9 @@ impl RenderPage {
             egui::StrokeKind::Outside,
         );
         ui.add_space(10.0);
-        let status = if stale {
+        let status = if !editor_core::light_probes::ready(&editor.document.borrow()) {
+            tr("Waiting to bake light probes")
+        } else if stale {
             tr("The map changed. Close and reopen this render window.")
         } else {
             self.status.as_str()
@@ -1252,7 +1363,10 @@ impl RenderPage {
                 "Plays the map's animations from the start, as the 3D view's preview does.",
             ))
             .clicked();
-        self.render(editor, png, gif);
+        ui.add_space(4.0);
+        let exr = cfg!(feature = "wgpu")
+            && theme::button(ui, tr("Render EXR"), width, self.job.is_none() && !stale).clicked();
+        self.render(editor, png, gif, exr);
         ui.add_space(4.0);
         form::progress(ui, self.progress.0, &self.progress.1);
         ui.add_space(4.0);
@@ -1269,7 +1383,7 @@ impl RenderPage {
     /// map, and starts the render; [`tick`](Self::tick) draws it a sample at a time.
     /// `png` and `gif` ask where; the render starts on the frame the answer comes, so this
     /// is called every frame the window shows.
-    fn render(&mut self, editor: &Editor, png: bool, gif: bool) {
+    fn render(&mut self, editor: &Editor, png: bool, gif: bool, exr: bool) {
         let still = FileDialog::new()
             .id("render-png")
             .set_title(tr("Render PNG"))
@@ -1282,12 +1396,23 @@ impl RenderPage {
             .add_filter("GIF image", &["gif"])
             .set_file_name("render.gif")
             .save_file(gif);
-        let (path, animated) = match (still, animated) {
-            (Some(path), _) => (path, false),
-            (None, Some(path)) => (path, true),
-            (None, None) => return,
+        let hdr = if cfg!(feature = "wgpu") {
+            FileDialog::new()
+                .id("render-exr")
+                .set_title(tr("Render EXR"))
+                .add_filter("OpenEXR image", &["exr"])
+                .set_file_name("render.exr")
+                .save_file(exr)
+        } else {
+            None
         };
-        if self.stale(editor) {
+        let (path, animated, hdr) = match (still, animated, hdr) {
+            (Some(path), _, _) => (path, false, false),
+            (None, Some(path), _) => (path, true, false),
+            (None, None, Some(path)) => (path.with_extension("exr"), false, true),
+            _ => return,
+        };
+        if self.stale(editor) || !editor_core::light_probes::ready(&editor.document.borrow()) {
             return;
         }
         self.finish_navigation(editor);
@@ -1306,8 +1431,13 @@ impl RenderPage {
         self.save(editor);
         self.status = tr("Rendering").to_string();
         self.progress = (0.0, tr("Rendering").to_string());
+        let mut environment = settings.render();
+        editor_core::environment::apply(&editor.document.borrow(), &mut environment);
         self.job = Some(Job {
+            probes: environment.probes,
+            environment: environment.environment,
             path,
+            hdr,
             camera,
             settings,
             completed: 0,
@@ -1400,7 +1530,7 @@ mod tests {
                 .unwrap()
         };
         assert_eq!(range("Vertical field of view"), (10., 120.));
-        assert_eq!(range("Exposure"), (0.1, 5.));
+        assert_eq!(range("Exposure (EV)"), (-10., 10.));
         assert_eq!(range("Sun elevation"), (0., 90.));
         assert_eq!(range("Focus distance (units)").0, 1.);
         // Every range is one the stored settings keep, so nothing typed is lost on save.

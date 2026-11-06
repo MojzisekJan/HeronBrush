@@ -34,6 +34,8 @@ struct Light {
 @group(2) @binding(10) var light_shadows: texture_depth_cube_array;
 // The prepass depth, for contact shadows (the pass holds it as a read-only attachment).
 @group(2) @binding(11) var scene_depth: texture_depth_2d;
+@group(2) @binding(13) var local_reflections:texture_cube_array<f32>;
+@group(2) @binding(12) var environment_map: texture_2d<f32>;
 
 struct VertexIn {
     @location(0) position: vec3<f32>,
@@ -220,6 +222,28 @@ var<private> SHADOW_DISC: array<vec2<f32>, 16> = array<vec2<f32>, 16>(
     vec2<f32>(-0.24188840, 0.99706507), vec2<f32>(-0.81409955, 0.91437590),
     vec2<f32>(0.19984126, 0.78641367), vec2<f32>(0.14383161, -0.14100790));
 
+fn shadow_tap(index:u32)->vec2<f32> {
+    let tap=SHADOW_DISC[index];let angle=frame.misc.z*2.39996323;
+    return vec2<f32>(tap.x*cos(angle)-tap.y*sin(angle),tap.x*sin(angle)+tap.y*cos(angle));
+}
+// Anisotropic GGX with correlated Smith visibility; the zero case preserves the old BRDF.
+fn surface_specular(n:vec3<f32>,v:vec3<f32>,l:vec3<f32>,h:vec3<f32>,t:vec3<f32>,b:vec3<f32>,roughness:f32,anisotropy:f32)->f32 {
+    let nv=max(dot(n,v),0.0001);let nl=max(dot(n,l),0.0001);
+    if (anisotropy<0.001) {return distribution_ggx(max(dot(n,h),0.0),roughness)*geometry_schlick(nv,roughness)*geometry_schlick(nl,roughness)/max(4.0*nv*nl,0.0001);}
+    let alpha=roughness*roughness;let at=max(alpha*(1.0+anisotropy*0.95),0.002);let ab=max(alpha*(1.0-anisotropy*0.95),0.002);
+    let q=vec3<f32>(dot(t,h)/at,dot(b,h)/ab,max(dot(n,h),0.0));
+    let distribution=1.0/max(PI*at*ab*pow(dot(q,q),2.0),0.000001);
+    let lambda_v=nl*length(vec3<f32>(at*dot(t,v),ab*dot(b,v),nv));
+    let lambda_l=nv*length(vec3<f32>(at*dot(t,l),ab*dot(b,l),nl));
+    return distribution*0.5/max(lambda_v+lambda_l,0.00001);
+}
+fn coat_fresnel(cosine:f32,strength:f32)->f32 {return strength*(0.04+0.96*pow(1.0-clamp(cosine,0.0,1.0),5.0));}
+fn coat_specular(n:vec3<f32>,v:vec3<f32>,l:vec3<f32>,h:vec3<f32>,layer:vec4<f32>)->f32 {
+    if (layer.x<=0.0) {return 0.0;}
+    let lh=max(dot(l,h),0.001);
+    return distribution_ggx(max(dot(n,h),0.0),max(layer.y,0.05))*coat_fresnel(lh,layer.x)*0.25/(lh*lh);
+}
+
 fn cascade_lookup(world: vec3<f32>, n: vec3<f32>, n_dot_l: f32, cascade: u32) -> f32 {
     // Normal offset: push the lookup off the surface by about a texel, more when the
     // light grazes it, so a surface does not shadow itself in stripes.
@@ -231,10 +255,39 @@ fn cascade_lookup(world: vec3<f32>, n: vec3<f32>, n_dot_l: f32, cascade: u32) ->
         return 1.0;
     }
     let reference = p.z - frame.cascade_bias[cascade];
-    let radius = frame.shadow.z * frame.shadow.w;
+    let matrix=frame.cascades[cascade];
+    let basis_x=normalize(vec3<f32>(matrix[0].x,matrix[1].x,matrix[2].x));
+    let basis_y=normalize(vec3<f32>(matrix[0].y,matrix[1].y,matrix[2].y));
+    // Account for the receiver plane under each tap, including the blocker search.
+    let gradient=vec2<f32>(-dot(n,basis_x),dot(n,basis_y))*texel/frame.shadow.w
+        /(-max(n_dot_l,0.05)*frame.cascade_depth_range[cascade]);
+    // Directional-light PCSS: blocker distance is linear in these orthographic maps.
+    // Keep the search and filter footprint in world units across cascade boundaries.
+    let angular_radius=frame.shadow.z*0.004;
+    let depth_range=frame.cascade_depth_range[cascade];
+    let search_world=min(depth_range*angular_radius,texel*24.0);
+    let search_uv=search_world/max(texel,0.0001)*frame.shadow.w;
+    let dimensions=vec2<i32>(textureDimensions(shadow_map));
+    var blocker_sum=0.0;
+    var blockers=0.0;
+    if (frame.shadow.z>0.0) {
+        for (var i=0u;i<16u;i+=1u) {
+            let q=clamp(vec2<i32>((uv+shadow_tap(i)*search_uv)*vec2<f32>(dimensions)),vec2<i32>(0),dimensions-1);
+            let tap_uv=(vec2<f32>(q)+0.5)/vec2<f32>(dimensions);
+            let stored=textureLoad(shadow_map,q,i32(cascade),0)-dot(gradient,tap_uv-uv);
+            if (stored<reference) {blocker_sum+=stored;blockers+=1.0;}
+        }
+    }
+    var penumbra=0.5;
+    if (blockers>0.0) {
+        let separation=max(reference-blocker_sum/blockers,0.0)*depth_range;
+        penumbra=clamp(separation*angular_radius/max(texel,0.0001),0.5,24.0);
+    }
+    let radius=penumbra*frame.shadow.w;
     var lit = 0.0;
     for (var i = 0u; i < 16u; i += 1u) {
-        lit += textureSampleCompareLevel(shadow_map, shadow_sampler, uv + SHADOW_DISC[i] * radius, i32(cascade), reference);
+        let offset=shadow_tap(i)*radius;
+        lit += textureSampleCompareLevel(shadow_map, shadow_sampler, uv + offset, i32(cascade), reference+dot(gradient,offset));
     }
     return lit / 16.0;
 }
@@ -350,7 +403,7 @@ fn light_visibility(slot: i32, light_position: vec3<f32>, range: f32, world: vec
 // The light entities' direct light on a surface: Cook-Torrance as for the sun, with
 // Godot's falloff (the light's decay over distance in metres, windowed to zero at its
 // reach) and spot cone, and the light's shadow cube where it has one.
-fn entity_lights(pixel: vec2<f32>, depth: f32, world: vec3<f32>, n: vec3<f32>, geometric: vec3<f32>, v: vec3<f32>, f0: vec3<f32>, diffuse_color: vec3<f32>, roughness: f32, compensation: vec3<f32>) -> vec3<f32> {
+fn entity_lights(pixel: vec2<f32>, depth: f32, world: vec3<f32>, n: vec3<f32>, geometric: vec3<f32>, v: vec3<f32>, f0: vec3<f32>, diffuse_color: vec3<f32>, roughness: f32, compensation: vec3<f32>,tangent:vec3<f32>,bitangent:vec3<f32>,layer:vec4<f32>) -> vec3<f32> {
     var total = vec3<f32>(0.0);
     let cluster = light_clusters[light_cluster(pixel, depth)];
     let n_dot_v = max(dot(n, v), 1e-4);
@@ -386,9 +439,11 @@ fn entity_lights(pixel: vec2<f32>, depth: f32, world: vec3<f32>, n: vec3<f32>, g
         let d = distribution_ggx(max(dot(n, h), 0.0), roughness);
         let g = geometry_schlick(n_dot_v, roughness) * geometry_schlick(n_dot_l, roughness);
         let f = fresnel_schlick(max(dot(h, v), 0.0), f0);
-        let specular = (d * g * f) / max(4.0 * n_dot_v * n_dot_l, 1e-4) * compensation;
+        let specular = surface_specular(n,v,l,h,tangent,bitangent,roughness,layer.z)*f*compensation;
         let diffuse = (vec3<f32>(1.0) - f) * diffuse_color / PI;
-        total += (diffuse + specular) * light.color_decay.rgb * n_dot_l * attenuation;
+        let coat=coat_specular(geometric,v,l,h,layer);
+        let attenuation_coat=1.0-coat_fresnel(max(dot(v,h),0.0),layer.x);
+        total += ((diffuse + specular)*attenuation_coat*n_dot_l+vec3<f32>(coat)*max(dot(geometric,l),0.0)) * light.color_decay.rgb * attenuation;
     }
     return total;
 }
@@ -419,29 +474,6 @@ fn sh_irradiance(n: vec3<f32>) -> vec3<f32> {
 // Ambient occlusion from the GTAO target (upsampled, when it is at half resolution, with
 // weights that favour texels at this pixel's depth so occlusion does not bleed across
 // silhouettes).
-fn sample_occlusion(pixel: vec2<f32>, depth: f32) -> f32 {
-    let size = vec2<i32>(textureDimensions(ambient_occlusion));
-    if (frame.ao.x < 1.5) {
-        return textureLoad(ambient_occlusion, min(vec2<i32>(pixel), size - 1), 0).r;
-    }
-    let half_position = pixel * 0.5 - 0.5;
-    let base = vec2<i32>(floor(half_position));
-    let f = half_position - floor(half_position);
-    var total = 0.0;
-    var weights = 0.0;
-    for (var y = 0; y < 2; y += 1) {
-        for (var x = 0; x < 2; x += 1) {
-            let q = clamp(base + vec2<i32>(x, y), vec2<i32>(0), size - 1);
-            let texel = textureLoad(ambient_occlusion, q, 0);
-            let bilinear = select(1.0 - f.x, f.x, x == 1) * select(1.0 - f.y, f.y, y == 1);
-            let similar = 1.0 / (1e-3 + abs(texel.g - depth) / max(depth, 1.0) * 20.0);
-            let w = bilinear * similar + 1e-5;
-            total += texel.r * w;
-            weights += w;
-        }
-    }
-    return total / weights;
-}
 
 struct ForwardOut {
     @location(0) light: vec4<f32>,
@@ -472,6 +504,20 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
     let dpy = dpdy(in.world);
     let duvx = dpdx(uv);
     let duvy = dpdy(uv);
+    // Derivatives must run before discard or material-dependent early returns.
+    let n = surface_normal(in, m, bumps, dpx, dpy, duvx, duvy, front);
+    let normal_dx = dpdx(n);
+    let normal_dy = dpdy(n);
+    let geometric_variance = 0.15 * (dot(normal_dx, normal_dx) + dot(normal_dy, normal_dy));
+    // Linear normal-map mips retain the mean vector's length: normalization alone
+    // throws this lost detail away and leaves tiny glossy surfaces sparkling.
+    var mip_variance = 0.0;
+    if ((m.flags & MATERIAL_NORMAL_MAP) != 0u) {
+        let mean_length = clamp(length(bumps * 2.0 - 1.0), 1e-3, 1.0);
+        // Ignore the length error introduced by 8-bit normal quantization.
+        let lost_length = max(1.0 - mean_length - 1.0 / 128.0, 0.0);
+        mip_variance = lost_length / mean_length * m.model_params.x * m.model_params.x;
+    }
     let coordinate = (in.uv.x + in.uv.y) / 8.0;
     let feather = max(fwidth(coordinate), 0.001);
 
@@ -506,8 +552,6 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
     if ((m.model_params.w == 0.0 && dot(geometric, frame.eye.xyz - in.world) < 0.0) || (m.model_params.w == 2.0 && !front)) {
         geometric = -geometric;
     }
-    let n = surface_normal(in, m, bumps, dpx, dpy, duvx, duvy, front);
-
     var roughness = frame.params0.x;
     var metallic = frame.params0.y;
     var emission = 0.0;
@@ -518,8 +562,20 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
     }
     if ((m.flags & 32u) != 0u) {roughness *= orm.g; metallic *= orm.b;}
     roughness = clamp(roughness, 0.05, 1.0);
+    // Filter GGX alpha squared, then return to perceptual roughness (fourth root).
+    // The kernel cap preserves material character around steep normal transitions.
+    let kernel = min(2.0 * (geometric_variance + mip_variance), 0.2);
+    roughness = sqrt(sqrt(min(pow(roughness, 4.0) + kernel, 1.0)));
     metallic = clamp(metallic, 0.0, 1.0);
 
+    let raw_t=dpx*duvy.y-dpy*duvx.y;
+    let helper=select(vec3<f32>(0.0,0.0,1.0),vec3<f32>(1.0,0.0,0.0),abs(n.z)>0.9);
+    var tangent0=normalize(cross(helper,n));
+    let projected_t=raw_t-n*dot(n,raw_t);
+    if (dot(projected_t,projected_t)>0.000001) {tangent0=normalize(projected_t);}
+    let bitangent0=normalize(cross(n,tangent0));
+    let tangent=tangent0*cos(m.layered.w)+bitangent0*sin(m.layered.w);
+    let bitangent=normalize(cross(n,tangent));
     let v = normalize(frame.eye.xyz - in.world);
     let l = normalize(-frame.light_dir.xyz);
     let h = normalize(v + l);
@@ -539,52 +595,71 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
     let d = distribution_ggx(max(dot(n, h), 0.0), roughness);
     let g = geometry_schlick(n_dot_v, roughness) * geometry_schlick(n_dot_l, roughness);
     let f = fresnel_schlick(max(dot(h, v), 0.0), f0);
-    let specular = (d * g * f) / max(4.0 * n_dot_v * n_dot_l, 1e-4) * compensation;
+    let specular=surface_specular(n,v,l,h,tangent,bitangent,roughness,m.layered.z)*f*compensation;
     let diffuse = (vec3<f32>(1.0) - f) * diffuse_color / PI;
     // Shadowed by the geometric normal: a normal map does not move the shadow map.
     var visibility = sun_visibility(in.world, geometric, max(dot(geometric, l), 0.0));
     if (frame.contact.x > 0.5 && visibility > 0.0 && n_dot_l > 0.0) {
         visibility *= contact_shadow(in.world, geometric, in.clip.xy);
     }
-    var direct = (diffuse + specular) * frame.light_color.rgb * n_dot_l * visibility;
+    let attenuation_coat=1.0-coat_fresnel(max(dot(v,h),0.0),m.layered.x);
+    var direct = ((diffuse + specular)*attenuation_coat*n_dot_l+vec3<f32>(coat_specular(geometric,v,l,h,m.layered))*max(dot(geometric,l),0.0)) * frame.light_color.rgb * visibility;
 
     // Occlusion: GTAO for the diffuse ambient, with Jimenez's multi-bounce fit so bright
     // surfaces do not go grey in creases; Lagarde's approximation for the specular.
     let depth = dot(in.world - frame.eye.xyz, frame.forward.xyz);
     if (frame.lights.x > 0.5) {
-        direct += entity_lights(in.clip.xy, depth, in.world, n, geometric, v, f0, diffuse_color, roughness, compensation);
+        direct += entity_lights(in.clip.xy, depth, in.world, n, geometric, v, f0, diffuse_color, roughness, compensation,tangent,bitangent,m.layered);
     }
     var ao = 1.0;
+    var bent=n;
     if (frame.effects.x > 0.5) {
-        ao = mix(1.0, sample_occlusion(in.clip.xy, depth), clamp(frame.effects.y, 0.0, 1.0));
+        let occlusion=occlusion_at(ambient_occlusion,in.clip.xy,depth);
+        ao=mix(1.0,occlusion.r,clamp(frame.effects.y,0.0,1.0));
+        bent=normalize(mix(n,octahedral_decode(occlusion.zw),clamp(frame.effects.y,0.0,1.0)));
     }
+    let screen_ao=ao;
     if ((m.flags & 32u) != 0u) {ao *= mix(1.0,orm.r,m.model_params.y);}
+    if (frame.grading.z<0.5) {bent=n;}
     let a = 2.0404 * albedo_linear - 0.3324;
     let b = -4.7951 * albedo_linear + 0.6417;
     let c = 2.7552 * albedo_linear + 0.6903;
     let diffuse_ao = max(vec3<f32>(ao), ((a * ao + b) * ao + c) * ao);
-    let specular_ao = clamp(pow(n_dot_v + ao, exp2(-16.0 * roughness - 1.0)) - 1.0 + ao, 0.0, 1.0);
+    // A perturbed normal must not reflect light through its geometric surface.
+    var reflection_normal=n;
+    let stretched=cross(cross(bitangent,v),bitangent);
+    if (m.layered.z>0.0 && dot(stretched,stretched)>0.000001) {reflection_normal=normalize(mix(n,normalize(stretched),m.layered.z*(1.0-roughness)));}
+    let r=reflect(-v,reflection_normal);
+    let horizon=select(1.0,pow(clamp(1.0+dot(r,geometric),0.0,1.0),2.0),frame.grading.z>0.5);
+    let specular_ao = clamp(pow(n_dot_v + ao, exp2(-16.0 * roughness - 1.0)) - 1.0 + ao, 0.0, 1.0)*horizon;
+    let cone=select(1.0,specular_cone_visibility(r,bent,screen_ao,roughness),frame.grading.z>0.5);
 
     var irradiance: vec3<f32>;
     var radiance: vec3<f32>;
-    let r = reflect(-v, n);
     if (frame.misc.y > 0.5) {
-        irradiance = sh_irradiance(n);
+        irradiance = sh_irradiance(bent);
         let lod = roughness * (frame.effects.w - 1.0);
         radiance = textureSampleLevel(specular_env, env_sampler, r, lod).rgb;
     } else {
-        irradiance = sky_light(n, 1.0, 0.0);
+        irradiance = sky_light(bent, 1.0, 0.0);
         radiance = sky_light(r, roughness, 0.0);
     }
+    irradiance=local_diffuse(in.world,bent,irradiance);
+    radiance=local_specular(local_reflections,env_sampler,in.world,r,roughness,radiance);
     // Multiple scattering: the energy single scattering loses comes back, tinted by the
     // average Fresnel, and diffuse takes what the specular leaves.
     let missing = 1.0 - energy;
     let f_average = f0 + (1.0 - f0) / 21.0;
     let multiple = single * f_average / (1.0 - missing * f_average);
     let diffuse_weight = diffuse_color * (1.0 - single - multiple * missing);
-    let ambient = (diffuse_weight * irradiance * diffuse_ao + (single * radiance + multiple * missing * irradiance) * specular_ao) * ambient_strength;
-    let light = direct + ambient + albedo_linear * emission + emissive * m.model_emissive.rgb;
-    return ForwardOut(vec4<f32>(light, surface_alpha), vec4<f32>(single * specular_ao, roughness));
+    let coat_weight=coat_fresnel(max(dot(geometric,v),0.0),m.layered.x);
+    let coat_ao=clamp(pow(max(dot(geometric,v),0.0001)+ao,exp2(-16.0*max(m.layered.y,0.05)-1.0))-1.0+ao,0.0,1.0);
+    var coat_radiance=vec3<f32>(0.0);
+    if (m.layered.x>0.0) {coat_radiance=textureSampleLevel(specular_env,env_sampler,reflect(-v,geometric),max(m.layered.y,0.05)*(frame.effects.w-1.0)).rgb;}
+    if (m.layered.x>0.0) {coat_radiance=local_specular(local_reflections,env_sampler,in.world,reflect(-v,geometric),max(m.layered.y,0.05),coat_radiance);}
+    let ambient = (diffuse_weight * irradiance * diffuse_ao*(1.0-coat_weight) + (single * radiance * cone + multiple * missing * irradiance) * specular_ao*pow(1.0-coat_weight,2.0)+coat_radiance*coat_weight*coat_ao) * ambient_strength;
+    let light = clamp(direct + ambient + albedo_linear * emission + emissive * m.model_emissive.rgb,vec3<f32>(0.0),vec3<f32>(65504.0));
+    return ForwardOut(vec4<f32>(light, surface_alpha), vec4<f32>(single * specular_ao*pow(1.0-coat_weight,2.0), roughness));
 }
 
 // Wireframe: the triangles' edges in one colour, written straight to the display target.
@@ -607,6 +682,9 @@ fn fs_sky(in: FullscreenOut) -> ForwardOut {
     let up = clamp(direction.z, -1.0, 1.0);
     let sun = normalize(-frame.light_dir.xyz);
     let sun_height = sun.z;
+    if (frame.environment.x > 0.5) {
+        return forward_out(vec4<f32>(panorama_radiance(environment_map, normalize(direction)),1.0));
+    }
     var color = sky_radiance(direction);
     // The disc itself, antialiased by its screen-space width; the environment map
     // leaves it out, since the direct light already accounts for the sun.

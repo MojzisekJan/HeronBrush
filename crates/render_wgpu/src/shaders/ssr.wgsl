@@ -13,6 +13,8 @@
 @group(1) @binding(3) var reflectivity: texture_2d<f32>;
 @group(1) @binding(4) var specular_env: texture_cube<f32>;
 @group(1) @binding(5) var env_sampler: sampler;
+@group(1) @binding(6) var ambient_occlusion:texture_2d<f32>;
+@group(1) @binding(7) var local_reflections:texture_cube_array<f32>;
 
 @vertex
 fn vs_ssr(@builtin(vertex_index) index: u32) -> FullscreenOut {
@@ -109,7 +111,17 @@ fn fs_ssr(in: FullscreenOut) -> @location(0) vec4<f32> {
     // What the forward pass already reflected here: the environment along the world
     // reflection at this roughness, at the sky's strength.
     let world_direction = (transpose(frame.view) * vec4<f32>(direction, 0.0)).xyz;
-    let replaced = textureSampleLevel(specular_env, env_sampler, world_direction, roughness * (frame.effects.w - 1.0)).rgb * frame.params0.z;
+    var cone=1.0;
+    if (frame.effects.x>0.5 && frame.grading.z>0.5) {
+        let occlusion=occlusion_at(ambient_occlusion,vec2<f32>(p)+0.5,-origin.z);
+        let visibility=mix(1.0,occlusion.r,clamp(frame.effects.y,0.0,1.0));
+        let bent=normalize(mix(world_normal,octahedral_decode(occlusion.zw),clamp(frame.effects.y,0.0,1.0)));
+        let mirror=reflect(normalize((transpose(frame.view)*vec4<f32>(-v,0.0)).xyz),world_normal);
+        cone=specular_cone_visibility(mirror,bent,visibility,roughness);
+    }
+    let origin_world=(frame.inv_view_proj*vec4<f32>((vec2<f32>(p)+0.5)/vec2<f32>(size)*vec2<f32>(2.0,-2.0)+vec2<f32>(-1.0,1.0),d,1.0));
+    let global=textureSampleLevel(specular_env,env_sampler,world_direction,roughness*(frame.effects.w-1.0)).rgb;
+    let replaced=local_specular(local_reflections,env_sampler,origin_world.xyz/origin_world.w,world_direction,roughness,global)*frame.params0.z*cone;
     let found = textureLoad(scene_light, min(vec2<i32>(hit * vec2<f32>(size)), size - 1), 0).rgb;
     // Fade towards the window's edges, where the march runs out of picture.
     let edge = smoothstep(vec2<f32>(0.0), vec2<f32>(0.1), hit) * smoothstep(vec2<f32>(0.0), vec2<f32>(0.1), 1.0 - hit);

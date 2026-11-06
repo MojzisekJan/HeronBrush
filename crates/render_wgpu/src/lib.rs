@@ -36,9 +36,11 @@
 
 #![allow(clippy::too_many_arguments)]
 
+mod frame_timer;
 mod ibl;
 mod lights;
 pub mod present;
+mod probes;
 pub mod scene;
 mod shadows;
 mod taa;
@@ -66,7 +68,7 @@ const NORMAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
 /// Each surface's motion since last frame, in world units (zero where nothing moved).
 const MOTION_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 /// Occlusion and view depth.
-const AO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+const AO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 /// What screen-space reflections may replace: specular weight and roughness.
 const REFLECTIVITY_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 /// At most this many bloom mips.
@@ -88,18 +90,7 @@ pub enum DisplayMode {
 }
 
 /// The curve that maps HDR light to the display.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Tonemapper {
-    /// The fitted ACES curve the GL renderer uses.
-    Aces,
-    /// Troy Sobotka's AgX, as Blender has it: graceful highlights, no hue skews.
-    #[default]
-    Agx,
-    /// Khronos PBR Neutral: base colours as authored, highlights compressed.
-    KhronosNeutral,
-    /// Tomasz Stachowiak's TonyMcMapface (a LUT).
-    TonyMcMapface,
-}
+pub use render::color::ToneMap as Tonemapper;
 
 /// What one frame shows.
 pub struct ViewParams<'a> {
@@ -202,6 +193,11 @@ struct FrameUniform {
     view_proj_unjittered: [[f32; 4]; 4],
     prev_view_proj: [[f32; 4]; 4],
     ao: [f32; 4],
+    environment: [f32; 4],
+    grading: [f32; 4],
+    white_balance: [f32; 4],
+    cascade_depth_range: [f32; 4],
+    local_probes: [f32; 4],
 }
 
 #[repr(C)]
@@ -287,14 +283,20 @@ struct Pipelines {
     accumulate_layout: wgpu::BindGroupLayout,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FrameOutput {
+    Display,
+    HdrSample,
+}
+
 /// The running average of an offline render, at the output's size.
 struct Accumulation {
     size: (u32, u32),
-    view: wgpu::TextureView,
-    /// Reads the sample (the picture before FXAA) into the average.
-    from_sample: wgpu::BindGroup,
-    /// Reads the average into the output.
-    from_average: wgpu::BindGroup,
+    textures: [wgpu::Texture; 2],
+    views: [wgpu::TextureView; 2],
+    from_average: [wgpu::BindGroup; 2],
+    from_sample: [wgpu::BindGroup; 2],
+    current: usize,
     samples: u32,
 }
 
@@ -321,6 +323,7 @@ pub struct Renderer {
     no_shadows: wgpu::TextureView,
     shadow_generation: u64,
     ibl: ibl::Ibl,
+    probes: probes::Probes,
     _tony: wgpu::Texture,
     tony_view: wgpu::TextureView,
     /// Light entities: table, clusters, cube shadows.
@@ -329,6 +332,7 @@ pub struct Renderer {
     /// is for.
     lighting_group: Option<((u64, u64, u64), wgpu::BindGroup)>,
     timer: Option<timer::GpuTimer>,
+    frame_timer: Option<frame_timer::FrameTimer>,
     profiling: bool,
     accumulation: Option<Accumulation>,
     /// The temporal filter's state across frames.
@@ -594,6 +598,7 @@ impl Renderer {
                 },
                 storage(1),
                 storage(2),
+                storage(3),
             ],
         });
         let frame_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -630,6 +635,7 @@ impl Renderer {
                 texture_entry_dim(4, filterable, wgpu::TextureViewDimension::D3),
                 sampler_entry(5, wgpu::SamplerBindingType::Filtering),
                 texture_entry(9, filterable),
+                texture_entry(8, unfilterable),
             ],
         );
         let taa_layout = layout_of(
@@ -653,6 +659,8 @@ impl Renderer {
                 texture_entry(3, unfilterable),
                 texture_entry_dim(4, filterable, wgpu::TextureViewDimension::Cube),
                 sampler_entry(5, wgpu::SamplerBindingType::Filtering),
+                texture_entry(6, unfilterable),
+                texture_entry_dim(7, filterable, wgpu::TextureViewDimension::CubeArray),
             ],
         );
         let fxaa_layout = layout_of(
@@ -665,7 +673,8 @@ impl Renderer {
         let accumulate_layout = layout_of(
             "render_wgpu accumulate",
             &[
-                texture_entry(6, unfilterable),
+                texture_entry_dim(4, filterable, wgpu::TextureViewDimension::D3),
+                sampler_entry(5, wgpu::SamplerBindingType::Filtering),
                 texture_entry(8, unfilterable),
             ],
         );
@@ -699,6 +708,8 @@ impl Renderer {
                 fragment_storage(9),
                 texture_entry_dim(10, T::Depth, wgpu::TextureViewDimension::CubeArray),
                 texture_entry(11, T::Depth),
+                texture_entry(12, unfilterable),
+                texture_entry_dim(13, filterable, wgpu::TextureViewDimension::CubeArray),
             ],
         );
         let cascade_layout = shadows::Shadows::layout(device);
@@ -902,7 +913,7 @@ impl Renderer {
             device,
             spec(
                 "sky",
-                &scene_layout,
+                &forward_layout,
                 &scene_module,
                 "vs_sky",
                 "fs_sky",
@@ -954,21 +965,13 @@ impl Renderer {
                 None,
             ),
         );
-        // A running average: new = sample * c + old * (1 - c), c = 1 / samples so far.
-        let average = Some(wgpu::BlendState {
-            color: wgpu::BlendComponent {
-                src_factor: wgpu::BlendFactor::Constant,
-                dst_factor: wgpu::BlendFactor::OneMinusConstant,
-                operation: wgpu::BlendOperation::Add,
-            },
-            alpha: wgpu::BlendComponent::REPLACE,
-        });
-        let accumulate_target = [target(HDR_FORMAT, average)];
+        // Ping-pong 32-bit averages retain small contributions at thousands of samples.
+        let accumulate_target = [target(wgpu::TextureFormat::Rgba32Float, None)];
         let accumulate = pipeline(
             device,
             spec(
                 "accumulate",
-                &accumulate_pipeline_layout,
+                &resolve_pipeline_layout,
                 &post_module,
                 "vs_fullscreen",
                 "fs_accumulate",
@@ -1382,11 +1385,13 @@ impl Renderer {
             no_shadows,
             shadow_generation: 0,
             ibl,
+            probes: probes::Probes::new(device),
             _tony: tony,
             tony_view,
             lights: lights::Lights::new(device),
             lighting_group: None,
             timer: None,
+            frame_timer: None,
             profiling: false,
             accumulation: None,
             taa: taa::TaaState::default(),
@@ -1417,6 +1422,19 @@ impl Renderer {
             }
             _ => &[],
         }
+    }
+
+    /// Enables nonblocking whole-frame timing when the adapter supports timestamps.
+    pub fn set_frame_timing(&mut self, on: bool) {
+        if on && self.frame_timer.is_none() {
+            self.frame_timer = frame_timer::FrameTimer::new(&self.device, &self.queue);
+        } else if !on {
+            self.frame_timer = None;
+        }
+    }
+    /// Latest completed GPU frame duration in milliseconds, consumed once, without waiting.
+    pub fn take_frame_time(&mut self) -> Option<f64> {
+        self.frame_timer.as_mut()?.take_ms(&self.device)
     }
 
     /// The finished picture of the last [`Renderer::render`], in [`OUTPUT_FORMAT`].
@@ -1563,6 +1581,10 @@ impl Renderer {
                     binding: 9,
                     resource: TextureView(&ssr),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 8,
+                    resource: TextureView(&hdr),
+                },
             ];
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("render_wgpu resolve"),
@@ -1580,6 +1602,8 @@ impl Renderer {
                 TextureView(&reflectivity),
                 TextureView(&self.ibl.specular_view),
                 Sampler(&self.linear_sampler),
+                TextureView(&ao),
+                TextureView(&self.probes.view),
             ],
             0,
         );
@@ -1742,6 +1766,10 @@ impl Renderer {
                     binding: 2,
                     resource: self.scene.material_buffer.as_entire_binding(),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.probes.buffer.as_entire_binding(),
+                },
             ],
         });
         self.frame_group = Some((generation, group.clone()));
@@ -1784,6 +1812,8 @@ impl Renderer {
                     .as_ref()
                     .map_or(&targets.depth, |(_, copy)| copy),
             ),
+            TextureView(&self.ibl.source_view),
+            TextureView(&self.probes.view),
         ];
         let entries: Vec<wgpu::BindGroupEntry<'_>> = resources
             .into_iter()
@@ -1877,6 +1907,10 @@ impl Renderer {
 
     /// Draws a frame into [`Renderer::output`] and submits it. Sync the scene first.
     pub fn render(&mut self, view: &ViewParams<'_>) {
+        self.render_frame(view, FrameOutput::Display);
+    }
+
+    fn render_frame(&mut self, view: &ViewParams<'_>, output: FrameOutput) {
         let started = Instant::now();
         // Textures for what the last frame drew: queued, uploaded within the budget,
         // evicted when over it. One frame late, which the placeholders cover.
@@ -1891,7 +1925,11 @@ impl Renderer {
         if self.scene.sync_epoch == self.rendered_epoch {
             self.scene.settle();
         }
-        let scene_change = if self.scene.moving() {
+        let scene_change = if shaded
+            && (self.ibl.needs_update(s) || self.probes.needs_update(s.probes.as_deref()))
+        {
+            taa::SceneChange::Changed
+        } else if self.scene.moving() {
             taa::SceneChange::Moving
         } else if self.scene.geometry_generation != self.rendered_generation {
             taa::SceneChange::Changed
@@ -2004,6 +2042,7 @@ impl Renderer {
         let eye = view.camera.position;
         let forward = view.camera.direction();
         let bloom_levels = self.targets.as_ref().map_or(1, |t| t.bloom_mips.len()) as f32;
+        self.probes.prepare(&self.queue, s.probes.as_deref());
         let uniform = FrameUniform {
             view_proj: vp,
             inv_view_proj: to_f32(&inverse),
@@ -2029,7 +2068,11 @@ impl Renderer {
             ],
             params1: [
                 f32::from(u8::from(view.mode == DisplayMode::Solid)),
-                f32::from(u8::from(s.procedural_sky)),
+                f32::from(u8::from(
+                    s.environment
+                        .as_ref()
+                        .map_or(s.procedural_sky, |environment| environment.show_background),
+                )),
                 (s.handle_radius + 2.0) * 2.0,
                 view.outline_width as f32,
             ],
@@ -2052,7 +2095,7 @@ impl Renderer {
             shadow: [
                 f32::from(u8::from(shadows_on)),
                 (s.shadow_bias / DEFAULT_SHADOW_BIAS).max(0.0),
-                (s.shadow_softness * SHADOW_TAP_SPREAD).max(0.5),
+                (s.shadow_softness * SHADOW_TAP_SPREAD).max(0.0),
                 1.0 / shadow_size(s) as f32,
             ],
             effects: [
@@ -2062,7 +2105,7 @@ impl Renderer {
                 ibl::SPECULAR_MIPS as f32,
             ],
             post: [
-                match view.tonemapper {
+                match s.color_grading.tone_map.unwrap_or(view.tonemapper) {
                     Tonemapper::Aces => 0.0,
                     Tonemapper::Agx => 1.0,
                     Tonemapper::KhronosNeutral => 2.0,
@@ -2080,7 +2123,7 @@ impl Renderer {
                 f32::from(u8::from(fxaa)),
                 1.0,
                 view.sample.unwrap_or(0) as f32,
-                taa_frame.map_or(0.0, |f| f.noise as f32),
+                taa_frame.map_or(view.sample.unwrap_or(0) as f32, |f| f.noise as f32),
             ],
             dof: match s.depth_of_field {
                 Some(d) if d.radius > 0.0 => [d.focus_distance, d.focus_range, d.radius, 0.0],
@@ -2107,7 +2150,7 @@ impl Renderer {
                 if ssr_on { s.reflection_strength } else { 0.0 },
                 s.reflection_distance.max(1.0),
                 s.reflection_samples.max(1.0),
-                f32::from(u8::from(taa_frame.is_some())),
+                f32::from(u8::from(taa_frame.is_some() || view.sample.is_some())),
             ],
             taa: match taa_frame {
                 Some(f) => [1.0, f.weight, f32::from(u8::from(ssr_on)), f.spread],
@@ -2117,6 +2160,28 @@ impl Renderer {
             prev_view_proj: taa_frame.map_or(unjittered, |f| f.previous),
             // Under the temporal filter each frame turns its slice, so one per frame adds
             // up to many as the history fills; alone, three keep the noise down.
+            grading: [
+                s.color_grading.contrast,
+                s.color_grading.saturation,
+                f32::from(u8::from(s.indirect_occlusion)),
+                0.0,
+            ],
+            white_balance: v4(s.color_grading.white_balance()),
+            cascade_depth_range: fit.depth_range,
+            local_probes: [
+                s.probes.as_ref().map_or(0, |p| p.probes().len()) as f32,
+                0.0,
+                0.0,
+                0.0,
+            ],
+            environment: s.environment.as_ref().map_or([0.0; 4], |environment| {
+                [
+                    1.0,
+                    environment.intensity,
+                    environment.rotation_degrees.to_radians(),
+                    0.0,
+                ]
+            }),
             ao: [
                 if ao_full_resolution(size) { 1.0 } else { 2.0 },
                 if taa_frame.is_some() { 1.0 } else { 3.0 },
@@ -2128,6 +2193,12 @@ impl Renderer {
             .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniform));
         let (axis_count, line_count, point_count) = self.write_overlay(view);
         let frame_group = self.frame_group();
+        if self
+            .ibl
+            .prepare_environment(&self.device, &self.queue, s.environment.as_ref())
+        {
+            self.lighting_group = None;
+        }
         let lighting_group = self.lighting_group();
         let mut stats = FrameStats {
             lights: light_frame.lights[0] as u32,
@@ -2147,6 +2218,19 @@ impl Renderer {
                 label: Some("render_wgpu frame"),
             });
 
+        let timing_slot = if output == FrameOutput::Display {
+            self.frame_timer
+                .as_mut()
+                .and_then(|timer| timer.reserve(&self.device))
+        } else {
+            None
+        };
+        if let Some(index) = timing_slot {
+            self.frame_timer
+                .as_ref()
+                .expect("reserved")
+                .marker(&mut encoder, index, true);
+        }
         if shaded {
             stats.environment_rebuilt = self.ibl.update(&mut encoder, &frame_group, s);
         }
@@ -2626,8 +2710,12 @@ impl Renderer {
                     timer.as_mut().and_then(|t| t.writes("forward")),
                 );
                 rp.set_bind_group(0, &frame_group, &[]);
-                if s.procedural_sky {
+                if s.environment
+                    .as_ref()
+                    .map_or(s.procedural_sky, |environment| environment.show_background)
+                {
                     rp.set_pipeline(&p.sky);
+                    rp.set_bind_group(2, &lighting_group, &[]);
                     rp.set_bind_group(1, self.scene.texture_bind_group(0), &[]);
                     rp.draw(0..3, 0..1);
                 }
@@ -2716,55 +2804,59 @@ impl Renderer {
                     );
                 }
             }
-            // Straight into the output unless FXAA or an offline render's averaging reads
-            // the picture afterwards.
-            let direct = !fxaa && view.sample.is_none();
-            let picture = if direct {
-                &targets.output_view
-            } else {
-                &targets.ldr
-            };
-            fullscreen(
-                &mut encoder,
-                "resolve",
-                picture,
-                wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                &p.resolve,
-                resolve_group,
-                timer.as_mut().and_then(|t| t.writes("post")),
-            );
-            if !self.scene.sprite_draws.is_empty() {
-                if let Some(buffer) = &self.scene.sprite_buffer {
-                    let mut rp = pass(
-                        &mut encoder,
-                        "sprites",
-                        &[color(picture, wgpu::LoadOp::Load)],
-                        Some(keep_depth(&targets.depth)),
-                        None,
-                    );
-                    rp.set_pipeline(&p.sprites);
-                    rp.set_bind_group(0, &frame_group, &[]);
-                    rp.set_vertex_buffer(0, buffer.slice(..));
-                    for (material, range) in &self.scene.sprite_draws {
-                        if let Some(group) = self.scene.base_texture_bind_group(*material) {
-                            rp.set_bind_group(1, group, &[]);
-                            rp.draw(0..6, range.clone());
-                            stats.draws += 1;
+            // Offline accumulation consumes HDR directly, including DOF and bloom.
+            // Avoid resolving and blurring a display image that would be discarded.
+            if output == FrameOutput::Display {
+                // Straight into the output unless FXAA or an offline render's averaging reads
+                // the picture afterwards.
+                let direct = !fxaa && view.sample.is_none();
+                let picture = if direct {
+                    &targets.output_view
+                } else {
+                    &targets.ldr
+                };
+                fullscreen(
+                    &mut encoder,
+                    "resolve",
+                    picture,
+                    wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    &p.resolve,
+                    resolve_group,
+                    timer.as_mut().and_then(|t| t.writes("post")),
+                );
+                if !self.scene.sprite_draws.is_empty() {
+                    if let Some(buffer) = &self.scene.sprite_buffer {
+                        let mut rp = pass(
+                            &mut encoder,
+                            "sprites",
+                            &[color(picture, wgpu::LoadOp::Load)],
+                            Some(keep_depth(&targets.depth)),
+                            None,
+                        );
+                        rp.set_pipeline(&p.sprites);
+                        rp.set_bind_group(0, &frame_group, &[]);
+                        rp.set_vertex_buffer(0, buffer.slice(..));
+                        for (material, range) in &self.scene.sprite_draws {
+                            if let Some(group) = self.scene.base_texture_bind_group(*material) {
+                                rp.set_bind_group(1, group, &[]);
+                                rp.draw(0..6, range.clone());
+                                stats.draws += 1;
+                            }
                         }
                     }
                 }
-            }
-            draw_overlay(&mut encoder, picture);
-            if !direct {
-                fullscreen(
-                    &mut encoder,
-                    "fxaa",
-                    &targets.output_view,
-                    wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                    &p.fxaa,
-                    &targets.fxaa_group,
-                    timer.as_mut().and_then(|t| t.writes("post")),
-                );
+                draw_overlay(&mut encoder, picture);
+                if !direct {
+                    fullscreen(
+                        &mut encoder,
+                        "fxaa",
+                        &targets.output_view,
+                        wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        &p.fxaa,
+                        &targets.fxaa_group,
+                        timer.as_mut().and_then(|t| t.writes("post")),
+                    );
+                }
             }
         }
         if let Some(frame) = taa_frame {
@@ -2776,7 +2868,19 @@ impl Renderer {
         if let Some(timer) = &timer {
             timer.finish(&mut encoder);
         }
+        if let Some(index) = timing_slot {
+            self.frame_timer
+                .as_ref()
+                .expect("reserved")
+                .finish(&mut encoder, index);
+        }
         self.queue.submit([encoder.finish()]);
+        if let Some(index) = timing_slot {
+            self.frame_timer
+                .as_ref()
+                .expect("reserved")
+                .submitted(index);
+        }
         if timer.is_some() {
             self.timer = timer;
         }
@@ -2786,107 +2890,127 @@ impl Renderer {
 
     /// Draws one more sample of an offline render (`view.sample` says which; 0 starts
     /// over) and leaves the average so far in [`Renderer::output`]. Each sample is a full
-    /// frame with a sub-pixel jitter and a turned depth-of-field disc, averaged in linear
-    /// light, as the GL renderer's accumulation does with all effects on.
+    /// frame with sub-pixel jitter and a turned depth-of-field disc. Scene-linear HDR
+    /// radiance and coverage are averaged before exposure, tone mapping and dithering.
     pub fn accumulate(&mut self, view: &ViewParams<'_>) {
-        let sample = view.sample.unwrap_or(0);
-        self.render(view);
+        let restart = view.sample.unwrap_or(0) == 0;
+        let size = (view.size.0.max(1), view.size.1.max(1));
+        let index = if restart {
+            0
+        } else {
+            self.accumulation
+                .as_ref()
+                .filter(|a| a.size == size)
+                .map_or(0, |a| a.samples)
+        };
+        self.render_frame(
+            &ViewParams {
+                sample: Some(index),
+                ..*view
+            },
+            FrameOutput::HdrSample,
+        );
         let targets = self.targets.as_ref().expect("rendered");
         if self
             .accumulation
             .as_ref()
             .is_none_or(|a| a.size != targets.size)
         {
-            let texture = self.device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("render_wgpu accumulation"),
-                size: wgpu::Extent3d {
-                    width: targets.size.0,
-                    height: targets.size.1,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: HDR_FORMAT,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                    | wgpu::TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
+            let textures = std::array::from_fn(|_| {
+                self.device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("32-bit HDR average"),
+                    size: wgpu::Extent3d {
+                        width: size.0,
+                        height: size.1,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba32Float,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                        | wgpu::TextureUsages::TEXTURE_BINDING
+                        | wgpu::TextureUsages::COPY_SRC,
+                    view_formats: &[],
+                })
             });
-            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            let group = |sample_view: &wgpu::TextureView, average: &wgpu::TextureView| {
+            let views = std::array::from_fn(|i| textures[i].create_view(&Default::default()));
+            let entry = |binding, view| wgpu::BindGroupEntry {
+                binding,
+                resource: wgpu::BindingResource::TextureView(view),
+            };
+            let from_average = std::array::from_fn(|i| {
                 self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("render_wgpu accumulate"),
+                    label: Some("HDR average display"),
                     layout: &self.pipelines.accumulate_layout,
                     entries: &[
+                        entry(4, &self.tony_view),
                         wgpu::BindGroupEntry {
-                            binding: 6,
-                            resource: wgpu::BindingResource::TextureView(sample_view),
+                            binding: 5,
+                            resource: wgpu::BindingResource::Sampler(&self.linear_sampler),
                         },
-                        wgpu::BindGroupEntry {
-                            binding: 8,
-                            resource: wgpu::BindingResource::TextureView(average),
-                        },
+                        entry(8, &views[i]),
                     ],
                 })
-            };
-            // The sample is read from the picture before FXAA; the average is read with
-            // the (unused here) sample slot pointing at the HDR target, which no pass of
-            // the copy writes.
-            let from_sample = group(&targets.ldr, &targets.hdr);
-            let from_average = group(&targets.hdr, &view);
+            });
+            let from_sample = std::array::from_fn(|i| {
+                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("HDR sample and previous average"),
+                    layout: &self.pipelines.resolve_layout,
+                    entries: &[
+                        entry(0, &targets.hdr),
+                        entry(1, &targets.ids),
+                        entry(2, &targets.depth),
+                        entry(3, &targets.bloom_mips[0]),
+                        entry(4, &self.tony_view),
+                        wgpu::BindGroupEntry {
+                            binding: 5,
+                            resource: wgpu::BindingResource::Sampler(&self.linear_sampler),
+                        },
+                        entry(8, &views[i]),
+                        entry(9, &targets.ssr),
+                    ],
+                })
+            });
             self.accumulation = Some(Accumulation {
-                size: targets.size,
-                view,
-                from_sample,
+                size,
+                textures,
+                views,
                 from_average,
+                from_sample,
+                current: 0,
                 samples: 0,
             });
         }
-        let accumulation = self.accumulation.as_mut().expect("made above");
-        accumulation.samples = if sample == 0 {
-            1
-        } else {
-            accumulation.samples + 1
-        };
-        let frame_group = self.frame_group.as_ref().expect("rendered").1.clone();
+        let average = self.accumulation.as_mut().expect("made above");
+        average.samples = index + 1;
+        let previous = average.current;
+        let next = 1 - previous;
+        let frame_group = &self.frame_group.as_ref().expect("rendered").1;
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("render_wgpu accumulate"),
+                label: Some("progressive HDR average"),
             });
-        {
-            let load = if accumulation.samples == 1 {
-                wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
-            } else {
-                wgpu::LoadOp::Load
-            };
-            let mut rp = pass(
-                &mut encoder,
-                "accumulate",
-                &[color(&accumulation.view, load)],
-                None,
-                None,
-            );
-            rp.set_pipeline(&self.pipelines.accumulate);
-            rp.set_bind_group(0, &frame_group, &[]);
-            rp.set_bind_group(1, &accumulation.from_sample, &[]);
-            let weight = 1.0 / f64::from(accumulation.samples);
-            rp.set_blend_constant(wgpu::Color {
-                r: weight,
-                g: weight,
-                b: weight,
-                a: weight,
-            });
-            rp.draw(0..3, 0..1);
-        }
         draw_fullscreen(
             &mut encoder,
-            "accumulated",
+            "HDR average",
+            &average.views[next],
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+            &self.pipelines.accumulate,
+            frame_group,
+            &average.from_sample[previous],
+            None,
+        );
+        average.current = next;
+        draw_fullscreen(
+            &mut encoder,
+            "progressive display",
             &targets.output_view,
             wgpu::LoadOp::Clear(wgpu::Color::BLACK),
             &self.pipelines.accumulated,
-            &frame_group,
-            &accumulation.from_average,
+            frame_group,
+            &average.from_average[next],
             None,
         );
         self.queue.submit([encoder.finish()]);
@@ -2904,8 +3028,41 @@ impl Renderer {
     /// Blocking; for tests and image export.
     pub fn read_output(&self) -> Option<(u32, u32, Vec<u8>)> {
         let targets = self.targets.as_ref()?;
-        let (width, height) = targets.size;
-        let row = (width * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+        self.read_texture(&targets.output, targets.size, 4)
+            .map(|pixels| (targets.size.0, targets.size.1, pixels))
+    }
+
+    /// Reads the offline average as unassociated scene-linear RGBA, top row first.
+    /// Exposure, white balance, grading, display curves and dithering are excluded.
+    pub fn read_hdr(&self) -> Option<(u32, u32, Vec<f32>)> {
+        let average = self.accumulation.as_ref()?;
+        if average.samples == 0 {
+            return None;
+        }
+        let bytes = self.read_texture(&average.textures[average.current], average.size, 16)?;
+        let mut pixels = Vec::with_capacity(bytes.len() / 4);
+        for pixel in bytes.as_chunks::<16>().0 {
+            let rgba: [f32; 4] = std::array::from_fn(|i| {
+                f32::from_le_bytes(pixel[i * 4..i * 4 + 4].try_into().expect("four bytes"))
+            });
+            let alpha = rgba[3].clamp(0.0, 1.0);
+            pixels.extend(
+                rgba[..3]
+                    .iter()
+                    .map(|v| if alpha > 1e-6 { v / alpha } else { 0.0 }),
+            );
+            pixels.push(alpha);
+        }
+        Some((average.size.0, average.size.1, pixels))
+    }
+
+    fn read_texture(
+        &self,
+        texture: &wgpu::Texture,
+        (width, height): (u32, u32),
+        bytes_per_pixel: u32,
+    ) -> Option<Vec<u8>> {
+        let row = (width * bytes_per_pixel).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
         let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("render_wgpu readback"),
             size: u64::from(row * height),
@@ -2919,7 +3076,7 @@ impl Renderer {
             });
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
-                texture: &targets.output,
+                texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
@@ -2943,14 +3100,14 @@ impl Renderer {
         slice.map_async(wgpu::MapMode::Read, |_| {});
         self.wait_idle();
         let data = slice.get_mapped_range().ok()?;
-        let mut out = Vec::with_capacity((width * height * 4) as usize);
+        let mut out = Vec::with_capacity((width * height * bytes_per_pixel) as usize);
         for y in 0..height {
             let start = (y * row) as usize;
-            out.extend_from_slice(&data[start..start + (width * 4) as usize]);
+            out.extend_from_slice(&data[start..start + (width * bytes_per_pixel) as usize]);
         }
         drop(data);
         buffer.unmap();
-        Some((width, height, out))
+        Some(out)
     }
 }
 

@@ -56,6 +56,7 @@ pub struct MaterialGpu {
     factors: [f32; 4],
     model_params: [f32; 4],
     model_emissive: [f32; 4],
+    layered: [f32; 4],
 }
 
 /// Object-table flag bits, as `common.wgsl` names them.
@@ -460,6 +461,7 @@ impl RenderScene {
                 factors: [0.0; 4],
                 model_params: [1., 0., 0.5, 0.],
                 model_emissive: [0.; 4],
+                layered: [0.0; 4],
             },
             MaterialGpu {
                 size: [1.0, 1.0],
@@ -468,6 +470,7 @@ impl RenderScene {
                 factors: [0.0; 4],
                 model_params: [1., 0., 0.5, 0.],
                 model_emissive: [0.; 4],
+                layered: [0.0; 4],
             },
         ];
         self.material_table_dirty = true;
@@ -564,6 +567,28 @@ impl RenderScene {
             factors,
             model_params,
             model_emissive,
+            layered: surface.map_or_else(
+                || {
+                    material
+                        .and_then(|i| self.materials[i].model_pbr.as_ref())
+                        .map_or([0.0, 0.1, 0.0, 0.0], |p| {
+                            [
+                                p.clearcoat,
+                                p.coat_roughness,
+                                p.anisotropy,
+                                p.anisotropy_rotation,
+                            ]
+                        })
+                },
+                |s| {
+                    [
+                        f32::from(s.clearcoat.min(100)) / 100.0,
+                        f32::from(s.coat_roughness.min(100)) / 100.0,
+                        f32::from(s.anisotropy.min(100)) / 100.0,
+                        f32::from(s.anisotropy_rotation % 180).to_radians(),
+                    ]
+                },
+            ),
         }
     }
 

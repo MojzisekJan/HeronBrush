@@ -822,6 +822,10 @@ impl ColourPage {
         let mut roughness = f64::from(surface.roughness);
         let mut metallic = f64::from(surface.metallic);
         let mut emission = f64::from(surface.emission) / 100.0;
+        let mut clearcoat = f64::from(surface.clearcoat);
+        let mut coat_roughness = f64::from(surface.coat_roughness);
+        let mut anisotropy = f64::from(surface.anisotropy);
+        let mut anisotropy_rotation = f64::from(surface.anisotropy_rotation);
         let mut changed = false;
         for (label, value, range, step, decimals, tip) in [
             (
@@ -846,7 +850,39 @@ impl ColourPage {
                 0.0..=8.0,
                 0.1,
                 1,
-                tr("Emits the surface colour; does not light nearby objects"),
+                tr("Emits the surface colour; baked probes transfer it to nearby surfaces"),
+            ),
+            (
+                tr("Clear coat"),
+                &mut clearcoat,
+                0.0..=100.0,
+                5.0,
+                0,
+                tr("Strength of the transparent lacquer layer"),
+            ),
+            (
+                tr("Coat roughness"),
+                &mut coat_roughness,
+                0.0..=100.0,
+                5.0,
+                0,
+                tr("Roughness of the lacquer reflection"),
+            ),
+            (
+                tr("Anisotropy"),
+                &mut anisotropy,
+                0.0..=100.0,
+                5.0,
+                0,
+                tr("Directional reflections along the face UVs"),
+            ),
+            (
+                tr("Anisotropy angle"),
+                &mut anisotropy_rotation,
+                0.0..=180.0,
+                5.0,
+                0,
+                tr("Rotation of the brushed direction in degrees"),
             ),
         ] {
             widgets::row(ui, label, Some(tip), |ui| {
@@ -863,6 +899,10 @@ impl ColourPage {
                 roughness: roughness.round() as u8,
                 metallic: metallic.round() as u8,
                 emission: (emission * 100.0).round() as u16,
+                clearcoat: clearcoat.round() as u8,
+                coat_roughness: coat_roughness.round() as u8,
+                anisotropy: anisotropy.round() as u8,
+                anisotropy_rotation: anisotropy_rotation.round() as u8 % 180,
             };
             document.set_surface_material_live(Some(value), picked, &mut self.surface_session);
         } else if reset {

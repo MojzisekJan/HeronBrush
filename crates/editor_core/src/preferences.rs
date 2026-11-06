@@ -219,7 +219,7 @@ impl Stored for ColorScheme {
 
 /// The curve that maps the 3D view's light to the screen. Only the wgpu renderer
 /// (`render_wgpu`) offers a choice; the GL renderer always uses ACES and ignores this.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum ToneMapper {
     /// The fitted ACES curve the GL renderer uses.
     Aces,
@@ -786,6 +786,10 @@ preferences! {
     /// The GL renderer (a build without the `wgpu` feature) always uses ACES, so it does
     /// not offer the choice.
     tone_mapper: ToneMapper = ToneMapper::Agx, "render/Tone mapper";
+    /// Adapt the 3D viewport's resolution while its camera moves.
+    dynamic_resolution: bool = true, "render/Dynamic resolution";
+    /// Directionally limit environment light using the visible hemisphere.
+    indirect_occlusion: bool = true, "render/Indirect occlusion";
     /// Whether light entities (point and spot lights) light the wgpu 3D view.
     ///
     /// The GL renderer draws the sun and the sky only, so a GL build does not offer it.

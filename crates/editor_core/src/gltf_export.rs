@@ -123,9 +123,28 @@ impl Scene<'_> {
             }
             value["extensions"]["KHR_materials_emissive_strength"] =
                 json!({"emissiveStrength":emission});
-            self.root["extensionsUsed"] = json!(["KHR_materials_emissive_strength"]);
+            self.extension_used("KHR_materials_emissive_strength");
+        }
+        if let Some(surface) = surface {
+            if surface.clearcoat > 0 {
+                value["extensions"]["KHR_materials_clearcoat"] = json!({"clearcoatFactor":surface.clearcoat.min(100) as f32/100.0,"clearcoatRoughnessFactor":surface.coat_roughness.min(100) as f32/100.0});
+                self.extension_used("KHR_materials_clearcoat");
+            }
+            if surface.anisotropy > 0 {
+                value["extensions"]["KHR_materials_anisotropy"] = json!({"anisotropyStrength":surface.anisotropy.min(100) as f32/100.0,"anisotropyRotation":(surface.anisotropy_rotation%180) as f32*std::f32::consts::PI/180.0});
+                self.extension_used("KHR_materials_anisotropy");
+            }
         }
         self.push("materials", value)
+    }
+    fn extension_used(&mut self, name: &str) {
+        if !self.root["extensionsUsed"].is_array() {
+            self.root["extensionsUsed"] = json!([]);
+        }
+        let values = self.root["extensionsUsed"].as_array_mut().expect("array");
+        if !values.iter().any(|value| value.as_str() == Some(name)) {
+            values.push(json!(name));
+        }
     }
     fn texture_material(
         &mut self,
@@ -177,7 +196,24 @@ impl Scene<'_> {
                 json!(pbr.roughness);
             self.root["materials"][id]["pbrMetallicRoughness"]["metallicFactor"] =
                 json!(pbr.metallic);
-            self.root["materials"][id]["emissiveFactor"] = json!(pbr.emissive_factor);
+            let peak = pbr.emissive_factor.iter().copied().fold(1.0, f32::max);
+            self.root["materials"][id]["emissiveFactor"] =
+                json!(pbr.emissive_factor.map(|v| v / peak));
+            if peak > 1.0 {
+                self.root["materials"][id]["extensions"]["KHR_materials_emissive_strength"] =
+                    json!({"emissiveStrength":peak});
+                self.extension_used("KHR_materials_emissive_strength");
+            }
+            if surface.is_none() {
+                if pbr.clearcoat > 0.0 {
+                    self.root["materials"][id]["extensions"]["KHR_materials_clearcoat"] = json!({"clearcoatFactor":pbr.clearcoat,"clearcoatRoughnessFactor":pbr.coat_roughness});
+                    self.extension_used("KHR_materials_clearcoat");
+                }
+                if pbr.anisotropy > 0.0 {
+                    self.root["materials"][id]["extensions"]["KHR_materials_anisotropy"] = json!({"anisotropyStrength":pbr.anisotropy,"anisotropyRotation":pbr.anisotropy_rotation});
+                    self.extension_used("KHR_materials_anisotropy");
+                }
+            }
             self.root["materials"][id]["alphaMode"] = json!(match pbr.alpha_mode {
                 map_model::material::Alpha::Opaque => "OPAQUE",
                 map_model::material::Alpha::Masked => "MASK",
@@ -258,6 +294,18 @@ impl Scene<'_> {
                 self.materials.insert(key, id);
                 id
             };
+            if face
+                .surface_material
+                .is_some_and(|surface| surface.anisotropy > 0)
+            {
+                return (
+                    id,
+                    original
+                        .iter()
+                        .map(|p| [p[0] / size[0], p[1] / size[1]])
+                        .collect(),
+                );
+            }
             return (id, vec![[0.0, 0.0]; polygon.len()]);
         }
         let baked = super::paint_export::bake(face, polygon, material).expect("painted polygon");
@@ -330,7 +378,10 @@ impl Scene<'_> {
         let n = self.data(&normals, 3, false);
         let uv = self.data(&texcoords, 2, false);
         let mut primitive = json!({"attributes":{"POSITION":p,"NORMAL":n,"TEXCOORD_0":uv},"material":material,"mode":4});
-        if self.normal_materials.contains(&material) {
+        if self.normal_materials.contains(&material)
+            || self.root["materials"][material]["extensions"]["KHR_materials_anisotropy"]
+                .is_object()
+        {
             let order: Vec<u32> = (0..positions.len() as u32 / 3).collect();
             let tangents = scene_export::writer::gltf::tangents(
                 positions.as_chunks::<3>().0,
@@ -924,6 +975,61 @@ mod tests {
     }
 
     #[test]
+    fn layered_materials_export_extensions_and_anisotropy_tangents() {
+        let mut doc = cube();
+        doc.select_all();
+        doc.set_surface_material(Some(map_model::brush_face::SurfaceMaterial {
+            clearcoat: 80,
+            coat_roughness: 15,
+            anisotropy: 90,
+            anisotropy_rotation: 45,
+            emission: 100,
+            ..Default::default()
+        }));
+        let (_, json, bin) = glb(&doc);
+        let extensions = &json["materials"][0]["extensions"];
+        assert!(
+            (extensions["KHR_materials_clearcoat"]["clearcoatFactor"]
+                .as_f64()
+                .unwrap()
+                - 0.8)
+                .abs()
+                < 0.00001
+        );
+        assert!(
+            (extensions["KHR_materials_anisotropy"]["anisotropyStrength"]
+                .as_f64()
+                .unwrap()
+                - 0.9)
+                .abs()
+                < 0.00001
+        );
+        let used = json["extensionsUsed"].as_array().unwrap();
+        for name in [
+            "KHR_materials_clearcoat",
+            "KHR_materials_anisotropy",
+            "KHR_materials_emissive_strength",
+        ] {
+            assert!(used.iter().any(|value| value == name));
+        }
+        assert!(json["meshes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|mesh| mesh["primitives"].as_array().unwrap())
+            .all(|primitive| primitive["attributes"]["TANGENT"].is_number()));
+        let bytes = pack(serde_json::to_vec(&json).unwrap(), bin);
+        let imported = map_model::glb_model::read(&bytes).unwrap();
+        let material = imported
+            .pbr
+            .iter()
+            .find(|material| material.clearcoat > 0.0)
+            .expect("imported layered material");
+        assert!((material.clearcoat - 0.8).abs() < 0.00001);
+        assert!((material.anisotropy - 0.9).abs() < 0.00001);
+    }
+
+    #[test]
     fn solid_paint_materials_are_named_by_colour() {
         // The feature lab's glTF named them `paint:Rgb { r: 220, g: 30, b: 40 }:None`.
         let mut doc = cube();
@@ -935,6 +1041,7 @@ mod tests {
             roughness: 20,
             metallic: 80,
             emission: 250,
+            ..Default::default()
         }));
         let (_, json, _) = glb(&doc);
         assert_eq!(
@@ -962,6 +1069,7 @@ mod tests {
                     roughness,
                     metallic: 0,
                     emission: 0,
+                    ..Default::default()
                 });
             });
         }
@@ -1076,6 +1184,7 @@ mod tests {
                 roughness: 12,
                 metallic: 0,
                 emission: 25,
+                ..Default::default()
             }));
             let (_, json, bin) = glb(&doc);
             assert!(json["materials"]
@@ -1117,6 +1226,7 @@ mod tests {
                 roughness: 20,
                 metallic: 80,
                 emission: 250,
+                ..Default::default()
             }),
         );
         let (_, json, _) = glb(&doc);

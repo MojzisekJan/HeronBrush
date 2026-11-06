@@ -1,6 +1,5 @@
 //! Document operations for layers.
 
-use super::node;
 use super::Document;
 use super::Edit;
 use super::HashSet;
@@ -8,6 +7,7 @@ use super::LayerSummary;
 use super::Node;
 use super::NodeId;
 use super::NodeKind;
+use super::node;
 
 impl Document {
     /// A summary of every layer, for the panel to show.
@@ -231,8 +231,13 @@ impl Document {
     /// Hides the selected objects, `hideSelectedNodes`. They are deselected, since an
     /// edit should not reach something the views no longer show.
     pub fn hide_selection(&mut self) -> usize {
-        let newly: Vec<NodeId> = self
+        let targets: HashSet<_> = self
             .selection
+            .iter()
+            .copied()
+            .chain(self.selected_edit_faces().iter().map(|face| face.node))
+            .collect();
+        let newly: Vec<NodeId> = targets
             .iter()
             .copied()
             .filter(|id| !self.hidden_nodes.contains(id))
@@ -247,15 +252,31 @@ impl Document {
         newly.len()
     }
 
-    /// Hides everything except the selection, `isolateSelectedNodes`.
+    /// Toggles isolation around selected objects or the owners of selected faces.
+    /// Exiting restores the preceding hidden set rather than revealing everything.
     pub fn isolate_selection(&mut self) -> usize {
-        if self.selection.is_empty() {
+        if let Some(before) = self.isolation_before.take() {
+            self.hidden_nodes = before;
+            self.selection.retain(|id| !self.hidden_nodes.contains(id));
+            self.face_selection
+                .retain(|face| !self.hidden_nodes.contains(&face.node));
+            self.mark_visibility_changed();
             return 0;
         }
+        let keep: HashSet<_> = self
+            .selection
+            .iter()
+            .copied()
+            .chain(self.selected_edit_faces().iter().map(|face| face.node))
+            .collect();
+        if keep.is_empty() {
+            return 0;
+        }
+        self.isolation_before = Some(self.hidden_nodes.clone());
         self.hidden_nodes = self
             .all_object_ids()
             .into_iter()
-            .filter(|id| !self.selection.contains(id))
+            .filter(|id| !keep.contains(id))
             .collect();
         let count = self.hidden_nodes.len();
         self.mark_visibility_changed();
@@ -280,9 +301,19 @@ impl Document {
             .collect()
     }
 
-    /// Shows everything hidden by "Hide" or "Isolate", `showAllNodes`. Returns how many
-    /// objects were brought back.
+    /// Whether a temporary isolation can restore the preceding visibility state.
+    pub fn isolation_active(&self) -> bool {
+        self.isolation_before.is_some()
+    }
+
+    /// How many objects are hidden independently of their layer.
+    pub fn hidden_object_count(&self) -> usize {
+        self.hidden_nodes.len()
+    }
+
+    /// Shows individually hidden objects and exits isolation. Returns the restored count.
     pub fn show_all(&mut self) -> usize {
+        self.isolation_before = None;
         let count = self.hidden_nodes.len();
         if count > 0 {
             self.hidden_nodes.clear();
@@ -452,12 +483,14 @@ mod tests {
         let mut d = Document::new(Default::default());
         for x in [0.0, 64.0] {
             let bounds = Bbox3d::new(Vec3d::new(x, 0.0, 0.0), Vec3d::new(x + 32.0, 32.0, 32.0));
-            d.add_brushes(vec![map_model::shapes::create_cuboid(
-                &d.world_bounds(),
-                &bounds,
-                map_model::shapes::DEFAULT_MATERIAL,
-            )
-            .expect("a box")]);
+            d.add_brushes(vec![
+                map_model::shapes::create_cuboid(
+                    &d.world_bounds(),
+                    &bounds,
+                    map_model::shapes::DEFAULT_MATERIAL,
+                )
+                .expect("a box"),
+            ]);
         }
         let ids: Vec<NodeId> = node::brushes_with_ids(&d.tree.world)
             .into_iter()

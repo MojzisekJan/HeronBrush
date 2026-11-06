@@ -1,6 +1,6 @@
 //! Window actions and small dialogs shared by menu entries and keyboard shortcuts.
 use crate::{
-    dialog, editor::Editor, file_dialog, file_dialog::FileDialog, form, theme, widgets, App,
+    App, dialog, editor::Editor, file_dialog, file_dialog::FileDialog, form, theme, widgets,
 };
 
 /// File > Open's chooser.
@@ -63,6 +63,13 @@ pub enum Action {
     Delete,
     Duplicate,
     SelectAll,
+    ActivateTool(editor_core::tool::Tool),
+    FrameSelection,
+    PreviousView,
+    HideObjects,
+    ToggleIsolation,
+    ShowAllObjects,
+    SelectSimilar(editor_core::document::FaceSelection),
     Welcome,
     Render,
     Session,
@@ -470,6 +477,33 @@ pub struct Dialogs {
 impl App {
     pub(crate) fn action(&mut self, ctx: &egui::Context, action: Action) {
         match action {
+            Action::ActivateTool(tool) => {
+                if *self.editor.tool.borrow() != tool {
+                    self.chrome.pick(tool);
+                }
+            }
+            Action::SelectSimilar(mode) => {
+                self.editor.document.borrow_mut().select_similar_faces(mode);
+            }
+            Action::FrameSelection
+            | Action::PreviousView
+            | Action::HideObjects
+            | Action::ToggleIsolation
+            | Action::ShowAllObjects => {
+                use editor_core::input::{Key, Modifiers};
+                let (key, shift, alt) = match action {
+                    Action::FrameSelection => ('u', false, false),
+                    Action::PreviousView => ('u', false, true),
+                    Action::HideObjects => ('i', false, true),
+                    Action::ShowAllObjects => ('i', true, false),
+                    _ => ('i', false, false),
+                };
+                self.commands.key_pressed_canonical(
+                    Key::Letter(key),
+                    None,
+                    Modifiers { control: true, shift, alt },
+                );
+            }
             Action::Undo
             | Action::Redo
             | Action::Copy

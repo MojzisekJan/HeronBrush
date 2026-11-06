@@ -151,7 +151,7 @@ buffers straight into the output, then the overlay.
 | 2 | shadow cascades | 4 × `Depth32Float` array layers, half the *Shadow map size* preference each (1024² by default: GL's texel count and memory, 16 MB) | per cascade, when its key changed | see *Shadows* below |
 | 3 | light shadows | `Depth32Float` cube-map array, a quarter of a cascade's side (256² by default), as many cubes as shadowed lights in view (up to 8: 12.6 MB) | per cube face, when its key changed | see *Light entities* below |
 | 4 | prepass | `Depth32Float` (reverse-Z), `R32Uint` id, `Rg16Float` normal (octahedral, normal-mapped), `Rgba16Float` motion (world units since last frame) | unless only shading changed | opaque and masked; kept (with the occlusion) when the jittered view-projection, the chunks drawn, hidden objects and materials are as last frame — a selection click. The motion is each surface's own (zero unless its object moved), so a kept prepass stays right whatever the camera did |
-| 5 | GTAO | `Rg16Float` (occlusion, view depth), full resolution up to 2.5 MP, else half | AO on, with the prepass | XeGTAO-style: 6 steps × 2 sides per slice, 1 slice per frame under the temporal filter (its noise turns every frame, so the history averages many) or 3 without; cosine-weighted visibility with distance falloff over the *Radius* preference; then a 4×4 depth-aware denoise |
+| 5 | GTAO | `Rgba16Float` (occlusion, view depth, octahedral bent normal), full resolution up to 2.5 MP, else half | AO on, with the prepass | XeGTAO-style: 6 steps × 2 sides per slice, 1 slice per frame under the temporal filter (its noise turns every frame, so the history averages many) or 3 without; cosine-weighted visibility with distance falloff over the *Radius* preference; then a 4×4 depth-aware denoise |
 | 6 | sky, forward, blended | `Rgba16Float` HDR + `Rgba8Unorm` reflectivity | always | Cook-Torrance GGX sun with cascaded shadows and contact shadows; light entities from the clusters; IBL: SH irradiance, prefiltered specular by roughness, split-sum DFG LUT (64², made once), multi-scattering energy compensation (Fdez-Agüera) for IBL and every light's specular; GTAO for diffuse (Jimenez multi-bounce) and specular occlusion (Lagarde); normal maps with GL's derivative tangent frame. `GreaterEqual` against the prepass, depth read-only (contact shadows sample it) → every pixel shaded once |
 | 7 | SSR | `Rgba16Float`, half resolution | *Reflections* on | see *Reflections* below |
 | 8 | TAA | 2 × `Rgba16Float` history, 2 × `Rg16Float` per-pixel depth and sample count | *Antialiasing* or *Accumulate samples* on | see *Temporal antialiasing* below |
@@ -384,9 +384,237 @@ of that CPU time is wgpu-core/Metal command encoding and bind-group changes, fru
 culling about 1 %. The first sync takes about 0.2 s; streaming 2,000 textures (752 MB with
 mips) into view takes about 1.2 s over some 18 frames.
 
-GPU memory at the default settings: shadow cascades 16 MB, environment about 1.5 MB,
+GPU memory at the default settings: shadow cascades 16 MB, derived environment about 1.5 MB (plus 8 bytes per panorama pixel),
 light shadows 1.5 MB per shadowed light in view (at most 12.6 MB), and the effects' targets
-about 52 bytes per pixel per view on top of the HDR, depth and id targets (normal, motion,
+about 60 bytes per pixel per view on top of the HDR, depth and id targets (normal, motion,
 occlusion, reflectivity, half-resolution reflections, bloom chain and the temporal
 history); textures are bounded by the *Texture memory*
 preference.
+
+## Specular filtering and offline HDR accumulation
+
+The forward pass filters GGX roughness using shading-normal derivatives and the
+length lost when normal-map mipmaps average opposing directions. The filter works
+in GGX alpha-squared space and converts back to perceptual roughness, with a bounded
+kernel. Flat normals retain their authored roughness; a quantization allowance avoids
+mistaking ordinary RGBA8 normal encoding error for unresolved surface detail. Normal
+strength scales the mip contribution, including disabling it at zero strength.
+
+Both the viewport and the render page share this material shading. The offline render
+page additionally accumulates scene-linear HDR radiance and coverage in a ping-pong
+RGBA32Float running average.
+Exposure, the chosen tone mapper, sRGB encoding and dithering are applied to the
+average, rather than baked into every sample. Coverage is averaged independently so
+silhouettes can composite over a display-referred flat background without grading its
+color. Sample zero and output resizing start a fresh history. HDR samples bypass the
+unused display resolve, FXAA copy and editor overlays; DOF is sampled directly in HDR.
+
+GPU regressions cover changing exposure and tone mapper without contaminating the
+radiance history, resizing/resetting the history, the flat background, and minified
+normal detail compared with a broader GGX reference. The existing depth-of-field,
+material, transparency, lighting, SSR and TAA checks remain applicable. This change
+currently applies to the wgpu backend; the legacy OpenGL fallback keeps its existing
+shading and accumulation path.
+
+## Rendering quality follow-up
+
+The first quality stage keeps the existing wgpu architecture shared by the viewport
+and render-camera output. The legacy OpenGL fallback is unchanged.
+
+- [x] Filter GGX highlights using shading-normal derivatives and unresolved normal-map
+  mip detail; preserve flat normals and zero normal strength.
+- [x] Accumulate offline samples as scene-linear HDR radiance and coverage; apply the
+  display transform afterwards and avoid the discarded per-sample display resolve.
+- [x] Validate the first stage with GPU reference comparisons, camera-motion highlight
+  measurements, accumulation/history tests and the existing headless suite.
+- [x] Import HDR environment maps, with orientation and intensity; separate visible
+  background from lighting. Persist the environment with the authored scene/camera.
+- [x] Extend indirect specular occlusion with geometric horizon fading and bent-normal
+  visibility cones; use bent normals for diffuse environment lighting.
+- [x] Store tone mapping, EV exposure, white balance and grading with render cameras;
+  add a scene-linear image output path for EXR.
+- [x] Add distance-dependent soft shadow penumbrae while retaining stable cascades.
+- [x] Add clear coat and anisotropy with material editing, persistence and numeric GLB
+  extension import/export.
+- [x] Add local box-projected reflections and baked SH diffuse transfer.
+- [x] Extend progressive still output to 4096 samples with 32-bit averaging.
+- [x] Add measured dynamic resolution for interactive navigation; keep final output at
+  its requested resolution.
+
+For each stage retain comparable scenes and camera settings, verify old-map defaults,
+and measure viewport GPU cost separately from final-image quality. HDR environment
+lighting and reflection probes do not replace indirect diffuse global illumination.
+
+
+## Scene HDR environments
+
+In the Render window's Lighting section, **Choose HDR / EXR** imports a scene-linear
+2:1 equirectangular Radiance HDR or OpenEXR panorama. Rotation is in degrees around
+world Z; intensity multiplies radiance before lighting and tone mapping. **Show
+environment as background** controls visibility independently of illumination.
+The flat camera background is retained when visibility is off. Direct sunlight and
+entity lights remain separate controls; turn down the sun for environment-only light.
+The environment applies to Material mode in both the wgpu viewport and rendered
+images. The legacy OpenGL backend continues to use its procedural environment.
+
+The map's worldspawn stores `_tb_environment` as JSON (path, rotation, intensity and
+background visibility). Files inside the map's directory use relative paths. Move
+those images with the map when sharing it. Changes participate in undo/redo. A missing
+or invalid file reports an error in the controls and falls back to the procedural
+lighting defaults without removing the saved path. Imports are validated before
+replacing a valid environment. Pixel values remain linear and may exceed one;
+negative or nonfinite samples are sanitized for the half-float HDR pipeline.
+
+Only one decoded panorama is cached; native file changes are polled every 500 ms.
+The decoder accepts panoramas up to 8192 by 4096, subject to a 128 MiB encoded-file
+and 256 MiB decoder allocation limit. Large images may exceed that allocation budget.
+GPU uploads use RGBA16Float and respect the adapter's texture dimension limit, with
+area averaging on smaller adapters. The original panorama supplies the visible
+background. A 128-pixel cube capture with 16 stratified samples per texel supplies
+GGX-prefiltered reflections and spherical-harmonic diffuse lighting. These derived
+resources rebuild only when the environment settings or pixels change. Changes also
+invalidate temporal history. Each offline render keeps an immutable environment
+snapshot, so replacing a file during accumulation cannot mix different illumination
+between samples.
+
+Regressions cover HDR/EXR decoding above one, file-cache reuse and replacement,
+invalid input, path resolution, map-file round trips and undo/redo. Headless GPU
+checks cover panorama rotation, intensity, background visibility, cache reuse,
+colored environment illumination and agreement between viewport and still rendering.
+
+
+## Directional occlusion and soft shadows
+
+**Indirect light occlusion** in Preferences limits the environment with the geometric
+normal's reflection horizon and an approximate visibility cone around the GTAO bent
+normal. GTAO now stores visibility, view depth and an octahedral world-space bent normal
+in RGBA16Float. The denoiser and depth-aware upsampler average decoded directions, not
+encoded coordinates. SH diffuse irradiance uses the bent normal, while its strength
+continues to use multi-bounce diffuse AO. Horizon rejection applies to reflected
+single scattering; the visibility cone also limits its environment contribution.
+SSR subtracts that same occluded environment contribution before adding the reflected
+screen-space surface, so a valid geometry reflection is not suppressed by the cone.
+Material occlusion remains in the shared specular weight. This is a local screen-space
+approximation and cannot account for geometry outside the depth buffer.
+
+Sun shadows use directional-light PCSS: sixteen raw depth taps estimate the average
+blocker depth, and sixteen comparison taps filter a radius proportional to the
+blocker/receiver separation and the existing **Shadow softness** control. Depth range
+and texel world size convert the radius consistently between cascades. Receiver-plane
+depth correction is applied to both the blocker search and comparison taps. Filter
+radius is bounded to 0.5–24 texels; softness zero keeps the minimum PCF footprint.
+Stable cascade fitting, blending, normal bias and cached caster maps are retained.
+Changing softness does not redraw the shadow maps. Local point-light shadows retain
+their existing cube-map filter.
+
+The horizon rule and visibility-cone approach follow the occlusion discussion in
+[Filament](https://google.github.io/filament/main/filament.html#lighting/occlusion).
+The blocker search and variable filtering follow the PCSS construction described by
+[NVIDIA](https://developer.download.nvidia.com/whitepapers/2008/PCSS_Integration.pdf),
+adapted to the renderer's orthographic sun cascades.
+
+## Camera display controls and OpenEXR output
+
+A camera saves **Exposure (EV)**, white balance (2000–12000 K), green/magenta tint,
+contrast, saturation and a tone-map override in its `_tb_render_settings` JSON.
+Missing imaging settings are neutral and inherit the editor's tone-map preference.
+The old linear exposure field remains compatible: the displayed EV includes its log2
+value, and editing EV replaces the legacy multiplier with an equivalent EV setting.
+The camera frame in the 3D viewport uses the same camera lighting and display controls;
+turning the frame off restores editor preferences. Separate viewports keep separate
+camera-frame settings.
+
+White balance uses diagonal linear-RGB gains from a Planckian-locus illuminant
+approximation relative to neutral 6500 K, with an independent green/magenta tint.
+It is a practical display adjustment rather than a spectral camera simulation.
+The display path applies exposure and white balance, contrast around linear 0.18,
+luminance-preserving saturation, the camera's chosen display curve, then sRGB encoding
+and dithering. Neutral controls retain the previous output.
+
+**Render EXR** writes a floating-point, scene-linear RGBA OpenEXR from the retained
+HDR sample average. It bypasses exposure, white balance, grading, tone mapping, sRGB
+encoding and dithering. Lens sampling and HDR scene effects are part of that average.
+The image is top-row first with unassociated RGB and coverage alpha; a hidden
+panorama leaves transparent background, rather than baking a display-space background
+color into scene-linear light. GPU accumulation uses two RGBA32Float running-average textures; EXR channels are
+written as 32-bit floats. Individual scene samples remain RGBA16Float. PNG/GIF output is unchanged.
+The EXR button and color-management controls require the wgpu backend.
+
+## Adaptive viewport resolution
+
+**Dynamic resolution while navigating** is enabled by default in Preferences. It only
+controls interactive 3D viewports. Each viewport detects its own camera movement and
+uses whole-frame GPU timestamps from a three-slot asynchronous readback ring. Polling
+never waits for the GPU; on adapters without timestamps, recent host frame intervals
+provide a fallback. Timestamp markers use a dedicated one-pixel attachment.
+
+A smoothed duration above 18.5 ms for four moving frames lowers resolution through
+100%, 85%, 70% and 60%; twelve fast frames below 11.5 ms can raise it. Changes have a
+250 ms cooldown. Two hundred milliseconds without camera movement restores native
+resolution and temporal refinement. Navigation uses spatial antialiasing instead of
+accumulating stale camera samples. Handle sizes and outlines are adjusted to maintain
+their displayed size; picking remains in the original viewport coordinates. Still
+images and animation export always use their requested dimensions.
+
+A reproducible navigation benchmark renders the same moving camera with all effects
+at 1280×800 and 896×560 and reports median GPU time after warmup. On the development
+machine this measured 1.304 ms and 1.054 ms respectively (about 19% less GPU time).
+These are renderer-only timings for the bundled Lantern Lane scene, not application
+FPS or a guarantee for other maps. This scene is already fast enough that automatic
+resolution stays native; the controller lowers quality only when the moving view
+actually exceeds its frame budget.
+
+
+## Local reflection probes and diffuse transfer
+
+Render → Lighting → Local light probes manages up to eight box volumes. Add a probe
+at the editor camera, fit its bounds to selected geometry, and use the viewport guides
+to fit the volume to a room. Blend width controls the transition to the global
+sky/HDR environment. Reflection and diffuse contributions can be enabled separately.
+Bake scene lighting captures the current render camera lighting. Probe definitions
+and captured lighting settings are saved in worldspawn `_tb_light_probes` metadata
+and participate in undo. Geometry and material edits invalidate the background bake.
+The final render waits until the requested bake is ready.
+
+A CPU BVH captures static geometry, textured albedo, emission, sun and local lights,
+visibility and environment illumination. Draft/Balanced/High capture resolutions are
+16/32/64 pixels per cube face. Reflection captures have GGX-prefiltered mip levels;
+box projection corrects reflection directions. Nine spherical-harmonic coefficients
+provide diffuse irradiance, including colored light from surfaces and emissive
+geometry outside the camera. Overlapping volumes blend with the global environment.
+GPU storage is a fixed 64-pixel cube array for eight probes, approximately 2 MiB.
+
+This is a baked, low-frequency approximation with one-bounce diffuse transfer, not a
+path tracer. Fit volumes to rooms to reduce lighting leakage across walls. Animated
+geometry does not receive a fresh bake for every animation frame. Normal maps and
+layer texture masks are not reproduced by the CPU capture. Native builds bake on a
+background worker; the browser fallback currently bakes synchronously.
+
+## Progressive still rendering
+
+Camera sampling supports 1–4096 samples, with quality presets through Maximum (4096).
+A ping-pong RGBA32Float running average preserves small contributions at high sample
+counts without requiring float blending support. Its two textures cost 32 bytes per
+output pixel. Refinement processes up to four samples per UI frame, reducing the
+batch size when frames are slow. The CPU encoding budget is approximately 8 ms;
+this does not impose a hard GPU time limit.
+
+Sample indices vary camera jitter, depth-of-field lens sampling, rough screen-space
+reflections, ambient/contact occlusion and sun-shadow filter rotations. This reduces
+sampling noise; it does not remove the visibility limitations of screen-space effects.
+
+## Clear coat and anisotropy
+
+Surface material controls include clear coat strength and roughness, anisotropy
+strength and direction. The lighting shader evaluates layered GGX lobes and an
+anisotropic base response for sun and local lights, with an approximate anisotropic
+environment response. Screen-space reflections retain an isotropic approximation.
+The clear coat also samples local reflection probes.
+
+Face metadata remains backward compatible. The anisotropy direction has a 180-degree
+period and is stored compactly to retain the existing per-face memory budget.
+GLB import/export supports numeric KHR_materials_clearcoat and
+KHR_materials_anisotropy factors and exports tangents for anisotropic geometry.
+Extension texture masks are not supported. Imported model factors can be overridden
+by face material settings. The layered shading follows the physical-material
+construction documented in [Filament](https://google.github.io/filament/main/filament.html).

@@ -512,6 +512,28 @@ pub fn read(bytes: &[u8]) -> Result<EntityModel, String> {
             });
             imported.roughness = factor(&pbr["roughnessFactor"], 1., true)?;
             imported.metallic = factor(&pbr["metallicFactor"], 1., true)?;
+            let extensions = &mat["extensions"];
+            imported.clearcoat = factor(
+                &extensions["KHR_materials_clearcoat"]["clearcoatFactor"],
+                0.0,
+                true,
+            )?;
+            imported.coat_roughness = factor(
+                &extensions["KHR_materials_clearcoat"]["clearcoatRoughnessFactor"],
+                0.0,
+                true,
+            )?;
+            imported.anisotropy = factor(
+                &extensions["KHR_materials_anisotropy"]["anisotropyStrength"],
+                0.0,
+                true,
+            )?;
+            imported.anisotropy_rotation = factor(
+                &extensions["KHR_materials_anisotropy"]["anisotropyRotation"],
+                0.0,
+                false,
+            )?
+            .rem_euclid(std::f32::consts::TAU);
             imported.normal_scale = factor(&mat["normalTexture"]["scale"], 1., false)?;
             imported.occlusion_strength = factor(&mat["occlusionTexture"]["strength"], 1., true)?;
             imported.emissive_factor = array(&mat["emissiveFactor"], [0.; 3])?.map(|n| n as f32);
@@ -522,6 +544,15 @@ pub fn read(bytes: &[u8]) -> Result<EntityModel, String> {
             {
                 return Err("Invalid GLB emissive factor".into());
             }
+            let emissive_strength = factor(
+                &extensions["KHR_materials_emissive_strength"]["emissiveStrength"],
+                1.0,
+                false,
+            )?;
+            if emissive_strength < 0.0 {
+                return Err("Invalid emissive strength".into());
+            }
+            imported.emissive_factor = imported.emissive_factor.map(|v| v * emissive_strength);
             imported.normal = texture(&root, bin, &mat["normalTexture"])?.map(std::sync::Arc::new);
             imported.metallic_roughness =
                 texture(&root, bin, &pbr["metallicRoughnessTexture"])?.map(std::sync::Arc::new);

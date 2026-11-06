@@ -31,6 +31,8 @@ pub(crate) struct Fit {
     pub texel: [f32; CASCADES],
     /// The depth bias, in shadow depth units.
     pub bias: [f32; CASCADES],
+    /// Map units spanned by each cascade's depth mapping.
+    pub depth_range: [f32; CASCADES],
 }
 
 /// The cascades' depth range snaps outwards to multiples of this many map units.
@@ -151,6 +153,7 @@ pub(crate) fn fit(
         out.matrices[i] = m.map(|column| column.map(|v| v as f32));
         out.splits[i] = far as f32;
         out.texel[i] = texel as f32;
+        out.depth_range[i] = z_range as f32;
         out.bias[i] = (texel * bias_scale * 0.5 / z_range) as f32;
         previous = far;
     }

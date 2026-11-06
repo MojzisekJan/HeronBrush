@@ -69,6 +69,8 @@ pub mod raylib_animation;
 pub mod raylib_water;
 pub mod recent_documents;
 pub mod render_settings;
+pub mod environment;
+pub mod light_probes;
 pub mod rotate_tool;
 pub mod sculpt;
 pub mod unity_live;
@@ -94,6 +96,7 @@ pub mod render_camera;
 pub mod render_scene;
 pub mod uv_view;
 pub mod uv_workflow;
+pub mod uv_edge;
 pub mod view2d;
 pub mod view3d;
 

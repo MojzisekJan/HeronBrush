@@ -12,6 +12,7 @@ fn add_box(d: &mut Document, min: Vec3d, max: Vec3d) {
             roughness: 45,
             metallic: 20,
             emission: 3,
+            ..Default::default()
         });
     }
     d.add_brushes(vec![brush.with_exact_face_attributes(&faces).unwrap()]);
@@ -48,7 +49,8 @@ fn hollow_join_preserves_parent_and_one_undo_without_a_common_wall() {
             Some(map_model::brush_face::SurfaceMaterial {
                 roughness: 45,
                 metallic: 20,
-                emission: 3
+                emission: 3,
+                ..Default::default()
             })
         );
     }

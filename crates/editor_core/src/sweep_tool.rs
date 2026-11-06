@@ -925,7 +925,8 @@ mod upgrade_tests {
             roughness: 35,
             metallic: 80,
             emission: 4,
-        });
+        ..Default::default()
+});
         SweepSource {
             faces: vec![points],
             attributes: vec![face],

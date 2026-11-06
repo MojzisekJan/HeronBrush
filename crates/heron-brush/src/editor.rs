@@ -61,6 +61,7 @@ pub struct Editor {
     pub active_plane: Rc<RefCell<Option<ViewPlane>>>,
     /// The main 3D view's camera, which the window's shortcuts also move.
     pub camera: Rc<RefCell<editor_core::camera3d::Camera3d>>,
+    pub frame_history: Rc<RefCell<editor_core::commands::FrameHistory>>,
     /// Every flat view's state, so their cameras move together.
     pub cameras: Rc<RefCell<Vec<Rc<RefCell<ViewportState>>>>>,
     /// Asks for the window to be drawn again.
@@ -97,6 +98,7 @@ impl Editor {
             move || ctx.request_repaint()
         });
         Self {
+            frame_history: Rc::default(),
             target_pick: Default::default(),
             document: Rc::new(RefCell::new(loaded.document)),
             sources: RefCell::new(loaded.sources),

@@ -5395,7 +5395,8 @@ fn surface_material_survives_history_save_and_geometry_edits() {
             roughness: 20,
             metallic: 80,
             emission: 250,
-        };
+        ..Default::default()
+};
         assert_eq!(doc.set_surface_material_on(&[face], Some(surface)), 1);
         assert_eq!(doc.face_at(face).unwrap().surface_material, Some(surface));
         let saved = doc.to_map_text();
@@ -7206,4 +7207,75 @@ fn patch_picking_handles_origins_inside_bounds_and_zero_thickness_patches() {
         assert!(document.pick(&ray).is_none());
         assert!(document.pick_flat(&ray).is_none());
     }
+}
+
+#[test]
+fn navigation_isolation_restores_hidden_objects_and_accepts_faces() {
+    let mut d = two_boxes();
+    let ids: Vec<_> = node::brushes_with_ids(d.tree_world())
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect();
+    d.select_only(ids[0]);
+    assert_eq!(d.hide_selection(), 1);
+    d.select_face_only(FaceRef {
+        node: ids[1],
+        face: 0,
+    });
+    d.isolate_selection();
+    assert!(d.isolation_active());
+    assert!(!d.is_hidden(ids[1]));
+    d.isolate_selection();
+    assert!(!d.isolation_active());
+    assert!(
+        d.is_hidden(ids[0]),
+        "pre-existing hidden state must survive isolation"
+    );
+    assert!(!d.is_hidden(ids[1]));
+    assert_eq!(
+        d.hide_selection(),
+        1,
+        "face selection hides its owning brush"
+    );
+    assert_eq!(d.show_all(), 2);
+}
+
+#[test]
+fn navigation_face_bounds_cover_only_the_selected_polygon() {
+    let mut d = one_box();
+    let face = face_facing(&d, Vec3d::new(0.0, 0.0, 1.0));
+    d.select_face_only(face);
+    let bounds = d.selection_bounds().expect("face bounds");
+    assert!((bounds.max.z() - bounds.min.z()).abs() < 1e-6);
+    assert!(bounds.size().x() > 0.0);
+}
+
+#[test]
+fn navigation_similar_faces_separates_linked_from_disconnected_surfaces() {
+    let mut d = Document::new(WorldBounds::default());
+    let a = add_box(&mut d, Vec3d::new(0., 0., 0.), Vec3d::new(32., 32., 32.));
+    let b = add_box(&mut d, Vec3d::new(32., 0., 0.), Vec3d::new(64., 32., 32.));
+    let c = add_box(&mut d, Vec3d::new(128., 0., 0.), Vec3d::new(160., 32., 32.));
+    let top = (0..6)
+        .map(|face| FaceRef { node: a, face })
+        .find(|&f| d.face_at(f).unwrap().normal().z() > 0.9)
+        .unwrap();
+    d.select_face_only(top);
+    assert_eq!(d.select_similar_faces(FaceSelection::LinkedAngle), 2);
+    assert!(d.selected_faces().iter().any(|f| f.node == b));
+    assert!(!d.selected_faces().iter().any(|f| f.node == c));
+    d.select_face_only(top);
+    assert_eq!(d.select_similar_faces(FaceSelection::Coplanar), 3);
+    d.select_face_only(top);
+    assert_eq!(d.select_similar_faces(FaceSelection::LinkedMaterial), 12);
+    d.select_face_only(top);
+    assert_eq!(d.select_similar_faces(FaceSelection::Material), 18);
+    d.select_only(c);
+    d.hide_selection();
+    d.select_face_only(top);
+    assert_eq!(
+        d.select_similar_faces(FaceSelection::Material),
+        12,
+        "hidden surfaces must not be selected"
+    );
 }

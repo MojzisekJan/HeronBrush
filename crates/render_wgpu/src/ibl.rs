@@ -21,12 +21,17 @@ const PARAM_STRIDE: u64 = 256;
 
 pub(crate) struct Ibl {
     _env: wgpu::Texture,
+    _source: wgpu::Texture,
+    pub source_view: wgpu::TextureView,
+    source_id: Option<u64>,
     env_faces: Vec<Vec<wgpu::TextureView>>,
     /// Per env mip `i`, a group sampling mip `i` alone (the source of mip `i + 1`).
     env_mip_groups: Vec<wgpu::BindGroup>,
     env_full_group: wgpu::BindGroup,
     /// A group with an unrelated cube, for the capture pass that reads nothing.
     capture_group: wgpu::BindGroup,
+    capture_layout: wgpu::BindGroupLayout,
+    capture_sampler: wgpu::Sampler,
     _specular: wgpu::Texture,
     specular_faces: Vec<Vec<wgpu::TextureView>>,
     pub specular_view: wgpu::TextureView,
@@ -95,6 +100,7 @@ fn cube_view(texture: &wgpu::Texture, base_mip: u32, mips: Option<u32>) -> wgpu:
 /// The settings the sky's light depends on.
 fn sky_key(s: &RenderSettings) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    s.procedural_sky.hash(&mut hasher);
     for v in s
         .sky_color
         .iter()
@@ -105,7 +111,79 @@ fn sky_key(s: &RenderSettings) -> u64 {
     {
         v.to_bits().hash(&mut hasher);
     }
+    if let Some(environment) = &s.environment {
+        environment.image.fingerprint().hash(&mut hasher);
+        environment.show_background.hash(&mut hasher);
+        environment.rotation_degrees.to_bits().hash(&mut hasher);
+        environment.intensity.to_bits().hash(&mut hasher);
+    }
     hasher.finish()
+}
+
+fn source_texture(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    image: Option<&render::environment::EnvironmentImage>,
+) -> wgpu::Texture {
+    let (source_width, source_height) =
+        image.map_or((1, 1), |image| (image.width(), image.height()));
+    let limit = device.limits().max_texture_dimension_2d;
+    let width = source_width.min(limit);
+    let height = if image.is_some() {
+        (width / 2).max(1)
+    } else {
+        source_height
+    };
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("HDR panorama"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: ENV_FORMAT,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    // Smaller adapters retain the panorama's average radiance instead of failing upload.
+    let mut bytes = Vec::with_capacity((width * height * 8) as usize);
+    for y in 0..height {
+        for x in 0..width {
+            let mut color = [0.0; 4];
+            if let Some(image) = image {
+                let x0 = x * source_width / width;
+                let x1 = ((x + 1) * source_width / width).max(x0 + 1);
+                let y0 = y * source_height / height;
+                let y1 = ((y + 1) * source_height / height).max(y0 + 1);
+                let weight = 1.0 / ((x1 - x0) * (y1 - y0)) as f32;
+                for sy in y0..y1 {
+                    for sx in x0..x1 {
+                        let pixel = image.pixels()[(sy * source_width + sx) as usize];
+                        for channel in 0..4 {
+                            color[channel] += pixel[channel] * weight;
+                        }
+                    }
+                }
+            }
+            for value in color {
+                bytes.extend_from_slice(&half::f16::from_f32(value).to_le_bytes());
+            }
+        }
+    }
+    queue.write_texture(
+        texture.as_image_copy(),
+        &bytes,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(width * 8),
+            rows_per_image: Some(height),
+        },
+        texture.size(),
+    );
+    texture
 }
 
 impl Ibl {
@@ -144,6 +222,16 @@ impl Ibl {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -169,6 +257,8 @@ impl Ibl {
             SPECULAR_MIPS,
         );
         let specular_view = cube_view(&specular, 0, None);
+        let source = source_texture(device, queue, None);
+        let source_view = source.create_view(&Default::default());
         let group = |view: &wgpu::TextureView| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("render_wgpu ibl"),
@@ -189,6 +279,10 @@ impl Ibl {
                             offset: 0,
                             size: wgpu::BufferSize::new(16),
                         }),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wgpu::BindingResource::TextureView(&source_view),
                     },
                 ],
             })
@@ -333,11 +427,16 @@ impl Ibl {
         queue.write_buffer(&params, 0, &blocks);
 
         Self {
+            _source: source,
+            source_view,
+            source_id: None,
             _env: env,
             env_faces,
             env_mip_groups,
             env_full_group,
             capture_group,
+            capture_layout: layout,
+            capture_sampler: sampler,
             _specular: specular,
             specular_faces,
             specular_view,
@@ -353,6 +452,57 @@ impl Ibl {
             sh: sh_pipeline,
             key: None,
         }
+    }
+
+    /// Rebind the original full-resolution panorama only when its image changes.
+    pub fn prepare_environment(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        environment: Option<&render::environment::Environment>,
+    ) -> bool {
+        let id = environment.map(|environment| environment.image.fingerprint());
+        if id == self.source_id {
+            return false;
+        }
+        self._source = source_texture(
+            device,
+            queue,
+            environment.map(|environment| environment.image.as_ref()),
+        );
+        self.source_view = self._source.create_view(&Default::default());
+        self.source_id = id;
+        self.capture_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("HDR capture"),
+            layout: &self.capture_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&self.specular_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.capture_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self._params,
+                        offset: 0,
+                        size: wgpu::BufferSize::new(16),
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&self.source_view),
+                },
+            ],
+        });
+        true
+    }
+
+    pub fn needs_update(&self, settings: &RenderSettings) -> bool {
+        self.key != Some(sky_key(settings))
     }
 
     /// Redraws the environment when the sky or sun changed. The frame uniform must

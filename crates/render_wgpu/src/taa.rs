@@ -267,6 +267,7 @@ impl TaaTargets {
                     (4, TextureView(s.tony)),
                     (5, Sampler(s.sampler)),
                     (9, TextureView(s.ssr)),
+                    (8, TextureView(&views[i])),
                 ],
             )
         });

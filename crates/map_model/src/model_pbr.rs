@@ -15,6 +15,14 @@ pub struct ModelPbr {
     pub roughness: f32,
     /// Linear metallic multiplier.
     pub metallic: f32,
+    /// Constant KHR_materials_clearcoat strength.
+    pub clearcoat: f32,
+    /// Constant top-coat perceptual roughness.
+    pub coat_roughness: f32,
+    /// Constant KHR_materials_anisotropy strength.
+    pub anisotropy: f32,
+    /// Anisotropy direction rotation in radians.
+    pub anisotropy_rotation: f32,
     /// Linear emissive RGB multiplier.
     pub emissive_factor: [f32; 3],
     /// Multiplier of tangent-space normal X and Y.
@@ -38,6 +46,10 @@ impl Default for ModelPbr {
             double_sided: false,
             roughness: 1.,
             metallic: 1.,
+            clearcoat: 0.0,
+            coat_roughness: 0.0,
+            anisotropy: 0.0,
+            anisotropy_rotation: 0.0,
             emissive_factor: [0.; 3],
             normal_scale: 1.,
             occlusion_strength: 1.,
@@ -56,6 +68,10 @@ impl Hash for ModelPbr {
         for f in [
             self.roughness,
             self.metallic,
+            self.clearcoat,
+            self.coat_roughness,
+            self.anisotropy,
+            self.anisotropy_rotation,
             self.normal_scale,
             self.occlusion_strength,
         ]

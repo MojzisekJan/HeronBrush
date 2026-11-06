@@ -38,7 +38,14 @@ impl ManualPage {
         let mut close = false;
         self.open = dialog::show(ctx, "manual", tr("Manual"), [1100.0, 760.0], |ui, part| {
             if part == dialog::Part::Actions {
-                close = dialog::button(ui, tr("Close"), true).clicked();
+                close |= dialog::button(ui, tr("Close"), true).clicked();
+                return;
+            }
+            // Handle Escape before the search entry consumes it to release focus.
+            if !egui::Popup::is_any_open(ui.ctx())
+                && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+            {
+                close = true;
                 return;
             }
             let mut size = preferences::pref(|p| p.manual_font_size);
@@ -108,13 +115,6 @@ impl ManualPage {
                             fill("Could not save the preferences: {}", &[&error.to_string()])
                         );
                     }
-                }
-            }
-            if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
-                if self.query.is_empty() {
-                    close = true;
-                } else {
-                    self.query.clear();
                 }
             }
             let shown: Vec<_> = self
@@ -299,6 +299,39 @@ fn spans(text: &str) -> Vec<(&str, Span)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn escape_closes_the_manual_even_with_a_query_and_keyboard_focus() {
+        let ctx = egui::Context::default();
+        ctx.set_embed_viewports(true);
+        crate::theme::install(&ctx);
+        let mut page = ManualPage {
+            open: true,
+            query: "materials".into(),
+            ..Default::default()
+        };
+        for _ in 0..2 {
+            let mut output = ctx.run_ui(egui::RawInput::default(), |ui| page.show(ui.ctx()));
+            output.textures_delta.clear();
+        }
+        ctx.memory_mut(|memory| memory.request_focus(egui::Id::unique("manual-search-focus")));
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                events: vec![egui::Event::Key {
+                    key: egui::Key::Escape,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+                ..Default::default()
+            },
+            |ui| page.show(ui.ctx()),
+        );
+        output.textures_delta.clear();
+        assert!(!page.open);
+        assert_eq!(page.query, "materials");
+    }
+
     #[test]
     fn inline_markers_become_spans() {
         assert_eq!(

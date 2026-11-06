@@ -56,6 +56,7 @@ pub(super) fn triangles(
                 roughness: 38,
                 metallic: 0,
                 emission,
+                ..Default::default()
             }),
         });
     };

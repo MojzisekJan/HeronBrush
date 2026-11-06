@@ -2118,3 +2118,1279 @@ fn imported_opaque_back_does_not_occlude_the_receiver() {
         "Culled opaque back left a hole in the receiver: {differences:?}"
     );
 }
+
+/// Exposure and the display transform must not be baked into accumulated samples.
+#[test]
+fn hdr_accumulation_applies_the_latest_display_transform_to_all_samples() {
+    let (device, queue) = device().expect("HDR validation requires a GPU adapter");
+    let mut renderer = Renderer::new(&device, &queue);
+    let camera = Camera3d::default();
+    let mut settings = single_frame_settings();
+    settings.procedural_sky = true;
+    settings.shadows = false;
+    settings.bloom = false;
+    settings.sun_color = [0.0; 3];
+    settings.sun_elevation = 60.0;
+    settings.sky_color = [0.8, 0.4, 0.15];
+    settings.horizon_color = settings.sky_color;
+    settings.ground_color = settings.sky_color;
+    settings.exposure = 0.1;
+    let mut first = view(
+        &camera,
+        &settings,
+        DisplayMode::Material,
+        Tonemapper::Aces,
+        (64, 48),
+    );
+    first.sample = Some(0);
+    renderer.accumulate(&first);
+    let dark = renderer.read_output().expect("dark sample");
+    settings.exposure = 3.0;
+    let mut latest = view(
+        &camera,
+        &settings,
+        DisplayMode::Material,
+        Tonemapper::TonyMcMapface,
+        (64, 48),
+    );
+    latest.sample = Some(1);
+    renderer.accumulate(&latest);
+    let accumulated = renderer.read_output().expect("HDR average");
+    latest.sample = Some(0);
+    renderer.accumulate(&latest);
+    let reference = renderer.read_output().expect("fresh display transform");
+    let difference = accumulated
+        .2
+        .iter()
+        .zip(&reference.2)
+        .map(|(a, b)| f64::from(a.abs_diff(*b)))
+        .sum::<f64>()
+        / reference.2.len() as f64;
+    assert!(
+        difference < 1.0,
+        "old exposure or tone mapping leaked into HDR history: {difference}"
+    );
+    assert!(
+        mean(&reference.2) > mean(&dark.2) + 30.0,
+        "the test must exercise a visible exposure change"
+    );
+    save("hdr-latest-exposure", &accumulated);
+    save("hdr-fresh-reference", &reference);
+
+    // An explicit first sample and a resized output must both discard earlier history.
+    settings.procedural_sky = false;
+    settings.background_color = [0.2, 0.35, 0.6];
+    let mut background = view(
+        &camera,
+        &settings,
+        DisplayMode::Material,
+        Tonemapper::Aces,
+        (80, 40),
+    );
+    background.sample = Some(0);
+    renderer.accumulate(&background);
+    let plain = renderer.read_output().expect("resized background");
+    assert_eq!((plain.0, plain.1), (80, 40));
+    for pixel in plain.2.as_chunks::<4>().0 {
+        for (channel, &value) in pixel[..3].iter().enumerate() {
+            assert!(
+                (f32::from(value) - settings.background_color[channel] * 255.0).abs() <= 2.0,
+                "flat background must bypass exposure and tone mapping"
+            );
+        }
+        assert_eq!(pixel[3], 255);
+    }
+}
+
+/// Minified, opposing normal details must broaden the highlight as a rough surface
+/// would, rather than normalizing the averaged vector into a polished mirror.
+#[test]
+fn minified_normal_details_match_a_broader_specular_reference() {
+    use editor_core::render_scene::SceneSink;
+    use geometry_math::bbox::Bbox3d;
+    use geometry_math::vec::Vec3d;
+    use map_model::material::{Material, NormalMap};
+    let (device, queue) = device().expect("specular validation requires a GPU adapter");
+    let mut document = Document::new(Default::default());
+    document.add_brushes(vec![map_model::shapes::create_cuboid(
+        &document.world_bounds(),
+        &Bbox3d::from_scalars(-32.0, 32.0),
+        "filter-test",
+    )
+    .expect("cube")]);
+    let mut triangles = document.render_triangles();
+    for triangle in &mut triangles {
+        triangle.material = Some(0);
+        triangle.surface_material = None;
+        triangle.color = [1.0; 3];
+        triangle.selected = false;
+        triangle.uv = [
+            geometry_math::vec::Vec2f::new(0.0, 0.0),
+            geometry_math::vec::Vec2f::new(512.0, 0.0),
+            geometry_math::vec::Vec2f::new(0.0, 512.0),
+        ];
+    }
+    let mut camera = Camera3d {
+        position: Vec3d::new(0.0, -160.0, 0.0),
+        ..Default::default()
+    };
+    camera.look_along(Vec3d::new(0.0, 1.0, 0.0));
+    let mut settings = single_frame_settings();
+    settings.procedural_sky = false;
+    settings.shadows = false;
+    settings.ambient_occlusion = false;
+    settings.reflections = false;
+    settings.bloom = false;
+    settings.ambient_intensity = 0.0;
+    settings.sun_elevation = 0.0;
+    settings.sun_azimuth = 270.0;
+    settings.sun_intensity = 3.0;
+    settings.default_metalness = 1.0;
+    let mut pictures = Vec::new();
+    let mut motion_errors = Vec::new();
+    for (name, details, roughness) in [
+        ("specular-filtered", true, 0.05),
+        ("specular-rough-reference", false, 0.2_f32.sqrt().sqrt()),
+        ("specular-gloss-reference", false, 0.05),
+    ] {
+        let mut material =
+            Material::rgba("filter-test".into(), Default::default(), 1, 1, vec![255; 4]);
+        let pixels = (0..32 * 32)
+            .flat_map(|index| {
+                if details {
+                    if (index % 32 + index / 32) % 2 == 0 {
+                        [230, 128, 204, 255]
+                    } else {
+                        [26, 128, 204, 255]
+                    }
+                } else {
+                    [128, 128, 255, 255]
+                }
+            })
+            .collect();
+        material.normal_map = Some(NormalMap::rgba(Default::default(), 32, 32, pixels, false));
+        let mut renderer = Renderer::new(&device, &queue);
+        renderer.scene.set_materials(&[material]);
+        renderer.scene.upsert(0, &triangles, Default::default());
+        renderer.scene.finish();
+        renderer.scene.load_textures_now();
+        settings.default_roughness = roughness;
+        let mut previous = None::<Vec<u8>>;
+        let mut squared_change = 0.0;
+        let mut comparisons = 0;
+        for step in 0..4 {
+            let moved = Camera3d {
+                position: camera.position + Vec3d::new(f64::from(step) * 0.5, 0.0, 0.0),
+                ..camera
+            };
+            renderer.render(&view(
+                &moved,
+                &settings,
+                DisplayMode::Material,
+                Tonemapper::Agx,
+                (256, 256),
+            ));
+            let picture = renderer.read_output().expect("specular test image");
+            if step == 0 {
+                save(name, &picture);
+                pictures.push(picture.2.clone());
+            }
+            // Interior only: avoid measuring silhouette motion instead of highlights.
+            let mut region = Vec::new();
+            for y in 96..160 {
+                for x in 96..160 {
+                    region.extend_from_slice(&picture.2[(y * 256 + x) * 4..(y * 256 + x) * 4 + 3]);
+                }
+            }
+            if let Some(before) = previous {
+                squared_change += before
+                    .iter()
+                    .zip(&region)
+                    .map(|(a, b)| (f64::from(*a) - f64::from(*b)).powi(2))
+                    .sum::<f64>();
+                comparisons += region.len();
+            }
+            previous = Some(region);
+        }
+        motion_errors.push((squared_change / comparisons as f64).sqrt());
+    }
+    let difference = |a: &[u8], b: &[u8]| {
+        a.iter()
+            .zip(b)
+            .map(|(a, b)| f64::from(a.abs_diff(*b)))
+            .sum::<f64>()
+            / a.len() as f64
+    };
+    eprintln!(
+        "specular motion RMS: filtered {:.3}, rough reference {:.3}, polished reference {:.3}",
+        motion_errors[0], motion_errors[1], motion_errors[2]
+    );
+    assert!(
+        motion_errors[2] > 0.1,
+        "the polished highlight must move between frames"
+    );
+    assert!(
+        motion_errors[0] < motion_errors[2] * 0.8,
+        "filtering must reduce highlight shimmer under subpixel camera motion"
+    );
+    let reference_error = difference(&pictures[0], &pictures[1]);
+    let unfiltered_error = difference(&pictures[0], &pictures[2]);
+    eprintln!("specular filter: rough-reference error {reference_error:.3}, polished-reference difference {unfiltered_error:.3}");
+    assert!(
+        reference_error < 2.0,
+        "filtered normal details must follow a rough reference: {reference_error}"
+    );
+    assert!(
+        unfiltered_error > reference_error + 1.0,
+        "the scene must distinguish filtered highlights from polished ones: {unfiltered_error}"
+    );
+}
+
+#[test]
+fn hdr_panorama_controls_background_rotation_intensity_and_cache() {
+    use render::environment::{Environment, EnvironmentImage};
+    use std::sync::Arc;
+    let (device, queue) = device().expect("environment validation requires a GPU");
+    let mut renderer = Renderer::new(&device, &queue);
+    let camera = Camera3d::default();
+    let mut settings = single_frame_settings();
+    settings.bloom = false;
+    settings.shadows = false;
+    settings.sun_color = [0.0; 3];
+    settings.background_color = [0.01, 0.02, 0.03];
+    let pixels = (0..32)
+        .flat_map(|_| {
+            (0..64).map(|x| {
+                if x < 32 {
+                    [3.0, 0.1, 0.05, 1.0]
+                } else {
+                    [0.05, 0.2, 3.0, 1.0]
+                }
+            })
+        })
+        .collect();
+    settings.environment = Some(Environment {
+        image: Arc::new(EnvironmentImage::new(64, 32, pixels).unwrap()),
+        rotation_degrees: 0.0,
+        intensity: 1.0,
+        show_background: true,
+    });
+    let draw = |renderer: &mut Renderer, settings: &render::RenderSettings| {
+        renderer.render(&view(
+            &camera,
+            settings,
+            DisplayMode::Material,
+            Tonemapper::Aces,
+            (96, 64),
+        ));
+        renderer.read_output().unwrap()
+    };
+    let first = draw(&mut renderer, &settings);
+    assert!(renderer.stats.environment_rebuilt);
+    let repeated = draw(&mut renderer, &settings);
+    assert!(!renderer.stats.environment_rebuilt);
+    assert_eq!(first.2, repeated.2);
+    settings.environment.as_mut().unwrap().rotation_degrees = 180.0;
+    let rotated = draw(&mut renderer, &settings);
+    assert!(renderer.stats.environment_rebuilt);
+    let error = |a: &[u8], b: &[u8]| {
+        a.iter()
+            .zip(b)
+            .map(|(a, b)| f64::from(a.abs_diff(*b)))
+            .sum::<f64>()
+            / a.len() as f64
+    };
+    assert!(
+        error(&first.2, &rotated.2) > 40.0,
+        "rotation must move the panorama"
+    );
+    settings.environment.as_mut().unwrap().rotation_degrees = 360.0;
+    let wrapped = draw(&mut renderer, &settings);
+    assert!(
+        error(&first.2, &wrapped.2) < 1.0,
+        "rotation wraps a complete turn"
+    );
+    settings.environment.as_mut().unwrap().intensity = 0.1;
+    let dim = draw(&mut renderer, &settings);
+    assert!(mean(&dim.2) < mean(&first.2) - 15.0);
+    settings.environment.as_mut().unwrap().show_background = false;
+    let hidden = draw(&mut renderer, &settings);
+    settings.environment = None;
+    settings.procedural_sky = false;
+    let flat = draw(&mut renderer, &settings);
+    assert_eq!(
+        hidden.2, flat.2,
+        "hidden panorama uses the flat camera background"
+    );
+    save("environment-original", &first);
+    save("environment-rotated", &rotated);
+    save("environment-dim", &dim);
+    save("environment-hidden", &hidden);
+}
+
+#[test]
+fn hidden_hdr_environment_still_lights_materials_and_offline_samples() {
+    use render::environment::{Environment, EnvironmentImage};
+    use std::sync::Arc;
+    let (device, queue) = device().expect("environment lighting requires a GPU");
+    let mut renderer = Renderer::new(&device, &queue);
+    let document = open("assets/crate.map");
+    SceneTracker::new().sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut renderer.scene,
+    );
+    let mut camera = Camera3d::default();
+    camera.frame(&document.bounds().unwrap());
+    let mut settings = single_frame_settings();
+    settings.sun_color = [0.0; 3];
+    settings.bloom = false;
+    settings.shadows = false;
+    settings.ambient_occlusion = false;
+    settings.background_color = [0.02; 3];
+    let environment = |color| Environment {
+        image: Arc::new(EnvironmentImage::new(8, 4, vec![color; 32]).unwrap()),
+        rotation_degrees: 0.0,
+        intensity: 1.0,
+        show_background: false,
+    };
+    settings.environment = Some(environment([4.0, 0.02, 0.02, 1.0]));
+    renderer.render(&view(
+        &camera,
+        &settings,
+        DisplayMode::Material,
+        Tonemapper::Aces,
+        (160, 120),
+    ));
+    let red = renderer.read_output().unwrap();
+    settings.environment = Some(environment([0.02, 0.02, 4.0, 1.0]));
+    renderer.render(&view(
+        &camera,
+        &settings,
+        DisplayMode::Material,
+        Tonemapper::Aces,
+        (160, 120),
+    ));
+    let blue = renderer.read_output().unwrap();
+    let sum = |pixels: &[u8], channel: usize| {
+        pixels
+            .chunks_exact(4)
+            .map(|p| u64::from(p[channel]))
+            .sum::<u64>()
+    };
+    assert!(
+        sum(&red.2, 0) > sum(&blue.2, 0) + 10000,
+        "diffuse IBL must receive red light"
+    );
+    assert!(
+        sum(&blue.2, 2) > sum(&red.2, 2) + 10000,
+        "diffuse IBL must receive blue light"
+    );
+    let mut offline = view(
+        &camera,
+        &settings,
+        DisplayMode::Material,
+        Tonemapper::Aces,
+        (160, 120),
+    );
+    offline.sample = Some(0);
+    renderer.accumulate(&offline);
+    let still = renderer.read_output().unwrap();
+    let error = still
+        .2
+        .iter()
+        .zip(&blue.2)
+        .map(|(a, b)| f64::from(a.abs_diff(*b)))
+        .sum::<f64>()
+        / blue.2.len() as f64;
+    assert!(
+        error < 2.0,
+        "viewport and offline use the same environment: {error}"
+    );
+    save("environment-light-red", &red);
+    save("environment-light-blue", &blue);
+    save("environment-offline", &still);
+}
+
+#[test]
+fn camera_grading_changes_display_without_baking_it_into_linear_hdr() {
+    use render::environment::{Environment, EnvironmentImage};
+    let (device, queue) = device().expect("HDR and grading validation requires a GPU");
+    let mut renderer = Renderer::new(&device, &queue);
+    assert!(renderer.read_hdr().is_none());
+    let camera = Camera3d::default();
+    let mut settings = single_frame_settings();
+    settings.bloom = false;
+    settings.environment = Some(Environment {
+        image: std::sync::Arc::new(
+            EnvironmentImage::new(8, 4, vec![[4.0, 2.0, 0.5, 1.0]; 32]).unwrap(),
+        ),
+        rotation_degrees: 0.0,
+        intensity: 1.0,
+        show_background: true,
+    });
+    let draw = |renderer: &mut Renderer, settings: &render::RenderSettings| {
+        let mut params = view(
+            &camera,
+            settings,
+            DisplayMode::Material,
+            Tonemapper::Aces,
+            (37, 19),
+        );
+        params.sample = Some(0);
+        renderer.accumulate(&params);
+    };
+    draw(&mut renderer, &settings);
+    let neutral = renderer.read_output().unwrap();
+    let linear = renderer.read_hdr().unwrap();
+    assert_eq!((linear.0, linear.1), (37, 19));
+    for pixel in linear.2.as_chunks::<4>().0 {
+        assert!((pixel[0] - 4.0).abs() < 0.01);
+        assert!((pixel[1] - 2.0).abs() < 0.01);
+        assert!((pixel[2] - 0.5).abs() < 0.01);
+        assert_eq!(pixel[3], 1.0);
+    }
+    settings.exposure = 0.1;
+    settings.color_grading.temperature = 3000.0;
+    settings.color_grading.tint = 0.2;
+    settings.color_grading.saturation = 0.0;
+    settings.color_grading.contrast = 1.4;
+    settings.color_grading.tone_map = Some(Tonemapper::KhronosNeutral);
+    draw(&mut renderer, &settings);
+    let graded = renderer.read_output().unwrap();
+    assert_eq!(
+        linear,
+        renderer.read_hdr().unwrap(),
+        "EXR source must exclude every display transform"
+    );
+    assert!(mean(&graded.2) < mean(&neutral.2) - 20.0);
+    for p in graded.2.as_chunks::<4>().0 {
+        assert!(
+            p[0].abs_diff(p[1]) <= 1 && p[1].abs_diff(p[2]) <= 1,
+            "zero saturation must be neutral"
+        );
+    }
+    save("camera-neutral", &neutral);
+    save("camera-graded", &graded);
+    settings.environment.as_mut().unwrap().show_background = false;
+    draw(&mut renderer, &settings);
+    let transparent = renderer.read_hdr().unwrap();
+    assert!(
+        transparent.2.iter().all(|value| *value == 0.0),
+        "display background must stay out of scene-linear EXR"
+    );
+}
+#[test]
+fn asynchronous_frame_timing_does_not_stall_or_break_rendering() {
+    let (device, queue) = device().expect("timing validation requires a GPU");
+    let timestamps = device.features().contains(wgpu::Features::TIMESTAMP_QUERY);
+    let mut renderer = Renderer::new(&device, &queue);
+    renderer.set_frame_timing(true);
+    let camera = Camera3d::default();
+    let settings = single_frame_settings();
+    for _ in 0..6 {
+        renderer.render(&view(
+            &camera,
+            &settings,
+            DisplayMode::Material,
+            Tonemapper::Aces,
+            (64, 48),
+        ));
+    }
+    renderer.wait_idle();
+    let duration = renderer.take_frame_time();
+    if timestamps {
+        assert!(
+            duration.is_some_and(|ms| ms.is_finite() && ms > 0.0),
+            "completed frames must provide actual GPU time: {duration:?}"
+        );
+    }
+    assert!(
+        renderer.take_frame_time().is_none(),
+        "each timing result is consumed once"
+    );
+    renderer.set_frame_timing(false);
+    assert!(renderer.take_frame_time().is_none());
+}
+#[test]
+fn directional_indirect_occlusion_reduces_environment_light_in_recesses() {
+    use geometry_math::vec::Vec3d;
+    let (device, queue) = device().expect("occlusion validation requires a GPU");
+    let (document, _) = lit_room();
+    let mut renderer = Renderer::new(&device, &queue);
+    SceneTracker::new().sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut renderer.scene,
+    );
+    let mut camera = Camera3d {
+        position: Vec3d::new(170.0, -220.0, 150.0),
+        ..Default::default()
+    };
+    camera.look_along(Vec3d::new(-170.0, 220.0, -120.0));
+    let mut settings = single_frame_settings();
+    settings.sun_intensity = 0.0;
+    settings.shadows = false;
+    settings.bloom = false;
+    settings.reflections = false;
+    settings.ambient_intensity = 1.0;
+    settings.default_metalness = 0.9;
+    settings.default_roughness = 0.2;
+    settings.ambient_occlusion = true;
+    settings.ao_radius = 96.0;
+    settings.ao_strength = 1.0;
+    settings.indirect_occlusion = false;
+    let draw = |renderer: &mut Renderer, settings: &render::RenderSettings| {
+        let mut params = view(
+            &camera,
+            settings,
+            DisplayMode::Material,
+            Tonemapper::Aces,
+            (320, 240),
+        );
+        params.lights = false;
+        renderer.render(&params);
+        renderer.read_output().unwrap()
+    };
+    let before = draw(&mut renderer, &settings);
+    settings.indirect_occlusion = true;
+    let after = draw(&mut renderer, &settings);
+    let changed = before
+        .2
+        .iter()
+        .zip(&after.2)
+        .filter(|(a, b)| a.abs_diff(**b) > 3)
+        .count();
+    assert!(
+        changed > 100,
+        "directional occlusion must affect recessed surfaces: {changed}"
+    );
+    assert!(
+        mean(&after.2) < mean(&before.2),
+        "occluded directions must not add environment light"
+    );
+    save("occlusion-before", &before);
+    save("occlusion-after", &after);
+}
+#[test]
+fn pcss_softness_changes_shadow_edges_without_redrawing_cached_cascades() {
+    use geometry_math::vec::Vec3d;
+    let (device, queue) = device().expect("soft shadow validation requires a GPU");
+    let (document, _) = lit_room();
+    let mut renderer = Renderer::new(&device, &queue);
+    SceneTracker::new().sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut renderer.scene,
+    );
+    let mut camera = Camera3d {
+        position: Vec3d::new(170.0, -220.0, 180.0),
+        ..Default::default()
+    };
+    camera.look_along(Vec3d::new(-170.0, 220.0, -150.0));
+    let mut settings = single_frame_settings();
+    settings.shadows = true;
+    settings.bloom = false;
+    settings.reflections = false;
+    settings.ambient_occlusion = false;
+    settings.contact_shadows = false;
+    settings.ambient_intensity = 0.1;
+    settings.sun_intensity = 3.0;
+    settings.sun_elevation = 35.0;
+    settings.shadow_map_size = 1024;
+    settings.shadow_softness = 0.0;
+    let draw = |renderer: &mut Renderer, settings: &render::RenderSettings| {
+        let mut params = view(
+            &camera,
+            settings,
+            DisplayMode::Material,
+            Tonemapper::Aces,
+            (320, 240),
+        );
+        params.lights = false;
+        renderer.render(&params);
+        renderer.read_output().unwrap()
+    };
+    let hard = draw(&mut renderer, &settings);
+    assert!(renderer.stats.cascades_drawn > 0);
+    settings.shadow_softness = 4.0;
+    let soft = draw(&mut renderer, &settings);
+    assert_eq!(
+        renderer.stats.cascades_drawn, 0,
+        "PCSS must reuse the stable cascade maps"
+    );
+    let changed = hard
+        .2
+        .iter()
+        .zip(&soft.2)
+        .filter(|(a, b)| a.abs_diff(**b) > 4)
+        .count();
+    assert!(changed > 100, "softness must change penumbrae: {changed}");
+    save("shadow-contact-hard", &hard);
+    save("shadow-contact-soft", &soft);
+}
+
+#[test]
+fn shadow_penumbra_grows_with_blocker_distance_and_planes_stay_lit() {
+    use editor_core::render_scene::SceneSink;
+    use geometry_math::{bbox::Bbox3d, vec::Vec3d};
+    let (device, queue) = device().expect("penumbra validation requires a GPU");
+    let mut document = Document::new(Default::default());
+    let world = document.world_bounds();
+    let cube = |min, max| {
+        map_model::shapes::create_cuboid(&world, &Bbox3d::new(min, max), "pcss").unwrap()
+    };
+    let floor = cube(
+        Vec3d::new(-220.0, -220.0, -16.0),
+        Vec3d::new(220.0, 220.0, 0.0),
+    );
+    document.add_brushes(vec![floor]);
+    let mut renderer = Renderer::new(&device, &queue);
+    let camera = Camera3d {
+        position: Vec3d::new(0.0, 0.0, 3000.0),
+        fov_degrees: 20.0,
+        pitch: -std::f64::consts::FRAC_PI_2,
+        yaw: 0.0,
+        ..Default::default()
+    };
+    let mut settings = single_frame_settings();
+    settings.sun_elevation = 90.0;
+    settings.sun_intensity = 2.0;
+    settings.ambient_intensity = 0.0;
+    settings.bloom = false;
+    settings.reflections = false;
+    settings.ambient_occlusion = false;
+    settings.contact_shadows = false;
+    settings.shadows = true;
+    settings.shadow_map_size = 2048;
+    let upload = |renderer: &mut Renderer, document: &Document| {
+        let mut triangles = document.render_triangles();
+        for triangle in &mut triangles {
+            triangle.color = [0.5; 3];
+            triangle.material = None;
+            triangle.surface_material = None;
+            triangle.selected = false;
+        }
+        renderer.scene.upsert(0, &triangles, Default::default());
+        renderer.scene.finish();
+    };
+    let draw = |renderer: &mut Renderer, settings: &render::RenderSettings| {
+        let mut params = view(
+            &camera,
+            settings,
+            DisplayMode::Material,
+            Tonemapper::Aces,
+            (512, 512),
+        );
+        params.lights = false;
+        renderer.render(&params);
+        renderer.read_output().unwrap()
+    };
+    upload(&mut renderer, &document);
+    settings.shadow_softness = 0.0;
+    let plane_hard = draw(&mut renderer, &settings);
+    settings.shadow_softness = 4.0;
+    let plane_soft = draw(&mut renderer, &settings);
+    assert_eq!(
+        plane_hard.2, plane_soft.2,
+        "a lone receiver plane must not become a blocker"
+    );
+    document.add_brushes(vec![
+        cube(
+            Vec3d::new(-20.0, -100.0, 4.0),
+            Vec3d::new(20.0, -60.0, 12.0),
+        ),
+        cube(
+            Vec3d::new(-20.0, 60.0, 120.0),
+            Vec3d::new(20.0, 100.0, 128.0),
+        ),
+    ]);
+    upload(&mut renderer, &document);
+    settings.shadow_softness = 0.0;
+    let hard = draw(&mut renderer, &settings);
+    settings.shadow_softness = 4.0;
+    let soft = draw(&mut renderer, &settings);
+    let halo = |y: f64| {
+        let (x0, y0, x1, y1) = screen_rect(
+            &camera,
+            (512, 512),
+            [-40.0, y - 40.0, 0.0],
+            [40.0, y + 40.0, 0.0],
+        );
+        (y0..y1)
+            .flat_map(|y| (x0..x1).map(move |x| (y * 512 + x) * 4))
+            .filter(|&offset| hard.2[offset] > soft.2[offset].saturating_add(3))
+            .count()
+    };
+    let near = halo(-80.0);
+    let far = halo(80.0);
+    assert!(
+        far > near * 2 + 10,
+        "a distant blocker must make a wider visible penumbra: near {near}, far {far}"
+    );
+    save("shadow-distance-hard", &hard);
+    save("shadow-distance-soft", &soft);
+}
+
+#[test]
+fn perturbed_normals_do_not_reflect_environment_through_the_geometric_face() {
+    use editor_core::render_scene::SceneSink;
+    use geometry_math::{
+        bbox::Bbox3d,
+        vec::{Vec2f, Vec3d},
+    };
+    use map_model::material::{Material, NormalMap};
+    use render::environment::{Environment, EnvironmentImage};
+    let (device, queue) = device().expect("normal horizon validation requires a GPU");
+    let mut document = Document::new(Default::default());
+    document.add_brushes(vec![map_model::shapes::create_cuboid(
+        &document.world_bounds(),
+        &Bbox3d::from_scalars(-32.0, 32.0),
+        "horizon",
+    )
+    .unwrap()]);
+    let mut triangles = document.render_triangles();
+    for triangle in &mut triangles {
+        triangle.material = Some(0);
+        triangle.surface_material = None;
+        triangle.color = [1.0; 3];
+        triangle.selected = false;
+        triangle.uv = [
+            Vec2f::new(0.0, 0.0),
+            Vec2f::new(1.0, 0.0),
+            Vec2f::new(0.0, 1.0),
+        ];
+    }
+    let mut material = Material::rgba("horizon".into(), Default::default(), 1, 1, vec![255; 4]);
+    material.normal_map = Some(NormalMap::rgba(
+        Default::default(),
+        1,
+        1,
+        vec![245, 128, 180, 255],
+        false,
+    ));
+    let mut renderer = Renderer::new(&device, &queue);
+    renderer.scene.set_materials(&[material]);
+    renderer.scene.upsert(0, &triangles, Default::default());
+    renderer.scene.finish();
+    renderer.scene.load_textures_now();
+    let mut camera = Camera3d {
+        position: Vec3d::new(-70.0, -160.0, 0.0),
+        ..Default::default()
+    };
+    camera.look_along(-camera.position);
+    let mut settings = single_frame_settings();
+    settings.sun_intensity = 0.0;
+    settings.bloom = false;
+    settings.shadows = false;
+    settings.ambient_occlusion = false;
+    settings.reflections = false;
+    settings.default_metalness = 1.0;
+    settings.default_roughness = 0.1;
+    settings.ambient_intensity = 1.0;
+    settings.environment = Some(Environment {
+        image: std::sync::Arc::new(
+            EnvironmentImage::new(8, 4, vec![[2.0, 2.0, 2.0, 1.0]; 32]).unwrap(),
+        ),
+        rotation_degrees: 0.0,
+        intensity: 1.0,
+        show_background: false,
+    });
+    settings.indirect_occlusion = false;
+    renderer.render(&view(
+        &camera,
+        &settings,
+        DisplayMode::Material,
+        Tonemapper::Aces,
+        (240, 180),
+    ));
+    let before = renderer.read_output().unwrap();
+    settings.indirect_occlusion = true;
+    renderer.render(&view(
+        &camera,
+        &settings,
+        DisplayMode::Material,
+        Tonemapper::Aces,
+        (240, 180),
+    ));
+    let after = renderer.read_output().unwrap();
+    assert!(
+        mean(&after.2) < mean(&before.2) - 1.0,
+        "normal-map horizon must reject light below the geometric surface"
+    );
+    save("normal-horizon-before", &before);
+    save("normal-horizon-after", &after);
+}
+
+#[test]
+#[ignore = "measures navigation GPU cost at native and reduced resolution"]
+fn navigation_resolution_benchmark() {
+    let (device, queue) = device().expect("navigation benchmark requires a GPU");
+    assert!(device.features().contains(wgpu::Features::TIMESTAMP_QUERY));
+    let document = open("demos/lantern_lane/lantern_lane.map");
+    let mut renderer = Renderer::new(&device, &queue);
+    renderer.set_frame_timing(true);
+    SceneTracker::new().sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut renderer.scene,
+    );
+    renderer.scene.load_textures_now();
+    let mut camera = Camera3d::default();
+    camera.frame_in_viewport(&document.bounds().unwrap(), 1280.0, 800.0);
+    let mut settings = single_frame_settings();
+    settings.antialiasing = true;
+    settings.accumulate = false;
+    settings.shadows = true;
+    settings.ambient_occlusion = true;
+    settings.contact_shadows = true;
+    settings.reflections = true;
+    settings.bloom = true;
+    for (name, size) in [
+        ("navigation-native", (1280, 800)),
+        ("navigation-reduced", (896, 560)),
+    ] {
+        let mut times = Vec::new();
+        for frame in 0..24 {
+            let mut moving = camera;
+            moving.turn(f64::from(frame) * 0.002, 0.0);
+            renderer.render(&view(
+                &moving,
+                &settings,
+                DisplayMode::Material,
+                Tonemapper::Agx,
+                size,
+            ));
+            renderer.wait_idle();
+            if let Some(ms) = renderer.take_frame_time() {
+                if frame >= 4 {
+                    times.push(ms);
+                }
+            }
+        }
+        times.sort_by(f64::total_cmp);
+        assert!(!times.is_empty());
+        eprintln!(
+            "{name}: {}x{}, median GPU {:.3} ms",
+            size.0,
+            size.1,
+            times[times.len() / 2]
+        );
+        save(name, &renderer.read_output().unwrap());
+    }
+}
+
+fn constant_local_probe(
+    color: [f32; 3],
+    reflections: bool,
+    diffuse: bool,
+    position: [f32; 3],
+) -> std::sync::Arc<render::probes::Lighting> {
+    let size = 16u32;
+    let volume = render::probes::Volume {
+        position,
+        half_size: [96.0; 3],
+        blend: 0.2,
+        intensity: 1.0,
+        reflections,
+        diffuse,
+    };
+    let mips = (0..=size.ilog2())
+        .map(|level| {
+            vec![[color[0], color[1], color[2], 1.0]; ((size >> level).pow(2) * 6) as usize]
+        })
+        .collect();
+    let mut sh = [[0.0; 3]; 9];
+    sh[0] = color.map(|v| v * 3.54491);
+    std::sync::Arc::new(
+        render::probes::Lighting::new(vec![render::probes::BakedProbe {
+            volume,
+            size,
+            mips,
+            sh,
+        }])
+        .unwrap(),
+    )
+}
+#[test]
+fn local_reflections_and_diffuse_light_work_without_screen_space_hits_and_fade_outside_the_volume()
+{
+    use editor_core::render_scene::SceneSink;
+    use geometry_math::{bbox::Bbox3d, vec::Vec3d};
+    use render::environment::{Environment, EnvironmentImage};
+    let (device, queue) = device().expect("local lighting validation requires a GPU");
+    let mut document = Document::new(Default::default());
+    document.add_brushes(vec![map_model::shapes::create_cuboid(
+        &document.world_bounds(),
+        &Bbox3d::from_scalars(-32.0, 32.0),
+        "probe-receiver",
+    )
+    .unwrap()]);
+    let mut triangles = document.render_triangles();
+    for triangle in &mut triangles {
+        triangle.color = [1.0; 3];
+        triangle.material = None;
+        triangle.selected = false;
+        triangle.surface_material = None;
+    }
+    let mut renderer = Renderer::new(&device, &queue);
+    renderer.scene.upsert(0, &triangles, Default::default());
+    renderer.scene.finish();
+    let mut camera = Camera3d {
+        position: Vec3d::new(0.0, -160.0, 40.0),
+        ..Default::default()
+    };
+    camera.look_along(-camera.position);
+    let mut settings = single_frame_settings();
+    settings.sun_intensity = 0.0;
+    settings.ambient_intensity = 1.0;
+    settings.bloom = false;
+    settings.shadows = false;
+    settings.ambient_occlusion = false;
+    settings.reflections = false;
+    settings.indirect_occlusion = false;
+    settings.default_metalness = 1.0;
+    settings.default_roughness = 0.15;
+    settings.environment = Some(Environment {
+        image: std::sync::Arc::new(
+            EnvironmentImage::new(8, 4, vec![[0.02, 0.02, 2.0, 1.0]; 32]).unwrap(),
+        ),
+        rotation_degrees: 0.0,
+        intensity: 1.0,
+        show_background: false,
+    });
+    let draw = |renderer: &mut Renderer, settings: &render::RenderSettings| {
+        renderer.render(&view(
+            &camera,
+            settings,
+            DisplayMode::Material,
+            Tonemapper::Aces,
+            (240, 180),
+        ));
+        renderer.read_output().unwrap()
+    };
+    let global = draw(&mut renderer, &settings);
+    settings.probes = Some(constant_local_probe(
+        [4.0, 0.02, 0.02],
+        true,
+        false,
+        [0.0; 3],
+    ));
+    let reflection = draw(&mut renderer, &settings);
+    let sum = |image: &[u8], channel: usize| {
+        image
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| u64::from(p[channel]))
+            .sum::<u64>()
+    };
+    assert!(
+        sum(&reflection.2, 0) > sum(&global.2, 0) + 10000,
+        "local captured geometry must reflect even with SSR disabled"
+    );
+    settings.probes = Some(constant_local_probe(
+        [4.0, 0.02, 0.02],
+        true,
+        false,
+        [10000.0; 3],
+    ));
+    let outside = draw(&mut renderer, &settings);
+    assert_eq!(
+        outside.2, global.2,
+        "outside the volume the global environment is retained"
+    );
+    settings.default_metalness = 0.0;
+    settings.probes = None;
+    let before = draw(&mut renderer, &settings);
+    settings.probes = Some(constant_local_probe([2.0, 0.0, 0.0], false, true, [0.0; 3]));
+    let bounce = draw(&mut renderer, &settings);
+    assert!(
+        sum(&bounce.2, 0) > sum(&before.2, 0) + 10000,
+        "local SH must transfer colored light to diffuse surfaces"
+    );
+    assert!(
+        sum(&bounce.2, 2) < sum(&before.2, 2),
+        "the local volume replaces occluded outside diffuse light"
+    );
+    save("probe-global-environment", &global);
+    save("probe-local-reflections", &reflection);
+    save("probe-global-diffuse", &before);
+    save("probe-local-diffuse", &bounce);
+}
+#[test]
+fn clearcoat_and_anisotropy_change_the_brdf_and_rotation_changes_its_direction() {
+    use editor_core::render_scene::SceneSink;
+    use geometry_math::{
+        bbox::Bbox3d,
+        vec::{Vec2f, Vec3d},
+    };
+    use map_model::brush_face::SurfaceMaterial;
+    let (device, queue) = device().expect("layered material validation requires a GPU");
+    let mut renderer = Renderer::new(&device, &queue);
+    let mut document = Document::new(Default::default());
+    document.add_brushes(vec![map_model::shapes::create_cuboid(
+        &document.world_bounds(),
+        &Bbox3d::from_scalars(-32.0, 32.0),
+        "layers",
+    )
+    .unwrap()]);
+    let mut triangles = document.render_triangles();
+    for triangle in &mut triangles {
+        triangle.color = [0.4, 0.5, 0.7];
+        triangle.material = None;
+        triangle.selected = false;
+        triangle.uv = [
+            Vec2f::new(0.0, 0.0),
+            Vec2f::new(64.0, 0.0),
+            Vec2f::new(0.0, 64.0),
+        ];
+    }
+    let mut camera = Camera3d {
+        position: Vec3d::new(0.0, -160.0, 45.0),
+        ..Default::default()
+    };
+    camera.look_along(-camera.position);
+    let mut settings = single_frame_settings();
+    settings.bloom = false;
+    settings.shadows = false;
+    settings.ambient_occlusion = false;
+    settings.reflections = false;
+    settings.sun_elevation = 15.0;
+    settings.sun_azimuth = 270.0;
+    settings.sun_intensity = 4.0;
+    settings.ambient_intensity = 0.0;
+    let mut images = Vec::new();
+    for (name, surface) in [
+        (
+            "material-base",
+            SurfaceMaterial {
+                roughness: 55,
+                metallic: 70,
+                ..Default::default()
+            },
+        ),
+        (
+            "material-clearcoat",
+            SurfaceMaterial {
+                roughness: 55,
+                metallic: 70,
+                clearcoat: 100,
+                coat_roughness: 10,
+                ..Default::default()
+            },
+        ),
+        (
+            "material-anisotropy-0",
+            SurfaceMaterial {
+                roughness: 55,
+                metallic: 70,
+                anisotropy: 90,
+                ..Default::default()
+            },
+        ),
+        (
+            "material-anisotropy-90",
+            SurfaceMaterial {
+                roughness: 55,
+                metallic: 70,
+                anisotropy: 90,
+                anisotropy_rotation: 90,
+                ..Default::default()
+            },
+        ),
+    ] {
+        for triangle in &mut triangles {
+            triangle.surface_material = Some(surface);
+        }
+        renderer.scene.upsert(0, &triangles, Default::default());
+        renderer.scene.finish();
+        renderer.render(&view(
+            &camera,
+            &settings,
+            DisplayMode::Material,
+            Tonemapper::Aces,
+            (320, 240),
+        ));
+        let image = renderer.read_output().unwrap();
+        save(name, &image);
+        images.push(image);
+    }
+    let difference = |a: usize, b: usize| {
+        images[a]
+            .2
+            .iter()
+            .zip(&images[b].2)
+            .map(|(a, b)| u64::from(a.abs_diff(*b)))
+            .sum::<u64>()
+    };
+    assert!(
+        difference(0, 1) > 1000,
+        "clear coat must add a separate specular response"
+    );
+    assert!(
+        difference(0, 2) > 1000,
+        "anisotropy must change the highlight"
+    );
+    assert!(
+        difference(2, 3) > 1000,
+        "rotating the UV tangent must rotate the anisotropic highlight"
+    );
+}
+#[test]
+fn progressive_hdr_keeps_small_contributions_at_4096_samples() {
+    use render::environment::{Environment, EnvironmentImage};
+    let (device, queue) = device().expect("progressive precision validation requires a GPU");
+    let mut renderer = Renderer::new(&device, &queue);
+    let camera = Camera3d::default();
+    let mut settings = single_frame_settings();
+    settings.bloom = false;
+    settings.reflections = false;
+    settings.shadows = false;
+    settings.ambient_occlusion = false;
+    let environment = |pixel| Environment {
+        image: std::sync::Arc::new(EnvironmentImage::new(2, 1, vec![pixel; 2]).unwrap()),
+        rotation_degrees: 0.0,
+        intensity: 1.0,
+        show_background: true,
+    };
+    settings.environment = Some(environment([1.0, 0.0, 0.0, 1.0]));
+    for sample in 0..4096 {
+        if sample == 4095 {
+            settings.environment = Some(environment([0.0, 0.0, 4.0, 1.0]));
+        }
+        let mut params = view(
+            &camera,
+            &settings,
+            DisplayMode::Material,
+            Tonemapper::Aces,
+            (2, 2),
+        );
+        params.sample = Some(sample);
+        renderer.accumulate(&params);
+    }
+    let output = renderer.read_hdr().unwrap();
+    for pixel in output.2.as_chunks::<4>().0 {
+        assert!(
+            (pixel[0] - 4095.0 / 4096.0).abs() < 0.00001,
+            "large histories must not freeze in half precision: {pixel:?}"
+        );
+        assert!((pixel[2] - 4.0 / 4096.0).abs() < 0.00001);
+        assert_eq!(pixel[3], 1.0);
+    }
+}
+
+#[test]
+fn baked_emissive_geometry_lights_a_receiver_without_being_visible_in_the_camera() {
+    use editor_core::light_probes::{self, Probe, Settings};
+    use geometry_math::{bbox::Bbox3d, vec::Vec3d};
+    use map_model::brush_face::{FaceColor, Rgb, SurfaceMaterial};
+    let (device, queue) = device().expect("baked diffuse transport requires a GPU");
+    let mut document = Document::new(Default::default());
+    let world = document.world_bounds();
+    let cuboid = |lo: [f64; 3], hi: [f64; 3]| {
+        map_model::shapes::create_cuboid(
+            &world,
+            &Bbox3d::new(
+                Vec3d::new(lo[0], lo[1], lo[2]),
+                Vec3d::new(hi[0], hi[1], hi[2]),
+            ),
+            "bounce-room",
+        )
+        .unwrap()
+    };
+    document.add_brushes(vec![cuboid([-72.0, -72.0, -8.0], [72.0, 72.0, 0.0])]);
+    document.select_all();
+    document.set_face_color(Some(FaceColor::solid(Rgb::new(255, 0, 0))));
+    document.set_surface_material(Some(SurfaceMaterial {
+        emission: 400,
+        ..Default::default()
+    }));
+    document.clear_selection();
+    document.add_brushes(vec![
+        cuboid([-72.0, -72.0, 64.0], [72.0, 72.0, 72.0]),
+        cuboid([-72.0, -72.0, 0.0], [-64.0, 72.0, 64.0]),
+        cuboid([64.0, -72.0, 0.0], [72.0, 72.0, 64.0]),
+        cuboid([-64.0, -72.0, 0.0], [64.0, -64.0, 64.0]),
+        cuboid([-64.0, 64.0, 0.0], [64.0, 72.0, 64.0]),
+    ]);
+    document.clear_selection();
+    let mut settings = single_frame_settings();
+    settings.sun_intensity = 0.0;
+    settings.sun_color = [0.0; 3];
+    settings.ambient_intensity = 1.0;
+    settings.sky_color = [0.0; 3];
+    settings.horizon_color = [0.0; 3];
+    settings.ground_color = [0.0; 3];
+    settings.shadows = false;
+    settings.reflections = false;
+    settings.ambient_occlusion = false;
+    settings.bloom = false;
+    let config = Settings {
+        probes: vec![Probe {
+            position: [0.0, 0.0, 32.0],
+            half_size: [80.0, 80.0, 48.0],
+            ..Default::default()
+        }],
+        resolution: 32,
+        ..Default::default()
+    };
+    let lighting =
+        std::sync::Arc::new(light_probes::bake_blocking(&document, &config, &settings).unwrap());
+    let mut renderer = Renderer::new(&device, &queue);
+    SceneTracker::new().sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut renderer.scene,
+    );
+    let mut camera = Camera3d {
+        position: Vec3d::new(0.0, -48.0, 32.0),
+        fov_degrees: 25.0,
+        ..Default::default()
+    };
+    camera.look_along(Vec3d::new(0.0, 1.0, 0.0));
+    let draw = |renderer: &mut Renderer, settings: &render::RenderSettings| {
+        renderer.render(&view(
+            &camera,
+            settings,
+            DisplayMode::Material,
+            Tonemapper::Aces,
+            (320, 240),
+        ));
+        renderer.read_output().unwrap()
+    };
+    let direct = draw(&mut renderer, &settings);
+    save("baked-gi-direct-only", &direct);
+    assert!(
+        mean(&direct.2) < 1.0,
+        "the emissive floor must be outside the camera image: {}",
+        mean(&direct.2)
+    );
+    settings.probes = Some(lighting);
+    let bounce = draw(&mut renderer, &settings);
+    assert!(
+        mean(&bounce.2) > mean(&direct.2) + 5.0,
+        "off-screen emission must light the visible receiver"
+    );
+    assert!(
+        bounce
+            .2
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[0] > p[1].saturating_add(40)),
+        "diffuse transport must preserve the emitter's red color"
+    );
+    save("baked-gi-direct-only", &direct);
+    save("baked-gi-red-bounce", &bounce);
+}

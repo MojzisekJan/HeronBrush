@@ -298,6 +298,7 @@ mod tests {
             roughness: 40,
             metallic: 10,
             emission: 70,
+            ..Default::default()
         });
         face.export_hidden = true;
         let written = write_quake3_map(&map, &mut |_| Some(Vec2f::new(128., 64.))).unwrap();

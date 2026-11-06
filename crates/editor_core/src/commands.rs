@@ -71,6 +71,17 @@ pub trait Window {
     fn save(&self);
 }
 
+/// Temporary navigation history shared by the editor's keyboard dispatchers.
+#[derive(Default)]
+pub struct FrameHistory {
+    previous: Option<FrameSnapshot>,
+}
+
+struct FrameSnapshot {
+    perspective: camera3d::Camera3d,
+    flat: Vec<camera2d::Camera2d>,
+}
+
 /// The shared document, tool and view state the keyboard commands act on.
 #[derive(Clone)]
 pub struct Commands {
@@ -91,6 +102,7 @@ pub struct Commands {
     pub fillet: Rc<RefCell<fillet_tool::FilletParameters>>,
     /// The 3D camera, for focusing it on the selection.
     pub camera_3d: Rc<RefCell<camera3d::Camera3d>>,
+    pub frame_history: Rc<RefCell<FrameHistory>>,
     /// What to load again when the definitions or the materials are asked for afresh.
     pub sources: Rc<RefCell<Sources>>,
     /// The window around the views.
@@ -130,6 +142,7 @@ impl Commands {
             active_plane,
             fillet,
             camera_3d,
+            frame_history,
             sources,
             window,
         } = self;
@@ -206,11 +219,29 @@ impl Commands {
                 // selection fills the view. The 3D camera keeps the direction it was
                 // pointing and backs off far enough for the box to fit; a flat view
                 // centres on it and zooms so it sits inside with a little air.
+                Key::Letter('u') if ctrl && alt && !shift => {
+                    let mut history = frame_history.borrow_mut();
+                    if let Some(previous) = history.previous.take() {
+                        history.previous = Some(FrameSnapshot {
+                            perspective: *camera_3d.borrow(),
+                            flat: cameras.borrow().iter().map(|v| v.borrow().camera).collect(),
+                        });
+                        *camera_3d.borrow_mut() = previous.perspective;
+                        for (state, camera) in cameras.borrow().iter().zip(previous.flat) {
+                            state.borrow_mut().camera = camera;
+                        }
+                        window.redraw();
+                    }
+                }
                 Key::Letter('u') if ctrl && !shift && !alt => {
                     let Some(selection) = document.borrow().selection_bounds() else {
                         crate::say!("{}", tr("Select something to focus on"));
                         return false;
                     };
+                    frame_history.borrow_mut().previous = Some(FrameSnapshot {
+                        perspective: *camera_3d.borrow(),
+                        flat: cameras.borrow().iter().map(|v| v.borrow().camera).collect(),
+                    });
                     let (width, height) = window.perspective_view_size().unwrap_or((1.0, 1.0));
                     camera_3d
                         .borrow_mut()
@@ -345,8 +376,11 @@ impl Commands {
                     crate::say!("{}", fill("Showed {}", &[&counted(shown, "object")]));
                 }
                 Key::Letter('i') if ctrl => {
+                    let was_active = document.borrow().isolation_active();
                     let hidden = document.borrow_mut().isolate_selection();
-                    if hidden > 0 {
+                    if was_active {
+                        crate::say!("{}", tr("Restored visibility before isolation"));
+                    } else if document.borrow().isolation_active() {
                         crate::say!(
                             "{}",
                             fill(

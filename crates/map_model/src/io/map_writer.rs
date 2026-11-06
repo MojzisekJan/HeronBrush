@@ -245,10 +245,14 @@ pub(super) fn write_face_notes(
         open(out);
         let _ = write!(
             out,
-            " pbr {} {} {}",
+            " pbr {} {} {} coat {} {} aniso {} {}",
             surface.roughness.min(100),
             surface.metallic.min(100),
-            surface.emission.min(800)
+            surface.emission.min(800),
+            surface.clearcoat.min(100),
+            surface.coat_roughness.min(100),
+            surface.anisotropy.min(100),
+            surface.anisotropy_rotation % 180
         );
     }
     if face.export_hidden {
@@ -512,7 +516,10 @@ struct MaterialWord<'a>(&'a str);
 impl std::fmt::Display for MaterialWord<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let bare = !self.0.is_empty()
-            && !self.0.chars().any(|c| c.is_whitespace() || matches!(c, '"' | '(' | ')' | '[' | ']' | '{' | '}'))
+            && !self
+                .0
+                .chars()
+                .any(|c| c.is_whitespace() || matches!(c, '"' | '(' | ')' | '[' | ']' | '{' | '}'))
             && !self.0.starts_with("//");
         if bare {
             f.write_str(self.0)

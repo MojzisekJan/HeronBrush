@@ -1,10 +1,11 @@
-// Image-based lighting from the procedural sky: the sky drawn into a cube map with a box
+// Image-based lighting from a panorama or the procedural sky: the sky drawn into a cube map with a box
 // mip chain, the GGX-prefiltered specular cube, nine spherical-harmonic coefficients for
 // diffuse, and the split-sum DFG table. All fragment passes (no compute), so the same
 // code runs on the GLES path later. Prefixed with common.wgsl.
 
 @group(1) @binding(0) var source: texture_cube<f32>;
 @group(1) @binding(1) var source_sampler: sampler;
+@group(1) @binding(3) var panorama: texture_2d<f32>;
 
 struct Params {
     // x cube face, y roughness, z the source's mip-0 size, w its mip count.
@@ -36,7 +37,19 @@ fn cube_direction(face: u32, uv: vec2<f32>) -> vec3<f32> {
 
 @fragment
 fn fs_capture(in: FullscreenOut) -> @location(0) vec4<f32> {
-    let direction = cube_direction(u32(params.face_roughness.x), in.uv);
+    let face=u32(params.face_roughness.x);
+    if (frame.environment.x > 0.5) {
+        // Integrate a small footprint instead of point-sampling bright HDR windows.
+        var total=vec3<f32>(0.0);
+        for (var y=0u;y<4u;y+=1u) {
+            for (var x=0u;x<4u;x+=1u) {
+                let offset=(vec2<f32>(f32(x)+0.5,f32(y)+0.5)/4.0-0.5)/params.face_roughness.z;
+                total+=panorama_radiance(panorama,cube_direction(face,in.uv+offset));
+            }
+        }
+        return vec4<f32>(total/16.0,1.0);
+    }
+    let direction = cube_direction(face, in.uv);
     return vec4<f32>(sky_radiance(direction), 1.0);
 }
 
@@ -140,7 +153,7 @@ fn fs_sh(in: FullscreenOut) -> @location(0) vec4<f32> {
             }
         }
     }
-    return vec4<f32>(total, 1.0);
+    return vec4<f32>(clamp(total, vec3<f32>(-65504.0), vec3<f32>(65504.0)), 1.0);
 }
 
 // The split-sum DFG table (Karis 2013): x is N.V, y roughness; red is the scale and

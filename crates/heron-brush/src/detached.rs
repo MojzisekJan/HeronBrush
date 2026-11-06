@@ -14,7 +14,7 @@ use geometry_math::vec::Vec3d;
 use crate::app_actions::Action;
 use crate::chrome::{self, text_width};
 use crate::menu::{self, Entry};
-use crate::{context_menu, theme, App, DetachedWindow};
+use crate::{App, DetachedWindow, context_menu, theme};
 
 /// The header's height.
 const HEADER: f32 = 34.0;
@@ -145,6 +145,7 @@ pub fn entries(filters_now: &ViewFilters, has_selection: bool, fullscreen: bool)
             .icon(icon::FRAME_CORNERS)
             .enabled(has_selection),
     );
+    entries.push(Entry::item(tr("Previous view"), Do::App(Action::PreviousView)).keys(&menu::ctrl("Alt+U")));
     for (index, (label, _)) in looks().iter().enumerate() {
         entries.push(Entry::item(*label, Do::Look(index)));
     }
@@ -324,12 +325,7 @@ impl App {
                 let on = !read(&filters);
                 write(&mut filters, on);
             }
-            Some(Do::Focus) => aim(
-                &mut self.editor.camera.borrow_mut(),
-                self.editor.document.borrow().selection_bounds(),
-                None,
-                viewport_size,
-            ),
+            Some(Do::Focus) => self.action(ctx, Action::FrameSelection),
             Some(Do::Look(index)) => aim(
                 &mut self.editor.camera.borrow_mut(),
                 self.editor.document.borrow().selection_bounds(),

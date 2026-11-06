@@ -568,7 +568,7 @@ fn describe_brush(document: &Document, args: &Value) -> Result<String, String> {
                     face.plane.normal.z(),
                 ],
                 "paint": color,
-                "surface_material": face.surface_material.map(|s| { let f=s.factors(); json!({"roughness":f[0],"metallic":f[1],"emission":f[2]}) }),
+                "surface_material": face.surface_material.map(|s| { let f=s.factors(); json!({"roughness":f[0],"metallic":f[1],"emission":f[2],"clearcoat":s.clearcoat.min(100) as f32/100.0,"coat_roughness":s.coat_roughness.min(100) as f32/100.0,"anisotropy":s.anisotropy.min(100) as f32/100.0,"anisotropy_rotation":s.anisotropy_rotation%180}) }),
                 "vertices": vertices
                     .iter()
                     .map(|v| [v.x(), v.y(), v.z()])
@@ -1495,6 +1495,13 @@ fn set_surface_material(document: &mut Document, args: &Value) -> Result<String,
             roughness: (factor("roughness", 0.65, 1.0)? * 100.0).round() as u8,
             metallic: (factor("metallic", 0.0, 1.0)? * 100.0).round() as u8,
             emission: (factor("emission", 0.0, 8.0)? * 100.0).round() as u16,
+            clearcoat: (factor("clearcoat", 0.0, 1.0)? * 100.0).round() as u8,
+            coat_roughness: (factor("coat_roughness", 0.1, 1.0)? * 100.0).round() as u8,
+            anisotropy: (factor("anisotropy", 0.0, 1.0)? * 100.0).round() as u8,
+            anisotropy_rotation: factor("anisotropy_rotation", 0.0, 360.0)?
+                .rem_euclid(180.0)
+                .round() as u8
+                % 180,
         })
     };
     let changed = match (args.get("brush"), args.get("face")) {
@@ -1973,11 +1980,15 @@ fn build_tool_definitions() -> Vec<Value> {
         tool("set_face_export_hidden","Omit selected faces or one brush face from exported render meshes, preserving collision, texture and editability. hidden=false restores rendering.",json!({"hidden":{"type":"boolean"},"brush":{"type":"integer"},"face":{"type":"integer","minimum":0}}),&["hidden"]),
         tool(
             "set_surface_material",
-            "Set PBR surface on selected faces or one brush face. Roughness and metallic 0..1, emission 0..8 in the albedo colour. reset clears the override. Defaults: 0.65, 0, 0.",
+            "Set PBR surface on selected faces or one brush face. Roughness, metallic, clearcoat, coat_roughness and anisotropy 0..1; anisotropy_rotation in degrees; emission 0..8 in the albedo colour. reset clears the override. Defaults: 0.65, 0, 0.",
             json!({
                 "roughness":{"type":"number","minimum":0,"maximum":1},
                 "metallic":{"type":"number","minimum":0,"maximum":1},
                 "emission":{"type":"number","minimum":0,"maximum":8},
+                "clearcoat":{"type":"number","minimum":0,"maximum":1},
+                "coat_roughness":{"type":"number","minimum":0,"maximum":1},
+                "anisotropy":{"type":"number","minimum":0,"maximum":1},
+                "anisotropy_rotation":{"type":"number","minimum":0,"maximum":360},
                 "reset":{"type":"boolean"},
                 "brush":{"type":"integer"}, "face":{"type":"integer","minimum":0}
             }), &[],

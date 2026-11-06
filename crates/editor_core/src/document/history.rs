@@ -639,6 +639,7 @@ impl Document {
         self.selection.clear();
         self.face_selection.clear();
         self.hidden_nodes.clear();
+        self.isolation_before = None;
         self.open_group = None;
         self.leak_trace = None;
         self.history = History::new();

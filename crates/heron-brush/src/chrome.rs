@@ -183,6 +183,34 @@ fn shortcut(id: &str) -> String {
     })
 }
 
+/// Toolbar tools also belong to command search, even without a menu entry.
+pub(crate) fn palette_tools() -> Vec<Entry<Action>> {
+    Tool::ALL
+        .into_iter()
+        .map(|tool| {
+            let label = if tr(tool.name()) == tool.name() {
+                tool.name().to_owned()
+            } else {
+                format!("{} ({})", tr(tool.name()), tool.name())
+            };
+            let entry = Entry::item(&label, Action::ActivateTool(tool));
+            match tool.shortcut_id() {
+                Some(id) => entry.keys(&shortcut(id)),
+                None => entry,
+            }
+        })
+        .collect()
+}
+
+/// The same SVG used by the tool's toolbar button, for command search results.
+pub(crate) fn palette_image(action: &Action) -> Option<egui::Image<'static>> {
+    let Action::ActivateTool(tool) = action else {
+        return None;
+    };
+    let (uri, bytes) = tool_icon(*tool);
+    Some(egui::Image::from_bytes(uri, bytes))
+}
+
 /// A tool's tooltip with the key that picks it now, which may not be the default.
 fn tool_tip(tool: Tool) -> String {
     let keys = tool.shortcut_id().map(shortcut).unwrap_or_default();
@@ -271,6 +299,27 @@ pub fn menus(
                 .icon_tone(crate::menu::IconTone::Destructive)
                 .keys(&shortcut("delete")),
             Entry::Separator,
+            Entry::sub(
+                tr("Select similar faces"),
+                vec![
+                    item(
+                        tr("Same material"),
+                        Action::SelectSimilar(editor_core::document::FaceSelection::Material),
+                    ),
+                    item(
+                        tr("Same plane"),
+                        Action::SelectSimilar(editor_core::document::FaceSelection::Coplanar),
+                    ),
+                    item(
+                        tr("Linked by material"),
+                        Action::SelectSimilar(editor_core::document::FaceSelection::LinkedMaterial),
+                    ),
+                    item(
+                        tr("Linked by angle (30°)"),
+                        Action::SelectSimilar(editor_core::document::FaceSelection::LinkedAngle),
+                    ),
+                ],
+            ),
             item(tr("Select all"), Action::SelectAll)
                 .icon(icon::SELECTION_ALL)
                 .keys(&shortcut("select_all")),
@@ -285,6 +334,15 @@ pub fn menus(
         ],
         // View
         vec![
+            item(tr("Focus on selection"), Action::FrameSelection)
+                .icon(icon::CROSSHAIR)
+                .keys(&menu::ctrl("U")),
+            item(tr("Previous view"), Action::PreviousView).keys(&menu::ctrl("Alt+U")),
+            Entry::Separator,
+            item(tr("Hide selection"), Action::HideObjects).keys(&menu::ctrl("Alt+I")),
+            item(tr("Toggle isolation"), Action::ToggleIsolation).keys(&menu::ctrl("I")),
+            item(tr("Show all objects"), Action::ShowAllObjects).keys(&menu::ctrl("Shift+I")),
+            Entry::Separator,
             item(tr("UV editor in separate window"), Action::UvEditor)
                 .icon(icon::GRID_FOUR)
                 .icon_tone(menu::IconTone::View)
@@ -682,13 +740,17 @@ impl Chrome {
             self.popup = None;
         }
         if self.palette.open {
-            let all = menus(
+            let mut all = menus(
                 status,
                 self.detach_3d,
                 &self.grid.borrow(),
                 &self.filters.borrow(),
             );
-            if let Some(action) = self.palette.show(&ctx, ctx.content_rect(), &MENUS, &all) {
+            all[3].extend(palette_tools());
+            if let Some(action) =
+                self.palette
+                    .show_with_icons(&ctx, ctx.content_rect(), &MENUS, &all, palette_image)
+            {
                 self.action = Some(action);
             }
             return;

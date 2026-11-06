@@ -335,10 +335,10 @@ impl UvCanvas {
             let axes = view.axes_pixels(document, height);
             cr.set_source_rgba(1.0, 0.25, 0.2, 0.65);
             cr.set_line_width(1.0);
-            for k in 0..2 {
-                let length = axes[0][k].hypot(axes[1][k]).max(1e-9);
-                let dx = axes[0][k] / length * (width + height);
-                let dy = axes[1][k] / length * (width + height);
+            for (&axis_x, &axis_y) in axes[0].iter().zip(&axes[1]) {
+                let length = axis_x.hypot(axis_y).max(1e-9);
+                let dx = axis_x / length * (width + height);
+                let dy = axis_y / length * (width + height);
                 cr.move_to(x - dx, y - dy);
                 cr.line_to(x + dx, y + dy);
             }
@@ -383,25 +383,21 @@ impl UvCanvas {
                     (hit.x() - at.x()) * self.drag_scale.x(),
                     (hit.y() - at.y()) * self.drag_scale.y(),
                 );
-                if parallel
-                    && held.is_some()
-                    && hit.x().abs() >= SHEAR_MIN_OFFSET
-                    && hit.y().abs() >= SHEAR_MIN_OFFSET
-                {
-                    self.initial_hit = hit;
-                    let Grip::Scale {
+                match held {
+                    Some(Grip::Scale {
                         horizontally,
                         vertically,
-                    } = held.unwrap()
-                    else {
-                        unreachable!()
-                    };
-                    Grip::Shear {
-                        horizontally,
-                        vertically,
+                    }) if parallel
+                        && hit.x().abs() >= SHEAR_MIN_OFFSET
+                        && hit.y().abs() >= SHEAR_MIN_OFFSET =>
+                    {
+                        self.initial_hit = hit;
+                        Grip::Shear {
+                            horizontally,
+                            vertically,
+                        }
                     }
-                } else {
-                    Grip::Nothing
+                    _ => Grip::Nothing,
                 }
             }
             Some(at) => {
@@ -722,8 +718,8 @@ impl UvCanvas {
                 } else {
                     raw
                 };
-                for k in 0..2 {
-                    if !axes[k] {
+                for (k, &enabled) in axes.iter().enumerate() {
+                    if !enabled {
                         total.v[k] = 0.0;
                     }
                 }
@@ -772,8 +768,8 @@ impl UvCanvas {
                         }
                     }
                 }
-                for k in 0..2 {
-                    if !axes[k] {
+                for (k, &enabled) in axes.iter().enumerate() {
+                    if !enabled {
                         total.v[k] = 1.0;
                     }
                     if !total[k].is_finite() || total[k].abs() < 1e-4 {

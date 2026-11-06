@@ -22,6 +22,9 @@ pub struct WgpuView {
     picture: Option<((u32, u32), wgpu::BindGroup)>,
     /// The picture the output holds ([`editor_core::view3d::picture_key`]).
     drawn: Option<u64>,
+    resolution: crate::dynamic_resolution::DynamicResolution,
+    last_camera: Option<[f64; 8]>,
+    last_frame_time: Option<f64>,
 }
 
 /// Blits a picture into egui's pass, inside the viewport egui set for the rect.
@@ -71,6 +74,7 @@ impl WgpuView {
     pub fn new(state: &egui_wgpu::RenderState) -> Self {
         let mut renderer = Renderer::new(&state.device, &state.queue);
         renderer.set_profiling(crate::profile::enabled());
+        renderer.set_frame_timing(true);
         Self {
             device: state.device.clone(),
             renderer,
@@ -78,6 +82,9 @@ impl WgpuView {
             blitter: Arc::new(Blitter::new(&state.device, state.target_format)),
             picture: None,
             drawn: None,
+            resolution: Default::default(),
+            last_camera: None,
+            last_frame_time: None,
         }
     }
 
@@ -92,11 +99,41 @@ impl WgpuView {
         scale: i32,
         profiling: bool,
     ) -> bool {
+        let camera = *scene.camera.borrow();
+        let pose = [
+            camera.position.x(),
+            camera.position.y(),
+            camera.position.z(),
+            camera.yaw,
+            camera.pitch,
+            camera.fov_degrees,
+            camera.near,
+            camera.far,
+        ];
+        let moving = self.last_camera.is_some_and(|previous| previous != pose);
+        self.last_camera = Some(pose);
+        let now = ui.input(|input| input.time);
+        let interval = self
+            .last_frame_time
+            .map(|last| (now - last) * 1000.0)
+            .filter(|ms| *ms < 100.0);
+        self.last_frame_time = Some(now);
+        let measured = self.renderer.take_frame_time().or(interval);
+        let factor = self.resolution.update(
+            now,
+            moving,
+            editor_core::preferences::pref(|p| p.dynamic_resolution),
+            measured,
+        );
+        if factor < 1.0 {
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_millis(210));
+        }
         let pixels = (
-            (f64::from(rect.width()) * f64::from(scale))
+            (f64::from(rect.width()) * f64::from(scale) * f64::from(factor))
                 .round()
                 .max(1.0) as u32,
-            (f64::from(rect.height()) * f64::from(scale))
+            (f64::from(rect.height()) * f64::from(scale) * f64::from(factor))
                 .round()
                 .max(1.0) as u32,
         );
@@ -115,7 +152,12 @@ impl WgpuView {
         // picture key alone would keep a picture drawn with another one.
         let tonemapper = crate::render_page::tone_mapper();
         let lights = editor_core::render_settings::entity_lights();
+        let (probe_key, probe_guides) =
+            crate::probe_controls::guides(ui.ctx(), &scene.document.borrow());
+        let mut guides = frame.overlay.guides.clone();
+        guides.extend(probe_guides);
         let key = frame.picture_key
+            ^ probe_key
             ^ (tonemapper as u64 * 2 + u64::from(lights)).wrapping_mul(0x9e37_79b9_7f4a_7c15);
         // The same picture again while the temporal filter still refines a still view;
         // once it has converged, nothing is drawn until something changes.
@@ -140,16 +182,21 @@ impl WgpuView {
                 0
             };
             let camera = *scene.camera.borrow();
+            let mut settings = frame.settings.clone();
+            settings.handle_radius *= factor;
+            if moving || factor < 1.0 {
+                settings.accumulate = false;
+            }
             self.renderer.render(&ViewParams {
                 camera: &camera,
                 size: pixels,
-                settings: &frame.settings,
+                settings: &settings,
                 mode,
                 tonemapper,
                 points: &frame.overlay.points,
-                guides: &frame.overlay.guides,
+                guides: &guides,
                 world_bounds: Some(&frame.world_bounds),
-                outline_width: outline,
+                outline_width: ((outline as f32) * factor).round() as u32,
                 sample: None,
                 lights,
                 continuing,
@@ -186,7 +233,11 @@ impl WgpuView {
                         s.lights,
                         s.light_faces_drawn,
                         if s.prepass_cached { "cached" } else { "drawn" },
-                        if s.environment_rebuilt { "rebuilt" } else { "cached" },
+                        if s.environment_rebuilt {
+                            "rebuilt"
+                        } else {
+                            "cached"
+                        },
                         s.encode.as_secs_f64() * 1000.0,
                         gpu.join(", ")
                     );
@@ -205,6 +256,21 @@ impl WgpuView {
         }
         if frame.playing || !self.renderer.converged() {
             ui.ctx().request_repaint();
+        }
+        if !editor_core::light_probes::settings(&scene.document.borrow())
+            .probes
+            .is_empty()
+        {
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_millis(100));
+        }
+        if !editor_core::environment::settings(&scene.document.borrow())
+            .path
+            .as_os_str()
+            .is_empty()
+        {
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_millis(500));
         }
         if let Some((_, picture)) = &self.picture {
             ui.painter().add(egui_wgpu::Callback::new_paint_callback(

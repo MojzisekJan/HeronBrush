@@ -264,6 +264,8 @@ const PAGES: [(&str, &[Section]); 7] = [
                     ),
                     ("exposure", translation_key("Exposure")),
                     ("tone_mapper", translation_key("Tone mapping")),
+                    ("dynamic_resolution", translation_key("Dynamic resolution while navigating")),
+                    ("indirect_occlusion", translation_key("Indirect light occlusion")),
                     ("entity_lights", translation_key("Entity lights")),
                     ("texture_memory_mb", translation_key("Texture memory (MB)")),
                 ],
@@ -424,8 +426,7 @@ const CATEGORIES: usize = PAGES.len() + 1;
 const ELSEWHERE_PAGE: usize = CATEGORIES;
 
 /// The note under the keymap choice.
-const KEYMAP_NOTE: &str =
-    "Blender's bindings, as near as a tool-based editor comes to them: G selects \
+const KEYMAP_NOTE: &str = "Blender's bindings, as near as a tool-based editor comes to them: G selects \
      and moves, R turns, S scales, E sweeps, Tab and 1/2/3 are the vertex, edge \
      and face tools, K clips, B selects, A selects everything and Alt+A drops it, \
      X deletes, Shift+D duplicates, H hides and Alt+H shows again, Ctrl+Shift+Z \
@@ -590,6 +591,8 @@ fn field(settings: &mut Preferences, name: &str, action: Action) -> bool {
         bloom_intensity,
         exposure,
         tone_mapper,
+        dynamic_resolution,
+        indirect_occlusion,
         entity_lights,
         texture_memory_mb,
         accumulate,
@@ -954,7 +957,7 @@ impl PreferencesPage {
 /// Whether this build has a use for the field: the tone map, entity lights and the
 /// texture budget are the wgpu renderer's alone, so a GL build does not show a control that would do nothing.
 fn offered(name: &str) -> bool {
-    !matches!(name, "tone_mapper" | "entity_lights" | "texture_memory_mb") || cfg!(feature = "wgpu")
+    !matches!(name, "tone_mapper" | "dynamic_resolution" | "indirect_occlusion" | "entity_lights" | "texture_memory_mb") || cfg!(feature = "wgpu")
 }
 
 /// Whether `query` asks for a search rather than a category.
@@ -1590,7 +1593,9 @@ mod tests {
         let titles: Vec<&str> = (0..CATEGORIES).map(category_title).collect();
         assert_eq!(
             titles,
-            ["Overview", "Games", "View", "Colours", "Mouse", "Keyboard", "Renderer", "Updates"]
+            [
+                "Overview", "Games", "View", "Colours", "Mouse", "Keyboard", "Renderer", "Updates"
+            ]
         );
     }
 

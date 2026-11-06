@@ -2112,7 +2112,9 @@ impl Scene3d {
         let render_fov = crate::render_camera::view_fov(camera, width, height);
         camera.borrow_mut().fov_degrees =
             render_fov.unwrap_or_else(|| f64::from(crate::preferences::pref(|p| p.camera_fov)));
-        crate::render_settings::from_preferences()
+        let mut settings=crate::render_settings::for_document(&self.document.borrow());
+        crate::render_camera::apply_frame_settings(camera,&mut settings);
+        settings
     }
 
     /// The overlay of a frame, `width` by `height` logical pixels: the handles and guide

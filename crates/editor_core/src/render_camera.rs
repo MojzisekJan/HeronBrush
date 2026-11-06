@@ -17,6 +17,7 @@ pub struct Settings {
     pub fov: f64,
     pub far: f64,
     pub exposure: f32,
+    pub imaging: Imaging,
     pub sun_elevation: f32,
     pub sun_azimuth: f32,
     pub shadows: bool,
@@ -42,6 +43,7 @@ impl Default for Settings {
             fov: 55.,
             far: 32768.,
             exposure: 1.,
+            imaging: Imaging::default(),
             sun_elevation: 45.,
             sun_azimuth: 135.,
             shadows: true,
@@ -61,15 +63,20 @@ impl Default for Settings {
 impl Settings {
     pub fn validated(mut self) -> Self {
         self.lighting = self.lighting.map(Lighting::validated);
+        self.imaging = self.imaging.validated();
         self.focus_distance = self.focus_distance.clamp(1., 1000000.);
         self.focus_range = self.focus_range.clamp(0., 1000000.);
         self.blur_radius = self.blur_radius.clamp(0., 24.);
         self.width = self.width.clamp(16, 4096);
         self.height = self.height.clamp(16, 4096);
         self.far = self.far.clamp(64., 1000000.);
-        self.samples = self.samples.clamp(1, 64);
+        self.samples = self.samples.clamp(1, 4096);
         self.fov = self.fov.clamp(10., 120.);
-        self.exposure = self.exposure.clamp(0.1, 5.);
+        self.exposure = if self.exposure.is_finite() {
+            self.exposure.clamp(0.1, 5.)
+        } else {
+            1.0
+        };
         self.sun_elevation = self.sun_elevation.clamp(0., 90.);
         self.sun_azimuth = self.sun_azimuth.rem_euclid(360.);
         self.video_seconds = if self.video_seconds.is_finite() {
@@ -96,7 +103,8 @@ impl Settings {
         s.ambient_occlusion = self.ao;
         s.bloom = self.bloom;
         s.procedural_sky = self.procedural_sky;
-        s.exposure = self.exposure;
+        s.exposure = self.exposure * self.imaging.exposure_ev.exp2();
+        s.color_grading = self.imaging.grading();
         s.sun_elevation = self.sun_elevation;
         s.sun_azimuth = self.sun_azimuth;
         s.accumulate = true;
@@ -105,6 +113,88 @@ impl Settings {
         s
     }
 }
+/// Camera-local display controls. Older maps retain their linear exposure multiplier.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Imaging {
+    pub exposure_ev: f32,
+    pub temperature: f32,
+    pub tint: f32,
+    pub contrast: f32,
+    pub saturation: f32,
+    pub tone_map: Option<crate::preferences::ToneMapper>,
+}
+impl Default for Imaging {
+    fn default() -> Self {
+        Self {
+            exposure_ev: 0.0,
+            temperature: 6500.0,
+            tint: 0.0,
+            contrast: 1.0,
+            saturation: 1.0,
+            tone_map: None,
+        }
+    }
+}
+impl Imaging {
+    pub fn validated(mut self) -> Self {
+        for (value, low, high, fallback) in [
+            (&mut self.exposure_ev, -10.0, 10.0, 0.0),
+            (&mut self.temperature, 2000.0, 12000.0, 6500.0),
+            (&mut self.tint, -1.0, 1.0, 0.0),
+            (&mut self.contrast, 0.25, 2.0, 1.0),
+            (&mut self.saturation, 0.0, 2.0, 1.0),
+        ] {
+            *value = if value.is_finite() {
+                value.clamp(low, high)
+            } else {
+                fallback
+            };
+        }
+        self
+    }
+    pub fn grading(&self) -> render::color::ColorGrading {
+        use crate::preferences::ToneMapper;
+        use render::color::ToneMap;
+        render::color::ColorGrading {
+            temperature: self.temperature,
+            tint: self.tint,
+            contrast: self.contrast,
+            saturation: self.saturation,
+            tone_map: self.tone_map.map(|map| match map {
+                ToneMapper::Aces => ToneMap::Aces,
+                ToneMapper::Agx => ToneMap::Agx,
+                ToneMapper::KhronosNeutral => ToneMap::KhronosNeutral,
+                ToneMapper::TonyMcMapface => ToneMap::TonyMcMapface,
+            }),
+        }
+    }
+}
+/// Writes top-first, unassociated scene-linear RGBA pixels to a floating-point OpenEXR.
+pub fn write_exr(
+    path: &std::path::Path,
+    width: u32,
+    height: u32,
+    pixels: &[f32],
+) -> Result<(), String> {
+    if width == 0 || height == 0 || pixels.len() as u64 != u64::from(width) * u64::from(height) * 4
+    {
+        return Err("Invalid HDR image dimensions".into());
+    }
+    let mut encoded = std::io::Cursor::new(Vec::new());
+    let bytes: Vec<u8> = pixels.iter().flat_map(|v| v.to_ne_bytes()).collect();
+    image::write_buffer_with_format(
+        &mut encoded,
+        &bytes,
+        width,
+        height,
+        image::ColorType::Rgba32F,
+        image::ImageFormat::OpenExr,
+    )
+    .map_err(|e| e.to_string())?;
+    crate::files::write(path, encoded.into_inner()).map_err(|e| e.to_string())
+}
+
 /// Camera-local environment controls. Older maps inherit editor preferences until saved.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Lighting {
@@ -209,7 +299,7 @@ impl Lighting {
 }
 // Frame state belongs to a particular viewport, so separate map windows stay independent.
 thread_local! {
-    static FRAMES: RefCell<std::collections::HashMap<usize,(f64,f64)>> = RefCell::new(Default::default());
+    static FRAMES: RefCell<std::collections::HashMap<usize,Settings>> = RefCell::new(Default::default());
 }
 pub fn view_key(view: &Rc<RefCell<Camera3d>>) -> usize {
     Rc::as_ptr(view) as usize
@@ -217,10 +307,10 @@ pub fn view_key(view: &Rc<RefCell<Camera3d>>) -> usize {
 pub fn set_frame(view: &Rc<RefCell<Camera3d>>, settings: Option<&Settings>) -> bool {
     FRAMES.with(|frames| {
         let mut frames = frames.borrow_mut();
-        let old = frames.get(&view_key(view)).copied();
-        let next = settings.map(|s| (s.fov, s.width as f64 / s.height as f64));
-        if let Some(next) = next {
-            frames.insert(view_key(view), next);
+        let old = frames.get(&view_key(view)).cloned();
+        let next = settings.cloned();
+        if let Some(next) = &next {
+            frames.insert(view_key(view), next.clone());
         } else {
             frames.remove(&view_key(view));
         }
@@ -229,15 +319,38 @@ pub fn set_frame(view: &Rc<RefCell<Camera3d>>, settings: Option<&Settings>) -> b
 }
 /// Output aspect ratio requested for this editor viewport.
 pub fn view_aspect(view: &Rc<RefCell<Camera3d>>) -> Option<f64> {
-    FRAMES.with(|f| f.borrow().get(&view_key(view)).map(|v| v.1))
+    FRAMES.with(|f| {
+        f.borrow()
+            .get(&view_key(view))
+            .map(|s| f64::from(s.width) / f64::from(s.height))
+    })
 }
 /// Fit the camera's vertical FOV inside a viewport of any shape without changing framing.
 pub fn view_fov(view: &Rc<RefCell<Camera3d>>, width: f64, height: f64) -> Option<f64> {
     FRAMES.with(|f| {
-        f.borrow()
-            .get(&view_key(view))
-            .map(|&(fov, aspect)| frame_fov(fov, aspect, width, height))
+        f.borrow().get(&view_key(view)).map(|s| {
+            frame_fov(
+                s.fov,
+                f64::from(s.width) / f64::from(s.height),
+                width,
+                height,
+            )
+        })
     })
+}
+/// Applies the selected render camera's image settings while its frame is enabled.
+pub fn apply_frame_settings(view: &Rc<RefCell<Camera3d>>, target: &mut render::RenderSettings) {
+    FRAMES.with(|frames| {
+        if let Some(settings) = frames.borrow().get(&view_key(view)) {
+            let environment = target.environment.clone();
+            let probes = target.probes.clone();
+            let axes = target.show_axes;
+            *target = settings.render();
+            target.environment = environment;
+            target.probes = probes;
+            target.show_axes = axes;
+        }
+    });
 }
 pub fn frame_fov(fov: f64, aspect: f64, width: f64, height: f64) -> f64 {
     let (_, _, _, fh) = frame_rect(aspect, width, height);
@@ -265,7 +378,11 @@ pub fn draw_frame(cr: &mut dyn crate::canvas::Canvas, aspect: f64, width: f64, h
     cr.restore();
 }
 pub struct Job {
+    /// Environment snapshot, so file or map edits cannot contaminate later samples.
+    pub environment: Option<render::environment::Environment>,
+    pub probes: Option<std::sync::Arc<render::probes::Lighting>>,
     pub path: PathBuf,
+    pub hdr: bool,
     pub camera: Camera3d,
     pub settings: Settings,
     pub completed: u32,
@@ -363,7 +480,7 @@ pub fn align_to_view(doc: &mut Document, view: &Rc<RefCell<Camera3d>>) -> NodeId
     let previous = active(doc);
     let mut settings = previous.as_ref().map(|v| v.2.clone()).unwrap_or_default();
     settings.fov = FRAMES
-        .with(|frames| frames.borrow().get(&view_key(view)).map(|v| v.0))
+        .with(|frames| frames.borrow().get(&view_key(view)).map(|s| s.fov))
         .unwrap_or(camera.fov_degrees);
     settings.far = camera.far;
     let settings = settings.validated();
@@ -680,5 +797,85 @@ mod tests {
             .cycle(),
             None
         );
+    }
+}
+
+#[cfg(test)]
+mod imaging_tests {
+    use super::*;
+    #[test]
+    fn old_cameras_retain_exposure_and_new_controls_round_trip_with_the_map() {
+        let old: Settings = serde_json::from_str(r#"{"exposure":1.75}"#).unwrap();
+        assert_eq!(old.render().exposure, 1.75);
+        assert_eq!(old.imaging, Imaging::default());
+        let mut settings = old;
+        settings.imaging = Imaging {
+            exposure_ev: 2.0,
+            temperature: 4200.0,
+            tint: 0.1,
+            contrast: 1.2,
+            saturation: 0.7,
+            tone_map: Some(crate::preferences::ToneMapper::KhronosNeutral),
+        };
+        assert_eq!(settings.render().exposure, 7.0);
+        let mut document = Document::new(Default::default());
+        let id = save(&mut document, Camera3d::default(), &settings);
+        let path =
+            std::env::temp_dir().join(format!("heron-camera-imaging-{}.map", std::process::id()));
+        std::fs::write(&path, document.to_map_text()).unwrap();
+        let reopened = Document::open(&path, Default::default()).unwrap();
+        let (_, _, saved) = chosen(&reopened, Some(id)).unwrap();
+        assert_eq!(saved, settings);
+        std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn camera_frames_keep_color_settings_independent_and_restore_editor_defaults() {
+        let first = Rc::new(RefCell::new(Camera3d::default()));
+        let second = Rc::new(RefCell::new(Camera3d::default()));
+        let mut settings = Settings::default();
+        settings.imaging.exposure_ev = 2.0;
+        settings.imaging.saturation = 0.3;
+        set_frame(&first, Some(&settings));
+        let mut result = crate::render_settings::from_preferences();
+        apply_frame_settings(&first, &mut result);
+        assert_eq!(result.exposure, 4.0);
+        assert_eq!(result.color_grading.saturation, 0.3);
+        let mut untouched = crate::render_settings::from_preferences();
+        let before = untouched.clone();
+        apply_frame_settings(&second, &mut untouched);
+        assert_eq!(untouched, before);
+        set_frame(&first, None);
+        apply_frame_settings(&first, &mut untouched);
+        assert_eq!(untouched, before);
+    }
+    #[test]
+    fn invalid_color_settings_are_sanitized_and_exr_preserves_hdr_alpha_and_row_order() {
+        let invalid = Imaging {
+            exposure_ev: f32::NAN,
+            temperature: f32::INFINITY,
+            tint: 9.0,
+            contrast: -1.0,
+            saturation: 9.0,
+            ..Default::default()
+        }
+        .validated();
+        assert_eq!(invalid.exposure_ev, 0.0);
+        assert_eq!(invalid.temperature, 6500.0);
+        assert_eq!(invalid.tint, 1.0);
+        assert_eq!(invalid.contrast, 0.25);
+        assert_eq!(invalid.saturation, 2.0);
+        let path =
+            std::env::temp_dir().join(format!("heron-hdr-output-{}.exr", std::process::id()));
+        let pixels = vec![
+            8.0, 2.0, 0.5, 1.0, 0.2, 0.3, 0.4, 0.5, 0.1, 4.0, 0.1, 1.0, 0.0, 0.0, 0.0, 0.0,
+        ];
+        assert!(write_exr(&path, 2, 2, &pixels[..8]).is_err());
+        write_exr(&path, 2, 2, &pixels).unwrap();
+        let decoded = image::open(&path).unwrap().into_rgba32f();
+        assert_eq!(decoded.dimensions(), (2, 2));
+        for (actual, expected) in decoded.into_raw().iter().zip(pixels) {
+            assert!((actual - expected).abs() < 0.001);
+        }
+        std::fs::remove_file(path).unwrap();
     }
 }

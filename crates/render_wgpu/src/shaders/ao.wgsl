@@ -44,7 +44,7 @@ fn fs_gtao(in: FullscreenOut) -> @location(0) vec4<f32> {
     let radius = frame.effects.z;
     let pixels = radius * frame.proj[1][1] * 0.5 * frame.viewport.y / max(view_depth, 1e-3);
     if (pixels < 1.0) {
-        return vec4<f32>(1.0, view_depth, 0.0, 1.0);
+        return vec4<f32>(1.0, view_depth, octahedral_encode(world_normal));
     }
     let reach = min(pixels, 128.0);
     // Falloff: full weight to 60 % of the radius, none past it.
@@ -57,6 +57,7 @@ fn fs_gtao(in: FullscreenOut) -> @location(0) vec4<f32> {
     let noise_angle = interleaved_gradient_noise(vec2<f32>(half_pixel) + shift);
     let noise_step = interleaved_gradient_noise(vec2<f32>(half_pixel) + vec2<f32>(37.0, 17.0) + shift);
     var visibility = 0.0;
+    var bent=vec3<f32>(0.0);
     for (var slice = 0u; slice < slices; slice += 1u) {
         let phi = (f32(slice) + noise_angle) * PI / f32(slices);
         let direction = vec3<f32>(cos(phi), sin(phi), 0.0);
@@ -96,9 +97,16 @@ fn fs_gtao(in: FullscreenOut) -> @location(0) vec4<f32> {
         h1 = n + clamp(h1 - n, -PI * 0.5, PI * 0.5);
         let arc0 = (cos_n + 2.0 * h0 * sin(n) - cos(2.0 * h0 - n)) * 0.25;
         let arc1 = (cos_n + 2.0 * h1 * sin(n) - cos(2.0 * h1 - n)) * 0.25;
-        visibility += projected_length * (arc0 + arc1);
+        let contribution=projected_length*(arc0+arc1);
+        visibility+=contribution;
+        let middle=(h0+h1)*0.5;
+        bent+=(v*cos(middle)+normalize(ortho)*sin(middle))*max(contribution,0.0);
     }
-    return vec4<f32>(clamp(visibility / f32(slices), 0.0, 1.0), view_depth, 0.0, 1.0);
+    let ao=clamp(visibility/f32(slices),0.0,1.0);
+    var direction=normal;
+    if (dot(bent,bent)>0.00001) {direction=normalize(mix(normal,normalize(bent),1.0-ao));}
+    let world_bent=normalize((transpose(frame.view)*vec4<f32>(direction,0.0)).xyz);
+    return vec4<f32>(ao,view_depth,octahedral_encode(world_bent));
 }
 
 // A 4x4 depth-aware box over the half-resolution occlusion: the noise of the slice and
@@ -112,6 +120,7 @@ fn fs_denoise(in: FullscreenOut) -> @location(0) vec4<f32> {
         return center;
     }
     var total = 0.0;
+    var bent=vec3<f32>(0.0);
     var weights = 0.0;
     for (var y = -2; y <= 1; y += 1) {
         for (var x = -2; x <= 1; x += 1) {
@@ -119,8 +128,9 @@ fn fs_denoise(in: FullscreenOut) -> @location(0) vec4<f32> {
             let texel = textureLoad(occlusion_texture, q, 0);
             let w = 1.0 / (1e-3 + abs(texel.g - center.g) / max(center.g, 1.0) * 40.0);
             total += texel.r * w;
+            bent+=octahedral_decode(texel.zw)*w;
             weights += w;
         }
     }
-    return vec4<f32>(total / weights, center.g, 0.0, 1.0);
+    return vec4<f32>(total / weights, center.g, octahedral_encode(normalize(bent)));
 }

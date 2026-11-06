@@ -338,3 +338,36 @@ fn animation_preview_has_one_menu_bar_home_and_window_actions_have_icons() {
         assert!(menus.iter().flatten().any(|entry| matches!(entry, Entry::Item { action, icon, .. } if *action == wanted && !icon.is_empty())));
     }
 }
+
+#[test]
+fn navigation_previous_view_restores_camera_after_framing_a_face() {
+    use editor_core::input::{Key, Modifiers};
+    let (ctx, editor) = setup();
+    let (commands, _, _) = keyboard(&ctx, &editor);
+    editor.document.borrow_mut().select_all();
+    let face = editor.document.borrow().face_to_edit().unwrap().0;
+    editor.document.borrow_mut().select_face_only(face);
+    let before = *editor.camera.borrow();
+    assert!(commands.key_pressed_canonical(
+        Key::Letter('u'),
+        None,
+        Modifiers {
+            control: true,
+            ..Default::default()
+        }
+    ));
+    assert_ne!(editor.camera.borrow().position, before.position);
+    // The history belongs to the editor, including after rebuilding keyboard commands.
+    let (commands, _, _) = keyboard(&ctx, &editor);
+    commands.key_pressed_canonical(
+        Key::Letter('u'),
+        None,
+        Modifiers {
+            control: true,
+            alt: true,
+            shift: false,
+        },
+    );
+    assert_eq!(editor.camera.borrow().position, before.position);
+    assert_eq!(editor.camera.borrow().yaw, before.yaw);
+}

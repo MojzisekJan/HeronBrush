@@ -31,7 +31,7 @@ pub enum IconTone {
     Reference,
 }
 impl IconTone {
-    fn color(self) -> Color32 {
+    pub(crate) fn color(self) -> Color32 {
         match self {
             Self::Run => theme::success(),
             Self::Destructive => theme::error(),
@@ -656,12 +656,10 @@ mod tests {
                 },
             );
             output.textures_delta.clear();
-            assert!(
-                output
-                    .shapes
-                    .iter()
-                    .any(|s| matches!(&s.shape, egui::Shape::Text(t) if t.galley.text() == glyph))
-            );
+            assert!(output
+                .shapes
+                .iter()
+                .any(|s| matches!(&s.shape, egui::Shape::Text(t) if t.galley.text() == glyph)));
             if checked {
                 assert!(output.shapes.iter().any(
                     |s| matches!(&s.shape, egui::Shape::Path(path) if path.points.len() == 3)

@@ -671,6 +671,21 @@ pub struct SurfaceMaterial {
     /// Emission intensity in hundredths, 0..800. Uses the albedo colour.
     #[cfg_attr(feature = "serde", serde(default))]
     pub emission: u16,
+    /// Dielectric top-coat strength, as a percentage.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub clearcoat: u8,
+    /// Top-coat perceptual roughness, as a percentage.
+    #[cfg_attr(feature = "serde", serde(default = "default_coat_roughness"))]
+    pub coat_roughness: u8,
+    /// Anisotropic GGX strength, as a percentage.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub anisotropy: u8,
+    /// Anisotropy axis rotation in degrees (180-degree period), relative to the face UVs.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub anisotropy_rotation: u8,
+}
+fn default_coat_roughness() -> u8 {
+    10
 }
 impl Default for SurfaceMaterial {
     fn default() -> Self {
@@ -678,6 +693,10 @@ impl Default for SurfaceMaterial {
             roughness: 65,
             metallic: 0,
             emission: 0,
+            clearcoat: 0,
+            coat_roughness: default_coat_roughness(),
+            anisotropy: 0,
+            anisotropy_rotation: 0,
         }
     }
 }

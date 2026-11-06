@@ -1082,9 +1082,17 @@ impl Document {
             .filter(|entity| self.selection.contains(&entity.node))
             .map(|entity| entity.bounds);
 
+        let faces = self.selected_edit_faces().into_iter().filter_map(|face| {
+            self.brush(face.node)
+                .map(|brush| {
+                    brush.geometry().face_positions(map_model::polyhedron::FaceId(face.face as u32))
+                })
+                .and_then(Bbox3d::merge_all)
+        });
         brushes
             .chain(patches)
             .chain(entities)
+            .chain(faces)
             .reduce(|acc, bounds| acc.merged(&bounds))
     }
 
@@ -1268,7 +1276,7 @@ fn flat_axis(ray: &Ray3d) -> usize {
 
 /// Whether two segments lie on one line and share more than a point:
 /// `vm::segments_overlap`.
-fn segments_overlap(a: (Vec3d, Vec3d), b: (Vec3d, Vec3d), epsilon: f64) -> bool {
+pub(super) fn segments_overlap(a: (Vec3d, Vec3d), b: (Vec3d, Vec3d), epsilon: f64) -> bool {
     use geometry_math::vec;
     let along = a.1 - a.0;
     let length = vec::length(along);

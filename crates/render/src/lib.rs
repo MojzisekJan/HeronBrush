@@ -23,6 +23,10 @@ pub mod camera3d;
 pub mod rotation_gizmo;
 mod shaders;
 
+pub mod color;
+pub mod environment;
+pub mod probes;
+
 use std::collections::HashMap;
 
 use glow::HasContext;
@@ -248,6 +252,14 @@ pub struct DepthOfField {
 /// and 3).
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderSettings {
+    /// Baked local reflection and diffuse-light volumes.
+    pub probes: Option<std::sync::Arc<probes::Lighting>>,
+    /// Display grading, independent of scene-linear image output.
+    pub color_grading: color::ColorGrading,
+    /// Directional visibility and geometric horizon rejection for environment light.
+    pub indirect_occlusion: bool,
+    /// Optional scene-linear equirectangular environment, shared by lighting and sky.
+    pub environment: Option<environment::Environment>,
     /// Optional depth-aware blur for render cameras.
     pub depth_of_field: Option<DepthOfField>,
     /// Draw the world axes at the origin.

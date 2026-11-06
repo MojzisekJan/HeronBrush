@@ -15,6 +15,7 @@ map_model = { path = "../map_model" }
 geometry_math = { path = "../geometry_math" }
 # Backends come from the host (eframe enables Metal/Vulkan/DX12/GL through egui-wgpu).
 wgpu = { version = "30.0", default-features = false, features = ["std", "wgsl"] }
+half = "2"
 bytemuck = { version = "1", features = ["derive"] }
 
 [dev-dependencies]

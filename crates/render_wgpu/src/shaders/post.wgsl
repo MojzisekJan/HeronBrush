@@ -86,7 +86,12 @@ fn tony_mc_mapface(color: vec3<f32>) -> vec3<f32> {
 }
 
 fn tonemap(light: vec3<f32>) -> vec3<f32> {
-    let exposed = max(light, vec3<f32>(0.0)) * frame.params0.w;
+    var exposed = max(light, vec3<f32>(0.0)) * frame.params0.w * frame.white_balance.rgb;
+    if (abs(frame.grading.x-1.0)>0.0001) {
+        exposed=0.18*pow(max(exposed/0.18,vec3<f32>(0.0)),vec3<f32>(frame.grading.x));
+    }
+    let grey=dot(exposed,vec3<f32>(0.2126,0.7152,0.0722));
+    exposed=max(mix(vec3<f32>(grey),exposed,frame.grading.y),vec3<f32>(0.0));
     let mapper = u32(frame.post.x);
     if (mapper == 1u) {
         return agx(exposed * AGX_EXPOSURE);
@@ -221,19 +226,33 @@ fn luma(c: vec3<f32>) -> f32 {
 
 @group(1) @binding(8) var accumulated: texture_2d<f32>;
 
-// One sample of an offline render, back to linear light, blended into the running
-// average by the blend constant (1 / samples so far).
+// Average scene-linear HDR radiance and coverage, without baking exposure or tone
+// mapping into each sample. The blend constant supplies 1 / samples so far.
 @fragment
 fn fs_accumulate(in: FullscreenOut) -> @location(0) vec4<f32> {
-    let c = textureLoad(ldr, vec2<i32>(in.position.xy), 0).rgb;
-    return vec4<f32>(srgb_to_linear(c), 1.0);
+    let size = vec2<i32>(textureDimensions(hdr));
+    let p = clamp(vec2<i32>(in.position.xy), vec2<i32>(0), size - 1);
+    var light = scene_light(p, in.uv);
+    if (frame.dof.z > 0.0) {
+        light = depth_of_field(p, in.uv, light);
+    }
+    if (frame.misc.z<0.5) {return light;}
+    let previous=textureLoad(accumulated,p,0);
+    return previous+(light-previous)/(frame.misc.z+1.0);
 }
 
-// The running average back to the display curve, dithered, into the output.
+// A flat editor background stays display-referred. Coverage is averaged separately
+// so subpixel silhouettes blend with it without grading the background itself.
 @fragment
 fn fs_accumulated(in: FullscreenOut) -> @location(0) vec4<f32> {
-    let c = textureLoad(accumulated, vec2<i32>(in.position.xy), 0).rgb;
-    return vec4<f32>(linear_to_srgb(c) + dither(in.position.xy), 1.0);
+    let sample = textureLoad(accumulated, vec2<i32>(in.position.xy), 0);
+    let coverage = clamp(sample.a, 0.0, 1.0);
+    var color = frame.background.rgb;
+    if (coverage > 1e-6) {
+        let light = sample.rgb / coverage;
+        color = mix(color, linear_to_srgb(tonemap(light)), coverage);
+    }
+    return vec4<f32>(color + dither(in.position.xy), 1.0);
 }
 
 // The GL renderer's FXAA, for a view drawn without the temporal filter (kept for the

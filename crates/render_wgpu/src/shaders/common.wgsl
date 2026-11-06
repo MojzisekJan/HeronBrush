@@ -75,6 +75,12 @@ struct Frame {
     // Ambient occlusion: x full-resolution pixels per occlusion texel (1 or 2), y slices
     // per pixel, zw unused.
     ao: vec4<f32>,
+    // enabled, intensity, rotation in radians, reserved.
+    environment: vec4<f32>,
+    grading: vec4<f32>,
+    white_balance: vec4<f32>,
+    cascade_depth_range: vec4<f32>,
+    local_probes:vec4<f32>,
 };
 
 struct Object {
@@ -101,11 +107,15 @@ struct Material {
     // normal scale, AO strength, alpha mask cutoff, face rule (0 brush, 1 single, 2 double)
     model_params: vec4<f32>,
     model_emissive: vec4<f32>,
+    layered:vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> frame: Frame;
 @group(0) @binding(1) var<storage, read> objects: array<Object>;
 @group(0) @binding(2) var<storage, read> materials: array<Material>;
+struct LocalProbe {position:vec4<f32>,half_size:vec4<f32>,params:vec4<f32>,sh:array<vec4<f32>,9>};
+@group(0) @binding(3) var<storage,read> probes:array<LocalProbe>;
+
 
 const OBJECT_SELECTED: u32 = 1u;
 const OBJECT_LOCKED: u32 = 2u;
@@ -225,4 +235,77 @@ fn view_position(uv: vec2<f32>, d: f32) -> vec3<f32> {
     let clip = vec4<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, d, 1.0);
     let v = frame.inv_proj * clip;
     return v.xyz / v.w;
+}
+
+// Full-resolution scene-linear panorama; wrap longitude and clamp at the poles.
+fn panorama_radiance(environment_map: texture_2d<f32>, direction: vec3<f32>) -> vec3<f32> {
+    let angle=atan2(direction.y,direction.x)-frame.environment.z;
+    let uv=vec2<f32>(fract(angle/(2.0*PI)+0.5),acos(clamp(direction.z,-1.0,1.0))/PI);
+    let size=vec2<i32>(textureDimensions(environment_map));
+    let position=vec2<f32>(uv.x*f32(size.x)-0.5,clamp(uv.y*f32(size.y)-0.5,0.0,f32(size.y-1)));
+    let base=vec2<i32>(floor(position));
+    let weight=fract(position);
+    let x0=((base.x%size.x)+size.x)%size.x;
+    let x1=(x0+1)%size.x;
+    let y0=clamp(base.y,0,size.y-1);
+    let y1=min(y0+1,size.y-1);
+    let a=mix(textureLoad(environment_map,vec2<i32>(x0,y0),0).rgb,textureLoad(environment_map,vec2<i32>(x1,y0),0).rgb,weight.x);
+    let b=mix(textureLoad(environment_map,vec2<i32>(x0,y1),0).rgb,textureLoad(environment_map,vec2<i32>(x1,y1),0).rgb,weight.x);
+    return min(mix(a,b,weight.y)*frame.environment.y,vec3<f32>(65504.0));
+}
+
+// Depth-aware visibility and octahedral bent normal, shared by forward lighting and SSR.
+fn occlusion_at(map:texture_2d<f32>,pixel:vec2<f32>,depth:f32)->vec4<f32> {
+    let size=vec2<i32>(textureDimensions(map));
+    if (frame.ao.x<1.5) {return textureLoad(map,clamp(vec2<i32>(pixel),vec2<i32>(0),size-1),0);}
+    let position=pixel/frame.ao.x-0.5;
+    let base=vec2<i32>(floor(position));
+    let fraction=fract(position);
+    var visibility=0.0;var bent=vec3<f32>(0.0);var weights=0.0;
+    for (var y=0;y<2;y+=1) {for (var x=0;x<2;x+=1) {
+        let texel=textureLoad(map,clamp(base+vec2<i32>(x,y),vec2<i32>(0),size-1),0);
+        let bilinear=select(1.0-fraction.x,fraction.x,x==1)*select(1.0-fraction.y,fraction.y,y==1);
+        let weight=bilinear/(0.001+abs(texel.g-depth)/max(depth,1.0)*20.0)+0.00001;
+        visibility+=texel.r*weight;bent+=octahedral_decode(texel.zw)*weight;weights+=weight;
+    }}
+    return vec4<f32>(visibility/weights,depth,octahedral_encode(normalize(bent)));
+}
+fn specular_cone_visibility(direction:vec3<f32>,bent:vec3<f32>,visibility:f32,roughness:f32)->f32 {
+    // Approximate the visible hemisphere by a cone; broaden its edge for rough lobes.
+    let horizon=sqrt(clamp(1.0-visibility,0.0,1.0));
+    let edge=max(roughness*roughness,0.02);
+    return mix(smoothstep(horizon-edge,horizon+edge,dot(direction,bent)),1.0,visibility*visibility);
+}
+
+fn probe_weight(probe:LocalProbe,world:vec3<f32>)->f32 {
+    let relative=abs(world-probe.position.xyz)/probe.half_size.xyz;
+    return 1.0-smoothstep(1.0-probe.half_size.w,1.0,max(relative.x,max(relative.y,relative.z)));
+}
+fn probe_direction(probe:LocalProbe,world:vec3<f32>,direction:vec3<f32>)->vec3<f32> {
+    let safe=select(vec3<f32>(0.000001),direction,abs(direction)>vec3<f32>(0.000001));
+    let lower=(probe.position.xyz-probe.half_size.xyz-world)/safe;
+    let upper=(probe.position.xyz+probe.half_size.xyz-world)/safe;
+    let exit=max(lower,upper);let distance=max(min(exit.x,min(exit.y,exit.z)),0.0);
+    return world+direction*distance-probe.position.xyz;
+}
+fn local_specular(map:texture_cube_array<f32>,linear_sampler:sampler,world:vec3<f32>,direction:vec3<f32>,roughness:f32,global:vec3<f32>)->vec3<f32> {
+    var total=vec3<f32>(0.0);var weights=0.0;
+    for (var i=0u;i<u32(frame.local_probes.x);i+=1u) {
+        let probe=probes[i];let weight=probe_weight(probe,world)*probe.params.x;
+        if (weight>0.0) {total+=textureSampleLevel(map,linear_sampler,probe_direction(probe,world,direction),i32(i),roughness*probe.params.z).rgb*weight*probe.position.w;weights+=weight;}
+    }
+    return global*max(1.0-weights,0.0)+total/max(weights,1.0);
+}
+fn probe_irradiance(probe:LocalProbe,n:vec3<f32>)->vec3<f32> {
+    var e=probe.sh[0].rgb*0.282095;
+    e+=(2.0/3.0)*0.488603*(probe.sh[1].rgb*n.y+probe.sh[2].rgb*n.z+probe.sh[3].rgb*n.x);
+    e+=0.25*(1.092548*(probe.sh[4].rgb*n.x*n.y+probe.sh[5].rgb*n.y*n.z+probe.sh[7].rgb*n.x*n.z)+0.315392*probe.sh[6].rgb*(3.0*n.z*n.z-1.0)+0.546274*probe.sh[8].rgb*(n.x*n.x-n.y*n.y));
+    return max(e,vec3<f32>(0.0));
+}
+fn local_diffuse(world:vec3<f32>,normal:vec3<f32>,global:vec3<f32>)->vec3<f32> {
+    var total=vec3<f32>(0.0);var weights=0.0;
+    for (var i=0u;i<u32(frame.local_probes.x);i+=1u) {let probe=probes[i];let weight=probe_weight(probe,world)*probe.params.y;
+        total+=probe_irradiance(probe,normal)*weight*probe.position.w;weights+=weight;
+    }
+    return global*max(1.0-weights,0.0)+total/max(weights,1.0);
 }

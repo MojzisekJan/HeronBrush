@@ -11,6 +11,10 @@ use crate::preferences::pref;
 /// however it likes (docs/android.md, step 3).
 pub fn from_preferences() -> render::RenderSettings {
     pref(|p| render::RenderSettings {
+        environment: None,
+        probes:None,
+        color_grading: Default::default(),
+        indirect_occlusion:p.indirect_occlusion,
         depth_of_field: None,
         show_axes: p.show_axes,
         procedural_sky: p.procedural_sky,
@@ -71,4 +75,11 @@ pub fn texture_memory_bytes() -> u64 {
 /// for the same reason as [`tone_mapper`]: the GL renderer has no entity lights.
 pub fn entity_lights() -> bool {
     pref(|p| p.entity_lights)
+}
+
+/// Scene-authored environment overrides the editor's procedural defaults.
+pub fn for_document(document: &crate::document::Document) -> render::RenderSettings {
+    let mut settings = from_preferences();
+    crate::environment::apply(document, &mut settings);
+    settings
 }

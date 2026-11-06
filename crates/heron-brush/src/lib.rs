@@ -53,6 +53,11 @@ mod perf_tests;
 mod pool;
 mod profile;
 mod render_page;
+mod environment_controls;
+mod probe_controls;
+mod imaging_controls;
+#[cfg(feature="wgpu")]
+mod dynamic_resolution;
 mod script;
 mod session_page;
 #[cfg(test)]
@@ -227,6 +232,7 @@ pub(crate) fn commands_for(
         active_plane: editor.active_plane.clone(),
         fillet: editor.fillet.clone(),
         camera_3d: editor.camera.clone(),
+        frame_history: editor.frame_history.clone(),
         sources: Rc::new(RefCell::new(std::mem::take(
             &mut *editor.sources.borrow_mut(),
         ))),
@@ -403,11 +409,7 @@ pub(crate) fn dispatch_keys(
                     let explicit_paste = state.middle_paste_pending && (held.command || held.ctrl);
                     state.middle_paste_pending = false;
                     let waiting = state.waiting.take();
-                    if explicit_paste {
-                        None
-                    } else {
-                        waiting
-                    }
+                    if explicit_paste { None } else { waiting }
                 };
                 match waiting {
                     Some(then) => then(text),
@@ -925,6 +927,21 @@ impl App {
     fn status(&self, title: String) -> chrome::Status {
         let document = self.editor.document.borrow();
         let mut indicators = Vec::new();
+        if document.isolation_active() || document.hidden_object_count() > 0 {
+            indicators.push(chrome::Indicator {
+                label: if document.isolation_active() {
+                    tr("Isolation active").to_owned()
+                } else {
+                    format!("{}: {}", tr("Hidden"), document.hidden_object_count())
+                },
+                tooltip: tr("Click to restore visibility").to_owned(),
+                action: if document.isolation_active() {
+                    app_actions::Action::ToggleIsolation
+                } else {
+                    app_actions::Action::ShowAllObjects
+                },
+            });
+        }
         let live = self.live.status();
         if let Some(label) = live.indicator {
             indicators.push(chrome::Indicator {
@@ -1713,7 +1730,7 @@ impl App {
 /// device would then not open at all.
 #[cfg(feature = "wgpu")]
 fn request_device(options: &mut eframe::egui_wgpu::WgpuConfiguration) {
-    use eframe::egui_wgpu::{wgpu, WgpuSetup};
+    use eframe::egui_wgpu::{WgpuSetup, wgpu};
     if let WgpuSetup::CreateNew(setup) = &mut options.wgpu_setup {
         let base = std::sync::Arc::clone(&setup.device_descriptor);
         setup.device_descriptor = std::sync::Arc::new(move |adapter: &wgpu::Adapter| {
@@ -1749,7 +1766,10 @@ pub fn run_desktop() -> eframe::Result {
     }
     if let Some(code) = editor_core::cli::run(&command, "heron-brush", &version) {
         if command == editor_core::cli::Command::Help {
-            println!("       heron-brush {} [map.map ...]   a window of its own, rather than handing the map to the running editor", single_instance::NEW_INSTANCE);
+            println!(
+                "       heron-brush {} [map.map ...]   a window of its own, rather than handing the map to the running editor",
+                single_instance::NEW_INSTANCE
+            );
         }
         std::process::exit(code);
     }

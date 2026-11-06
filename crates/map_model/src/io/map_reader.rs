@@ -1102,11 +1102,43 @@ impl<'a> Reader<'a> {
                     .and_then(|v| v.parse::<u16>().ok())
                     .unwrap_or(0)
                     .min(800);
-                Some(crate::brush_face::SurfaceMaterial {
+                let mut surface = crate::brush_face::SurfaceMaterial {
                     roughness,
                     metallic,
                     emission,
-                })
+                    ..Default::default()
+                };
+                while let Some(word) = words.next() {
+                    match word {
+                        "coat" => {
+                            surface.clearcoat = words
+                                .next()
+                                .and_then(|v| v.parse::<u8>().ok())
+                                .unwrap_or(0)
+                                .min(100);
+                            surface.coat_roughness = words
+                                .next()
+                                .and_then(|v| v.parse::<u8>().ok())
+                                .unwrap_or(10)
+                                .min(100);
+                        }
+                        "aniso" => {
+                            surface.anisotropy = words
+                                .next()
+                                .and_then(|v| v.parse::<u8>().ok())
+                                .unwrap_or(0)
+                                .min(100);
+                            surface.anisotropy_rotation = (words
+                                .next()
+                                .and_then(|v| v.parse::<u16>().ok())
+                                .unwrap_or(0)
+                                % 180)
+                                as u8;
+                        }
+                        _ => {}
+                    }
+                }
+                Some(surface)
             });
         let primitive_uv = self
             .peek()

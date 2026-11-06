@@ -15,6 +15,7 @@ use crate::egui_canvas::EguiCanvas;
 use crate::theme;
 use crate::widgets::{self, icons};
 
+mod edge;
 mod keyboard;
 mod workflow;
 
@@ -50,6 +51,8 @@ enum Gesture {
 #[derive(Default)]
 pub struct UvPanel {
     canvas: UvCanvas,
+    selected_edge: Option<(editor_core::document::FaceRef, usize)>,
+    previous_view: Option<editor_core::uv_view::UvView>,
     window_open: bool,
     number_drag: bool,
     pivot_vertex: usize,
@@ -698,6 +701,7 @@ impl UvPanel {
         if widgets::segmented(ui, "uv-fit-both", &[(tr("Fit"), "", has_face)]).is_some() {
             run(ui, uv_view::Action::Fit);
         }
+        self.edge_actions(ui, document);
         // Aligning: Align, the four justify buttons, and the two fits.
         let align = &uv_view::ALIGNMENT_BUTTONS;
         ui.horizontal(|ui| {
@@ -762,6 +766,21 @@ impl UvPanel {
         let (rect, response) =
             ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::click_and_drag());
         self.canvas_region = Some((ui.ctx().viewport_id(), rect, response.id, ui.layer_id()));
+        if response.hovered() && !ui.ctx().egui_wants_keyboard_input() {
+            if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Home)) {
+                self.previous_view = Some(self.canvas.view);
+                self.canvas.reset_view();
+            }
+            if ui.input_mut(|i| i.consume_key(egui::Modifiers::ALT, egui::Key::Home)) {
+                if let Some(previous) = self.previous_view.replace(self.canvas.view) {
+                    let divisions = self.canvas.view.divisions;
+                    let options = self.canvas.view.options;
+                    self.canvas.view = previous;
+                    self.canvas.view.divisions = divisions;
+                    self.canvas.view.options = options;
+                }
+            }
+        }
         self.keyboard_input(ui, document);
         let keyboard_owned =
             self.keyboard.is_some() || self.keyboard_frame == Some(ui.ctx().cumulative_frame_nr());
@@ -844,7 +863,7 @@ impl UvPanel {
             self.canvas.reset_view();
         }
         // The wheel zooms about the pointer, one step a notch, and is not left for the inspector to scroll with.
-        if response.hovered() {
+        if response.contains_pointer() {
             let steps: Vec<f64> = ui.input(|i| {
                 i.events
                     .iter()
@@ -867,15 +886,14 @@ impl UvPanel {
                     self.canvas.scroll(x, y, step);
                 }
             }
-            if !steps.is_empty() {
-                ui.input_mut(|i| {
-                    i.smooth_scroll_delta = egui::Vec2::ZERO;
-                });
-            }
+            // Wheel smoothing can continue on frames with no new raw wheel event.
+            // Consume those deltas too, so an ancestor cannot scroll after UV zoom.
+            ui.input_mut(|i| i.smooth_scroll_delta = egui::Vec2::ZERO);
         }
 
         self.canvas
             .hover(&document.borrow(), height, response.hover_pos().map(local));
+        self.pick_edge(ui, document, &response, rect);
         let painter = ui.painter_at(rect);
         let mut canvas = EguiCanvas::new(&painter, rect);
         self.canvas.draw(
@@ -884,6 +902,7 @@ impl UvPanel {
             f64::from(rect.width()),
             height,
         );
+        self.paint_edge(document, &painter, rect);
         if let Some(session) = &self.keyboard {
             let text = session.label();
             let font = theme::body();
@@ -1732,6 +1751,83 @@ mod tests {
     }
 
     #[test]
+    fn wheel_over_uv_zooms_without_scrolling_the_parent_or_leaking_smoothed_motion() {
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let d = document();
+        let mut panel = UvPanel::default();
+        let mut time = 0.0;
+        let mut frame = |panel: &mut UvPanel, events: Vec<egui::Event>| {
+            time += 1.0 / 60.0;
+            let mut offset = 0.0;
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    time: Some(time),
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(350.0, 320.0),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    let scroll = egui::ScrollArea::vertical()
+                        .id_salt("uv-zoom-parent")
+                        .max_height(300.0)
+                        .show(ui, |ui| {
+                            panel.canvas_area(ui, &d, 280.0, 240.0);
+                            ui.add_space(700.0);
+                        });
+                    offset = scroll.state.clamped_offset().y;
+                },
+            );
+            output.textures_delta.clear();
+            offset
+        };
+        frame(&mut panel, vec![]);
+        frame(
+            &mut panel,
+            vec![egui::Event::PointerMoved(egui::pos2(130.0, 110.0))],
+        );
+        let before = panel.canvas.view.zoom;
+        let wheel = |delta| egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Line,
+            delta: egui::vec2(0.0, delta),
+            phase: egui::TouchPhase::Move,
+            source: egui::MouseWheelSource::Wheel,
+            modifiers: egui::Modifiers::NONE,
+        };
+        assert_eq!(frame(&mut panel, vec![wheel(-1.0)]), 0.0);
+        let first = panel.canvas.view.zoom;
+        assert_ne!(first, before, "wheel over the UV canvas must zoom");
+        for _ in 0..20 {
+            assert_eq!(
+                frame(&mut panel, vec![]),
+                0.0,
+                "wheel inertia must stay out of the parent panel"
+            );
+        }
+        assert_eq!(frame(&mut panel, vec![wheel(1.0)]), 0.0);
+        assert!(
+            (panel.canvas.view.zoom - before).abs() < 0.0001,
+            "opposite wheel directions must reverse zoom"
+        );
+        for _ in 0..20 {
+            assert_eq!(frame(&mut panel, vec![]), 0.0);
+        }
+        assert!(
+            frame(
+                &mut panel,
+                vec![
+                    egui::Event::PointerMoved(egui::pos2(130.0, 280.0)),
+                    wheel(-3.0)
+                ]
+            ) > 0.0,
+            "wheel outside UV must still scroll the inspector"
+        );
+    }
+
+    #[test]
     fn trackpad_zoom_uses_point_magnitude_and_resizing_keeps_navigation() {
         let ctx = egui::Context::default();
         crate::theme::install(&ctx);
@@ -1885,5 +1981,51 @@ mod tests {
         );
         frame(&mut again, vec![key(true)]);
         assert_eq!(offset(), moved, "Cmd-Shift-Z must redo the same drag");
+    }
+    #[test]
+    fn picked_uv_edge_enables_alignment_and_clears_when_face_changes() {
+        let ctx = egui::Context::default();
+        ctx.set_embed_viewports(true);
+        theme::install(&ctx);
+        let document = document();
+        document
+            .borrow_mut()
+            .edit_faces(|face| face.rotate_uv(27.0));
+        let mut panel = UvPanel::default();
+        panel.toggle_window(&document);
+        window_frame(&ctx, &mut panel, &document, vec![]);
+        window_frame(&ctx, &mut panel, &document, vec![]);
+        let rect = panel.canvas_region.expect("UV canvas").1;
+        let edge = panel.projected_edges(&document.borrow(), rect)[0];
+        let midpoint = edge[0] + (edge[1] - edge[0]) * 0.5;
+        click(&ctx, &mut panel, &document, midpoint);
+        assert_eq!(panel.selected_edge.map(|(_, edge)| edge), Some(0));
+        let before = document.borrow().to_map_text();
+        let output = window_frame(&ctx, &mut panel, &document, vec![]);
+        click(
+            &ctx,
+            &mut panel,
+            &document,
+            text_at(&output, tr("Edge horizontal")),
+        );
+        assert_ne!(
+            document.borrow().to_map_text(),
+            before,
+            "alignment button must edit the selected edge"
+        );
+        document.borrow_mut().undo();
+        assert_eq!(document.borrow().to_map_text(), before);
+        let reference = document.borrow().face_to_edit().expect("face").0;
+        document
+            .borrow_mut()
+            .select_face_only(editor_core::document::FaceRef {
+                node: reference.node,
+                face: (reference.face + 1) % 6,
+            });
+        window_frame(&ctx, &mut panel, &document, vec![]);
+        assert!(
+            panel.selected_edge.is_none(),
+            "edge selection belongs to a particular face"
+        );
     }
 }
