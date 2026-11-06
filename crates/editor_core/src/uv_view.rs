@@ -14,6 +14,7 @@ use crate::canvas::Canvas;
 use crate::document::Document;
 use crate::i18n::{tr, translation_key};
 use crate::input::Modifiers;
+use crate::uv_workflow::{self, GridMode, PivotMode, SnapTarget, TransformKind};
 
 /// How many pixels the canvas is tall.
 pub const CANVAS_HEIGHT: i32 = 160;
@@ -36,7 +37,16 @@ pub struct UvView {
     pub zoom: f64,
     pub pan: (f64, f64),
     face: Option<crate::document::FaceRef>,
-    offset: Vec2f,
+    anchors: Option<[Vec2f; 3]>,
+    axes: [[f64; 2]; 2],
+    size: (f64, f64),
+    base: f64,
+    /// Subdivisions of one texture repeat, for trim-sheet editing.
+    pub divisions: [u32; 2],
+    /// UV display and transform settings shared by docked and detached views.
+    pub options: uv_workflow::Options,
+    grid: Option<Vec2f>,
+    highlight: Option<(Vec2f, bool, bool)>,
 }
 impl Default for UvView {
     fn default() -> Self {
@@ -44,7 +54,14 @@ impl Default for UvView {
             zoom: 1.0,
             pan: (0.0, 0.0),
             face: None,
-            offset: Vec2f::zero(),
+            anchors: None,
+            axes: [[1.0, 0.0], [0.0, 1.0]],
+            size: (0.0, 0.0),
+            base: 1.0,
+            divisions: [1, 1],
+            options: Default::default(),
+            grid: None,
+            highlight: None,
         }
     }
 }
@@ -54,9 +71,54 @@ impl UvView {
             self.face = None;
             return;
         };
+        let points = document.face_to_edit_polygon().unwrap_or_default();
+        let anchors = (points.len() >= 3).then(|| {
+            [
+                face.uv_coords(points[0]),
+                face.uv_coords(points[1]),
+                face.uv_coords(points[2]),
+            ]
+        });
+        let base = canvas_scale(document, height);
         if self.face != Some(id) {
-            let points = document.face_to_edit_polygon().unwrap_or_default();
-            let uvs: Vec<_> = points.iter().map(|p| face.uv_coords(*p)).collect();
+            self.axes = [[1.0, 0.0], [0.0, 1.0]];
+            if let Some(uv) = anchors {
+                // Frame the face's physical plane, independently of the existing
+                // material rotation, scale or shear (including a fresh selection).
+                let normal = face.normal();
+                let (u, v) =
+                    map_model::uv::UvCoordSystem::Paraxial.axes(normal, &Default::default());
+                let u =
+                    geometry_math::vec::normalize(u - normal * geometry_math::vec::dot(u, normal));
+                let v = v - normal * geometry_math::vec::dot(v, normal);
+                let v = geometry_math::vec::normalize(v - u * geometry_math::vec::dot(v, u));
+                let a = points[1] - points[0];
+                let b = points[2] - points[0];
+                let physical = [
+                    [geometry_math::vec::dot(a, u), geometry_math::vec::dot(b, u)],
+                    [geometry_math::vec::dot(a, v), geometry_math::vec::dot(b, v)],
+                ];
+                let mapping = [
+                    [
+                        f64::from(uv[1].x() - uv[0].x()),
+                        f64::from(uv[2].x() - uv[0].x()),
+                    ],
+                    [
+                        f64::from(uv[1].y() - uv[0].y()),
+                        f64::from(uv[2].y() - uv[0].y()),
+                    ],
+                ];
+                if let Some(inverse) = invert_2x2(mapping) {
+                    self.axes = mul_2x2(physical, inverse);
+                }
+            }
+            let uvs: Vec<_> = points
+                .iter()
+                .map(|p| {
+                    let at = transform(self.axes, face.uv_coords(*p));
+                    Vec2f::new(at.0 as f32, at.1 as f32)
+                })
+                .collect();
             if !uvs.is_empty() {
                 let (mut lo, mut hi) = (uvs[0], uvs[0]);
                 for uv in &uvs {
@@ -68,7 +130,7 @@ impl UvView {
                 let base = canvas_scale(document, height);
                 let scale = ((width - 60.0).max(1.0) / f64::from((hi.x() - lo.x()).max(1.0)))
                     .min((height - 60.0).max(1.0) / f64::from((hi.y() - lo.y()).max(1.0)));
-                self.zoom = (scale / base).clamp(0.02, 64.0);
+                self.zoom = scale.clamp(0.02, 64.0) / base;
                 let center = (lo + hi) * 0.5;
                 self.pan = (
                     width / 2.0 - f64::from(center.x()) * base * self.zoom,
@@ -77,19 +139,76 @@ impl UvView {
             }
             self.face = Some(id);
         } else {
-            let delta = self.offset - face.uv_attributes.offset;
-            let scale = canvas_scale(document, height * self.zoom);
-            self.pan.0 += f64::from(delta.x()) * scale;
-            self.pan.1 += f64::from(delta.y()) * scale;
+            // Keep the face plane fixed while its UV mapping changes. This also
+            // compensates texture dimensions, window resizing, and undo/redo.
+            let old_scale = self.base * self.zoom;
+            self.zoom *= self.base / base;
+            self.pan.0 += (width - self.size.0) * 0.5;
+            self.pan.1 += (height - self.size.1) * 0.5;
+            if let (Some(old), Some(new)) = (self.anchors, anchors) {
+                let basis = |p: [Vec2f; 3]| {
+                    [
+                        [
+                            f64::from(p[1].x() - p[0].x()),
+                            f64::from(p[2].x() - p[0].x()),
+                        ],
+                        [
+                            f64::from(p[1].y() - p[0].y()),
+                            f64::from(p[2].y() - p[0].y()),
+                        ],
+                    ]
+                };
+                if let Some(inverse) = invert_2x2(basis(new)) {
+                    let next = mul_2x2(self.axes, mul_2x2(basis(old), inverse));
+                    let before = transform(self.axes, old[0]);
+                    let after = transform(next, new[0]);
+                    self.pan.0 += (before.0 - after.0) * old_scale;
+                    self.pan.1 += (before.1 - after.1) * old_scale;
+                    self.axes = next;
+                }
+            }
         }
-        self.offset = face.uv_attributes.offset;
+        self.anchors = anchors;
+        self.size = (width, height);
+        self.base = base;
     }
+
+    /// Maps UV texels into local canvas pixels.
+    pub fn project(&self, document: &Document, height: f64, uv: Vec2f) -> (f64, f64) {
+        let at = transform(self.axes, uv);
+        let scale = canvas_scale(document, height * self.zoom);
+        (at.0 * scale + self.pan.0, at.1 * scale + self.pan.1)
+    }
+    /// Maps local canvas pixels back into UV texels.
+    pub fn unproject(&self, document: &Document, height: f64, x: f64, y: f64) -> Vec2f {
+        let scale = canvas_scale(document, height * self.zoom);
+        let inverse = invert_2x2(self.axes).unwrap_or([[1.0, 0.0], [0.0, 1.0]]);
+        let (x, y) = ((x - self.pan.0) / scale, (y - self.pan.1) / scale);
+        Vec2f::new(
+            (inverse[0][0] * x + inverse[0][1] * y) as f32,
+            (inverse[1][0] * x + inverse[1][1] * y) as f32,
+        )
+    }
+    fn axes_pixels(&self, document: &Document, height: f64) -> [[f64; 2]; 2] {
+        let scale = canvas_scale(document, height * self.zoom);
+        self.axes.map(|row| row.map(|v| v * scale))
+    }
+
     pub fn zoom_at(&mut self, x: f64, y: f64, delta: f64) {
-        let next = (self.zoom * (-delta * 0.15).exp()).clamp(0.02, 64.0);
+        // Limits are in face-plane pixels per world unit, independent of the
+        // selected texture's dimensions and the current panel height.
+        let next = (self.zoom * self.base * (-delta * 0.15).exp()).clamp(0.02, 64.0) / self.base;
         let ratio = next / self.zoom;
         self.pan = (x - (x - self.pan.0) * ratio, y - (y - self.pan.1) * ratio);
         self.zoom = next;
     }
+}
+
+fn transform(matrix: [[f64; 2]; 2], uv: Vec2f) -> (f64, f64) {
+    (
+        matrix[0][0] * f64::from(uv.x()) + matrix[0][1] * f64::from(uv.y()),
+        matrix[1][0] * f64::from(uv.x()) + matrix[1][1] * f64::from(uv.y()),
+    )
 }
 
 /// How near, in canvas pixels, the pointer has to be to a tile edge for an Alt-drag to
@@ -115,6 +234,11 @@ pub enum Grip {
     },
     /// The point the other two work about.
     Origin,
+    /// Move just one component of the pivot by dragging its red axis.
+    OriginAxis {
+        horizontally: bool,
+        vertically: bool,
+    },
     /// The ring, so the drag turns the material.
     Rotate,
     /// One of the four corners, so the drag scales it.
@@ -147,15 +271,45 @@ pub struct UvCanvas {
     transaction: bool,
     /// The pan a navigation drag started from.
     pan_start: (f64, f64),
+    drag_view: UvView,
+    drag_origin: Option<Vec2f>,
+    drag_scale: Vec2f,
+    grid_hit: Option<Vec2f>,
+    drag_face: Option<map_model::brush_face::BrushFace>,
 }
 
 impl UvCanvas {
-    /// Paints the canvas, `width` by `height` pixels.
-    pub fn draw(&mut self, document: &Document, cr: &mut dyn Canvas, width: f64, height: f64) {
+    /// The currently chosen transform anchor, in texture pixels.
+    pub fn pivot(&self, document: &Document) -> Option<Vec2f> {
+        match self.view.options.pivot {
+            PivotMode::Origin => document.face_to_edit().map(|_| Vec2f::zero()),
+            PivotMode::Cursor => handle_origin(document, self.origin),
+            PivotMode::Center | PivotMode::Individual => handle_origin(document, self.origin),
+        }
+    }
+
+    /// Synchronizes the view and pivot before input or drawing.
+    pub fn prepare(&mut self, document: &Document, width: f64, height: f64) {
         if self.view.face != document.face_to_edit().map(|(id, _)| id) {
             self.origin = None;
         }
+        let old_origin = self.origin.map(|uv| {
+            let at = transform(self.view.axes, uv);
+            let scale = self.view.base * self.view.zoom;
+            (
+                at.0 * scale + self.view.pan.0 + (width - self.view.size.0) * 0.5,
+                at.1 * scale + self.view.pan.1 + (height - self.view.size.1) * 0.5,
+            )
+        });
         self.view.sync(document, width, height);
+        if let Some((x, y)) = old_origin {
+            self.origin = Some(self.view.unproject(document, height, x, y));
+        }
+    }
+
+    /// Paints the canvas, `width` by `height` pixels.
+    pub fn draw(&mut self, document: &Document, cr: &mut dyn Canvas, width: f64, height: f64) {
+        self.prepare(document, width, height);
         let view = self.view;
         draw(document, cr, width, height, view);
         if document
@@ -176,9 +330,20 @@ impl UvCanvas {
 
         // The handles go on top of the face's outline, so they are findable whatever the
         // material behind them looks like.
-        if let Some(at) = handle_origin(document, self.origin) {
-            let (x, y) = to_canvas(document, height * view.zoom, at);
-            draw_handles(cr, (x + view.pan.0, y + view.pan.1));
+        if let Some(at) = self.pivot(document) {
+            let (x, y) = view.project(document, height, at);
+            let axes = view.axes_pixels(document, height);
+            cr.set_source_rgba(1.0, 0.25, 0.2, 0.65);
+            cr.set_line_width(1.0);
+            for k in 0..2 {
+                let length = axes[0][k].hypot(axes[1][k]).max(1e-9);
+                let dx = axes[0][k] / length * (width + height);
+                let dy = axes[1][k] / length * (width + height);
+                cr.move_to(x - dx, y - dy);
+                cr.line_to(x + dx, y + dy);
+            }
+            cr.stroke();
+            draw_handles(cr, (x, y));
         }
     }
 
@@ -194,31 +359,98 @@ impl UvCanvas {
         shear: bool,
     ) {
         self.applied = Vec2f::zero();
-        let camera = self.view;
-        let height = height * camera.zoom;
-        let (x, y) = (x - camera.pan.0, y - camera.pan.1);
+        self.view.grid = Some(self.stripe(document));
+        self.drag_view = self.view;
+        self.drag_face = document.face_to_edit().map(|(_, face)| face.clone());
+        self.drag_origin = self.pivot(document);
+        self.drag_scale = document
+            .face_to_edit()
+            .map(|(_, f)| f.uv_attributes.scale)
+            .unwrap_or(Vec2f::new(1.0, 1.0));
         self.start = (x, y);
-        let grip = match handle_origin(document, self.origin) {
+        self.grid_hit = None;
+        let hit = self.view.unproject(document, height, x, y);
+        let grip = match self.drag_origin {
             Some(at) if shear => {
-                // `UvShearTool::acceptMouseDrag`: Alt and a tile edge under the pointer,
-                // far enough from the origin's own axes to be safe.
-                let held = shear_grip_at(document, height, x, y);
-                let hit = unscaled_offset(document, from_canvas(document, height, x, y) - at);
-                if held.is_some()
+                let parallel = document.face_to_edit().is_some_and(|(_, f)| {
+                    matches!(
+                        f.uv_coord_system,
+                        map_model::uv::UvCoordSystem::Parallel { .. }
+                    )
+                });
+                let held = self.grid_grip(document, height, x, y);
+                let hit = Vec2f::new(
+                    (hit.x() - at.x()) * self.drag_scale.x(),
+                    (hit.y() - at.y()) * self.drag_scale.y(),
+                );
+                if parallel
+                    && held.is_some()
                     && hit.x().abs() >= SHEAR_MIN_OFFSET
                     && hit.y().abs() >= SHEAR_MIN_OFFSET
                 {
                     self.initial_hit = hit;
-                    held.unwrap_or(Grip::Nothing)
+                    let Grip::Scale {
+                        horizontally,
+                        vertically,
+                    } = held.unwrap()
+                    else {
+                        unreachable!()
+                    };
+                    Grip::Shear {
+                        horizontally,
+                        vertically,
+                    }
                 } else {
                     Grip::Nothing
                 }
             }
-            Some(at) => grip_at(to_canvas(document, height, at), x, y),
-            None => Grip::Offset,
+            Some(at) => {
+                let origin = self.view.project(document, height, at);
+                let handle = grip_at(origin, x, y);
+                if handle != Grip::Offset {
+                    handle
+                } else if let Some(axis) =
+                    origin_axis_grip(origin, self.view.axes_pixels(document, height), x, y)
+                {
+                    axis
+                } else if let Some(grip) = self.grid_grip(document, height, x, y) {
+                    let stripe = self.stripe(document);
+                    let mut caught = Vec2f::new(
+                        (hit.x() / stripe.x()).round() * stripe.x(),
+                        (hit.y() / stripe.y()).round() * stripe.y(),
+                    );
+                    let Grip::Scale {
+                        mut horizontally,
+                        mut vertically,
+                    } = grip
+                    else {
+                        unreachable!()
+                    };
+                    horizontally &= (caught.x() - at.x()).abs() > 1e-3;
+                    vertically &= (caught.y() - at.y()).abs() > 1e-3;
+                    if !horizontally {
+                        caught.v[0] = hit.x();
+                    }
+                    if !vertically {
+                        caught.v[1] = hit.y();
+                    }
+                    self.grid_hit = Some(caught);
+                    if horizontally || vertically {
+                        Grip::Scale {
+                            horizontally,
+                            vertically,
+                        }
+                    } else {
+                        Grip::Offset
+                    }
+                } else {
+                    Grip::Offset
+                }
+            }
+            None => Grip::Nothing,
         };
         self.grip = Some(grip);
-        if !matches!(grip, Grip::Nothing | Grip::Origin) {
+        if !matches!(grip, Grip::Nothing | Grip::Origin | Grip::OriginAxis { .. }) {
             document.begin_transaction();
             self.transaction = true;
         }
@@ -234,24 +466,33 @@ impl UvCanvas {
         dy: f64,
         control: bool,
     ) -> bool {
+        let control = control || !self.view.options.snap;
         let Some(held) = self.grip else { return false };
-        let camera = self.view;
-        let height = height * camera.zoom;
+        if self.drag_view.face != document.face_to_edit().map(|(id, _)| id) {
+            self.drag_cancel(document);
+            return false;
+        }
         let (start_x, start_y) = self.start;
         if held == Grip::Nothing {
             return false;
         }
-        let Some(handle) = handle_origin(document, self.origin) else {
+        let Some(handle) = self.drag_origin else {
             return false;
         };
-        let from = from_canvas(document, height, start_x, start_y);
-        let to = from_canvas(document, height, start_x + dx, start_y + dy);
+        let from = self.drag_view.unproject(document, height, start_x, start_y);
+        let to = self
+            .drag_view
+            .unproject(document, height, start_x + dx, start_y + dy);
 
         match held {
             Grip::Offset => {
                 // The whole drag is measured from where it began, so the rounding to a
                 // texel does not eat a little of every step.
-                let total = to - from;
+                let total = if control {
+                    to - from
+                } else {
+                    self.snap_offset(document, height, to - from)
+                };
                 let step = total - self.applied;
                 if step == Vec2f::zero() {
                     return false;
@@ -260,11 +501,25 @@ impl UvCanvas {
                 document.edit_faces(|face| face.move_uv(-step));
             }
 
-            Grip::Origin => {
-                // The origin is not part of the mapping, so moving it changes nothing
-                // about the face; it only says what the other two work about.
-                self.origin = Some(handle + (to - from));
-                self.start = (start_x + dx, start_y + dy);
+            Grip::Origin | Grip::OriginAxis { .. } => {
+                let mut target = handle + (to - from);
+                if !control {
+                    target = self.snap_point(document, height, target, true);
+                }
+                if let Grip::OriginAxis {
+                    horizontally,
+                    vertically,
+                } = held
+                {
+                    if !horizontally {
+                        target.v[0] = handle.x();
+                    }
+                    if !vertically {
+                        target.v[1] = handle.y();
+                    }
+                }
+                self.origin = Some(target);
+                self.view.options.pivot = PivotMode::Cursor;
                 return false;
             }
 
@@ -282,13 +537,27 @@ impl UvCanvas {
                 // up with a wall is a matter of turning until it clicks.
                 let raw = now - started;
                 let applied_so_far = self.applied.x();
-                let total = snap_rotation_to_edges(document, applied_so_far, raw);
+                let total = if control {
+                    raw
+                } else {
+                    if self.view.options.snap_target == SnapTarget::Vertex {
+                        snap_rotation_to_edges(document, applied_so_far, raw)
+                    } else {
+                        let step = self.view.options.rotation_step.max(0.1);
+                        (raw / step).round() * step
+                    }
+                };
                 let step = total - applied_so_far;
                 if step == 0.0 {
                     return false;
                 }
                 self.applied.v[0] = total;
-                document.edit_faces(|face| face.rotate_uv_about(handle, step));
+                uv_workflow::transform(
+                    document,
+                    uv_workflow::Transform::Rotate(step),
+                    self.view.options.pivot,
+                    handle,
+                );
             }
 
             Grip::Shear {
@@ -300,14 +569,22 @@ impl UvCanvas {
                 // started along the other, so a handle far out shears gently and one
                 // close in shears fast.
                 let initial = self.initial_hit;
-                let current = unscaled_offset(document, to - handle);
-                let zoom = canvas_scale(document, height) as f32;
+                let current = Vec2f::new(
+                    (to.x() - handle.x()) * self.drag_scale.x(),
+                    (to.y() - handle.y()) * self.drag_scale.y(),
+                );
+                let zoom = canvas_scale(document, height * self.drag_view.zoom) as f32;
                 let delta = current - initial;
                 let factors = Vec2f::new(-delta.y() / initial.x(), -delta.x() / initial.y());
                 let factors = if control {
                     factors
                 } else {
-                    snap_shear_factors(document, factors, current, zoom)
+                    match (&self.drag_face, document.face_to_edit_polygon()) {
+                        (Some(face), Some(polygon)) => {
+                            snap_shear_for_face(face, &polygon, factors, current, zoom)
+                        }
+                        _ => factors,
+                    }
                 };
                 let total = Vec2f::new(
                     if horizontally { factors.x() } else { 0.0 },
@@ -324,25 +601,47 @@ impl UvCanvas {
                 };
                 let rows = mul_2x2(shear_rows(total), undo);
                 self.applied = total;
-                document.edit_faces(|face| face.skew_uv_about(handle, rows));
+                document.edit_faces_with_polygon(|face, polygon| {
+                    let pivot = if self.view.options.pivot == PivotMode::Individual {
+                        uv_workflow::center(face, polygon)
+                    } else {
+                        handle
+                    };
+                    face.skew_uv_about(pivot, rows);
+                });
             }
 
             Grip::Nothing => return false,
 
-            Grip::Scale { .. } => {
-                // How much further from the handle the pointer is than it was, per axis. A
-                // scale is a ratio, so this is a division rather than the difference the
-                // other drags use.
-                let started = from - handle;
-                let now = to - handle;
-                let ratio = |before: f32, after: f32| {
-                    if before.abs() < 1e-3 {
+            Grip::Scale {
+                horizontally,
+                vertically,
+            } => {
+                let caught = self.grid_hit.unwrap_or(from);
+                let started = caught - handle;
+                let target = caught + (to - from);
+                let target = if control {
+                    target
+                } else {
+                    self.snap_point(document, height, target, false)
+                };
+                let now = target - handle;
+                let ratio = |before: f32, after: f32, enabled: bool| {
+                    if !enabled || before.abs() < 1e-3 {
                         1.0
                     } else {
-                        (after / before).clamp(0.05, 20.0)
+                        let value = (after / before).clamp(-20.0, 20.0);
+                        if value.abs() < 1e-4 {
+                            1e-4_f32.copysign(value)
+                        } else {
+                            value
+                        }
                     }
                 };
-                let total = Vec2f::new(ratio(started.x(), now.x()), ratio(started.y(), now.y()));
+                let total = Vec2f::new(
+                    ratio(started.x(), now.x(), horizontally),
+                    ratio(started.y(), now.y(), vertically),
+                );
                 let previous = if self.applied == Vec2f::zero() {
                     Vec2f::new(1.0, 1.0)
                 } else {
@@ -353,15 +652,337 @@ impl UvCanvas {
                     return false;
                 }
                 self.applied = total;
-                document.edit_faces(|face| face.scale_uv_about(handle, step));
+                uv_workflow::transform(
+                    document,
+                    uv_workflow::Transform::Scale(step),
+                    self.view.options.pivot,
+                    handle,
+                );
             }
         }
         true
     }
 
+    /// Begins a modal keyboard transform using the same transaction as mouse drags.
+    pub fn begin_transform(
+        &mut self,
+        document: &mut Document,
+        kind: TransformKind,
+        height: f64,
+        x: f64,
+        y: f64,
+    ) {
+        self.drag_begin(document, height, x, y, false);
+        if self.drag_origin.is_none() {
+            return;
+        }
+        if !self.transaction {
+            document.begin_transaction();
+            self.transaction = true;
+        }
+        self.grip = Some(match kind {
+            TransformKind::Move => Grip::Offset,
+            TransformKind::Rotate => Grip::Rotate,
+            TransformKind::Scale => Grip::Scale {
+                horizontally: true,
+                vertically: true,
+            },
+        });
+        self.grid_hit = None;
+        self.applied = if kind == TransformKind::Scale {
+            Vec2f::new(1.0, 1.0)
+        } else {
+            Vec2f::zero()
+        };
+    }
+
+    /// Applies the absolute preview value from the start of a keyboard operation.
+    /// Numeric values can bypass snapping; changing the axis removes the prior other-axis preview.
+    pub fn preview_transform(
+        &mut self,
+        document: &mut Document,
+        kind: TransformKind,
+        raw: Vec2f,
+        axes: [bool; 2],
+        bypass: bool,
+    ) -> bool {
+        if self.drag_view.face != document.face_to_edit().map(|(id, _)| id) {
+            self.drag_cancel(document);
+            return false;
+        }
+        let Some(origin) = self.drag_origin else {
+            return false;
+        };
+        let snap = self.view.options.snap && !bypass;
+        let height = self.view.size.1;
+        match kind {
+            TransformKind::Move => {
+                let mut total = if snap {
+                    self.snap_offset(document, height, raw)
+                } else {
+                    raw
+                };
+                for k in 0..2 {
+                    if !axes[k] {
+                        total.v[k] = 0.0;
+                    }
+                }
+                let step = total - self.applied;
+                if step == Vec2f::zero() {
+                    return false;
+                }
+                self.applied = total;
+                document.edit_faces(|f| f.move_uv(-step));
+            }
+            TransformKind::Rotate => {
+                let total = if snap {
+                    if self.view.options.snap_target == SnapTarget::Vertex {
+                        snap_rotation_to_edges(document, self.applied.x(), raw.x())
+                    } else {
+                        let step = self.view.options.rotation_step.max(0.1);
+                        (raw.x() / step).round() * step
+                    }
+                } else {
+                    raw.x()
+                };
+                let step = total - self.applied.x();
+                if step == 0.0 {
+                    return false;
+                }
+                self.applied.v[0] = total;
+                uv_workflow::transform(
+                    document,
+                    uv_workflow::Transform::Rotate(step),
+                    self.view.options.pivot,
+                    origin,
+                );
+            }
+            TransformKind::Scale => {
+                let mut total = raw;
+                if snap {
+                    let from =
+                        self.drag_view
+                            .unproject(document, height, self.start.0, self.start.1);
+                    let started = from - origin;
+                    let target = origin + Vec2f::new(started.x() * raw.x(), started.y() * raw.y());
+                    let target = self.snap_point(document, height, target, false) - origin;
+                    for k in 0..2 {
+                        if started[k].abs() > 1e-4 {
+                            total.v[k] = target[k] / started[k];
+                        }
+                    }
+                }
+                for k in 0..2 {
+                    if !axes[k] {
+                        total.v[k] = 1.0;
+                    }
+                    if !total[k].is_finite() || total[k].abs() < 1e-4 {
+                        return false;
+                    }
+                }
+                let previous = self.applied;
+                let step = Vec2f::new(total.x() / previous.x(), total.y() / previous.y());
+                if step == Vec2f::new(1.0, 1.0) {
+                    return false;
+                }
+                self.applied = total;
+                uv_workflow::transform(
+                    document,
+                    uv_workflow::Transform::Scale(step),
+                    self.view.options.pivot,
+                    origin,
+                );
+            }
+        }
+        true
+    }
+
+    /// Ctrl/Cmd-drag anywhere rotates; chosen only when a gesture begins.
+    pub fn rotate_drag_begin(&mut self, document: &mut Document, height: f64, x: f64, y: f64) {
+        self.drag_begin(document, height, x, y, false);
+        if self.drag_origin.is_some() {
+            if !self.transaction {
+                document.begin_transaction();
+                self.transaction = true;
+            }
+            self.grip = Some(Grip::Rotate);
+        }
+    }
+
+    fn stripe(&self, document: &Document) -> Vec2f {
+        grid_stripe(document, self.view.size.1, self.view)
+    }
+
+    fn grid_grip(&self, document: &Document, height: f64, x: f64, y: f64) -> Option<Grip> {
+        if !self.view.options.show_grid || self.view.options.opacity < 0.01 {
+            return None;
+        }
+        let uv = self.view.unproject(document, height, x, y);
+        let stripe = self.stripe(document);
+        let axes = self.view.axes_pixels(document, height);
+        let det = (axes[0][0] * axes[1][1] - axes[0][1] * axes[1][0]).abs();
+        let near = |k: usize| {
+            let distance = (uv[k] - (uv[k] / stripe[k]).round() * stripe[k]).abs() as f64;
+            distance * det / axes[0][1 - k].hypot(axes[1][1 - k]).max(1e-9) <= SHEAR_GRIP_DISTANCE
+        };
+        let (horizontally, vertically) = (near(0), near(1));
+        (horizontally || vertically).then_some(Grip::Scale {
+            horizontally,
+            vertically,
+        })
+    }
+    fn snap_point(&self, document: &Document, height: f64, raw: Vec2f, origin: bool) -> Vec2f {
+        match self.view.options.snap_target {
+            SnapTarget::Pixel => return Vec2f::new(raw.x().round(), raw.y().round()),
+            SnapTarget::Grid => {
+                let stripe = self.stripe(document);
+                return Vec2f::new(
+                    (raw.x() / stripe.x()).round() * stripe.x(),
+                    (raw.y() / stripe.y()).round() * stripe.y(),
+                );
+            }
+            SnapTarget::Vertex => {}
+        }
+        let Some((_, face)) = document.face_to_edit() else {
+            return raw;
+        };
+        // Convert current corners to the UV frame captured at the beginning of the drag.
+        let mut points: Vec<_> = document
+            .face_to_edit_polygon()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|p| {
+                let uv = face.uv_coords(p);
+                let (x, y) = self.view.project(document, height, uv);
+                self.drag_view.unproject(document, height, x, y)
+            })
+            .collect();
+        if origin && !points.is_empty() {
+            points.push(
+                points.iter().copied().fold(Vec2f::zero(), |a, b| a + b) / points.len() as f32,
+            );
+            let stripe = self.stripe(document);
+            points.push(Vec2f::new(
+                (raw.x() / stripe.x()).round() * stripe.x(),
+                (raw.y() / stripe.y()).round() * stripe.y(),
+            ));
+        }
+        let axes = self.drag_view.axes_pixels(document, height);
+        let mut result = raw;
+        for k in 0..2 {
+            if let Some(value) = points
+                .iter()
+                .map(|p| p[k])
+                .min_by(|a, b| (a - raw[k]).abs().total_cmp(&(b - raw[k]).abs()))
+            {
+                if f64::from((value - raw[k]).abs()) * axes[0][k].hypot(axes[1][k]) <= 8.0 {
+                    result.v[k] = value;
+                }
+            }
+        }
+        result
+    }
+    fn snap_offset(&self, document: &Document, height: f64, raw: Vec2f) -> Vec2f {
+        match self.view.options.snap_target {
+            SnapTarget::Pixel => return Vec2f::new(raw.x().round(), raw.y().round()),
+            SnapTarget::Grid => {
+                let stripe = self.stripe(document);
+                return Vec2f::new(
+                    (raw.x() / stripe.x()).round() * stripe.x(),
+                    (raw.y() / stripe.y()).round() * stripe.y(),
+                );
+            }
+            SnapTarget::Vertex => {}
+        }
+        let Some((_, face)) = document.face_to_edit() else {
+            return raw;
+        };
+        let stripe = self.stripe(document);
+        let axes = self.drag_view.axes_pixels(document, height);
+        let mut best = Vec2f::new(f32::INFINITY, f32::INFINITY);
+        for p in document.face_to_edit_polygon().unwrap_or_default() {
+            let uv = face.uv_coords(p) + self.applied - raw;
+            for k in 0..2 {
+                let correction = uv[k] - (uv[k] / stripe[k]).round() * stripe[k];
+                if correction.abs() < best[k].abs() {
+                    best.v[k] = correction;
+                }
+            }
+        }
+        let mut result = Vec2f::new(raw.x().round(), raw.y().round());
+        for k in 0..2 {
+            if f64::from(best[k].abs()) * axes[0][k].hypot(axes[1][k]) <= 8.0 {
+                result.v[k] = raw[k] + best[k];
+            }
+        }
+        result
+    }
+
+    /// Which grid line the pointer can scale, for cursor feedback.
+    pub fn grid_handle(&self, document: &Document, height: f64, x: f64, y: f64) -> Option<Grip> {
+        let at = self.pivot(document)?;
+        let origin = self.view.project(document, height, at);
+        if grip_at(origin, x, y) != Grip::Offset
+            || origin_axis_grip(origin, self.view.axes_pixels(document, height), x, y).is_some()
+        {
+            return None;
+        }
+        let Grip::Scale {
+            mut horizontally,
+            mut vertically,
+        } = self.grid_grip(document, height, x, y)?
+        else {
+            return None;
+        };
+        let hit = self.view.unproject(document, height, x, y);
+        let stripe = self.stripe(document);
+        horizontally &= ((hit.x() / stripe.x()).round() * stripe.x() - at.x()).abs() > 1e-3;
+        vertically &= ((hit.y() / stripe.y()).round() * stripe.y() - at.y()).abs() > 1e-3;
+        (horizontally || vertically).then_some(Grip::Scale {
+            horizontally,
+            vertically,
+        })
+    }
+
+    /// Highlights exactly the line that can be grabbed, retaining it during a drag.
+    pub fn hover(&mut self, document: &Document, height: f64, pointer: Option<(f64, f64)>) {
+        self.view.highlight = None;
+        if let (
+            Some(Grip::Scale {
+                horizontally,
+                vertically,
+            }),
+            Some(hit),
+        ) = (self.grip, self.grid_hit)
+        {
+            self.view.highlight = Some((hit, horizontally, vertically));
+            return;
+        }
+        if let Some((x, y)) = pointer {
+            if let Some(Grip::Scale {
+                horizontally,
+                vertically,
+            }) = self.grid_handle(document, height, x, y)
+            {
+                let hit = self.view.unproject(document, height, x, y);
+                let stripe = self.stripe(document);
+                self.view.highlight = Some((
+                    Vec2f::new(
+                        (hit.x() / stripe.x()).round() * stripe.x(),
+                        (hit.y() / stripe.y()).round() * stripe.y(),
+                    ),
+                    horizontally,
+                    vertically,
+                ));
+            }
+        }
+    }
+
     /// The drag ended: what it did becomes one step of the history.
     pub fn drag_end(&mut self, document: &mut Document) {
         self.grip = None;
+        self.view.grid = None;
+        self.view.highlight = None;
         if std::mem::take(&mut self.transaction) {
             document.commit_transaction();
         }
@@ -371,6 +992,8 @@ impl UvCanvas {
     /// changed.
     pub fn drag_cancel(&mut self, document: &mut Document) -> bool {
         self.grip = None;
+        self.view.grid = None;
+        self.view.highlight = None;
         let open = std::mem::take(&mut self.transaction);
         if open {
             document.cancel_transaction();
@@ -401,7 +1024,11 @@ impl UvCanvas {
 
     /// A double right-click: the view frames the face again.
     pub fn reset_view(&mut self) {
-        self.view = UvView::default();
+        self.view = UvView {
+            divisions: self.view.divisions,
+            options: self.view.options,
+            ..UvView::default()
+        };
     }
 }
 
@@ -473,13 +1100,45 @@ pub const BUTTONS: [(&str, Action, &str); 7] = [
 /// The alignment buttons, which cycle through their answers when pressed again; Shift
 /// steps backwards, and Ctrl asks a fit to keep a trim sheet's subdivision.
 pub const ALIGNMENT_BUTTONS: [(&str, Action, &str); 7] = [
-    (translation_key("Align"), Action::Align, translation_key("Turn the material along one of the face's edges; press again for the next edge, Shift for the last")),
-    ("◧", Action::Justify(UvAxis::U, UvSign::Minus), translation_key("Push the material against the face's left edge")),
-    ("◨", Action::Justify(UvAxis::U, UvSign::Plus), translation_key("Push it against the right edge")),
-    ("⬒", Action::Justify(UvAxis::V, UvSign::Minus), translation_key("Push it against the top edge")),
-    ("⬓", Action::Justify(UvAxis::V, UvSign::Plus), translation_key("Push it against the bottom edge")),
-    (translation_key("Fit U"), Action::FitAxis(UvAxis::U), translation_key("Scale across so a whole number of copies covers the face; press again for the next count, Shift for the last, Ctrl to keep a trim sheet's subdivision")),
-    (translation_key("Fit V"), Action::FitAxis(UvAxis::V), translation_key("The same down the face")),
+    (
+        translation_key("Align"),
+        Action::Align,
+        translation_key(
+            "Turn the material along one of the face's edges; press again for the next edge, Shift for the last",
+        ),
+    ),
+    (
+        "◧",
+        Action::Justify(UvAxis::U, UvSign::Minus),
+        translation_key("Push the material against the face's left edge"),
+    ),
+    (
+        "◨",
+        Action::Justify(UvAxis::U, UvSign::Plus),
+        translation_key("Push it against the right edge"),
+    ),
+    (
+        "⬒",
+        Action::Justify(UvAxis::V, UvSign::Minus),
+        translation_key("Push it against the top edge"),
+    ),
+    (
+        "⬓",
+        Action::Justify(UvAxis::V, UvSign::Plus),
+        translation_key("Push it against the bottom edge"),
+    ),
+    (
+        translation_key("Fit U"),
+        Action::FitAxis(UvAxis::U),
+        translation_key(
+            "Scale across so a whole number of copies covers the face; press again for the next count, Shift for the last, Ctrl to keep a trim sheet's subdivision",
+        ),
+    ),
+    (
+        translation_key("Fit V"),
+        Action::FitAxis(UvAxis::V),
+        translation_key("The same down the face"),
+    ),
 ];
 
 /// The size of the edited face's material, in texels, or the default when it is not
@@ -891,6 +1550,26 @@ pub fn draw_handles(cr: &mut dyn Canvas, (x, y): (f64, f64)) {
     dot(cr, (x, y), (1.0, 0.65, 0.2));
 }
 
+fn origin_axis_grip(origin: (f64, f64), axes: [[f64; 2]; 2], x: f64, y: f64) -> Option<Grip> {
+    let distance = |k: usize| {
+        ((x - origin.0) * axes[1][k] - (y - origin.1) * axes[0][k]).abs()
+            / axes[0][k].hypot(axes[1][k]).max(1e-9)
+    };
+    if distance(0) <= 5.0 {
+        Some(Grip::OriginAxis {
+            horizontally: true,
+            vertically: false,
+        })
+    } else if distance(1) <= 5.0 {
+        Some(Grip::OriginAxis {
+            horizontally: false,
+            vertically: true,
+        })
+    } else {
+        None
+    }
+}
+
 /// What a press at the given canvas point catches.
 pub fn grip_at(origin: (f64, f64), x: f64, y: f64) -> Grip {
     let near = |at: (f64, f64)| {
@@ -901,7 +1580,7 @@ pub fn grip_at(origin: (f64, f64), x: f64, y: f64) -> Grip {
     if near(origin) {
         return Grip::Origin;
     }
-    if near((origin.0 + ROTATE_RADIUS, origin.1)) {
+    if ((x - origin.0).hypot(y - origin.1) - ROTATE_RADIUS).abs() <= HANDLE_RADIUS + 2.0 {
         return Grip::Rotate;
     }
     for (dx, dy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
@@ -969,6 +1648,16 @@ pub fn snap_shear_factors(document: &Document, factors: Vec2f, offset: Vec2f, zo
     let Some(polygon) = document.face_to_edit_polygon() else {
         return factors;
     };
+    snap_shear_for_face(face, &polygon, factors, offset, zoom)
+}
+
+fn snap_shear_for_face(
+    face: &map_model::brush_face::BrushFace,
+    polygon: &[Vec3d],
+    factors: Vec2f,
+    offset: Vec2f,
+    zoom: f32,
+) -> Vec2f {
     // `getEdgeVectorsUv`: each edge of the face in unscaled UV coordinates.
     let (u_axis, v_axis) = face
         .uv_coord_system
@@ -1045,6 +1734,41 @@ pub fn canvas_scale(document: &Document, height: f64) -> f64 {
     height / (material_height * 2.0).max(1.0)
 }
 
+/// Visible editing lines remain within reach even when a texture repeat is
+/// larger than the viewport. Picking and snapping use these same subdivisions.
+fn grid_stripe(document: &Document, height: f64, view: UvView) -> Vec2f {
+    if let Some(stripe) = view.grid {
+        return stripe;
+    }
+    let (w, h) = material_size(document);
+    let axes = view.axes_pixels(document, height.max(1.0));
+    let det = (axes[0][0] * axes[1][1] - axes[0][1] * axes[1][0]).abs();
+    let mut stripe = Vec2f::new(
+        (w / view.divisions[0].max(1) as f64) as f32,
+        (h / view.divisions[1].max(1) as f64) as f32,
+    );
+    if view.options.grid == GridMode::Pixel {
+        stripe = Vec2f::new(1.0, 1.0);
+    }
+    if view.options.grid == GridMode::Fixed {
+        return stripe;
+    }
+    for k in 0..2 {
+        let pixels_per_texel = det / axes[0][1 - k].hypot(axes[1][1 - k]).max(1e-12);
+        for _ in 0..40 {
+            let gap = f64::from(stripe[k]) * pixels_per_texel;
+            if gap > 80.0 && view.options.grid == GridMode::Dynamic {
+                stripe.v[k] *= 0.5;
+            } else if gap < 16.0 {
+                stripe.v[k] *= 2.0;
+            } else {
+                break;
+            }
+        }
+    }
+    stripe
+}
+
 /// Draws the material with the face's outline where it falls on it.
 pub fn draw(document: &Document, cr: &mut dyn Canvas, width: f64, height: f64, view: UvView) {
     cr.set_source_rgb(0.12, 0.12, 0.14);
@@ -1078,13 +1802,13 @@ pub fn draw(document: &Document, cr: &mut dyn Canvas, width: f64, height: f64, v
             .then(|| material.pixels())
             .flatten()
         {
-            cr.paint_tiled_image(
+            cr.paint_tiled_image_affine(
                 &face.material_name,
                 material.width,
                 material.height,
                 &pixels[..(material.width * material.height * 4) as usize],
                 view.pan,
-                scale,
+                view.axes_pixels(document, height),
             );
         }
     } else {
@@ -1098,24 +1822,63 @@ pub fn draw(document: &Document, cr: &mut dyn Canvas, width: f64, height: f64, v
         cr.fill();
     }
 
-    // The material-repeat grid supplies handles for shear drags.
-    let (stripe_x, stripe_y) = (material_width * scale, material_height * scale);
-    if stripe_x >= 1.0 && stripe_y >= 1.0 {
-        cr.set_source_rgba(1.0, 1.0, 1.0, 0.22);
-        cr.set_line_width(1.0);
-        let mut x = view.pan.0.rem_euclid(stripe_x);
-        while x <= width {
-            cr.move_to(x.round() + 0.5, 0.0);
-            cr.line_to(x.round() + 0.5, height);
-            x += stripe_x;
+    // Draw the UV grid in the stable face-plane view, including trim subdivisions.
+    let stripe = grid_stripe(document, height, view);
+    let stripe = [f64::from(stripe.x()), f64::from(stripe.y())];
+    let corners = [(0.0, 0.0), (width, 0.0), (width, height), (0.0, height)]
+        .map(|(x, y)| view.unproject(document, height, x, y));
+    for k in 0..2 {
+        let lo = corners
+            .iter()
+            .map(|p| p[k] as f64)
+            .fold(f64::INFINITY, f64::min);
+        let hi = corners
+            .iter()
+            .map(|p| p[k] as f64)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let other_lo = corners
+            .iter()
+            .map(|p| p[1 - k])
+            .fold(f32::INFINITY, f32::min);
+        let other_hi = corners
+            .iter()
+            .map(|p| p[1 - k])
+            .fold(f32::NEG_INFINITY, f32::max);
+        let first = (lo / stripe[k]).floor();
+        let count = ((hi - lo) / stripe[k]).ceil() as usize + 2;
+        if count > 2000 || !view.options.show_grid || view.options.opacity < 0.01 {
+            continue;
         }
-        let mut y = view.pan.1.rem_euclid(stripe_y);
-        while y <= height {
-            cr.move_to(0.0, y.round() + 0.5);
-            cr.line_to(width, y.round() + 0.5);
-            y += stripe_y;
+        for n in 0..count {
+            let mut a = Vec2f::zero();
+            let mut b = Vec2f::zero();
+            a.v[k] = ((first + n as f64) * stripe[k]) as f32;
+            b.v[k] = a[k];
+            a.v[1 - k] = other_lo;
+            b.v[1 - k] = other_hi;
+            let a = view.project(document, height, a);
+            let b = view.project(document, height, b);
+            let coordinate = ((first + n as f64) * stripe[k]) as f32;
+            let highlighted = view
+                .highlight
+                .is_some_and(|(hit, u, v)| [u, v][k] && (hit[k] - coordinate).abs() < 0.01);
+            // Dark halo plus an opaque light stroke remain visible on both bright
+            // and dark textures. Cyan identifies the actual draggable line.
+            cr.set_source_rgba(0.0, 0.0, 0.0, view.options.opacity);
+            cr.set_line_width(if highlighted { 5.0 } else { 3.0 });
+            cr.move_to(a.0, a.1);
+            cr.line_to(b.0, b.1);
+            cr.stroke();
+            if highlighted {
+                cr.set_source_rgb(0.15, 0.9, 1.0);
+            } else {
+                cr.set_source_rgba(0.88, 0.9, 0.93, view.options.opacity);
+            }
+            cr.set_line_width(if highlighted { 2.5 } else { 1.25 });
+            cr.move_to(a.0, a.1);
+            cr.line_to(b.0, b.1);
+            cr.stroke();
         }
-        cr.stroke();
     }
 
     // The face's outline, where it falls on the material.
@@ -1130,8 +1893,7 @@ pub fn draw(document: &Document, cr: &mut dyn Canvas, width: f64, height: f64, v
     cr.set_line_width(1.5);
     for (index, corner) in polygon.iter().enumerate() {
         let uv = face.uv_coords(*corner);
-        let x = f64::from(uv.x()) * scale + view.pan.0;
-        let y = f64::from(uv.y()) * scale + view.pan.1;
+        let (x, y) = view.project(document, height, uv);
         if index == 0 {
             cr.move_to(x, y);
         } else {
@@ -1139,7 +1901,31 @@ pub fn draw(document: &Document, cr: &mut dyn Canvas, width: f64, height: f64, v
         }
     }
     cr.close_path();
-    cr.stroke();
+    if view.options.stretch {
+        if let Some(metrics) = uv_workflow::metrics(face) {
+            let ratio = if view.options.area_stretch {
+                let r = metrics.density / view.options.density.max(1e-4);
+                r.max(1.0 / r)
+            } else {
+                metrics.stretch
+            };
+            let t = (ratio - 1.0).clamp(0.0, 1.0);
+            cr.set_source_rgba(
+                0.1 + 0.85 * t,
+                0.45 * (1.0 - t) + 0.1 * t,
+                0.95 * (1.0 - t) + 0.05 * t,
+                view.options.opacity * 0.45,
+            );
+            cr.fill_preserve();
+        }
+    }
+    if view.options.show_outline {
+        cr.set_source_rgba(1.0, 0.65, 0.2, view.options.opacity);
+        cr.set_line_width(1.5);
+        cr.stroke();
+    } else {
+        cr.new_path();
+    }
 }
 
 #[cfg(test)]
@@ -1161,6 +1947,343 @@ mod tests {
         document.add_brushes(vec![brush]);
         document.select_all();
         document
+    }
+
+    fn one_face() -> Document {
+        let mut d = cube_with_a_selected_face();
+        let face = d.face_to_edit().unwrap().0;
+        d.select_face_only(face);
+        d.edit_faces(|f| {
+            f.uv_attributes.scale = Vec2f::new(1.0, 1.0);
+            f.uv_attributes.offset = Vec2f::new(13.0, 19.0);
+        });
+        d
+    }
+
+    #[test]
+    fn large_texture_has_visible_highlighted_scale_lines_that_really_scale() {
+        let mut d = one_face();
+        let directory =
+            std::env::temp_dir().join(format!("heron-uv-visible-grid-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        std::fs::write(
+            directory.join("bright.png"),
+            crate::assets::encode_png(512, 512, &vec![255; 512 * 512 * 4]).unwrap(),
+        )
+        .unwrap();
+        d.load_materials(&directory).unwrap();
+        d.edit_faces(|f| {
+            f.material_name = "bright".into();
+            f.uv_attributes.scale = Vec2f::new(0.25, 0.25);
+        });
+        let mut canvas = UvCanvas::default();
+        canvas.prepare(&d, 316.0, 160.0);
+        let stripe = canvas.stripe(&d);
+        assert!(
+            stripe.x() < 512.0,
+            "a whole tile is too large to give reachable scale lines"
+        );
+        let mut picked = None;
+        for n in -5..=5 {
+            for y in [12.0, 25.0, 40.0, 60.0, 100.0, 125.0, 145.0] {
+                let v = canvas.view.unproject(&d, 160.0, 0.0, y).y();
+                let (x, y) = canvas
+                    .view
+                    .project(&d, 160.0, Vec2f::new(n as f32 * stripe.x(), v));
+                if x > 10.0
+                    && x < 306.0
+                    && canvas.grid_handle(&d, 160.0, x, y)
+                        == Some(Grip::Scale {
+                            horizontally: true,
+                            vertically: false,
+                        })
+                {
+                    picked = Some((x, y));
+                    break;
+                }
+            }
+            if picked.is_some() {
+                break;
+            }
+        }
+        let (x, y) = picked.expect("reachable single-axis scale line inside small UV panel");
+        canvas.hover(&d, 160.0, Some((x, y)));
+        assert!(canvas.view.highlight.is_some());
+        let mut raster = Raster::new(316, 160).unwrap();
+        canvas.draw(&d, &mut raster, 316.0, 160.0);
+        let image = raster.into_rgba();
+        let at = ((y as usize) * 316 + x as usize) * 4;
+        let pixel = &image.pixels[at..at + 4];
+        assert!(
+            pixel[0] < 150 && pixel[1] > 150 && pixel[2] > 180,
+            "line must be visibly cyan even over a white texture: {pixel:?}"
+        );
+        let before = d.face_to_edit().unwrap().1.uv_attributes.scale;
+        canvas.drag_begin(&mut d, 160.0, x, y, false);
+        assert!(canvas.drag_update(&mut d, 160.0, 15.0, 0.0, true));
+        canvas.prepare(&d, 316.0, 160.0);
+        assert_eq!(
+            canvas.stripe(&d),
+            stripe,
+            "grid subdivision must not jump during scale"
+        );
+        canvas.drag_end(&mut d);
+        let after = d.face_to_edit().unwrap().1.uv_attributes.scale;
+        assert_ne!(before.x(), after.x());
+        assert_eq!(before.y(), after.y());
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn affine_raster_texture_preserves_rotation_and_repeating_colors() {
+        let mut raster = Raster::new(16, 16).unwrap();
+        let pixels = [
+            255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
+        ];
+        raster.paint_tiled_image_affine(
+            "corners",
+            2,
+            2,
+            &pixels,
+            (8.0, 0.0),
+            [[0.0, -4.0], [4.0, 0.0]],
+        );
+        let image = raster.into_rgba();
+        let pixel = |x: usize, y: usize| &image.pixels[(y * 16 + x) * 4..(y * 16 + x + 1) * 4];
+        assert_eq!(pixel(6, 2), &[255, 0, 0, 255]);
+        assert_eq!(pixel(6, 6), &[0, 255, 0, 255]);
+        assert_eq!(pixel(2, 2), &[0, 0, 255, 255]);
+        assert_eq!(pixel(14, 10), pixel(6, 2));
+    }
+
+    #[test]
+    fn fresh_face_view_is_independent_of_texture_scale_and_rotation() {
+        let mut d = one_face();
+        let mut before = UvView::default();
+        before.sync(&d, 500.0, 260.0);
+        let polygon = d.face_to_edit_polygon().unwrap();
+        let expected: Vec<_> = polygon
+            .iter()
+            .map(|p| before.project(&d, 260.0, d.face_to_edit().unwrap().1.uv_coords(*p)))
+            .collect();
+        d.edit_faces(|f| {
+            f.scale_uv(Vec2f::new(2.0, 0.6));
+            f.rotate_uv(37.0);
+        });
+        let mut after = UvView::default();
+        after.sync(&d, 500.0, 260.0);
+        for (p, expected) in polygon.iter().zip(expected) {
+            let actual = after.project(&d, 260.0, d.face_to_edit().unwrap().1.uv_coords(*p));
+            assert!((actual.0 - expected.0).abs() < 0.003 && (actual.1 - expected.1).abs() < 0.003);
+        }
+    }
+
+    #[test]
+    fn face_outline_stays_put_through_mapping_changes_material_sizes_and_undo() {
+        let mut d = one_face();
+        d.edit_faces(|f| {
+            let (u_axis, v_axis) = f.uv_coord_system.axes(f.normal(), &f.uv_attributes);
+            f.uv_coord_system = map_model::uv::UvCoordSystem::Parallel { u_axis, v_axis };
+        });
+        let mut view = UvView::default();
+        view.sync(&d, 500.0, 260.0);
+        let positions = |d: &Document, v: UvView| {
+            d.face_to_edit_polygon()
+                .unwrap()
+                .iter()
+                .map(|p| v.project(d, 260.0, d.face_to_edit().unwrap().1.uv_coords(*p)))
+                .collect::<Vec<_>>()
+        };
+        let expected = positions(&d, view);
+        let check = |d: &Document, v: UvView| {
+            for (a, b) in expected.iter().zip(positions(d, v)) {
+                assert!(
+                    (a.0 - b.0).abs() < 0.003 && (a.1 - b.1).abs() < 0.003,
+                    "{a:?} != {b:?}"
+                );
+            }
+        };
+        for operation in [
+            (|f: &mut map_model::brush_face::BrushFace| {
+                f.scale_uv_about(Vec2f::new(4.0, 7.0), Vec2f::new(1.7, 0.6))
+            }) as fn(&mut map_model::brush_face::BrushFace),
+            |f| f.rotate_uv_about(Vec2f::new(4.0, 7.0), 37.0),
+            |f| f.skew_uv_about(Vec2f::new(4.0, 7.0), [[1.0, 0.25], [0.15, 1.0]]),
+            |f| f.move_uv(Vec2f::new(17.0, -39.0)),
+            |f| f.flip_uv(true),
+        ] {
+            d.edit_faces(operation);
+            view.sync(&d, 500.0, 260.0);
+            check(&d, view);
+            d.undo();
+            view.sync(&d, 500.0, 260.0);
+            check(&d, view);
+            d.redo();
+            view.sync(&d, 500.0, 260.0);
+            check(&d, view);
+        }
+        // Changing to a texture with a different height must preserve camera scale.
+        let directory =
+            std::env::temp_dir().join(format!("heron-uv-camera-material-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        std::fs::write(
+            directory.join("tall.png"),
+            crate::assets::encode_png(16, 512, &vec![255; 16 * 512 * 4]).unwrap(),
+        )
+        .unwrap();
+        d.load_materials(&directory).unwrap();
+        let _ = std::fs::remove_dir_all(&directory);
+        d.edit_faces(|f| f.material_name = "tall".into());
+        view.sync(&d, 500.0, 260.0);
+        check(&d, view);
+        let before = view.project(&d, 260.0, Vec2f::zero());
+        view.sync(&d, 540.0, 300.0);
+        let after = view.project(&d, 300.0, Vec2f::zero());
+        assert!((after.0 - before.0 - 20.0).abs() < 0.003);
+        assert!((after.1 - before.1 - 20.0).abs() < 0.003);
+    }
+
+    #[test]
+    fn grid_line_scales_one_axis_snaps_to_corner_and_is_one_undo() {
+        let mut d = one_face();
+        let before = d.to_map_text();
+        let mut canvas = UvCanvas::default();
+        let mut raster = Raster::new(500, 260).unwrap();
+        canvas.draw(&d, &mut raster, 500.0, 260.0);
+        let (_, face) = d.face_to_edit().unwrap();
+        let corners: Vec<_> = d
+            .face_to_edit_polygon()
+            .unwrap()
+            .iter()
+            .map(|p| face.uv_coords(*p))
+            .collect();
+        let hi = corners
+            .iter()
+            .map(|p| p.x())
+            .fold(f32::NEG_INFINITY, f32::max);
+        let lo = corners.iter().map(|p| p.x()).fold(f32::INFINITY, f32::min);
+        let origin = Vec2f::new(lo - 64.0, -79.0);
+        canvas.origin = Some(origin);
+        let start = Vec2f::new(0.0, canvas.stripe(&d).y() * 0.4);
+        let (x, y) = canvas.view.project(&d, 260.0, start);
+        let scale = canvas_scale(&d, 260.0 * canvas.view.zoom);
+        canvas.drag_begin(&mut d, 260.0, x, y, false);
+        assert_eq!(
+            canvas.grip,
+            Some(Grip::Scale {
+                horizontally: true,
+                vertically: false
+            })
+        );
+        canvas.drag_update(&mut d, 260.0, (hi as f64) * scale + 2.0, 0.0, false);
+        canvas.draw(&d, &mut raster, 500.0, 260.0);
+        // Same pointer position after a paint is stable, rather than accumulating scale.
+        canvas.drag_update(&mut d, 260.0, (hi as f64) * scale + 2.0, 0.0, false);
+        canvas.drag_end(&mut d);
+        let face = d.face_to_edit().unwrap().1;
+        let expected = (hi - origin.x()) / (start.x() - origin.x());
+        assert!(
+            (face.uv_attributes.scale.x() - expected).abs() < 1e-4,
+            "{:?} expected {expected}",
+            face.uv_attributes.scale
+        );
+        assert_eq!(face.uv_attributes.scale.y(), 1.0);
+        let after = d.to_map_text();
+        assert_ne!(before, after);
+        d.undo();
+        assert_eq!(d.to_map_text(), before);
+        d.redo();
+        assert_eq!(d.to_map_text(), after);
+    }
+
+    #[test]
+    fn trim_grid_can_be_picked_and_pivot_moves_without_editing_the_map() {
+        let mut d = one_face();
+        let before = d.to_map_text();
+        let mut canvas = UvCanvas::default();
+        canvas.view.divisions = [4, 2];
+        let mut raster = Raster::new(500, 260).unwrap();
+        canvas.draw(&d, &mut raster, 500.0, 260.0);
+        let stripe = canvas.stripe(&d);
+        let p = canvas
+            .view
+            .project(&d, 260.0, Vec2f::new(stripe.x(), stripe.y() * 0.33));
+        assert!(canvas.grid_grip(&d, 260.0, p.0, p.1).is_some());
+        let origin = handle_origin(&d, None).unwrap();
+        let p = canvas.view.project(&d, 260.0, origin);
+        canvas.drag_begin(&mut d, 260.0, p.0, p.1, false);
+        assert_eq!(canvas.grip, Some(Grip::Origin));
+        canvas.drag_update(&mut d, 260.0, 25.0, 15.0, true);
+        canvas.drag_end(&mut d);
+        assert_ne!(canvas.origin, Some(origin));
+        assert_eq!(d.to_map_text(), before);
+        canvas.reset_view();
+        assert_eq!(canvas.view.divisions, [4, 2]);
+    }
+
+    #[test]
+    fn origin_axis_drag_changes_only_one_component_and_has_no_history() {
+        let mut d = one_face();
+        let before = d.to_map_text();
+        let mut canvas = UvCanvas::default();
+        canvas.prepare(&d, 500.0, 260.0);
+        let origin = handle_origin(&d, None).unwrap();
+        canvas.origin = Some(origin);
+        let p = canvas.view.project(&d, 260.0, origin);
+        canvas.drag_begin(&mut d, 260.0, p.0 + 123.0, p.1, false);
+        assert_eq!(
+            canvas.grip,
+            Some(Grip::OriginAxis {
+                horizontally: true,
+                vertically: false
+            })
+        );
+        canvas.drag_update(&mut d, 260.0, 27.0, 19.0, true);
+        canvas.drag_end(&mut d);
+        assert_eq!(canvas.origin.unwrap().y(), origin.y());
+        assert_ne!(canvas.origin.unwrap().x(), origin.x());
+        assert_eq!(d.to_map_text(), before);
+    }
+
+    #[test]
+    fn scale_snap_can_be_disabled_with_control() {
+        let mut d = one_face();
+        let mut canvas = UvCanvas::default();
+        canvas.prepare(&d, 500.0, 260.0);
+        canvas.origin = Some(Vec2f::new(-100.0, -79.0));
+        let p = canvas
+            .view
+            .project(&d, 260.0, Vec2f::new(0.0, canvas.stripe(&d).y() * 0.4));
+        let edge = d
+            .face_to_edit_polygon()
+            .unwrap()
+            .iter()
+            .map(|p| d.face_to_edit().unwrap().1.uv_coords(*p).x())
+            .fold(f32::NEG_INFINITY, f32::max);
+        let scale = canvas_scale(&d, 260.0 * canvas.view.zoom);
+        canvas.drag_begin(&mut d, 260.0, p.0, p.1, false);
+        canvas.drag_update(&mut d, 260.0, f64::from(edge) * scale + 2.0, 0.0, true);
+        let expected = (edge + 2.0 / scale as f32 + 100.0) / 100.0;
+        assert!((d.face_to_edit().unwrap().1.uv_attributes.scale.x() - expected).abs() < 1e-4);
+        canvas.drag_cancel(&mut d);
+    }
+
+    #[test]
+    fn shear_is_disabled_for_standard_projection() {
+        let mut d = one_face();
+        let before = d.to_map_text();
+        let mut canvas = UvCanvas::default();
+        let mut raster = Raster::new(500, 260).unwrap();
+        canvas.draw(&d, &mut raster, 500.0, 260.0);
+        let stripe = canvas.stripe(&d);
+        let p = canvas
+            .view
+            .project(&d, 260.0, Vec2f::new(stripe.x(), stripe.y() * 0.4));
+        canvas.drag_begin(&mut d, 260.0, p.0, p.1, true);
+        assert_eq!(canvas.grip, Some(Grip::Nothing));
+        assert!(!canvas.drag_update(&mut d, 260.0, 20.0, 15.0, false));
+        canvas.drag_end(&mut d);
+        assert_eq!(d.to_map_text(), before);
     }
 
     #[test]
@@ -1312,9 +2435,9 @@ mod tests {
         assert!((view.zoom - before.zoom).abs() < 1e-9);
         assert!((view.pan.0 - before.pan.0).abs() < 1e-9);
         view.zoom_at(0.0, 0.0, 1e6);
-        assert_eq!(view.zoom, 0.02);
+        assert!((view.zoom * view.base - 0.02).abs() < 1e-12);
         view.zoom_at(0.0, 0.0, -1e6);
-        assert_eq!(view.zoom, 64.0);
+        assert!((view.zoom * view.base - 64.0).abs() < 1e-12);
     }
 
     #[test]
@@ -1325,8 +2448,7 @@ mod tests {
         let point = document.face_to_edit_polygon().unwrap()[0];
         let position = |d: &Document, v: UvView| {
             let uv = d.face_to_edit().unwrap().1.uv_coords(point);
-            let (x, y) = to_canvas(d, 200.0 * v.zoom, uv);
-            (x + v.pan.0, y + v.pan.1)
+            v.project(d, 200.0, uv)
         };
         let before = position(&document, view);
         let pan = view.pan;
@@ -1464,5 +2586,62 @@ mod tests {
     fn flag_ticks_skip_unused_bits() {
         let names = vec!["solid".to_string(), String::new(), "detail".to_string()];
         assert_eq!(flag_ticks(&names), vec![(1, "solid"), (4, "detail")]);
+    }
+    #[test]
+    fn selectable_pixel_grid_and_rotation_snapping_apply_and_cancel_cleanly() {
+        use crate::uv_workflow::{SnapTarget, TransformKind};
+        for mode in [SnapTarget::Pixel, SnapTarget::Grid] {
+            let mut d = cube_with_a_selected_face();
+            let before = d.to_map_text();
+            let mut canvas = UvCanvas::default();
+            canvas.prepare(&d, 320.0, 240.0);
+            canvas.view.options.snap_target = mode;
+            let stripe = canvas.stripe(&d);
+            let raw = if mode == SnapTarget::Pixel {
+                Vec2f::new(1.2, 3.7)
+            } else {
+                stripe * 0.6
+            };
+            let expected = if mode == SnapTarget::Pixel {
+                Vec2f::new(1.0, 4.0)
+            } else {
+                stripe
+            };
+            let offset = d.face_to_edit().unwrap().1.uv_attributes.offset;
+            canvas.begin_transform(&mut d, TransformKind::Move, 240.0, 100.0, 100.0);
+            canvas.preview_transform(&mut d, TransformKind::Move, raw, [true, true], false);
+            let actual = d.face_to_edit().unwrap().1.uv_attributes.offset;
+            assert!(geometry_math::vec::length(actual - (offset - expected)) < 0.001);
+            canvas.drag_cancel(&mut d);
+            assert_eq!(before, d.to_map_text());
+            canvas.view.options.snap = false;
+            canvas.begin_transform(&mut d, TransformKind::Move, 240.0, 100.0, 100.0);
+            canvas.preview_transform(&mut d, TransformKind::Move, raw, [true, true], false);
+            assert!(
+                geometry_math::vec::length(
+                    d.face_to_edit().unwrap().1.uv_attributes.offset - (offset - raw)
+                ) < 0.001
+            );
+            canvas.drag_cancel(&mut d);
+            canvas.view.options.snap = true;
+            canvas.view.options.snap_target = SnapTarget::Grid;
+            canvas.view.options.rotation_step = 15.0;
+            let rotation = d.face_to_edit().unwrap().1.uv_attributes.rotation;
+            canvas.begin_transform(&mut d, TransformKind::Rotate, 240.0, 100.0, 100.0);
+            canvas.preview_transform(
+                &mut d,
+                TransformKind::Rotate,
+                Vec2f::new(22.0, 0.0),
+                [true, true],
+                false,
+            );
+            assert!(
+                (wrap_180(d.face_to_edit().unwrap().1.uv_attributes.rotation - rotation - 15.0))
+                    .abs()
+                    < 0.001
+            );
+            canvas.drag_cancel(&mut d);
+            assert_eq!(before, d.to_map_text());
+        }
     }
 }

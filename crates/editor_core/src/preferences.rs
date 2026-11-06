@@ -512,6 +512,12 @@ macro_rules! preferences {
 }
 
 preferences! {
+    /// Material browser viewport height in the Face inspector, in interface points.
+    material_browser_face_height: f32 = 360.0, "Materials/Face browser height";
+    /// Material browser viewport height in the detached UV editor, in interface points.
+    material_browser_window_height: f32 = 300.0, "Materials/UV window browser height";
+    /// JSON list of texture folders hidden in material browsers; rendering is unaffected.
+    material_browser_hidden_folders: String = String::new(), "Materials/Hidden browser folders";
     /// Text size in the offline manual, in points.
     manual_font_size: f32 = 13.0, "Manual/Font size";
     /// Whether the manual chapter sidebar is expanded.

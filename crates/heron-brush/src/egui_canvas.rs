@@ -622,6 +622,24 @@ impl Canvas for EguiCanvas<'_> {
         origin: (f64, f64),
         scale: f64,
     ) {
+        self.paint_tiled_image_affine(
+            key,
+            width,
+            height,
+            pixels,
+            origin,
+            [[scale, 0.0], [0.0, scale]],
+        );
+    }
+    fn paint_tiled_image_affine(
+        &mut self,
+        key: &str,
+        width: u32,
+        height: u32,
+        pixels: &[u8],
+        origin: (f64, f64),
+        axes: [[f64; 2]; 2],
+    ) {
         // The upload is kept in egui's memory under the key, with a signature of the
         // pixels, so a material is sent to the GPU once rather than every frame, and again
         // when it is reloaded with new pixels under the same name and size.
@@ -648,21 +666,27 @@ impl Canvas for EguiCanvas<'_> {
             }
         };
         let clip = self.state.clip;
-        let at = self.map(origin.0, origin.1);
-        let tile = egui::vec2(
-            (f64::from(width) * scale * self.state.scale.0) as f32,
-            (f64::from(height) * scale * self.state.scale.1) as f32,
-        );
-        if tile.x.abs() < 1e-3 || tile.y.abs() < 1e-3 {
+        let Some(inverse) = editor_core::uv_view::invert_2x2(axes) else {
             return;
-        }
-        let uv = |p: Pos2| Pos2::new((p.x - at.x) / tile.x, (p.y - at.y) / tile.y);
+        };
         let mut mesh = egui::Mesh::with_texture(texture.id());
-        mesh.add_rect_with_uv(
-            clip,
-            Rect::from_min_max(uv(clip.min), uv(clip.max)),
-            Color32::WHITE,
-        );
+        for pos in [
+            clip.left_top(),
+            clip.right_top(),
+            clip.right_bottom(),
+            clip.left_bottom(),
+        ] {
+            let (x, y) = self.unmap(pos);
+            let (x, y) = (x - origin.0, y - origin.1);
+            let u = (inverse[0][0] * x + inverse[0][1] * y) / f64::from(width);
+            let v = (inverse[1][0] * x + inverse[1][1] * y) / f64::from(height);
+            mesh.vertices.push(egui::epaint::Vertex {
+                pos,
+                uv: Pos2::new(u as f32, v as f32),
+                color: Color32::WHITE,
+            });
+        }
+        mesh.indices.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
         self.emit_one(Shape::mesh(mesh));
     }
     fn clip_extents(&mut self) -> Option<(f64, f64, f64, f64)> {
@@ -956,6 +980,51 @@ fn is_convex(points: &[Pos2]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn affine_texture_mesh_maps_all_four_clip_corners_after_rotation_and_shear() {
+        let ctx = egui::Context::default();
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(400.0, 300.0))),
+                ..Default::default()
+            },
+            |ui| {
+                let painter = ui.painter().clone();
+                let mut canvas = EguiCanvas::new(
+                    &painter,
+                    Rect::from_min_size(egui::pos2(20.0, 10.0), egui::vec2(160.0, 120.0)),
+                );
+                canvas.translate(3.0, 7.0);
+                canvas.scale(1.5, 0.75);
+                canvas.paint_tiled_image_affine(
+                    "affine-test",
+                    2,
+                    2,
+                    &[255; 16],
+                    (11.0, -7.0),
+                    [[1.2, 0.3], [-0.4, 2.0]],
+                );
+            },
+        );
+        let mesh = output
+            .shapes
+            .iter()
+            .find_map(|s| match &s.shape {
+                Shape::Mesh(mesh) if mesh.vertices.len() == 4 => Some(mesh),
+                _ => None,
+            })
+            .expect("texture quad");
+        for v in &mesh.vertices {
+            let (u, w) = (f64::from(v.uv.x) * 2.0, f64::from(v.uv.y) * 2.0);
+            let x = 23.0 + (11.0 + 1.2 * u + 0.3 * w) * 1.5;
+            let y = 17.0 + (-7.0 - 0.4 * u + 2.0 * w) * 0.75;
+            assert!(
+                (x - f64::from(v.pos.x)).abs() < 0.0001 && (y - f64::from(v.pos.y)).abs() < 0.0001
+            );
+        }
+        output.textures_delta.clear();
+    }
 
     /// Whether a point is covered by one of the mesh's triangles.
     fn covered(mesh: &egui::Mesh, p: Pos2) -> bool {

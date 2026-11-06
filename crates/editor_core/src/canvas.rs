@@ -148,6 +148,20 @@ pub trait Canvas {
         scale: f64,
     );
 
+    /// Repeats an image through an affine UV-to-canvas transform. Rows of `axes`
+    /// map a texel displacement to canvas pixels; `origin` is texture coordinate zero.
+    fn paint_tiled_image_affine(
+        &mut self,
+        key: &str,
+        width: u32,
+        height: u32,
+        pixels: &[u8],
+        origin: (f64, f64),
+        axes: [[f64; 2]; 2],
+    ) {
+        self.paint_tiled_image(key, width, height, pixels, origin, axes[0][0]);
+    }
+
     /// The clip area's bounds in user space, where the backend can tell them.
     fn clip_extents(&mut self) -> Option<(f64, f64, f64, f64)> {
         None
@@ -470,6 +484,24 @@ impl Canvas for Raster {
         origin: (f64, f64),
         scale: f64,
     ) {
+        self.paint_tiled_image_affine(
+            _key,
+            width,
+            height,
+            pixels,
+            origin,
+            [[scale, 0.0], [0.0, scale]],
+        );
+    }
+    fn paint_tiled_image_affine(
+        &mut self,
+        _key: &str,
+        width: u32,
+        height: u32,
+        pixels: &[u8],
+        origin: (f64, f64),
+        axes: [[f64; 2]; 2],
+    ) {
         let Some(size) = tiny_skia::IntSize::from_wh(width, height) else {
             return;
         };
@@ -493,8 +525,14 @@ impl Canvas for Raster {
         let transform = self
             .state
             .transform
-            .pre_translate(origin.0 as f32, origin.1 as f32)
-            .pre_scale(scale as f32, scale as f32);
+            .pre_concat(tiny_skia::Transform::from_row(
+                axes[0][0] as f32,
+                axes[1][0] as f32,
+                axes[0][1] as f32,
+                axes[1][1] as f32,
+                origin.0 as f32,
+                origin.1 as f32,
+            ));
         let paint = tiny_skia::Paint {
             shader: tiny_skia::Pattern::new(
                 image.as_ref(),

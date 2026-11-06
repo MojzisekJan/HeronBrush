@@ -15,10 +15,27 @@ use crate::egui_canvas::EguiCanvas;
 use crate::theme;
 use crate::widgets::{self, icons};
 
+mod keyboard;
+mod workflow;
+
 /// How many pixels the canvas is tall.
 const CANVAS_HEIGHT: f32 = 160.0;
 /// The gap between fields and between buttons on a line.
 const GAP: f32 = 4.0;
+const BROWSER_MIN_HEIGHT: f32 = 120.0;
+const BROWSER_MAX_HEIGHT: f32 = 1200.0;
+const BROWSER_SEPARATOR_HEIGHT: f32 = 8.0;
+
+// Six quick UV actions. Fit remains among the additional alignment tools
+// rather than taking a slot in this toolbar.
+const QUICK_UV_ACTIONS: [(usize, &str); 6] = [
+    (0, egui_phosphor::regular::ARROWS_CLOCKWISE),
+    (1, egui_phosphor::regular::GLOBE),
+    (3, egui_phosphor::regular::FLIP_HORIZONTAL),
+    (4, egui_phosphor::regular::FLIP_VERTICAL),
+    (5, egui_phosphor::regular::ARROW_COUNTER_CLOCKWISE),
+    (6, egui_phosphor::regular::ARROW_CLOCKWISE),
+];
 
 /// What a drag on the canvas is doing.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -35,15 +52,31 @@ pub struct UvPanel {
     canvas: UvCanvas,
     window_open: bool,
     number_drag: bool,
+    pivot_vertex: usize,
+    density_face: Option<editor_core::document::FaceRef>,
+    density_revision: Option<u64>,
     canvas_size: Option<(f32, f32)>,
     gesture: Option<Gesture>,
     /// The line under the canvas when "Omit covered faces" has something to say, with the
     /// document revision it was said at: it gives way to the material line on the next
     /// change.
     said: Option<(String, u64)>,
+    /// Which browser is resizing and its height at pointer-down.
+    browser_resize: Option<(bool, f32, f32)>,
+    keyboard: Option<keyboard::Transform>,
+    keyboard_frame: Option<u64>,
+    canvas_region: Option<(egui::ViewportId, egui::Rect, egui::Id, egui::LayerId)>,
+    #[cfg(test)]
+    browser_settings_path: Option<std::path::PathBuf>,
+    #[cfg(test)]
+    field_rects: Vec<(Field, egui::Rect)>,
 }
 
 impl UvPanel {
+    pub fn keyboard_input(&mut self, ui: &egui::Ui, document: &Rc<RefCell<Document>>) {
+        keyboard::handle(self, ui, document);
+    }
+
     pub fn window_open(&self) -> bool {
         self.window_open
     }
@@ -53,8 +86,32 @@ impl UvPanel {
         self.window_open = !self.window_open;
     }
 
+    fn history_key(ui: &egui::Ui) -> Option<bool> {
+        // Read the modifiers on the key event itself: a quick Cmd/Control press
+        // and release may both arrive in one frame, leaving i.modifiers empty.
+        let shortcut = ui.input(|i| {
+            i.events.iter().find_map(|event| match event {
+                egui::Event::Key {
+                    key,
+                    pressed: true,
+                    modifiers,
+                    ..
+                } if (modifiers.command || modifiers.ctrl)
+                    && !modifiers.alt
+                    && matches!(key, egui::Key::Z | egui::Key::Y) =>
+                {
+                    Some((*key, *modifiers, *key == egui::Key::Y || modifiers.shift))
+                }
+                _ => None,
+            })
+        });
+        let (key, modifiers, redo) = shortcut?;
+        ui.input_mut(|i| i.consume_key(modifiers, key))
+            .then_some(redo)
+    }
+
     fn history(&mut self, document: &Rc<RefCell<Document>>, redo: bool) {
-        let editing = self.canvas.dragging() || self.number_drag;
+        let editing = self.canvas.dragging() || self.number_drag || self.keyboard.is_some();
         self.cancel_interaction(document);
         if !editing {
             if redo {
@@ -67,6 +124,7 @@ impl UvPanel {
 
     fn cancel_interaction(&mut self, document: &Rc<RefCell<Document>>) {
         self.gesture = None;
+        self.keyboard = None;
         self.canvas.drag_cancel(&mut document.borrow_mut());
         if std::mem::take(&mut self.number_drag) {
             document.borrow_mut().cancel_transaction();
@@ -74,23 +132,23 @@ impl UvPanel {
     }
 
     /// One panel/canvas instance moves between the inspector and the window.
-    pub fn inspector(&mut self, ui: &mut egui::Ui, document: &Rc<RefCell<Document>>) {
-        let label = if self.window_open {
+    pub fn window_button(ui: &mut egui::Ui, window_open: bool) -> bool {
+        let label = if window_open {
             tr("Return to main window")
         } else {
             tr("UV editor in separate window")
         };
-        let glyph = if self.window_open {
+        let glyph = if window_open {
             egui_phosphor::regular::ARROW_U_UP_LEFT
         } else {
             egui_phosphor::regular::ARROW_SQUARE_OUT
         };
         let response = widgets::icon_button(
             ui,
-            widgets::ROW_HEIGHT,
+            widgets::SECTION_HEIGHT,
             label,
             true,
-            self.window_open,
+            window_open,
             |p, rect, color| {
                 crate::theme::icon_text(
                     p,
@@ -103,17 +161,195 @@ impl UvPanel {
             },
         );
         response.widget_info(|| {
-            egui::WidgetInfo::selected(egui::Role::Button, true, self.window_open, label)
+            egui::WidgetInfo::selected(egui::Role::Button, true, window_open, label)
         });
-        if response.clicked() {
-            self.toggle_window(document);
-        }
+        response.clicked()
+    }
+
+    pub fn inspector(&mut self, ui: &mut egui::Ui, document: &Rc<RefCell<Document>>) {
         if !self.window_open {
-            self.show(ui, document);
+            let width = ui.available_width();
+            self.canvas_area(ui, document, width, CANVAS_HEIGHT);
+            self.quick_actions(ui, document, false);
+            self.transform_fields(ui, document);
         }
     }
 
-    pub fn show_window(&mut self, ctx: &egui::Context, document: &Rc<RefCell<Document>>) {
+    fn browser_height(window: bool) -> f32 {
+        let height = editor_core::preferences::pref(|p| {
+            if window {
+                p.material_browser_window_height
+            } else {
+                p.material_browser_face_height
+            }
+        });
+        if height.is_finite() {
+            height.clamp(BROWSER_MIN_HEIGHT, BROWSER_MAX_HEIGHT)
+        } else if window {
+            300.0
+        } else {
+            360.0
+        }
+    }
+
+    fn browser_separator(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: bool,
+        maximum: f32,
+        above: bool,
+    ) -> egui::Response {
+        let maximum = maximum.clamp(BROWSER_MIN_HEIGHT, BROWSER_MAX_HEIGHT);
+        let (rect, _) = ui.allocate_exact_size(
+            egui::vec2(ui.available_width(), BROWSER_SEPARATOR_HEIGHT),
+            egui::Sense::hover(),
+        );
+        let response = ui.interact(
+            rect,
+            ui.make_persistent_id(("material-browser-separator", window)),
+            egui::Sense::drag(),
+        );
+        let response = response
+            .on_hover_cursor(egui::CursorIcon::ResizeVertical)
+            .on_hover_text(tr("Height"));
+        let color = if response.hovered() || response.dragged() {
+            theme::accent()
+        } else {
+            theme::dim()
+        };
+        ui.painter().hline(
+            rect.x_range(),
+            rect.center().y,
+            egui::Stroke::new(1.0, color),
+        );
+        ui.painter().hline(
+            rect.center().x - 18.0..=rect.center().x + 18.0,
+            rect.center().y,
+            egui::Stroke::new(3.0, color),
+        );
+        if response.drag_started() {
+            let origin = ui
+                .input(|i| i.pointer.press_origin())
+                .or_else(|| response.interact_pointer_pos())
+                .unwrap_or(rect.center());
+            self.browser_resize =
+                Some((window, Self::browser_height(window).min(maximum), origin.y));
+        }
+        if response.dragged() {
+            if let Some((target, start, origin_y)) = self
+                .browser_resize
+                .filter(|(target, _, _)| *target == window)
+            {
+                let delta = response
+                    .interact_pointer_pos()
+                    .map_or(0.0, |pos| pos.y - origin_y);
+                let height = (start + delta * if above { -1.0 } else { 1.0 })
+                    .clamp(BROWSER_MIN_HEIGHT, maximum);
+                if Self::browser_height(target) != height {
+                    editor_core::preferences::edit(|p| {
+                        if target {
+                            p.material_browser_window_height = height;
+                        } else {
+                            p.material_browser_face_height = height;
+                        }
+                    });
+                    ui.ctx().request_repaint();
+                }
+            }
+        }
+        if response.drag_stopped()
+            && self
+                .browser_resize
+                .is_some_and(|(target, _, _)| target == window)
+        {
+            self.browser_resize = None;
+            let path = editor_core::preferences::Preferences::default_path();
+            #[cfg(test)]
+            let path = self.browser_settings_path.clone().unwrap_or(path);
+            if let Err(error) = editor_core::preferences::current().save(&path) {
+                editor_core::complain!(
+                    "{}",
+                    editor_core::i18n::fill(
+                        "Could not save the preferences to {}: {}",
+                        &[&path.display().to_string(), &error.to_string()]
+                    )
+                );
+            }
+        }
+        response
+    }
+
+    fn browser_contents(
+        &mut self,
+        ui: &mut egui::Ui,
+        document: &Rc<RefCell<Document>>,
+        materials: &mut crate::material_page::MaterialPage,
+        height: f32,
+        window: bool,
+    ) -> bool {
+        if materials.reveal {
+            widgets::open_section(ui, "face-materials");
+        }
+        let mut settings = false;
+        let open = widgets::section_with_action(
+            ui,
+            "face-materials",
+            tr("Materials"),
+            true,
+            |ui| {
+                settings = widgets::icon_button(
+                    ui,
+                    widgets::SECTION_HEIGHT,
+                    tr("Settings"),
+                    true,
+                    false,
+                    |p, r, color| {
+                        theme::icon_text(
+                            p,
+                            r.center(),
+                            egui::Align2::CENTER_CENTER,
+                            egui_phosphor::regular::GEAR_SIX,
+                            theme::icon(),
+                            color,
+                        );
+                    },
+                )
+                .clicked();
+            },
+            |ui| {
+                egui::ScrollArea::vertical()
+                    .id_salt(("material-browser-height", window))
+                    .auto_shrink([false, false])
+                    .max_height(height)
+                    .min_scrolled_height(height)
+                    .show(ui, |ui| materials.show_sized(ui, document, Some(height)));
+            },
+        )
+        .is_some();
+        if settings {
+            materials.settings_open = true;
+            ui.ctx().request_repaint();
+        }
+        open
+    }
+
+    pub(crate) fn material_browser(
+        &mut self,
+        ui: &mut egui::Ui,
+        document: &Rc<RefCell<Document>>,
+        materials: &mut crate::material_page::MaterialPage,
+    ) {
+        if self.browser_contents(ui, document, materials, Self::browser_height(false), false) {
+            self.browser_separator(ui, false, BROWSER_MAX_HEIGHT, false);
+        }
+    }
+
+    pub fn show_window(
+        &mut self,
+        ctx: &egui::Context,
+        document: &Rc<RefCell<Document>>,
+        materials: &mut crate::material_page::MaterialPage,
+    ) {
         if !self.window_open {
             return;
         }
@@ -123,7 +359,7 @@ impl UvPanel {
             ctx,
             "uv-editor",
             tr("UV editor"),
-            [1000.0, 760.0],
+            [1000.0, 800.0],
             |ui, part| {
                 if part == crate::dialog::Part::Actions {
                     close |= crate::dialog::button(ui, tr("Return to main window"), true).clicked();
@@ -142,17 +378,8 @@ impl UvPanel {
                 // Native child windows do not run the main window's shortcut handler.
                 if ui.ctx().viewport_id() != egui::ViewportId::ROOT && !ui.ctx().text_edit_focused()
                 {
-                    let modifiers = ui.input(|i| i.modifiers);
-                    if (modifiers.command || modifiers.ctrl) && !modifiers.alt {
-                        let (z, y) = ui.input_mut(|i| {
-                            (
-                                i.consume_key(modifiers, egui::Key::Z),
-                                i.consume_key(modifiers, egui::Key::Y),
-                            )
-                        });
-                        if z || y {
-                            self.history(document, y || modifiers.shift);
-                        }
+                    if let Some(redo) = Self::history_key(ui) {
+                        self.history(document, redo);
                     }
                 }
                 if !was_editing && !ui.ctx().text_edit_focused() {
@@ -166,7 +393,27 @@ impl UvPanel {
                         ui.allocate_ui_with_layout(
                             egui::vec2(canvas_width, height),
                             egui::Layout::top_down(egui::Align::Min),
-                            |ui| self.canvas_area(ui, document, canvas_width, height),
+                            |ui| {
+                                let gap = ui.spacing().item_spacing.y;
+                                let overhead = widgets::SECTION_HEIGHT
+                                    + BROWSER_SEPARATOR_HEIGHT
+                                    + gap * 6.0
+                                    + 10.0
+                                    + (widgets::ROW_HEIGHT + GAP);
+                                let maximum = (height - 160.0 - overhead).max(BROWSER_MIN_HEIGHT);
+                                let browser_height = Self::browser_height(true).min(maximum);
+                                let canvas_height = (height - browser_height - overhead).max(160.0);
+                                self.canvas_area(ui, document, canvas_width, canvas_height);
+                                self.quick_actions(ui, document, true);
+                                self.browser_separator(ui, true, maximum, true);
+                                self.browser_contents(
+                                    ui,
+                                    document,
+                                    materials,
+                                    browser_height,
+                                    true,
+                                );
+                            },
                         );
                         ui.allocate_ui_with_layout(
                             egui::vec2(320.0, height),
@@ -174,14 +421,30 @@ impl UvPanel {
                             |ui| {
                                 egui::ScrollArea::vertical()
                                     .id_salt("uv-window-controls")
-                                    .show(ui, |ui| self.controls(ui, document));
+                                    .auto_shrink([false, false])
+                                    .show(ui, |ui| {
+                                        self.transform_fields(ui, document);
+                                        ui.add_space(GAP);
+                                        self.density_controls(ui, document);
+                                        ui.add_space(GAP);
+                                        self.controls(ui, document);
+                                    });
                             },
                         );
                     });
                 } else {
                     egui::ScrollArea::vertical()
                         .id_salt("uv-window-narrow")
-                        .show(ui, |ui| self.show(ui, document));
+                        .show(ui, |ui| {
+                            let width = ui.available_width();
+                            self.canvas_area(ui, document, width, CANVAS_HEIGHT);
+                            self.quick_actions(ui, document, false);
+                            self.transform_fields(ui, document);
+                            let browser_height = Self::browser_height(true);
+                            self.browser_contents(ui, document, materials, browser_height, true);
+                            self.browser_separator(ui, true, BROWSER_MAX_HEIGHT, false);
+                            self.controls(ui, document);
+                        });
                 }
             },
         );
@@ -192,18 +455,196 @@ impl UvPanel {
         }
     }
 
-    /// Draws the panel.
+    /// Draws the UV controls alone for input regression tests.
+    #[cfg(test)]
     pub fn show(&mut self, ui: &mut egui::Ui, document: &Rc<RefCell<Document>>) {
         let width = ui.available_width();
         ui.spacing_mut().item_spacing.y = GAP;
         self.canvas_area(ui, document, width, CANVAS_HEIGHT);
+        self.quick_actions(ui, document, false);
+        self.transform_fields(ui, document);
         self.controls(ui, document);
     }
 
-    fn controls(&mut self, ui: &mut egui::Ui, document: &Rc<RefCell<Document>>) {
+    fn quick_actions(
+        &mut self,
+        ui: &mut egui::Ui,
+        document: &Rc<RefCell<Document>>,
+        density_in_panel: bool,
+    ) {
+        let enabled = document.borrow().face_to_edit().is_some();
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = GAP;
+            for (slot, &(index, glyph)) in QUICK_UV_ACTIONS.iter().enumerate() {
+                if slot == 2 || slot == 4 {
+                    ui.add_space(GAP);
+                }
+                let (label, action, tip) = uv_view::BUTTONS[index];
+                let title = format!("{} · {}", tr("UV"), tr(label));
+                let tooltip = if tip.is_empty() {
+                    title
+                } else {
+                    format!("{}\n{}", title, tr(tip))
+                };
+                let response = widgets::icon_button(
+                    ui,
+                    widgets::ROW_HEIGHT,
+                    &tooltip,
+                    enabled,
+                    false,
+                    |p, r, color| {
+                        theme::icon_text(
+                            p,
+                            r.center(),
+                            egui::Align2::CENTER_CENTER,
+                            glyph,
+                            theme::icon(),
+                            color,
+                        );
+                    },
+                );
+                response.widget_info(|| {
+                    egui::WidgetInfo::selected(egui::Role::Button, enabled, false, tr(label))
+                });
+                if response.clicked() {
+                    let change = match action {
+                        uv_view::Action::Rotate { counter_clockwise } => {
+                            Some(editor_core::uv_workflow::Transform::Rotate(
+                                if counter_clockwise { 90.0 } else { -90.0 },
+                            ))
+                        }
+                        uv_view::Action::Flip { horizontally } => {
+                            Some(editor_core::uv_workflow::Transform::Scale(
+                                geometry_math::vec::Vec2f::new(
+                                    if horizontally { -1.0 } else { 1.0 },
+                                    if horizontally { 1.0 } else { -1.0 },
+                                ),
+                            ))
+                        }
+                        _ => None,
+                    };
+                    if let Some(change) = change {
+                        let origin = self
+                            .canvas
+                            .pivot(&document.borrow())
+                            .unwrap_or(geometry_math::vec::Vec2f::zero());
+                        editor_core::uv_workflow::transform(
+                            &mut document.borrow_mut(),
+                            change,
+                            self.canvas.view.options.pivot,
+                            origin,
+                        );
+                    } else {
+                        uv_view::run(
+                            &mut document.borrow_mut(),
+                            action,
+                            crate::view2d::modifiers(ui),
+                        );
+                    }
+                }
+            }
+            self.workflow_buttons(ui, document, density_in_panel);
+        });
+    }
+
+    fn transform_fields(&mut self, ui: &mut egui::Ui, document: &Rc<RefCell<Document>>) {
         if self.number_drag && ui.input(|i| !i.focused) {
             self.cancel_interaction(document);
         }
+        ui.spacing_mut().item_spacing.y = GAP;
+        let enabled = document.borrow().face_to_edit().is_some();
+        ui.add_enabled_ui(enabled, |ui| {
+            for (text, fields) in uv_view::ROWS.into_iter().take(3) {
+                self.number_row(ui, document, text, fields);
+            }
+        });
+    }
+
+    fn number_row(
+        &mut self,
+        ui: &mut egui::Ui,
+        document: &Rc<RefCell<Document>>,
+        text: &'static str,
+        fields: &[Field],
+    ) {
+        let compact = matches!(text, "Offset" | "Scale" | "Angle");
+        let label_width = if compact {
+            [tr("Offset"), tr("Scale"), tr("Angle")]
+                .into_iter()
+                .map(|label| {
+                    ui.painter()
+                        .layout_no_wrap(label.to_string(), theme::body(), theme::fg())
+                        .size()
+                        .x
+                })
+                .fold(0.0_f32, f32::max)
+                .clamp(48.0, 96.0)
+                + 8.0
+        } else {
+            (ui.available_width() * widgets::LABEL_SHARE).floor()
+        };
+        widgets::row_with_label_width(ui, tr(text), None, label_width, |ui| {
+            ui.spacing_mut().item_spacing.x = GAP;
+            let n = fields.len() as f32;
+            let each = ((ui.available_width() - GAP * (n - 1.0)) / n).floor();
+            for (axis, &field) in fields.iter().enumerate() {
+                // A pair is a vector: its components marked X and Y.
+                let caption = (fields.len() > 1).then(|| (["X", "Y"][axis.min(1)], axis));
+                self.number(ui, document, field, each, caption);
+            }
+        });
+    }
+
+    pub(crate) fn controls(&mut self, ui: &mut egui::Ui, document: &Rc<RefCell<Document>>) {
+        if self.number_drag && ui.input(|i| !i.focused) {
+            self.cancel_interaction(document);
+        }
+        ui.horizontal(|ui| {
+            ui.label(tr("UV grid"));
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if theme::button(ui, tr("Reset view"), 108.0, true).clicked() {
+                    self.canvas.reset_view();
+                }
+            });
+        });
+        let labels_width: f32 = ["U", "V"]
+            .into_iter()
+            .map(|label| {
+                ui.painter()
+                    .layout_no_wrap(label.to_string(), theme::body(), theme::fg())
+                    .size()
+                    .x
+            })
+            .sum();
+        let field_width = ((ui.available_width() - labels_width - 3.0 * GAP) / 2.0)
+            .floor()
+            .max(1.0);
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = GAP;
+            for axis in 0..2 {
+                ui.label(["U", "V"][axis]);
+                let mut value = self.canvas.view.divisions[axis].max(1);
+                if ui
+                    .add(
+                        egui_native_look::NumberField::new(&mut value)
+                            .range(1..=64)
+                            .width(field_width)
+                            .step(1.0)
+                            .accessible_label(format!("UV grid {}", ["U", "V"][axis])),
+                    )
+                    .changed()
+                {
+                    self.canvas.view.divisions[axis] = value;
+                }
+            }
+        });
+        ui.label(
+            egui::RichText::new(tr(
+                "Drag grid lines to scale; Alt-drag to shear; Ctrl/Cmd disables snapping",
+            ))
+            .small()
+            .color(theme::dim()),
+        );
         let width = ui.available_width();
         ui.spacing_mut().item_spacing.y = GAP;
         let revision = document.borrow().revision();
@@ -215,17 +656,8 @@ impl UvPanel {
 
         let has_face = document.borrow().face_to_edit().is_some();
         ui.add_enabled_ui(has_face, |ui| {
-            for (text, fields) in uv_view::ROWS {
-                widgets::row(ui, tr(text), None, |ui| {
-                    ui.spacing_mut().item_spacing.x = GAP;
-                    let n = fields.len() as f32;
-                    let each = ((ui.available_width() - GAP * (n - 1.0)) / n).floor();
-                    for (axis, &field) in fields.iter().enumerate() {
-                        // A pair is a vector: its components marked X and Y.
-                        let caption = (fields.len() > 1).then(|| (["X", "Y"][axis.min(1)], axis));
-                        self.number(ui, document, field, each, caption);
-                    }
-                });
+            for (text, fields) in uv_view::ROWS.into_iter().skip(3) {
+                self.number_row(ui, document, text, fields);
                 let field = match text {
                     "Content flags" => Field::ContentFlags,
                     "Surface flags" => Field::SurfaceFlags,
@@ -263,12 +695,8 @@ impl UvPanel {
         let items = |buttons: &[(&'static str, uv_view::Action, &'static str)]| -> Vec<(&'static str, &'static str, bool)> {
             buttons.iter().map(|(label, _, tip)| (tr(label), if tip.is_empty() { "" } else { tr(tip) }, true)).collect()
         };
-        // Resetting and fitting, then flipping and turning.
-        for (strip, range) in [(0, 0..3), (1, 3..7)] {
-            let buttons = &uv_view::BUTTONS[range];
-            if let Some(i) = widgets::segmented(ui, ("uv-buttons", strip), &items(buttons)) {
-                run(ui, buttons[i].1);
-            }
+        if widgets::segmented(ui, "uv-fit-both", &[(tr("Fit"), "", has_face)]).is_some() {
+            run(ui, uv_view::Action::Fit);
         }
         // Aligning: Align, the four justify buttons, and the two fits.
         let align = &uv_view::ALIGNMENT_BUTTONS;
@@ -328,17 +756,25 @@ impl UvPanel {
         width: f32,
         height: f32,
     ) {
-        if self.gesture.is_none() && self.canvas_size != Some((width, height)) {
-            self.canvas.reset_view();
-            self.canvas_size = Some((width, height));
-        }
+        self.canvas_size = Some((width, height));
+        self.canvas
+            .prepare(&document.borrow(), f64::from(width), f64::from(height));
         let (rect, response) =
             ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::click_and_drag());
+        self.canvas_region = Some((ui.ctx().viewport_id(), rect, response.id, ui.layer_id()));
+        self.keyboard_input(ui, document);
+        let keyboard_owned =
+            self.keyboard.is_some() || self.keyboard_frame == Some(ui.ctx().cumulative_frame_nr());
+        if response.has_focus() && !ui.ctx().text_edit_focused() {
+            if let Some(redo) = Self::history_key(ui) {
+                self.history(document, redo);
+            }
+        }
         let height = f64::from(rect.height());
         let local = |at: egui::Pos2| (f64::from(at.x - rect.left()), f64::from(at.y - rect.top()));
         let modifiers = crate::view2d::modifiers(ui);
 
-        if response.drag_started() {
+        if !keyboard_owned && response.drag_started() {
             response.request_focus();
             // The drag begins where the button went down, not where the pointer is once
             // egui has decided this is a drag.
@@ -358,14 +794,19 @@ impl UvPanel {
                 Some(Gesture::Edit(_)) => {
                     let (x, y) = local(at);
                     let shear = button(egui::PointerButton::Middle) || modifiers.alt;
-                    self.canvas
-                        .drag_begin(&mut document.borrow_mut(), height, x, y, shear);
+                    if modifiers.control && !shear {
+                        self.canvas
+                            .rotate_drag_begin(&mut document.borrow_mut(), height, x, y);
+                    } else {
+                        self.canvas
+                            .drag_begin(&mut document.borrow_mut(), height, x, y, shear);
+                    }
                 }
                 Some(Gesture::Pan(_)) => self.canvas.pan_begin(),
                 None => {}
             }
         }
-        if response.dragged() {
+        if !keyboard_owned && response.dragged() {
             if let Some(now) = response.interact_pointer_pos() {
                 match self.gesture {
                     Some(Gesture::Edit(from)) => {
@@ -387,7 +828,7 @@ impl UvPanel {
                 }
             }
         }
-        if response.drag_stopped() {
+        if !keyboard_owned && response.drag_stopped() {
             if let Some(Gesture::Edit(_)) = self.gesture.take() {
                 self.canvas.drag_end(&mut document.borrow_mut());
             }
@@ -404,25 +845,37 @@ impl UvPanel {
         }
         // The wheel zooms about the pointer, one step a notch, and is not left for the inspector to scroll with.
         if response.hovered() {
-            let steps: Vec<f32> = ui.input(|i| {
+            let steps: Vec<f64> = ui.input(|i| {
                 i.events
                     .iter()
                     .filter_map(|event| match event {
-                        egui::Event::MouseWheel { delta, .. } if delta.y != 0.0 => Some(delta.y),
+                        egui::Event::MouseWheel { unit, delta, .. } if delta.y != 0.0 => {
+                            let divisor = match unit {
+                                egui::MouseWheelUnit::Point => 100.0,
+                                egui::MouseWheelUnit::Line => 1.0,
+                                egui::MouseWheelUnit::Page => 0.1,
+                            };
+                            Some(-f64::from(delta.y) / divisor)
+                        }
                         _ => None,
                     })
                     .collect()
             });
             if let Some(at) = response.hover_pos() {
                 let (x, y) = local(at);
-                for step in &steps {
-                    self.canvas.scroll(x, y, -f64::from(step.signum()));
+                for &step in &steps {
+                    self.canvas.scroll(x, y, step);
                 }
             }
             if !steps.is_empty() {
-                ui.input_mut(|i| i.smooth_scroll_delta = egui::Vec2::ZERO);
+                ui.input_mut(|i| {
+                    i.smooth_scroll_delta = egui::Vec2::ZERO;
+                });
             }
         }
+
+        self.canvas
+            .hover(&document.borrow(), height, response.hover_pos().map(local));
         let painter = ui.painter_at(rect);
         let mut canvas = EguiCanvas::new(&painter, rect);
         self.canvas.draw(
@@ -431,6 +884,37 @@ impl UvPanel {
             f64::from(rect.width()),
             height,
         );
+        if let Some(session) = &self.keyboard {
+            let text = session.label();
+            let font = theme::body();
+            let galley = painter.layout_no_wrap(text, font, theme::fg());
+            let at = rect.left_top() + egui::vec2(8.0, 8.0);
+            painter.rect_filled(
+                egui::Rect::from_min_size(
+                    at - egui::vec2(4.0, 3.0),
+                    galley.size() + egui::vec2(8.0, 6.0),
+                ),
+                3.0,
+                egui::Color32::from_black_alpha(220),
+            );
+            painter.galley(at, galley, theme::fg());
+        }
+        if let Some(at) = response.hover_pos() {
+            let (x, y) = local(at);
+            if let Some(uv_view::Grip::Scale {
+                horizontally,
+                vertically,
+            }) = self.canvas.grid_handle(&document.borrow(), height, x, y)
+            {
+                ui.ctx().set_cursor_icon(match (horizontally, vertically) {
+                    (true, true) => egui::CursorIcon::ResizeNwSe,
+                    (true, false) => egui::CursorIcon::ResizeHorizontal,
+                    _ => egui::CursorIcon::ResizeVertical,
+                });
+            } else {
+                ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+            }
+        }
         if response.has_focus() {
             painter.rect_stroke(
                 rect,
@@ -473,6 +957,8 @@ impl UvPanel {
                 None => widgets::spin_width(ui, &mut value, low..=high, step, digits, width),
             })
             .inner;
+        #[cfg(test)]
+        self.field_rects.push((field, response.rect));
         if response.drag_started() {
             self.number_drag = !document.borrow().in_transaction();
             if self.number_drag {
@@ -593,7 +1079,13 @@ mod tests {
                 events,
                 ..Default::default()
             },
-            |ui| panel.show_window(ui.ctx(), d),
+            |ui| {
+                panel.show_window(
+                    ui.ctx(),
+                    d,
+                    &mut crate::material_page::MaterialPage::default(),
+                )
+            },
         );
         output.textures_delta.clear();
         output
@@ -654,7 +1146,12 @@ mod tests {
             panel.canvas_size.unwrap().1 > CANVAS_HEIGHT,
             "detached canvas should use the window height"
         );
-        click(&ctx, &mut panel, &d, text_at(&output, tr("Flip H")));
+        click(
+            &ctx,
+            &mut panel,
+            &d,
+            text_at(&output, egui_phosphor::regular::FLIP_HORIZONTAL),
+        );
         let after = d.borrow().to_map_text();
         assert_ne!(after, before);
         let output = window_frame(&ctx, &mut panel, &d, vec![]);
@@ -714,7 +1211,12 @@ mod tests {
         window_frame(&ctx, &mut panel, &d, vec![]);
         window_frame(&ctx, &mut panel, &d, vec![]);
         let output = window_frame(&ctx, &mut panel, &d, vec![]);
-        click(&ctx, &mut panel, &d, text_at(&output, tr("Flip H")));
+        click(
+            &ctx,
+            &mut panel,
+            &d,
+            text_at(&output, egui_phosphor::regular::FLIP_HORIZONTAL),
+        );
         assert_ne!(*d.borrow().face_at(target).unwrap(), original);
         assert_eq!(*d.borrow().face_at(other).unwrap(), untouched);
         assert_eq!(d.borrow().selection_count(), 1);
@@ -768,6 +1270,513 @@ mod tests {
             classify(true, false, false, true, at),
             Some(Gesture::Edit(at))
         );
+    }
+
+    #[test]
+    fn all_six_quick_uv_buttons_edit_the_face_and_undo_as_one_action() {
+        use geometry_math::vec::Vec2f;
+        use map_model::uv::UvCoordSystem;
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        for (slot, &(_, glyph)) in QUICK_UV_ACTIONS.iter().enumerate() {
+            let d = document();
+            d.borrow_mut().edit_faces(|f| {
+                let (u_axis, v_axis) = f.uv_coord_system.axes(f.normal(), &f.uv_attributes);
+                f.uv_coord_system = UvCoordSystem::Parallel { u_axis, v_axis };
+                f.uv_attributes.scale = Vec2f::new(1.25, 0.75);
+                f.rotate_uv(17.0);
+                f.move_uv(Vec2f::new(9.0, -7.0));
+            });
+            let face = d.borrow().face_to_edit().unwrap().0;
+            let original = d.borrow().face_at(face).unwrap().clone();
+            let before = d.borrow().to_map_text();
+            let mut panel = UvPanel::default();
+            let draw = |panel: &mut UvPanel, events| {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(400.0, 1100.0),
+                        )),
+                        events,
+                        ..Default::default()
+                    },
+                    |ui| panel.show(ui, &d),
+                );
+                output.textures_delta.clear();
+                output
+            };
+            draw(&mut panel, vec![]);
+            let output = draw(&mut panel, vec![]);
+            let at = text_at(&output, glyph);
+            let offset = text_at(&output, tr("Offset"));
+            assert!(
+                at.y >= CANVAS_HEIGHT && at.y < offset.y,
+                "quick actions must be directly below the canvas"
+            );
+            for &(_, icon) in &QUICK_UV_ACTIONS {
+                let position = text_at(&output, icon);
+                assert!((position.y - at.y).abs() < 1.0, "all six belong to one row");
+                assert_eq!(
+                    output
+                        .shapes
+                        .iter()
+                        .filter(
+                            |s| matches!(&s.shape,egui::Shape::Text(t) if t.galley.text()==icon)
+                        )
+                        .count(),
+                    1,
+                    "no duplicate UV action rows"
+                );
+            }
+            for pressed in [true, false] {
+                draw(
+                    &mut panel,
+                    vec![
+                        egui::Event::PointerMoved(at),
+                        egui::Event::PointerButton {
+                            pos: at,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+            let changed = d.borrow().face_at(face).unwrap().clone();
+            match slot {
+                0 => {
+                    assert_eq!(changed.uv_attributes, Default::default());
+                    assert!(matches!(
+                        changed.uv_coord_system,
+                        UvCoordSystem::Parallel { .. }
+                    ));
+                }
+                1 => {
+                    assert_eq!(changed.uv_attributes, Default::default());
+                    assert!(matches!(changed.uv_coord_system, UvCoordSystem::Paraxial));
+                }
+                2 => {
+                    assert_eq!(
+                        changed.uv_attributes.scale.x(),
+                        -original.uv_attributes.scale.x()
+                    );
+                    assert_eq!(
+                        changed.uv_attributes.scale.y(),
+                        original.uv_attributes.scale.y()
+                    );
+                }
+                3 => {
+                    assert_eq!(
+                        changed.uv_attributes.scale.x(),
+                        original.uv_attributes.scale.x()
+                    );
+                    assert_eq!(
+                        changed.uv_attributes.scale.y(),
+                        -original.uv_attributes.scale.y()
+                    );
+                }
+                4 => assert!(
+                    uv_view::wrap_180(
+                        changed.uv_attributes.rotation - original.uv_attributes.rotation - 90.0
+                    )
+                    .abs()
+                        < 0.001
+                ),
+                5 => assert!(
+                    uv_view::wrap_180(
+                        changed.uv_attributes.rotation - original.uv_attributes.rotation + 90.0
+                    )
+                    .abs()
+                        < 0.001
+                ),
+                _ => unreachable!(),
+            }
+            let after = d.borrow().to_map_text();
+            assert_ne!(before, after);
+            d.borrow_mut().undo();
+            assert_eq!(d.borrow().to_map_text(), before);
+            d.borrow_mut().redo();
+            assert_eq!(d.borrow().to_map_text(), after);
+            d.borrow_mut().clear_selection();
+            let unchanged = d.borrow().to_map_text();
+            draw(&mut panel, vec![]);
+            for pressed in [true, false] {
+                draw(
+                    &mut panel,
+                    vec![
+                        egui::Event::PointerMoved(at),
+                        egui::Event::PointerButton {
+                            pos: at,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+            assert_eq!(
+                d.borrow().to_map_text(),
+                unchanged,
+                "toolbar is disabled without a target face"
+            );
+        }
+    }
+
+    #[test]
+    fn materials_settings_is_a_header_action_and_opens_its_own_window() {
+        let ctx = egui::Context::default();
+        ctx.set_embed_viewports(true);
+        crate::theme::install(&ctx);
+        let d = document();
+        let mut panel = UvPanel::default();
+        let mut materials = crate::material_page::MaterialPage::default();
+        let draw =
+            |panel: &mut UvPanel, materials: &mut crate::material_page::MaterialPage, events| {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(1280.0, 1100.0),
+                        )),
+                        events,
+                        ..Default::default()
+                    },
+                    |ui| {
+                        ui.set_width(320.0);
+                        panel.material_browser(ui, &d, materials);
+                        materials.show_settings_window(ui.ctx(), &d);
+                    },
+                );
+                output.textures_delta.clear();
+                output
+            };
+        draw(&mut panel, &mut materials, vec![]);
+        let output = draw(&mut panel, &mut materials, vec![]);
+        let header = text_at(&output, tr("Materials"));
+        let settings = text_at(&output, egui_phosphor::regular::GEAR_SIX);
+        assert!(output.shapes.iter().any(|s| matches!(&s.shape, egui::Shape::Text(t) if t.galley.text() == egui_phosphor::regular::GEAR_SIX && t.galley.rows.len() == 1)));
+        assert!((header.y - settings.y).abs() < 4.0);
+        assert!(settings.x > header.x);
+        let has_title = |output: &egui::FullOutput, title: &str| {
+            output
+                .shapes
+                .iter()
+                .any(|s| matches!(&s.shape, egui::Shape::Text(t) if t.galley.text() == title))
+        };
+        assert!(!has_title(&output, tr("Load folder")));
+        // Collapse Materials first: the action must remain available in its header.
+        for at in [header, settings] {
+            for pressed in [true, false] {
+                draw(
+                    &mut panel,
+                    &mut materials,
+                    vec![
+                        egui::Event::PointerMoved(at),
+                        egui::Event::PointerButton {
+                            pos: at,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+        }
+        assert!(materials.settings_open);
+        draw(&mut panel, &mut materials, vec![]);
+        let output = draw(&mut panel, &mut materials, vec![]);
+        assert!(has_title(&output, tr("Browser settings")));
+        assert!(has_title(&output, tr("Load folder")));
+        assert!(has_title(&output, tr("Texture folders")));
+        let list = materials.folder_viewport.expect("folder scroll viewport");
+        for _ in 0..30 {
+            draw(&mut panel, &mut materials, vec![]);
+        }
+        let settled = materials.folder_viewport.unwrap();
+        assert!(
+            (settled.height() - list.height()).abs() < 1.0,
+            "filling the list must not grow the window every frame: {list:?} -> {settled:?}"
+        );
+
+        assert!(
+            list.width() > 400.0 && list.height() > 300.0,
+            "folder list must fill the settings body: {list:?}"
+        );
+    }
+
+    #[test]
+    fn offset_scale_and_angle_are_compact_and_before_material_browser_in_both_views() {
+        let ctx = egui::Context::default();
+        ctx.set_embed_viewports(true);
+        crate::theme::install(&ctx);
+        let d = document();
+        let mut panel = UvPanel::default();
+        let mut materials = crate::material_page::MaterialPage::default();
+        let draw = |panel: &mut UvPanel,
+                    materials: &mut crate::material_page::MaterialPage,
+                    window: bool| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1280.0, 1100.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| {
+                    if window {
+                        panel.show_window(ui.ctx(), &d, materials);
+                    } else {
+                        ui.set_width(320.0);
+                        panel.inspector(ui, &d);
+                        panel.material_browser(ui, &d, materials);
+                    }
+                },
+            );
+            output.textures_delta.clear();
+            output
+        };
+        for window in [false, true] {
+            panel.window_open = window;
+            draw(&mut panel, &mut materials, window);
+            panel.field_rects.clear();
+            let output = draw(&mut panel, &mut materials, window);
+            for (field, rect) in &panel.field_rects {
+                if matches!(
+                    field,
+                    Field::OffsetX | Field::OffsetY | Field::ScaleX | Field::ScaleY
+                ) {
+                    assert!(
+                        rect.width() > 105.0,
+                        "UV numeric entries should use the row's width: {rect:?}"
+                    );
+                }
+            }
+            let offset = text_at(&output, tr("Offset"));
+            let scale = text_at(&output, tr("Scale"));
+            let angle = text_at(&output, tr("Angle"));
+            let browser = text_at(&output, tr("Materials"));
+            assert!(offset.y < scale.y && scale.y < angle.y);
+            if !window {
+                assert!(angle.y < browser.y);
+            }
+            assert!(
+                angle.y - offset.y < 80.0,
+                "three compact rows must stay together"
+            );
+            if !window {
+                assert!(
+                    offset.y < CANVAS_HEIGHT + widgets::ROW_HEIGHT + 50.0,
+                    "fields must directly follow the 160px canvas"
+                );
+            } else {
+                assert!(
+                    offset.x > browser.x + 400.0,
+                    "detached transforms belong in the right column"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn browser_separators_resize_independently_and_heights_survive_reload() {
+        use editor_core::preferences::{self, Preferences};
+        preferences::set_current(Preferences::default());
+        let path =
+            std::env::temp_dir().join(format!("heron-browser-height-{}.cfg", std::process::id()));
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let mut panel = UvPanel {
+            browser_settings_path: Some(path.clone()),
+            ..Default::default()
+        };
+        let frame = |panel: &mut UvPanel, window: bool, maximum: f32, events| {
+            let mut at = egui::Pos2::ZERO;
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(600.0, 500.0),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    at = panel
+                        .browser_separator(ui, window, maximum, window)
+                        .rect
+                        .center();
+                },
+            );
+            output.textures_delta.clear();
+            at
+        };
+        let button = |pos, pressed| egui::Event::PointerButton {
+            pos,
+            pressed,
+            button: egui::PointerButton::Primary,
+            modifiers: egui::Modifiers::NONE,
+        };
+        for (window, dy, expected) in [(false, 60.0, 420.0), (true, 45.0, 255.0)] {
+            let start = frame(&mut panel, window, BROWSER_MAX_HEIGHT, vec![]);
+            frame(
+                &mut panel,
+                window,
+                BROWSER_MAX_HEIGHT,
+                vec![egui::Event::PointerMoved(start), button(start, true)],
+            );
+            for delta in [dy * 0.5, dy] {
+                frame(
+                    &mut panel,
+                    window,
+                    BROWSER_MAX_HEIGHT,
+                    vec![egui::Event::PointerMoved(start + egui::vec2(0.0, delta))],
+                );
+            }
+            frame(
+                &mut panel,
+                window,
+                BROWSER_MAX_HEIGHT,
+                vec![button(start + egui::vec2(0.0, dy), false)],
+            );
+            assert_eq!(
+                UvPanel::browser_height(window),
+                expected,
+                "uses total drag distance once"
+            );
+        }
+        let saved = Preferences::load(&path);
+        assert_eq!(saved.material_browser_face_height, 420.0);
+        assert_eq!(saved.material_browser_window_height, 255.0);
+        preferences::set_current(saved);
+        let mut reopened = UvPanel::default();
+        frame(&mut reopened, true, 180.0, vec![]);
+        assert_eq!(
+            UvPanel::browser_height(true),
+            255.0,
+            "temporarily shrinking a window must not overwrite the saved height"
+        );
+        assert_eq!(UvPanel::browser_height(false), 420.0);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn browser_heights_reject_invalid_saved_values() {
+        use editor_core::preferences::{self, Preferences};
+        let mut settings = Preferences::default();
+        settings.material_browser_face_height = f32::NAN;
+        settings.material_browser_window_height = f32::INFINITY;
+        preferences::set_current(settings);
+        assert_eq!(UvPanel::browser_height(false), 360.0);
+        assert_eq!(UvPanel::browser_height(true), 300.0);
+        preferences::edit(|p| {
+            p.material_browser_face_height = -20.0;
+            p.material_browser_window_height = 9000.0;
+        });
+        assert_eq!(UvPanel::browser_height(false), BROWSER_MIN_HEIGHT);
+        assert_eq!(UvPanel::browser_height(true), BROWSER_MAX_HEIGHT);
+    }
+
+    #[test]
+    fn detached_uv_contains_a_working_material_browser() {
+        let ctx = egui::Context::default();
+        ctx.set_embed_viewports(true);
+        crate::theme::install(&ctx);
+        let d = document();
+        let before = d.borrow().to_map_text();
+        let face = d.borrow().face_to_edit().unwrap().0;
+        let mut panel = UvPanel {
+            window_open: true,
+            ..Default::default()
+        };
+        let mut materials = crate::material_page::MaterialPage::default();
+        let draw =
+            |panel: &mut UvPanel, materials: &mut crate::material_page::MaterialPage, events| {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(1280.0, 1000.0),
+                        )),
+                        events,
+                        ..Default::default()
+                    },
+                    |ui| panel.show_window(ui.ctx(), &d, materials),
+                );
+                output.textures_delta.clear();
+                output
+            };
+        draw(&mut panel, &mut materials, vec![]);
+        let output = draw(&mut panel, &mut materials, vec![]);
+        let _ = text_at(&output, tr("Used"));
+        let pos = text_at(&output, "special/clip");
+        for pressed in [true, false] {
+            draw(
+                &mut panel,
+                &mut materials,
+                vec![
+                    egui::Event::PointerMoved(pos),
+                    egui::Event::PointerButton {
+                        pos,
+                        button: egui::PointerButton::Primary,
+                        pressed,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+            );
+        }
+        assert_eq!(d.borrow().face_at(face).unwrap().material_name, "clip");
+        d.borrow_mut().undo();
+        assert_eq!(d.borrow().to_map_text(), before);
+    }
+
+    #[test]
+    fn trackpad_zoom_uses_point_magnitude_and_resizing_keeps_navigation() {
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let d = document();
+        let mut panel = UvPanel::default();
+        let frame = |panel: &mut UvPanel, width: f32, events: Vec<egui::Event>| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(600.0, 500.0),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ui| panel.canvas_area(ui, &d, width, 260.0),
+            );
+            output.textures_delta.clear();
+        };
+        frame(&mut panel, 500.0, vec![]);
+        let before = panel.canvas.view.zoom;
+        frame(
+            &mut panel,
+            500.0,
+            vec![
+                egui::Event::PointerMoved(egui::pos2(120.0, 80.0)),
+                egui::Event::MouseWheel {
+                    unit: egui::MouseWheelUnit::Point,
+                    delta: egui::vec2(0.0, 0.1),
+                    phase: egui::TouchPhase::Move,
+                    source: egui::MouseWheelSource::Unknown,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ],
+        );
+        assert!(
+            (panel.canvas.view.zoom / before - 1.0).abs() < 0.001,
+            "tiny trackpad movement must not cause a full zoom step"
+        );
+        panel.canvas.view.pan.0 += 37.0;
+        let pan = panel.canvas.view.pan;
+        let zoom = panel.canvas.view.zoom;
+        frame(&mut panel, 520.0, vec![]);
+        assert!((panel.canvas.view.pan.0 - pan.0 - 10.0).abs() < 0.001);
+        assert_eq!(panel.canvas.view.zoom, zoom);
     }
 
     /// A primary drag on the canvas moves the material by the distance from where the
@@ -857,5 +1866,24 @@ mod tests {
             vec![press(start + egui::vec2(20.0, 0.0), false)],
         );
         assert_eq!(offset(), moved, "the drag is measured from the press point");
+        let key = |shift| egui::Event::Key {
+            key: egui::Key::Z,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers {
+                command: true,
+                shift,
+                ..Default::default()
+            },
+        };
+        frame(&mut again, vec![key(false)]);
+        assert_eq!(
+            offset(),
+            before,
+            "Cmd-Z must undo a completed UV drag while its canvas owns focus"
+        );
+        frame(&mut again, vec![key(true)]);
+        assert_eq!(offset(), moved, "Cmd-Shift-Z must redo the same drag");
     }
 }

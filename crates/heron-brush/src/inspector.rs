@@ -21,6 +21,8 @@ pub enum Tab {
 pub struct Inspector {
     /// The tab showing.
     pub tab: Tab,
+    observed_face: Option<editor_core::document::FaceRef>,
+    open_uv_section: bool,
     trigger: crate::trigger_panel::TriggerPanel,
     /// The Map tab.
     map: crate::map_page::MapPage,
@@ -43,6 +45,23 @@ pub struct Inspector {
 }
 
 impl Inspector {
+    fn follow_face_selection(&mut self, document: &editor_core::document::Document) {
+        let face = document.single_selected_face();
+        if face.is_some() && face != self.observed_face {
+            self.tab = Tab::Face;
+        }
+        self.observed_face = face;
+    }
+
+    pub fn uv_keyboard(
+        &mut self,
+        ui: &egui::Ui,
+        document: &std::rc::Rc<std::cell::RefCell<editor_core::document::Document>>,
+    ) {
+        if self.tab == Tab::Face || self.uv.window_open() {
+            self.uv.keyboard_input(ui, document);
+        }
+    }
     pub fn uv_window_open(&self) -> bool {
         self.uv.window_open()
     }
@@ -53,15 +72,19 @@ impl Inspector {
         self.uv.toggle_window(document);
         if !self.uv.window_open() {
             self.tab = Tab::Face;
+            self.open_uv_section = true;
         }
     }
     pub fn show_uv_window(&mut self, ctx: &egui::Context, editor: &crate::editor::Editor) -> bool {
         editor.sync_face_edit_targets();
+        self.materials.show_settings_window(ctx, &editor.document);
         let was_open = self.uv.window_open();
-        self.uv.show_window(ctx, &editor.document);
+        self.uv
+            .show_window(ctx, &editor.document, &mut self.materials);
         let returned = was_open && !self.uv.window_open();
         if returned {
             self.tab = Tab::Face;
+            self.open_uv_section = true;
         }
         returned
     }
@@ -79,6 +102,7 @@ impl Inspector {
     pub fn show(&mut self, ui: &mut Ui, rect: Rect, editor: &crate::editor::Editor) {
         editor.sync_face_edit_targets();
         let document = &editor.document;
+        self.follow_face_selection(&document.borrow());
         let filters = &editor.filters;
         let grid = &editor.grid;
         let handles = &editor.handles;
@@ -109,16 +133,33 @@ impl Inspector {
                     Tab::Face => {
                         use crate::widgets::section;
                         use editor_core::i18n::tr;
-                        section(ui, "face-uv", tr("UV"), true, |ui| {
-                            self.uv.inspector(ui, document)
-                        });
-                        // "Reveal in Material Browser" opens the section it scrolls in.
-                        if self.materials.reveal {
-                            crate::widgets::open_section(ui, "face-materials");
+                        if std::mem::take(&mut self.open_uv_section) {
+                            crate::widgets::open_section(ui, "face-uv");
                         }
-                        section(ui, "face-materials", tr("Materials"), true, |ui| {
-                            self.materials.show(ui, document)
-                        });
+                        let open = self.uv.window_open();
+                        let mut detach = false;
+                        crate::widgets::section_with_action(
+                            ui,
+                            "face-uv",
+                            tr("UV"),
+                            true,
+                            |ui| {
+                                detach = crate::uv_panel::UvPanel::window_button(ui, open);
+                            },
+                            |ui| self.uv.inspector(ui, document),
+                        );
+                        if detach {
+                            self.toggle_uv_window(document);
+                            ui.ctx().request_repaint();
+                        }
+                        self.uv.material_browser(ui, document, &mut self.materials);
+                        section(
+                            ui,
+                            "face-uv-attributes",
+                            tr("Face attributes"),
+                            true,
+                            |ui| self.uv.controls(ui, document),
+                        );
                         section(ui, "face-colour", tr("Colour"), true, |ui| {
                             self.colour.show(ui, editor)
                         });
@@ -232,5 +273,72 @@ impl Inspector {
         if let Some(next) = crate::widgets::tab_keys(ui, &rows) {
             self.tab = responses[next].0;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use editor_core::document::{Document, FaceRef};
+
+    #[test]
+    fn a_new_single_face_selects_face_tab_without_overriding_later_manual_navigation() {
+        let mut d = Document::new(Default::default());
+        let brush = map_model::shapes::create_cuboid(
+            &d.world_bounds(),
+            &geometry_math::bbox::Bbox3d::from_scalars(-32.0, 32.0),
+            "stone",
+        )
+        .unwrap();
+        d.add_brushes(vec![brush]);
+        let id = d.selectable_brushes()[0].0;
+        let first = FaceRef { node: id, face: 0 };
+        let second = FaceRef { node: id, face: 1 };
+        let mut inspector = Inspector::default();
+        d.select_only(id);
+        inspector.follow_face_selection(&d);
+        assert_eq!(
+            inspector.tab,
+            Tab::Map,
+            "whole brush is not a single face selection"
+        );
+        d.select_face_only(first);
+        inspector.follow_face_selection(&d);
+        assert_eq!(inspector.tab, Tab::Face);
+        inspector.tab = Tab::Entity;
+        inspector.follow_face_selection(&d);
+        assert_eq!(
+            inspector.tab,
+            Tab::Entity,
+            "unchanged selection must not steal the tab back"
+        );
+        d.select_face_only(second);
+        inspector.follow_face_selection(&d);
+        assert_eq!(inspector.tab, Tab::Face);
+        d.clear_selection();
+        inspector.tab = Tab::Assets;
+        inspector.follow_face_selection(&d);
+        assert_eq!(inspector.tab, Tab::Assets);
+        d.select_face_only(second);
+        inspector.follow_face_selection(&d);
+        assert_eq!(inspector.tab, Tab::Face);
+    }
+
+    #[test]
+    fn a_single_face_tool_handle_also_selects_face_tab() {
+        let mut d = Document::new(Default::default());
+        let brush = map_model::shapes::create_cuboid(
+            &d.world_bounds(),
+            &geometry_math::bbox::Bbox3d::from_scalars(-32.0, 32.0),
+            "stone",
+        )
+        .unwrap();
+        d.add_brushes(vec![brush]);
+        let id = d.selectable_brushes()[0].0;
+        d.select_only(id);
+        d.set_face_edit_targets(vec![FaceRef { node: id, face: 0 }]);
+        let mut inspector = Inspector::default();
+        inspector.follow_face_selection(&d);
+        assert_eq!(inspector.tab, Tab::Face);
     }
 }

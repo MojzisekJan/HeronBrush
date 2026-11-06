@@ -10,6 +10,8 @@ use editor_core::i18n::{counted, fill, tr, translation_key};
 use eframe::egui;
 use map_model::material::Material;
 
+mod folder_tree;
+
 use crate::dialog::{self, Part};
 use crate::{file_dialog::FileDialog, theme, widgets};
 
@@ -225,10 +227,30 @@ pub fn thumbnail_image(material: &Material) -> Option<egui::ColorImage> {
     Some(egui::ColorImage::from_rgba_unmultiplied([tw, th], &out))
 }
 
+fn texture_folder(name: &str) -> &str {
+    name.rsplit_once('/').map_or("", |(folder, _)| folder)
+}
+fn folder_visible(name: &str, hidden: &std::collections::BTreeSet<String>) -> bool {
+    !hidden.contains(texture_folder(name))
+}
+
+#[derive(Clone, Copy)]
+enum CellAction {
+    Apply,
+    SelectFaces,
+}
+
 /// The browser's own state.
 #[derive(Default)]
 pub struct MaterialPage {
     filter: String,
+    pub settings_open: bool,
+    used_only: bool,
+    used: (Option<u64>, std::collections::HashSet<String>),
+    hidden_folders: std::collections::BTreeSet<String>,
+    folder_key: String,
+    folders: (u64, Vec<String>),
+    folder_tree: folder_tree::Folder,
     /// The grid's thumbnails.
     pub thumbnails: Thumbnails,
     /// The materials the filter matched (indices into the collection), with the filter and
@@ -240,17 +262,177 @@ pub struct MaterialPage {
     pub reveal: bool,
     /// The Replace dialog, while it is open.
     replace: Option<Replace>,
+    #[cfg(test)]
+    grid_viewport: Option<egui::Rect>,
+    #[cfg(test)]
+    pub(crate) folder_viewport: Option<egui::Rect>,
+    #[cfg(test)]
+    settings_path: Option<std::path::PathBuf>,
 }
 
 impl MaterialPage {
-    /// Draws the browser.
-    pub fn show(&mut self, ui: &mut egui::Ui, document: &Rc<RefCell<Document>>) {
-        let loads = [
-            (tr("Load folder"), "", true),
-            (tr("Load .wad"), "", true),
-            (tr("Reload"), "", true),
-        ];
-        let clicked = widgets::segmented(ui, "material-loads", &loads);
+    fn folder_settings(&mut self, ui: &mut egui::Ui, document: &Rc<RefCell<Document>>) {
+        let key = editor_core::preferences::pref(|p| p.material_browser_hidden_folders.clone());
+        if key != self.folder_key {
+            self.hidden_folders = serde_json::from_str(&key).unwrap_or_default();
+            self.folder_key = key;
+        }
+        let document = document.borrow();
+        let revision = document.materials_revision();
+        if self.folders.0 != revision || self.folders.1.is_empty() {
+            let folders: std::collections::BTreeSet<_> = document
+                .materials()
+                .materials()
+                .iter()
+                .filter(|m| !m.name.starts_with('#'))
+                .map(|m| texture_folder(&m.name).to_string())
+                .collect();
+            self.folders = (revision, folders.into_iter().collect());
+            self.folder_tree = folder_tree::Folder::from_paths(&self.folders.1);
+        }
+        let mut changed = false;
+        // Reserve the section's trailing spacing outside the scroll viewport.
+        let bottom = ui.max_rect().bottom() - 2.0 * ui.spacing().item_spacing.y - 8.0;
+        widgets::section(
+            ui,
+            "material-browser-folders",
+            tr("Texture folders"),
+            true,
+            |ui| {
+                ui.horizontal(|ui| {
+                    if ui.button(tr("Show all")).clicked() {
+                        self.hidden_folders.clear();
+                        changed = true;
+                    }
+                    if ui.button(tr("Hide all")).clicked() {
+                        self.hidden_folders.extend(self.folders.1.iter().cloned());
+                        changed = true;
+                    }
+                });
+                // A persistent, comfortably draggable scrollbar for this directory tree.
+                ui.spacing_mut().scroll = egui::style::ScrollStyle::solid();
+                ui.spacing_mut().scroll.bar_width = 14.0;
+                let viewport = egui::ScrollArea::vertical()
+                    .id_salt("texture-folders")
+                    .auto_shrink([false, false])
+                    .max_height((bottom - ui.cursor().top()).max(1.0))
+                    .min_scrolled_height((bottom - ui.cursor().top()).max(1.0))
+                    .show(ui, |ui| {
+                        ui.set_min_width(ui.available_width());
+                        changed |= self.folder_tree.show(ui, &mut self.hidden_folders);
+                    });
+                #[cfg(test)]
+                {
+                    self.folder_viewport = Some(viewport.inner_rect);
+                }
+                #[cfg(not(test))]
+                let _ = viewport;
+            },
+        );
+        if changed {
+            self.folder_key =
+                serde_json::to_string(&self.hidden_folders).expect("texture folder preferences");
+            editor_core::preferences::edit(|p| {
+                p.material_browser_hidden_folders = self.folder_key.clone()
+            });
+            #[cfg(not(test))]
+            let path = Some(editor_core::preferences::Preferences::default_path());
+            #[cfg(test)]
+            let path = self.settings_path.clone();
+            if let Some(path) = path {
+                if let Err(error) = editor_core::preferences::current().save(&path) {
+                    editor_core::complain!(
+                        "{}",
+                        fill(
+                            "Could not save the preferences to {}: {}",
+                            &[&path.display().to_string(), &error.to_string()]
+                        )
+                    );
+                }
+            }
+        }
+    }
+
+    /// Settings have their own tool window; file answers are polled even while closed.
+    pub fn show_settings_window(&mut self, ctx: &egui::Context, document: &Rc<RefCell<Document>>) {
+        let mut clicked = None;
+        if self.settings_open {
+            let mut close = false;
+            let visible = dialog::show(
+                ctx,
+                "material-browser-settings",
+                tr("Browser settings"),
+                [480.0, 620.0],
+                |ui, part| {
+                    if part == Part::Actions {
+                        close = dialog::button(ui, tr("Close"), true).clicked();
+                        return;
+                    }
+                    {
+                        let loads = [
+                            (tr("Load folder"), "", true),
+                            (tr("Load .wad"), "", true),
+                            (tr("Reload"), "", true),
+                        ];
+                        clicked = widgets::segmented(ui, "material-loads", &loads);
+                        // Each collection can be removed on its own; nothing loaded is nothing to fold out.
+                        let sources: Vec<(String, String)> = document
+                            .borrow()
+                            .material_sources()
+                            .iter()
+                            .map(|source| {
+                                (
+                                    source.name().to_string(),
+                                    source.path().display().to_string(),
+                                )
+                            })
+                            .collect();
+                        if !sources.is_empty() {
+                            let count = sources.len().to_string();
+                            widgets::section_noted(
+                                ui,
+                                "material-collections",
+                                tr("Collections"),
+                                Some(&count),
+                                false,
+                                |ui| {
+                                    removable_list(
+                                        ui,
+                                        "material-sources",
+                                        &sources,
+                                        tr("Stop using this collection"),
+                                        |at| {
+                                            // A game whose compiler reads the wads worldspawn names stops
+                                            // being told about this one too, as adding it named it.
+                                            let names_it = editor_core::games::current()
+                                                .and_then(|game| game.materials_attribute)
+                                                .is_some_and(|key| key == "wad");
+                                            if names_it {
+                                                document
+                                                    .borrow_mut()
+                                                    .remove_material_source_from_map(at);
+                                            } else {
+                                                document.borrow_mut().remove_material_source(at);
+                                            }
+                                        },
+                                    );
+                                },
+                            );
+                        }
+
+                        self.folder_settings(ui, document);
+                    }
+                },
+            );
+            if close || !visible {
+                self.settings_open = false;
+                ctx.request_repaint();
+            }
+        }
+        self.poll_loads(document, clicked);
+    }
+
+    fn poll_loads(&mut self, document: &Rc<RefCell<Document>>, clicked: Option<usize>) {
         if clicked == Some(2) {
             document.borrow_mut().reload_game_assets();
         }
@@ -307,59 +489,72 @@ impl MaterialPage {
                 }
             }
         }
+    }
 
-        // Each collection can be removed on its own; nothing loaded is nothing to fold out.
-        let sources: Vec<(String, String)> = document
-            .borrow()
-            .material_sources()
-            .iter()
-            .map(|source| {
-                (
-                    source.name().to_string(),
-                    source.path().display().to_string(),
-                )
-            })
-            .collect();
-        if !sources.is_empty() {
-            let count = sources.len().to_string();
-            widgets::section_noted(
-                ui,
-                "material-collections",
-                tr("Collections"),
-                Some(&count),
-                false,
-                |ui| {
-                    removable_list(
-                        ui,
-                        "material-sources",
-                        &sources,
-                        tr("Stop using this collection"),
-                        |at| {
-                            // A game whose compiler reads the wads worldspawn names stops
-                            // being told about this one too, as adding it named it.
-                            let names_it = editor_core::games::current()
-                                .and_then(|game| game.materials_attribute)
-                                .is_some_and(|key| key == "wad");
-                            if names_it {
-                                document.borrow_mut().remove_material_source_from_map(at);
-                            } else {
-                                document.borrow_mut().remove_material_source(at);
-                            }
-                        },
-                    );
-                },
-            );
+    /// Draws the browser without a surrounding height budget, for regression tests.
+    #[cfg(test)]
+    pub fn show(&mut self, ui: &mut egui::Ui, document: &Rc<RefCell<Document>>) {
+        self.show_sized(ui, document, None);
+    }
+
+    /// The available browser height includes its controls; the thumbnail scroll
+    /// region receives the remaining space rather than a fixed nested maximum.
+    pub(crate) fn show_sized(
+        &mut self,
+        ui: &mut egui::Ui,
+        document: &Rc<RefCell<Document>>,
+        height: Option<f32>,
+    ) {
+        let top = ui.cursor().top();
+        let key = editor_core::preferences::pref(|p| p.material_browser_hidden_folders.clone());
+        if key != self.folder_key {
+            self.hidden_folders = serde_json::from_str(&key).unwrap_or_default();
+            self.folder_key = key;
         }
-
-        widgets::search(ui, &mut self.filter, tr("Filter materials"));
+        ui.horizontal(|ui| {
+            let used_width = ui
+                .painter()
+                .layout_no_wrap(tr("Used").to_string(), theme::body(), theme::fg())
+                .size()
+                .x
+                + ui.spacing().icon_width
+                + ui.spacing().icon_spacing;
+            let search_width =
+                (ui.available_width() - used_width - ui.spacing().item_spacing.x).max(60.0);
+            ui.allocate_ui(egui::vec2(search_width, widgets::ROW_HEIGHT), |ui| {
+                widgets::search(ui, &mut self.filter, tr("Filter materials"))
+            });
+            ui.checkbox(&mut self.used_only, tr("Used"));
+        });
+        {
+            let document = document.borrow();
+            if self.used.0 != Some(document.revision()) {
+                let mut used: std::collections::HashSet<_> =
+                    document.materials_in_use().into_iter().collect();
+                used.extend(
+                    map_model::node::patches_by_layer(document.tree_world())
+                        .into_iter()
+                        .map(|(_, p, _)| p.material_name.clone()),
+                );
+                self.used = (Some(document.revision()), used);
+            }
+        }
 
         let current = document.borrow().current_material().to_string();
         let mut picked = None;
+        let mut select_faces = None;
         let (shown, total) = {
             let document = document.borrow();
             let revision = document.materials_revision();
             let all = document.materials().materials();
-            if self.matched.0 != self.filter
+            let filter_key = format!(
+                "{}\n{}\n{}\n{:?}",
+                self.filter,
+                self.folder_key,
+                self.used_only,
+                if self.used_only { self.used.0 } else { None }
+            );
+            if self.matched.0 != filter_key
                 || self.matched.1 != revision
                 || self.matched.2.iter().any(|&i| i >= all.len())
             {
@@ -374,6 +569,8 @@ impl MaterialPage {
                     .iter()
                     .enumerate()
                     .filter(|(_, material)| !material.name.starts_with('#'))
+                    .filter(|(_, material)| folder_visible(&material.name, &self.hidden_folders))
+                    .filter(|(_, material)| !self.used_only || self.used.1.contains(&material.name))
                     .filter(|(_, material)| {
                         needle.is_empty()
                             || material.name.to_lowercase().contains(&needle)
@@ -382,11 +579,16 @@ impl MaterialPage {
                     })
                     .map(|(index, _)| index)
                     .collect();
-                self.matched = (self.filter.clone(), revision, matched, visible);
+                self.matched = (filter_key, revision, matched, visible);
             }
             let matched = std::mem::take(&mut self.matched.2);
             let visible = self.matched.3;
             self.thumbnails.begin(ui.ctx(), revision);
+            let grid_height = height.map_or(360.0, |height| {
+                let controls = ui.cursor().top() - top;
+                (height - controls - widgets::ROW_HEIGHT - theme::text_size() * 1.5 - 20.0)
+                    .max(THUMBNAIL + 44.0)
+            });
             widgets::list(ui, 0.0, |ui| {
                 if matched.is_empty() {
                     widgets::empty(
@@ -409,8 +611,9 @@ impl MaterialPage {
                 let line_height = THUMBNAIL + 44.0;
                 let mut area = egui::ScrollArea::vertical()
                     .id_salt("material-grid")
-                    .min_scrolled_height(180.0)
-                    .max_height(360.0);
+                    .min_scrolled_height(grid_height)
+                    .max_height(grid_height)
+                    .auto_shrink([false, false]);
                 // "Reveal in Material Browser": only the lines in view are laid out, so
                 // the current one is scrolled to by where its line is.
                 if std::mem::take(&mut self.reveal) {
@@ -422,24 +625,45 @@ impl MaterialPage {
                 }
                 ui.spacing_mut().item_spacing = egui::vec2(gap, gap);
                 // Only the lines in view are laid out and only their thumbnails made.
-                area.show_rows(ui, line_height, lines, |ui, range| {
+                let grid_output = area.show_rows(ui, line_height, lines, |ui, range| {
                     for line in range {
                         ui.horizontal(|ui| {
                             for &index in matched.iter().skip(line * per_line).take(per_line) {
                                 let material = &all[index];
-                                if self.cell(ui, material, material.name == current, cell) {
-                                    picked = Some(material.name.clone());
+                                match self.cell(ui, material, material.name == current, cell) {
+                                    Some(CellAction::Apply) => picked = Some(material.name.clone()),
+                                    Some(CellAction::SelectFaces) => {
+                                        select_faces = Some(material.name.clone())
+                                    }
+                                    None => {}
                                 }
                             }
                         });
                     }
                 });
+                #[cfg(test)]
+                {
+                    self.grid_viewport = Some(grid_output.inner_rect.intersect(ui.clip_rect()));
+                }
+                #[cfg(not(test))]
+                let _ = grid_output;
             });
             self.thumbnails.end(ui.ctx());
             let shown = matched.len();
             self.matched.2 = matched;
             (shown, visible)
         };
+        if let Some(name) = select_faces {
+            let count = document.borrow_mut().select_faces_with_material(&name);
+            editor_core::say!(
+                "{}",
+                fill(
+                    "Selected {} with the material {}",
+                    &[&counted(count, "face"), &name]
+                )
+            );
+            ui.ctx().request_repaint();
+        }
         if let Some(name) = picked {
             let changed = {
                 let mut document = document.borrow_mut();
@@ -532,8 +756,14 @@ impl MaterialPage {
     }
 
     /// One cell of the grid: the image over its name and size. Returns whether it was
-    /// clicked.
-    fn cell(&mut self, ui: &mut egui::Ui, material: &Material, current: bool, width: f32) -> bool {
+    /// clicked, or which action its context menu requested.
+    fn cell(
+        &mut self,
+        ui: &mut egui::Ui,
+        material: &Material,
+        current: bool,
+        width: f32,
+    ) -> Option<CellAction> {
         let (rect, response) =
             ui.allocate_exact_size(egui::vec2(width, THUMBNAIL + 44.0), egui::Sense::click());
         widgets::paint_list_row(ui, rect, current, response.hovered());
@@ -555,6 +785,23 @@ impl MaterialPage {
             ui.painter()
                 .rect_filled(image, egui::CornerRadius::same(4), theme::entry());
         }
+        let in_use = self.used.1.contains(&material.name);
+        let usage_color = egui::Color32::from_rgb(90, 180, 130);
+        if current || in_use {
+            ui.painter().rect_stroke(
+                image.expand(1.0),
+                2.0,
+                egui::Stroke::new(
+                    if current { 2.0 } else { 1.5 },
+                    if current {
+                        theme::accent()
+                    } else {
+                        usage_color
+                    },
+                ),
+                egui::StrokeKind::Outside,
+            );
+        }
         let display_name = if material.path.starts_with("builtin/special") {
             format!("special/{}", material.name)
         } else {
@@ -569,7 +816,11 @@ impl MaterialPage {
             ui,
             &display_name,
             caption.clone(),
-            theme::fg(),
+            if in_use && !current {
+                usage_color
+            } else {
+                theme::fg()
+            },
             name.width(),
         );
         ui.painter().galley(
@@ -578,7 +829,11 @@ impl MaterialPage {
                 crate::theme::galley_top(ui.ctx(), &galley, name.center().y),
             ),
             galley,
-            theme::fg(),
+            if in_use && !current {
+                usage_color
+            } else {
+                theme::fg()
+            },
         );
         ui.painter().text(
             egui::pos2(rect.center().x, name.bottom() + 9.0),
@@ -587,13 +842,32 @@ impl MaterialPage {
             caption,
             theme::dim(),
         );
-        response
-            .on_hover_text(format!(
-                "{}\n{}",
-                material.name,
-                tr("Put this material on every selected face")
-            ))
-            .clicked()
+        let response = response.on_hover_text(format!(
+            "{}\n{}\n{}",
+            material.name,
+            if in_use {
+                tr("Used in this map")
+            } else {
+                tr("Not used in this map")
+            },
+            tr("Put this material on every selected face")
+        ));
+        let mut select_faces = false;
+        response.context_menu(|ui| {
+            if ui
+                .button(tr("Select faces"))
+                .on_hover_text(tr("Select every face wearing this material"))
+                .clicked()
+            {
+                select_faces = true;
+                ui.close();
+            }
+        });
+        if select_faces {
+            Some(CellAction::SelectFaces)
+        } else {
+            response.clicked().then_some(CellAction::Apply)
+        }
     }
 }
 
@@ -851,6 +1125,137 @@ pub fn removable_list(
 mod tests {
     use super::*;
 
+    #[test]
+    fn texture_context_menu_selects_matching_faces_without_painting_or_changing_current_material() {
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let directory = folder("context-select-faces", 2, 160);
+        let document = Rc::new(RefCell::new(Document::new(Default::default())));
+        {
+            let mut d = document.borrow_mut();
+            for material in ["t0000", "t0001"] {
+                let brush = map_model::shapes::create_cuboid(
+                    &d.world_bounds(),
+                    &geometry_math::bbox::Bbox3d::from_scalars(-32.0, 32.0),
+                    material,
+                )
+                .unwrap();
+                d.add_brushes(vec![brush]);
+            }
+            let other = d.selectable_brushes()[1].0;
+            d.paint_face(
+                editor_core::document::FaceRef {
+                    node: other,
+                    face: 0,
+                },
+                "t0000",
+            );
+            d.select_all();
+            d.set_current_material("t0001");
+            d.load_materials(&directory).unwrap();
+        }
+        let before = document.borrow().to_map_text();
+        let mut page = MaterialPage {
+            filter: "t0000".into(),
+            ..Default::default()
+        };
+        let draw = |page: &mut MaterialPage, events| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(420.0, 900.0),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ui| page.show(ui, &document),
+            );
+            output.textures_delta.clear();
+            output
+        };
+        let at_text = |output: &egui::FullOutput, label: &str| {
+            output
+                .shapes
+                .iter()
+                .rev()
+                .find_map(|s| match &s.shape {
+                    egui::Shape::Text(t) if t.galley.text() == label => {
+                        Some(t.pos + t.galley.size() * 0.5)
+                    }
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("missing {label}"))
+        };
+        draw(&mut page, vec![]);
+        let output = draw(&mut page, vec![]);
+        let texture = at_text(&output, "t0000");
+        let click = |page: &mut MaterialPage, at, button| {
+            for pressed in [true, false] {
+                draw(
+                    page,
+                    vec![
+                        egui::Event::PointerMoved(at),
+                        egui::Event::PointerButton {
+                            pos: at,
+                            button,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+        };
+        click(&mut page, texture, egui::PointerButton::Secondary);
+        draw(&mut page, vec![]);
+        let output = draw(&mut page, vec![]);
+        assert_eq!(document.borrow().to_map_text(), before);
+        assert_eq!(document.borrow().selected_brushes().len(), 2);
+        assert_eq!(document.borrow().current_material(), "t0001");
+        click(
+            &mut page,
+            at_text(&output, tr("Select faces")),
+            egui::PointerButton::Primary,
+        );
+        let d = document.borrow();
+        assert_eq!(
+            d.face_selection_count(),
+            7,
+            "all six faces of one brush plus the matching face on the other"
+        );
+        assert!(
+            d.selected_brushes().is_empty(),
+            "faces, rather than whole brushes, must be selected"
+        );
+        assert!(
+            d.selected_faces()
+                .iter()
+                .all(|&face| d.face_at(face).unwrap().material_name == "t0000")
+        );
+        assert_eq!(d.current_material(), "t0001");
+        assert_eq!(
+            d.to_map_text(),
+            before,
+            "the menu must not paint or edit the map"
+        );
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn folder_visibility_filters_exact_directories_and_keeps_other_textures() {
+        let hidden = std::collections::BTreeSet::from(["walls/stone".to_string(), "".to_string()]);
+        assert!(!folder_visible("walls/stone/rough", &hidden));
+        assert!(!folder_visible("root_texture", &hidden));
+        assert!(folder_visible("walls/stonework/rough", &hidden));
+        assert!(folder_visible("walls/stone/details/trim", &hidden));
+        assert!(folder_visible("floors/tile", &hidden));
+        let encoded = serde_json::to_string(&hidden).unwrap();
+        assert_eq!(
+            hidden,
+            serde_json::from_str::<std::collections::BTreeSet<String>>(&encoded).unwrap()
+        );
+    }
+
     fn folder(name: &str, count: usize, colour: u8) -> std::path::PathBuf {
         let dir =
             std::env::temp_dir().join(format!("heron-material-page-{name}-{}", std::process::id()));
@@ -1016,19 +1421,23 @@ mod tests {
             document.borrow().face_at(untouched).unwrap().material_name,
             "stone"
         );
-        assert!(document
-            .borrow()
-            .face_at(untouched)
-            .unwrap()
-            .color
-            .is_some());
+        assert!(
+            document
+                .borrow()
+                .face_at(untouched)
+                .unwrap()
+                .color
+                .is_some()
+        );
         let after = document.borrow().to_map_text();
         assert_ne!(after, before);
-        assert!(document
-            .borrow()
-            .triangles(&Default::default())
-            .iter()
-            .any(|t| t.material.is_some() && !t.painted));
+        assert!(
+            document
+                .borrow()
+                .triangles(&Default::default())
+                .iter()
+                .any(|t| t.material.is_some() && !t.painted)
+        );
         click(&mut page, at("t0000"));
         document.borrow_mut().undo().unwrap();
         assert_eq!(document.borrow().to_map_text(), before);
@@ -1043,6 +1452,118 @@ mod tests {
             unchanged,
             "without selection only the current material changes"
         );
+        settle(&ctx, &mut page, &document);
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn resizing_browser_exposes_more_texture_rows_beyond_old_360_pixel_cap() {
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let directory = folder("actual-grid-height", 80, 180);
+        let document = Rc::new(RefCell::new(Document::new(Default::default())));
+        document.borrow_mut().load_materials(&directory).unwrap();
+        let mut page = MaterialPage {
+            filter: "t000".into(),
+            ..Default::default()
+        };
+        let draw = |page: &mut MaterialPage, height: f32| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(440.0, 1400.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| {
+                    egui::ScrollArea::vertical()
+                        .id_salt("bounded-browser-test")
+                        .max_height(height)
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| page.show_sized(ui, &document, Some(height)));
+                },
+            );
+            output.textures_delta.clear();
+            page.grid_viewport
+                .expect("actual thumbnail viewport")
+                .height()
+        };
+        draw(&mut page, 360.0);
+        let small = draw(&mut page, 360.0);
+        draw(&mut page, 1000.0);
+        let large = draw(&mut page, 1000.0);
+        assert!(
+            large > small + 500.0,
+            "thumbnail viewport did not grow: {small} -> {large}"
+        );
+        assert!(
+            large > 6.0 * (THUMBNAIL + 44.0),
+            "must display more than six rows, rather than capping at three: {large}"
+        );
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn used_filter_and_highlight_follow_material_edits_undo_and_redo() {
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let directory = folder("used-filter", 2, 180);
+        let document = Rc::new(RefCell::new(Document::new(Default::default())));
+        {
+            let mut d = document.borrow_mut();
+            d.load_materials(&directory).unwrap();
+            let brush = map_model::shapes::create_cuboid(
+                &d.world_bounds(),
+                &geometry_math::bbox::Bbox3d::from_scalars(-32.0, 32.0),
+                "t0000",
+            )
+            .unwrap();
+            d.add_brushes(vec![brush]);
+            d.select_all();
+            d.set_current_material("t0001");
+        }
+        let mut page = MaterialPage {
+            filter: "t000".into(),
+            ..Default::default()
+        };
+        frame(&ctx, &mut page, &document);
+        let before = document.borrow().to_map_text();
+        assert!(page.used.1.contains("t0000"));
+        assert!(!page.used.1.contains("t0001"));
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(420.0, 900.0),
+                )),
+                ..Default::default()
+            },
+            |ui| page.show(ui, &document),
+        );
+        assert!(output.shapes.iter().any(|shape| matches!(&shape.shape,egui::Shape::Rect(rect) if rect.stroke.color==egui::Color32::from_rgb(90,180,130))),"used textures have a visible border even in the full list");
+        output.textures_delta.clear();
+        page.used_only = true;
+        frame(&ctx, &mut page, &document);
+        let names = |page: &MaterialPage| {
+            let d = document.borrow();
+            page.matched
+                .2
+                .iter()
+                .map(|&i| d.materials().materials()[i].name.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(names(&page), vec!["t0000"]);
+        assert_eq!(document.borrow().to_map_text(), before);
+        document.borrow_mut().apply_current_material();
+        frame(&ctx, &mut page, &document);
+        assert_eq!(names(&page), vec!["t0001"]);
+        document.borrow_mut().undo();
+        frame(&ctx, &mut page, &document);
+        assert_eq!(names(&page), vec!["t0000"]);
+        document.borrow_mut().redo();
+        frame(&ctx, &mut page, &document);
+        assert_eq!(names(&page), vec!["t0001"]);
         settle(&ctx, &mut page, &document);
         let _ = std::fs::remove_dir_all(directory);
     }

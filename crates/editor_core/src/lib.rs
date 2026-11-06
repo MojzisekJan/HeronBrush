@@ -93,6 +93,7 @@ pub mod profile;
 pub mod render_camera;
 pub mod render_scene;
 pub mod uv_view;
+pub mod uv_workflow;
 pub mod view2d;
 pub mod view3d;
 

@@ -634,7 +634,11 @@ impl App {
     /// Hands the frame's key presses to the commands.
     fn keys(&mut self, ui: &egui::Ui) {
         self.editor.sync_face_edit_targets();
-        let field_focused = ui.ctx().egui_wants_keyboard_input();
+        if !egui::Popup::is_any_open(ui.ctx()) {
+            self.inspector.uv_keyboard(ui, &self.editor.document);
+        }
+        let field_focused =
+            ui.ctx().egui_wants_keyboard_input() || egui::Popup::is_any_open(ui.ctx());
         let mut events = std::mem::take(&mut self.tabs);
         events.extend(ui.input(|i| i.events.clone()));
         // A dialog drawn inside the main window (the web build, input scripts) has the
@@ -654,7 +658,7 @@ impl App {
         }
         // While a menu is open its keys are its own: they move through it and pick from
         // it, and must not also nudge the selection or change the layout.
-        if self.chrome.popup.is_some() {
+        if self.chrome.popup.is_some() || egui::Popup::is_any_open(ctx) {
             events.retain(|event| {
                 !matches!(
                     event,

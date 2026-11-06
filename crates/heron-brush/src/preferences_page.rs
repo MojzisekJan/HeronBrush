@@ -393,7 +393,7 @@ const OVERVIEW: [Section; 4] = [
 
 /// Fields edited outside Preferences (the export window and the Assets tab). A search
 /// finds them too, so nothing in the shared type is out of reach.
-const ELSEWHERE: [Section; 2] = [
+const ELSEWHERE: [Section; 3] = [
     (
         translation_key("Export"),
         &[("export_target", translation_key("Engine"))],
@@ -401,6 +401,20 @@ const ELSEWHERE: [Section; 2] = [
     (
         translation_key("Assets"),
         &[("asset_library", translation_key("Asset library"))],
+    ),
+    (
+        translation_key("Material browser"),
+        &[
+            (
+                "material_browser_hidden_folders",
+                translation_key("Texture folders"),
+            ),
+            ("material_browser_face_height", translation_key("Face")),
+            (
+                "material_browser_window_height",
+                translation_key("UV editor"),
+            ),
+        ],
     ),
 ];
 
@@ -494,6 +508,9 @@ fn field(settings: &mut Preferences, name: &str, action: Action) -> bool {
         language,
         keymap,
         keyboard_bindings,
+        material_browser_hidden_folders,
+        material_browser_face_height,
+        material_browser_window_height,
         asset_library,
         collab_nickname,
         show_axes,
@@ -1262,6 +1279,12 @@ impl Control for String {
         let width = control_width(ui);
         match field {
             "keyboard_bindings" => crate::shortcut_editor::control(ui, self),
+            "material_browser_hidden_folders" => {
+                ui.label(tr("Choose folders in the material browser settings"));
+                if ui.button(tr("Show all")).clicked() {
+                    self.clear();
+                }
+            }
             "game" => {
                 // "None" first, then every game found; a game
                 // that is no longer there shows as None.
@@ -1521,6 +1544,7 @@ fn number_range(field: &str, overview: bool) -> (f64, f64, f64) {
         "bloom_intensity" => (0.0, 2.0, 0.05),
         "default_roughness" => (0.0, 1.0, 0.05),
         "default_metalness" => (0.0, 1.0, 0.05),
+        "material_browser_face_height" | "material_browser_window_height" => (120.0, 1200.0, 10.0),
         "manual_font_size" => (10.0, 28.0, 1.0),
         "panel_opacity" => (80.0, 100.0, 1.0),
         "interface_scale" => (

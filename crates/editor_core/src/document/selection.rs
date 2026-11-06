@@ -141,6 +141,23 @@ impl Document {
     /// With no face selected this falls back to every face of every selected brush, so
     /// the material commands do something useful before a face has been picked.
     pub fn edit_faces(&mut self, mut edit: impl FnMut(&mut map_model::brush_face::BrushFace)) {
+        self.edit_faces_inner(false, |face, _| edit(face));
+    }
+
+    /// Edits the same face targets as `edit_faces`, supplying each face's own polygon.
+    /// Geometry is collected only for callers that need a face-local pivot or metrics.
+    pub fn edit_faces_with_polygon(
+        &mut self,
+        edit: impl FnMut(&mut map_model::brush_face::BrushFace, &[geometry_math::vec::Vec3d]),
+    ) {
+        self.edit_faces_inner(true, edit);
+    }
+
+    fn edit_faces_inner(
+        &mut self,
+        with_polygon: bool,
+        mut edit: impl FnMut(&mut map_model::brush_face::BrushFace, &[geometry_math::vec::Vec3d]),
+    ) {
         let mut before = Vec::new();
         let mut after = Vec::new();
         let targets: HashSet<_> = self.selected_edit_faces().into_iter().collect();
@@ -169,7 +186,14 @@ impl Document {
                     let face = &mut faces[source];
                     let uv_before = (face.uv_attributes, face.uv_coord_system);
                     let pending_before = face.primitive_uv.as_deref().copied();
-                    edit(face);
+                    let polygon = if with_polygon {
+                        brush
+                            .geometry()
+                            .face_positions(map_model::polyhedron::FaceId(index as u32))
+                    } else {
+                        Vec::new()
+                    };
+                    edit(face, &polygon);
                     // An explicit UV edit replaces the placeholder alignment. Do not
                     // let later material discovery silently restore the old matrix.
                     // Paint/material-only edits retain it, as does an edit supplying
