@@ -1659,6 +1659,7 @@ mod tests {
             roughness: 40,
             metallic: 10,
             emission: 0,
+            ..Default::default()
         }));
         let painted = doc.to_map_text();
         let paint_map = map_model::io::map_reader::read_map(&painted, None).unwrap();
@@ -1733,6 +1734,7 @@ mod tests {
                 roughness: 20,
                 metallic: 80,
                 emission: 250,
+            ..Default::default()
             }),
         );
         let scratch = Scratch::new("surface-mtl");
@@ -1765,6 +1767,7 @@ mod tests {
                 roughness: 20,
                 metallic: 80,
                 emission: 250,
+            ..Default::default()
             }),
         );
         let before = doc.to_map_text();
