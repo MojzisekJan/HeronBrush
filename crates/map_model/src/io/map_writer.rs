@@ -140,7 +140,7 @@ fn write_face(out: &mut String, face: &BrushFace, format: MapFormat, with_color:
     for point in &face.points {
         let _ = write!(out, "{} ", Point(*point));
     }
-    let _ = write!(out, "{}", face.material_name);
+    let _ = write!(out, "{}", MaterialWord(&face.material_name));
 
     // A paraxial face in a dialect with axes on every line, which is what Valve 220 is
     // to every compiler that reads it: hlcsg stops at the first face line without a `[`.
@@ -357,7 +357,7 @@ fn write_color(out: &mut String, color: FaceColor) {
 }
 
 fn write_patch(out: &mut String, patch: &Patch) {
-    write_patch_material(out, patch, &patch.material_name);
+    write_patch_material(out, patch, &MaterialWord(&patch.material_name).to_string());
 }
 
 fn write_patch_material(out: &mut String, patch: &Patch, material: &str) {
@@ -502,6 +502,24 @@ impl std::fmt::Display for Uv {
 /// The `String`-returning form of `Scalar`, kept for callers outside the writer.
 pub fn format_scalar(value: f64) -> String {
     Scalar(value).to_string()
+}
+
+/// A material name as one word of a face or patch line: quoted when it holds a space
+/// or something else that would end a bare word, so that a folder such as
+/// `Raw smooth` reads back, here and in every exporter, as one name.
+struct MaterialWord<'a>(&'a str);
+
+impl std::fmt::Display for MaterialWord<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let bare = !self.0.is_empty()
+            && !self.0.chars().any(|c| c.is_whitespace() || matches!(c, '"' | '(' | ')' | '[' | ']' | '{' | '}'))
+            && !self.0.starts_with("//");
+        if bare {
+            f.write_str(self.0)
+        } else {
+            write!(f, "\"{}\"", escape(self.0, false))
+        }
+    }
 }
 
 /// Escapes a property key or value for writing between double quotes.

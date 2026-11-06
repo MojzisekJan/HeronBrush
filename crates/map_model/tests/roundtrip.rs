@@ -824,3 +824,18 @@ fn malformed_multicolor_gradient_comments_are_ignored() {
         );
     }
 }
+
+#[test]
+fn a_material_with_a_space_is_written_quoted() {
+    let source = A_BOX.replace("stone", "\"foxtex/Raw smooth/slab\"");
+    let written = round_trip(&source, MapFormat::Standard);
+    assert!(
+        written.contains(") \"foxtex/Raw smooth/slab\" "),
+        "the name is not quoted:\n{written}"
+    );
+    let (_, second) = read_twice(&source, MapFormat::Standard);
+    for face in &second.entities[0].brushes[0].faces {
+        assert_eq!(face.material_name.as_ref() as &str, "foxtex/Raw smooth/slab");
+    }
+    assert!(!round_trip(A_BOX, MapFormat::Standard).contains("\"stone\""));
+}
