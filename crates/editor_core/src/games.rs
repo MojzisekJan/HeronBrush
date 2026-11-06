@@ -805,9 +805,17 @@ mod tests {
         let install = std::env::temp_dir().join(format!("heron-h2-case-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&install);
         std::fs::create_dir_all(install.join("Base")).expect("mkdir");
+        // On a case-insensitive filesystem both spellings address the same directory.
+        // Compare resolved locations while still checking the mount order and count.
+        let resolved = |paths: Vec<PathBuf>| {
+            paths
+                .into_iter()
+                .map(|path| path.canonicalize().expect("existing asset root"))
+                .collect::<Vec<_>>()
+        };
         assert_eq!(
-            heretic2.asset_roots(&install, ""),
-            vec![install.join("Base"), install.clone()]
+            resolved(heretic2.asset_roots(&install, "")),
+            resolved(vec![install.join("Base"), install.clone()])
         );
         // A game path that is the base folder itself is not given it twice.
         assert_eq!(

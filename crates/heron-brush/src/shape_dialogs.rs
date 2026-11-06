@@ -946,14 +946,18 @@ fn corner_number<T: egui::emath::Numeric>(
 mod tests {
     use super::*;
 
-    /// The centres of the number fields' + buttons in a frame: the sign is drawn as two
-    /// short strokes, the upright one only on +. Longer upright lines are the seams
-    /// between a field and its buttons.
+    /// Increment targets in both native styles: an upward chevron on macOS,
+    /// or the upright stroke of a plus on platforms with separate step buttons.
     fn plus_buttons(output: &egui::FullOutput) -> Vec<egui::Pos2> {
         output
             .shapes
             .iter()
             .filter_map(|s| match &s.shape {
+                egui::Shape::Path(path) if path.points.len() == 3 => {
+                    let [a, b, c] = [path.points[0], path.points[1], path.points[2]];
+                    ((a.y - c.y).abs() < 0.01 && b.y < a.y && (4.0..20.0).contains(&(c.x - a.x)))
+                        .then(|| egui::pos2(b.x, (a.y + b.y) / 2.0))
+                }
                 egui::Shape::LineSegment { points: [a, b], .. }
                     if (a.x - b.x).abs() < 0.01 && (4.0..20.0).contains(&(b.y - a.y).abs()) =>
                 {
@@ -1151,10 +1155,12 @@ mod tests {
         dialogs.open_settings();
         settings_frame(&ctx, &mut dialogs, &editor, vec![]);
         let output = settings_frame(&ctx, &mut dialogs, &editor, vec![]);
+        let thickness_y = settings_text(&output, tr("Thickness:")).y;
         let plus = plus_buttons(&output)
             .into_iter()
-            .min_by(|a, b| a.y.total_cmp(&b.y))
-            .expect("thickness step button");
+            .filter(|point| (point.y - thickness_y).abs() < 12.0)
+            .min_by(|a, b| (a.y - thickness_y).abs().total_cmp(&(b.y - thickness_y).abs()))
+            .expect("thickness increment in its labelled row");
         settings_click(&ctx, &mut dialogs, &editor, plus);
         assert_eq!(editor.shape_parameters.borrow().sphere_thickness, 63.0);
         assert!(!dialogs.settings_status.is_empty());
@@ -1250,15 +1256,17 @@ mod tests {
             d.delete_selection();
             let world = d.world_bounds();
             for max in [Vec3d::new(128.0, 16.0, 8.0), Vec3d::new(16.0, 96.0, 8.0)] {
-                d.add_brushes(vec![map_model::shapes::create_cuboid(
-                    &world,
-                    &geometry_math::bbox::Bbox3d {
-                        min: Vec3d::zero(),
-                        max,
-                    },
-                    "stone",
-                )
-                .unwrap()]);
+                d.add_brushes(vec![
+                    map_model::shapes::create_cuboid(
+                        &world,
+                        &geometry_math::bbox::Bbox3d {
+                            min: Vec3d::zero(),
+                            max,
+                        },
+                        "stone",
+                    )
+                    .unwrap(),
+                ]);
             }
             d.select_all();
         }
