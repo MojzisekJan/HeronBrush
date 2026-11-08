@@ -48,6 +48,26 @@ namespace Game
         {
             base.InitializeEditor();
             if (!Engine.CommandLine.Contains("-heronfeaturelab")) return;
+            if (Engine.CommandLine.Contains("-headless")) RunChecks();
+            else Scripting.Update += StartAfterEditorLoad;
+        }
+        public override void DeinitializeEditor()
+        {
+            Scripting.Update -= StartAfterEditorLoad;
+            Scripting.Update -= ShowViews;
+            base.DeinitializeEditor();
+        }
+
+        private float _startup;
+        private void StartAfterEditorLoad()
+        {
+            _startup += Time.UnscaledDeltaTime;
+            if (_startup < 2f || ScriptsBuilder.IsCompiling) return;
+            Scripting.Update -= StartAfterEditorLoad;
+            RunChecks();
+        }
+        private void RunChecks()
+        {
             try { Run(); }
             catch (Exception error) { _failures++; Debug.LogException(error); }
             if (Engine.CommandLine.Contains("-headless"))
@@ -106,10 +126,38 @@ namespace Game
             }
         }
 
+        private void EnvironmentSettings(Actor root)
+        {
+            var path = Path.Combine(Globals.ProjectContentFolder, "feature_lab.environment.json");
+            if (!File.Exists(path)) return;
+            var env = JObject.Parse(File.ReadAllText(path));
+            var camera = root.Children.OfType<PostFxVolume>().FirstOrDefault(a => a.Name == "HeronCameraSettings");
+            Check(camera != null && camera.EyeAdaptation.Mode == EyeAdaptationMode.None, "native camera disables automatic exposure");
+            if (camera != null) Check(Math.Abs(camera.EyeAdaptation.PreExposure - Math.Log2((float)env["display"]["exposure"] * 1.8f)) < 0.0001, "native camera exposure");
+            var sun = root.GetChild<DirectionalLight>();
+            if (sun != null && env["shadows"] != null) Check(sun.ShadowsMode == ((bool)env["shadows"] ? ShadowsCastingMode.All : ShadowsCastingMode.None), "native sun respects shadow setting");
+            if (env["fog"] is JArray fog)
+            {
+                var actor = root.GetChild<ExponentialHeightFog>();
+                Check(actor != null && Math.Abs(actor.FogDensity - (float)fog[1] * 10 / Math.Pow(Math.Log(2), 2)) < 0.0001 && actor.FogHeightFalloff == 0, "native fog uses matching extinction units");
+            }
+            if (env["probes"] is JArray probes && probes.Count > 0)
+            {
+                var actual = root.Children.OfType<EnvironmentProbe>().ToArray();
+                Check(actual.Length == probes.Count(p => (bool)p["reflections"]), "native local reflection probe count");
+                Check(actual.All(p => p.BoxProjection && p.CustomProbe != null && !p.CustomProbe.WaitForLoaded() && p.CustomProbe.MipLevels > 1), "native probes retain prefiltered mip chain");
+                if (probes.Any(p => (bool)p["diffuse"]))
+                    Check(root.Children.OfType<PostFxVolume>().Any(p => p.GlobalIllumination.Mode == GlobalIlluminationMode.DDGI && (p.GlobalIllumination.OverrideFlags & GlobalIlluminationSettingsOverride.Mode) != 0), "native diffuse transport uses DDGI");
+            }
+        }
+
         private void Run()
         {
             var scenePath = Path.Combine(Globals.ProjectContentFolder, "FeatureLab.scene");
             if (!Content.GetAssetInfo(scenePath, out var info)) throw new Exception("FeatureLab.scene missing from the content database");
+            // A script reload can recreate this plugin while the previous test scene is still loaded.
+            if (Level.Scenes.Any(scene => scene.ID == info.ID) && Level.UnloadScene(info.ID))
+                throw new Exception("Previous FeatureLab.scene failed to unload");
             if (Level.LoadScene(info.ID)) throw new Exception("FeatureLab.scene failed to load");
             HeronBrushLevel.ImportModels();
             var placements = new Dictionary<string, HeronBrushLevel.Placement>();
@@ -127,6 +175,7 @@ namespace Game
             Check(sky != null && sky.CubeTexture != null && !sky.CubeTexture.WaitForLoaded(), "native HDR sky cube");
             Check(ambient != null && ambient.CustomTexture != null, "native ambient sky light");
             Check(root.GetChild<DirectionalLight>() != null, "native sky sun");
+            EnvironmentSettings(root);
             Colliders(actors);
             Materials(actors);
             HiddenFace(actors);
@@ -255,9 +304,9 @@ namespace Game
             int Distinct(string name) => Describe((actors[name] as StaticModel).Model.MaterialSlots[0].Material)
                 .Where(l => l.StartsWith("  uses Texture")).Distinct().Count();
             // brick_wall: colour and normal map. The model: colour, metallic-roughness,
-            // normal and emissive; Flax's glTF import leaves the occlusion map out.
+            // normal, emissive and the repaired occlusion map.
             Check(Distinct("func_detail_4") == 2, "brick_wall material samples its colour and normal map", Distinct("func_detail_4") + " textures");
-            Check(Distinct("heron_model") == 4, "imported model material samples four of its five maps", Distinct("heron_model") + " textures");
+            Check(Distinct("heron_model") == 5, "imported model material samples all five maps", Distinct("heron_model") + " textures");
         }
 
         private void HiddenFace(Dictionary<string, Actor> actors)

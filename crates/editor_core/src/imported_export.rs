@@ -210,6 +210,12 @@ fn generated_pbr(
         }
     }
     Ok(scene_export::materials::GeneratedPbr {
+        layers: [
+            source.clearcoat,
+            source.coat_roughness,
+            source.anisotropy,
+            source.anisotropy_rotation,
+        ],
         alpha_mode: match source.alpha_mode {
             map_model::material::Alpha::Opaque => scene_export::materials::AlphaMode::Opaque,
             map_model::material::Alpha::Masked => scene_export::materials::AlphaMode::Mask,

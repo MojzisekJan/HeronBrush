@@ -84,9 +84,13 @@ func _attach() -> void:
             break
     _update(true)
 
+func _filesystem_busy(fs: EditorFileSystem) -> bool:
+    # Godot 4.4 and 4.5 expose scanning but not the separate import state.
+    return fs.is_scanning() or (fs.has_method("is_importing") and fs.call("is_importing"))
+
 func _update(allow_attach: bool) -> void:
     var fs := EditorInterface.get_resource_filesystem()
-    if fs.is_scanning() or fs.is_importing():
+    if _filesystem_busy(fs):
         return
     var root := EditorInterface.get_edited_scene_root()
     if root == null:
@@ -97,7 +101,7 @@ func _update(allow_attach: bool) -> void:
     # Godot normally notices external edits on focus. Explicit scanning and reimporting
     # also work while the mapper keeps drawing in Heron Brush.
     fs.scan()
-    while fs.is_scanning() or fs.is_importing():
+    while _filesystem_busy(fs):
         await get_tree().process_frame
         if not is_inside_tree():
             return
@@ -113,13 +117,13 @@ func _update(allow_attach: bool) -> void:
     var path: String = snapshot.get("scene", "")
     if not path.begins_with("res://") or not FileAccess.file_exists(path):
         status.text = "Exported scene is missing"
-        _ack("error", status.text)
+        _ack("error", status.text, str(snapshot.get("revision", "")))
         busy = false
         return
     var packed = ResourceLoader.load(path, "PackedScene", ResourceLoader.CACHE_MODE_REPLACE_DEEP)
     if not packed is PackedScene:
         status.text = "Could not load exported scene"
-        _ack("error", status.text)
+        _ack("error", status.text, str(snapshot.get("revision", "")))
         busy = false
         return
     var next: Node = packed.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE)

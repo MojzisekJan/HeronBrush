@@ -54,7 +54,8 @@ namespace Game
                     _revision=(string)JObject.Parse(manifest)["revision"];
                     File.WriteAllText(Path.Combine(Globals.ProjectFolder,".heron-brush-live.json"),manifest);
                     File.Delete(Path.Combine(Globals.ProjectFolder,".heron-brush-live-busy"));
-                    HeronBrushLiveEditor.Instance.Attach(); _published=true;
+                    if (_stage == 0) HeronBrushLiveEditor.Instance.Attach();
+                    _published = true;
                 }
                 var ackPath=Path.Combine(Globals.ProjectFolder,".heron-brush-live-status.json");
                 if (!File.Exists(ackPath)) return;
@@ -66,6 +67,8 @@ namespace Game
                 if (roots.Length!=1 || _unrelated==null) throw new Exception("Root ownership failed: stage="+_stage+" roots="+roots.Length+" unrelated="+(_unrelated!=null));
                 var root=roots[0];
                 var world=(StaticModel)root.Children.First(a=>a.Name=="worldspawn");
+                // Asset headers load before streamed mesh buffers, including in Null mode.
+                if (world.Model.LoadedLODs == 0 || world.Model.LODs[0].Meshes.Sum(m=>m.TriangleCount) == 0) return;
                 if (Colliders(root)==0) throw new Exception("No native colliders");
                 if (_stage==0) root.LocalPosition=new Vector3(300,100,200);
                 else if (Vector3.Distance(root.LocalPosition,new Vector3(300,100,200))>0.01f) throw new Exception("Attachment moved");

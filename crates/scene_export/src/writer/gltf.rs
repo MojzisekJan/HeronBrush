@@ -594,7 +594,7 @@ pub(crate) fn prepare_albedos(
     let mut warnings = Vec::new();
     let mut files = std::collections::HashMap::<std::path::PathBuf, Option<AlbedoImage>>::new();
     for (name, material) in &library.materials {
-        let Material::FromTextures { albedo, .. } = material else {
+        let Material::FromTextures { albedo, maps } = material else {
             continue;
         };
         let normal = settings.normal_maps.get(name).cloned();
@@ -608,7 +608,13 @@ pub(crate) fn prepare_albedos(
                     alpha: image.alpha,
                     surface: image.surface,
                     normal,
-                    pbr: image.pbr.clone(),
+                    pbr: companion_pbr(
+                        maps,
+                        settings,
+                        image.pbr.clone(),
+                        image.alpha,
+                        &mut warnings,
+                    ),
                 },
             );
             continue;
@@ -636,6 +642,13 @@ pub(crate) fn prepare_albedos(
                 name.clone(),
                 AlbedoImage {
                     normal,
+                    pbr: companion_pbr(
+                        maps,
+                        settings,
+                        image.pbr.clone(),
+                        image.alpha,
+                        &mut warnings,
+                    ),
                     ..image.clone()
                 },
             );
@@ -885,7 +898,23 @@ pub(crate) fn embed_materials(
             let mat = &mut doc["materials"][index];
             mat["pbrMetallicRoughness"]["roughnessFactor"] = serde_json::json!(pbr.roughness);
             mat["pbrMetallicRoughness"]["metallicFactor"] = serde_json::json!(pbr.metallic);
-            mat["emissiveFactor"] = serde_json::json!(pbr.emissive_factor);
+            if image.surface.is_none_or(|s| s[2] == 0.0) {
+                let strength = pbr.emissive_factor.into_iter().fold(1.0f32, f32::max);
+                mat["emissiveFactor"] =
+                    serde_json::json!(pbr.emissive_factor.map(|v| v / strength));
+                if strength > 1.0 {
+                    mat["extensions"]["KHR_materials_emissive_strength"] =
+                        serde_json::json!({"emissiveStrength":strength});
+                }
+            }
+            if pbr.layers[0] > 0.0 {
+                mat["extensions"]["KHR_materials_clearcoat"] = serde_json::json!({"clearcoatFactor":pbr.layers[0],"clearcoatRoughnessFactor":pbr.layers[1]});
+            }
+            if pbr.layers[2] > 0.0 {
+                mat["extensions"]["KHR_materials_anisotropy"] = serde_json::json!({"anisotropyStrength":pbr.layers[2],"anisotropyRotation":pbr.layers[3]});
+                normal_mapped.insert(index);
+            }
+
             // Pixel alpha alone cannot distinguish opaque, cutout and blended
             // source materials. Explicit imported rules override that fallback.
             mat["alphaMode"] = serde_json::json!(match pbr.alpha_mode {
@@ -919,6 +948,20 @@ pub(crate) fn embed_materials(
                 }
             }
         }
+    }
+    let extensions: std::collections::BTreeSet<String> = doc["materials"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .flat_map(|m| {
+            m["extensions"]
+                .as_object()
+                .into_iter()
+                .flat_map(|e| e.keys().cloned())
+        })
+        .collect();
+    if !extensions.is_empty() {
+        doc["extensionsUsed"] = serde_json::json!(extensions);
     }
     if images.is_empty() {
         return;
@@ -1019,6 +1062,113 @@ fn pack(json: &[u8], bin: &[u8]) -> Vec<u8> {
     out.extend(std::iter::repeat_n(0u8, bin_padding));
 
     out
+}
+
+/// Packs loose scalar maps into the channels required by glTF. Imported model maps
+/// retain their authored factors and explicit transparency rules.
+fn companion_pbr(
+    maps: &[(&'static str, String)],
+    settings: &crate::settings::Settings,
+    source: Option<crate::materials::GeneratedPbr>,
+    alpha: bool,
+    warnings: &mut Vec<String>,
+) -> Option<crate::materials::GeneratedPbr> {
+    use crate::materials::{res_to_fs, PbrImage};
+    let Some(root) = settings.project_root.as_deref() else {
+        return source;
+    };
+    let has_source = source.is_some();
+    let mut pbr = source.unwrap_or_default();
+    if !has_source && alpha {
+        pbr.alpha_mode = crate::materials::AlphaMode::Blend;
+    }
+    let mut changed = false;
+    let mut read = |slot: &str| -> Option<image::RgbaImage> {
+        let (_, path) = maps.iter().find(|(key, _)| *key == slot)?;
+        let path = res_to_fs(root, path);
+        match image::open(&path) {
+            Ok(image) => Some(image.to_rgba8()),
+            Err(e) => {
+                warnings.push(format!("could not read PBR map {}: {e}", path.display()));
+                None
+            }
+        }
+    };
+    let rough = read("roughness_texture");
+    let metal = read("metallic_texture");
+    let orm = read("orm_texture");
+    let ao = read("ao_texture");
+    let emissive = read("emission_texture");
+    let encode = |image: &image::RgbaImage| {
+        let mut bytes = std::io::Cursor::new(Vec::new());
+        image
+            .write_to(&mut bytes, image::ImageFormat::Png)
+            .expect("PNG encode");
+        std::sync::Arc::<[u8]>::from(bytes.into_inner())
+    };
+    let sample = |image: &image::RgbaImage, x: u32, y: u32, w: u32, h: u32| {
+        image
+            .get_pixel(
+                (x as u64 * image.width() as u64 / w as u64) as u32,
+                (y as u64 * image.height() as u64 / h as u64) as u32,
+            )
+            .0
+    };
+    let mut add = |slot, image: image::RgbaImage| {
+        if !pbr.images.iter().any(|m| m.slot == slot) {
+            pbr.images.push(PbrImage {
+                slot,
+                path: String::new(),
+                godot_png: None,
+                png: encode(&image),
+            });
+            changed = true;
+        }
+    };
+    if let Some(reference) = orm.as_ref().or(rough.as_ref()).or(metal.as_ref()) {
+        let (w, h) = reference.dimensions();
+        let mut packed = image::RgbaImage::new(w, h);
+        for (x, y, pixel) in packed.enumerate_pixels_mut() {
+            let o = orm.as_ref().map(|m| sample(m, x, y, w, h));
+            *pixel = image::Rgba([
+                255,
+                rough
+                    .as_ref()
+                    .map_or_else(|| o.map_or(255, |v| v[1]), |m| sample(m, x, y, w, h)[0]),
+                metal
+                    .as_ref()
+                    .map_or_else(|| o.map_or(255, |v| v[2]), |m| sample(m, x, y, w, h)[0]),
+                255,
+            ]);
+        }
+        add("mr", packed);
+    }
+    if let Some(image) = ao.as_ref().or(orm.as_ref()) {
+        add("ao", image.clone());
+    }
+    if let Some(image) = emissive {
+        add("emissive", image);
+        if pbr.emissive_factor == [0.0; 3] {
+            pbr.emissive_factor = [1.0; 3];
+        }
+    }
+    if changed {
+        if metal.is_some() || orm.is_some() {
+            pbr.metallic = 1.0;
+        }
+        return Some(pbr);
+    }
+    if has_source
+        || pbr.layers.iter().any(|v| *v != 0.0)
+        || !pbr.images.is_empty()
+        || pbr.roughness != 1.0
+        || pbr.metallic != 0.0
+        || pbr.emissive_factor != [0.0; 3]
+    {
+        Some(pbr)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]

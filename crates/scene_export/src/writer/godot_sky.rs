@@ -28,7 +28,13 @@ pub fn panorama(sky: &Sky) -> Vec<u8> {
 
 /// Adds the environment to the scene's root, with the panorama at `panorama_path`
 /// (a `res://` path).
-pub fn attach(scene: &mut Scene, sky: &Sky, panorama_path: &str) {
+pub fn attach(
+    scene: &mut Scene,
+    sky: &Sky,
+    panorama_path: &str,
+    show_background: bool,
+    shadows: bool,
+) {
     let color = |c: [f32; 3]| GdValue::Color(c[0] as f64, c[1] as f64, c[2] as f64, 1.);
     scene.sub_resources.push(SubResource {
         id: "HeronSkyMaterial".into(),
@@ -50,7 +56,10 @@ pub fn attach(scene: &mut Scene, sky: &Sky, panorama_path: &str) {
         )],
     });
     let mut environment = vec![
-        ("background_mode".into(), GdValue::Int(2)),
+        (
+            "background_mode".into(),
+            GdValue::Int(if show_background { 2 } else { 0 }),
+        ),
         ("sky".into(), GdValue::SubResource("HeronSky".into())),
         ("ambient_light_source".into(), GdValue::Int(3)),
         (
@@ -111,7 +120,7 @@ pub fn attach(scene: &mut Scene, sky: &Sky, panorama_path: &str) {
         "light_energy",
         GdValue::Float(sky.sun_intensity as f64 / std::f64::consts::PI),
     );
-    sun.set("shadow_enabled", GdValue::Bool(true));
+    sun.set("shadow_enabled", GdValue::Bool(shadows));
     scene.root.add_child(sun);
 }
 
@@ -145,7 +154,7 @@ mod tests {
             sub_resources: Vec::new(),
             connections: Vec::new(),
         };
-        attach(&mut scene, &sky(), "res://maps/map/sky.hdr");
+        attach(&mut scene, &sky(), "res://maps/map/sky.hdr", true, true);
         let text = crate::writer::tscn::write(&scene);
         assert!(
             text.contains(r#"[ext_resource type="Texture2D" path="res://maps/map/sky.hdr""#),
@@ -195,7 +204,7 @@ mod tests {
             sub_resources: Vec::new(),
             connections: Vec::new(),
         };
-        attach(&mut scene, &sky(), "res://sky.hdr");
+        attach(&mut scene, &sky(), "res://sky.hdr", true, true);
         assert!(!scene.root.children.iter().any(|n| n.name == "HeronSun"));
     }
 }

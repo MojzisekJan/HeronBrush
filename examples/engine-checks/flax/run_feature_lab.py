@@ -36,13 +36,15 @@ def main():
     parser.add_argument("--no-export", action="store_true", help="reuse the existing export")
     parser.add_argument("--gpu", action="store_true",
                         help="run the editor on the display (Vulkan) and save screenshots")
+    parser.add_argument("--binary", type=Path, default=ROOT / "target/debug/heron-brush",
+                        help="Heron binary used to export the map")
+    parser.add_argument("--release", action="store_true", help="use release Rust reference tests")
     args = parser.parse_args()
     root = args.root.resolve()
-    editor = Path(os.environ.get("FLAX_EDITOR", Path.home() /
-                                 "Downloads/flax/Binaries/Editor/Linux/Development/FlaxEditor"))
+    editor = Path(os.environ.get("FLAX_EDITOR", "/Applications/FlaxEditor.app/Contents/MacOS/FlaxEditor" if sys.platform == "darwin" else Path.home() / "Downloads/flax/Binaries/Editor/Linux/Development/FlaxEditor"))
     if not args.no_export:
         subprocess.run([sys.executable, str(ROOT / "examples/engine-checks/export_feature_lab.py"),
-                        "flax", "--root", str(root)], check=True)
+                        "flax", "--root", str(root), "--binary", str(args.binary.resolve())], check=True)
     export = root / "heron-feature-flax"
     project = root / "heron-flax-feature-project"
     if project.exists():
@@ -67,14 +69,15 @@ def main():
     (project / "Source/Game/FeatureLabCheck.cs").write_text(f"using {namespace};\n" + check)
 
     poses = root / "feature-lab-poses.json"
-    subprocess.run(["cargo", "test", "-q", "-p", "editor_core", "--lib",
+    subprocess.run(["cargo", "test", "-q", *(["--release"] if args.release else []), "-p", "editor_core", "--lib",
                     "writes_feature_lab_mover_poses_for_engine_checks"], cwd=ROOT, check=True,
                    env=dict(os.environ, HERON_FEATURE_LAB_POSES=str(poses)))
     # Flax writes LastProject.txt under XDG_CONFIG_HOME; keep it out of the person's.
     env = dict(os.environ, HERON_FEATURE_LAB_POSES=str(poses),
                XDG_CONFIG_HOME=str(root / "flax-config"))
     log = root / ("flax-feature-gpu.txt" if args.gpu else "flax-feature-runtime.txt")
-    command = [str(editor), "-project", str(project), "-std", "-heronfeaturelab"]
+    project_arg = project / "flax.flaxproj" if sys.platform == "darwin" else project
+    command = [str(editor), "-project", str(project_arg), "-std", "-heronfeaturelab"]
     if not args.gpu:
         command[1:1] = ["-headless", "-null", "-exit"]
     shots = root / "flax-feature-shots"
@@ -82,6 +85,12 @@ def main():
         shutil.rmtree(shots, ignore_errors=True)
         shots.mkdir()
         env["HERON_FEATURE_LAB_SHOTS"] = str(shots)
+    # The macOS launcher parses argv[1] as the complete engine command line.
+    if sys.platform == "darwin":
+        command = [command[0], " ".join(
+            '"' + argument.replace("\\", "\\\\").replace('"', '\\"') + '"'
+            if argument == str(project_arg) or any(c.isspace() for c in argument) else argument
+            for argument in command[1:])]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, errors="replace", env=env)
     # A script compile error leaves the editor open on its error bar; stop it then.

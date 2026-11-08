@@ -233,7 +233,9 @@ impl Text {
         Some(match self {
             Text::TextureDir => tr("The res:// directory texture images are looked up in"),
             Text::MaterialDir => tr("A res:// directory searched for hand-made materials"),
-            Text::AssetDir => tr("The resource directory the exported files live under, e.g. /main/arena"),
+            Text::AssetDir => {
+                tr("The resource directory the exported files live under, e.g. /main/arena")
+            }
             Text::Clip => tr("Faces wearing it are collision and nothing else"),
             Text::Skip => tr("Faces wearing it are dropped altogether"),
             Text::Origin => tr("A brush wearing it marks its entity's origin rather than geometry"),
@@ -241,7 +243,9 @@ impl Text {
                 "The folder this engine's project begins at, which is what turns a texture name into \
                  a file. Left empty it is found by walking up from wherever the level is written",
             ),
-            Text::NameProperty => tr("The entity property whose value names the node, such as targetname"),
+            Text::NameProperty => {
+                tr("The entity property whose value names the node, such as targetname")
+            }
             _ => return None,
         })
     }
@@ -250,32 +254,72 @@ impl Text {
 /// What an engine gets, in a sentence, so the tab says what pressing Write will leave.
 fn what_it_writes(target: Target) -> &'static str {
     match target {
-        Target::Godot => translation_key("A .tscn scene with the meshes as .obj beside it, which Godot imports like any other asset."),
-        Target::Defold => translation_key("A .collection and the component files it names, with the meshes as .glb."),
-        Target::ThreeJs => translation_key("Playable HTML with FPS controls and collisions. Open it in a browser; internet is needed for Three.js. JSON and .glb files are included."),
-        Target::Babylon => translation_key("Playable HTML with a Havok character controller, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for Babylon.js. The JSON, .glb files and a runtime module for your own game are included."),
-        Target::PlayCanvas => translation_key("Playable HTML with ammo.js physics, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for PlayCanvas. The JSON, .glb files and a runtime module for your own game are included."),
-        Target::Bevy => translation_key("The level as JSON with the meshes as .glb, which Bevy's asset loader reads."),
-        Target::Raylib => translation_key("The level as flat text, one keyword to a line, with the meshes as .glb."),
-        Target::Unity => translation_key("The meshes as .obj with a generated C# Editor script: drop the folder into Assets and run Heron Brush > Build Level."),
-        Target::Unreal => translation_key("The meshes as .glb with a generated Python script: run it inside the Unreal editor to import and place everything."),
-        Target::Flax => translation_key("The meshes as .glb with a generated C# editor script: put the folder under Content and run HeronBrushLevel.Build()."),
-        Target::Stride => translation_key("Native Stride model, material and sky assets, Bullet colliders, animation and triggers, and a C# loader with project callbacks."),
-        Target::GDevelop => translation_key("A GDevelop scene in the project's game.json: 3D models, Physics3D collision, typed variables, the sky and sun, and an event that plays animation and triggers."),
-        Target::Cocos => translation_key("The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted."),
-        Target::Gltf => translation_key("A .gltf scene with a .bin file and PNG textures. Preserves brushes, patches, groups and face paint. Entity properties are stored as metadata; game behaviour and physics require an importer."),
-        Target::Glb => translation_key("One .glb file containing the scene, materials and textures. Preserves brushes, patches, groups and face paint. Entity properties are stored as metadata; game behaviour and physics require an importer."),
-        Target::Obj => translation_key("One .obj with an .mtl beside it: the geometry and its materials, for a modelling tool."),
+        Target::Godot => translation_key(
+            "A .tscn scene with the meshes as .obj beside it, which Godot imports like any other asset.",
+        ),
+        Target::Defold => translation_key(
+            "A .collection and the component files it names, with the meshes as .glb.",
+        ),
+        Target::ThreeJs => translation_key(
+            "Playable HTML with FPS controls and collisions. Open it in a browser; internet is needed for Three.js. JSON and .glb files are included.",
+        ),
+        Target::Babylon => translation_key(
+            "Playable HTML with a Havok character controller, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for Babylon.js. The JSON, .glb files and a runtime module for your own game are included.",
+        ),
+        Target::PlayCanvas => translation_key(
+            "Playable HTML with ammo.js physics, doors, triggers, water, lights and the sky. Open it in a browser; internet is needed for PlayCanvas. The JSON, .glb files and a runtime module for your own game are included.",
+        ),
+        Target::Bevy => translation_key(
+            "The level as JSON with the meshes as .glb, which Bevy's asset loader reads.",
+        ),
+        Target::Raylib => translation_key(
+            "The level as flat text, one keyword to a line, with the meshes as .glb.",
+        ),
+        Target::Unity => translation_key(
+            "The meshes as .obj with a generated C# Editor script: drop the folder into Assets and run Heron Brush > Build Level.",
+        ),
+        Target::Unreal => translation_key(
+            "The meshes as .glb with a generated Python script: run it inside the Unreal editor to import and place everything.",
+        ),
+        Target::Flax => translation_key(
+            "The meshes as .glb with a generated C# editor script: put the folder under Content and run HeronBrushLevel.Build().",
+        ),
+        Target::Stride => translation_key(
+            "Native Stride model, material and sky assets, Bullet colliders, animation and triggers, and a C# loader with project callbacks.",
+        ),
+        Target::GDevelop => translation_key(
+            "A GDevelop scene in the project's game.json: 3D models, Physics3D collision, typed variables, the sky and sun, and an event that plays animation and triggers.",
+        ),
+        Target::Cocos => translation_key(
+            "The level as JSON with .glb models and the sky, and a Cocos Creator component that builds it with colliders, animation and triggers. Cocos shares this frame, so nothing is converted.",
+        ),
+        Target::Gltf => translation_key(
+            "A .gltf scene with a .bin file and PNG textures. Preserves brushes, patches, groups and face paint. Entity properties are stored as metadata; game behaviour and physics require an importer.",
+        ),
+        Target::Glb => translation_key(
+            "One .glb file containing the scene, materials and textures. Preserves brushes, patches, groups and face paint. Entity properties are stored as metadata; game behaviour and physics require an importer.",
+        ),
+        Target::Obj => translation_key(
+            "One .obj with an .mtl beside it: the geometry and its materials, for a modelling tool.",
+        ),
     }
 }
 
 /// What the live link asks of the user before it starts, per engine.
 fn live_hint(target: Target) -> &'static str {
     match target {
-        Target::Flax => tr("Install the Flax addon, start the link, then choose Tools > Heron Brush: attach live map in Flax. Updates pause during Play Mode."),
-        Target::Defold => tr("Open your project in Defold. Live edits update heron_brush_live/preview.collection without saving the map. No addon is needed."),
-        Target::Unity => tr("Export into Assets, install the addon, then open Window > Heron Brush > Live Link in Unity. Unsaved edits sync too."),
-        _ => tr("Export once into your Godot project. Install the addon, enable Heron Brush Live in Godot's Plugins settings, then start the link and attach the map in its dock. Updates include unsaved edits."),
+        Target::Flax => tr(
+            "Install the Flax addon, start the link, then choose Tools > Heron Brush: attach live map in Flax. Updates pause during Play Mode.",
+        ),
+        Target::Defold => tr(
+            "Open your project in Defold. Live edits update heron_brush_live/preview.collection without saving the map. No addon is needed.",
+        ),
+        Target::Unity => tr(
+            "Export into Assets, install the addon, then open Window > Heron Brush > Live Link in Unity. Unsaved edits sync too.",
+        ),
+        _ => tr(
+            "Export once into your Godot project. Install the addon, enable Heron Brush Live in Godot's Plugins settings, then start the link and attach the map in its dock. Updates include unsaved edits.",
+        ),
     }
 }
 
@@ -687,20 +731,29 @@ impl ExportPage {
                         }
                         if show.godot_extras {
                             widgets::row(
-                            ui,
-                            tr("Trigger layer"),
-                            Some(tr(
-                                "The physics layer a trigger's area goes on, 1 to 32. On the level's own layer it \
+                                ui,
+                                tr("Trigger layer"),
+                                Some(tr(
+                                    "The physics layer a trigger's area goes on, 1 to 32. On the level's own layer it \
                                  stops every ray the game traces. 0 leaves it where the engine puts it",
-                            )),
-                            |ui| {
-                                let width = ui.available_width().min(160.0);
-                                let mut layer = f64::from(self.options.trigger_layer);
-                                if widgets::spin_width(ui, &mut layer, 0.0..=32.0, 1.0, 0, width).changed() {
-                                    self.options.trigger_layer = layer.round() as u32;
-                                }
-                            },
-                        );
+                                )),
+                                |ui| {
+                                    let width = ui.available_width().min(160.0);
+                                    let mut layer = f64::from(self.options.trigger_layer);
+                                    if widgets::spin_width(
+                                        ui,
+                                        &mut layer,
+                                        0.0..=32.0,
+                                        1.0,
+                                        0,
+                                        width,
+                                    )
+                                    .changed()
+                                    {
+                                        self.options.trigger_layer = layer.round() as u32;
+                                    }
+                                },
+                            );
                         }
                         form::switch_row(
                             ui,
@@ -1173,13 +1226,15 @@ fn live_link(
             if target == Target::Defold {
                 let mut hot = live.defold_hot_reload();
                 if form::switch_row(
-                ui,
-                tr("Hot reload running game"),
-                Some(tr("Start the game from Defold first. Adding objects or changing collisions may require restarting the level.")),
-                &mut hot,
-            ) {
-                live.set_defold_hot_reload(hot);
-            }
+                    ui,
+                    tr("Hot reload running game"),
+                    Some(tr(
+                        "Start the game from Defold first. Adding objects or changing collisions may require restarting the level.",
+                    )),
+                    &mut hot,
+                ) {
+                    live.set_defold_hot_reload(hot);
+                }
             }
             let install = match target {
                 Target::Flax => tr("Install Flax addon"),

@@ -160,3 +160,38 @@ These were found by this check while the target was being written:
   game that casts rays from inside geometry should know.
 - The motion lab is not run through Babylon.js yet; the feature lab covers each
   animation mode, the door and riding.
+
+## Material and lighting update
+
+The export now embeds companion brush roughness/metallic maps in glTF's G/B
+channels, connects AO and emission, and preserves explicit source alpha rules.
+Numeric clear coat and anisotropy factors survive engine GLBs, with tangents for
+anisotropic geometry. Their factors are part of the generated material cache key.
+Imported model layers and emissive strengths above one are preserved too.
+
+The runtime creates shadow generators for enabled point/spot/directional lights
+and the sun, and assigns visible geometry as casters and receivers. Animation
+continues to move shadow casters. Clip helpers and sensors cast no visible shadow.
+The saved camera's main shadow switch is respected.
+
+Authored HDR/EXR environments are sampled into Babylon's panorama orientation with
+the saved rotation and intensity. Background visibility is independent of lighting.
+The camera display transform runs in a linear HDR postprocess: exposure, white
+balance/tint, contrast, saturation and ACES, AgX, Khronos Neutral or TonyMcMapface.
+The same LUT as the editor is embedded for TonyMcMapface. Postprocesses attach before
+rendering, after a new camera has completed construction, including when switching
+between cameras. The existing sky and light pixel checks cover that lifecycle.
+
+Local probes are baked at export time from the map, materials and captured lighting.
+A single RGBE atlas carries all filtered cube levels; SH coefficients provide baked
+diffuse transport. A PBR material plugin blends them per fragment using map-space
+box bounds and blend widths, with parallax correction for reflections. Up to eight
+probes are supported, independently enabling reflection and diffuse contributions.
+This is a static approximation: moving geometry samples the bake, but does not cause
+runtime rebaking. Babylon's lighting model and filters can differ from the editor.
+
+Both JSON loading and the self-contained HTML use the same lighting payload and HDR
+image. The reproducible additional check is documented in
+[the Babylon test README](../examples/engine-checks/babylon/README.md#material-and-lighting-regressions).
+It checks GLB factors and PBR textures, rendered shadow/diffuse/reflection/grading
+changes independently, all four display curves, and the standalone HTML.

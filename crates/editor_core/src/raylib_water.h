@@ -48,15 +48,16 @@ static const char *hb_water_vs="#version 330\n"
     "uv=vertexTexCoord;tint=vertexColor;world=(matModel*vec4(p,1.0)).xyz;gl_Position=mvp*vec4(p,1.0);}\n";
 static const char *hb_water_fs="#version 330\n"
     "in vec2 uv;in vec4 tint;in vec3 world;uniform sampler2D texture0;uniform vec4 colDiffuse;\n"
-    "uniform vec3 viewPos;uniform vec3 fogColor;uniform float fogDensity;out vec4 finalColor;\n"
-    "void main(){vec4 c=texture(texture0,uv)*colDiffuse*tint;float d=length(world-viewPos)*fogDensity;\n"
+    "uniform vec3 viewPos;uniform vec3 fogColor;uniform float fogDensity,alphaCutoff;out vec4 finalColor;\n"
+    "void main(){vec4 c=texture(texture0,uv)*colDiffuse*tint;if(alphaCutoff>=0.0){if(c.a<alphaCutoff)discard;c.a=1.0;}else if(alphaCutoff< -1.0)c.a=1.0;float d=length(world-viewPos)*fogDensity;\n"
     "finalColor=vec4(mix(fogColor,c.rgb,exp(-d*d)),c.a);}\n";
-typedef struct {Shader shader;int time,height,speed,view,fog_color,fog_density;int underwater;Color fog;} HbWaterShader;
+typedef struct {Shader shader;int time,height,speed,view,fog_color,fog_density,alpha_cutoff;int underwater;Color fog;} HbWaterShader;
 static inline HbWaterShader HbWaterLoadShader(void){
     HbWaterShader s={0};s.shader=LoadShaderFromMemory(hb_water_vs,hb_water_fs);
     s.time=GetShaderLocation(s.shader,"time");s.height=GetShaderLocation(s.shader,"waveHeight");s.speed=GetShaderLocation(s.shader,"waveSpeed");
     s.view=GetShaderLocation(s.shader,"viewPos");s.fog_color=GetShaderLocation(s.shader,"fogColor");s.fog_density=GetShaderLocation(s.shader,"fogDensity");
     s.shader.locs[SHADER_LOC_MATRIX_MODEL]=GetShaderLocation(s.shader,"matModel");
+    s.alpha_cutoff=GetShaderLocation(s.shader,"alphaCutoff");
     s.underwater=-1;return s;
 }
 /* Once a frame, before drawing: the water the camera is in (-1 for none) gives the
@@ -76,13 +77,23 @@ static inline int HbWaterOf(int entity){for(int i=0;i<HB_WATER_COUNT;i++)if(hb_w
 /* Draws a model through the shader. A water volume's baseline surface
  * (surface_material) waves and is see-through from both sides; draw those after
  * everything opaque, a volume keeping its own material with the rest. */
-static inline void HbWaterDrawModel(HbWaterShader *s,Model model,int water){
-    for(int i=0;i<model.materialCount;i++)model.materials[i].shader=s->shader;
+static inline void HbWaterDrawMaterials(HbWaterShader *s,Model model,int water,const float (*parameters)[4],int material_count){
     int surface=water>=0&&hb_waters[water].surface_material;
     float height=surface?(float)hb_waters[water].wave_height:0,speed=surface?(float)hb_waters[water].wave_speed:0;
     SetShaderValue(s->shader,s->height,&height,SHADER_UNIFORM_FLOAT);SetShaderValue(s->shader,s->speed,&speed,SHADER_UNIFORM_FLOAT);
     if(surface){rlDrawRenderBatchActive();rlDisableBackfaceCulling();rlDisableDepthMask();BeginBlendMode(BLEND_ALPHA);}
-    DrawModel(model,(Vector3){0,0,0},1,WHITE);
+    for(int i=0;i<model.meshCount;i++){
+        int index=model.meshMaterial[i];
+        Material material=model.materials[index];
+        material.shader=s->shader;
+        float cutoff=parameters&&index>=0&&index<=material_count?parameters[index][3]:-1;
+        if(surface&&cutoff< -1)cutoff=-1;
+        SetShaderValue(s->shader,s->alpha_cutoff,&cutoff,SHADER_UNIFORM_FLOAT);
+        DrawMesh(model.meshes[i],material,model.transform);
+    }
     if(surface){EndBlendMode();rlDrawRenderBatchActive();rlEnableDepthMask();rlEnableBackfaceCulling();}
+}
+static inline void HbWaterDrawModel(HbWaterShader *s,Model model,int water){
+    HbWaterDrawMaterials(s,model,water,0,0);
 }
 #endif

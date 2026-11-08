@@ -1,13 +1,14 @@
 # Flax export check
 
-A Flax project (tested with 1.12) that imports the shared demo map with the
+A Flax project (tested with 1.12 and macOS 1.13) that imports the shared demo map with the
 generated C# importer. The check builds the scene, checks every actor's metadata
 and target links, and creates native mesh colliders. Gameplay is left to the
 game: the generated `Build(configure)` callback runs after all actors exist.
 
 ## Export and run
 
-From the repository root, with the .NET 8 SDK installed:
+From the repository root, with the .NET SDK required by your Flax version installed
+(.NET 10 for Flax 1.13):
 
 ```sh
 cargo build -p heron-brush
@@ -53,3 +54,18 @@ python3 examples/engine-checks/flax/run_feature_lab.py --root /tmp/feature-runs 
 Exports `demos/feature_lab/feature_lab.map`, builds a project around it and runs
 `feature_lab/FeatureLabCheck.cs` in the editor. See
 [feature lab in Flax](../../../docs/feature-runtime-flax.md).
+
+On macOS the runner finds `/Applications/FlaxEditor.app` automatically. For an
+existing release build:
+
+```sh
+python3 examples/engine-checks/flax/run_feature_lab.py --release \
+  --binary target/release/heron-brush --root /tmp/feature-runs
+```
+
+Raw macOS CLI invocations must pass every switch as one argument:
+
+```sh
+/Applications/FlaxEditor.app/Contents/MacOS/FlaxEditor \
+  '-project "/absolute/test-project/flax.flaxproj" -headless -null -std -heronlivecheck'
+```

@@ -98,13 +98,13 @@ __ENTRIES__        };
         public static Entity[] CreateEnvironment(ContentManager content){
             if(SkyboxUrl==null)return Array.Empty<Entity>();
             var sky=new Entity(Name+" sky");
-            sky.Add(new BackgroundComponent{Texture=content.Load<Texture>(SkyTextureUrl)});
+            if(SkyTextureUrl!=null)sky.Add(new BackgroundComponent{Texture=content.Load<Texture>(SkyTextureUrl)});
             sky.Add(new LightComponent{Type=new LightSkybox{Skybox=content.Load<Skybox>(SkyboxUrl)},Intensity=AmbientIntensity});
             var sun=new Entity(Name+" sun");
             // A directional light shines along its entity's forward axis, -Z.
             sun.Transform.Rotation=Quaternion.BetweenDirections(-Vector3.UnitZ,-Vector3.Normalize(ToSun));
             var light=new LightDirectional{Color=new ColorRgbProvider(SunColor)};
-            light.Shadow.Enabled=true;
+            light.Shadow.Enabled=__SUN_SHADOWS__;
             sun.Add(new LightComponent{Type=light,Intensity=SunIntensity});
             return new[]{sky,sun};
         }

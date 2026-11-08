@@ -51,6 +51,8 @@ pub enum AlphaMode {
 
 #[derive(Debug, Clone)]
 pub struct GeneratedPbr {
+    /// Clear coat, coat roughness, anisotropy and rotation in radians.
+    pub layers: [f32; 4],
     pub alpha_mode: AlphaMode,
     pub alpha_cutoff: f32,
     pub double_sided: bool,
@@ -603,5 +605,22 @@ mod tests {
         assert!(matches!(lib.get("stone"), Some(Material::Missing)));
         assert_eq!(lib.sizes.get("stone"), Vec2::splat(32.0));
         assert_eq!(lib.warnings.len(), 1);
+    }
+}
+
+impl Default for GeneratedPbr {
+    fn default() -> Self {
+        Self {
+            layers: [0.0; 4],
+            alpha_mode: AlphaMode::Opaque,
+            alpha_cutoff: 0.5,
+            double_sided: false,
+            roughness: 1.0,
+            metallic: 0.0,
+            emissive_factor: [0.0; 3],
+            normal_scale: 1.0,
+            occlusion_strength: 1.0,
+            images: Vec::new(),
+        }
     }
 }

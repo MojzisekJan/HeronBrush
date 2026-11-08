@@ -20,19 +20,23 @@ pub struct StrideOptions {
     pub content_dir: String,
     /// The sky and sun to write as a native skybox and directional light, if any.
     pub sky: Option<super::sky::Sky>,
+    pub authored_sky: Option<(Vec<u8>, bool)>,
+    pub disable_sun_shadows: bool,
 }
 impl StrideOptions {
     pub fn for_level(name: &str) -> Self {
         Self {
             content_dir: format!("Levels/{name}"),
             sky: None,
+            authored_sky: None,
+            disable_sun_shadows: false,
         }
     }
 }
 
 /// The side of the exported sky cube's faces: a pixel is 0.7 degrees, which keeps the
 /// sun's glow round.
-const SKY_SIZE: u32 = 128;
+pub const SKY_SIZE: u32 = 128;
 
 /// A mesh the exporter wrote, by its file name in `<export>/<level>/` and its bytes.
 pub struct StrideMesh<'a> {
@@ -771,7 +775,10 @@ pub fn write(
         // where Direct3D's cube layout is left-handed: the faces are written mirrored in Z.
         files.push(StrideFile {
             path: format!("{}/Sky/Sky.dds", level.name),
-            contents: sky.cube_dds(SKY_SIZE, true),
+            contents: options.authored_sky.as_ref().map_or_else(
+                || sky.cube_dds(SKY_SIZE, true),
+                |(dds, _)| dds.clone(),
+            ),
         });
         files.push(StrideFile { path: format!("{}/Sky/Sky.sdtex", level.name), contents: format!("!Texture\nId: {texture_id}\nSerializedVersion: {{Stride: 2.0.0.0}}\nTags: []\nSource: !file Sky.dds\nIsCompressed: false\nType: !ColorTextureType\n    UseSRgbSampling: false\n    ColorKeyColor: {{R: 255, G: 0, B: 255, A: 255}}\n").into_bytes() });
         files.push(StrideFile { path: format!("{}/Sky/Skybox.sdsky", level.name), contents: format!("!SkyboxAsset\nId: {}\nSerializedVersion: {{Stride: 2.0.0.0}}\nTags: []\nCubeMap: {texture_id}:{texture_url}\n", asset_id(&skybox_url)).into_bytes() });
@@ -780,7 +787,11 @@ pub fn write(
         environment = format!(
             "        public const string SkyboxUrl = {}, SkyTextureUrl = {};\n        public static readonly Color3 SunColor = new Color3({r:.6}f,{g:.6}f,{b:.6}f);\n        public const float SunIntensity = {:.6}f, AmbientIntensity = {:.6}f;\n        public static readonly Vector3 ToSun = new Vector3({x:.9}f,{y:.9}f,{z:.9}f);\n",
             literal(&skybox_url),
-            literal(&texture_url),
+            if options.authored_sky.as_ref().is_none_or(|(_, visible)| *visible) {
+                literal(&texture_url)
+            } else {
+                "null".into()
+            },
             sky.sun_intensity,
             sky.ambient_intensity
         );
@@ -801,6 +812,7 @@ pub fn write(
             ("__LEVEL__", name.as_str()),
             ("__ENTRIES__", entries.as_str()),
             ("__ENVIRONMENT__", environment.as_str()),
+            ("__SUN_SHADOWS__", if options.disable_sun_shadows { "false" } else { "true" }),
         ];
         while let Some((index, key, value)) = replacements
             .iter()

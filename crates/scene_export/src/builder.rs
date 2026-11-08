@@ -1368,21 +1368,65 @@ fn build_material_resources(
                             GdValue::Float(pbr.normal_scale as f64),
                         ));
                         properties.push(("ao_light_affect".into(), GdValue::Float(0.0)));
-                        // Baking only occlusion strength into a Godot companion is handled by the editor.
-                        let e = pbr.emissive_factor.map(|c| {
-                            let c = c as f64;
-                            if c <= 0.0031308 {
-                                c * 12.92
-                            } else {
-                                1.055 * c.powf(1.0 / 2.4) - 0.055
-                            }
-                        });
-                        properties.push((
-                            "emission_enabled".into(),
-                            GdValue::Bool(e.iter().any(|v| *v > 0.)),
-                        ));
-                        properties.push(("emission".into(), GdValue::Color(e[0], e[1], e[2], 1.)));
-                        properties.push(("emission_operator".into(), GdValue::Int(1)));
+                        let [clearcoat, clearcoat_roughness, anisotropy, rotation] = pbr.layers;
+                        if clearcoat > 0.0 {
+                            properties.push(("clearcoat_enabled".into(), GdValue::Bool(true)));
+                            properties.push(("clearcoat".into(), GdValue::Float(clearcoat as f64)));
+                            properties.push((
+                                "clearcoat_roughness".into(),
+                                GdValue::Float(clearcoat_roughness as f64),
+                            ));
+                        }
+                        if anisotropy > 0.0 {
+                            // Godot decodes direction from RG and multiplies strength by alpha.
+                            let (y, x) = rotation.sin_cos();
+                            let encode = |component: f32| {
+                                ((component * 0.5 + 0.5) * 255.0).round() as u8
+                            };
+                            let (r, g) = (encode(x), encode(y));
+                            let image_id = format!("{id}_AnisotropyImage");
+                            let texture_id = format!("{id}_AnisotropyFlow");
+                            sub_resources.push(SubResource {
+                                id: image_id.clone(),
+                                ty: "Image".into(),
+                                properties: vec![(
+                                    "data".into(),
+                                    GdValue::Raw(format!(
+                                        r#"{{"width": 1, "height": 1, "format": "RGBA8", "mipmaps": false, "data": PackedByteArray({r}, {g}, 0, 255)}}"#
+                                    )),
+                                )],
+                            });
+                            sub_resources.push(SubResource {
+                                id: texture_id.clone(),
+                                ty: "ImageTexture".into(),
+                                properties: vec![("image".into(), GdValue::SubResource(image_id))],
+                            });
+                            properties.push(("anisotropy_enabled".into(), GdValue::Bool(true)));
+                            properties.push(("anisotropy".into(), GdValue::Float(anisotropy as f64)));
+                            properties.push((
+                                "anisotropy_flowmap".into(),
+                                GdValue::SubResource(texture_id),
+                            ));
+                        }
+                        // Face paint already supplies its own emission and texture.
+                        let paint_emission = image.surface.is_some_and(|surface| surface[2] > 0.0);
+                        if !paint_emission {
+                            // Baking only occlusion strength into a Godot companion is handled by the editor.
+                            let e = pbr.emissive_factor.map(|c| {
+                                let c = c as f64;
+                                if c <= 0.0031308 {
+                                    c * 12.92
+                                } else {
+                                    1.055 * c.powf(1.0 / 2.4) - 0.055
+                                }
+                            });
+                            properties.push((
+                                "emission_enabled".into(),
+                                GdValue::Bool(e.iter().any(|v| *v > 0.)),
+                            ));
+                            properties.push(("emission".into(), GdValue::Color(e[0], e[1], e[2], 1.)));
+                            properties.push(("emission_operator".into(), GdValue::Int(1)));
+                        }
                         for image in &pbr.images {
                             let texture = GdValue::ExtResource {
                                 ty: "Texture2D".into(),
@@ -1407,7 +1451,9 @@ fn build_material_resources(
                                     properties.push(("ao_enabled".into(), GdValue::Bool(true)));
                                     properties.push(("ao_texture".into(), texture));
                                 }
-                                "emissive" => properties.push(("emission_texture".into(), texture)),
+                                "emissive" if !paint_emission => {
+                                    properties.push(("emission_texture".into(), texture));
+                                }
                                 _ => {}
                             }
                         }
@@ -1807,7 +1853,7 @@ mod tests {
     }
 
     #[test]
-    fn a_glowing_face_paint_glows_in_its_own_colour() {
+    fn clearcoat_preserves_paint_emission() {
         let mut library = MaterialLibrary::default();
         library.generated.insert(
             "glow".into(),
@@ -1819,7 +1865,10 @@ mod tests {
                 alpha: false,
                 surface: Some([0.65, 0.0, 3.0]),
                 repeat: false,
-                pbr: None,
+                pbr: Some(crate::materials::GeneratedPbr {
+                    layers: [0.75, 0.25, 0.0, 0.0],
+                    ..Default::default()
+                }),
             },
         );
         library.materials.insert(
@@ -1835,9 +1884,13 @@ mod tests {
             sub_resources[0]
                 .properties
                 .iter()
-                .find(|(key, _)| key == name)
+                .rfind(|(key, _)| key == name)
                 .map(|(_, value)| value.clone())
         };
+        assert!(matches!(
+            property("emission_enabled"),
+            Some(GdValue::Bool(true))
+        ));
         assert!(matches!(
             property("emission_energy_multiplier"),
             Some(GdValue::Float(e)) if e == 3.0
@@ -1845,6 +1898,18 @@ mod tests {
         assert!(matches!(
             property("emission_texture"),
             Some(GdValue::ExtResource { path, .. }) if path == "res://paint/glow.png"
+        ));
+        assert!(matches!(
+            property("clearcoat_enabled"),
+            Some(GdValue::Bool(true))
+        ));
+        assert!(matches!(
+            property("clearcoat"),
+            Some(GdValue::Float(value)) if value == 0.75
+        ));
+        assert!(matches!(
+            property("clearcoat_roughness"),
+            Some(GdValue::Float(value)) if value == 0.25
         ));
         // Add, Godot's default, would make it white plus the paint.
         assert!(matches!(

@@ -38,6 +38,10 @@ pub struct FlaxOptions {
     pub content_dir: String,
     pub sky: Option<super::sky::Sky>,
     pub sky_scale: f32,
+    pub sun_shadows: bool,
+    pub show_background: bool,
+    pub camera: Option<String>,
+    pub probes: Option<String>,
 }
 
 impl FlaxOptions {
@@ -47,6 +51,10 @@ impl FlaxOptions {
             content_dir: name.to_string(),
             sky: None,
             sky_scale: 1.,
+            sun_shadows: true,
+            show_background: true,
+            camera: None,
+            probes: None,
         }
     }
 }
@@ -123,6 +131,31 @@ fn write_importer(
     let manifest = super::three::write(level, collision);
     let metadata_root: serde_json::Value =
         serde_json::from_str(&manifest).expect("serialized level");
+    let probe_helper = include_str!("flax_probes.cs");
+    let probe_json = options
+        .probes
+        .as_ref()
+        .map(|s| format!("JArray.Parse(\"{}\")", escape(s)))
+        .unwrap_or_else(|| "null".into());
+    let probe_import = format!("ImportProbes({probe_json});");
+    let probe_setup = format!("AddProbes(root, {probe_json});");
+    let camera_helper = include_str!("flax_camera.cs");
+    let camera_setup = options
+        .camera
+        .as_ref()
+        .map(|json| {
+            format!(
+                "AddCameraSettings(root, JObject.Parse(\"{}\"));",
+                escape(json)
+            )
+        })
+        .unwrap_or_default();
+    let material_helper = include_str!("flax_materials.cs");
+    let live_environment_helper = if live {
+        include_str!("flax_live_environment.cs")
+    } else {
+        ""
+    };
     let environment_helper = options
         .sky
         .as_ref()
@@ -134,11 +167,17 @@ fn write_importer(
                     "__EXPOSURE__",
                     &format!(
                         "{:.9}",
-                        (sky.exposure * 1.8 * options.sky_scale)
+                        ((if options.camera.is_some() { 1.0 } else { sky.exposure * 1.8 }) * options.sky_scale)
                             .max(0.000001)
                             .log2()
                     ),
                 )
+                .replace("__SHOW_BACKGROUND__", if options.show_background { "true" } else { "false" })
+                .replace("__SUN_SHADOWS__", if options.sun_shadows { "All" } else { "None" })
+                .replace("__FOG__", &sky.fog.map(|(color, density)| format!(
+                    "var fog = new ExponentialHeightFog {{ Name = \"HeronFog\", FogDensity = {:.9}f, FogHeightFalloff = 0f, FogInscatteringColor = new Color({:.9}f,{:.9}f,{:.9}f,1f) }};\n            if (Level.SpawnActor(fog, root)) throw new InvalidOperationException(\"Cannot spawn fog\");\n            fog.LocalTransform = Transform.Identity;",
+                    density * 10.0 / std::f32::consts::LN_2.powi(2), color[0], color[1], color[2]
+                )).unwrap_or_default())
                 .replace("__SUN_COLOR__", &format!("{r:.9}f,{g:.9}f,{b:.9}f"))
                 .replace(
                     "__SUN_DIRECTION__",
@@ -154,12 +193,16 @@ fn write_importer(
                 )
         })
         .unwrap_or_default();
-    let environment_import = if options.sky.is_some() {
+    let environment_import = if live {
+        "            ImportLiveEnvironment();"
+    } else if options.sky.is_some() {
         "            ImportEnvironment();"
     } else {
         ""
     };
-    let environment_setup = if options.sky.is_some() {
+    let environment_setup = if live {
+        "            AddLiveEnvironment(root, actors);"
+    } else if options.sky.is_some() {
         "            AddEnvironment(root, actors);"
     } else {
         ""
@@ -262,6 +305,7 @@ fn write_importer(
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json.Linq;
@@ -279,6 +323,10 @@ namespace Game
 {bindings_helper}
 {lights_helper}
 {environment_helper}
+{material_helper}
+{camera_helper}
+{probe_helper}
+{live_environment_helper}
         public static Dictionary<string,Actor> Rebuild(Action<Actor, Placement, IReadOnlyDictionary<string, Actor>> configure = null)
         {{
             Actor previous=null;
@@ -318,6 +366,7 @@ namespace Game
         public static void ImportModels(bool preserveExistingMaterials = false)
         {{
 {environment_import}
+            {probe_import}
             var imported = new HashSet<string>();
             foreach (var placement in Placements)
             {{
@@ -332,6 +381,7 @@ namespace Game
                 options.SkipExistingMaterialsOnReimport = preserveExistingMaterials;
                 if (FlaxEditor.Editor.Import(path + ".glb", path + ".flax", options))
                     throw new InvalidOperationException("Model import failed: " + path);
+                if (!preserveExistingMaterials) RepairMaterials(path);
             }}
         }}
 #endif
@@ -512,6 +562,8 @@ namespace Game
 
 {animation_attach}
 {environment_setup}
+            {camera_setup}
+            {probe_setup}
             foreach(var placement in Placements)
                 ConfigureProperties(actors[placement.Name], metadata[placement.Name], actors);
             if (configure != null)
@@ -671,6 +723,28 @@ pub fn live_snapshot(level: &Level, collision: &[CollisionMesh]) -> String {
     serde_json::json!({"version":1, "placements":placements}).to_string()
 }
 
+/// Convert complete exported metadata without losing collision or imported model data.
+pub fn live_snapshot_metadata(metadata: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let mut placements = Vec::new();
+    for e in metadata["entities"]
+        .as_array()
+        .ok_or("Missing Flax entities")?
+    {
+        let vector = |name: &str| -> Result<[f64; 3], String> {
+            serde_json::from_value(e["transform"][name].clone()).map_err(|e| e.to_string())
+        };
+        let t = vector("translation")?;
+        let r = vector("rotation_yxz")?;
+        let q = glam::DQuat::from_euler(glam::EulerRot::YXZ, r[1], r[0], r[2]);
+        placements.push(
+            serde_json::json!({"name":e["name"],"classname":e["classname"],
+            "mesh":e["mesh"].as_str().map(|path| path.strip_suffix(".glb").unwrap_or(path)),"position":[t[0]*100.,t[1]*100.,-t[2]*100.],
+            "orientation":[-q.x,-q.y,q.z,q.w],"scale":vector("scale")?,"metadata":e}),
+        );
+    }
+    Ok(serde_json::json!({"version":1,"placements":placements}))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -798,20 +872,14 @@ mod tests {
             2.75
         );
         assert_eq!(json["entities"][1]["targets"][0], "worldspawn");
-        assert!(
-            files[0]
-                .contents
-                .contains("new Vector3(2.000000000f, 0.500000000f, 3.000000000f)")
-        );
-        assert!(
-            files[0]
-                .contents
-                .contains("configure(actors[placement.Name], placement, actors)")
-        );
-        assert!(
-            files[0]
-                .contents
-                .contains("actor.LocalOrientation = placement.Orientation")
-        );
+        assert!(files[0]
+            .contents
+            .contains("new Vector3(2.000000000f, 0.500000000f, 3.000000000f)"));
+        assert!(files[0]
+            .contents
+            .contains("configure(actors[placement.Name], placement, actors)"));
+        assert!(files[0]
+            .contents
+            .contains("actor.LocalOrientation = placement.Orientation"));
     }
 }

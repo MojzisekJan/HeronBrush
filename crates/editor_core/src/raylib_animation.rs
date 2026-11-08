@@ -263,10 +263,37 @@ fn trigger_data(level: &Level, names: &[String]) -> String {
     out
 }
 
+fn preview_materials(glb: &[u8]) -> Option<(Vec<usize>, Vec<[f64; 4]>)> {
+    let length = u32::from_le_bytes(glb.get(12..16)?.try_into().ok()?) as usize;
+    let doc: serde_json::Value = serde_json::from_slice(glb.get(20..)?.get(..length)?).ok()?;
+    let materials = doc["materials"].as_array()?;
+    let clamped = materials.iter().enumerate().filter_map(|(index, material)| {
+        let texture = material["pbrMetallicRoughness"]["baseColorTexture"]["index"].as_u64()?;
+        let sampler = doc["textures"][texture as usize]["sampler"].as_u64()?;
+        let sampler = &doc["samplers"][sampler as usize];
+        // raylib places its default material before the glTF material table.
+        (sampler["wrapS"] == 33071 && sampler["wrapT"] == 33071).then_some(index + 1)
+    }).collect();
+    let parameters = materials.iter().map(|material| {
+        let strength = material["extensions"]["KHR_materials_emissive_strength"]["emissiveStrength"]
+            .as_f64().unwrap_or(1.0);
+        // The preview shaders use -1 for blending and -2 for opaque materials.
+        let cutoff = match material["alphaMode"].as_str() {
+            Some("MASK") => material["alphaCutoff"].as_f64().unwrap_or(0.5),
+            Some("BLEND") => -1.0,
+            _ => -2.0,
+        };
+        let factor = |i: usize| material["emissiveFactor"][i].as_f64().unwrap_or(0.0) * strength;
+        [factor(0), factor(1), factor(2), cutoff]
+    }).collect();
+    Some((clamped, parameters))
+}
+
 /// `sky` is the sky cube's image path, when the export wrote one; `water` the water
 /// header's, when the level has water.
 pub fn preview(
     level: &Level,
+    meshes: &[scene_export::level::MeshFile],
     header: &str,
     sky: Option<&str>,
     water: Option<&str>,
@@ -285,20 +312,37 @@ pub fn preview(
             quoted(lighting)
         ));
     }
-    out.push_str("typedef struct {const char *mesh; double pos[3],rot[3],scale[3];} PreviewEntity;\nstatic const PreviewEntity entities[]={\n");
+    out.push_str("typedef struct {const char *mesh; double pos[3],rot[3],scale[3]; const int *clamped_albedo; const float (*material_parameters)[4]; int material_count;} PreviewEntity;\nstatic const PreviewEntity entities[]={\n");
     for e in &level.entities {
         let array = |v: [f64; 3]| format!("{{{:.17e},{:.17e},{:.17e}}}", v[0], v[1], v[2]);
+        let mesh = e.mesh.as_deref().filter(|_| !e.surfaces.is_empty()).unwrap_or("");
+        let (clamped, parameters) = std::path::Path::new(mesh).file_name()
+            .and_then(|name| meshes.iter().find(|file| name == file.file_name.as_str()))
+            .and_then(|file| preview_materials(&file.bytes))
+            .unwrap_or_default();
+        let clamped = if clamped.is_empty() {
+            "NULL".into()
+        } else {
+            let indices = clamped.iter().map(usize::to_string).collect::<Vec<_>>().join(",");
+            format!("(const int[]){{{indices},-1}}")
+        };
+        let material_count = parameters.len();
+        let parameters = if material_count == 0 {
+            "NULL".into()
+        } else {
+            let factors = parameters.iter().map(|[r, g, b, cutoff]| format!("{{{r:e}f,{g:e}f,{b:e}f,{cutoff:e}f}}"))
+                .collect::<Vec<_>>().join(",");
+            format!("(const float[][4]){{{{0,0,0,-1}},{factors}}}")
+        };
         out.push_str(&format!(
-            "{{{},{},{},{}}},\n",
-            quoted(
-                e.mesh
-                    .as_deref()
-                    .filter(|_| !e.surfaces.is_empty())
-                    .unwrap_or("")
-            ),
+            "{{{},{},{},{},{},{},{}}},\n",
+            quoted(mesh),
             array(e.transform.translation),
             array(e.transform.rotation_yxz),
-            array(e.transform.scale)
+            array(e.transform.scale),
+            clamped,
+            parameters,
+            material_count,
         ));
     }
     if level.entities.is_empty() {

@@ -800,11 +800,9 @@ common/caulk
         assert_eq!(report.brushes, 1);
         assert!(obj.is_file());
         assert!(dir.join("room.mtl").is_file());
-        assert!(
-            fs::read_to_string(&obj)
-                .unwrap()
-                .contains("mtllib room.mtl")
-        );
+        assert!(fs::read_to_string(&obj)
+            .unwrap()
+            .contains("mtllib room.mtl"));
 
         let _ = fs::remove_dir_all(&dir);
     }

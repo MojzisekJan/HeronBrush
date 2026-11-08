@@ -357,7 +357,7 @@ async function applyEnvironment(pc, app, env, sky, root) {
     lighting.destroy();
     dimmed?.destroy();
     scene.envAtlas = atlas;
-    scene.skybox = skybox;
+    scene.skybox = env.show_background === false ? null : skybox;
     scene.skyboxMip = 0;
     made.textures.push(skybox, atlas); made.assets.push(asset);
   }
@@ -367,7 +367,14 @@ async function applyEnvironment(pc, app, env, sky, root) {
   sun.setLocalRotation(rotationBetween(pc, pc.Vec3.DOWN, toSun.clone().mulScalar(-1)));
   // The editor's view and three.js light a diffuse surface by sun / pi; PlayCanvas's
   // lights do not divide by pi.
-  sun.addComponent('light', {type: 'directional', color: new pc.Color(...env.sun_color), intensity: env.sun_intensity / Math.PI});
+  sun.addComponent('light', {
+    type: 'directional',
+    color: new pc.Color(...env.sun_color),
+    intensity: env.sun_intensity / Math.PI,
+    castShadows: env.shadows === true,
+    shadowResolution: 2048,
+    shadowDistance: 100,
+  });
   root.addChild(sun);
   made.entities.push(sun);
   scene.exposure = env.exposure;
@@ -382,12 +389,17 @@ async function applyEnvironment(pc, app, env, sky, root) {
 
 // A light component for an entity's `light` block, on a child turned so the light's
 // -Y is the entity's -Z.
-function makeLight(pc, record) {
+function makeLight(pc, record, shadowsEnabled) {
   const l = record.entity.light;
   const child = new pc.Entity(record.name + '/light');
   child.setLocalEulerAngles(90, 0, 0);
   const type = l.kind === 'point' ? 'omni' : l.kind;
-  const options = {type, color: new pc.Color(...l.color), intensity: l.energy};
+  const options = {
+    type,
+    color: new pc.Color(...l.color),
+    intensity: l.energy,
+    castShadows: shadowsEnabled && l.shadows === true,
+  };
   if (type !== 'directional') Object.assign(options, {range: l.range, falloffMode: pc.LIGHTFALLOFF_INVERSESQUARED});
   if (type === 'spot') Object.assign(options, {innerConeAngle: 0, outerConeAngle: l.angle});
   child.addComponent('light', options);
@@ -457,7 +469,11 @@ export async function loadLevel(pc, app, source, options = {}) {
       if (!out.assets.includes(asset)) out.assets.push(asset);
       const model = asset.resource.instantiateRenderEntity();
       node.addChild(model);
-      record.meshes = model.findComponents('render').flatMap(render => render.meshInstances);
+      const renderers = model.findComponents('render');
+      if (waterData?.surface_material) {
+        for (const render of renderers) render.castShadows = false;
+      }
+      record.meshes = renderers.flatMap(render => render.meshInstances);
       if (record.water) {
         const copies = new Map();
         for (const instance of record.meshes) {
@@ -471,7 +487,7 @@ export async function loadLevel(pc, app, source, options = {}) {
       }
     }
     if (entity.light && options.lights !== false) {
-      record.light = makeLight(pc, record);
+      record.light = makeLight(pc, record, level.environment?.shadows !== false);
       out.lights.push(record.light);
     }
     const collision = entity.collision;

@@ -5,6 +5,7 @@ const fs = require('node:fs'), http = require('node:http'), path = require('node
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '../../..');
 const web = path.join(root, 'crates/heron-brush-web');
+const dist = path.resolve(process.env.HERON_WEB_DIST || path.join(web, 'dist'));
 let html = fs.readFileSync(process.argv[2], 'utf8').replace("new URLSearchParams(location.search).has('verify')", 'true');
 const server = http.createServer((req,res) => {
   const url = new URL(req.url,'http://localhost');
@@ -12,8 +13,8 @@ const server = http.createServer((req,res) => {
     res.setHeader('Content-Type','text/html');
     res.end('<button id="open">Play</button><script type="module">window.bridge=await import("/bridge.js");document.querySelector("button").onclick=()=>bridge.open_playtest();</script>');return;
   }
-  const built=path.resolve(web,'dist','.'+url.pathname);
-  if(url.pathname !== '/bridge.js' && built.startsWith(path.join(web,'dist')+path.sep) && fs.existsSync(built) && fs.statSync(built).isFile()) {
+  const built=path.resolve(dist,'.'+url.pathname);
+  if(url.pathname !== '/bridge.js' && built.startsWith(dist+path.sep) && fs.existsSync(built) && fs.statSync(built).isFile()) {
     const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.wasm':'application/wasm','.png':'image/png','.txt':'text/plain'};
     res.setHeader('Content-Type',types[path.extname(built)]||'application/octet-stream');res.end(fs.readFileSync(built));return;
   }
@@ -110,7 +111,7 @@ const server = http.createServer((req,res) => {
       await app.goto(base+'/index.html?renderer=gl');
       await app.waitForFunction(()=>!document.getElementById('loading') || document.querySelector('#loading.failed'),null,{timeout:60000});
       assert.equal(await app.locator('#loading.failed').count(),0, await app.evaluate(()=>document.querySelector('#loading .status')?.textContent || ''));
-      await app.waitForTimeout(1000);await app.mouse.click(480,150);
+      await app.waitForTimeout(1000);await app.mouse.click(552,482);
       await app.waitForFunction(()=>document.title.includes('motion_lab'));
       await app.waitForTimeout(700);await app.mouse.click(49,18);await app.waitForTimeout(100);
       await app.screenshot({path:'/tmp/heron-web-editor.png'});

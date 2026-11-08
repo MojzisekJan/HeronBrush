@@ -14,7 +14,9 @@ not rewrite scripts or trigger script compilation.
 
 The addon is installed under `Source/Game/HeronBrushLive`. If there is no Game
 module, a single unambiguous source module is used. Existing modified addon
-files are never overwritten. Projects with several custom modules need to
+files are never overwritten. A fingerprint manifest records generated versions, so
+unchanged generated files can be upgraded on a later installation. Older addons
+without a manifest are accepted only when their bytes match the current version. Projects with several custom modules need to
 choose a game module before installation can be automated.
 
 The live assets live under `Content/HeronBrushLive`. This is a reserved,
@@ -38,7 +40,13 @@ attachment belonging to another map is not silently replaced.
 Collision cooking uses the same importer as standalone Flax export, including
 triangle meshes and convex trigger hulls. Entity metadata stays available in
 `preview.json`. The link does not invent gameplay for arbitrary class names.
-Immutable, content-named model files avoid changing the displayed model while
+Imported models now use the same complete export pipeline as final exports.
+Material reloads also trigger publication when the map text is unchanged.
+Authored environments, camera settings and reflection probes travel in snapshots;
+external HDR file changes are polled twice per second. Camera and probe settings
+also travel when sky export is disabled.
+
+Immutable, content-named model and cube files avoid changing the displayed model while
 its replacement imports. Unused versions are retained; do not clean this folder
 while saved scenes still reference its assets.
 
@@ -60,5 +68,10 @@ position and unrelated actors, replacement geometry, restored triangle count,
 and native colliders. The verified demo produced 48 actors and 20 colliders at
 each stage, with `HERON_LIVE_CHECK PASS` and `Total errors: 0`.
 
-Windows/macOS and Play Mode transitions still need interactive checks. Headless
+macOS 1.13 native checks also apply the four snapshots, preserve the moved root
+and unrelated actor, and retain 20 colliders through deletion and undo. The
+updated fixture waits for streamed mesh buffers before comparing triangle counts.
+With environment and camera actors the demo has 52 root children.
+
+Windows and Play Mode transitions still need interactive checks. Headless
 checks validate scene objects and collision assets, not GPU material appearance.

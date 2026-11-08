@@ -22,8 +22,21 @@ pub const PIXELS_PER_METRE: f64 = 100.;
 /// The sky's cube faces, in pixels.
 const SKY_SIZE: u32 = 256;
 
+#[derive(Default)]
 pub struct GDevelopOptions {
     pub sky: Option<Sky>,
+    pub sky_faces: Option<Vec<Vec<u8>>>,
+    pub hide_sky: bool,
+    pub disable_sun_shadows: bool,
+}
+
+fn sky_direction(face: usize, u: f32, v: f32) -> [f32; 3] {
+    let [x, y, z] = super::sky::cube_direction(face, u, v);
+    [x, y, -z]
+}
+
+pub fn sampled_sky_faces(sky: &Sky, sample: impl Fn([f32; 3]) -> [f32; 3]) -> Vec<Vec<u8>> {
+    sky.display_faces_sampled(SKY_SIZE, sky_direction, sample)
 }
 
 /// A mesh the exporter wrote, by its file name in `<export>/<level>/` and its bytes.
@@ -513,21 +526,23 @@ pub fn write(
             json!({"intensity": sky.sun_intensity, "elevation": z.asin().to_degrees(), "rotation": y.atan2(x).to_degrees(),
                    "shadowDistance": 3000, "distanceFromCamera": 1500, "frustumSize": 4000, "minimumShadowBias": 0.0008}),
             json!({"color": rgb(sky.sun_color), "top": "Z+", "shadowQuality": "high", "shadowRenderingMode": "fittedToCameraView"}),
-            json!({"isCastingShadow": true})));
+            json!({"isCastingShadow": !options.disable_sun_shadows})));
         // GDevelop turns the cube from three.js's Y up to its Z up, which lands the
         // level's +Z on its -Y: the faces are written mirrored in Z to meet it.
-        let faces = sky.png_faces(SKY_SIZE, |face, u, v| {
-            let mut d = super::sky::cube_direction(face, u, v);
-            d[2] = -d[2];
-            d
-        });
+        let procedural;
+        let faces = if let Some(faces) = &options.sky_faces {
+            faces
+        } else {
+            procedural = sky.png_faces(SKY_SIZE, sky_direction);
+            &procedural
+        };
         let names = ["right", "left", "top", "bottom", "front", "back"];
         let mut parameters = json!({"top": "Z+"});
         for (face, png) in names.iter().zip(faces) {
             let file = format!("{prefix}sky_{face}.png");
             files.push(GDevelopFile {
                 path: file.clone(),
-                contents: png,
+                contents: png.clone(),
             });
             resources.push(resource(&file));
             parameters[format!("{face}FaceResourceName")] = json!(file);
@@ -535,7 +550,7 @@ pub fn write(
         effects.push(effect(
             "Scene3D::Skybox",
             "Heron sky",
-            json!({"environmentIntensity": sky.ambient_intensity, "backgroundIntensity": 1}),
+            json!({"environmentIntensity": sky.ambient_intensity, "backgroundIntensity": if options.hide_sky { 0 } else { 1 }}),
             parameters,
             json!({}),
         ));
@@ -611,6 +626,9 @@ pub fn write(
     }
     let list = project["resources"]["resources"].as_array_mut().unwrap();
     list.retain(|r| !r["name"].as_str().is_some_and(|n| n.starts_with(&prefix)));
+    // Multiple placed objects can share the same model resource.
+    let mut names = std::collections::HashSet::new();
+    resources.retain(|resource| names.insert(resource["name"].as_str().unwrap().to_owned()));
     list.extend(resources);
     files.push(GDevelopFile {
         path: "game.json".into(),
@@ -667,7 +685,7 @@ mod tests {
         let files = write(
             &level,
             &[],
-            &GDevelopOptions { sky: None },
+            &GDevelopOptions::default(),
             &[GDevelopMesh {
                 file_name: "worldspawn.glb",
                 glb: &bytes,
@@ -725,7 +743,7 @@ mod tests {
         e.properties.insert("charge".into(), Value::Int(7));
         e.properties.insert("armed".into(), Value::Bool(true));
         level.entities.push(e);
-        let p = project(&write(&level, &[], &GDevelopOptions { sky: None }, &[], None).unwrap());
+        let p = project(&write(&level, &[], &GDevelopOptions::default(), &[], None).unwrap());
         let instance = &p["layouts"][0]["instances"][0];
         assert_eq!(
             (&instance["x"], &instance["y"], &instance["z"]),
@@ -790,7 +808,7 @@ mod tests {
         let files = write(
             &level,
             &collision,
-            &GDevelopOptions { sky: None },
+            &GDevelopOptions::default(),
             &[
                 GDevelopMesh {
                     file_name: "worldspawn.glb",
@@ -856,7 +874,7 @@ mod tests {
         let files = write(
             &level,
             &collision,
-            &GDevelopOptions { sky: None },
+            &GDevelopOptions::default(),
             &[],
             None,
         )
@@ -922,7 +940,7 @@ mod tests {
         let files = write(
             &level,
             &[],
-            &GDevelopOptions { sky: Some(sky) },
+            &GDevelopOptions { sky: Some(sky), ..Default::default() },
             &[],
             Some(&existing.to_string()),
         )
@@ -958,7 +976,7 @@ mod tests {
         assert!(write(
             &level,
             &[],
-            &GDevelopOptions { sky: None },
+            &GDevelopOptions::default(),
             &[],
             Some("{\"not\": 1}")
         )

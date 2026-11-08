@@ -1,4 +1,9 @@
 /* Run from the exported directory. Free camera, no game-specific physics. */
+#include <stdio.h>
+#if defined(__APPLE__) && defined(__MACH__)
+#include <CoreGraphics/CoreGraphics.h>
+#include <dlfcn.h>
+#endif
 #ifdef HB_SKY
 #include "rlgl.h"
 /* The map's sky, baked as the editor's view shows it, on a cube round the camera. */
@@ -19,8 +24,25 @@ static Matrix At(int entity,int animation,const HbPlayer *player) {
     return (Matrix){(float)m[0],(float)m[4],(float)m[8],(float)m[12],(float)m[1],(float)m[5],(float)m[9],(float)m[13],(float)m[2],(float)m[6],(float)m[10],(float)m[14],(float)m[3],(float)m[7],(float)m[11],(float)m[15]};
 }
 int main(int argc,char **argv) {
+#if defined(__APPLE__) && defined(__MACH__)
+    // GLFW's Cocoa backend can crash inside InitWindow when no display is active.
+    // Resolve the Cocoa dependency dynamically to keep the generated link command portable.
+    CGError (*get_active_displays)(uint32_t, CGDirectDisplayID *, uint32_t *) =
+        (CGError (*)(uint32_t, CGDirectDisplayID *, uint32_t *))dlsym(RTLD_DEFAULT, "CGGetActiveDisplayList");
+    uint32_t display_count = 0;
+    if (get_active_displays && get_active_displays(0, NULL, &display_count) == kCGErrorSuccess &&
+        display_count == 0) {
+        fputs("Raylib preview requires an active macOS display.\n", stderr);
+        return 1;
+    }
+#endif
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(1280,720,"Heron Brush - raylib animation preview");SetTargetFPS(60);
+    InitWindow(1280, 720, "Heron Brush - raylib animation preview");
+    if (!IsWindowReady()) {
+        fputs("Could not initialize the raylib preview window.\n", stderr);
+        return 1;
+    }
+    SetTargetFPS(60);
 #ifdef HB_SKY
     Model sky=LoadModelFromMesh(GenMeshCube(1,1,1));
     sky.materials[0].shader=LoadShaderFromMemory(hb_sky_vs,hb_sky_fs);
@@ -41,6 +63,14 @@ int main(int argc,char **argv) {
 #ifdef HB_LIGHTING
         HbLightingPrepare(&models[i]);
 #endif
+        for(const int *index=entities[i].clamped_albedo;index&&*index>=0;index++){
+            if(*index>=models[i].materialCount)continue;
+            // The Heron GLB writer uses one wrap policy for all maps of a material.
+            for(int slot=MATERIAL_MAP_DIFFUSE;slot<=MATERIAL_MAP_EMISSION;slot++){
+                Texture2D texture=models[i].materials[*index].maps[slot].texture;
+                if(texture.id)SetTextureWrap(texture,TEXTURE_WRAP_CLAMP);
+            }
+        }
         BoundingBox b=GetModelBoundingBox(models[i]);
         for(int n=0;n<8;n++){double p[3]={n&1?b.max.x:b.min.x,n&2?b.max.y:b.min.y,n&4?b.max.z:b.min.z},r[3];RestPoint(i,p,r,0);
             lo.x=fminf(lo.x,r[0]);lo.y=fminf(lo.y,r[1]);lo.z=fminf(lo.z,r[2]);hi.x=fmaxf(hi.x,r[0]);hi.y=fmaxf(hi.y,r[1]);hi.z=fmaxf(hi.z,r[2]);
@@ -86,14 +116,14 @@ int main(int argc,char **argv) {
 #ifdef HB_WATER
             int w=HbWaterOf(i);if((w>=0&&hb_waters[w].surface_material)!=(pass==1))continue;
 #ifdef HB_LIGHTING
-            if(underwater<0&&!(w>=0&&hb_waters[w].surface_material))HbLightingDraw(lighting,models[i],camera.position);
+            if(underwater<0&&!(w>=0&&hb_waters[w].surface_material))HbLightingDrawMaterials(lighting,models[i],camera.position,entities[i].material_parameters,entities[i].material_count);
             else
 #endif
-            HbWaterDrawModel(&water,models[i],w);
+            HbWaterDrawMaterials(&water,models[i],w,entities[i].material_parameters,entities[i].material_count);
 #else
             if(pass==0){
 #ifdef HB_LIGHTING
-                HbLightingDraw(lighting,models[i],camera.position);
+                HbLightingDrawMaterials(lighting,models[i],camera.position,entities[i].material_parameters,entities[i].material_count);
 #else
                 DrawModel(models[i],(Vector3){0,0,0},1,WHITE);
 #endif

@@ -52,7 +52,7 @@ try {
   scene.add(hemisphere);
   const sun = new THREE.DirectionalLight(0xffffff, 2.2);
   sun.position.set(10, 20, 8);
-  scene.add(sun);
+  scene.add(sun, sun.target);
   // The editor's sky as an equirectangular texture, evaluated as its 3D view draws it
   // (render_wgpu common.wgsl sky_radiance, scene_export sky.rs), in the level's frame.
   function skyTexture(env) {
@@ -83,28 +83,81 @@ try {
     texture.needsUpdate = true;
     return texture;
   }
-  let environmentKey, baseFog = null;
+  // Standalone exports embed a flat RGBE panorama. DataTexture rows start at
+  // the bottom, whereas Radiance stores rows from the top.
+  function authoredSkyTexture(encoded) {
+    const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+    const header = new TextDecoder().decode(bytes.subarray(0, 128));
+    const dimensions = /-Y (\d+) \+X (\d+)\n/.exec(header);
+    if (!dimensions) throw new Error('Invalid embedded HDR header');
+    const height = Number(dimensions[1]), width = Number(dimensions[2]);
+    const start = dimensions.index + dimensions[0].length;
+    if (!width || !height || bytes.length - start !== width * height * 4) {
+      throw new Error('Invalid embedded HDR size');
+    }
+    const pixels = new Uint16Array(width * height * 4);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const source = start + (y * width + x) * 4;
+      const destination = ((height - 1 - y) * width + x) * 4;
+      const scale = bytes[source + 3] ? Math.pow(2, bytes[source + 3] - 136) : 0;
+      for (let channel = 0; channel < 3; channel++) {
+        pixels[destination + channel] = THREE.DataUtils.toHalfFloat(bytes[source + channel] * scale);
+      }
+      pixels[destination + 3] = THREE.DataUtils.toHalfFloat(1);
+    }
+    const texture = new THREE.DataTexture(pixels, width, height, THREE.RGBAFormat, THREE.HalfFloatType);
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.colorSpace = THREE.LinearSRGBColorSpace;
+    texture.magFilter = texture.minFilter = THREE.LinearFilter;
+    texture.needsUpdate = true;
+    return texture;
+  }
+  let environmentKey, environmentSource, baseFog = null;
   function applyEnvironment(env) {
     const explicitSun = level.entities.some(e => e.light?.kind === "Directional");
     sun.visible = !explicitSun;
+    renderer.shadowMap.enabled = env?.shadows !== false;
+    sun.castShadow = sun.visible && env?.shadows === true;
     const key = JSON.stringify(env ?? null);
-    if (key === environmentKey) return;
+    if (key === environmentKey && data.sky === environmentSource) return;
+    const texture = env ? (data.sky ? authoredSkyTexture(data.sky) : skyTexture(env)) : null;
     environmentKey = key;
-    scene.background?.dispose?.();
+    environmentSource = data.sky;
+    sun.target.position.set(0, 0, 0);
+    scene.environment?.dispose();
     if (!env) {
       scene.background = new THREE.Color(0x91a8bb); scene.environment = null; baseFog = null;
       hemisphere.visible = true; sun.color.set(0xffffff); sun.intensity = 2.2; sun.position.set(10, 20, 8);
       renderer.toneMapping = THREE.NoToneMapping; renderer.toneMappingExposure = 1;
       return;
     }
-    const texture = skyTexture(env);
-    scene.background = texture; scene.environment = texture; scene.environmentIntensity = env.ambient_intensity;
+    scene.background = env.show_background === false ? new THREE.Color(0x91a8bb) : texture;
+    scene.environment = texture; scene.environmentIntensity = env.ambient_intensity;
     hemisphere.visible = false;
     // The view lights diffuse surfaces by sun / pi, as three.js does with this intensity.
     sun.color.setRGB(...env.sun_color, THREE.LinearSRGBColorSpace); sun.intensity = env.sun_intensity;
     sun.position.fromArray(env.to_sun).multiplyScalar(50);
     renderer.toneMapping = THREE.AgXToneMapping; renderer.toneMappingExposure = env.exposure * 1.8;
     baseFog = env.fog ? new THREE.FogExp2(new THREE.Color().setRGB(...env.fog.color, THREE.LinearSRGBColorSpace), env.fog.density) : null;
+  }
+  function fitSunShadow(objects, env) {
+    if (!sun.castShadow) return;
+    const bounds = new THREE.Box3().setFromObject(objects);
+    if (bounds.isEmpty()) return;
+    const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+    const radius = Math.max(sphere.radius * 1.05, 1);
+    const direction = new THREE.Vector3().fromArray(env.to_sun).normalize();
+    sun.target.position.copy(sphere.center);
+    sun.position.copy(sphere.center).addScaledVector(direction, 2 * radius);
+    const camera = sun.shadow.camera;
+    Object.assign(camera, {
+      left: -radius, right: radius, top: radius, bottom: -radius,
+      near: radius * 0.5, far: radius * 3.5,
+    });
+    camera.updateProjectionMatrix();
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.bias = -0.0002;
+    sun.shadow.normalBias = 0.02;
   }
   applyEnvironment(level.environment);
   const controls = new PointerLockControls(camera, renderer.domElement);
@@ -216,6 +269,7 @@ try {
   }
   let {visuals,colliders,staticColliders,movingColliders,animations,triggers,animatedColliders,waters}=await assemble(data);
   scene.add(visuals);
+  fitSunShadow(visuals, level.environment);
   colliders.updateMatrixWorld(true);
   const buildCollisionTree = group => {
     const start=performance.now(),tree=collisionTree(THREE,Octree,group);
@@ -418,6 +472,7 @@ try {
         applyEnvironment(level.environment);
         hasCollision=staticColliders.children.length+movingColliders.children.length>0;
         scene.remove(oldVisuals);scene.add(visuals);
+        fitSunShadow(visuals, level.environment);
         if(hadCollision!==hasCollision) {
           capsule.start.fromArray(saved.feet).y+=radius;capsule.end.fromArray(saved.feet).y+=height-radius;
           velocity.set(0,0,0);grounded=false;

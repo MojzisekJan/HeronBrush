@@ -288,11 +288,14 @@ function applyEnvironment(B, scene, env, skyUrl, parent) {
     const texture = new B.HDRCubeTexture(skyUrl, scene, 256, false, true, false, true);
     texture.name = 'heron-sky';
     scene.environmentTexture = texture;
-    const skybox = scene.createDefaultSkybox(texture, true, 1000, 0, false);
-    skybox.name = 'heron-skybox';
-    skybox.applyFog = false;
-    skybox.infiniteDistance = true;
-    made.push(texture, skybox, skybox.material);
+    const skybox = env.show_background === false ? null : scene.createDefaultSkybox(texture, true, 1000, 0, false);
+    if (skybox) {
+      skybox.name = 'heron-skybox';
+      skybox.applyFog = false;
+      skybox.infiniteDistance = true;
+      made.push(skybox, skybox.material);
+    }
+    made.push(texture);
   }
   scene.environmentIntensity = env.ambient_intensity;
   const sun = new B.DirectionalLight('heron-sun', new B.Vector3(...env.to_sun).normalize().negate(), scene);
@@ -361,7 +364,7 @@ export async function loadLevel(B, scene, source, options = {}) {
   };
   const out = {
     data: level, root, entities: [], byName: new Map(), animations: new Map(), triggers: [], waters: [],
-    lights: [], bodies: [], environment: [], cleanups: [], time: 0,
+    lights: [], shadows: [], bodies: [], environment: [], cleanups: [], time: 0,
   };
   for (const entity of level.entities) {
     const t = entity.transform;
@@ -427,7 +430,10 @@ export async function loadLevel(B, scene, source, options = {}) {
     const env = level.environment;
     const sky = source.sky ?? (env?.panorama ? base + env.panorama : null);
     out.environment = applyEnvironment(B, scene, env, sky, root);
+    installLocalLighting(B, scene, out, env?.local_lighting);
+    installDisplay(B, scene, env?.display, out.cleanups);
   }
+  out.shadows = makeShadows(B, scene, out, options.sky !== false && level.environment?.shadows !== false);
   for (const record of out.entities) {
     const factory = options.factories?.[record.values.babylon_factory] ?? options.factories?.[record.classname];
     const cleanup = factory?.(record, out);
@@ -446,9 +452,216 @@ export async function loadLevel(B, scene, source, options = {}) {
   out.dispose = () => {
     for (const cleanup of out.cleanups.splice(0)) cleanup();
     for (const body of out.bodies) { body.shape?.dispose(); body.dispose(); }
+    for (const shadow of out.shadows) shadow.dispose();
     for (const thing of out.environment) thing.dispose();
     for (const light of out.lights) light.dispose();
     root.dispose(false, false);
   };
   return out;
+}
+
+// Shadow maps belong to the loaded level. Only visible geometry casts, including
+// moving doors/platforms; clip and trigger helpers are never shadow casters.
+function makeShadows(B, scene, level, sunShadows) {
+  if(level.data.environment?.shadows === false) return [];
+  const meshes = level.entities.flatMap(record => record.meshes).filter(mesh => mesh.getTotalVertices() > 0);
+  for (const mesh of meshes) {
+    mesh.receiveShadows = true;
+    if (mesh.material && 'maxSimultaneousLights' in mesh.material) mesh.material.maxSimultaneousLights = 8;
+  }
+  const sources = level.entities.filter(r => r.light && r.entity.light.shadows).map(r => r.light);
+  if (sunShadows) sources.push(...level.environment.filter(thing => thing instanceof B.DirectionalLight));
+  return sources.map(light => {
+    const shadow = new B.ShadowGenerator(light instanceof B.DirectionalLight ? 2048 : 512, light);
+    shadow.bias = light instanceof B.DirectionalLight ? 0.003 : 0.001; shadow.normalBias = 0.04;
+    if (light instanceof B.PointLight) shadow.usePoissonSampling = true;
+    else shadow.usePercentageCloserFiltering = true;
+    if (light instanceof B.DirectionalLight) light.autoCalcShadowZBounds = true;
+    shadow.transparencyShadow = true;
+    for (const mesh of meshes) shadow.addShadowCaster(mesh, false);
+    return shadow;
+  });
+}
+
+
+function decodeBase64(text) {
+  return typeof Uint8Array.fromBase64 === 'function' ? Uint8Array.fromBase64(text) : Uint8Array.from(atob(text), c => c.charCodeAt(0));
+}
+
+// A scene-linear postprocess uses the editor's white balance, contrast, saturation
+// and all four display transforms. It also grades the sky, water and custom meshes.
+function installDisplay(B, scene, display, cleanups) {
+  if (!display) return;
+  const processing = scene.imageProcessingConfiguration;
+  const previous = {apply: processing.applyByPostProcess, tone: processing.toneMappingEnabled, exposure: processing.exposure, clamp:processing.skipFinalColorClamp};
+  processing.applyByPostProcess = true;
+  processing.skipFinalColorClamp = true;
+  processing.toneMappingEnabled = false;
+  processing.exposure = 1;
+  let lut = null;
+  if (display.tony_lut) {
+    const bytes = decodeBase64(display.tony_lut), source = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const pixels = new Uint8Array(384 * 288 * 4);
+    for (let z=0; z<48; z++) for (let y=0; y<48; y++) for (let x=0; x<48; x++) {
+      const packed=source.getUint32(((z*48+y)*48+x)*4,true), exponent=(packed>>>27)-24;
+      const rgb=[packed&511,(packed>>>9)&511,(packed>>>18)&511].map(v=>v*Math.pow(2,exponent));
+      const peak=Math.max(...rgb), e=peak>1e-32 ? Math.floor(Math.log2(peak))+1 : -128;
+      const k=Math.pow(2,8-e), offset=(((Math.floor(z/8)*48+y)*384)+(z%8)*48+x)*4;
+      for(let c=0;c<3;c++) pixels[offset+c]=Math.min(255,Math.floor(rgb[c]*k));pixels[offset+3]=e+128;
+    }
+    lut = new B.RawTexture(pixels,384,288,B.Engine.TEXTUREFORMAT_RGBA,scene,false,false,B.Texture.NEAREST_SAMPLINGMODE);
+    lut.wrapU=lut.wrapV=B.Texture.CLAMP_ADDRESSMODE;
+  }
+  const shader = 'heronDisplay';
+  B.Effect.ShadersStore[shader+'PixelShader'] = `
+precision highp float;
+varying vec2 vUV;
+uniform sampler2D textureSampler;
+uniform sampler2D hbTony;
+uniform vec3 hbBalance;
+uniform vec4 hbDisplay;
+uniform float hbMapper;
+vec3 hbDecode(vec4 c) {return c.rgb*255.0*exp2(c.a*255.0-136.0);}
+vec3 hbLut(vec3 p) {p=clamp(p,0.0,1.0)*47.0;vec3 lo=floor(p),f=fract(p),sum=vec3(0.0);
+ for(int z=0;z<2;z++) for(int y=0;y<2;y++) for(int x=0;x<2;x++) {vec3 q=min(lo+vec3(float(x),float(y),float(z)),47.0);vec3 w=mix(1.0-f,f,vec3(float(x),float(y),float(z)));vec2 uv=vec2(mod(q.z,8.0)*48.0+q.x,floor(q.z/8.0)*48.0+q.y);sum+=hbDecode(texture2D(hbTony,(uv+0.5)/vec2(384.0,288.0)))*w.x*w.y*w.z;}return sum;}
+vec3 hbAgx(vec3 c) {
+ mat3 inset=mat3(0.8424790623,0.0423282423,0.0423756549,0.0784336,0.8784686365,0.0784336,0.0792237451,0.0791661275,0.8791429738);
+ mat3 outset=mat3(1.1968790051,-0.0528968518,-0.0529716355,-0.0980208811,1.1519031299,-0.0980434501,-0.0990297441,-0.0989611768,1.1510736726);
+ vec3 x=clamp((log2(max(inset*max(c,vec3(1e-10)),vec3(1e-10)))+12.47393)/16.5,0.0,1.0);vec3 x2=x*x,x4=x2*x2;
+ x=15.5*x4*x2-40.14*x4*x+31.96*x4-6.868*x2*x+0.4298*x2+0.1191*x-0.00232;
+ x=pow(max(x,0.0),vec3(1.2));float l=dot(x,vec3(0.2126,0.7152,0.0722));x=l+1.1*(x-l);return pow(max(outset*x,0.0),vec3(2.2));}
+vec3 hbNeutral(vec3 c) {float x=min(c.r,min(c.g,c.b));c-=x<0.08?x-6.25*x*x:0.04;float peak=max(c.r,max(c.g,c.b));if(peak<0.76)return c;float np=1.0-0.24*0.24/(peak+0.24-0.76);c*=np/peak;float g=1.0-1.0/(0.15*(peak-np)+1.0);return mix(c,vec3(np),g);}
+vec3 hbSrgb(vec3 c) {c=max(c,0.0);return mix(1.055*pow(c,vec3(1.0/2.4))-0.055,c*12.92,step(c,vec3(0.0031308)));}
+void main() {
+ vec4 color=texture2D(textureSampler,vUV);vec3 c=max(color.rgb,0.0)*hbDisplay.x*hbBalance;
+ if(abs(hbDisplay.y-1.0)>0.0001)c=0.18*pow(max(c/0.18,0.0),vec3(hbDisplay.y));float grey=dot(c,vec3(0.2126,0.7152,0.0722));c=max(mix(vec3(grey),c,hbDisplay.z),0.0);
+ if(hbMapper<0.5)c=clamp((c*(2.51*c+0.03))/(c*(2.43*c+0.59)+0.14),0.0,1.0);
+ else if(hbMapper<1.5)c=hbAgx(c*1.8);else if(hbMapper<2.5)c=hbNeutral(c);else c=hbLut(c/(c+1.0));
+ gl_FragColor=vec4(hbSrgb(c),color.a);
+}`;
+  const posts=[], attached=new WeakSet();
+  const attach=camera=>{
+    if(attached.has(camera)) return;
+    attached.add(camera);
+    const type=scene.getEngine().getCaps().textureHalfFloatRender ? B.Engine.TEXTURETYPE_HALF_FLOAT : B.Engine.TEXTURETYPE_UNSIGNED_BYTE;
+    const post=new B.PostProcess('heron-display',shader,['hbBalance','hbDisplay','hbMapper'],['hbTony'],1,camera,B.Texture.BILINEAR_SAMPLINGMODE,scene.getEngine(),false,undefined,type);
+    post.onApply=effect=>{
+      effect.setFloat3('hbBalance',...display.white_balance);
+      effect.setFloat4('hbDisplay',display.exposure,display.contrast,display.saturation,0);
+      effect.setFloat('hbMapper',Math.max(0,['aces','agx','neutral','tony'].indexOf(display.tone_map)));
+      if(lut) effect.setTexture('hbTony',lut);
+    };
+    posts.push([camera,post]);
+  };
+  for(const camera of scene.cameras) attach(camera);
+  // Babylon announces new cameras inside their base constructor. Attach after
+  // construction, before the scene prepares the active camera's render target.
+  const observer=scene.onBeforeRenderObservable.add(()=>{for(const camera of scene.cameras)attach(camera);});
+  cleanups.push(()=>{scene.onBeforeRenderObservable.remove(observer);for(const [camera,post] of posts)post.dispose(camera);lut?.dispose();processing.applyByPostProcess=previous.apply;processing.toneMappingEnabled=previous.tone;processing.exposure=previous.exposure;processing.skipFinalColorClamp=previous.clamp;});
+}
+
+
+// A single RGBE atlas keeps eight filtered probes within WebGL's sampler budget.
+// SH irradiance and box-projected reflections are blended per fragment, not per mesh.
+function installLocalLighting(B, scene, level, data) {
+  if (!data?.probes?.length) return;
+  if (data.version !== 1 || data.probes.length > 8 || data.width !== 384 || data.height !== data.probes.length*127) throw new Error('Invalid local lighting capture');
+  const pixels=decodeBase64(data.atlas);
+  if(pixels.length !== data.width*data.height*4) throw new Error('Invalid local lighting pixels');
+  const atlas=new B.RawTexture(pixels,data.width,data.height,B.Engine.TEXTUREFORMAT_RGBA,scene,false,false,B.Texture.NEAREST_SAMPLINGMODE);
+  atlas.name='heron-local-lighting';atlas.wrapU=atlas.wrapV=B.Texture.CLAMP_ADDRESSMODE;
+  level.environment.push(atlas);
+  const uniforms=[{name:'hbWorldToLevel',size:16,type:'mat4'},{name:'hbNormalToLevel',size:16,type:'mat4'}];
+  let declarations='uniform mat4 hbWorldToLevel;\nuniform mat4 hbNormalToLevel;\nuniform sampler2D hbProbeAtlas;\n';
+  let contributions='';
+  data.probes.forEach((p,i)=>{
+    for(const key of ['Pos','Half','Flags']) {uniforms.push({name:`hb${key}${i}`,size:4,type:'vec4'});declarations+=`uniform vec4 hb${key}${i};\n`;}
+    for(let k=0;k<9;k++) {uniforms.push({name:`hbSH${i}_${k}`,size:3,type:'vec3'});declarations+=`uniform vec3 hbSH${i}_${k};\n`;}
+    contributions+=`{
+ float w=hbWeight(hbP,hbPos${i}.xyz,hbHalf${i}.xyz,hbHalf${i}.w);
+ if(w>0.0) {
+ vec3 n=hbN;vec3 e=hbSH${i}_0*0.282095+(2.0/3.0)*0.488603*(hbSH${i}_1*n.y+hbSH${i}_2*n.z+hbSH${i}_3*n.x);
+ e+=0.25*(1.092548*(hbSH${i}_4*n.x*n.y+hbSH${i}_5*n.y*n.z+hbSH${i}_7*n.x*n.z)+0.315392*hbSH${i}_6*(3.0*n.z*n.z-1.0)+0.546274*hbSH${i}_8*(n.x*n.x-n.y*n.y));
+ hbD+=max(e,0.0)*w*hbFlags${i}.y*hbPos${i}.w;hbDW+=w*hbFlags${i}.y;
+ hbS+=hbSpecular(hbProject(hbP,hbR,hbPos${i}.xyz,hbHalf${i}.xyz),roughness,hbFlags${i}.z,${i}.0)*w*hbFlags${i}.x*hbPos${i}.w;hbSW+=w*hbFlags${i}.x;
+ #ifdef CLEARCOAT
+ hbC+=hbSpecular(hbProject(hbP,hbCR,hbPos${i}.xyz,hbHalf${i}.xyz),vClearCoatParams.y,hbFlags${i}.z,${i}.0)*w*hbFlags${i}.x*hbPos${i}.w;
+ #endif
+ }
+}\n`;
+  });
+  const functions=`
+vec3 hbRgbe(vec4 c){return c.rgb*255.0*exp2(c.a*255.0-136.0);}
+float hbWeight(vec3 p,vec3 center,vec3 halfSize,float blend){vec3 q=abs(p-center)/halfSize;return 1.0-smoothstep(1.0-blend,1.0,max(q.x,max(q.y,q.z)));}
+vec3 hbProject(vec3 p,vec3 d,vec3 center,vec3 halfSize){vec3 safe=mix(vec3(0.000001),d,step(vec3(0.000001),abs(d)));vec3 t=max((center-halfSize-p)/safe,(center+halfSize-p)/safe);return p+d*max(min(t.x,min(t.y,t.z)),0.0)-center;}
+vec3 hbCube(vec3 d,float lod,float probe){vec3 a=abs(d);vec2 uv;float face;
+ if(a.x>=a.y&&a.x>=a.z){face=d.x>=0.0?0.0:1.0;uv=vec2(d.x>=0.0?-d.z:d.z,-d.y)/max(a.x,1e-8);}
+ else if(a.y>=a.z){face=d.y>=0.0?2.0:3.0;uv=vec2(d.x,d.y>=0.0?d.z:-d.z)/max(a.y,1e-8);}
+ else{face=d.z>=0.0?4.0:5.0;uv=vec2(d.z>=0.0?d.x:-d.x,-d.y)/max(a.z,1e-8);}
+ float size=64.0/exp2(lod);vec2 p=clamp((uv*0.5+0.5)*size-0.5,0.0,size-1.0),lo=floor(p),f=fract(p),hi=min(lo+1.0,size-1.0);
+ vec2 offset=vec2(face*size,probe*127.0+128.0-2.0*size);vec2 dims=vec2(384.0,${data.height}.0);
+ vec3 aa=hbRgbe(texture2D(hbProbeAtlas,(offset+lo+0.5)/dims));vec3 ab=hbRgbe(texture2D(hbProbeAtlas,(offset+vec2(hi.x,lo.y)+0.5)/dims));
+ vec3 ba=hbRgbe(texture2D(hbProbeAtlas,(offset+vec2(lo.x,hi.y)+0.5)/dims));vec3 bb=hbRgbe(texture2D(hbProbeAtlas,(offset+hi+0.5)/dims));return mix(mix(aa,ab,f.x),mix(ba,bb,f.x),f.y);}
+vec3 hbSpecular(vec3 d,float roughness,float maxLod,float probe){float lod=clamp(roughness,0.0,1.0)*maxLod;return mix(hbCube(d,floor(lod),probe),hbCube(d,min(floor(lod)+1.0,6.0),probe),fract(lod));}
+`;
+  const code=`
+#if defined(REFLECTION) && !defined(UNLIT)
+ vec3 hbP=(hbWorldToLevel*vec4(vPositionW,1.0)).xyz.zxy*${Number(data.scale).toFixed(8)};
+ vec3 hbN=normalize((hbNormalToLevel*vec4(normalW,0.0)).xyz.zxy);
+ vec3 hbR=normalize((hbWorldToLevel*vec4(reflect(-viewDirectionW,normalW),0.0)).xyz.zxy);
+ #ifdef ANISOTROPIC
+ hbR=normalize((hbWorldToLevel*vec4(reflect(-viewDirectionW,anisotropicOut.anisotropicNormal),0.0)).xyz.zxy);
+ #endif
+ vec3 hbD=vec3(0.0),hbS=vec3(0.0),hbC=vec3(0.0);float hbDW=0.0,hbSW=0.0;
+ #ifdef CLEARCOAT
+ vec3 hbCR=normalize((hbWorldToLevel*vec4(reflect(-viewDirectionW,clearcoatOut.clearCoatNormalW),0.0)).xyz.zxy);
+ #endif
+ ${contributions}
+ vec3 hbDiffuseFactor=surfaceAlbedo*vLightingIntensity.z*aoOut.ambientOcclusionColor;
+ #if defined(METALLICWORKFLOW) && !defined(LEGACY_SPECULAR_ENERGY_CONSERVATION)
+ vec3 hbEnergy=vec3(baseSpecularEnvironmentReflectance);
+ #if defined(ENVIRONMENTBRDF) && defined(MS_BRDF_ENERGY_CONSERVATION)
+ hbEnergy*=baseSpecularEnergyConservationFactor;
+ #endif
+ hbDiffuseFactor*=clamp(1.0-hbEnergy,0.0,1.0);
+ #endif
+ #ifdef CLEARCOAT
+ hbDiffuseFactor*=clearcoatOut.conservationFactor;
+ #ifdef CLEARCOAT_TINT
+ hbDiffuseFactor*=clearcoatOut.absorption;
+ #endif
+ #endif
+ finalIrradiance=finalIrradiance*max(1.0-hbDW,0.0)+hbD/max(hbDW,1.0)*hbDiffuseFactor;
+ vec3 hbSpecFactor=colorSpecularEnvironmentReflectance*vLightingIntensity.z;
+ #if defined(ENVIRONMENTBRDF) && defined(MS_BRDF_ENERGY_CONSERVATION)
+ hbSpecFactor*=coloredEnergyConservationFactor;
+ #endif
+ finalRadianceScaled=finalRadianceScaled*max(1.0-hbSW,0.0)+hbS/max(hbSW,1.0)*hbSpecFactor;
+ #ifdef CLEARCOAT
+ float hbF=mix(vClearCoatRefractionParams.x,1.0,pow(1.0-clamp(dot(clearcoatOut.clearCoatNormalW,viewDirectionW),0.0,1.0),5.0))*vClearCoatParams.x;
+ clearcoatOut.finalClearCoatRadianceScaled=clearcoatOut.finalClearCoatRadianceScaled*max(1.0-hbSW,0.0)+hbC/max(hbSW,1.0)*hbF*vLightingIntensity.z;
+ #endif
+#endif
+`;
+  class LocalLighting extends B.MaterialPluginBase {
+    constructor(material){super(material,'HeronLocalLighting',190,{HB_LOCAL_PROBES:data.probes.length,SKIPFINALCOLORCLAMP:true});this._enable(true);}
+    getClassName(){return 'HeronLocalLighting';}
+    prepareDefines(defines){defines.HB_LOCAL_PROBES=data.probes.length;defines.SKIPFINALCOLORCLAMP=true;}
+    getSamplers(samplers){samplers.push('hbProbeAtlas');}
+    getUniforms(){return {ubo:uniforms,fragment:declarations};}
+    isReadyForSubMesh(){return atlas.isReady();}
+    bindForSubMesh(ubo){
+      level.root.computeWorldMatrix(true);
+      ubo.updateMatrix('hbWorldToLevel',level.root.getWorldMatrix().clone().invert());
+      ubo.updateMatrix('hbNormalToLevel',B.Matrix.Transpose(level.root.getWorldMatrix()));
+      data.probes.forEach((p,i)=>{
+        ubo.updateFloat4('hbPos'+i,...p.position,p.intensity);ubo.updateFloat4('hbHalf'+i,...p.half_size,p.blend);ubo.updateFloat4('hbFlags'+i,Number(p.reflections),Number(p.diffuse),p.max_lod,0);
+        p.sh.forEach((c,k)=>ubo.updateFloat3(`hbSH${i}_${k}`,...c));
+      });
+      ubo.setTexture('hbProbeAtlas',atlas);
+    }
+    getCustomCode(type,language){if(type!=='fragment'||language)return null;return {CUSTOM_FRAGMENT_DEFINITIONS:functions,CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION:code};}
+  }
+  const materials=new Set(level.entities.flatMap(r=>r.meshes).map(m=>m.material).filter(m=>m instanceof B.PBRMaterial));
+  for(const material of materials) material.heronLocalLighting=new LocalLighting(material);
 }

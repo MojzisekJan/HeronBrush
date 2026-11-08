@@ -688,13 +688,27 @@ pub fn prepare_text(
                 } else {
                     None
                 };
-                let image = prepare_image(face, polygon.as_deref(), material)
+                let mut image = prepare_image(face, polygon.as_deref(), material)
                     .map_err(|e| Error::Write(directory.to_path_buf(), e))?;
+                // A constant paint pixel needs no UV collapse; preserve the authored
+                // tangent directions for anisotropic shading.
+                if image.width == 1
+                    && image.height == 1
+                    && face.surface_material.is_some_and(|s| s.anisotropy > 0)
+                {
+                    image.to_pixel = SAME;
+                }
                 let png = image.png.clone();
                 let mut key = png.clone();
                 if let Some(s) = face.surface_material {
                     key.extend([1, s.roughness, s.metallic]);
                     key.extend(s.emission.to_le_bytes());
+                    key.extend([
+                        s.clearcoat,
+                        s.coat_roughness,
+                        s.anisotropy,
+                        s.anisotropy_rotation,
+                    ]);
                 } else {
                     key.push(0);
                 }
@@ -718,7 +732,24 @@ pub fn prepare_text(
                     settings.generated_materials.insert(
                         name.clone(),
                         scene_export::materials::GeneratedMaterial {
-                            pbr: None,
+                            pbr: face.surface_material.map(|s| {
+                                scene_export::materials::GeneratedPbr {
+                                    layers: [
+                                        s.clearcoat as f32 / 100.0,
+                                        s.coat_roughness as f32 / 100.0,
+                                        s.anisotropy as f32 / 100.0,
+                                        (s.anisotropy_rotation as f32).to_radians(),
+                                    ],
+                                    roughness: s.factors()[0],
+                                    metallic: s.factors()[1],
+                                    alpha_mode: if image.alpha {
+                                        scene_export::materials::AlphaMode::Blend
+                                    } else {
+                                        scene_export::materials::AlphaMode::Opaque
+                                    },
+                                    ..Default::default()
+                                }
+                            }),
                             path: resource,
                             width: image.width,
                             height: image.height,

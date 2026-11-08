@@ -159,20 +159,150 @@ impl Sky {
     /// scale retains values above one without clipping; the engine restores it
     /// through sky exposure and skylight brightness. Quantization is scale/255.
     pub fn cube_dds_normalized(&self, size: u32, flip_z: bool) -> (Vec<u8>, f32) {
-        let mut pixels = Vec::new();
-        let mut scale = 1.0_f32;
-        for face in 0..6 {
-            for y in 0..size {
-                for x in 0..size {
-                    let mut d = cube_direction(
+        cube_dds_normalized(size, flip_z, |d| self.radiance(d))
+    }
+
+    pub fn cube_dds(&self, size: u32, flip_z: bool) -> Vec<u8> {
+        cube_dds_sampled(size, flip_z, |d| self.radiance(d))
+    }
+}
+
+pub fn cube_dds_sampled(size: u32, flip_z: bool, sample: impl Fn(V) -> V) -> Vec<u8> {
+    let mut out = dds_header(size, 10, 8);
+    for face in 0..6 {
+        for y in 0..size {
+            for x in 0..size {
+                let u = (x as f32 + 0.5) / size as f32 * 2. - 1.;
+                let v = (y as f32 + 0.5) / size as f32 * 2. - 1.;
+                let mut d = cube_direction(face, u, v);
+                if flip_z {
+                    d[2] = -d[2];
+                }
+                let c = sample(d);
+                for value in [c[0], c[1], c[2], 1.] {
+                    out.extend(half(value).to_le_bytes());
+                }
+            }
+        }
+    }
+    out
+}
+
+impl Sky {
+    /// A cube map of the sky as a KTX2 file: RGBA16F, `size` square faces in the order
+    /// +X, -X, +Y, -Y, +Z, -Z, one level, no supercompression.
+    pub fn cube_ktx2(&self, size: u32, direction: impl Fn(usize, f32, f32) -> V) -> Vec<u8> {
+        cube_ktx2(size, |face, u, v| self.radiance(direction(face, u, v)))
+    }
+}
+
+/// Encodes sampled linear radiance as an RGBA16F KTX2 cube.
+pub fn cube_ktx2(size: u32, sample: impl Fn(usize, f32, f32) -> V) -> Vec<u8> {
+    // Header, index and level index; the data format descriptor follows at 104.
+    const DFD_OFFSET: u32 = 104;
+    const DFD_LENGTH: u32 = 92;
+    let data_offset = (DFD_OFFSET + DFD_LENGTH).next_multiple_of(8);
+    let face_bytes = (size * size * 8) as u64;
+    let mut out = vec![
+        0xAB, b'K', b'T', b'X', b' ', b'2', b'0', 0xBB, b'\r', b'\n', 0x1A, b'\n',
+    ];
+    // VK_FORMAT_R16G16B16A16_SFLOAT, type size, width, height, depth, layers, faces, levels, supercompression.
+    for value in [
+        97u32, 2, size, size, 0, 0, 6, 1, 0, DFD_OFFSET, DFD_LENGTH, 0, 0,
+    ] {
+        out.extend(value.to_le_bytes());
+    }
+    for value in [0u64, 0, data_offset as u64, face_bytes * 6, face_bytes * 6] {
+        out.extend(value.to_le_bytes());
+    }
+    // A basic descriptor block: RGBSDA, BT.709, linear, four signed float samples.
+    out.extend(DFD_LENGTH.to_le_bytes());
+    for value in [0u32, 2 | (88 << 16), 1 | (1 << 8) | (1 << 16), 0, 8, 0] {
+        out.extend(value.to_le_bytes());
+    }
+    for (channel, offset) in [(0u32, 0u32), (1, 16), (2, 32), (15, 48)] {
+        for value in [
+            offset | (15 << 16) | ((channel | 0xC0) << 24),
+            0,
+            0xBF80_0000,
+            0x3F80_0000,
+        ] {
+            out.extend(value.to_le_bytes());
+        }
+    }
+    out.resize(data_offset as usize, 0);
+    for face in 0..6 {
+        for y in 0..size {
+            for x in 0..size {
+                let u = (x as f32 + 0.5) / size as f32 * 2. - 1.;
+                let v = (y as f32 + 0.5) / size as f32 * 2. - 1.;
+                let c = sample(face, u, v);
+                for value in [c[0], c[1], c[2], 1.] {
+                    out.extend(half(value).to_le_bytes());
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Encodes linear radiance in a shared-range RGBA8 cube accepted by Flax.
+pub fn cube_dds_normalized(size: u32, flip_z: bool, sample: impl Fn(V) -> V) -> (Vec<u8>, f32) {
+    let mut pixels = Vec::new();
+    let mut scale = 1.0_f32;
+    for face in 0..6 {
+        for y in 0..size {
+            for x in 0..size {
+                let mut d = cube_direction(
+                    face,
+                    (x as f32 + 0.5) / size as f32 * 2. - 1.,
+                    (y as f32 + 0.5) / size as f32 * 2. - 1.,
+                );
+                if flip_z {
+                    d[2] = -d[2];
+                }
+                let color = sample(d);
+                for value in color {
+                    scale = scale.max(value);
+                }
+                pixels.push(color);
+            }
+        }
+    }
+    let mut out = dds_header(size, 28, 4);
+    for color in pixels {
+        for value in color {
+            out.push((value / scale * 255.).round().clamp(0., 255.) as u8);
+        }
+        out.push(255);
+    }
+    (out, scale)
+}
+
+/// A prefiltered cube with a shared HDR range, stored face first then mip level.
+pub fn cube_dds_mips_normalized(
+    size: u32,
+    levels: u32,
+    flip_z: bool,
+    sample: impl Fn(V, u32) -> V,
+) -> (Vec<u8>, f32) {
+    assert!(size.is_power_of_two() && (1..=size.ilog2() + 1).contains(&levels));
+    let mut pixels = Vec::new();
+    let mut scale = 1.0_f32;
+    for face in 0..6 {
+        for mip in 0..levels {
+            let side = size >> mip;
+            for y in 0..side {
+                for x in 0..side {
+                    let mut direction = cube_direction(
                         face,
-                        (x as f32 + 0.5) / size as f32 * 2. - 1.,
-                        (y as f32 + 0.5) / size as f32 * 2. - 1.,
+                        (x as f32 + 0.5) / side as f32 * 2. - 1.,
+                        (y as f32 + 0.5) / side as f32 * 2. - 1.,
                     );
                     if flip_z {
-                        d[2] = -d[2];
+                        direction[2] = -direction[2];
                     }
-                    let color = self.radiance(d);
+                    let color = sample(direction, mip);
                     for value in color {
                         scale = scale.max(value);
                     }
@@ -180,89 +310,18 @@ impl Sky {
                 }
             }
         }
-        let mut out = dds_header(size, 28, 4);
-        for color in pixels {
-            for value in color {
-                out.push((value / scale * 255.).round().clamp(0., 255.) as u8);
-            }
-            out.push(255);
-        }
-        (out, scale)
     }
-
-    pub fn cube_dds(&self, size: u32, flip_z: bool) -> Vec<u8> {
-        let mut out = dds_header(size, 10, 8);
-        for face in 0..6 {
-            for y in 0..size {
-                for x in 0..size {
-                    let u = (x as f32 + 0.5) / size as f32 * 2. - 1.;
-                    let v = (y as f32 + 0.5) / size as f32 * 2. - 1.;
-                    let mut d = cube_direction(face, u, v);
-                    if flip_z {
-                        d[2] = -d[2];
-                    }
-                    let c = self.radiance(d);
-                    for value in [c[0], c[1], c[2], 1.] {
-                        out.extend(half(value).to_le_bytes());
-                    }
-                }
-            }
+    let mut bytes = dds_header(size, 28, 4);
+    bytes[8..12].copy_from_slice(&(0x100fu32 | 0x8 | 0x20000).to_le_bytes());
+    bytes[28..32].copy_from_slice(&levels.to_le_bytes());
+    bytes[108..112].copy_from_slice(&(0x8u32 | 0x1000 | 0x400000).to_le_bytes());
+    for color in pixels {
+        for value in color {
+            bytes.push((value / scale * 255.).round().clamp(0., 255.) as u8);
         }
-        out
+        bytes.push(255);
     }
-}
-
-impl Sky {
-    /// A cube map of the sky as a KTX2 file: RGBA16F, `size` square faces in the order
-    /// +X, -X, +Y, -Y, +Z, -Z, one level, no supercompression.
-    pub fn cube_ktx2(&self, size: u32, direction: impl Fn(usize, f32, f32) -> V) -> Vec<u8> {
-        // Header, index and level index; the data format descriptor follows at 104.
-        const DFD_OFFSET: u32 = 104;
-        const DFD_LENGTH: u32 = 92;
-        let data_offset = (DFD_OFFSET + DFD_LENGTH).next_multiple_of(8);
-        let face_bytes = (size * size * 8) as u64;
-        let mut out = vec![
-            0xAB, b'K', b'T', b'X', b' ', b'2', b'0', 0xBB, b'\r', b'\n', 0x1A, b'\n',
-        ];
-        // VK_FORMAT_R16G16B16A16_SFLOAT, type size, width, height, depth, layers, faces, levels, supercompression.
-        for value in [
-            97u32, 2, size, size, 0, 0, 6, 1, 0, DFD_OFFSET, DFD_LENGTH, 0, 0,
-        ] {
-            out.extend(value.to_le_bytes());
-        }
-        for value in [0u64, 0, data_offset as u64, face_bytes * 6, face_bytes * 6] {
-            out.extend(value.to_le_bytes());
-        }
-        // A basic descriptor block: RGBSDA, BT.709, linear, four signed float samples.
-        out.extend(DFD_LENGTH.to_le_bytes());
-        for value in [0u32, 2 | (88 << 16), 1 | (1 << 8) | (1 << 16), 0, 8, 0] {
-            out.extend(value.to_le_bytes());
-        }
-        for (channel, offset) in [(0u32, 0u32), (1, 16), (2, 32), (15, 48)] {
-            for value in [
-                offset | (15 << 16) | ((channel | 0xC0) << 24),
-                0,
-                0xBF80_0000,
-                0x3F80_0000,
-            ] {
-                out.extend(value.to_le_bytes());
-            }
-        }
-        out.resize(data_offset as usize, 0);
-        for face in 0..6 {
-            for y in 0..size {
-                for x in 0..size {
-                    let u = (x as f32 + 0.5) / size as f32 * 2. - 1.;
-                    let v = (y as f32 + 0.5) / size as f32 * 2. - 1.;
-                    let c = self.radiance(direction(face, u, v));
-                    for value in [c[0], c[1], c[2], 1.] {
-                        out.extend(half(value).to_le_bytes());
-                    }
-                }
-            }
-        }
-        out
-    }
+    (bytes, scale)
 }
 
 /// The direction a cube face's pixel looks along, in Direct3D's layout: faces +X, -X,
@@ -293,7 +352,7 @@ impl Sky {
     /// displayable range. `direction` gives the exported-frame direction of each face's
     /// pixel, so the caller fits the faces to its engine's cube convention.
     pub fn png_faces(&self, size: u32, direction: impl Fn(usize, f32, f32) -> V) -> Vec<Vec<u8>> {
-        self.png_faces_mapped(size, direction, |c| c)
+        Self::png_faces_mapped(size, direction, |d| self.radiance(d))
     }
 
     /// Six faces as they look on screen in the 3D view, after its exposure and AgX
@@ -303,34 +362,50 @@ impl Sky {
         size: u32,
         direction: impl Fn(usize, f32, f32) -> V,
     ) -> Vec<Vec<u8>> {
+        self.display_faces_sampled(size, direction, |d| self.radiance(d))
+    }
+
+    pub fn display_faces_sampled(
+        &self,
+        size: u32,
+        direction: impl Fn(usize, f32, f32) -> V,
+        sample: impl Fn(V) -> V,
+    ) -> Vec<Vec<u8>> {
         let exposure = self.exposure * AGX_EXPOSURE;
-        self.png_faces_mapped(size, direction, |c| agx(c.map(|v| v * exposure)))
+        Self::png_faces_mapped(size, direction, |d| agx(sample(d).map(|v| v * exposure)))
     }
 
     fn png_faces_mapped(
-        &self,
         size: u32,
         direction: impl Fn(usize, f32, f32) -> V,
         map: impl Fn(V) -> V,
     ) -> Vec<Vec<u8>> {
         (0..6)
-            .map(|face| png(size, size, &self.face_rgba(face, size, &direction, &map)))
+            .map(|face| png(size, size, &Self::face_rgba(face, size, &direction, &map)))
             .collect()
     }
 
     /// The six display faces stacked top to bottom in one PNG, `size` wide and six
     /// times as tall: raylib's `CUBEMAP_LAYOUT_LINE_VERTICAL`.
     pub fn display_strip(&self, size: u32, direction: impl Fn(usize, f32, f32) -> V) -> Vec<u8> {
+        self.display_strip_sampled(size, direction, |d| self.radiance(d))
+    }
+
+    pub fn display_strip_sampled(
+        &self,
+        size: u32,
+        direction: impl Fn(usize, f32, f32) -> V,
+        sample: impl Fn(V) -> V,
+    ) -> Vec<u8> {
         let exposure = self.exposure * AGX_EXPOSURE;
-        let map = |c: V| agx(c.map(|v| v * exposure));
+        let map = |d| agx(sample(d).map(|v| v * exposure));
         let rgba: Vec<u8> = (0..6)
-            .flat_map(|face| self.face_rgba(face, size, &direction, &map))
+            .flat_map(|face| Self::face_rgba(face, size, &direction, &map))
             .collect();
         png(size, size * 6, &rgba)
     }
 
     fn face_rgba(
-        &self,
         face: usize,
         size: u32,
         direction: &impl Fn(usize, f32, f32) -> V,
@@ -341,7 +416,7 @@ impl Sky {
             for x in 0..size {
                 let u = (x as f32 + 0.5) / size as f32 * 2. - 1.;
                 let v = (y as f32 + 0.5) / size as f32 * 2. - 1.;
-                let c = map(self.radiance(direction(face, u, v)));
+                let c = map(direction(face, u, v));
                 rgba.extend([srgb(c[0]), srgb(c[1]), srgb(c[2]), 255]);
             }
         }
@@ -359,19 +434,24 @@ impl Sky {
         height: u32,
         direction: impl Fn(f32, f32) -> V,
     ) -> Vec<u8> {
-        let mut out =
-            format!("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y {height} +X {width}\n").into_bytes();
-        for y in 0..height {
-            for x in 0..width {
-                let c = self.radiance(direction(
-                    (x as f32 + 0.5) / width as f32,
-                    (y as f32 + 0.5) / height as f32,
-                ));
-                out.extend(rgbe(c));
-            }
-        }
-        out
+        panorama_hdr(width, height, |u, v| self.radiance(direction(u, v)))
     }
+}
+
+/// Encodes sampled linear radiance as a flat RGBE Radiance panorama.
+pub fn panorama_hdr(width: u32, height: u32, sample: impl Fn(f32, f32) -> V) -> Vec<u8> {
+    let mut out =
+        format!("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y {height} +X {width}\n").into_bytes();
+    for y in 0..height {
+        for x in 0..width {
+            let c = sample(
+                (x as f32 + 0.5) / width as f32,
+                (y as f32 + 0.5) / height as f32,
+            );
+            out.extend(rgbe(c));
+        }
+    }
+    out
 }
 
 /// Unity's Skybox/Panoramic uses u = 0.5 - atan2(z,x)/TAU. File rows
@@ -580,8 +660,22 @@ mod tests {
     }
 
     #[test]
+    fn flax_prefiltered_cube_keeps_face_mip_order_and_shared_range() {
+        let (bytes, scale) = cube_dds_mips_normalized(4, 3, false, |_, mip| [8., mip as f32, 0.]);
+        assert_eq!(scale, 8.);
+        assert_eq!(u32::from_le_bytes(bytes[28..32].try_into().unwrap()), 3);
+        assert_eq!(bytes.len(), 148 + 6 * (16 + 4 + 1) * 4);
+        for face in 0..6 {
+            let start = 148 + face * 21 * 4;
+            assert_eq!(bytes[start], 255);
+            assert_eq!(bytes[start + 16 * 4 + 1], 32);
+            assert_eq!(bytes[start + 20 * 4 + 1], 64);
+        }
+    }
+    #[test]
     fn flax_cube_normalization_retains_hdr_range_and_unity_panorama_axes() {
-        let mut sky = sky();sky.sky=[10.,4.,2.];
+        let mut sky = sky();
+        sky.sky = [10., 4., 2.];
         let size = 8;
         let (bytes, scale) = sky.cube_dds_normalized(size, true);
         assert_eq!(&bytes[..4], b"DDS ");
@@ -666,7 +760,11 @@ mod tests {
         } else {
             (1. + m / 1024.) * 2f32.powi(e - 15)
         };
-        if h & 0x8000 != 0 { -v } else { v }
+        if h & 0x8000 != 0 {
+            -v
+        } else {
+            v
+        }
     }
 
     #[test]

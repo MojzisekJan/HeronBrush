@@ -335,14 +335,12 @@ mod tests {
             ..Default::default()
         };
         let mut doc = Document::new(WorldBounds::default());
-        doc.add_brushes(vec![
-            map_model::shapes::create_cuboid(
-                &doc.world_bounds(),
-                &Bbox3d::from_scalars(-32.0, 32.0),
-                "stone",
-            )
-            .unwrap(),
-        ]);
+        doc.add_brushes(vec![map_model::shapes::create_cuboid(
+            &doc.world_bounds(),
+            &Bbox3d::from_scalars(-32.0, 32.0),
+            "stone",
+        )
+        .unwrap()]);
         let mut snapshots = Vec::new();
         for step in 0..4 {
             doc.select_all();
@@ -366,11 +364,10 @@ mod tests {
                 &root.0,
             )
             .unwrap();
-            assert!(
-                p.files
-                    .iter()
-                    .all(|(path, _)| path.starts_with(root.0.join(FOLDER)))
-            );
+            assert!(p
+                .files
+                .iter()
+                .all(|(path, _)| path.starts_with(root.0.join(FOLDER))));
             assert_eq!(p.meshes.is_empty(), step == 2);
             let scene = p
                 .files
@@ -381,11 +378,10 @@ mod tests {
                 .clone();
             if step != 2 {
                 assert!(String::from_utf8_lossy(&scene).contains("/heron_brush_live/preview/"));
-                assert!(
-                    p.files
-                        .iter()
-                        .any(|(path, _)| path.extension().is_some_and(|e| e == "collisionobject"))
-                );
+                assert!(p
+                    .files
+                    .iter()
+                    .any(|(path, _)| path.extension().is_some_and(|e| e == "collisionobject")));
             }
             let model = p
                 .files
@@ -402,16 +398,12 @@ mod tests {
     }
     #[test]
     fn asynchronous_requests_are_not_reported_as_completed() {
-        assert!(
-            reload_result(202, b"")
-                .unwrap()
-                .contains("does not confirm")
-        );
-        assert!(
-            reload_result(200, br#"{"success":true}"#)
-                .unwrap()
-                .contains("completed")
-        );
+        assert!(reload_result(202, b"")
+            .unwrap()
+            .contains("does not confirm"));
+        assert!(reload_result(200, br#"{"success":true}"#)
+            .unwrap()
+            .contains("completed"));
         assert!(reload_result(200, br#"{"success":false,"issues":[]}"#).is_err());
         assert!(reload_result(403, b"").is_err());
         assert!(supports_command(

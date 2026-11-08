@@ -20,6 +20,10 @@ use scene_export::writer;
 
 use crate::document::Document;
 
+#[path = "babylon_export.rs"]
+mod babylon_export;
+#[path = "flax_export.rs"]
+mod flax_export;
 #[path = "gltf_export.rs"]
 mod gltf_export;
 #[path = "paint_export.rs"]
@@ -615,8 +619,18 @@ fn build(
             if let Some(res) =
                 scene_export::materials::fs_to_res(root, &panorama).filter(|_| options.sky)
             {
-                writer::godot_sky::attach(&mut built.scene, &sky, &res);
-                files.push((panorama, Contents::Bytes(writer::godot_sky::panorama(&sky))));
+                let (bytes, show_background) =
+                    authored_panorama(document, writer::sky::godot_panorama_direction)?
+                        .unwrap_or_else(|| (writer::godot_sky::panorama(&sky), true));
+                let shadows = crate::render_camera::cameras(document)
+                    .into_iter()
+                    .next()
+                    .map_or_else(crate::render_settings::from_preferences, |camera| {
+                        camera.2.render()
+                    })
+                    .shadows;
+                writer::godot_sky::attach(&mut built.scene, &sky, &res, show_background, shadows);
+                files.push((panorama, Contents::Bytes(bytes)));
             }
             if writer::godot_water::used(&built.scene) {
                 files.push((
@@ -810,7 +824,13 @@ fn build(
             match target {
                 Target::ThreeJs | Target::Babylon | Target::PlayCanvas | Target::Bevy => {
                     if target == Target::Bevy {
-                        files.push((directory.join("heron_lights.rs"), Contents::Text(include_str!("../../scene_export/src/writer/bevy_lights.rs.txt").into())));
+                        files.push((
+                            directory.join("heron_lights.rs"),
+                            Contents::Text(
+                                include_str!("../../scene_export/src/writer/bevy_lights.rs.txt")
+                                    .into(),
+                            ),
+                        ));
                         files.push((
                             directory.join("heron_water_render.rs"),
                             Contents::Text(
@@ -849,6 +869,20 @@ fn build(
                     } else {
                         writer::three::write(&built.level, &built.collision)
                     };
+                    let authored_web_sky = if sky.is_some() {
+                        match target {
+                            Target::ThreeJs => {
+                                authored_panorama(document, writer::sky::three_panorama_direction)?
+                            }
+                            Target::PlayCanvas => authored_panorama(
+                                document,
+                                writer::sky::playcanvas_panorama_direction,
+                            )?,
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    };
                     if let Some(sky) = &sky {
                         let mut value: serde_json::Value =
                             serde_json::from_str(&level_json).expect("level JSON");
@@ -858,9 +892,22 @@ fn build(
                         ) {
                             let panorama = format!("{}/sky.hdr", options.name);
                             value["environment"] = writer::three::environment(sky, Some(&panorama));
-                            files.push((
-                                directory.join(panorama),
-                                Contents::Bytes(sky.panorama_hdr(
+                            if matches!(target, Target::ThreeJs | Target::PlayCanvas) {
+                                let render = crate::render_camera::cameras(document)
+                                    .into_iter()
+                                    .next()
+                                    .map_or_else(
+                                        crate::render_settings::from_preferences,
+                                        |camera| camera.2.render(),
+                                    );
+                                value["environment"]["shadows"] = serde_json::json!(render.shadows);
+                            }
+                            let bytes = if let Some((bytes, show_background)) = &authored_web_sky {
+                                value["environment"]["show_background"] =
+                                    serde_json::json!(show_background);
+                                bytes.clone()
+                            } else {
+                                sky.panorama_hdr(
                                     1024,
                                     512,
                                     match target {
@@ -870,24 +917,48 @@ fn build(
                                         }
                                         _ => writer::sky::three_panorama_direction,
                                     },
-                                )),
-                            ));
+                                )
+                            };
+                            files.push((directory.join(panorama), Contents::Bytes(bytes)));
                         } else {
                             // Bevy reads KTX2 with its 3D features; the cube is named relative to
                             // the level file, like the meshes.
                             let cubemap = format!("{}/sky.ktx2", options.name);
                             let mut environment = writer::three::environment(sky, None);
                             environment["cubemap"] = serde_json::json!(cubemap);
+                            // Bevy samples cube directions with Z negated.
+                            let direction = |face, u, v| {
+                                let [x, y, z] = writer::sky::cube_direction(face, u, v);
+                                [x, y, -z]
+                            };
+                            let authored = crate::environment::settings(document);
+                            let bytes = if authored.path.as_os_str().is_empty() {
+                                sky.cube_ktx2(256, direction)
+                            } else {
+                                let path =
+                                    crate::environment::resolve_path(document, &authored.path);
+                                let image = crate::environment::load(&path).map_err(Error::Map)?;
+                                environment["show_background"] =
+                                    serde_json::json!(authored.show_background);
+                                writer::sky::cube_ktx2(256, |face, u, v| {
+                                    image
+                                        .sample(
+                                            writer::sky::from_export(direction(face, u, v)),
+                                            authored.rotation_degrees,
+                                        )
+                                        .map(|value| (value * authored.intensity).min(65504.0))
+                                })
+                            };
+                            let shadows = crate::render_camera::cameras(document)
+                                .into_iter()
+                                .next()
+                                .map_or_else(crate::render_settings::from_preferences, |camera| {
+                                    camera.2.render()
+                                })
+                                .shadows;
+                            environment["shadows"] = serde_json::json!(shadows);
                             value["environment"] = environment;
-                            // Bevy samples its cubes with Z negated (skybox.wgsl), so the faces hold the
-                            // mirrored sky.
-                            files.push((
-                                directory.join(cubemap),
-                                Contents::Bytes(sky.cube_ktx2(256, |face, u, v| {
-                                    let d = writer::sky::cube_direction(face, u, v);
-                                    [d[0], d[1], -d[2]]
-                                })),
-                            ));
+                            files.push((directory.join(cubemap), Contents::Bytes(bytes)));
                             files.push((
                                 directory.join("heron_sky.rs"),
                                 Contents::Text(
@@ -898,6 +969,19 @@ fn build(
                         }
                         level_json = serde_json::to_string_pretty(&value).expect("level JSON");
                     }
+                    if target == Target::Babylon && options.sky {
+                        let mut value = serde_json::from_str(&level_json).expect("level JSON");
+                        babylon_export::enhance(
+                            document,
+                            options.scale,
+                            directory,
+                            &options.name,
+                            &mut value,
+                            &mut files,
+                        )?;
+                        level_json = serde_json::to_string_pretty(&value).expect("level JSON");
+                    }
+                    let babylon_level = level_json.clone();
                     files.push((
                         directory.join(format!("{}.json", options.name)),
                         Contents::Text(level_json),
@@ -909,11 +993,23 @@ fn build(
                         ));
                         files.push((
                             directory.join(format!("{}.html", options.name)),
-                            Contents::Text(writer::babylon::write_html(
-                                &built.level,
-                                &built.collision,
-                                &built.meshes,
-                                sky.as_ref(),
+                            Contents::Text(babylon_export::embed_page(
+                                writer::babylon::write_html(
+                                    &built.level,
+                                    &built.collision,
+                                    &built.meshes,
+                                    sky.as_ref(),
+                                ),
+                                &babylon_level,
+                                files.iter().find_map(|(path, contents)| {
+                                    if path == &directory.join(format!("{}/sky.hdr", options.name))
+                                    {
+                                        if let Contents::Bytes(bytes) = contents {
+                                            return Some(bytes.as_slice());
+                                        }
+                                    }
+                                    None
+                                }),
                             )),
                         ));
                     }
@@ -922,18 +1018,30 @@ fn build(
                             directory.join("heron_playcanvas.js"),
                             Contents::Text(writer::playcanvas::RUNTIME.into()),
                         ));
+                        let page = writer::playcanvas::write_html(
+                            &built.level,
+                            &built.collision,
+                            &built.meshes,
+                            sky.as_ref(),
+                        );
+                        let page = babylon_export::embed_page(
+                            page,
+                            &babylon_level,
+                            authored_web_sky.as_ref().map(|(bytes, _)| bytes.as_slice()),
+                        );
                         files.push((
                             directory.join(format!("{}.html", options.name)),
-                            Contents::Text(writer::playcanvas::write_html(
-                                &built.level,
-                                &built.collision,
-                                &built.meshes,
-                                sky.as_ref(),
-                            )),
+                            Contents::Text(page),
                         ));
                     }
                     if target == Target::ThreeJs {
-                        files.push((directory.join("heron_lights.js"), Contents::Text(include_str!("../../scene_export/src/writer/three_lights.js").into())));
+                        files.push((
+                            directory.join("heron_lights.js"),
+                            Contents::Text(
+                                include_str!("../../scene_export/src/writer/three_lights.js")
+                                    .into(),
+                            ),
+                        ));
                         files.push((
                             directory.join("heron_water.js"),
                             Contents::Text(
@@ -996,15 +1104,21 @@ fn build(
                                     .push(format!("HTML preview: {}: {error}", path.display())),
                             }
                         }
+                        let page = writer::three::write_html(
+                            &built.level,
+                            &built.collision,
+                            &built.meshes,
+                            &textures,
+                            sky.as_ref(),
+                        );
+                        let page = babylon_export::embed_page(
+                            page,
+                            &babylon_level,
+                            authored_web_sky.as_ref().map(|(bytes, _)| bytes.as_slice()),
+                        );
                         files.push((
                             directory.join(format!("{}.html", options.name)),
-                            Contents::Text(writer::three::write_html(
-                                &built.level,
-                                &built.collision,
-                                &built.meshes,
-                                &textures,
-                                sky.as_ref(),
-                            )),
+                            Contents::Text(page),
                         ));
                     }
                 }
@@ -1020,15 +1134,29 @@ fn build(
                     // raylib draws a texture's colours as they are, so its sky is baked as the
                     // view shows it, exposure and tone map included.
                     let sky = options.sky.then(|| map_sky(document, &built.level));
+                    let authored = authored_sky(document, sky.is_some())?;
+                    let show_sky = authored
+                        .as_ref()
+                        .is_none_or(|source| source.show_background);
                     let sky_path = format!("{}/sky.png", options.name);
                     if let Some(sky) = &sky {
                         files.push((
                             directory.join(&sky_path),
-                            Contents::Bytes(sky.display_strip(256, writer::sky::cube_direction)),
+                            Contents::Bytes(match &authored {
+                                Some(source) => sky.display_strip_sampled(
+                                    256,
+                                    writer::sky::cube_direction,
+                                    |d| sample_authored_sky(source, d),
+                                ),
+                                None => sky.display_strip(256, writer::sky::cube_direction),
+                            }),
                         ));
                     }
-                    let lighting_header = format!("{}_lighting.h",options.name);
-                    files.push((directory.join(&lighting_header),Contents::Text(writer::raylib::lighting(&built.level,sky.as_ref()))));
+                    let lighting_header = format!("{}_lighting.h", options.name);
+                    files.push((
+                        directory.join(&lighting_header),
+                        Contents::Text(writer::raylib::lighting(&built.level, sky.as_ref())),
+                    ));
                     let water = crate::raylib_water::write(&built.level);
                     let water_header = format!("{}_water.h", options.name);
                     if let Some(text) = &water {
@@ -1038,8 +1166,9 @@ fn build(
                         directory.join(format!("{}_preview.c", options.name)),
                         Contents::Text(crate::raylib_animation::preview(
                             &built.level,
+                            &built.meshes,
                             &header,
-                            sky.as_ref().map(|_| sky_path.as_str()),
+                            sky.as_ref().filter(|_| show_sky).map(|_| sky_path.as_str()),
                             water.as_ref().map(|_| water_header.as_str()),
                             Some(&lighting_header),
                         )),
@@ -1058,6 +1187,7 @@ fn build(
                             serde_json::from_str(&level_json).expect("level JSON");
                         value["environment"] = writer::three::environment(sky, None);
                         value["environment"]["cubemap"] = serde_json::json!(sky_path);
+                        value["environment"]["show_background"] = serde_json::json!(show_sky);
                         level_json = serde_json::to_string_pretty(&value).expect("level JSON");
                     }
                     files.push((
@@ -1085,12 +1215,27 @@ fn build(
                     if !options.model_sampler.is_empty() {
                         defold.model_sampler = options.model_sampler.clone();
                     }
-                    let project=settings.project_root.as_deref().unwrap_or(directory);
-                    for (path,bytes) in configure_defold_materials(&built.level,&settings,directory,&options.name,project,&mut defold)? {
-                        if !files.iter().any(|(p,_)|p==&path) {files.push((path,Contents::Bytes(bytes)));}
+                    let project = settings.project_root.as_deref().unwrap_or(directory);
+                    for (path, bytes) in configure_defold_materials(
+                        &built.level,
+                        &settings,
+                        directory,
+                        &options.name,
+                        project,
+                        &mut defold,
+                    )? {
+                        if !files.iter().any(|(p, _)| p == &path) {
+                            files.push((path, Contents::Bytes(bytes)));
+                        }
                     }
-                    writer::defold::validate_material_bindings(&built.level,&defold).map_err(Error::Map)?;
+                    writer::defold::validate_material_bindings(&built.level, &defold)
+                        .map_err(Error::Map)?;
                     defold.sky = options.sky.then(|| map_sky(document, &built.level));
+                    let authored = authored_sky(document, defold.sky.is_some())?;
+                    defold.hide_sky = authored
+                        .as_ref()
+                        .is_some_and(|source| !source.show_background);
+
                     for file in writer::defold::write(&built.level, &built.collision, &defold) {
                         files.push((
                             directory.join(&file.path),
@@ -1098,7 +1243,15 @@ fn build(
                         ));
                     }
                     if let Some(sky) = &defold.sky {
-                        for (path, bytes) in writer::defold::sky_binaries(&options.name, sky) {
+                        let sky_files = match &authored {
+                            Some(source) => {
+                                writer::defold::sky_binaries_sampled(&options.name, sky, |d| {
+                                    sample_authored_sky(source, d)
+                                })
+                            }
+                            None => writer::defold::sky_binaries(&options.name, sky),
+                        };
+                        for (path, bytes) in sky_files {
                             files.push((directory.join(path), Contents::Bytes(bytes)));
                         }
                     }
@@ -1111,7 +1264,14 @@ fn build(
                         ..Default::default()
                     };
                     if let Some(sky) = &unity.sky {
-                        files.push((directory.join(&options.name).join("sky.hdr"), Contents::Bytes(sky.panorama_hdr(1024,512,writer::sky::unity_panorama_direction))));
+                        files.push((
+                            directory.join(&options.name).join("sky.hdr"),
+                            Contents::Bytes(sky.panorama_hdr(
+                                1024,
+                                512,
+                                writer::sky::unity_panorama_direction,
+                            )),
+                        ));
                     }
                     if let Some(assets) = directory
                         .ancestors()
@@ -1150,13 +1310,86 @@ fn build(
                 }
                 Target::Flax => {
                     writer::flax::validate(&built.level).map_err(Error::Map)?;
+                    report
+                        .warnings
+                        .extend(flax_export::material_warnings(&files));
                     let mut flax = writer::flax::FlaxOptions::for_level(&options.name);
                     flax.sky = options.sky.then(|| map_sky(document, &built.level));
-                    if let Some(sky) = &flax.sky {
-                        let (cube,scale) = sky.cube_dds_normalized(128,true);
-                        flax.sky_scale = scale;
-                        files.push((directory.join(&options.name).join("sky.dds"),Contents::Bytes(cube)));
+                    let camera = crate::render_camera::cameras(document)
+                        .into_iter()
+                        .next()
+                        .map_or_else(crate::render_settings::from_preferences, |camera| {
+                            camera.2.render()
+                        });
+                    flax.sun_shadows = camera.shadows;
+                    let tone = camera.color_grading.tone_map.unwrap_or_else(|| {
+                        crate::preferences::pref(|p| match p.tone_mapper {
+                            crate::preferences::ToneMapper::Aces => render::color::ToneMap::Aces,
+                            crate::preferences::ToneMapper::Agx => render::color::ToneMap::Agx,
+                            crate::preferences::ToneMapper::KhronosNeutral => {
+                                render::color::ToneMap::KhronosNeutral
+                            }
+                            crate::preferences::ToneMapper::TonyMcMapface => {
+                                render::color::ToneMap::TonyMcMapface
+                            }
+                        })
+                    });
+                    if tone == render::color::ToneMap::TonyMcMapface {
+                        report.warnings.push("Flax does not provide TonyMcMapface tone mapping; exported camera uses native AgX.".into());
                     }
+                    let display = serde_json::json!({"exposure":camera.exposure,
+                        "white_balance":camera.color_grading.white_balance(), "contrast":camera.color_grading.contrast,
+                        "saturation":camera.color_grading.saturation, "tone_map":match tone {
+                            render::color::ToneMap::Aces=>"aces", render::color::ToneMap::KhronosNeutral=>"neutral", _=>"agx" }});
+                    flax.camera = Some(display.to_string());
+                    let source = crate::environment::settings(document);
+                    flax.show_background = source.show_background;
+                    if let Some(sky) = &flax.sky {
+                        let (cube, scale) = if source.path.as_os_str().is_empty() {
+                            sky.cube_dds_normalized(128, true)
+                        } else {
+                            let path = crate::environment::resolve_path(document, &source.path);
+                            let image = crate::environment::load(&path).map_err(Error::Map)?;
+                            writer::sky::cube_dds_normalized(128, true, |direction| {
+                                image
+                                    .sample(
+                                        writer::sky::from_export(direction),
+                                        source.rotation_degrees,
+                                    )
+                                    .map(|v| (v * source.intensity).min(65504.0))
+                            })
+                        };
+                        flax.sky_scale = scale;
+                        files.push((
+                            directory.join(&options.name).join("sky.dds"),
+                            Contents::Bytes(cube),
+                        ));
+                    }
+                    let probes = flax_export::probes(
+                        document,
+                        options.scale,
+                        directory,
+                        &options.name,
+                        &mut files,
+                    )?;
+                    flax.probes = Some(probes.to_string());
+                    let mut environment = serde_json::json!({"display":display,"probes":probes});
+                    if let Some(sky) = &flax.sky {
+                        environment.as_object_mut().unwrap().extend(
+                            serde_json::json!({"sky":"sky.dds", "scale":flax.sky_scale,
+                            "exposure":sky.exposure, "ambient":sky.ambient_intensity,
+                            "show_background":flax.show_background, "sun_color":sky.sun_color,
+                            "sun_intensity":sky.sun_intensity, "sun_direction":sky.to_sun(),
+                            "shadows":flax.sun_shadows, "fog":sky.fog})
+                            .as_object()
+                            .unwrap()
+                            .clone(),
+                        );
+                    }
+                    files.push((
+                        directory.join(format!("{}.environment.json", options.name)),
+                        Contents::Text(environment.to_string()),
+                    ));
                     if !options.content_dir.is_empty() {
                         flax.content_dir = options.content_dir.clone();
                     }
@@ -1201,8 +1434,25 @@ fn build(
                             directory.display()
                         ));
                     }
+                    let sky = options.sky.then(|| map_sky(document, &built.level));
+                    let authored = authored_sky(document, sky.is_some())?;
+                    let sky_faces = sky.as_ref().zip(authored.as_ref()).map(|(sky, source)| {
+                        writer::gdevelop::sampled_sky_faces(sky, |d| sample_authored_sky(source, d))
+                    });
+                    let shadows = crate::render_camera::cameras(document)
+                        .into_iter()
+                        .next()
+                        .map_or_else(crate::render_settings::from_preferences, |camera| {
+                            camera.2.render()
+                        })
+                        .shadows;
                     let gdevelop = writer::gdevelop::GDevelopOptions {
-                        sky: options.sky.then(|| map_sky(document, &built.level)),
+                        sky,
+                        sky_faces,
+                        disable_sun_shadows: !shadows,
+                        hide_sky: authored
+                            .as_ref()
+                            .is_some_and(|source| !source.show_background),
                     };
                     for file in writer::gdevelop::write(
                         &built.level,
@@ -1219,7 +1469,21 @@ fn build(
                 Target::Stride => {
                     writer::stride::validate(&built.level).map_err(Error::Map)?;
                     let mut stride = writer::stride::StrideOptions::for_level(&options.name);
+                    let shadows = crate::render_camera::cameras(document)
+                        .into_iter()
+                        .next()
+                        .map_or_else(crate::render_settings::from_preferences, |camera| {
+                            camera.2.render()
+                        })
+                        .shadows;
+                    stride.disable_sun_shadows = !shadows;
                     stride.sky = options.sky.then(|| map_sky(document, &built.level));
+                    stride.authored_sky = authored_sky(document, stride.sky.is_some())?.map(|source| {
+                        let dds = writer::sky::cube_dds_sampled(writer::stride::SKY_SIZE, true, |d| {
+                            sample_authored_sky(&source, d)
+                        });
+                        (dds, source.show_background)
+                    });
                     let package = stride_package(&directory.join(&options.name));
                     if let Some((_, _, url)) = &package {
                         stride.content_dir = url.clone();
@@ -1282,29 +1546,122 @@ fn build(
 /// Shared by final and live exports. Explicit project samplers see the same
 /// map paths, including a portable OpenGL normal companion when requested.
 pub(crate) fn configure_defold_materials(
-    level:&scene_export::level::Level, settings:&Settings, directory:&Path, name:&str,
-    project:&Path, options:&mut writer::defold::DefoldOptions,
-) -> Result<Vec<(PathBuf,Vec<u8>)>,Error> {
-    let mut files=Vec::new(); let mut normals=std::collections::BTreeMap::new();
-    if level.entities.iter().any(|e|e.properties.contains_key("defold_sampler_normal")) {
-        for (material,png) in &settings.normal_maps {
-            let path=directory.join(format!("{name}_paint")).join(format!("{material}_normal.png"));
-            let resource=scene_export::materials::fs_to_res(project,&path).ok_or_else(||Error::Map("Defold normal map must be inside the project".into()))?;
-            normals.insert(material.clone(),resource.trim_start_matches("res://").to_owned());files.push((path,png.to_vec()));
+    level: &scene_export::level::Level,
+    settings: &Settings,
+    directory: &Path,
+    name: &str,
+    project: &Path,
+    options: &mut writer::defold::DefoldOptions,
+) -> Result<Vec<(PathBuf, Vec<u8>)>, Error> {
+    let mut files = Vec::new();
+    let mut normals = std::collections::BTreeMap::new();
+    if level
+        .entities
+        .iter()
+        .any(|e| e.properties.contains_key("defold_sampler_normal"))
+    {
+        for (material, png) in &settings.normal_maps {
+            let path = directory
+                .join(format!("{name}_paint"))
+                .join(format!("{material}_normal.png"));
+            let resource = scene_export::materials::fs_to_res(project, &path)
+                .ok_or_else(|| Error::Map("Defold normal map must be inside the project".into()))?;
+            normals.insert(
+                material.clone(),
+                resource.trim_start_matches("res://").to_owned(),
+            );
+            files.push((path, png.to_vec()));
         }
     }
     for texture in &level.textures {
-        let mut maps:Vec<_>=texture.maps.iter().map(|(slot,path)|(if slot=="emission" {"emissive".into()} else {slot.clone()},path.clone())).collect();
-        if let Some(pbr)=settings.generated_materials.get(&texture.name).and_then(|m|m.pbr.as_ref()) {
-            for image in &pbr.images {maps.retain(|(slot,_)|slot != image.slot);maps.push((image.slot.to_owned(),image.path.trim_start_matches("res://").to_owned()));}
+        let mut maps: Vec<_> = texture
+            .maps
+            .iter()
+            .map(|(slot, path)| {
+                (
+                    if slot == "emission" {
+                        "emissive".into()
+                    } else {
+                        slot.clone()
+                    },
+                    path.clone(),
+                )
+            })
+            .collect();
+        if let Some(pbr) = settings
+            .generated_materials
+            .get(&texture.name)
+            .and_then(|m| m.pbr.as_ref())
+        {
+            for image in &pbr.images {
+                maps.retain(|(slot, _)| slot != image.slot);
+                maps.push((
+                    image.slot.to_owned(),
+                    image.path.trim_start_matches("res://").to_owned(),
+                ));
+            }
         }
-        if let Some(path)=normals.get(&texture.name) {maps.retain(|(slot,_)|slot != "normal");maps.push(("normal".into(),path.clone()));}
-        else if let Some(path)=settings.normal_map_paths.get(&texture.name) {
-            if !maps.iter().any(|(slot,_)|slot=="normal") {maps.push(("normal".into(),path.trim_start_matches("res://").into()));}
+        if let Some(path) = normals.get(&texture.name) {
+            maps.retain(|(slot, _)| slot != "normal");
+            maps.push(("normal".into(), path.clone()));
+        } else if let Some(path) = settings.normal_map_paths.get(&texture.name) {
+            if !maps.iter().any(|(slot, _)| slot == "normal") {
+                maps.push(("normal".into(), path.trim_start_matches("res://").into()));
+            }
         }
-        options.material_maps.insert(texture.name.clone(),maps);
+        options.material_maps.insert(texture.name.clone(), maps);
     }
     Ok(files)
+}
+
+fn authored_sky(
+    document: &Document,
+    enabled: bool,
+) -> Result<Option<render::environment::Environment>, Error> {
+    if !enabled {
+        return Ok(None);
+    }
+    let settings = crate::environment::settings(document);
+    if settings.path.as_os_str().is_empty() {
+        return Ok(None);
+    }
+    let image =
+        crate::environment::load(&crate::environment::resolve_path(document, &settings.path))
+            .map_err(Error::Map)?;
+    Ok(Some(render::environment::Environment {
+        image,
+        rotation_degrees: settings.rotation_degrees,
+        intensity: settings.intensity,
+        show_background: settings.show_background,
+    }))
+}
+
+fn sample_authored_sky(source: &render::environment::Environment, direction: [f32; 3]) -> [f32; 3] {
+    source
+        .image
+        .sample(writer::sky::from_export(direction), source.rotation_degrees)
+        .map(|value| (value * source.intensity).min(65504.0))
+}
+
+fn authored_panorama(
+    document: &Document,
+    direction: impl Fn(f32, f32) -> [f32; 3],
+) -> Result<Option<(Vec<u8>, bool)>, Error> {
+    let environment = crate::environment::settings(document);
+    if environment.path.as_os_str().is_empty() {
+        return Ok(None);
+    }
+    let path = crate::environment::resolve_path(document, &environment.path);
+    let image = crate::environment::load(&path).map_err(Error::Map)?;
+    let bytes = writer::sky::panorama_hdr(1024, 512, |u, v| {
+        image
+            .sample(
+                writer::sky::from_export(direction(u, v)),
+                environment.rotation_degrees,
+            )
+            .map(|value| (value * environment.intensity).min(65504.0))
+    });
+    Ok(Some((bytes, environment.show_background)))
 }
 
 /// The sky and sun the map is lit with: its first render camera's, which a map saves,
@@ -1734,7 +2091,7 @@ mod tests {
                 roughness: 20,
                 metallic: 80,
                 emission: 250,
-            ..Default::default()
+                ..Default::default()
             }),
         );
         let scratch = Scratch::new("surface-mtl");
@@ -1767,7 +2124,7 @@ mod tests {
                 roughness: 20,
                 metallic: 80,
                 emission: 250,
-            ..Default::default()
+                ..Default::default()
             }),
         );
         let before = doc.to_map_text();
@@ -1958,28 +2315,74 @@ mod tests {
 
     #[test]
     fn defold_project_shader_receives_requested_normal_texture() {
-        let scratch=Scratch::new("defold-normal-sampler");
-        let directory=std::env::var_os("HERON_DEFOLD_SAMPLER_OUTPUT").map(std::path::PathBuf::from).unwrap_or_else(||scratch.0.join("out"));
+        let scratch = Scratch::new("defold-normal-sampler");
+        let directory = std::env::var_os("HERON_DEFOLD_SAMPLER_OUTPUT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| scratch.0.join("out"));
         std::fs::create_dir_all(&directory).unwrap();
-        let textures=scratch.0.join("textures");std::fs::create_dir_all(&textures).unwrap();
-        let png=|p:[u8;4]|crate::assets::encode_png(2,2,&p.repeat(4)).unwrap();
-        std::fs::write(textures.join("stone.png"),png([90,90,90,255])).unwrap();
-        std::fs::write(textures.join("stone_normal_dx.png"),png([140,200,250,255])).unwrap();
-        let mut document=one_cube();document.load_materials(&textures).unwrap();
-        let options=Options {
-            target:Target::Defold,name:"arena".into(),project_dir:directory.to_string_lossy().into_owned(),model_material:"/normal.material".into(),
-            entities:[("worldspawn".into(),crate::export_bindings::Rule{defaults:[("defold_sampler_normal".into(),serde_json::json!("tex_normal"))].into(),..Default::default()})].into(),
+        let textures = scratch.0.join("textures");
+        std::fs::create_dir_all(&textures).unwrap();
+        let png = |p: [u8; 4]| crate::assets::encode_png(2, 2, &p.repeat(4)).unwrap();
+        std::fs::write(textures.join("stone.png"), png([90, 90, 90, 255])).unwrap();
+        std::fs::write(
+            textures.join("stone_normal_dx.png"),
+            png([140, 200, 250, 255]),
+        )
+        .unwrap();
+        let mut document = one_cube();
+        document.load_materials(&textures).unwrap();
+        let options = Options {
+            target: Target::Defold,
+            name: "arena".into(),
+            project_dir: directory.to_string_lossy().into_owned(),
+            model_material: "/normal.material".into(),
+            entities: [(
+                "worldspawn".into(),
+                crate::export_bindings::Rule {
+                    defaults: [(
+                        "defold_sampler_normal".into(),
+                        serde_json::json!("tex_normal"),
+                    )]
+                    .into(),
+                    ..Default::default()
+                },
+            )]
+            .into(),
             ..Default::default()
         };
-        let (_,files)=export_files(&document,&directory,&options).unwrap();
-        let model=files.iter().find(|(p,_)|p.ends_with("worldspawn.model")).unwrap();
-        let Contents::Text(model)=&model.1 else {panic!("model text")};
-        let texture=model.split("sampler: \"tex_normal\"").nth(1).unwrap().split("texture: \"").nth(1).unwrap().split('"').next().unwrap();
-        let expected=directory.join(texture.trim_start_matches('/'));
-        let (_,Contents::Bytes(bytes))=files.iter().find(|(p,_)|p==&expected).unwrap() else {panic!("normal image")};
-        let pixels=image::load_from_memory(bytes).unwrap().to_rgba8();assert_eq!(pixels.get_pixel(0,0).0,[140,55,250,255]);
+        let (_, files) = export_files(&document, &directory, &options).unwrap();
+        let model = files
+            .iter()
+            .find(|(p, _)| p.ends_with("worldspawn.model"))
+            .unwrap();
+        let Contents::Text(model) = &model.1 else {
+            panic!("model text")
+        };
+        let texture = model
+            .split("sampler: \"tex_normal\"")
+            .nth(1)
+            .unwrap()
+            .split("texture: \"")
+            .nth(1)
+            .unwrap()
+            .split('"')
+            .next()
+            .unwrap();
+        let expected = directory.join(texture.trim_start_matches('/'));
+        let (_, Contents::Bytes(bytes)) = files.iter().find(|(p, _)| p == &expected).unwrap()
+        else {
+            panic!("normal image")
+        };
+        let pixels = image::load_from_memory(bytes).unwrap().to_rgba8();
+        assert_eq!(pixels.get_pixel(0, 0).0, [140, 55, 250, 255]);
         if std::env::var_os("HERON_DEFOLD_SAMPLER_OUTPUT").is_some() {
-            for (path,data) in files {std::fs::create_dir_all(path.parent().unwrap()).unwrap();match data {Contents::Text(s)=>std::fs::write(path,s).unwrap(),Contents::Bytes(b)=>std::fs::write(path,b).unwrap()}}
+            for (path, data) in files {
+                std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+                match data {
+                    Contents::Text(s) => std::fs::write(path, s).unwrap(),
+                    Contents::Bytes(b) => std::fs::write(path, b).unwrap(),
+                }
+            }
         }
     }
 
@@ -2821,11 +3224,27 @@ mod tests {
             "what it draws, and nothing else"
         );
 
-        let raylib=dir.join("raylib");std::fs::create_dir_all(&raylib).unwrap();
-        export(&one_cube(),&raylib,&Options{target:Target::Raylib,name:"level".into(),..Default::default()}).unwrap();
-        let data:serde_json::Value=serde_json::from_str(&std::fs::read_to_string(raylib.join("level.json")).unwrap()).unwrap();
+        let raylib = dir.join("raylib");
+        std::fs::create_dir_all(&raylib).unwrap();
+        export(
+            &one_cube(),
+            &raylib,
+            &Options {
+                target: Target::Raylib,
+                name: "level".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let data: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(raylib.join("level.json")).unwrap())
+                .unwrap();
         assert!(data["entities"][0]["collision"]["triangles"].is_array());
-        assert_eq!(gltf_mesh_count(&raylib.join("level/worldspawn.glb")),1,"raylib consumes inline collision, not an orphan mesh");
+        assert_eq!(
+            gltf_mesh_count(&raylib.join("level/worldspawn.glb")),
+            1,
+            "raylib consumes inline collision, not an orphan mesh"
+        );
 
         // Bevy reads the collision out of the glTF mesh, so the level file does not
         // carry a copy of it.

@@ -19,4 +19,5 @@ private static Placement[] Placements = Array.Empty<Placement>();
                     p["metadata"].ToString(Newtonsoft.Json.Formatting.None)));
             }
             Placements = result.ToArray();
+            LiveEnvironment = snapshot["environment"] as JObject;
         }

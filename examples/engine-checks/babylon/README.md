@@ -29,3 +29,29 @@ folder that holds a `playwright` link to `driver/package`.
 
 It runs in headless Chromium. `HERON_BROWSER=msedge` uses the installed Microsoft Edge,
 and `firefox` or `webkit` Playwright's own builds of those engines.
+
+## Material and lighting regressions
+
+The lighting fixture covers loose brush roughness/metallic/AO/emission maps, numeric
+clear coat and anisotropy, authored HDR rotation/intensity/background visibility,
+all four camera display curves, local reflection probes and baked diffuse transfer.
+The browser test measures pixel changes when shadows, diffuse probes, reflection
+probes and grading are toggled independently. It also opens the embedded HTML page.
+
+```sh
+python3 examples/engine-checks/babylon/prepare_lighting_checks.py /tmp/bl --binary target/release/heron-brush
+HERON_CDN_CACHE=/tmp/bl/cdn node examples/engine-checks/babylon/verify_lighting.cjs /tmp/bl /tmp/bl/lighting-results
+```
+
+The extra assets are embedded in the exported JSON/HTML. Local probes use an RGBE
+atlas and SH coefficients baked at export time. They blend per fragment inside the
+same map-space box volumes as the editor, including box projection for reflections.
+One atlas sampler supports up to eight probes without eight additional cube samplers.
+Animated objects sample the static capture as they move; the bake is not recomputed
+at runtime. Large interiors still need sensibly fitted probe volumes.
+
+Camera exposure, white balance, tint, contrast, saturation and the selected ACES,
+AgX, Khronos Neutral or TonyMcMapface transform are applied in a scene-linear
+postprocess. TonyMcMapface embeds the same licensed LUT already used by Heron's
+renderer. Babylon's BRDF, direct lights and shadow filtering remain its own, so an
+export is not intended to match the editor pixel for pixel.

@@ -5138,6 +5138,7 @@ dependencies = [
  "data-encoding",
  "file_store",
  "glam",
+ "image",
  "imagesize",
  "indexmap",
  "png 0.18.1",

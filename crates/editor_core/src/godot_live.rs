@@ -33,6 +33,10 @@ struct State {
     options: Options,
     settings: scene_export::settings::Settings,
     observed: u64,
+    observed_materials: u64,
+    environment_stamp: Option<(PathBuf, u64, Option<std::time::SystemTime>)>,
+    environment_check: Instant,
+    published_materials: Option<u64>,
     dirty: bool,
     changed: Instant,
     first_change: Instant,
@@ -276,6 +280,10 @@ impl LiveLink {
             options,
             settings,
             observed: doc.revision(),
+            observed_materials: doc.materials_revision(),
+            environment_stamp: environment_stamp(&doc),
+            environment_check: now,
+            published_materials: None,
             dirty: true,
             changed: now,
             first_change: now,
@@ -332,8 +340,22 @@ impl LiveLink {
             return;
         }
         let now = Instant::now();
-        if doc.revision() != state.observed {
+        let mut environment_changed = false;
+        if state.options.target == Target::Flax && now >= state.environment_check {
+            state.environment_check = now + Duration::from_millis(500);
+            let stamp = environment_stamp(&doc);
+            environment_changed = stamp != state.environment_stamp;
+            state.environment_stamp = stamp;
+            if environment_changed {
+                state.last_text.clear();
+            }
+        }
+        if environment_changed
+            || doc.revision() != state.observed
+            || doc.materials_revision() != state.observed_materials
+        {
             state.observed = doc.revision();
+            state.observed_materials = doc.materials_revision();
             state.changed = now;
             if !state.dirty {
                 state.first_change = now;
@@ -425,27 +447,36 @@ impl LiveLink {
         {
             state.dirty = false;
             let text = doc.to_map_text();
-            if text != state.last_text {
+            if text != state.last_text
+                || state.published_materials != Some(state.observed_materials)
+            {
+                state.published_materials = Some(state.observed_materials);
                 state.last_text = text.clone();
                 let (classes, warnings) = crate::export::entity_classes(&doc);
                 let settings = state.settings.clone();
                 let materials = doc.materials().clone();
                 let world_bounds = doc.world_bounds();
+                let snapshot = (state.options.target == Target::Flax)
+                    .then(|| doc.export_snapshot(&state.root.join("unsaved.map")));
                 let options = state.options.clone();
                 let root = state.root.clone();
                 let (send, receive) = mpsc::channel();
                 state.pending = Some(receive);
                 self.say(format!("Building changes for {}", self.engine.get().name()));
                 std::thread::spawn(move || {
-                    let result = prepare_painted(
-                        &text,
-                        &world_bounds,
-                        &materials,
-                        &classes,
-                        &settings,
-                        &options,
-                        &root,
-                    )
+                    let result = if let Some(snapshot) = snapshot {
+                        crate::flax_live::prepare_document(snapshot, &options, &root)
+                    } else {
+                        prepare_painted(
+                            &text,
+                            &world_bounds,
+                            &materials,
+                            &classes,
+                            &settings,
+                            &options,
+                            &root,
+                        )
+                    }
                     .map(|mut p| {
                         p.warnings.extend(warnings);
                         p
@@ -464,11 +495,8 @@ impl LiveLink {
                         return;
                     }
                     if ack["revision"] == state.published && ack["state"] == "error" {
-                        self.say(
-                            ack["message"]
-                                .as_str()
-                                .unwrap_or("The engine could not update the map"),
-                        );
+                        let message = ack["message"].as_str().unwrap_or("Could not update the map");
+                        self.say(format!("{} live link failed: {message}", self.engine.get().name()));
                     } else if ack["revision"] == state.published && ack["state"] == "updated" {
                         self.say(format!(
                             "{} updated — drawing changes will sync automatically",
@@ -486,6 +514,20 @@ impl Drop for LiveLink {
     fn drop(&mut self) {
         self.stop("Live link stopped");
     }
+}
+
+fn environment_stamp(doc: &Document) -> Option<(PathBuf, u64, Option<std::time::SystemTime>)> {
+    let environment = crate::environment::settings(doc);
+    if environment.path.as_os_str().is_empty() {
+        return None;
+    }
+    let path = crate::environment::resolve_path(doc, &environment.path);
+    let metadata = std::fs::metadata(&path).ok();
+    Some((
+        path,
+        metadata.as_ref().map_or(0, |m| m.len()),
+        metadata.and_then(|m| m.modified().ok()),
+    ))
 }
 
 fn ready(now: Instant, changed: Instant, first_change: Instant) -> bool {
@@ -776,6 +818,68 @@ mod tests {
         }
     }
 
+    #[test]
+    #[ignore = "requires a scratch Godot project in HERON_GODOT_LIVE_PROJECT"]
+    fn native_godot_live_snapshot() {
+        let root = PathBuf::from(std::env::var_os("HERON_GODOT_LIVE_PROJECT").unwrap());
+        install(&root).unwrap();
+        let mut doc = Document::new(WorldBounds::default());
+        let size = if std::env::var_os("HERON_GODOT_LIVE_RESIZE").is_some() {
+            96.0
+        } else {
+            32.0
+        };
+        doc.add_brushes(vec![map_model::shapes::create_cuboid(
+            &doc.world_bounds(),
+            &geometry_math::bbox::Bbox3d::from_scalars(-size, size),
+            "stone",
+        )
+        .unwrap()]);
+        let options = Options {
+            target: Target::Godot,
+            name: "preview".into(),
+            directory: root.to_string_lossy().into_owned(),
+            ..Default::default()
+        };
+        let settings = options.settings(&root);
+        let prepared = if std::env::var_os("HERON_GODOT_LIVE_MATERIAL").is_some() {
+            let node = doc.selectable_brushes()[0].0;
+            let faces: Vec<_> = (0..6)
+                .map(|face| crate::document::FaceRef { node, face })
+                .collect();
+            doc.set_surface_material_on(
+                &faces,
+                Some(map_model::brush_face::SurfaceMaterial {
+                    clearcoat: 80,
+                    coat_roughness: 20,
+                    anisotropy: 85,
+                    anisotropy_rotation: 90,
+                    ..Default::default()
+                }),
+            );
+            prepare_painted(
+                &doc.to_map_text(),
+                &doc.world_bounds(),
+                doc.materials(),
+                &Default::default(),
+                &settings,
+                &options,
+                &root,
+            )
+        } else {
+            prepare(
+                &doc.to_map_text(),
+                &Default::default(),
+                &settings,
+                &options,
+                &root,
+            )
+        }
+        .unwrap();
+        let (revision, _) = publish(prepared, &root, "native-godot").unwrap();
+        println!("Published {revision}");
+    }
+
     /// Run against an isolated copy of examples/engine-checks/defold with Defold open.
     #[test]
     #[ignore = "requires HERON_DEFOLD_LIVE_PROJECT and a running Defold editor"]
@@ -787,7 +891,10 @@ mod tests {
         crate::defold_live::claim_folder(&root).unwrap();
         let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let demo = repository.join("demos/bevy_fps");
-        let mut doc = Document::open(demo.join("maps/demo.map"), WorldBounds::default()).unwrap();
+        let map = std::env::var_os("HERON_DEFOLD_LIVE_MAP")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| demo.join("maps/demo.map"));
+        let mut doc = Document::open(map, WorldBounds::default()).unwrap();
         doc.load_definitions(demo.join("gamedata/fpskit.fgd"))
             .unwrap();
         doc.load_materials(demo.join("assets/textures")).unwrap();
@@ -878,8 +985,6 @@ mod tests {
             texture_dir: "textures".into(),
             ..Default::default()
         };
-        let settings = options.settings(Path::new(&options.directory));
-        let (classes, _) = crate::export::entity_classes(&doc);
         let first = doc.selectable_brushes()[0].0;
         for step in 0..4 {
             doc.select_only(first);
@@ -895,12 +1000,8 @@ mod tests {
                 }
                 _ => {}
             }
-            let prepared = prepare_painted(
-                &doc.to_map_text(),
-                &doc.world_bounds(),
-                doc.materials(),
-                &classes,
-                &settings,
+            let prepared = crate::flax_live::prepare_document(
+                doc.export_snapshot(&root.join("unsaved.map")),
                 &options,
                 &root,
             )

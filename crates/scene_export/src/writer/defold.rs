@@ -306,6 +306,7 @@ pub struct DefoldOptions {
     pub model_sampler: String,
     /// The sky to draw round the camera, if any.
     pub sky: Option<Sky>,
+    pub hide_sky: bool,
 }
 
 impl Default for DefoldOptions {
@@ -317,6 +318,7 @@ impl Default for DefoldOptions {
             model_material: "/builtins/materials/model.material".to_string(),
             model_sampler: "tex0".to_string(),
             sky: None,
+            hide_sky: false,
         }
     }
 }
@@ -429,11 +431,13 @@ pub fn write(level: &Level, collision: &[CollisionMesh], opts: &DefoldOptions) -
     let mut instances = String::new();
     if let Some(sky) = &opts.sky {
         files.extend(sky_files(&name, dir, parent, sky));
-        let proto = format!("components {{\n  id: \"sky\"\n  component: \"{dir}/sky.model\"\n}}\n");
-        instances.push_str(&format!(
-            "embedded_instances {{\n  id: \"heron_sky\"\n  data: \"{}\"\n}}\n",
-            escape(&proto)
-        ));
+        if !opts.hide_sky {
+            let proto = format!("components {{\n  id: \"sky\"\n  component: \"{dir}/sky.model\"\n}}\n");
+            instances.push_str(&format!(
+                "embedded_instances {{\n  id: \"heron_sky\"\n  data: \"{}\"\n}}\n",
+                escape(&proto)
+            ));
+        }
     }
     let mut used: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
 
@@ -588,10 +592,18 @@ fn sky_files(name: &str, dir: &str, parent: &str, sky: &Sky) -> Vec<DefoldFile> 
 /// The sky's six faces as the view shows them: Defold's model material does no tone
 /// mapping.
 pub fn sky_binaries(level_name: &str, sky: &Sky) -> Vec<(String, Vec<u8>)> {
+    sky_binaries_from_faces(level_name, sky.display_faces(SKY_SIZE, super::sky::cube_direction))
+}
+
+pub fn sky_binaries_sampled(level_name: &str, sky: &Sky, sample: impl Fn([f32; 3]) -> [f32; 3]) -> Vec<(String, Vec<u8>)> {
+    sky_binaries_from_faces(level_name, sky.display_faces_sampled(SKY_SIZE, super::sky::cube_direction, sample))
+}
+
+fn sky_binaries_from_faces(level_name: &str, faces: Vec<Vec<u8>>) -> Vec<(String, Vec<u8>)> {
     let name = ident(level_name);
     let files: Vec<(String, Vec<u8>)> = SKY_FACES
         .iter()
-        .zip(sky.display_faces(SKY_SIZE, super::sky::cube_direction))
+        .zip(faces)
         .map(|(face, png)| (format!("{name}/sky_{face}.png"), png))
         .collect();
     files

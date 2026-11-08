@@ -48,7 +48,7 @@ another editor binary.
 | Water component | PASS | `HeronBrushWater` samples 75 cm depth and swim speed 2.5 inside, nothing above, priority 3 |
 | Textures, colours and gradients through the GLB import | PASS | All 27 material slots sample an imported texture; the 35 images Flax extracted equal the export's source images pixel for pixel |
 | Normal maps | PASS | `brick_wall` samples its colour and its normal map; the imported model samples its normal map |
-| PBR maps of the imported model | Partly | The material samples the colour, metallic-roughness, normal and emissive maps. Flax's import drops the occlusion map |
+| PBR maps of the imported model | PASS | The generated importer repairs the native material graph so all five maps, including occlusion, are referenced |
 | Properties | PASS | `charge` int 7, `armed` bool, `sequence` an array of three ints, the string with a comma, float and int types on the light, camera and water |
 | Links | PASS | The probe, both waypoints, the button and the trigger name actors that exist at their map positions; both triggers hold `fl_door` as target |
 | Shared model | PASS | Both `heron_model` actors use one imported `Model` |
@@ -98,8 +98,6 @@ failure [target parity](target-parity.md) put down to the shader include setup.
 
 ## Open
 
-- Flax's glTF import leaves out the occlusion map. The GLB carries it; Flax does
-  not extract the image.
 - The material factors (roughness, metallic, emission strength 3 from
   `KHR_materials_emissive_strength`) were not checked. Reading them needs the
   material graph or a pixel comparison under controlled light.
@@ -118,3 +116,43 @@ RGBA8 cube plus a shared scale restored through exposure and skylight brightness
 This avoids clipping HDR values. The native importer still omits the model AO
 map, and this run does not establish rendered appearance. See
 [the local audit](export-audit-2026-10-28.md).
+
+## macOS export updates
+
+Verified against Flax 1.13.7014.1 on Apple Silicon with the .NET 10 SDK. The
+importer repairs occlusion, occlusion strength, emissive strength, normal scale
+and clamped base-color/occlusion sampling in native material graphs. Ordinary
+metallic and roughness factors remain those imported from glTF. Generated AO
+textures use linear sampling and content-addressed asset paths.
+
+Authored HDR/EXR environments include rotation and intensity. The normalized
+linear cube preserves a shared HDR range, restored by sky/skylight settings.
+Background visibility, uniform exponential fog and the camera's sun-shadow
+switch are exported. Fog extinction converts metres to Flax centimetres and
+accounts for the engine's base-two height-fog equation.
+
+Camera exposure, white balance, contrast, saturation and ACES/AgX/Neutral select
+native post-process settings. Automatic exposure is disabled. These use Flax's
+native transforms; they are not a promise of pixel equality with Heron.
+TonyMcMapface falls back to AgX with an export warning.
+
+Local reflection volumes become box-projected EnvironmentProbe actors. Their
+captured, roughness-prefiltered cube mip levels are retained rather than replaced
+by ordinary mip generation. Diffuse-enabled probe authoring selects Flax's
+native DDGI: Flax computes transport in its scene rather than replaying Heron's
+baked SH coefficients or reproducing the original per-volume diffuse mask.
+
+Clear coat and anisotropy remain in the GLBs, but Flax's Lit shading model does
+not implement them. Both the export report and importer warn about these layers;
+a custom Flax material is required to render them.
+
+The native fixture checks exposure, disabled sun shadows, fog conversion,
+reflection actor count, retained cube mip levels and DDGI selection. Prepare it
+with `HERON_FLAX_ADVANCED=/absolute/output cargo test --release -p editor_core
+--lib native_flax_advanced_fixture -- --ignored --nocapture` and install its
+export using the same project layout as the feature lab.
+
+The runner accepts `--binary /path/to/heron-brush` and `--release`. On macOS it
+finds `/Applications/FlaxEditor.app` by default and passes the entire engine
+command line as one argument, as the macOS launcher requires. GPU checks wait
+for the editor's initial scene load before building the test scene.
