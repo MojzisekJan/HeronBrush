@@ -1149,8 +1149,8 @@ impl Renderer {
         );
         // Shadow casters: normal depth (near 0), slope-scaled bias against acne on
         // surfaces the sun grazes; the normal offset in the lookup does the rest.
-        let shadow_depth = Some(wgpu::DepthStencilState {
-            format: DEPTH_FORMAT,
+        let shadow_depth = wgpu::DepthStencilState {
+            format: shadows::CASCADE_FORMAT,
             depth_write_enabled: Some(true),
             depth_compare: Some(C::Less),
             stencil: wgpu::StencilState::default(),
@@ -1159,7 +1159,7 @@ impl Renderer {
                 slope_scale: 1.5,
                 clamp: 0.0,
             },
-        });
+        };
         let shadow_colored = pipeline(
             device,
             PipelineSpec {
@@ -1185,7 +1185,7 @@ impl Renderer {
                 buffers: &vertex_layout,
                 topology: tri,
                 targets: &[],
-                depth: shadow_depth.clone(),
+                depth: Some(shadow_depth.clone()),
             },
         );
         let shadow_single = pipeline(
@@ -1199,7 +1199,7 @@ impl Renderer {
                 buffers: &vertex_layout,
                 topology: tri,
                 targets: &[],
-                depth: shadow_depth.clone(),
+                depth: Some(shadow_depth.clone()),
             },
         );
         let shadow_masked = pipeline(
@@ -1213,13 +1213,17 @@ impl Renderer {
                 buffers: &vertex_layout,
                 topology: tri,
                 targets: &[],
-                depth: shadow_depth.clone(),
+                depth: Some(shadow_depth.clone()),
             },
         );
         // Light cubes: the same casters without pancaking, which would flatten the
         // light's own marker (inside the near plane) onto the cube and black it out.
         let cube_opaque = pipeline(
             device,
+        let cube_depth = wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            ..shadow_depth
+        };
             PipelineSpec {
                 label: "light shadow opaque",
                 layout: &shadow_layout,
@@ -1229,7 +1233,7 @@ impl Renderer {
                 buffers: &vertex_layout,
                 topology: tri,
                 targets: &[],
-                depth: shadow_depth.clone(),
+                depth: Some(cube_depth.clone()),
             },
         );
         let cube_single = pipeline(
@@ -1243,7 +1247,7 @@ impl Renderer {
                 buffers: &vertex_layout,
                 topology: tri,
                 targets: &[],
-                depth: shadow_depth.clone(),
+                depth: Some(cube_depth.clone()),
             },
         );
         let cube_masked = pipeline(
@@ -1257,7 +1261,7 @@ impl Renderer {
                 buffers: &vertex_layout,
                 topology: tri,
                 targets: &[],
-                depth: shadow_depth,
+                depth: Some(cube_depth),
             },
         );
 

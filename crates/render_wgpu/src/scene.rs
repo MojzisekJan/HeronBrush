@@ -15,6 +15,53 @@ use render::Triangle;
 
 use crate::textures::{self, Decoded, Mip, Workers};
 
+/// Partition a material batch by shared geometric edges. UV and normal seams
+/// duplicate render vertices, so edge identity uses positions.
+fn refractive_components(vertices: &[Vertex], indices: &[u32]) -> Vec<Vec<u32>> {
+    fn root(parents: &mut [usize], mut index: usize) -> usize {
+        while parents[index] != index {
+            parents[index] = parents[parents[index]];
+            index = parents[index];
+        }
+        index
+    }
+
+    let triangles = indices.as_chunks::<3>().0;
+    let mut parents: Vec<_> = (0..triangles.len()).collect();
+    let mut edges = HashMap::new();
+    for (index, triangle) in triangles.iter().enumerate() {
+        let points = triangle.map(|vertex| {
+            vertices[vertex as usize]
+                .position
+                .map(|value| if value == 0.0 { 0 } else { value.to_bits() })
+        });
+        for (a, b) in [(0, 1), (1, 2), (2, 0)] {
+            let (a, b) = (points[a], points[b]);
+            if a == b {
+                continue;
+            }
+            let edge = (a.min(b), a.max(b));
+            if let Some(previous) = edges.insert(edge, index) {
+                let current = root(&mut parents, index);
+                let previous = root(&mut parents, previous);
+                parents[current] = previous;
+            }
+        }
+    }
+
+    let mut slots = vec![usize::MAX; triangles.len()];
+    let mut components: Vec<Vec<u32>> = Vec::new();
+    for (index, triangle) in triangles.iter().enumerate() {
+        let slot = &mut slots[root(&mut parents, index)];
+        if *slot == usize::MAX {
+            *slot = components.len();
+            components.push(Vec::new());
+        }
+        components[*slot].extend_from_slice(triangle);
+    }
+    components
+}
+
 /// Compact indexed vertex: 32 bytes.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, PartialEq)]
@@ -871,17 +918,19 @@ impl RenderScene {
             for (batch, indices) in &object.batches {
                 let (phase, prepass_material, material) = phase_of(*batch);
                 if phase == Phase::Refractive {
-                    let mut min = [f32::MAX; 3];
-                    let mut max = [f32::MIN; 3];
-                    for &index in indices {
-                        let position = object.vertices[index as usize].position;
-                        for axis in 0..3 {
-                            min[axis] = min[axis].min(position[axis]);
-                            max[axis] = max[axis].max(position[axis]);
+                    for component in refractive_components(&object.vertices, indices) {
+                        let mut min = [f32::MAX; 3];
+                        let mut max = [f32::MIN; 3];
+                        for &index in &component {
+                            let position = object.vertices[index as usize].position;
+                            for axis in 0..3 {
+                                min[axis] = min[axis].min(position[axis]);
+                                max[axis] = max[axis].max(position[axis]);
+                            }
                         }
+                        let center = std::array::from_fn(|axis| (min[axis] + max[axis]) * 0.5);
+                        refractive.push((material, center, base, component));
                     }
-                    let center = std::array::from_fn(|axis| (min[axis] + max[axis]) * 0.5);
-                    refractive.push((material, center, base, indices));
                 } else {
                     let out = grouped
                         .entry((phase, prepass_material, material))

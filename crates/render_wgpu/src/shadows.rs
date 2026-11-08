@@ -1,4 +1,4 @@
-//! Cascaded shadow maps for the sun: four cascades in one `Depth32Float` array, fitted
+//! Cascaded shadow maps for the sun: four cascades in one `Depth16Unorm` array, fitted
 //! as stable bounding spheres of the view-frustum slices and snapped to whole texels so
 //! a moving camera does not make shadow edges crawl; sampled with hardware PCF through a
 //! comparison sampler.
@@ -14,6 +14,7 @@ use geometry_math::vec::Vec3d;
 use render::camera3d::Camera3d;
 
 /// Number of cascades.
+pub(crate) const CASCADE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth16Unorm;
 pub(crate) const CASCADES: usize = 4;
 /// How far the split scheme leans to logarithmic (1) from uniform (0).
 const SPLIT_LAMBDA: f64 = 0.9;
@@ -216,7 +217,7 @@ impl Shadows {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Depth32Float,
+            format: CASCADE_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         });
@@ -295,7 +296,8 @@ impl Shadows {
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format: wgpu::TextureFormat::Depth32Float,
-                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                        | wgpu::TextureUsages::TRANSIENT_ATTACHMENT,
                     view_formats: &[],
                 })
                 .create_view(&Default::default());

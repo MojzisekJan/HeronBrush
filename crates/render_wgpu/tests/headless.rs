@@ -10,7 +10,8 @@ use render::camera3d::Camera3d;
 use render_wgpu::{DisplayMode, Renderer, Tonemapper, ViewParams};
 
 fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+    let instance =
+        wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle().with_env());
     let adapter =
         pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default()))
             .ok()?;
@@ -3795,9 +3796,9 @@ fn glass_refracts_grid_in_viewport_and_still() {
         println!("second pane tinted {doubly_tinted} grid pixels");
     }
     let joined = draw(1.0, [255, 160, 160], "joined-panes", 2, true, &camera);
-    assert_ne!(
-        joined[0], double[0],
-        "shared object/material uses one snapshot"
+    assert_eq!(
+        joined, double,
+        "disconnected panes must layer inside one object"
     );
     let crowded = draw(1.0, [255, 160, 160], "ten-panes", 10, false, &camera);
     assert_ne!(
@@ -3905,6 +3906,18 @@ fn sun_shadows_transmit_glass_tint() {
     let clear = draw([255; 3], 1., "shadow-clear-glass", Some(&triangles));
     let red = draw([255, 45, 45], 1., "shadow-red-glass", None);
     let opaque = draw([255; 3], 0., "shadow-opaque", None);
+    let rear_joined = draw(
+        1.5,
+        [255, 160, 160],
+        "reverse-joined-panes",
+        2,
+        true,
+        &reversed,
+    );
+    assert_eq!(
+        rear_joined, rear_double,
+        "layering must follow the reversed camera"
+    );
     let tinted = clear
         .as_chunks::<4>()
         .0
@@ -4002,17 +4015,25 @@ fn shared_glb_benchmark() {
     settings.sun_elevation = 54.735610317;
     settings.sun_azimuth = -45.;
     settings.exposure = 1.;
-    let mut params = view(
-        &camera,
-        &settings,
-        DisplayMode::Material,
-        Tonemapper::KhronosNeutral,
-        (320, 240),
-    );
-    params.lights = false;
+    let size = std::env::var("RENDER_WGPU_SIZE").map_or((320, 240), |value| {
+        let (width, height) = value.split_once('x').expect("size must be WIDTHxHEIGHT");
+        (width.parse().unwrap(), height.parse().unwrap())
+    });
+    let moving = std::env::var_os("RENDER_WGPU_ORBIT").is_some();
     for _ in 0..64 {
         renderer.render(&params);
         renderer.wait_idle();
     }
     save("heron", &renderer.read_output().unwrap());
 }
+        if moving {
+            camera.orbit(Vec3d::zero(), 0.005, 0.);
+        }
+        let mut params = view(
+            &camera,
+            &settings,
+            DisplayMode::Material,
+            Tonemapper::KhronosNeutral,
+            size,
+        );
+        params.lights = false;
