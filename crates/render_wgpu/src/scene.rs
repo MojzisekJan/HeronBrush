@@ -46,7 +46,7 @@ pub struct ObjectGpu {
     pad: [u32; 2],
 }
 
-/// One entry of the material table, 64 bytes.
+/// One entry of the material table.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, Default)]
 pub struct MaterialGpu {
@@ -57,6 +57,8 @@ pub struct MaterialGpu {
     model_params: [f32; 4],
     model_emissive: [f32; 4],
     layered: [f32; 4],
+    sheen: [f32; 4],
+    glass: [f32; 4],
 }
 
 /// Object-table flag bits, as `common.wgsl` names them.
@@ -85,6 +87,8 @@ pub enum Phase {
     Masked,
     /// Alpha-blended after the opaque scene, not in the prepass.
     Blended,
+    /// Transmits the HDR image accumulated behind this object.
+    Refractive,
 }
 
 /// A material instance: a texture (or none) with per-face PBR factors. Its slot in the
@@ -128,6 +132,7 @@ pub struct Draw {
     pub indices: std::ops::Range<u32>,
     /// The prepass needs this material for normal mapping or imported face rules.
     pub prepass_material: bool,
+    pub(crate) refraction_center: Option<[f32; 3]>,
 }
 
 /// A spatial chunk with its own vertex and index buffers.
@@ -165,6 +170,7 @@ struct MaterialTexture {
     _normal: Option<wgpu::Texture>,
     _orm: Option<wgpu::Texture>,
     _emissive: Option<wgpu::Texture>,
+    _sheen: Option<wgpu::Texture>,
 }
 
 /// Material-table flags, as `common.wgsl` reads them.
@@ -175,6 +181,7 @@ const MATERIAL_NORMAL_FLIP_Y: u32 = 8;
 /// The texture is not resident: draw the average colour packed into `factors[3]`.
 const MATERIAL_PENDING: u32 = 16;
 const MATERIAL_MODEL_PBR: u32 = 32;
+const MATERIAL_SHEEN_MAP: u32 = 64;
 
 /// Bytes of texture uploaded per frame at most, so streaming in a view full of new
 /// textures never stalls a frame for long (about 4 ms on the M4).
@@ -366,6 +373,16 @@ impl RenderScene {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -395,6 +412,7 @@ impl RenderScene {
             &sampler,
             &flat_normal,
             textures::mip_chain(1, 1, &[255, 255, 255, 255], true),
+            None,
             None,
             None,
             "white",
@@ -462,6 +480,8 @@ impl RenderScene {
                 model_params: [1., 0., 0.5, 0.],
                 model_emissive: [0.; 4],
                 layered: [0.0; 4],
+                sheen: [0.0; 4],
+                glass: [0.0; 4],
             },
             MaterialGpu {
                 size: [1.0, 1.0],
@@ -471,6 +491,8 @@ impl RenderScene {
                 model_params: [1., 0., 0.5, 0.],
                 model_emissive: [0.; 4],
                 layered: [0.0; 4],
+                sheen: [0.0; 4],
+                glass: [0.0; 4],
             },
         ];
         self.material_table_dirty = true;
@@ -541,15 +563,25 @@ impl RenderScene {
         }
         let mut model_params = [1., 0., 0.5, 0.];
         let mut model_emissive = [0.; 4];
+        let mut sheen = [0.; 4];
+        let mut glass = [0.; 4];
         if let Some(pbr) = material.and_then(|m| self.materials[m].model_pbr.as_ref()) {
             if resident {
                 flags |= MATERIAL_MODEL_PBR;
+                if surface.is_none()
+                    && (pbr.sheen_color_texture.is_some() || pbr.sheen_roughness_texture.is_some())
+                {
+                    flags |= MATERIAL_SHEEN_MAP;
+                }
             }
             if surface.is_none() {
                 flags |= MATERIAL_OWN_FACTORS;
                 factors[0] = pbr.roughness;
                 factors[1] = pbr.metallic;
             }
+            sheen[..3].copy_from_slice(&pbr.sheen_color);
+            sheen[3] = pbr.sheen_roughness;
+            glass = [pbr.transmission, pbr.ior, 0.0, 0.0];
             model_params = [
                 pbr.normal_scale,
                 pbr.occlusion_strength,
@@ -567,6 +599,8 @@ impl RenderScene {
             factors,
             model_params,
             model_emissive,
+            sheen: surface.map_or(sheen, |surface| surface.sheen()),
+            glass,
             layered: surface.map_or_else(
                 || {
                     material
@@ -629,6 +663,9 @@ impl RenderScene {
         if slot == SLOT_SKIP {
             return Phase::Blended;
         }
+        if self.material_table[slot as usize].glass[0] > 0.0 {
+            return Phase::Refractive;
+        }
         let alpha = self
             .instance_base
             .get(slot as usize)
@@ -643,6 +680,15 @@ impl RenderScene {
         } else {
             Phase::Opaque
         }
+    }
+
+    pub(crate) fn has_transmission(&self) -> bool {
+        self.materials.iter().any(|material| {
+            material
+                .model_pbr
+                .as_ref()
+                .is_some_and(|pbr| pbr.transmission > 0.0)
+        })
     }
 
     /// The bind group with the textures of a base material (an index into the
@@ -783,6 +829,7 @@ impl RenderScene {
         // need their own material slot even when they have no normal map.
         let mut grouped: std::collections::BTreeMap<(Phase, bool, u32), Vec<u32>> =
             std::collections::BTreeMap::new();
+        let mut refractive = Vec::new();
         let phase_of = |(translucent, slot): (bool, u32)| {
             let imported_faces = self
                 .material_table
@@ -822,8 +869,25 @@ impl RenderScene {
                 }
             }
             for (batch, indices) in &object.batches {
-                let out = grouped.entry(phase_of(*batch)).or_default();
-                out.extend(indices.iter().map(|i| i + base));
+                let (phase, prepass_material, material) = phase_of(*batch);
+                if phase == Phase::Refractive {
+                    let mut min = [f32::MAX; 3];
+                    let mut max = [f32::MIN; 3];
+                    for &index in indices {
+                        let position = object.vertices[index as usize].position;
+                        for axis in 0..3 {
+                            min[axis] = min[axis].min(position[axis]);
+                            max[axis] = max[axis].max(position[axis]);
+                        }
+                    }
+                    let center = std::array::from_fn(|axis| (min[axis] + max[axis]) * 0.5);
+                    refractive.push((material, center, base, indices));
+                } else {
+                    let out = grouped
+                        .entry((phase, prepass_material, material))
+                        .or_default();
+                    out.extend(indices.iter().map(|i| i + base));
+                }
                 for tri in indices.as_chunks::<3>().0 {
                     let [a, b, c] = [tri[0] + base, tri[1] + base, tri[2] + base];
                     wire.extend_from_slice(&[a, b, b, c, c, a]);
@@ -856,6 +920,18 @@ impl RenderScene {
                 material,
                 indices: start..end,
                 prepass_material,
+                refraction_center: None,
+            });
+        }
+        for (material, center, base, list) in refractive {
+            let start = indices.len() as u32;
+            indices.extend(list.iter().map(|index| index + base));
+            draws.push(Draw {
+                phase: Phase::Refractive,
+                material,
+                indices: start..indices.len() as u32,
+                prepass_material: false,
+                refraction_center: Some(center),
             });
         }
         let single_sided_opaque = draws
@@ -1001,6 +1077,7 @@ fn make_texture(
     albedo: Vec<Mip>,
     normal: Option<Vec<Mip>>,
     pbr: Option<(Vec<Mip>, Vec<Mip>)>,
+    sheen: Option<Vec<Mip>>,
     label: &str,
 ) -> MaterialTexture {
     let texture = upload_mips(
@@ -1037,6 +1114,18 @@ fn make_texture(
     } else {
         (None, None)
     };
+    let sheen = sheen.map(|mips| {
+        upload_mips(
+            device,
+            queue,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            mips,
+            label,
+        )
+    });
+    let sheen_view = sheen
+        .as_ref()
+        .map(|texture| texture.create_view(&Default::default()));
     let orm_view = orm.as_ref().map(|t| t.create_view(&Default::default()));
     let emissive_view = emissive
         .as_ref()
@@ -1071,6 +1160,12 @@ fn make_texture(
                     emissive_view.as_ref().unwrap_or(flat_normal),
                 ),
             },
+            wgpu::BindGroupEntry {
+                binding: 5,
+                resource: wgpu::BindingResource::TextureView(
+                    sheen_view.as_ref().unwrap_or(flat_normal),
+                ),
+            },
         ],
     });
     MaterialTexture {
@@ -1079,6 +1174,7 @@ fn make_texture(
         _normal: normal,
         _orm: orm,
         _emissive: emissive,
+        _sheen: sheen,
     }
 }
 
@@ -1486,6 +1582,7 @@ impl RenderScene {
             albedo,
             done.normal.map(|(mips, _)| mips),
             done.pbr,
+            done.sheen,
             &self.materials[m].name,
         );
         self.textures[m] = Residency::Resident(Box::new(texture), bytes);

@@ -1445,8 +1445,11 @@ fn bench_big_maps() {
             assert_eq!(values.len(), n as usize);
             let mean = values.iter().sum::<f64>() / f64::from(n);
             values.sort_by(f64::total_cmp);
-            println!("  GPU {label}: mean {mean:.3} ms, median {:.3} ms, p95 {:.3} ms over {n} frames (cached frames included as zero)",
-                values[values.len() / 2], values[values.len() * 95 / 100]);
+            println!(
+                "  GPU {label}: mean {mean:.3} ms, median {:.3} ms, p95 {:.3} ms over {n} frames (cached frames included as zero)",
+                values[values.len() / 2],
+                values[values.len() * 95 / 100]
+            );
         }
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -1659,7 +1662,9 @@ fn an_animation_stays_quiet_and_leaves_no_trail() {
             .count();
     }
     let trail = trail / 4;
-    eprintln!("animation: flicker {flicker:.2}, error against converged {error:.2}, pixels off by more than 32: {trail}");
+    eprintln!(
+        "animation: flicker {flicker:.2}, error against converged {error:.2}, pixels off by more than 32: {trail}"
+    );
     assert!(
         flicker < 1.0,
         "the still part flickers by {flicker:.2} levels frame to frame"
@@ -1714,6 +1719,28 @@ fn imported_pbr_maps_change_the_rendered_material() {
     let full = renderer.read_output().unwrap();
     save("pbr-imported", &full);
     let originals = document.materials().materials().to_vec();
+    let draw_sun = |renderer: &mut Renderer, shadows| {
+        let mut settings = settings.clone();
+        settings.ambient_intensity = 0.0;
+        settings.ambient_occlusion = false;
+        settings.contact_shadows = false;
+        settings.shadows = shadows;
+        settings.sun_elevation = 12.0;
+        settings.reflections = false;
+        settings.bloom = false;
+        let mut params = view(
+            &camera,
+            &settings,
+            DisplayMode::Material,
+            Tonemapper::Agx,
+            (320, 240),
+        );
+        params.lights = false;
+        renderer.render(&params);
+        renderer.read_output().unwrap()
+    };
+    let occluded_sun = draw_sun(&mut renderer, true);
+    let unshadowed_sun = draw_sun(&mut renderer, false);
     for slot in ["normal", "roughness_metallic", "ao", "emissive"] {
         let mut materials = originals.clone();
         for material in &mut materials {
@@ -1755,6 +1782,16 @@ fn imported_pbr_maps_change_the_rendered_material() {
             difference > 50,
             "{slot} had no visible effect: {difference} changed channels"
         );
+        if slot == "ao" {
+            let open_sun = draw_sun(&mut renderer, true);
+            assert!(
+                mean(&open_sun.2) > mean(&occluded_sun.2) + 0.05,
+                "material occlusion should reduce grazing direct sunlight"
+            );
+            assert_eq!(draw_sun(&mut renderer, false), unshadowed_sun);
+            save("microshadows-on", &occluded_sun);
+            save("microshadows-off", &open_sun);
+        }
     }
 }
 
@@ -2004,8 +2041,10 @@ fn imported_single_sided_back_does_not_cast_a_sun_shadow() {
                 .count(),
         );
     }
-    assert!(shadow_changes[1]>shadow_changes[0]+50,
-        "Double-sided caster must add a receiver shadow that its back-culled variant lacks: {shadow_changes:?}");
+    assert!(
+        shadow_changes[1] > shadow_changes[0] + 50,
+        "Double-sided caster must add a receiver shadow that its back-culled variant lacks: {shadow_changes:?}"
+    );
 }
 
 /// A culled model back must leave the receiver behind it visible in the depth prepass.
@@ -2335,7 +2374,9 @@ fn minified_normal_details_match_a_broader_specular_reference() {
     );
     let reference_error = difference(&pictures[0], &pictures[1]);
     let unfiltered_error = difference(&pictures[0], &pictures[2]);
-    eprintln!("specular filter: rough-reference error {reference_error:.3}, polished-reference difference {unfiltered_error:.3}");
+    eprintln!(
+        "specular filter: rough-reference error {reference_error:.3}, polished-reference difference {unfiltered_error:.3}"
+    );
     assert!(
         reference_error < 2.0,
         "filtered normal details must follow a rough reference: {reference_error}"
@@ -2581,6 +2622,10 @@ fn camera_grading_changes_display_without_baking_it_into_linear_hdr() {
         transparent.2.iter().all(|value| *value == 0.0),
         "display background must stay out of scene-linear EXR"
     );
+    let display = renderer.read_output().unwrap();
+    renderer.release_accumulation();
+    assert!(renderer.read_hdr().is_none());
+    assert_eq!(renderer.read_output().unwrap(), display);
 }
 #[test]
 fn asynchronous_frame_timing_does_not_stall_or_break_rendering() {
@@ -3393,4 +3438,581 @@ fn baked_emissive_geometry_lights_a_receiver_without_being_visible_in_the_camera
     );
     save("baked-gi-direct-only", &direct);
     save("baked-gi-red-bounce", &bounce);
+}
+
+#[test]
+fn imported_sheen_renders_in_viewport_and_offline() {
+    use editor_core::render_scene::SceneSink;
+    let (device, queue) = device().expect("sheen validation requires a GPU");
+    let source = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/editor-checks/fixtures/pbr.glb"
+    );
+    let mut document = Document::new(editor_core::world::WorldBounds::default());
+    document
+        .import_model(
+            std::path::Path::new(source),
+            geometry_math::vec::Vec3d::zero(),
+        )
+        .unwrap();
+    let masked_source = std::path::Path::new(source).with_file_name("sheen_masks.glb");
+    let mut masked_document = Document::new(Default::default());
+    masked_document
+        .import_model(&masked_source, geometry_math::vec::Vec3d::zero())
+        .unwrap();
+    let masked_materials = masked_document.materials().materials();
+    use editor_core::export::{export_files, Contents, Options, Target};
+    let (_, files) = export_files(
+        &masked_document,
+        std::path::Path::new("."),
+        &Options {
+            target: Target::Glb,
+            name: "sheen-round-trip".into(),
+            collision: false,
+            cull_hidden: false,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let Contents::Bytes(bytes) = &files[0].1 else {
+        panic!("expected GLB bytes");
+    };
+    let exported = map_model::glb_model::read(bytes).unwrap();
+    assert_eq!(exported.pbr.len(), 2);
+    for pbr in &exported.pbr {
+        assert_eq!(pbr.sheen_color, [0., 1., 0.]);
+        assert_eq!(pbr.sheen_roughness, 0.75);
+        assert_eq!(
+            pbr.sheen_color_texture.as_ref().unwrap().pixels,
+            [0, 0, 0, 255, 255, 200, 64, 255],
+        );
+        assert_eq!(
+            pbr.sheen_roughness_texture.as_ref().unwrap().pixels,
+            [255, 255, 255, 64, 255, 255, 255, 192],
+        );
+    }
+    let mut renderer = Renderer::new(&device, &queue);
+    SceneTracker::new().sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut renderer.scene,
+    );
+    let mut camera = Camera3d::default();
+    camera.frame_in_viewport(&document.selection_bounds().unwrap(), 320., 240.);
+    let mut settings = single_frame_settings();
+    settings.shadows = false;
+    settings.contact_shadows = false;
+    settings.ambient_intensity = 0.;
+    settings.bloom = false;
+    settings.reflections = false;
+    let original = document.materials().materials().to_vec();
+    let mut coated = original.clone();
+    for material in &mut coated {
+        if let Some(pbr) = &material.model_pbr {
+            let mut pbr = (**pbr).clone();
+            pbr.sheen_color = [0.0, 1.0, 0.0];
+            pbr.sheen_roughness = 0.75;
+            material.model_pbr = Some(std::sync::Arc::new(pbr));
+        }
+    }
+    for (angle, elevation) in [("front", 80.), ("grazing", 12.), ("hdr-only", 0.)] {
+        settings.sun_elevation = elevation;
+        if angle == "hdr-only" {
+            use render::environment::{Environment, EnvironmentImage};
+            settings.sun_color = [0.0; 3];
+            settings.ambient_intensity = 1.0;
+            settings.environment = Some(Environment {
+                image: std::sync::Arc::new(
+                    EnvironmentImage::new(8, 4, vec![[2.0, 2.0, 2.0, 1.0]; 32]).unwrap(),
+                ),
+                rotation_degrees: 0.0,
+                intensity: 1.0,
+                show_background: false,
+            });
+        }
+        let mut render_pair = |materials: &[map_model::material::Material], label: &str| {
+            renderer.scene.set_materials(materials);
+            renderer.scene.finish();
+            renderer.scene.load_textures_now();
+            let mut params = view(
+                &camera,
+                &settings,
+                DisplayMode::Material,
+                Tonemapper::Agx,
+                (320, 240),
+            );
+            params.lights = false;
+            renderer.render(&params);
+            let viewport = renderer.read_output().unwrap();
+            save(&format!("sheen-{angle}-{label}-viewport"), &viewport);
+            for sample in 0..8 {
+                params.sample = Some(sample);
+                renderer.accumulate(&params);
+            }
+            save(
+                &format!("sheen-{angle}-{label}-still"),
+                &renderer.read_output().unwrap(),
+            );
+            let hdr = renderer.read_hdr().unwrap();
+            renderer.release_accumulation();
+            (viewport.2, hdr.2)
+        };
+        let (viewport_off, hdr_off) = render_pair(&original, "off");
+        let (viewport_on, hdr_on) = render_pair(&coated, "on");
+        if angle == "front" {
+            let (imported_viewport, imported_hdr) = render_pair(masked_materials, "glb-masks");
+            assert_ne!(imported_viewport, viewport_off);
+            assert_ne!(imported_viewport, viewport_on);
+            assert_ne!(imported_hdr, hdr_off);
+            assert_ne!(imported_hdr, hdr_on);
+            let with_mask = |color: Option<[u8; 4]>, roughness: Option<[u8; 4]>| {
+                let mut materials = coated.clone();
+                for material in &mut materials {
+                    if let Some(pbr) = &mut material.model_pbr {
+                        let pbr = std::sync::Arc::make_mut(pbr);
+                        let texture = |pixels: [u8; 4]| {
+                            std::sync::Arc::new(map_model::entity_model::Skin {
+                                width: 1,
+                                height: 1,
+                                pixels: pixels.to_vec(),
+                            })
+                        };
+                        pbr.sheen_color_texture = color.map(texture);
+                        pbr.sheen_roughness_texture = roughness.map(texture);
+                    }
+                }
+                materials
+            };
+            let black = with_mask(Some([0, 0, 0, 255]), None);
+            let (masked_viewport, masked_hdr) = render_pair(&black, "color-mask");
+            assert_eq!(masked_viewport, viewport_off);
+            assert_eq!(masked_hdr, hdr_off);
+            let rough = with_mask(None, Some([255, 255, 255, 64]));
+            let (rough_viewport, rough_hdr) = render_pair(&rough, "roughness-mask");
+            assert_ne!(rough_viewport, viewport_on);
+            assert_ne!(rough_hdr, hdr_on);
+        }
+        let changed = viewport_off
+            .chunks_exact(4)
+            .zip(viewport_on.chunks_exact(4))
+            .filter(|(a, b)| a[1].abs_diff(b[1]) > 1)
+            .count();
+        let added_green = hdr_off
+            .chunks_exact(4)
+            .zip(hdr_on.chunks_exact(4))
+            .filter(|(a, b)| b[1] > a[1] + 0.001)
+            .count();
+        assert!(hdr_on.iter().all(|v| v.is_finite()));
+        println!("{angle}: viewport changed {changed} pixels, HDR gained green in {added_green}");
+        assert!(changed > 20 && added_green > 20);
+    }
+}
+
+#[test]
+fn glass_refracts_grid_in_viewport_and_still() {
+    use editor_core::render_scene::SceneSink;
+    use geometry_math::{bbox::Bbox3d, vec::Vec3d};
+    use map_model::{material::Material, model_pbr::ModelPbr};
+    use std::sync::Arc;
+
+    let (device, queue) = device().expect("glass validation requires a GPU");
+    let mut doc = Document::new(Default::default());
+    let mut add_box = |min, max| {
+        doc.add_brushes(vec![map_model::shapes::create_cuboid(
+            &doc.world_bounds(),
+            &Bbox3d::new(min, max),
+            "glass-test",
+        )
+        .unwrap()]);
+    };
+    add_box(Vec3d::new(-42., -1., -42.), Vec3d::new(42., 1., 42.));
+    add_box(Vec3d::new(-34., 12., -34.), Vec3d::new(34., 14., 34.));
+    for x in (-80..=80).step_by(10).map(f64::from) {
+        add_box(Vec3d::new(x, 32., -90.), Vec3d::new(x + 3., 33., 90.));
+        add_box(Vec3d::new(-90., 33., x), Vec3d::new(90., 34., x + 3.));
+    }
+    let (mut rear, mut triangles): (Vec<_>, Vec<_>) = doc
+        .render_triangles()
+        .into_iter()
+        .partition(|triangle| triangle.positions.iter().all(|p| p.y() > 8. && p.y() < 20.));
+    assert_eq!(rear.len(), 12);
+    for triangle in &mut rear {
+        triangle.material = Some(0);
+        triangle.color = [1.; 3];
+        triangle.selected = false;
+    }
+    for triangle in &mut triangles {
+        let is_glass = triangle.positions.iter().all(|p| p.y() < 16.);
+        triangle.material = Some(usize::from(!is_glass));
+        triangle.color = [1.; 3];
+        triangle.selected = false;
+    }
+    assert_eq!(
+        triangles
+            .iter()
+            .filter(|triangle| triangle.material == Some(0))
+            .count(),
+        12,
+        "all six pane faces must use the glass material"
+    );
+    let white = || Material::rgba("white".into(), Default::default(), 1, 1, vec![255; 4]);
+    let mut grid = white();
+    grid.model_pbr = Some(Arc::new(ModelPbr {
+        emissive_factor: [1.5; 3],
+        metallic: 0.,
+        ..Default::default()
+    }));
+    let mut renderer = Renderer::new(&device, &queue);
+    let mut camera = Camera3d {
+        position: Vec3d::new(35., -140., 10.),
+        ..Default::default()
+    };
+    camera.look_along(-camera.position);
+    let mut settings = single_frame_settings();
+    settings.procedural_sky = false;
+    settings.shadows = false;
+    settings.ambient_occlusion = false;
+    settings.reflections = false;
+    settings.bloom = false;
+    settings.sun_intensity = 0.;
+    settings.ambient_intensity = 0.;
+    settings.background_color = [0.05; 3];
+    let mut draw = |ior, tint: [u8; 3], name: &str, pane_count: u64, joined, camera: &Camera3d| {
+        let mut glass = Material::rgba(
+            "glass".into(),
+            Default::default(),
+            1,
+            1,
+            [tint[0], tint[1], tint[2], 255].to_vec(),
+        );
+        glass.model_pbr = Some(Arc::new(ModelPbr {
+            transmission: 1.,
+            ior,
+            metallic: 0.,
+            ..Default::default()
+        }));
+        renderer.scene.set_materials(&[glass, grid.clone()]);
+        if joined {
+            let merged: Vec<_> = triangles.iter().chain(&rear).cloned().collect();
+            renderer.scene.upsert(0, &merged, Default::default());
+        } else {
+            renderer.scene.upsert(0, &triangles, Default::default());
+        }
+        for key in 1..=9 {
+            if key < pane_count && !joined {
+                let mut pane = rear.clone();
+                for triangle in &mut pane {
+                    for point in &mut triangle.positions {
+                        *point = *point + Vec3d::new(0., (key - 1) as f64 * 3., 0.);
+                    }
+                }
+                renderer.scene.upsert(key, &pane, Default::default());
+            } else {
+                renderer.scene.remove(key);
+            }
+        }
+        renderer.scene.finish();
+        renderer.scene.load_textures_now();
+        let mut params = view(
+            camera,
+            &settings,
+            DisplayMode::Material,
+            Tonemapper::Agx,
+            (320, 240),
+        );
+        renderer.render(&params);
+        let viewport = renderer.read_output().unwrap();
+        save(&format!("glass-{name}-viewport"), &viewport);
+        for sample in 0..8 {
+            params.sample = Some(sample);
+            renderer.accumulate(&params);
+        }
+        let still = renderer.read_output().unwrap();
+        save(&format!("glass-{name}-still"), &still);
+        renderer.release_accumulation();
+        if name == "clear" && device.features().contains(wgpu::Features::TIMESTAMP_QUERY) {
+            renderer.set_profiling(true);
+            let params = view(
+                camera,
+                &settings,
+                DisplayMode::Material,
+                Tonemapper::Agx,
+                (1280, 720),
+            );
+            let mut durations = Vec::new();
+            for frame in 0..24 {
+                renderer.render(&params);
+                for &(pass, ms) in renderer.gpu_times() {
+                    if frame >= 4 && pass == "refraction" && ms > 0.0 {
+                        durations.push(ms);
+                    }
+                }
+            }
+            durations.sort_by(f64::total_cmp);
+            println!(
+                "1280×720 refraction pass median ms: {:?}",
+                durations.get(durations.len() / 2)
+            );
+            renderer.set_profiling(false);
+        }
+        [viewport.2, still.2]
+    };
+    let straight = draw(1.0, [255; 3], "straight", 1, false, &camera);
+    let clear = draw(1.5, [255; 3], "clear", 1, false, &camera);
+    let tinted = draw(1.5, [255, 55, 55], "red", 1, false, &camera);
+    for ((straight, clear), tinted) in straight.iter().zip(&clear).zip(&tinted) {
+        let displaced = straight
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(clear.as_chunks::<4>().0)
+            .filter(|(a, b)| a[0].abs_diff(b[0]) > 60)
+            .count();
+        assert!(displaced > 100, "expected the grid to move: {displaced}");
+        assert!(tinted
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[0] > p[1].saturating_add(60)));
+        println!("glass displaced {displaced} grid pixels");
+    }
+    let single = draw(1.0, [255, 160, 160], "one-pane", 1, false, &camera);
+    let double = draw(1.0, [255, 160, 160], "two-panes", 2, false, &camera);
+    for (single, double) in single.iter().zip(&double) {
+        let doubly_tinted = single
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(double.as_chunks::<4>().0)
+            .filter(|(a, b)| a[1] > b[1].saturating_add(12) && a[0].abs_diff(b[0]) < 20)
+            .count();
+        assert!(
+            doubly_tinted > 100,
+            "expected stacked absorption: {doubly_tinted}"
+        );
+        println!("second pane tinted {doubly_tinted} grid pixels");
+    }
+    let joined = draw(1.0, [255, 160, 160], "joined-panes", 2, true, &camera);
+    assert_ne!(
+        joined[0], double[0],
+        "shared object/material uses one snapshot"
+    );
+    let crowded = draw(1.0, [255, 160, 160], "ten-panes", 10, false, &camera);
+    assert_ne!(
+        crowded[0], double[0],
+        "crowded scenes retain nearest layers"
+    );
+    assert_ne!(crowded[1], double[1]);
+
+    // View from behind the glass but in front of the grid, reversing pane depth.
+    let mut reversed = Camera3d {
+        position: Vec3d::new(8., 30., 2.),
+        ..Default::default()
+    };
+    reversed.look_along(-reversed.position);
+    let rear_single = draw(
+        1.5,
+        [255, 160, 160],
+        "reverse-one-pane",
+        1,
+        false,
+        &reversed,
+    );
+    let rear_double = draw(
+        1.5,
+        [255, 160, 160],
+        "reverse-two-panes",
+        2,
+        false,
+        &reversed,
+    );
+    assert_ne!(rear_double[0], rear_single[0]);
+    assert_ne!(rear_double[1], rear_single[1]);
+}
+
+#[test]
+fn sun_shadows_transmit_glass_tint() {
+    use editor_core::render_scene::SceneSink;
+    use geometry_math::{bbox::Bbox3d, vec::Vec3d};
+    use map_model::{material::Material, model_pbr::ModelPbr};
+
+    let (device, queue) = device().expect("colored shadows require a GPU");
+    let mut document = Document::new(Default::default());
+    let world = document.world_bounds();
+    let cube = |min, max| {
+        map_model::shapes::create_cuboid(&world, &Bbox3d::new(min, max), "shadow-test").unwrap()
+    };
+    document.add_brushes(vec![
+        cube(Vec3d::new(-210., -210., -8.), Vec3d::new(210., 210., 0.)),
+        cube(Vec3d::new(-34., -34., 70.), Vec3d::new(34., 34., 72.)),
+    ]);
+    let mut triangles = document.render_triangles();
+    for triangle in &mut triangles {
+        triangle.material = triangle.positions.iter().all(|p| p.z() > 50.).then_some(0);
+        triangle.color = [1.; 3];
+    }
+    let camera = Camera3d {
+        position: Vec3d::new(0., 0., 420.),
+        pitch: -std::f64::consts::FRAC_PI_2,
+        ..Default::default()
+    };
+    let mut settings = single_frame_settings();
+    settings.sun_elevation = 35.;
+    settings.sun_intensity = 3.;
+    settings.sun_color = [1.; 3];
+    settings.ambient_intensity = 0.;
+    settings.shadows = true;
+    settings.contact_shadows = false;
+    settings.bloom = false;
+    settings.reflections = false;
+    settings.ambient_occlusion = false;
+    let mut renderer = Renderer::new(&device, &queue);
+    let mut draw = |tint: [u8; 3], transmission, name: &str, geometry: Option<&[_]>| {
+        let mut glass = Material::rgba(
+            "glass".into(),
+            Default::default(),
+            1,
+            1,
+            [tint[0], tint[1], tint[2], 255].to_vec(),
+        );
+        glass.model_pbr = Some(std::sync::Arc::new(ModelPbr {
+            transmission,
+            metallic: 0.,
+            double_sided: true,
+            ..Default::default()
+        }));
+        if !matches!(name, "shadow-red-moved" | "shadow-red-returned") {
+            renderer.scene.set_materials(&[glass]);
+        }
+        if let Some(geometry) = geometry {
+            renderer.scene.upsert(0, geometry, Default::default());
+        }
+        renderer.scene.finish();
+        renderer.scene.load_textures_now();
+        renderer.render(&view(
+            &camera,
+            &settings,
+            DisplayMode::Material,
+            Tonemapper::Agx,
+            (320, 240),
+        ));
+        let image = renderer.read_output().unwrap();
+        save(name, &image);
+        image.2
+    };
+    let clear = draw([255; 3], 1., "shadow-clear-glass", Some(&triangles));
+    let red = draw([255, 45, 45], 1., "shadow-red-glass", None);
+    let opaque = draw([255; 3], 0., "shadow-opaque", None);
+    let tinted = clear
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(red.as_chunks::<4>().0)
+        .zip(opaque.as_chunks::<4>().0)
+        .enumerate()
+        .filter(|(index, ((clear, red), opaque))| {
+            let (x, y) = (index % 320, index / 320);
+            let outside_pane = x.abs_diff(160) > 35 || y.abs_diff(120) > 35;
+            outside_pane
+                && clear[1] > red[1].saturating_add(35)
+                && red[0] > red[1].saturating_add(35)
+                && red[0] > opaque[0].saturating_add(35)
+        })
+        .count();
+    assert!(
+        tinted > 100,
+        "expected a colored shadow on the floor: {tinted}"
+    );
+    println!("colored sun shadow on {tinted} floor pixels");
+
+    let recolored = draw([255, 45, 45], 1., "shadow-red-restored", None);
+    assert_eq!(recolored, red, "changing material must refresh cached tint");
+    let mut moved = triangles.clone();
+    for triangle in moved
+        .iter_mut()
+        .filter(|triangle| triangle.material == Some(0))
+    {
+        for point in &mut triangle.positions {
+            *point = *point + Vec3d::new(100., 0., 0.);
+        }
+    }
+    let shifted = draw([255, 45, 45], 1., "shadow-red-moved", Some(&moved));
+    let cleared = red
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(clear.as_chunks::<4>().0)
+        .zip(shifted.as_chunks::<4>().0)
+        .filter(|((red, clear), shifted)| {
+            clear[1] > red[1].saturating_add(35) && shifted[1].abs_diff(clear[1]) < 5
+        })
+        .count();
+    assert!(
+        cleared > 100,
+        "moving glass must clear the old shadow: {cleared}"
+    );
+    let restored = draw([255, 45, 45], 1., "shadow-red-returned", Some(&triangles));
+    assert_eq!(restored, red, "moving glass back must restore the shadow");
+}
+
+/// Render one shared glTF scene per process so RSS is attributable to that scene.
+#[test]
+#[ignore = "set RENDER_WGPU_COMPARE_SCENE and RENDER_WGPU_SHOTS to benchmark a shared GLB"]
+fn shared_glb_benchmark() {
+    use geometry_math::vec::Vec3d;
+    let source = std::env::var_os("RENDER_WGPU_COMPARE_SCENE").expect("shared GLB path");
+    let mut document = Document::new(Default::default());
+    document
+        .import_model(std::path::Path::new(&source), Vec3d::zero())
+        .unwrap();
+    document.clear_selection();
+    let (device, queue) = device().expect("benchmark requires a GPU");
+    let mut renderer = Renderer::new(&device, &queue);
+    SceneTracker::new().sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut renderer.scene,
+    );
+    renderer.scene.load_textures_now();
+    let mut camera = Camera3d {
+        position: Vec3d::new(2., -3., 1.4) * 32.,
+        near: 0.32,
+        far: 3200.,
+        fov_degrees: 60.,
+        ..Default::default()
+    };
+    camera.look_along(-camera.position);
+    let mut settings = single_frame_settings();
+    settings.procedural_sky = false;
+    settings.background_color = [0.; 3];
+    settings.show_axes = false;
+    settings.environment = None;
+    settings.ambient_intensity = 0.;
+    settings.ambient_occlusion = false;
+    settings.contact_shadows = false;
+    settings.reflections = false;
+    settings.bloom = false;
+    settings.shadows = true;
+    settings.sun_color = [1.; 3];
+    settings.sun_intensity = 100000. / (1.2 * 16. * 16. * 125.);
+    settings.sun_elevation = 54.735610317;
+    settings.sun_azimuth = -45.;
+    settings.exposure = 1.;
+    let mut params = view(
+        &camera,
+        &settings,
+        DisplayMode::Material,
+        Tonemapper::KhronosNeutral,
+        (320, 240),
+    );
+    params.lights = false;
+    for _ in 0..64 {
+        renderer.render(&params);
+        renderer.wait_idle();
+    }
+    save("heron", &renderer.read_output().unwrap());
 }

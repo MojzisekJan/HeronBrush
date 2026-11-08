@@ -372,7 +372,7 @@ struct Reader<'a> {
     /// map full of `brushDef` brushes warns once rather than once a brush.
     warned_about_primitive_uv: bool,
     literal_strings: bool,
-    local_plane_lines: rustc_hash::FxHashSet<usize>,
+    local_plane_lines: rustc_hash::FxHashSet<u32>,
     /// Whether a Standard face line ended with Hexen II's extra number.
     saw_hexen2_value: bool,
 }
@@ -710,7 +710,7 @@ impl<'a> Reader<'a> {
             {
                 return Err(ReadError::Parse {
                     message: "Doom 3 entity origin exceeds finite geometry bounds".into(),
-                    line: face.line,
+                    line: face.line as usize,
                 });
             }
             face.plane = plane;
@@ -926,7 +926,7 @@ impl<'a> Reader<'a> {
         let line = self.line();
 
         if doom3 {
-            self.local_plane_lines.insert(line);
+            self.local_plane_lines.insert(u32::try_from(line).unwrap_or(u32::MAX));
         }
         let points = if doom3 {
             self.expect(&Token::OpenParen)?;
@@ -983,7 +983,7 @@ impl<'a> Reader<'a> {
             export_hidden,
             primitive_uv: Some(Box::new(matrix)),
             heretic2_lighting: None,
-            line,
+            line: u32::try_from(line).unwrap_or(u32::MAX),
         })
     }
 
@@ -1061,7 +1061,7 @@ impl<'a> Reader<'a> {
             export_hidden,
             primitive_uv,
             heretic2_lighting,
-            line,
+            line: u32::try_from(line).unwrap_or(u32::MAX),
         })
     }
 
@@ -1134,6 +1134,12 @@ impl<'a> Reader<'a> {
                                 .unwrap_or(0)
                                 % 180)
                                 as u8;
+                        }
+                        "sheen" => {
+                            let mut next =
+                                || words.next().and_then(|v| v.parse::<u8>().ok()).unwrap_or(0);
+                            surface.sheen_color = [next(), next(), next()];
+                            surface.sheen_roughness = next().min(100);
                         }
                         _ => {}
                     }

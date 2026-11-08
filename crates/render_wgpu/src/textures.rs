@@ -37,6 +37,7 @@ pub(crate) struct Decoded {
     /// The normal map's mips (linear) and whether its green channel points down.
     pub normal: Option<(Vec<Mip>, bool)>,
     pub pbr: Option<(Vec<Mip>, Vec<Mip>)>,
+    pub sheen: Option<Vec<Mip>>,
     pub info: Option<PixelInfo>,
 }
 
@@ -51,6 +52,7 @@ impl Decoded {
         self.albedo.as_ref().map_or(0, size)
             + self.normal.as_ref().map_or(0, |(mips, _)| size(mips))
             + self.pbr.as_ref().map_or(0, |(orm, e)| size(orm) + size(e))
+            + self.sheen.as_ref().map_or(0, size)
     }
 }
 
@@ -96,6 +98,11 @@ pub(crate) fn decode(generation: u64, index: usize, material: &Material) -> Deco
         albedo,
         normal,
         pbr,
+        sheen: material
+            .model_pbr
+            .as_ref()
+            .and_then(|p| p.preview_sheen())
+            .map(|skin| mip_chain(skin.width, skin.height, &skin.pixels, true)),
         info: material.info(),
     }
 }

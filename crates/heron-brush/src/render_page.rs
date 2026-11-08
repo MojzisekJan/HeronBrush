@@ -360,7 +360,12 @@ impl RenderPage {
             }
             return;
         }
-        if self.stale(editor) {
+        let stale = self.stale(editor);
+        #[cfg(feature = "wgpu")]
+        if let Some(preview) = self.wgpu.as_mut().filter(|_| stale || self.job.is_none()) {
+            preview.renderer.release_accumulation();
+        }
+        if stale {
             if self.job.take().is_some() || self.navigation.target.is_some() || self.frame {
                 self.navigation = Navigation::default();
                 self.frame = false;

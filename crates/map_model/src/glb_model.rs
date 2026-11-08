@@ -534,6 +534,29 @@ pub fn read(bytes: &[u8]) -> Result<EntityModel, String> {
                 false,
             )?
             .rem_euclid(std::f32::consts::TAU);
+            let sheen = &extensions["KHR_materials_sheen"];
+            imported.sheen_color = array(&sheen["sheenColorFactor"], [0.; 3])?.map(|v| v as f32);
+            if imported
+                .sheen_color
+                .iter()
+                .any(|v| !(0.0..=1.0).contains(v))
+            {
+                return Err("Invalid GLB sheen color factor".into());
+            }
+            imported.sheen_roughness = factor(&sheen["sheenRoughnessFactor"], 0.0, true)?;
+            imported.sheen_color_texture =
+                texture(&root, bin, &sheen["sheenColorTexture"])?.map(std::sync::Arc::new);
+            imported.sheen_roughness_texture =
+                texture(&root, bin, &sheen["sheenRoughnessTexture"])?.map(std::sync::Arc::new);
+            imported.transmission = factor(
+                &extensions["KHR_materials_transmission"]["transmissionFactor"],
+                0.0,
+                true,
+            )?;
+            imported.ior = factor(&extensions["KHR_materials_ior"]["ior"], 1.5, false)?;
+            if imported.ior != 0.0 && imported.ior < 1.0 {
+                return Err("Invalid GLB index of refraction".into());
+            }
             imported.normal_scale = factor(&mat["normalTexture"]["scale"], 1., false)?;
             imported.occlusion_strength = factor(&mat["occlusionTexture"]["strength"], 1., true)?;
             imported.emissive_factor = array(&mat["emissiveFactor"], [0.; 3])?.map(|n| n as f32);

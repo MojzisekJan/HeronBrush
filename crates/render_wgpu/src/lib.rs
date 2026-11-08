@@ -220,7 +220,9 @@ struct Targets {
     ids: wgpu::TextureView,
     normals: wgpu::TextureView,
     motion: wgpu::TextureView,
+    hdr_texture: wgpu::Texture,
     hdr: wgpu::TextureView,
+    opaque_copy: Option<(wgpu::Texture, wgpu::TextureView)>,
     reflectivity: wgpu::TextureView,
     /// Screen-space reflections, half resolution, and the group that draws them.
     ssr: wgpu::TextureView,
@@ -258,6 +260,7 @@ struct Pipelines {
     shadow_opaque: wgpu::RenderPipeline,
     shadow_single: wgpu::RenderPipeline,
     shadow_masked: wgpu::RenderPipeline,
+    shadow_colored: wgpu::RenderPipeline,
     cube_opaque: wgpu::RenderPipeline,
     cube_single: wgpu::RenderPipeline,
     cube_masked: wgpu::RenderPipeline,
@@ -321,6 +324,7 @@ pub struct Renderer {
     shadows: Option<shadows::Shadows>,
     /// Stands in for the shadow maps while shadows are off.
     no_shadows: wgpu::TextureView,
+    no_colored_shadows: wgpu::TextureView,
     shadow_generation: u64,
     ibl: ibl::Ibl,
     probes: probes::Probes,
@@ -710,6 +714,8 @@ impl Renderer {
                 texture_entry(11, T::Depth),
                 texture_entry(12, unfilterable),
                 texture_entry_dim(13, filterable, wgpu::TextureViewDimension::CubeArray),
+                texture_entry(14, filterable),
+                texture_entry_dim(15, unfilterable, wgpu::TextureViewDimension::D2Array),
             ],
         );
         let cascade_layout = shadows::Shadows::layout(device);
@@ -1154,6 +1160,20 @@ impl Renderer {
                 clamp: 0.0,
             },
         });
+        let shadow_colored = pipeline(
+            device,
+            PipelineSpec {
+                label: "sun transmission",
+                layout: &shadow_layout,
+                module: &shadow_module,
+                vs: "vs_shadow",
+                fs: Some("fs_shadow_transmission"),
+                buffers: &vertex_layout,
+                topology: tri,
+                targets: &[target(HDR_FORMAT, None)],
+                depth: depth_state(C::Less, true),
+            },
+        );
         let shadow_opaque = pipeline(
             device,
             PipelineSpec {
@@ -1350,6 +1370,7 @@ impl Renderer {
                 shadow_opaque,
                 shadow_single,
                 shadow_masked,
+                shadow_colored,
                 cube_opaque,
                 cube_single,
                 cube_masked,
@@ -1383,6 +1404,9 @@ impl Renderer {
             shadow_sampler,
             shadows: None,
             no_shadows,
+            no_colored_shadows: shadows::transmission_view(&shadows::transmission_texture(
+                device, 1, 1,
+            )),
             shadow_generation: 0,
             ibl,
             probes: probes::Probes::new(device),
@@ -1492,7 +1516,14 @@ impl Renderer {
         let ids = view(&make("render_wgpu ids", ID_FORMAT, size, 1, attach));
         let normals = view(&make("render_wgpu normals", NORMAL_FORMAT, size, 1, attach));
         let motion = view(&make("render_wgpu motion", MOTION_FORMAT, size, 1, attach));
-        let hdr = view(&make("render_wgpu hdr", HDR_FORMAT, size, 1, attach));
+        let hdr_texture = make(
+            "render_wgpu hdr",
+            HDR_FORMAT,
+            size,
+            1,
+            attach | wgpu::TextureUsages::COPY_SRC,
+        );
+        let hdr = view(&hdr_texture);
         let reflectivity = view(&make(
             "render_wgpu reflectivity",
             REFLECTIVITY_FORMAT,
@@ -1655,7 +1686,9 @@ impl Renderer {
             ids,
             normals,
             motion,
+            hdr_texture,
             hdr,
+            opaque_copy: None,
             reflectivity,
             ssr,
             ssr_group,
@@ -1814,6 +1847,18 @@ impl Renderer {
             ),
             TextureView(&self.ibl.source_view),
             TextureView(&self.probes.view),
+            TextureView(
+                targets
+                    .opaque_copy
+                    .as_ref()
+                    .map_or(&self.ibl.dfg_view, |(_, view)| view),
+            ),
+            TextureView(
+                self.shadows
+                    .as_ref()
+                    .and_then(|shadows| shadows.colored.as_ref())
+                    .map_or(&self.no_colored_shadows, |colored| &colored.array_view),
+            ),
         ];
         let entries: Vec<wgpu::BindGroupEntry<'_>> = resources
             .into_iter()
@@ -1946,6 +1991,14 @@ impl Renderer {
         // so their cache keys still say what they hold when shadows come back on.
         if shadows_on {
             self.ensure_shadows(shadow_size(s));
+        }
+        let colored_shadows = shadows_on && self.scene.has_transmission();
+        if self
+            .shadows
+            .as_mut()
+            .is_some_and(|shadows| shadows.set_colored(&self.device, colored_shadows))
+        {
+            self.shadow_generation += 1;
         }
 
         let mut projection = projection(view.camera, size.0, size.1);
@@ -2093,7 +2146,7 @@ impl Renderer {
             cascade_texel: fit.texel,
             cascade_bias: fit.bias,
             shadow: [
-                f32::from(u8::from(shadows_on)),
+                f32::from(u8::from(shadows_on) + u8::from(colored_shadows)),
                 (s.shadow_bias / DEFAULT_SHADOW_BIAS).max(0.0),
                 (s.shadow_softness * SHADOW_TAP_SPREAD).max(0.0),
                 1.0 / shadow_size(s) as f32,
@@ -2197,6 +2250,25 @@ impl Renderer {
             .ibl
             .prepare_environment(&self.device, &self.queue, s.environment.as_ref())
         {
+            self.lighting_group = None;
+        }
+        let needs_refraction = shaded && self.scene.has_transmission();
+        let targets = self.targets.as_mut().expect("made above");
+        if needs_refraction != targets.opaque_copy.is_some() {
+            targets.opaque_copy = needs_refraction.then(|| {
+                let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("opaque HDR for refraction"),
+                    size: targets.hdr_texture.size(),
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: HDR_FORMAT,
+                    usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+                    view_formats: &[],
+                });
+                let view = texture.create_view(&Default::default());
+                (texture, view)
+            });
             self.lighting_group = None;
         }
         let lighting_group = self.lighting_group();
@@ -2329,6 +2401,61 @@ impl Renderer {
                         rp.set_bind_group(1, self.scene.texture_bind_group(draw.material), &[]);
                         rp.draw_indexed(draw.indices.clone(), 0, draw.material..draw.material + 1);
                         stats.draws += 1;
+                    }
+                }
+                drop(rp);
+                if let Some(colored) = &shadows.colored {
+                    let depth = wgpu::RenderPassDepthStencilAttachment {
+                        view: &colored.depth,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: wgpu::StoreOp::Discard,
+                        }),
+                        stencil_ops: None,
+                    };
+                    let mut transmission = pass(
+                        &mut encoder,
+                        "sun transmission",
+                        &[color(
+                            &colored.layers[i],
+                            wgpu::LoadOp::Clear(wgpu::Color::WHITE),
+                        )],
+                        Some(depth),
+                        timer
+                            .as_mut()
+                            .and_then(|timer| timer.writes("colored shadows")),
+                    );
+                    transmission.set_pipeline(&self.pipelines.shadow_colored);
+                    transmission.set_bind_group(0, &frame_group, &[]);
+                    transmission.set_bind_group(
+                        2,
+                        &shadows.uniform_group,
+                        &[shadows::Shadows::offset(i)],
+                    );
+                    for (_, chunk) in casters() {
+                        let (Some(vb), Some(ib)) = (&chunk.vertex_buffer, &chunk.index_buffer)
+                        else {
+                            continue;
+                        };
+                        transmission.set_vertex_buffer(0, vb.slice(..));
+                        transmission.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
+                        for draw in chunk
+                            .draws
+                            .iter()
+                            .filter(|draw| draw.phase == Phase::Refractive)
+                        {
+                            transmission.set_bind_group(
+                                1,
+                                self.scene.texture_bind_group(draw.material),
+                                &[],
+                            );
+                            transmission.draw_indexed(
+                                draw.indices.clone(),
+                                0,
+                                draw.material..draw.material + 1,
+                            );
+                            stats.draws += 1;
+                        }
                     }
                 }
             }
@@ -2706,7 +2833,7 @@ impl Renderer {
                         color(&targets.hdr, clear),
                         color(&targets.reflectivity, clear),
                     ],
-                    Some(depth),
+                    Some(depth.clone()),
                     timer.as_mut().and_then(|t| t.writes("forward")),
                 );
                 rp.set_bind_group(0, &frame_group, &[]);
@@ -2730,6 +2857,71 @@ impl Renderer {
                 );
                 rp.set_pipeline(&p.blended);
                 draw_phase(&mut rp, &[Phase::Blended], false, false, &mut stats);
+                drop(rp);
+                if let Some((copy, _)) = &targets.opaque_copy {
+                    let mut panes: Vec<_> = visible
+                        .iter()
+                        .flat_map(|chunk| {
+                            chunk.draws.iter().filter_map(|draw| {
+                                let [x, y, z] = draw.refraction_center?;
+                                let distance = geometry_math::vec::dot(
+                                    Vec3d::new(f64::from(x), f64::from(y), f64::from(z)) - eye,
+                                    forward,
+                                );
+                                Some((distance, *chunk, draw))
+                            })
+                        })
+                        .collect();
+                    panes.sort_by(|a, b| b.0.total_cmp(&a.0));
+                    // Cap full-frame copies. In crowded scenes the farthest panes
+                    // share the initial snapshot, and the nearest seven keep layers.
+                    if !panes.is_empty() {
+                        const MAX_COPIES: usize = 8;
+                        let first = panes.len().saturating_sub(MAX_COPIES - 1).max(1);
+                        let groups =
+                            std::iter::once(&panes[..first]).chain(panes[first..].chunks(1));
+                        for group in groups {
+                            encoder.copy_texture_to_texture(
+                                targets.hdr_texture.as_image_copy(),
+                                copy.as_image_copy(),
+                                targets.hdr_texture.size(),
+                            );
+                            let mut layer = pass(
+                                &mut encoder,
+                                "refractive layer",
+                                &[
+                                    color(&targets.hdr, wgpu::LoadOp::Load),
+                                    color(&targets.reflectivity, wgpu::LoadOp::Load),
+                                ],
+                                Some(depth.clone()),
+                                timer.as_mut().and_then(|t| t.writes("refraction")),
+                            );
+                            layer.set_bind_group(0, &frame_group, &[]);
+                            layer.set_bind_group(2, &lighting_group, &[]);
+                            layer.set_pipeline(&p.blended);
+                            for (_, chunk, draw) in group {
+                                let (Some(vb), Some(ib)) =
+                                    (&chunk.vertex_buffer, &chunk.index_buffer)
+                                else {
+                                    continue;
+                                };
+                                layer.set_vertex_buffer(0, vb.slice(..));
+                                layer.set_index_buffer(ib.slice(..), wgpu::IndexFormat::Uint32);
+                                layer.set_bind_group(
+                                    1,
+                                    self.scene.texture_bind_group(draw.material),
+                                    &[],
+                                );
+                                layer.draw_indexed(
+                                    draw.indices.clone(),
+                                    0,
+                                    draw.material..draw.material + 1,
+                                );
+                                stats.draws += 1;
+                            }
+                        }
+                    }
+                }
             }
             if ssr_on {
                 fullscreen(
@@ -3028,8 +3220,16 @@ impl Renderer {
     /// Blocking; for tests and image export.
     pub fn read_output(&self) -> Option<(u32, u32, Vec<u8>)> {
         let targets = self.targets.as_ref()?;
-        self.read_texture(&targets.output, targets.size, 4)
-            .map(|pixels| (targets.size.0, targets.size.1, pixels))
+        let mut pixels = Vec::with_capacity(targets.size.0 as usize * targets.size.1 as usize * 4);
+        self.read_texture_rows(&targets.output, targets.size, 4, |row| {
+            pixels.extend_from_slice(row);
+        })?;
+        Some((targets.size.0, targets.size.1, pixels))
+    }
+
+    /// Releases offline sample history while keeping the resolved display output.
+    pub fn release_accumulation(&mut self) {
+        self.accumulation = None;
     }
 
     /// Reads the offline average as unassociated scene-linear RGBA, top row first.
@@ -3039,29 +3239,36 @@ impl Renderer {
         if average.samples == 0 {
             return None;
         }
-        let bytes = self.read_texture(&average.textures[average.current], average.size, 16)?;
-        let mut pixels = Vec::with_capacity(bytes.len() / 4);
-        for pixel in bytes.as_chunks::<16>().0 {
-            let rgba: [f32; 4] = std::array::from_fn(|i| {
-                f32::from_le_bytes(pixel[i * 4..i * 4 + 4].try_into().expect("four bytes"))
-            });
-            let alpha = rgba[3].clamp(0.0, 1.0);
-            pixels.extend(
-                rgba[..3]
-                    .iter()
-                    .map(|v| if alpha > 1e-6 { v / alpha } else { 0.0 }),
-            );
-            pixels.push(alpha);
-        }
+        let mut pixels = Vec::with_capacity(average.size.0 as usize * average.size.1 as usize * 4);
+        self.read_texture_rows(
+            &average.textures[average.current],
+            average.size,
+            16,
+            |row| {
+                for pixel in row.as_chunks::<16>().0 {
+                    let rgba: [f32; 4] = std::array::from_fn(|i| {
+                        f32::from_le_bytes(pixel[i * 4..i * 4 + 4].try_into().expect("four bytes"))
+                    });
+                    let alpha = rgba[3].clamp(0.0, 1.0);
+                    pixels.extend(
+                        rgba[..3]
+                            .iter()
+                            .map(|v| if alpha > 1e-6 { v / alpha } else { 0.0 }),
+                    );
+                    pixels.push(alpha);
+                }
+            },
+        )?;
         Some((average.size.0, average.size.1, pixels))
     }
 
-    fn read_texture(
+    fn read_texture_rows(
         &self,
         texture: &wgpu::Texture,
         (width, height): (u32, u32),
         bytes_per_pixel: u32,
-    ) -> Option<Vec<u8>> {
+        mut read_row: impl FnMut(&[u8]),
+    ) -> Option<()> {
         let row = (width * bytes_per_pixel).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
         let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("render_wgpu readback"),
@@ -3100,14 +3307,13 @@ impl Renderer {
         slice.map_async(wgpu::MapMode::Read, |_| {});
         self.wait_idle();
         let data = slice.get_mapped_range().ok()?;
-        let mut out = Vec::with_capacity((width * height * bytes_per_pixel) as usize);
         for y in 0..height {
             let start = (y * row) as usize;
-            out.extend_from_slice(&data[start..start + (width * bytes_per_pixel) as usize]);
+            read_row(&data[start..start + (width * bytes_per_pixel) as usize]);
         }
         drop(data);
         buffer.unmap();
-        Some(out)
+        Some(())
     }
 }
 

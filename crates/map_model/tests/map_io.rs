@@ -848,8 +848,10 @@ fn pending_primitive_matrices_survive_all_map_dialects_and_face_metadata() {
                         roughness: 45,
                         metallic: 20,
                         emission: 80,
-                    ..Default::default()
-});
+                        sheen_color: [32, 120, 212],
+                        sheen_roughness: 58,
+                        ..Default::default()
+                    });
                     face.export_hidden = hidden;
                     let mut expected = face.clone();
                     if format.writes_empty_surface_attributes() {

@@ -134,6 +134,14 @@ impl Scene<'_> {
                 value["extensions"]["KHR_materials_anisotropy"] = json!({"anisotropyStrength":surface.anisotropy.min(100) as f32/100.0,"anisotropyRotation":(surface.anisotropy_rotation%180) as f32*std::f32::consts::PI/180.0});
                 self.extension_used("KHR_materials_anisotropy");
             }
+            let [r, g, b, roughness] = surface.sheen();
+            if [r, g, b] != [0.0; 3] {
+                value["extensions"]["KHR_materials_sheen"] = json!({
+                    "sheenColorFactor": [r, g, b],
+                    "sheenRoughnessFactor": roughness,
+                });
+                self.extension_used("KHR_materials_sheen");
+            }
         }
         self.push("materials", value)
     }
@@ -213,6 +221,31 @@ impl Scene<'_> {
                     self.root["materials"][id]["extensions"]["KHR_materials_anisotropy"] = json!({"anisotropyStrength":pbr.anisotropy,"anisotropyRotation":pbr.anisotropy_rotation});
                     self.extension_used("KHR_materials_anisotropy");
                 }
+            }
+            if surface.is_none() && pbr.sheen_color.iter().any(|&value| value > 0.0) {
+                self.root["materials"][id]["extensions"]["KHR_materials_sheen"] = json!({
+                    "sheenColorFactor": pbr.sheen_color,
+                    "sheenRoughnessFactor": pbr.sheen_roughness,
+                });
+                for (slot, map) in [
+                    ("sheenColorTexture", &pbr.sheen_color_texture),
+                    ("sheenRoughnessTexture", &pbr.sheen_roughness_texture),
+                ] {
+                    if let Some(map) = map {
+                        let texture = self.image(map.width, map.height, map.pixels.clone(), true);
+                        self.root["materials"][id]["extensions"]["KHR_materials_sheen"][slot] =
+                            json!({"index": texture});
+                    }
+                }
+                self.extension_used("KHR_materials_sheen");
+            }
+            if pbr.transmission > 0.0 {
+                self.root["materials"][id]["extensions"]["KHR_materials_transmission"] =
+                    json!({"transmissionFactor": pbr.transmission});
+                self.root["materials"][id]["extensions"]["KHR_materials_ior"] =
+                    json!({"ior": pbr.ior});
+                self.extension_used("KHR_materials_transmission");
+                self.extension_used("KHR_materials_ior");
             }
             self.root["materials"][id]["alphaMode"] = json!(match pbr.alpha_mode {
                 map_model::material::Alpha::Opaque => "OPAQUE",

@@ -254,6 +254,10 @@ pub(super) fn write_face_notes(
             surface.anisotropy.min(100),
             surface.anisotropy_rotation % 180
         );
+        if surface.sheen_color != [0; 3] || surface.sheen_roughness != 0 {
+            let [r, g, b] = surface.sheen_color;
+            let _ = write!(out, " sheen {r} {g} {b} {}", surface.sheen_roughness.min(100));
+        }
     }
     if face.export_hidden {
         open(out);

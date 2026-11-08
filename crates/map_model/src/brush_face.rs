@@ -683,6 +683,12 @@ pub struct SurfaceMaterial {
     /// Anisotropy axis rotation in degrees (180-degree period), relative to the face UVs.
     #[cfg_attr(feature = "serde", serde(default))]
     pub anisotropy_rotation: u8,
+    /// Sheen tint in sRGB.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub sheen_color: [u8; 3],
+    /// Sheen perceptual roughness, as a percentage.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub sheen_roughness: u8,
 }
 fn default_coat_roughness() -> u8 {
     10
@@ -697,10 +703,25 @@ impl Default for SurfaceMaterial {
             coat_roughness: default_coat_roughness(),
             anisotropy: 0,
             anisotropy_rotation: 0,
+            sheen_color: [0; 3],
+            sheen_roughness: 0,
         }
     }
 }
 impl SurfaceMaterial {
+    /// Linear sheen tint and perceptual roughness.
+    pub fn sheen(self) -> [f32; 4] {
+        let [r, g, b] = self.sheen_color.map(|value| {
+            let srgb = f32::from(value) / 255.0;
+            if srgb <= 0.04045 {
+                srgb / 12.92
+            } else {
+                ((srgb + 0.055) / 1.055).powf(2.4)
+            }
+        });
+        [r, g, b, f32::from(self.sheen_roughness.min(100)) / 100.0]
+    }
+
     /// Clamped roughness, metallic and emission factors for rendering/export.
     pub fn factors(self) -> [f32; 3] {
         [
@@ -770,7 +791,7 @@ pub struct BrushFace {
     )]
     pub heretic2_lighting: Option<Box<[f32; 4]>>,
     /// The line in the source file this face was read from, for diagnostics.
-    pub line: usize,
+    pub line: u32,
 }
 
 /// Two faces are the same face when they describe the same surface, whatever line of

@@ -1784,13 +1784,13 @@ impl Document {
     pub fn select_by_line(&mut self, line: usize) -> bool {
         let mut best: Option<(usize, NodeId)> = None;
         for (id, brush) in node::brushes_with_ids(&self.tree.world) {
-            let Some(first) = brush.faces().iter().map(|face| face.line).min() else {
+            let Some(first) = brush.faces().iter().map(|face| face.line as usize).min() else {
                 continue;
             };
             let last = brush
                 .faces()
                 .iter()
-                .map(|face| face.line)
+                .map(|face| face.line as usize)
                 .max()
                 .unwrap_or(first);
             if line >= first && line <= last {

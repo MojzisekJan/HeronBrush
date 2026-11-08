@@ -826,6 +826,8 @@ impl ColourPage {
         let mut coat_roughness = f64::from(surface.coat_roughness);
         let mut anisotropy = f64::from(surface.anisotropy);
         let mut anisotropy_rotation = f64::from(surface.anisotropy_rotation);
+        let mut sheen_color = surface.sheen_color;
+        let mut sheen_roughness = f64::from(surface.sheen_roughness);
         let mut changed = false;
         for (label, value, range, step, decimals, tip) in [
             (
@@ -891,6 +893,12 @@ impl ColourPage {
                     .changed();
             });
         }
+        widgets::row(ui, tr("Sheen color"), None, |ui| {
+            changed |= ui.color_edit_button_srgb(&mut sheen_color).changed();
+        });
+        widgets::row(ui, tr("Sheen roughness"), None, |ui| {
+            changed |= widgets::spin(ui, &mut sheen_roughness, 0.0..=100.0, 5.0, 0).changed();
+        });
         let width = ui.available_width();
         let reset = theme::button(ui, tr("Use default surface"), width, ui.is_enabled()).clicked();
         let mut document = editor.document.borrow_mut();
@@ -903,6 +911,8 @@ impl ColourPage {
                 coat_roughness: coat_roughness.round() as u8,
                 anisotropy: anisotropy.round() as u8,
                 anisotropy_rotation: anisotropy_rotation.round() as u8 % 180,
+                sheen_color,
+                sheen_roughness: sheen_roughness.round() as u8,
             };
             document.set_surface_material_live(Some(value), picked, &mut self.surface_session);
         } else if reset {

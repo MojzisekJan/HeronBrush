@@ -1502,6 +1502,7 @@ fn set_surface_material(document: &mut Document, args: &Value) -> Result<String,
                 .rem_euclid(180.0)
                 .round() as u8
                 % 180,
+            ..Default::default()
         })
     };
     let changed = match (args.get("brush"), args.get("face")) {

@@ -161,6 +161,36 @@ pub(crate) fn fit(
 }
 
 /// The shadow-map array and the per-cascade cache.
+pub(crate) struct ColoredShadows {
+    pub array_view: wgpu::TextureView,
+    pub layers: Vec<wgpu::TextureView>,
+    pub depth: wgpu::TextureView,
+}
+
+pub(crate) fn transmission_texture(device: &wgpu::Device, size: u32, layers: u32) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("sun shadow transmission"),
+        size: wgpu::Extent3d {
+            width: size,
+            height: size,
+            depth_or_array_layers: layers,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba16Float,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    })
+}
+
+pub(crate) fn transmission_view(texture: &wgpu::Texture) -> wgpu::TextureView {
+    texture.create_view(&wgpu::TextureViewDescriptor {
+        dimension: Some(wgpu::TextureViewDimension::D2Array),
+        ..Default::default()
+    })
+}
+
 pub(crate) struct Shadows {
     pub size: u32,
     _texture: wgpu::Texture,
@@ -171,6 +201,7 @@ pub(crate) struct Shadows {
     pub uniform_group: wgpu::BindGroup,
     /// What each cascade last drew.
     cache: [Option<u64>; CASCADES],
+    pub colored: Option<ColoredShadows>,
 }
 
 impl Shadows {
@@ -229,7 +260,52 @@ impl Shadows {
             uniform,
             uniform_group,
             cache: [None; CASCADES],
+            colored: None,
         }
+    }
+
+    pub fn set_colored(&mut self, device: &wgpu::Device, enabled: bool) -> bool {
+        if enabled == self.colored.is_some() {
+            return false;
+        }
+        self.cache = [None; CASCADES];
+        self.colored = enabled.then(|| {
+            let size = self.size.min(512);
+            let texture = transmission_texture(device, size, CASCADES as u32);
+            let array_view = transmission_view(&texture);
+            let layers = (0..CASCADES as u32)
+                .map(|layer| {
+                    texture.create_view(&wgpu::TextureViewDescriptor {
+                        dimension: Some(wgpu::TextureViewDimension::D2),
+                        base_array_layer: layer,
+                        array_layer_count: Some(1),
+                        ..Default::default()
+                    })
+                })
+                .collect();
+            let depth = device
+                .create_texture(&wgpu::TextureDescriptor {
+                    label: Some("sun transmission scratch depth"),
+                    size: wgpu::Extent3d {
+                        width: size,
+                        height: size,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Depth32Float,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                    view_formats: &[],
+                })
+                .create_view(&Default::default());
+            ColoredShadows {
+                array_view,
+                layers,
+                depth,
+            }
+        });
+        true
     }
 
     /// The bind group layout of the per-cascade matrix (a dynamic offset per cascade).

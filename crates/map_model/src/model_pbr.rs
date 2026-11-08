@@ -23,6 +23,18 @@ pub struct ModelPbr {
     pub anisotropy: f32,
     /// Anisotropy direction rotation in radians.
     pub anisotropy_rotation: f32,
+    /// Constant linear RGB of the glTF sheen layer.
+    pub sheen_color: [f32; 3],
+    /// Perceptual roughness of the sheen layer.
+    pub sheen_roughness: f32,
+    /// sRGB sheen tint texture.
+    pub sheen_color_texture: Option<std::sync::Arc<Skin>>,
+    /// Linear sheen roughness stored in alpha.
+    pub sheen_roughness_texture: Option<std::sync::Arc<Skin>>,
+    /// Fraction of light transmitted through the dielectric surface.
+    pub transmission: f32,
+    /// Index of refraction for transmission.
+    pub ior: f32,
     /// Linear emissive RGB multiplier.
     pub emissive_factor: [f32; 3],
     /// Multiplier of tangent-space normal X and Y.
@@ -50,6 +62,12 @@ impl Default for ModelPbr {
             coat_roughness: 0.0,
             anisotropy: 0.0,
             anisotropy_rotation: 0.0,
+            sheen_color: [0.; 3],
+            sheen_roughness: 0.,
+            sheen_color_texture: None,
+            sheen_roughness_texture: None,
+            transmission: 0.,
+            ior: 1.5,
             emissive_factor: [0.; 3],
             normal_scale: 1.,
             occlusion_strength: 1.,
@@ -72,10 +90,14 @@ impl Hash for ModelPbr {
             self.coat_roughness,
             self.anisotropy,
             self.anisotropy_rotation,
+            self.sheen_roughness,
+            self.transmission,
+            self.ior,
             self.normal_scale,
             self.occlusion_strength,
         ]
         .into_iter()
+        .chain(self.sheen_color)
         .chain(self.emissive_factor)
         {
             f.to_bits().hash(state);
@@ -85,12 +107,54 @@ impl Hash for ModelPbr {
             &self.metallic_roughness,
             &self.occlusion,
             &self.emissive,
+            &self.sheen_color_texture,
+            &self.sheen_roughness_texture,
         ] {
             map.hash(state);
         }
     }
 }
 impl ModelPbr {
+    /// Packs sRGB tint and linear roughness into one preview texture.
+    pub fn preview_sheen(&self) -> Option<Skin> {
+        let color = self.sheen_color_texture.as_deref();
+        let roughness = self.sheen_roughness_texture.as_deref();
+        let source = color.or(roughness)?;
+        let width = color
+            .iter()
+            .chain(roughness.iter())
+            .map(|skin| skin.width)
+            .max()
+            .unwrap_or(source.width)
+            .clamp(1, 4096);
+        let height = color
+            .iter()
+            .chain(roughness.iter())
+            .map(|skin| skin.height)
+            .max()
+            .unwrap_or(source.height)
+            .clamp(1, 4096);
+        let mut pixels = Vec::with_capacity(width as usize * height as usize * 4);
+        for y in 0..height {
+            for x in 0..width {
+                let sample = |skin: &Skin| {
+                    let sx = u64::from(x) * u64::from(skin.width) / u64::from(width);
+                    let sy = u64::from(y) * u64::from(skin.height) / u64::from(height);
+                    let offset = ((sy * u64::from(skin.width) + sx) * 4) as usize;
+                    <[u8; 4]>::try_from(&skin.pixels[offset..offset + 4]).unwrap()
+                };
+                let [r, g, b, _] = color.map_or([255; 4], sample);
+                let alpha = roughness.map_or(255, |skin| sample(skin)[3]);
+                pixels.extend([r, g, b, alpha]);
+            }
+        }
+        Some(Skin {
+            width,
+            height,
+            pixels,
+        })
+    }
+
     /// Packed preview ORM, sampling both source maps at their own resolution.
     /// Exports retain the original images rather than this preview packing.
     pub fn preview_orm(&self) -> Skin {

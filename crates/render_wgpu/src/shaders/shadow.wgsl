@@ -68,3 +68,17 @@ fn fs_shadow_masked(in: VertexOut, @builtin(front_facing) front: bool) {
 fn fs_shadow_opaque(in: VertexOut, @builtin(front_facing) front: bool) {
     if (materials[in.material].model_params.w == 1.0 && !front) { discard; }
 }
+
+@fragment
+fn fs_shadow_transmission(in: VertexOut) -> @location(0) vec4<f32> {
+    let material = materials[in.material];
+    let uv = in.uv / max(material.size, vec2<f32>(1.0));
+    let tint = albedo_texel(material, textureSample(albedo, albedo_sampler, uv));
+    if (material.alpha_mode == 1u && tint.a < material.model_params.z) {
+        discard;
+    }
+    let coverage = select(1.0, tint.a, material.alpha_mode == 2u);
+    let ratio = (material.glass.y - 1.0) / (material.glass.y + 1.0);
+    let transmitted = tint.rgb * material.glass.x * (1.0 - ratio * ratio);
+    return vec4<f32>(mix(vec3<f32>(1.0), transmitted, coverage), in.clip.z);
+}

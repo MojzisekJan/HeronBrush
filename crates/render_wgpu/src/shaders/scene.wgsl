@@ -6,6 +6,7 @@
 @group(1) @binding(2) var normal_map: texture_2d<f32>;
 @group(1) @binding(3) var model_orm: texture_2d<f32>;
 @group(1) @binding(4) var model_emissive: texture_2d<f32>;
+@group(1) @binding(5) var sheen_map: texture_2d<f32>;
 
 // What the forward pass is lit by (group 2 is used by fs_forward only).
 @group(2) @binding(0) var shadow_map: texture_depth_2d_array;
@@ -35,6 +36,8 @@ struct Light {
 // The prepass depth, for contact shadows (the pass holds it as a read-only attachment).
 @group(2) @binding(11) var scene_depth: texture_depth_2d;
 @group(2) @binding(13) var local_reflections:texture_cube_array<f32>;
+@group(2) @binding(14) var opaque_scene: texture_2d<f32>;
+@group(2) @binding(15) var sun_transmission_map: texture_2d_array<f32>;
 @group(2) @binding(12) var environment_map: texture_2d<f32>;
 
 struct VertexIn {
@@ -84,18 +87,6 @@ fn scene_vertex(v: VertexIn, material: u32) -> VertexOut {
         out.clip = frame.view_proj * vec4<f32>(v.position, 1.0);
     }
     return out;
-}
-
-// What the albedo texture gives at a texel, or -- while the texture is still being
-// streamed in -- the material's average colour (sRGB bytes packed in factors.w).
-fn albedo_texel(m: Material, sampled: vec4<f32>) -> vec4<f32> {
-    if ((m.flags & MATERIAL_PENDING) == 0u) {
-        return sampled;
-    }
-    let average = unpack4x8unorm(bitcast<u32>(m.factors.w));
-    let c = average.rgb;
-    let linear = select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
-    return vec4<f32>(linear, average.a);
 }
 
 fn material_uv(m: Material, uv: vec2<f32>) -> vec2<f32> {
@@ -244,6 +235,19 @@ fn coat_specular(n:vec3<f32>,v:vec3<f32>,l:vec3<f32>,h:vec3<f32>,layer:vec4<f32>
     return distribution_ggx(max(dot(n,h),0.0),max(layer.y,0.05))*coat_fresnel(lh,layer.x)*0.25/(lh*lh);
 }
 
+// Charlie distribution with the Ashikhmin-Premoze visibility approximation.
+fn sheen_lighting(sheen: vec4<f32>, n_dot_v: f32, n_dot_l: f32, n_dot_h: f32) -> vec3<f32> {
+    if (max(max(sheen.r, sheen.g), sheen.b) <= 0.0 || n_dot_l <= 0.0) {
+        return vec3<f32>(0.0);
+    }
+    let alpha = pow(max(sheen.a, 0.07), 2.0);
+    let inverse_alpha = 1.0 / alpha;
+    let sin_squared = max(1.0 - n_dot_h * n_dot_h, 0.0);
+    let distribution = (2.0 + inverse_alpha) * pow(sin_squared, 0.5 * inverse_alpha) / (2.0 * PI);
+    let visibility = 0.25 / max(n_dot_l + n_dot_v - n_dot_l * n_dot_v, 1e-4);
+    return sheen.rgb * (distribution * visibility);
+}
+
 fn cascade_lookup(world: vec3<f32>, n: vec3<f32>, n_dot_l: f32, cascade: u32) -> f32 {
     // Normal offset: push the lookup off the surface by about a texel, more when the
     // light grazes it, so a surface does not shadow itself in stripes.
@@ -295,6 +299,44 @@ fn cascade_lookup(world: vec3<f32>, n: vec3<f32>, n_dot_l: f32, cascade: u32) ->
 // The sun's visibility from the cascaded shadow maps: the first cascade whose range
 // holds the point, blended into the next over the last tenth of its range so the
 // change of resolution has no seam; the last cascade fades out to lit.
+fn cascade_transmission(world: vec3<f32>, cascade: u32) -> vec3<f32> {
+    let p = frame.cascades[cascade] * vec4<f32>(world, 1.0);
+    let uv = vec2<f32>(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
+    if (any(uv < vec2<f32>(0.0)) || any(uv >= vec2<f32>(1.0)) || p.z > 1.0) {
+        return vec3<f32>(1.0);
+    }
+    let dimensions = vec2<f32>(textureDimensions(sun_transmission_map));
+    let sample = textureLoad(sun_transmission_map, vec2<i32>(uv * dimensions), i32(cascade), 0);
+    return select(vec3<f32>(1.0), sample.rgb, p.z > sample.a + max(frame.cascade_bias[cascade], 0.0005));
+}
+
+fn sun_transmission(world: vec3<f32>) -> vec3<f32> {
+    if (frame.shadow.x < 1.5) {
+        return vec3<f32>(1.0);
+    }
+    let depth = dot(world - frame.eye.xyz, frame.forward.xyz);
+    var cascade = 0u;
+    while (cascade < 4u && depth > frame.cascade_splits[cascade]) {
+        cascade += 1u;
+    }
+    if (cascade >= 4u) {
+        return vec3<f32>(1.0);
+    }
+    let far = frame.cascade_splits[cascade];
+    let near = select(0.0, frame.cascade_splits[max(cascade, 1u) - 1u], cascade > 0u);
+    let band = (far - near) * 0.1;
+    let t = clamp((depth - (far - band)) / max(band, 1e-4), 0.0, 1.0);
+    let current = cascade_transmission(world, cascade);
+    if (t <= 0.0) {
+        return current;
+    }
+    var next = vec3<f32>(1.0);
+    if (cascade < 3u) {
+        next = cascade_transmission(world, cascade + 1u);
+    }
+    return mix(current, next, t);
+}
+
 fn sun_visibility(world: vec3<f32>, n: vec3<f32>, n_dot_l: f32) -> f32 {
     if (frame.shadow.x < 0.5 || n_dot_l <= 0.0) {
         return 1.0;
@@ -403,7 +445,7 @@ fn light_visibility(slot: i32, light_position: vec3<f32>, range: f32, world: vec
 // The light entities' direct light on a surface: Cook-Torrance as for the sun, with
 // Godot's falloff (the light's decay over distance in metres, windowed to zero at its
 // reach) and spot cone, and the light's shadow cube where it has one.
-fn entity_lights(pixel: vec2<f32>, depth: f32, world: vec3<f32>, n: vec3<f32>, geometric: vec3<f32>, v: vec3<f32>, f0: vec3<f32>, diffuse_color: vec3<f32>, roughness: f32, compensation: vec3<f32>,tangent:vec3<f32>,bitangent:vec3<f32>,layer:vec4<f32>) -> vec3<f32> {
+fn entity_lights(pixel: vec2<f32>, depth: f32, world: vec3<f32>, n: vec3<f32>, geometric: vec3<f32>, v: vec3<f32>, f0: vec3<f32>, diffuse_color: vec3<f32>, roughness: f32, compensation: vec3<f32>,tangent:vec3<f32>,bitangent:vec3<f32>,layer:vec4<f32>, sheen: vec4<f32>) -> vec3<f32> {
     var total = vec3<f32>(0.0);
     let cluster = light_clusters[light_cluster(pixel, depth)];
     let n_dot_v = max(dot(n, v), 1e-4);
@@ -443,7 +485,8 @@ fn entity_lights(pixel: vec2<f32>, depth: f32, world: vec3<f32>, n: vec3<f32>, g
         let diffuse = (vec3<f32>(1.0) - f) * diffuse_color / PI;
         let coat=coat_specular(geometric,v,l,h,layer);
         let attenuation_coat=1.0-coat_fresnel(max(dot(v,h),0.0),layer.x);
-        total += ((diffuse + specular)*attenuation_coat*n_dot_l+vec3<f32>(coat)*max(dot(geometric,l),0.0)) * light.color_decay.rgb * attenuation;
+        let cloth = sheen_lighting(sheen, n_dot_v, n_dot_l, max(dot(n, h), 0.0));
+        total += ((diffuse + specular + cloth)*attenuation_coat*n_dot_l+vec3<f32>(coat)*max(dot(geometric,l),0.0)) * light.color_decay.rgb * attenuation;
     }
     return total;
 }
@@ -504,6 +547,10 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
     let dpy = dpdy(in.world);
     let duvx = dpdx(uv);
     let duvy = dpdy(uv);
+    var sheen = m.sheen;
+    if ((m.flags & 64u) != 0u) {
+        sheen *= textureSampleGrad(sheen_map, albedo_sampler, uv, duvx, duvy);
+    }
     // Derivatives must run before discard or material-dependent early returns.
     let n = surface_normal(in, m, bumps, dpx, dpy, duvx, duvy, front);
     let normal_dx = dpdx(n);
@@ -579,8 +626,16 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
     let v = normalize(frame.eye.xyz - in.world);
     let l = normalize(-frame.light_dir.xyz);
     let h = normalize(v + l);
-    let f0 = mix(vec3<f32>(0.04), albedo_linear, metallic);
-    let diffuse_color = albedo_linear * (1.0 - metallic);
+    var dielectric_f0 = 0.04;
+    if (m.glass.x > 0.0) {
+        let ratio = (m.glass.y - 1.0) / (m.glass.y + 1.0);
+        dielectric_f0 = ratio * ratio;
+    }
+    let f0 = mix(vec3<f32>(dielectric_f0), albedo_linear, metallic);
+    // Transmission replaces the diffuse lobe. Keep the reflected specular lobe
+    // intact so glass still reflects light over an unlit background.
+    let dielectric_transmission = m.glass.x * (1.0 - metallic);
+    let diffuse_color = albedo_linear * (1.0 - metallic) * (1.0 - m.glass.x);
     let n_dot_l = max(dot(n, l), 0.0);
     let n_dot_v = max(dot(n, v), 1e-4);
 
@@ -602,14 +657,26 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
     if (frame.contact.x > 0.5 && visibility > 0.0 && n_dot_l > 0.0) {
         visibility *= contact_shadow(in.world, geometric, in.clip.xy);
     }
+    // Material AO approximates sub-texel cavities that shadow maps cannot resolve.
+    // Restrict it to the shadowed sun; screen-space AO remains indirect only.
+    var material_ao = 1.0;
+    if ((m.flags & 32u) != 0u) {
+        material_ao = clamp(mix(1.0, orm.r, m.model_params.y), 0.0, 1.0);
+        if (frame.shadow.x > 0.5 && material_ao < 1.0) {
+            let aperture = inverseSqrt(max(1.0 - material_ao, 1e-4));
+            let transmission = clamp(n_dot_l * aperture, 0.0, 1.0);
+            visibility *= transmission * transmission;
+        }
+    }
     let attenuation_coat=1.0-coat_fresnel(max(dot(v,h),0.0),m.layered.x);
-    var direct = ((diffuse + specular)*attenuation_coat*n_dot_l+vec3<f32>(coat_specular(geometric,v,l,h,m.layered))*max(dot(geometric,l),0.0)) * frame.light_color.rgb * visibility;
+    let cloth = sheen_lighting(sheen, n_dot_v, n_dot_l, max(dot(n, h), 0.0));
+    var direct = ((diffuse + specular + cloth)*attenuation_coat*n_dot_l+vec3<f32>(coat_specular(geometric,v,l,h,m.layered))*max(dot(geometric,l),0.0)) * frame.light_color.rgb * visibility * sun_transmission(in.world);
 
     // Occlusion: GTAO for the diffuse ambient, with Jimenez's multi-bounce fit so bright
     // surfaces do not go grey in creases; Lagarde's approximation for the specular.
     let depth = dot(in.world - frame.eye.xyz, frame.forward.xyz);
     if (frame.lights.x > 0.5) {
-        direct += entity_lights(in.clip.xy, depth, in.world, n, geometric, v, f0, diffuse_color, roughness, compensation,tangent,bitangent,m.layered);
+        direct += entity_lights(in.clip.xy, depth, in.world, n, geometric, v, f0, diffuse_color, roughness, compensation,tangent,bitangent,m.layered,sheen);
     }
     var ao = 1.0;
     var bent=n;
@@ -619,7 +686,7 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
         bent=normalize(mix(n,octahedral_decode(occlusion.zw),clamp(frame.effects.y,0.0,1.0)));
     }
     let screen_ao=ao;
-    if ((m.flags & 32u) != 0u) {ao *= mix(1.0,orm.r,m.model_params.y);}
+    ao *= material_ao;
     if (frame.grading.z<0.5) {bent=n;}
     let a = 2.0404 * albedo_linear - 0.3324;
     let b = -4.7951 * albedo_linear + 0.6417;
@@ -657,9 +724,38 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
     var coat_radiance=vec3<f32>(0.0);
     if (m.layered.x>0.0) {coat_radiance=textureSampleLevel(specular_env,env_sampler,reflect(-v,geometric),max(m.layered.y,0.05)*(frame.effects.w-1.0)).rgb;}
     if (m.layered.x>0.0) {coat_radiance=local_specular(local_reflections,env_sampler,in.world,reflect(-v,geometric),max(m.layered.y,0.05),coat_radiance);}
-    let ambient = (diffuse_weight * irradiance * diffuse_ao*(1.0-coat_weight) + (single * radiance * cone + multiple * missing * irradiance) * specular_ao*pow(1.0-coat_weight,2.0)+coat_radiance*coat_weight*coat_ao) * ambient_strength;
+    // Approximate the broad cloth response using the existing diffuse irradiance.
+    var sheen_weight = vec3<f32>(0.0);
+    if (any(sheen.rgb > vec3<f32>(0.0))) {
+        let grazing = 1.0 - clamp(n_dot_v, 0.0, 1.0);
+        sheen_weight = sheen.rgb * pow(grazing, mix(6.0, 2.0, sheen.a)) * 0.25 * (1.0 - coat_weight);
+    }
+    let ambient_sheen = sheen_weight * irradiance * diffuse_ao;
+    let ambient = (ambient_sheen + (1.0 - sheen_weight) * diffuse_weight * irradiance * diffuse_ao*(1.0-coat_weight) + (single * radiance * cone + multiple * missing * irradiance) * specular_ao*pow(1.0-coat_weight,2.0)+coat_radiance*coat_weight*coat_ao) * ambient_strength;
     let light = clamp(direct + ambient + albedo_linear * emission + emissive * m.model_emissive.rgb,vec3<f32>(0.0),vec3<f32>(65504.0));
-    return ForwardOut(vec4<f32>(light, surface_alpha), vec4<f32>(single * specular_ao*pow(1.0-coat_weight,2.0), roughness));
+    var shaded = light;
+    if (m.glass.x > 0.0) {
+        let incident = -v;
+        let facing_normal = select(-n, n, dot(n, v) >= 0.0);
+        let cosine = clamp(dot(facing_normal, v), 0.0, 1.0);
+        let eta = 1.0 / max(m.glass.y, 1.0);
+        let exit_cosine = sqrt(max(1.0 - eta * eta * (1.0 - cosine * cosine), 0.0));
+        let transmitted = eta * incident + (eta * cosine - exit_cosine) * facing_normal;
+        let dimensions = vec2<f32>(textureDimensions(opaque_scene));
+        let uv = in.clip.xy / dimensions;
+        let bend = frame.view * vec4<f32>(transmitted - incident, 0.0);
+        let offset = bend.xy * vec2<f32>(0.12, -0.12);
+        let edge = min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y));
+        let shifted = clamp(uv + offset * smoothstep(0.0, 0.08, edge), vec2<f32>(0.0), vec2<f32>(1.0));
+        let background = textureSampleLevel(opaque_scene, env_sampler, shifted, 0.0);
+        let reflectance = select(
+            fresnel_schlick(cosine, vec3<f32>(dielectric_f0)).r, 0.0, m.glass.y == 1.0
+        );
+        let transmission = dielectric_transmission * (1.0 - reflectance);
+        let transmitted_color = background.rgb + srgb_to_linear(frame.background.rgb) * (1.0 - background.a);
+        shaded = min(light + transmitted_color * albedo_linear * transmission, vec3<f32>(65504.0));
+    }
+    return ForwardOut(vec4<f32>(shaded, surface_alpha), vec4<f32>(single * specular_ao*pow(1.0-coat_weight,2.0), roughness));
 }
 
 // Wireframe: the triangles' edges in one colour, written straight to the display target.
