@@ -14,6 +14,8 @@ pub fn from_preferences() -> render::RenderSettings {
         environment: None,
         probes:None,
         color_grading: Default::default(),
+        lens_effects: Default::default(),
+        lens_frame: 0,
         indirect_occlusion:p.indirect_occlusion,
         depth_of_field: None,
         show_axes: p.show_axes,

@@ -167,29 +167,73 @@ fn depth_of_field(p: vec2<i32>, uv: vec2<f32>, light: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(sum / weight, light.a);
 }
 
-// HDR to display: bloom, exposure, the chosen tone map and the sRGB curve; the
-// background colour where nothing was drawn and there is no sky; a screen-space outline
-// round the selected objects from the object-id target; dithering.
+fn lens_offset(uv: vec2<f32>) -> vec2<f32> {
+    let radial = uv * 2.0 - 1.0;
+    return radial * dot(radial, radial) * (0.004 * frame.lens_fringe.x);
+}
+
+fn lens_color(color: vec3<f32>, pixel: vec2<f32>, uv: vec2<f32>) -> vec3<f32> {
+    var result = color;
+    if (frame.lens_effects.x > 0.0) {
+        let radius = length(uv * 2.0 - 1.0) * 0.70710678;
+        let edge = smoothstep(1.0 - frame.lens_effects.y, 1.0, radius);
+        result *= 1.0 - frame.lens_effects.x * edge;
+    }
+    if (frame.lens_effects.z > 0.0) {
+        let cell = vec2<u32>(floor(pixel / frame.lens_effects.w));
+        var hash = cell.x * 73856093u ^ cell.y * 19349663u ^ u32(frame.lens_fringe.y) * 83492791u;
+        hash = (hash ^ (hash >> 16u)) * 2246822519u;
+        hash = (hash ^ (hash >> 13u)) * 3266489917u;
+        hash = hash ^ (hash >> 16u);
+        let noise = f32(hash & 65535u) / 65535.0 - 0.5;
+        result += vec3<f32>(noise * 0.16 * frame.lens_effects.z);
+    }
+    return result;
+}
+
+fn resolved_color(p: vec2<i32>, uv: vec2<f32>) -> vec3<f32> {
+    var light = scene_light(p, uv);
+    if (frame.dof.z > 0.0) {
+        light = depth_of_field(p, uv, light);
+    }
+    if (textureLoad(depth, p, 0) <= 0.0 && frame.params1.y < 0.5) {
+        if (light.a > 0.0) {
+            return mix(frame.background.rgb, linear_to_srgb(tonemap(light.rgb)), light.a);
+        }
+        return frame.background.rgb;
+    }
+    return linear_to_srgb(tonemap(light.rgb));
+}
+
+fn resolved_tap(pixel: vec2<i32>, size: vec2<i32>) -> vec3<f32> {
+    let p = clamp(pixel, vec2<i32>(0), size - 1);
+    return resolved_color(p, (vec2<f32>(p) + 0.5) / vec2<f32>(size));
+}
+
+fn resolved_lens_sample(uv: vec2<f32>, size: vec2<i32>) -> vec3<f32> {
+    let pixel = uv * vec2<f32>(size) - 0.5;
+    let p = vec2<i32>(floor(pixel));
+    let weight = fract(pixel);
+    let top = mix(resolved_tap(p, size), resolved_tap(p + vec2<i32>(1, 0), size), weight.x);
+    let bottom = mix(resolved_tap(p + vec2<i32>(0, 1), size), resolved_tap(p + 1, size), weight.x);
+    return mix(top, bottom, weight.y);
+}
+
+// HDR to display, followed by camera lens effects and the editor outline.
 @fragment
 fn fs_resolve(in: FullscreenOut) -> @location(0) vec4<f32> {
     let size = vec2<i32>(textureDimensions(hdr));
     let p = clamp(vec2<i32>(in.position.xy), vec2<i32>(0), size - 1);
-    var light = scene_light(p, in.uv);
-    if (frame.dof.z > 0.0) {
-        light = depth_of_field(p, in.uv, light);
+    var color = resolved_color(p, in.uv);
+    if (frame.lens_fringe.x > 0.0) {
+        let offset = lens_offset(in.uv);
+        let red_uv = clamp(in.uv + offset, vec2<f32>(0.0), vec2<f32>(1.0));
+        let blue_uv = clamp(in.uv - offset, vec2<f32>(0.0), vec2<f32>(1.0));
+        color.r = resolved_lens_sample(red_uv, size).r;
+        color.b = resolved_lens_sample(blue_uv, size).b;
     }
-    var color: vec3<f32>;
+    color = lens_color(color, in.position.xy, in.uv);
     let d = textureLoad(depth, p, 0);
-    if (d <= 0.0 && frame.params1.y < 0.5) {
-        color = frame.background.rgb;
-        // Blended surfaces (and bloom) over the background: their light is in the HDR
-        // target.
-        if (light.a > 0.0) {
-            color = mix(color, linear_to_srgb(tonemap(light.rgb)), light.a);
-        }
-    } else {
-        color = linear_to_srgb(tonemap(light.rgb));
-    }
 
     let width = i32(frame.params1.w);
     if (width > 0) {
@@ -241,18 +285,37 @@ fn fs_accumulate(in: FullscreenOut) -> @location(0) vec4<f32> {
     return previous+(light-previous)/(frame.misc.z+1.0);
 }
 
+fn accumulated_color(p: vec2<i32>) -> vec3<f32> {
+    let sample = textureLoad(accumulated, p, 0);
+    let coverage = clamp(sample.a, 0.0, 1.0);
+    if (coverage > 1e-6) {
+        return mix(frame.background.rgb, linear_to_srgb(tonemap(sample.rgb / coverage)), coverage);
+    }
+    return frame.background.rgb;
+}
+
+fn accumulated_lens_sample(uv: vec2<f32>, size: vec2<i32>) -> vec3<f32> {
+    let pixel = clamp(uv * vec2<f32>(size) - 0.5, vec2<f32>(0.0), vec2<f32>(size - 1));
+    let p = vec2<i32>(floor(pixel));
+    let next = min(p + 1, size - 1);
+    let weight = fract(pixel);
+    let top = mix(accumulated_color(p), accumulated_color(vec2<i32>(next.x, p.y)), weight.x);
+    let bottom = mix(accumulated_color(vec2<i32>(p.x, next.y)), accumulated_color(next), weight.x);
+    return mix(top, bottom, weight.y);
+}
+
 // A flat editor background stays display-referred. Coverage is averaged separately
 // so subpixel silhouettes blend with it without grading the background itself.
 @fragment
 fn fs_accumulated(in: FullscreenOut) -> @location(0) vec4<f32> {
-    let sample = textureLoad(accumulated, vec2<i32>(in.position.xy), 0);
-    let coverage = clamp(sample.a, 0.0, 1.0);
-    var color = frame.background.rgb;
-    if (coverage > 1e-6) {
-        let light = sample.rgb / coverage;
-        color = mix(color, linear_to_srgb(tonemap(light)), coverage);
+    var color = accumulated_color(vec2<i32>(in.position.xy));
+    if (frame.lens_fringe.x > 0.0) {
+        let size = vec2<i32>(textureDimensions(accumulated));
+        let offset = lens_offset(in.uv);
+        color.r = accumulated_lens_sample(in.uv + offset, size).r;
+        color.b = accumulated_lens_sample(in.uv - offset, size).b;
     }
-    return vec4<f32>(color + dither(in.position.xy), 1.0);
+    return vec4<f32>(lens_color(color, in.position.xy, in.uv) + dither(in.position.xy), 1.0);
 }
 
 // The GL renderer's FXAA, for a view drawn without the temporal filter (kept for the

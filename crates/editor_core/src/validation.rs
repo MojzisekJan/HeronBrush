@@ -123,6 +123,7 @@ fn check_worldspawn_paths(document: &Document, issues: &mut Vec<Issue>) {
 fn check_entities(document: &Document, issues: &mut Vec<Issue>) {
     for (id, entity) in map_model::node::entities_with_ids(document.tree_world()) {
         let name = entity.classname().unwrap_or("<no classname>").to_string();
+        let render_camera = entity.classname() == Some(crate::render_camera::CLASS);
 
         // `MissingClassnameValidator`.
         if entity.classname().is_none() {
@@ -158,7 +159,9 @@ fn check_entities(document: &Document, issues: &mut Vec<Issue>) {
             // all take an escaped quote. The editor's own JSON (keyframe curves and the
             // named clips of an animation library) is written escaped and read back only
             // by Heron Brush and its exports.
-            let own_json = matches!(key.as_str(), "animation_curves" | "animation_library");
+            let camera_settings = render_camera && key == crate::render_camera::KEY;
+            let own_json =
+                camera_settings || matches!(key.as_str(), "animation_curves" | "animation_library");
             if key.contains('"') || (value.contains('"') && !own_json) {
                 issues.push(Issue {
                     severity: Severity::Error,
@@ -171,7 +174,9 @@ fn check_entities(document: &Document, issues: &mut Vec<Issue>) {
             }
 
             // `LongPropertyKeyValidator` and `LongPropertyValueValidator`.
-            if key.len() >= MAX_PROPERTY_LENGTH || value.len() >= MAX_PROPERTY_LENGTH {
+            if key.len() >= MAX_PROPERTY_LENGTH
+                || (value.len() >= MAX_PROPERTY_LENGTH && !camera_settings)
+            {
                 issues.push(Issue {
                     severity: Severity::Warning,
                     kind: "long property",
@@ -199,6 +204,9 @@ fn check_entities(document: &Document, issues: &mut Vec<Issue>) {
             if classname == "heron_model" {
                 continue;
             }
+        }
+        if render_camera {
+            continue;
         }
         let definition = document
             .definitions()

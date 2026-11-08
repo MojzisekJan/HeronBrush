@@ -245,6 +245,33 @@ pub struct DepthOfField {
     pub radius: f32,
 }
 
+/// Camera effects applied to display output after scene-linear accumulation.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LensEffects {
+    /// Corner darkening strength.
+    pub vignette: f32,
+    /// Width of the radial falloff.
+    pub vignette_softness: f32,
+    /// Display noise strength.
+    pub grain: f32,
+    /// Grain cell size in output pixels.
+    pub grain_size: f32,
+    /// Radial separation of the red and blue channels.
+    pub chromatic_aberration: f32,
+}
+
+impl Default for LensEffects {
+    fn default() -> Self {
+        Self {
+            vignette: 0.0,
+            vignette_softness: 0.65,
+            grain: 0.0,
+            grain_size: 1.0,
+            chromatic_aberration: 0.0,
+        }
+    }
+}
+
 /// Everything the renderer draws by that a person can set: colours, the sun, the
 /// shadow, occlusion, bloom and reflection knobs. The frontend fills it -- the desktop
 /// reads its preference store -- and hands it over with [`Renderer::set_settings`];
@@ -256,6 +283,10 @@ pub struct RenderSettings {
     pub probes: Option<std::sync::Arc<probes::Lighting>>,
     /// Display grading, independent of scene-linear image output.
     pub color_grading: color::ColorGrading,
+    /// Display effects for the render camera.
+    pub lens_effects: LensEffects,
+    /// Output frame index, independent of the accumulation sample.
+    pub lens_frame: u32,
     /// Directional visibility and geometric horizon rejection for environment light.
     pub indirect_occlusion: bool,
     /// Optional scene-linear equirectangular environment, shared by lighting and sky.

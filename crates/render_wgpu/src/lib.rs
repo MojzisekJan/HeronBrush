@@ -196,6 +196,8 @@ struct FrameUniform {
     environment: [f32; 4],
     grading: [f32; 4],
     white_balance: [f32; 4],
+    lens_effects: [f32; 4],
+    lens_fringe: [f32; 4],
     cascade_depth_range: [f32; 4],
     local_probes: [f32; 4],
 }
@@ -1218,12 +1220,12 @@ impl Renderer {
         );
         // Light cubes: the same casters without pancaking, which would flatten the
         // light's own marker (inside the near plane) onto the cube and black it out.
-        let cube_opaque = pipeline(
-            device,
         let cube_depth = wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
             ..shadow_depth
         };
+        let cube_opaque = pipeline(
+            device,
             PipelineSpec {
                 label: "light shadow opaque",
                 layout: &shadow_layout,
@@ -2224,6 +2226,18 @@ impl Renderer {
                 0.0,
             ],
             white_balance: v4(s.color_grading.white_balance()),
+            lens_effects: [
+                s.lens_effects.vignette,
+                s.lens_effects.vignette_softness,
+                s.lens_effects.grain,
+                s.lens_effects.grain_size,
+            ],
+            lens_fringe: [
+                s.lens_effects.chromatic_aberration,
+                s.lens_frame as f32,
+                0.,
+                0.,
+            ],
             cascade_depth_range: fit.depth_range,
             local_probes: [
                 s.probes.as_ref().map_or(0, |p| p.probes().len()) as f32,

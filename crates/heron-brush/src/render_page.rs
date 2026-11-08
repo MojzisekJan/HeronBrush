@@ -461,6 +461,7 @@ impl RenderPage {
             let mut render_settings = job.settings.render();
             render_settings.environment = job.environment.clone();
             render_settings.probes = job.probes.clone();
+            render_settings.lens_frame = job.video.as_ref().map_or(0, |video| video.frame);
             let started = std::time::Instant::now();
             let batch = if job.settings.samples > 64 {
                 ctx.input(|input| {
@@ -991,8 +992,16 @@ impl RenderPage {
             translation_key("Color management"),
             translation_key("Depth of field"),
             translation_key("Animation"),
+            translation_key("Lens Effects"),
         ];
+        #[cfg(feature = "wgpu")]
+        let supports_lens_effects = self.wgpu.is_some();
+        #[cfg(not(feature = "wgpu"))]
+        let supports_lens_effects = false;
         for (index, title) in sections.into_iter().enumerate() {
+            if index == 6 && !supports_lens_effects {
+                continue;
+            }
             widgets::card(ui, "", None, |ui| {
                 ui.spacing_mut().item_spacing.y = 3.0;
                 form::fold(ui, title, tr(title), index == 1, |ui| {
@@ -1107,6 +1116,38 @@ impl RenderPage {
                 let width = ui.available_width();
                 if theme::button(ui, tr("Focus on selection"), width, true).clicked() {
                     self.focus_on_selection(editor);
+                }
+            }
+            6 => {
+                let effects = &mut self.settings.lens_effects;
+                for (label, value, min, max, step) in [
+                    (tr("Vignette"), &mut effects.vignette, 0.0, 1.0, 0.05),
+                    (
+                        tr("Vignette softness"),
+                        &mut effects.vignette_softness,
+                        0.05,
+                        1.0,
+                        0.05,
+                    ),
+                    (tr("Film grain"), &mut effects.grain, 0.0, 1.0, 0.05),
+                    (tr("Grain size"), &mut effects.grain_size, 1.0, 5.0, 0.25),
+                    (
+                        tr("Chromatic aberration"),
+                        &mut effects.chromatic_aberration,
+                        0.0,
+                        1.0,
+                        0.05,
+                    ),
+                ] {
+                    widgets::row(ui, label, None, |ui| {
+                        let mut number = f64::from(*value);
+                        widgets::spin(ui, &mut number, min..=max, step, 2);
+                        *value = number as f32;
+                    });
+                }
+                if theme::button(ui, tr("Reset lens effects"), ui.available_width(), true).clicked()
+                {
+                    *effects = Default::default();
                 }
             }
             _ => {

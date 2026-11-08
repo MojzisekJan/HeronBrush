@@ -18,6 +18,7 @@ pub struct Settings {
     pub far: f64,
     pub exposure: f32,
     pub imaging: Imaging,
+    pub lens_effects: LensEffects,
     pub sun_elevation: f32,
     pub sun_azimuth: f32,
     pub shadows: bool,
@@ -44,6 +45,7 @@ impl Default for Settings {
             far: 32768.,
             exposure: 1.,
             imaging: Imaging::default(),
+            lens_effects: LensEffects::default(),
             sun_elevation: 45.,
             sun_azimuth: 135.,
             shadows: true,
@@ -64,6 +66,7 @@ impl Settings {
     pub fn validated(mut self) -> Self {
         self.lighting = self.lighting.map(Lighting::validated);
         self.imaging = self.imaging.validated();
+        self.lens_effects = self.lens_effects.validated().into();
         self.focus_distance = self.focus_distance.clamp(1., 1000000.);
         self.focus_range = self.focus_range.clamp(0., 1000000.);
         self.blur_radius = self.blur_radius.clamp(0., 24.);
@@ -105,6 +108,7 @@ impl Settings {
         s.procedural_sky = self.procedural_sky;
         s.exposure = self.exposure * self.imaging.exposure_ev.exp2();
         s.color_grading = self.imaging.grading();
+        s.lens_effects = self.lens_effects.validated();
         s.sun_elevation = self.sun_elevation;
         s.sun_azimuth = self.sun_azimuth;
         s.accumulate = true;
@@ -113,6 +117,65 @@ impl Settings {
         s
     }
 }
+/// Saved camera values with defaults for maps created before lens effects.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LensEffects {
+    pub vignette: f32,
+    pub vignette_softness: f32,
+    pub grain: f32,
+    pub grain_size: f32,
+    pub chromatic_aberration: f32,
+}
+
+impl LensEffects {
+    fn validated(&self) -> render::LensEffects {
+        let defaults = render::LensEffects::default();
+        let finite = |value: f32, min: f32, max: f32, fallback| {
+            if value.is_finite() {
+                value.clamp(min, max)
+            } else {
+                fallback
+            }
+        };
+        render::LensEffects {
+            vignette: finite(self.vignette, 0.0, 1.0, defaults.vignette),
+            vignette_softness: finite(
+                self.vignette_softness,
+                0.05,
+                1.0,
+                defaults.vignette_softness,
+            ),
+            grain: finite(self.grain, 0.0, 1.0, defaults.grain),
+            grain_size: finite(self.grain_size, 1.0, 5.0, defaults.grain_size),
+            chromatic_aberration: finite(
+                self.chromatic_aberration,
+                0.0,
+                1.0,
+                defaults.chromatic_aberration,
+            ),
+        }
+    }
+}
+
+impl Default for LensEffects {
+    fn default() -> Self {
+        render::LensEffects::default().into()
+    }
+}
+
+impl From<render::LensEffects> for LensEffects {
+    fn from(value: render::LensEffects) -> Self {
+        Self {
+            vignette: value.vignette,
+            vignette_softness: value.vignette_softness,
+            grain: value.grain,
+            grain_size: value.grain_size,
+            chromatic_aberration: value.chromatic_aberration,
+        }
+    }
+}
+
 /// Camera-local display controls. Older maps retain their linear exposure multiplier.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -808,6 +871,7 @@ mod imaging_tests {
         let old: Settings = serde_json::from_str(r#"{"exposure":1.75}"#).unwrap();
         assert_eq!(old.render().exposure, 1.75);
         assert_eq!(old.imaging, Imaging::default());
+        assert_eq!(old.render().lens_effects, render::LensEffects::default());
         let mut settings = old;
         settings.imaging = Imaging {
             exposure_ev: 2.0,
@@ -817,7 +881,15 @@ mod imaging_tests {
             saturation: 0.7,
             tone_map: Some(crate::preferences::ToneMapper::KhronosNeutral),
         };
+        settings.lens_effects = LensEffects {
+            vignette: 0.75,
+            vignette_softness: 0.5,
+            grain: 0.4,
+            grain_size: 2.5,
+            chromatic_aberration: 0.25,
+        };
         assert_eq!(settings.render().exposure, 7.0);
+        assert_eq!(settings.render().lens_effects.grain, 0.4);
         let mut document = Document::new(Default::default());
         let id = save(&mut document, Camera3d::default(), &settings);
         let path =
@@ -826,6 +898,10 @@ mod imaging_tests {
         let reopened = Document::open(&path, Default::default()).unwrap();
         let (_, _, saved) = chosen(&reopened, Some(id)).unwrap();
         assert_eq!(saved, settings);
+        assert!(!crate::validation::validate(&reopened).iter().any(|issue| {
+            issue.node == Some(id)
+                && matches!(issue.kind, "quotation mark in property" | "unknown class")
+        }));
         std::fs::remove_file(path).unwrap();
     }
     #[test]

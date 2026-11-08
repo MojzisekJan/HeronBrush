@@ -2242,6 +2242,81 @@ fn hdr_accumulation_applies_the_latest_display_transform_to_all_samples() {
     }
 }
 
+#[test]
+fn lens_effects_change_display_without_baking_into_hdr() {
+    let (device, queue) = device().expect("lens validation requires a GPU");
+    let document = open("assets/crate.map");
+    let mut renderer = Renderer::new(&device, &queue);
+    SceneTracker::new().sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut renderer.scene,
+    );
+    let mut camera = Camera3d::default();
+    camera.frame(&document.bounds().unwrap());
+    let mut settings = single_frame_settings();
+    settings.procedural_sky = false;
+    settings.background_color = [0.42; 3];
+    settings.shadows = false;
+    settings.bloom = false;
+    settings.reflections = false;
+    settings.ambient_occlusion = false;
+
+    let mut draw = |settings: &render::RenderSettings, accumulate: bool, name: &str| {
+        let mut params = view(
+            &camera,
+            settings,
+            DisplayMode::Material,
+            Tonemapper::Aces,
+            (320, 240),
+        );
+        let hdr = if accumulate {
+            params.sample = Some(0);
+            renderer.accumulate(&params);
+            renderer.read_hdr().map(|image| image.2)
+        } else {
+            renderer.render(&params);
+            None
+        };
+        let image = renderer.read_output().unwrap();
+        save(name, &image);
+        (image.2, hdr)
+    };
+
+    let (base, hdr) = draw(&settings, true, "lens-off");
+    settings.lens_effects.vignette = 1.0;
+    let (vignette, vignette_hdr) = draw(&settings, true, "lens-vignette");
+    assert!(vignette[0] < base[0] / 2);
+    let center = (120 * 320 + 160) * 4;
+    assert_eq!(base[center..center + 4], vignette[center..center + 4]);
+    assert_eq!(hdr, vignette_hdr);
+
+    settings.lens_effects.vignette = 0.0;
+    settings.lens_effects.grain = 1.0;
+    let (grain, grain_hdr) = draw(&settings, true, "lens-grain");
+    assert_ne!(base, grain);
+    assert_eq!(grain, draw(&settings, true, "lens-grain-repeat").0);
+    settings.lens_frame = 1;
+    assert_ne!(grain, draw(&settings, true, "lens-grain-next-frame").0);
+    assert_eq!(hdr, grain_hdr);
+
+    settings.lens_effects.grain = 0.0;
+    let plain = draw(&settings, false, "lens-preview-off").0;
+    settings.lens_effects.chromatic_aberration = 1.0;
+    let (aberration, aberration_hdr) = draw(&settings, true, "lens-aberration");
+    assert!(
+        base != aberration,
+        "aberration must alter the accumulated display"
+    );
+    assert_eq!(hdr, aberration_hdr);
+    assert!(
+        plain != draw(&settings, false, "lens-preview-aberration").0,
+        "aberration must alter the preview"
+    );
+}
+
 /// Minified, opposing normal details must broaden the highlight as a rough surface
 /// would, rather than normalizing the averaged vector into a polished mirror.
 #[test]
@@ -3831,6 +3906,18 @@ fn glass_refracts_grid_in_viewport_and_still() {
     );
     assert_ne!(rear_double[0], rear_single[0]);
     assert_ne!(rear_double[1], rear_single[1]);
+    let rear_joined = draw(
+        1.5,
+        [255, 160, 160],
+        "reverse-joined-panes",
+        2,
+        true,
+        &reversed,
+    );
+    assert_eq!(
+        rear_joined, rear_double,
+        "layering must follow the reversed camera"
+    );
 }
 
 #[test]
@@ -3906,18 +3993,6 @@ fn sun_shadows_transmit_glass_tint() {
     let clear = draw([255; 3], 1., "shadow-clear-glass", Some(&triangles));
     let red = draw([255, 45, 45], 1., "shadow-red-glass", None);
     let opaque = draw([255; 3], 0., "shadow-opaque", None);
-    let rear_joined = draw(
-        1.5,
-        [255, 160, 160],
-        "reverse-joined-panes",
-        2,
-        true,
-        &reversed,
-    );
-    assert_eq!(
-        rear_joined, rear_double,
-        "layering must follow the reversed camera"
-    );
     let tinted = clear
         .as_chunks::<4>()
         .0
@@ -4021,11 +4096,6 @@ fn shared_glb_benchmark() {
     });
     let moving = std::env::var_os("RENDER_WGPU_ORBIT").is_some();
     for _ in 0..64 {
-        renderer.render(&params);
-        renderer.wait_idle();
-    }
-    save("heron", &renderer.read_output().unwrap());
-}
         if moving {
             camera.orbit(Vec3d::zero(), 0.005, 0.);
         }
@@ -4037,3 +4107,8 @@ fn shared_glb_benchmark() {
             size,
         );
         params.lights = false;
+        renderer.render(&params);
+        renderer.wait_idle();
+    }
+    save("heron", &renderer.read_output().unwrap());
+}

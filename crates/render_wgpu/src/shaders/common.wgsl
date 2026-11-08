@@ -79,6 +79,8 @@ struct Frame {
     environment: vec4<f32>,
     grading: vec4<f32>,
     white_balance: vec4<f32>,
+    lens_effects: vec4<f32>,
+    lens_fringe: vec4<f32>,
     cascade_depth_range: vec4<f32>,
     local_probes:vec4<f32>,
 };
