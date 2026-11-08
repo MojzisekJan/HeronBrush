@@ -209,6 +209,17 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-2); outl
 .btn .gh { width: 1.15em; height: 1.15em; flex: none; }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover { background: var(--accent-hover); }
+.btn-open-editor {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 85%, white), var(--accent));
+  border-color: color-mix(in srgb, var(--accent) 72%, white);
+  border-radius: 3px;
+}
+.btn-open-editor:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-hover) 85%, white), var(--accent-hover));
+}
+:root[data-theme="light"] .btn-open-editor {
+  border-color: color-mix(in srgb, var(--accent) 76%, black);
+}
 .btn-ghost { border-color: var(--line); color: var(--text); background: var(--bg-2); }
 .btn-ghost:hover { border-color: var(--line-strong); }
 .nav .btn { padding: 0.5rem 0.9rem; font-size: 0.875rem; }
@@ -238,15 +249,16 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-2); outl
 }
 
 /* Hero */
-.hero { position: relative; isolation: isolate; overflow: hidden; padding: clamp(3.5rem, 2rem + 5vw, 6.5rem) 0 3rem; text-align: center; }
+.hero { position: relative; isolation: isolate; padding: clamp(3.5rem, 2rem + 5vw, 6.5rem) 0 3rem; text-align: center; }
+.hero-background { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
 /* The two glows behind the hero, drawn grainy by a script into a canvas: smooth at the
    heart, breaking up into fine grain toward the edges. Without the script, plain blurred glows. */
-.hero::before, .hero::after {
-  content: ""; position: absolute; z-index: -1; filter: blur(90px); opacity: var(--glow-opacity); border-radius: 50%;
+.hero-background::before, .hero-background::after {
+  content: ""; position: absolute; filter: blur(90px); opacity: var(--glow-opacity); border-radius: 50%;
 }
-.hero::before { width: 520px; height: 380px; left: 8%; top: 40px; background: radial-gradient(circle, var(--glow-blue), transparent 70%); }
-.hero::after { width: 480px; height: 360px; right: 6%; top: 120px; background: radial-gradient(circle, var(--glow-warm), transparent 70%); }
-.hero.grainy::before, .hero.grainy::after { content: none; }
+.hero-background::before { width: 520px; height: 380px; left: 8%; top: 40px; background: radial-gradient(circle, var(--glow-blue), transparent 70%); }
+.hero-background::after { width: 480px; height: 360px; right: 6%; top: 120px; background: radial-gradient(circle, var(--glow-warm), transparent 70%); }
+.hero.grainy .hero-background::before, .hero.grainy .hero-background::after { content: none; }
 .hero-grain { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
 /* Heron and wordmark side by side; on a phone the heron sits above. */
 .lockup {
@@ -616,15 +628,34 @@ footer a:hover { color: var(--text); }
 .btn-primary:hover::before, .btn-primary:focus-visible::before { transform: translateX(120%); transition: transform 0.5s ease-out; }
 .btn-primary:hover, .btn-primary:focus-visible { transform: translateY(-1px); box-shadow: 0 8px 24px -6px var(--accent-glow); }
 .btn-ghost:hover, .btn-ghost:focus-visible { background: var(--ghost-hover); border-color: var(--line-strong); transform: translateY(-1px); }
+.btn-download {
+  border-radius: 3px;
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--bg-2) 93%, var(--text)), var(--bg-2));
+}
+.btn-download:hover, .btn-download:focus-visible {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--ghost-hover) 93%, var(--text)), var(--ghost-hover));
+}
 .btn:active { transform: translateY(1px); box-shadow: none; transition-duration: 0.08s; }
+.btn-open-editor, .btn-download {
+  --top-highlight: inset 0 1px 2px rgb(255 255 255 / 18%);
+  box-shadow: var(--top-highlight);
+  text-shadow: 0 1px 1px rgb(0 0 0 / 24%);
+}
+.btn-open-editor:hover, .btn-open-editor:focus-visible {
+  box-shadow: var(--top-highlight), 0 8px 24px -6px var(--accent-glow);
+}
+:root[data-theme="light"] .btn-download {
+  --top-highlight: inset 0 1px 2px rgb(255 255 255 / 45%);
+  text-shadow: 0 1px 1px rgb(255 255 255 / 45%);
+}
 
 .hero-shot {
   transform: perspective(1800px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
   transition: transform 0.25s ease-out;
 }
 @media (pointer: fine) { .hero-shot { will-change: transform; } }
-.hero::before { animation: drift-a 24s ease-in-out infinite alternate; }
-.hero::after { animation: drift-b 28s ease-in-out infinite alternate; }
+.hero-background::before { animation: drift-a 24s ease-in-out infinite alternate; }
+.hero-background::after { animation: drift-b 28s ease-in-out infinite alternate; }
 @keyframes drift-a { to { transform: translate(60px, 30px) scale(1.12); } }
 @keyframes drift-b { to { transform: translate(-50px, -24px) scale(1.08); } }
 
