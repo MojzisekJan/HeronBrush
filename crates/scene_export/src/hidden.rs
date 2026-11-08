@@ -46,7 +46,7 @@ impl std::fmt::Display for Hidden {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} face {} (`{}`, {:.0} units square, around ({:.0} {:.0} {:.0})) is flat against {} and cannot be seen; texture it with skip",
+            "{} face {} (`{}`, {:.0} units square, around ({:.0} {:.0} {:.0})) is covered by {} in the rest pose and may become visible when a solid moves",
             self.place,
             self.face,
             self.texture,
