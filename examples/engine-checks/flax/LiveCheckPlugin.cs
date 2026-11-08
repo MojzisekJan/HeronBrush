@@ -75,6 +75,25 @@ namespace Game
                 if (_stage==1) { _movedModel=world.Model.ID; _movedTriangles=world.Model.LODs[0].Meshes.Sum(m=>m.TriangleCount); }
                 if (_stage==2 && _movedModel==world.Model.ID) throw new Exception("Deletion did not change geometry");
                 if (_stage==3 && _movedTriangles!=world.Model.LODs[0].Meshes.Sum(m=>m.TriangleCount)) throw new Exception("Undo did not restore geometry");
+                if (Environment.GetEnvironmentVariable("HERON_FLAX_LIVE_MOTION") == "1")
+                {
+                    var snapshot = JObject.Parse(File.ReadAllText(Path.Combine(
+                        Globals.ProjectContentFolder, "HeronBrushLive/preview.json")));
+                    var mover = ((JArray)snapshot["placements"]).Single(p =>
+                        (string)p["metadata"]["properties"]?["targetname"]?["value"] == "shuttle");
+                    if (!root.Children.Any(actor => actor.Name == (string)mover["name"]))
+                        throw new Exception("Animated entity missing from the scene");
+                    var animation = JObject.Parse((string)mover["metadata"]["properties"]["_heron_animation"]["value"]);
+                    var maximum = animation.SelectTokens("clips[*].channels[*].keys[*].value").Max(key => (double)key);
+                    var expected = _stage == 0 ? 192.0 : 256.0;
+                    if (Math.Abs(maximum - expected) > 0.001)
+                        throw new Exception("Wrong animation payload for stage " + _stage + ": " + maximum);
+                    var hasLight = root.Children.SelectMany(actor => actor.Children)
+                        .OfType<PointLight>().Any(light => Math.Abs(light.Radius - 500f) < 0.1f);
+                    if (hasLight != (_stage != 0))
+                        throw new Exception("Point light entity did not match the snapshot");
+                    Debug.Log("HERON_LIVE_MOTION stage=" + _stage + " key=" + maximum + " light=" + hasLight);
+                }
                 Debug.Log("HERON_LIVE_CHECK stage="+_stage+" actors="+root.ChildrenCount+" colliders="+Colliders(root));
                 _stage++;_published=false;
                 if (_stage==4) { Scripting.Update-=Tick; Debug.Log("HERON_LIVE_CHECK PASS"); Engine.RequestExit(0); }

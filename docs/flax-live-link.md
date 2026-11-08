@@ -53,7 +53,10 @@ while saved scenes still reference its assets.
 ## Native verification
 
 Linux native checks used a local Flax installation and the .NET 8 SDK.
-A disposable copy of `examples/engine-checks/flax` is prepared using:
+Prepare a disposable project from `examples/engine-checks/flax`. Use the scene template
+as `Content/ExportCheck.scene` and omit `CollisionCheck.cs`, `ExportCheckPlugin.cs`,
+`MotionCheck.cs` and `WaterCheckPlugin.cs` from the copied source. Those scripts
+require the runtime classes from a final export. Then run:
 
 ```sh
 HERON_FLAX_LIVE_PROJECT=/absolute/path/to/test-project \
@@ -61,6 +64,11 @@ HERON_FLAX_LIVE_PROJECT=/absolute/path/to/test-project \
 cp examples/engine-checks/flax/LiveCheckPlugin.cs /absolute/path/to/test-project/Source/Game/
 FlaxEditor -headless -null -project /absolute/path/to/test-project -std -heronlivecheck
 ```
+
+Set `HERON_FLAX_LIVE_MOTION=1` for both the fixture publisher and the editor to
+use Motion Lab. That variant checks the new point-light actor and the revised
+animation payload after the editor acknowledges the snapshot. The live scene
+stays at its authored pose. Use the final Motion Lab export to test playback.
 
 The native test applies four successive snapshots: original, moved brush,
 deleted brush, and undo. It checks a single owned root, preserved attachment

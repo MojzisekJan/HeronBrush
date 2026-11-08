@@ -41,7 +41,8 @@ def main():
         return
     shutil.copytree(HERE / args.target, project, dirs_exist_ok=True,
                     ignore=shutil.ignore_patterns("Cache", "Logs", "Binaries", "build", ".internal",
-                                                  "textures", "Content", "arena", "*.log", "*.png"))
+                                                  "textures", "Content", "arena", "*.log", "*.png",
+                                                  "WaterCheckPlugin.cs"))
     destination = project / ("main" if args.target == "defold" else "Content/arena")
     command = [sys.executable, str(HERE / "export_motion_lab.py"), args.target,
                "--output", str(destination), "--project-root", str(project),

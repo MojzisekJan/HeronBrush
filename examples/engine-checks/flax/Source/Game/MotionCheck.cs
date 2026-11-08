@@ -18,7 +18,8 @@ namespace Game
         private static void PhysicsStep() {Physics.FlushRequests();Physics.Simulate(Dt);Physics.CollectResults();}
         public static void PoseCheck()
         {
-            string folder=Environment.GetEnvironmentVariable("HERON_PORTABLE_FIXTURES")??"/tmp/heron-portable-animation-check";
+            string folder=Environment.GetEnvironmentVariable("HERON_PORTABLE_FIXTURES")
+                ?? Path.Combine(Path.GetTempPath(), "heron-portable-animation-check");
             var actor=new EmptyActor {Name="Animation pose check",Position=V(3,4,2)};
             Check(!Level.SpawnActor(actor),"spawn pose actor");
             try

@@ -495,8 +495,13 @@ impl LiveLink {
                         return;
                     }
                     if ack["revision"] == state.published && ack["state"] == "error" {
-                        let message = ack["message"].as_str().unwrap_or("Could not update the map");
-                        self.say(format!("{} live link failed: {message}", self.engine.get().name()));
+                        let message = ack["message"]
+                            .as_str()
+                            .unwrap_or("Could not update the map");
+                        self.say(format!(
+                            "{} live link failed: {message}",
+                            self.engine.get().name()
+                        ));
                     } else if ack["revision"] == state.published && ack["state"] == "updated" {
                         self.say(format!(
                             "{} updated — drawing changes will sync automatically",
@@ -970,10 +975,39 @@ mod tests {
         crate::flax_live::claim_folder(&root).unwrap();
         let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let demo = repository.join("demos/bevy_fps");
-        let mut doc = Document::open(demo.join("maps/demo.map"), WorldBounds::default()).unwrap();
-        doc.load_definitions(demo.join("gamedata/fpskit.fgd"))
-            .unwrap();
-        doc.load_materials(demo.join("assets/textures")).unwrap();
+        let motion = std::env::var_os("HERON_FLAX_LIVE_MOTION").is_some();
+        let motion_dir = repository.join("demos/motion_lab");
+        let mut doc = Document::open(
+            if motion {
+                motion_dir.join("motion_lab.map")
+            } else {
+                demo.join("maps/demo.map")
+            },
+            WorldBounds::default(),
+        )
+        .unwrap();
+        doc.load_definitions(if motion {
+            motion_dir.join("motion_lab.fgd")
+        } else {
+            demo.join("gamedata/fpskit.fgd")
+        })
+        .unwrap();
+        if !motion {
+            doc.load_materials(demo.join("assets/textures")).unwrap();
+        }
+        let mover = motion.then(|| {
+            let (id, entity) = map_model::node::entities_with_ids(doc.tree_world())
+                .into_iter()
+                .find(|(_, entity)| entity.property("targetname") == Some("shuttle"))
+                .unwrap();
+            (
+                id,
+                entity
+                    .property("animation_curves")
+                    .unwrap()
+                    .replace("192.0", "256.0"),
+            )
+        });
         let options = Options {
             target: Target::Flax,
             name: "preview".into(),
@@ -999,6 +1033,13 @@ mod tests {
                     doc.undo();
                 }
                 _ => {}
+            }
+            if step == 1 {
+                if let Some((id, curves)) = &mover {
+                    assert!(doc.set_entity_property(*id, "animation_curves", curves));
+                    let light = doc.create_point_entity("light", Vec3d::new(64., 96., 128.));
+                    assert!(doc.set_entity_property(light, "range", "128"));
+                }
             }
             let prepared = crate::flax_live::prepare_document(
                 doc.export_snapshot(&root.join("unsaved.map")),
