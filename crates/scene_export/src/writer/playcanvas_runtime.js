@@ -16,6 +16,46 @@
 // keyframe animation, and a collision component alone (a trigger volume, which fires
 // triggerenter) for a sensor. Triangles are a mesh shape and hulls convex shapes.
 
+// Each scene setting has an ownership stack so maps can be unloaded in either order.
+const sceneValues = new WeakMap();
+function setSceneValue(target, key, value, owned) {
+  let fields = sceneValues.get(target);
+  if (!fields) sceneValues.set(target, fields = new Map());
+  let stack = fields.get(key);
+  if (!stack) fields.set(key, stack = []);
+  const entry = {target, key, before: target[key], value};
+  target[key] = value;
+  stack.push(entry); owned.push(entry);
+}
+function restoreSceneValues(owned) {
+  for (const entry of owned.splice(0).reverse()) {
+    const {target, key, before, value} = entry;
+    const fields = sceneValues.get(target), stack = fields.get(key), index = stack.indexOf(entry);
+    if (index + 1 < stack.length) stack[index + 1].before = before;
+    else if (target[key] === value) target[key] = before;
+    stack.splice(index, 1);
+    if (!stack.length) fields.delete(key);
+    if (!fields.size) sceneValues.delete(target);
+  }
+}
+function cleanupAll(tasks) {
+  const errors = [];
+  for (const task of tasks) try { task(); } catch (error) { errors.push(error); }
+  if (errors.length) throw new AggregateError(errors, 'Could not completely dispose the Heron Brush level');
+}
+function validateLevel(level) {
+  if (level?.format !== 2 || !Array.isArray(level.entities)) throw new Error('Not a Heron Brush level (format 2)');
+  const names = new Set();
+  for (const entity of level.entities) {
+    if (!entity || typeof entity.name !== 'string' || !entity.name || names.has(entity.name))
+      throw new Error('Missing or duplicate entity name: ' + entity?.name);
+    names.add(entity.name);
+    const t = entity.transform;
+    if (!t || ![t.translation, t.rotation_yxz, t.scale].every(v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite)))
+      throw new Error('Invalid entity transform: ' + entity.name);
+  }
+}
+
 const RADIANS = Math.PI / 180;
 // Ray masks: everything but trigger volumes, and only static and kinematic bodies.
 export const SOLID_MASK = 0xffff ^ 16;
@@ -294,16 +334,45 @@ function exactHulls(shape) {
   for (let i = 0; i < shape.getNumChildShapes(); i++) shape.getChildShape(i).setMargin(0);
 }
 
+// The asset loader caches resources by URL. Keep one lease per level so
+// unloading a copy cannot destroy resources another copy is still rendering.
+const sharedAssets = new WeakMap();
+async function acquireAsset(app, kind, source, load) {
+  let kinds = sharedAssets.get(app);
+  if (!kinds) sharedAssets.set(app, kinds = new Map());
+  let assets = kinds.get(kind);
+  if (!assets) kinds.set(kind, assets = new Map());
+  const key = typeof source === 'string' ? new URL(source, location.href).href : source;
+  let entry = assets.get(key);
+  if (!entry) {
+    entry = {references: 0, promise: Promise.resolve().then(load)};
+    assets.set(key, entry);
+  }
+  entry.references++;
+  let asset;
+  try { asset = await entry.promise; }
+  catch (error) {
+    if (assets.get(key) === entry) assets.delete(key);
+    throw error;
+  }
+  return {asset, release() {
+    if (--entry.references !== 0) return;
+    assets.delete(key);
+    cleanupAll([() => app.assets.remove(asset), () => asset.unload()]);
+  }};
+}
+
 // Loads a GLB (bytes, or a URL) as a container asset.
 function loadContainer(pc, app, name, source) {
   let url = source, blob = null;
   if (typeof source !== 'string') url = blob = URL.createObjectURL(new Blob([source], {type: 'model/gltf-binary'}));
   const asset = new pc.Asset(name, 'container', {url, filename: name.split('/').pop()});
-  app.assets.add(asset);
+  const release = () => { if (blob) URL.revokeObjectURL(blob); app.assets.remove(asset); asset.unload(); };
   return new Promise((resolve, reject) => {
-    asset.once('error', error => reject(new Error(`${name}: ${error}`)));
+    asset.once('error', error => { release(); reject(new Error(`${name}: ${error}`)); });
     asset.ready(() => { if (blob) URL.revokeObjectURL(blob); resolve(asset); });
-    app.assets.load(asset);
+    try { app.assets.add(asset); app.assets.load(asset); }
+    catch (error) { release(); reject(error); }
   });
 }
 
@@ -312,11 +381,12 @@ function loadPanorama(pc, app, source) {
   let url = source, blob = null;
   if (typeof source !== 'string') url = blob = URL.createObjectURL(new Blob([source]));
   const asset = new pc.Asset('heron-sky', 'texture', {url, filename: 'sky.hdr'}, {type: 'rgbe', mipmaps: false});
-  app.assets.add(asset);
+  const release = () => { if (blob) URL.revokeObjectURL(blob); app.assets.remove(asset); asset.unload(); };
   return new Promise((resolve, reject) => {
-    asset.once('error', error => reject(new Error(`sky: ${error}`)));
+    asset.once('error', error => { release(); reject(new Error(`sky: ${error}`)); });
     asset.ready(() => { if (blob) URL.revokeObjectURL(blob); resolve(asset); });
-    app.assets.load(asset);
+    try { app.assets.add(asset); app.assets.load(asset); }
+    catch (error) { release(); reject(error); }
   });
 }
 
@@ -344,22 +414,25 @@ function scaledPanorama(pc, texture, factor) {
 }
 
 // The level's sky (an equirectangular .hdr), sun, fog and exposure.
-async function applyEnvironment(pc, app, env, sky, root) {
-  const made = {entities: [], textures: [], assets: []};
+async function applyEnvironment(pc, app, env, sky, root, made, owned, releases) {
   if (!env) return made;
   const scene = app.scene;
   if (sky) {
-    const asset = await loadPanorama(pc, app, sky);
+    const {asset, release} = await acquireAsset(app, 'texture', sky, () => loadPanorama(pc, app, sky));
+    releases.push(release);
+    made.assets.push(asset);
     const skybox = pc.EnvLighting.generateSkyboxCubemap(asset.resource);
-    const dimmed = scaledPanorama(pc, asset.resource, env.ambient_intensity);
-    const lighting = pc.EnvLighting.generateLightingSource(dimmed ?? asset.resource);
-    const atlas = pc.EnvLighting.generateAtlas(lighting);
-    lighting.destroy();
-    dimmed?.destroy();
-    scene.envAtlas = atlas;
-    scene.skybox = env.show_background === false ? null : skybox;
-    scene.skyboxMip = 0;
-    made.textures.push(skybox, atlas); made.assets.push(asset);
+    made.textures.push(skybox);
+    let dimmed, lighting, atlas;
+    try {
+      dimmed = scaledPanorama(pc, asset.resource, env.ambient_intensity);
+      lighting = pc.EnvLighting.generateLightingSource(dimmed ?? asset.resource);
+      atlas = pc.EnvLighting.generateAtlas(lighting);
+      made.textures.push(atlas);
+    } finally { lighting?.destroy(); dimmed?.destroy(); }
+    setSceneValue(scene, 'envAtlas', atlas, owned);
+    setSceneValue(scene, 'skybox', env.show_background === false ? null : skybox, owned);
+    setSceneValue(scene, 'skyboxMip', 0, owned);
   }
   const sun = new pc.Entity('heron-sun');
   const toSun = new pc.Vec3(...env.to_sun).normalize();
@@ -377,12 +450,12 @@ async function applyEnvironment(pc, app, env, sky, root) {
   });
   root.addChild(sun);
   made.entities.push(sun);
-  scene.exposure = env.exposure;
-  for (const camera of app.systems.camera?.cameras ?? []) camera.toneMapping = pc.TONEMAP_ACES;
+  setSceneValue(scene, 'exposure', env.exposure, owned);
+  for (const camera of app.systems.camera?.cameras ?? []) setSceneValue(camera, 'toneMapping', pc.TONEMAP_ACES, owned);
   if (env.fog) {
-    scene.fog.type = pc.FOG_EXP2;
-    scene.fog.density = env.fog.density;
-    scene.fog.color = new pc.Color(...env.fog.color);
+    setSceneValue(scene.fog, 'type', pc.FOG_EXP2, owned);
+    setSceneValue(scene.fog, 'density', env.fog.density, owned);
+    setSceneValue(scene.fog, 'color', new pc.Color(...env.fog.color), owned);
   }
   return made;
 }
@@ -420,29 +493,46 @@ function makeLight(pc, record, shadowsEnabled) {
 export async function loadLevel(pc, app, source, options = {}) {
   let level = source.level, base = '', meshSources = source.meshes ?? {};
   if (typeof source === 'string') {
-    level = await (await fetch(source)).json();
+    const response = await fetch(source);
+    if (!response.ok) throw new Error(`Could not load level (${response.status}): ${source}`);
+    level = await response.json();
     base = new URL('.', new URL(source, location.href)).href;
   }
-  if (level?.format !== 2 || !Array.isArray(level.entities)) throw new Error('Not a Heron Brush level (format 2)');
+  validateLevel(level);
   const rigidbody = app.systems.rigidbody;
   if (rigidbody && !rigidbody.physicsWorld && typeof Ammo !== 'undefined') rigidbody.onLibraryLoaded();
   const physics = !!rigidbody?.physicsWorld;
   const root = new pc.Entity(level.name);
   (options.parent ?? app.root).addChild(root);
-  const containers = new Map();
+  const containers = new Map(), materials = new Set(), releases = [];
   const container = path => {
-    if (!containers.has(path)) containers.set(path, loadContainer(pc, app, path, meshSources[path] ?? base + path));
+    if (!containers.has(path)) {
+      const source = meshSources[path] ?? base + path;
+      containers.set(path, acquireAsset(app, 'container', source, () => loadContainer(pc, app, path, source))
+        .then(({asset, release}) => { releases.push(release); return asset; }));
+    }
     return containers.get(path);
   };
   const out = {
     data: level, root, entities: [], byName: new Map(), animations: new Map(), triggers: [], waters: [],
-    lights: [], bodies: [], environment: null, assets: [], cleanups: [], time: 0,
+    lights: [], bodies: [], environment: {entities: [], textures: [], assets: []}, sceneValues: [], assets: [], cleanups: [], time: 0,
   };
+  let disposed = false;
+  out.dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    cleanupAll([
+      ...out.cleanups.splice(0).reverse(),
+      () => restoreSceneValues(out.sceneValues),
+      () => root.destroy(),
+      ...[...materials].map(material => () => material.destroy()),
+      ...out.environment.textures.map(texture => () => texture.destroy()),
+      ...releases,
+    ]);
+  };
+  try {
   for (const entity of level.entities) {
     const t = entity.transform;
-    if (![t.translation, t.rotation_yxz, t.scale].every(v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite))) {
-      throw new Error('Invalid entity transform: ' + entity.name);
-    }
     const node = new pc.Entity(entity.name);
     root.addChild(node);
     node.setLocalPosition(...t.translation);
@@ -479,6 +569,7 @@ export async function loadLevel(pc, app, source, options = {}) {
         for (const instance of record.meshes) {
           if (!copies.has(instance.material)) {
             const copy = instance.material.clone();
+            materials.add(copy);
             record.water.material(copy, app.graphicsDevice);
             copies.set(instance.material, copy);
           }
@@ -505,7 +596,7 @@ export async function loadLevel(pc, app, source, options = {}) {
   if (options.sky !== false) {
     const env = level.environment;
     const sky = source.sky ?? (env?.panorama ? base + env.panorama : null);
-    out.environment = await applyEnvironment(pc, app, env, sky, root);
+    await applyEnvironment(pc, app, env, sky, root, out.environment, out.sceneValues, releases);
   }
   for (const record of out.entities) {
     const factory = options.factories?.[record.values.playcanvas_factory] ?? options.factories?.[record.classname];
@@ -526,17 +617,11 @@ export async function loadLevel(pc, app, source, options = {}) {
   // passed unless `triggers` is true.
   out.raycast = (from, to, triggers = false) => physics
     ? rigidbody.raycastFirst(from, to, triggers ? {} : {filterCollisionMask: SOLID_MASK}) : null;
-  out.dispose = () => {
-    for (const cleanup of out.cleanups.splice(0)) cleanup();
-    root.destroy();
-    for (const asset of out.assets) { app.assets.remove(asset); asset.unload(); }
-    const env = out.environment;
-    if (env) {
-      if (env.textures.length) { app.scene.skybox = null; app.scene.envAtlas = null; }
-      for (const texture of env.textures) texture.destroy();
-      for (const asset of env.assets) { app.assets.remove(asset); asset.unload(); }
-    }
-  };
+  } catch (error) {
+    try { out.dispose(); }
+    catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Level load failed and cleanup reported errors', {cause: error}); }
+    throw error;
+  }
   return out;
 }
 

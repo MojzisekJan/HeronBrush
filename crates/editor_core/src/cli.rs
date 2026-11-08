@@ -14,6 +14,8 @@ use crate::{plugin, plugin_manifest, world};
 pub enum Command {
     /// Print the version and leave (`--version`, `-V`).
     Version,
+    /// Manage a Defold project without opening a window.
+    DefoldProject(Vec<String>),
     /// Print the usage and leave (`--help`, `-h`).
     Help,
     /// Serve the MCP protocol over stdio (`--mcp`).
@@ -50,6 +52,7 @@ pub fn parse(args: &[String]) -> Command {
     match args.first().map(String::as_str) {
         Some("--version" | "-V") => Command::Version,
         Some("--help" | "-h") => Command::Help,
+        Some("--defold-project") => Command::DefoldProject(rest()),
         Some("--mcp") => Command::Mcp,
         Some("--merge-map") => Command::MergeMap(rest()),
         Some("--obj-to-map") => Command::ObjToMap(rest()),
@@ -73,6 +76,7 @@ pub fn usage(program: &str) -> String {
          \x20      an empty argument skips one: {program} map.map \"\" materials/\n\
          \x20      {program} --version | -V\n\
          \x20      {program} --mcp\n\
+         \x20      {program} --defold-project <project> install|open|export|validate|reload\n\
          \x20      {program} --merge-map <base> <ours> <theirs> [<output>]\n\
          \x20      {program} --obj-to-map <in.obj> <out.map> [size] [thickness] [snap] [material]\n\
          \x20      {program} --render-preview <in.map> <out.png> [size]\n\
@@ -92,6 +96,13 @@ pub fn run(command: &Command, program: &str, version: &str) -> Option<i32> {
             println!("{version}\n\n{}", usage(program));
             0
         }
+        Command::DefoldProject(args) => match crate::defold_addon::command(args) {
+            Ok(()) => 0,
+            Err(e) => {
+                eprintln!("heron-brush: {e}");
+                1
+            }
+        },
         Command::MergeMap(args) => merge_map(args, program),
         Command::ObjToMap(args) => obj_to_map(args, program),
         Command::RenderPreview(args) => render_preview(args, program),

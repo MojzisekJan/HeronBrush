@@ -89,20 +89,41 @@ pub fn installed(root: &Path) -> bool {
 }
 pub fn install(root: &Path) -> Result<(), String> {
     let module = module(root)?;
+    // Never follow project links while writing generated code or its ownership record.
+    let mut ancestor = Some(module.as_path());
+    while let Some(path) = ancestor {
+        if path == root {
+            break;
+        }
+        if std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
+            return Err(format!("Addon path is a symbolic link: {}", path.display()));
+        }
+        ancestor = path.parent();
+    }
+    let state_path = module.join(OWNERSHIP);
+    if std::fs::symlink_metadata(&state_path).is_ok_and(|m| m.file_type().is_symlink()) {
+        return Err("Addon ownership record is a symbolic link.".into());
+    }
+    let previous: std::collections::BTreeMap<String, String> = match std::fs::read(&state_path) {
+        Ok(bytes) => serde_json::from_slice(&bytes)
+            .map_err(|e| format!("Invalid addon ownership record: {e}"))?,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Default::default(),
+        Err(e) => return Err(e.to_string()),
+    };
     let files = addon();
-    let previous: std::collections::BTreeMap<String, String> =
-        match std::fs::read(module.join(OWNERSHIP)) {
-            Ok(bytes) => serde_json::from_slice(&bytes)
-                .map_err(|e| format!("Invalid addon ownership manifest: {e}"))?,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Default::default(),
-            Err(error) => return Err(error.to_string()),
-        };
-    // Validate every existing file before replacing any generated source.
     for (name, bytes) in &files {
         let path = module.join(name);
+        for target in [&path, &state_path] {
+            if std::fs::symlink_metadata(target).is_ok_and(|m| m.file_type().is_symlink()) {
+                return Err(format!(
+                    "Addon file is a symbolic link: {}",
+                    target.display()
+                ));
+            }
+        }
         if path.exists() {
-            let current = std::fs::read(&path).map_err(|e| e.to_string())?;
-            if current != *bytes && previous.get(*name) != Some(&fingerprint(&current)) {
+            let actual = std::fs::read(&path).map_err(|e| e.to_string())?;
+            if actual != *bytes && previous.get(*name) != Some(&fingerprint(&actual)) {
                 return Err(format!(
                     "{} has local edits. Move it aside before installing the addon.",
                     path.display()
@@ -288,6 +309,25 @@ pub fn prepare_document(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    #[test]
+    fn addon_install_rejects_linked_files_without_touching_the_target() {
+        let root = std::env::temp_dir().join(format!("heron-flax-link-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("Source/Game")).unwrap();
+        std::fs::write(root.join("Source/Game/Game.Build.cs"), "module").unwrap();
+        install(&root).unwrap();
+        let path = module(&root).unwrap().join("HeronBrushLiveEditor.cs");
+        let target = root.join("project-code.cs");
+        std::fs::write(&target, "project code").unwrap();
+        std::fs::remove_file(&path).unwrap();
+        std::os::unix::fs::symlink(&target, &path).unwrap();
+        assert!(install(&root).is_err());
+        assert!(!installed(&root));
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "project code");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     #[ignore = "writes a native Flax lighting fixture to HERON_FLAX_ADVANCED"]
     fn native_flax_advanced_fixture() {
@@ -441,6 +481,19 @@ mod tests {
         install(&root).unwrap();
         assert!(installed(&root));
         let path = module(&root).unwrap().join("HeronBrushLiveEditor.cs");
+        // Simulate an older tracked distribution, then upgrade without losing ownership.
+        std::fs::write(&path, "old generated addon").unwrap();
+        let state_path = module(&root).unwrap().join(OWNERSHIP);
+        let mut state: std::collections::BTreeMap<String, String> =
+            serde_json::from_slice(&std::fs::read(&state_path).unwrap()).unwrap();
+        state.insert(
+            "HeronBrushLiveEditor.cs".into(),
+            fingerprint(b"old generated addon"),
+        );
+        std::fs::write(&state_path, serde_json::to_vec(&state).unwrap()).unwrap();
+        assert!(!installed(&root));
+        install(&root).unwrap();
+        assert!(installed(&root));
         std::fs::write(&path, "local edits").unwrap();
         assert!(!installed(&root));
         assert!(install(&root).is_err());

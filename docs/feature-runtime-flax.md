@@ -117,6 +117,24 @@ This avoids clipping HDR values. The native importer still omits the model AO
 map, and this run does not establish rendered appearance. See
 [the local audit](export-audit-2026-10-28.md).
 
+## 4 November 2026 update
+
+The Linux Flax 1.12.6912 Null-renderer run passed 82 feature assertions. The 35
+extracted PNGs matched the exported source images. Flax still did not extract
+the two imported-model AO images. This run checks imported asset references,
+geometry, lights, animation, property types, links, PhysX bodies and sensors.
+It does not verify rendered pixels.
+
+The separate [live-link check](flax-live-link.md#replacement-and-addon-updates)
+passed move, delete, undo, failed property binding without actor leaks, recovery
+with an inactive root and switching sources after stopping. It also rejected
+non-finite transforms, duplicate names and malformed transform dimensions.
+
+The disposable custom-game project also passed native prefabs, typed fields,
+forward component references, dynamic-body mass and settling, two exported maps,
+rebuild placement and ownership after saving and reopening the scene. Its check
+now imports the environment dependencies before building the scene.
+
 ## macOS export updates
 
 Verified against Flax 1.13.7014.1 on Apple Silicon with the .NET 10 SDK. The

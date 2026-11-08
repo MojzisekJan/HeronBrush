@@ -17,6 +17,8 @@ namespace Game
         private Guid _movedModel;
         private int _movedTriangles;
         private string _revision;
+        private Actor _previous;
+        private int _previousChildren;
         public override void InitializeEditor()
         {
             base.InitializeEditor();
@@ -24,6 +26,26 @@ namespace Game
             Scripting.Update += Tick;
         }
         private int Colliders(Actor a) { int n = a is MeshCollider ? 1 : 0; foreach (var c in a.Children) n += Colliders(c); return n; }
+        private void CheckRejectedSnapshots()
+        {
+            var original=JObject.Parse(File.ReadAllText(Path.Combine(Globals.ProjectFolder,"LiveFixtures/0/Content/HeronBrushLive/preview.json")));
+            var path=Path.Combine(Globals.ProjectFolder,"invalid-snapshot.json");
+            for (int i=0;i<3;i++)
+            {
+                var snapshot=(JObject)original.DeepClone();
+                var placements=(JArray)snapshot["placements"];
+                if(i==0) placements[0]["position"][0]="NaN";
+                if(i==1) placements.Add(placements[0].DeepClone());
+                if(i==2) placements[0]["orientation"]=new JArray(0,0);
+                File.WriteAllText(path,snapshot.ToString());
+                bool rejected=false;
+                try { HeronBrushLiveBuilder.LoadSnapshot(path); }
+                catch(InvalidOperationException) { rejected=true; }
+                if(!rejected)throw new Exception("Invalid snapshot accepted: "+i);
+            }
+            File.Delete(path);
+            Debug.Log("HERON_LIVE_CHECK invalid snapshots PASS");
+        }
         private void Tick()
         {
             try
@@ -34,6 +56,7 @@ namespace Game
                 if (_elapsed < 2) return;
                 if (!_setup)
                 {
+                    CheckRejectedSnapshots();
                     Level.UnloadAllScenes();
             var scenePath = Path.Combine(Globals.ProjectContentFolder, "ExportCheck.scene");
             if (!Content.GetAssetInfo(scenePath, out var info) || Level.LoadScene(info.ID)) throw new Exception("Missing test scene");
@@ -43,14 +66,25 @@ namespace Game
                 }
                 if (!_published)
                 {
-                    var folder = Path.Combine(Globals.ProjectFolder,"LiveFixtures",_stage.ToString());
+                    var folder = Path.Combine(Globals.ProjectFolder,"LiveFixtures",Math.Min(_stage,3).ToString());
                     File.WriteAllText(Path.Combine(Globals.ProjectFolder,".heron-brush-live-busy"),"check");
                     foreach (var file in Directory.GetFiles(Path.Combine(folder,"Content"),"*",SearchOption.AllDirectories))
                     {
                         var destination=Path.Combine(Globals.ProjectFolder,file.Substring(folder.Length+1));
                         Directory.CreateDirectory(Path.GetDirectoryName(destination)); File.Copy(file,destination,true);
                     }
-                    var manifest=File.ReadAllText(Path.Combine(folder,".heron-brush-live.json"));
+                    var manifestData=JObject.Parse(File.ReadAllText(Path.Combine(folder,".heron-brush-live.json")));
+                    if (_stage >= 4) manifestData["revision"]="failure-recovery-"+_stage;
+                    if (_stage == 4)
+                    {
+                        var snapshotPath=Path.Combine(Globals.ProjectFolder,"Content/HeronBrushLive/preview.json");
+                        var snapshot=JObject.Parse(File.ReadAllText(snapshotPath));
+                        snapshot["placements"][0]["metadata"]["properties"]["flax_property_Missing__Value"] =
+                            new JObject { ["value"]=1 };
+                        File.WriteAllText(snapshotPath,snapshot.ToString());
+                    }
+                    if (_stage == 6) { HeronBrushLiveEditor.Instance.Stop(); manifestData["source"]="second-map"; }
+                    var manifest=manifestData.ToString();
                     _revision=(string)JObject.Parse(manifest)["revision"];
                     File.WriteAllText(Path.Combine(Globals.ProjectFolder,".heron-brush-live.json"),manifest);
                     File.Delete(Path.Combine(Globals.ProjectFolder,".heron-brush-live-busy"));
@@ -61,20 +95,34 @@ namespace Game
                 if (!File.Exists(ackPath)) return;
                 var ack=JObject.Parse(File.ReadAllText(ackPath));
                 if ((string)ack["revision"]!=_revision) return;
+                if (_stage == 4)
+                {
+                    if ((string)ack["state"] != "error") return;
+                    var survivors=Level.GetScene(0).Children.Where(a=>a.GetScript<HeronBrushLiveAnchor>()!=null).ToArray();
+                    if (survivors.Length!=1 || survivors[0]!=_previous || Level.GetScene(0).ChildrenCount!=_previousChildren)
+                        throw new Exception("Failed build leaked actors or replaced previous map");
+                    Debug.Log("HERON_LIVE_CHECK rollback PASS");
+                    _stage++; _published=false; return;
+                }
                 if ((string)ack["state"]=="error") throw new Exception((string)ack["message"]);
                 if ((string)ack["state"]!="updated") return;
                 var roots=Level.GetScene(0).Children.Where(a=>a.GetScript<HeronBrushLiveAnchor>()!=null).ToArray();
-                if (roots.Length!=1 || _unrelated==null) throw new Exception("Root ownership failed: stage="+_stage+" roots="+roots.Length+" unrelated="+(_unrelated!=null));
-                var root=roots[0];
+                if (roots.Length!=(_stage==6?2:1) || _unrelated==null) throw new Exception("Root ownership failed: stage="+_stage+" roots="+roots.Length+" unrelated="+(_unrelated!=null));
+                var root=roots.First(a=>a.GetScript<HeronBrushLiveAnchor>().Source==(_stage==6?"second-map":"native-flax-demo"));
+                if (_stage==5 && root.IsActive) throw new Exception("Inactive attachment became active");
+                if (_stage==6 && (_previous==null || _previous.IsActive)) throw new Exception("Detached map changed");
                 var world=(StaticModel)root.Children.First(a=>a.Name=="worldspawn");
                 // Asset headers load before streamed mesh buffers, including in Null mode.
                 if (world.Model.LoadedLODs == 0 || world.Model.LODs[0].Meshes.Sum(m=>m.TriangleCount) == 0) return;
                 if (Colliders(root)==0) throw new Exception("No native colliders");
                 if (_stage==0) root.LocalPosition=new Vector3(300,100,200);
-                else if (Vector3.Distance(root.LocalPosition,new Vector3(300,100,200))>0.01f) throw new Exception("Attachment moved");
+                else if (_stage!=6 && Vector3.Distance(root.LocalPosition,new Vector3(300,100,200))>0.01f) throw new Exception("Attachment moved");
+                if (world.Model.LODs[0].Meshes.Sum(m=>m.TriangleCount)==0) return;
                 if (_stage==1) { _movedModel=world.Model.ID; _movedTriangles=world.Model.LODs[0].Meshes.Sum(m=>m.TriangleCount); }
                 if (_stage==2 && _movedModel==world.Model.ID) throw new Exception("Deletion did not change geometry");
-                if (_stage==3 && _movedTriangles!=world.Model.LODs[0].Meshes.Sum(m=>m.TriangleCount)) throw new Exception("Undo did not restore geometry");
+                if (_stage==3 && (_movedModel!=world.Model.ID || _movedTriangles!=world.Model.LODs[0].Meshes.Sum(m=>m.TriangleCount))) throw new Exception("Undo did not restore geometry");
+                if (_stage==3) { root.IsActive=false; _previous=root; _previousChildren=Level.GetScene(0).ChildrenCount; }
+                if (_stage==5) _previous=root;
                 if (Environment.GetEnvironmentVariable("HERON_FLAX_LIVE_MOTION") == "1")
                 {
                     var snapshot = JObject.Parse(File.ReadAllText(Path.Combine(
@@ -96,7 +144,7 @@ namespace Game
                 }
                 Debug.Log("HERON_LIVE_CHECK stage="+_stage+" actors="+root.ChildrenCount+" colliders="+Colliders(root));
                 _stage++;_published=false;
-                if (_stage==4) { Scripting.Update-=Tick; Debug.Log("HERON_LIVE_CHECK PASS"); Engine.RequestExit(0); }
+                if (_stage==7) { Scripting.Update-=Tick; Debug.Log("HERON_LIVE_CHECK PASS"); Engine.RequestExit(0); }
             }
             catch(Exception e) { Debug.LogException(e); Scripting.Update-=Tick; Engine.RequestExit(2); }
         }

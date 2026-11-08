@@ -33,13 +33,20 @@ Enable **Hot reload running game** to request a runtime refresh after each
 published batch. This switch applies to the current editor session. Start the
 game from Defold first, and make sure it includes the live preview collection.
 
-Defold's hot reload does not guarantee that existing instances are recreated.
-Adding or removing objects, changing transforms or collision shapes may require
-restarting the level or game. A game-owned level controller can provide its own
-reload lifecycle; this link does not inject one into an arbitrary game.
+For structural changes, install the optional [Defold addon](defold-addon.md) and
+add `heron_brush/controller.go` to the game's collection. Its collection factory
+replaces map objects after hot reload, including their collisions, while keeping
+them in the player's physics world. Keep the player and camera outside the
+managed map. The controller emits messages before and after replacement so game
+code can save and restore state.
 
-Heron Brush distinguishes confirmed project refresh, an accepted asynchronous
-hot-reload request, and confirmed hot-reload completion. Older Defold versions
+Without the controller, adding or removing objects, changing transforms or
+collision shapes may require restarting the level or game. Referencing the
+preview collection directly still works for projects that manage this themselves.
+
+With the addon installed, Heron Brush waits for the runtime controller to confirm
+the replacement generation or report failure. Without the addon it distinguishes
+project refresh, an accepted asynchronous request and resource hot-reload completion. Older Defold versions
 return HTTP 202; the UI does not present that as proof of runtime completion.
 Build errors and connection failures appear in the live-link status. Hot reload
 may include other modified game resources, according to Defold's own behavior.

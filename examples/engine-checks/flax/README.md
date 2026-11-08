@@ -42,8 +42,8 @@ folder). Run the custom game project (`/tmp/heron-flax-custom-game`) with
 rebuild ownership.
 
 Not covered: headless mode cannot check materials, a player build needs collision
-assets baked in the editor, and old import roots are not found again after an
-editor restart.
+assets baked in the editor. Legacy import roots without an ownership marker
+are not recovered after an editor restart.
 
 ## Feature lab
 
@@ -69,3 +69,13 @@ Raw macOS CLI invocations must pass every switch as one argument:
 /Applications/FlaxEditor.app/Contents/MacOS/FlaxEditor \
   '-project "/absolute/test-project/flax.flaxproj" -headless -null -std -heronlivecheck'
 ```
+
+## Live replacement and failure recovery
+
+```sh
+python3 examples/engine-checks/flax/verify_live.py --root /tmp/heron-flax-live-check
+```
+
+Uses a new disposable project and tests move, delete, undo, failed property binding,
+recovery with an inactive root and attaching another source after stopping.
+`FLAX_EDITOR` overrides the editor executable. See [live link](../../../docs/flax-live-link.md).

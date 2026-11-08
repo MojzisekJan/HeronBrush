@@ -63,10 +63,10 @@ pub fn validate(level: &Level) -> Result<(), String> {
     use crate::level::Value;
     for entity in &level.entities {
         if let Some(value) = entity.properties.get("flax_prefab") {
-            if !matches!(value,Value::String(path) if !std::path::Path::new(path).is_absolute()&&path.ends_with(".prefab")&& !path.split('/').any(|part|part==".."))
+            if !matches!(value,Value::String(path) if !std::path::Path::new(path).is_absolute() && path.ends_with(".prefab") && !path.contains(['\\', ':']) && !path.split('/').any(|part|matches!(part,".."|"."|"")))
             {
                 return Err(format!(
-                    "{}: flax_prefab must name an project Content/*.prefab resource",
+                    "{}: flax_prefab must name a Content-relative .prefab resource",
                     entity.name
                 ));
             }
@@ -97,8 +97,8 @@ pub fn validate(level: &Level) -> Result<(), String> {
                 Value::Int(value) => *value as f64,
                 _ => return Err(format!("{}: flax_mass must be numeric", entity.name)),
             };
-            if !mass.is_finite() || mass <= 0. {
-                return Err(format!("{}: flax_mass must be positive", entity.name));
+            if !(mass as f32).is_finite() || (mass as f32) <= 0. {
+                return Err(format!("{}: flax_mass must be positive and fit a Flax float", entity.name));
             }
         }
     }
@@ -330,7 +330,7 @@ namespace Game
         public static Dictionary<string,Actor> Rebuild(Action<Actor, Placement, IReadOnlyDictionary<string, Actor>> configure = null)
         {{
             Actor previous=null;
-            foreach(var owner in Level.GetScripts<HeronBrushLevelRoot>())if(owner.SourceKey==SourceKey){{previous=owner.Actor;break;}}
+            foreach(var owner in Level.GetScripts<HeronBrushLevelRoot>())if(owner.SourceKey==SourceKey && Level.ScenesCount > 0 && owner.Actor.Scene == Level.GetScene(0)){{previous=owner.Actor;break;}}
             var actors=Build(configure);var root=LastBuiltRoot;
             if(previous!=null&&root!=null){{root.Parent=previous.Parent;root.LocalTransform=previous.LocalTransform;root.IsActive=previous.IsActive;FlaxEngine.Object.DestroyNow(previous);}}
             return actors;
@@ -463,6 +463,7 @@ namespace Game
         // Supply your own game components here. No classname implies game behaviour.
         public static Dictionary<string, Actor> Build(Action<Actor, Placement, IReadOnlyDictionary<string, Actor>> configure = null, bool createCollisions = true, Func<Placement, bool> includeCollision = null)
         {{
+            LastBuiltRoot = null;
             // Validate dependencies before changing the scene.
             var models = new Dictionary<string, Model>();
             var metadata = new Dictionary<string,JObject>();
@@ -474,7 +475,7 @@ namespace Game
                 if(prefabPath!=null)
                 {{
                     var prefab=Content.Load<Prefab>(Path.Combine(Globals.ProjectContentFolder,prefabPath));
-                    if(prefab==null)throw new InvalidOperationException("Missing project prefab " + prefabPath);
+                    if(prefab==null || prefab.WaitForLoaded())throw new InvalidOperationException("Missing project prefab " + prefabPath);
                     prefabs.Add(placement.Name,prefab);
                 }}
                 if(data["properties"] is JObject properties)
@@ -483,7 +484,7 @@ namespace Game
                 if (placement.Mesh == null || models.ContainsKey(placement.Mesh)) continue;
                 var path = Path.Combine(Globals.ProjectContentFolder, placement.Mesh + ".flax");
                 var model = Content.Load<Model>(path);
-                if (model == null) throw new InvalidOperationException("Missing imported model: " + path);
+                if (model == null || model.WaitForLoaded()) throw new InvalidOperationException("Missing imported model: " + path);
                 models.Add(placement.Mesh, model);
             }}
             var collisions = new Dictionary<string, List<CollisionPart>>();
@@ -575,7 +576,7 @@ namespace Game
             }}
             catch
             {{
-                FlaxEngine.Object.Destroy(root);
+                FlaxEngine.Object.DestroyNow(root);
                 throw;
             }}
         }}
@@ -784,6 +785,45 @@ mod tests {
                 },
             ],
         }
+    }
+
+    #[test]
+    fn project_prefabs_reject_nonportable_and_escaping_paths() {
+        for path in [
+            "../outside.prefab",
+            "C:/outside.prefab",
+            "folder\\..\\outside.prefab",
+            "/outside.prefab",
+            "folder//item.prefab",
+        ] {
+            let mut input = level();
+            input.entities[0].properties.insert(
+                "flax_prefab".into(),
+                crate::level::Value::String(path.into()),
+            );
+            assert!(validate(&input).is_err(), "{path}");
+        }
+        let mut input = level();
+        input.entities[0].properties.insert(
+            "flax_prefab".into(),
+            crate::level::Value::String("Prefabs/door.prefab".into()),
+        );
+        assert!(validate(&input).is_ok());
+    }
+
+    #[test]
+    fn mass_must_fit_flax_single_precision() {
+        let mut input = level();
+        for mass in [f64::MAX, f64::MIN_POSITIVE, f64::INFINITY, f64::NAN, 0., -1.] {
+            input.entities[0]
+                .properties
+                .insert("flax_mass".into(), crate::level::Value::Float(mass));
+            assert!(validate(&input).is_err());
+        }
+        input.entities[0]
+            .properties
+            .insert("flax_mass".into(), crate::level::Value::Float(75.));
+        assert!(validate(&input).is_ok());
     }
 
     #[test]

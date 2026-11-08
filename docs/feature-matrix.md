@@ -44,7 +44,7 @@ assets; native evidence and limits are in [the local audit](export-audit-2026-10
 | Face colours | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | Gradients | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | Surface materials | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| Brush normal maps | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
+| Brush normal maps | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
 | Solid collision | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
 | Clip brushes | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
 | Skip faces | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
@@ -55,10 +55,10 @@ assets; native evidence and limits are in [the local audit](export-audit-2026-10
 | Door, button and trigger links | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
 | Typed properties | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS |
 | Target links | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS |
-| Lights | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | N/A | N/A | N/A | N/A | N/A |
+| Lights | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | N/A | N/A | N/A | N/A | N/A |
 | Water | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS | PASS | PASS | N/A | N/A | N/A |
 | Imported models, shared | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |
-| Model PBR maps | PASS | N/A | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS |
+| Model PBR maps | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS | N/A | PASS | PASS |
 
 Before the fixes below, the first run had 18 failures: face colours on all 14
 targets, the GDevelop clip brush, the Unreal clip brush and trigger, and the
@@ -138,14 +138,15 @@ The other targets read the level JSON and the GLBs beside it.
 | Keyframe animation, door links | Unreal, OBJ, glTF, GLB | The export warns that there is no playback controller |
 | Water | Unreal, OBJ, glTF, GLB | Not in [water export](water-export.md)'s adapter list |
 | Lights | Defold, Stride, Cocos, GDevelop, OBJ, glTF, GLB | These default adapters retain light properties without generating common-light rendering. Three.js, Bevy, Flax and raylib now have explicit adapters; see [common entities](common-entities.md). |
-| Brush normal maps | Defold default material | Project shaders can opt into `defold_sampler_normal`; the default sample uses albedo. Unity, Stride and OBJ now transfer companion maps. |
-| Model PBR maps | Defold default material, OBJ | Defold project samplers are opt-in. OBJ carries several PBR maps but has no full glTF/AO material equivalent; see [model PBR](model-pbr.md). |
+| Defold advanced lighting | Generated forward renderer | Up to eight lights; no shadow maps or image-based reflections. Explicit project shaders retain their own behavior. |
+| Model PBR maps | OBJ | OBJ carries several PBR maps but has no full glTF/AO material equivalent; see [model PBR](model-pbr.md). |
 | Collision rows | Unreal | The importer spawns meshes and lights only; collision stays in the GLBs and JSON |
 | Collision rows | OBJ, glTF, GLB | Geometry formats; clip and skip faces are left out of the mesh as required |
 | Properties, links | OBJ | Geometry only |
 
-Defold and raylib keep the surface factors in the GLB and level JSON, and the
-export warns that the default shaders do not implement full PBR. Stride writes roughness and
+Raylib keeps surface factors in GLB and level JSON and warns about its preview
+shader limitations. Defold now generates direct PBR materials; its legacy sample
+shader and explicit project overrides retain their own rendering behavior. Stride writes roughness and
 metalness, emission, normal maps, metallic/roughness maps and AO into native
 materials. The Stride PBR additions passed writer regressions and native YAML
 loading on 28 October 2026; the table above includes the new asset checks. See [Stride export](stride-export.md).
@@ -172,8 +173,9 @@ loading on 28 October 2026; the table above includes the new asset checks. See [
 
 - Unreal has no installed supported editor here; its collision/gameplay and sky
   adapters still need implementation and native verification.
-- Defold's default sample shader does not become full PBR. Explicit project
-  sampler bindings are supported and checked with Bob.
+- Defold's generated forward renderer has no shadow maps or image-based reflections.
+  Its legacy sample shader remains unchanged. Explicit project sampler bindings
+  are supported and checked with Bob.
 - Raylib's forward preview shader has no shadow maps or complete PBR/IBL path.
 - Flax needs a rendered check, native imported-model AO mapping and a homogeneous
   fog adapter. Its sky,
@@ -188,3 +190,12 @@ were exercised using their installed runtimes. The audit distinguishes full
 feature-lab runs, component state checks, asset loading and rendered smoke checks.
 Reproduction commands remain in [engine checks](../examples/engine-checks/README.md)
 and [the local audit](export-audit-2026-10-28.md).
+
+## Defold generated rendering, 4 November 2026
+
+The generated default now binds normal/PBR maps and interprets common map lights.
+Native Defold 1.13.2/Linux pixel checks cover point and spot lights, cone direction,
+directional light, enable/disable, emission, roughness and alpha mask/blend.
+Project-owned material overrides remain supported. See [Defold addon](defold-addon.md)
+for setup, rendering limits and repeatable verification. The legacy sample material
+still has its earlier shading behavior.

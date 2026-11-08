@@ -1,16 +1,76 @@
--- Optional baseline 3D render script. Custom games should add just the sky and water passes.
+-- Baseline forward renderer. Custom games can copy its passes and light message handling.
 function init(self)
- self.sky=render.predicate({'heron_sky'});self.model=render.predicate({'model'});self.water=render.predicate({'heron_water'});self.gui=render.predicate({'gui'});self.text=render.predicate({'text'})
+    self.sky=render.predicate({'heron_sky'})
+    self.model=render.predicate({'model'})
+    self.double_sided=render.predicate({'heron_double_sided'})
+    self.transparent=render.predicate({'heron_transparent'})
+    self.water=render.predicate({'heron_water'})
+    self.gui=render.predicate({'gui'});self.text=render.predicate({'text'})
+    self.lights={};self.lights_dirty=true;self.zero=vmath.vector4()
+    self.constants=render.constant_buffer()
+    self.constants.light_positions={};self.constants.light_colors={};self.constants.light_directions={}
+    for i=1,8 do
+        self.constants.light_positions[i]=vmath.vector4()
+        self.constants.light_colors[i]=vmath.vector4()
+        self.constants.light_directions[i]=vmath.vector4()
+    end
+end
+local function lights(self,position)
+    if not self.lights_dirty and position==self.camera_position then return end
+    self.lights_dirty=false;self.camera_position=position
+    local selected={}
+    for id,light in pairs(self.lights) do
+        if light.enabled then
+            local delta=vmath.vector3(light.position.x,light.position.y,light.position.z)-position
+            selected[#selected+1]={light=light,distance=light.position.w==0 and -1 or vmath.length_sqr(delta),key=tostring(id)}
+        end
+    end
+    table.sort(selected,function(a,b) if a.distance==b.distance then return a.key<b.key end;return a.distance<b.distance end)
+    for i=1,8 do
+        local light=selected[i] and selected[i].light
+        self.constants.light_positions[i]=light and light.position or self.zero
+        self.constants.light_colors[i]=light and light.color or self.zero
+        self.constants.light_directions[i]=light and light.direction or self.zero
+    end
+    self.constants.camera_position=vmath.vector4(position.x,position.y,position.z,1)
 end
 function update(self,dt)
- render.set_depth_mask(true);render.clear({[graphics.BUFFER_TYPE_COLOR0_BIT]=vmath.vector4(.08,.12,.17,1),[graphics.BUFFER_TYPE_DEPTH_BIT]=1,[graphics.BUFFER_TYPE_STENCIL_BIT]=0})
- render.set_viewport(0,0,render.get_window_width(),render.get_window_height())
- local cameras,view=camera.get_cameras();for i=#cameras,1,-1 do if camera.get_enabled(cameras[i]) then view=cameras[i];break end end
- -- The sky's cube sits round the origin and turns with the camera, so it is drawn unculled.
- if view then render.set_camera(view) end
- render.disable_state(graphics.STATE_BLEND);render.disable_state(graphics.STATE_DEPTH_TEST);render.disable_state(graphics.STATE_CULL_FACE);render.set_depth_mask(false);render.draw(self.sky);render.set_depth_mask(true)
- if view then render.set_camera(view,{use_frustum=true}) end
- render.enable_state(graphics.STATE_DEPTH_TEST);render.enable_state(graphics.STATE_CULL_FACE);render.draw(self.model)
- render.set_depth_mask(false);render.disable_state(graphics.STATE_CULL_FACE);render.enable_state(graphics.STATE_BLEND);render.set_blend_func(graphics.BLEND_FACTOR_SRC_ALPHA,graphics.BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);render.draw(self.water)
- render.set_camera();render.disable_state(graphics.STATE_DEPTH_TEST);render.set_view(vmath.matrix4());render.set_projection(vmath.matrix4_orthographic(0,render.get_width(),0,render.get_height(),-1,1));render.enable_state(graphics.STATE_STENCIL_TEST);render.draw(self.gui);render.draw(self.text);render.disable_state(graphics.STATE_STENCIL_TEST);render.disable_state(graphics.STATE_BLEND)
+    render.set_depth_mask(true)
+    render.clear({[graphics.BUFFER_TYPE_COLOR0_BIT]=vmath.vector4(.08,.12,.17,1),[graphics.BUFFER_TYPE_DEPTH_BIT]=1,[graphics.BUFFER_TYPE_STENCIL_BIT]=0})
+    render.set_viewport(0,0,render.get_window_width(),render.get_window_height())
+    local cameras,view=camera.get_cameras()
+    for i=#cameras,1,-1 do if camera.get_enabled(cameras[i]) then view=cameras[i];break end end
+    local position=vmath.vector3(0,0,10)
+    if view then
+        render.set_camera(view)
+        local inverse=vmath.inv(camera.get_view(view))
+        position=vmath.vector3(inverse.m03,inverse.m13,inverse.m23)
+    end
+    lights(self,position)
+    render.disable_state(graphics.STATE_BLEND)
+    render.disable_state(graphics.STATE_DEPTH_TEST)
+    render.disable_state(graphics.STATE_CULL_FACE)
+    render.set_depth_mask(false);render.draw(self.sky);render.set_depth_mask(true)
+    if view then render.set_camera(view,{use_frustum=true}) end
+    render.enable_state(graphics.STATE_DEPTH_TEST)
+    render.enable_state(graphics.STATE_CULL_FACE)
+    render.draw(self.model,{constants=self.constants})
+    render.disable_state(graphics.STATE_CULL_FACE)
+    render.draw(self.double_sided,{constants=self.constants})
+    render.set_depth_mask(false)
+    render.enable_state(graphics.STATE_BLEND)
+    render.set_blend_func(graphics.BLEND_FACTOR_SRC_ALPHA,graphics.BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+    render.draw(self.transparent,{constants=self.constants})
+    render.draw(self.water)
+    render.set_camera()
+    render.disable_state(graphics.STATE_DEPTH_TEST)
+    render.set_view(vmath.matrix4())
+    render.set_projection(vmath.matrix4_orthographic(0,render.get_width(),0,render.get_height(),-1,1))
+    render.enable_state(graphics.STATE_STENCIL_TEST)
+    render.draw(self.gui);render.draw(self.text)
+    render.disable_state(graphics.STATE_STENCIL_TEST);render.disable_state(graphics.STATE_BLEND)
+end
+function on_message(self,id,message,sender)
+    if id==hash("heron_light") then self.lights[message.id]=message;self.lights_dirty=true
+    elseif id==hash("heron_remove_light") then self.lights[message.id]=nil;self.lights_dirty=true end
 end

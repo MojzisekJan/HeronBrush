@@ -40,8 +40,10 @@ python3 examples/engine-checks/defold/prepare_custom_game.py
   a project script, typed properties, mass and collision groups. It prints
   `HERON_DEFOLD_CUSTOM_GAME_OK`.
 
-Not covered: Windows, other physics backends, and exported lights (the material
-uses simple directional shading). Enemies and other FPS classes stay as data.
+Not covered: Windows and other physics backends. The legacy sample material uses
+simple directional shading. The generated default material and renderer now support
+map lights and direct PBR; see [the addon guide](../../../docs/defold-addon.md).
+Enemies and other FPS classes stay as data.
 
 Credits: controller and shaders are MIT code from the earlier tbx project, see
 `LICENSE-TBX`. Textures are Kenney assets under their own licence.
@@ -55,3 +57,33 @@ python3 examples/engine-checks/defold/run_feature_lab.py --root /tmp/feature-run
 Exports `demos/feature_lab/feature_lab.map`, builds it with Bob and runs it in
 dmengine inside Xephyr with the check in `feature_lab/`. See
 [feature lab in Defold](../../../docs/feature-runtime-defold.md).
+
+## Addon lifecycle check
+
+```sh
+DEFOLD_HOME=/path/to/Defold python3 examples/engine-checks/defold/verify_addon.py
+```
+
+Creates a disposable project and checks managed reload in the native engine,
+including changed collision geometry, inserted/deleted objects and a persistent
+object outside the managed level. See [the addon guide](../../../docs/defold-addon.md).
+
+## Generated rendering check
+
+```sh
+DEFOLD_HOME=/path/to/Defold python3 examples/engine-checks/defold/verify_rendering.py
+```
+
+Compiles normal and PBR map variants, including an imported glTF model, and checks
+eleven native screenshots for point/spot/directional lighting, disabled lights,
+emission, roughness, alpha masking and blending. Requires Pillow and xwd.
+
+## Full editor reload check
+
+```sh
+DEFOLD_HOME=/path/to/Defold python3 examples/engine-checks/defold/verify_editor_reload.py
+```
+
+Installs the addon in a fresh project, starts the actual editor in Xephyr, compiles
+and runs the game through its HTTP API, then requires a runtime acknowledgement
+of the replacement. It checks the editor's dependency graph as well as the engine.

@@ -1239,15 +1239,11 @@ fn live_link(
             let install = match target {
                 Target::Flax => tr("Install Flax addon"),
                 Target::Unity => tr("Install Unity addon"),
+                Target::Defold => tr("Install Defold addon"),
                 _ => tr("Install Godot addon"),
             };
-            let mut labels = Vec::new();
-            if target != Target::Defold {
-                labels.push(install);
-            }
-            labels.extend([tr("Start live link"), tr("Stop session")]);
-            let offset = usize::from(target == Target::Defold);
-            match form::button_strip(ui, &labels, true).map(|index| index + offset) {
+            let labels = [install, tr("Start live link"), tr("Stop session")];
+            match form::button_strip(ui, &labels, true) {
                 Some(0) => live.install_addon(target),
                 Some(1) => live.start_or_say(target),
                 Some(_) => live.stop("Live link stopped"),

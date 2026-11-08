@@ -1,0 +1,3 @@
+prototype: "/heron_brush/bootstrap.collection"
+load_dynamically: true
+dynamic_prototype: true

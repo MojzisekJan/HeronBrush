@@ -292,6 +292,17 @@ impl Palette {
 
 #[cfg(test)]
 mod tests {
+    // These tests inspect layout and input without a renderer to upload textures.
+    fn run_test_frame(
+        ctx: &egui::Context,
+        input: egui::RawInput,
+        run: impl FnMut(&mut egui::Ui),
+    ) -> egui::FullOutput {
+        let mut output = ctx.run_ui(input, run);
+        output.textures_delta.clear();
+        output
+    }
+
     use super::*;
 
     fn command(path: &str, label: &str) -> Command<u8> {
@@ -351,7 +362,8 @@ mod tests {
                 })
                 .into_iter()
                 .collect();
-            let _ = ctx.run_ui(
+            let _ = run_test_frame(
+                &ctx,
                 egui::RawInput {
                     screen_rect: Some(screen),
                     events,
@@ -409,7 +421,8 @@ mod tests {
             let menus = vec![vec![Entry::item("Fillet", 1u8)]];
             let mut output = None;
             for frame in 0..3 {
-                output = Some(ctx.run_ui(
+                output = Some(run_test_frame(
+                    &ctx,
                     egui::RawInput {
                         screen_rect: Some(screen),
                         time: Some(f64::from(frame)),
@@ -473,7 +486,8 @@ mod tests {
             let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 700.0));
             let mut output = None;
             for frame in 0..3 {
-                output = Some(ctx.run_ui(
+                output = Some(run_test_frame(
+                    &ctx,
                     egui::RawInput {
                         screen_rect: Some(screen),
                         time: Some(f64::from(frame)),
@@ -537,7 +551,8 @@ mod tests {
         )]];
         let mut output = None;
         for frame in 0..3 {
-            output = Some(ctx.run_ui(
+            output = Some(run_test_frame(
+                &ctx,
                 egui::RawInput {
                     screen_rect: Some(screen),
                     time: Some(f64::from(frame)),
@@ -593,7 +608,8 @@ mod tests {
         entries.push(Entry::item("Fillet", 30u8));
         let menus = vec![entries];
         let render = |palette: &mut Palette| {
-            ctx.run_ui(
+            run_test_frame(
+                &ctx,
                 egui::RawInput {
                     screen_rect: Some(screen),
                     ..Default::default()

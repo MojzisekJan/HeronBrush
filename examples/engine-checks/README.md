@@ -49,3 +49,19 @@ native physics. Each engine needs its own run on each platform you ship.
 
 The [28 October local audit](../../docs/export-audit-2026-10-28.md) records the
 available engines, current fixes and exact limits of native verification.
+
+### Babylon.js and PlayCanvas level lifetime
+
+Run the Chromium checks against a fresh export. The runner uses the versions
+of Babylon.js, Havok, PlayCanvas and Ammo referenced by the exported playtest pages.
+
+```sh
+cargo build --locked -p heron-brush
+python3 examples/engine-checks/export_feature_lab.py babylon playcanvas --root /tmp/heron-web-check
+node examples/engine-checks/verify_web_lifecycle.cjs /tmp/heron-web-check
+```
+
+The runner requires Playwright and Chromium. Set `HERON_CHROMIUM` to use an
+existing executable, or `HERON_WEB_ENGINE` to select one engine. It checks
+repeated loading, rollback on failed assets and callbacks, disposal of
+overlapping copies, and restoration of the project's environment settings.

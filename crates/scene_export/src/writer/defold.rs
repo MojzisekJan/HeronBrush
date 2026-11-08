@@ -21,6 +21,8 @@
 //! Everything is Defold protobuf text. The collection's game objects are
 //! embedded instances whose `data` field is the escaped text of a prototype.
 
+#[path = "defold_rendering.rs"]
+mod rendering;
 use super::sky::Sky;
 use crate::level::{CollisionMesh, Level, Value};
 
@@ -298,9 +300,15 @@ pub struct DefoldOptions {
     /// Joined onto each texture's project-relative `image`. `/` turns
     /// `textures/wall.png` into `/textures/wall.png`.
     pub texture_prefix: String,
+    /// Opaque glTF albedos whose alpha was removed before Defold premultiplication.
+    pub opaque_albedos: std::collections::BTreeMap<String, String>,
+    /// Translucent generated paints without an explicit glTF alpha mode.
+    pub material_alpha: std::collections::BTreeSet<String>,
+    /// Imported factors and alpha/normal rules, keyed by material name.
+    pub material_pbr: std::collections::BTreeMap<String, crate::materials::GeneratedPbr>,
     /// Additional portable material maps, keyed by material name.
     pub material_maps: std::collections::BTreeMap<String, Vec<(String, String)>>,
-    /// The material every model component gets.
+    /// Explicit project material; the builtin default selects generated PBR materials.
     pub model_material: String,
     /// The sampler that material binds the colour texture to.
     pub model_sampler: String,
@@ -314,6 +322,9 @@ impl Default for DefoldOptions {
         DefoldOptions {
             asset_dir: "/main/level".to_string(),
             texture_prefix: "/".to_string(),
+            opaque_albedos: Default::default(),
+            material_alpha: Default::default(),
+            material_pbr: Default::default(),
             material_maps: Default::default(),
             model_material: "/builtins/materials/model.material".to_string(),
             model_sampler: "tex0".to_string(),
@@ -388,7 +399,7 @@ pub fn write(level: &Level, collision: &[CollisionMesh], opts: &DefoldOptions) -
     .trim_start_matches('/')
     .replace('/', ".");
 
-    let mut files: Vec<DefoldFile> = Vec::new();
+    let mut files: Vec<DefoldFile> = rendering::files(level, opts);
     files.push(DefoldFile {
         path: format!("{name}_water.lua"),
         contents: include_str!("defold_water.lua").into(),
@@ -398,7 +409,13 @@ pub fn write(level: &Level, collision: &[CollisionMesh], opts: &DefoldOptions) -
         .entities
         .iter()
         .any(|e| e.properties.contains_key("_heron_water"));
-    if has_water || opts.sky.is_some() {
+    if has_water
+        || opts.sky.is_some()
+        || level
+            .entities
+            .iter()
+            .any(|e| rendering::generated(e, opts) || super::common_entities::light(e).is_some())
+    {
         // A baseline 3D renderer: the stock one draws neither the sky nor water.
         files.push(DefoldFile {
             path: format!("{name}.render_script"),
@@ -455,6 +472,16 @@ pub fn write(level: &Level, collision: &[CollisionMesh], opts: &DefoldOptions) -
 
         // What components this game object carries.
         let mut components: Vec<(String, String)> = Vec::new();
+        if super::common_entities::light(entity).is_some()
+            && !entity
+                .properties
+                .contains_key("defold_component_heron_light")
+        {
+            components.push((
+                "heron_light".into(),
+                format!("{dir}/heron_light_{index}.script"),
+            ));
+        }
 
         if !entity.surfaces.is_empty() {
             if let Some(mesh) = &entity.mesh {
@@ -772,6 +799,13 @@ fn model_file(
         }
         seen.push(&surface.texture);
 
+        let generated_material = rendering::generated(entity, opts);
+        let texture_index = level
+            .textures
+            .iter()
+            .position(|t| t.name == surface.texture)
+            .unwrap_or(0);
+        let generated_path = format!("{dir}/material_{texture_index}.material");
         out.push_str("materials {\n");
         out.push_str(&format!("  name: \"{}\"\n", surface.texture));
         out.push_str(&format!(
@@ -790,7 +824,11 @@ fn model_file(
                     {
                         water_material.as_str()
                     } else {
-                        &opts.model_material
+                        if generated_material {
+                            &generated_path
+                        } else {
+                            &opts.model_material
+                        }
                     }
                 )
             )
@@ -801,7 +839,14 @@ fn model_file(
             .find(|t| t.name == surface.texture)
             .and_then(|t| t.image.as_deref())
         {
-            let path = join_resource(&opts.texture_prefix, image);
+            let path = if generated_material {
+                opts.opaque_albedos
+                    .get(&surface.texture)
+                    .cloned()
+                    .unwrap_or_else(|| join_resource(&opts.texture_prefix, image))
+            } else {
+                join_resource(&opts.texture_prefix, image)
+            };
             out.push_str(&format!(
                 "  textures {{\n    sampler: \"{}\"\n    texture: \"{path}\"\n  }}\n",
                 escape(text_property(entity, "defold_sampler").unwrap_or(&opts.model_sampler))
@@ -813,6 +858,16 @@ fn model_file(
             .get(&surface.texture)
             .map(Vec::as_slice)
             .unwrap_or_else(|| texture.map(|t| t.maps.as_slice()).unwrap_or(&[]));
+        if generated_material {
+            if let Some(texture) = texture {
+                for (sampler, path) in rendering::bindings(texture, opts) {
+                    out.push_str(&format!(
+                        "  textures {{ sampler: \"{sampler}\" texture: \"{}\" }}\n",
+                        escape(&path)
+                    ));
+                }
+            }
+        }
         let albedo_sampler = text_property(entity, "defold_sampler").unwrap_or(&opts.model_sampler);
         for (slot, path) in maps {
             if let Some(sampler) = text_property(entity, &format!("defold_sampler_{slot}")) {
@@ -1260,12 +1315,10 @@ mod tests {
                 "{model}"
             );
         }
-        assert!(
-            files
-                .iter()
-                .filter(|f| f.path.ends_with(".script"))
-                .all(|f| !f.contents.contains("go.property(\"defold_sampler_"))
-        );
+        assert!(files
+            .iter()
+            .filter(|f| f.path.ends_with(".script"))
+            .all(|f| !f.contents.contains("go.property(\"defold_sampler_")));
         level.entities[0].properties.insert(
             "defold_sampler_normal".into(),
             Value::String("invalid sampler".into()),
@@ -1316,22 +1369,25 @@ mod tests {
         let script = file("arena.render_script");
         assert!(
             script.find("render.draw(self.sky)").unwrap()
-                < script.find("render.draw(self.model)").unwrap()
+                < script.find("render.draw(self.model,").unwrap()
         );
         assert!(file("arena_environment.lua").contains("sun_intensity = 3"));
         let images = sky_binaries("arena", &sky);
         assert_eq!(images.len(), 6);
-        assert!(
-            images
-                .iter()
-                .all(|(path, png)| path.starts_with("arena/sky_") && png.starts_with(b"\x89PNG"))
-        );
+        assert!(images
+            .iter()
+            .all(|(path, png)| path.starts_with("arena/sky_") && png.starts_with(b"\x89PNG")));
         // Without a sky or water nothing replaces the project's renderer.
-        assert!(
-            !write(&level(), &[], &opts())
-                .iter()
-                .any(|f| f.path.ends_with(".render"))
-        );
+        assert!(!write(
+            &level(),
+            &[],
+            &DefoldOptions {
+                model_material: "/game/custom.material".into(),
+                ..opts()
+            }
+        )
+        .iter()
+        .any(|f| f.path.ends_with(".render")));
     }
 
     fn level() -> Level {
@@ -1430,14 +1486,12 @@ mod tests {
         assert!(collision.contains("group: \"artifact\""));
         assert!(collision.contains("mask: \"geometry\""));
         assert!(files[0].contents.contains("/game/relic.script"));
-        assert!(
-            files
-                .iter()
-                .find(|f| f.path.ends_with("worldspawn.model"))
-                .unwrap()
-                .contents
-                .contains("/game/stone.material")
-        );
+        assert!(files
+            .iter()
+            .find(|f| f.path.ends_with("worldspawn.model"))
+            .unwrap()
+            .contents
+            .contains("/game/stone.material"));
         let script = &files
             .iter()
             .find(|f| f.path.ends_with("worldspawn.script"))
@@ -1483,11 +1537,9 @@ mod tests {
         let files = write(&level(), &cm, &opts());
         assert_eq!(files[0].path, "arena.collection");
         assert!(files[0].contents.starts_with("name: \"arena\"\n"));
-        assert!(
-            files[0]
-                .contents
-                .contains("embedded_instances {\n  id: \"worldspawn\"\n")
-        );
+        assert!(files[0]
+            .contents
+            .contains("embedded_instances {\n  id: \"worldspawn\"\n"));
     }
 
     #[test]
@@ -1498,11 +1550,9 @@ mod tests {
             .iter()
             .find(|f| f.path == "arena/worldspawn.model")
             .unwrap();
-        assert!(
-            model
-                .contents
-                .contains("mesh: \"/main/arena/worldspawn.glb\"\n")
-        );
+        assert!(model
+            .contents
+            .contains("mesh: \"/main/arena/worldspawn.glb\"\n"));
         assert!(model.contents.contains("name: \"wall\"\n"));
         assert!(model.contents.contains("texture: \"/textures/wall.png\"\n"));
 
@@ -1527,11 +1577,9 @@ mod tests {
             .iter()
             .find(|f| f.path == "arena/enemy0.script")
             .unwrap();
-        assert!(
-            script
-                .contents
-                .contains("go.property(\"classname\", hash(\"fps_enemy\"))\n")
-        );
+        assert!(script
+            .contents
+            .contains("go.property(\"classname\", hash(\"fps_enemy\"))\n"));
         assert!(script.contents.contains("go.property(\"health\", 100.0)\n"));
 
         let col = &files[0].contents;
@@ -1550,10 +1598,9 @@ mod tests {
             .iter()
             .find(|f| f.path.ends_with(".collisionobject"))
             .unwrap();
-        assert!(
-            co.contents
-                .contains("type: COLLISION_OBJECT_TYPE_TRIGGER\n")
-        );
+        assert!(co
+            .contents
+            .contains("type: COLLISION_OBJECT_TYPE_TRIGGER\n"));
     }
     #[test]
     fn custom_material_and_sampler_reach_model_resources() {

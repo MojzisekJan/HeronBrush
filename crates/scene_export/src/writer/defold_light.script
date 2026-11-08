@@ -1,0 +1,24 @@
+go.property("light_color",vmath.vector4(1,1,1,1))
+go.property("light_params",vmath.vector4(1,5,-1,1)) -- energy, range, cone cosine, directional flag
+local function send(self)
+    local position=go.get_world_position()
+    local rotation=go.get_world_rotation()
+    local direction=vmath.rotate(rotation,vmath.vector3(0,0,-1))
+    msg.post("@render:","heron_light",{
+        id=go.get_id(),enabled=self.enabled,
+        position=vmath.vector4(position.x,position.y,position.z,self.light_params.w==0 and 0 or self.light_params.y),
+        color=vmath.vector4(self.light_color.x*self.light_params.x,self.light_color.y*self.light_params.x,self.light_color.z*self.light_params.x,1),
+        direction=vmath.vector4(direction.x,direction.y,direction.z,self.light_params.z)
+    })
+    self.position=position;self.rotation=rotation
+    self.color=vmath.vector4(self.light_color);self.params=vmath.vector4(self.light_params)
+end
+function init(self) self.enabled=true;send(self) end
+function update(self,dt)
+    if go.get_world_position()~=self.position or go.get_world_rotation()~=self.rotation or self.color~=self.light_color or self.params~=self.light_params then send(self) end
+end
+function on_message(self,id,message,sender)
+    if id==hash("enable") or id==hash("disable") then self.enabled=id==hash("enable");send(self) end
+end
+function on_reload(self) send(self) end
+function final(self) msg.post("@render:","heron_remove_light",{id=go.get_id()}) end

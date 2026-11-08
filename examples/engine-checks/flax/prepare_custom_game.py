@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build a disposable non-FPS Flax project with two map exports."""
+import argparse
 import json
 import shutil
 import sys
@@ -9,7 +10,10 @@ HERE=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT/'assets'))
 import prefabs_gen
 def main():
-    project=Path('/tmp/heron-flax-custom-game');(project/'Source/Game').mkdir(parents=True,exist_ok=True);(project/'Content').mkdir(exist_ok=True)
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root',type=Path,default=Path('/tmp/heron-flax-custom-game'))
+    project=parser.parse_args().root.resolve()
+    (project/'Source/Game').mkdir(parents=True,exist_ok=True);(project/'Content').mkdir(exist_ok=True)
     for name in ['GameTarget.Build.cs','GameEditorTarget.Build.cs']:shutil.copyfile(HERE/'Source'/name,project/'Source'/name)
     shutil.copyfile(HERE/'Source/Game/Game.Build.cs',project/'Source/Game/Game.Build.cs')
     shutil.copyfile(HERE/'flax.flaxproj',project/'custom.flaxproj')

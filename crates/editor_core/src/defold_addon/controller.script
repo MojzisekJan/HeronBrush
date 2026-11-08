@@ -1,0 +1,97 @@
+-- Preload a replacement while the current map remains playable.
+go.property("listener", msg.url())
+
+local function notify(self, name, data)
+    if self.listener.path ~= hash("") then msg.post(self.listener, name, data or {}) end
+end
+local function receipt(self, status, reason)
+    local request = self.active
+    if request and request.ack_url and request.ack_url:match("^http://127%.0%.0%.1:%d+/heron/[%w%-]+$") then
+        http.request(request.ack_url, "POST", function() end,
+            {["Content-Type"]="application/json"},
+            json.encode({status=status, generation=self.generation, reason=reason or "", kept_previous=self.generation>0}),
+            {timeout=3})
+    end
+    self.active = nil
+end
+local function set_enabled(objects, enabled)
+    for _, id in pairs(objects) do msg.post(id, enabled and "enable" or "disable") end
+end
+local function failed(self, reason)
+    if self.candidate then go.delete(self.candidate, true); self.candidate=nil end
+    self.phase = self.generation>0 and "ready" or "failed"
+    notify(self, "heron_level_failed", {reason=reason, kept_previous=self.generation>0})
+    receipt(self, "failed", reason)
+    print("HERON_LEVEL_FAILED " .. reason)
+end
+local function load_level(self)
+    self.phase = "loading"
+    -- Existing instances retain their resources when the factory releases its references.
+    collectionfactory.unload("#level")
+    collectionfactory.set_prototype("#level", nil)
+    local path = self.active and self.active.prototype or "/heron_brush_live/preview.collectionc"
+    local ok, reason = pcall(collectionfactory.set_prototype, "#level", path)
+    if not ok then failed(self, "selecting prototype: " .. tostring(reason)); return end
+    local started, error = pcall(collectionfactory.load, "#level", function(instance, url, success)
+        if not success then failed(instance, "loading resources"); return end
+        local created, objects = pcall(collectionfactory.create, url)
+        if not created or not objects then failed(instance, "creating objects: " .. tostring(objects)); return end
+        instance.candidate = objects
+        local count = 0
+        for _ in pairs(objects) do count=count+1 end
+        if count < (instance.active and instance.active.minimum_objects or 0) then
+            failed(instance, "creating objects: factory returned an incomplete level"); return
+        end
+        -- Keep candidate colliders out of the current physics world until commit.
+        set_enabled(objects, false)
+        instance.phase = "candidate"
+    end)
+    if not started then failed(self, "starting load: " .. tostring(error)) end
+end
+function init(self)
+    self.objects = {}
+    self.generation = 0
+    self.pending = nil
+    load_level(self)
+end
+function update(self, dt)
+    if self.phase == "candidate" then
+        notify(self, "heron_level_unloading", {generation=self.generation})
+        self.phase = "notifying"
+    elseif self.phase == "notifying" then
+        go.delete(self.objects, true)
+        self.objects = self.candidate
+        self.candidate = nil
+        self.phase = "deleting"
+    elseif self.phase == "deleting" then
+        -- Old deletions have completed before replacement colliders are enabled.
+        set_enabled(self.objects, true)
+        self.phase = "activating"
+    elseif self.phase == "activating" then
+        self.phase = "ready"
+        self.generation = self.generation + 1
+        notify(self, "heron_level_loaded", {generation=self.generation})
+        receipt(self, "loaded")
+        print("HERON_LEVEL_LOADED " .. self.generation)
+    elseif self.pending and (self.phase == "ready" or self.phase == "failed") then
+        self.active = self.pending
+        self.pending = nil
+        load_level(self)
+    end
+end
+function on_message(self, id, message, sender)
+    if id == hash("heron_reload_level") then
+        -- A project may select an alternate compiled level with the same lifecycle.
+        local prototype=message.prototype
+        if prototype and (not prototype:match("^/[%w_/%-%.]+%.collectionc$") or prototype:find("..",1,true)) then
+            return
+        end
+        self.pending = {ack_url=message.ack_url, minimum_objects=message.minimum_objects or 0, prototype=prototype}
+    elseif id == hash("heron_level_status") then
+        msg.post(sender, "heron_level_status", {phase=self.phase, generation=self.generation})
+    end
+end
+function final(self)
+    go.delete(self.objects, true)
+    if self.candidate then go.delete(self.candidate, true) end
+end

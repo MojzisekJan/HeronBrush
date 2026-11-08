@@ -1531,7 +1531,10 @@ fn build(
         }
     }
 
-    if matches!(options.target, Target::Defold | Target::Raylib)
+    if (options.target == Target::Raylib
+        || (options.target == Target::Defold
+            && !options.model_material.is_empty()
+            && options.model_material != "/builtins/materials/model.material"))
         && settings
             .generated_materials
             .values()
@@ -1555,10 +1558,11 @@ pub(crate) fn configure_defold_materials(
 ) -> Result<Vec<(PathBuf, Vec<u8>)>, Error> {
     let mut files = Vec::new();
     let mut normals = std::collections::BTreeMap::new();
-    if level
-        .entities
-        .iter()
-        .any(|e| e.properties.contains_key("defold_sampler_normal"))
+    if options.model_material == "/builtins/materials/model.material"
+        || level
+            .entities
+            .iter()
+            .any(|e| e.properties.contains_key("defold_sampler_normal"))
     {
         for (material, png) in &settings.normal_maps {
             let path = directory
@@ -1571,6 +1575,47 @@ pub(crate) fn configure_defold_materials(
                 resource.trim_start_matches("res://").to_owned(),
             );
             files.push((path, png.to_vec()));
+        }
+    }
+    for (index, (material_name, material)) in settings.generated_materials.iter().enumerate() {
+        if material.alpha {
+            options.material_alpha.insert(material_name.clone());
+        }
+        if let Some(pbr) = &material.pbr {
+            options
+                .material_pbr
+                .insert(material_name.clone(), pbr.clone());
+            if options.model_material == "/builtins/materials/model.material"
+                && material.alpha
+                && pbr.alpha_mode == scene_export::materials::AlphaMode::Opaque
+            {
+                // OPAQUE ignores source alpha. Clear it before Defold can erase RGB at alpha zero.
+                let mut rgba = image::load_from_memory(&material.png)
+                    .map_err(|e| Error::Map(e.to_string()))?
+                    .to_rgba8();
+                for pixel in rgba.pixels_mut() {
+                    pixel[3] = 255;
+                }
+                let mut bytes = Vec::new();
+                image::DynamicImage::ImageRgba8(rgba)
+                    .write_to(
+                        &mut std::io::Cursor::new(&mut bytes),
+                        image::ImageFormat::Png,
+                    )
+                    .map_err(|e| Error::Map(e.to_string()))?;
+                let path = directory
+                    .join(format!("{name}_paint"))
+                    .join(format!("opaque_{index}.png"));
+                let resource =
+                    scene_export::materials::fs_to_res(project, &path).ok_or_else(|| {
+                        Error::Map("Defold opaque albedo must be inside the project".into())
+                    })?;
+                options.opaque_albedos.insert(
+                    material_name.clone(),
+                    resource.trim_start_matches("res://").to_owned(),
+                );
+                files.push((path, bytes));
+            }
         }
     }
     for texture in &level.textures {

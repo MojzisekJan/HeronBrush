@@ -1,0 +1,54 @@
+go.property("blend_material",resource.material("/blend.material"))
+local function set_phase(self)
+    local stage=self.stage
+    if stage==1 then
+        go.set_position(vmath.vector3(0,0,3),self.light.path)
+        go.set(self.mesh,"surface_params",vmath.vector4(0.5,0,0,1))
+        go.set(self.mesh,"emission_params",vmath.vector4())
+    elseif stage==2 then
+        go.set(self.light,"light_color",vmath.vector4(0,1,0,1))
+    elseif stage==3 then
+        go.set(self.light,"light_params",vmath.vector4(30,10,0.9,1))
+        go.set_rotation(vmath.quat(),self.light.path)
+    elseif stage==4 then
+        go.set_rotation(vmath.quat_rotation_y(math.pi),self.light.path)
+    elseif stage==5 then
+        go.set_rotation(vmath.quat(),self.light.path)
+        go.set(self.light,"light_color",vmath.vector4(0,0,1,1))
+        go.set(self.light,"light_params",vmath.vector4(3,10,-1,0))
+    elseif stage==6 then
+        msg.post(self.light,"disable")
+    elseif stage==7 then
+        go.set(self.mesh,"emission_params",vmath.vector4(0,0,2,0))
+    elseif stage==8 or stage==9 then
+        msg.post(self.light,"enable")
+        go.set(self.light,"light_color",vmath.vector4(1,1,1,1))
+        go.set(self.mesh,"emission_params",vmath.vector4())
+        go.set(self.mesh,"surface_params",vmath.vector4(stage==8 and 0.08 or 1,1,0,0))
+    elseif stage==10 then
+        msg.post(self.light,"disable")
+        go.set(self.mesh,"emission_params",vmath.vector4(0,0,2,1))
+    elseif stage==11 then
+        go.set(self.mesh,"material",self.blend_material)
+        go.set(self.mesh,"emission_params",vmath.vector4(0,0,2,2))
+    end
+end
+function init(self) self.stage=0;self.frame=0;self.total=0 end
+function on_message(self,id,message,sender)
+    if id==hash("test_mesh") then self.mesh=message.url end
+    if id==hash("test_light") then self.light=message.url end
+end
+function update(self,dt)
+    self.total=self.total+dt
+    if self.total>30 then print("HERON_RENDER_FAIL timeout");sys.exit(1) end
+    if not self.mesh or not self.light then return end
+    if self.stage==0 then self.stage=1;set_phase(self) end
+    self.frame=self.frame+1
+    if self.frame==20 then
+        print("HERON_RENDER_VIEW "..self.stage)
+    elseif self.frame==40 then
+        self.stage=self.stage+1;self.frame=0
+        if self.stage>11 then print("HERON_RENDER_NATIVE_OK");sys.exit(0);return end
+        set_phase(self)
+    end
+end

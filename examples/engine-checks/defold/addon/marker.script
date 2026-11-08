@@ -1,0 +1,2 @@
+function init(self) msg.post("/probe#check","marker_added") end
+function final(self) msg.post("/probe#check","marker_removed") end

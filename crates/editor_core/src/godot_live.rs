@@ -186,8 +186,23 @@ impl LiveLink {
     /// Installs the engine addon into the target's project, reporting the outcome.
     pub fn install_addon(&self, target: Target) {
         let options = crate::export_settings::Settings::load().for_target(target);
-        match project(&options).and_then(|root| if target == Target::Flax { crate::flax_live::install(&root) } else if target == Target::Unity { crate::unity_live::install(&root) } else { install(&root) }) {
-            Ok(())=>self.say(if target == Target::Flax { "Addon installed. Let Flax compile, then choose Tools > Heron Brush: attach live map." } else if target == Target::Unity { "Addon installed. Open Window > Heron Brush > Live Link in Unity." } else { "Addon installed. Enable Heron Brush Live in Godot → Project Settings → Plugins." }),
+        let result = project(&options).and_then(|root| match target {
+            Target::Flax => crate::flax_live::install(&root),
+            Target::Unity => crate::unity_live::install(&root),
+            Target::Defold => {
+                let document = self.document.upgrade();
+                let borrowed = document.as_ref().map(|d| d.borrow());
+                crate::defold_addon::install(&root, &options, borrowed.as_deref())
+            }
+            _ => install(&root),
+        });
+        match result {
+            Ok(())=>self.say(match target {
+                Target::Flax=>"Addon installed. Let Flax compile, then choose Tools > Heron Brush: attach live map.",
+                Target::Unity=>"Addon installed. Open Window > Heron Brush > Live Link in Unity.",
+                Target::Defold=>"Addon installed. In Defold reload editor scripts, then open Project > Heron Brush: Settings. Add heron_brush/controller.go to your game collection for managed level reload.",
+                _=>"Addon installed. Enable Heron Brush Live in Godot → Project Settings → Plugins.",
+            }),
             Err(e)=>self.say(e),
         }
         self.notify();
@@ -228,6 +243,9 @@ impl LiveLink {
         let doc = doc.borrow();
         let mut options = crate::export_settings::Settings::load().for_target(target);
         let root = project(&options)?;
+        if target == Target::Defold {
+            options = crate::defold_addon::live_options(&root, &options)?;
+        }
         if ACTIVE_PROJECTS.with(|active| active.borrow().contains(&root)) {
             return Err(format!("This {} project already has a live link from another map window. Stop that link first.", target.name()));
         }
@@ -384,7 +402,19 @@ impl LiveLink {
                         }
                         Err(e) => {
                             state.published.clear();
-                            self.say(format!("{} live link failed: {e}. Edit the map or restart the link to retry.", self.engine.get().name()));
+                            if state.options.target == Target::Defold
+                                && e.contains("already being published")
+                            {
+                                state.dirty = true;
+                                state.changed = now;
+                                state.first_change = now;
+                                state.last_text.clear();
+                                self.say(
+                                    "Defold is publishing another batch. Retrying automatically.",
+                                );
+                            } else {
+                                self.say(format!("{} live link failed: {e}. Edit the map or restart the link to retry.", self.engine.get().name()));
+                            }
                         }
                     }
                 }
@@ -507,7 +537,7 @@ impl LiveLink {
                             "{} updated — drawing changes will sync automatically",
                             self.engine.get().name()
                         ));
-                    } else if ack["state"] == "waiting" {
+                    } else if ack["revision"] == state.published && ack["state"] == "waiting" {
                         self.say(ack["message"].as_str().unwrap_or("Waiting for the engine"));
                     }
                 }
@@ -644,6 +674,12 @@ fn prepare(
     })
 }
 fn publish(prepared: Prepared, root: &Path, source: &str) -> Result<(String, Vec<String>), String> {
+    let _defold_lock = if prepared.scene.ends_with(".collection") {
+        crate::defold_live::claim_folder(root)?;
+        Some(crate::defold_live::publication_lock(root)?)
+    } else {
+        None
+    };
     // The addon also checks this sentinel after loading, in case a newer batch
     // arrives during Godot's asynchronous resource scan.
     let busy = root.join(".heron-brush-live-busy");

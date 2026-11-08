@@ -1,0 +1,50 @@
+local M = {}
+---@return table<string, any>
+local function read_config()
+    local file = assert(io.open("heron_brush.json", "r"), "Install Heron Brush support first")
+    local text = file:read("*a"); file:close()
+    local config=json.decode(text)
+    assert(type(config)=="table", "heron_brush.json must contain an object")
+    return config
+end
+local function write_config(config)
+    local file = assert(io.open("heron_brush.json", "w"))
+    file:write(json.encode(config)); file:close()
+end
+local function executable()
+    local value = (editor.prefs.get("heron_brush.executable") or "heron-brush")
+    assert(value ~= "", "Choose the Heron Brush executable in Project > Heron Brush: Settings")
+    return value
+end
+function M.get_prefs_schema()
+    return {["heron_brush.executable"] = editor.prefs.schema.string({default="heron-brush", scope=editor.prefs.SCOPE.PROJECT})}
+end
+local function command(action)
+    local output = editor.execute(executable(), "--defold-project", ".", action, {out="capture", reload_resources=true})
+    if output and output ~= "" then print(output) end
+end
+local function settings()
+    local config = read_config()
+    local binary = (editor.prefs.get("heron_brush.executable") or "heron-brush")
+    local map = config.map or ""
+    local fields = {
+        editor.ui.label({text="Heron Brush executable"}),
+        editor.ui.external_file_field({value=binary, on_value_changed=function(v) binary=v end}),
+        editor.ui.label({text="Source map"}),
+        editor.ui.external_file_field({value=map, on_value_changed=function(v) map=v end}),
+        editor.ui.paragraph({text="Export settings and per-class component, prefab and property bindings are stored in heron_brush.json. Generated map objects are replaced on reload; keep the player and camera outside the managed level."})
+    }
+    local result=editor.ui.show_dialog(editor.ui.dialog({title="Heron Brush",content=editor.ui.vertical({padding=editor.ui.PADDING.LARGE,spacing=editor.ui.SPACING.MEDIUM,children=fields}),buttons={editor.ui.dialog_button({text="Cancel",cancel=true,result=false}),editor.ui.dialog_button({text="Save",default=true,result=true})}}))
+    if result then config.map=map;write_config(config);editor.prefs.set("heron_brush.executable",binary) end
+end
+function M.get_commands()
+    return {
+        {label="Heron Brush: Settings",locations={"Project"},run=settings},
+        {label="Heron Brush: Open Map",locations={"Project"},run=function() command("open") end},
+        {label="Heron Brush: Re-export Map",locations={"Project"},run=function() command("export") end},
+        {label="Heron Brush: Validate Bindings",locations={"Project"},run=function() command("validate") end},
+        {label="Heron Brush: Reload Level",locations={"Project"},run=function() command("reload") end},
+        {label="Heron Brush: Edit Export and Bindings",locations={"Project"},run=function() editor.ui.open_resource("/heron_brush.json") end}
+    }
+end
+return M

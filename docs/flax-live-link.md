@@ -83,3 +83,34 @@ With environment and camera actors the demo has 52 root children.
 
 Windows and Play Mode transitions still need interactive checks. Headless
 checks validate scene objects and collision assets, not GPU material appearance.
+
+## Replacement and addon updates
+
+A replacement preserves the generated root's parent, local transform and active
+state. Failed builds destroy their temporary actors immediately and keep the
+previous map. Models and prefabs must finish loading before actors are created.
+Rebuilding a final export only replaces its owner in the current scene.
+The receiver prevents nested imports and cancels the replacement if the scene
+changes, Play Mode starts or the user stops the link during import.
+
+**Stop live map** detaches the receiver and leaves the generated actors in the
+scene. Attaching another source then creates a separate root. Attaching the same
+source recovers its existing marked root. Without stopping, changing sources is
+rejected.
+
+The addon installer records hashes of its generated C# files. Reinstalling can
+upgrade tracked files, while files edited by the project are preserved and
+reported. Older installations without that record need their old addon folder
+moved aside once. The live link detects outdated addon contents before starting.
+Do not edit the ownership record or use symbolic links for generated addon paths.
+
+Run the replacement, rollback, inactive-root and source-switch checks together:
+
+```sh
+python3 examples/engine-checks/flax/verify_live.py --root /tmp/heron-flax-live-check
+```
+
+The directory must not exist. `FLAX_EDITOR` selects the editor executable. The
+runner keeps Flax preferences in the disposable project and requires the native
+`HERON_LIVE_CHECK PASS` marker, including when the editor exits without an error.
+The checks use the Null renderer and do not establish GPU material appearance.

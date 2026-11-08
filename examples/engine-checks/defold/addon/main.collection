@@ -1,0 +1,3 @@
+name: "main"
+instances { id: "level" prototype: "/heron_brush/controller.go" component_properties { id: "controller" properties { id: "listener" value: "/probe#check" type: PROPERTY_TYPE_URL } } }
+embedded_instances { id: "probe" data: "components { id: \"check\" component: \"/check.script\" }\n" position { x: 17 y: 9 z: 3 } }

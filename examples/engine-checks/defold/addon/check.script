@@ -1,0 +1,54 @@
+local function fail(message) print("HERON_ADDON_FAIL " .. message); sys.exit(1) end
+function init(self) self.elapsed=0; self.generation=0; self.markers=0 end
+function update(self,dt)
+ self.elapsed=self.elapsed+dt
+ if self.elapsed>40 then fail("timeout") end
+ if self.check_at and self.elapsed>self.check_at then
+  self.check_at=nil
+  local pos=go.get_position()
+  if pos.x~=17 or pos.y~=9 or pos.z~=3 then fail("outside object moved") end
+  local hit=physics.raycast(vmath.vector3(0,4,0),vmath.vector3(0,-4,0),{hash("default")})
+  if not hit then fail("map collider missing") end
+  print("HERON_ADDON_COLLIDER " .. self.generation .. " " .. hit.position.y)
+  if self.generation==1 then
+   self.old=hit.id
+   msg.post("/level#controller","heron_reload_level")
+   msg.post("/level#controller","heron_reload_level")
+  elseif self.generation==2 then
+   if go.exists(self.old) then fail("old map object leaked") end
+   self.stable=hit.id
+   self.expect_failure=1
+   msg.post("/level#controller","heron_reload_level",{prototype="/missing.collectionc"})
+  elseif self.generation==3 then
+   if math.abs(hit.position.y-2)>0.1 then fail("hot-reloaded collider stayed at old height") end
+   if self.markers~=1 then fail("added object missing") end
+   print("HERON_ADDON_READY_FOR_REMOVAL")
+  elseif self.generation==4 then
+   if self.markers~=0 then fail("removed object leaked") end
+   print("HERON_ADDON_NATIVE_OK")
+   sys.exit(0)
+  else fail("unexpected extra generation") end
+ end
+end
+function on_message(self,id,message,sender)
+ if id==hash("marker_added") then self.markers=self.markers+1 end
+ if id==hash("marker_removed") then self.markers=self.markers-1 end
+ if id==hash("heron_level_unloading") and self.old and self.generation==1 and not go.exists(self.old) then fail("unloading notification arrived after deletion") end
+ if id==hash("heron_level_loaded") then
+  self.generation=message.generation
+  self.check_at=self.elapsed+0.2
+ elseif id==hash("heron_level_failed") then
+  if not self.expect_failure then fail("unexpected factory failure"); return end
+  if not message.kept_previous or not go.exists(self.stable) then fail("failed replacement deleted the old map"); return end
+  local hit=physics.raycast(vmath.vector3(0,4,0),vmath.vector3(0,-4,0),{hash("default")})
+  if not hit or hit.id~=self.stable then fail("failed replacement lost the old collider"); return end
+  if self.expect_failure==1 then
+   self.expect_failure=2
+   msg.post("/level#controller","heron_reload_level",{minimum_objects=100000})
+  else
+   self.expect_failure=nil
+   print("HERON_ADDON_FAILURE_PRESERVED_OLD_MAP")
+   print("HERON_ADDON_READY_FOR_HOT_RELOAD")
+  end
+ end
+end

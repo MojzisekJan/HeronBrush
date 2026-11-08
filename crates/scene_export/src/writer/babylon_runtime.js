@@ -18,6 +18,46 @@
 // shape for a sensor. Bodies are placed when the level loads; move `options.parent`
 // before calling loadLevel rather than the root after it.
 
+// Each scene setting has an ownership stack so maps can be unloaded in either order.
+const sceneValues = new WeakMap();
+function setSceneValue(target, key, value, owned) {
+  let fields = sceneValues.get(target);
+  if (!fields) sceneValues.set(target, fields = new Map());
+  let stack = fields.get(key);
+  if (!stack) fields.set(key, stack = []);
+  const entry = {target, key, before: target[key], value};
+  target[key] = value;
+  stack.push(entry); owned.push(entry);
+}
+function restoreSceneValues(owned) {
+  for (const entry of owned.splice(0).reverse()) {
+    const {target, key, before, value} = entry;
+    const fields = sceneValues.get(target), stack = fields.get(key), index = stack.indexOf(entry);
+    if (index + 1 < stack.length) stack[index + 1].before = before;
+    else if (target[key] === value) target[key] = before;
+    stack.splice(index, 1);
+    if (!stack.length) fields.delete(key);
+    if (!fields.size) sceneValues.delete(target);
+  }
+}
+function cleanupAll(tasks) {
+  const errors = [];
+  for (const task of tasks) try { task(); } catch (error) { errors.push(error); }
+  if (errors.length) throw new AggregateError(errors, 'Could not completely dispose the Heron Brush level');
+}
+function validateLevel(level) {
+  if (level?.format !== 2 || !Array.isArray(level.entities)) throw new Error('Not a Heron Brush level (format 2)');
+  const names = new Set();
+  for (const entity of level.entities) {
+    if (!entity || typeof entity.name !== 'string' || !entity.name || names.has(entity.name))
+      throw new Error('Missing or duplicate entity name: ' + entity?.name);
+    names.add(entity.name);
+    const t = entity.transform;
+    if (!t || ![t.translation, t.rotation_yxz, t.scale].every(v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite)))
+      throw new Error('Invalid entity transform: ' + entity.name);
+  }
+}
+
 const RADIANS = Math.PI / 180;
 
 // The rotation of Euler angles applied Y, then X, then Z (three.js's 'YXZ' order),
@@ -281,23 +321,29 @@ function bodyShape(B, scene, collision, scale) {
 }
 
 // The level's sky (an equirectangular .hdr: its URL, or a data: URL), sun and fog.
-function applyEnvironment(B, scene, env, skyUrl, parent) {
-  const made = [];
+async function applyEnvironment(B, scene, env, skyUrl, parent, made, owned) {
   if (!env) return made;
   if (skyUrl) {
-    const texture = new B.HDRCubeTexture(skyUrl, scene, 256, false, true, false, true);
+    let texture;
+    await new Promise((resolve, reject) => {
+      texture = new B.HDRCubeTexture(skyUrl, scene, 256, false, true, false, true, resolve,
+        (message, error) => reject(error ?? new Error(message ?? 'Could not load sky panorama')));
+      made.push(texture);
+      if (texture.isReady()) resolve();
+    });
     texture.name = 'heron-sky';
-    scene.environmentTexture = texture;
+    setSceneValue(scene, 'environmentTexture', texture, owned);
     const skybox = env.show_background === false ? null : scene.createDefaultSkybox(texture, true, 1000, 0, false);
     if (skybox) {
       skybox.name = 'heron-skybox';
       skybox.applyFog = false;
       skybox.infiniteDistance = true;
       made.push(skybox, skybox.material);
+      const reflection = skybox.material.reflectionTexture;
+      if (reflection && reflection !== texture) made.push(reflection);
     }
-    made.push(texture);
   }
-  scene.environmentIntensity = env.ambient_intensity;
+  setSceneValue(scene, 'environmentIntensity', env.ambient_intensity, owned);
   const sun = new B.DirectionalLight('heron-sun', new B.Vector3(...env.to_sun).normalize().negate(), scene);
   sun.diffuse = new B.Color3(...env.sun_color);
   sun.specular = sun.diffuse.clone();
@@ -307,13 +353,13 @@ function applyEnvironment(B, scene, env, skyUrl, parent) {
   sun.parent = parent;
   made.push(sun);
   const processing = scene.imageProcessingConfiguration;
-  processing.toneMappingEnabled = true;
-  processing.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
-  processing.exposure = env.exposure;
+  setSceneValue(processing, 'toneMappingEnabled', true, owned);
+  setSceneValue(processing, 'toneMappingType', B.ImageProcessingConfiguration.TONEMAPPING_ACES, owned);
+  setSceneValue(processing, 'exposure', env.exposure, owned);
   if (env.fog) {
-    scene.fogMode = B.Scene.FOGMODE_EXP2;
-    scene.fogDensity = env.fog.density;
-    scene.fogColor = new B.Color3(...env.fog.color);
+    setSceneValue(scene, 'fogMode', B.Scene.FOGMODE_EXP2, owned);
+    setSceneValue(scene, 'fogDensity', env.fog.density, owned);
+    setSceneValue(scene, 'fogColor', new B.Color3(...env.fog.color), owned);
   }
   return made;
 }
@@ -345,32 +391,51 @@ function makeLight(B, scene, record) {
 export async function loadLevel(B, scene, source, options = {}) {
   let level = source.level, base = '', meshSources = source.meshes ?? {};
   if (typeof source === 'string') {
-    level = await (await fetch(source)).json();
+    const response = await fetch(source);
+    if (!response.ok) throw new Error(`Could not load level (${response.status}): ${source}`);
+    level = await response.json();
     base = new URL('.', new URL(source, location.href)).href;
   }
-  if (level?.format !== 2 || !Array.isArray(level.entities)) throw new Error('Not a Heron Brush level (format 2)');
+  validateLevel(level);
+  if (!scene.useRightHandedSystem && (scene.meshes.length || scene.transformNodes.length || scene.cameras.length || scene.lights.length))
+    throw new Error('Heron Brush requires a right-handed scene; set useRightHandedSystem before creating scene objects.');
   scene.useRightHandedSystem = true;
   const physics = scene.getPhysicsEngine?.() ?? null;
   const root = new B.TransformNode(level.name, scene);
   if (options.parent) root.parent = options.parent;
   root.computeWorldMatrix(true);
-  const containers = new Map();
+  const containers = new Map(), loadedContainers = [], instances = [], materials = new Set(), textures = new Set();
   const container = path => {
     if (!containers.has(path)) {
       const mesh = meshSources[path] ?? base + path;
-      containers.set(path, B.LoadAssetContainerAsync(mesh, scene, {pluginExtension: '.glb'}));
+      containers.set(path, B.LoadAssetContainerAsync(mesh, scene, {pluginExtension: '.glb'}).then(asset => { loadedContainers.push(asset); return asset; }));
     }
     return containers.get(path);
   };
   const out = {
     data: level, root, entities: [], byName: new Map(), animations: new Map(), triggers: [], waters: [],
-    lights: [], shadows: [], bodies: [], environment: [], cleanups: [], time: 0,
+    lights: [], shadows: [], bodies: [], environment: [], sceneValues: [], cleanups: [], time: 0,
   };
+  let disposed = false;
+  out.dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    cleanupAll([
+      ...out.cleanups.splice(0).reverse(),
+      () => restoreSceneValues(out.sceneValues),
+      ...out.bodies.flatMap(body => { const shape = body.shape; return [() => body.dispose(), () => shape?.dispose()]; }),
+      ...out.shadows.map(shadow => () => shadow.dispose()),
+      ...instances.map(models => () => models.dispose()),
+      () => root.dispose(false, false),
+      ...[...materials].map(material => () => material.dispose(false, false)),
+      ...[...textures].map(texture => () => texture.dispose()),
+      ...out.environment.map(thing => () => thing.dispose()),
+      ...loadedContainers.map(asset => () => asset.dispose()),
+    ]);
+  };
+  try {
   for (const entity of level.entities) {
     const t = entity.transform;
-    if (![t.translation, t.rotation_yxz, t.scale].every(v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite))) {
-      throw new Error('Invalid entity transform: ' + entity.name);
-    }
     const node = new B.TransformNode(entity.name, scene);
     node.parent = root;
     node.position = B.Vector3.FromArray(t.translation);
@@ -393,13 +458,21 @@ export async function loadLevel(B, scene, source, options = {}) {
     if (triggerData) { record.trigger = new HeronAnimationTrigger(B, triggerData, node); record.trigger.entityName = entity.name; out.triggers.push(record.trigger); }
     if (entity.mesh) {
       // Copies of one GLB share its geometry; water gets materials of its own.
-      const models = (await container(entity.mesh)).instantiateModelsToScene(
+      const template = await container(entity.mesh);
+      const models = template.instantiateModelsToScene(
         name => `${entity.name}/${name}`, !!record.water, {doNotInstantiate: true});
+      instances.push(models);
       for (const model of models.rootNodes) model.parent = node;
       record.meshes = node.getChildMeshes(false);
       if (record.water) {
-        const materials = new Set(record.meshes.map(mesh => mesh.material).filter(Boolean));
-        for (const material of materials) record.water.material(material);
+        const waterMaterials = new Set(record.meshes.flatMap(mesh => mesh.material?.subMaterials ?? [mesh.material]).filter(Boolean));
+        for (const mesh of record.meshes) if (mesh.material) materials.add(mesh.material);
+        const sharedTextures = new Set([...template.textures, ...template.materials.flatMap(material => material.getActiveTextures())]);
+        for (const material of waterMaterials) {
+          materials.add(material);
+          for (const texture of material.getActiveTextures()) if (!sharedTextures.has(texture)) textures.add(texture);
+          record.water.material(material);
+        }
       }
     }
     if (entity.light && options.lights !== false) {
@@ -429,9 +502,9 @@ export async function loadLevel(B, scene, source, options = {}) {
   if (options.sky !== false) {
     const env = level.environment;
     const sky = source.sky ?? (env?.panorama ? base + env.panorama : null);
-    out.environment = applyEnvironment(B, scene, env, sky, root);
+    await applyEnvironment(B, scene, env, sky, root, out.environment, out.sceneValues);
     installLocalLighting(B, scene, out, env?.local_lighting);
-    installDisplay(B, scene, env?.display, out.cleanups);
+    installDisplay(B, scene, env?.display, out.cleanups, out.sceneValues);
   }
   out.shadows = makeShadows(B, scene, out, options.sky !== false && level.environment?.shadows !== false);
   for (const record of out.entities) {
@@ -449,14 +522,11 @@ export async function loadLevel(B, scene, source, options = {}) {
   };
   // The water at a world point, the way HeronWater.sample picks among volumes.
   out.water = point => HeronWater.sample(out.waters, point);
-  out.dispose = () => {
-    for (const cleanup of out.cleanups.splice(0)) cleanup();
-    for (const body of out.bodies) { body.shape?.dispose(); body.dispose(); }
-    for (const shadow of out.shadows) shadow.dispose();
-    for (const thing of out.environment) thing.dispose();
-    for (const light of out.lights) light.dispose();
-    root.dispose(false, false);
-  };
+  } catch (error) {
+    try { out.dispose(); }
+    catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Level load failed and cleanup reported errors', {cause: error}); }
+    throw error;
+  }
   return out;
 }
 
@@ -490,14 +560,13 @@ function decodeBase64(text) {
 
 // A scene-linear postprocess uses the editor's white balance, contrast, saturation
 // and all four display transforms. It also grades the sky, water and custom meshes.
-function installDisplay(B, scene, display, cleanups) {
+function installDisplay(B, scene, display, cleanups, owned) {
   if (!display) return;
   const processing = scene.imageProcessingConfiguration;
-  const previous = {apply: processing.applyByPostProcess, tone: processing.toneMappingEnabled, exposure: processing.exposure, clamp:processing.skipFinalColorClamp};
-  processing.applyByPostProcess = true;
-  processing.skipFinalColorClamp = true;
-  processing.toneMappingEnabled = false;
-  processing.exposure = 1;
+  setSceneValue(processing, 'applyByPostProcess', true, owned);
+  setSceneValue(processing, 'skipFinalColorClamp', true, owned);
+  setSceneValue(processing, 'toneMappingEnabled', false, owned);
+  setSceneValue(processing, 'exposure', 1, owned);
   let lut = null;
   if (display.tony_lut) {
     const bytes = decodeBase64(display.tony_lut), source = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -557,7 +626,7 @@ void main() {
   // Babylon announces new cameras inside their base constructor. Attach after
   // construction, before the scene prepares the active camera's render target.
   const observer=scene.onBeforeRenderObservable.add(()=>{for(const camera of scene.cameras)attach(camera);});
-  cleanups.push(()=>{scene.onBeforeRenderObservable.remove(observer);for(const [camera,post] of posts)post.dispose(camera);lut?.dispose();processing.applyByPostProcess=previous.apply;processing.toneMappingEnabled=previous.tone;processing.exposure=previous.exposure;processing.skipFinalColorClamp=previous.clamp;});
+  cleanups.push(()=>{scene.onBeforeRenderObservable.remove(observer);for(const [camera,post] of posts)post.dispose(camera);lut?.dispose();});
 }
 
 
