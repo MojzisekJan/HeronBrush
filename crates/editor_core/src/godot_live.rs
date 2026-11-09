@@ -735,7 +735,7 @@ mod tests {
             let p = std::env::temp_dir().join(format!("heron-live-{name}-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&p);
             std::fs::create_dir_all(&p).unwrap();
-            Self(p)
+            Self(p.canonicalize().unwrap())
         }
     }
     impl Drop for Temp {
