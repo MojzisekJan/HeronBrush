@@ -147,27 +147,59 @@ impl Document {
     pub(super) fn adopt_imported_references(
         &mut self,
         refs: &std::collections::BTreeMap<String, String>,
+        previous_path: Option<&Path>,
     ) {
-        fn visit(nodes: &mut [Node], refs: &std::collections::BTreeMap<String, String>) {
-            for node in nodes {
-                match &mut node.kind {
-                    NodeKind::Entity(entity) => {
-                        if let Some(value) = entity
-                            .property(PROPERTY)
-                            .and_then(|value| refs.get(value))
-                            .cloned()
-                        {
+        fn visit(
+            node: &mut Node,
+            refs: &std::collections::BTreeMap<String, String>,
+            previous_folder: Option<&Path>,
+        ) {
+            let children = match &mut node.kind {
+                NodeKind::Entity(entity) => {
+                    if let Some(reference) = entity.property(PROPERTY) {
+                        let replacement = refs.get(reference).cloned().or_else(|| {
+                            previous_folder
+                                .filter(|_| !Path::new(reference).is_absolute())
+                                .map(|folder| folder.join(reference).to_string_lossy().into_owned())
+                        });
+                        if let Some(value) = replacement {
                             entity.set_property(PROPERTY, value);
                         }
-                        visit(&mut entity.children, refs)
                     }
-                    NodeKind::Group(group) => visit(&mut group.children, refs),
-                    _ => {}
+                    &mut entity.children
                 }
+                NodeKind::Group(group) => &mut group.children,
+                NodeKind::Layer(layer) => &mut layer.children,
+                _ => return,
+            };
+            for child in children {
+                visit(child, refs, previous_folder);
             }
         }
+        // Deleted models may exist only in history. Keep their source directory even
+        // when Save As did not need to copy any currently visible models.
+        let previous_folder = previous_path
+            .and_then(Path::parent)
+            .and_then(|p| std::path::absolute(p).ok());
+        let current_folder = self
+            .path
+            .as_deref()
+            .and_then(Path::parent)
+            .and_then(|p| std::path::absolute(p).ok());
+        let moved_from = previous_folder
+            .as_deref()
+            .filter(|p| Some(*p) != current_folder.as_deref());
         for layer in &mut self.tree.world.layers {
-            visit(&mut layer.children, refs)
+            for node in &mut layer.children {
+                visit(node, refs, None);
+            }
+        }
+        self.history
+            .visit_nodes_mut(|node| visit(node, refs, moved_from));
+        if let Some(nodes) = &mut self.transaction {
+            for node in nodes {
+                visit(node, refs, moved_from);
+            }
         }
         if !refs.is_empty() {
             self.mark_changed();
@@ -388,6 +420,70 @@ fn copy_model_bundle(source: &Path, folder: &Path) -> Result<std::path::PathBuf,
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn save_as_rebases_visible_deleted_and_redo_only_model_history() {
+        for state in ["visible", "deleted", "redo"] {
+            let root = std::env::temp_dir().join(format!(
+                "heron-save-as-history-{}-{state}",
+                std::process::id()
+            ));
+            std::fs::create_dir_all(root.join("old")).unwrap();
+            std::fs::create_dir_all(root.join("new")).unwrap();
+            let root = root.canonicalize().unwrap();
+            std::fs::write(
+                root.join("old/model.obj"),
+                b"v 0 0 0\nv 32 0 0\nv 0 32 0\nf 1 2 3\n",
+            )
+            .unwrap();
+            let mut doc = Document::new(WorldBounds::default());
+            doc.save_as(root.join("old/level.map")).unwrap();
+            let id = doc
+                .import_model(&root.join("old/model.obj"), Vec3d::zero())
+                .unwrap();
+            assert_eq!(
+                doc.selected_entity().unwrap().1.property(PROPERTY),
+                Some("model.obj")
+            );
+            match state {
+                "deleted" => {
+                    doc.delete_selection();
+                }
+                "redo" => {
+                    doc.undo().unwrap();
+                }
+                _ => {}
+            }
+            doc.save_as(root.join("new/level.map")).unwrap();
+            match state {
+                "deleted" => {
+                    doc.undo().unwrap();
+                }
+                "redo" => {
+                    doc.redo().unwrap();
+                }
+                _ => {
+                    doc.undo().unwrap();
+                    doc.redo().unwrap();
+                }
+            }
+            let NodeKind::Entity(entity) = &node::find_node(doc.tree_world(), id).unwrap().kind
+            else {
+                panic!("model")
+            };
+            assert!(
+                doc.imported_model_path(entity).unwrap().is_file(),
+                "{state}"
+            );
+            assert!(doc.imported_model(entity).is_some(), "{state}");
+            doc.save().unwrap();
+            std::fs::remove_dir_all(root.join("old")).unwrap();
+            let reopened =
+                Document::open(root.join("new/level.map"), WorldBounds::default()).unwrap();
+            assert_eq!(reopened.triangles(&Default::default()).len(), 1, "{state}");
+            std::fs::remove_dir_all(root).unwrap();
+        }
+    }
+
     #[test]
     fn pbr_maps_survive_preview_and_all_glb_export_paths() {
         let root = std::env::var_os("HERON_PBR_OUTPUT")

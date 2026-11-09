@@ -292,6 +292,14 @@ impl History {
         Self::default()
     }
 
+    #[cfg(test)]
+    pub(crate) fn with_budget(budget: usize) -> Self {
+        Self {
+            budget,
+            ..Self::new()
+        }
+    }
+
     /// Records an edit that has just been applied.
     ///
     /// This clears the redo stack: once the document has moved in a new direction, the
@@ -343,17 +351,79 @@ impl History {
     /// Folds every step recorded since `mark` into one, so a run of separate edits undoes
     /// in a single press. A no-op when nothing was recorded since.
     ///
-    /// The weight does not change: the same nodes are held, in one step instead of many.
+    /// Flattens nested batches and retains only the endpoints of consecutive changes
+    /// to the same nodes. Long slider gestures keep one original and one final snapshot.
     pub fn coalesce_since(&mut self, mark: usize) {
         let mark = mark.saturating_sub(self.offset).min(self.undo.len());
         let steps: Vec<Edit> = self.undo.drain(mark..).collect();
-        match steps.len() {
-            0 => {}
-            1 => self
-                .undo
-                .push(steps.into_iter().next().expect("length checked")),
-            _ => self.undo.push(Edit::Batch(steps)),
+        self.weight = self
+            .weight
+            .saturating_sub(steps.iter().map(Edit::weight).sum());
+        let mut pending: Vec<_> = steps.into_iter().rev().collect();
+        let mut combined = Vec::new();
+        while let Some(edit) = pending.pop() {
+            if let Edit::Batch(parts) = edit {
+                pending.extend(parts.into_iter().rev());
+                continue;
+            }
+            match (combined.last_mut(), edit) {
+                (
+                    Some(Edit::Changed { after, .. }),
+                    Edit::Changed {
+                        before,
+                        after: next,
+                    },
+                ) if after.len() == before.len()
+                    && before.len() == next.len()
+                    && after.iter().zip(&before).all(|(a, b)| a.id == b.id)
+                    && before.iter().zip(&next).all(|(a, b)| a.id == b.id) =>
+                {
+                    *after = next;
+                }
+                (
+                    Some(Edit::WorldChanged { after, .. }),
+                    Edit::WorldChanged { after: next, .. },
+                ) => {
+                    *after = next;
+                }
+                (_, edit) => combined.push(edit),
+            }
         }
+        let edit = match combined.len() {
+            0 => return,
+            1 => combined.pop().expect("one edit"),
+            _ => Edit::Batch(combined),
+        };
+        self.weight += edit.weight();
+        self.undo.push(edit);
+    }
+
+    /// Updates snapshots after Save As rebases file-backed resources.
+    pub(crate) fn visit_nodes_mut(&mut self, mut visit: impl FnMut(&mut Node)) {
+        fn visit_edit(edit: &mut Edit, visit: &mut impl FnMut(&mut Node)) {
+            match edit {
+                Edit::Changed { before, after } => {
+                    before.iter_mut().for_each(&mut *visit);
+                    after.iter_mut().for_each(&mut *visit);
+                }
+                Edit::Added { nodes, .. } | Edit::Removed { nodes, .. } => {
+                    nodes.iter_mut().for_each(visit);
+                }
+                Edit::LayerInserted { layer, .. } | Edit::LayerRemoved { layer, .. } => {
+                    layer.children.iter_mut().for_each(visit);
+                }
+                Edit::LayerChanged { before, after, .. } => {
+                    before.children.iter_mut().for_each(&mut *visit);
+                    after.children.iter_mut().for_each(visit);
+                }
+                Edit::Batch(parts) => parts.iter_mut().for_each(|part| visit_edit(part, visit)),
+                Edit::WorldChanged { .. } | Edit::Reordered { .. } => {}
+            }
+        }
+        for entry in self.undo.iter_mut().chain(&mut self.redo) {
+            visit_edit(entry, &mut visit);
+        }
+        self.weight = self.undo.iter().map(Edit::weight).sum();
     }
 
     /// Replaces the latest insertion while a shape is still being configured.
@@ -426,6 +496,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn repeated_coalescing_retains_endpoints_without_nested_batches() {
+        let mut history = History::with_budget(1);
+        let mark = history.mark();
+        for value in 0..2000 {
+            history.begin_group();
+            history.record(Edit::WorldChanged {
+                before: vec![("value".into(), value.to_string())],
+                after: vec![("value".into(), (value + 1).to_string())],
+            });
+            history.end_group(mark);
+        }
+        assert_eq!(history.undo_len(), 1);
+        let Edit::WorldChanged { before, after } = history.undo().unwrap() else {
+            panic!("one flat change");
+        };
+        assert_eq!(before[0].1, "2000");
+        assert_eq!(after[0].1, "0");
+        assert!(matches!(history.redo(), Some(Edit::WorldChanged { .. })));
+        assert_eq!(history.weight, history.undo[0].weight());
+    }
+
+    #[test]
     fn coalescing_with_a_stable_mark_survives_capacity_eviction() {
         let mut history = History::new();
         for layer in 0..CAPACITY {
@@ -479,14 +571,14 @@ mod tests {
         history.end_group(inner);
         history.end_group(outer);
         assert_eq!(history.undo_len(), 1);
-        let Edit::Batch(parts) = history.undo().unwrap() else {
-            panic!("outer batch")
+        let Edit::WorldChanged { before, after } = history.undo().unwrap() else {
+            panic!("coalesced world change")
         };
-        assert_eq!(parts.len(), 2);
-        let Edit::Batch(inner) = &parts[0] else {
-            panic!("inner batch")
-        };
-        assert_eq!(inner.len(), CAPACITY + 2);
+        assert_eq!(before, vec![("b".into(), "second".into())]);
+        assert!(
+            after.is_empty(),
+            "undo restores the state before the outer group"
+        );
         assert!(history.undo().is_none());
         assert!(history.redo().is_some());
         assert_eq!(

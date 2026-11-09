@@ -731,6 +731,7 @@ impl Document {
             .copied()
             .filter(|face| stroke.visited.insert(*face))
             .collect();
+        self.history.begin_group();
         let changed = self.edit_faces_on(&targets, |face| {
             if face.material_name == stroke.material && face.color.is_none() {
                 return false;
@@ -739,8 +740,8 @@ impl Document {
             face.set_paint(None);
             true
         });
+        self.history.end_group(stroke.mark);
         if changed > 0 {
-            self.history.coalesce_since(stroke.mark);
             stroke.revision = self.revision();
         }
         changed

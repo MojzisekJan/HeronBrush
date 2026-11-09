@@ -300,6 +300,7 @@ impl Document {
         }
         let selected = self.selection.clone();
         let replaced: HashSet<NodeId> = replacements.keys().copied().collect();
+        self.history.begin_group();
         self.replace_geometry_in_place(replacements);
         if everything {
             self.selection.clear();
@@ -311,7 +312,7 @@ impl Document {
                 .chain(made)
                 .collect();
         }
-        self.history.coalesce_since(stroke.mark);
+        self.history.end_group(stroke.mark);
         stroke.revision = self.revision();
     }
 
@@ -783,6 +784,7 @@ impl Document {
 
         let selected = self.selection.clone();
         let replaced: HashSet<NodeId> = replacements.iter().map(|(id, _)| *id).collect();
+        self.history.begin_group();
         self.replace_geometry_in_place(replacements.into_iter().collect());
         // The selection stays what it was: nothing, so the next dab reaches every brush
         // again, or the same brushes with the pieces in place of those they replaced.
@@ -796,7 +798,7 @@ impl Document {
                 .chain(made)
                 .collect();
         }
-        self.history.coalesce_since(stroke.mark);
+        self.history.end_group(stroke.mark);
         stroke.revision = self.revision();
         true
     }

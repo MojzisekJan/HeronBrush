@@ -3266,8 +3266,8 @@ impl Document {
         let path = path.into();
         let imported_refs = self.imported_references_for(&path).map_err(SaveError::Io)?;
         self.save_copy_to(&path).map_err(SaveError::Io)?;
-        self.path = Some(path);
-        self.adopt_imported_references(&imported_refs);
+        let previous_path = self.path.replace(path);
+        self.adopt_imported_references(&imported_refs, previous_path.as_deref());
         self.modified = false;
         Ok(())
     }

@@ -5395,8 +5395,8 @@ fn surface_material_survives_history_save_and_geometry_edits() {
             roughness: 20,
             metallic: 80,
             emission: 250,
-        ..Default::default()
-};
+            ..Default::default()
+        };
         assert_eq!(doc.set_surface_material_on(&[face], Some(surface)), 1);
         assert_eq!(doc.face_at(face).unwrap().surface_material, Some(surface));
         let saved = doc.to_map_text();
@@ -7278,4 +7278,51 @@ fn navigation_similar_faces_separates_linked_from_disconnected_surfaces() {
         12,
         "hidden surfaces must not be selected"
     );
+}
+
+#[test]
+fn live_material_gestures_survive_budget_pressure_and_restore_endpoints() {
+    use map_model::brush_face::{FaceColor, Rgb, SurfaceMaterial};
+    for mode in 0..3 {
+        let mut d = one_box();
+        d.select_all();
+        d.history = History::with_budget(1);
+        let before = d.to_map_text();
+        let mut session = LivePaint::default();
+        let mark = d.history_mark();
+        let faces: Vec<_> = node::brushes_with_ids(d.tree_world())
+            .into_iter()
+            .flat_map(|(node, brush)| {
+                (0..brush.faces().len()).map(move |face| FaceRef { node, face })
+            })
+            .collect();
+        for value in 0..200 {
+            let color = Some(FaceColor::solid(Rgb::new(value, 0, 255)));
+            match mode {
+                0 => {
+                    d.set_face_color_live(color, &faces, &mut session);
+                }
+                1 => {
+                    d.set_surface_material_live(
+                        Some(SurfaceMaterial {
+                            roughness: value,
+                            ..Default::default()
+                        }),
+                        &faces,
+                        &mut session,
+                    );
+                }
+                _ => {
+                    d.set_face_color_since(color, &faces, mark);
+                }
+            }
+        }
+        assert_eq!(d.history.undo_len(), 1);
+        let after = d.to_map_text();
+        assert_ne!(before, after);
+        d.undo().unwrap();
+        assert_eq!(d.to_map_text(), before, "mode {mode}");
+        d.redo().unwrap();
+        assert_eq!(d.to_map_text(), after, "mode {mode}");
+    }
 }

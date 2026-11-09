@@ -656,8 +656,9 @@ impl Document {
 
     /// Applies a dab's change and folds it into the stroke's one undo step.
     fn record_dab(&mut self, stroke: &mut SculptStroke, before: Vec<Node>, after: Vec<Node>) {
+        self.history.begin_group();
         self.apply_and_record(Edit::Changed { before, after });
-        self.history.coalesce_since(stroke.mark);
+        self.history.end_group(stroke.mark);
         stroke.revision = self.revision();
     }
 

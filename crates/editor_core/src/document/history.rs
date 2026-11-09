@@ -24,13 +24,13 @@ impl Document {
             })
             .map(|(_, mark, ..)| *mark)
             .unwrap_or_else(|| self.history.mark());
+        self.history.begin_group();
         let changed = if picked.is_empty() {
             self.set_face_color(color)
         } else {
             self.set_face_color_on(picked, color)
         };
         if changed > 0 {
-            self.history.coalesce_since(mark);
             session.state = Some((
                 self.revision(),
                 mark,
@@ -39,6 +39,7 @@ impl Document {
                 web_time::Instant::now(),
             ));
         }
+        self.history.end_group(mark);
         changed
     }
 
@@ -57,10 +58,10 @@ impl Document {
         picked: &[super::FaceRef],
         mark: usize,
     ) -> usize {
+        let current = self.history.begin_group();
         let changed = self.set_face_color_on(picked, color);
-        if changed > 0 && self.history.mark() > mark {
-            self.history.coalesce_since(mark);
-        }
+        self.history
+            .end_group(if changed > 0 { mark } else { current });
         changed
     }
 
@@ -82,13 +83,13 @@ impl Document {
             })
             .map(|(_, mark, ..)| *mark)
             .unwrap_or_else(|| self.history.mark());
+        self.history.begin_group();
         let changed = if picked.is_empty() {
             self.set_surface_material(color)
         } else {
             self.set_surface_material_on(picked, color)
         };
         if changed > 0 {
-            self.history.coalesce_since(mark);
             session.state = Some((
                 self.revision(),
                 mark,
@@ -97,6 +98,7 @@ impl Document {
                 web_time::Instant::now(),
             ));
         }
+        self.history.end_group(mark);
         changed
     }
 
