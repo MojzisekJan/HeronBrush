@@ -181,7 +181,7 @@ fn lens_color(color: vec3<f32>, pixel: vec2<f32>, uv: vec2<f32>) -> vec3<f32> {
     }
     if (frame.lens_effects.z > 0.0) {
         let cell = vec2<u32>(floor(pixel / frame.lens_effects.w));
-        var hash = cell.x * 73856093u ^ cell.y * 19349663u ^ u32(frame.lens_fringe.y) * 83492791u;
+        var hash = (cell.x * 73856093u) ^ (cell.y * 19349663u) ^ (u32(frame.lens_fringe.y) * 83492791u);
         hash = (hash ^ (hash >> 16u)) * 2246822519u;
         hash = (hash ^ (hash >> 13u)) * 3266489917u;
         hash = hash ^ (hash >> 16u);
