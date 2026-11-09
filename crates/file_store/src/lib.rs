@@ -8,6 +8,20 @@
 //! (`heron-brush/src/web.rs`). A file that is not in memory can come from a fallback
 //! ([`set_fallback`]): the examples bundled in the binary.
 
+#[cfg(not(target_arch = "wasm32"))]
+mod batch;
+#[cfg(not(target_arch = "wasm32"))]
+pub use batch::write_batch_atomic;
+
+/// Virtual exports replace their in-memory snapshots without fallible I/O.
+#[cfg(target_arch = "wasm32")]
+pub fn write_batch_atomic(_directory: &Path, files: &[(PathBuf, &[u8])]) -> io::Result<()> {
+    for (path, bytes) in files {
+        web::write(path, bytes)?;
+    }
+    Ok(())
+}
+
 use std::io;
 use std::path::{Path, PathBuf};
 

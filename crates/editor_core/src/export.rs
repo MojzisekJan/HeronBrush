@@ -391,18 +391,19 @@ pub fn export(document: &Document, directory: &Path, options: &Options) -> Resul
     std::fs::create_dir_all(directory).map_err(|why| Error::Write(directory.to_path_buf(), why))?;
     let (mut report, files) = export_files(document, directory, options)?;
 
-    for (path, contents) in files {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|why| Error::Write(parent.to_path_buf(), why))?;
-        }
-        let written = match &contents {
-            Contents::Text(text) => std::fs::write(&path, text),
-            Contents::Bytes(bytes) => std::fs::write(&path, bytes),
-        };
-        written.map_err(|why| Error::Write(path.clone(), why))?;
-        report.files.push(path);
-    }
+    let batch: Vec<_> = files
+        .iter()
+        .map(|(path, contents)| {
+            let bytes = match contents {
+                Contents::Text(text) => text.as_bytes(),
+                Contents::Bytes(bytes) => bytes.as_slice(),
+            };
+            (path.clone(), bytes)
+        })
+        .collect();
+    crate::files::write_batch_atomic(directory, &batch)
+        .map_err(|why| Error::Write(directory.to_path_buf(), why))?;
+    report.files.extend(files.into_iter().map(|(path, _)| path));
 
     Ok(report)
 }
@@ -1478,12 +1479,15 @@ fn build(
                         .shadows;
                     stride.disable_sun_shadows = !shadows;
                     stride.sky = options.sky.then(|| map_sky(document, &built.level));
-                    stride.authored_sky = authored_sky(document, stride.sky.is_some())?.map(|source| {
-                        let dds = writer::sky::cube_dds_sampled(writer::stride::SKY_SIZE, true, |d| {
-                            sample_authored_sky(&source, d)
+                    stride.authored_sky =
+                        authored_sky(document, stride.sky.is_some())?.map(|source| {
+                            let dds = writer::sky::cube_dds_sampled(
+                                writer::stride::SKY_SIZE,
+                                true,
+                                |d| sample_authored_sky(&source, d),
+                            );
+                            (dds, source.show_background)
                         });
-                        (dds, source.show_background)
-                    });
                     let package = stride_package(&directory.join(&options.name));
                     if let Some((_, _, url)) = &package {
                         stride.content_dir = url.clone();
@@ -2012,6 +2016,37 @@ pub fn entity_classes(
 mod tests {
     use super::*;
     use crate::world::WorldBounds;
+
+    #[test]
+    fn failed_export_keeps_the_previous_output_and_retries_successfully() {
+        let scratch = Scratch::new("transaction-failure");
+        let document = Document::new(Default::default());
+        let options = Options {
+            target: Target::ThreeJs,
+            sky: false,
+            ..Default::default()
+        };
+        let (_, files) = export_files(&document, &scratch.0, &options).unwrap();
+        assert!(files.len() >= 2);
+        for (path, _) in &files {
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, b"previous output").unwrap();
+        }
+        std::fs::remove_file(&files[1].0).unwrap();
+        std::fs::create_dir(&files[1].0).unwrap();
+        assert!(export(&document, &scratch.0, &options).is_err());
+        assert_eq!(std::fs::read(&files[0].0).unwrap(), b"previous output");
+        std::fs::remove_dir(&files[1].0).unwrap();
+        let report = export(&document, &scratch.0, &options).unwrap();
+        assert_eq!(report.files.len(), files.len());
+        for (path, contents) in files {
+            let expected = match contents {
+                Contents::Text(text) => text.into_bytes(),
+                Contents::Bytes(bytes) => bytes,
+            };
+            assert_eq!(std::fs::read(path).unwrap(), expected);
+        }
+    }
 
     #[test]
     fn godot_paths_in_properties_are_named_for_other_engines() {
