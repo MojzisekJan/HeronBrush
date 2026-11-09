@@ -236,14 +236,44 @@ impl Session {
             let (session_tx, session_rx) = std::sync::mpsc::channel();
             let inbox = SessionInbox::from(session_rx);
             let stop = inbox.stop.clone();
+            let pending = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
             std::thread::spawn(move || {
                 while !stop.load(std::sync::atomic::Ordering::Relaxed) {
                     match listener.accept() {
                         Ok((stream, _)) => {
-                            let result = Link::from_accepted(stream)
-                                .map(|link| Session::new(link, Origin::TcpHost(port)));
-                            if session_tx.send(result).is_err() {
-                                break;
+                            // Bound handshake workers so a stalled peer neither blocks
+                            // new guests nor creates an unbounded number of threads.
+                            use std::sync::atomic::Ordering::Relaxed;
+                            if pending.load(Relaxed) >= 8 {
+                                continue;
+                            }
+                            struct Pending(std::sync::Arc<std::sync::atomic::AtomicUsize>);
+                            impl Drop for Pending {
+                                fn drop(&mut self) {
+                                    self.0.fetch_sub(1, Relaxed);
+                                }
+                            }
+                            pending.fetch_add(1, Relaxed);
+                            let guard = Pending(pending.clone());
+                            let sender = session_tx.clone();
+                            let stopped = stop.clone();
+                            if let Err(error) = std::thread::Builder::new()
+                                .name("collab-handshake".into())
+                                .spawn(move || {
+                                    let _guard = guard;
+                                    // A rejected peer must not report a listener failure:
+                                    // the frontend stops hosting when it receives one.
+                                    if let Ok(link) = Link::from_accepted(stream) {
+                                        if !stopped.load(Relaxed) {
+                                            let _ = sender.send(Ok(Session::new(
+                                                link,
+                                                Origin::TcpHost(port),
+                                            )));
+                                        }
+                                    }
+                                })
+                            {
+                                let _ = session_tx.send(Err(error));
                             }
                         }
                         Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
@@ -657,6 +687,44 @@ mod tests {
             }
             std::thread::sleep(Duration::from_millis(5));
         }
+    }
+
+    #[test]
+    fn stalled_handshake_does_not_block_other_guests_or_stopping_host() {
+        use std::io::{Read, Write};
+        let (token, inbox) = Session::host_on_this_network(0).unwrap();
+        let port = token.rsplit(':').next().unwrap();
+        let addr = format!("127.0.0.1:{port}");
+        let mut stalled = std::net::TcpStream::connect(&addr).unwrap();
+        stalled.write_all(b"GET ").unwrap();
+        let guest = Session::join(&addr).unwrap();
+        guest.send_name("ready");
+        let host = inbox
+            .recv_timeout(Duration::from_secs(2))
+            .expect("accept other guest")
+            .unwrap();
+        // Finish the first request with invalid headers. Rejection must remain
+        // local to that peer instead of stopping the frontend's host listener.
+        stalled.write_all(b"/ HTTP/1.1\r\n\r\n").unwrap();
+        stalled
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        assert_eq!(stalled.read(&mut [0u8; 1]).unwrap(), 0);
+        assert!(matches!(
+            inbox.recv_timeout(Duration::from_millis(100)),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+        ));
+        drop(host);
+        drop(inbox);
+        let deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            if TcpListener::bind(&addr).is_ok() {
+                break;
+            }
+            assert!(Instant::now() < deadline, "listener stayed open");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        drop(stalled);
     }
 
     #[test]

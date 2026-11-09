@@ -102,18 +102,46 @@ impl Link {
             .peer_addr()
             .map(|a| a.to_string())
             .unwrap_or_default();
-        // The listener may be non-blocking; the link's threads want to block.
-        stream.set_nonblocking(false)?;
+        Self::accept_with_timeout(stream, peer, std::time::Duration::from_secs(5))
+    }
+
+    fn accept_with_timeout(
+        stream: TcpStream,
+        peer: String,
+        timeout: std::time::Duration,
+    ) -> std::io::Result<Link> {
+        stream.set_nonblocking(true)?;
+        let deadline = std::time::Instant::now() + timeout;
         #[cfg(not(target_arch = "wasm32"))]
         {
-            stream.set_read_timeout(Some(std::time::Duration::from_secs(5)))?;
             let mut first = [0u8; 4];
-            let seen = stream.peek(&mut first).unwrap_or(0);
-            stream.set_read_timeout(None)?;
-            if seen == 4 && &first == b"GET " {
-                return Self::from_websocket(stream, peer);
+            let mut seen = 0;
+            loop {
+                match stream.peek(&mut first) {
+                    Ok(0) => return Err(std::io::ErrorKind::UnexpectedEof.into()),
+                    Ok(n) => {
+                        seen = n;
+                        if first[..n] != b"GET "[..n] {
+                            break;
+                        }
+                        if n == 4 {
+                            return Self::from_websocket(stream, peer, deadline);
+                        }
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+                    Err(e) => return Err(e),
+                }
+                if std::time::Instant::now() >= deadline {
+                    if seen > 0 {
+                        return Err(std::io::ErrorKind::TimedOut.into());
+                    }
+                    // Quiet native clients may wait for the host's world snapshot.
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
             }
         }
+        stream.set_nonblocking(false)?;
         Self::from_tcp(Role::Host, stream, peer)
     }
 
@@ -121,11 +149,30 @@ impl Link {
     /// that reads with a short timeout and writes what is queued in between, since one
     /// socket object does both.
     #[cfg(not(target_arch = "wasm32"))]
-    fn from_websocket(stream: TcpStream, peer: String) -> std::io::Result<Link> {
+    fn from_websocket(
+        stream: TcpStream,
+        peer: String,
+        deadline: std::time::Instant,
+    ) -> std::io::Result<Link> {
         use tungstenite::Message;
         let teardown = stream.try_clone()?;
-        let mut socket =
-            tungstenite::accept(stream).map_err(|e| std::io::Error::other(e.to_string()))?;
+        let mut handshake = tungstenite::accept(stream);
+        let mut socket = loop {
+            match handshake {
+                Ok(socket) => break socket,
+                Err(tungstenite::HandshakeError::Failure(error)) => {
+                    return Err(std::io::Error::other(error.to_string()));
+                }
+                Err(tungstenite::HandshakeError::Interrupted(pending)) => {
+                    if std::time::Instant::now() >= deadline {
+                        return Err(std::io::ErrorKind::TimedOut.into());
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                    handshake = pending.handshake();
+                }
+            }
+        };
+        socket.get_ref().set_nonblocking(false)?;
         socket
             .get_ref()
             .set_read_timeout(Some(std::time::Duration::from_millis(15)))?;
@@ -603,6 +650,39 @@ mod tests {
         let guest = Link::join(format!("127.0.0.1:{port}")).unwrap();
         let host = host_thread.join().unwrap();
         (host, guest)
+    }
+
+    #[test]
+    fn incomplete_websocket_handshake_expires() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let mut client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        client.write_all(b"GET ").unwrap();
+        let (stream, _) = listener.accept().unwrap();
+        let started = Instant::now();
+        let error = Link::accept_with_timeout(stream, "test".into(), Duration::from_millis(100))
+            .err()
+            .expect("incomplete handshake must expire");
+        assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+        assert!(started.elapsed() < Duration::from_secs(2));
+    }
+
+    #[test]
+    fn fragmented_websocket_prefix_is_recognized() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let mut client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        client
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        client.write_all(b"G").unwrap();
+        let (stream, _) = listener.accept().unwrap();
+        let server = std::thread::spawn(move || Link::from_accepted(stream));
+        std::thread::sleep(Duration::from_millis(30));
+        client.write_all(b"ET / HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n").unwrap();
+        let link = server.join().unwrap().unwrap();
+        let mut response = String::new();
+        BufReader::new(&client).read_line(&mut response).unwrap();
+        assert!(response.contains("101"));
+        drop(link);
     }
 
     #[test]
