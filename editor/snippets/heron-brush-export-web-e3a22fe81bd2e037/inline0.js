@@ -1,1 +1,0 @@
-export function report_export_panic(message) { globalThis.heronExportPanic = message; console.error(message); }
