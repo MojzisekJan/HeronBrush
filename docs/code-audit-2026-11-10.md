@@ -2,7 +2,7 @@
 
 Open findings for repairs on another machine. This branch contains audit documentation only; none of the findings below has been fixed here. Keep this file updated as findings are confirmed, repaired or ruled out.
 
-**Status:** audit in progress, 16 confirmed findings. Last checkpoint: 10 November 2026, 00:51 UTC.
+**Status:** audit checkpoint saved, 17 confirmed findings. Last checkpoint: 10 November 2026, 05:40 UTC. All findings remain open for repair.
 
 **Audited source:** `f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae`. Source references below are pinned to this revision.
 
@@ -28,6 +28,7 @@ Open findings for repairs on another machine. This branch contains audit documen
 | A014 | P1 | [Linked duplicates reuse nested persistent group IDs](#a014) | Open |
 | A015 | P2 | [Collaboration buffers frames and queues without bounds](#a015) | Open |
 | A016 | P1 | [Concurrent reparenting duplicates a brush without conflict](#a016) | Open |
+| A017 | P2 | [Godot material identifiers collide for distinct texture paths](#a017) | Open |
 
 ## A001
 
@@ -278,6 +279,20 @@ Brush identity matching is confined to each entity. If one branch moves a world 
 
 **Regression probe:** `concurrent_reparenting_reports_conflict_and_keeps_unique_brush_id`.
 
+## A017
+
+**P2 — Godot material identifiers collide for distinct texture paths**
+
+Godot material resource IDs are derived by replacing punctuation in the texture name with underscores. Distinct valid texture names such as `brick/wall` and `brick_wall` both become `Material_brick_wall`. The scene writer emits both resources with that same ID.
+
+**Reproduction and result:** A cube uses a red `textures/brick/wall.png` on three faces and a blue `textures/brick_wall.png` on the other three. The exported scene contains two material resources with the same ID. In Godot 4.5, the scene loads, but both mesh surfaces resolve to `brick/wall` and its red texture; only one distinct material remains. A control using `stone` and `metal` retains two distinct material resources and textures in the same runtime check.
+
+**Repair direction:** Allocate deterministic, collision-free resource IDs from the full original material identity, for example with a stable suffix and explicit uniqueness checks. Cover separators, underscores, spaces and other characters that currently sanitize to the same name. Check both generated scene resource IDs and the materials resolved by the engine.
+
+**Source:** [material ID construction](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/scene_export/src/builder.rs#L1327), [name sanitization](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/scene_export/src/map.rs#L751), [resource emission](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/scene_export/src/writer/tscn.rs#L78).
+
+**Regression probe:** `distinct_texture_paths_get_unique_godot_material_ids`. The runtime check instantiates the exported scene and counts the distinct material names returned by each mesh surface's active material.
+
 ## Reproduction package
 
 The audit assertions describe the intended safe behavior and therefore fail on the audited revision. Subprocess helper tests are marked ignored and are invoked by their parent tests. Tests run with one compiler job and one test thread, using existing release artifacts and offline dependencies.
@@ -290,6 +305,7 @@ The audit assertions describe the intended safe behavior and therefore fail on t
 | Round four | 1 passed, 6 failed, 1 helper ignored | A009–A012; same-map model copy is the positive control |
 | Round five | 3 passed, 3 failed | A013–A015; flat linked group and cancellation without save are controls; the TCP observation passes by measuring current behavior |
 | Round six merge | 1 passed, 1 failed | A016; one-sided reparenting is the positive control |
+| Round six materials | 1 passed, 1 failed | A017; ordinary names are the control; Godot runtime independently confirms the material substitution |
 
 Each finding above describes its input, observed failure and expected repair behavior. The named regression probes identify the intended cases; their source files are not part of this documentation branch. Recreate them in the repository test harness on the repair machine, then run with one compiler job and one test thread:
 
@@ -303,13 +319,14 @@ These commands run the repository tests; the new audit regressions must be added
 
 ## Findings still under investigation
 
-No additional hypothesis is counted as a confirmed finding at this checkpoint. The current review is examining parser robustness, structural merges and differences between ordinary and live export.
+No additional hypothesis is counted as a confirmed finding at this checkpoint. Parser robustness, structural merges and differences between ordinary and live export remain useful areas for follow-up review.
 
 ## Checks that ruled out suspected problems
 
 - **Remote edits applied during local drag rollback:** Frontend session polling and MCP paths defer while a document transaction is active.
 - **Shape preview regeneration fails to mark dirty after save:** Regeneration uses Document::apply, which calls note_modification.
 - **Imported model reload retains stale cache:** reload_game_assets resets the asset key and sync_game_assets replaces model caches.
+- **Browser cross-origin POST executes live MCP commands:** An isolated Edge page sent a no-cors text/plain POST to the live transport. The browser rejected the non-HTTP response and closed after two header lines, before the JSON ping reached the document. This bounded negative result is not a general transport security proof.
 
 ## Validation limits
 
