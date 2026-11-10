@@ -2,7 +2,7 @@
 
 Open findings for repairs on another machine. This branch contains audit documentation only; none of the findings below has been fixed here. Keep this file updated as findings are confirmed, repaired or ruled out.
 
-**Status:** audit in progress, 12 confirmed findings. Last checkpoint: 10 November 2026, 00:31 UTC.
+**Status:** audit in progress, 15 confirmed findings. Last checkpoint: 10 November 2026, 00:41 UTC.
 
 **Audited source:** `f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae`. Source references below are pinned to this revision.
 
@@ -24,6 +24,9 @@ Open findings for repairs on another machine. This branch contains audit documen
 | A010 | P1 | [Godot live link omits imported model geometry](#a010) | Open |
 | A011 | P1 | [Live link uses another projects global export profile](#a011) | Open |
 | A012 | P2 | [Saving provisional text can leave an unmarked disk mismatch](#a012) | Open |
+| A013 | P1 | [Saving nested groups breaks their hierarchy](#a013) | Open |
+| A014 | P1 | [Linked duplicates reuse nested persistent group IDs](#a014) | Open |
+| A015 | P2 | [Collaboration buffers frames and queues without bounds](#a015) | Open |
 
 ## A001
 
@@ -52,6 +55,20 @@ Skin width and height from the header reach Vec::with_capacity without a checked
 **Source:** [crates/map_model/src/entity_model.rs:229](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/map_model/src/entity_model.rs#L229), [crates/map_model/src/entity_model.rs:147](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/map_model/src/entity_model.rs#L147).
 
 **Regression probes:** `malformed_mdl_header_returns_an_error_instead_of_panicking`.
+
+The exact small malformed input can be recreated without external files:
+
+```rust
+let mut bytes = vec![0_u8; 112];
+bytes[..4].copy_from_slice(b"IDPO");
+bytes[4..8].copy_from_slice(&6_i32.to_le_bytes());
+bytes[52..56].copy_from_slice(&i32::MAX.to_le_bytes());
+bytes[56..60].copy_from_slice(&i32::MAX.to_le_bytes());
+bytes[68..72].copy_from_slice(&1_i32.to_le_bytes());
+let result = std::panic::catch_unwind(|| map_model::entity_model::read(&bytes, None));
+assert!(result.is_ok());
+assert!(result.unwrap().is_err());
+```
 
 ## A003
 
@@ -195,6 +212,57 @@ Save serializes provisional text and clears modified; cancellation removes previ
 
 **Validation scope:** UI used an existing 2026-11-08 binary; relevant UI source last changed 2026-11-06. Core regression was compiled against current HEAD source. Native separate-dialog focus handling was not exercised.
 
+## A013
+
+**P1 — Saving nested groups breaks their hierarchy**
+
+The writer emits a nested group before its parent, while `build_tree` places groups by removing them from the end of the pending list. It therefore places the parent first and removes the parent lookup before processing the child. The child is then reported as having a missing parent and is moved to the default layer.
+
+**Reproduction and result:** Create an outer group containing an inner group containing one point entity. Serialize with `Document::to_map_text`, parse, and rebuild the tree. One top-level group containing the entity becomes two top-level groups with content counts `[0, 1]`; the loader reports `MissingParent`. No linked duplication or concurrent editing is required. Flat groups pass the save/reopen control.
+
+This minimal map starts with a valid nested hierarchy. Open it, save it, then reopen the saved output:
+
+```text
+{ "classname" "worldspawn" }
+{ "classname" "func_group" "_tb_type" "_tb_group" "_tb_id" "1" "_tb_name" "Outer" }
+{ "classname" "func_group" "_tb_type" "_tb_group" "_tb_id" "2" "_tb_name" "Inner" "_tb_group" "1" }
+{ "classname" "light" "origin" "0 0 0" "_tb_group" "2" }
+```
+
+**Repair direction:** Resolve hierarchy independently of entity order, with explicit missing-parent and cycle handling, or ensure writer and reader ordering agree. Preserve arbitrary valid input ordering. Add nested groups with point entities, brush entities and patches to round-trip tests.
+
+**Source:** [group placement](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/map_model/src/node.rs#L510), [recursive group serialization](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/map_model/src/node.rs#L963).
+
+**Regression probe:** `nested_group_hierarchy_survives_ordinary_save_and_reopen`.
+
+## A014
+
+**P1 — Linked duplicates reuse nested persistent group IDs**
+
+`create_linked_duplicate` allocates a fresh persistent ID for the outer group, but `deep_renumber` changes only `NodeId` values in the subtree. It leaves each nested `Group.id` unchanged. The source and copy then share `_tb_id` values used by saved parent references.
+
+**Reproduction and result:** Make a linked duplicate of a group containing a nested group and point entity. The four groups have only three unique persistent IDs before any save. After save/reopen, both point entities resolve to the first nested group with that ID. The separate ordering defect in A013 additionally detaches the nested groups; fixing A013 alone does not remove the identity collision. A flat linked group has distinct IDs and preserves membership.
+
+**Repair direction:** Allocate fresh persistent group IDs throughout duplicated subtrees and preserve the intended linked-set identities separately. Cover structural linked-group rebuilds as well as initial duplication.
+
+**Source:** [deep renumbering](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/editor_core/src/document.rs#L924), [linked duplicate construction](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/editor_core/src/document/groups.rs#L693).
+
+**Regression probes:** `linked_nested_duplicate_allocates_fresh_persistent_group_ids`, `linked_nested_group_keeps_entity_membership_after_reopen`.
+
+## A015
+
+**P2 — Collaboration buffers frames and queues without bounds**
+
+The TCP reader uses unrestricted `BufRead::lines`, then sends complete strings to an unbounded channel. The UI drains all queued messages into a vector. Iroh uses the same unbounded line/channel pattern; WebSocket input and output queues are also unbounded. A peer can grow memory use before JSON validation, including while transaction handling defers UI polling.
+
+**Bounded observation:** A loopback TCP peer sent one malformed frame of 8 MiB plus four bytes, followed by eight 1 MiB frames. Before any UI processing, all nine frames were queued: 16,777,220 bytes in total. No large-memory crash or out-of-memory condition was attempted. The absence of a bound is also explicit in the transport implementation.
+
+**Repair direction:** Define limits for frame bytes, queued bytes/messages and per-frame UI work. Reject oversized frames while reading and close or backpressure peers that exceed the budget. Apply equivalent policy to TCP, Iroh and WebSocket transports, accounting for legitimate world snapshots.
+
+**Source:** [TCP reader and channels](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/editor_core/src/collab/net.rs#L296), [inbox drain](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/editor_core/src/collab/net.rs#L373), [Iroh reader and output queue](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/editor_core/src/collab/net.rs#L559).
+
+**Observation probe:** `observe_collaboration_frame_and_inbox_growth_without_large_allocations`. This probe passes when it measures the current unbounded behavior; it must be replaced with limit-enforcement assertions when the policy is implemented. Only TCP was exercised at runtime.
+
 ## Reproduction package
 
 The audit assertions describe the intended safe behavior and therefore fail on the audited revision. Subprocess helper tests are marked ignored and are invoked by their parent tests. Tests run with one compiler job and one test thread, using existing release artifacts and offline dependencies.
@@ -205,6 +273,7 @@ The audit assertions describe the intended safe behavior and therefore fail on t
 | Round three core | 1 passed, 3 failed, 1 helper ignored | A005, A007, A008; one-sided patch change is the positive control |
 | Round three GPU | 1 failed | A006; 64x1 texture passes before the oversized case |
 | Round four | 1 passed, 6 failed, 1 helper ignored | A009–A012; same-map model copy is the positive control |
+| Round five | 3 passed, 3 failed | A013–A015; flat linked group and cancellation without save are controls; the TCP observation passes by measuring current behavior |
 
 Each finding above describes its input, observed failure and expected repair behavior. The named regression probes identify the intended cases; their source files are not part of this documentation branch. Recreate them in the repository test harness on the repair machine, then run with one compiler job and one test thread:
 
@@ -218,7 +287,7 @@ These commands run the repository tests; the new audit regressions must be added
 
 ## Findings still under investigation
 
-No additional hypothesis is counted as a confirmed finding at this checkpoint. The current review is examining collaboration message bounds, parser robustness, and differences between ordinary and live export.
+No additional hypothesis is counted as a confirmed finding at this checkpoint. The current review is examining parser robustness, structural merges and differences between ordinary and live export.
 
 ## Checks that ruled out suspected problems
 
