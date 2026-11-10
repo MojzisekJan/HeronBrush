@@ -2,7 +2,7 @@
 
 Open findings for repairs on another machine. This branch contains audit documentation only; none of the findings below has been fixed here. Keep this file updated as findings are confirmed, repaired or ruled out.
 
-**Status:** audit in progress, 15 confirmed findings. Last checkpoint: 10 November 2026, 00:41 UTC.
+**Status:** audit in progress, 16 confirmed findings. Last checkpoint: 10 November 2026, 00:51 UTC.
 
 **Audited source:** `f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae`. Source references below are pinned to this revision.
 
@@ -27,6 +27,7 @@ Open findings for repairs on another machine. This branch contains audit documen
 | A013 | P1 | [Saving nested groups breaks their hierarchy](#a013) | Open |
 | A014 | P1 | [Linked duplicates reuse nested persistent group IDs](#a014) | Open |
 | A015 | P2 | [Collaboration buffers frames and queues without bounds](#a015) | Open |
+| A016 | P1 | [Concurrent reparenting duplicates a brush without conflict](#a016) | Open |
 
 ## A001
 
@@ -263,6 +264,20 @@ The TCP reader uses unrestricted `BufRead::lines`, then sends complete strings t
 
 **Observation probe:** `observe_collaboration_frame_and_inbox_growth_without_large_allocations`. This probe passes when it measures the current unbounded behavior; it must be replaced with limit-enforcement assertions when the policy is implemented. Only TCP was exercised at runtime.
 
+## A016
+
+**P1 — Concurrent reparenting duplicates a brush without conflict**
+
+Brush identity matching is confined to each entity. If one branch moves a world brush into entity A and the other moves the same brush into entity B, the merge treats these as independent additions.
+
+**Reproduction and result:** Start with one valid world brush carrying persistent ID 42 and two empty brush entities with distinct persistent IDs. Move brush 42 into the first entity on one branch and into the second entity on the other. The merge reports zero conflicts and returns two brushes, both with ID 42. The control with only one branch moving the brush keeps a single brush and reports no conflict.
+
+**Repair direction:** Resolve persistent brush identities and parent changes across the entire map before merging entity contents. Report conflicting destinations, preserve one identity and cover move-versus-edit and move-versus-delete cases. Repairing duplicate IDs when reopening the map does not resolve the unintended duplicated geometry.
+
+**Source:** [per-entity merge dispatch](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/map_model/src/merge.rs#L330), [brush matching within one entity](https://github.com/MojzisekJan/HeronBrush/blob/f62aa28ea2f1be7b37e7b72c1e7b4c979f8116ae/crates/map_model/src/merge.rs#L703).
+
+**Regression probe:** `concurrent_reparenting_reports_conflict_and_keeps_unique_brush_id`.
+
 ## Reproduction package
 
 The audit assertions describe the intended safe behavior and therefore fail on the audited revision. Subprocess helper tests are marked ignored and are invoked by their parent tests. Tests run with one compiler job and one test thread, using existing release artifacts and offline dependencies.
@@ -274,6 +289,7 @@ The audit assertions describe the intended safe behavior and therefore fail on t
 | Round three GPU | 1 failed | A006; 64x1 texture passes before the oversized case |
 | Round four | 1 passed, 6 failed, 1 helper ignored | A009–A012; same-map model copy is the positive control |
 | Round five | 3 passed, 3 failed | A013–A015; flat linked group and cancellation without save are controls; the TCP observation passes by measuring current behavior |
+| Round six merge | 1 passed, 1 failed | A016; one-sided reparenting is the positive control |
 
 Each finding above describes its input, observed failure and expected repair behavior. The named regression probes identify the intended cases; their source files are not part of this documentation branch. Recreate them in the repository test harness on the repair machine, then run with one compiler job and one test thread:
 
