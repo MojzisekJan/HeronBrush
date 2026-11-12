@@ -415,3 +415,55 @@ mod crossing_tests {
     }
 }
 
+#[cfg(test)]
+mod skip_export_tests {
+    use super::*;
+    #[test]
+    fn an_exported_join_leaves_out_the_mitre_faces() {
+        let mut d = Document::new(Default::default());
+        for max in [Vec3d::new(128.0, 16.0, 8.0), Vec3d::new(16.0, 96.0, 8.0)] {
+            let brush = map_model::shapes::create_cuboid(
+                &d.world_bounds(),
+                &Bbox3d {
+                    min: Vec3d::zero(),
+                    max,
+                },
+                "stone",
+            )
+            .unwrap();
+            d.add_brushes(vec![brush]);
+        }
+        d.select_all();
+        let draft = d.preview_corner_join().unwrap();
+        d.join_corner(draft.revision).unwrap();
+        let shown: usize = node::brushes(d.tree_world())
+            .iter()
+            .flat_map(|b| {
+                (0..b.faces().len())
+                    .filter(|i| b.faces()[*i].material_name.as_str() != "skip")
+                    .map(|i| b.face_polygon(i).map_or(0, |p| p.len() - 2))
+                    .collect::<Vec<_>>()
+            })
+            .sum();
+        let hidden = node::brushes(d.tree_world())
+            .iter()
+            .flat_map(|b| b.faces().iter())
+            .filter(|f| f.material_name.as_str() == "skip")
+            .count();
+        assert_eq!(hidden, 2);
+        let options = crate::export::Options {
+            target: crate::export::Target::Godot,
+            name: "corner".into(),
+            cull_hidden: false,
+            merge_faces: false,
+            ..Default::default()
+        };
+        let directory = std::env::temp_dir().join(format!("heron-skip-{}", std::process::id()));
+        let (report, _) = crate::export::export_files(&d, &directory, &options).unwrap();
+        assert_eq!(
+            report.triangles, shown,
+            "the two skip faces are not exported"
+        );
+    }
+}
+

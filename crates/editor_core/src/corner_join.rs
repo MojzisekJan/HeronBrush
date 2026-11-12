@@ -373,13 +373,168 @@ pub struct Rounding {
     pub snap: Option<f64>,
 }
 
-/// The joined corner with `rounding`, its new vertices snapped to `rounding.snap`.
+/// The joined corner with `rounding`, its new vertices snapped to `rounding.snap`, and
+/// every face the join made that another piece covers whole given the skip material.
 pub fn preview_with_rounding(a: &Brush, b: &Brush, rounding: Rounding) -> Result<Join, String> {
     let mut join = rounded(a, b, rounding)?;
     if let Some(size) = rounding.snap {
         snap(&mut join, size)?;
     }
+    hide_covered_faces(&mut join);
     Ok(join)
+}
+
+/// The material a face nobody can see gets, as the rounded corner, the sweep and the
+/// exporters' default `skip_texture` name it.
+const SKIP: &str = "skip";
+
+/// Whether every corner of `inner` lies within the convex outline `outer`, both in the
+/// plane with normal `normal`.
+pub(crate) fn polygon_within(inner: &[Vec3d], outer: &[Vec3d], normal: Vec3d) -> bool {
+    if outer.len() < 3 {
+        return false;
+    }
+    let centre = outer.iter().fold(Vec3d::zero(), |sum, p| sum + *p) / outer.len() as f64;
+    (0..outer.len()).all(|i| {
+        let (from, to) = (outer[i], outer[(i + 1) % outer.len()]);
+        let mut across = vec::cross(to - from, normal);
+        let length = vec::length(across);
+        if length < EPS {
+            return true;
+        }
+        across /= length;
+        if vec::dot(centre - from, across) > 0.0 {
+            across = -across;
+        }
+        inner.iter().all(|p| vec::dot(*p - from, across) <= 1e-4)
+    })
+}
+
+/// Settles the material of every face the join made (one in no plane of the brush it
+/// came from; every face of a piece a rounding added): skip when it lies wholly on a face
+/// of another piece, facing it, as the two sides of a mitre, a T's cut stem end and a
+/// crossing's cut ends do; otherwise a visible material. A made face takes its material
+/// from the face of the members that points most nearly its way, and that can be a skip
+/// face an earlier join left, such as the far mitre of a beam joined at both ends; a
+/// visible face is given the nearest face that is not skip instead. Faces the brushes had
+/// before keep their material.
+fn hide_covered_faces(join: &mut Join) {
+    let mut pieces: Vec<(Brush, Option<usize>)> = join
+        .after
+        .iter()
+        .enumerate()
+        .map(|(i, b)| (b.clone(), Some(i)))
+        .collect();
+    pieces.extend(join.added.iter().map(|b| (b.clone(), join.split)));
+    let plane_close = |a: &Plane3d, b: &Plane3d| {
+        vec::length(a.normal - b.normal) < 1e-6 && (a.distance - b.distance).abs() < 1e-4
+    };
+    // The members' visible faces, for a made face that shows to take its material from.
+    let visible: Vec<&map_model::brush_face::BrushFace> = join
+        .before
+        .iter()
+        .flat_map(|b| b.faces())
+        .filter(|f| f.material_name.as_str() != SKIP)
+        .collect();
+    let mut updated: Vec<Option<Brush>> = vec![None; pieces.len()];
+    for (index, (piece, origin)) in pieces.iter().enumerate() {
+        // A piece a rounding added has no faces of its own from before.
+        let old_planes = if index < 2 {
+            origin.map_or_else(Vec::new, |o| join.before[o].face_planes())
+        } else {
+            Vec::new()
+        };
+        let mut faces = piece.faces().to_vec();
+        let mut changed = false;
+        for (face_index, face) in piece.faces().iter().enumerate() {
+            if old_planes.iter().any(|p| plane_close(p, &face.plane)) {
+                continue;
+            }
+            let Some(polygon) = piece.face_polygon(face_index) else {
+                continue;
+            };
+            let facing = Plane3d {
+                normal: -face.plane.normal,
+                distance: -face.plane.distance,
+            };
+            let covered = pieces.iter().enumerate().any(|(other, (brush, _))| {
+                other != index
+                    && (0..brush.faces().len()).any(|i| {
+                        plane_close(&brush.faces()[i].plane, &facing)
+                            && brush.face_polygon(i).is_some_and(|outer| {
+                                polygon_within(&polygon, &outer, facing.normal)
+                            })
+                    })
+            });
+            let is_skip = face.material_name.as_str() == SKIP;
+            if covered && !is_skip {
+                faces[face_index].material_name = SKIP.into();
+                changed = true;
+            } else if !covered && is_skip {
+                if let Some(source) = visible.iter().max_by(|a, b| {
+                    vec::dot(a.plane.normal, face.plane.normal)
+                        .total_cmp(&vec::dot(b.plane.normal, face.plane.normal))
+                }) {
+                    faces[face_index].material_name = source.material_name.clone();
+                    changed = true;
+                }
+            }
+        }
+        if changed {
+            updated[index] = piece.with_exact_face_attributes(&faces);
+        }
+    }
+    for (index, brush) in updated.into_iter().enumerate() {
+        let Some(brush) = brush else { continue };
+        if index < 2 {
+            join.after[index] = brush;
+        } else {
+            join.added[index - 2] = brush;
+        }
+    }
+}
+
+/// Checks the skip rule on a set of finished brushes by looking: a face is hidden when
+/// points just outside it, at its centre and near each corner, all lie inside other
+/// brushes. A face any of those points of which is in the open must not be skip, and a
+/// hidden face the join made must be. `kept` are planes of faces from before the join,
+/// which keep whatever material they had.
+#[cfg(test)]
+pub(crate) fn assert_skip_only_where_hidden(brushes: &[Brush], kept: &[Plane3d]) {
+    for (index, brush) in brushes.iter().enumerate() {
+        for (face_index, face) in brush.faces().iter().enumerate() {
+            let Some(polygon) = brush.face_polygon(face_index) else {
+                continue;
+            };
+            let centre =
+                polygon.iter().fold(Vec3d::zero(), |sum, p| sum + *p) / polygon.len() as f64;
+            let outside = face.plane.normal * 0.01;
+            let mut samples = std::iter::once(centre)
+                .chain(polygon.iter().map(|p| *p + (centre - *p) * 0.1))
+                .map(|p| p + outside);
+            let hidden = samples.all(|p| {
+                brushes
+                    .iter()
+                    .enumerate()
+                    .any(|(other, b)| other != index && b.contains_point(p))
+            });
+            let skip = face.material_name.as_str() == SKIP;
+            let old = kept.iter().any(|p| {
+                vec::length(p.normal - face.plane.normal) < 1e-6
+                    && (p.distance - face.plane.distance).abs() < 1e-4
+            });
+            assert!(
+                !skip || hidden,
+                "a visible face is skip: brush {index}, normal {:?}",
+                face.plane.normal
+            );
+            assert!(
+                skip || !hidden || old,
+                "a hidden face is not skip: brush {index}, normal {:?}",
+                face.plane.normal
+            );
+        }
+    }
 }
 
 /// Moves the vertices the join made onto a grid `size` apart, in the corner's plane only,
@@ -1512,6 +1667,165 @@ mod tests {
             preview_with_rounding(&bar, &stem, snapped).unwrap().kind,
             Junction::Tee
         );
+    }
 
+    /// The faces of a brush with the skip material, as their planes' normals.
+    fn skipped(brush: &Brush) -> Vec<Vec3d> {
+        brush
+            .faces()
+            .iter()
+            .filter(|f| f.material_name.as_str() == SKIP)
+            .map(|f| f.plane.normal)
+            .collect()
+    }
+
+    #[test]
+    fn the_faces_a_join_hides_get_the_skip_material_and_no_others() {
+        let plain = Rounding::default();
+        // An L: each member's mitre face, and nothing else.
+        let a = cube(Vec3d::zero(), Vec3d::new(128.0, 16.0, 8.0), "a");
+        let b = cube(Vec3d::zero(), Vec3d::new(16.0, 96.0, 8.0), "b");
+        let join = preview_with_rounding(&a, &b, plain).unwrap();
+        for piece in &join.after {
+            let hidden = skipped(piece);
+            assert_eq!(hidden.len(), 1, "one mitre face");
+            assert!(hidden[0].x().abs() > 0.1 && hidden[0].y().abs() > 0.1);
+        }
+        // A T: the stem's cut end only; the bar is untouched.
+        let bar = cube(
+            Vec3d::new(-128.0, 0.0, 0.0),
+            Vec3d::new(128.0, 16.0, 16.0),
+            "bar",
+        );
+        let stem = cube(
+            Vec3d::new(-8.0, 8.0, 0.0),
+            Vec3d::new(8.0, 96.0, 16.0),
+            "stem",
+        );
+        let join = preview_with_rounding(&bar, &stem, plain).unwrap();
+        assert!(skipped(&join.after[0]).is_empty());
+        assert_eq!(skipped(&join.after[1]), vec![Vec3d::new(0.0, -1.0, 0.0)]);
+        // A crossing: both cut ends.
+        let long = cube(
+            Vec3d::new(-128.0, -8.0, 0.0),
+            Vec3d::new(128.0, 8.0, 16.0),
+            "long",
+        );
+        let short = cube(
+            Vec3d::new(-8.0, -64.0, 0.0),
+            Vec3d::new(8.0, 64.0, 16.0),
+            "short",
+        );
+        let join = preview_with_rounding(&long, &short, plain).unwrap();
+        assert!(skipped(&join.after[0]).is_empty());
+        assert_eq!(skipped(&join.after[1]).len(), 1);
+        assert_eq!(skipped(&join.added[0]).len(), 1);
+        // A rounded outside corner: the arc faces show and keep their material.
+        let rounded = preview_with_rounding(
+            &a,
+            &b,
+            Rounding {
+                outer: Some((8.0, 4)),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        for piece in &rounded.after {
+            assert_eq!(skipped(piece).len(), 1, "only the mitre is hidden");
+        }
+        // A face that was skip before stays skip; the others keep their material.
+        for piece in join.after.iter().chain(&join.added) {
+            assert!(piece
+                .faces()
+                .iter()
+                .all(|f| f.material_name.as_str() == SKIP
+                    || f.material_name.as_str() == "long"
+                    || f.material_name.as_str() == "short"));
+        }
+    }
+
+    #[test]
+    fn the_owners_gate_gets_skip_on_exactly_its_hidden_faces() {
+        let brushes = gate();
+        let join = preview_with_rounding(&brushes[1], &brushes[2], Rounding::default()).unwrap();
+        // The beam's right mitre and the post's top mitre; the beam's left mitre from
+        // the earlier join kept its material, as it was there before.
+        assert_eq!(skipped(&join.after[0]).len(), 1);
+        assert_eq!(skipped(&join.after[1]).len(), 1);
+        assert!(skipped(&join.after[0])[0].x() > 0.0);
+    }
+
+    #[test]
+    fn skip_lands_only_on_hidden_faces_in_every_kind_of_join() {
+        let a = cube(Vec3d::zero(), Vec3d::new(128.0, 16.0, 16.0), "a");
+        let b = cube(Vec3d::zero(), Vec3d::new(16.0, 96.0, 16.0), "b");
+        let wide = cube(Vec3d::zero(), Vec3d::new(24.0, 96.0, 16.0), "b");
+        let rounding = |outer, inner, concentric, wedges| Rounding {
+            outer,
+            inner,
+            concentric,
+            wedges,
+            ..Default::default()
+        };
+        let bar = cube(
+            Vec3d::new(-128.0, 0.0, 0.0),
+            Vec3d::new(128.0, 16.0, 16.0),
+            "bar",
+        );
+        let stem = cube(
+            Vec3d::new(-8.0, 8.0, 0.0),
+            Vec3d::new(8.0, 96.0, 16.0),
+            "stem",
+        );
+        let long = cube(
+            Vec3d::new(-128.0, -8.0, 0.0),
+            Vec3d::new(128.0, 8.0, 16.0),
+            "long",
+        );
+        let short = cube(
+            Vec3d::new(-8.0, -64.0, 0.0),
+            Vec3d::new(8.0, 64.0, 16.0),
+            "short",
+        );
+        let gate = gate();
+        let cases: Vec<(&Brush, &Brush, Rounding)> = vec![
+            (&a, &b, Rounding::default()),
+            (&a, &wide, Rounding::default()),
+            (&a, &b, rounding(Some((8.0, 4)), None, false, false)),
+            (&a, &b, rounding(None, Some((8.0, 8)), false, false)),
+            (
+                &a,
+                &b,
+                rounding(Some((8.0, 4)), Some((8.0, 8)), false, false),
+            ),
+            (
+                &a,
+                &b,
+                rounding(Some((8.0, 8)), Some((8.0, 8)), true, false),
+            ),
+            (
+                &a,
+                &b,
+                rounding(Some((8.0, 8)), Some((8.0, 8)), false, true),
+            ),
+            (&bar, &stem, Rounding::default()),
+            (&long, &short, Rounding::default()),
+            (&gate[1], &gate[2], Rounding::default()),
+            (
+                &gate[1],
+                &gate[2],
+                rounding(None, Some((8.0, 8)), false, false),
+            ),
+        ];
+        let mut checked = 0;
+        for (first, second, rounding) in cases {
+            let Ok(join) = preview_with_rounding(first, second, rounding) else {
+                continue;
+            };
+            let kept: Vec<Plane3d> = join.before.iter().flat_map(Brush::face_planes).collect();
+            assert_skip_only_where_hidden(&pieces(&join), &kept);
+            checked += 1;
+        }
+        assert!(checked >= 9, "{checked}");
     }
 }
