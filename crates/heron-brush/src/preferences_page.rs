@@ -229,13 +229,16 @@ const PAGES: [(&str, &[Section]); 7] = [
     ),
     (
         translation_key("Keyboard"),
-        &[(
-            translation_key("Shortcuts"),
-            &[
-                ("keymap", translation_key("Keymap")),
-                ("keyboard_bindings", translation_key("Custom shortcuts")),
-            ],
-        )],
+        &[
+            (
+                translation_key("Shortcuts"),
+                &[("keymap", translation_key("Keymap"))],
+            ),
+            (
+                translation_key("Custom shortcuts"),
+                &[("keyboard_bindings", translation_key("Custom shortcuts"))],
+            ),
+        ],
     ),
     (
         translation_key("Renderer"),
@@ -1027,6 +1030,13 @@ fn setting_row(
     name: &'static str,
     label: &'static str,
 ) {
+    // The custom shortcuts are a list of their own, across the whole card.
+    if name == "keyboard_bindings" {
+        ui.push_id(name, |ui| {
+            crate::shortcut_editor::section(ui, &mut settings.keyboard_bindings)
+        });
+        return;
+    }
     ui.push_id(name, |ui| {
         widgets::row(ui, tr(label), None, |ui| {
             // Every row's control area is as wide, so the reset buttons after them line up.
@@ -1286,7 +1296,6 @@ impl Control for String {
     fn control(&mut self, ui: &mut egui::Ui, field: &str) {
         let width = control_width(ui);
         match field {
-            "keyboard_bindings" => crate::shortcut_editor::control(ui, self),
             "material_browser_hidden_folders" => {
                 ui.label(tr("Choose folders in the material browser settings"));
                 if ui.button(tr("Show all")).clicked() {
