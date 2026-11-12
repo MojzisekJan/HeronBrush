@@ -395,7 +395,7 @@ const OVERVIEW: [Section; 4] = [
 
 /// Fields edited outside Preferences (the export window and the Assets tab). A search
 /// finds them too, so nothing in the shared type is out of reach.
-const ELSEWHERE: [Section; 3] = [
+const ELSEWHERE: [Section; 4] = [
     (
         translation_key("Export"),
         &[("export_target", translation_key("Engine"))],
@@ -403,6 +403,10 @@ const ELSEWHERE: [Section; 3] = [
     (
         translation_key("Assets"),
         &[("asset_library", translation_key("Asset library"))],
+    ),
+    (
+        translation_key("Entity"),
+        &[("entity_browser_height", translation_key("Height"))],
     ),
     (
         translation_key("Material browser"),
@@ -512,6 +516,7 @@ fn field(settings: &mut Preferences, name: &str, action: Action) -> bool {
         material_browser_hidden_folders,
         material_browser_face_height,
         material_browser_window_height,
+        entity_browser_height,
         asset_library,
         collab_nickname,
         show_axes,
@@ -1548,6 +1553,7 @@ fn number_range(field: &str, overview: bool) -> (f64, f64, f64) {
         "default_roughness" => (0.0, 1.0, 0.05),
         "default_metalness" => (0.0, 1.0, 0.05),
         "material_browser_face_height" | "material_browser_window_height" => (120.0, 1200.0, 10.0),
+        "entity_browser_height" => (80.0, 1200.0, 10.0),
         "manual_font_size" => (10.0, 28.0, 1.0),
         "panel_opacity" => (80.0, 100.0, 1.0),
         "interface_scale" => (

@@ -625,6 +625,9 @@ impl MapPage {
                 egui::ScrollArea::vertical()
                     .id_salt("issues")
                     .max_height(160.0)
+                    // Inside the tab's scrolling only a maximum let it shrink to egui's
+                    // 64-point minimum, as the Entity tab's class list did.
+                    .min_scrolled_height(160.0)
                     .show_viewport(ui, |ui, viewport| {
                         ui.set_width(ui.available_width());
                         let width = ui.available_width();

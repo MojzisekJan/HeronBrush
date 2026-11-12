@@ -516,6 +516,8 @@ preferences! {
     material_browser_face_height: f32 = 360.0, "Materials/Face browser height";
     /// Material browser viewport height in the detached UV editor, in interface points.
     material_browser_window_height: f32 = 300.0, "Materials/UV window browser height";
+    /// Height of the Entity tab's list of classes to place, in interface points.
+    entity_browser_height: f32 = 260.0, "Entities/Class list height";
     /// JSON list of texture folders hidden in material browsers; rendering is unaffected.
     material_browser_hidden_folders: String = String::new(), "Materials/Hidden browser folders";
     /// Text size in the offline manual, in points.

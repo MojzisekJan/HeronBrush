@@ -589,9 +589,14 @@ impl EntityPage {
                 );
                 return;
             }
+            // A fixed height of its own: inside the tab's scrolling, a list that only had a
+            // maximum shrank to egui's 64-point minimum, two and a half rows.
+            let height = class_list_height();
             egui::ScrollArea::vertical()
                 .id_salt("entity-classes")
-                .max_height(220.0)
+                .auto_shrink([false, false])
+                .min_scrolled_height(height)
+                .max_height(height)
                 .show(ui, |ui| {
                     ui.set_width(ui.available_width());
                     for (name, _) in &names {
@@ -609,6 +614,7 @@ impl EntityPage {
                     }
                 });
         });
+        class_list_separator(ui);
         let description = match &self.chosen {
             Some(name) => names
                 .iter()
@@ -802,6 +808,61 @@ fn default_row(
 
 /// A class in the browser: its icon, when `entity_icons` draws one, then its name; picked
 /// or hovered rows are highlighted. Clicked to pick, dragged onto a view to place.
+/// The smallest and largest the class list may be dragged to, in interface points.
+const CLASS_LIST_HEIGHT: std::ops::RangeInclusive<f32> = 80.0..=1200.0;
+
+/// The class list's height, as the separator below it last left it.
+fn class_list_height() -> f32 {
+    let height = editor_core::preferences::pref(|p| p.entity_browser_height);
+    if height.is_finite() {
+        height.clamp(*CLASS_LIST_HEIGHT.start(), *CLASS_LIST_HEIGHT.end())
+    } else {
+        260.0
+    }
+}
+
+/// A bar under the class list that drags its height, as the material browser's does.
+/// The height is saved with the preferences when the drag ends.
+fn class_list_separator(ui: &mut egui::Ui) {
+    let (rect, _) =
+        ui.allocate_exact_size(egui::vec2(ui.available_width(), 8.0), egui::Sense::hover());
+    let response = ui
+        .interact(
+            rect,
+            ui.make_persistent_id("entity-class-separator"),
+            egui::Sense::drag(),
+        )
+        .on_hover_cursor(egui::CursorIcon::ResizeVertical)
+        .on_hover_text(tr("Height"));
+    let color = if response.hovered() || response.dragged() {
+        theme::accent()
+    } else {
+        theme::dim()
+    };
+    ui.painter().hline(
+        rect.x_range(),
+        rect.center().y,
+        egui::Stroke::new(1.0, color),
+    );
+    ui.painter().hline(
+        rect.center().x - 18.0..=rect.center().x + 18.0,
+        rect.center().y,
+        egui::Stroke::new(3.0, color),
+    );
+    if response.dragged() {
+        let height = (class_list_height() + response.drag_delta().y)
+            .clamp(*CLASS_LIST_HEIGHT.start(), *CLASS_LIST_HEIGHT.end());
+        editor_core::preferences::edit(|p| p.entity_browser_height = height);
+        ui.ctx().request_repaint();
+    }
+    if response.drag_stopped() {
+        let path = editor_core::preferences::Preferences::default_path();
+        if let Err(error) = editor_core::preferences::current().save(&path) {
+            editor_core::complain!("{}: {error}", path.display());
+        }
+    }
+}
+
 fn class_row(ui: &mut egui::Ui, name: &str, picked: bool) -> egui::Response {
     const ICON: f32 = 18.0;
     let (rect, response) = widgets::list_row(
