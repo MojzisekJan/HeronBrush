@@ -439,6 +439,58 @@ fn godot_paths_warning<'a>(
     ))
 }
 
+/// Brings imported models into a parsed map, as the ordinary export and the Godot live
+/// link both need: each `_heron_model` entity gets its geometry, and the skins they
+/// introduce are packaged beside the other generated images. Returns those images.
+pub(crate) fn prepare_imported(
+    document: &Document,
+    map: &mut scene_export::map::MapFile,
+    settings: &mut scene_export::settings::Settings,
+    directory: &Path,
+    options: &Options,
+) -> Result<Vec<(PathBuf, Contents)>, Error> {
+    let mut files = Vec::new();
+    let painted_materials = settings
+        .generated_materials
+        .keys()
+        .cloned()
+        .collect::<std::collections::HashSet<_>>();
+    crate::imported_export::prepare(document, map, settings)?;
+    // Imported skins are registered after face paint. Package them beside the
+    // other generated images and use the same project-relative resource paths.
+    let root = settings.project_root.as_deref().unwrap_or(directory);
+    for (name, material) in &mut settings.generated_materials {
+        if painted_materials.contains(name) {
+            continue;
+        }
+        let path = directory
+            .join(format!("{}_paint", options.name))
+            .join(format!("{name}.png"));
+        material.path = scene_export::materials::fs_to_res(root, &path).ok_or_else(|| {
+            Error::Map("export directory must be inside the chosen engine project".into())
+        })?;
+        files.push((path, Contents::Bytes(material.png.clone())));
+        if let Some(pbr) = &mut material.pbr {
+            for image in &mut pbr.images {
+                let path = directory
+                    .join(format!("{}_paint", options.name))
+                    .join(format!("{name}_{}.png", image.slot));
+                image.path = scene_export::materials::fs_to_res(root, &path)
+                    .ok_or_else(|| Error::Map("PBR image is outside project".into()))?;
+                files.push((
+                    path,
+                    Contents::Bytes(if options.target == Target::Godot {
+                        image.godot_png.as_ref().unwrap_or(&image.png).to_vec()
+                    } else {
+                        image.png.to_vec()
+                    }),
+                ));
+            }
+        }
+    }
+    Ok(files)
+}
+
 /// What [`export`] would write into `directory`, as paths and contents, without writing
 /// any of it: the web build zips them for a download.
 pub fn export_files(
@@ -506,44 +558,13 @@ fn build(
     let mut map = scene_export::map::parse(&text, &options.name)
         .map_err(|why| Error::Map(why.to_string()))?;
 
-    let painted_materials = settings
-        .generated_materials
-        .keys()
-        .cloned()
-        .collect::<std::collections::HashSet<_>>();
-    crate::imported_export::prepare(document, &mut map, &mut settings)?;
-    // Imported skins are registered after face paint. Package them beside the
-    // other generated images and use the same project-relative resource paths.
-    let root = settings.project_root.as_deref().unwrap_or(directory);
-    for (name, material) in &mut settings.generated_materials {
-        if painted_materials.contains(name) {
-            continue;
-        }
-        let path = directory
-            .join(format!("{}_paint", options.name))
-            .join(format!("{name}.png"));
-        material.path = scene_export::materials::fs_to_res(root, &path).ok_or_else(|| {
-            Error::Map("export directory must be inside the chosen engine project".into())
-        })?;
-        paint_files.push((path, Contents::Bytes(material.png.clone())));
-        if let Some(pbr) = &mut material.pbr {
-            for image in &mut pbr.images {
-                let path = directory
-                    .join(format!("{}_paint", options.name))
-                    .join(format!("{name}_{}.png", image.slot));
-                image.path = scene_export::materials::fs_to_res(root, &path)
-                    .ok_or_else(|| Error::Map("PBR image is outside project".into()))?;
-                paint_files.push((
-                    path,
-                    Contents::Bytes(if options.target == Target::Godot {
-                        image.godot_png.as_ref().unwrap_or(&image.png).to_vec()
-                    } else {
-                        image.png.to_vec()
-                    }),
-                ));
-            }
-        }
-    }
+    paint_files.extend(prepare_imported(
+        document,
+        &mut map,
+        &mut settings,
+        directory,
+        options,
+    )?);
     let (mut classes, class_warnings) = entity_classes(document);
     crate::export_bindings::apply(&map, &mut classes, &options.entities).map_err(Error::Map)?;
     settings.check_geometry = checking;

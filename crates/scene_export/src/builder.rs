@@ -1312,6 +1312,9 @@ fn build_material_resources(
     sub_resources: &mut Vec<SubResource>,
 ) -> IndexMap<String, GdValue> {
     let mut refs = IndexMap::new();
+    // Distinct names can sanitize to one id (`brick/wall`, `brick_wall`); a later one gets
+    // a numbered id so each keeps its own resource.
+    let mut taken_ids = std::collections::HashSet::new();
     for (texture, material) in &library.materials {
         match material {
             Material::External { res_path } => {
@@ -1324,7 +1327,13 @@ fn build_material_resources(
                 );
             }
             Material::FromTextures { albedo, maps } => {
-                let id = format!("Material_{}", crate::map::sanitize_node_name(texture));
+                let base_id = format!("Material_{}", crate::map::sanitize_node_name(texture));
+                let mut id = base_id.clone();
+                let mut n = 2;
+                while !taken_ids.insert(id.clone()) {
+                    id = format!("{base_id}_{n}");
+                    n += 1;
+                }
                 let mut properties = vec![
                     ("resource_name".to_string(), GdValue::Str(texture.clone())),
                     (
@@ -1850,6 +1859,42 @@ mod tests {
             text.find("id=\"HeronWaterShader\"").unwrap()
                 < text.find("id=\"HeronWater_water_volume_0\"").unwrap()
         );
+    }
+
+    #[test]
+    fn distinct_texture_paths_get_unique_godot_material_ids() {
+        let mut library = MaterialLibrary::default();
+        for (texture, albedo) in [
+            ("brick/wall", "res://textures/brick/wall.png"),
+            ("brick_wall", "res://textures/brick_wall.png"),
+            ("brick wall", "res://textures/brick wall.png"),
+            ("stone", "res://textures/stone.png"),
+        ] {
+            library.materials.insert(
+                texture.into(),
+                Material::FromTextures {
+                    albedo: albedo.into(),
+                    maps: Vec::new(),
+                },
+            );
+        }
+        let mut sub_resources = Vec::new();
+        let refs = build_material_resources(&library, &mut sub_resources);
+        let ids: Vec<&str> = sub_resources.iter().map(|sub| sub.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            [
+                "Material_brick_wall",
+                "Material_brick_wall_2",
+                "Material_brick_wall_3",
+                "Material_stone"
+            ]
+        );
+        // Each texture refers to its own resource.
+        assert!(matches!(
+            refs.get("brick_wall"),
+            Some(GdValue::SubResource(id)) if id == "Material_brick_wall_2"
+        ));
     }
 
     #[test]

@@ -185,7 +185,12 @@ impl LiveLink {
     }
     /// Installs the engine addon into the target's project, reporting the outcome.
     pub fn install_addon(&self, target: Target) {
-        let options = crate::export_settings::Settings::load().for_target(target);
+        // The map's own project profile, as the export window and a save use.
+        let map = self
+            .document
+            .upgrade()
+            .and_then(|document| document.borrow().path.clone());
+        let options = crate::export_settings::Settings::for_map(map.as_deref()).for_target(target);
         let result = project(&options).and_then(|root| match target {
             Target::Flax => crate::flax_live::install(&root),
             Target::Unity => crate::unity_live::install(&root),
@@ -241,7 +246,8 @@ impl LiveLink {
         self.engine.set(target);
         let doc = self.document.upgrade().ok_or("Map closed")?;
         let doc = doc.borrow();
-        let mut options = crate::export_settings::Settings::load().for_target(target);
+        let mut options =
+            crate::export_settings::Settings::for_map(doc.path.as_deref()).for_target(target);
         let root = project(&options)?;
         if target == Target::Defold {
             options = crate::defold_addon::live_options(&root, &options)?;
@@ -488,6 +494,11 @@ impl LiveLink {
                 let world_bounds = doc.world_bounds();
                 let snapshot = (state.options.target == Target::Flax)
                     .then(|| doc.export_snapshot(&state.root.join("unsaved.map")));
+                // Imported models need the document to bring in their geometry, as an
+                // ordinary export does; the thread rebuilds one from a snapshot.
+                let imported = (state.options.target == Target::Godot
+                    && text.contains("_heron_model"))
+                .then(|| doc.export_snapshot(&state.root.join("unsaved.map")));
                 let options = state.options.clone();
                 let root = state.root.clone();
                 let (send, receive) = mpsc::channel();
@@ -497,15 +508,21 @@ impl LiveLink {
                     let result = if let Some(snapshot) = snapshot {
                         crate::flax_live::prepare_document(snapshot, &options, &root)
                     } else {
-                        prepare_painted(
-                            &text,
-                            &world_bounds,
-                            &materials,
-                            &classes,
-                            &settings,
-                            &options,
-                            &root,
-                        )
+                        imported
+                            .map(Document::from_export_snapshot)
+                            .transpose()
+                            .and_then(|document| {
+                                prepare_painted_with(
+                                    &text,
+                                    &world_bounds,
+                                    &materials,
+                                    &classes,
+                                    &settings,
+                                    &options,
+                                    &root,
+                                    document.as_ref(),
+                                )
+                            })
                     }
                     .map(|mut p| {
                         p.warnings.extend(warnings);
@@ -570,6 +587,8 @@ fn ready(now: Instant, changed: Instant, first_change: Instant) -> bool {
         || now.duration_since(first_change) >= Duration::from_secs(1)
 }
 
+// The live link calls the `_with` form; tests use this one.
+#[cfg(test)]
 fn prepare_painted(
     text: &str,
     world_bounds: &geometry_math::bbox::Bbox3d,
@@ -578,6 +597,30 @@ fn prepare_painted(
     settings: &scene_export::settings::Settings,
     options: &Options,
     root: &Path,
+) -> Result<Prepared, String> {
+    prepare_painted_with(
+        text,
+        world_bounds,
+        materials,
+        classes,
+        settings,
+        options,
+        root,
+        None,
+    )
+}
+
+/// [`prepare_painted`] with the document a Godot link needs for imported models.
+#[allow(clippy::too_many_arguments)]
+fn prepare_painted_with(
+    text: &str,
+    world_bounds: &geometry_math::bbox::Bbox3d,
+    materials: &map_model::material::MaterialCollection,
+    classes: &scene_export::indexmap::IndexMap<String, scene_export::fgd::EntityClass>,
+    settings: &scene_export::settings::Settings,
+    options: &Options,
+    root: &Path,
+    document: Option<&Document>,
 ) -> Result<Prepared, String> {
     let mut settings = settings.clone();
     let (text, images) = crate::export::paint_export::prepare_text(
@@ -589,7 +632,7 @@ fn prepare_painted(
         &mut settings,
     )
     .map_err(|e| e.to_string())?;
-    let mut prepared = prepare(&text, classes, &settings, options, root)?;
+    let mut prepared = prepare_with(&text, classes, &settings, options, root, document)?;
     let mut imports = Vec::new();
     let mut files = Vec::new();
     for (path, contents) in images {
@@ -616,12 +659,25 @@ fn prepare_painted(
     Ok(prepared)
 }
 
+// The live link calls the `_with` form; tests use this one.
+#[cfg(test)]
 fn prepare(
     text: &str,
     classes: &scene_export::indexmap::IndexMap<String, scene_export::fgd::EntityClass>,
     settings: &scene_export::settings::Settings,
     options: &Options,
     root: &Path,
+) -> Result<Prepared, String> {
+    prepare_with(text, classes, settings, options, root, None)
+}
+
+fn prepare_with(
+    text: &str,
+    classes: &scene_export::indexmap::IndexMap<String, scene_export::fgd::EntityClass>,
+    settings: &scene_export::settings::Settings,
+    options: &Options,
+    root: &Path,
+    document: Option<&Document>,
 ) -> Result<Prepared, String> {
     if options.target == Target::Flax {
         return crate::flax_live::prepare(text, classes, settings, options, root);
@@ -632,19 +688,27 @@ fn prepare(
     if options.target == Target::Unity {
         return crate::unity_live::prepare(text, classes, settings, options, root);
     }
-    let map = scene_export::map::parse(text, &options.name).map_err(|e| e.to_string())?;
+    let mut map = scene_export::map::parse(text, &options.name).map_err(|e| e.to_string())?;
+    let directory = Path::new(&options.directory);
+    let mut settings = settings.clone();
+    let images = match document {
+        Some(document) => {
+            crate::export::prepare_imported(document, &mut map, &mut settings, directory, options)
+                .map_err(|e| e.to_string())?
+        }
+        None => Vec::new(),
+    };
     let classes = crate::export_bindings::classes(&map, classes, &options.entities)?;
     let mut built = scene_export::builder::build(
         &map,
         &classes,
-        settings,
+        &settings,
         &scene_export::builder::BuildOptions {
             scene_name: options.name.clone(),
             mesh_dir: options.name.clone(),
         },
     );
     crate::godot_animation::attach(&mut built.scene, settings.scale_factor, &mut built.warnings);
-    let directory = Path::new(&options.directory);
     let res = |p: &Path| {
         p.strip_prefix(root)
             .map(|p| format!("res://{}", p.to_string_lossy().replace('\\', "/")))
@@ -652,6 +716,16 @@ fn prepare(
     };
     let mut files = Vec::new();
     let mut meshes = Vec::new();
+    for (path, contents) in images {
+        meshes.push(res(&path)?);
+        files.push((
+            path,
+            match contents {
+                crate::export::Contents::Bytes(b) => b,
+                crate::export::Contents::Text(t) => t.into_bytes(),
+            },
+        ));
+    }
     for mesh in &built.meshes {
         let path = directory.join(&options.name).join(&mesh.file_name);
         if let Some((path, text)) = crate::export::godot_import_defaults(&path) {
@@ -744,6 +818,33 @@ mod tests {
         }
     }
     #[test]
+    fn live_link_uses_the_current_maps_project_profile() {
+        let root = std::env::temp_dir().join(format!("heron-live-profile-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("maps")).unwrap();
+        std::fs::create_dir_all(root.join("generated")).unwrap();
+        std::fs::write(root.join("project.godot"), "").unwrap();
+        let map = root.join("maps/arena.map");
+        crate::export_settings::Settings::default().set_in(
+            Target::Godot,
+            Options {
+                target: Target::Godot,
+                directory: root.join("generated").to_string_lossy().into_owned(),
+                project_dir: root.to_string_lossy().into_owned(),
+                ..Default::default()
+            },
+            &crate::export_settings::project_path(&map),
+        );
+        let mut document = Document::new(WorldBounds::default());
+        document.path = Some(map);
+        let document = Rc::new(RefCell::new(document));
+        let link = LiveLink::new(&document);
+        link.install_addon(Target::Godot);
+        let installed = root.join(ADDON).join("plugin.cfg").is_file();
+        std::fs::remove_dir_all(&root).ok();
+        assert!(installed, "{}", link.status().message);
+    }
+
+    #[test]
     fn live_keyframes_keep_curves_and_implicit_pivot() {
         let temp = Temp::new("keyframes");
         let options = Options {
@@ -784,6 +885,54 @@ mod tests {
         assert!(text.contains("script/source ="));
         assert!(text.contains("pivot = Vector3(1.0, 1.0, 1.0)"));
         assert!(text.contains("AnimationLibrary"));
+    }
+
+    #[test]
+    fn live_link_keeps_imported_model_geometry() {
+        let temp = Temp::new("imported");
+        let bytes = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../examples/editor-checks/fixtures/pbr.glb"
+        ));
+        std::fs::write(temp.0.join("model.glb"), bytes).unwrap();
+        let mut document = Document::new(WorldBounds::default());
+        document
+            .import_model(&temp.0.join("model.glb"), Vec3d::zero())
+            .unwrap();
+        let options = Options {
+            target: Target::Godot,
+            name: "imported".into(),
+            directory: temp
+                .0
+                .join("heron_brush_live")
+                .to_string_lossy()
+                .into_owned(),
+            ..Options::default()
+        };
+        let settings = scene_export::settings::Settings {
+            project_root: Some(temp.0.clone()),
+            ..Default::default()
+        };
+        let (classes, _) = crate::export::entity_classes(&document);
+        let text = document.to_map_text();
+        let prepared = prepare_painted_with(
+            &text,
+            &document.world_bounds(),
+            document.materials(),
+            &classes,
+            &settings,
+            &options,
+            &temp.0,
+            Some(&document),
+        )
+        .unwrap();
+        let (_, scene) = prepared
+            .files
+            .iter()
+            .find(|(p, _)| p.extension().is_some_and(|e| e == "tscn"))
+            .unwrap();
+        let with = String::from_utf8_lossy(scene);
+        assert!(with.contains("MeshInstance3D"), "{with}");
     }
 
     #[test]
