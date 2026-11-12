@@ -34,6 +34,8 @@ pub struct ShapeDialogs {
     corner_preserve_thickness: bool,
     /// Whether the corner's new vertices snap to `corner_grid`, a grid of its own.
     corner_snap: bool,
+    /// Carry textures across the joints, on unless the old behaviour is wanted.
+    corner_textures: bool,
     corner_grid: f64,
     corner_steps: [[bool; 2]; 4],
     corner_zoom: f32,
@@ -43,6 +45,11 @@ pub struct ShapeDialogs {
     corner_map_grid: f64,
     /// The corner dialog's error, if any.
     status: String,
+    /// Why Join corner over more than two brushes is refused, to draw where.
+    corner_refusal: Option<editor_core::document::CornerRefusal>,
+    /// The selection the preview was made for, so a change while the window is open
+    /// makes a new one.
+    corner_selection: Vec<map_model::node::NodeId>,
 }
 impl Default for ShapeDialogs {
     fn default() -> Self {
@@ -58,6 +65,8 @@ impl Default for ShapeDialogs {
             depth: 16.0,
             text_status: tr(TEXT_HINT).to_string(),
             corner: None,
+            corner_refusal: None,
+            corner_selection: Vec::new(),
             corner_rounded: false,
             corner_radius: 8.0,
             corner_segments: 8,
@@ -68,6 +77,7 @@ impl Default for ShapeDialogs {
             corner_wedges: false,
             corner_preserve_thickness: false,
             corner_snap: false,
+            corner_textures: true,
             corner_grid: 1.0,
             corner_steps: [[true; 2]; 4],
             corner_zoom: 1.0,
@@ -105,6 +115,7 @@ impl ShapeDialogs {
             wedges: self.corner_wedges,
             preserve_thickness: self.corner_preserve_thickness,
             snap: self.corner_snap.then_some(self.corner_grid),
+            textures: self.corner_textures,
         }
     }
     pub fn corner(&mut self, editor: &Editor) {
@@ -113,18 +124,29 @@ impl ShapeDialogs {
         self.corner_pan = egui::Vec2::ZERO;
         self.corner_map_grid = editor.grid.borrow().actual_size();
         self.status.clear();
-        self.corner = match editor
-            .document
-            .borrow()
-            .preview_corner_join_options(self.corner_rounding())
-        {
-            Ok(draft) => Some(draft),
+        self.refresh_corner_preview(editor);
+        self.refresh_corner_steps(editor);
+    }
+
+    /// A new preview for the selection as it is now, and, when the command would be
+    /// refused, where.
+    fn refresh_corner_preview(&mut self, editor: &Editor) {
+        let document = editor.document.borrow();
+        let mut selection: Vec<_> = document.selection_ids().iter().copied().collect();
+        selection.sort();
+        self.corner_selection = selection;
+        self.corner_refusal = None;
+        self.corner = match document.preview_corner_join_options(self.corner_rounding()) {
+            Ok(draft) => {
+                self.status.clear();
+                Some(draft)
+            }
             Err(error) => {
+                self.corner_refusal = document.corner_join_refusal(self.corner_rounding());
                 self.status = error;
                 None
             }
         };
-        self.refresh_corner_steps(editor);
     }
 
     /// The Join corner options, in cards each led by the switch that turns its part on,
@@ -196,6 +218,12 @@ impl ShapeDialogs {
                 )
                 .changed();
             });
+            changed |= checkbox(
+                ui,
+                &mut self.corner_textures,
+                tr("Continue textures around corners"),
+            )
+            .changed();
             changed |= checkbox(ui, &mut self.corner_snap, tr("Snap to grid")).changed();
             ui.add_enabled_ui(self.corner_snap, |ui| {
                 row(ui, tr("Grid"), None, |ui| {
@@ -236,11 +264,13 @@ impl ShapeDialogs {
                     width + self.corner_inner_radius
                 ));
             }
-            ui.label(format!(
-                "{}: {}",
-                tr("Added brushes"),
+            // Every join's additions when several are made, not the first join's alone.
+            let added = if draft.before_all.len() > 2 {
+                draft.after_all.len().saturating_sub(draft.before_all.len())
+            } else {
                 draft.join.added.len()
-            ));
+            };
+            ui.label(format!("{}: {}", tr("Added brushes"), added));
             if draft.join.snapped_away > 0 {
                 ui.label(format!(
                     "{}: {}",
@@ -264,11 +294,55 @@ impl ShapeDialogs {
     /// double click resets.
     fn corner_preview(&mut self, ui: &mut egui::Ui) {
         let Some(join) = self.corner.as_ref().map(|draft| draft.join.clone()) else {
+            // Refused for several brushes: the selection, and the overlap it is about.
+            if let Some(refusal) = &self.corner_refusal {
+                ui.label(egui::RichText::new(&refusal.message).color(theme::error()));
+                let size = egui::vec2(ui.available_width(), ui.available_height().max(80.0));
+                let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
+                draw_selection(
+                    ui,
+                    rect,
+                    &refusal.brushes,
+                    &[],
+                    refusal.axes,
+                    self.corner_map_grid,
+                    refusal.place,
+                );
+                return;
+            }
             ui.centered_and_justified(|ui| {
                 ui.label(egui::RichText::new(tr("Select exactly two brushes.")).color(theme::dim()))
             });
             return;
         };
+        // More than two brushes selected: the whole selection, even when only one pair
+        // of them overlaps, so a brush the command leaves alone shows too. Keyed on the
+        // selection rather than on the number of joins, which can be one.
+        let whole = self
+            .corner
+            .as_ref()
+            .filter(|draft| draft.before_all.len() > 2)
+            .map(|draft| {
+                (
+                    draft.before_all.clone(),
+                    draft.after_all.clone(),
+                    draft.axes,
+                    draft.corners,
+                )
+            });
+        if let Some((_, _, _, corners)) = &whole {
+            ui.label(
+                egui::RichText::new(format!("{} {corners}", tr("Corners:"))).color(theme::fg()),
+            );
+            // The corners left alone and why, so a wall drawn short is found.
+            for note in self.corner.iter().flat_map(|draft| &draft.left) {
+                ui.add(
+                    egui::Label::new(egui::RichText::new(note).color(theme::warning()))
+                        .wrap()
+                        .selectable(true),
+                );
+            }
+        }
         ui.horizontal(|ui| {
             ui.label(tr("Preview zoom"));
             if ui
@@ -316,7 +390,22 @@ impl ShapeDialogs {
         } else {
             self.corner_map_grid
         };
-        draw_join(ui, rect, &join, grid, self.corner_zoom, self.corner_pan);
+        match whole {
+            // Several joins: the whole selection, every join on the pieces as the
+            // command leaves them, framed to fit; zoom and pan as for one corner.
+            Some((before, after, axes, _)) => draw_selection_zoomed(
+                ui,
+                rect,
+                &before,
+                &after,
+                axes,
+                grid,
+                None,
+                self.corner_zoom,
+                self.corner_pan,
+            ),
+            None => draw_join(ui, rect, &join, grid, self.corner_zoom, self.corner_pan),
+        }
     }
 
     fn refresh_corner_steps(&mut self, editor: &Editor) {
@@ -335,11 +424,7 @@ impl ShapeDialogs {
                     } else {
                         *segments = (*segments as isize + delta as isize).max(0) as usize;
                     }
-                    editor
-                        .document
-                        .borrow()
-                        .preview_corner_join_options(options)
-                        .is_ok()
+                    editor.document.borrow().corner_join_fits(options)
                 } else {
                     false
                 };
@@ -622,99 +707,114 @@ impl ShapeDialogs {
         if self.corner_open {
             let mut close = false;
             let mut apply = false;
-            self.corner_open =
-                dialog::show_modal(
-                    ctx,
-                    "corner",
-                    tr("Join corner"),
-                    [880.0, 560.0],
-                    |ui, part| {
-                        if part == dialog::Part::Actions {
-                            apply |= dialog::accent_button(ui, tr("Apply"), self.corner.is_some())
-                                .clicked();
-                            close |= dialog::button(ui, tr("Cancel"), true).clicked();
-                            return;
-                        }
-                        let (escape, enter) = dialog::keys(ui);
-                        close |= escape;
-                        apply |= enter && self.corner.is_some();
-                        if self.corner.as_ref().is_some_and(|draft| {
-                            draft.revision != editor.document.borrow().revision()
-                        }) {
-                            self.refresh_corner_steps(editor);
-                        }
-                        let old_options = self.corner_rounding();
-                        let mut changed = false;
-                        // Wide, the controls make a column on the left and the preview fills
-                        // the right, so the corner stays in sight while a radius changes.
-                        // Narrow, the preview goes on top and the controls scroll under it.
-                        if ui.available_width() >= CORNER_WIDE {
-                            let height = ui.available_height();
-                            ui.horizontal_top(|ui| {
-                                ui.allocate_ui_with_layout(
-                                    egui::vec2(CORNER_CONTROLS, height),
-                                    egui::Layout::top_down(egui::Align::Min),
-                                    |ui| {
-                                        egui::ScrollArea::vertical()
-                                            .id_salt("corner-controls")
-                                            .auto_shrink([false, false])
-                                            .show(ui, |ui| changed |= self.corner_controls(ui));
-                                    },
-                                );
-                                ui.add_space(8.0);
-                                ui.vertical(|ui| self.corner_preview(ui));
-                            });
-                        } else {
-                            let height = (ui.available_height() * 0.45).clamp(150.0, 300.0);
+            self.corner_open = dialog::show_modal(
+                ctx,
+                "corner",
+                tr("Join corner"),
+                [880.0, 560.0],
+                |ui, part| {
+                    if part == dialog::Part::Actions {
+                        apply |=
+                            dialog::accent_button(ui, tr("Apply"), self.corner.is_some()).clicked();
+                        close |= dialog::button(ui, tr("Cancel"), true).clicked();
+                        return;
+                    }
+                    let (escape, enter) = dialog::keys(ui);
+                    close |= escape;
+                    apply |= enter && self.corner.is_some();
+                    if self
+                        .corner
+                        .as_ref()
+                        .is_some_and(|draft| draft.revision != editor.document.borrow().revision())
+                    {
+                        self.refresh_corner_steps(editor);
+                    }
+                    // The selection changed while the window is open: preview what
+                    // the command would now do.
+                    let selection = {
+                        let document = editor.document.borrow();
+                        let mut ids: Vec<_> = document.selection_ids().iter().copied().collect();
+                        ids.sort();
+                        ids
+                    };
+                    if selection != self.corner_selection {
+                        self.refresh_corner_preview(editor);
+                        self.refresh_corner_steps(editor);
+                    }
+                    let old_options = self.corner_rounding();
+                    let mut changed = false;
+                    // Wide, the controls make a column on the left and the preview fills
+                    // the right, so the corner stays in sight while a radius changes.
+                    // Narrow, the preview goes on top and the controls scroll under it.
+                    if ui.available_width() >= CORNER_WIDE {
+                        let height = ui.available_height();
+                        ui.horizontal_top(|ui| {
                             ui.allocate_ui_with_layout(
-                                egui::vec2(ui.available_width(), height),
+                                egui::vec2(CORNER_CONTROLS, height),
                                 egui::Layout::top_down(egui::Align::Min),
-                                |ui| self.corner_preview(ui),
+                                |ui| {
+                                    egui::ScrollArea::vertical()
+                                        .id_salt("corner-controls")
+                                        .auto_shrink([false, false])
+                                        .show(ui, |ui| changed |= self.corner_controls(ui));
+                                },
                             );
                             ui.add_space(8.0);
-                            egui::ScrollArea::vertical()
-                                .id_salt("corner-controls")
-                                .auto_shrink([false, false])
-                                .show(ui, |ui| changed |= self.corner_controls(ui));
-                        }
-                        if changed {
-                            match editor
-                                .document
-                                .borrow()
-                                .preview_corner_join_options(self.corner_rounding())
-                            {
-                                Ok(draft) => {
-                                    self.corner = Some(draft);
-                                    self.status.clear();
+                            ui.vertical(|ui| self.corner_preview(ui));
+                        });
+                    } else {
+                        let height = (ui.available_height() * 0.45).clamp(150.0, 300.0);
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), height),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| self.corner_preview(ui),
+                        );
+                        ui.add_space(8.0);
+                        egui::ScrollArea::vertical()
+                            .id_salt("corner-controls")
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| changed |= self.corner_controls(ui));
+                    }
+                    if changed {
+                        match editor
+                            .document
+                            .borrow()
+                            .preview_corner_join_options(self.corner_rounding())
+                        {
+                            Ok(draft) => {
+                                self.corner = Some(draft);
+                                self.corner_refusal = None;
+                                self.status.clear();
+                            }
+                            Err(error) => {
+                                // Keep the last valid parameters and preview for invalid text/drag edits.
+                                self.corner_rounded = old_options.outer.is_some();
+                                self.corner_inner = old_options.inner.is_some();
+                                if let Some((r, n)) = old_options.outer {
+                                    self.corner_radius = r;
+                                    self.corner_segments = n;
                                 }
-                                Err(error) => {
-                                    // Keep the last valid parameters and preview for invalid text/drag edits.
-                                    self.corner_rounded = old_options.outer.is_some();
-                                    self.corner_inner = old_options.inner.is_some();
-                                    if let Some((r, n)) = old_options.outer {
-                                        self.corner_radius = r;
-                                        self.corner_segments = n;
-                                    }
-                                    if let Some((r, n)) = old_options.inner {
-                                        self.corner_inner_radius = r;
-                                        self.corner_inner_segments = n;
-                                    }
-                                    self.corner_concentric = old_options.concentric;
-                                    self.corner_wedges = old_options.wedges;
-                                    self.corner_preserve_thickness = old_options.preserve_thickness;
-                                    self.corner_snap = old_options.snap.is_some();
-                                    if let Some(grid) = old_options.snap {
-                                        self.corner_grid = grid;
-                                    }
-                                    self.status = error;
+                                if let Some((r, n)) = old_options.inner {
+                                    self.corner_inner_radius = r;
+                                    self.corner_inner_segments = n;
                                 }
+                                self.corner_concentric = old_options.concentric;
+                                self.corner_wedges = old_options.wedges;
+                                self.corner_preserve_thickness = old_options.preserve_thickness;
+                                self.corner_snap = old_options.snap.is_some();
+                                self.corner_textures = old_options.textures;
+                                if let Some(grid) = old_options.snap {
+                                    self.corner_grid = grid;
+                                }
+                                self.status = error;
                             }
                         }
-                        if changed {
-                            self.refresh_corner_steps(editor);
-                        }
-                    },
-                ) && !close;
+                    }
+                    if changed {
+                        self.refresh_corner_steps(editor);
+                    }
+                },
+            ) && !close;
             if apply {
                 if let Some(revision) = self.corner.as_ref().map(|draft| draft.revision) {
                     let result = editor
@@ -857,6 +957,134 @@ fn draw_join(
             painter.line_segment([project(a), project(b)], egui::Stroke::new(2.0, colour));
         }
     }
+}
+
+/// [`draw_selection_zoomed`] at zoom 1, unpanned.
+fn draw_selection(
+    ui: &egui::Ui,
+    rect: egui::Rect,
+    before: &[map_model::brush::Brush],
+    after: &[map_model::brush::Brush],
+    axes: [usize; 2],
+    grid: f64,
+    place: Option<geometry_math::bbox::Bbox3d>,
+) {
+    draw_selection_zoomed(
+        ui,
+        rect,
+        before,
+        after,
+        axes,
+        grid,
+        place,
+        1.0,
+        egui::Vec2::ZERO,
+    );
+}
+
+/// A Join corner preview of a whole selection: the brushes as they are, faint, then
+/// every piece as the command leaves them, all framed to fit the well, with `place`
+/// marked when the command is refused there.
+#[allow(clippy::too_many_arguments)]
+fn draw_selection_zoomed(
+    ui: &egui::Ui,
+    rect: egui::Rect,
+    before: &[map_model::brush::Brush],
+    after: &[map_model::brush::Brush],
+    axes: [usize; 2],
+    grid: f64,
+    place: Option<geometry_math::bbox::Bbox3d>,
+    zoom: f32,
+    pan: egui::Vec2,
+) {
+    ui.painter().rect(
+        rect,
+        egui::CornerRadius::same(6),
+        theme::well(),
+        egui::Stroke::new(1.0, theme::border()),
+        egui::StrokeKind::Inside,
+    );
+    let [u, v] = axes;
+    let Some((min, max)) = selection_frame(before.iter().chain(after), u, v) else {
+        return;
+    };
+    let scale = ((rect.width() as f64 - 32.0) / (max[0] - min[0]).max(0.01))
+        .min((rect.height() as f64 - 32.0) / (max[1] - min[1]).max(0.01))
+        * zoom as f64;
+    let centre = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];
+    let project = |p: geometry_math::vec::Vec3d| {
+        egui::pos2(
+            rect.center().x + pan.x + ((p[u] - centre[0]) * scale) as f32,
+            rect.center().y + pan.y - ((p[v] - centre[1]) * scale) as f32,
+        )
+    };
+    let painter = ui.painter_at(rect);
+    let mut step = grid.max(1.0 / 64.0);
+    while step * scale < 8.0 {
+        step *= 2.0;
+    }
+    let line = egui::Stroke::new(1.0, theme::grid().gamma_multiply(0.6));
+    let world = |x: f32, y: f32| {
+        [
+            centre[0] + f64::from(x - rect.center().x - pan.x) / scale,
+            centre[1] - f64::from(y - rect.center().y - pan.y) / scale,
+        ]
+    };
+    let (low, high) = (
+        world(rect.left(), rect.bottom()),
+        world(rect.right(), rect.top()),
+    );
+    let mut k = (low[0] / step).ceil();
+    while k * step <= high[0] {
+        let x = rect.center().x + pan.x + ((k * step - centre[0]) * scale) as f32;
+        painter.vline(x, rect.y_range(), line);
+        k += 1.0;
+    }
+    let mut k = (low[1] / step).ceil();
+    while k * step <= high[1] {
+        let y = rect.center().y + pan.y - ((k * step - centre[1]) * scale) as f32;
+        painter.hline(rect.x_range(), y, line);
+        k += 1.0;
+    }
+    for brush in before {
+        for (a, b) in brush.edge_positions() {
+            painter.line_segment(
+                [project(a), project(b)],
+                egui::Stroke::new(1.0, theme::dim()),
+            );
+        }
+    }
+    for (index, brush) in after.iter().enumerate() {
+        let colour = theme::series(index);
+        for (a, b) in brush.edge_positions() {
+            painter.line_segment([project(a), project(b)], egui::Stroke::new(2.0, colour));
+        }
+    }
+    if let Some(place) = place {
+        let corners = [project(place.min), project(place.max)];
+        painter.rect_stroke(
+            egui::Rect::from_two_pos(corners[0], corners[1]).expand(3.0),
+            egui::CornerRadius::same(2),
+            egui::Stroke::new(2.0, theme::error()),
+            egui::StrokeKind::Outside,
+        );
+    }
+}
+
+/// The span of `brushes` on axes `u` and `v`, with a margin, for a preview to fit.
+fn selection_frame<'a>(
+    brushes: impl Iterator<Item = &'a map_model::brush::Brush>,
+    u: usize,
+    v: usize,
+) -> Option<([f64; 2], [f64; 2])> {
+    let bounds = brushes
+        .map(|b| b.bounds())
+        .reduce(|all, b| all.merged(&b))?;
+    let pad = (bounds.max[u] - bounds.min[u]).max(bounds.max[v] - bounds.min[v]) * 0.06;
+    Some((
+        [bounds.min[u] - pad, bounds.min[v] - pad],
+        [bounds.max[u] + pad, bounds.max[v] + pad],
+    ))
 }
 
 /// What the Join corner previews show at zoom 1, as (min, max) in the corner's plane: the
@@ -1243,6 +1471,452 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// The owner's gate, three brushes, all selected; and two of their ids.
+    fn gate_editor(ctx: &egui::Context) -> Editor {
+        let editor = Editor::open(ctx, None);
+        {
+            let mut d = editor.document.borrow_mut();
+            d.select_all();
+            d.delete_selection();
+            let world = d.world_bounds();
+            for (min, max) in [
+                (
+                    Vec3d::new(-128.0, -16.0, 0.0),
+                    Vec3d::new(-112.0, 0.0, 144.0),
+                ),
+                (Vec3d::new(80.0, -16.0, 0.0), Vec3d::new(96.0, 0.0, 144.0)),
+                (
+                    Vec3d::new(-128.0, -16.0, 128.0),
+                    Vec3d::new(96.0, 0.0, 144.0),
+                ),
+            ] {
+                d.add_brushes(vec![map_model::shapes::create_cuboid(
+                    &world,
+                    &geometry_math::bbox::Bbox3d { min, max },
+                    "stone",
+                )
+                .unwrap()]);
+            }
+            d.select_all();
+        }
+        editor
+    }
+
+    /// Every face of a set of brushes, as sorted rounded corners, to compare results.
+    fn shapes(brushes: &[map_model::brush::Brush]) -> Vec<Vec<[i64; 3]>> {
+        let mut out: Vec<Vec<[i64; 3]>> = brushes
+            .iter()
+            .flat_map(|b| (0..b.faces().len()).filter_map(move |i| b.face_polygon(i)))
+            .map(|polygon| {
+                let mut corners: Vec<[i64; 3]> = polygon
+                    .iter()
+                    .map(|p| [0, 1, 2].map(|a| (p[a] * 1000.0).round() as i64))
+                    .collect();
+                corners.sort();
+                corners
+            })
+            .collect();
+        out.sort();
+        out
+    }
+
+    #[test]
+    fn the_corner_preview_shows_every_join_of_a_larger_selection() {
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let editor = gate_editor(&ctx);
+        let mut dialogs = ShapeDialogs::default();
+        dialogs.corner(&editor);
+        let draft = dialogs.corner.as_ref().expect("a preview");
+        assert_eq!(draft.corners, 2);
+        assert_eq!(draft.before_all.len(), 3);
+        assert_eq!(draft.after_all.len(), 3);
+        // Looked at across the gate, not from above.
+        assert_eq!(draft.axes, [0, 2]);
+        // The preview is what Apply makes.
+        let previewed = shapes(&draft.after_all);
+        let revision = draft.revision;
+        editor
+            .document
+            .borrow_mut()
+            .join_corner_options(revision, dialogs.corner_rounding())
+            .unwrap();
+        let made: Vec<map_model::brush::Brush> =
+            map_model::node::brushes(editor.document.borrow().tree_world())
+                .into_iter()
+                .cloned()
+                .collect();
+        assert_eq!(previewed, shapes(&made));
+        // Drawn headless without trouble, with every piece inside the well.
+        editor.document.borrow_mut().undo();
+        dialogs.refresh_corner_preview(&editor);
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            ui.set_min_size(egui::vec2(400.0, 300.0));
+            dialogs.corner_preview(ui);
+        });
+        output.textures_delta.clear();
+        assert!(!output.shapes.is_empty());
+    }
+
+    /// The colours of the thick lines a preview drew: one per piece after the join.
+    fn piece_colours(ctx: &egui::Context, dialogs: &mut ShapeDialogs) -> Vec<egui::Color32> {
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            ui.set_min_size(egui::vec2(400.0, 300.0));
+            dialogs.corner_preview(ui);
+        });
+        output.textures_delta.clear();
+        let mut colours: Vec<egui::Color32> = Vec::new();
+        for clipped in &output.shapes {
+            if let egui::Shape::LineSegment { stroke, .. } = &clipped.shape {
+                if stroke.width >= 2.0 && !colours.contains(&stroke.color) {
+                    colours.push(stroke.color);
+                }
+            }
+        }
+        colours
+    }
+
+    #[test]
+    fn three_brushes_with_one_overlap_preview_all_three() {
+        // As the owner had it: two brushes meet at a corner and a third stands apart.
+        // The window opens the way the Join corner action opens it.
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let editor = Editor::open(&ctx, None);
+        {
+            let mut d = editor.document.borrow_mut();
+            d.select_all();
+            d.delete_selection();
+            let world = d.world_bounds();
+            for (min, max) in [
+                (
+                    Vec3d::new(-128.0, -16.0, 0.0),
+                    Vec3d::new(-112.0, 0.0, 144.0),
+                ),
+                (
+                    Vec3d::new(-128.0, -16.0, 128.0),
+                    Vec3d::new(32.0, 0.0, 144.0),
+                ),
+                (Vec3d::new(80.0, -16.0, 0.0), Vec3d::new(96.0, 0.0, 144.0)),
+            ] {
+                d.add_brushes(vec![map_model::shapes::create_cuboid(
+                    &world,
+                    &geometry_math::bbox::Bbox3d { min, max },
+                    "stone",
+                )
+                .unwrap()]);
+            }
+            d.select_all();
+        }
+        let mut dialogs = ShapeDialogs::default();
+        assert!(
+            dialogs.corner_rounding().textures,
+            "textures run on round corners unless turned off"
+        );
+        dialogs.corner(&editor);
+        let draft = dialogs.corner.as_ref().expect("a preview");
+        assert_eq!(draft.corners, 1);
+        assert_eq!(draft.after_all.len(), 3, "the brush apart is in the result");
+        // Each piece in a colour of its own: with two colours the left post and the beam
+        // came out alike and, meeting at their mitre, read as one brush.
+        assert_eq!(
+            piece_colours(&ctx, &mut dialogs).len(),
+            3,
+            "and in the picture"
+        );
+        let edges: usize = draft_edges(&dialogs);
+        assert_eq!(thick_segments(&ctx, &mut dialogs), edges, "every edge drawn");
+        // Joined, the three only touch: the window says nothing overlaps and still
+        // draws all three.
+        let revision = editor.document.borrow().revision();
+        editor.document.borrow_mut().join_corner(revision).unwrap();
+        editor.document.borrow_mut().select_all();
+        dialogs.refresh_corner_preview(&editor);
+        assert!(dialogs.corner.is_none());
+        let refusal = dialogs.corner_refusal.as_ref().expect("why nothing is joined");
+        assert_eq!(
+            refusal.message,
+            "None of the selected brushes overlap another."
+        );
+        assert_eq!(refusal.brushes.len(), 3);
+        let outlines: usize = refusal.brushes.iter().map(|b| b.edge_positions().len()).sum();
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            ui.set_min_size(egui::vec2(400.0, 300.0));
+            dialogs.corner_preview(ui);
+        });
+        output.textures_delta.clear();
+        let thin = output
+            .shapes
+            .iter()
+            .filter(|c| {
+                matches!(&c.shape, egui::Shape::LineSegment { stroke, .. }
+                    if stroke.color == theme::dim())
+            })
+            .count();
+        assert_eq!(thin, outlines, "all three outlined");
+    }
+
+    fn draft_edges(dialogs: &ShapeDialogs) -> usize {
+        dialogs
+            .corner
+            .as_ref()
+            .unwrap()
+            .after_all
+            .iter()
+            .map(|b| b.edge_positions().len())
+            .sum()
+    }
+
+    fn thick_segments(ctx: &egui::Context, dialogs: &mut ShapeDialogs) -> usize {
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            ui.set_min_size(egui::vec2(400.0, 300.0));
+            dialogs.corner_preview(ui);
+        });
+        output.textures_delta.clear();
+        output
+            .shapes
+            .iter()
+            .filter(|c| {
+                matches!(&c.shape, egui::Shape::LineSegment { stroke, .. } if stroke.width >= 2.0)
+            })
+            .count()
+    }
+
+    /// The editor with one of the owner's maps open, everything selected, as they had
+    /// it when they opened Join corner.
+    fn owner_map(ctx: &egui::Context, name: &str, text: &str) -> Editor {
+        let dir = std::env::temp_dir().join(format!("heron-rooms-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(name);
+        std::fs::write(&path, text).unwrap();
+        let editor = Editor::open(ctx, Some(path));
+        editor.document.borrow_mut().select_all();
+        editor
+    }
+
+    /// The texts the preview wrote.
+    fn preview_texts(ctx: &egui::Context, dialogs: &mut ShapeDialogs) -> Vec<String> {
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            ui.set_min_size(egui::vec2(400.0, 300.0));
+            dialogs.corner_preview(ui);
+        });
+        output.textures_delta.clear();
+        output
+            .shapes
+            .iter()
+            .filter_map(|c| match &c.shape {
+                egui::Shape::Text(text) => Some(text.galley.text().to_string()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_owners_rooms_join_every_corner_through_the_window() {
+        for (name, text, walls) in [
+            ("four_walls.map", include_str!("../tests/data/four_walls.map"), 4),
+            ("ten_brushes.map", include_str!("../tests/data/ten_brushes.map"), 10),
+        ] {
+            for (rounded, inner) in [(false, false), (false, true), (true, false), (true, true)] {
+                let ctx = egui::Context::default();
+                crate::theme::install(&ctx);
+                let editor = owner_map(&ctx, name, text);
+                let before = editor.document.borrow().to_map_text();
+                let mut dialogs = ShapeDialogs {
+                    corner_rounded: rounded,
+                    corner_radius: 6.0,
+                    corner_segments: 3,
+                    corner_inner: inner,
+                    corner_inner_radius: 8.0,
+                    corner_inner_segments: 4,
+                    ..Default::default()
+                };
+                dialogs.corner(&editor);
+                let draft = dialogs.corner.as_ref().unwrap_or_else(|| {
+                    panic!("{name}: {}", dialogs.status);
+                });
+                // A room is a loop: as many corners as walls.
+                assert_eq!(draft.corners, walls, "{name}");
+                assert_eq!(draft.axes, [0, 1], "seen from above");
+                assert_eq!(draft.before_all.len(), walls);
+                assert!(draft.left.is_empty(), "{:?}", draft.left);
+                let previewed = shapes(&draft.after_all);
+                let revision = draft.revision;
+                let pieces = draft.after_all.len();
+                let edges = draft_edges(&dialogs);
+                assert_eq!(thick_segments(&ctx, &mut dialogs), edges, "every wall drawn");
+                assert_eq!(piece_colours(&ctx, &mut dialogs).len(), 6.min(pieces));
+                let label = format!("{} {walls}", tr("Corners:"));
+                assert!(preview_texts(&ctx, &mut dialogs).contains(&label));
+                // Apply, as the window's button does.
+                editor
+                    .document
+                    .borrow_mut()
+                    .join_corner_options(revision, dialogs.corner_rounding())
+                    .unwrap();
+                let made: Vec<map_model::brush::Brush> =
+                    map_model::node::brushes(editor.document.borrow().tree_world())
+                        .into_iter()
+                        .cloned()
+                        .collect();
+                assert_eq!(previewed, shapes(&made), "{name}: the preview is what Apply makes");
+                editor.document.borrow_mut().undo();
+                assert_eq!(editor.document.borrow().to_map_text(), before, "one undo step");
+            }
+        }
+    }
+
+    #[test]
+    fn walls_of_different_heights_join_through_the_window() {
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let editor = Editor::open(&ctx, None);
+        {
+            let mut d = editor.document.borrow_mut();
+            d.select_all();
+            d.delete_selection();
+            let world = d.world_bounds();
+            for (min, max) in [
+                (Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(128.0, 16.0, 128.0)),
+                (Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(16.0, 128.0, 96.0)),
+            ] {
+                d.add_brushes(vec![map_model::shapes::create_cuboid(
+                    &world,
+                    &geometry_math::bbox::Bbox3d { min, max },
+                    "stone",
+                )
+                .unwrap()]);
+            }
+            d.select_all();
+        }
+        let before = editor.document.borrow().to_map_text();
+        let mut dialogs = ShapeDialogs::default();
+        dialogs.corner(&editor);
+        let draft = dialogs.corner.as_ref().unwrap_or_else(|| panic!("{}", dialogs.status));
+        assert_eq!(draft.after_all.len(), 3, "the higher wall's top stays apart");
+        let previewed = shapes(&draft.after_all);
+        let revision = draft.revision;
+        editor
+            .document
+            .borrow_mut()
+            .join_corner_options(revision, dialogs.corner_rounding())
+            .unwrap();
+        let made: Vec<map_model::brush::Brush> =
+            map_model::node::brushes(editor.document.borrow().tree_world())
+                .into_iter()
+                .cloned()
+                .collect();
+        assert_eq!(previewed, shapes(&made));
+        editor.document.borrow_mut().undo();
+        assert_eq!(editor.document.borrow().to_map_text(), before);
+    }
+
+    #[test]
+    fn roundings_that_run_into_each_other_are_refused_in_the_window() {
+        // The owner's screenshot: all ten walls, full-thickness wedges, inner radius 13.
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let editor = owner_map(
+            &ctx,
+            "ten_brushes.map",
+            include_str!("../tests/data/ten_brushes.map"),
+        );
+        let before = editor.document.borrow().to_map_text();
+        let mut dialogs = ShapeDialogs {
+            corner_rounded: true,
+            corner_radius: 8.0,
+            corner_segments: 8,
+            corner_inner: true,
+            corner_inner_radius: 13.0,
+            corner_inner_segments: 9,
+            corner_wedges: true,
+            corner_preserve_thickness: true,
+            corner_snap: true,
+            corner_grid: 1.0,
+            ..Default::default()
+        };
+        dialogs.corner(&editor);
+        assert!(dialogs.corner.is_none(), "nothing to apply");
+        let refusal = dialogs.corner_refusal.as_ref().expect("why, and where");
+        assert!(refusal.message.contains("would overlap along the brush at"));
+        assert!(refusal.place.is_some(), "the short wall marked");
+        let texts = preview_texts(&ctx, &mut dialogs);
+        assert!(texts.iter().any(|t| t.contains("snapped to the grid")), "{texts:?}");
+        assert_eq!(editor.document.borrow().to_map_text(), before);
+    }
+
+    #[test]
+    fn a_room_corner_that_only_touches_is_named_in_the_window() {
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let editor = owner_map(
+            &ctx,
+            "ten_brushes_first_drawn.map",
+            include_str!("../tests/data/ten_brushes_first_drawn.map"),
+        );
+        let mut dialogs = ShapeDialogs::default();
+        dialogs.corner(&editor);
+        let draft = dialogs.corner.as_ref().expect("nine corners to join");
+        assert_eq!(draft.corners, 9);
+        assert_eq!(draft.before_all.len(), 10);
+        assert_eq!(draft.left.len(), 1);
+        let texts = preview_texts(&ctx, &mut dialogs);
+        assert!(
+            texts.iter().any(|t| t.starts_with("At (-128 136 64)") && t.contains("only touch")),
+            "{texts:?}"
+        );
+    }
+
+    #[test]
+    fn the_corner_preview_follows_the_selection_and_shows_where_a_refusal_is() {
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let editor = gate_editor(&ctx);
+        let mut dialogs = ShapeDialogs::default();
+        dialogs.corner(&editor);
+        assert_eq!(dialogs.corner.as_ref().unwrap().corners, 2);
+        // Down to two brushes: the one-corner preview, as before.
+        let ids: Vec<_> = map_model::node::brushes_with_ids(editor.document.borrow().tree_world())
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        {
+            let mut d = editor.document.borrow_mut();
+            d.select_only(ids[0]);
+            d.toggle_selected(ids[2]);
+        }
+        dialogs.refresh_corner_preview(&editor);
+        assert_eq!(dialogs.corner.as_ref().unwrap().corners, 1);
+        // A fourth member in the left corner: refused, with the corner marked.
+        {
+            let mut d = editor.document.borrow_mut();
+            let world = d.world_bounds();
+            d.add_brushes(vec![map_model::shapes::create_cuboid(
+                &world,
+                &geometry_math::bbox::Bbox3d {
+                    min: Vec3d::new(-128.0, -96.0, 128.0),
+                    max: Vec3d::new(-112.0, 0.0, 144.0),
+                },
+                "stone",
+            )
+            .unwrap()]);
+            d.select_all();
+        }
+        dialogs.refresh_corner_preview(&editor);
+        assert!(dialogs.corner.is_none());
+        let refusal = dialogs.corner_refusal.as_ref().expect("why it is refused");
+        let place = refusal.place.expect("where");
+        assert!(
+            place.min.x() <= -112.0 && place.max.z() >= 128.0,
+            "{place:?}"
+        );
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            ui.set_min_size(egui::vec2(400.0, 300.0));
+            dialogs.corner_preview(ui);
+        });
+        output.textures_delta.clear();
     }
 
     #[test]

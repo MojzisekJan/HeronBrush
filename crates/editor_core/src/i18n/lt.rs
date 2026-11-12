@@ -229,6 +229,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Content flags", "Turinio vėliavėlės"),
     ("Contents", "Turinys"),
     ("Continue", "Tęsti"),
+    ("Continue textures around corners", "Tęsti tekstūras per kampus"),
     ("Continue {}", "Tęsti: {}"),
     ("Contrast", "Contrast"),
     ("Control camera from 3D view", "Valdyti kamerą iš 3D vaizdo"),

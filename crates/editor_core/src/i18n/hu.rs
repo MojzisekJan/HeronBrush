@@ -229,6 +229,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Content flags", "Tartalomjelzők"),
     ("Contents", "Tartalom"),
     ("Continue", "Folytatás"),
+    ("Continue textures around corners", "Textúrák folytatása a sarkokon át"),
     ("Continue {}", "{} folytatása"),
     ("Contrast", "Contrast"),
     ("Control camera from 3D view", "Kamera vezérlése a 3D nézetből"),

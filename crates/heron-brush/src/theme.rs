@@ -301,13 +301,19 @@ pub fn axis(index: usize) -> Color32 {
     }
 }
 
-/// Colours that tell overlaid shapes apart in a preview (the corner join's two brushes):
-/// blue then orange, deep enough to read on the light scheme's wells.
+/// Colours that tell overlaid shapes apart in a preview (the corner join's pieces):
+/// blue, orange, green, magenta, gold and teal, deep enough to read on the light
+/// scheme's wells. Six, so the brushes of a gate or frame each get their own and two
+/// that meet at a mitre do not read as one.
 pub fn series(index: usize) -> Color32 {
     let dark = DARK.get();
-    match index % 2 {
+    match index % 6 {
         0 => pick(dark, 0x4db2ff, 0x1f6fd1),
-        _ => pick(dark, 0xffa640, 0xc8620a),
+        1 => pick(dark, 0xffa640, 0xc8620a),
+        2 => pick(dark, 0x7fd36a, 0x2f8a1c),
+        3 => pick(dark, 0xe57ad8, 0xa8329b),
+        4 => pick(dark, 0xf2d64b, 0x9a7d00),
+        _ => pick(dark, 0x4fd6c8, 0x13877c),
     }
 }
 

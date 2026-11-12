@@ -28,7 +28,19 @@ pub struct Join {
     pub split: Option<usize>,
     /// A choice the join made that the user should hear about.
     pub note: Option<&'static str>,
+    /// For each of `added`, the member it is a part of, when it is one: the parts of a
+    /// taller member above and below the depth both share, left as they were. Shorter
+    /// than `added` (or empty) means the rest belong to neither alone.
+    pub owners: Vec<Option<usize>>,
 }
+
+impl Join {
+    /// The member `added[index]` is a part of, if it is one.
+    pub fn owner_of(&self, index: usize) -> Option<usize> {
+        self.owners.get(index).copied().flatten()
+    }
+}
+
 /// How two members meet.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Junction {
@@ -88,6 +100,7 @@ fn tee_or_crossing(a: &Brush, b: &Brush) -> Option<Join> {
         kind,
         split,
         note,
+        owners: Vec::new(),
     };
     // A T: the stem ends inside the bar.
     let mut tees = Vec::new();
@@ -292,6 +305,7 @@ pub fn preview(a: &Brush, b: &Brush) -> Result<Join, String> {
                 kind: Junction::Corner,
                 split: None,
                 note: None,
+                owners: Vec::new(),
             });
         }
     }
@@ -371,17 +385,615 @@ pub struct Rounding {
     pub preserve_thickness: bool,
     /// The grid the corner's new vertices snap to, in the corner's plane, if any.
     pub snap: Option<f64>,
+    /// Carry textures across the joints with [`continue_textures`].
+    pub textures: bool,
 }
 
 /// The joined corner with `rounding`, its new vertices snapped to `rounding.snap`, and
 /// every face the join made that another piece covers whole given the skip material.
 pub fn preview_with_rounding(a: &Brush, b: &Brush, rounding: Rounding) -> Result<Join, String> {
-    let mut join = rounded(a, b, rounding)?;
+    match join_once(a, b, rounding) {
+        // An L of a lower wall against a higher one reads as a T, the lower one butting
+        // against the higher: a mitre over the height they share is what was meant.
+        Ok(join) if join.kind != Junction::Corner => match by_shared_depth(a, b, rounding) {
+            Some(Ok(shared)) if shared.kind == Junction::Corner => Ok(shared),
+            _ => Ok(join),
+        },
+        Ok(join) => Ok(join),
+        Err(why) => by_shared_depth(a, b, rounding).unwrap_or(Err(why)),
+    }
+}
+
+/// Members of different heights (or depths): the part of each within the depth both
+/// share is joined as members of one height are, and what a taller member has above or
+/// below it is split off and left as it was, so a 128 high wall meeting a 96 high one is
+/// mitred from 0 to 96 and keeps its full end above. The upright axis is tried first.
+/// The faces where a member was split get skip where the pieces on the other side cover
+/// them whole. `None` when the members share all their depth on every axis or no
+/// volume at all, so the plain refusal stands.
+fn by_shared_depth(a: &Brush, b: &Brush, rounding: Rounding) -> Option<Result<Join, String>> {
+    if shared_volume(a, b) <= EPS {
+        return None;
+    }
+    let (aa, bb) = (a.bounds(), b.bounds());
+    let mut first_error = None;
+    for d in [2, 0, 1] {
+        let (lo, hi) = (aa.min[d].max(bb.min[d]), aa.max[d].min(bb.max[d]));
+        if hi - lo <= EPS
+            || ((aa.min[d] - bb.min[d]).abs() <= EPS && (aa.max[d] - bb.max[d]).abs() <= EPS)
+        {
+            continue;
+        }
+        let mut up = Vec3d::zero();
+        up[d] = 1.0;
+        let mut at_hi = Vec3d::zero();
+        at_hi[d] = hi;
+        let mut at_lo = Vec3d::zero();
+        at_lo[d] = lo;
+        let top = Plane3d::from_anchor_and_normal(at_hi, up);
+        let bottom = Plane3d::from_anchor_and_normal(at_lo, -up);
+        // The member within [lo, hi], and what it has beyond.
+        let slab = |brush: &Brush| -> Option<(Brush, Vec<Brush>)> {
+            let bounds = brush.bounds();
+            let mut middle = brush.clone();
+            let mut rest = Vec::new();
+            if bounds.max[d] > hi + EPS {
+                rest.push(in_front_of(brush, &top)?);
+                middle = match middle.clip(&top) {
+                    ClipOutcome::Clipped(piece) => piece,
+                    ClipOutcome::Unchanged => middle,
+                    ClipOutcome::Empty => return None,
+                };
+            }
+            if bounds.min[d] < lo - EPS {
+                rest.push(in_front_of(brush, &bottom)?);
+                middle = match middle.clip(&bottom) {
+                    ClipOutcome::Clipped(piece) => piece,
+                    ClipOutcome::Unchanged => middle,
+                    ClipOutcome::Empty => return None,
+                };
+            }
+            Some((middle, rest))
+        };
+        let (Some((a_mid, a_rest)), Some((b_mid, b_rest))) = (slab(a), slab(b)) else {
+            continue;
+        };
+        let mut join = match join_once(&a_mid, &b_mid, rounding) {
+            Ok(join) => join,
+            Err(why) => {
+                first_error.get_or_insert(why);
+                continue;
+            }
+        };
+        join.before = [a.clone(), b.clone()];
+        join.owners = vec![None; join.added.len()];
+        for (member, rest) in [(0, a_rest), (1, b_rest)] {
+            for piece in rest {
+                join.added.push(piece);
+                join.owners.push(Some(member));
+            }
+        }
+        hide_split_faces(&mut join, &[top, bottom]);
+        return Some(Ok(join));
+    }
+    first_error.map(Err)
+}
+
+/// Skip on the faces lying in a split plane (either way round) that the pieces on the
+/// other side of it cover whole, together: the top of a taller wall's lower part and
+/// the bottom of its upper part, which rests on that and on the shorter wall.
+fn hide_split_faces(join: &mut Join, planes: &[Plane3d]) {
+    let pieces: Vec<Brush> = join.after.iter().chain(&join.added).cloned().collect();
+    let in_split = |plane: &Plane3d| {
+        planes.iter().any(|split| {
+            vec::length(split.normal - plane.normal) < 1e-6
+                && (split.distance - plane.distance).abs() < 1e-4
+                || vec::length(split.normal + plane.normal) < 1e-6
+                    && (split.distance + plane.distance).abs() < 1e-4
+        })
+    };
+    let mut updated = pieces.clone();
+    for (index, piece) in pieces.iter().enumerate() {
+        let mut faces = piece.faces().to_vec();
+        let mut changed = false;
+        for (face_index, face) in piece.faces().iter().enumerate() {
+            if !in_split(&face.plane) || face.material_name.as_str() == SKIP {
+                continue;
+            }
+            let Some(polygon) = piece.face_polygon(face_index) else {
+                continue;
+            };
+            let area = overlap_area(&polygon, &polygon, face.plane.normal);
+            let covered: f64 = pieces
+                .iter()
+                .enumerate()
+                .filter(|(other, _)| *other != index)
+                .flat_map(|(_, brush)| {
+                    (0..brush.faces().len()).filter_map(move |i| {
+                        let other = &brush.faces()[i].plane;
+                        (vec::length(other.normal + face.plane.normal) < 1e-6
+                            && (other.distance + face.plane.distance).abs() < 1e-4)
+                            .then(|| brush.face_polygon(i))
+                            .flatten()
+                    })
+                })
+                .map(|outline| overlap_area(&polygon, &outline, face.plane.normal))
+                .sum();
+            if covered >= area - 1e-3 {
+                faces[face_index].material_name = SKIP.into();
+                changed = true;
+            }
+        }
+        if changed {
+            if let Some(brush) = piece.with_exact_face_attributes(&faces) {
+                updated[index] = brush;
+            }
+        }
+    }
+    let mut updated = updated.into_iter();
+    join.after = [updated.next().expect("two"), updated.next().expect("two")];
+    join.added = updated.collect();
+}
+
+/// A straight wall seen along `depth`: an upright prism (two faces facing along `depth`,
+/// the rest across it) whose outline is a four-sided figure with two long parallel
+/// sides. Returns the two long sides' lines, each as a point and a unit direction in
+/// the plane of the other two axes, and the outline's centre there.
+/// A line in a plane, as a point on it and a unit direction.
+type Line2 = ([f64; 2], [f64; 2]);
+
+fn wall_lines(brush: &Brush, [u, v]: [usize; 2]) -> Option<([Line2; 2], [f64; 2])> {
+    let depth = 3 - u - v;
+    let mut cap = None;
+    for (index, face) in brush.faces().iter().enumerate() {
+        let n = face.plane.normal;
+        if n[depth].abs() > 1.0 - 1e-9 {
+            if n[depth] > 0.0 {
+                cap = brush.face_polygon(index);
+            }
+        } else if n[depth].abs() > 1e-9 {
+            return None;
+        }
+    }
+    let outline: Vec<[f64; 2]> = cap?.iter().map(|p| [p[u], p[v]]).collect();
+    if outline.len() != 4 {
+        return None;
+    }
+    let side = |k: usize| {
+        let (p, q) = (outline[k], outline[(k + 1) % 4]);
+        let d = [q[0] - p[0], q[1] - p[1]];
+        let length = d[0].hypot(d[1]);
+        (p, [d[0] / length, d[1] / length], length)
+    };
+    // The longer pair of opposite sides, which must be parallel.
+    let pair = if side(0).2 + side(2).2 >= side(1).2 + side(3).2 {
+        0
+    } else {
+        1
+    };
+    let (first, second) = (side(pair), side(pair + 2));
+    let cross = first.1[0] * second.1[1] - first.1[1] * second.1[0];
+    if cross.abs() > 1e-9 {
+        return None;
+    }
+    let centre = outline
+        .iter()
+        .fold([0.0, 0.0], |c, p| [c[0] + p[0] / 4.0, c[1] + p[1] / 4.0]);
+    Some(([(first.0, first.1), (second.0, first.1)], centre))
+}
+
+/// Where two lines, each a point and a direction, cross.
+fn crossing_point(a: Line2, b: Line2) -> Option<[f64; 2]> {
+    let (p, r) = a;
+    let (q, s) = b;
+    let denominator = r[0] * s[1] - r[1] * s[0];
+    if denominator.abs() < 1e-9 {
+        return None;
+    }
+    let t = ((q[0] - p[0]) * s[1] - (q[1] - p[1]) * s[0]) / denominator;
+    Some([p[0] + r[0] * t, p[1] + r[1] * t])
+}
+
+/// Two straight walls meeting at an angle other than 90 degrees (rotated boxes): each is
+/// cut by the mitre, the upright plane through the meeting of their outer faces and of
+/// their inner faces, which halves the angle between walls of one thickness and runs
+/// from the outer corner to the inner one otherwise. What either wall had beyond the
+/// mitre goes, so ends drawn past the outer corner are trimmed. Both walls must share
+/// their depth, and each one's end must reach right across the mitre.
+fn angled(a: &Brush, b: &Brush) -> Result<Join, String> {
+    let refused = || {
+        "Select two straight walls that overlap at their ends and share their depth, at any angle."
+            .to_string()
+    };
+    let shared = shared_volume(a, b);
+    if shared <= EPS {
+        return Err(refused());
+    }
+    let (aa, bb) = (a.bounds(), b.bounds());
+    for depth in [2, 0, 1] {
+        if (aa.min[depth] - bb.min[depth]).abs() > EPS
+            || (aa.max[depth] - bb.max[depth]).abs() > EPS
+        {
+            continue;
+        }
+        let axes = match depth {
+            0 => [1, 2],
+            1 => [0, 2],
+            _ => [0, 1],
+        };
+        let (Some((lines_a, centre_a)), Some((lines_b, centre_b))) =
+            (wall_lines(a, axes), wall_lines(b, axes))
+        else {
+            continue;
+        };
+        let mut corners = Vec::with_capacity(4);
+        for la in lines_a {
+            for lb in lines_b {
+                corners.push(crossing_point(la, lb).ok_or_else(refused)?);
+            }
+        }
+        let middle = corners
+            .iter()
+            .fold([0.0, 0.0], |c, p| [c[0] + p[0] / 4.0, c[1] + p[1] / 4.0]);
+        // Each wall's run, pointing from the corner along the wall.
+        let run = |lines: [Line2; 2], centre: [f64; 2]| {
+            let d = lines[0].1;
+            let along = (centre[0] - middle[0]) * d[0] + (centre[1] - middle[1]) * d[1];
+            if along < 0.0 {
+                [-d[0], -d[1]]
+            } else {
+                d
+            }
+        };
+        let (run_a, run_b) = (run(lines_a, centre_a), run(lines_b, centre_b));
+        let towards = [run_a[0] + run_b[0], run_a[1] + run_b[1]];
+        let score =
+            |p: &[f64; 2]| (p[0] - middle[0]) * towards[0] + (p[1] - middle[1]) * towards[1];
+        let inner = *corners
+            .iter()
+            .max_by(|p, q| score(p).total_cmp(&score(q)))
+            .unwrap();
+        let outer = *corners
+            .iter()
+            .min_by(|p, q| score(p).total_cmp(&score(q)))
+            .unwrap();
+        // Both walls' ends reach across the mitre: its two ends, nudged a hair inwards
+        // and taken half way up, lie in both.
+        let point = |p: [f64; 2]| {
+            let mut out = Vec3d::zero();
+            out[axes[0]] = p[0] + (middle[0] - p[0]) * 1e-4;
+            out[axes[1]] = p[1] + (middle[1] - p[1]) * 1e-4;
+            out[depth] = (aa.min[depth] + aa.max[depth]) / 2.0;
+            out
+        };
+        if ![outer, inner]
+            .iter()
+            .all(|p| a.contains_point(point(*p)) && b.contains_point(point(*p)))
+        {
+            return Err(
+                "Each wall's end has to reach right across the corner to be mitred at this angle."
+                    .into(),
+            );
+        }
+        // The mitre, facing away from the first wall.
+        let along = [inner[0] - outer[0], inner[1] - outer[1]];
+        let mut normal = Vec3d::zero();
+        normal[axes[0]] = along[1];
+        normal[axes[1]] = -along[0];
+        normal = normal / vec::length(normal);
+        let mut anchor = Vec3d::zero();
+        anchor[axes[0]] = outer[0];
+        anchor[axes[1]] = outer[1];
+        anchor[depth] = aa.min[depth];
+        let to_a =
+            (centre_a[0] - outer[0]) * normal[axes[0]] + (centre_a[1] - outer[1]) * normal[axes[1]];
+        if to_a > 0.0 {
+            normal = -normal;
+        }
+        let plane = Plane3d::from_anchor_and_normal(anchor, normal);
+        let opposite = Plane3d::from_anchor_and_normal(anchor, -normal);
+        let (ClipOutcome::Clipped(first), ClipOutcome::Clipped(second)) =
+            (a.clip(&plane), b.clip(&opposite))
+        else {
+            return Err("The corner could not be cut reliably at this scale.".into());
+        };
+        if first.volume() <= EPS || second.volume() <= EPS || shared_volume(&first, &second) > EPS {
+            return Err("Corner validation failed; the original brushes were preserved.".into());
+        }
+        // An L, not a T: what either wall loses besides the shared part is only the tip
+        // a rotated box's end has past the outer corner (a few times the shared part at
+        // most), not a bar running on.
+        let tip_a = a.volume() - first.volume() - shared;
+        let tip_b = b.volume() - second.volume() - shared;
+        if tip_a > 4.0 * shared + EPS || tip_b > 4.0 * shared + EPS {
+            return Err(refused());
+        }
+        return Ok(Join {
+            before: [a.clone(), b.clone()],
+            after: [first, second],
+            added: Vec::new(),
+            axes,
+            plane,
+            removed_volume: shared,
+            snapped_away: 0,
+            kind: Junction::Corner,
+            split: None,
+            note: None,
+            owners: Vec::new(),
+        });
+    }
+    Err(refused())
+}
+
+/// The part two brushes share, if any.
+pub(crate) fn shared_part(a: &Brush, b: &Brush) -> Option<Brush> {
+    let mut inside = a.clone();
+    for plane in b.face_planes() {
+        match inside.clip(&plane) {
+            ClipOutcome::Clipped(rest) => inside = rest,
+            ClipOutcome::Unchanged => {}
+            ClipOutcome::Empty => return None,
+        }
+    }
+    (inside.volume() > EPS).then_some(inside)
+}
+
+/// One join of two members that share their depth: see [`preview_with_rounding`].
+fn join_once(a: &Brush, b: &Brush, rounding: Rounding) -> Result<Join, String> {
+    let square = |brush: &Brush| {
+        brush.faces().iter().all(|face| {
+            let n = face.plane.normal;
+            (0..3).filter(|axis| n[*axis].abs() > 1e-9).count() == 1
+        })
+    };
+    let mut join = match rounded(a, b, rounding) {
+        // Rotated walls whose ends overlap can also pass for a T or a crossing; the
+        // corner they make is what was meant. Square brushes keep what they had.
+        Ok(join) if join.kind != Junction::Corner && !(square(a) && square(b)) => {
+            match angled(a, b) {
+                Ok(corner)
+                    if rounding.outer.is_none()
+                        && rounding.inner.is_none()
+                        && !rounding.wedges
+                        && !rounding.concentric =>
+                {
+                    corner
+                }
+                Ok(_) => return Err("Rounding is not supported for corners at angles other than 90 degrees; join this corner without rounding.".into()),
+                Err(_) => join,
+            }
+        }
+        Ok(join) => join,
+        // Square brushes keep the refusal they had.
+        Err(why) if square(a) && square(b) => return Err(why),
+        // Not axis-aligned where they meet: walls at another angle than 90 degrees.
+        Err(why) => match angled(a, b) {
+            Ok(join)
+                if rounding.outer.is_none()
+                    && rounding.inner.is_none()
+                    && !rounding.wedges
+                    && !rounding.concentric =>
+            {
+                join
+            }
+            Ok(_) => {
+                return Err("Rounding is not supported for corners at angles other than 90 degrees; join this corner without rounding.".into())
+            }
+            Err(angle_why) if angle_why.starts_with("Each wall") => return Err(angle_why),
+            Err(_) => return Err(why),
+        },
+    };
     if let Some(size) = rounding.snap {
         snap(&mut join, size)?;
     }
     hide_covered_faces(&mut join);
     Ok(join)
+}
+
+/// What [`continue_textures`] did: faces it carried a neighbour's texture onto, and
+/// meetings it left as they were because the two faces differ in material or scale, or
+/// a face with fixed (paraxial) axes cannot turn the corner.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TextureSeams {
+    pub aligned: usize,
+    pub kept: usize,
+}
+
+/// Carries textures across the joints between `brushes`, so a pattern runs on without a
+/// jump: a face lying in the same plane as its neighbour takes the neighbour's axes and
+/// offset, world-continuous; a face turning a corner from it takes the neighbour's
+/// mapping rotated about the shared edge, as if the texture were wrapped round the wall.
+/// Scale and rotation stay the neighbour's, which is the user's. Paraxial faces (the
+/// Standard format) cannot turn their axes, so they only take the neighbour's offset,
+/// where that makes the two agree along the whole edge. Only visible faces that
+/// meet along an edge count, and only when both carry the same material at the same
+/// scale. Each connected run keeps its first face as it was, in the order of `brushes`,
+/// a paraxial face before others;
+/// a run that closes on itself, such as the outside of a room, keeps one seam where it
+/// closes, since a loop's length is rarely a whole number of texture repeats.
+pub fn continue_textures(brushes: &mut [Brush]) -> TextureSeams {
+    use map_model::uv::UvCoordSystem;
+    let mut seams = TextureSeams::default();
+    // Every visible face with its outline.
+    struct Face {
+        brush: usize,
+        index: usize,
+        polygon: Vec<Vec3d>,
+    }
+    let mut faces: Vec<Face> = Vec::new();
+    for (brush, b) in brushes.iter().enumerate() {
+        for (index, face) in b.faces().iter().enumerate() {
+            if face.material_name.as_str() == SKIP {
+                continue;
+            }
+            if let Some(polygon) = b.face_polygon(index) {
+                faces.push(Face {
+                    brush,
+                    index,
+                    polygon,
+                });
+            }
+        }
+    }
+    let bounds: Vec<Bbox3d> = brushes.iter().map(Brush::bounds).collect();
+    let on_face = |b: &Brush, index: usize, polygon: &[Vec3d], p: Vec3d| {
+        let plane = b.faces()[index].plane;
+        plane.point_distance(p).abs() < 1e-4 && polygon_within(&[p], polygon, plane.normal)
+    };
+    // Whether the face is in the open just beside `at`, a point on its outline: a step
+    // into the face across the outline and a hair out along its normal is in no brush.
+    let open_beside = |f: &Face, at: Vec3d, along: Vec3d| -> bool {
+        let normal = brushes[f.brush].faces()[f.index].plane.normal;
+        let across = vec::normalize(vec::cross(normal, along));
+        [across, -across].iter().any(|step| {
+            let inside = at + *step * 0.05;
+            polygon_within(&[inside], &f.polygon, normal)
+                && !brushes
+                    .iter()
+                    .any(|b| b.contains_point(inside + normal * 0.01))
+        })
+    };
+    // Which faces meet which: a stretch of one's outline lies on the other, and both
+    // are in the open along it.
+    let mut links: Vec<Vec<(usize, Vec3d, Vec3d)>> = vec![Vec::new(); faces.len()];
+    for i in 0..faces.len() {
+        for j in i + 1..faces.len() {
+            let (f, g) = (&faces[i], &faces[j]);
+            if f.brush == g.brush || !bounds[f.brush].expand(1e-3).intersects(&bounds[g.brush]) {
+                continue;
+            }
+            let (nf, ng) = (
+                brushes[f.brush].faces()[f.index].plane.normal,
+                brushes[g.brush].faces()[g.index].plane.normal,
+            );
+            if vec::dot(nf, ng) < -0.5 {
+                continue;
+            }
+            let shared = |from: &Face, onto: &Face| -> Option<(Vec3d, Vec3d)> {
+                let n = from.polygon.len();
+                (0..n).find_map(|k| {
+                    let (p, q) = (from.polygon[k], from.polygon[(k + 1) % n]);
+                    (vec::length(q - p) > 1e-3
+                        && on_face(&brushes[onto.brush], onto.index, &onto.polygon, p)
+                        && on_face(&brushes[onto.brush], onto.index, &onto.polygon, q))
+                    .then(|| ((p + q) * 0.5, vec::normalize(q - p)))
+                })
+            };
+            let Some((at, along)) = shared(g, f).or_else(|| shared(f, g)) else {
+                continue;
+            };
+            if !open_beside(f, at, along) || !open_beside(g, at, along) {
+                continue;
+            }
+            let (a, b) = (
+                &brushes[f.brush].faces()[f.index],
+                &brushes[g.brush].faces()[g.index],
+            );
+            if a.material_name != b.material_name || a.uv_attributes.scale != b.uv_attributes.scale
+            {
+                seams.kept += 1;
+                continue;
+            }
+            links[i].push((j, at, along));
+            links[j].push((i, at, along));
+        }
+    }
+    // Out from the first face of each run, each face once.
+    let mut updated: Vec<Vec<map_model::brush_face::BrushFace>> =
+        brushes.iter().map(|b| b.faces().to_vec()).collect();
+    let mut seen = vec![false; faces.len()];
+    // Faces with fixed (paraxial) axes lead: they can only follow a neighbour by their
+    // offset, a face with free axes can follow anything.
+    let mut roots: Vec<usize> = (0..faces.len()).collect();
+    roots.sort_by_key(|f| {
+        matches!(
+            brushes[faces[*f].brush].faces()[faces[*f].index].uv_coord_system,
+            UvCoordSystem::Parallel { .. }
+        )
+    });
+    for root in roots {
+        if seen[root] || links[root].is_empty() {
+            continue;
+        }
+        seen[root] = true;
+        let mut queue = std::collections::VecDeque::from([root]);
+        while let Some(current) = queue.pop_front() {
+            for &(next, at, along) in &links[current] {
+                if seen[next] {
+                    continue;
+                }
+                let source = updated[faces[current].brush][faces[current].index].clone();
+                let target = &mut updated[faces[next].brush][faces[next].index];
+                let before = target.clone();
+                if matches!(target.uv_coord_system, UvCoordSystem::Parallel { .. }) {
+                    // From a paraxial neighbour too: its axes as they fall on its face.
+                    target.wrap_uv_from(&source, at);
+                } else {
+                    // Paraxial axes follow the face's own world plane and cannot turn:
+                    // the neighbour's offset and rotation, moved so the two agree on
+                    // the edge, which holds along the edge only when both faces step
+                    // the same way along it, as on a wall's upright corner.
+                    target.uv_attributes = source.uv_attributes;
+                    target.uv_attributes.offset += source.uv_coords(at) - target.uv_coords(at);
+                    let further = at + along * 16.0;
+                    let gap = source.uv_coords(further) - target.uv_coords(further);
+                    if gap.x().abs() > 1e-3 || gap.y().abs() > 1e-3 {
+                        *target = before;
+                        seams.kept += 1;
+                        continue;
+                    }
+                }
+                seen[next] = true;
+                if target.uv_coord_system != before.uv_coord_system
+                    || target.uv_attributes != before.uv_attributes
+                {
+                    seams.aligned += 1;
+                }
+                queue.push_back(next);
+            }
+        }
+    }
+    for (brush, faces) in brushes.iter_mut().zip(updated) {
+        *brush = brush.with_face_attributes_from(&faces);
+    }
+    seams
+}
+
+/// The area two convex outlines in one plane (seen along `normal` or against it) share.
+pub(crate) fn overlap_area(a: &[Vec3d], b: &[Vec3d], normal: Vec3d) -> f64 {
+    if a.len() < 3 || b.len() < 3 {
+        return 0.0;
+    }
+    let centre = b.iter().fold(Vec3d::zero(), |sum, p| sum + *p) / b.len() as f64;
+    let mut clipped: Vec<Vec3d> = a.to_vec();
+    for i in 0..b.len() {
+        let (from, to) = (b[i], b[(i + 1) % b.len()]);
+        let mut inward = vec::cross(normal, to - from);
+        if vec::dot(inward, centre - from) < 0.0 {
+            inward = -inward;
+        }
+        let side = |p: Vec3d| vec::dot(inward, p - from);
+        let mut next = Vec::with_capacity(clipped.len() + 1);
+        for k in 0..clipped.len() {
+            let (p, q) = (clipped[k], clipped[(k + 1) % clipped.len()]);
+            let (sp, sq) = (side(p), side(q));
+            if sp >= 0.0 {
+                next.push(p);
+            }
+            if (sp >= 0.0) != (sq >= 0.0) {
+                next.push(p + (q - p) * (sp / (sp - sq)));
+            }
+        }
+        clipped = next;
+        if clipped.len() < 3 {
+            return 0.0;
+        }
+    }
+    let mut twice = Vec3d::zero();
+    for k in 0..clipped.len() {
+        twice += vec::cross(clipped[k], clipped[(k + 1) % clipped.len()]);
+    }
+    vec::dot(twice, vec::normalize(normal)).abs() / 2.0
 }
 
 /// The material a face nobody can see gets, as the rounded corner, the sweep and the
@@ -893,6 +1505,7 @@ mod tests {
                         wedges,
                         preserve_thickness,
                         snap: None,
+                        textures: false,
                     },
                 )
                 .unwrap();
@@ -1202,6 +1815,7 @@ mod tests {
                                     wedges: false,
                                     preserve_thickness: false,
                                     snap: None,
+                                    textures: false,
                                 },
                                 Rounding {
                                     outer: Some((1.0, 1)),
@@ -1210,6 +1824,7 @@ mod tests {
                                     wedges: false,
                                     preserve_thickness: false,
                                     snap: None,
+                                    textures: false,
                                 },
                             ] {
                                 let join = preview_with_rounding(a, b, options).unwrap();
@@ -1308,6 +1923,7 @@ mod tests {
                 wedges: false,
                 preserve_thickness: false,
                 snap: None,
+                textures: false,
             }
         )
         .is_err());
@@ -1333,6 +1949,7 @@ mod tests {
                     wedges: false,
                     preserve_thickness: false,
                     snap: None,
+                    textures: false,
                 },
             )
             .unwrap();

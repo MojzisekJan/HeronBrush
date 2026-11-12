@@ -229,6 +229,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Content flags", "Σημαίες περιεχομένου"),
     ("Contents", "Περιεχόμενα"),
     ("Continue", "Συνέχεια"),
+    ("Continue textures around corners", "Συνέχεια υφών γύρω από γωνίες"),
     ("Continue {}", "Συνέχεια: {}"),
     ("Contrast", "Contrast"),
     ("Control camera from 3D view", "Έλεγχος κάμερας από την προβολή 3D"),

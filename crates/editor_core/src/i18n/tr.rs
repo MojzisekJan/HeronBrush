@@ -229,6 +229,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Content flags", "İçerik bayrakları"),
     ("Contents", "İçindekiler"),
     ("Continue", "Devam et"),
+    ("Continue textures around corners", "Dokuları köşelerin etrafında sürdür"),
     ("Continue {}", "{} ile devam et"),
     ("Contrast", "Contrast"),
     ("Control camera from 3D view", "Kamerayı 3B görünümden denetle"),

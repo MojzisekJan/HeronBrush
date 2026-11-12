@@ -229,6 +229,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Content flags", "內容旗標"),
     ("Contents", "目錄"),
     ("Continue", "繼續"),
+    ("Continue textures around corners", "在轉角處延續紋理"),
     ("Continue {}", "繼續 {}"),
     ("Contrast", "Contrast"),
     ("Control camera from 3D view", "從 3D 視圖控制攝影機"),

@@ -5,7 +5,7 @@
 
 mod clipboard;
 mod corner_join;
-pub use corner_join::CornerDraft;
+pub use corner_join::{CornerDraft, CornerRefusal};
 mod animation_wireframe;
 mod diagnostics;
 mod entities;

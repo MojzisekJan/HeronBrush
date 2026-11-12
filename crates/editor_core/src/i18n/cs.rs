@@ -232,6 +232,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Content flags", "Příznaky obsahu"),
     ("Contents", "Obsah"),
     ("Continue", "Pokračovat"),
+    ("Continue textures around corners", "Navázat textury přes rohy"),
     ("Continue {}", "Pokračovat v {}"),
     ("Contrast", "Kontrast"),
     ("Control camera from 3D view", "Ovládat kameru ze 3D pohledu"),

@@ -351,6 +351,23 @@ mod tests {
         assert_eq!(spans("Ctrl+Z"), vec![("Ctrl+Z", Span::Plain)]);
     }
     #[test]
+    fn room_and_walls_find_join_corner() {
+        for (language, command) in [
+            (Language::English, "Join corner"),
+            (Language::Czech, "Spojit roh"),
+        ] {
+            let chapters = chapters(language);
+            for query in ["room", "walls"] {
+                assert!(
+                    chapters
+                        .iter()
+                        .any(|c| matches(c, query) && c.body.contains(command)),
+                    "{language:?} {query}"
+                );
+            }
+        }
+    }
+    #[test]
     fn search_finds_body_text_in_both_languages() {
         for language in manual::languages() {
             let chapters = chapters(language);

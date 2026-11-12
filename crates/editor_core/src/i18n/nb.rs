@@ -229,6 +229,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Content flags", "Innholdsflagg"),
     ("Contents", "Innhold"),
     ("Continue", "Fortsett"),
+    ("Continue textures around corners", "Fortsett teksturer rundt hjørner"),
     ("Continue {}", "Fortsett {}"),
     ("Contrast", "Contrast"),
     ("Control camera from 3D view", "Styr kameraet fra 3D-visningen"),
