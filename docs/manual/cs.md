@@ -242,7 +242,7 @@ Ve stejném okně **Směr** určuje kudy:
 - **Kamera** ho posouvá k pohledu a od něj, v kouli kolem ukazatele. Podívejte se na podlahu, stěnu nebo strop a tvaruje se to, na co se díváte.
 - **Normála** ho posouvá ven ze stěny, nad kterou tah začal.
 
-Dvě čísla jsou **Poloměr (jednotky)** a **Síla (%)**. Posouvají se jen rohy na straně, kterou tah hýbe; zadní strana zůstává na místě a sloupec zůstane aspoň jednu jednotku silný. Roh, který brushe sdílejí, se posune ve všech stejně, takže povrch zůstane uzavřený. Tah se vrací jedním krokem zpět. Ve 2D pohledech nástroj vybírá stejně jako nástroj Výběr.
+Dvě čísla jsou **Poloměr (jednotky)** a **Síla (%)**. Posouvají se jen rohy na straně, kterou tah hýbe; zadní strana zůstává na místě a sloupec zůstane aspoň jednu jednotku silný. Roh, který brushe sdílejí, se posune ve všech stejně, takže povrch zůstane uzavřený. Tah se vrací jedním krokem zpět. U tahů **Ohyb** volba **Přichytávat k mřížce** v okně **Sochat** umístí každý roh, kterým tah pohne, na zvolenou **Mřížku** (1 jednotka, pokud nevyberete jinou z velikostí mřížky editoru); jinak rohy dopadají na osminy jednotky. Malé dávky se sčítají, dokud roh nedosáhne další čáry mřížky, a rohy, na které tah nedosáhne, zůstanou, kde jsou. Ve 2D pohledech nástroj vybírá stejně jako nástroj Výběr.
 
 Až budete se sochaním hotovi, vyberte terén a zvolte Geometrie → **Sloučit sloupce**, nebo tlačítko v okně **Sochat**. Sousední sloupce, které spolu tvoří konvexní brush a vypadají stejně, se sloučí do jednoho, takže z rovných ploch zbude pár velkých brushů. Povrch se nepohne a sloučení se vrací jedním krokem zpět.
 

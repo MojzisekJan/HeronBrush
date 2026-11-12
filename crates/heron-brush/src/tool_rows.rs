@@ -527,6 +527,19 @@ pub fn sculpt_controls(ui: &mut egui::Ui, cell: f64) -> Option<crate::app_action
             ui.label(egui::RichText::new(tr(parameters.form.description())).color(theme::dim()));
         });
     });
+    // Bend strokes land the corners they move on a grid of their own, as the fillet's
+    // Snap to grid does; Blocks and Free already work on the editor's grid.
+    ui.add_enabled_ui(parameters.form == SculptForm::Bend, |ui| {
+        ui.horizontal(|ui| {
+            ui.add_space(label_width + gap - ui.spacing().item_spacing.x);
+            crate::widgets::checkbox(ui, &mut parameters.snap, tr("Snap to grid"));
+        });
+        ui.add_enabled_ui(parameters.snap, |ui| {
+            row(ui, tr("Grid"), &mut |ui| {
+                rounding_grid(ui, "sculpt-grid", &mut parameters.snap_grid, control);
+            });
+        });
+    });
     sculpt::set_parameters(parameters);
     // How wide the columns come out, and a warning when that is finer than brush
     // terrain suits.

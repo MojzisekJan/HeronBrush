@@ -243,7 +243,7 @@ In the same window, **Direction** chooses which way:
 - **Camera** moves it towards and away from the view, within a ball round the pointer. Look at a floor, a wall or a ceiling and it shapes that.
 - **Normal** moves it out of the face under the pointer where the stroke begins.
 
-The two numbers are **Radius (units)** and **Strength (%)**. Only the corners on the side the stroke moves move; the back stays where it is, and a column stays at least one unit thick. Where brushes share a corner they move it together, so the surface stays closed. A stroke undoes in one step. In the 2D views the tool selects as the Select tool does.
+The two numbers are **Radius (units)** and **Strength (%)**. Only the corners on the side the stroke moves move; the back stays where it is, and a column stays at least one unit thick. Where brushes share a corner they move it together, so the surface stays closed. A stroke undoes in one step. With **Bend** strokes, **Snap to grid** in the **Sculpt** window puts every corner a stroke moves on the chosen **Grid** (1 unit unless you pick another of the editor's grid sizes); otherwise corners land on eighth-unit steps. Small dabs add up until a corner reaches the next grid line, and corners the stroke does not reach stay where they are. In the 2D views the tool selects as the Select tool does.
 
 When the sculpting is done, select the terrain and choose Geometry → **Merge columns**, or the button in the **Sculpt** window. Neighbouring columns that together make a convex brush and look the same become one brush, so flat stretches turn into a few large brushes. The surface does not move, and the merge undoes in one step.
 

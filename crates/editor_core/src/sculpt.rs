@@ -144,6 +144,11 @@ pub struct SculptParameters {
     /// How much one dab does, from 0 to 1: Raise and Lower move the centre by a tenth of
     /// the radius at full strength, Smooth and Flatten go all the way there.
     pub strength: f64,
+    /// Whether a Bend stroke puts the corners it moves on `snap_grid` rather than on the
+    /// fine eighth-unit steps it otherwise uses.
+    pub snap: bool,
+    /// The grid moved corners land on when `snap` is on, in map units.
+    pub snap_grid: f64,
 }
 
 impl Default for SculptParameters {
@@ -155,6 +160,8 @@ impl Default for SculptParameters {
             form: SculptForm::Bend,
             radius: 8.0,
             strength: 0.25,
+            snap: false,
+            snap_grid: 1.0,
         }
     }
 }

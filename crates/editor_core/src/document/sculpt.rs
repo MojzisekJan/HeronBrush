@@ -42,7 +42,16 @@ pub struct SculptStroke {
     blocks: Option<blocks::Blocks>,
     /// For a free stroke, the grid it reshapes the brushes on.
     free: Option<free::Free>,
+    /// With snapping on, how far each corner was meant to move beyond where the grid
+    /// let it land, keyed by where it now is, so dabs smaller than a grid step still add
+    /// up to one instead of the stroke sticking. Boxed: the stroke rides in the view's
+    /// stroke enum beside much smaller variants.
+    snap_left: Box<Carried>,
 }
+
+/// What a snapping stroke still owes each corner, keyed by where the corner now is.
+#[derive(Default)]
+struct Carried(HashMap<Key, f64>);
 
 impl SculptStroke {
     /// Whether this is a free stroke, whose dabs land along the stroke from where they
@@ -328,12 +337,12 @@ fn reach_distance(p: Vec3d, centre: Vec3d, along: Vec3d, ball: bool) -> f64 {
     }
 }
 
-/// `p` with each coordinate a dab moves rounded to [`HEIGHT_STEP`]. The others stay as
-/// they are, so terrain on an odd grid keeps its columns where they stand.
-fn snap(p: Vec3d, along: Vec3d) -> Vec3d {
+/// `p` with each coordinate a dab moves rounded to `step`. The others stay as they are,
+/// so terrain on an odd grid keeps its columns where they stand.
+fn snap(p: Vec3d, along: Vec3d, step: f64) -> Vec3d {
     let round = |v: f64, moves: f64| {
         if moves.abs() > 1e-9 {
-            (v / HEIGHT_STEP).round() * HEIGHT_STEP
+            (v / step).round() * step
         } else {
             v
         }
@@ -368,6 +377,7 @@ impl Document {
             level: None,
             blocks: None,
             free: None,
+            snap_left: Box::default(),
         }
     }
 
@@ -473,6 +483,19 @@ impl Document {
             return self.free_dab(centre, parameters, stroke);
         }
         let (along, ball) = (stroke.along, stroke.ball);
+        // The grid moved corners land on: the window's when it snaps, else the fine one.
+        let step = if parameters.snap && parameters.snap_grid.is_finite() {
+            parameters.snap_grid.max(HEIGHT_STEP)
+        } else {
+            HEIGHT_STEP
+        };
+        let carried = |k: &Key| {
+            if parameters.snap {
+                stroke.snap_left.0.get(k).copied().unwrap_or(0.0)
+            } else {
+                0.0
+            }
+        };
         let radius = parameters.radius;
         let strength = parameters.strength.clamp(0.0, 1.0);
         let level = *stroke.level.get_or_insert(vec::dot(centre, along));
@@ -534,6 +557,7 @@ impl Document {
         // How far along the stroke each corner in reach moves.
         let neighbours = radius * 0.5;
         let mut lift: HashMap<Key, f64> = HashMap::new();
+        let mut settled: Vec<Key> = Vec::new();
         for (&k, &p) in &surface {
             let weight = falloff(reach_distance(p, centre, along, ball), radius);
             if weight <= 0.0 || fixed.contains(&k) {
@@ -556,15 +580,18 @@ impl Document {
                     height + (average - height) * strength
                 }
             };
-            let amount = ((target - height) * weight).max(floor[&k] - height);
-            if amount.abs() > 1e-6 {
+            let amount = ((target - height) * weight + carried(&k)).max(floor[&k] - height);
+            if amount.abs() <= 1e-6 {
+                // What was carried is used up.
+                settled.push(k);
+            } else {
                 lift.insert(k, amount);
             }
         }
 
         // Where each corner lands for the dab cut to `scale`.
         let place = |p: Vec3d, amount: f64| {
-            let moved = snap(p + along * amount, along);
+            let moved = snap(p + along * amount, along, step);
             let lowest = floor[&key(p)];
             if vec::dot(moved, along) < lowest {
                 p + along * (lowest - vec::dot(p, along))
@@ -603,7 +630,32 @@ impl Document {
             }
             Some(changed)
         };
-        let Some(mut changed) = [1.0, 0.5, 0.25, 0.125].into_iter().find_map(changes) else {
+        let found = [1.0, 0.5, 0.25, 0.125]
+            .into_iter()
+            .find_map(|scale| changes(scale).map(|changed| (scale, changed)));
+        if parameters.snap {
+            // What each corner the dab reached still owes, under the key it now has: all
+            // of it when nothing landed on a new grid line yet. At most a step is kept,
+            // so a corner the geometry holds back does not store up a jump.
+            let scale = found.as_ref().map_or(0.0, |(scale, _)| *scale);
+            for k in &settled {
+                stroke.snap_left.0.remove(k);
+            }
+            for (k, amount) in &lift {
+                stroke.snap_left.0.remove(k);
+                let from = surface[k];
+                let to = if scale > 0.0 {
+                    place(from, amount * scale)
+                } else {
+                    from
+                };
+                let left = (amount - vec::dot(to - from, along)).clamp(-step, step);
+                if left.abs() > 1e-9 {
+                    stroke.snap_left.0.insert(key(to), left);
+                }
+            }
+        }
+        let Some((_, mut changed)) = found else {
             return false;
         };
 
@@ -1568,6 +1620,82 @@ mod tests {
                 d.sculpt_dab(Vec3d::new(60.0, 64.0, 60.0), &spike, &mut stroke);
             }
             assert!(holes(&d).is_empty(), "{shape:?}: {:?}", holes(&d));
+        }
+    }
+
+    #[test]
+    fn snapping_is_off_by_default_on_a_one_unit_grid() {
+        let parameters = SculptParameters::default();
+        assert!(!parameters.snap);
+        assert_eq!(parameters.snap_grid, 1.0);
+    }
+
+    #[test]
+    fn snapped_strokes_land_moved_corners_on_the_grid_and_small_dabs_add_up() {
+        for grid in [1.0, 4.0] {
+            let mut d = terrain();
+            // A dab raises the centre by 0.2: less than half a step of either grid.
+            let params = SculptParameters {
+                radius: 48.0,
+                strength: 0.05,
+                snap: true,
+                snap_grid: grid,
+                ..Default::default()
+            };
+            let before = d.to_map_text();
+            let centre = Vec3d::new(64.0, 64.0, 32.0);
+            let mut stroke = d.begin_sculpt_stroke();
+            for _ in 0..40 {
+                d.sculpt_dab(centre, &params, &mut stroke);
+            }
+            let raised = heights(&d);
+            assert!(
+                raised.values().all(|z| (z / grid).fract() == 0.0),
+                "{grid}: {raised:?}"
+            );
+            // Forty dabs of 0.24 at the centre add up to about 9.6.
+            let centre_height = raised[&[64, 64]] - 32.0;
+            assert!(
+                (centre_height - 9.6).abs() <= grid,
+                "{grid}: {centre_height}"
+            );
+            assert_eq!(raised[&[0, 0]], 32.0, "outside the radius nothing moves");
+            assert!(holes(&d).is_empty(), "{:?}", holes(&d));
+            // Still one undo step.
+            d.undo();
+            assert_eq!(d.to_map_text(), before);
+        }
+    }
+
+    #[test]
+    fn snapping_never_folds_a_thin_slab() {
+        // A slab one unit thick: lowering on a 4 grid would push the top through the
+        // bottom, so the floor keeps it a unit thick instead.
+        let mut d = Document::new(Default::default());
+        d.add_brushes(vec![map_model::shapes::create_cuboid(
+            &d.world_bounds(),
+            &Bbox3d::new(Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(128.0, 128.0, 2.0)),
+            map_model::shapes::DEFAULT_MATERIAL,
+        )
+        .unwrap()]);
+        d.select_all();
+        d.split_into_columns(16.0, crate::sculpt::ColumnShape::Squares)
+            .unwrap();
+        let params = SculptParameters {
+            mode: SculptMode::Lower,
+            radius: 48.0,
+            strength: 1.0,
+            snap: true,
+            snap_grid: 4.0,
+            ..Default::default()
+        };
+        let mut stroke = d.begin_sculpt_stroke();
+        for _ in 0..10 {
+            d.sculpt_dab(Vec3d::new(64.0, 64.0, 2.0), &params, &mut stroke);
+        }
+        for brush in node::brushes(d.tree_world()) {
+            assert!(brush.volume() > 0.0);
+            assert!(brush.bounds().max.z() - brush.bounds().min.z() >= MIN_THICKNESS - 1e-9);
         }
     }
 
