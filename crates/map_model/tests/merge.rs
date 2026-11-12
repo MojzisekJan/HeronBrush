@@ -514,3 +514,110 @@ fn an_entity_added_above_another_does_not_disturb_it() {
         "their edit landed"
     );
 }
+
+// --- audit 2026-11-10 -------------------------------------------------------------
+
+/// A 3x3 patch carrying id 42, its middle control point raised to `z`.
+fn patch_42(z: i32) -> String {
+    format!(
+        "// heron_brush id 2a\n{{\npatchDef2\n{{\ncommon/caulk\n( 3 3 0 0 0 )\n(\n\
+         ( ( -64 -64 0 0 0 ) ( -64 0 32 0 0.5 ) ( -64 64 0 0 1 ) )\n\
+         ( ( 0 -64 32 0.5 0 ) ( 0 0 {z} 0.5 0.5 ) ( 0 64 32 0.5 1 ) )\n\
+         ( ( 64 -64 0 1 0 ) ( 64 0 32 1 0.5 ) ( 64 64 0 1 1 ) )\n)\n}}\n}}\n"
+    )
+}
+
+#[test]
+fn patch_edits_on_both_branches_report_a_conflict_without_duplicate_ids() {
+    let base = m(&world("", &patch_42(64)));
+    let ours = m(&world("", &patch_42(96)));
+    let theirs = m(&world("", &patch_42(128)));
+    assert_eq!(base.entities[0].patches[0].id, Some(42));
+
+    let out = merge(&base, &ours, &theirs);
+    let patches = &merged_world(&out.map).patches;
+    assert_eq!(patches.len(), 1, "{patches:?}");
+    assert_eq!(patches[0], ours.entities[0].patches[0]);
+    assert_eq!(out.conflicts.len(), 1, "{:?}", out.conflicts);
+
+    // One side's edit alone lands without a conflict.
+    let out = merge(&base, &base, &theirs);
+    assert!(out.conflicts.is_empty(), "{:?}", out.conflicts);
+    assert_eq!(merged_world(&out.map).patches.len(), 1);
+    assert_eq!(
+        merged_world(&out.map).patches[0],
+        theirs.entities[0].patches[0]
+    );
+}
+
+#[test]
+fn leading_comments_do_not_turn_a_clean_entity_deletion_into_a_conflict() {
+    let light = "{\n\"classname\" \"light\"\n\"origin\" \"0 0 64\"\n}\n";
+    let base = m(&doc(&[&world("", BRUSH_A), light]));
+    let ours = m(&doc(&[
+        "// a note\n// and another\n",
+        &world("", BRUSH_A),
+        light,
+    ]));
+    let theirs = m(&doc(&[&world("", BRUSH_A)]));
+    assert_ne!(base.entities[1].line, ours.entities[1].line);
+
+    let out = merge(&base, &ours, &theirs);
+    assert!(out.conflicts.is_empty(), "{:?}", out.conflicts);
+    assert_eq!(out.map.entities.len(), 1);
+}
+
+/// A world brush 42 and two empty brush entities with ids of their own.
+fn reparent_fixture(world_brush: &str, first: &str, second: &str) -> MapFile {
+    m(&doc(&[
+        &world("", world_brush),
+        &format!("// heron_brush id 11\n{{\n\"classname\" \"func_wall\"\n{first}}}\n"),
+        &format!("// heron_brush id 22\n{{\n\"classname\" \"func_wall\"\n{second}}}\n"),
+    ]))
+}
+
+fn brushes_with_id(map: &MapFile, id: u64) -> Vec<(usize, &map_model::io::map_reader::Brush)> {
+    map.entities
+        .iter()
+        .enumerate()
+        .flat_map(|(at, e)| e.brushes.iter().map(move |b| (at, b)))
+        .filter(|(_, b)| b.id == Some(id))
+        .collect()
+}
+
+#[test]
+fn concurrent_reparenting_reports_conflict_and_keeps_unique_brush_id() {
+    let brush = format!("// heron_brush id 2a\n{BRUSH_A}");
+    let base = reparent_fixture(&brush, "", "");
+    let ours = reparent_fixture("", &brush, "");
+    let theirs = reparent_fixture("", "", &brush);
+
+    let out = merge(&base, &ours, &theirs);
+    assert_eq!(out.conflicts.len(), 1, "{:?}", out.conflicts);
+    let found = brushes_with_id(&out.map, 42);
+    assert_eq!(found.len(), 1, "{:?}", out.map.entities);
+    assert_eq!(found[0].0, 1, "ours' destination wins");
+
+    // Only one side moving it is a clean move.
+    let out = merge(&base, &ours, &base);
+    assert!(out.conflicts.is_empty(), "{:?}", out.conflicts);
+    let found = brushes_with_id(&out.map, 42);
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].0, 1);
+
+    // A move on one side and an edit in place on the other: one brush, moved and edited.
+    let edited = brush.replace("stone", "rock");
+    let theirs = reparent_fixture(&edited, "", "");
+    let out = merge(&base, &ours, &theirs);
+    assert!(out.conflicts.is_empty(), "{:?}", out.conflicts);
+    let found = brushes_with_id(&out.map, 42);
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].0, 1);
+    assert_eq!(found[0].1, &theirs.entities[0].brushes[0]);
+
+    // A move on one side and a removal on the other keeps the move and says so.
+    let theirs = reparent_fixture("", "", "");
+    let out = merge(&base, &ours, &theirs);
+    assert_eq!(out.conflicts.len(), 1, "{:?}", out.conflicts);
+    assert_eq!(brushes_with_id(&out.map, 42).len(), 1);
+}

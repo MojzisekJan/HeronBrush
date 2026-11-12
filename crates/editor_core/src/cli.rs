@@ -258,7 +258,9 @@ pub fn merge_map(args: &[String], program: &str) -> i32 {
     };
     match map_model::merge::merge_text(&base, &ours, &theirs) {
         Ok((merged, conflicts)) => {
-            if let Err(error) = std::fs::write(&output, merged) {
+            // Staged and renamed into place: the output is usually <ours> itself, which
+            // a failed write must not leave truncated.
+            if let Err(error) = file_store::write_atomic(std::path::Path::new(&output), merged) {
                 eprintln!("heron-brush merge: cannot write {output}: {error}");
                 return 2;
             }
@@ -403,6 +405,65 @@ mod tests {
             run(&Command::Open(Positional::default()), "heron", "v"),
             None
         );
+    }
+
+    /// Run by [`failed_merge_output_preserves_the_previous_map`] in a child process whose
+    /// files may not grow past 512 bytes; the merge then fails while writing.
+    #[cfg(unix)]
+    #[test]
+    #[ignore = "a helper the test below runs in a child process"]
+    fn failed_merge_output_helper() {
+        let Ok(dir) = std::env::var("HERON_MERGE_LIMIT_DIR") else {
+            return;
+        };
+        // SAFETY: plain libc calls on this process's own signal disposition and limit.
+        unsafe {
+            libc::signal(libc::SIGXFSZ, libc::SIG_IGN);
+            let limit = libc::rlimit {
+                rlim_cur: 512,
+                rlim_max: 512,
+            };
+            assert_eq!(libc::setrlimit(libc::RLIMIT_FSIZE, &limit), 0);
+        }
+        let path = |name: &str| format!("{dir}/{name}");
+        let code = merge_map(
+            &[path("base.map"), path("ours.map"), path("theirs.map")],
+            "heron",
+        );
+        assert_eq!(code, 2);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failed_merge_output_preserves_the_previous_map() {
+        let map = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/crate.map");
+        let original = std::fs::read(&map).unwrap();
+        assert!(original.len() > 512);
+        let dir = std::env::temp_dir().join(format!("heron-merge-limit-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for name in ["base.map", "ours.map", "theirs.map"] {
+            std::fs::write(dir.join(name), &original).unwrap();
+        }
+        // Its output goes through pipes: the size limit also applies to a regular file
+        // standing in for stdout.
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--ignored",
+                "--exact",
+                "cli::tests::failed_merge_output_helper",
+            ])
+            .env("HERON_MERGE_LIMIT_DIR", &dir)
+            .output()
+            .unwrap();
+        let after = std::fs::read(dir.join("ours.map")).unwrap();
+        std::fs::remove_dir_all(&dir).ok();
+        assert!(
+            child.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&child.stdout),
+            String::from_utf8_lossy(&child.stderr)
+        );
+        assert_eq!(after, original);
     }
 
     #[test]

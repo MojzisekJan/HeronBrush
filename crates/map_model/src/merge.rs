@@ -31,7 +31,7 @@ use geometry_math::plane::Plane3d;
 use geometry_math::vec;
 
 use crate::entity_properties::keys;
-use crate::io::map_reader::{read_map, Brush, Entity, MapFile, ReadError};
+use crate::io::map_reader::{read_map, Brush, Entity, MapFile, Patch, ReadError};
 use crate::io::map_writer::write_map;
 
 /// How an entity is identified across the three versions being merged. Everything but
@@ -217,6 +217,13 @@ fn key_entities(map: &MapFile) -> Vec<(EntityKey, usize)> {
     result
 }
 
+/// Whether two versions of an entity hold the same map content. The line an entity was
+/// read from is where it sat in its file, not part of what it is, so a comment added
+/// above it does not make it an edited entity.
+fn same_entity(a: &Entity, b: &Entity) -> bool {
+    a.properties == b.properties && a.id == b.id && a.brushes == b.brushes && a.patches == b.patches
+}
+
 fn lookup(keyed: &[(EntityKey, usize)], key: &EntityKey) -> Option<usize> {
     keyed.iter().find(|(k, _)| k == key).map(|(_, i)| *i)
 }
@@ -247,6 +254,16 @@ pub fn merge(base: &MapFile, ours: &MapFile, theirs: &MapFile) -> MergeOutput {
     let ours_keys = key_entities(ours);
     let theirs_keys = key_entities(theirs);
 
+    let settled = settle_moved_brushes(
+        [base, ours, theirs],
+        [&base_keys, &ours_keys, &theirs_keys],
+        &mut conflicts,
+    );
+    let (ours, theirs) = match &settled {
+        Some((ours, theirs)) => (ours, theirs),
+        None => (ours, theirs),
+    };
+
     // The key order: base's entities in base order, then keys new in ours, then new in
     // theirs.
     let mut order: Vec<EntityKey> = base_keys.iter().map(|(k, _)| k.clone()).collect();
@@ -272,7 +289,7 @@ pub fn merge(base: &MapFile, ours: &MapFile, theirs: &MapFile) -> MergeOutput {
                 entities.push(merge_entity(key, b, o, t, &mut conflicts));
             }
             (Some(b), Some(o), None) => {
-                if o == b {
+                if same_entity(o, b) {
                     // theirs removed it, ours left it alone: remove it.
                 } else {
                     conflicts.push(Conflict {
@@ -283,7 +300,7 @@ pub fn merge(base: &MapFile, ours: &MapFile, theirs: &MapFile) -> MergeOutput {
                 }
             }
             (Some(b), None, Some(t)) => {
-                if t == b {
+                if same_entity(t, b) {
                     // ours removed it, theirs left it alone: remove it.
                 } else {
                     conflicts.push(Conflict {
@@ -296,7 +313,7 @@ pub fn merge(base: &MapFile, ours: &MapFile, theirs: &MapFile) -> MergeOutput {
                 // both removed it.
             }
             (None, Some(o), Some(t)) => {
-                if o == t {
+                if same_entity(o, t) {
                     entities.push(o.clone());
                 } else {
                     conflicts.push(Conflict {
@@ -325,6 +342,130 @@ pub fn merge(base: &MapFile, ours: &MapFile, theirs: &MapFile) -> MergeOutput {
     }
 }
 
+/// Where each brush id sits: the index of the entity holding it, the first if several do.
+fn brush_homes(map: &MapFile) -> HashMap<u64, usize> {
+    let mut homes = HashMap::new();
+    for (at, entity) in map.entities.iter().enumerate() {
+        for brush in &entity.brushes {
+            if let Some(id) = brush.id {
+                homes.entry(id).or_insert(at);
+            }
+        }
+    }
+    homes
+}
+
+/// Settles a brush the two sides put in different entities before the entities are
+/// merged one by one, which would otherwise see two unrelated additions and keep the
+/// brush twice under one id.
+///
+/// Where it goes and what it holds are each merged three ways: a side that left one of
+/// them as the base had it yields to the side that changed it. Two different moves, or
+/// two different edits, are a conflict and ours wins. The settled brush is put in the
+/// destination entity on whichever side has that entity and taken out of every other
+/// entity, so the per-entity merge sees the same brush on both sides in one place.
+/// A brush one side moved and the other removed is kept where it was moved, with a
+/// conflict. Returns `None` when no brush moved, so nothing is copied.
+fn settle_moved_brushes(
+    [base, ours, theirs]: [&MapFile; 3],
+    [base_keys, ours_keys, theirs_keys]: [&[(EntityKey, usize)]; 3],
+    conflicts: &mut Vec<Conflict>,
+) -> Option<(MapFile, MapFile)> {
+    let base_homes = brush_homes(base);
+    let ours_homes = brush_homes(ours);
+    let theirs_homes = brush_homes(theirs);
+    let brush = |map: &MapFile, at: usize, id: u64| -> Brush {
+        map.entities[at]
+            .brushes
+            .iter()
+            .find(|brush| brush.id == Some(id))
+            .expect("a brush home holds the brush")
+            .clone()
+    };
+
+    // (id, ours' entity, theirs' entity, where it goes, what it becomes)
+    let mut moves: Vec<(u64, usize, usize, EntityKey, Brush)> = Vec::new();
+    let mut ids: Vec<u64> = ours_homes.keys().copied().collect();
+    ids.sort_unstable();
+    for id in ids {
+        let ours_at = ours_homes[&id];
+        let ours_key = &ours_keys[ours_at].0;
+        let base_at = base_homes.get(&id).copied();
+        let base_key = base_at.map(|at| &base_keys[at].0);
+        let Some(&theirs_at) = theirs_homes.get(&id) else {
+            if base_key.is_some_and(|key| key != ours_key) {
+                conflicts.push(Conflict {
+                    scope: ours_key.to_string(),
+                    detail: "a brush was moved here on our side and removed on theirs; kept ours"
+                        .into(),
+                });
+            }
+            continue;
+        };
+        let theirs_key = &theirs_keys[theirs_at].0;
+        if ours_key == theirs_key {
+            continue;
+        }
+        let destination = if base_key == Some(ours_key) {
+            theirs_key
+        } else if base_key == Some(theirs_key) {
+            ours_key
+        } else {
+            conflicts.push(Conflict {
+                scope: ours_key.to_string(),
+                detail: format!(
+                    "a brush was put here on our side and in {theirs_key} on theirs; kept ours"
+                ),
+            });
+            ours_key
+        };
+        let (o, t) = (brush(ours, ours_at, id), brush(theirs, theirs_at, id));
+        let merged = match base_at.map(|at| brush(base, at, id)) {
+            Some(b) if o == b => t,
+            Some(b) if t == b || o == t => o,
+            None if o == t => o,
+            _ => {
+                conflicts.push(Conflict {
+                    scope: destination.to_string(),
+                    detail: "a moved brush was edited on both sides; kept ours".into(),
+                });
+                o
+            }
+        };
+        moves.push((id, ours_at, theirs_at, destination.clone(), merged));
+    }
+    for (id, &theirs_at) in &theirs_homes {
+        let theirs_key = &theirs_keys[theirs_at].0;
+        let base_key = base_homes.get(id).map(|at| &base_keys[*at].0);
+        if !ours_homes.contains_key(id) && base_key.is_some_and(|key| key != theirs_key) {
+            conflicts.push(Conflict {
+                scope: theirs_key.to_string(),
+                detail: "a brush was removed on our side and moved here on theirs; dropped".into(),
+            });
+        }
+    }
+    if moves.is_empty() {
+        return None;
+    }
+
+    let mut ours = ours.clone();
+    let mut theirs = theirs.clone();
+    for (id, ours_at, theirs_at, destination, merged) in moves {
+        for (map, keys, at) in [
+            (&mut ours, ours_keys, ours_at),
+            (&mut theirs, theirs_keys, theirs_at),
+        ] {
+            map.entities[at]
+                .brushes
+                .retain(|brush| brush.id != Some(id));
+            if let Some(dest) = lookup(keys, &destination) {
+                map.entities[dest].brushes.push(merged.clone());
+            }
+        }
+    }
+    Some((ours, theirs))
+}
+
 fn merge_entity(
     key: &EntityKey,
     base: &Entity,
@@ -340,7 +481,13 @@ fn merge_entity(
         &theirs.brushes,
         conflicts,
     );
-    let patches = merge_set(&base.patches, &ours.patches, &theirs.patches);
+    let patches = merge_patches(
+        key,
+        &base.patches,
+        &ours.patches,
+        &theirs.patches,
+        conflicts,
+    );
 
     // Ours' identity, since a merged entity is the one that was there: the id is what it
     // is, not something the merge decides.
@@ -410,6 +557,88 @@ fn merge_properties(
             }
         }
     }
+    result
+}
+
+/// The patch merge. A patch with an id is matched by it across the three versions, as a
+/// brush is in [`merge_brushes`], so an edit on both sides is one patch and a conflict
+/// rather than two patches with the same id. The rest go through the plain set merge.
+fn merge_patches(
+    key: &EntityKey,
+    base: &[Patch],
+    ours: &[Patch],
+    theirs: &[Patch],
+    conflicts: &mut Vec<Conflict>,
+) -> Vec<Patch> {
+    let mut result = Vec::new();
+    let mut base_rest = Vec::new();
+    let mut ours_taken = vec![false; ours.len()];
+    let mut theirs_taken = vec![false; theirs.len()];
+    let find = |pool: &[Patch], taken: &[bool], id: u64| {
+        pool.iter()
+            .enumerate()
+            .position(|(at, patch)| !taken[at] && patch.id == Some(id))
+    };
+    for b in base {
+        let Some(id) = b.id else {
+            base_rest.push(b.clone());
+            continue;
+        };
+        let ours_at = find(ours, &ours_taken, id);
+        let theirs_at = find(theirs, &theirs_taken, id);
+        match (ours_at, theirs_at) {
+            (Some(oi), Some(ti)) => {
+                ours_taken[oi] = true;
+                theirs_taken[ti] = true;
+                let (op, tp) = (&ours[oi], &theirs[ti]);
+                if op == tp || tp == b {
+                    result.push(op.clone());
+                } else if op == b {
+                    result.push(tp.clone());
+                } else {
+                    conflicts.push(Conflict {
+                        scope: key.to_string(),
+                        detail: "a patch was edited on both sides; kept ours".into(),
+                    });
+                    result.push(op.clone());
+                }
+            }
+            (Some(oi), None) => {
+                ours_taken[oi] = true;
+                if ours[oi] != *b {
+                    conflicts.push(Conflict {
+                        scope: key.to_string(),
+                        detail: "a patch was edited on our side and removed on theirs; kept ours"
+                            .into(),
+                    });
+                    result.push(ours[oi].clone());
+                }
+            }
+            (None, Some(ti)) => {
+                theirs_taken[ti] = true;
+                if theirs[ti] != *b {
+                    conflicts.push(Conflict {
+                        scope: key.to_string(),
+                        detail: "a patch was removed on our side and edited on theirs; dropped"
+                            .into(),
+                    });
+                }
+            }
+            (None, None) => {}
+        }
+    }
+    let untaken = |pool: &[Patch], taken: &[bool]| -> Vec<Patch> {
+        pool.iter()
+            .zip(taken)
+            .filter(|(_, taken)| !**taken)
+            .map(|(patch, _)| patch.clone())
+            .collect()
+    };
+    result.extend(merge_set(
+        &base_rest,
+        &untaken(ours, &ours_taken),
+        &untaken(theirs, &theirs_taken),
+    ));
     result
 }
 
