@@ -17,6 +17,8 @@ Soubor `.map` je váš upravitelný zdroj. Ukládejte průběžně: export, živ
 
 Pokud má uložená mapa neuložené změny, zapisují se každých deset minut číslované zálohy do složky `autosave` vedle mapy. Uchovává se 50 nejnovějších záloh.
 
+Obnova po pádu (crash recovery): dokud má kterákoli mapa, i bez názvu, neuložené změny, zapisuje se kopie pro obnovu (recovery) do složky `recovery` ve složce konfigurace, jakmile se úpravy na pár sekund zastaví, nejčastěji každých 30 sekund (Nastavení → Přehled → Úpravy: **Uchovávat kopie pro obnovu po pádu** a **Interval kopie pro obnovu (s)**). Během tažení se nezapisuje, importované modely se nekopírují a kopie se smaže, když mapu uložíte, zavřete nebo její změny zahodíte. Když se Heron Brush ukončí bez uložení, při pádu, zabitém procesu nebo výpadku proudu, nabídne další spuštění každou kopii: **Obnovit** ji otevře s původním názvem a neuloženými změnami, takže o uložení rozhodnete sami; **Zahodit** ji smaže; **Později** se zeptá při dalším spuštění. Nabídka upozorní, když se soubor mapy na disku po pořízení kopie změnil. Kopie jiného Heron Brush, který ještě běží, se mu nechají a obnova kopie pořízené během připojení ke sdílené relaci ji otevře samostatně, bez připojení k relaci. Hledejte také „autosave“, „backup“ (záloha) a „crash“.
+
 Otevřete-li mapu, když už Heron Brush běží, předá se běžícímu oknu a to se přesune do popředí. Chcete-li samostatné okno, použijte na příkazové řádce `--new-instance` (viz Příkazová řádka).
 
 # Rozhraní
@@ -552,7 +554,7 @@ Program se jmenuje `heron-brush`. Bez voleb otevře uvítací okno.
 - Mapa se neotevře ze správce souborů: mohla být předána už běžícímu editoru; hledejte jeho okno.
 
 ## Nastavení a zálohy
-Nastavení, nedávné mapy, hvězdičky, nastavení exportu a pluginy jsou ve složce konfigurace: `~/.config/heron-brush` na Linuxu a macOS a `%LOCALAPPDATA%\heron-brush` na Windows. Zálohy automatického ukládání jsou ve složce `autosave` vedle každé mapy.
+Nastavení, nedávné mapy, hvězdičky, nastavení exportu a pluginy jsou ve složce konfigurace: `~/.config/heron-brush` na Linuxu a macOS a `%LOCALAPPDATA%\heron-brush` na Windows. Zálohy automatického ukládání jsou ve složce `autosave` vedle každé mapy; kopie pro obnovu po pádu jsou ve složce `recovery` ve složce konfigurace.
 
 ## Hlášení chyb
 Uveďte verzi editoru (Nápověda → O programu), operační systém, malou mapu, na které je problém vidět, a přesný postup. Výstupní panel (`Ctrl+4`) často řekne, co se pokazilo. Před experimentováním si uložte kopii.

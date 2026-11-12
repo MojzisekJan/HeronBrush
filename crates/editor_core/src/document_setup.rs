@@ -31,7 +31,7 @@ pub fn load(
     // until there is a game configuration to read it from.
     let bounds = WorldBounds::default();
 
-    let mut document = match &path {
+    let document = match &path {
         Some(path) => match Document::open(path, bounds) {
             Ok(document) => {
                 report_warnings(&document);
@@ -63,6 +63,23 @@ pub fn load(
         },
     };
 
+    finish(document, path, fgd, materials)
+}
+
+/// A recovered map, set up as [`load`] sets up one read from its file: the game's
+/// definitions and materials, and the materials its copy names.
+pub fn load_recovered(document: Document) -> LoadedDocument {
+    let path = document.path.clone();
+    finish(document, path, None, None)
+}
+
+/// What [`load`] does once it has the document.
+fn finish(
+    mut document: Document,
+    path: Option<PathBuf>,
+    fgd: Option<PathBuf>,
+    materials: Option<PathBuf>,
+) -> LoadedDocument {
     // Loads entity definitions and materials from the selected game. Explicit command-line files
     // take precedence.
     let game = games::current();

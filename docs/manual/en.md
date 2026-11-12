@@ -17,6 +17,8 @@ The `.map` file is your editable source. Save regularly: exporting, live links a
 
 While a saved map has unsaved changes, numbered backups are written every ten minutes to an `autosave` folder next to the map. The 50 newest backups are kept.
 
+Crash recovery: while any map, untitled ones included, has unsaved changes, a recovery copy is written to the `recovery` folder in the configuration folder once editing pauses for a few seconds, at most every 30 seconds (Preferences → Overview → Editing: **Keep crash recovery copies** and **Recovery copy interval (s)**). It is not written during a drag, it does not copy imported models, and it is removed when the map is saved, closed, or its changes are discarded. If Heron Brush stops without saving, because of a crash, a killed process or a power cut, the next start offers each copy: **Restore** opens it with its original name and unsaved changes, so you decide whether to save; **Discard** deletes it; **Later** asks again at the next start. The offer warns when the map's file changed on disk after the copy was made. Copies of another Heron Brush that is still running are left to it, and restoring a copy made while connected to a session opens it on its own, without joining the session.
+
 Opening a map while Heron Brush is already running hands it to the running window, which comes to the front. Use `--new-instance` on the command line when you want a separate window (see Command line).
 
 # The interface
@@ -570,7 +572,7 @@ The program is `heron-brush`. Without options it opens the welcome screen.
 - A map will not open from the file manager: it may have been handed to an editor that is already running; look for that window.
 
 ## Settings and backups
-Preferences, recent maps, stars, export settings and plugins live in the configuration folder: `~/.config/heron-brush` on Linux and macOS, and `%LOCALAPPDATA%\heron-brush` on Windows. Autosave backups are in the `autosave` folder next to each map.
+Preferences, recent maps, stars, export settings and plugins live in the configuration folder: `~/.config/heron-brush` on Linux and macOS, and `%LOCALAPPDATA%\heron-brush` on Windows. Autosave backups are in the `autosave` folder next to each map; crash recovery copies are in the `recovery` folder inside the configuration folder.
 
 ## Reporting a bug
 Include the editor version (Help → About), your operating system, a small map that shows the problem and the exact steps. The output pane (`Ctrl+4`) often says what went wrong. Save a copy before experimenting.

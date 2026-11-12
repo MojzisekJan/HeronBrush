@@ -720,6 +720,11 @@ preferences! {
     alignment_lock: bool = true, "Editor/Texture lock";
     /// Whether a face keeps its mapping when the brush turns.
     uv_lock: bool = false, "Editor/UV lock";
+    /// Whether a crash recovery copy of a map with unsaved changes is kept in the
+    /// profile and offered at the next start ([`crate::autosave::recovery`]).
+    recovery_enabled: bool = true, "Editor/Crash recovery";
+    /// The least time between recovery copies, in seconds.
+    recovery_interval: f32 = 30.0, "Editor/Crash recovery interval";
 
     // Renderer pass settings.
     /// Enables physically based viewport shading.

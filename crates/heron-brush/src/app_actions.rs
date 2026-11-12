@@ -884,15 +884,75 @@ impl App {
             self.leave_retry = Some(path);
             return;
         }
-        self.editor.document.borrow().save_material_info();
-        match Self::build(
+        self.swap_in(
             ctx,
-            self.gpu.clone(),
             crate::Startup {
                 map: path,
                 ..Default::default()
             },
-        ) {
+        );
+    }
+
+    /// Opens a map restored from its crash recovery copy in place of the current one,
+    /// once the current one may go; the copy is offered again otherwise.
+    pub(crate) fn restore_copy(
+        &mut self,
+        ctx: &egui::Context,
+        orphan: crate::recovery_offer::Orphan,
+    ) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let document = match orphan.restore(self.editor.bounds) {
+                Ok(document) => document,
+                Err(error) => {
+                    editor_core::complain!(
+                        "{}",
+                        fill(
+                            "Could not open {}: {}",
+                            &[&orphan.map_file().display().to_string(), &error]
+                        )
+                    );
+                    return;
+                }
+            };
+            self.render_page.finish_navigation(&self.editor);
+            if !can_leave(&mut self.editor.document.borrow_mut()) {
+                self.recovery.offer.insert(0, orphan);
+                return;
+            }
+            let rest = std::mem::take(&mut self.recovery.offer);
+            if self.swap_in(
+                ctx,
+                crate::Startup {
+                    recovered: Some(document),
+                    ..Default::default()
+                },
+            ) {
+                self.recovery.adopt(&orphan);
+                self.recovery.offer = rest;
+                editor_core::say!(
+                    "{}",
+                    fill(
+                        "Restored {} from its recovery copy",
+                        &[&orphan.path.as_deref().map_or_else(
+                            || tr("Untitled map").to_string(),
+                            |path| path.display().to_string()
+                        )]
+                    )
+                );
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        let _ = (ctx, orphan);
+    }
+
+    /// Builds the editor for `startup` and puts it in place of this one, keeping the
+    /// window's own state. Returns whether it did.
+    fn swap_in(&mut self, ctx: &egui::Context, startup: crate::Startup) -> bool {
+        self.editor.document.borrow().save_material_info();
+        // The map going was saved or its changes let go: its recovery copy goes too.
+        self.recovery.discard();
+        match Self::build(ctx, self.gpu.clone(), startup) {
             Ok(mut next) => {
                 next.placed = self.placed && !self.startup;
                 next.startup = false;
@@ -913,11 +973,15 @@ impl App {
                 self.live.stop("Map closed");
                 self.render_page.destroy();
                 *self = next;
+                true
             }
-            Err(error) => editor_core::complain!(
-                "{}",
-                fill("Could not open the editor: {}", &[&error.to_string()])
-            ),
+            Err(error) => {
+                editor_core::complain!(
+                    "{}",
+                    fill("Could not open the editor: {}", &[&error.to_string()])
+                );
+                false
+            }
         }
     }
 

@@ -93,6 +93,21 @@ impl Editor {
         if let Some(path) = loaded.document.path.as_deref() {
             editor_core::recent_documents::record(path);
         }
+        Self::from_loaded(ctx, loaded)
+    }
+
+    /// The editor on a map restored from its crash recovery copy.
+    pub fn open_recovered(
+        ctx: &eframe::egui::Context,
+        document: editor_core::document::Document,
+    ) -> Self {
+        Self::from_loaded(ctx, editor_core::document_setup::load_recovered(document))
+    }
+
+    fn from_loaded(
+        ctx: &eframe::egui::Context,
+        loaded: editor_core::document_setup::LoadedDocument,
+    ) -> Self {
         let redraw: Rc<dyn Fn()> = Rc::new({
             let ctx = ctx.clone();
             move || ctx.request_repaint()

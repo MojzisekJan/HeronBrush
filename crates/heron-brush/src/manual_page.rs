@@ -351,6 +351,20 @@ mod tests {
         assert_eq!(spans("Ctrl+Z"), vec![("Ctrl+Z", Span::Plain)]);
     }
     #[test]
+    fn recovery_autosave_crash_and_backup_find_crash_recovery() {
+        for language in [Language::English, Language::Czech] {
+            let chapters = chapters(language);
+            for query in ["recovery", "autosave", "crash", "backup"] {
+                assert!(
+                    chapters
+                        .iter()
+                        .any(|c| matches(c, query) && c.body.contains("recovery")),
+                    "{language:?} {query}"
+                );
+            }
+        }
+    }
+    #[test]
     fn room_and_walls_find_join_corner() {
         for (language, command) in [
             (Language::English, "Join corner"),

@@ -379,6 +379,14 @@ const OVERVIEW: [Section; 4] = [
                 "uv_lock",
                 translation_key("Keep the mapping when a brush turns"),
             ),
+            (
+                "recovery_enabled",
+                translation_key("Keep crash recovery copies"),
+            ),
+            (
+                "recovery_interval",
+                translation_key("Recovery copy interval (s)"),
+            ),
         ],
     ),
     (
@@ -580,6 +588,8 @@ fn field(settings: &mut Preferences, name: &str, action: Action) -> bool {
         leak_check_cell_size,
         alignment_lock,
         uv_lock,
+        recovery_enabled,
+        recovery_interval,
         realistic_shading,
         selection_outline,
         shadows,
@@ -1554,6 +1564,7 @@ impl Control for ColorScheme {
 fn number_range(field: &str, overview: bool) -> (f64, f64, f64) {
     match field {
         "grid_alpha" => (0.0, 1.0, 0.05),
+        "recovery_interval" => (5.0, 600.0, 5.0),
         "leak_check_cell_size" => (1.0, 64.0, 1.0),
         "weak_info_overlay_background_alpha" => (0.0, 1.0, 0.05),
         "camera_look_speed" => (0.05, 2.0, 0.05),

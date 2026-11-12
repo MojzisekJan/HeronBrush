@@ -3333,6 +3333,34 @@ impl Document {
         )
     }
 
+    /// The map as a crash recovery copy at `copy` holds it: what a save writes, with
+    /// the material paths relative to the copy, but imported models left where they
+    /// are rather than copied along.
+    pub fn recovery_text(&self, copy: &Path) -> String {
+        let map = node::flatten_tree(
+            &self.tree.world,
+            map_model::map_format::MapFormat::LOSSLESS,
+            self.game.clone(),
+        );
+        format!("{}{}", self.saved_material_paths(copy), write_map(&map))
+    }
+
+    /// A recovery copy's `text`, read from `copy`, as the document it was a copy of: its
+    /// file `path` (none for an untitled map), with unsaved changes.
+    pub fn from_recovery(
+        text: &str,
+        copy: &Path,
+        path: Option<PathBuf>,
+        bounds: WorldBounds,
+    ) -> Result<Self, OpenError> {
+        let map = read_map(text, None).map_err(OpenError::Map)?;
+        let mut document = Self::from_map_owned(map, bounds, path);
+        crate::assets::load_library_materials(&mut document);
+        document.restore_material_paths(text, copy);
+        document.modified = true;
+        Ok(document)
+    }
+
     /// The number of edits made to the document.
     #[inline]
     pub fn modification_count(&self) -> u64 {

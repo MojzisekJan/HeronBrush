@@ -6,6 +6,9 @@
 //!
 //! Autosaves wait until [`Document::in_transaction`] is false. The interval and backup limit are
 //! fixed defaults.
+//!
+//! [`recovery`] keeps a second kind of copy, for crashes: in the profile, for untitled maps
+//! too, every half minute or so, and offered back when the editor starts again.
 
 use std::path::{Path, PathBuf};
 use web_time::{Duration, Instant};
@@ -211,6 +214,451 @@ fn clean_backups(dir: &Path, basename: &str, backups: &mut [PathBuf]) -> std::io
     Ok(())
 }
 
+/// Crash recovery: a copy of the open map in the profile, kept while it has unsaved
+/// changes, so a crash or a killed process loses at most the last interval of work.
+///
+/// Unlike the numbered backups above, which only maps already saved somewhere get, and
+/// which sit beside the map every ten minutes, the recovery copy covers untitled maps
+/// too and is written after `interval` once editing pauses for [`QUIET`]. It lives in
+/// `<profile>/recovery` as `<name>.map` (the map as a save would write it, with the
+/// material paths, no imported models copied) and `<name>.meta` (where the map came from,
+/// when the copy was made, and which running editor made it), each written atomically,
+/// the map first. The copy goes away when the map is saved, closed or its changes
+/// discarded. A copy whose editor is no longer running is offered on the next start.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod recovery {
+    use std::path::{Path, PathBuf};
+    use std::sync::OnceLock;
+    use web_time::{Duration, Instant};
+
+    use crate::document::Document;
+
+    /// How long editing has to pause before a copy is written, so a copy is not
+    /// written in the middle of a run of edits.
+    pub const QUIET: Duration = Duration::from_secs(3);
+
+    /// The default gap between copies.
+    pub const DEFAULT_INTERVAL: Duration = Duration::from_secs(30);
+
+    /// The profile folder copies are kept in.
+    pub fn dir() -> PathBuf {
+        crate::preferences::config_dir().join("recovery")
+    }
+
+    /// This running editor: its process id and a token that tells it from a later
+    /// process given the same id.
+    fn instance() -> &'static (u32, String) {
+        static INSTANCE: OnceLock<(u32, String)> = OnceLock::new();
+        INSTANCE.get_or_init(|| {
+            let pid = std::process::id();
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_nanos());
+            (pid, format!("{pid}-{nanos:x}"))
+        })
+    }
+
+    /// Marks this editor as running in `dir`, once per process and folder:
+    /// `instance-<pid>` holding the token. Stale marks of editors no longer running are
+    /// removed.
+    fn register(dir: &Path) {
+        static DONE: std::sync::Mutex<Vec<PathBuf>> = std::sync::Mutex::new(Vec::new());
+        let Ok(mut done) = DONE.lock() else {
+            return;
+        };
+        if done.iter().any(|d| d == dir) {
+            return;
+        }
+        done.push(dir.to_path_buf());
+        {
+            let _ = crate::files::create_dir_all(dir);
+            let (pid, token) = instance();
+            let _ = crate::files::write_atomic(&dir.join(format!("instance-{pid}")), token);
+            for path in crate::files::read_dir(dir).unwrap_or_default() {
+                let Some(other) = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .and_then(|n| n.strip_prefix("instance-"))
+                    .and_then(|n| n.parse::<u32>().ok())
+                else {
+                    continue;
+                };
+                if other != *pid && !alive(other) {
+                    let _ = crate::files::remove_file(&path);
+                }
+            }
+        }
+    }
+
+    /// Unregisters this editor at a clean exit.
+    pub fn unregister(dir: &Path) {
+        let (pid, _) = instance();
+        let _ = crate::files::remove_file(&dir.join(format!("instance-{pid}")));
+    }
+
+    /// Whether a process with this id is running.
+    fn alive(pid: u32) -> bool {
+        if pid == std::process::id() {
+            return true;
+        }
+        #[cfg(target_os = "linux")]
+        {
+            Path::new("/proc").join(pid.to_string()).exists()
+        }
+        #[cfg(all(unix, not(target_os = "linux")))]
+        {
+            std::process::Command::new("kill")
+                .args(["-0", &pid.to_string()])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .is_ok_and(|status| status.success())
+        }
+        #[cfg(windows)]
+        {
+            std::process::Command::new("tasklist")
+                .args(["/FI", &format!("PID eq {pid}"), "/NH"])
+                .output()
+                .is_ok_and(|out| String::from_utf8_lossy(&out.stdout).contains(&pid.to_string()))
+        }
+        #[cfg(not(any(unix, windows)))]
+        {
+            false
+        }
+    }
+
+    /// Whether the editor that wrote a copy is still running: its process is, and its
+    /// mark still holds the token the copy names.
+    fn running(dir: &Path, pid: u32, token: &str) -> bool {
+        alive(pid)
+            && crate::files::read_to_string(&dir.join(format!("instance-{pid}")))
+                .is_ok_and(|held| held.trim() == token)
+    }
+
+    fn now_unix() -> u64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs())
+    }
+
+    fn modified_unix(path: &Path) -> Option<u64> {
+        std::fs::metadata(path)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+    }
+
+    /// FNV-1a, for a short stable name from a path.
+    fn fnv(text: &str) -> u64 {
+        text.bytes().fold(0xcbf2_9ce4_8422_2325, |hash, byte| {
+            (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3)
+        })
+    }
+
+    /// Keeps the recovery copy of one document.
+    pub struct Recovery {
+        dir: PathBuf,
+        enabled: bool,
+        interval: Duration,
+        quiet: Duration,
+        /// The name of this document's files, without extension.
+        stem: String,
+        /// The edit count last seen, and when it changed.
+        seen: u64,
+        edited: Instant,
+        /// The edit count and time of the last copy written.
+        written: Option<(u64, Instant)>,
+        writer: Option<std::thread::JoinHandle<std::io::Result<()>>>,
+    }
+
+    impl Recovery {
+        /// Copies for `document` in `dir`, on or off, every `interval` at most.
+        pub fn new(dir: PathBuf, document: &Document, enabled: bool, interval: Duration) -> Self {
+            if enabled {
+                register(&dir);
+            }
+            let stem = Self::stem_for(document);
+            Self {
+                dir,
+                enabled,
+                interval: interval.max(Duration::from_secs(1)),
+                quiet: QUIET,
+                stem,
+                seen: document.modification_count(),
+                edited: Instant::now(),
+                written: None,
+                writer: None,
+            }
+        }
+
+        /// The same with another pause before a copy, as the tests use.
+        pub fn with_quiet(mut self, quiet: Duration, interval: Duration) -> Self {
+            self.quiet = quiet;
+            self.interval = interval;
+            self
+        }
+
+        /// Waits for a write in progress, as the tests do before looking at the disk.
+        pub fn settle(&mut self) {
+            self.finish_writer();
+        }
+
+        /// The files' name: the map's own name and a hash of its full path, or
+        /// "untitled", and this editor's token, so two editors never share files.
+        fn stem_for(document: &Document) -> String {
+            let (_, token) = instance();
+            match document.path.as_deref() {
+                Some(path) => {
+                    let name: String = path
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("map")
+                        .chars()
+                        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+                        .take(40)
+                        .collect();
+                    let full = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+                    format!("{name}-{:016x}-{token}", fnv(&full.to_string_lossy()))
+                }
+                None => format!("untitled-{token}"),
+            }
+        }
+
+        /// Turns copies on or off and sets the interval, as the preferences say.
+        pub fn set_options(&mut self, enabled: bool, interval: Duration) {
+            if enabled && !self.enabled {
+                register(&self.dir);
+            }
+            if !enabled && self.enabled {
+                self.discard();
+            }
+            self.enabled = enabled;
+            self.interval = interval.max(Duration::from_secs(1));
+        }
+
+        fn map_file(&self) -> PathBuf {
+            self.dir.join(format!("{}.map", self.stem))
+        }
+
+        fn meta_file(&self) -> PathBuf {
+            self.dir.join(format!("{}.meta", self.stem))
+        }
+
+        /// Writes a copy if one is due, returning the copy's path. Call every frame.
+        pub fn tick(&mut self, document: &Document) -> Option<PathBuf> {
+            let count = document.modification_count();
+            if count != self.seen {
+                self.seen = count;
+                self.edited = Instant::now();
+            }
+            if !self.enabled {
+                return None;
+            }
+            // Saved under another name: the copy follows.
+            let stem = Self::stem_for(document);
+            if stem != self.stem {
+                self.discard();
+                self.stem = stem;
+            }
+            if !document.is_modified() {
+                // Saved, or never changed: nothing to recover.
+                if self.written.is_some() {
+                    self.discard();
+                }
+                return None;
+            }
+            if document.in_transaction()
+                || self.written.is_some_and(|(at, _)| at == count)
+                || self.edited.elapsed() < self.quiet
+                || self
+                    .written
+                    .is_some_and(|(_, when)| when.elapsed() < self.interval)
+            {
+                return None;
+            }
+            // A write still going: try again next frame.
+            if self.writer.as_ref().is_some_and(|w| !w.is_finished()) {
+                return None;
+            }
+            self.finish_writer();
+            // The text is made here, the disk written on another thread: the map's text
+            // takes tens of milliseconds for a large map, the write as long again.
+            let map_file = self.map_file();
+            let text = document.recovery_text(&map_file);
+            let original = document.path.clone();
+            let meta = format!(
+                "path={}\nsaved={}\npid={}\ninstance={}\nname={}\n",
+                original
+                    .as_deref()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+                now_unix(),
+                instance().0,
+                instance().1,
+                document
+                    .path
+                    .as_deref()
+                    .and_then(|p| p.file_name())
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+            );
+            let (dir, meta_file) = (self.dir.clone(), self.meta_file());
+            let copy = map_file.clone();
+            self.writer = Some(std::thread::spawn(move || {
+                crate::files::create_dir_all(&dir)?;
+                crate::files::write_atomic(&copy, text)?;
+                crate::files::write_atomic(&meta_file, meta)
+            }));
+            self.written = Some((count, Instant::now()));
+            Some(map_file)
+        }
+
+        /// Waits for the last write and reports it if it failed.
+        fn finish_writer(&mut self) {
+            if let Some(writer) = self.writer.take() {
+                match writer.join() {
+                    Ok(Ok(())) => {}
+                    Ok(Err(error)) => {
+                        // Written again at the next chance.
+                        self.written = None;
+                        crate::complain!(
+                            "{}",
+                            crate::i18n::fill("Recovery copy failed: {}", &[&error.to_string()])
+                        );
+                    }
+                    Err(_) => self.written = None,
+                }
+            }
+        }
+
+        /// How long until [`Recovery::tick`] is worth calling, for a frontend that
+        /// sleeps: `None` while there is nothing to copy.
+        pub fn next_due(&self, document: &Document) -> Option<Duration> {
+            if !self.enabled
+                || !document.is_modified()
+                || self
+                    .written
+                    .is_some_and(|(at, _)| at == document.modification_count())
+            {
+                return None;
+            }
+            let quiet = self.quiet.saturating_sub(self.edited.elapsed());
+            let gap = self.written.map_or(Duration::ZERO, |(_, when)| {
+                self.interval.saturating_sub(when.elapsed())
+            });
+            Some(quiet.max(gap).max(super::MIN_RETRY))
+        }
+
+        /// Removes this document's copy: it was saved, closed or its changes discarded.
+        pub fn discard(&mut self) {
+            if let Some(writer) = self.writer.take() {
+                let _ = writer.join();
+            }
+            let _ = crate::files::remove_file(&self.meta_file());
+            let _ = crate::files::remove_file(&self.map_file());
+            self.written = None;
+        }
+
+        /// Takes over a restored copy's files, so the next copy replaces them.
+        pub fn adopt(&mut self, orphan: &Orphan) {
+            if orphan.stem != self.stem {
+                let _ = crate::files::remove_file(&self.meta_file());
+                let _ = crate::files::remove_file(&self.map_file());
+                self.stem = orphan.stem.clone();
+            }
+            // Written again as soon as editing pauses.
+            self.written = None;
+        }
+    }
+
+    /// A copy left by an editor that is no longer running.
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Orphan {
+        dir: PathBuf,
+        stem: String,
+        /// The map it is a copy of, `None` for an untitled map.
+        pub path: Option<PathBuf>,
+        /// When the copy was made, in seconds since 1970.
+        pub saved: u64,
+        /// Whether the map's file changed on disk after the copy was made: restoring
+        /// and saving would overwrite that.
+        pub file_changed: bool,
+    }
+
+    impl Orphan {
+        /// The copy's map file.
+        pub fn map_file(&self) -> PathBuf {
+            self.dir.join(format!("{}.map", self.stem))
+        }
+
+        /// How long ago the copy was made, in whole minutes.
+        pub fn minutes_ago(&self) -> u64 {
+            now_unix().saturating_sub(self.saved) / 60
+        }
+
+        /// The copy as a document: where it came from, marked as having unsaved changes.
+        pub fn restore(&self, bounds: crate::world::WorldBounds) -> Result<Document, String> {
+            let text = crate::files::read_to_string(&self.map_file()).map_err(|e| e.to_string())?;
+            Document::from_recovery(&text, &self.map_file(), self.path.clone(), bounds)
+                .map_err(|e| e.to_string())
+        }
+
+        /// Deletes the copy.
+        pub fn discard(&self) {
+            let _ = crate::files::remove_file(&self.dir.join(format!("{}.meta", self.stem)));
+            let _ = crate::files::remove_file(&self.map_file());
+        }
+    }
+
+    /// The copies in `dir` whose editor is no longer running, newest first. A copy
+    /// another running editor is keeping is left to it.
+    pub fn orphans(dir: &Path) -> Vec<Orphan> {
+        let mut found = Vec::new();
+        for meta in crate::files::read_dir(dir).unwrap_or_default() {
+            if meta.extension().and_then(|e| e.to_str()) != Some("meta") {
+                continue;
+            }
+            let Some(stem) = meta.file_stem().and_then(|s| s.to_str()).map(str::to_owned) else {
+                continue;
+            };
+            let Ok(text) = crate::files::read_to_string(&meta) else {
+                continue;
+            };
+            let field = |key: &str| {
+                text.lines()
+                    .find_map(|line| line.strip_prefix(key)?.strip_prefix('='))
+                    .unwrap_or("")
+                    .to_string()
+            };
+            let pid: u32 = field("pid").parse().unwrap_or(0);
+            if running(dir, pid, &field("instance")) {
+                continue;
+            }
+            if !crate::files::is_file(&dir.join(format!("{stem}.map"))) {
+                continue;
+            }
+            let saved = field("saved").parse().unwrap_or(0);
+            let path = Some(field("path"))
+                .filter(|p| !p.is_empty())
+                .map(PathBuf::from);
+            let file_changed = path
+                .as_deref()
+                .and_then(modified_unix)
+                .is_some_and(|modified| modified > saved);
+            found.push(Orphan {
+                dir: dir.to_path_buf(),
+                stem,
+                path,
+                saved,
+                file_changed,
+            });
+        }
+        found.sort_by_key(|orphan| std::cmp::Reverse(orphan.saved));
+        found
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -281,6 +729,201 @@ mod tests {
             .expect("the map saves");
         let saver = Autosaver::with(&document, Duration::ZERO, max_backups);
         (document, saver)
+    }
+
+    mod recovery_copies {
+        use super::super::recovery::*;
+        use super::*;
+
+        /// A keeper for `document` in `dir` with no pause and no interval, so each tick
+        /// with something new writes.
+        fn keeper(dir: &Path, document: &Document) -> Recovery {
+            Recovery::new(dir.to_path_buf(), document, true, DEFAULT_INTERVAL)
+                .with_quiet(Duration::ZERO, Duration::ZERO)
+        }
+
+        fn copies(dir: &Path) -> Vec<String> {
+            let mut names: Vec<String> = fs::read_dir(dir)
+                .unwrap()
+                .filter_map(|e| e.ok()?.file_name().into_string().ok())
+                .filter(|n| !n.starts_with("instance-"))
+                .collect();
+            names.sort();
+            names
+        }
+
+        /// A copy as an editor that crashed would have left it: its process long gone.
+        fn crashed(dir: &Path, name: &str, path: Option<&Path>, text: &str, saved: u64) {
+            fs::write(dir.join(format!("{name}.map")), text).unwrap();
+            fs::write(
+                dir.join(format!("{name}.meta")),
+                format!(
+                    "path={}\nsaved={saved}\npid=4000000000\ninstance=4000000000-1\nname=\n",
+                    path.map(|p| p.display().to_string()).unwrap_or_default()
+                ),
+            )
+            .unwrap();
+        }
+
+        #[test]
+        fn a_changed_map_gets_a_copy_that_saving_removes_and_that_restores_whole() {
+            let dir = scratch("recovery-cycle");
+            let profile = dir.join("recovery");
+            let (mut document, _) = saved_document(&dir, 5);
+            let mut recovery = keeper(&profile, &document);
+            assert!(recovery.tick(&document).is_none(), "nothing changed yet");
+            add_cube(&mut document, -16.0, 16.0);
+            let copy = recovery.tick(&document).expect("a copy");
+            recovery.settle();
+            assert_eq!(copies(&profile).len(), 2, "the map and what it is");
+            assert!(recovery.tick(&document).is_none(), "nothing new since");
+            // The copy is the map, with where it came from.
+            let restored = Document::from_recovery(
+                &fs::read_to_string(&copy).unwrap(),
+                &copy,
+                document.path.clone(),
+                WorldBounds::default(),
+            )
+            .unwrap();
+            assert_eq!(restored.to_map_text(), document.to_map_text());
+            assert_eq!(restored.path, document.path);
+            assert!(restored.is_modified(), "restored work is unsaved");
+            // Not while a drag is under way.
+            add_cube(&mut document, 32.0, 48.0);
+            document.begin_transaction();
+            assert!(recovery.tick(&document).is_none());
+            document.commit_transaction();
+            assert!(recovery.tick(&document).is_some());
+            recovery.settle();
+            // Saved: nothing to recover any more.
+            document.save().unwrap();
+            recovery.tick(&document);
+            assert!(copies(&profile).is_empty(), "{:?}", copies(&profile));
+        }
+
+        #[test]
+        fn an_untitled_map_is_copied_too_and_restores_untitled() {
+            let dir = scratch("recovery-untitled");
+            let mut document = Document::new(WorldBounds::default());
+            let mut recovery = keeper(&dir, &document);
+            add_cube(&mut document, 0.0, 8.0);
+            let copy = recovery.tick(&document).expect("a copy");
+            recovery.settle();
+            assert!(copy
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with("untitled-"));
+            let restored = Document::from_recovery(
+                &fs::read_to_string(&copy).unwrap(),
+                &copy,
+                None,
+                WorldBounds::default(),
+            )
+            .unwrap();
+            assert_eq!(restored.path, None);
+            assert_eq!(map_model::node::brushes(restored.tree_world()).len(), 1);
+            // Closing with the changes let go removes it.
+            recovery.discard();
+            assert!(copies(&dir).is_empty());
+        }
+
+        #[test]
+        fn copies_are_offered_only_when_their_editor_is_gone() {
+            let dir = scratch("recovery-orphans");
+            let map = dir.join("hall.map");
+            fs::write(&map, "").unwrap();
+            let mut document = Document::new(WorldBounds::default());
+            add_cube(&mut document, 0.0, 8.0);
+            let text = document.to_map_text();
+            // An old copy of hall.map, saved again on disk since; and an untitled one.
+            crashed(&dir, "hall-1", Some(&map), &text, 1);
+            crashed(&dir, "untitled-2", None, &text, 2);
+            // This editor's own copy is not an orphan.
+            let mut recovery = keeper(&dir, &document);
+            recovery.tick(&document).unwrap();
+            recovery.settle();
+            let found = orphans(&dir);
+            assert_eq!(found.len(), 2, "{found:?}");
+            assert_eq!(found[0].path, None, "newest first");
+            assert_eq!(found[1].path.as_deref(), Some(map.as_path()));
+            assert!(found[1].file_changed, "hall.map was written after the copy");
+            assert!(!found[0].file_changed);
+            let restored = found[1].restore(WorldBounds::default()).unwrap();
+            assert_eq!(restored.path.as_deref(), Some(map.as_path()));
+            assert_eq!(map_model::node::brushes(restored.tree_world()).len(), 1);
+            // Taken over by the editor that restored it: its next copy replaces it.
+            recovery.adopt(&found[1]);
+            add_cube(&mut document, 16.0, 24.0);
+            recovery.tick(&document).unwrap();
+            recovery.settle();
+            assert_eq!(
+                orphans(&dir).len(),
+                1,
+                "only the untitled one left to offer"
+            );
+            found[0].discard();
+            assert!(orphans(&dir).is_empty());
+        }
+
+        /// A second editor running at the same time keeps its own copies: they are not
+        /// offered to this one. The parent process stands in for it.
+        #[cfg(unix)]
+        #[test]
+        fn another_running_editors_copies_are_left_to_it() {
+            let dir = scratch("recovery-other-editor");
+            let other = std::os::unix::process::parent_id();
+            fs::write(dir.join(format!("instance-{other}")), "other-token").unwrap();
+            fs::write(dir.join("its.map"), "").unwrap();
+            fs::write(
+                dir.join("its.meta"),
+                format!("path=\nsaved=5\npid={other}\ninstance=other-token\nname=\n"),
+            )
+            .unwrap();
+            assert!(orphans(&dir).is_empty());
+            // Once it has stopped (its mark names another run), the copy is offered.
+            fs::write(dir.join(format!("instance-{other}")), "a-later-run").unwrap();
+            assert_eq!(orphans(&dir).len(), 1);
+        }
+
+        #[test]
+        fn turned_off_there_are_no_copies() {
+            let dir = scratch("recovery-off");
+            let mut document = Document::new(WorldBounds::default());
+            let mut recovery = keeper(&dir, &document);
+            add_cube(&mut document, 0.0, 8.0);
+            recovery.tick(&document).unwrap();
+            recovery.settle();
+            assert_eq!(copies(&dir).len(), 2);
+            recovery.set_options(false, DEFAULT_INTERVAL);
+            assert!(copies(&dir).is_empty(), "turning it off removes the copy");
+            add_cube(&mut document, 16.0, 24.0);
+            assert!(recovery.tick(&document).is_none());
+            assert!(recovery.next_due(&document).is_none());
+        }
+
+        #[test]
+        fn a_copy_waits_for_editing_to_pause_and_for_the_interval() {
+            let dir = scratch("recovery-timing");
+            let mut document = Document::new(WorldBounds::default());
+            let mut recovery = Recovery::new(dir.clone(), &document, true, DEFAULT_INTERVAL)
+                .with_quiet(Duration::from_secs(60), Duration::ZERO);
+            add_cube(&mut document, 0.0, 8.0);
+            assert!(recovery.tick(&document).is_none(), "editing has not paused");
+            let due = recovery.next_due(&document).unwrap();
+            assert!(due > Duration::from_secs(50), "{due:?}");
+            let mut recovery = Recovery::new(dir.clone(), &document, true, DEFAULT_INTERVAL)
+                .with_quiet(Duration::ZERO, Duration::from_secs(60));
+            add_cube(&mut document, 16.0, 24.0);
+            assert!(recovery.tick(&document).is_some());
+            recovery.settle();
+            add_cube(&mut document, 32.0, 40.0);
+            assert!(
+                recovery.tick(&document).is_none(),
+                "the interval has not passed"
+            );
+        }
     }
 
     #[test]

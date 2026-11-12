@@ -30,6 +30,7 @@ mod manual_page;
 mod menu;
 mod plugin_page;
 mod preferences_page;
+mod recovery_offer;
 mod shape_dialogs;
 mod shortcut_editor;
 mod update_page;
@@ -439,6 +440,8 @@ pub(crate) struct Startup {
     pub fgd: Option<PathBuf>,
     /// Materials to use instead of the game's.
     pub materials: Option<PathBuf>,
+    /// A map restored from its crash recovery copy, opened instead of `map`.
+    pub recovered: Option<editor_core::document::Document>,
 }
 
 struct App {
@@ -468,6 +471,8 @@ struct App {
     mcp: Option<editor_core::live_mcp::Server>,
     mcp_state: editor_core::mcp::Collab,
     autosaver: editor_core::autosave::Autosaver,
+    /// The crash recovery copy of the map, and copies left behind to offer.
+    recovery: recovery_offer::RecoveryState,
     gpu: Gpu,
     editor: Editor,
     chrome: Chrome,
@@ -540,6 +545,8 @@ impl App {
         ));
         let gpu = Gpu::from_creation_context(cc)?;
         let mut app = Self::build(&cc.egui_ctx, gpu, startup)?;
+        // What an editor that stopped without saving left behind, offered once at start.
+        app.recovery.look_for_copies();
         app.script = script::Script::from_env();
         if app.script.is_some() {
             cc.egui_ctx.set_embed_viewports(true);
@@ -548,8 +555,11 @@ impl App {
     }
 
     fn build(ctx: &egui::Context, gpu: Gpu, startup: Startup) -> Result<Self, String> {
-        let welcome = startup.map.is_none();
-        let editor = Editor::open_with(ctx, startup.map, startup.fgd, startup.materials);
+        let welcome = startup.map.is_none() && startup.recovered.is_none();
+        let editor = match startup.recovered {
+            Some(document) => Editor::open_recovered(ctx, document),
+            None => Editor::open_with(ctx, startup.map, startup.fgd, startup.materials),
+        };
         let view3d = View3d::new(&gpu, &editor, Rc::clone(&editor.camera))?;
         let chrome = Chrome {
             tool: editor.tool.clone(),
@@ -578,6 +588,7 @@ impl App {
         let commands = commands_for(&editor, ctx, &window);
         let live = editor_core::godot_live::LiveLink::new(&editor.document);
         let autosaver = editor_core::autosave::Autosaver::new(&editor.document.borrow());
+        let recovery = recovery_offer::RecoveryState::new(&editor.document.borrow());
         Ok(Self {
             script: None,
             profiler: profile::Profiler::from_env(),
@@ -610,6 +621,7 @@ impl App {
                 state
             },
             autosaver,
+            recovery,
             gpu,
             editor,
             chrome,
@@ -1165,6 +1177,9 @@ impl eframe::App for App {
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.live.stop("Window closed");
+        // A clean exit: the map was saved or its changes let go, so its recovery copy
+        // goes, and this editor is no longer marked running.
+        self.recovery.close();
         profile::report();
         // What this session's texture decodes learnt (alpha classes, average colours),
         // so the next opening of these folders has it before decoding anything.
@@ -1225,9 +1240,22 @@ impl App {
                 editor_core::i18n::fill("Autosaved to {}", &[&path.display().to_string()])
             );
         }
+        self.recovery.tick(&self.editor.document.borrow());
+        if let Some(recovery_offer::Choice::Restore(orphan)) = self.recovery.dialog(ui.ctx()) {
+            self.restore_copy(ui.ctx(), orphan);
+        }
         // Woken only for what waits on a clock, rather than every second regardless.
         let waiting = idle::Waiting {
-            autosave: self.autosaver.next_due(&self.editor.document.borrow()),
+            autosave: {
+                let document = self.editor.document.borrow();
+                match (
+                    self.autosaver.next_due(&document),
+                    self.recovery.next_due(&document),
+                ) {
+                    (Some(a), Some(b)) => Some(a.min(b)),
+                    (a, b) => a.or(b),
+                }
+            },
             live_link: self.live.status().indicator.is_some(),
             session: self.mcp_state.frontend_active() || self.mcp.is_some(),
             connecting: self.session.busy(),
@@ -1809,6 +1837,7 @@ pub fn run_desktop() -> eframe::Result {
         map: files.map,
         fgd: files.fgd,
         materials: files.materials,
+        recovered: None,
     };
 
     let mut viewport = egui::ViewportBuilder::default()
