@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog: Heron Brush</title>
+<meta name="description" content="News and release notes from Heron Brush, the level editor for any engine.">
+<link rel="icon" type="image/svg+xml" href="../images/logo.svg">
+<link rel="icon" type="image/png" href="../images/favicon.png" sizes="32x32">
+<link rel="canonical" href="https://mojzisekjan.github.io/HeronBrush/blog/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Heron Brush">
+<meta property="og:title" content="Blog: Heron Brush">
+<meta property="og:description" content="News and release notes from Heron Brush, the level editor for any engine.">
+<meta property="og:url" content="https://mojzisekjan.github.io/HeronBrush/blog/">
+<meta property="og:image" content="https://mojzisekjan.github.io/HeronBrush/images/social-preview.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Heron Brush with a tram in the 3D view and its top, side and front views">
+<meta name="twitter:card" content="summary_large_image">
+<script>
+  // The theme before the first paint: a choice made with the toggle, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem('heron-theme'); } catch (e) {}
+    var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : (light ? 'light' : 'dark');
+  })();
+</script>
+<meta name="color-scheme" content="dark light">
+<link rel="preload" href="../fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css?v=blog3">
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../"><img src="../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-menu" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path class="bar-top" d="M4 7h16"/><path class="bar-mid" d="M4 12h16"/><path class="bar-bot" d="M4 17h16"/></svg>
+    </button>
+    <nav class="menu" id="site-menu" aria-label="Main">
+      <div class="nav-links">
+        <a href="../#modelling">Modelling</a>
+        <a href="../#materials">Materials</a>
+        <a href="../#animation">Animation</a>
+        <a href="../#export">Export</a>
+        <a href="../#download">Download</a>
+        <a href="../manual/">Manual</a>
+        <a href="./" aria-current="page">Blog</a>
+      </div>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <mask id="moon-mask"><rect x="-4" y="-4" width="32" height="32" fill="#fff"/><circle class="moon-cut" cx="17" cy="7" r="6.5" fill="#000"/></mask>
+            <circle class="sun-core" cx="12" cy="12" r="8" fill="currentColor" mask="url(#moon-mask)"/>
+            <g class="rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1.5v2.2M12 20.3v2.2M1.5 12h2.2M20.3 12h2.2M4.6 4.6l1.5 1.5M17.9 17.9l1.5 1.5M4.6 19.4l1.5-1.5M17.9 6.1l1.5-1.5"/>
+            </g>
+          </svg>
+          <span class="theme-label">Dark theme</span>
+        </button>
+        <a class="btn btn-ghost btn-icon" href="https://github.com/MojzisekJan/HeronBrush" aria-label="GitHub"><svg class="gh" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg><span class="icon-label">GitHub</span></a>
+        <a class="btn btn-primary btn-open-editor" href="../editor/">Open in browser</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<script>
+  // The menu folds behind the button on narrow windows; without this script the links stay in view.
+  (function () {
+    var root = document.documentElement, header = document.querySelector('.nav');
+    var toggle = header.querySelector('.menu-toggle'), menu = document.getElementById('site-menu');
+    root.classList.add('js');
+    function set(open) {
+      header.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+    toggle.addEventListener('click', function () { set(!header.classList.contains('open')); });
+    menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && header.classList.contains('open')) { set(false); toggle.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!header.contains(e.target)) set(false); });
+    matchMedia('(min-width: 961px)').addEventListener('change', function () { set(false); });
+
+    // The theme toggle: remembers the choice; without one the page follows the system.
+    var themeButton = header.querySelector('.theme-toggle'), label = themeButton.querySelector('.theme-label');
+    function show(theme) {
+      root.dataset.theme = theme;
+      themeButton.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+      label.textContent = theme === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+    show(root.dataset.theme);
+    themeButton.addEventListener('click', function () {
+      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      show(next);
+      root.classList.add('theme-switched');
+      try { localStorage.setItem('heron-theme', next); } catch (e) {}
+    });
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+      var stored = null;
+      try { stored = localStorage.getItem('heron-theme'); } catch (err) {}
+      if (!stored) show(e.matches ? 'light' : 'dark');
+    });
+  })();
+</script>
+
+<main class="blog">
+  <div class="wrap">
+    <div class="page-head page-head-center">
+      <h1>Blog</h1>
+    </div>
+    <ol class="post-list">
+      <li>
+        <article class="post-card">
+          <a class="post-thumb" href="heron-brush-0-1/" tabindex="-1" aria-hidden="true">
+            <img class="shot" src="../images/blog-0-1.webp?v=4" width="1600" height="900" alt="">
+          </a>
+          <div>
+          <p class="post-date"><time datetime="2026-10-30">30 October 2026</time></p>
+          <h2><a href="heron-brush-0-1/">Heron Brush 0.1 is out</a></h2>
+          <p>The first public version of Heron Brush is here. You build levels from brushes like in Quake and export them to Godot, Unity, Unreal and other engines.</p>
+          <a class="btn btn-ghost more-link" href="heron-brush-0-1/">Read the post</a>
+          </div>
+        </article>
+      </li>
+    </ol>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <a class="brand" href="../"><img src="../images/logo.svg" width="28" height="28" alt="">Heron Brush</a>
+      <p>Free software under GPL-3.0-or-later. See <a href="https://github.com/MojzisekJan/HeronBrush/blob/main/CREDITS.md">CREDITS.md</a> for credits and third-party licences.</p>
+      <p>Engine and editor logos are the marks of their projects and are used only to name them. Platform icons: <a href="https://fontawesome.com" rel="noopener">Font Awesome Free</a>, <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>.</p>
+    </div>
+    <div>
+      <h5>Project</h5>
+      <ul>
+        <li><a href="https://github.com/MojzisekJan/HeronBrush">Source code</a></li>
+        <li><a href="https://github.com/MojzisekJan/HeronBrush/issues">Issues</a></li>
+        <li><a href="../editor/">Web version</a></li>
+        <li><a href="../blog/">Blog</a></li>
+      </ul>
+    </div>
+    <div>
+      <h5>Documentation</h5>
+      <ul>
+        <li><a href="../manual/">Manual</a></li>
+        <li><a href="https://github.com/MojzisekJan/HeronBrush/blob/main/docs/map-format.md">Map format</a></li>
+        <li><a href="https://github.com/MojzisekJan/HeronBrush/blob/main/docs/engine-export-contract.md">Export contract</a></li>
+        <li><a href="https://github.com/MojzisekJan/HeronBrush/blob/main/docs/plugins.md">Plugins</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
