@@ -698,7 +698,45 @@ impl Document {
         if delta == Vec3d::zero() {
             return false;
         }
-        self.extrude_face_planes(&[(polygon.to_vec(), delta)])
+        let moves: Vec<(Vec<Vec3d>, Vec3d)> = self
+            .faces_dragged_with(polygon)
+            .into_iter()
+            .map(|face| (face, delta))
+            .collect();
+        self.extrude_face_planes(&moves)
+    }
+
+    /// The faces a Shift-drag of the face `polygon` moves, as TrenchBroom's extrude tool
+    /// collects them (`collectCoplanarFaces` and `collectOpposingFaces`): on every
+    /// selected brush, each face in the same plane facing the same way, touching or not,
+    /// and each face in the same plane facing the other way whose outline overlaps the
+    /// dragged one, which is a wall two brushes share. The dragged face comes first.
+    pub fn faces_dragged_with(&self, polygon: &[Vec3d]) -> Vec<Vec<Vec3d>> {
+        let mut faces = vec![polygon.to_vec()];
+        let Some(reference) = self.selected_brushes().into_iter().find_map(|brush| {
+            brush
+                .find_face_by_polygon(polygon, EXTRUDE_EPSILON)
+                .map(|index| brush.faces()[index].plane)
+        }) else {
+            return faces;
+        };
+        let flipped = reference.flip();
+        for brush in self.selected_brushes() {
+            for index in 0..brush.faces().len() {
+                let plane = brush.faces()[index].plane;
+                let Some(candidate) = brush.face_polygon(index) else {
+                    continue;
+                };
+                let same = geometry_math::plane::is_equal(&plane, &reference, EXTRUDE_EPSILON);
+                let opposite = geometry_math::plane::is_equal(&plane, &flipped, EXTRUDE_EPSILON)
+                    && polygons_overlap(polygon, &candidate, reference.normal);
+                let known = faces.iter().any(|face| same_polygon(face, &candidate));
+                if (same || opposite) && !known {
+                    faces.push(candidate);
+                }
+            }
+        }
+        faces
     }
 
     /// Moves the planes of several faces at once on every selected brush that has them.
@@ -1339,6 +1377,38 @@ impl Document {
         self.mark_changed();
         count
     }
+}
+
+/// Whether two outlines have the same corners.
+fn same_polygon(a: &[Vec3d], b: &[Vec3d]) -> bool {
+    a.len() == b.len()
+        && a.iter().all(|p| {
+            b.iter()
+                .any(|q| vec::squared_distance(*p, *q) <= EXTRUDE_EPSILON * EXTRUDE_EPSILON)
+        })
+}
+
+/// Whether two convex outlines in the plane with the given normal share some area, not
+/// just an edge or a corner. Separating axes in the plane, from both outlines' edges.
+fn polygons_overlap(a: &[Vec3d], b: &[Vec3d], normal: Vec3d) -> bool {
+    for outline in [a, b] {
+        for i in 0..outline.len() {
+            let edge = outline[(i + 1) % outline.len()] - outline[i];
+            let axis = vec::cross(normal, edge);
+            let span = |points: &[Vec3d]| {
+                points.iter().fold((f64::MAX, f64::MIN), |(lo, hi), p| {
+                    let d = vec::dot(*p, axis);
+                    (lo.min(d), hi.max(d))
+                })
+            };
+            let ((a_lo, a_hi), (b_lo, b_hi)) = (span(a), span(b));
+            let tolerance = EXTRUDE_EPSILON * vec::length(axis);
+            if a_hi <= b_lo + tolerance || b_hi <= a_lo + tolerance {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 #[cfg(test)]

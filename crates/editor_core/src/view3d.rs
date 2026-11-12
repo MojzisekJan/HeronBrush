@@ -899,6 +899,23 @@ pub fn begin_extrude(
     })
 }
 
+/// The faces a Shift-drag starting on `ray` would move, for the yellow outline: the face
+/// [`begin_extrude`] would take and the others that move with it.
+fn shift_preview(
+    camera: &Camera3d,
+    viewport_height: f64,
+    ray: &Ray3d,
+    document: &Document,
+) -> Vec<Vec<Vec3d>> {
+    match begin_extrude(camera, viewport_height, ray, document, false, false) {
+        Some(Drag {
+            what: DragKind::Extrude { polygon, .. },
+            ..
+        }) => document.faces_dragged_with(&polygon),
+        _ => Vec::new(),
+    }
+}
+
 /// A press just off a selected brush, near one of its edges: the face behind that edge,
 /// facing away from the camera, so a box's side can be dragged from its outline even where
 /// the brush it stands on fills the view behind. As `ResizeBrushesTool::pickProximateFace`.
@@ -4525,7 +4542,7 @@ impl Scene3d {
         // `ExtrudeToolController::render` does with the proposed drag handles.
         let shift = modifiers.shift;
         let outlines = if shift {
-            document.borrow().extrude_preview_faces(&ray)
+            shift_preview(&camera.borrow(), height, &ray, &document.borrow())
         } else {
             Vec::new()
         };
@@ -4780,7 +4797,7 @@ impl Scene3d {
         let (x, y) = *pointer.borrow();
         let ray = camera.borrow().ray_through(x, y, width, height);
         let outlines = if state.shift {
-            document.borrow().extrude_preview_faces(&ray)
+            shift_preview(&camera.borrow(), height, &ray, &document.borrow())
         } else {
             Vec::new()
         };
@@ -6326,5 +6343,201 @@ mod kept_frame_tests {
             "samples still to gather"
         );
         assert!(needs_draw(Some(1), 1, false, true), "an animation plays");
+    }
+}
+
+/// Shift-dragging faces with several brushes selected, the arrangements of the report:
+/// side by side, one behind the other along the view, one between the pointer and the
+/// other, a shared wall, and a single brush.
+#[cfg(test)]
+mod multi_brush_extrude_tests {
+    use super::*;
+    use crate::view2d::begin_extrude_2d;
+    use geometry_math::bbox::Bbox3d;
+    use geometry_math::ray::Ray3d;
+
+    /// A document with the given boxes, all selected.
+    fn boxes(list: &[(Vec3d, Vec3d)]) -> Document {
+        let mut document = Document::new(Default::default());
+        let bounds = document.world_bounds();
+        for (min, max) in list {
+            document.add_brushes(vec![map_model::shapes::create_cuboid(
+                &bounds,
+                &Bbox3d::new(*min, *max),
+                "m",
+            )
+            .unwrap()]);
+        }
+        document.select_all();
+        document
+    }
+
+    fn bounds(document: &Document) -> Vec<Bbox3d> {
+        let mut out: Vec<Bbox3d> = document
+            .selected_brushes()
+            .into_iter()
+            .map(|brush| brush.bounds())
+            .collect();
+        out.sort_by(|a, b| {
+            a.min
+                .x()
+                .total_cmp(&b.min.x())
+                .then(a.min.z().total_cmp(&b.min.z()))
+        });
+        out
+    }
+
+    /// Picks in the 3D view along `ray`, drags by `delta` the way the view's drag step does,
+    /// and says how many brushes changed.
+    fn drag_3d(document: &mut Document, ray: Ray3d, delta: Vec3d) -> usize {
+        let camera = crate::camera3d::Camera3d::default();
+        let drag = begin_extrude(&camera, 300.0, &ray, document, false, false).expect("a face");
+        let DragKind::Extrude { polygon, .. } = drag.what else {
+            panic!("not a resize");
+        };
+        let before = bounds(document);
+        document.extrude_faces(&polygon, delta);
+        let after = bounds(document);
+        before.iter().zip(&after).filter(|(a, b)| a != b).count()
+    }
+
+    /// The same in a flat view looking down.
+    fn drag_top(document: &mut Document, at: Vec3d, delta: Vec3d) -> usize {
+        let down = Vec3d::new(0.0, 0.0, -1.0);
+        let ray = Ray3d::new(at, down);
+        let picked = begin_extrude_2d(document, &ray, down, false, false).expect("an edge");
+        let before = bounds(document);
+        let faces: Vec<Vec<Vec3d>> = std::iter::once(&picked.polygon)
+            .chain(picked.second_polygon.as_ref())
+            .flat_map(|polygon| document.faces_dragged_with(polygon))
+            .collect();
+        let moves: Vec<_> = faces.into_iter().map(|face| (face, delta)).collect();
+        document.extrude_face_planes(&moves);
+        let after = bounds(document);
+        before.iter().zip(&after).filter(|(a, b)| a != b).count()
+    }
+
+    const A: (Vec3d, Vec3d) = (Vec3d::new(0.0, 0.0, 0.0), Vec3d::new(64.0, 64.0, 64.0));
+    const B: (Vec3d, Vec3d) = (Vec3d::new(128.0, 0.0, 0.0), Vec3d::new(192.0, 64.0, 64.0));
+
+    #[test]
+    fn side_by_side_brushes_move_their_coplanar_faces_together() {
+        // 3D: looking along +Y at A's front; B's front is in the same plane.
+        let mut document = boxes(&[A, B]);
+        let ray = Ray3d::new(Vec3d::new(32.0, -200.0, 32.0), Vec3d::new(0.0, 1.0, 0.0));
+        assert_eq!(drag_3d(&mut document, ray, Vec3d::new(0.0, -16.0, 0.0)), 2);
+        assert!(bounds(&document).iter().all(|b| b.min.y() == -16.0));
+        // Top view: the pointer below both, nearest A's front edge.
+        let mut document = boxes(&[A, B]);
+        assert_eq!(
+            drag_top(
+                &mut document,
+                Vec3d::new(32.0, -8.0, 500.0),
+                Vec3d::new(0.0, -16.0, 0.0)
+            ),
+            2
+        );
+    }
+
+    #[test]
+    fn brushes_one_behind_the_other_along_the_view_move_together() {
+        // Top view, B straight below A: their left faces share a plane.
+        let below = (Vec3d::new(0.0, 0.0, -128.0), Vec3d::new(64.0, 64.0, -64.0));
+        let mut document = boxes(&[A, below]);
+        assert_eq!(
+            drag_top(
+                &mut document,
+                Vec3d::new(-8.0, 32.0, 500.0),
+                Vec3d::new(-16.0, 0.0, 0.0)
+            ),
+            2
+        );
+        assert!(bounds(&document).iter().all(|b| b.min.x() == -16.0));
+    }
+
+    #[test]
+    fn faces_in_different_planes_stay_where_they_are() {
+        // The pointer left of both boxes in a row, or a box between the camera and the
+        // other: the nearer box's face is the only one in its plane, as in TrenchBroom.
+        let mut document = boxes(&[A, B]);
+        assert_eq!(
+            drag_top(
+                &mut document,
+                Vec3d::new(-8.0, 32.0, 500.0),
+                Vec3d::new(-16.0, 0.0, 0.0)
+            ),
+            1
+        );
+        let mut document = boxes(&[A, B]);
+        let ray = Ray3d::new(Vec3d::new(-200.0, 32.0, 32.0), Vec3d::new(1.0, 0.0, 0.0));
+        assert_eq!(drag_3d(&mut document, ray, Vec3d::new(-16.0, 0.0, 0.0)), 1);
+    }
+
+    #[test]
+    fn a_shared_wall_moves_on_both_brushes() {
+        // B is against A's right side but shorter, so the two faces are not the same
+        // outline; they overlap.
+        let against = (Vec3d::new(64.0, 16.0, 0.0), Vec3d::new(128.0, 48.0, 32.0));
+        let mut document = boxes(&[A, against]);
+        // A's right face, the one a drag from inside the seam takes.
+        let mut changed = 0;
+        let polygon = document
+            .selected_brushes()
+            .into_iter()
+            .find_map(|brush| {
+                let index = brush.find_face_by_normal(Vec3d::new(1.0, 0.0, 0.0), 1e-9)?;
+                (brush.faces()[index].plane.distance == 64.0)
+                    .then(|| brush.face_polygon(index))
+                    .flatten()
+            })
+            .unwrap();
+        let before = bounds(&document);
+        if document.extrude_faces(&polygon, Vec3d::new(16.0, 0.0, 0.0)) {
+            changed = before
+                .iter()
+                .zip(&bounds(&document))
+                .filter(|(a, b)| a != b)
+                .count();
+        }
+        assert_eq!(changed, 2);
+        let after = bounds(&document);
+        assert_eq!(after[0].max.x(), 80.0);
+        assert_eq!(after[1].min.x(), 80.0);
+        // Faces on the plane facing away without overlap are left alone.
+        let apart = (Vec3d::new(64.0, 200.0, 0.0), Vec3d::new(128.0, 264.0, 64.0));
+        let document = boxes(&[A, apart]);
+        let polygon = document.selected_brushes()[0]
+            .face_polygon(
+                document.selected_brushes()[0]
+                    .find_face_by_normal(Vec3d::new(1.0, 0.0, 0.0), 1e-9)
+                    .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(document.faces_dragged_with(&polygon).len(), 1);
+    }
+
+    #[test]
+    fn a_single_brush_drag_is_unchanged() {
+        let mut document = boxes(&[A]);
+        let brush = document.selected_brushes()[0].clone();
+        let index = brush
+            .find_face_by_normal(Vec3d::new(0.0, -1.0, 0.0), 1e-9)
+            .unwrap();
+        let expected = brush
+            .move_boundary(&document.world_bounds(), index, Vec3d::new(0.0, -16.0, 0.0))
+            .unwrap();
+        let ray = Ray3d::new(Vec3d::new(32.0, -200.0, 32.0), Vec3d::new(0.0, 1.0, 0.0));
+        assert_eq!(drag_3d(&mut document, ray, Vec3d::new(0.0, -16.0, 0.0)), 1);
+        assert_eq!(document.selected_brushes()[0].faces(), expected.faces());
+    }
+
+    #[test]
+    fn a_drag_one_brush_cannot_take_moves_nothing() {
+        // A thin box beside a thick one: pushing their shared front plane in past the
+        // thin box's back would turn it inside out, so neither moves.
+        let thin = (Vec3d::new(128.0, 0.0, 0.0), Vec3d::new(192.0, 8.0, 64.0));
+        let mut document = boxes(&[A, thin]);
+        let ray = Ray3d::new(Vec3d::new(32.0, -200.0, 32.0), Vec3d::new(0.0, 1.0, 0.0));
+        assert_eq!(drag_3d(&mut document, ray, Vec3d::new(0.0, 16.0, 0.0)), 0);
     }
 }

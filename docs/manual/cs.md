@@ -137,7 +137,7 @@ varianty mají rovnoměrnou výšku stupňů; celkem lze vytvořit nejvýše 512
 ## Výběr
 Kliknutím brush vyberete, `Ctrl`-kliknutím ho přidáte do výběru nebo z něj odeberete. Když není nic vybráno, tažení nakreslí nový brush jako nástroj Brush; když je něco vybráno, kliknutí do prázdného místa výběr zruší. `Ctrl`-tažení z prázdného místa kreslí výběrový obdélník. Ve 3D pohledu `Shift`-kliknutí vybere jednu stěnu a `Ctrl+Shift`-kliknutí přidá další stěny. `Ctrl`-tažení, které začne na nevybraném objektu, přidá vše, přes co kurzor přejede, a `Ctrl+Shift`-tažení stejně přidává stěny. Tažením vybraného brushe ho přesunete, `Ctrl`-tažením přesunete jeho kopii.
 
-Ve 3D pohledu `Shift`-tažením stěny vybraného brushe stěnu vytáhnete. `Alt`-kliknutím na jinou stěnu na ni přenesete materiál a zarovnání vybrané stěny; `Alt+Ctrl` přenese jen materiál a `Alt+Shift` materiál s UV otočeným podle cílové stěny.
+Ve 3D pohledu `Shift`-tažením stěny vybraného brushe stěnu vytáhnete, spolu se stěnami ostatních vybraných brushů, které leží ve stejné rovině. Texturu z jedné stěny na druhou zkopírujete takto: `Shift`-kliknutím vyberte zdrojovou stěnu, aby byla jedinou vybranou stěnou, a `Alt`-kliknutím na jinou stěnu na ni přenesete materiál a zarovnání vybrané stěny; `Alt+Ctrl` přenese jen materiál a `Alt+Shift` materiál s UV otočeným podle cílové stěny.
 
 Pokud správce oken používá `Alt` pro přesouvání oken, použijte `Ctrl+C` na zdrojové stěně, vyberte cílové stěny a stiskněte `Ctrl+V`. Kopírování a vložení funguje i pro úchyty nástroje Stěna. Přenos materiálu odstraní cílový barevný nátěr, aby byla textura viditelná.
 

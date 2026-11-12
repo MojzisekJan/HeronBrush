@@ -1236,17 +1236,54 @@ pub fn draw_extrude_preview(
     set_colour(cr, pref(|p| p.resize_handle_color));
     cr.set_line_width(2.0);
     for outline in outlines {
-        for (index, point) in outline.iter().enumerate() {
-            let screen = state.camera.world_to_screen(*point, viewport);
+        let screen: Vec<Vec2d> = outline
+            .iter()
+            .map(|point| state.camera.world_to_screen(*point, viewport))
+            .collect();
+        // A face seen edge-on projects to a line traced there and back. Stroked as a
+        // closed path it doubles back on itself, and the turn at one end comes out
+        // wider than the plain start at the other; as one segment it is even and ends
+        // at both corners.
+        if let Some((from, to)) = edge_on(&screen) {
+            cr.move_to(from.x(), from.y());
+            cr.line_to(to.x(), to.y());
+            continue;
+        }
+        for (index, point) in screen.iter().enumerate() {
             if index == 0 {
-                cr.move_to(screen.x(), screen.y());
+                cr.move_to(point.x(), point.y());
             } else {
-                cr.line_to(screen.x(), screen.y());
+                cr.line_to(point.x(), point.y());
             }
         }
         cr.close_path();
     }
     cr.stroke();
+}
+
+/// The two ends of an outline that lies on one line on screen, if it does.
+fn edge_on(points: &[Vec2d]) -> Option<(Vec2d, Vec2d)> {
+    let first = *points.first()?;
+    let far = *points
+        .iter()
+        .max_by(|a, b| vec::length(**a - first).total_cmp(&vec::length(**b - first)))?;
+    let direction = far - first;
+    let length = vec::length(direction);
+    if length < 1e-6 {
+        return None;
+    }
+    let across = Vec2d::new(-direction.y(), direction.x()) / length;
+    if points
+        .iter()
+        .any(|p| vec::dot(*p - first, across).abs() > 0.5)
+    {
+        return None;
+    }
+    // The ends are the points furthest apart along the line.
+    let along = |p: &&Vec2d| vec::dot(**p - first, direction);
+    let lo = *points.iter().min_by(|a, b| along(a).total_cmp(&along(b)))?;
+    let hi = *points.iter().max_by(|a, b| along(a).total_cmp(&along(b)))?;
+    Some((lo, hi))
 }
 
 pub fn draw_grid(state: &ViewportState, grid: &Grid, cr: &mut dyn Canvas, viewport: (f64, f64)) {
@@ -2867,14 +2904,17 @@ impl SelectAndMove {
             document.rollback_transaction();
             match extruding.mode {
                 extrude_tool::ExtrudeMode::Extrude => {
-                    if let Some(second) = &extruding.second_polygon {
-                        document.extrude_face_planes(&[
-                            (extruding.polygon.clone(), delta),
-                            (second.clone(), delta),
-                        ])
-                    } else {
-                        document.extrude_faces(&extruding.polygon, delta)
-                    }
+                    // The dragged face, or both of a corner, with the faces of the other
+                    // selected brushes that go with each.
+                    let faces: Vec<Vec<Vec3d>> = std::iter::once(&extruding.polygon)
+                        .chain(extruding.second_polygon.as_ref())
+                        .flat_map(|polygon| document.faces_dragged_with(polygon))
+                        .collect();
+                    // A step some brush cannot take leaves them as they were, as before
+                    // these faces were added; TrenchBroom keeps the last step instead.
+                    let moves: Vec<(Vec<Vec3d>, Vec3d)> =
+                        faces.into_iter().map(|face| (face, delta)).collect();
+                    document.extrude_face_planes(&moves)
                 }
                 extrude_tool::ExtrudeMode::Slide => document.slide_faces(&extruding.polygon, delta),
                 extrude_tool::ExtrudeMode::Split => document.split_faces(&extruding.polygon, delta),
@@ -3747,26 +3787,32 @@ impl FlatView {
 
     /// Rebuilds the Shift-extrude outline and redraws if it changed.
     fn update_extrude_preview(&self, cursor: Vec2d, modifiers: Modifiers, viewport: (f64, f64)) {
-        let ray = self
-            .state
-            .borrow()
-            .camera
-            .ray_through(cursor, viewport, PICK_REACH);
-        let allow_corner = !(modifiers.control || modifiers.alt);
-        let outlines = if modifiers.shift {
+        let camera = self.state.borrow().camera;
+        let ray = camera.ray_through(cursor, viewport, PICK_REACH);
+        // Exactly the faces a Shift-drag from here would move: the face or corner the
+        // press would take, as `begin_drag` picks it, with the faces that go with each.
+        let outlines = if modifiers.shift && self.document.borrow().selection_count() > 0 {
             let document = self.document.borrow();
-            if let Some((brush, corner)) = allow_corner
-                .then(|| document.extrude_corner_2d(&ray))
-                .flatten()
-            {
-                corner
-                    .faces
-                    .iter()
-                    .filter_map(|(index, _)| brush.face_polygon(*index))
+            let inside = document.pick_selected_flat(&ray).is_some();
+            begin_extrude_2d(
+                &document,
+                &ray,
+                camera.direction(),
+                modifiers.control,
+                modifiers.alt,
+            )
+            .filter(|extruding| {
+                !inside
+                    || vec::distance(camera.world_to_screen(extruding.handle, viewport), cursor)
+                        <= handle_radius() + 2.0
+            })
+            .map(|extruding| {
+                std::iter::once(&extruding.polygon)
+                    .chain(extruding.second_polygon.as_ref())
+                    .flat_map(|polygon| document.faces_dragged_with(polygon))
                     .collect()
-            } else {
-                document.extrude_preview_faces_2d(&ray)
-            }
+            })
+            .unwrap_or_default()
         } else {
             Vec::new()
         };
@@ -4408,6 +4454,18 @@ mod tests {
             state.cursor = None;
             assert!(clip_preview_point(&state, &grid, &document, &clip, viewport).is_none());
         }
+    }
+
+    #[test]
+    fn an_edge_on_face_is_outlined_as_one_segment_between_its_corners() {
+        let (a, b) = (Vec2d::new(100.0, 50.0), Vec2d::new(200.0, 50.0));
+        // The four corners of a face seen edge-on, as the view projects them.
+        assert_eq!(edge_on(&[a, b, b, a]), Some((a, b)));
+        assert_eq!(edge_on(&[b, a, a, b]), Some((b, a)));
+        // A slanted face seen at an angle keeps its closed outline.
+        let square = [a, b, Vec2d::new(200.0, 90.0), Vec2d::new(100.0, 90.0)];
+        assert_eq!(edge_on(&square), None);
+        assert_eq!(edge_on(&[a, a]), None);
     }
 
     #[test]
@@ -5321,5 +5379,67 @@ mod tests {
             empty_space_drag_mode(true, false, Tool::Brush),
             DragMode::Creating
         );
+    }
+
+    /// A Shift-drag in the top view from `start` along the given cumulative offsets, on
+    /// one selected 64-unit cube, through the view's own press, move and release. Returns
+    /// the cube's bounds after the release and whether one undo puts it back.
+    fn shift_drag_cube(start: Vec3d, path: &[Vec3d]) -> (Vec3d, Vec3d, bool) {
+        let shift = Modifiers {
+            shift: true,
+            ..Modifiers::default()
+        };
+        let mut document = Document::new(WorldBounds::default());
+        let world = document.world_bounds();
+        document.add_brushes(vec![map_model::shapes::create_cuboid(
+            &world,
+            &geometry_math::bbox::Bbox3d::new(Vec3d::zero(), Vec3d::fill(64.0)),
+            "stone",
+        )
+        .unwrap()]);
+        document.select_all();
+        let before = document.to_map_text();
+        let viewport = (800., 600.);
+        let (drag, camera) = top_view(document);
+        let from = camera.world_to_screen(start, viewport);
+        drag.begin(from.x(), from.y(), shift, viewport);
+        assert_eq!(drag.drag.borrow().mode, DragMode::Extruding);
+        let mut last = Vec2d::new(0.0, 0.0);
+        for offset in path {
+            last = camera.world_to_screen(start + *offset, viewport) - from;
+            drag.update(last.x(), last.y(), shift, viewport);
+        }
+        drag.end(last.x(), last.y(), shift, viewport);
+        let mut document = drag.document.borrow_mut();
+        let bounds = map_model::node::brushes(document.tree_world())[0].bounds();
+        document.undo();
+        (bounds.min, bounds.max, document.to_map_text() == before)
+    }
+
+    #[test]
+    fn shift_resizing_one_brush_in_a_flat_view_keeps_its_old_behaviour() {
+        let x = |d: f64| Vec3d::new(d, 0.0, 0.0);
+        let edge = Vec3d::new(70.0, 32.0, 0.0);
+        // Out, in, and from just inside the edge.
+        assert_eq!(
+            shift_drag_cube(edge, &[x(8.0), x(32.0)]).1,
+            Vec3d::new(96.0, 64.0, 64.0)
+        );
+        assert_eq!(
+            shift_drag_cube(edge, &[x(-16.0)]).1,
+            Vec3d::new(48.0, 64.0, 64.0)
+        );
+        let (_, max, undone) = shift_drag_cube(Vec3d::new(62.0, 32.0, 0.0), &[x(32.0)]);
+        assert_eq!(max, Vec3d::new(96.0, 64.0, 64.0));
+        assert!(undone, "one undo puts it back");
+        // A corner.
+        let corner = shift_drag_cube(Vec3d::new(70.0, 70.0, 0.0), &[Vec3d::new(16.0, 16.0, 0.0)]);
+        assert_eq!(corner.1, Vec3d::new(80.0, 80.0, 64.0));
+        // Dragged out and brought back to where it began, the face is back too.
+        let back = shift_drag_cube(edge, &[x(32.0), x(0.0)]);
+        assert_eq!(back.1, Vec3d::fill(64.0));
+        // Pushed in past the far side, the brush is as it was, not left at the last step.
+        let through = shift_drag_cube(edge, &[x(16.0), x(-100.0)]);
+        assert_eq!(through.1, Vec3d::fill(64.0));
     }
 }
