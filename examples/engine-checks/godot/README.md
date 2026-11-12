@@ -35,5 +35,4 @@ Not covered: Windows, Forward+ rendering, and other games' scripts. Godot may
 report resource leaks at shutdown; they do not affect the checks.
 
 Credits: Kenney kit (`README-Kenney.md`, `LICENSE.md`), textures
-(`textures/License.txt`) and font (`fonts/license.txt`). Other copied code is MIT
-code from the earlier tbx project, see `LICENSE-TBX`.
+(`textures/License.txt`) and font (`fonts/license.txt`).

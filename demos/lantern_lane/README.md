@@ -38,5 +38,5 @@ godot --headless --path demos/lantern_lane/godot --script res://verify_showcase.
 server to three.js, Godot and GLB; `--engines bevy unity` picks other targets.
 
 Credits: textures by Kenney (CC0, `textures/kenney_fantasy/License.txt`); the Godot
-runtime is Kenney's Starter Kit FPS as adapted by the earlier tbx project
-(`godot/LICENSE-KENNEY.txt`, `godot/LICENSE-TBX.txt`, font licence in `godot/fonts`).
+runtime is adapted from Kenney's Starter Kit FPS
+(`godot/LICENSE-KENNEY.txt`, font licence in `godot/fonts`).

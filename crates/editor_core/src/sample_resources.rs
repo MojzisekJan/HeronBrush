@@ -3,7 +3,6 @@ pub const FILES: &[(&str, &[u8])] = &[
     ("lantern_lane/README.md", include_bytes!("../../../demos/lantern_lane/README.md")),
     ("lantern_lane/definitions/heron_brush/heron_brush.fgd", include_bytes!("../../../demos/lantern_lane/definitions/heron_brush/heron_brush.fgd")),
     ("lantern_lane/godot/LICENSE-KENNEY.txt", include_bytes!("../../../demos/lantern_lane/godot/LICENSE-KENNEY.txt")),
-    ("lantern_lane/godot/LICENSE-TBX.txt", include_bytes!("../../../demos/lantern_lane/godot/LICENSE-TBX.txt")),
     ("lantern_lane/godot/export-report.json", include_bytes!("../../../demos/lantern_lane/godot/export-report.json")),
     ("lantern_lane/godot/fonts/license.txt", include_bytes!("../../../demos/lantern_lane/godot/fonts/license.txt")),
     ("lantern_lane/godot/fonts/lilita_one_regular.ttf", include_bytes!("../../../demos/lantern_lane/godot/fonts/lilita_one_regular.ttf")),

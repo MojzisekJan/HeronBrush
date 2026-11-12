@@ -40,6 +40,5 @@ Other checks:
 Not covered: portal momentum and look rotation, TGA/WebP textures inside GLB, and
 long strings beyond the fixed caps in `src/level.h`.
 
-Credits: game sources are MIT code from the earlier tbx project, see `LICENSE-TBX`.
-Textures, sounds and font are covered by `LICENSE-KENNEY` and the licence files
+Credits: textures, sounds and font are covered by `LICENSE-KENNEY` and the licence files
 next to them in `assets/`.

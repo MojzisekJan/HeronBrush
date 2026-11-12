@@ -1,5 +1,5 @@
-These sound effects are from Kenney (kenney.nl), taken from the FPS kit of the
-earlier tbx project. They are used under the MIT License:
+These sound effects are from Kenney (kenney.nl), from the FPS kit. They are used
+under the MIT License:
 
 MIT License
 

@@ -14,11 +14,6 @@ The game profiles and entity definitions in `gamedata/` are adapted from TrenchB
 2026.1; the definition files keep their own authors' notices. See `gamedata/README.md`
 and `gamedata/TrenchBroom-LICENSE.txt`.
 
-## tbx
-
-The `scene_export` crate comes from tbx, copyright (c) 2026 the tbx authors, licensed
-under the MIT licence (`crates/scene_export/LICENSE-MIT`).
-
 ## three.js
 
 The web build's playtest bundles three.js r186 and some of its example modules

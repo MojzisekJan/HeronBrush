@@ -45,8 +45,7 @@ simple directional shading. The generated default material and renderer now supp
 map lights and direct PBR; see [the addon guide](../../../docs/defold-addon.md).
 Enemies and other FPS classes stay as data.
 
-Credits: controller and shaders are MIT code from the earlier tbx project, see
-`LICENSE-TBX`. Textures are Kenney assets under their own licence.
+Credits: textures are Kenney assets under their own licence.
 
 ## Feature lab
 

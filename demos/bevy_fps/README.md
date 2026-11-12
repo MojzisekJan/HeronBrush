@@ -31,5 +31,4 @@ cargo test --manifest-path demos/bevy_fps/Cargo.toml
 `SourceEntity`, so a game can attach its own components. `src/physics.rs` is the
 optional Avian adapter. See the [export contract](../../docs/engine-export-contract.md).
 
-Credits: the loader started from MIT code of the earlier tbx project (`LICENSE-TBX`);
-textures and kit content are Kenney's (`LICENSE-KENNEY`).
+Credits: textures and kit content are Kenney's (`LICENSE-KENNEY`).

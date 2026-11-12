@@ -2,7 +2,7 @@
 //! writer per engine.
 //!
 //! Originally brought in from a separate project by the same author for
-//! Godot and a handful of other engines, and is MIT licensed. The code is kept close to
+//! Godot and a handful of other engines. The code is kept close to
 //! its source rather than rewritten in this editor's style, so that a fix on either side
 //! can be carried to the other by reading a diff. That is also why `missing_docs` is
 //! allowed here and nowhere else in this workspace: documenting three hundred items to
@@ -14,7 +14,7 @@
 
 #![allow(
     missing_docs,
-    reason = "vendored export code; see CREDITS.md and the module comment"
+    reason = "export code kept close to its source; see the module comment"
 )]
 
 /// The map type the builder's class table is keyed with, so a caller can name it without
