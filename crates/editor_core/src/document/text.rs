@@ -295,7 +295,7 @@ mod tests {
         let before = d.to_map_text();
         let changes = Rc::new(std::cell::Cell::new(0));
         let seen = changes.clone();
-        d.set_on_edit(Rc::new(move |_| seen.set(seen.get() + 1)));
+        d.set_on_edit(Rc::new(move |_, _| seen.set(seen.get() + 1)));
         let modifications = d.modification_count();
         let mark = d.edit_mark();
         assert!(d.begin_text_preview());
@@ -484,7 +484,7 @@ mod tests {
         d.set_current_material("stone");
         let edits = Rc::new(RefCell::new(Vec::<Edit>::new()));
         let captured = edits.clone();
-        d.set_on_edit(Rc::new(move |e| captured.borrow_mut().push(e.clone())));
+        d.set_on_edit(Rc::new(move |e, _| captured.borrow_mut().push(e.clone())));
         d.begin_text_preview();
         d.update_text_preview("O8Á", 65., 9., Vec3d::new(13., 7., -19.), &Grid::default());
         assert!(edits.borrow().is_empty());

@@ -5093,7 +5093,7 @@ fn two_documents_stay_in_step_through_the_wire() {
     let sent: Rc<RefCell<Vec<Edit>>> = Rc::new(RefCell::new(Vec::new()));
     a.set_on_edit(Rc::new({
         let sent = sent.clone();
-        move |edit: &Edit| sent.borrow_mut().push(edit.clone())
+        move |edit: &Edit, _: &[Option<String>]| sent.borrow_mut().push(edit.clone())
     }));
 
     let ship = |sent: &Rc<RefCell<Vec<Edit>>>, b: &mut Document| {
@@ -5223,7 +5223,7 @@ fn edits_made_while_apart_replay_onto_the_rejoined_world() {
     let held: std::rc::Rc<std::cell::RefCell<Vec<Edit>>> = Default::default();
     guest.set_on_edit(std::rc::Rc::new({
         let sink = std::rc::Rc::clone(&held);
-        move |edit: &Edit| sink.borrow_mut().push(edit.clone())
+        move |edit: &Edit, _: &[Option<String>]| sink.borrow_mut().push(edit.clone())
     }));
     guest.add_brushes(vec![brush]);
     guest.clear_on_edit();
@@ -5275,8 +5275,8 @@ fn edits_made_while_apart_replay_onto_the_rejoined_world() {
     let mut applied = false;
     while Instant::now() < deadline && !applied {
         for event in host_session.poll(&bounds) {
-            if let SessionEvent::ApplyEdit(edit) = event {
-                host.apply_remote(&edit);
+            if let SessionEvent::ApplyEdit(edit, targets) = event {
+                host.apply_remote_to(&edit, &targets);
                 applied = true;
             }
         }
@@ -5331,7 +5331,7 @@ fn a_guest_joins_a_real_session_and_follows_the_host() {
     host_session.send_world(&host.tree.world);
     host.set_on_edit(Rc::new({
         let session = host_session;
-        move |edit: &Edit| session.send_edit(edit)
+        move |edit: &Edit, layers: &[Option<String>]| session.send_edit_in(edit, layers)
     }));
 
     let poll_until = |guest: &mut Document, want_applied: bool| {
@@ -5345,8 +5345,8 @@ fn a_guest_joins_a_real_session_and_follows_the_host() {
                         guest.adopt_world(world);
                         did_something = true;
                     }
-                    SessionEvent::ApplyEdit(edit) => {
-                        guest.apply_remote(&edit);
+                    SessionEvent::ApplyEdit(edit, targets) => {
+                        guest.apply_remote_to(&edit, &targets);
                         did_something = true;
                     }
                     other => panic!("unexpected event: {:?}", std::mem::discriminant(&other)),
@@ -7326,3 +7326,52 @@ fn live_material_gestures_survive_budget_pressure_and_restore_endpoints() {
         assert_eq!(d.to_map_text(), after, "mode {mode}");
     }
 }
+
+/// An outer group holding an inner group holding one light.
+fn nested_groups() -> Document {
+    let source = "\
+{ \"classname\" \"worldspawn\" }
+{ \"classname\" \"func_group\" \"_tb_type\" \"_tb_group\" \"_tb_id\" \"1\" \"_tb_name\" \"Outer\" }
+{ \"classname\" \"func_group\" \"_tb_type\" \"_tb_group\" \"_tb_id\" \"2\" \"_tb_name\" \"Inner\" \"_tb_group\" \"1\" }
+{ \"classname\" \"light\" \"origin\" \"0 0 0\" \"_tb_group\" \"2\" }
+";
+    let map = read_map(source, None).expect("the sample parses");
+    Document::from_map(&map, WorldBounds::default(), None)
+}
+
+#[test]
+fn linked_nested_duplicate_allocates_fresh_persistent_group_ids() {
+    let mut document = nested_groups();
+    document.select_all();
+    document.create_linked_duplicate(64.0).expect("a copy");
+    let ids: Vec<String> = node::groups_with_ids(&document.tree.world)
+        .into_iter()
+        .map(|(_, group)| group.id.clone())
+        .collect();
+    assert_eq!(ids.len(), 4);
+    let unique: std::collections::HashSet<&String> = ids.iter().collect();
+    assert_eq!(unique.len(), 4, "{ids:?}");
+}
+
+#[test]
+fn linked_nested_group_keeps_entity_membership_after_reopen() {
+    let mut document = nested_groups();
+    document.select_all();
+    document.create_linked_duplicate(64.0).expect("a copy");
+    let map = read_map(&document.to_map_text(), None).expect("the save parses");
+    let reopened = Document::from_map(&map, WorldBounds::default(), None);
+    // Two outer groups at the top, each holding an inner group holding one light.
+    let top = &reopened.tree.world.layers[0].children;
+    assert_eq!(top.len(), 2);
+    for outer in top {
+        let NodeKind::Group(outer) = &outer.kind else {
+            panic!("an outer group at the top");
+        };
+        assert_eq!(outer.children.len(), 1);
+        let NodeKind::Group(inner) = &outer.children[0].kind else {
+            panic!("an inner group in each outer one");
+        };
+        assert_eq!(inner.children.len(), 1);
+    }
+}
+

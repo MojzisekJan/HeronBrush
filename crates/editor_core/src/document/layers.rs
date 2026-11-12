@@ -174,13 +174,34 @@ impl Document {
         true
     }
 
-    /// Sets whether a layer is left out of exports.
+    /// Sets whether a layer is left out of exports, as one undo step. It changes what an
+    /// export holds, so it is an edit like a rename and reaches a live session's guests.
     pub fn set_layer_omitted(&mut self, index: usize, omitted: bool) -> bool {
-        let Some(layer) = self.tree.world.layers.get_mut(index) else {
+        let Some(layer) = self.tree.world.layers.get(index) else {
             return false;
         };
-        layer.omit_from_export = omitted;
-        self.note_modification();
+        if layer.omit_from_export == omitted {
+            return true;
+        }
+        let before = map_model::node::Layer {
+            id: layer.id.clone(),
+            name: layer.name.clone(),
+            sort_index: layer.sort_index,
+            hidden: layer.hidden,
+            locked: layer.locked,
+            omit_from_export: layer.omit_from_export,
+            color: layer.color.clone(),
+            children: Vec::new(),
+        };
+        let after = map_model::node::Layer {
+            omit_from_export: omitted,
+            ..before.clone()
+        };
+        self.apply_and_record(Edit::LayerChanged {
+            index,
+            before,
+            after,
+        });
         true
     }
 

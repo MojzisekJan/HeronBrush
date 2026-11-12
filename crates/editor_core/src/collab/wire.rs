@@ -189,6 +189,32 @@ fn into_nodes(wire: Vec<WireNode>, bounds: &Bbox3d) -> Result<Vec<Node>, WireErr
     wire.into_iter().map(|n| n.into_node(bounds)).collect()
 }
 
+/// [`into_nodes`] for the node list of an edit, which may not name one node twice,
+/// at its top or anywhere under it.
+fn into_unique_nodes(wire: Vec<WireNode>, bounds: &Bbox3d) -> Result<Vec<Node>, WireError> {
+    let nodes = into_nodes(wire, bounds)?;
+    unique_ids(&nodes, &mut std::collections::HashSet::new())?;
+    Ok(nodes)
+}
+
+fn unique_ids(
+    nodes: &[Node],
+    ids: &mut std::collections::HashSet<NodeId>,
+) -> Result<(), WireError> {
+    for node in nodes {
+        if !ids.insert(node.id) {
+            return Err(WireError::World(format!("duplicate node id {}", node.id.0)));
+        }
+        match &node.kind {
+            NodeKind::Group(group) => unique_ids(&group.children, ids)?,
+            NodeKind::Entity(entity) => unique_ids(&entity.children, ids)?,
+            NodeKind::Layer(layer) => unique_ids(&layer.children, ids)?,
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 fn from_nodes(nodes: &[Node]) -> Vec<WireNode> {
     nodes.iter().map(WireNode::from_node).collect()
 }
@@ -250,26 +276,9 @@ impl WireWorld {
                 .map(|l| unwire_layer(l, bounds))
                 .collect::<Result<_, _>>()?,
         };
-        fn validate(
-            nodes: &[Node],
-            ids: &mut std::collections::HashSet<NodeId>,
-        ) -> Result<(), WireError> {
-            for node in nodes {
-                if !ids.insert(node.id) {
-                    return Err(WireError::World(format!("duplicate node id {}", node.id.0)));
-                }
-                match &node.kind {
-                    NodeKind::Group(group) => validate(&group.children, ids)?,
-                    NodeKind::Entity(entity) => validate(&entity.children, ids)?,
-                    NodeKind::Layer(layer) => validate(&layer.children, ids)?,
-                    _ => {}
-                }
-            }
-            Ok(())
-        }
         let mut ids = std::collections::HashSet::new();
         for layer in &world.layers {
-            validate(&layer.children, &mut ids)?;
+            unique_ids(&layer.children, &mut ids)?;
         }
         Ok(world)
     }
@@ -358,6 +367,12 @@ pub enum WireEdit {
     Added {
         /// The layer's position in the world's layer list.
         layer: usize,
+        /// The layer's id, which is what the receiver goes by: a position shifts when
+        /// another participant removes a layer before it. `None` for the default layer,
+        /// and from a build that did not send it, which leaves the position to go by.
+        /// An older build ignores the field.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        layer_id: Option<String>,
         /// The nodes.
         nodes: Vec<WireNode>,
     },
@@ -371,6 +386,9 @@ pub enum WireEdit {
     /// Root order in a layer, using stable node identifiers.
     Reordered {
         layer: usize,
+        /// The layer's id, as for [`WireEdit::Added`].
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        layer_id: Option<String>,
         before: Vec<u64>,
         after: Vec<u64>,
     },
@@ -409,8 +427,15 @@ pub enum WireEdit {
 }
 
 impl WireEdit {
-    /// The wire form of `edit`.
+    /// The wire form of `edit`, without layer ids: its layers go by position.
     pub fn from_edit(edit: &Edit) -> Self {
+        Self::from_edit_in(edit, &[])
+    }
+
+    /// The wire form of `edit` made in a world whose layers have the ids `layers`, in
+    /// order, so the layers it adds to and reorders are named by id as well.
+    pub fn from_edit_in(edit: &Edit, layers: &[Option<String>]) -> Self {
+        let id_of = |layer: usize| layers.get(layer).cloned().flatten();
         match edit {
             Edit::Changed { before, after } => WireEdit::Changed {
                 before: from_nodes(before),
@@ -418,6 +443,7 @@ impl WireEdit {
             },
             Edit::Added { layer, nodes } => WireEdit::Added {
                 layer: *layer,
+                layer_id: id_of(*layer),
                 nodes: from_nodes(nodes),
             },
             Edit::Removed { layer, nodes } => WireEdit::Removed {
@@ -430,6 +456,7 @@ impl WireEdit {
                 after,
             } => WireEdit::Reordered {
                 layer: *layer,
+                layer_id: id_of(*layer),
                 before: before.iter().map(|id| id.0).collect(),
                 after: after.iter().map(|id| id.0).collect(),
             },
@@ -454,7 +481,12 @@ impl WireEdit {
                 before: before.clone(),
                 after: after.clone(),
             },
-            Edit::Batch(parts) => WireEdit::Batch(parts.iter().map(WireEdit::from_edit).collect()),
+            Edit::Batch(parts) => WireEdit::Batch(
+                parts
+                    .iter()
+                    .map(|part| WireEdit::from_edit_in(part, layers))
+                    .collect(),
+            ),
         }
     }
 
@@ -463,11 +495,11 @@ impl WireEdit {
         Ok(match self {
             WireEdit::Changed { before, after } => Edit::Changed {
                 before: into_nodes(before, bounds)?,
-                after: into_nodes(after, bounds)?,
+                after: into_unique_nodes(after, bounds)?,
             },
-            WireEdit::Added { layer, nodes } => Edit::Added {
+            WireEdit::Added { layer, nodes, .. } => Edit::Added {
                 layer,
-                nodes: into_nodes(nodes, bounds)?,
+                nodes: into_unique_nodes(nodes, bounds)?,
             },
             WireEdit::Removed { layer, nodes } => Edit::Removed {
                 layer,
@@ -477,6 +509,7 @@ impl WireEdit {
                 layer,
                 before,
                 after,
+                ..
             } => Edit::Reordered {
                 layer,
                 before: before.into_iter().map(NodeId).collect(),
@@ -484,7 +517,11 @@ impl WireEdit {
             },
             WireEdit::LayerInserted { index, layer } => Edit::LayerInserted {
                 index,
-                layer: unwire_layer(layer, bounds)?,
+                layer: {
+                    let layer = unwire_layer(layer, bounds)?;
+                    unique_ids(&layer.children, &mut std::collections::HashSet::new())?;
+                    layer
+                },
             },
             WireEdit::LayerRemoved { index, layer } => Edit::LayerRemoved {
                 index,
@@ -507,6 +544,24 @@ impl WireEdit {
                     .collect::<Result<_, _>>()?,
             ),
         })
+    }
+
+    /// The layer ids the layer-addressed parts name, in the order
+    /// [`crate::document::Document::apply_remote_to`] meets them: each `Added` and
+    /// `Reordered`, batches in order.
+    pub fn layer_targets(&self) -> Vec<Option<String>> {
+        fn walk(edit: &WireEdit, out: &mut Vec<Option<String>>) {
+            match edit {
+                WireEdit::Added { layer_id, .. } | WireEdit::Reordered { layer_id, .. } => {
+                    out.push(layer_id.clone())
+                }
+                WireEdit::Batch(parts) => parts.iter().for_each(|part| walk(part, out)),
+                _ => {}
+            }
+        }
+        let mut out = Vec::new();
+        walk(self, &mut out);
+        out
     }
 
     /// This edit as a single line of JSON, ready to send.
@@ -702,6 +757,7 @@ mod tests {
     fn a_broken_brush_is_an_error_not_a_panic() {
         let bad = WireEdit::Added {
             layer: 0,
+            layer_id: None,
             nodes: vec![WireNode {
                 id: 1,
                 kind: WireKind::Brush { faces: vec![] },
@@ -737,5 +793,42 @@ mod tests {
         assert!(WireWorld::from_world(&a_world())
             .into_world(&bounds())
             .is_ok());
+    }
+
+    #[test]
+    fn network_edit_rejects_duplicate_node_identities() {
+        let twice = Edit::Added {
+            layer: 0,
+            nodes: vec![a_brush_node(), a_brush_node()],
+        };
+        let json = WireEdit::from_edit(&twice).to_json();
+        assert!(matches!(
+            WireEdit::from_json(&json).unwrap().into_edit(&bounds()),
+            Err(WireError::World(_))
+        ));
+
+        // A brush entity holding the same brush id as its sibling, inside a batch.
+        let entity = Node {
+            id: NodeId(7),
+            kind: NodeKind::Entity(EntityNode {
+                properties: vec![("classname".into(), "func_wall".into())],
+                children: vec![a_brush_node()],
+            }),
+        };
+        let nested = Edit::Batch(vec![Edit::Added {
+            layer: 0,
+            nodes: vec![a_brush_node(), entity],
+        }]);
+        let json = WireEdit::from_edit(&nested).to_json();
+        assert!(matches!(
+            WireEdit::from_json(&json).unwrap().into_edit(&bounds()),
+            Err(WireError::World(_))
+        ));
+
+        let once = Edit::Added {
+            layer: 0,
+            nodes: vec![a_brush_node()],
+        };
+        assert!(WireEdit::from_edit(&once).into_edit(&bounds()).is_ok());
     }
 }

@@ -129,7 +129,7 @@ impl Document {
         self.face_selection.clear();
         self.mark_selection_changed();
         if let Some(listener) = self.on_edit.clone() {
-            listener(&edit);
+            listener(&edit, &self.layer_ids());
         }
         session.nodes = nodes;
         session.parameters = parameters;

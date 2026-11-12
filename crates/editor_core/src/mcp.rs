@@ -147,7 +147,7 @@ impl Collab {
         }
         document.set_on_edit(Rc::new({
             let session = Rc::clone(&session);
-            move |edit: &Edit| session.send_edit(edit)
+            move |edit: &Edit, layers: &[Option<String>]| session.send_edit_in(edit, layers)
         }));
         self.session = Some(session);
     }
@@ -171,8 +171,8 @@ impl Collab {
                     }
                     adopted = true;
                 }
-                SessionEvent::ApplyEdit(edit) => {
-                    document.apply_remote(&edit);
+                SessionEvent::ApplyEdit(edit, targets) => {
+                    document.apply_remote_to(&edit, &targets);
                     applied += 1;
                 }
                 SessionEvent::PeerSelection { peer, ids } => {
@@ -212,7 +212,7 @@ impl Collab {
                 .borrow_mut()
                 .extend(session.take_unacknowledged());
             let held = self.outage_edits.clone();
-            document.set_on_edit(Rc::new(move |edit| held.borrow_mut().push(edit.clone())));
+            document.set_on_edit(Rc::new(move |edit, _| held.borrow_mut().push(edit.clone())));
             document.clear_peers();
             self.session = None;
             self.peer_selection.clear();

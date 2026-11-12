@@ -113,6 +113,11 @@ impl Document {
             self.apply_owned(edit);
             return;
         }
+        // In a live session a change the others could not receive is not made at all,
+        // so no one falls out of step.
+        if !self.fits_session(&edit) {
+            return;
+        }
         let pre = self.linked_contents_snapshot();
         self.apply(&edit);
         let full = match pre {
@@ -483,6 +488,7 @@ impl Document {
             Edit::LayerChanged { index, after, .. } => {
                 if let Some(layer) = self.tree.world.layers.get_mut(*index) {
                     layer.name = after.name.clone();
+                    layer.omit_from_export = after.omit_from_export;
                 }
             }
             Edit::WorldChanged { after, .. } => {
@@ -515,7 +521,7 @@ impl Document {
         self.apply(&edit);
         self.forget_vanished_selection();
         if let Some(on_edit) = self.on_edit.clone() {
-            on_edit(&edit);
+            on_edit(&edit, &self.layer_ids());
         }
         // `Map::transactionUndone`: what Repeat would play again is edits that have just
         // been taken back, so it is emptied rather than left pointing at them.
@@ -534,7 +540,7 @@ impl Document {
         self.apply(&edit);
         self.forget_vanished_selection();
         if let Some(on_edit) = self.on_edit.clone() {
-            on_edit(&edit);
+            on_edit(&edit, &self.layer_ids());
         }
         self.clear_repeatable();
         Some(description)
@@ -561,11 +567,12 @@ impl Document {
     ///
     /// Reusing the ids is what lets an undone deletion be selected and edited again as
     /// the same objects.
+    /// A layer that is no longer there, as after a redo once another participant
+    /// removed it, gives way to the default layer: nothing is dropped.
     fn insert_nodes(&mut self, layer: usize, nodes: &[Node]) {
-        let Some(layer) = self.tree.world.layers.get_mut(layer) else {
-            return;
-        };
-        layer.children.extend(nodes.iter().cloned());
+        let layers = &mut self.tree.world.layers;
+        let at = if layer < layers.len() { layer } else { 0 };
+        layers[at].children.extend(nodes.iter().cloned());
     }
 
     /// Removes the nodes with the given ids from wherever they are.
@@ -615,10 +622,31 @@ impl Document {
     /// Records an edit on the undo stack and hands it to the `on_edit` callback, if a
     /// live session set one.
     pub(super) fn record_edit(&mut self, edit: Edit) {
+        // A drag shows its change as it goes, and a linked-group rebuild adds to an edit
+        // after it is checked: one that has outgrown the session is taken back here,
+        // before anyone is sent it, and leaves the map as it was.
+        if !self.fits_session(&edit) {
+            self.apply(&edit.reversed());
+            self.forget_vanished_selection();
+            return;
+        }
         if let Some(on_edit) = self.on_edit.clone() {
-            on_edit(&edit);
+            on_edit(&edit, &self.layer_ids());
         }
         self.history.record(edit);
+    }
+
+    /// Whether `edit` can go to a live session's other participants; always outside one.
+    /// Says why not when it cannot.
+    fn fits_session(&self, edit: &Edit) -> bool {
+        if self.on_edit.is_none() || crate::collab::net::edit_fits(edit, &self.layer_ids()) {
+            return true;
+        }
+        crate::complain!(
+            "Not done: this change is larger than the {} MiB a live session can send, so it would leave the others out of step",
+            crate::collab::net::MAX_EDIT_FRAME >> 20
+        );
+        false
     }
 
     /// Applies an edit that came from the other person in a live session. It is applied
@@ -650,10 +678,39 @@ impl Document {
         self.mark_changed();
     }
 
+    /// The id of each layer, in order; `None` for the default layer.
+    pub fn layer_ids(&self) -> Vec<Option<String>> {
+        self.tree
+            .world
+            .layers
+            .iter()
+            .map(|layer| layer.id.clone())
+            .collect()
+    }
+
     /// The edit already carries whatever linked-group rebuild the sender computed, so it
-    /// is applied whole.
+    /// is applied whole. Its layers go by position; see [`Document::apply_remote_to`].
     pub fn apply_remote(&mut self, edit: &Edit) {
-        self.apply_remote_parts(edit);
+        self.apply_remote_to(edit, &[]);
+    }
+
+    /// [`Document::apply_remote`] for an edit whose layer-addressed parts name their
+    /// layers by id, `targets` in the order [`crate::collab::wire::WireEdit::layer_targets`]
+    /// lists them. Nothing another participant made is dropped because a layer is gone:
+    /// objects added to a layer removed here meanwhile, and objects still on a layer
+    /// another participant removed, go to the default layer, as a local removal moves a
+    /// layer's contents there. Either way the peers end with the same map, whichever
+    /// message arrived first, and the console says what moved.
+    pub fn apply_remote_to(&mut self, edit: &Edit, targets: &[Option<String>]) {
+        let mut moved = 0;
+        self.apply_remote_parts(edit, &mut targets.iter(), &mut moved);
+        if moved > 0 {
+            crate::say!(
+                "{}: {}",
+                crate::i18n::tr("Removed the layer. What was on it is on the default layer now"),
+                crate::i18n::counted(moved, "object")
+            );
+        }
         self.clear_leak_trace();
         self.note_modification();
         self.mark_changed();
@@ -665,14 +722,52 @@ impl Document {
             .retain(|face| node::find_node(&self.tree.world, face.node).is_some());
     }
 
-    fn apply_remote_parts(&mut self, edit: &Edit) {
+    /// Where a remote edit's layer is here: by id when the sender named it, else by
+    /// position. `None` when that layer is gone.
+    fn remote_layer(&self, index: usize, id: Option<&str>) -> Option<usize> {
+        let layers = &self.tree.world.layers;
+        match id {
+            _ if index == 0 => Some(0),
+            Some(id) => layers.iter().position(|l| l.id.as_deref() == Some(id)),
+            None => (index < layers.len()).then_some(index),
+        }
+    }
+
+    fn apply_remote_parts(
+        &mut self,
+        edit: &Edit,
+        targets: &mut std::slice::Iter<'_, Option<String>>,
+        moved: &mut usize,
+    ) {
         match edit {
-            Edit::Added { layer, nodes } if self.tree.world.layers.get(*layer).is_some() => {
-                let ids: Vec<_> = nodes.iter().map(|node| node.id).collect();
+            Edit::Added { layer, nodes } => {
+                let target = targets.next().cloned().flatten();
+                let at = self.remote_layer(*layer, target.as_deref());
+                if at.is_none() {
+                    *moved += nodes.len();
+                }
+                // Everything the edit brings, nested nodes too, replaces any node already
+                // here under the same id, so no id ends up in the tree twice.
+                let ids: Vec<_> = super::ids_under(nodes).into_iter().collect();
                 for existing in &mut self.tree.world.layers {
                     remove_nodes(&mut existing.children, &ids);
                 }
-                self.insert_nodes(*layer, nodes);
+                self.insert_nodes(at.unwrap_or(0), nodes);
+            }
+            Edit::Reordered {
+                layer,
+                before,
+                after,
+            } => {
+                let target = targets.next().cloned().flatten();
+                // A layer gone here has nothing left to order: its contents moved with it.
+                if let Some(at) = self.remote_layer(*layer, target.as_deref()) {
+                    self.apply_parts(&Edit::Reordered {
+                        layer: at,
+                        before: before.clone(),
+                        after: after.clone(),
+                    });
+                }
             }
             Edit::LayerInserted { index, layer } => {
                 let Some(id) = &layer.id else {
@@ -717,7 +812,12 @@ impl Document {
                     .position(|l| l.id.as_ref() == Some(id))
                 {
                     if at > 0 {
-                        self.tree.world.layers.remove(at);
+                        // What is still on it was put there here after the other
+                        // participant removed it; it moves to the default layer rather
+                        // than going with the layer.
+                        let rest = self.tree.world.layers.remove(at).children;
+                        *moved += rest.len();
+                        self.tree.world.layers[0].children.extend(rest);
                     }
                 }
                 self.restore_remote_active_layer(active);
@@ -725,11 +825,12 @@ impl Document {
             Edit::LayerChanged { after, .. } => {
                 if let Some(layer) = self.tree.world.layers.iter_mut().find(|l| l.id == after.id) {
                     layer.name = after.name.clone();
+                    layer.omit_from_export = after.omit_from_export;
                 }
             }
             Edit::Batch(parts) => {
                 for part in parts {
-                    self.apply_remote_parts(part);
+                    self.apply_remote_parts(part, targets, moved);
                 }
             }
             _ => self.apply_parts(edit),

@@ -186,8 +186,9 @@ impl MaterialSource {
 }
 
 /// A map open in the editor.
-/// The callback a live editing session installs to send each local edit out.
-type EditListener = Rc<dyn Fn(&Edit)>;
+/// The callback a live editing session installs to send each local edit out, with the
+/// ids of the world's layers after it, so the edit can name its layer by id.
+type EditListener = Rc<dyn Fn(&Edit, &[Option<String>])>;
 
 /// The view geometry the flat views draw, walked out of the tree and kept until an edit
 /// makes it wrong. See [`Document::edge_cache`].

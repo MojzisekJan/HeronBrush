@@ -18,7 +18,9 @@ fn pair() -> (Session, Session) {
 fn wired(session: Rc<Session>, world: &World) -> Document {
     let mut doc = Document::new(WorldBounds::default());
     doc.adopt_world(world.clone());
-    doc.set_on_edit(Rc::new(move |edit| session.send_edit(edit)));
+    doc.set_on_edit(Rc::new(move |edit, layers| {
+        session.send_edit_in(edit, layers)
+    }));
     doc
 }
 
@@ -37,7 +39,7 @@ fn pump(peers: &mut [(&Session, &mut Document)]) {
         for (session, doc) in peers.iter_mut() {
             for event in session.poll(&doc.world_bounds()) {
                 match event {
-                    SessionEvent::ApplyEdit(edit) => doc.apply_remote(&edit),
+                    SessionEvent::ApplyEdit(edit, targets) => doc.apply_remote_to(&edit, &targets),
                     SessionEvent::AdoptWorld(world) => doc.adopt_world(world),
                     SessionEvent::PeerCamera {
                         peer,
@@ -156,12 +158,12 @@ fn edits_without_acknowledgement_survive_disconnect_and_replay_once() {
     h.clear_on_edit();
     h.set_on_edit(Rc::new({
         let s = new_host.clone();
-        move |e| s.send_edit(e)
+        move |e, layers| s.send_edit_in(e, layers)
     }));
     g.adopt_world(h.tree_world().clone());
     g.set_on_edit(Rc::new({
         let s = new_guest.clone();
-        move |e| s.send_edit(e)
+        move |e, layers| s.send_edit_in(e, layers)
     }));
     for edit in &pending {
         g.apply_remote(edit);
@@ -288,4 +290,178 @@ fn concurrent_layer_insertions_reconcile_order_and_keep_optimistic_contents() {
     pump(&mut [(&host, &mut h), (&first, &mut a), (&second, &mut b)]);
     assert_eq!(h.to_map_text(), a.to_map_text());
     assert_eq!(h.to_map_text(), b.to_map_text());
+}
+
+#[test]
+fn layer_export_omission_is_shared_with_existing_guests() {
+    let (host, guest) = pair();
+    let host = Rc::new(host);
+    let guest = Rc::new(guest);
+    let mut seed = Document::new(WorldBounds::default());
+    seed.add_layer("Notes");
+    let mut h = wired(host.clone(), seed.tree_world());
+    let mut g = wired(guest.clone(), seed.tree_world());
+    assert!(h.set_layer_omitted(1, true));
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert!(h.tree_world().layers[1].omit_from_export);
+    assert!(g.tree_world().layers[1].omit_from_export);
+    assert_eq!(h.to_map_text(), g.to_map_text());
+
+    // It is one undo step, and the undo reaches the guest too.
+    h.undo();
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert!(!h.tree_world().layers[1].omit_from_export);
+    assert!(!g.tree_world().layers[1].omit_from_export);
+}
+
+#[test]
+fn a_remote_add_replaces_a_nested_node_with_the_same_id() {
+    let mut doc = Document::new(WorldBounds::default());
+    add(&mut doc);
+    let (brush_id, brush) = map_model::node::brushes_with_ids(doc.tree_world())
+        .first()
+        .map(|(id, brush)| (*id, (*brush).clone()))
+        .unwrap();
+    // Another editor grouped the brush: the group is new, the brush in it is not.
+    let group =
+        map_model::node::Node::new(map_model::node::NodeKind::Group(map_model::node::Group {
+            id: "9".into(),
+            name: "Box".into(),
+            linked_group_id: None,
+            transformation: None,
+            children: vec![map_model::node::Node::with_id(
+                brush_id,
+                map_model::node::NodeKind::Brush(brush),
+            )],
+        }));
+    doc.apply_remote(&crate::history::Edit::Added {
+        layer: 0,
+        nodes: vec![group],
+    });
+    assert_eq!(map_model::node::brushes_with_ids(doc.tree_world()).len(), 1);
+}
+
+/// A host and a guest on one world with two extra layers, `a` and `b`.
+fn layered() -> (Rc<Session>, Rc<Session>, Document, Document) {
+    let (host, guest) = pair();
+    let (host, guest) = (Rc::new(host), Rc::new(guest));
+    let mut seed = Document::new(WorldBounds::default());
+    seed.add_layer("a");
+    seed.add_layer("b");
+    let h = wired(host.clone(), seed.tree_world());
+    let g = wired(guest.clone(), seed.tree_world());
+    (host, guest, h, g)
+}
+
+fn on_default_layer(doc: &Document) -> usize {
+    map_model::node::brushes_by_layer(doc.tree_world())
+        .iter()
+        .filter(|(_, _, layer)| *layer == 0)
+        .count()
+}
+
+#[test]
+fn concurrent_layer_removal_keeps_a_new_brush_on_its_surviving_layer() {
+    // The host removes layer a while the guest adds to layer b, which then moves up one.
+    let (host, guest, mut h, mut g) = layered();
+    assert!(h.remove_layer(1));
+    g.set_current_layer(2);
+    add(&mut g);
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert_eq!(h.to_map_text(), g.to_map_text());
+    let layers = map_model::node::brushes_by_layer(h.tree_world());
+    assert_eq!(layers.len(), 1);
+    assert_eq!(h.tree_world().layers[layers[0].2].name, "b");
+}
+
+#[test]
+fn a_brush_added_to_a_layer_removed_meanwhile_lands_on_the_default_layer() {
+    // Removal and addition cross on the wire.
+    let (host, guest, mut h, mut g) = layered();
+    assert!(h.remove_layer(2));
+    g.set_current_layer(2);
+    add(&mut g);
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert_eq!(h.to_map_text(), g.to_map_text());
+    assert_eq!(on_default_layer(&h), 1);
+    assert_eq!(on_default_layer(&g), 1);
+
+    // The addition arrives first, then the removal.
+    let (host, guest, mut h, mut g) = layered();
+    g.set_current_layer(2);
+    add(&mut g);
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert!(h.remove_layer(2));
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert_eq!(h.to_map_text(), g.to_map_text());
+    assert_eq!(on_default_layer(&h), 1);
+
+    // The guest's own add still undoes as one step, and the undo reaches the host.
+    g.undo();
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert_eq!(map_model::node::brushes_with_ids(h.tree_world()).len(), 0);
+    assert_eq!(h.to_map_text(), g.to_map_text());
+}
+
+#[test]
+fn a_change_too_large_for_the_session_is_refused_and_the_map_left_alone() {
+    let (host, guest) = pair();
+    let (host, guest) = (Rc::new(host), Rc::new(guest));
+    let mut seed = Document::new(WorldBounds::default());
+    add(&mut seed);
+    let mut h = wired(host.clone(), seed.tree_world());
+    let mut g = wired(guest.clone(), seed.tree_world());
+    let before = g.to_map_text();
+    crate::collab::net::TEST_EDIT_LIMIT.with(|limit| limit.set(256));
+    // Through the ordinary edit path and through a drag's commit.
+    g.select_all();
+    g.translate_selection(Vec3d::new(16., 0., 0.));
+    assert_eq!(g.to_map_text(), before, "the move was not made");
+    assert!(g.undo().is_none(), "and nothing went on the undo stack");
+    g.begin_transaction();
+    g.translate_selection(Vec3d::new(16., 0., 0.));
+    g.commit_transaction();
+    assert_eq!(g.to_map_text(), before, "the drag was taken back");
+    crate::collab::net::TEST_EDIT_LIMIT.with(|limit| limit.set(crate::collab::net::MAX_EDIT_FRAME));
+    pump(&mut [(&host, &mut h), (&guest, &mut g)]);
+    assert_eq!(h.to_map_text(), g.to_map_text(), "nobody fell out of step");
+}
+
+#[test]
+fn a_select_all_move_of_the_largest_demo_map_goes_through() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../demos/lantern_lane/lantern_lane.map");
+    let map = Document::open(path, WorldBounds::default()).unwrap();
+    let world = map.tree_world().clone();
+    let world_size = WireMessage::World(crate::collab::wire::WireWorld::from_world(&world))
+        .to_json()
+        .len();
+    let mut doc = Document::new(WorldBounds::default());
+    doc.adopt_world(world);
+    let sent = Rc::new(std::cell::RefCell::new(Vec::new()));
+    doc.set_on_edit(Rc::new({
+        let sent = sent.clone();
+        move |edit, layers| {
+            let json = WireMessage::Edit(crate::collab::wire::WireEdit::from_edit_in(edit, layers))
+                .to_json();
+            sent.borrow_mut().push(json.len());
+        }
+    }));
+    let before = doc.to_map_text();
+    doc.select_all();
+    doc.translate_selection(Vec3d::new(16., 0., 0.));
+    assert_ne!(doc.to_map_text(), before);
+    let edit_size = sent
+        .borrow()
+        .iter()
+        .copied()
+        .max()
+        .expect("the move was sent");
+    eprintln!(
+        "lantern_lane: World {:.2} MiB, select-all move {:.2} MiB",
+        world_size as f64 / f64::from(1 << 20),
+        edit_size as f64 / f64::from(1 << 20)
+    );
+    assert!(world_size <= crate::collab::net::MAX_WORLD_FRAME);
+    assert!(edit_size <= crate::collab::net::MAX_EDIT_FRAME);
 }

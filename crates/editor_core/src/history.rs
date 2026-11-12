@@ -243,6 +243,9 @@ impl Edit {
             Edit::Reordered { .. } => tr("reorder objects").into(),
             Edit::LayerInserted { layer, .. } => fill("add layer {}", &[&layer.name]),
             Edit::LayerRemoved { layer, .. } => fill("remove layer {}", &[&layer.name]),
+            Edit::LayerChanged { before, after, .. } if before.name == after.name => {
+                fill("change {}", &[&after.name])
+            }
             Edit::LayerChanged { after, .. } => fill("rename layer to {}", &[&after.name]),
             // Worldspawn is one object to the user, like any entity.
             Edit::WorldChanged { .. } => fill("change {}", &[&counted(1, "object")]),

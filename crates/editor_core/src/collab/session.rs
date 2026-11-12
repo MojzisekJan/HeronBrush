@@ -24,12 +24,28 @@ use crate::history::Edit;
 pub const HOST_PEER: u32 = 0;
 static NEXT_EDIT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
+/// Whether a world snapshot is within what a guest takes; says so when it is not.
+fn world_fits(json: &str) -> bool {
+    let fits = json.len() <= super::net::MAX_WORLD_FRAME;
+    if !fits {
+        crate::complain!(
+            "Live session: this map is {} MiB as a live session sends it, more than the {} MiB a guest takes. Nobody can join it.",
+            json.len() >> 20,
+            super::net::MAX_WORLD_FRAME >> 20
+        );
+    }
+    fits
+}
+
 /// Something another editor did, ready to apply.
 pub enum SessionEvent {
     /// Adopt this world wholesale -- sent to a guest as it joins.
     AdoptWorld(World),
-    /// Apply this edit.
-    ApplyEdit(Edit),
+    /// Apply this edit, with [`Document::apply_remote_to`]: the ids of the layers its
+    /// layer-addressed parts were aimed at, where the sender named them.
+    ///
+    /// [`Document::apply_remote_to`]: crate::document::Document::apply_remote_to
+    ApplyEdit(Edit, Vec<Option<String>>),
     /// A participant's selection changed; show it.
     PeerSelection {
         /// Who.
@@ -408,14 +424,21 @@ impl Session {
     }
 
     /// Sends the whole world to everyone. The host does this as the first guest joins.
+    /// A world larger than a guest takes is not sent, and the host is told.
     pub fn send_world(&self, world: &World) {
-        self.broadcast(&WireMessage::World(WireWorld::from_world(world)).to_json());
+        let json = WireMessage::World(WireWorld::from_world(world)).to_json();
+        if world_fits(&json) {
+            self.broadcast(&json);
+        }
     }
 
     /// Sends the whole world to one participant: what a joiner arriving mid-session
     /// gets, without disturbing the people already in.
     pub fn send_world_to(&self, peer: u32, world: &World) {
         let json = WireMessage::World(WireWorld::from_world(world)).to_json();
+        if !world_fits(&json) {
+            return;
+        }
         for peer_link in self.links.borrow().iter() {
             if peer_link.id == peer {
                 peer_link.link.send(&json);
@@ -423,10 +446,17 @@ impl Session {
         }
     }
 
-    /// Sends one edit to everyone this editor is linked to.
+    /// Sends one edit to everyone this editor is linked to. Its layers go by position;
+    /// [`Session::send_edit_in`] names them by id as well.
     pub fn send_edit(&self, edit: &Edit) {
+        self.send_edit_in(edit, &[]);
+    }
+
+    /// Sends one edit made in a world whose layers have the ids `layers`, so the others
+    /// find the layer it went to even after one before it was removed.
+    pub fn send_edit_in(&self, edit: &Edit, layers: &[Option<String>]) {
         let message = if self.is_host() {
-            WireMessage::Edit(WireEdit::from_edit(edit))
+            WireMessage::Edit(WireEdit::from_edit_in(edit, layers))
         } else {
             let id = format!(
                 "{:08x}-{}",
@@ -438,7 +468,7 @@ impl Session {
                 .push((id.clone(), edit.clone()));
             WireMessage::TrackedEdit {
                 id,
-                edit: WireEdit::from_edit(edit),
+                edit: WireEdit::from_edit_in(edit, layers),
             }
         };
         self.broadcast(&message.to_json());
@@ -537,6 +567,18 @@ impl Session {
                     }
                 }
                 if peer_link.link.is_closed() {
+                    // A peer dropped for breaking a limit is named, with why.
+                    if let Some(reason) = peer_link.link.close_reason() {
+                        crate::complain!(
+                            "Live session: disconnected {} ({}), which {reason}",
+                            self.names
+                                .borrow()
+                                .get(&peer_link.id)
+                                .cloned()
+                                .unwrap_or_else(|| format!("participant {}", peer_link.id)),
+                            peer_link.link.peer()
+                        );
+                    }
                     gone.push(peer_link.id);
                 }
             }
@@ -575,19 +617,25 @@ impl Session {
                 Ok(world) => events.push(SessionEvent::AdoptWorld(world)),
                 Err(e) => events.push(SessionEvent::Undecodable(e.to_string())),
             },
-            WireMessage::Edit(edit) => match edit.into_edit(bounds) {
-                Ok(edit) => events.push(SessionEvent::ApplyEdit(edit)),
-                Err(e) => events.push(SessionEvent::Undecodable(e.to_string())),
-            },
-            WireMessage::TrackedEdit { id, edit } => match edit.into_edit(bounds) {
-                Ok(edit) => {
-                    self.pending_edits
-                        .borrow_mut()
-                        .retain(|(pending, _)| pending != &id);
-                    events.push(SessionEvent::ApplyEdit(edit));
+            WireMessage::Edit(edit) => {
+                let targets = edit.layer_targets();
+                match edit.into_edit(bounds) {
+                    Ok(edit) => events.push(SessionEvent::ApplyEdit(edit, targets)),
+                    Err(e) => events.push(SessionEvent::Undecodable(e.to_string())),
                 }
-                Err(e) => events.push(SessionEvent::Undecodable(e.to_string())),
-            },
+            }
+            WireMessage::TrackedEdit { id, edit } => {
+                let targets = edit.layer_targets();
+                match edit.into_edit(bounds) {
+                    Ok(edit) => {
+                        self.pending_edits
+                            .borrow_mut()
+                            .retain(|(pending, _)| pending != &id);
+                        events.push(SessionEvent::ApplyEdit(edit, targets));
+                    }
+                    Err(e) => events.push(SessionEvent::Undecodable(e.to_string())),
+                }
+            }
             WireMessage::Selection(nodes) => {
                 events.push(SessionEvent::PeerSelection {
                     peer: from,
@@ -758,7 +806,7 @@ mod tests {
         let events = poll_within(&guest, Duration::from_secs(2));
         assert!(matches!(
             events[0],
-            SessionEvent::ApplyEdit(Edit::Added { layer: 1, .. })
+            SessionEvent::ApplyEdit(Edit::Added { layer: 1, .. }, _)
         ));
     }
 

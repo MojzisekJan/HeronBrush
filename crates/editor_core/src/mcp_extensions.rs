@@ -120,7 +120,9 @@ pub(super) fn with_warnings(mut text: String, warnings: &[String]) -> String {
 pub(super) fn reconnect(document: &mut Document, collab: &Collab) {
     if let Some(session) = &collab.session {
         let session = Rc::clone(session);
-        document.set_on_edit(Rc::new(move |edit| session.send_edit(edit)));
+        document.set_on_edit(Rc::new(move |edit, layers| {
+            session.send_edit_in(edit, layers)
+        }));
     }
 }
 
@@ -549,7 +551,7 @@ mod tests {
         let mut document = doc();
         let events = Rc::new(std::cell::Cell::new(0));
         let shared = Rc::clone(&events);
-        document.set_on_edit(Rc::new(move |_| shared.set(shared.get() + 1)));
+        document.set_on_edit(Rc::new(move |_, _| shared.set(shared.get() + 1)));
         let redraws = Rc::new(std::cell::Cell::new(0));
         let changed = Rc::clone(&redraws);
         document.set_on_changed(Rc::new(move || changed.set(changed.get() + 1)));
