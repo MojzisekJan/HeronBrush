@@ -1,5 +1,8 @@
-//! Complementary mitre cuts for two overlapping, axis-aligned rectangular members.
+//! Complementary mitre cuts for two overlapping members whose overlap is an axis-aligned
+//! block in both. Away from the corner a member may have any convex shape, such as an
+//! end already mitred by an earlier join.
 use geometry_math::{
+    bbox::Bbox3d,
     plane::Plane3d,
     vec::{self, Vec3d},
 };
@@ -20,12 +23,16 @@ pub struct Join {
     /// left out.
     pub snapped_away: usize,
 }
-fn rectangular(brush: &Brush) -> bool {
-    brush.faces().len() == 6
-        && brush
-            .face_planes()
-            .iter()
-            .all(|p| p.normal.v.iter().filter(|v| v.abs() > EPS).count() == 1)
+/// The block where the two members' bounds overlap, when it has volume.
+fn overlap_block(aa: &Bbox3d, bb: &Bbox3d) -> Option<Bbox3d> {
+    let mut block = *aa;
+    for axis in 0..3 {
+        block.min[axis] = aa.min[axis].max(bb.min[axis]);
+        block.max[axis] = aa.max[axis].min(bb.max[axis]);
+    }
+    (0..3)
+        .all(|axis| block.max[axis] - block.min[axis] > EPS)
+        .then_some(block)
 }
 // The narrower interval occupies exactly one end of the longer interval.
 fn end(long: (f64, f64), short: (f64, f64)) -> Option<(f64, f64)> {
@@ -41,11 +48,14 @@ fn end(long: (f64, f64), short: (f64, f64)) -> Option<(f64, f64)> {
     }
 }
 pub fn preview(a: &Brush, b: &Brush) -> Result<Join, String> {
-    if !rectangular(a) || !rectangular(b) {
-        return Err("The first version requires two axis-aligned rectangular brushes.".into());
-    }
     let aa = a.bounds();
     let bb = b.bounds();
+    // The cut runs only through the block where the bounds overlap, so that block has
+    // to be solid in both members. The rest of each may be any shape.
+    let block = overlap_block(&aa, &bb);
+    if block.is_some_and(|block| !a.contains_bbox(&block) || !b.contains_bbox(&block)) {
+        return Err("The corner part of both brushes must be an axis-aligned rectangular block; rotated or slanted members where they overlap are not supported.".into());
+    }
     for u in 0..3 {
         for v in 0..3 {
             if u == v {
@@ -989,5 +999,176 @@ mod tests {
         ] {
             assert!(preview(&a, &cube(min, max, "b")).is_err());
         }
+    }
+
+    /// The gate frame from the owner's `join_corner.map`: a left post and the beam
+    /// already joined with a mitre, and a plain right post overlapping the beam's other
+    /// end.
+    const GATE: &str = r#"{
+"classname" "worldspawn"
+{
+( -128 16 128 ) ( -128 16 0 ) ( -128 32 0 ) a [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( -112 32 112 ) ( -112 32 0 ) ( -112 16 0 ) a [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( -128 16 0 ) ( -128 16 128 ) ( -112 16 112 ) a [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( -128 32 128 ) ( -128 32 0 ) ( -112 32 0 ) a [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( -112 32 0 ) ( -128 32 0 ) ( -128 16 0 ) a [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1
+( -112 32 112 ) ( -112 16 112 ) ( -128 16 128 ) a [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1
+}
+{
+( 128 32 128 ) ( 128 32 112 ) ( 128 16 112 ) b [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( -128 16 128 ) ( 128 16 128 ) ( 128 16 112 ) b [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( -128 32 128 ) ( -112 32 112 ) ( 128 32 112 ) b [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( 128 16 128 ) ( -128 16 128 ) ( -128 32 128 ) b [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1
+( -112 16 112 ) ( 128 16 112 ) ( 128 32 112 ) b [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1
+( -128 32 128 ) ( -128 16 128 ) ( -112 16 112 ) b [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1
+}
+{
+( 112 16 0 ) ( 112 17 0 ) ( 112 16 1 ) c [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( 128 16 0 ) ( 128 16 1 ) ( 128 17 0 ) c [ 0 1 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( 112 16 0 ) ( 112 16 1 ) ( 113 16 0 ) c [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( 112 32 0 ) ( 113 32 0 ) ( 112 32 1 ) c [ 1 0 0 0 ] [ 0 0 -1 0 ] 0 1 1
+( 112 16 0 ) ( 113 16 0 ) ( 112 17 0 ) c [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1
+( 112 16 128 ) ( 112 17 128 ) ( 113 16 128 ) c [ 1 0 0 0 ] [ 0 -1 0 0 ] 0 1 1
+}
+}
+"#;
+
+    fn gate() -> Vec<Brush> {
+        let map = map_model::io::map_reader::read_map(GATE, None).unwrap();
+        map.entities[0]
+            .brushes
+            .iter()
+            .map(|b| {
+                Brush::from_faces(&Bbox3d::from_scalars(-8192.0, 8192.0), b.faces.clone()).unwrap()
+            })
+            .collect()
+    }
+
+    /// The vertices of a brush, rounded and sorted, to compare shapes.
+    fn corners(brush: &Brush) -> Vec<[i64; 3]> {
+        let mut out: Vec<[i64; 3]> = brush
+            .vertex_positions()
+            .iter()
+            .map(|v| {
+                [
+                    v.x().round() as i64,
+                    v.y().round() as i64,
+                    v.z().round() as i64,
+                ]
+            })
+            .collect();
+        out.sort();
+        out
+    }
+
+    #[test]
+    fn a_member_mitred_at_its_far_end_joins_at_its_other_end() {
+        let brushes = gate();
+        // The beam has a mitre face at its left end, so it is not a box.
+        assert!(brushes[1].face_planes().iter().any(|p| p
+            .normal
+            .v
+            .iter()
+            .filter(|n| n.abs() > EPS)
+            .count()
+            > 1));
+        let join = preview(&brushes[1], &brushes[2]).unwrap();
+        assert!((join.removed_volume - 16.0 * 16.0 * 16.0).abs() < 1e-6);
+        // The right end comes out as the mirror image of the left one.
+        let mirror = |corners: Vec<[i64; 3]>| {
+            let mut out: Vec<[i64; 3]> = corners.into_iter().map(|[x, y, z]| [-x, y, z]).collect();
+            out.sort();
+            out
+        };
+        assert_eq!(corners(&join.after[1]), mirror(corners(&brushes[0])));
+        let beam = corners(&join.after[0]);
+        assert_eq!(beam, mirror(beam.clone()), "{beam:?}");
+        // Either order of selection gives the same pieces.
+        let swapped = preview(&brushes[2], &brushes[1]).unwrap();
+        assert_eq!(corners(&swapped.after[0]), corners(&join.after[1]));
+        assert_eq!(corners(&swapped.after[1]), corners(&join.after[0]));
+    }
+
+    #[test]
+    fn joining_two_boxes_gives_the_same_mitre_as_before() {
+        // The left pair of the gate before it was joined: the result is what the owner's
+        // map holds for them.
+        let post = cube(
+            Vec3d::new(-128.0, 16.0, 0.0),
+            Vec3d::new(-112.0, 32.0, 128.0),
+            "a",
+        );
+        let beam = cube(
+            Vec3d::new(-128.0, 16.0, 112.0),
+            Vec3d::new(128.0, 32.0, 128.0),
+            "b",
+        );
+        let join = preview(&post, &beam).unwrap();
+        let brushes = gate();
+        assert_eq!(corners(&join.after[0]), corners(&brushes[0]));
+        let left_end =
+            |b: &Brush| -> Vec<[i64; 3]> { corners(b).into_iter().filter(|c| c[0] < 0).collect() };
+        assert_eq!(left_end(&join.after[1]), left_end(&brushes[1]));
+    }
+
+    #[test]
+    fn slanted_faces_away_from_the_corner_are_allowed_and_inside_it_are_refused() {
+        let post = cube(
+            Vec3d::new(112.0, 16.0, 0.0),
+            Vec3d::new(128.0, 32.0, 128.0),
+            "c",
+        );
+        let beam = cube(
+            Vec3d::new(-128.0, 16.0, 112.0),
+            Vec3d::new(128.0, 32.0, 128.0),
+            "b",
+        );
+        let cut = |brush: &Brush, anchor: Vec3d, normal: Vec3d| match brush.clip(
+            &Plane3d::from_anchor_and_normal(anchor, vec::normalize(normal)),
+        ) {
+            ClipOutcome::Clipped(b) => b,
+            _ => panic!("the cut changes the brush"),
+        };
+        // The post's foot bevelled, the beam's far end cut on a slant in plan.
+        let post_bevelled = cut(
+            &post,
+            Vec3d::new(112.0, 16.0, 8.0),
+            Vec3d::new(-1.0, 0.0, -1.0),
+        );
+        let beam_slanted = cut(
+            &beam,
+            Vec3d::new(-120.0, 16.0, 112.0),
+            Vec3d::new(-1.0, -1.0, 0.0),
+        );
+        for (a, b) in [
+            (&post_bevelled, &beam),
+            (&post, &beam_slanted),
+            (&post_bevelled, &beam_slanted),
+        ] {
+            let join = preview(a, b).unwrap();
+            assert!((join.removed_volume - 16.0 * 16.0 * 16.0).abs() < 1e-6);
+            let volume = a.volume() + b.volume() - join.removed_volume;
+            assert!((join.after[0].volume() + join.after[1].volume() - volume).abs() < 1e-6);
+        }
+        // A bevel through the corner block itself leaves nothing to mitre.
+        let corner_bevelled = cut(
+            &beam,
+            Vec3d::new(124.0, 16.0, 128.0),
+            Vec3d::new(1.0, 0.0, 1.0),
+        );
+        let error = preview(&post, &corner_bevelled).err().unwrap();
+        assert!(error.contains("rectangular block"), "{error}");
+        // So does a member turned about the depth axis.
+        use geometry_math::mat_ext::{rotation_matrix_about_axis, translation_matrix};
+        let pivot = Vec3d::new(120.0, 24.0, 120.0);
+        let turn = translation_matrix(pivot)
+            * rotation_matrix_about_axis(Vec3d::new(0.0, 1.0, 0.0), 0.1)
+            * translation_matrix(-pivot);
+        let turned = beam
+            .transform(&Bbox3d::from_scalars(-8192.0, 8192.0), &turn)
+            .unwrap();
+        let error = preview(&post, &turned).err().unwrap();
+        assert!(error.contains("rectangular block"), "{error}");
+
     }
 }

@@ -378,7 +378,9 @@ pub fn menus(
             item(tr("Insert 3D text"), Action::Text)
                 .icon(icon::TEXT_T)
                 .icon_tone(menu::IconTone::Geometry),
-            item(tr("Join corner"), Action::Corner).icon(icon::ANGLE),
+            item(tr("Join corner"), Action::Corner)
+                .icon(icon::ANGLE)
+                .keys(&menu::ctrl("Shift+O")),
             item(tr("Array"), Action::Array).icon(icon::DOTS_NINE),
             Entry::sub(
                 tr("Split into columns"),

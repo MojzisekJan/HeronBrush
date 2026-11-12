@@ -67,6 +67,8 @@ pub trait Window {
     fn with_clipboard(&self, then: Box<dyn FnOnce(String)>);
     /// Opens the window that moves the selection by a typed number.
     fn go_to(&self);
+    /// Opens the Join corner window for the two selected brushes.
+    fn join_corner(&self);
     /// Saves the map, asking where when it has never been saved.
     fn save(&self);
 }
@@ -686,6 +688,9 @@ impl Commands {
                         Err(why) => crate::say!("{}", tr(why)),
                     }
                 }
+                // Join corner, Ctrl+Shift+O: the joined corner is mitred or rounded, and
+                // O is already the Fillet tool that rounds edges.
+                Key::Letter('o') if ctrl && shift && !alt => window.join_corner(),
                 // `ActionManager`'s CSG menu: Ctrl+J merge, Ctrl+K subtract,
                 // Ctrl+Shift+K hollow, Ctrl+L intersect.
                 Key::Letter('j') if ctrl && !shift => {

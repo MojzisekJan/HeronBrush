@@ -106,6 +106,41 @@ fn window_shortcuts_work_while_a_field_has_the_keyboard() {
     assert_ne!(editor.document.borrow().to_map_text(), before);
 }
 
+/// Ctrl+Shift+O opens Join corner; O and Shift+O still choose the Fillet tool.
+#[test]
+fn ctrl_shift_o_opens_join_corner() {
+    use crate::app_actions::Action;
+    let (ctx, editor) = setup();
+    let (commands, window, mut animation) = keyboard(&ctx, &editor);
+    let chord = egui::Modifiers::COMMAND | egui::Modifiers::SHIFT;
+    crate::dispatch_keys(
+        &commands,
+        &window,
+        &mut animation,
+        &editor,
+        vec![press(egui::Key::O, chord)],
+        chord,
+        None,
+        false,
+    );
+    assert_eq!(window.borrow_mut().action.take(), Some(Action::Corner));
+    for modifiers in [egui::Modifiers::NONE, egui::Modifiers::SHIFT] {
+        *editor.tool.borrow_mut() = editor_core::tool::Tool::Select;
+        crate::dispatch_keys(
+            &commands,
+            &window,
+            &mut animation,
+            &editor,
+            vec![press(egui::Key::O, modifiers)],
+            modifiers,
+            None,
+            false,
+        );
+        assert_eq!(*editor.tool.borrow(), editor_core::tool::Tool::Fillet);
+        assert!(window.borrow().action.is_none());
+    }
+}
+
 /// The face-material copy that works when the desktop takes Alt+click: Ctrl+C on the
 /// selected source face, then Ctrl+V with the target face selected.
 #[test]

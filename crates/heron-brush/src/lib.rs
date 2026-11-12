@@ -206,6 +206,9 @@ impl Window for EguiWindow {
     fn go_to(&self) {
         self.state.borrow_mut().action = Some(app_actions::Action::GoTo);
     }
+    fn join_corner(&self) {
+        self.state.borrow_mut().action = Some(app_actions::Action::Corner);
+    }
     fn save(&self) {
         self.state.borrow_mut().action = Some(app_actions::Action::Save);
     }

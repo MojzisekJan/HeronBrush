@@ -157,6 +157,7 @@ Open **Shape settings** from the toolbar to configure any drawn shape. Selecting
 ## Combining brushes
 - `Ctrl+J`: merge the selected brushes into their convex hull.
 - `Ctrl+Shift+J`: Join brushes, as few convex brushes as keep the shape.
+- `Ctrl+Shift+O`: Join corner, the window that joins the two selected brushes at a mitred or rounded corner.
 - `Ctrl+K`: subtract the selected brushes from the brushes they touch.
 - `Ctrl+Shift+K`: hollow the selection, with walls one grid step thick.
 - `Ctrl+L`: intersect the selection.

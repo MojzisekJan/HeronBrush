@@ -157,6 +157,7 @@ Nastavení všech kreslených tvarů otevřete tlačítkem **Nastavení tvaru** 
 ## Kombinace brushů
 - `Ctrl+J`: sloučit vybrané brushe do jejich konvexního obalu.
 - `Ctrl+Shift+J`: Spojit brushe, co nejméně konvexních brushů se stejným tvarem.
+- `Ctrl+Shift+O`: Spojit roh, okno, které spojí dva vybrané brushe v rohu na pokos nebo se zaoblením.
 - `Ctrl+K`: odečíst vybrané brushe od brushů, kterých se dotýkají.
 - `Ctrl+Shift+K`: vyhloubit výběr se stěnami silnými jeden krok mřížky.
 - `Ctrl+L`: průnik výběru.
