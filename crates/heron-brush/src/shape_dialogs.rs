@@ -1387,7 +1387,11 @@ mod tests {
         let plus = plus_buttons(&output)
             .into_iter()
             .filter(|point| (point.y - thickness_y).abs() < 12.0)
-            .min_by(|a, b| (a.y - thickness_y).abs().total_cmp(&(b.y - thickness_y).abs()))
+            .min_by(|a, b| {
+                (a.y - thickness_y)
+                    .abs()
+                    .total_cmp(&(b.y - thickness_y).abs())
+            })
             .expect("thickness increment in its labelled row");
         settings_click(&ctx, &mut dialogs, &editor, plus);
         assert_eq!(editor.shape_parameters.borrow().sphere_thickness, 63.0);
@@ -1930,17 +1934,15 @@ mod tests {
             d.delete_selection();
             let world = d.world_bounds();
             for max in [Vec3d::new(128.0, 16.0, 8.0), Vec3d::new(16.0, 96.0, 8.0)] {
-                d.add_brushes(vec![
-                    map_model::shapes::create_cuboid(
-                        &world,
-                        &geometry_math::bbox::Bbox3d {
-                            min: Vec3d::zero(),
-                            max,
-                        },
-                        "stone",
-                    )
-                    .unwrap(),
-                ]);
+                d.add_brushes(vec![map_model::shapes::create_cuboid(
+                    &world,
+                    &geometry_math::bbox::Bbox3d {
+                        min: Vec3d::zero(),
+                        max,
+                    },
+                    "stone",
+                )
+                .unwrap()]);
             }
             d.select_all();
         }

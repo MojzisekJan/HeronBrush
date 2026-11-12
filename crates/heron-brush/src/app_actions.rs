@@ -1,6 +1,6 @@
 //! Window actions and small dialogs shared by menu entries and keyboard shortcuts.
 use crate::{
-    App, dialog, editor::Editor, file_dialog, file_dialog::FileDialog, form, theme, widgets,
+    dialog, editor::Editor, file_dialog, file_dialog::FileDialog, form, theme, widgets, App,
 };
 
 /// File > Open's chooser.
@@ -513,7 +513,11 @@ impl App {
                 self.commands.key_pressed_canonical(
                     Key::Letter(key),
                     None,
-                    Modifiers { control: true, shift, alt },
+                    Modifiers {
+                        control: true,
+                        shift,
+                        alt,
+                    },
                 );
             }
             Action::Undo

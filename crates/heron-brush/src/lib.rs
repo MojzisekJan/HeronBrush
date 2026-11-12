@@ -38,12 +38,16 @@ mod welcome_banner;
 mod welcome_page;
 // The web build has one page per tab and no command line to hand over.
 mod colour_picker;
+#[cfg(feature = "wgpu")]
+mod dynamic_resolution;
+mod environment_controls;
 mod face_tools;
 mod file_dialog;
 mod form;
 mod geometry_pages;
 mod gl_glue;
 mod idle;
+mod imaging_controls;
 mod inspector;
 mod layout;
 mod map_page;
@@ -52,13 +56,9 @@ mod paint_gizmo;
 #[cfg(test)]
 mod perf_tests;
 mod pool;
+mod probe_controls;
 mod profile;
 mod render_page;
-mod environment_controls;
-mod probe_controls;
-mod imaging_controls;
-#[cfg(feature="wgpu")]
-mod dynamic_resolution;
 mod script;
 mod session_page;
 #[cfg(test)]
@@ -413,7 +413,11 @@ pub(crate) fn dispatch_keys(
                     let explicit_paste = state.middle_paste_pending && (held.command || held.ctrl);
                     state.middle_paste_pending = false;
                     let waiting = state.waiting.take();
-                    if explicit_paste { None } else { waiting }
+                    if explicit_paste {
+                        None
+                    } else {
+                        waiting
+                    }
                 };
                 match waiting {
                     Some(then) => then(text),
@@ -1761,7 +1765,7 @@ impl App {
 /// device would then not open at all.
 #[cfg(feature = "wgpu")]
 fn request_device(options: &mut eframe::egui_wgpu::WgpuConfiguration) {
-    use eframe::egui_wgpu::{WgpuSetup, wgpu};
+    use eframe::egui_wgpu::{wgpu, WgpuSetup};
     if let WgpuSetup::CreateNew(setup) = &mut options.wgpu_setup {
         let base = std::sync::Arc::clone(&setup.device_descriptor);
         setup.device_descriptor = std::sync::Arc::new(move |adapter: &wgpu::Adapter| {
