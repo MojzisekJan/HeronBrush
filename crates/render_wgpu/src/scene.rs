@@ -1071,6 +1071,18 @@ fn upload(
     data.len()
 }
 
+/// Drops the leading levels of a mip chain that are larger than the adapter takes, so
+/// an oversized image is drawn from its largest level that fits rather than failing
+/// texture validation. The last level is kept whatever its size.
+fn fitting_mips(mut mips: Vec<(u32, u32, Vec<u8>)>, limit: u32) -> Vec<(u32, u32, Vec<u8>)> {
+    let fits = mips
+        .iter()
+        .position(|(w, h, _)| *w <= limit && *h <= limit)
+        .unwrap_or(mips.len().saturating_sub(1));
+    mips.drain(..fits);
+    mips
+}
+
 fn upload_mips(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -1078,6 +1090,7 @@ fn upload_mips(
     mips: Vec<(u32, u32, Vec<u8>)>,
     label: &str,
 ) -> wgpu::Texture {
+    let mips = fitting_mips(mips, device.limits().max_texture_dimension_2d);
     let (width, height) = (mips[0].0, mips[0].1);
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some(label),
@@ -1745,6 +1758,18 @@ impl RenderScene {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn an_image_wider_than_the_gpu_limit_is_handled_without_validation_failure() {
+        let mips = crate::textures::mip_chain(8193, 1, &vec![255; 8193 * 4], true);
+        let fitted = fitting_mips(mips.clone(), 8192);
+        assert_eq!((fitted[0].0, fitted[0].1), (4096, 1));
+        assert_eq!(fitted.len(), mips.len() - 1);
+        assert!(fitted.iter().all(|(w, h, _)| *w <= 8192 && *h <= 8192));
+        // An image within the limit keeps every level.
+        let small = crate::textures::mip_chain(64, 1, &[255; 64 * 4], true);
+        assert_eq!(fitting_mips(small.clone(), 8192).len(), small.len());
+    }
+
     use super::*;
 
     #[test]
