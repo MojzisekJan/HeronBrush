@@ -464,7 +464,7 @@ Exportujte do složky Content projektu a klikněte na **Nainstalovat doplněk pr
 Spolupráce → Živá relace otevře okno pro hostování relace nebo připojení k jinému uživateli Heron Brush. Takto lidé sdílejí úpravy mapy; je to něco jiného než živé propojení s enginem.
 
 ## Hostování a připojení
-Vyplňte **Vaše jméno**. Chcete-li hostovat, zvolte **Hostovat relaci**, klikněte na **Spustit relaci** a údaje z **Kopírovat údaje pro připojení** pošlete hostům. Chcete-li se připojit, zvolte **Připojit se k relaci**, vložte údaje a klikněte na **Připojit se**. Připojení nahradí otevřenou mapu mapou hostitele, proto nejprve uložte svou práci.
+Vyplňte **Vaše jméno**. Chcete-li hostovat, zvolte **Hostovat relaci**, klikněte na **Spustit relaci** a údaje z **Kopírovat údaje pro připojení** pošlete hostům. Chcete-li se připojit, zvolte **Připojit se k relaci**, vložte údaje a klikněte na **Připojit se**. Připojení nahradí otevřenou mapu mapou hostitele, proto nejprve uložte svou práci. Kamera každého účastníka ve 3D pohledu a jeho výběr se kreslí jeho barvou a okno živé relace ukazuje připojené účastníky s tečkou v této barvě. Svou barvu zvolíte v Nastavení → Hry vedle jména pro spolupráci; bez volby dostanete barvu podle svého pořadí v relaci. Změna se ostatním projeví hned. Dva účastníky se stejnou barvou rozliší jméno u jejich kamery.
 
 Standardní sestavení funguje v místní síti a **Port místní sítě** nastavuje port. Relace přes internet (**Připojit přes internet**) vyžadují sestavení s volitelnou síťovou funkcí. Účastníci ve 3D pohledu vidí značky kamer a jména ostatních.
 

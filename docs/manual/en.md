@@ -482,7 +482,7 @@ Export into the project's Content folder and click **Install Flax addon**. Let F
 Collaboration → Live session opens a window for hosting or joining another Heron Brush user. This shares map editing between people; it is separate from an engine live link.
 
 ## Host and join
-Enter **Your name**. To host, choose **Host a session**, click **Start session** and send the details from **Copy connection details** to your guests. To join, choose **Join a session**, paste the details and click **Join**. Joining replaces the open map with the host's map, so save your work first.
+Enter **Your name**. To host, choose **Host a session**, click **Start session** and send the details from **Copy connection details** to your guests. To join, choose **Join a session**, paste the details and click **Join**. Joining replaces the open map with the host's map, so save your work first. Each participant's camera in the 3D view and their selection are drawn in their colour, and the Live session window lists who is connected with a dot in that colour. Choose your own colour in Preferences → Games next to the collaboration name; with none chosen you get the colour of your place in the session. A change reaches the others at once. Two people with the same colour are told apart by the name shown at their camera.
 
 The standard build works on the local network, and **Local network port** sets the port. Sessions over the internet (**Connect over the internet**) need a build with the optional networking feature. Participants see each other's camera markers and names in the 3D view.
 

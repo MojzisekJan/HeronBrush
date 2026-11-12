@@ -31,6 +31,7 @@ const PAGES: [(&str, &[Section]); 7] = [
                 ("game_path", translation_key("Where it is")),
                 ("game_mods", translation_key("Mods")),
                 ("collab_nickname", translation_key("Collaboration name")),
+                ("collab_color", translation_key("Colour")),
             ],
         )],
     ),
@@ -522,6 +523,7 @@ fn field(settings: &mut Preferences, name: &str, action: Action) -> bool {
         entity_browser_height,
         asset_library,
         collab_nickname,
+        collab_color,
         show_axes,
         background_color,
         x_axis_color,
@@ -1378,6 +1380,26 @@ impl Control for String {
                 {
                     *self = text;
                 }
+            }
+            // The colour others see this user in; unset, the colour of their place in
+            // the session, which the picker starts from. Reset goes back to that.
+            "collab_color" => {
+                let mut rgb = editor_core::collab::parse_color(self)
+                    .unwrap_or_else(|| editor_core::collab::palette_color(0));
+                if colour_picker::button(ui, ui.scope_id().with("colour"), &mut rgb, None).changed()
+                {
+                    *self = colour_picker::hex(rgb, None);
+                }
+                let shown = if self.is_empty() {
+                    "—".to_string()
+                } else {
+                    self.clone()
+                };
+                ui.label(
+                    egui::RichText::new(shown)
+                        .font(egui::FontId::monospace(theme::text_size() * 0.92))
+                        .color(theme::dim()),
+                );
             }
             "collab_nickname" => {
                 let hint = editor_core::collab::default_nickname();

@@ -315,6 +315,10 @@ pub enum WireMessage {
     /// The name the other person should show for the sender. Sent once on connect and
     /// again whenever it changes.
     Hello(String),
+    /// The colour the sender chose to be drawn in, or `None` for the colour of their
+    /// place. Sent after `Hello` and whenever it changes. An older build cannot read it
+    /// and logs it as undecodable; it then draws the sender in the palette colour.
+    Colour(Option<[u8; 3]>),
     /// Where the sender's 3D camera stands and looks, so the other editor can draw
     /// their cursor in space. Sent whenever it has moved enough to notice.
     Camera {

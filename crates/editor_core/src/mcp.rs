@@ -60,6 +60,9 @@ pub struct Collab {
     outage_active: bool,
     /// The other participants' names, as they say them.
     peer_names: std::collections::HashMap<u32, String>,
+    /// The colour last sent for this editor's user, so a change in the preferences
+    /// during a session is sent once.
+    sent_colour: Option<Option<[u8; 3]>>,
 }
 
 impl Collab {
@@ -67,6 +70,26 @@ impl Collab {
     pub fn poll_frontend(&mut self, document: &mut Document) {
         self.check_pending_host(document);
         self.absorb(document);
+        // A colour chosen while the session runs reaches the others without a reconnect.
+        if let Some(session) = &self.session {
+            let wanted = crate::collab::own_color();
+            if self.sent_colour != Some(wanted) {
+                session.send_colour(wanted);
+                self.sent_colour = Some(wanted);
+            }
+        }
+    }
+
+    /// The other participants this editor has heard from, by id, with their names, in
+    /// the order they joined; each is drawn in [`crate::collab::peer_color_bytes`].
+    pub fn people(&self) -> Vec<(u32, String)> {
+        let mut people: Vec<(u32, String)> = self
+            .peer_names
+            .iter()
+            .map(|(peer, name)| (*peer, name.clone()))
+            .collect();
+        people.sort();
+        people
     }
     pub fn frontend_status(&self) -> String {
         session_status(self)
@@ -125,6 +148,8 @@ impl Collab {
         self.outage_edits.borrow_mut().clear();
         self.peer_names.clear();
         self.peer_selection.clear();
+        self.sent_colour = None;
+        crate::collab::clear_peer_colors();
         document.clear_on_edit();
         document.clear_peers();
     }
@@ -145,6 +170,9 @@ impl Collab {
         if !self.my_name.is_empty() {
             session.send_name(&self.my_name);
         }
+        let colour = crate::collab::own_color();
+        session.send_colour(colour);
+        self.sent_colour = Some(colour);
         document.set_on_edit(Rc::new({
             let session = Rc::clone(&session);
             move |edit: &Edit, layers: &[Option<String>]| session.send_edit_in(edit, layers)
@@ -184,6 +212,11 @@ impl Collab {
                     document.set_peer_name(peer, name.clone());
                     self.peer_names.insert(peer, name);
                 }
+                SessionEvent::PeerColour { peer, colour } => {
+                    crate::collab::set_peer_color(peer, colour);
+                    // The views draw from the colour table; tell them to draw again.
+                    document.mark_changed_presence();
+                }
                 // An agent has no viewport to draw the others' cameras in; noted in the
                 // document all the same so nothing else has to care who reads it.
                 SessionEvent::PeerCamera {
@@ -195,6 +228,7 @@ impl Collab {
                     eprintln!("collab: could not read a message: {line}");
                 }
                 SessionEvent::PeerLeft { peer, name } => {
+                    crate::collab::set_peer_color(peer, None);
                     self.peer_names.remove(&peer);
                     self.peer_selection.remove(&peer);
                     document.remove_peer(peer);
@@ -250,6 +284,7 @@ impl Collab {
                     let id = active.add_peer(session);
                     active.send_world_to(id, document.tree_world());
                     active.send_name(&self.my_name);
+                    active.send_colour(crate::collab::own_color());
                 } else {
                     session.send_world(document.tree_world());
                     self.adopt(document, session);

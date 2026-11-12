@@ -575,6 +575,9 @@ preferences! {
     ///
     /// Live collaboration settings. See [`crate::collab`].
     collab_nickname: String = String::new(), "ui/Collaboration nickname";
+    /// The colour others see this user in during a live session, `#RRGGBB`; empty for
+    /// the colour of their place in the session, as before there was a choice.
+    collab_color: String = String::new(), "ui/Collaboration colour";
     /// Whether the 3D view draws the world axes through the origin.
     show_axes: bool = true, "render/Show axes";
     /// What a map view clears to.
@@ -1169,6 +1172,22 @@ mod tests {
         let path = std::env::temp_dir().join("heron-preferences-missing");
         let _ = std::fs::remove_file(&path);
         assert_eq!(Preferences::load(&path), Preferences::default());
+    }
+
+    #[test]
+    fn the_collaboration_colour_is_saved_and_read_back() {
+        let mut settings = Preferences::default();
+        assert!(
+            settings.collab_color.is_empty(),
+            "no colour until one is chosen"
+        );
+        settings.collab_color = "#0AC81E".into();
+        let store =
+            std::env::temp_dir().join(format!("heron-collab-colour-{}", std::process::id()));
+        settings.save(&store).unwrap();
+        let back = Preferences::load(&store);
+        let _ = std::fs::remove_file(&store);
+        assert_eq!(back.collab_color, "#0AC81E");
     }
 
     #[test]

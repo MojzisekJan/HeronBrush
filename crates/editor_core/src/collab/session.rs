@@ -60,6 +60,13 @@ pub enum SessionEvent {
         /// What to call them.
         name: String,
     },
+    /// A participant chose a colour to be drawn in, or went back to none.
+    PeerColour {
+        /// Who.
+        peer: u32,
+        /// The colour, `None` for the colour of their place.
+        colour: Option<[u8; 3]>,
+    },
     /// Where a participant's 3D camera stands and looks; draw their cursor there.
     PeerCamera {
         /// Who.
@@ -170,6 +177,8 @@ pub struct Session {
     next_peer: Cell<u32>,
     /// What each participant asked to be called.
     names: RefCell<HashMap<u32, String>>,
+    /// The colours participants chose, for newcomers, as `names` is.
+    colours: RefCell<HashMap<u32, Option<[u8; 3]>>>,
     /// Set once `ConnectionLost` has been reported, so it is reported only once.
     lost: Cell<bool>,
     cameras: RefCell<HashMap<u32, WireMessage>>,
@@ -348,6 +357,7 @@ impl Session {
             links: RefCell::new(vec![PeerLink { id: 1, link }]),
             next_peer: Cell::new(2),
             names: RefCell::new(HashMap::new()),
+            colours: RefCell::new(HashMap::new()),
             lost: Cell::new(false),
             cameras: RefCell::new(HashMap::new()),
             pending_edits: RefCell::new(Vec::new()),
@@ -368,6 +378,15 @@ impl Session {
                 &WireMessage::Relayed {
                     from: *peer,
                     message: Box::new(WireMessage::Hello(name.clone())),
+                }
+                .to_json(),
+            );
+        }
+        for (peer, colour) in self.colours.borrow().iter() {
+            link.send(
+                &WireMessage::Relayed {
+                    from: *peer,
+                    message: Box::new(WireMessage::Colour(*colour)),
                 }
                 .to_json(),
             );
@@ -401,6 +420,15 @@ impl Session {
     /// Tells the others the name to show for this editor.
     pub fn send_name(&self, name: &str) {
         self.broadcast(&WireMessage::Hello(name.to_string()).to_json());
+    }
+
+    /// Tells the others the colour to draw this editor's user in. The host keeps its
+    /// own for newcomers, as it keeps the guests'.
+    pub fn send_colour(&self, colour: Option<[u8; 3]>) {
+        if self.is_host() {
+            self.colours.borrow_mut().insert(HOST_PEER, colour);
+        }
+        self.broadcast(&WireMessage::Colour(colour).to_json());
     }
 
     /// What a participant asked to be called, if they ever said.
@@ -529,6 +557,7 @@ impl Session {
                                         edit.clone().into_edit(bounds).is_ok()
                                     }
                                     WireMessage::Hello(_)
+                                    | WireMessage::Colour(_)
                                     | WireMessage::Selection(_)
                                     | WireMessage::Camera { .. } => true,
                                     _ => false,
@@ -593,6 +622,7 @@ impl Session {
                         other.link.send(&notice);
                     }
                     self.cameras.borrow_mut().remove(&peer);
+                    self.colours.borrow_mut().remove(&peer);
                     let name = self.names.borrow_mut().remove(&peer);
                     events.push(SessionEvent::PeerLeft { peer, name });
                 } else if !self.lost.replace(true) {
@@ -646,6 +676,10 @@ impl Session {
                 self.names.borrow_mut().insert(from, name.clone());
                 events.push(SessionEvent::PeerName { peer: from, name });
             }
+            WireMessage::Colour(colour) => {
+                self.colours.borrow_mut().insert(from, colour);
+                events.push(SessionEvent::PeerColour { peer: from, colour });
+            }
             WireMessage::Camera {
                 position,
                 direction,
@@ -684,6 +718,7 @@ impl Session {
                 self.absorb(origin, *message, bounds, events);
             }
             WireMessage::Left { peer } => {
+                self.colours.borrow_mut().remove(&peer);
                 let name = self.names.borrow_mut().remove(&peer);
                 events.push(SessionEvent::PeerLeft { peer, name });
             }
@@ -812,6 +847,63 @@ mod tests {
 
     fn flatten_map(world: &World) -> String {
         map_model::io::map_writer::write_map(&flatten_tree(world, MapFormat::Standard, None))
+    }
+
+    #[test]
+    fn a_chosen_colour_reaches_the_others_and_late_joiners_and_can_change() {
+        let port = free_port();
+        let host_thread = std::thread::spawn(move || Session::host(port).unwrap());
+        std::thread::sleep(Duration::from_millis(50));
+        let first = Session::join(&format!("127.0.0.1:{port}")).unwrap();
+        let host = host_thread.join().unwrap();
+        let colour = |events: &[SessionEvent]| {
+            events.iter().find_map(|e| match e {
+                SessionEvent::PeerColour { peer: 1, colour } => Some(*colour),
+                _ => None,
+            })
+        };
+        first.send_colour(Some([10, 200, 30]));
+        let events = poll_within(&host, Duration::from_secs(2));
+        assert_eq!(colour(&events), Some(Some([10, 200, 30])));
+        // A change during the session.
+        first.send_colour(Some([200, 10, 30]));
+        let events = poll_within(&host, Duration::from_secs(2));
+        assert_eq!(colour(&events), Some(Some([200, 10, 30])));
+        // A guest that joins later hears it from the host.
+        let listener = std::thread::spawn(move || Session::host(port).unwrap());
+        std::thread::sleep(Duration::from_millis(50));
+        let second = Session::join(&format!("127.0.0.1:{port}")).unwrap();
+        host.add_peer(listener.join().unwrap());
+        let events = poll_within(&second, Duration::from_secs(2));
+        assert_eq!(colour(&events), Some(Some([200, 10, 30])));
+    }
+
+    #[test]
+    fn a_participant_without_a_chosen_colour_keeps_the_colour_of_their_place() {
+        crate::collab::clear_peer_colors();
+        assert_eq!(
+            crate::collab::peer_color_bytes(2),
+            crate::collab::palette_color(2)
+        );
+        crate::collab::set_peer_color(2, Some([1, 2, 3]));
+        assert_eq!(crate::collab::peer_color_bytes(2), [1, 2, 3]);
+        crate::collab::set_peer_color(2, None);
+        assert_eq!(
+            crate::collab::peer_color_bytes(2),
+            crate::collab::palette_color(2)
+        );
+        // What an older build sends, a name and no colour, still reads.
+        assert!(matches!(
+            WireMessage::from_json(r#"{"Hello":"Ada"}"#),
+            Ok(WireMessage::Hello(_))
+        ));
+        assert!(matches!(
+            WireMessage::from_json(r#"{"Colour":[1,2,3]}"#),
+            Ok(WireMessage::Colour(Some([1, 2, 3])))
+        ));
+        assert_eq!(crate::collab::parse_color("#0aC81E"), Some([10, 200, 30]));
+        assert_eq!(crate::collab::parse_color(""), None);
+        assert_eq!(crate::collab::parse_color("#12345"), None);
     }
 
     #[test]

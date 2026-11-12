@@ -2448,6 +2448,14 @@ impl Document {
         &self.peer_cameras
     }
 
+    /// Asks the views to draw again because how another participant is shown changed,
+    /// such as the colour they chose, without touching the map or its revision.
+    pub fn mark_changed_presence(&self) {
+        if let Some(on_changed) = &self.on_changed {
+            on_changed();
+        }
+    }
+
     /// Updates the name shown beside a participant's camera.
     pub fn set_peer_name(&mut self, peer: u32, name: String) {
         self.peer_names.insert(peer, name);

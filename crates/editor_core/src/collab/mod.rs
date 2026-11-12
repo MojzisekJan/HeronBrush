@@ -26,7 +26,59 @@ pub use session::{Origin, Session, SessionEvent, HOST_PEER};
 /// same on every screen, because a participant's id is the same everywhere: the host is
 /// 0 and guests are numbered as they join. Amber first, as the two-person sessions
 /// always were, then round a small palette.
+/// A participant who chose a colour (the `collab_color` preference) is drawn in that
+/// instead, as their editor said in the session; see [`set_peer_color`].
 pub fn peer_color_bytes(peer: u32) -> [u8; 3] {
+    if let Some(chosen) = CHOSEN.with(|chosen| chosen.borrow().get(&peer).copied()) {
+        return chosen;
+    }
+    palette_color(peer)
+}
+
+thread_local! {
+    /// The colours participants chose, by participant id, as their editors announced.
+    static CHOSEN: std::cell::RefCell<std::collections::HashMap<u32, [u8; 3]>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// Records the colour a participant chose, or, with `None`, that they chose none and
+/// are drawn in [`palette_color`] again.
+pub fn set_peer_color(peer: u32, colour: Option<[u8; 3]>) {
+    CHOSEN.with(|chosen| match colour {
+        Some(colour) => {
+            chosen.borrow_mut().insert(peer, colour);
+        }
+        None => {
+            chosen.borrow_mut().remove(&peer);
+        }
+    });
+}
+
+/// Forgets every chosen colour, as a session ends.
+pub fn clear_peer_colors() {
+    CHOSEN.with(|chosen| chosen.borrow_mut().clear());
+}
+
+/// The colour this editor's user chose for themselves, from the `collab_color`
+/// preference (`#RRGGBB`), or `None` to be drawn in the palette colour of their place.
+pub fn own_color() -> Option<[u8; 3]> {
+    parse_color(&crate::preferences::pref(|p| p.collab_color.clone()))
+}
+
+/// `#RRGGBB` as bytes.
+pub fn parse_color(text: &str) -> Option<[u8; 3]> {
+    let hex = text.trim().strip_prefix('#')?;
+    if hex.len() != 6 {
+        return None;
+    }
+    let byte = |at: usize| u8::from_str_radix(hex.get(at..at + 2)?, 16).ok();
+    Some([byte(0)?, byte(2)?, byte(4)?])
+}
+
+/// The colour a participant is drawn in by their place in the session: the host is 0,
+/// guests are numbered as they join. Amber first, as the two-person sessions always
+/// were, then round a small palette.
+pub fn palette_color(peer: u32) -> [u8; 3] {
     const PALETTE: [[u8; 3]; 6] = [
         [0xF5, 0xA6, 0x23], // amber
         [0x2E, 0xB8, 0xD5], // azure

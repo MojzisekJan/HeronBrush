@@ -16,7 +16,8 @@ const REDIAL_ATTEMPTS: u32 = 30;
 
 enum Connected {
     Host(String, SessionInbox),
-    Guest(Session),
+    // Boxed: a session is much larger than the host's token and inbox.
+    Guest(Box<Session>),
 }
 
 /// What a connecting thread is doing.
@@ -158,7 +159,7 @@ impl SessionPage {
                         Err(tr("Cancelled").to_owned())
                     } else {
                         let peer = session.peer().to_string();
-                        state.join_frontend(&mut editor.document.borrow_mut(), self.name.trim().to_string(), session).map(|()| {
+                        state.join_frontend(&mut editor.document.borrow_mut(), self.name.trim().to_string(), *session).map(|()| {
                             editor_core::say!("{}", fill("Joined the live session at {}", &[&peer]));
                         })
                     }
@@ -196,7 +197,7 @@ impl SessionPage {
                             std::thread::sleep(web_time::Duration::from_secs(2));
                         }
                         match connect(&target) {
-                            Ok(session) => return Ok(Connected::Guest(session)),
+                            Ok(session) => return Ok(Connected::Guest(Box::new(session))),
                             Err(error) => last = error,
                         }
                     }
@@ -244,6 +245,7 @@ impl SessionPage {
         let busy = self.busy();
         let joining = self.mode == 1;
         let labels = buttons(joining, busy);
+        let people = state.people();
         let mut close = false;
         let mut start = false;
         let mut stop = false;
@@ -260,7 +262,7 @@ impl SessionPage {
                     stop = dialog::button(ui, tr(labels.stop), labels.stop_enabled).clicked();
                     return;
                 }
-                self.body(ui, busy);
+                self.body(ui, busy, &people);
             },
         ) && !close;
         if start {
@@ -279,7 +281,7 @@ impl SessionPage {
         }
     }
 
-    fn body(&mut self, ui: &mut egui::Ui, busy: bool) {
+    fn body(&mut self, ui: &mut egui::Ui, busy: bool, people: &[(u32, String)]) {
         let joining = self.mode == 1;
         egui::ScrollArea::vertical().id_salt("session").auto_shrink([false, false]).max_height(ui.available_height() - 52.0).show(ui, |ui| {
             ui.set_max_width(ui.available_width() - 10.0);
@@ -334,6 +336,11 @@ impl SessionPage {
                 .map(|(line, _)| line)
                 .unwrap_or_else(|| if self.message.is_empty() { tr("Session not running").to_string() } else { self.message.clone() });
             ui.label(egui::RichText::new(status).font(theme::body_bold()).color(theme::fg()));
+            // Who is here, each with a dot in the colour their camera and selection are
+            // drawn in.
+            for (peer, name) in people {
+                person_row(ui, *peer, name);
+            }
             ui.add_space(6.0);
             let editable = joining && !busy;
             egui::Frame::new()
@@ -391,7 +398,7 @@ impl SessionPage {
         self.join_revision = Some(editor.document.borrow().revision());
         self.joined = Some(target.clone());
         self.connecting = Some(Connecting::Join);
-        self.start(move || connect(&target).map(Connected::Guest));
+        self.start(move || connect(&target).map(|session| Connected::Guest(Box::new(session))));
     }
 
     /// The name goes in the preferences once a session starts with it.
@@ -415,6 +422,22 @@ impl SessionPage {
 }
 
 /// Joins at `target`: `host:port` over the local network, anything else over iroh.
+/// One participant: a dot in their colour, outlined so a pale or dark choice still shows
+/// on the panel, and their name, which tells two of a colour apart.
+fn person_row(ui: &mut egui::Ui, peer: u32, name: &str) -> egui::Rect {
+    let [r, g, b] = editor_core::collab::peer_color_bytes(peer);
+    ui.horizontal(|ui| {
+        let (dot, _) = ui.allocate_exact_size(egui::vec2(14.0, 14.0), egui::Sense::hover());
+        ui.painter()
+            .circle_filled(dot.center(), 5.0, egui::Color32::from_rgb(r, g, b));
+        ui.painter()
+            .circle_stroke(dot.center(), 5.5, egui::Stroke::new(1.0, theme::fg()));
+        ui.label(egui::RichText::new(name).color(theme::fg()));
+        dot
+    })
+    .inner
+}
+
 fn connect(target: &str) -> Result<Session, String> {
     let address = target
         .rsplit_once(':')
@@ -500,5 +523,35 @@ mod tests {
         assert!(!page.busy());
         assert_eq!(page.indicator(), None);
         assert_eq!(page.internet, cfg!(feature = "iroh"));
+    }
+
+    #[test]
+    fn each_person_gets_a_dot_in_their_colour() {
+        editor_core::collab::set_peer_color(5, Some([10, 200, 30]));
+        let ctx = egui::Context::default();
+        crate::theme::install(&ctx);
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            person_row(ui, 5, "Ada");
+            person_row(ui, 6, "Bo");
+        });
+        output.textures_delta.clear();
+        editor_core::collab::set_peer_color(5, None);
+        let fills: Vec<egui::Color32> = output
+            .shapes
+            .iter()
+            .filter_map(|clipped| match &clipped.shape {
+                egui::Shape::Circle(circle) if circle.fill.a() > 0 => Some(circle.fill),
+                _ => None,
+            })
+            .collect();
+        let [r, g, b] = editor_core::collab::palette_color(6);
+        assert!(
+            fills.contains(&egui::Color32::from_rgb(10, 200, 30)),
+            "{fills:?}"
+        );
+        assert!(
+            fills.contains(&egui::Color32::from_rgb(r, g, b)),
+            "{fills:?}"
+        );
     }
 }
