@@ -22,6 +22,187 @@ pub struct Join {
     /// How many added brushes snapping to the corner grid left without volume, and so
     /// left out.
     pub snapped_away: usize,
+    /// What kind of meeting this is.
+    pub kind: Junction,
+    /// For a crossing, which of the two `added` is cut from: its pieces go beside it.
+    pub split: Option<usize>,
+    /// A choice the join made that the user should hear about.
+    pub note: Option<&'static str>,
+}
+/// How two members meet.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Junction {
+    /// Ends overlapping: an L, mitred.
+    Corner,
+    /// One member ends inside the other's side: it is cut flush with that side.
+    Tee,
+    /// The members pass through each other: one stays whole and the other is cut in
+    /// two, each piece flush with a side of the whole one.
+    Crossing,
+}
+
+/// How much two convex brushes share: one cut by every face plane of the other.
+pub(crate) fn shared_volume(a: &Brush, b: &Brush) -> f64 {
+    let mut inside = a.clone();
+    for plane in b.face_planes() {
+        match inside.clip(&plane) {
+            ClipOutcome::Clipped(rest) => inside = rest,
+            ClipOutcome::Unchanged => {}
+            ClipOutcome::Empty => return 0.0,
+        }
+    }
+    inside.volume()
+}
+
+/// `brush` with what lies behind `plane` cut away: the part in front of it.
+fn in_front_of(brush: &Brush, plane: &Plane3d) -> Option<Brush> {
+    match brush.clip(&Plane3d::from_anchor_and_normal(
+        plane.anchor(),
+        -plane.normal,
+    )) {
+        ClipOutcome::Clipped(piece) => Some(piece),
+        _ => None,
+    }
+}
+
+/// A T or a crossing, for two members that do not meet as an L. A T is a member (the
+/// stem) that loses exactly the shared volume when cut flush with one face of the
+/// other (the bar); a crossing is a member that loses it when cut flush with two
+/// opposite faces of the other, which leaves two pieces. Volumes are compared with the
+/// same tolerance as the L check, so grid noise does not decide.
+fn tee_or_crossing(a: &Brush, b: &Brush) -> Option<Join> {
+    let shared = shared_volume(a, b);
+    if shared <= EPS {
+        return None;
+    }
+    let close = |x: f64, y: f64| (x - y).abs() <= y.abs().max(1.0) * 1e-7;
+    let axes = view_axes(&[a.clone(), b.clone()]);
+    let make = |after: [Brush; 2], added: Vec<Brush>, kind, split, note, plane| Join {
+        before: [a.clone(), b.clone()],
+        after,
+        added,
+        axes,
+        plane,
+        removed_volume: shared,
+        snapped_away: 0,
+        kind,
+        split,
+        note,
+    };
+    // A T: the stem ends inside the bar.
+    let mut tees = Vec::new();
+    for (stem, bar) in [(1, 0), (0, 1)] {
+        let (stem_brush, bar_brush) = if stem == 0 { (a, b) } else { (b, a) };
+        let wanted = stem_brush.volume() - shared;
+        for plane in bar_brush.face_planes() {
+            if let Some(piece) = in_front_of(stem_brush, &plane) {
+                if close(piece.volume(), wanted) {
+                    tees.push((stem, bar, piece, plane));
+                    break;
+                }
+            }
+        }
+    }
+    if let Some((stem, _bar, piece, plane)) = tees.first().cloned() {
+        let mut after = [a.clone(), b.clone()];
+        after[stem] = piece;
+        let note = (tees.len() > 1)
+            .then_some("Either brush could be the stem of this T; the second one was cut.");
+        return Some(make(after, Vec::new(), Junction::Tee, None, note, plane));
+    }
+    // A crossing: one member passes through the other.
+    let mut crossings = Vec::new();
+    for (cut, whole) in [(1, 0), (0, 1)] {
+        let (cut_brush, whole_brush) = if cut == 0 { (a, b) } else { (b, a) };
+        let wanted = cut_brush.volume() - shared;
+        let planes = whole_brush.face_planes();
+        'faces: for (i, first) in planes.iter().enumerate() {
+            for second in &planes[i + 1..] {
+                if vec::dot(first.normal, second.normal) > -1.0 + 1e-9 {
+                    continue;
+                }
+                if let (Some(one), Some(two)) = (
+                    in_front_of(cut_brush, first),
+                    in_front_of(cut_brush, second),
+                ) {
+                    if close(one.volume() + two.volume(), wanted) {
+                        crossings.push((cut, whole, one, two, *first));
+                        break 'faces;
+                    }
+                }
+            }
+        }
+    }
+    // Either member could be cut through: the longer one stays whole, as a through wall
+    // does; with two of a length the first selected does.
+    let pick = match crossings.len() {
+        0 => return None,
+        1 => 0,
+        _ => {
+            let whole = |c: &(usize, usize, Brush, Brush, Plane3d)| {
+                let size = [a, b][c.1].bounds().size();
+                size.x().max(size.y()).max(size.z())
+            };
+            if whole(&crossings[1]) > whole(&crossings[0]) + EPS {
+                1
+            } else {
+                0
+            }
+        }
+    };
+    let note = (crossings.len() > 1).then_some(
+        "Either brush could be cut through at this crossing; the longer one stays whole.",
+    );
+    let (cut, _whole, one, two, plane) = crossings.swap_remove(pick);
+    let mut after = [a.clone(), b.clone()];
+    after[cut] = one;
+    Some(make(
+        after,
+        vec![two],
+        Junction::Crossing,
+        Some(cut),
+        note,
+        plane,
+    ))
+}
+
+/// The two axes to look at a set of members along: the depth axis left out is the one
+/// they all share, bottom and top, as an L's members do; failing that, the one they
+/// span least.
+pub fn view_axes(brushes: &[Brush]) -> [usize; 2] {
+    let Some(first) = brushes.first().map(Brush::bounds) else {
+        return [0, 1];
+    };
+    let union = brushes
+        .iter()
+        .skip(1)
+        .fold(first, |all, b| all.merged(&b.bounds()));
+    let extent = |axis: usize| union.max[axis] - union.min[axis];
+    let shared = |axis: usize| {
+        brushes.iter().all(|b| {
+            (b.bounds().min[axis] - first.min[axis]).abs() < EPS
+                && (b.bounds().max[axis] - first.max[axis]).abs() < EPS
+        })
+    };
+    let depth = (0..3)
+        .filter(|axis| shared(*axis))
+        .min_by(|a, b| extent(*a).total_cmp(&extent(*b)))
+        .unwrap_or_else(|| {
+            (0..3)
+                .min_by(|a, b| extent(*a).total_cmp(&extent(*b)))
+                .expect("three axes")
+        });
+    let mut axes = [0, 1, 2].into_iter().filter(|axis| *axis != depth);
+    [axes.next().expect("two"), axes.next().expect("two")]
+}
+
+/// The members joined however they meet: an L is mitred, a T and a crossing are cut
+/// flush. See [`preview`] and [`Junction`].
+pub fn preview_junction(a: &Brush, b: &Brush) -> Result<Join, String> {
+    match preview(a, b) {
+        Ok(join) => Ok(join),
+        Err(why) => tee_or_crossing(a, b).ok_or(why),
+    }
 }
 /// The block where the two members' bounds overlap, when it has volume.
 fn overlap_block(aa: &Bbox3d, bb: &Bbox3d) -> Option<Bbox3d> {
@@ -108,10 +289,13 @@ pub fn preview(a: &Brush, b: &Brush) -> Result<Join, String> {
                 plane,
                 removed_volume: overlap,
                 snapped_away: 0,
+                kind: Junction::Corner,
+                split: None,
+                note: None,
             });
         }
     }
-    Err("Select two overlapping rectangular ends forming an L, with the same depth. Touching ends, T-junctions and crossings are not supported yet.".into())
+    Err("Select two overlapping members that meet as an L, a T or a crossing, with the same depth. Touching members are not joined.".into())
 }
 
 /// Rounds the outside of the mitred corner with the same cuts on both members.
@@ -206,6 +390,10 @@ fn snap(join: &mut Join, size: f64) -> Result<(), String> {
     if !size.is_finite() || size <= 0.0 {
         return Err("Use a positive corner grid.".into());
     }
+    // A T or a crossing only cuts along the other member's faces: no new corner to snap.
+    if join.kind != Junction::Corner {
+        return Ok(());
+    }
     let [u, v] = join.axes;
     let place = |mut p: Vec3d| {
         p[u] = (p[u] / size).round() * size;
@@ -231,6 +419,14 @@ fn snap(join: &mut Join, size: f64) -> Result<(), String> {
 
 /// Adds a concave quarter-circle fillet as non-overlapping triangular prisms.
 fn rounded(a: &Brush, b: &Brush, rounding: Rounding) -> Result<Join, String> {
+    // Rounding shapes an L's corner; a T or a crossing is only cut flush.
+    let plain = !rounding.wedges
+        && !rounding.concentric
+        && rounding.outer.is_none()
+        && rounding.inner.is_none();
+    if plain {
+        return preview_junction(a, b);
+    }
     if rounding.wedges {
         return preview_wedges(a, b, rounding);
     }
@@ -999,6 +1195,22 @@ mod tests {
         ] {
             assert!(preview(&a, &cube(min, max, "b")).is_err());
         }
+        // A T is not an L, but it is a junction, and so is an L of a thinner member
+        // ending inside a deeper one: it butts against it. Touching and identical
+        // members are not.
+        for (min, max) in [
+            (Vec3d::new(32.0, 0.0, 0.0), Vec3d::new(48.0, 96.0, 8.0)),
+            (Vec3d::zero(), Vec3d::new(16.0, 96.0, 12.0)),
+        ] {
+            let join = preview_junction(&a, &cube(min, max, "b")).unwrap();
+            assert_eq!(join.kind, Junction::Tee);
+        }
+        for (min, max) in [
+            (Vec3d::new(0.0, 16.0, 0.0), Vec3d::new(16.0, 96.0, 8.0)),
+            (Vec3d::zero(), Vec3d::new(128.0, 16.0, 8.0)),
+        ] {
+            assert!(preview_junction(&a, &cube(min, max, "b")).is_err());
+        }
     }
 
     /// The gate frame from the owner's `join_corner.map`: a left post and the beam
@@ -1169,6 +1381,137 @@ mod tests {
             .unwrap();
         let error = preview(&post, &turned).err().unwrap();
         assert!(error.contains("rectangular block"), "{error}");
+    }
+
+    /// The pieces of a join: each brush after it, then what it added.
+    fn pieces(join: &Join) -> Vec<Brush> {
+        join.after.iter().chain(&join.added).cloned().collect()
+    }
+
+    /// No two pieces share volume and together they hold what the members did, less
+    /// the overlap once.
+    fn tidy(join: &Join) {
+        let all = pieces(join);
+        for (i, x) in all.iter().enumerate() {
+            for y in &all[i + 1..] {
+                assert!(shared_volume(x, y) < 1e-6);
+            }
+        }
+        let before: f64 = join.before.iter().map(Brush::volume).sum();
+        let after: f64 = all.iter().map(Brush::volume).sum();
+        assert!((before - join.removed_volume - after).abs() < 1e-6);
+    }
+
+    #[test]
+    fn a_tee_cuts_the_stem_flush_with_the_bar_in_every_orientation() {
+        let bounds = Bbox3d::from_scalars(-8192.0, 8192.0);
+        // A bar along X, 16 deep, and stems of two widths meeting it from either side;
+        // turned a quarter about Z the bar runs along Y.
+        for turn in 0..4 {
+            let rotation = geometry_math::mat_ext::rotation_matrix_about_axis(
+                Vec3d::new(0.0, 0.0, 1.0),
+                std::f64::consts::FRAC_PI_2 * f64::from(turn),
+            );
+            let turned = |b: Brush| b.transform(&bounds, &rotation).unwrap();
+            for (width, from, to) in [(16.0, 8.0, 96.0), (32.0, -96.0, 12.0)] {
+                let bar = turned(cube(
+                    Vec3d::new(-128.0, 0.0, 0.0),
+                    Vec3d::new(128.0, 16.0, 16.0),
+                    "bar",
+                ));
+                let stem = turned(cube(
+                    Vec3d::new(-width / 2.0, from, 0.0),
+                    Vec3d::new(width / 2.0, to, 16.0),
+                    "stem",
+                ));
+                for (first, second) in [(&bar, &stem), (&stem, &bar)] {
+                    let join = preview_junction(first, second).unwrap();
+                    assert_eq!(join.kind, Junction::Tee);
+                    tidy(&join);
+                    // The bar is left whole.
+                    let whole = if std::ptr::eq(first, &bar) { 0 } else { 1 };
+                    assert_eq!(join.after[whole].faces(), bar.faces());
+                    assert!(join.added.is_empty());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_crossing_cuts_the_shorter_member_in_two_and_keeps_the_longer_whole() {
+        let long = cube(
+            Vec3d::new(-128.0, -8.0, 0.0),
+            Vec3d::new(128.0, 8.0, 16.0),
+            "long",
+        );
+        for width in [8.0, 16.0, 40.0] {
+            let short = cube(
+                Vec3d::new(-width / 2.0, -64.0, 0.0),
+                Vec3d::new(width / 2.0, 64.0, 16.0),
+                "short",
+            );
+            for (first, second, cut) in [(&long, &short, 1), (&short, &long, 0)] {
+                let join = preview_junction(first, second).unwrap();
+                assert_eq!(join.kind, Junction::Crossing);
+                assert_eq!(join.split, Some(cut));
+                assert_eq!(join.after[1 - cut].faces(), long.faces());
+                assert_eq!(join.added.len(), 1);
+                tidy(&join);
+                // Each piece ends flush with one side of the long member.
+                let ends: Vec<f64> = [&join.after[cut], &join.added[0]]
+                    .iter()
+                    .map(|b| {
+                        let bb = b.bounds();
+                        if bb.max.y() <= -8.0 + 1e-9 {
+                            bb.max.y()
+                        } else {
+                            bb.min.y()
+                        }
+                    })
+                    .collect();
+                assert!(
+                    ends.iter().any(|e| (e + 8.0).abs() < 1e-6)
+                        && ends.iter().any(|e| (e - 8.0).abs() < 1e-6),
+                    "{ends:?}"
+                );
+            }
+        }
+        // Two members of one size: the first selected stays whole, and the join says so.
+        let across = cube(
+            Vec3d::new(-8.0, -128.0, 0.0),
+            Vec3d::new(8.0, 128.0, 16.0),
+            "b",
+        );
+        let join = preview_junction(&long, &across).unwrap();
+        assert_eq!(join.split, Some(1));
+        assert!(join.note.is_some());
+    }
+
+    #[test]
+    fn rounding_is_refused_for_a_tee_rather_than_guessed() {
+        let bar = cube(
+            Vec3d::new(-128.0, 0.0, 0.0),
+            Vec3d::new(128.0, 16.0, 16.0),
+            "bar",
+        );
+        let stem = cube(
+            Vec3d::new(-8.0, 8.0, 0.0),
+            Vec3d::new(8.0, 96.0, 16.0),
+            "stem",
+        );
+        let rounding = Rounding {
+            outer: Some((8.0, 4)),
+            ..Default::default()
+        };
+        assert!(preview_with_rounding(&bar, &stem, rounding).is_err());
+        let snapped = Rounding {
+            snap: Some(16.0),
+            ..Default::default()
+        };
+        assert_eq!(
+            preview_with_rounding(&bar, &stem, snapped).unwrap().kind,
+            Junction::Tee
+        );
 
     }
 }

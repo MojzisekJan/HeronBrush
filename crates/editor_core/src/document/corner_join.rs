@@ -82,6 +82,15 @@ impl Document {
             return Err("The map or selection changed. Open a new corner preview.".into());
         }
         let draft = self.preview_corner_join_options(rounding)?;
+        if let Some(note) = draft.join.note {
+            crate::say!("{note}");
+        }
+        // A crossing's second piece goes beside the brush it was cut from; inner
+        // rounding's pieces under the parent both brushes share.
+        let beside = match draft.join.split {
+            Some(index) => [draft.ids[index]; 2],
+            None => draft.ids,
+        };
         let before: Vec<Node> = draft
             .ids
             .iter()
@@ -105,7 +114,7 @@ impl Document {
             Edit::Changed { before, after }
         } else {
             let (layer, parent) = self
-                .corner_parent(draft.ids)
+                .corner_parent(beside)
                 .ok_or("Both brushes must have the same immediate parent.")?;
             if let Some(parent) = parent {
                 let original = node::find_node(&self.tree.world, parent)
@@ -118,17 +127,33 @@ impl Document {
                     NodeKind::Layer(layer) => &mut layer.children,
                     _ => return Err("Invalid corner parent.".into()),
                 };
-                for replacement in after {
-                    let child = children
-                        .iter_mut()
-                        .find(|node| node.id == replacement.id)
-                        .ok_or("Corner brush no longer exists.")?;
-                    *child = replacement;
+                // The other brush of a crossing may sit elsewhere; it changes in place.
+                let mut elsewhere = Vec::new();
+                let mut elsewhere_before = Vec::new();
+                for (replacement, was) in after.into_iter().zip(before) {
+                    match children.iter_mut().find(|node| node.id == replacement.id) {
+                        Some(child) => *child = replacement,
+                        None => {
+                            elsewhere.push(replacement);
+                            elsewhere_before.push(was);
+                        }
+                    }
                 }
                 children.extend(additions);
-                Edit::Changed {
+                let mut parts = vec![Edit::Changed {
                     before: vec![original],
                     after: vec![updated],
+                }];
+                if !elsewhere.is_empty() {
+                    parts.push(Edit::Changed {
+                        before: elsewhere_before,
+                        after: elsewhere,
+                    });
+                }
+                if parts.len() == 1 {
+                    parts.pop().expect("one part")
+                } else {
+                    Edit::Batch(parts)
                 }
             } else {
                 Edit::Batch(vec![
@@ -353,3 +378,40 @@ mod inner_tests {
         assert_eq!(revision, d.revision());
     }
 }
+
+#[cfg(test)]
+mod crossing_tests {
+    use super::*;
+    #[test]
+    fn a_crossing_is_one_undo_step_and_the_piece_stays_in_the_cut_brushs_entity() {
+        let mut d = Document::new(Default::default());
+        let cube = |min: Vec3d, max: Vec3d| {
+            map_model::shapes::create_cuboid(&d.world_bounds(), &Bbox3d { min, max }, "stone")
+                .unwrap()
+        };
+        let long = cube(Vec3d::new(-128.0, -8.0, 0.0), Vec3d::new(128.0, 8.0, 16.0));
+        let short = cube(Vec3d::new(-8.0, -64.0, 0.0), Vec3d::new(8.0, 64.0, 16.0));
+        d.add_brushes(vec![long]);
+        d.add_brushes(vec![short]);
+        let ids: Vec<NodeId> = node::brushes_with_ids(d.tree_world())
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+        // The short wall is a func_wall of its own.
+        d.select_only(ids[1]);
+        let wall = d.create_brush_entity("func_wall").unwrap();
+        d.select_only(ids[0]);
+        d.toggle_selected(ids[1]);
+        let before = d.to_map_text();
+        let draft = d.preview_corner_join().unwrap();
+        d.join_corner(draft.revision).unwrap();
+        assert_eq!(node::brushes(d.tree_world()).len(), 3);
+        let NodeKind::Entity(entity) = &node::find_node(d.tree_world(), wall).unwrap().kind else {
+            panic!("the func_wall")
+        };
+        assert_eq!(entity.children.len(), 2, "both pieces of the cut wall");
+        d.undo();
+        assert_eq!(d.to_map_text(), before);
+    }
+}
+
