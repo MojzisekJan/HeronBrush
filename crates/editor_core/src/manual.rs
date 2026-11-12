@@ -256,10 +256,88 @@ pub fn chapters(language: Language) -> Vec<Chapter> {
     chapters
 }
 
-/// Whether a chapter's title or text contains `query`, ignoring case.
+/// Words a reader may use for the same thing. A query word close to one of a group's
+/// words also finds the others: "copy texture" finds "paste its material".
+const SYNONYMS: &[&[&str]] = &[
+    &["copy", "paste", "apply", "transfer", "clone"],
+    &["texture", "material", "surface"],
+    &["face", "side", "plane"],
+];
+
+/// Whether a chapter's title or text matches `query`, ignoring case: the whole query as
+/// written, or each of its words, in any order, within the title or within one paragraph.
+/// A word matches part of a word (`extru` finds "extrude"), a word one or two typing
+/// slips away (`textre` finds "texture"), and the other words of its [`SYNONYMS`] group.
 pub fn matches(chapter: &Chapter, query: &str) -> bool {
     let query = query.trim().to_lowercase();
-    chapter.title.to_lowercase().contains(&query) || chapter.body.to_lowercase().contains(&query)
+    let title = chapter.title.to_lowercase();
+    let body = chapter.body.to_lowercase();
+    if title.contains(&query) || body.contains(&query) {
+        return true;
+    }
+    let terms: Vec<Vec<String>> = query.split_whitespace().map(alternatives).collect();
+    if terms.is_empty() {
+        return false;
+    }
+    std::iter::once(title.as_str())
+        .chain(body.lines())
+        .any(|paragraph| {
+            let words: Vec<&str> = paragraph
+                .split(|c: char| !c.is_alphanumeric() && c != '+')
+                .filter(|word| !word.is_empty())
+                .collect();
+            terms.iter().all(|alternatives| {
+                alternatives
+                    .iter()
+                    .any(|term| words.iter().any(|word| word_matches(term, word)))
+            })
+        })
+}
+
+/// A query word with the words of every synonym group it is close to.
+fn alternatives(word: &str) -> Vec<String> {
+    let mut out = vec![word.to_string()];
+    for group in SYNONYMS {
+        if group.iter().any(|synonym| word_matches(word, synonym)) {
+            out.extend(group.iter().map(|synonym| synonym.to_string()));
+        }
+    }
+    out
+}
+
+/// Whether a text word holds the query word, or nearly does.
+fn word_matches(term: &str, word: &str) -> bool {
+    if word.contains(term) {
+        return true;
+    }
+    let length = term.chars().count();
+    let slips = match length {
+        0..=3 => return false,
+        4..=7 => 1,
+        _ => 2,
+    };
+    // The whole word, or its start as long as the term, so a slip in a partial word
+    // still counts.
+    let start: String = word.chars().take(length).collect();
+    edit_distance(term, word) <= slips || edit_distance(term, &start) <= slips
+}
+
+/// How many single-character insertions, deletions or substitutions turn `a` into `b`.
+fn edit_distance(a: &str, b: &str) -> usize {
+    let b: Vec<char> = b.chars().collect();
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.chars().enumerate() {
+        let mut diagonal = row[0];
+        row[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let above = row[j + 1];
+            row[j + 1] = (above + 1)
+                .min(row[j] + 1)
+                .min(diagonal + usize::from(ca != *cb));
+            diagonal = above;
+        }
+    }
+    row[b.len()]
 }
 
 #[cfg(test)]
@@ -348,5 +426,40 @@ mod tests {
                 .iter()
                 .any(|c| matches(c, "not-a-manual-phrase-917")));
         }
+    }
+
+    #[test]
+    fn search_takes_words_in_any_order_partial_words_typos_and_synonyms() {
+        let english = chapters(Language::English);
+        let found = |query: &str| -> Vec<String> {
+            english
+                .iter()
+                .filter(|c| matches(c, query))
+                .map(|c| c.title.clone())
+                .collect()
+        };
+        for query in [
+            "copy texture",
+            "copy textre",
+            "Texture copy",
+            "COPY TEXTURE",
+            "transfer material",
+            "apply texture face",
+            "paste textur",
+        ] {
+            let titles = found(query);
+            assert!(
+                titles.iter().any(|t| t == "Brushes and modelling tools")
+                    && titles.iter().any(|t| t == "Materials and UVs"),
+                "{query}: {titles:?}"
+            );
+        }
+        assert!(found("extru")
+            .iter()
+            .any(|t| t == "Brushes and modelling tools"));
+        assert!(found("not-a-manual-phrase-917").is_empty());
+        assert!(found("qqqq zzzz").is_empty());
+        assert_eq!(edit_distance("textre", "texture"), 1);
+        assert_eq!(edit_distance("", "abc"), 3);
     }
 }
