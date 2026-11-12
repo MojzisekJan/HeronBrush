@@ -921,21 +921,32 @@ fn renumber_for_paste(node: Node) -> Node {
 }
 
 /// Gives a node and everything under it fresh identifiers, through every kind of
-/// container, for a linked-group copy.
-fn deep_renumber(node: Node) -> Node {
+/// container, for a linked-group copy. A nested group also gets a fresh persistent id
+/// from `ids`, since its children name it by that id when the map is saved.
+fn deep_renumber(node: Node, ids: &map_model::ids::IdSource) -> Node {
     let mut kind = node.kind;
     match &mut kind {
         NodeKind::Entity(entity) => {
             let children = std::mem::take(&mut entity.children);
-            entity.children = children.into_iter().map(deep_renumber).collect();
+            entity.children = children
+                .into_iter()
+                .map(|child| deep_renumber(child, ids))
+                .collect();
         }
         NodeKind::Group(group) => {
+            group.id = ids.fresh();
             let children = std::mem::take(&mut group.children);
-            group.children = children.into_iter().map(deep_renumber).collect();
+            group.children = children
+                .into_iter()
+                .map(|child| deep_renumber(child, ids))
+                .collect();
         }
         NodeKind::Layer(layer) => {
             let children = std::mem::take(&mut layer.children);
-            layer.children = children.into_iter().map(deep_renumber).collect();
+            layer.children = children
+                .into_iter()
+                .map(|child| deep_renumber(child, ids))
+                .collect();
         }
         NodeKind::Brush(_) | NodeKind::Patch(_) => {}
     }
@@ -3270,6 +3281,9 @@ impl Document {
         let previous_path = self.path.replace(path);
         self.adopt_imported_references(&imported_refs, previous_path.as_deref());
         self.modified = false;
+        if let Some(preview) = &mut self.text_preview {
+            preview.saved = true;
+        }
         Ok(())
     }
 

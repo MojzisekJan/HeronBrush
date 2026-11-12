@@ -206,6 +206,53 @@ fn a_group_inside_a_group_nests() {
 }
 
 #[test]
+fn nested_group_hierarchy_survives_ordinary_save_and_reopen() {
+    let source = "{\n\"classname\" \"worldspawn\"\n}\n\
+                  {\n\"classname\" \"func_group\"\n\"_tb_type\" \"_tb_group\"\n\"_tb_name\" \"Outer\"\n\"_tb_id\" \"1\"\n}\n\
+                  {\n\"classname\" \"func_group\"\n\"_tb_type\" \"_tb_group\"\n\"_tb_name\" \"Inner\"\n\"_tb_id\" \"2\"\n\"_tb_group\" \"1\"\n}\n\
+                  {\n\"classname\" \"light\"\n\"origin\" \"0 0 0\"\n\"_tb_group\" \"2\"\n}\n";
+    let saved = map_model::io::map_writer::write_map(&map_model::node::flatten_tree(
+        &tree(source).world,
+        map_model::map_format::MapFormat::Standard,
+        None,
+    ));
+    let reopened = tree(&saved);
+    assert!(reopened.warnings.is_empty(), "{:?}", reopened.warnings);
+    assert_eq!(reopened.world.layers[0].children.len(), 1);
+    let NodeKind::Group(outer) = &reopened.world.layers[0].children[0].kind else {
+        panic!("expected the outer group in the default layer");
+    };
+    assert_eq!(outer.name, "Outer");
+    let NodeKind::Group(inner) = &outer.children[0].kind else {
+        panic!("expected the inner group inside the outer one");
+    };
+    assert_eq!(inner.name, "Inner");
+    assert_eq!(inner.children.len(), 1);
+}
+
+#[test]
+fn a_nested_group_listed_before_its_parent_still_nests() {
+    let source = "{\n\"classname\" \"worldspawn\"\n}\n\
+                  {\n\"classname\" \"light\"\n\"_tb_group\" \"3\"\n}\n\
+                  {\n\"classname\" \"func_group\"\n\"_tb_type\" \"_tb_group\"\n\"_tb_name\" \"Innermost\"\n\"_tb_id\" \"3\"\n\"_tb_group\" \"2\"\n}\n\
+                  {\n\"classname\" \"func_group\"\n\"_tb_type\" \"_tb_group\"\n\"_tb_name\" \"Inner\"\n\"_tb_id\" \"2\"\n\"_tb_group\" \"1\"\n}\n\
+                  {\n\"classname\" \"func_group\"\n\"_tb_type\" \"_tb_group\"\n\"_tb_name\" \"Outer\"\n\"_tb_id\" \"1\"\n}\n";
+    let tree = tree(source);
+    assert!(tree.warnings.is_empty(), "{:?}", tree.warnings);
+    assert_eq!(tree.world.layers[0].children.len(), 1);
+    let NodeKind::Group(outer) = &tree.world.layers[0].children[0].kind else {
+        panic!("expected the outer group in the default layer");
+    };
+    let NodeKind::Group(inner) = &outer.children[0].kind else {
+        panic!("expected the inner group inside the outer one");
+    };
+    let NodeKind::Group(innermost) = &inner.children[0].kind else {
+        panic!("expected the innermost group inside the inner one");
+    };
+    assert_eq!(innermost.children.len(), 1);
+}
+
+#[test]
 fn a_node_naming_a_group_that_is_not_there_lands_in_the_default_layer() {
     let source = "{\n\"classname\" \"worldspawn\"\n}\n\
                   {\n\"classname\" \"light\"\n\"_tb_group\" \"missing\"\n}\n";
@@ -701,16 +748,33 @@ fn duplicate_parent_ids_keep_the_first_group_until_it_is_placed() {
 
 #[test]
 fn a_removed_group_parent_still_reports_a_missing_parent() {
-    let tree = tree(
+    // A parent listed after its child is still the parent.
+    let listed_later = tree(
         r#"
 { "classname" "worldspawn" }
 { "classname" "func_group" "_tb_type" "_tb_group" "_tb_id" "1" "_tb_group" "2" }
 { "classname" "func_group" "_tb_type" "_tb_group" "_tb_id" "2" }
 "#,
     );
-    assert_eq!(tree.world.layers[0].children.len(), 2);
+    assert_eq!(listed_later.world.layers[0].children.len(), 1);
     assert!(
-        matches!(tree.warnings.as_slice(), [TreeWarning::MissingParent { id, .. }] if id == "2")
+        listed_later.warnings.is_empty(),
+        "{:?}",
+        listed_later.warnings
+    );
+
+    // Two groups naming each other: the one placed first is removed as a parent, so the
+    // other reports it missing and lands in the default layer.
+    let looped = tree(
+        r#"
+{ "classname" "worldspawn" }
+{ "classname" "func_group" "_tb_type" "_tb_group" "_tb_id" "1" "_tb_group" "2" }
+{ "classname" "func_group" "_tb_type" "_tb_group" "_tb_id" "2" "_tb_group" "1" }
+"#,
+    );
+    assert_eq!(looped.world.layers[0].children.len(), 1);
+    assert!(
+        matches!(looped.warnings.as_slice(), [TreeWarning::MissingParent { id, .. }] if id == "2")
     );
 }
 

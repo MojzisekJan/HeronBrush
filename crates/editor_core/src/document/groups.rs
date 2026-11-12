@@ -698,7 +698,7 @@ impl Document {
             .children
             .iter()
             .cloned()
-            .map(deep_renumber)
+            .map(|child| deep_renumber(child, &self.ids))
             .collect();
         let world_bounds = self.world_bounds;
         let mut copy_node = Node::new(NodeKind::Group(copy_group));
@@ -1134,12 +1134,13 @@ impl Document {
                 before.push(was);
                 after.push(now);
             }
+            let ids = &self.ids;
             let build = |relative: &Mat4x4d| -> Vec<Node> {
                 let mut children: Vec<Node> = source_group
                     .children
                     .iter()
                     .cloned()
-                    .map(deep_renumber)
+                    .map(|child| deep_renumber(child, ids))
                     .collect();
                 for child in &mut children {
                     transform_node(child, relative, &world_bounds);

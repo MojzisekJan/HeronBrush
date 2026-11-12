@@ -465,13 +465,48 @@ fn build_tree_with(
         }
     }
 
+    // Groups are placed from the back of the list, so a nested group has to come after
+    // the group it sits in. A file may list them either way round (this editor writes a
+    // group after its contents), so order them by how deep they nest. A parent chain
+    // that loops is cut off after every group has been visited once.
+    let first: FxHashMap<&str, usize> = groups
+        .iter()
+        .enumerate()
+        .rev()
+        .map(|(index, group)| (group.group.id.as_str(), index))
+        .collect();
+    let depth = |mut at: usize| {
+        let mut depth = 0;
+        while let Some(&parent) = groups[at].parent.as_deref().and_then(|id| first.get(id)) {
+            depth += 1;
+            if depth > groups.len() {
+                break;
+            }
+            at = parent;
+        }
+        depth
+    };
+    let mut order: Vec<(usize, usize)> = (0..groups.len()).map(|at| (depth(at), at)).collect();
+    order.sort_by_key(|(depth, _)| *depth);
+    let file_index: Vec<usize> = order.iter().map(|(_, at)| *at).collect();
+    let mut pending: Vec<Option<PendingGroup>> = groups.into_iter().map(Some).collect();
+    groups = file_index
+        .iter()
+        .map(|at| pending[*at].take().expect("each group is taken once"))
+        .collect();
+
     // Keep the first occurrence of duplicate ids, matching the previous linear search.
     let mut parents = ParentIndex::default();
+    let mut first_in_file: FxHashMap<&str, usize> = FxHashMap::default();
     for (index, group) in groups.iter().enumerate() {
-        parents
-            .groups
-            .entry(group.group.id.clone())
-            .or_insert(index);
+        let id = group.group.id.as_str();
+        if first_in_file
+            .get(id)
+            .is_none_or(|seen| *seen > file_index[index])
+        {
+            first_in_file.insert(id, file_index[index]);
+            parents.groups.insert(id.to_string(), index);
+        }
     }
     for (index, layer) in layers.iter().enumerate() {
         if let Some(id) = &layer.id {

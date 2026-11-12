@@ -7,6 +7,9 @@ pub(super) struct TextPreview {
     nodes: Vec<Node>,
     selection: HashSet<NodeId>,
     faces: HashSet<FaceRef>,
+    /// A save wrote the provisional object to disk, so taking it away makes the
+    /// document differ from the file again.
+    pub(super) saved: bool,
 }
 
 impl Document {
@@ -122,6 +125,7 @@ impl Document {
             nodes: vec![],
             selection: self.selection.clone(),
             faces: self.face_selection.clone(),
+            saved: false,
         });
         true
     }
@@ -200,6 +204,9 @@ impl Document {
         self.remove_text_preview_nodes(&preview);
         self.selection = preview.selection;
         self.face_selection = preview.faces;
+        if preview.saved {
+            self.modified = true;
+        }
         self.mark_changed();
         true
     }
@@ -288,6 +295,31 @@ mod tests {
                 d.preview_mesh(&hidden).triangles.len() < d.preview_mesh(&shown).triangles.len()
             );
         }
+    }
+    #[test]
+    fn saving_then_cancelling_text_preview_does_not_leave_an_unmarked_disk_mismatch() {
+        let path = std::env::temp_dir().join(format!("heron-text-save-{}.map", std::process::id()));
+        let mut d = Document::new(Default::default());
+        d.save_as(&path).unwrap();
+        assert!(d.begin_text_preview());
+        assert!(d.update_text_preview("HI", 64., 8., Vec3d::zero(), &Grid::default()) > 0);
+        d.save().unwrap();
+        assert!(!d.is_modified());
+        assert!(d.cancel_text_preview());
+        let on_disk = std::fs::read_to_string(&path).unwrap();
+        std::fs::remove_file(&path).ok();
+        assert_ne!(on_disk, d.to_map_text());
+        assert!(
+            d.is_modified(),
+            "the file holds text the document no longer has"
+        );
+
+        // Cancelling without a save leaves an unmodified document unmodified.
+        let mut d = Document::new(Default::default());
+        assert!(d.begin_text_preview());
+        assert!(d.update_text_preview("HI", 64., 8., Vec3d::zero(), &Grid::default()) > 0);
+        assert!(d.cancel_text_preview());
+        assert!(!d.is_modified());
     }
     #[test]
     fn preview_is_visible_in_both_views_without_history_dirty_state_or_broadcasts() {
