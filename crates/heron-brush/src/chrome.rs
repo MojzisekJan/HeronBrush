@@ -323,6 +323,7 @@ pub fn menus(
             item(tr("Select all"), Action::SelectAll)
                 .icon(icon::SELECTION_ALL)
                 .keys(&shortcut("select_all")),
+            item(tr("Select loop"), Action::SelectLoop),
             Entry::Separator,
             item(tr("Repeat last commands"), Action::Repeat)
                 .icon(icon::REPEAT)

@@ -44,7 +44,7 @@ Za nástroji následují **Překlopit vodorovně** a **Překlopit svisle** a dva
 ## Mapové pohledy
 K dispozici jsou čtyři pohledy: 3D pohled a tři ploché pohledy Shora (XY), Zepředu (XZ) a Zboku (YZ). Nastavení → Zobrazení → Rozvržení nabízí Jeden panel, Dva panely, Tři panely nebo Čtyři panely. Tažením přepážek měníte velikost panelů. Kliknutím do pohledu mu předáte klávesnici. `Space` přepne panel, který ukazuje jeden pohled po druhém, na další pohled, a `Ctrl+Space` maximalizuje pohled s klávesnicí a znovu obnoví rozvržení.
 
-Kliknutím pravým tlačítkem bez tažení v libovolném pohledu otevřete místní nabídku pro výběr a to, co je pod ukazatelem. Nabízí seskupování, vrstvy, provázané skupiny, vytváření entit, přesun brushů do entity a z ní, kopírování názvu materiálu a jeho ukázání v prohlížeči materiálů.
+Kliknutím pravým tlačítkem bez tažení v libovolném pohledu otevřete místní nabídku pro výběr a to, co je pod ukazatelem. Nabízí seskupování, vrstvy, provázané skupiny, vytváření entit, přesun brushů do entity a z ní, kopírování názvu materiálu a jeho ukázání v prohlížeči materiálů. Nad brushem nabízí **Vybrat smyčku** (Select loop), která vybere všechny brushe s ním spojené: ty, které ho překrývají nebo se s ním potkávají ve spoji z příkazu Spojit roh (pokos nebo zaříznutý konec opřený o jiný brush), oběma směry, například všechny zdi místnosti (room) i nožku T-spoje. Skončí tam, kde zeď na nic nenavazuje. Brushe, které se dotýkají jen hranou nebo rohem, a zeď stojící na podlaze spojené nejsou. **Úpravy → Vybrat smyčku** udělá totéž pro všechny vybrané brushe.
 
 ## Inspektor
 Inspektor vpravo má čtyři karty. Šířku změníte tažením jeho levého okraje.

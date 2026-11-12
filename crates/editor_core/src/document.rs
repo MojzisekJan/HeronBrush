@@ -27,6 +27,7 @@ pub(crate) use materials::relative_material_path;
 mod merge_columns;
 mod scene_lights;
 mod sculpt;
+mod select_loop;
 mod selection;
 mod similar_faces;
 pub use similar_faces::FaceSelection;

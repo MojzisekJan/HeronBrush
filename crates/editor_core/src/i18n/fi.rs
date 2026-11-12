@@ -1010,6 +1010,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Valitse pyyhkäistävät tahkot (Shift-napsautus)"),
     ("Select faces with it", "Valitse tahkot, joissa se on"),
     ("Select linked groups", "Valitse linkitetyt ryhmät"),
+    ("Select loop", "Valitse silmukka"),
     ("Select only brushes first", "Valitse ensin pelkkiä brusheja"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "Valitse ensin brushien tahkoja"),

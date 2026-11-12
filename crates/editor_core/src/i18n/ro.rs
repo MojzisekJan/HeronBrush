@@ -1013,6 +1013,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Selectează fețele de baleiat (Shift+clic)"),
     ("Select faces with it", "Selectează fețele cu acesta"),
     ("Select linked groups", "Selectează grupurile legate"),
+    ("Select loop", "Selectează bucla"),
     ("Select only brushes first", "Selectează mai întâi doar brush-uri"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "Selectează mai întâi niște fețe de brush"),

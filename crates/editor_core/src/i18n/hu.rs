@@ -1010,6 +1010,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Jelöljön ki lapokat a söpréshez (Shift+kattintás)"),
     ("Select faces with it", "Lapok kijelölése, amelyek ezt használják"),
     ("Select linked groups", "Csatolt csoportok kijelölése"),
+    ("Select loop", "Hurok kijelölése"),
     ("Select only brushes first", "Előbb csak brush-okat jelöljön ki"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "Előbb jelöljön ki néhány brush-lapot"),

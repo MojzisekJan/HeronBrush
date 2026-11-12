@@ -1010,6 +1010,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "스윕할 면 선택 (Shift+클릭)"),
     ("Select faces with it", "이 재질의 면 선택"),
     ("Select linked groups", "연결된 그룹 선택"),
+    ("Select loop", "루프 선택"),
     ("Select only brushes first", "먼저 브러시만 선택하세요"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "먼저 브러시 면을 선택하세요"),

@@ -1010,6 +1010,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Chọn mặt để quét (Shift+nhấp)"),
     ("Select faces with it", "Chọn mặt dùng vật liệu này"),
     ("Select linked groups", "Chọn nhóm liên kết"),
+    ("Select loop", "Chọn vòng"),
     ("Select only brushes first", "Hãy chỉ chọn brush trước"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "Hãy chọn một vài mặt brush trước"),

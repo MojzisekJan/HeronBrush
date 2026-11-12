@@ -63,6 +63,8 @@ pub enum Action {
     Delete,
     Duplicate,
     SelectAll,
+    /// Every brush joined to the selected ones: a room's walls, a T's stem.
+    SelectLoop,
     ActivateTool(editor_core::tool::Tool),
     FrameSelection,
     PreviousView,
@@ -484,6 +486,16 @@ impl App {
             }
             Action::SelectSimilar(mode) => {
                 self.editor.document.borrow_mut().select_similar_faces(mode);
+            }
+            Action::SelectLoop => {
+                let count = self.editor.document.borrow_mut().select_loop(None);
+                editor_core::say!(
+                    "{}",
+                    editor_core::i18n::fill(
+                        "Selected {}",
+                        &[&editor_core::i18n::counted(count, "brush")]
+                    )
+                );
             }
             Action::FrameSelection
             | Action::PreviousView

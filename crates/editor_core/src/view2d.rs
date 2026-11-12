@@ -3669,6 +3669,8 @@ pub struct Probe {
     pub entity: Option<crate::document::EntityUnder>,
     /// The material of the face under the pointer, if any.
     pub material: Option<String>,
+    /// The brush under the pointer, if any, for Select loop.
+    pub brush: Option<map_model::node::NodeId>,
     /// Where the pointer is on the view's plane, snapped to the grid.
     pub at: Vec3d,
 }
@@ -4016,6 +4018,9 @@ impl FlatView {
                         .map(|face| face.material_name.to_string())
                 })
             }),
+            brush: hit
+                .map(|hit| hit.node)
+                .filter(|node| document.brush(*node).is_some()),
             at,
         }
     }

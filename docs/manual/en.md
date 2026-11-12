@@ -44,7 +44,7 @@ After the tools come **Flip horizontally** and **Flip vertically**, then two swi
 ## Map views
 There are four views: the 3D view and three flat views, Top (XY), Front (XZ) and Side (YZ). Preferences → View → Layout chooses One pane, Two panes, Three panes or Four panes. Drag the dividers to resize the panes. Clicking in a view gives it the keyboard. `Space` moves a pane that shows one view at a time to its next view, and `Ctrl+Space` maximises the view under the keyboard and restores the layout again.
 
-Right-click without dragging in any view to open a context menu for the selection and what is under the pointer. It offers grouping, layers, linked groups, creating entities, moving brushes into or out of an entity, copying a material name and revealing it in the material browser.
+Right-click without dragging in any view to open a context menu for the selection and what is under the pointer. It offers grouping, layers, linked groups, creating entities, moving brushes into or out of an entity, copying a material name and revealing it in the material browser. Over a brush it offers **Select loop**, which selects every brush joined to it: brushes that overlap it or meet it at a Join corner joint (a mitre, or a cut end against another brush), followed in both directions, such as all the walls of a room, plus the stem of a T. It stops where a wall joins nothing. Brushes that only touch along an edge or at a corner, or a wall standing on a floor, are not joined. **Edit → Select loop** does the same for every selected brush.
 
 ## The inspector
 The inspector on the right has four tabs. Drag its left edge to change its width.

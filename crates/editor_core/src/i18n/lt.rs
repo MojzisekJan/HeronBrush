@@ -1010,6 +1010,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Pažymėkite sieneles protraukimui (Shift+spustelėjimas)"),
     ("Select faces with it", "Pažymėti sieneles su ja"),
     ("Select linked groups", "Pažymėti susietas grupes"),
+    ("Select loop", "Pasirinkti kilpą"),
     ("Select only brushes first", "Pirmiausia pažymėkite tik brašus"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "Pirmiausia pažymėkite brašų sienelių"),

@@ -1010,6 +1010,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "選取要掃掠的面（Shift+按一下）"),
     ("Select faces with it", "選取使用它的面"),
     ("Select linked groups", "選取連結群組"),
+    ("Select loop", "選取環路"),
     ("Select only brushes first", "請先只選取筆刷"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "請先選取一些筆刷面"),

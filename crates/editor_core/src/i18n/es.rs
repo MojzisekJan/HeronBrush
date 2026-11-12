@@ -1014,6 +1014,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Selecciona caras para barrer (Shift+clic)"),
     ("Select faces with it", "Seleccionar las caras que lo usan"),
     ("Select linked groups", "Seleccionar los grupos enlazados"),
+    ("Select loop", "Seleccionar bucle"),
     ("Select only brushes first", "Primero selecciona solo brushes"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "Primero selecciona algunas caras de brushes"),

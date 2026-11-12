@@ -1010,6 +1010,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Επιλέξτε έδρες για σάρωση (Shift-κλικ)"),
     ("Select faces with it", "Επιλογή εδρών με αυτό"),
     ("Select linked groups", "Επιλογή συνδεδεμένων ομάδων"),
+    ("Select loop", "Επιλογή βρόχου"),
     ("Select only brushes first", "Επιλέξτε πρώτα μόνο brush"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "Επιλέξτε πρώτα έδρες brush"),

@@ -1010,6 +1010,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Selecteer vlakken om te vegen (Shift-klik)"),
     ("Select faces with it", "Vlakken ermee selecteren"),
     ("Select linked groups", "Gekoppelde groepen selecteren"),
+    ("Select loop", "Lus selecteren"),
     ("Select only brushes first", "Selecteer eerst alleen brushes"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "Selecteer eerst een paar brushvlakken"),

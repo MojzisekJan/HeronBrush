@@ -1860,6 +1860,9 @@ impl Scene3d {
                         .map(|face| face.material_name.to_string())
                 })
             }),
+            brush: hit
+                .map(|hit| hit.node)
+                .filter(|node| document.brush(*node).is_some()),
             at,
         }
     }

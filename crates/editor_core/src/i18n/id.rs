@@ -1010,6 +1010,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Pilih permukaan untuk sweep (Shift-klik)"),
     ("Select faces with it", "Pilih permukaan dengan material ini"),
     ("Select linked groups", "Pilih grup tertaut"),
+    ("Select loop", "Pilih loop"),
     ("Select only brushes first", "Pilih hanya brush terlebih dahulu"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "Pilih beberapa permukaan brush dulu"),

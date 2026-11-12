@@ -1016,6 +1016,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Выделите грани для протягивания (Shift+щелчок)"),
     ("Select faces with it", "Выделить грани с ним"),
     ("Select linked groups", "Выделить связанные группы"),
+    ("Select loop", "Выделить контур"),
     ("Select only brushes first", "Сначала выделите только браши"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "Сначала выделите грани брашей"),

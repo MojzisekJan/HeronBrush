@@ -1010,6 +1010,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Select faces to sweep (Shift-click)"),
     ("Select faces with it", "このマテリアルの面を選択"),
     ("Select linked groups", "リンクグループを選択"),
+    ("Select loop", "ループを選択"),
     ("Select only brushes first", "先にブラシだけを選択してください"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "先にブラシの面を選択してください"),

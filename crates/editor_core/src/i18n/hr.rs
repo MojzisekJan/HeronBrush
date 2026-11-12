@@ -1010,6 +1010,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Odaberite plohe za provlačenje (Shift+klik)"),
     ("Select faces with it", "Odaberi plohe s njim"),
     ("Select linked groups", "Odaberi povezane grupe"),
+    ("Select loop", "Odaberi petlju"),
     ("Select only brushes first", "Najprije odaberite samo brusheve"),
     ("Select similar faces", "Select similar faces"),
     ("Select some brush faces first", "Najprije odaberite plohe brusheva"),

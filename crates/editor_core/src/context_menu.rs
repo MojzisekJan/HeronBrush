@@ -40,6 +40,8 @@ pub enum Action {
     CreateBrushEntity(String),
     /// Round the picked edges: the Fillet tool with its settings open.
     Fillet,
+    /// Select every brush joined to this one, round a room and down a T's stem.
+    SelectLoop(NodeId),
 }
 
 /// One entry of the menu.
@@ -158,6 +160,10 @@ pub fn build(document: &Document, probe: &Probe) -> Vec<Vec<Item>> {
             section.push(action(tr("Isolate layers"), Action::IsolateLayers));
             menu.push(section);
         }
+    }
+
+    if let Some(brush) = probe.brush {
+        menu.push(vec![action(tr("Select loop"), Action::SelectLoop(brush))]);
     }
 
     if let Some(entity) = &probe.entity {
@@ -286,6 +292,10 @@ pub fn run(action: &Action, document: &mut Document, grid_step: f64) -> Outcome 
             Some(_) => crate::say!("{}", tr("Made a linked duplicate")),
             None => crate::say!("{}", tr("Select a whole group to make a linked duplicate")),
         },
+        Action::SelectLoop(brush) => {
+            let count = document.select_loop(Some(*brush));
+            crate::say!("{}", fill("Selected {}", &[&counted(count, "brush")]));
+        }
         Action::SelectLinked => {
             document.select_linked_groups();
             crate::say!("{}", tr("Selected the linked set"));

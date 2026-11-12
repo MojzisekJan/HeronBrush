@@ -1013,6 +1013,7 @@ pub(super) const TABLE: &[(&str, &str)] = &[
     ("Select faces to sweep (Shift-click)", "Vyberte stěny k protažení (Shift+klik)"),
     ("Select faces with it", "Vybrat stěny s ním"),
     ("Select linked groups", "Vybrat propojené skupiny"),
+    ("Select loop", "Vybrat smyčku"),
     ("Select only brushes first", "Nejdřív vyberte jen brushe"),
     ("Select similar faces", "Vybrat podobné stěny"),
     ("Select some brush faces first", "Nejdřív vyberte nějaké stěny brushů"),
