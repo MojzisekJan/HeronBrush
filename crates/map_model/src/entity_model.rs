@@ -122,7 +122,15 @@ pub fn read(bytes: &[u8], palette: Option<&[u8]>) -> Result<EntityModel, ModelEr
 
     // The skins. Only the first is kept -- a model in an editor wears one -- but every one
     // has to be stepped over to reach the texture coordinates.
-    let texels = skin_width * skin_height;
+    // A skin larger than the file, or counts the rest of the file cannot hold, are a
+    // broken header; refused before anything is allocated by them.
+    let texels = skin_width
+        .checked_mul(skin_height)
+        .filter(|texels| *texels <= bytes.len())
+        .ok_or(ModelError::Truncated)?;
+    if vertices > bytes.len() / 12 || triangles > bytes.len() / 16 {
+        return Err(ModelError::Truncated);
+    }
     let mut first_skin: Option<&[u8]> = None;
     for _ in 0..skins {
         let group = at.int()?;
@@ -372,5 +380,26 @@ mod tests {
             read(&one_triangle()[..20], None),
             Err(ModelError::Truncated)
         );
+    }
+
+    #[test]
+    fn malformed_mdl_header_returns_an_error_instead_of_panicking() {
+        // A 112-byte file whose header claims an i32::MAX square skin.
+        let mut bytes = vec![0_u8; 112];
+        bytes[..4].copy_from_slice(b"IDPO");
+        bytes[4..8].copy_from_slice(&6_i32.to_le_bytes());
+        bytes[52..56].copy_from_slice(&i32::MAX.to_le_bytes());
+        bytes[56..60].copy_from_slice(&i32::MAX.to_le_bytes());
+        bytes[68..72].copy_from_slice(&1_i32.to_le_bytes());
+        let result = std::panic::catch_unwind(|| read(&bytes, None));
+        assert_eq!(result.ok(), Some(Err(ModelError::Truncated)));
+
+        // Vertex and triangle counts the file cannot hold.
+        let mut bytes = one_triangle();
+        bytes[60..64].copy_from_slice(&i32::MAX.to_le_bytes());
+        assert_eq!(read(&bytes, None), Err(ModelError::Truncated));
+        let mut bytes = one_triangle();
+        bytes[64..68].copy_from_slice(&i32::MAX.to_le_bytes());
+        assert_eq!(read(&bytes, None), Err(ModelError::Truncated));
     }
 }

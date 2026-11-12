@@ -72,6 +72,7 @@ impl Document {
         if layer.children.is_empty() {
             return None;
         }
+        self.absolute_model_references(&mut layer.children);
 
         let world = map_model::node::World {
             properties: vec![(
@@ -149,6 +150,7 @@ impl Document {
 
         // New ids, so pasting twice does not put the same object in twice over.
         let mut pasted: Vec<Node> = pasted.into_iter().map(renumber_for_paste).collect();
+        self.relative_model_references(&mut pasted);
 
         if let (Some(target), Some(bounds)) = (target, paste_bounds(&pasted)) {
             // A NaN component means "leave this axis alone", which is how a 2D view says

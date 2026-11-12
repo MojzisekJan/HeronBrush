@@ -206,6 +206,44 @@ impl Document {
         }
     }
 
+    /// Rewrites the model references under `nodes` for the clipboard: a reference
+    /// relative to this map becomes absolute, so it still names the same file when it
+    /// is pasted into a map somewhere else, or into one not saved yet.
+    pub(super) fn absolute_model_references(&self, nodes: &mut [Node]) {
+        let Some(folder) = self
+            .path
+            .as_deref()
+            .and_then(Path::parent)
+            .and_then(|p| std::path::absolute(p).ok())
+        else {
+            return;
+        };
+        rewrite_model_references(nodes, &|reference| {
+            let path = Path::new(reference);
+            (!crate::files::is_absolute(path))
+                .then(|| folder.join(path).to_string_lossy().into_owned())
+        });
+    }
+
+    /// The reverse for a paste: an absolute reference to a file in this map's folder
+    /// goes back to being relative, as the map's own references are.
+    pub(super) fn relative_model_references(&self, nodes: &mut [Node]) {
+        let Some(folder) = self
+            .path
+            .as_deref()
+            .and_then(Path::parent)
+            .and_then(|p| std::path::absolute(p).ok())
+        else {
+            return;
+        };
+        rewrite_model_references(nodes, &|reference| {
+            Path::new(reference)
+                .strip_prefix(&folder)
+                .ok()
+                .map(|relative| relative.to_string_lossy().replace('\\', "/"))
+        });
+    }
+
     /// Resolves a model reference relative to its source map.
     pub fn imported_model_path(&self, entity: &EntityNode) -> Option<std::path::PathBuf> {
         let path = Path::new(entity.property(PROPERTY)?);
@@ -417,9 +455,75 @@ fn copy_model_bundle(source: &Path, folder: &Path) -> Result<std::path::PathBuf,
     Ok(destination.join(file))
 }
 
+/// Replaces each `_heron_model` reference under `nodes` that `rewrite` has a new value for.
+fn rewrite_model_references(nodes: &mut [Node], rewrite: &dyn Fn(&str) -> Option<String>) {
+    for node in nodes {
+        let children = match &mut node.kind {
+            NodeKind::Entity(entity) => {
+                if let Some(value) = entity.property(PROPERTY).and_then(rewrite) {
+                    entity.set_property(PROPERTY, value);
+                }
+                &mut entity.children
+            }
+            NodeKind::Group(group) => &mut group.children,
+            NodeKind::Layer(layer) => &mut layer.children,
+            _ => continue,
+        };
+        rewrite_model_references(children, rewrite);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn copying_an_imported_model_to_another_map_keeps_the_original_asset() {
+        let root =
+            std::env::temp_dir().join(format!("heron-model-clipboard-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("a")).unwrap();
+        std::fs::create_dir_all(root.join("b")).unwrap();
+        let root = root.canonicalize().unwrap();
+        let small = b"v 0 0 0\nv 32 0 0\nv 0 32 0\nf 1 2 3\n";
+        std::fs::write(root.join("a/model.obj"), small).unwrap();
+        std::fs::write(
+            root.join("b/model.obj"),
+            b"v 0 0 0\nv 128 0 0\nv 0 128 0\nf 1 2 3\n",
+        )
+        .unwrap();
+        let mut source = Document::new(WorldBounds::default());
+        source.save_as(root.join("a/level.map")).unwrap();
+        source
+            .import_model(&root.join("a/model.obj"), Vec3d::zero())
+            .unwrap();
+        let text = source.copy_selection().unwrap();
+
+        let pasted_path = |doc: &mut Document| {
+            assert_eq!(doc.paste_at(&text, None), 1);
+            let (_, entity) = doc.selected_entity().unwrap();
+            let entity = entity.clone();
+            (
+                entity.property(PROPERTY).map(str::to_owned),
+                doc.imported_model_path(&entity),
+            )
+        };
+
+        // Another saved map with its own model.obj next to it.
+        let mut other = Document::new(WorldBounds::default());
+        other.save_as(root.join("b/level.map")).unwrap();
+        let (_, path) = pasted_path(&mut other);
+        assert_eq!(path.as_deref(), Some(root.join("a/model.obj").as_path()));
+
+        // A map not saved yet.
+        let mut unsaved = Document::new(WorldBounds::default());
+        let (_, path) = pasted_path(&mut unsaved);
+        assert_eq!(path.as_deref(), Some(root.join("a/model.obj").as_path()));
+
+        // The same map keeps its relative reference.
+        let (reference, _) = pasted_path(&mut source);
+        assert_eq!(reference.as_deref(), Some("model.obj"));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn save_as_rebases_visible_deleted_and_redo_only_model_history() {
         for state in ["visible", "deleted", "redo"] {
