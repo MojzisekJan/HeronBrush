@@ -139,7 +139,7 @@ Click a brush to select it, and `Ctrl`-click to add it to the selection or take 
 
 In the 3D view, `Shift`-drag a face of a selected brush to extrude it, together with the faces of the other selected brushes that lie in the same plane. To copy a texture from one face to another, `Shift`-click the source face so that it is the only selected face, then `Alt`-click another face to copy the selected face's material and alignment onto it; `Alt+Ctrl` copies only the material and `Alt+Shift` copies the material with UV rotated to follow the target face.
 
-If the window manager uses `Alt` to move windows, press `Ctrl+C` on the source face, select the target faces and press `Ctrl+V`. Copy/paste also accepts Face-tool handles. The transfer carries the source face's paint as well: a flat colour, or a gradient whose placed ends are fitted to the target face. When the source has no paint, the target's paint is removed so its material shows.
+If the window manager uses `Alt` to move windows (Cinnamon, Xfce and MATE do by default, so the editor never sees the click), press `Ctrl+C` on the source face, select the target faces and press `Ctrl+V`. Copy/paste also accepts Face-tool handles. The transfer carries the source face's paint as well: a flat colour, or a gradient whose placed ends are fitted to the target face. When the source has no paint, the target's paint is removed so its material shows.
 
 ## Shaping tools
 - **Select** (`Esc`): select and move.

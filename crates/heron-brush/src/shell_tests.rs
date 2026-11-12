@@ -106,6 +106,77 @@ fn window_shortcuts_work_while_a_field_has_the_keyboard() {
     assert_ne!(editor.document.borrow().to_map_text(), before);
 }
 
+/// The face-material copy that works when the desktop takes Alt+click: Ctrl+C on the
+/// selected source face, then Ctrl+V with the target face selected.
+#[test]
+fn ctrl_c_and_ctrl_v_copy_a_faces_material_to_another_face() {
+    use editor_core::document::FaceRef;
+    let (ctx, editor) = setup();
+    let (commands, window, mut animation) = keyboard(&ctx, &editor);
+    let ids: Vec<_> = editor
+        .document
+        .borrow()
+        .selectable_brushes()
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect();
+    let source = FaceRef {
+        node: ids[0],
+        face: 0,
+    };
+    let target = FaceRef {
+        node: ids[1],
+        face: 1,
+    };
+    {
+        let mut document = editor.document.borrow_mut();
+        document.select_face_only(source);
+        document.edit_faces(|face| face.material_name = "copied_stone".into());
+    }
+    let cmd = egui::Modifiers::COMMAND;
+    let mut copied = ctx.run_ui(Default::default(), |_| {
+        crate::dispatch_keys(
+            &commands,
+            &window,
+            &mut animation,
+            &editor,
+            vec![egui::Event::Copy],
+            cmd,
+            None,
+            false,
+        );
+    });
+    let text = copied
+        .platform_output
+        .commands
+        .iter()
+        .find_map(|command| match command {
+            egui::OutputCommand::CopyText(text) => Some(text.clone()),
+            _ => None,
+        })
+        .expect("Ctrl+C put the face on the clipboard");
+    copied.textures_delta.clear();
+    editor.document.borrow_mut().select_face_only(target);
+    crate::dispatch_keys(
+        &commands,
+        &window,
+        &mut animation,
+        &editor,
+        vec![egui::Event::Paste(text.clone())],
+        cmd,
+        None,
+        false,
+    );
+    let document = editor.document.borrow();
+    let brush = document.brush(target.node).unwrap();
+    let materials: Vec<&str> = brush
+        .faces()
+        .iter()
+        .map(|f| f.material_name.as_str())
+        .collect();
+    assert!(materials.contains(&"copied_stone"), "{materials:?}");
+}
+
 /// `#` shows and hides the grid, as 0 does.
 #[test]
 fn number_sign_toggles_the_grid() {

@@ -139,7 +139,7 @@ Kliknutím brush vyberete, `Ctrl`-kliknutím ho přidáte do výběru nebo z ně
 
 Ve 3D pohledu `Shift`-tažením stěny vybraného brushe stěnu vytáhnete, spolu se stěnami ostatních vybraných brushů, které leží ve stejné rovině. Texturu z jedné stěny na druhou zkopírujete takto: `Shift`-kliknutím vyberte zdrojovou stěnu, aby byla jedinou vybranou stěnou, a `Alt`-kliknutím na jinou stěnu na ni přenesete materiál a zarovnání vybrané stěny; `Alt+Ctrl` přenese jen materiál a `Alt+Shift` materiál s UV otočeným podle cílové stěny.
 
-Pokud správce oken používá `Alt` pro přesouvání oken, použijte `Ctrl+C` na zdrojové stěně, vyberte cílové stěny a stiskněte `Ctrl+V`. Kopírování a vložení funguje i pro úchyty nástroje Stěna. Přenos materiálu odstraní cílový barevný nátěr, aby byla textura viditelná.
+Pokud správce oken používá `Alt` pro přesouvání oken (Cinnamon, Xfce a MATE to ve výchozím nastavení dělají a editor kliknutí vůbec nedostane), použijte `Ctrl+C` na zdrojové stěně, vyberte cílové stěny a stiskněte `Ctrl+V`. Kopírování a vložení funguje i pro úchyty nástroje Stěna. Přenos materiálu odstraní cílový barevný nátěr, aby byla textura viditelná.
 
 ## Tvarovací nástroje
 - **Vybrat** (`Esc`): výběr a posun.
