@@ -48,7 +48,9 @@ vec3 mapped_normal(vec3 n, vec3 position, vec2 texels) {
 "#;
 
 pub fn normal_mapping(source: &str) -> String {
-    source.replace("// NORMAL_MAPPING", NORMAL_MAPPING)
+    source
+        .replace("// NORMAL_MAPPING", NORMAL_MAPPING)
+        .replace("// SURFACE_GRID", include_str!("surface_grid.glsl"))
 }
 
 /// Writes depth and nothing else, for the shadow map.
@@ -319,6 +321,7 @@ out vec4 fragment;
 // real geometry can put the difference in rather than adding light that is already there.
 out vec4 reflectivity;
 
+// SURFACE_GRID
 uniform vec4 section_plane;
 uniform vec3 camera_position;
 uniform vec3 light_direction;
@@ -550,6 +553,7 @@ vec3 tonemap(vec3 color) {
 }
 
 void main() {
+    float grid_coverage = surface_grid_coverage(v_world_position, v_normal, dFdx(v_world_position), dFdy(v_world_position), camera_position);
     if (dot(section_plane, vec4(v_world_position, 1.0)) > 0.0001) discard;
     if (lit < -0.5) {
         fragment = vec4(wire_color, 1.0);
@@ -624,6 +628,7 @@ void main() {
         float shade = 0.45 + 0.55 * clamp(
             0.5 + 0.5 * dot(n * face_sign, normalize(vec3(0.35, 0.25, 0.9))), 0.0, 1.0);
         vec3 flat_light = albedo * shade * ambient_strength;
+        flat_light = surface_grid_color(flat_light, grid_coverage);
         vec3 flat_exposed = flat_light * exposure;
         fragment = vec4(mix(flat_light, tonemap(flat_exposed), tonemap_here), surface_alpha);
         reflectivity = vec4(0.0);
@@ -677,6 +682,7 @@ void main() {
     // pass does both, and doing it twice would double it.
     vec3 model_emission = pow(texture(model_emissive,v_uv / max(material_size,vec2(1.0))).rgb,vec3(2.2)) * model_emissive_factor;
     vec3 light = direct + ambient + albedo * emission_value + model_emission;
+    light = surface_grid_color(light, grid_coverage);
     vec3 exposed = light * exposure;
     fragment = vec4(mix(light, tonemap(exposed), tonemap_here), surface_alpha);
     // The weight the sky reflection was added at, and the roughness it was blurred by. A
@@ -736,6 +742,9 @@ pub const COMPOSITE_FRAGMENT: &str = r#"#version 150 core
 in vec2 v_uv;
 out vec4 fragment;
 
+// SURFACE_GRID
+uniform mat4 grid_inverse_view_projection;
+uniform vec3 grid_eye;
 uniform sampler2D scene;
 uniform sampler2D bloom;
 // What the reflection pass found, as the difference from the sky already reflected.
@@ -762,6 +771,23 @@ uniform mat4 cavity_inverse_projection;
 vec3 cavity_position(vec2 uv) {
     vec4 p = cavity_inverse_projection * vec4(uv * 2.0 - 1.0, texture(scene_depth, uv).r * 2.0 - 1.0, 1.0);
     return p.xyz / p.w;
+}
+vec3 grid_world(vec2 uv) {
+    uv = clamp(uv, 0.5 / image_size, 1.0 - 0.5 / image_size);
+    vec4 p = grid_inverse_view_projection * vec4(uv * 2.0 - 1.0, texture(scene_depth, uv).r * 2.0 - 1.0, 1.0);
+    return p.xyz / p.w;
+}
+float matcap_grid(vec2 uv) {
+    if (surface_grid.x <= 0.0 || surface_grid.y <= 0.0) return 0.0;
+    vec3 p = grid_world(uv);
+    vec2 pixel = 1.0 / image_size;
+    vec3 left = p - grid_world(uv - vec2(pixel.x, 0.0));
+    vec3 right = grid_world(uv + vec2(pixel.x, 0.0)) - p;
+    vec3 down = p - grid_world(uv - vec2(0.0, pixel.y));
+    vec3 up = grid_world(uv + vec2(0.0, pixel.y)) - p;
+    vec3 dx = dot(left,left) < dot(right,right) ? left : right;
+    vec3 dy = dot(down,down) < dot(up,up) ? down : up;
+    return surface_grid_coverage(p, cross(dx,dy), dx, dy, grid_eye);
 }
 float cavity_factor(vec2 uv) {
     if (cavity.x <= 0.0 || texture(scene_depth, uv).r >= 1.0) return 1.0;
@@ -818,7 +844,7 @@ void main() {
         vec2 cap_uv = clamp(normal.xy * 0.5 + 0.5, vec2(0.5 / 128.0), vec2(127.5 / 128.0));
         cap_uv.x = (cap_uv.x + matcap_preset - 1.0) / 3.0;
         vec3 captured = pow(texture(matcap_atlas, cap_uv).rgb, vec3(2.2));
-        fragment = vec4(pow(max(captured * cavity_factor(v_uv), vec3(0.0)), vec3(1.0 / 2.2)), 1.0);
+        fragment = vec4(pow(max(surface_grid_color(captured * cavity_factor(v_uv), matcap_grid(v_uv)), vec3(0.0)), vec3(1.0 / 2.2)), 1.0);
         return;
     }
     vec3 light = lighting(v_uv);

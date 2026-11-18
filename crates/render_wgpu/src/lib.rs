@@ -203,6 +203,7 @@ struct FrameUniform {
     cavity: [f32; 4],
     matcap: [f32; 4],
     section_plane: [f32; 4],
+    surface_grid: [f32; 4],
 }
 
 #[repr(C)]
@@ -370,7 +371,9 @@ const COMMON: &str = include_str!("shaders/common.wgsl");
 fn module(device: &wgpu::Device, label: &str, source: &str) -> wgpu::ShaderModule {
     device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some(label),
-        source: wgpu::ShaderSource::Wgsl(format!("{COMMON}\n{source}").into()),
+        source: wgpu::ShaderSource::Wgsl(
+            format!("{COMMON}\n{}\n{source}", include_str!("shaders/surface_grid.wgsl")).into(),
+        ),
     })
 }
 
@@ -2277,6 +2280,7 @@ impl Renderer {
                 0.,
             ],
             section_plane: s.section_plane,
+            surface_grid: s.surface_grid.parameters(),
             matcap: [
                 if view.mode == DisplayMode::Wireframe {
                     0.0

@@ -87,6 +87,7 @@ struct Frame {
     cavity:vec4<f32>,
     matcap:vec4<f32>,
     section_plane:vec4<f32>,
+    surface_grid:vec4<f32>,
 };
 
 struct Object {

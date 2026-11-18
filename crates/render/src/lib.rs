@@ -28,6 +28,7 @@ pub mod environment;
 pub mod matcap;
 pub mod probes;
 pub mod section;
+pub mod surface_grid;
 
 use std::collections::HashMap;
 
@@ -281,6 +282,8 @@ impl Default for LensEffects {
 /// and 3).
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderSettings {
+    /// Optional world-space grid on editor surfaces.
+    pub surface_grid: surface_grid::SurfaceGrid,
     /// Optional camera-relative material capture for the working viewport.
     pub matcap: matcap::MatCap,
     /// Temporary viewport clipping plane. Zero disables it.
@@ -556,8 +559,11 @@ impl Renderer {
             let bright = Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::BRIGHT_FRAGMENT)?;
             let gaussian =
                 Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::GAUSSIAN_FRAGMENT)?;
-            let composite =
-                Program::new(&gl, shaders::FULLSCREEN_VERTEX, shaders::COMPOSITE_FRAGMENT)?;
+            let composite = Program::new(
+                &gl,
+                shaders::FULLSCREEN_VERTEX,
+                &shaders::normal_mapping(shaders::COMPOSITE_FRAGMENT),
+            )?;
             let accumulate = Program::new(
                 &gl,
                 shaders::FULLSCREEN_VERTEX,
@@ -1142,6 +1148,11 @@ impl Renderer {
             self.gl.disable(glow::CULL_FACE);
             self.gl.disable(glow::BLEND);
             self.gl.use_program(Some(self.scene.program));
+            self.scene.set_vec4(
+                &self.gl,
+                "surface_grid",
+                &self.settings.surface_grid.parameters(),
+            );
             self.scene
                 .set_vec4(&self.gl, "section_plane", &self.settings.section_plane);
             self.scene.set_matrix(
@@ -1879,6 +1890,11 @@ impl Renderer {
             self.gl.disable(glow::CULL_FACE);
 
             self.gl.use_program(Some(self.scene.program));
+            self.scene.set_vec4(
+                &self.gl,
+                "surface_grid",
+                &self.settings.surface_grid.parameters(),
+            );
             self.scene
                 .set_vec4(&self.gl, "section_plane", &self.settings.section_plane);
             self.scene
@@ -2175,6 +2191,11 @@ impl Renderer {
                 .blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
 
             self.gl.use_program(Some(self.scene.program));
+            self.scene.set_vec4(
+                &self.gl,
+                "surface_grid",
+                &self.settings.surface_grid.parameters(),
+            );
             self.scene
                 .set_vec4(&self.gl, "section_plane", &self.settings.section_plane);
             self.scene.set_f32(&self.gl, "lit", 0.0);
@@ -2441,6 +2462,24 @@ impl Renderer {
                 .bind_framebuffer(glow::FRAMEBUFFER, Some(post.ldr_framebuffer));
             self.gl.viewport(0, 0, width, height);
             self.gl.use_program(Some(self.composite.program));
+            self.composite.set_vec4(
+                &self.gl,
+                "surface_grid",
+                &self.settings.surface_grid.parameters(),
+            );
+            self.composite.set_matrix(
+                &self.gl,
+                "grid_inverse_view_projection",
+                &mat::invert(self.projection(camera, width, height) * camera.view_matrix())
+                    .unwrap_or_else(Mat4x4d::identity),
+            );
+            self.composite.set_vec3(
+                &self.gl,
+                "grid_eye",
+                camera.position.x() as f32,
+                camera.position.y() as f32,
+                camera.position.z() as f32,
+            );
             self.composite.set_i32(&self.gl, "scene_depth", 3);
             self.composite.set_i32(&self.gl, "matcap_atlas", 4);
             self.composite.set_i32(&self.gl, "matcap_normals", 5);

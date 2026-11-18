@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Compile production GL shaders and render face-rule normals using local EGL.
+"""Compile production GL shaders and check rendered materials and surface grids.
 
-Requires system libEGL/libGL and a usable Mesa surfaceless adapter. Missing GL
-support is a failure, never a passing skip. No Python packages are required.
+Uses native CGL on macOS, or libEGL/libGL with a Mesa surfaceless adapter.
+Missing GL support is a failure, never a passing skip. No Python packages are required.
 """
 import ctypes as c
 from pathlib import Path
 import re
+import sys
 
-E = c.CDLL('libEGL.so.1'); G = c.CDLL('libGL.so.1')
+G = c.CDLL('/System/Library/Frameworks/OpenGL.framework/OpenGL' if sys.platform == 'darwin' else 'libGL.so.1')
+E = None if sys.platform == 'darwin' else c.CDLL('libEGL.so.1')
 I=c.c_int; U=c.c_uint; F=c.c_float; P=c.c_void_p
 
 def api(lib, name, result, *arguments):
@@ -19,21 +21,38 @@ def ints(*values):return (I*len(values))(*values)
 def require(ok,message):
     if not ok:raise RuntimeError(message)
 
-get_display=api(E,'eglGetPlatformDisplay',P,U,P,c.POINTER(I))
-display=get_display(0x31DD,None,None)
-require(api(E,'eglInitialize',U,P,c.POINTER(I),c.POINTER(I))(display,None,None),'EGL initialize')
-require(api(E,'eglBindAPI',U,U)(0x30A2),'OpenGL API')
-config=P();count=I()
-require(api(E,'eglChooseConfig',U,P,c.POINTER(I),c.POINTER(P),I,c.POINTER(I))(
-    display,ints(0x3033,1,0x3040,8,0x3024,8,0x3023,8,0x3022,8,0x3021,8,0x3025,24,0x3038),c.byref(config),1,c.byref(count)) and count.value,'EGL config')
-surface=api(E,'eglCreatePbufferSurface',P,P,P,c.POINTER(I))(display,config,ints(0x3057,64,0x3056,64,0x3038))
-context=api(E,'eglCreateContext',P,P,P,P,c.POINTER(I))(display,config,None,ints(0x3098,3,0x30FB,2,0x30FD,1,0x3038))
-require(context and surface,'EGL context/surface')
-require(api(E,'eglMakeCurrent',U,P,P,P,P)(display,surface,surface,context),'EGL make current')
+if sys.platform == 'darwin':
+    pixel_format=P(); count=I(); context=P()
+    require(api(G,'CGLChoosePixelFormat',I,c.POINTER(I),c.POINTER(P),c.POINTER(I))(
+        ints(99,0x3200,8,32,12,24,0),c.byref(pixel_format),c.byref(count))==0,'CGL pixel format')
+    require(api(G,'CGLCreateContext',I,P,P,c.POINTER(P))(pixel_format,None,c.byref(context))==0,'CGL context')
+    require(api(G,'CGLSetCurrentContext',I,P)(context)==0,'CGL current context')
+    api(G,'CGLDestroyPixelFormat',I,P)(pixel_format)
+    framebuffer=U();api(G,'glGenFramebuffers',None,I,c.POINTER(U))(1,c.byref(framebuffer))
+    api(G,'glBindFramebuffer',None,U,U)(0x8D40,framebuffer)
+    for attachment,format in [(0x8CE0,0x8058),(0x8D00,0x81A6)]:
+        buffer=U();api(G,'glGenRenderbuffers',None,I,c.POINTER(U))(1,c.byref(buffer))
+        api(G,'glBindRenderbuffer',None,U,U)(0x8D41,buffer)
+        api(G,'glRenderbufferStorage',None,U,U,I,I)(0x8D41,format,64,64)
+        api(G,'glFramebufferRenderbuffer',None,U,U,U,U)(0x8D40,attachment,0x8D41,buffer)
+    require(api(G,'glCheckFramebufferStatus',U,U)(0x8D40)==0x8CD5,'CGL framebuffer')
+else:
+    get_display=api(E,'eglGetPlatformDisplay',P,U,P,c.POINTER(I))
+    display=get_display(0x31DD,None,None)
+    require(api(E,'eglInitialize',U,P,c.POINTER(I),c.POINTER(I))(display,None,None),'EGL initialize')
+    require(api(E,'eglBindAPI',U,U)(0x30A2),'OpenGL API')
+    config=P();count=I()
+    require(api(E,'eglChooseConfig',U,P,c.POINTER(I),c.POINTER(P),I,c.POINTER(I))(
+        display,ints(0x3033,1,0x3040,8,0x3024,8,0x3023,8,0x3022,8,0x3021,8,0x3025,24,0x3038),c.byref(config),1,c.byref(count)) and count.value,'EGL config')
+    surface=api(E,'eglCreatePbufferSurface',P,P,P,c.POINTER(I))(display,config,ints(0x3057,64,0x3056,64,0x3038))
+    context=api(E,'eglCreateContext',P,P,P,P,c.POINTER(I))(display,config,None,ints(0x3098,3,0x30FB,2,0x30FD,1,0x3038))
+    require(context and surface,'EGL context/surface')
+    require(api(E,'eglMakeCurrent',U,P,P,P,P)(display,surface,surface,context),'EGL make current')
 
 source=(Path(__file__).resolve().parents[2]/'crates/render/src/shaders.rs').read_text()
 def shader_text(name):
     text=re.search(r'pub const '+name+r': &str = r#"(.*?)"#;',source,re.S).group(1)
+    text = text.replace('// SURFACE_GRID', (Path(__file__).resolve().parents[2]/'crates/render/src/surface_grid.glsl').read_text())
     return text.replace('// NORMAL_MAPPING',re.search(r'pub const NORMAL_MAPPING: &str = r#"(.*?)"#;',source,re.S).group(1))
 
 def compile_shader(name,kind):
@@ -58,6 +77,7 @@ try:
     print('OpenGL:', api(G,'glGetString',c.c_char_p,U)(0x1F01).decode(),
           api(G,'glGetString',c.c_char_p,U)(0x1F02).decode())
     scene=program('SCENE');normal=program('NORMAL')
+    compile_shader('COMPOSITE_FRAGMENT',0x8B30)
     api(G,'glUseProgram',None,U)(normal)
     location=api(G,'glGetUniformLocation',I,U,c.c_char_p)
     def uniform(name,value):api(G,'glUniform1f',None,I,F)(location(normal,name.encode()),value)
@@ -129,6 +149,23 @@ try:
     require(color_render(2,False,1,.2)[3]==255,'Mask rejected above-cutoff texel')
     require(color_render(2,False,1,.3)==[0,0,0,0],'Mask ignored cutoff')
     require(abs(color_render(2,False,2,.5)[3]-64)<=1,'Blend shader lost continuous alpha')
+    # The real surface shader must draw the grid, retain distant major lines,
+    # and return pixel-for-pixel to its original output when disabled.
+    def grid_image(spacing, opacity, distance):
+        api(G,'glUniform4f',None,I,F,F,F,F)(location(scene,b'surface_grid'),spacing,opacity,0,0)
+        api(G,'glUniform3f',None,I,F,F,F)(location(scene,b'camera_position'),0,0,distance)
+        color_render(2,False,0,.5)
+        pixels=(c.c_ubyte*(64*64*4))()
+        api(G,'glReadPixels',None,I,I,I,I,U,U,P)(0,0,64,64,0x1908,0x1401,pixels)
+        return bytes(pixels)
+    without=grid_image(0,0,1)
+    near=grid_image(.125,.7,1)
+    far=grid_image(.125,.7,2400)
+    require(sum(a!=b for a,b in zip(without,near))>100,'Near surface grid missing')
+    require(sum(a!=b for a,b in zip(without,far))>10,'Distant grid disappeared')
+    require(near!=grid_image(1.0,.7,1),'Grid spacing has no effect')
+    require(without==grid_image(.125,0,1),'Disabled grid changes output')
+    require(without==grid_image(0,.7,1),'Hidden grid changes output')
     blended=color_render(2,False,2,.5,True)
     require(0<blended[0]<opaque[0]/2,'Blend framebuffer result is not partial coverage')
     api(G,'glDisable',None,U)(0x0BE2)
@@ -143,7 +180,7 @@ try:
     api(G,'glUniformMatrix4fv',None,I,I,U,c.POINTER(F))(location(depth,b'view_projection'),1,0,identity)
     api(G,'glUniform2f',None,I,F,F)(location(depth,b'material_size'),1,1)
     api(G,'glUniform1i',None,I,I)(location(depth,b'material'),0)
-    depth_bits=I();api(G,'glGetFramebufferAttachmentParameteriv',None,U,U,U,c.POINTER(I))(0x8D40,0x1801,0x8216,c.byref(depth_bits))
+    depth_bits=I();api(G,'glGetFramebufferAttachmentParameteriv',None,U,U,U,c.POINTER(I))(0x8D40,0x8D00 if sys.platform == 'darwin' else 0x1801,0x8216,c.byref(depth_bits))
     require(depth_bits.value>=16,'Depth attachment unavailable')
     api(G,'glEnable',None,U)(0x0B71);api(G,'glDepthFunc',None,U)(0x0201)
     api(G,'glDepthMask',None,U)(1);api(G,'glDisable',None,U)(0x0B44)
@@ -170,9 +207,13 @@ try:
     fast_value=F();api(G,'glReadPixels',None,I,I,I,I,U,U,P)(32,24,1,1,0x1902,0x1406,c.byref(fast_value))
     require(abs(fast_value.value-.5)<.001,'Ordinary opaque fast shadow depth missing')
     require(api(G,'glGetError',U)()==0,'OpenGL error')
-    print('PASS: production scene/normal shaders; front/back culling, normal-map reversal, opaque/mask/blend color, framebuffer blending and masked shadow depth')
+    print('PASS: surface grid near/far/spacing/off, composite compilation; production scene/normal shaders; front/back culling, normal-map reversal, opaque/mask/blend color, framebuffer blending and masked shadow depth')
 finally:
-    api(E,'eglMakeCurrent',U,P,P,P,P)(display,None,None,None)
-    api(E,'eglDestroyContext',U,P,P)(display,context)
-    api(E,'eglDestroySurface',U,P,P)(display,surface)
-    api(E,'eglTerminate',U,P)(display)
+    if sys.platform == 'darwin':
+        api(G,'CGLSetCurrentContext',I,P)(None)
+        api(G,'CGLDestroyContext',I,P)(context)
+    else:
+        api(E,'eglMakeCurrent',U,P,P,P,P)(display,None,None,None)
+        api(E,'eglDestroyContext',U,P,P)(display,context)
+        api(E,'eglDestroySurface',U,P,P)(display,surface)
+        api(E,'eglTerminate',U,P)(display)

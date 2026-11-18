@@ -80,6 +80,10 @@ Tažením prostředním tlačítkem posouváte pohled, kolečko přibližuje kol
 ## Mřížka a přichytávání
 `+` a `-` mění velikost mřížky a číselné klávesy `1` až `9` volí velikost přímo, od 1 do 256 jednotek. `0` nebo `#` zobrazí či skryje mřížku a `Alt+0` zapne nebo vypne přichytávání. `S` přichytí vrcholy vybraných brushů k aktuální mřížce, `Ctrl+Shift+V` k celým jednotkám a `Ctrl+Alt+Shift+V` k mřížce.
 
+### Mřížka na površích ve 3D
+
+Volba **Zobrazit mřížku** (`0`) ovládá mřížku ve 2D i na površích ve 3D. Rozestupy odpovídají aktuální velikosti rastru. Krytí se nastavuje v Předvolby → Pohled → Mřížka. Jemné čáry při oddálení postupně mizí a hrubší hlavní čáry zůstávají čitelné i při šikmém pohledu. Mřížka funguje také v režimu MatCap; do samostatného renderu obrázku se nepřidává.
+
 ## Běžné zkratky
 - `F3` nebo `Ctrl+Shift+P`: vyhledá kterýkoli příkaz z menu podle názvu a `Enter` ho spustí. `F10` otevře menu a šipky se v nich pohybují.
 - `Ctrl+S`: uložit mapu. `Ctrl+Shift+S`: uložit jako.

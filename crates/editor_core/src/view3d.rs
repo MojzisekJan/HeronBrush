@@ -2135,6 +2135,15 @@ impl Scene3d {
         let mut settings = crate::render_settings::for_document(&self.document.borrow());
         crate::render_camera::apply_frame_settings(camera, &mut settings);
         settings.matcap = crate::preferences::pref(|p| p.matcap);
+        let grid = self.grid.borrow();
+        settings.surface_grid = render::surface_grid::SurfaceGrid {
+            spacing: if grid.visible() {
+                grid.actual_size() as f32
+            } else {
+                0.0
+            },
+            opacity: pref(|p| p.grid_alpha),
+        };
         let section = self.filters.borrow().section;
         settings.section_plane = section.plane();
         self.document.borrow().set_pick_section(section);
@@ -6197,6 +6206,27 @@ mod kept_frame_tests {
         points: &[(Vec3d, [f32; 4])],
     ) -> u64 {
         frame_key(camera, document, filters, size.0, size.1, points, &[])
+    }
+
+    #[test]
+    fn surface_grid_changes_invalidate_kept_frames_without_affecting_image_defaults() {
+        let mut settings = crate::render_settings::from_preferences();
+        assert_eq!(
+            settings.surface_grid,
+            render::surface_grid::SurfaceGrid::default()
+        );
+        let hidden = picture_key(1, &settings, 0);
+        settings.surface_grid = render::surface_grid::SurfaceGrid {
+            spacing: 16.0,
+            opacity: 0.5,
+        };
+        let visible = picture_key(1, &settings, 0);
+        assert_ne!(hidden, visible);
+        settings.surface_grid.spacing = 32.0;
+        let coarser = picture_key(1, &settings, 0);
+        assert_ne!(visible, coarser);
+        settings.surface_grid.opacity = 0.25;
+        assert_ne!(coarser, picture_key(1, &settings, 0));
     }
 
     #[test]

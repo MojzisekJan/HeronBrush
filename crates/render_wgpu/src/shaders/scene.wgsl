@@ -550,6 +550,7 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
     let bumps = textureSample(normal_map, albedo_sampler, uv).xyz;
     let dpx = dpdx(in.world);
     let dpy = dpdy(in.world);
+    let grid_coverage = surface_grid_coverage(in.world, in.normal, dpx, dpy);
     let duvx = dpdx(uv);
     let duvy = dpdy(uv);
     var sheen = m.sheen;
@@ -598,7 +599,7 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
             flat_n = -flat_n;
         }
         let shade = 0.45 + 0.55 * clamp(0.5 + 0.5 * dot(flat_n, normalize(vec3<f32>(0.35, 0.25, 0.9))), 0.0, 1.0);
-        return forward_out(vec4<f32>(albedo_linear * shade * ambient_strength, surface_alpha));
+        return forward_out(vec4<f32>(surface_grid_color(albedo_linear * shade * ambient_strength, grid_coverage), surface_alpha));
     }
 
     var geometric = normalize(in.normal);
@@ -761,7 +762,7 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
         let transmitted_color = background.rgb + srgb_to_linear(frame.background.rgb) * (1.0 - background.a);
         shaded = min(light + transmitted_color * albedo_linear * transmission, vec3<f32>(65504.0));
     }
-    return ForwardOut(vec4<f32>(shaded, surface_alpha), vec4<f32>(single * specular_ao*pow(1.0-coat_weight,2.0), roughness));
+    return ForwardOut(vec4<f32>(surface_grid_color(shaded, grid_coverage), surface_alpha), vec4<f32>(single * specular_ao*pow(1.0-coat_weight,2.0), roughness));
 }
 
 // Wireframe: the triangles' edges in one colour, written straight to the display target.

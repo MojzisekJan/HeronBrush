@@ -4435,3 +4435,127 @@ fn viewport_inspection_section_clips_without_rebuilding_geometry() {
     assert_eq!(document.to_map_text(), text);
     assert_eq!(document.revision(), revision);
 }
+
+#[test]
+fn surface_grid_follows_world_planes_and_survives_distance() {
+    use geometry_math::{bbox::Bbox3d, vec::Vec3d};
+    use render::surface_grid::SurfaceGrid;
+    let (device, queue) = device().expect("surface grid checks require a GPU");
+    let mut renderer = Renderer::new(&device, &queue);
+    let mut settings = single_frame_settings();
+    settings.show_axes = false;
+    settings.procedural_sky = false;
+    settings.background_color = [0.03; 3];
+    settings.shadows = false;
+    settings.contact_shadows = false;
+    settings.ambient_occlusion = false;
+    settings.reflections = false;
+    settings.bloom = false;
+    settings.cavity = false;
+    let mut tracker = SceneTracker::new();
+    for axis in 0..3 {
+        let mut document = Document::new(Default::default());
+        let mut min = Vec3d::new(-8192., -8192., -8192.);
+        let mut max = Vec3d::new(8192., 8192., 8192.);
+        min[axis] = -16.;
+        max[axis] = 0.;
+        let brush = map_model::shapes::create_cuboid(
+            &document.world_bounds(),
+            &Bbox3d::new(min, max),
+            "__TB_empty",
+        )
+        .unwrap();
+        document.add_brushes(vec![brush]);
+        document.clear_selection();
+        tracker.sync(
+            &document,
+            &ViewFilters::default(),
+            None,
+            Pose::Rest,
+            &mut renderer.scene,
+        );
+        for (distance, height) in [(256., 256.), (2400., 1600.), (2400., 100.)] {
+            let mut position = Vec3d::new(distance, distance * 0.3, distance * 0.5);
+            position[axis] = height;
+            let mut camera = Camera3d {
+                position,
+                ..Default::default()
+            };
+            camera.look_along(-position);
+            for mode in [DisplayMode::Solid, DisplayMode::Material] {
+                for brightness in [0.15, 1.0] {
+                    settings.ambient_intensity = brightness;
+                    let mut draw = |settings: &render::RenderSettings| {
+                        renderer.render(&view(
+                            &camera,
+                            settings,
+                            mode,
+                            Tonemapper::Agx,
+                            (256, 192),
+                        ));
+                        renderer.read_output().unwrap()
+                    };
+                    settings.surface_grid = Default::default();
+                    let plain = draw(&settings);
+                    settings.surface_grid = SurfaceGrid {
+                        spacing: 16.,
+                        opacity: 0.7,
+                    };
+                    let grid = draw(&settings);
+                    let changed = plain
+                        .2
+                        .chunks_exact(4)
+                        .zip(grid.2.chunks_exact(4))
+                        .filter(|(a, b)| {
+                            a[..3].iter().zip(&b[..3]).any(|(x, y)| x.abs_diff(*y) > 3)
+                        })
+                        .count();
+                    assert!(
+                        changed > 50,
+                        "grid missing: axis={axis}, distance={distance}, height={height}, changed={changed}"
+                    );
+                    save(
+                        &format!("grid-{axis}-{distance}-{height}-{mode:?}-{brightness}"),
+                        &grid,
+                    );
+                    settings.surface_grid.opacity = 0.;
+                    assert_eq!(plain.2, draw(&settings).2, "zero opacity changed the image");
+                    settings.surface_grid = SurfaceGrid {
+                        spacing: 64.,
+                        opacity: 0.7,
+                    };
+                    if distance < 1000. {
+                        assert_ne!(grid.2, draw(&settings).2, "grid spacing had no effect");
+                    }
+                }
+            }
+        }
+    }
+    let mut camera = Camera3d::default();
+    camera.position = Vec3d::new(100., 100., 256.);
+    camera.look_along(-camera.position);
+    settings.matcap = render::matcap::MatCap::Clay;
+    settings.surface_grid = Default::default();
+    renderer.render(&view(
+        &camera,
+        &settings,
+        DisplayMode::Material,
+        Tonemapper::Agx,
+        (256, 192),
+    ));
+    let plain = renderer.read_output().unwrap();
+    settings.surface_grid = SurfaceGrid {
+        spacing: 16.,
+        opacity: 0.7,
+    };
+    renderer.render(&view(
+        &camera,
+        &settings,
+        DisplayMode::Material,
+        Tonemapper::Agx,
+        (256, 192),
+    ));
+    let grid = renderer.read_output().unwrap();
+    assert_ne!(plain.2, grid.2, "MatCap hid the editor grid");
+    save("grid-matcap", &grid);
+}

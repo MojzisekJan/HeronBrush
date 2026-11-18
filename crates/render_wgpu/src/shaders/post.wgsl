@@ -234,6 +234,23 @@ fn cavity_factor(p: vec2<i32>) -> f32 {
     return (1.0 + ridge * frame.cavity.z) * max(1.0 - valley * frame.cavity.w, 0.0);
 }
 
+fn grid_world(pixel: vec2<i32>) -> vec3<f32> {
+    let p = clamp(pixel, vec2<i32>(0), vec2<i32>(frame.viewport.xy) - 1);
+    let uv = (vec2<f32>(p) + 0.5) * frame.viewport.zw;
+    let h = frame.inv_view_proj * vec4<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, textureLoad(depth, p, 0), 1.0);
+    return h.xyz / h.w;
+}
+fn matcap_grid(pixel: vec2<i32>) -> f32 {
+    if (frame.surface_grid.x <= 0.0 || frame.surface_grid.y <= 0.0) { return 0.0; }
+    let p = grid_world(pixel);
+    let left = p - grid_world(pixel - vec2<i32>(1,0));
+    let right = grid_world(pixel + vec2<i32>(1,0)) - p;
+    let up = p - grid_world(pixel - vec2<i32>(0,1));
+    let down = grid_world(pixel + vec2<i32>(0,1)) - p;
+    let dx = select(right, left, dot(left,left) < dot(right,right));
+    let dy = select(down, up, dot(up,up) < dot(down,down));
+    return surface_grid_coverage(p, cross(dx,dy), dx, dy);
+}
 fn resolved_color(p: vec2<i32>, uv: vec2<f32>) -> vec3<f32> {
     if (frame.matcap.x > 0.5 && textureLoad(depth, p, 0) > 0.0) {
         let world_normal = octahedral_decode(textureLoad(matcap_normals, p, 0).xy);
@@ -242,7 +259,7 @@ fn resolved_color(p: vec2<i32>, uv: vec2<f32>) -> vec3<f32> {
         cap_uv.x = (cap_uv.x + frame.matcap.x - 1.0) / 3.0;
         var captured = textureSampleLevel(matcap_atlas, post_sampler, cap_uv, 0.0).rgb;
         if (is_selected(textureLoad(ids, p, 0).r)) { captured = mix(captured, pow(frame.selected_color.rgb, vec3<f32>(2.2)), 0.15); }
-        return linear_to_srgb(max(captured * cavity_factor(p), vec3<f32>(0.0)));
+        return linear_to_srgb(max(surface_grid_color(captured * cavity_factor(p), matcap_grid(p)), vec3<f32>(0.0)));
     }
     var light = scene_light(p, uv);
     if (frame.dof.z > 0.0) {

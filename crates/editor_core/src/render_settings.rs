@@ -11,6 +11,7 @@ use crate::preferences::pref;
 /// however it likes (docs/android.md, step 3).
 pub fn from_preferences() -> render::RenderSettings {
     pref(|p| render::RenderSettings {
+        surface_grid: Default::default(),
         matcap: render::matcap::MatCap::Off,
         section_plane: [0.0; 4],
         environment: None,

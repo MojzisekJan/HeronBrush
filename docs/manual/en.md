@@ -30,6 +30,8 @@ The title bar shows the logo, the menus, the map name in the middle and the wind
 - **File**: Welcome, New map (`Ctrl+N`), Open map (`Ctrl+O`), Save (`Ctrl+S`), Save as (`Ctrl+Shift+S`), Revert to saved map, Export, Render image, Plugins and Preferences (`Ctrl+,`).
 - **Edit**: Undo (`Ctrl+Z`), Redo (`Ctrl+Shift+Z`), Cut, Copy, Paste, Duplicate (`Ctrl+D`), Delete, Select all (`Ctrl+A`), Repeat last commands (`Ctrl+R`) and Forget repeatable commands.
 - **View**: 3D view in separate window, Go to, Snap to grid (`Alt+0`), Show grid (`0`), Preview animations and Show omitted faces.
+
+**Show grid** controls the 2D grid and the world-space grid on surfaces in the 3D view. Both use the current grid size. In Preferences → View → Grid, **Grid opacity on faces** adjusts its opacity. Fine lines fade as they crowd together on screen; coarser major lines remain visible at a distance, including at grazing angles. The overlay also works in MatCap mode and is excluded from image renders.
 - **Geometry**: Insert 3D text, Join corner, Convert faces to patches, Move selection out of its entity and Sync linked groups.
 - **Animation**: Keyframe animation, Preview animations and Place camera from 3D view (`Ctrl+Alt+0`).
 - **Map**: Load, Reload and Unload point file; Load, Reload and Unload portal file. These show leak traces and portals written by map compilers.
