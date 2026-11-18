@@ -249,9 +249,11 @@ pub fn intersect_ray_bbox<T: Float, const S: usize>(r: &Ray<T, S>, b: &Bbox<T, S
 
     let best = if all_inside {
         // Leaving the box: the first face reached wins.
-        let mut best = 0;
-        for i in 1..S {
-            if distances[i] > T::ZERO && distances[i] < distances[best] {
+        // Parallel axes have a negative sentinel and must not become the initial
+        // candidate. This also handles rays starting on a face and heading out.
+        let mut best = (0..S).find(|&i| distances[i] >= T::ZERO)?;
+        for i in best + 1..S {
+            if distances[i] >= T::ZERO && distances[i] < distances[best] {
                 best = i;
             }
         }

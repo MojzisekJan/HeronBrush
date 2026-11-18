@@ -566,3 +566,30 @@ fn distance_between_a_ray_and_a_line() {
     assert_approx_eq!(d.distance, 3.0);
     assert_approx_eq!(d.position2, 7.0);
 }
+
+#[test]
+fn a_ray_inside_a_box_can_leave_along_any_axis() {
+    let bounds = geometry_math::bbox::Bbox3d::new(
+        geometry_math::vec::Vec3d::new(-16., -16., -16.),
+        geometry_math::vec::Vec3d::new(16., 16., 16.),
+    );
+    for axis in 0..3 {
+        for sign in [-1., 1.] {
+            let mut direction = geometry_math::vec::Vec3d::zero();
+            direction[axis] = sign;
+            let ray = geometry_math::ray::Ray3d::new(geometry_math::vec::Vec3d::zero(), direction);
+            assert_eq!(
+                geometry_math::intersection::intersect_ray_bbox(&ray, &bounds),
+                Some(16.)
+            );
+        }
+    }
+    let stationary = geometry_math::ray::Ray3d::new(
+        geometry_math::vec::Vec3d::zero(),
+        geometry_math::vec::Vec3d::zero(),
+    );
+    assert_eq!(
+        geometry_math::intersection::intersect_ray_bbox(&stationary, &bounds),
+        None
+    );
+}
