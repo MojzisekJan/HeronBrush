@@ -8,15 +8,16 @@ const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),
   const server=http.createServer((request,response)=>{
     const pathname=new URL(request.url,'http://localhost').pathname;
     if(pathname==='/'){response.setHeader('Content-Type','text/html');response.end(html);return;}
-    const prefix=pathname.startsWith('/three/')?'/three/':pathname.startsWith('/fixtures/')?'/fixtures/':'/';
-    const root=prefix==='/three/'?packageRoot:prefix==='/fixtures/'?fixtures:repository;
+    const adapterAssets = '/examples/engine-checks/threejs/assets/';
+    const prefix=pathname.startsWith(adapterAssets)?adapterAssets:pathname.startsWith('/three/')?'/three/':pathname.startsWith('/fixtures/')?'/fixtures/':'/';
+    const root=prefix==='/three/'?packageRoot:(prefix==='/fixtures/' || prefix===adapterAssets)?fixtures:repository;
     const file=path.resolve(root,decodeURIComponent(pathname.slice(prefix.length)));
     if(!file.startsWith(root+path.sep)||!fs.existsSync(file)){response.statusCode=404;response.end();return;}
     response.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.json')?'application/json':'application/octet-stream');response.end(fs.readFileSync(file));
   });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;
   try{
-    browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+    browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
     const page=await browser.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     const result=await page.evaluate(async filename=>{

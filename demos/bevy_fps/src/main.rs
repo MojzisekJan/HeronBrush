@@ -885,7 +885,12 @@ mod feature_materials {
         assert!(tangents);
 
         let surface = load(&mut app, "feature_lab/func_detail_3.glb");
-        let glowing = material(&app, &surface, "bbpaint_747068d3d47ef28b");
+        let glowing = gltf(&app, &surface)
+            .named_materials
+            .keys()
+            .map(|name| material(&app, &surface, name))
+            .find(|material| material.emissive_texture.is_some())
+            .expect("the exported surface has a textured emissive material");
         println!("emissive {:?} with a map {}", glowing.emissive, glowing.emissive_texture.is_some());
         assert!((glowing.emissive.red - 3.0).abs() < 1e-4 && glowing.emissive_texture.is_some());
 
