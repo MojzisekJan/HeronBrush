@@ -19,6 +19,8 @@ use crate::entity_model::{EntityModel, ModelTriangle, Skin};
 pub enum ObjError {
     /// The bytes are not text.
     NotText,
+    /// A position, normal or UV coordinate is not finite.
+    InvalidNumber,
     /// Nothing in the file makes a triangle.
     NoTriangles,
 }
@@ -26,6 +28,7 @@ pub enum ObjError {
 impl std::fmt::Display for ObjError {
     fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            ObjError::InvalidNumber => write!(out, "non-finite OBJ coordinate"),
             ObjError::NotText => write!(out, "not a text file, so not a Wavefront .obj"),
             ObjError::NoTriangles => write!(out, "the .obj has no faces"),
         }
@@ -71,6 +74,9 @@ pub fn read(
             "v" | "vn" => {
                 let mut number = || words.next().and_then(|w| w.parse::<f64>().ok());
                 if let (Some(x), Some(y), Some(z)) = (number(), number(), number()) {
+                    if ![x, y, z].iter().all(|n| n.is_finite()) {
+                        return Err(ObjError::InvalidNumber);
+                    }
                     let p = Vec3d::new(x, y, z);
                     if keyword == "v" {
                         positions.push(p)
@@ -82,7 +88,11 @@ pub fn read(
             "vt" => {
                 let mut number = || words.next().and_then(|w| w.parse::<f32>().ok());
                 let (u, v) = (number(), number());
-                uvs.push(Vec2f::new(u.unwrap_or(0.0), v.unwrap_or(0.0)));
+                let (u, v) = (u.unwrap_or(0.0), v.unwrap_or(0.0));
+                if !u.is_finite() || !v.is_finite() {
+                    return Err(ObjError::InvalidNumber);
+                }
+                uvs.push(Vec2f::new(u, v));
             }
             "usemtl" => current = words.collect::<Vec<_>>().join(" "),
             "mtllib" => libraries.push(words.collect::<Vec<_>>().join(" ")),
@@ -241,7 +251,7 @@ fn index(field: &str, len: usize) -> Option<usize> {
     let at = if value > 0 {
         usize::try_from(value - 1).ok()?
     } else if value < 0 {
-        len.checked_sub(usize::try_from(-value).ok()?)?
+        len.checked_sub(usize::try_from(value.unsigned_abs()).ok()?)?
     } else {
         return None;
     };
@@ -313,6 +323,24 @@ f 1/1 2/2 3/3 4/4
         None
     }
 
+    #[test]
+    fn extreme_negative_index_is_rejected_without_panicking() {
+        let input = b"v 0 0 0\nv 1 0 0\nv 0 1 0\nf -9223372036854775808 2 3\n";
+        assert!(read(input, &mut |_| None).is_err());
+    }
+    #[test]
+    fn nonfinite_positions_and_uvs_are_rejected() {
+        for vertex in ["v NaN 0 0", "v 0 inf 0", "vt NaN 0", "vt 0 -inf"] {
+            let text = format!("{vertex}\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
+            assert!(
+                matches!(
+                    read(text.as_bytes(), &mut |_| None),
+                    Err(ObjError::InvalidNumber)
+                ),
+                "{vertex}"
+            );
+        }
+    }
     #[test]
     fn materials_keep_their_own_dimensions_uvs_and_supplied_normals() {
         let image = image::RgbaImage::from_pixel(3, 2, image::Rgba([100, 200, 50, 255]));

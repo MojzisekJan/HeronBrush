@@ -135,17 +135,31 @@ fn accessor(
         5125 | 5126 => 4,
         _ => return Err("Unsupported GLB component type".into()),
     };
-    let begin = view["byteOffset"].as_u64().unwrap_or(0) as usize;
+    let begin = view.get("byteOffset").map(index).transpose()?.unwrap_or(0);
     let len = index(&view["byteLength"])?;
     let viewbytes = bin
         .get(begin..begin.checked_add(len).ok_or("GLB offset overflow")?)
         .ok_or("GLB buffer view is out of bounds")?;
-    let offset = a["byteOffset"].as_u64().unwrap_or(0) as usize;
-    let stride = view["byteStride"]
-        .as_u64()
-        .unwrap_or((size * components) as u64) as usize;
+    let offset = a.get("byteOffset").map(index).transpose()?.unwrap_or(0);
+    let stride = view
+        .get("byteStride")
+        .map(index)
+        .transpose()?
+        .unwrap_or(size * components);
     if stride < size * components {
         return Err("Invalid GLB stride".into());
+    }
+    let end = if count == 0 {
+        offset
+    } else {
+        (count - 1)
+            .checked_mul(stride)
+            .and_then(|bytes| bytes.checked_add(offset))
+            .and_then(|bytes| bytes.checked_add(size * components))
+            .ok_or("GLB offset overflow")?
+    };
+    if end > viewbytes.len() {
+        return Err("GLB accessor is out of bounds".into());
     }
     let normalized = a["normalized"].as_bool().unwrap_or(false);
     let mut out = Vec::with_capacity(count);
@@ -649,6 +663,43 @@ mod tests {
         out.extend(0x004e4942_u32.to_le_bytes());
         out.extend(bin);
         out
+    }
+    #[test]
+    fn every_truncation_of_a_valid_glb_returns_an_error_without_panicking() {
+        let bytes = fixture(2);
+        assert!(read(&bytes).is_ok());
+        for end in 0..bytes.len() {
+            let mut prefix = bytes[..end].to_vec();
+            // Keep the outer length valid so the test reaches chunk/accessor checks.
+            if end >= 12 {
+                prefix[8..12].copy_from_slice(&(end as u32).to_le_bytes());
+            }
+            assert!(read(&prefix).is_err(), "accepted truncation at {end}");
+        }
+    }
+    #[test]
+    fn interleaved_accessor_needs_only_the_last_elements_bytes() {
+        let root = serde_json::json!({"bufferViews":[{"buffer":0,"byteLength":28,"byteStride":16}],
+            "accessors":[{"bufferView":0,"componentType":5126,"type":"VEC3","count":2}]});
+        assert_eq!(
+            accessor(&root, &[0; 28], 0, 3).unwrap(),
+            vec![vec![0.; 3]; 2]
+        );
+        assert!(accessor(&root, &[0; 27], 0, 3).is_err());
+    }
+
+    #[test]
+    fn malformed_accessor_range_is_checked_before_reserving_rows() {
+        let mut root = serde_json::json!({"bufferViews":[{"buffer":0,"byteLength":4}],
+            "accessors":[{"bufferView":0,"componentType":5126,"type":"SCALAR","count":3000000}]});
+        assert_eq!(
+            accessor(&root, &[0; 4], 0, 1).unwrap_err(),
+            "GLB accessor is out of bounds"
+        );
+        root["bufferViews"][0]["byteStride"] = serde_json::json!(u64::MAX);
+        assert!(accessor(&root, &[0; 4], 0, 1).is_err());
+        root["bufferViews"][0]["byteOffset"] = serde_json::json!(-1);
+        assert!(accessor(&root, &[0; 4], 0, 1).is_err());
     }
     #[test]
     fn invalid_material_rules_are_rejected_without_restricting_valid_cutoffs() {
