@@ -48,7 +48,7 @@ egui_extras = { version = "0.37.0", default-features = false, features = ["svg"]
 egui-phosphor = "0.14.0"
 
 [target.'cfg(not(any(target_os = "android", target_arch = "wasm32")))'.dependencies]
-eframe = { version = "0.37.0", default-features = false, features = ["wayland", "x11", "accesskit"] }
+eframe = { version = "0.37.0", default-features = false, features = ["wayland", "x11", "accesskit", "clipboard"] }
 # Native file choosers: the system dialog on Windows and macOS, the desktop portal on
 # Linux, so choosing a file needs no toolkit libraries. Android has its own in-app
 # browser (src/file_dialog.rs).
