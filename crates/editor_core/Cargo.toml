@@ -43,6 +43,7 @@ rustc-hash = "2"
 tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
 reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "rustls-no-provider"] }
 rustls = { version = "0.23.43", default-features = false, features = ["ring"] }
+getrandom = "0.3"
 semver = "1.0.28"
 sha2 = "0.11.0"
 

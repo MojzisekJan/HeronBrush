@@ -40,6 +40,9 @@ pub const MAX_QUEUED_MESSAGES: usize = 256;
 /// The most bytes a link holds waiting, each way: one largest edit and the traffic
 /// around it.
 pub const MAX_QUEUED_BYTES: usize = 2 * MAX_EDIT_FRAME;
+/// Aggregate queued traffic across all sessions and transports in this process.
+const MAX_TOTAL_QUEUED_BYTES: usize = 512 << 20;
+static TOTAL_QUEUED_BYTES: AtomicUsize = AtomicUsize::new(0);
 
 /// The size a message may reach, by what it is, from how its JSON opens. Until the
 /// longest tag could be in, a frame might still be an edit.
@@ -60,6 +63,9 @@ pub fn frame_limit(start: &[u8]) -> usize {
 /// the host. Measured by writing it, which a session does to send it anyway.
 pub fn edit_fits(edit: &crate::history::Edit, layers: &[Option<String>]) -> bool {
     let wire = super::wire::WireEdit::from_edit_in(edit, layers);
+    if !wire.within_work_budget() {
+        return false;
+    }
     let json = super::wire::WireMessage::TrackedEdit {
         id: "0".repeat(32),
         edit: wire,
@@ -139,13 +145,23 @@ impl Queue {
     fn push(&self, size: usize) -> bool {
         let messages = self.messages.fetch_add(1, Ordering::Relaxed) + 1;
         let bytes = self.bytes.fetch_add(size, Ordering::Relaxed) + size;
-        messages <= MAX_QUEUED_MESSAGES && bytes <= MAX_QUEUED_BYTES
+        let total = TOTAL_QUEUED_BYTES.fetch_add(size, Ordering::Relaxed) + size;
+        messages <= MAX_QUEUED_MESSAGES
+            && bytes <= MAX_QUEUED_BYTES
+            && total <= MAX_TOTAL_QUEUED_BYTES
     }
 
     /// Counts a message out.
     fn pop(&self, size: usize) {
         self.messages.fetch_sub(1, Ordering::Relaxed);
         self.bytes.fetch_sub(size, Ordering::Relaxed);
+        TOTAL_QUEUED_BYTES.fetch_sub(size, Ordering::Relaxed);
+    }
+}
+
+impl Drop for Queue {
+    fn drop(&mut self) {
+        TOTAL_QUEUED_BYTES.fetch_sub(self.bytes.load(Ordering::Relaxed), Ordering::Relaxed);
     }
 }
 
@@ -339,7 +355,39 @@ impl Link {
         let config = tungstenite::protocol::WebSocketConfig::default()
             .max_message_size(Some(MAX_EDIT_FRAME))
             .max_frame_size(Some(MAX_EDIT_FRAME));
-        let mut handshake = tungstenite::accept_with_config(stream, Some(config));
+        let origins = std::env::var("HERON_COLLAB_ALLOWED_ORIGINS").unwrap_or_default();
+        let check_origin =
+            move |request: &tungstenite::handshake::server::Request,
+                  response: tungstenite::handshake::server::Response| {
+                let allowed = request.headers().get("Origin").is_none_or(|origin| {
+                    let Ok(origin) = origin.to_str() else {
+                        return false;
+                    };
+                    origin == "https://mojzisekjan.github.io"
+                        || origins.split(',').any(|configured| {
+                            !configured.trim().is_empty() && configured.trim() == origin
+                        })
+                        || reqwest::Url::parse(origin).is_ok_and(|url| {
+                            matches!(url.scheme(), "http" | "https")
+                                && matches!(
+                                    url.host_str(),
+                                    Some("localhost" | "127.0.0.1" | "[::1]")
+                                )
+                                && url.path() == "/"
+                                && url.query().is_none()
+                                && url.fragment().is_none()
+                        })
+                });
+                if allowed {
+                    Ok(response)
+                } else {
+                    Err(tungstenite::http::Response::builder()
+                        .status(403)
+                        .body(Some("Origin not allowed".into()))
+                        .unwrap())
+                }
+            };
+        let mut handshake = tungstenite::accept_hdr_with_config(stream, check_origin, Some(config));
         let mut socket = loop {
             match handshake {
                 Ok(socket) => break socket,
@@ -582,6 +630,18 @@ impl Link {
     }
 
     // --- shared ------------------------------------------------------------
+
+    /// Consume only the admission frame; subsequent edits remain queued.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn authenticate(&self, token: &str) -> bool {
+        match self.inbox.recv_timeout(std::time::Duration::from_secs(3)) {
+            Ok(line) => {
+                self.guard.incoming.pop(line.len());
+                line == serde_json::json!({"Authenticate": token}).to_string()
+            }
+            Err(_) => false,
+        }
+    }
 
     /// Whether the other end has gone -- the read side saw the link close.
     pub fn is_closed(&self) -> bool {
@@ -941,6 +1001,21 @@ mod tests {
         out.resize(size - 2, b'x');
         out.extend_from_slice(b"\"}");
         out
+    }
+
+    #[test]
+    fn security_websocket_rejects_hostile_origin() {
+        use tungstenite::client::IntoClientRequest;
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let worker =
+            std::thread::spawn(move || Link::from_accepted(listener.accept().unwrap().0).is_err());
+        let mut request = format!("ws://{address}/").into_client_request().unwrap();
+        request
+            .headers_mut()
+            .insert("Origin", "https://untrusted.invalid".parse().unwrap());
+        assert!(tungstenite::client(request, TcpStream::connect(address).unwrap()).is_err());
+        assert!(worker.join().unwrap());
     }
 
     #[test]

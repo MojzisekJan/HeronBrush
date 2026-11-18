@@ -1013,7 +1013,7 @@ impl App {
                         .wrap(),
                     );
                     ui.add_space(8.0);
-                    let address = format!("127.0.0.1:{}", server.port);
+                    let address = server.connection_string();
                     ui.horizontal(|ui| {
                         // Selectable and copyable; anything typed into it is put back.
                         let mut shown = address.clone();

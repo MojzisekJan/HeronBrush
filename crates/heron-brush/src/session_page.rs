@@ -440,6 +440,9 @@ fn person_row(ui: &mut egui::Ui, peer: u32, name: &str) -> egui::Rect {
 
 fn connect(target: &str) -> Result<Session, String> {
     let address = target
+        .split('#')
+        .next()
+        .unwrap_or(target)
         .rsplit_once(':')
         .is_some_and(|(host, port)| !host.is_empty() && port.parse::<u16>().is_ok());
     if address {

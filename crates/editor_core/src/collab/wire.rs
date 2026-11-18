@@ -21,6 +21,7 @@ use crate::history::Edit;
 pub enum WireError {
     /// The JSON did not parse.
     Json(String),
+    Limit,
     /// A brush's faces did not rebuild into a solid.
     Brush(String),
     /// A patch has an invalid grid, coordinates or world bounds.
@@ -32,6 +33,7 @@ pub enum WireError {
 impl std::fmt::Display for WireError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            WireError::Limit => write!(f, "network geometry work budget exceeded"),
             WireError::Json(m) => write!(f, "bad edit: {m}"),
             WireError::Brush(m) => write!(f, "a brush in the edit does not rebuild: {m}"),
             WireError::Patch(m) => write!(f, "invalid patch: {m}"),
@@ -83,6 +85,78 @@ pub enum WireKind {
 pub struct WireNode {
     id: u64,
     kind: WireKind,
+}
+
+// Bound decoded work before reconstructing even the first solid. Byte limits alone
+// do not bound hull reconstruction or later patch tessellation.
+#[derive(Default)]
+struct WorkBudget {
+    nodes: usize,
+    work: usize,
+    points: usize,
+    edits: usize,
+}
+impl WorkBudget {
+    fn nodes(&mut self, nodes: &[WireNode]) -> Result<(), WireError> {
+        for node in nodes {
+            self.nodes = self.nodes.saturating_add(1);
+            match &node.kind {
+                WireKind::Layer(layer) => self.nodes(&layer.children)?,
+                WireKind::Group(group) => self.nodes(&group.children)?,
+                WireKind::Entity(entity) => self.nodes(&entity.children)?,
+                WireKind::Brush { faces } => {
+                    if faces.len() > 512 {
+                        return Err(WireError::Limit);
+                    }
+                    self.work = self
+                        .work
+                        .saturating_add(faces.len().saturating_mul(faces.len()));
+                }
+                WireKind::Patch(patch) => {
+                    if patch.rows > 65 || patch.columns > 65 {
+                        return Err(WireError::Limit);
+                    }
+                    self.points = self.points.saturating_add(patch.control_points.len());
+                }
+            }
+            if self.nodes > 100_000 || self.work > 2_000_000 || self.points > 65_536 {
+                return Err(WireError::Limit);
+            }
+        }
+        Ok(())
+    }
+    fn edit(&mut self, edit: &WireEdit) -> Result<(), WireError> {
+        self.edits = self.edits.saturating_add(1);
+        if self.edits > 100_000 {
+            return Err(WireError::Limit);
+        }
+        match edit {
+            WireEdit::Changed { before, after } => {
+                self.nodes(before)?;
+                self.nodes(after)?;
+            }
+            WireEdit::Added { nodes, .. } | WireEdit::Removed { nodes, .. } => self.nodes(nodes)?,
+            WireEdit::LayerInserted { layer, .. } | WireEdit::LayerRemoved { layer, .. } => {
+                self.nodes(&layer.children)?
+            }
+            WireEdit::LayerChanged { before, after, .. } => {
+                self.nodes(&before.children)?;
+                self.nodes(&after.children)?;
+            }
+            WireEdit::Batch(parts) => {
+                for part in parts {
+                    self.edit(part)?;
+                }
+            }
+            WireEdit::Reordered { before, after, .. } => {
+                if before.len() > 100_000 || after.len() > 100_000 {
+                    return Err(WireError::Limit);
+                }
+            }
+            WireEdit::WorldChanged { .. } => {}
+        }
+        Ok(())
+    }
 }
 
 impl WireNode {
@@ -263,8 +337,19 @@ impl WireWorld {
         }
     }
 
+    pub fn within_work_budget(&self) -> bool {
+        let mut budget = WorkBudget::default();
+        self.layers
+            .iter()
+            .all(|layer| budget.nodes(&layer.children).is_ok())
+    }
+
     /// Rebuilds the world, every brush against `bounds`.
     pub fn into_world(self, bounds: &Bbox3d) -> Result<map_model::node::World, WireError> {
+        let mut budget = WorkBudget::default();
+        for layer in &self.layers {
+            budget.nodes(&layer.children)?;
+        }
         if self.layers.first().is_none_or(|layer| layer.id.is_some()) {
             return Err(WireError::World("a default layer is required".into()));
         }
@@ -495,7 +580,12 @@ impl WireEdit {
     }
 
     /// The [`Edit`] this stands for, rebuilding every brush against `bounds`.
+    pub fn within_work_budget(&self) -> bool {
+        WorkBudget::default().edit(self).is_ok()
+    }
+
     pub fn into_edit(self, bounds: &Bbox3d) -> Result<Edit, WireError> {
+        WorkBudget::default().edit(&self)?;
         Ok(match self {
             WireEdit::Changed { before, after } => Edit::Changed {
                 before: into_nodes(before, bounds)?,
@@ -603,6 +693,37 @@ mod tests {
     }
 
     #[test]
+    fn network_work_budget_rejects_costly_geometry_before_reconstruction() {
+        // Invalid empty first brush would normally return Brush; the later costly
+        // object must instead reject the whole message during preflight.
+        let nodes = vec![
+            WireNode {
+                id: 1,
+                kind: WireKind::Brush { faces: vec![] },
+            },
+            WireNode {
+                id: 2,
+                kind: WireKind::Patch(Patch {
+                    rows: 67,
+                    columns: 3,
+                    control_points: vec![],
+                    material_name: "test".into(),
+                    id: None,
+                    line: 0,
+                }),
+            },
+        ];
+        let edit = WireEdit::Added {
+            layer: 0,
+            layer_id: None,
+            nodes,
+        };
+        assert_eq!(edit.into_edit(&bounds()).unwrap_err(), WireError::Limit);
+        let edit = WireEdit::Batch(vec![WireEdit::Batch(vec![]); 100_001]);
+        assert_eq!(edit.into_edit(&bounds()).unwrap_err(), WireError::Limit);
+    }
+
+    #[test]
     fn patch_wire_rejects_invalid_grids_coordinates_and_world_bounds() {
         let good = valid_patch();
         let mut bad = Vec::new();
@@ -628,6 +749,7 @@ mod tests {
         patch.control_points[0].position.v[0] = bounds().max.x() + 1.0;
         bad.push(patch);
         for patch in bad {
+            // Oversized dimensions are now rejected by the earlier work budget.
             let node = Node::new(NodeKind::Patch(patch));
             let edit = Edit::Added {
                 layer: 0,
@@ -635,13 +757,13 @@ mod tests {
             };
             assert!(matches!(
                 WireEdit::from_edit(&edit).into_edit(&bounds()),
-                Err(WireError::Patch(_))
+                Err(WireError::Patch(_) | WireError::Limit)
             ));
             let mut world = a_world();
             world.layers[0].children = vec![node];
             assert!(matches!(
                 WireWorld::from_world(&world).into_world(&bounds()),
-                Err(WireError::Patch(_))
+                Err(WireError::Patch(_) | WireError::Limit)
             ));
         }
         let patch = valid_patch();

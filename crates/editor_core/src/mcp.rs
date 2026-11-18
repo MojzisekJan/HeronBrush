@@ -1229,12 +1229,11 @@ fn host_session(
         }
         "tcp" => {
             let port = args.get("port").and_then(Value::as_u64).unwrap_or(27960) as u16;
-            let (_, session_rx) =
+            let (invitation, session_rx) =
                 Session::host_on_this_network(port).map_err(|error| error.to_string())?;
             collab.pending_host = Some(session_rx);
             Ok(format!(
-                "hosting on TCP port {port}. The other person joins with this machine's \
-                 address and that port; call session_status to see when they are on."
+                "hosting on TCP port {port}. Give this private invitation to the other person:\n{invitation}\nCall session_status to see when they are on."
             ))
         }
         other => Err(format!(
@@ -1260,6 +1259,9 @@ fn join_session(
     collab.my_name = string_or(args, "nickname", "").to_string();
     // A bare host:port is TCP; anything else is treated as an iroh token.
     let looks_tcp = target
+        .split('#')
+        .next()
+        .unwrap_or(target)
         .rsplit_once(':')
         .is_some_and(|(_, port)| port.parse::<u16>().is_ok());
     let session = if looks_tcp {
@@ -2806,7 +2808,7 @@ mod tests {
             &json!({ "kind": "cuboid", "min": [-16, -16, -16], "max": [16, 16, 16] }),
         )
         .unwrap();
-        call_tool(
+        let invitation = call_tool(
             &mut host_doc,
             &mut host,
             "host_session",
@@ -2817,7 +2819,11 @@ mod tests {
         let mut guest_doc = Document::new(WorldBounds::default());
         let mut guest = Collab::default();
         // The host's listener binds on a thread, so the first join may beat it.
-        let target = json!({ "target": format!("127.0.0.1:{port}") });
+        let secret = invitation
+            .lines()
+            .find_map(|line| line.split_once('#').map(|(_, secret)| secret))
+            .unwrap();
+        let target = json!({ "target": format!("127.0.0.1:{port}#{secret}") });
         let joined = Instant::now() + Duration::from_secs(3);
         loop {
             match call_tool(&mut guest_doc, &mut guest, "join_session", &target) {

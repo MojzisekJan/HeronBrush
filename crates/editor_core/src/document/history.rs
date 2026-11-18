@@ -643,8 +643,7 @@ impl Document {
             return true;
         }
         crate::complain!(
-            "Not done: this change is larger than the {} MiB a live session can send, so it would leave the others out of step",
-            crate::collab::net::MAX_EDIT_FRAME >> 20
+            "Not done: this change exceeds the size or geometry-work limit of a live session, so it would leave the others out of step"
         );
         false
     }

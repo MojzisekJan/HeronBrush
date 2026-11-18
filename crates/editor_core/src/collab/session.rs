@@ -187,6 +187,7 @@ pub struct Session {
 
 impl Session {
     /// Hosts on `0.0.0.0:port` over TCP and blocks until a guest joins. Run on a thread.
+    #[cfg(test)]
     pub fn host(port: u16) -> std::io::Result<Session> {
         Ok(Session::new(
             Link::host(("0.0.0.0", port))?,
@@ -197,14 +198,20 @@ impl Session {
     /// Joins a TCP host at `addr` (`"host:port"`). The web build, which cannot open TCP,
     /// joins the same host over a WebSocket on that port.
     pub fn join(addr: &str) -> std::io::Result<Session> {
+        let (address, credential) = addr
+            .rsplit_once('#')
+            .map_or((addr, None), |(address, token)| (address, Some(token)));
         #[cfg(target_arch = "wasm32")]
-        let link = Link::join_websocket(&if addr.contains("://") {
-            addr.to_string()
+        let link = Link::join_websocket(&if address.contains("://") {
+            address.to_string()
         } else {
-            format!("ws://{addr}")
+            format!("ws://{address}")
         })?;
         #[cfg(not(target_arch = "wasm32"))]
-        let link = Link::join(addr)?;
+        let link = Link::join(address)?;
+        if let Some(token) = credential {
+            link.send(&serde_json::json!({"Authenticate": token}).to_string());
+        }
         Ok(Session::new(link, Origin::TcpGuest(addr.to_string())))
     }
 
@@ -257,8 +264,11 @@ impl Session {
             let listener = std::net::TcpListener::bind(("0.0.0.0", port))?;
             let port = listener.local_addr()?.port();
             listener.set_nonblocking(true)?;
-            let token = format!("{}:{port}", local_address());
-            let (session_tx, session_rx) = std::sync::mpsc::channel();
+            let mut secret = [0u8; 32];
+            getrandom::fill(&mut secret).map_err(|e| std::io::Error::other(e.to_string()))?;
+            let credential: String = secret.iter().map(|b| format!("{b:02x}")).collect();
+            let token = format!("{}:{port}#{credential}", local_address());
+            let (session_tx, session_rx) = std::sync::mpsc::sync_channel(8);
             let inbox = SessionInbox::from(session_rx);
             let stop = inbox.stop.clone();
             let pending = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
@@ -282,6 +292,7 @@ impl Session {
                             let guard = Pending(pending.clone());
                             let sender = session_tx.clone();
                             let stopped = stop.clone();
+                            let credential = credential.clone();
                             if let Err(error) = std::thread::Builder::new()
                                 .name("collab-handshake".into())
                                 .spawn(move || {
@@ -289,8 +300,9 @@ impl Session {
                                     // A rejected peer must not report a listener failure:
                                     // the frontend stops hosting when it receives one.
                                     if let Ok(link) = Link::from_accepted(stream) {
-                                        if !stopped.load(Relaxed) {
-                                            let _ = sender.send(Ok(Session::new(
+                                        if !stopped.load(Relaxed) && link.authenticate(&credential)
+                                        {
+                                            let _ = sender.try_send(Ok(Session::new(
                                                 link,
                                                 Origin::TcpHost(port),
                                             )));
@@ -335,7 +347,18 @@ impl Session {
     /// yielding sessions on its own -- so this refuses.
     pub fn redial(origin: &Origin) -> std::io::Result<Session> {
         match origin {
-            Origin::TcpHost(port) => Session::host(*port),
+            Origin::TcpHost(_port) => {
+                #[cfg(test)]
+                {
+                    Session::host(*_port)
+                }
+                #[cfg(not(test))]
+                {
+                    Err(std::io::Error::other(
+                        "Restart hosting to create a new private invitation.",
+                    ))
+                }
+            }
             Origin::TcpGuest(addr) => Session::join(addr),
             Origin::IrohGuest(ticket) => Session::join_iroh(ticket),
             Origin::IrohHost => Err(std::io::Error::other(
@@ -367,6 +390,9 @@ impl Session {
     /// Takes another joiner into this session as a new participant, returning the id
     /// they got. The host calls this with the session a fresh link arrived wrapped in.
     pub fn add_peer(&self, joined: Session) -> u32 {
+        if self.links.borrow().len() >= 16 {
+            return u32::MAX;
+        }
         let id = self.next_peer.get();
         self.next_peer.set(id + 1);
         let mut incoming = joined.links.into_inner();
@@ -454,7 +480,14 @@ impl Session {
     /// Sends the whole world to everyone. The host does this as the first guest joins.
     /// A world larger than a guest takes is not sent, and the host is told.
     pub fn send_world(&self, world: &World) {
-        let json = WireMessage::World(WireWorld::from_world(world)).to_json();
+        let snapshot = WireWorld::from_world(world);
+        if !snapshot.within_work_budget() {
+            crate::complain!(
+                "Live session: this map exceeds the geometry-work limit and cannot be shared."
+            );
+            return;
+        }
+        let json = WireMessage::World(snapshot).to_json();
         if world_fits(&json) {
             self.broadcast(&json);
         }
@@ -463,7 +496,14 @@ impl Session {
     /// Sends the whole world to one participant: what a joiner arriving mid-session
     /// gets, without disturbing the people already in.
     pub fn send_world_to(&self, peer: u32, world: &World) {
-        let json = WireMessage::World(WireWorld::from_world(world)).to_json();
+        let snapshot = WireWorld::from_world(world);
+        if !snapshot.within_work_budget() {
+            crate::complain!(
+                "Live session: this map exceeds the geometry-work limit and cannot be shared."
+            );
+            return;
+        }
+        let json = WireMessage::World(snapshot).to_json();
         if !world_fits(&json) {
             return;
         }
@@ -773,14 +813,52 @@ mod tests {
     }
 
     #[test]
+    fn security_allowed_web_client_requires_and_uses_invitation() {
+        use tungstenite::client::IntoClientRequest;
+        let (invitation, inbox) = Session::host_on_this_network(0).unwrap();
+        let (address, token) = invitation.split_once('#').unwrap();
+        let port = address.rsplit(':').next().unwrap();
+        let address = format!("127.0.0.1:{port}");
+        let mut request = format!("ws://{address}/").into_client_request().unwrap();
+        request
+            .headers_mut()
+            .insert("Origin", "http://localhost:8765".parse().unwrap());
+        let (mut socket, _) =
+            tungstenite::client(request, std::net::TcpStream::connect(address).unwrap()).unwrap();
+        socket
+            .send(tungstenite::Message::Text(
+                serde_json::json!({"Authenticate": token})
+                    .to_string()
+                    .into(),
+            ))
+            .unwrap();
+        let host = inbox.recv_timeout(Duration::from_secs(2)).unwrap().unwrap();
+        assert_eq!(host.participants(), 1);
+    }
+
+    #[test]
+    fn security_lan_requires_invitation_and_accepts_correct_secret() {
+        let (invitation, inbox) = Session::host_on_this_network(0).unwrap();
+        let (address, secret) = invitation.split_once('#').unwrap();
+        let port = address.rsplit(':').next().unwrap();
+        let address = format!("127.0.0.1:{port}");
+        let _rejected = Session::join(&format!("{address}#incorrect")).unwrap();
+        assert!(inbox.recv_timeout(Duration::from_millis(100)).is_err());
+        let guest = Session::join(&format!("{address}#{secret}")).unwrap();
+        guest.send_name("authenticated");
+        let host = inbox.recv_timeout(Duration::from_secs(2)).unwrap().unwrap();
+        assert_eq!(host.participants(), 1);
+    }
+
+    #[test]
     fn stalled_handshake_does_not_block_other_guests_or_stopping_host() {
         use std::io::{Read, Write};
         let (token, inbox) = Session::host_on_this_network(0).unwrap();
-        let port = token.rsplit(':').next().unwrap();
+        let port = token.split('#').next().unwrap().rsplit(':').next().unwrap();
         let addr = format!("127.0.0.1:{port}");
         let mut stalled = std::net::TcpStream::connect(&addr).unwrap();
         stalled.write_all(b"GET ").unwrap();
-        let guest = Session::join(&addr).unwrap();
+        let guest = Session::join(&format!("{addr}#{}", token.split_once('#').unwrap().1)).unwrap();
         guest.send_name("ready");
         let host = inbox
             .recv_timeout(Duration::from_secs(2))

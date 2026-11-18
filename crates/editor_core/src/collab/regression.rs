@@ -127,7 +127,7 @@ fn a_guest_cannot_replace_the_host_world() {
 #[test]
 fn stopping_a_host_releases_its_port_without_another_connection() {
     let (address, inbox) = Session::host_on_this_network(0).unwrap();
-    let port = address.rsplit(':').next().unwrap().parse::<u16>().unwrap();
+    let port = address.split('#').next().unwrap().rsplit(':').next().unwrap().parse::<u16>().unwrap();
     assert_ne!(port, 0);
     drop(inbox);
     for _ in 0..100 {
