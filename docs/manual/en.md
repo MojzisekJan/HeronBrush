@@ -48,6 +48,10 @@ There are four views: the 3D view and three flat views, Top (XY), Front (XZ) and
 
 Right-click without dragging in any view to open a context menu for the selection and what is under the pointer. It offers grouping, layers, linked groups, creating entities, moving brushes into or out of an entity, copying a material name and revealing it in the material browser. Over a brush it offers **Select loop**, which selects every brush joined to it: brushes that overlap it or meet it at a Join corner joint (a mitre, or a cut end against another brush), followed in both directions, such as all the walls of a room, plus the stem of a T. It stops where a wall joins nothing. Brushes that only touch along an edge or at a corner, or a wall standing on a floor, are not joined. **Edit → Select loop** does the same for every selected brush.
 
+**View → MatCap** switches the working 3D view to Clay, Chrome or Normals. The same choice is in Preferences → Renderer → MatCap. These captures follow the camera and do not depend on scene lighting or exposure. Choose Off to return to the map materials. Renderer → Cavity can brighten outward edges and darken inward corners in either material or MatCap shading.
+
+**View → Section view** temporarily opens the map with a clipping plane. In Map → Section view, choose X, Y or Z, drag Position to move the plane, or use Flip section to keep its other side. Center section on selection places it through the selection, or through the map when nothing is selected. The 3D tools pick the visible region, while the flat views keep the complete map. This changes the working view without changing map geometry, the saved file, engine exports or Undo history. Turn Section view off to restore the full 3D view.
+
 ## The inspector
 The inspector on the right has four tabs. Drag its left edge to change its width.
 

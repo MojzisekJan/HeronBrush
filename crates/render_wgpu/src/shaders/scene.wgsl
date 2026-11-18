@@ -176,11 +176,16 @@ fn fs_prepass(prepass: PrepassVertexOut, @builtin(front_facing) front: bool) -> 
     let uv = material_uv(m, in.uv);
     let sampled = textureSample(albedo, albedo_sampler, uv);
     let bumps = textureSample(normal_map, albedo_sampler, uv).xyz;
-    let n = surface_normal(in, m, bumps, dpdx(in.world), dpdy(in.world), dpdx(uv), dpdy(uv), front);
+    var n = surface_normal(in, m, bumps, dpdx(in.world), dpdy(in.world), dpdx(uv), dpdy(uv), front);
+    if (frame.matcap.x > 0.5) {
+        n = normalize(in.normal);
+        if (dot(n, frame.eye.xyz - in.world) < 0.0) { n = -n; }
+    }
     if (m.model_params.w == 1.0 && !front) { discard; }
-    if (m.alpha_mode == 1u && sampled.a < m.model_params.z) {
+    if (frame.matcap.x < 0.5 && m.alpha_mode == 1u && sampled.a < m.model_params.z) {
         discard;
     }
+    if (section_clipped(in.world)) { discard; }
     return PrepassOut(in.ids.x, octahedral_encode(n), vec4<f32>(prepass.motion, 0.0));
 }
 
@@ -568,6 +573,7 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
     let coordinate = (in.uv.x + in.uv.y) / 8.0;
     let feather = max(fwidth(coordinate), 0.001);
 
+    if (section_clipped(in.world)) { discard; }
     if ((in.ids.y & SKIP) != 0u) {
         let distance_to_band = abs(fract(coordinate) - 0.5);
         let band = 1.0 - smoothstep(0.12 - feather, 0.12 + feather, distance_to_band);
@@ -761,6 +767,7 @@ fn fs_forward(in: VertexOut, @builtin(front_facing) front: bool) -> ForwardOut {
 // Wireframe: the triangles' edges in one colour, written straight to the display target.
 @fragment
 fn fs_wire(in: VertexOut) -> @location(0) vec4<f32> {
+    if (section_clipped(in.world)) { discard; }
     return vec4<f32>(frame.wire_color.rgb, 1.0);
 }
 

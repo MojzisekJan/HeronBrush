@@ -1083,7 +1083,7 @@ fn fitting_mips(mut mips: Vec<(u32, u32, Vec<u8>)>, limit: u32) -> Vec<(u32, u32
     mips
 }
 
-fn upload_mips(
+pub(crate) fn upload_mips(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     format: wgpu::TextureFormat,

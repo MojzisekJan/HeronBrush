@@ -241,6 +241,8 @@ pub struct Document {
     animation_wireframe: RefCell<animation_wireframe::Cache>,
     pub trigger_preview: crate::animation_trigger::Preview,
     animation_path: RefCell<crate::animation_path::Cache>,
+    /// Working 3D ray clip; excluded from the map and undo snapshots.
+    pick_section: Cell<render::section::Section>,
     /// The 3D view's surfaces, kept per node; an edit rebuilds only the nodes it reached.
     /// See [`SurfaceCache`].
     surface_cache: RefCell<SurfaceCache>,
@@ -1316,6 +1318,10 @@ impl std::error::Error for OpenError {
 }
 
 impl Document {
+    /// Keep 3D hit testing in the same temporary section as the viewport.
+    pub fn set_pick_section(&self, section: render::section::Section) {
+        self.pick_section.set(section);
+    }
     pub fn animation_path(
         &self,
         pose: &crate::animation_pose::Pose,
@@ -1407,6 +1413,7 @@ impl Document {
             animation_wireframe: RefCell::new(animation_wireframe::Cache::default()),
             trigger_preview: Default::default(),
             animation_path: RefCell::new(crate::animation_path::Cache::default()),
+            pick_section: Cell::new(Default::default()),
             surface_cache: RefCell::new(SurfaceCache::default()),
             edges_stale: Cell::new(true),
             edges_stale_selected_only: Cell::new(false),

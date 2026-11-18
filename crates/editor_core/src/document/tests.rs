@@ -7375,3 +7375,43 @@ fn linked_nested_group_keeps_entity_membership_after_reopen() {
     }
 }
 
+#[test]
+fn temporary_section_picks_visible_surfaces_without_editing_or_hiding_flat_views() {
+    let mut document = one_box();
+    let original = document.selectable_brushes()[0].0;
+    let brush = map_model::shapes::create_cuboid(
+        &document.world_bounds(),
+        &Bbox3d::new(Vec3d::new(-16., -16., -64.), Vec3d::new(16., 16., -32.)),
+        "stone",
+    )
+    .unwrap();
+    document.add_brushes(vec![brush]);
+    let ray = Ray3d::new(Vec3d::new(0., 0., 200.), Vec3d::new(0., 0., -1.));
+    assert_eq!(document.pick(&ray).unwrap().node, original);
+    let text = document.to_map_text();
+    let revision = document.revision();
+    let modified = document.is_modified();
+    let mut section = render::section::Section::default();
+    section.enabled = true;
+    section.position = -24.;
+    document.set_pick_section(section);
+    let hit = document.pick(&ray).unwrap();
+    assert_ne!(hit.node, original);
+    assert!((hit.distance - 232.).abs() < 0.001);
+    assert_eq!(document.pick_flat(&ray).unwrap().node, original);
+    section.position = 0.;
+    document.set_pick_section(section);
+    let hit = document.pick(&ray).unwrap();
+    assert_eq!(hit.node, original);
+    assert!(
+        (hit.distance - 216.).abs() < 0.001,
+        "hit must remain on original ray"
+    );
+    assert_eq!(document.to_map_text(), text);
+    assert_eq!(document.revision(), revision);
+    assert_eq!(document.is_modified(), modified);
+    document.set_pick_section(Default::default());
+    assert!((document.pick(&ray).unwrap().distance - 184.).abs() < 0.001);
+    assert!(document.undo().is_some());
+    assert_eq!(document.brush_count(), 1, "section added an undo step");
+}

@@ -9,6 +9,8 @@
 @group(1) @binding(5) var post_sampler: sampler;
 // Screen-space reflections at half resolution: what to add to the scene's light.
 @group(1) @binding(9) var reflections: texture_2d<f32>;
+@group(1) @binding(10) var matcap_atlas: texture_2d<f32>;
+@group(1) @binding(11) var matcap_normals: texture_2d<f32>;
 
 @vertex
 fn vs_fullscreen(@builtin(vertex_index) index: u32) -> FullscreenOut {
@@ -120,7 +122,7 @@ fn scene_light(p: vec2<i32>, uv: vec2<f32>) -> vec4<f32> {
     if (frame.post.y > 0.0) {
         light = vec4<f32>(light.rgb + textureSampleLevel(bloom, post_sampler, uv, 0.0).rgb * frame.post.y, light.a);
     }
-    return light;
+    return vec4<f32>(light.rgb * cavity_factor(p), light.a);
 }
 
 fn view_depth_at(p: vec2<i32>) -> f32 {
@@ -191,7 +193,57 @@ fn lens_color(color: vec3<f32>, pixel: vec2<f32>, uv: vec2<f32>) -> vec3<f32> {
     return result;
 }
 
+// Signed distance from nearby geometry to the local tangent plane distinguishes
+// inward corners from outward ridges. Reconstruct the normal using the nearer
+// depth difference on each axis so a silhouette cannot bend a flat face's normal.
+fn cavity_position(p: vec2<i32>) -> vec3<f32> {
+    let q = clamp(p, vec2<i32>(0), vec2<i32>(frame.viewport.xy) - 1);
+    return view_position((vec2<f32>(q) + 0.5) * frame.viewport.zw, textureLoad(depth, q, 0));
+}
+
+fn cavity_factor(p: vec2<i32>) -> f32 {
+    if (frame.cavity.x < 0.5 || textureLoad(depth, p, 0) <= 0.0) { return 1.0; }
+    let origin = cavity_position(p);
+    let left = origin - cavity_position(p - vec2<i32>(1, 0));
+    let right = cavity_position(p + vec2<i32>(1, 0)) - origin;
+    let up = origin - cavity_position(p - vec2<i32>(0, 1));
+    let down = cavity_position(p + vec2<i32>(0, 1)) - origin;
+    let dx = select(right, left, abs(left.z) < abs(right.z));
+    let dy = select(down, up, abs(up.z) < abs(down.z));
+    let cross_normal = cross(dx, dy);
+    if (dot(cross_normal, cross_normal) < 1e-16) { return 1.0; }
+    let normal = normalize(cross_normal) * select(-1.0, 1.0, cross_normal.z >= 0.0);
+    let footprint = max(length(dx), length(dy));
+    let reach = frame.cavity.y;
+    var ridge = 0.0;
+    var valley = 0.0;
+    for (var i = 0u; i < 8u; i += 1u) {
+        let angle = f32(i) * PI * 0.25;
+        let q = p + vec2<i32>(round(vec2<f32>(cos(angle), sin(angle)) * reach));
+        if (any(q < vec2<i32>(0)) || any(q >= vec2<i32>(frame.viewport.xy))) { continue; }
+        if (textureLoad(depth, q, 0) <= 0.0) { continue; }
+        let delta = cavity_position(q) - origin;
+        let distance = length(delta);
+        // Unrelated foreground/background surfaces must not make a cavity halo.
+        if (distance < 1e-6 || distance > footprint * reach * 4.0) { continue; }
+        let bend = dot(delta, normal) / distance;
+        let weight = 1.0 - smoothstep(footprint * reach * 2.0, footprint * reach * 4.0, distance);
+        ridge = max(ridge, smoothstep(0.03, 0.6, -bend) * weight);
+        valley = max(valley, smoothstep(0.03, 0.6, bend) * weight);
+    }
+    return (1.0 + ridge * frame.cavity.z) * max(1.0 - valley * frame.cavity.w, 0.0);
+}
+
 fn resolved_color(p: vec2<i32>, uv: vec2<f32>) -> vec3<f32> {
+    if (frame.matcap.x > 0.5 && textureLoad(depth, p, 0) > 0.0) {
+        let world_normal = octahedral_decode(textureLoad(matcap_normals, p, 0).xy);
+        let normal = normalize((frame.view * vec4<f32>(world_normal, 0.0)).xyz);
+        var cap_uv = clamp(normal.xy * 0.5 + 0.5, vec2<f32>(0.5 / 128.0), vec2<f32>(127.5 / 128.0));
+        cap_uv.x = (cap_uv.x + frame.matcap.x - 1.0) / 3.0;
+        var captured = textureSampleLevel(matcap_atlas, post_sampler, cap_uv, 0.0).rgb;
+        if (is_selected(textureLoad(ids, p, 0).r)) { captured = mix(captured, pow(frame.selected_color.rgb, vec3<f32>(2.2)), 0.15); }
+        return linear_to_srgb(max(captured * cavity_factor(p), vec3<f32>(0.0)));
+    }
     var light = scene_light(p, uv);
     if (frame.dof.z > 0.0) {
         light = depth_of_field(p, uv, light);

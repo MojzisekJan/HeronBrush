@@ -100,11 +100,13 @@ uniform mat4 projection;
 
 out vec3 v_view_normal;
 out vec3 v_view_position;
+out vec3 section_world;
 in vec2 uv;
 out vec2 v_uv;
 
 void main() {
     v_uv = uv;
+    section_world = position;
     v_view_position = (view * vec4(position,1.0)).xyz;
     v_view_normal = mat3(view) * normal;
     gl_Position = projection * view * vec4(position, 1.0);
@@ -112,6 +114,9 @@ void main() {
 "#;
 
 pub const NORMAL_FRAGMENT: &str = r#"#version 150 core
+uniform float matcap_mode;
+uniform vec4 section_plane;
+in vec3 section_world;
 in vec3 v_view_normal;
 in vec3 v_view_position;
 in vec2 v_uv;
@@ -126,10 +131,11 @@ void main() {
     if (!gl_FrontFacing && material_face_mode < 0.5) {
         normal = -normal;
     }
-    normal = mapped_normal(normal,v_view_position,v_uv);
+    if (matcap_mode < 0.5) normal = mapped_normal(normal,v_view_position,v_uv);
     if (!gl_FrontFacing && material_face_mode > 0.5 && material_face_mode < 1.5) discard;
     if (!gl_FrontFacing && material_face_mode > 1.5) normal = -normal;
     // Packed into an unsigned texture, so the range is halved and shifted.
+    if (dot(section_plane, vec4(section_world, 1.0)) > 0.0001) discard;
     fragment = vec4(normal * 0.5 + 0.5, 1.0);
 }
 "#;
@@ -313,6 +319,7 @@ out vec4 fragment;
 // real geometry can put the difference in rather than adding light that is already there.
 out vec4 reflectivity;
 
+uniform vec4 section_plane;
 uniform vec3 camera_position;
 uniform vec3 light_direction;
 uniform vec3 light_color;
@@ -543,6 +550,7 @@ vec3 tonemap(vec3 color) {
 }
 
 void main() {
+    if (dot(section_plane, vec4(v_world_position, 1.0)) > 0.0001) discard;
     if (lit < -0.5) {
         fragment = vec4(wire_color, 1.0);
         reflectivity = vec4(0.0);
@@ -736,6 +744,9 @@ uniform float bloom_intensity;
 // How much light reaches the film, applied before the tone map.
 uniform float exposure;
 uniform sampler2D scene_depth;
+uniform sampler2D matcap_atlas;
+uniform sampler2D matcap_normals;
+uniform float matcap_preset;
 uniform vec2 clip_planes;
 uniform vec2 image_size;
 // Focus distance, full sharp range, maximum radius at 1080p.
@@ -745,9 +756,46 @@ float view_depth(vec2 uv) {
     float n = clip_planes.x, f = clip_planes.y;
     return 2.0 * n * f / max(f + n - z * (f - n), 0.0001);
 }
+// Same depth-based signed curvature as the WGPU viewport resolve.
+uniform vec3 cavity; // radius in pixels (0 disables), ridge strength, valley strength
+uniform mat4 cavity_inverse_projection;
+vec3 cavity_position(vec2 uv) {
+    vec4 p = cavity_inverse_projection * vec4(uv * 2.0 - 1.0, texture(scene_depth, uv).r * 2.0 - 1.0, 1.0);
+    return p.xyz / p.w;
+}
+float cavity_factor(vec2 uv) {
+    if (cavity.x <= 0.0 || texture(scene_depth, uv).r >= 1.0) return 1.0;
+    vec2 pixel = 1.0 / image_size;
+    vec3 origin = cavity_position(uv);
+    vec3 left = origin - cavity_position(clamp(uv - vec2(pixel.x, 0.0), pixel * 0.5, 1.0 - pixel * 0.5));
+    vec3 right = cavity_position(clamp(uv + vec2(pixel.x, 0.0), pixel * 0.5, 1.0 - pixel * 0.5)) - origin;
+    vec3 down = origin - cavity_position(clamp(uv - vec2(0.0, pixel.y), pixel * 0.5, 1.0 - pixel * 0.5));
+    vec3 up = cavity_position(clamp(uv + vec2(0.0, pixel.y), pixel * 0.5, 1.0 - pixel * 0.5)) - origin;
+    vec3 dx = abs(left.z) < abs(right.z) ? left : right;
+    vec3 dy = abs(down.z) < abs(up.z) ? down : up;
+    vec3 cross_normal = cross(dx, dy);
+    if (dot(cross_normal, cross_normal) < 1e-16) return 1.0;
+    vec3 normal = normalize(cross_normal) * (cross_normal.z >= 0.0 ? 1.0 : -1.0);
+    float footprint = max(length(dx), length(dy));
+    float ridge = 0.0, valley = 0.0;
+    for (int i = 0; i < 8; ++i) {
+        float angle = float(i) * 0.7853981634;
+        vec2 q = uv + round(vec2(cos(angle), sin(angle)) * cavity.x) * pixel;
+        if (any(lessThan(q, pixel * 0.5)) || any(greaterThan(q, 1.0 - pixel * 0.5))) continue;
+        if (texture(scene_depth, q).r >= 1.0) continue;
+        vec3 delta = cavity_position(q) - origin;
+        float distance = length(delta);
+        if (distance < 1e-6 || distance > footprint * cavity.x * 4.0) continue;
+        float bend = dot(delta, normal) / distance;
+        float weight = 1.0 - smoothstep(footprint * cavity.x * 2.0, footprint * cavity.x * 4.0, distance);
+        ridge = max(ridge, smoothstep(0.03, 0.6, -bend) * weight);
+        valley = max(valley, smoothstep(0.03, 0.6, bend) * weight);
+    }
+    return (1.0 + ridge * cavity.y) * max(1.0 - valley * cavity.z, 0.0);
+}
 vec3 lighting(vec2 uv) {
-    return texture(scene, uv).rgb + texture(reflections, uv).rgb
-        + texture(bloom, uv).rgb * bloom_intensity;
+    return (texture(scene, uv).rgb + texture(reflections, uv).rgb
+        + texture(bloom, uv).rgb * bloom_intensity) * cavity_factor(uv);
 }
 float blur_radius(float z) {
     float error = max(abs(z - dof.x) - dof.y * 0.5, 0.0);
@@ -765,6 +813,14 @@ vec3 tonemap(vec3 color) {
 }
 
 void main() {
+    if (matcap_preset > 0.5 && texture(scene_depth, v_uv).r < 1.0) {
+        vec3 normal = normalize(texture(matcap_normals, v_uv).xyz * 2.0 - 1.0);
+        vec2 cap_uv = clamp(normal.xy * 0.5 + 0.5, vec2(0.5 / 128.0), vec2(127.5 / 128.0));
+        cap_uv.x = (cap_uv.x + matcap_preset - 1.0) / 3.0;
+        vec3 captured = pow(texture(matcap_atlas, cap_uv).rgb, vec3(2.2));
+        fragment = vec4(pow(max(captured * cavity_factor(v_uv), vec3(0.0)), vec3(1.0 / 2.2)), 1.0);
+        return;
+    }
     vec3 light = lighting(v_uv);
     if (dof.z > 0.0) {
         float depth = view_depth(v_uv);

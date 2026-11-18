@@ -15,6 +15,7 @@ struct LineOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) corner: vec2<f32>,
+    @location(2) world: vec3<f32>,
 };
 
 // The overlay is drawn after the temporal filter with the unjittered projection, against
@@ -32,12 +33,14 @@ fn vs_line(v: LineIn) -> LineOut {
     var out: LineOut;
     out.clip = overlay_clip(v.position);
     out.color = v.color;
+    out.world = v.position;
     out.corner = vec2<f32>(0.0);
     return out;
 }
 
 @fragment
 fn fs_line(in: LineOut) -> @location(0) vec4<f32> {
+    if (section_clipped(in.world)) { discard; }
     return vec4<f32>(in.color.rgb, in.color.a * fade.alpha.x);
 }
 
@@ -53,12 +56,14 @@ fn vs_point(v: LineIn, @builtin(vertex_index) index: u32) -> LineOut {
     let half_size = frame.params1.z * 0.5;
     out.clip = center + vec4<f32>(corner * half_size * 2.0 * frame.viewport.zw * center.w, 0.0, 0.0);
     out.color = v.color;
+    out.world = v.position;
     out.corner = corner;
     return out;
 }
 
 @fragment
 fn fs_point(in: LineOut) -> @location(0) vec4<f32> {
+    if (section_clipped(in.world)) { discard; }
     let radius = length(in.corner);
     if (radius > 1.0) {
         discard;

@@ -307,6 +307,19 @@ const PAGES: [(&str, &[Section]); 7] = [
                 ],
             ),
             (
+                translation_key("MatCap"),
+                &[("matcap", translation_key("Material capture"))],
+            ),
+            (
+                translation_key("Cavity"),
+                &[
+                    ("cavity", translation_key("Emphasize edges and corners")),
+                    ("cavity_radius", translation_key("Radius")),
+                    ("cavity_ridge", translation_key("Ridges")),
+                    ("cavity_valley", translation_key("Valleys")),
+                ],
+            ),
+            (
                 translation_key("Reflections"),
                 &[
                     ("reflections", translation_key("Reflect what is on screen")),
@@ -609,6 +622,11 @@ fn field(settings: &mut Preferences, name: &str, action: Action) -> bool {
         ambient_occlusion,
         ao_radius,
         ao_strength,
+        matcap,
+        cavity,
+        cavity_radius,
+        cavity_ridge,
+        cavity_valley,
         reflections,
         reflection_distance,
         reflection_samples,
@@ -1554,6 +1572,13 @@ impl Control for editor_core::export::Target {
         });
     }
 }
+impl Control for preferences::MatCap {
+    fn control(&mut self, ui: &mut egui::Ui, _field: &str) {
+        choose(ui, self, &preferences::MatCap::ALL, |v| {
+            tr(v.name()).to_string()
+        });
+    }
+}
 impl Control for preferences::ToneMapper {
     fn control(&mut self, ui: &mut egui::Ui, _field: &str) {
         choose(ui, self, &preferences::ToneMapper::ALL, |v| {
@@ -1601,6 +1626,8 @@ fn number_range(field: &str, overview: bool) -> (f64, f64, f64) {
         "contact_shadow_samples" => (2.0, 48.0, 1.0),
         "ao_radius" => (1.0, 256.0, 1.0),
         "ao_strength" => (0.0, 4.0, 0.05),
+        "cavity_radius" => (1.0, 12.0, 0.5),
+        "cavity_ridge" | "cavity_valley" => (0.0, 2.0, 0.05),
         "reflection_distance" => (16.0, 4096.0, 16.0),
         "reflection_samples" => (4.0, 96.0, 1.0),
         "reflection_strength" => (0.0, 2.0, 0.05),

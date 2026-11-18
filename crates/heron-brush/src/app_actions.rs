@@ -92,6 +92,8 @@ pub enum Action {
     /// faces look like.
     JoinBrushes,
     Preferences,
+    MatCap(render::matcap::MatCap),
+    SectionView,
     Plugins,
     Export,
     Build,
@@ -658,6 +660,30 @@ impl App {
             Action::Preferences => self.preferences.open = true,
             Action::Plugins => self.plugins.open(),
             Action::Export => self.exports.open = true,
+            Action::MatCap(preset) => {
+                editor_core::preferences::edit(|p| p.matcap = preset);
+                let path = editor_core::preferences::Preferences::default_path();
+                if let Err(why) = editor_core::preferences::current().save(&path) {
+                    editor_core::complain!(
+                        "{}",
+                        fill(
+                            "Could not save the preferences to {}: {}",
+                            &[&path.display().to_string(), &why.to_string()]
+                        )
+                    );
+                }
+            }
+            Action::SectionView => {
+                let document = self.editor.document.borrow();
+                let center = document
+                    .selection_bounds()
+                    .or_else(|| document.bounds())
+                    .map_or_else(geometry_math::vec::Vec3d::zero, |b| b.center());
+                let mut filters = self.editor.filters.borrow_mut();
+                let enabled = !filters.section.enabled;
+                filters.section.set_enabled(enabled, center);
+                document.set_pick_section(filters.section);
+            }
             Action::Build => self.builds.open = true,
             Action::Updates => self.updates.open = true,
             #[cfg(target_arch = "wasm32")]

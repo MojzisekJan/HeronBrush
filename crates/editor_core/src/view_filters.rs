@@ -47,8 +47,10 @@ impl EntityLinkMode {
 }
 
 /// What the views draw.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ViewFilters {
+    /// Temporary 3D section, never part of map or history data.
+    pub section: render::section::Section,
     /// Whether brushes are drawn.
     pub show_brushes: bool,
     /// Whether point entities are drawn.
@@ -109,6 +111,7 @@ impl ViewFilters {
     }
 
     pub fn geometry_only(mut self) -> Self {
+        self.section = Default::default();
         self.animation_frame = None;
         self.animation_fps = 30;
         self.animation_auto_key = false;
@@ -122,6 +125,7 @@ impl ViewFilters {
 impl Default for ViewFilters {
     fn default() -> Self {
         Self {
+            section: Default::default(),
             show_brushes: true,
             show_point_entities: true,
             show_point_entity_models: true,

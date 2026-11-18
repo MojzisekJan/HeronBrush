@@ -1134,6 +1134,15 @@ impl Document {
         accepts: impl Fn(NodeId) -> bool,
         by_size: Option<usize>,
     ) -> Vec<Picked> {
+        let section = if by_size.is_none() {
+            self.pick_section.get()
+        } else {
+            Default::default()
+        };
+        let Some(visible_ray) = section.clip_ray(ray) else {
+            return Vec::new();
+        };
+        let ray = &visible_ray.ray;
         // How big a hit looks along the flat view's axis; nothing to sort by in 3D.
         let looks = |area: &dyn Fn(usize) -> f64| by_size.map_or(0.0, area);
         // A hidden layer cannot be seen and a locked one cannot be changed, so neither is
@@ -1227,7 +1236,15 @@ impl Document {
                 .total_cmp(size_b)
                 .then(a.distance.total_cmp(&b.distance))
         });
-        hits.into_iter().map(|(hit, _)| hit).collect()
+        hits.into_iter()
+            .filter_map(|(mut hit, _)| {
+                if hit.distance > visible_ray.length {
+                    return None;
+                }
+                hit.distance += visible_ray.offset;
+                Some(hit)
+            })
+            .collect()
     }
 
     /// Ctrl and the wheel: the selection moves to the next thing under the pointer along

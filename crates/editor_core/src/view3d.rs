@@ -2132,8 +2132,12 @@ impl Scene3d {
         let render_fov = crate::render_camera::view_fov(camera, width, height);
         camera.borrow_mut().fov_degrees =
             render_fov.unwrap_or_else(|| f64::from(crate::preferences::pref(|p| p.camera_fov)));
-        let mut settings=crate::render_settings::for_document(&self.document.borrow());
-        crate::render_camera::apply_frame_settings(camera,&mut settings);
+        let mut settings = crate::render_settings::for_document(&self.document.borrow());
+        crate::render_camera::apply_frame_settings(camera, &mut settings);
+        settings.matcap = crate::preferences::pref(|p| p.matcap);
+        let section = self.filters.borrow().section;
+        settings.section_plane = section.plane();
+        self.document.borrow().set_pick_section(section);
         settings
     }
 
@@ -2741,6 +2745,9 @@ impl Scene3d {
             }
             next.cameras.sort_by_key(|(peer, _, _)| *peer);
             for (text, at) in &world_labels {
+                if !self.filters.borrow().section.visible_point(*at) {
+                    continue;
+                }
                 if let Some(anchor) = camera.project(*at, width, height) {
                     next.labels.push((
                         text.clone(),

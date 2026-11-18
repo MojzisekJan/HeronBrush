@@ -11,6 +11,8 @@ use crate::preferences::pref;
 /// however it likes (docs/android.md, step 3).
 pub fn from_preferences() -> render::RenderSettings {
     pref(|p| render::RenderSettings {
+        matcap: render::matcap::MatCap::Off,
+        section_plane: [0.0; 4],
         environment: None,
         probes:None,
         color_grading: Default::default(),
@@ -38,6 +40,10 @@ pub fn from_preferences() -> render::RenderSettings {
         ambient_occlusion: p.ambient_occlusion,
         ao_radius: p.ao_radius,
         ao_strength: p.ao_strength,
+        cavity: p.cavity,
+        cavity_radius: p.cavity_radius,
+        cavity_ridge: p.cavity_ridge,
+        cavity_valley: p.cavity_valley,
         reflections: p.reflections,
         reflection_distance: p.reflection_distance,
         reflection_samples: p.reflection_samples,

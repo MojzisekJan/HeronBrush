@@ -176,6 +176,8 @@ pub(crate) struct Sources<'a> {
     pub ids: &'a wgpu::TextureView,
     pub bloom: &'a wgpu::TextureView,
     pub tony: &'a wgpu::TextureView,
+    pub matcap: &'a wgpu::TextureView,
+    pub normals: &'a wgpu::TextureView,
     pub sampler: &'a wgpu::Sampler,
 }
 
@@ -267,6 +269,8 @@ impl TaaTargets {
                     (4, TextureView(s.tony)),
                     (5, Sampler(s.sampler)),
                     (9, TextureView(s.ssr)),
+                    (10, TextureView(s.matcap)),
+                    (11, TextureView(s.normals)),
                     (8, TextureView(&views[i])),
                 ],
             )

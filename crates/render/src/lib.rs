@@ -25,7 +25,9 @@ mod shaders;
 
 pub mod color;
 pub mod environment;
+pub mod matcap;
 pub mod probes;
+pub mod section;
 
 use std::collections::HashMap;
 
@@ -279,6 +281,10 @@ impl Default for LensEffects {
 /// and 3).
 #[derive(Debug, Clone, PartialEq)]
 pub struct RenderSettings {
+    /// Optional camera-relative material capture for the working viewport.
+    pub matcap: matcap::MatCap,
+    /// Temporary viewport clipping plane. Zero disables it.
+    pub section_plane: [f32; 4],
     /// Baked local reflection and diffuse-light volumes.
     pub probes: Option<std::sync::Arc<probes::Lighting>>,
     /// Display grading, independent of scene-linear image output.
@@ -333,6 +339,14 @@ pub struct RenderSettings {
     pub ao_radius: f32,
     /// How dark the occlusion goes.
     pub ao_strength: f32,
+    /// Emphasize convex and concave edges in the editor's shaded view.
+    pub cavity: bool,
+    /// Radius of the screen-space cavity gather, in pixels.
+    pub cavity_radius: f32,
+    /// Brightening of outward edges.
+    pub cavity_ridge: f32,
+    /// Darkening of inward corners.
+    pub cavity_valley: f32,
     /// Screen-space reflections.
     pub reflections: bool,
     /// How far a reflection ray marches, in map units.
@@ -458,6 +472,7 @@ pub struct Renderer {
     /// left a texture. Sampling an incomplete texture is undefined, and the value that
     /// makes its absence harmless is 1.0: nothing shadowed, nothing occluded.
     white: Option<glow::Texture>,
+    matcap_atlas: Option<glow::Texture>,
     kernel: Vec<f32>,
 
     /// How many frames of the same still view have been drawn into the accumulation
@@ -577,6 +592,16 @@ impl Renderer {
                 .inspect_err(|error| eprintln!("3D view: no fallback texture: {error}"))
                 .ok();
 
+            let (w, h, pixels) = matcap::atlas();
+            let matcap_atlas = make_rgba_texture(&gl, w, h, &pixels).ok();
+            if let Some(texture) = matcap_atlas {
+                gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+                gl.tex_parameter_i32(
+                    glow::TEXTURE_2D,
+                    glow::TEXTURE_MIN_FILTER,
+                    glow::LINEAR as i32,
+                );
+            }
             Ok(Self {
                 gl: std::rc::Rc::new(gl),
                 settings,
@@ -615,6 +640,7 @@ impl Renderer {
                 post: None,
                 noise,
                 white,
+                matcap_atlas,
                 kernel: make_kernel(),
                 sample: 0,
                 axes: None,
@@ -1009,6 +1035,15 @@ impl Renderer {
                 .iter()
                 .filter(|instance| instance.material == material)
             {
+                let plane = self.settings.section_plane;
+                if instance.position.x() * f64::from(plane[0])
+                    + instance.position.y() * f64::from(plane[1])
+                    + instance.position.z() * f64::from(plane[2])
+                    + f64::from(plane[3])
+                    > 0.0001
+                {
+                    continue;
+                }
                 let hw = f64::from(instance.half_width);
                 let hh = f64::from(instance.half_height);
                 let bottom_left = instance.position - right * hw - up * hh;
@@ -1107,6 +1142,8 @@ impl Renderer {
             self.gl.disable(glow::CULL_FACE);
             self.gl.disable(glow::BLEND);
             self.gl.use_program(Some(self.scene.program));
+            self.scene
+                .set_vec4(&self.gl, "section_plane", &self.settings.section_plane);
             self.scene.set_matrix(
                 &self.gl,
                 "view_projection",
@@ -1472,7 +1509,10 @@ impl Renderer {
             if let Some(post) = self.post {
                 post.destroy(&self.gl);
             }
-            for texture in [self.noise, self.white].into_iter().flatten() {
+            for texture in [self.noise, self.white, self.matcap_atlas]
+                .into_iter()
+                .flatten()
+            {
                 self.gl.delete_texture(texture);
             }
         }
@@ -1673,6 +1713,13 @@ impl Renderer {
             self.gl.disable(glow::CULL_FACE);
 
             self.gl.use_program(Some(self.normals.program));
+            self.normals
+                .set_vec4(&self.gl, "section_plane", &self.settings.section_plane);
+            self.normals.set_f32(
+                &self.gl,
+                "matcap_mode",
+                f32::from(u8::from(self.settings.matcap.enabled())),
+            );
             self.normals.set_matrix(&self.gl, "view", &view);
             self.normals.set_matrix(&self.gl, "projection", &projection);
             self.gl.bind_vertex_array(Some(self.geometry.array));
@@ -1833,6 +1880,8 @@ impl Renderer {
 
             self.gl.use_program(Some(self.scene.program));
             self.scene
+                .set_vec4(&self.gl, "section_plane", &self.settings.section_plane);
+            self.scene
                 .set_matrix(&self.gl, "view_projection", &view_projection);
             self.scene
                 .set_matrix(&self.gl, "light_view_projection", light_matrix);
@@ -1885,7 +1934,7 @@ impl Renderer {
             self.scene.set_f32(
                 &self.gl,
                 "flat_shading",
-                if self.settings.realistic_shading {
+                if self.settings.realistic_shading && !self.settings.matcap.enabled() {
                     0.0
                 } else {
                     1.0
@@ -2126,6 +2175,8 @@ impl Renderer {
                 .blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
 
             self.gl.use_program(Some(self.scene.program));
+            self.scene
+                .set_vec4(&self.gl, "section_plane", &self.settings.section_plane);
             self.scene.set_f32(&self.gl, "lit", 0.0);
             self.scene.set_f32(&self.gl, "tonemap_here", 0.0);
             self.scene.set_f32(&self.gl, "alpha_scale", 1.0);
@@ -2391,6 +2442,41 @@ impl Renderer {
             self.gl.viewport(0, 0, width, height);
             self.gl.use_program(Some(self.composite.program));
             self.composite.set_i32(&self.gl, "scene_depth", 3);
+            self.composite.set_i32(&self.gl, "matcap_atlas", 4);
+            self.composite.set_i32(&self.gl, "matcap_normals", 5);
+            let matcap_ready = self.screen.is_some() && self.matcap_atlas.is_some();
+            self.composite.set_f32(
+                &self.gl,
+                "matcap_preset",
+                if matcap_ready {
+                    self.settings.matcap as u32 as f32
+                } else {
+                    0.0
+                },
+            );
+            if let Some(texture) = self.matcap_atlas {
+                bind_texture(&self.gl, 4, texture);
+            }
+            if let Some(screen) = &self.screen {
+                bind_texture(&self.gl, 5, screen.normal_texture);
+            }
+            self.composite.set_vec3(
+                &self.gl,
+                "cavity",
+                if self.settings.cavity && self.screen.is_some() {
+                    self.settings.cavity_radius.clamp(1.0, 12.0)
+                } else {
+                    0.0
+                },
+                self.settings.cavity_ridge.clamp(0.0, 2.0),
+                self.settings.cavity_valley.clamp(0.0, 2.0),
+            );
+            self.composite.set_matrix(
+                &self.gl,
+                "cavity_inverse_projection",
+                &mat::invert(self.projection(camera, width, height))
+                    .unwrap_or_else(Mat4x4d::identity),
+            );
             if let Some(screen) = &self.screen {
                 bind_texture(&self.gl, 3, screen.depth_texture);
             }
@@ -2668,6 +2754,13 @@ impl Program {
         // SAFETY: `gl` is the renderer's context, current while it draws (see `Renderer::new`),
         // and `location` came from this program. GL reads the 16 elements of `elements`.
         unsafe { gl.uniform_matrix_4_f32_slice(Some(location), false, &elements) };
+    }
+
+    fn set_vec4(&self, gl: &glow::Context, name: &str, value: &[f32; 4]) {
+        if let Some(location) = self.uniforms.get(name) {
+            // SAFETY: The current context owns this program and uniform location.
+            unsafe { gl.uniform_4_f32_slice(Some(location), value) };
+        }
     }
 
     fn set_vec3(&self, gl: &glow::Context, name: &str, x: f32, y: f32, z: f32) {

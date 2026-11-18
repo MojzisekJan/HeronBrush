@@ -13,6 +13,7 @@ struct SpriteIn {
 struct SpriteOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) uv: vec2<f32>,
+    @location(1) center: vec3<f32>,
 };
 
 @vertex
@@ -26,6 +27,7 @@ fn vs_sprite(s: SpriteIn, @builtin(vertex_index) index: u32) -> SpriteOut {
     let up = vec3<f32>(frame.view[0][1], frame.view[1][1], frame.view[2][1]);
     let world = s.position + right * corner.x * s.half_size.x + up * corner.y * s.half_size.y;
     var out: SpriteOut;
+    out.center = s.position;
     out.clip = frame.view_proj_unjittered * vec4<f32>(world, 1.0);
     out.uv = vec2<f32>(corner.x * 0.5 + 0.5, 0.5 - corner.y * 0.5);
     return out;
@@ -34,6 +36,7 @@ fn vs_sprite(s: SpriteIn, @builtin(vertex_index) index: u32) -> SpriteOut {
 @fragment
 fn fs_sprite(in: SpriteOut) -> @location(0) vec4<f32> {
     let texel = textureSample(sprite, sprite_sampler, in.uv);
+    if (section_clipped(in.center)) { discard; }
     // The texture is sampled linear; the picture is sRGB-encoded.
     return vec4<f32>(linear_to_srgb(texel.rgb), texel.a);
 }

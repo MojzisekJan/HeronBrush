@@ -335,6 +335,17 @@ pub fn menus(
         ],
         // View
         vec![
+            item(tr("Section view"), Action::SectionView).checked(filters.section.enabled),
+            Entry::sub(
+                tr("MatCap"),
+                render::matcap::MatCap::ALL
+                    .into_iter()
+                    .map(|preset| {
+                        item(tr(preset.name()), Action::MatCap(preset))
+                            .checked(editor_core::preferences::pref(|p| p.matcap == preset))
+                    })
+                    .collect(),
+            ),
             item(tr("Focus on selection"), Action::FrameSelection)
                 .icon(icon::CROSSHAIR)
                 .keys(&menu::ctrl("U")),

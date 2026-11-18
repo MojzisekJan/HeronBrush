@@ -83,6 +83,10 @@ struct Frame {
     lens_fringe: vec4<f32>,
     cascade_depth_range: vec4<f32>,
     local_probes:vec4<f32>,
+    // enabled, radius in pixels, ridge strength, valley strength.
+    cavity:vec4<f32>,
+    matcap:vec4<f32>,
+    section_plane:vec4<f32>,
 };
 
 struct Object {
@@ -115,6 +119,9 @@ struct Material {
 };
 
 @group(0) @binding(0) var<uniform> frame: Frame;
+fn section_clipped(world: vec3<f32>) -> bool {
+    return dot(frame.section_plane, vec4<f32>(world, 1.0)) > 0.0001;
+}
 @group(0) @binding(1) var<storage, read> objects: array<Object>;
 @group(0) @binding(2) var<storage, read> materials: array<Material>;
 struct LocalProbe {position:vec4<f32>,half_size:vec4<f32>,params:vec4<f32>,sh:array<vec4<f32>,9>};

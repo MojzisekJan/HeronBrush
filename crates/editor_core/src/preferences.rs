@@ -217,6 +217,18 @@ impl Stored for ColorScheme {
     }
 }
 
+pub use render::matcap::MatCap;
+impl Stored for MatCap {
+    fn write(&self, out: &mut String) {
+        out.push_str(self.name());
+    }
+    fn parse(text: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|v| v.name().eq_ignore_ascii_case(text))
+    }
+}
+
 /// The curve that maps the 3D view's light to the screen. Only the wgpu renderer
 /// (`render_wgpu`) offers a choice; the GL renderer always uses ACES and ignores this.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -771,6 +783,16 @@ preferences! {
     ao_radius: f32 = 24.0, "render/Ambient occlusion/Radius";
     /// How dark the occlusion goes.
     ao_strength: f32 = 1.0, "render/Ambient occlusion/Strength";
+    /// Camera-relative material capture used only in the working viewport.
+    matcap: MatCap = MatCap::Off, "render/MatCap/Preset";
+    /// Emphasize outward edges and inward corners in the shaded viewport.
+    cavity: bool = false, "render/Cavity/Enabled";
+    /// Screen-space cavity radius, in pixels.
+    cavity_radius: f32 = 4.0, "render/Cavity/Radius";
+    /// How strongly outward edges are brightened.
+    cavity_ridge: f32 = 0.6, "render/Cavity/Ridges";
+    /// How strongly inward corners are darkened.
+    cavity_valley: f32 = 0.6, "render/Cavity/Valleys";
     /// Whether smooth surfaces reflect what is on screen.
     ///
     /// The reflection replaces the sky the shading already put there rather than being

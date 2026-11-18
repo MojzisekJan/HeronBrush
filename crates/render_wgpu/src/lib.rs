@@ -200,6 +200,9 @@ struct FrameUniform {
     lens_fringe: [f32; 4],
     cascade_depth_range: [f32; 4],
     local_probes: [f32; 4],
+    cavity: [f32; 4],
+    matcap: [f32; 4],
+    section_plane: [f32; 4],
 }
 
 #[repr(C)]
@@ -332,6 +335,8 @@ pub struct Renderer {
     probes: probes::Probes,
     _tony: wgpu::Texture,
     tony_view: wgpu::TextureView,
+    _matcap: wgpu::Texture,
+    matcap_view: wgpu::TextureView,
     /// Light entities: table, clusters, cube shadows.
     lights: lights::Lights,
     /// The forward pass's lighting group and the (target, shadow, lights) generations it
@@ -345,6 +350,7 @@ pub struct Renderer {
     taa: taa::TaaState,
     /// What the depth, id, normal and occlusion targets hold (see `prepass_key`).
     prepass_key: Option<u64>,
+    inspection_key: Option<([u32; 4], bool)>,
     /// The scene's sync epoch and geometry generation at the last frame: whether it was
     /// synced, and whether its geometry changed, since.
     rendered_epoch: u64,
@@ -641,6 +647,8 @@ impl Renderer {
                 texture_entry_dim(4, filterable, wgpu::TextureViewDimension::D3),
                 sampler_entry(5, wgpu::SamplerBindingType::Filtering),
                 texture_entry(9, filterable),
+                texture_entry(10, filterable),
+                texture_entry(11, unfilterable),
                 texture_entry(8, unfilterable),
             ],
         );
@@ -1354,6 +1362,15 @@ impl Renderer {
             },
         );
         let tony_view = tony.create_view(&wgpu::TextureViewDescriptor::default());
+        let (w, h, pixels) = render::matcap::atlas();
+        let matcap = scene::upload_mips(
+            device,
+            queue,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            vec![(w, h, pixels)],
+            "MatCap atlas",
+        );
+        let matcap_view = matcap.create_view(&Default::default());
         let ibl = ibl::Ibl::new(device, queue, &frame_layout, &ibl_module);
         Self {
             device: device.clone(),
@@ -1418,6 +1435,8 @@ impl Renderer {
             probes: probes::Probes::new(device),
             _tony: tony,
             tony_view,
+            _matcap: matcap,
+            matcap_view,
             lights: lights::Lights::new(device),
             lighting_group: None,
             timer: None,
@@ -1426,6 +1445,7 @@ impl Renderer {
             accumulation: None,
             taa: taa::TaaState::default(),
             prepass_key: None,
+            inspection_key: None,
             rendered_epoch: 0,
             rendered_generation: 0,
             used_materials: Vec::new(),
@@ -1615,6 +1635,14 @@ impl Renderer {
                     resource: Sampler(&self.linear_sampler),
                 },
                 wgpu::BindGroupEntry {
+                    binding: 10,
+                    resource: TextureView(&self.matcap_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 11,
+                    resource: TextureView(&normals),
+                },
+                wgpu::BindGroupEntry {
                     binding: 9,
                     resource: TextureView(&ssr),
                 },
@@ -1762,6 +1790,8 @@ impl Renderer {
                 ids: &targets.ids,
                 bloom: &targets.bloom_mips[0],
                 tony: &self.tony_view,
+                matcap: &self.matcap_view,
+                normals: &targets.normals,
                 sampler: &self.linear_sampler,
             },
         ));
@@ -1966,11 +1996,19 @@ impl Renderer {
         // Textures for what the last frame drew: queued, uploaded within the budget,
         // evicted when over it. One frame late, which the placeholders cover.
         let used = std::mem::take(&mut self.used_materials);
-        self.textures_changed = view.mode == DisplayMode::Material && self.scene.stream(&used);
+        self.textures_changed = view.mode == DisplayMode::Material
+            && !view.settings.matcap.enabled()
+            && self.scene.stream(&used);
         let size = (view.size.0.max(1), view.size.1.max(1));
         self.ensure_targets(size);
         let s = view.settings;
-        let shaded = view.mode == DisplayMode::Material;
+        let inspection_key = (s.section_plane.map(f32::to_bits), s.matcap.enabled());
+        if self.inspection_key != Some(inspection_key) {
+            self.taa.reset();
+            self.prepass_key = None;
+            self.inspection_key = Some(inspection_key);
+        }
+        let shaded = view.mode == DisplayMode::Material && !s.matcap.enabled();
         // No sync since the last frame: what moved then has stopped, and its motion
         // vectors go back to zero.
         if self.scene.sync_epoch == self.rendered_epoch {
@@ -2237,6 +2275,27 @@ impl Renderer {
                 s.lens_frame as f32,
                 0.,
                 0.,
+            ],
+            section_plane: s.section_plane,
+            matcap: [
+                if view.mode == DisplayMode::Wireframe {
+                    0.0
+                } else {
+                    s.matcap as u32 as f32
+                },
+                0.0,
+                0.0,
+                0.0,
+            ],
+            cavity: [
+                if view.mode != DisplayMode::Wireframe && s.cavity {
+                    1.0
+                } else {
+                    0.0
+                },
+                s.cavity_radius.clamp(1.0, 12.0),
+                s.cavity_ridge.clamp(0.0, 2.0),
+                s.cavity_valley.clamp(0.0, 2.0),
             ],
             cascade_depth_range: fit.depth_range,
             local_probes: [
@@ -2609,6 +2668,8 @@ impl Renderer {
                 .iter()
                 .flatten()
                 .chain(uniform.ao.iter())
+                .chain(uniform.section_plane.iter())
+                .chain([f32::from(u8::from(s.matcap.enabled()))].iter())
                 .chain([uniform.misc[3], s.ao_radius].iter())
             {
                 v.to_bits().hash(&mut hasher);
@@ -2793,7 +2854,16 @@ impl Renderer {
                 let before = stats.draws;
                 draw_phase(
                     &mut rp,
-                    &[Phase::Opaque, Phase::Masked],
+                    if s.matcap.enabled() {
+                        &[
+                            Phase::Opaque,
+                            Phase::Masked,
+                            Phase::Blended,
+                            Phase::Refractive,
+                        ]
+                    } else {
+                        &[Phase::Opaque, Phase::Masked]
+                    },
                     false,
                     true,
                     &mut stats,
@@ -3179,6 +3249,8 @@ impl Renderer {
                         },
                         entry(8, &views[i]),
                         entry(9, &targets.ssr),
+                        entry(10, &self.matcap_view),
+                        entry(11, &targets.normals),
                     ],
                 })
             });

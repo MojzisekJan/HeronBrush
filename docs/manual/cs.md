@@ -48,6 +48,10 @@ K dispozici jsou čtyři pohledy: 3D pohled a tři ploché pohledy Shora (XY), Z
 
 Kliknutím pravým tlačítkem bez tažení v libovolném pohledu otevřete místní nabídku pro výběr a to, co je pod ukazatelem. Nabízí seskupování, vrstvy, provázané skupiny, vytváření entit, přesun brushů do entity a z ní, kopírování názvu materiálu a jeho ukázání v prohlížeči materiálů. Nad brushem nabízí **Vybrat smyčku** (Select loop), která vybere všechny brushe s ním spojené: ty, které ho překrývají nebo se s ním potkávají ve spoji z příkazu Spojit roh (pokos nebo zaříznutý konec opřený o jiný brush), oběma směry, například všechny zdi místnosti (room) i nožku T-spoje. Skončí tam, kde zeď na nic nenavazuje. Brushe, které se dotýkají jen hranou nebo rohem, a zeď stojící na podlaze spojené nejsou. **Úpravy → Vybrat smyčku** udělá totéž pro všechny vybrané brushe.
 
+**Pohled → MatCap** přepne pracovní 3D pohled na Hlínu, Chrom nebo Normály. Stejná volba je v Nastavení → Renderer → MatCap. Vzhled sleduje kameru a nezávisí na světlech mapy ani expozici. Volbou Vypnuto se vrátíte k materiálům mapy. Zvýraznění hran v nastavení rendereru může zesvětlit vnější hrany a ztmavit vnitřní rohy také v režimu MatCap.
+
+**Pohled → Dočasný řez** otevře mapu pomocí pohledové ořezové roviny. V Mapa → Dočasný řez zvolte osu X, Y nebo Z, posuňte Polohu a případně zapněte Obrátit řez pro zachování opačné strany. Vystředit řez na výběr umístí rovinu doprostřed výběru, nebo mapy, není-li nic vybráno. Nástroje ve 3D vybírají ve viditelné části, zatímco 2D pohledy ukazují celou mapu. Řez nemění geometrii, uložený soubor, exporty ani historii Zpět. Vypnutím řezu obnovíte celý 3D pohled.
+
 ## Inspektor
 Inspektor vpravo má čtyři karty. Šířku změníte tažením jeho levého okraje.
 

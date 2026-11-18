@@ -875,6 +875,45 @@ fn view(ui: &mut egui::Ui, document: &Rc<RefCell<Document>>, filters: &Rc<RefCel
         }
     });
 
+    widgets::section(ui, "map-section-view", tr("Section view"), false, |ui| {
+        let mut f = filters.borrow_mut();
+        let section = &mut f.section;
+        let center = document
+            .borrow()
+            .selection_bounds()
+            .or_else(|| document.borrow().bounds())
+            .map_or_else(geometry_math::vec::Vec3d::zero, |b| b.center());
+        let mut enabled = section.enabled;
+        if widgets::toggle_row(ui, tr("Enable section view"), None, &mut enabled).changed() {
+            section.set_enabled(enabled, center);
+        }
+        ui.add_enabled_ui(section.enabled, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(tr("Axis"));
+                egui::ComboBox::from_id_salt("section-axis")
+                    .selected_text(["X", "Y", "Z"][section.axis.min(2)])
+                    .show_ui(ui, |ui| {
+                        for (axis, name) in ["X", "Y", "Z"].into_iter().enumerate() {
+                            ui.selectable_value(&mut section.axis, axis, name);
+                        }
+                    });
+            });
+            ui.horizontal(|ui| {
+                ui.label(tr("Position"));
+                ui.add(
+                    egui::DragValue::new(&mut section.position)
+                        .speed(1.0)
+                        .range(-1e7..=1e7),
+                );
+            });
+            ui.checkbox(&mut section.flipped, tr("Flip section"));
+            if ui.button(tr("Center section on selection")).clicked() {
+                section.position = center[section.axis.min(2)];
+            }
+        });
+        document.borrow().set_pick_section(*section);
+    });
+
     // The tags the game configuration gives brushes and faces, each with a switch that
     // hides everything carrying it; a game that names none has nothing here.
     let named: Vec<(editor_core::games::Tag, bool, bool, bool)> = {

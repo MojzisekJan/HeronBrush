@@ -4112,3 +4112,326 @@ fn shared_glb_benchmark() {
     }
     save("heron", &renderer.read_output().unwrap());
 }
+
+/// Curvature must brighten a pillar's convex edges and darken its junction with
+/// the floor, without treating the sky or a flat face as a crease. Independent
+/// controls also make a zero-strength cavity setting identical to disabling it.
+#[test]
+fn cavity_distinguishes_ridges_from_valleys() {
+    let Some((device, queue)) = device() else {
+        eprintln!("no GPU adapter; skipping");
+        return;
+    };
+    let (document, _) = lit_room();
+    let mut renderer = Renderer::new(&device, &queue);
+    let mut tracker = SceneTracker::new();
+    tracker.sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut renderer.scene,
+    );
+    let mut camera = Camera3d {
+        position: geometry_math::vec::Vec3d::new(-180.0, -220.0, 160.0),
+        fov_degrees: 55.0,
+        ..Default::default()
+    };
+    camera.look_along(geometry_math::vec::Vec3d::new(180.0, 220.0, -104.0));
+    let size = (400, 320);
+    let mut settings = single_frame_settings();
+    settings.cavity = false;
+    settings.shadows = false;
+    settings.contact_shadows = false;
+    settings.ambient_occlusion = false;
+    settings.reflections = false;
+    settings.bloom = false;
+    settings.procedural_sky = false;
+    settings.sun_intensity = 0.0;
+    settings.ambient_intensity = 1.0;
+    settings.cavity_radius = 5.0;
+    let draw = |renderer: &mut Renderer, settings: &render::RenderSettings, mode, name| {
+        renderer.render(&view(&camera, settings, mode, Tonemapper::Agx, size));
+        let shot = renderer.read_output().expect("output");
+        save(name, &shot);
+        shot.2
+    };
+    let baseline = draw(
+        &mut renderer,
+        &settings,
+        DisplayMode::Material,
+        "cavity-off",
+    );
+    settings.cavity = true;
+    settings.cavity_ridge = 0.0;
+    settings.cavity_valley = 0.0;
+    assert_eq!(
+        baseline,
+        draw(
+            &mut renderer,
+            &settings,
+            DisplayMode::Material,
+            "cavity-zero"
+        )
+    );
+    settings.cavity_ridge = 1.0;
+    let ridges = draw(
+        &mut renderer,
+        &settings,
+        DisplayMode::Material,
+        "cavity-ridges",
+    );
+    settings.cavity_ridge = 0.0;
+    settings.cavity_valley = 1.0;
+    let valleys = draw(
+        &mut renderer,
+        &settings,
+        DisplayMode::Material,
+        "cavity-valleys",
+    );
+    let base = luminance(&baseline);
+    let bright = luminance(&ridges);
+    let dark = luminance(&valleys);
+    // The top scanline is sky in this camera; silhouettes must not spill into it.
+    assert_eq!(
+        &baseline[..size.0 as usize * 4],
+        &ridges[..size.0 as usize * 4]
+    );
+    assert_eq!(
+        &baseline[..size.0 as usize * 4],
+        &valleys[..size.0 as usize * 4]
+    );
+    let count_in = |rect: (usize, usize, usize, usize), a: &[f64], b: &[f64]| {
+        let (x0, y0, x1, y1) = rect;
+        (y0..y1)
+            .flat_map(|y| (x0..x1).map(move |x| y * size.0 as usize + x))
+            .filter(|&i| a[i] - b[i] > 2.0)
+            .count()
+    };
+    let ridge_rect = screen_rect(&camera, size, [-20.0, -20.0, 40.0], [20.0, 20.0, 132.0]);
+    let valley_rect = screen_rect(&camera, size, [-30.0, -30.0, 0.0], [30.0, 30.0, 8.0]);
+    assert!(
+        count_in(ridge_rect, &bright, &base) > 30,
+        "convex pillar edges must brighten"
+    );
+    assert!(
+        count_in(valley_rect, &base, &dark) > 30,
+        "pillar/floor junction must darken"
+    );
+    assert!(
+        bright.iter().zip(&base).all(|(a, b)| a + 0.01 >= *b),
+        "ridge control may only brighten"
+    );
+    assert!(
+        dark.iter().zip(&base).all(|(a, b)| a <= &(b + 0.01)),
+        "valley control may only darken"
+    );
+    // Most pixels are sky or plane interiors and must be unchanged.
+    let unchanged = base
+        .iter()
+        .zip(&bright)
+        .zip(&dark)
+        .filter(|((b, r), v)| (*b - *r).abs() < 1.0 && (*b - *v).abs() < 1.0)
+        .count();
+    assert!(
+        unchanged > base.len() * 9 / 10,
+        "cavity must remain local to edges"
+    );
+    settings.cavity = false;
+    let wire = draw(
+        &mut renderer,
+        &settings,
+        DisplayMode::Wireframe,
+        "cavity-wire-off",
+    );
+    settings.cavity = true;
+    assert_eq!(
+        wire,
+        draw(
+            &mut renderer,
+            &settings,
+            DisplayMode::Wireframe,
+            "cavity-wire-on"
+        )
+    );
+    settings.cavity = false;
+    let solid = draw(
+        &mut renderer,
+        &settings,
+        DisplayMode::Solid,
+        "cavity-solid-off",
+    );
+    settings.cavity = true;
+    let solid_cavity = draw(
+        &mut renderer,
+        &settings,
+        DisplayMode::Solid,
+        "cavity-solid-on",
+    );
+    assert_ne!(
+        solid, solid_cavity,
+        "cavity also works in the solid viewport"
+    );
+}
+
+#[test]
+fn viewport_inspection_matcap_presets_are_independent_of_scene_lighting() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let (mut document, _) = lit_room();
+    let mut renderer = Renderer::new(&device, &queue);
+    let mut tracker = SceneTracker::new();
+    let filters = ViewFilters::default();
+    tracker.sync(&document, &filters, None, Pose::Rest, &mut renderer.scene);
+    let mut camera = Camera3d {
+        position: geometry_math::vec::Vec3d::new(-180., -220., 160.),
+        fov_degrees: 55.,
+        ..Default::default()
+    };
+    camera.look_along(geometry_math::vec::Vec3d::new(180., 220., -104.));
+    let mut settings = single_frame_settings();
+    settings.procedural_sky = false;
+    settings.background_color = [0.; 3];
+    settings.cavity = false;
+    settings.matcap = render::matcap::MatCap::Clay;
+    let draw = |r: &mut Renderer, s: &render::RenderSettings, name: &str| {
+        r.render(&view(
+            &camera,
+            s,
+            DisplayMode::Material,
+            Tonemapper::Agx,
+            (320, 240),
+        ));
+        let shot = r.read_output().unwrap();
+        save(name, &shot);
+        shot.2
+    };
+    let clay = draw(&mut renderer, &settings, "matcap-clay");
+    assert!(mean(&clay) > 15.);
+    settings.sun_intensity = 0.;
+    settings.ambient_intensity = 0.;
+    settings.exposure = 0.05;
+    assert_eq!(
+        clay,
+        draw(&mut renderer, &settings, "matcap-clay-unlit"),
+        "scene lights or exposure changed the capture"
+    );
+    settings.matcap = render::matcap::MatCap::Chrome;
+    let chrome = draw(&mut renderer, &settings, "matcap-chrome");
+    assert_ne!(clay, chrome);
+    settings.matcap = render::matcap::MatCap::Normals;
+    assert_ne!(chrome, draw(&mut renderer, &settings, "matcap-normals"));
+    settings.matcap = render::matcap::MatCap::Clay;
+    settings.cavity = true;
+    assert_ne!(clay, draw(&mut renderer, &settings, "matcap-cavity"));
+    settings.cavity = false;
+    let pillar = document.selectable_brushes()[1].0;
+    document.select_only(pillar);
+    tracker.sync(&document, &filters, None, Pose::Rest, &mut renderer.scene);
+    assert_eq!(tracker.stats.upserted, 0);
+    assert_ne!(clay, draw(&mut renderer, &settings, "matcap-selected"));
+}
+
+#[test]
+fn viewport_inspection_section_clips_without_rebuilding_geometry() {
+    let Some((device, queue)) = device() else {
+        return;
+    };
+    let (document, _) = lit_room();
+    let text = document.to_map_text();
+    let revision = document.revision();
+    let mut renderer = Renderer::new(&device, &queue);
+    let mut tracker = SceneTracker::new();
+    let mut filters = ViewFilters::default();
+    tracker.sync(&document, &filters, None, Pose::Rest, &mut renderer.scene);
+    let mut camera = Camera3d {
+        position: geometry_math::vec::Vec3d::new(-180., -220., 160.),
+        fov_degrees: 55.,
+        ..Default::default()
+    };
+    camera.look_along(geometry_math::vec::Vec3d::new(180., 220., -104.));
+    let mut settings = single_frame_settings();
+    settings.procedural_sky = false;
+    settings.background_color = [0.; 3];
+    settings.bloom = false;
+    settings.cavity = false;
+    let draw = |r: &mut Renderer, s: &render::RenderSettings, mode: DisplayMode, name: &str| {
+        r.render(&view(&camera, s, mode, Tonemapper::Agx, (320, 240)));
+        let shot = r.read_output().unwrap();
+        save(name, &shot);
+        shot.2
+    };
+    filters.section.enabled = true;
+    filters.section.position = -32.;
+    tracker.sync(&document, &filters, None, Pose::Rest, &mut renderer.scene);
+    assert_eq!(tracker.stats.upserted, 0);
+    for mode in [
+        DisplayMode::Material,
+        DisplayMode::Solid,
+        DisplayMode::Wireframe,
+    ] {
+        settings.section_plane = [0.; 4];
+        let full = draw(
+            &mut renderer,
+            &settings,
+            mode,
+            &format!("section-full-{mode:?}"),
+        );
+        settings.section_plane = filters.section.plane();
+        let empty = draw(
+            &mut renderer,
+            &settings,
+            mode,
+            &format!("section-empty-{mode:?}"),
+        );
+        assert!(mean(&full) > 5.);
+        assert!(
+            mean(&empty) < 1.,
+            "clipped geometry remains in {mode:?}: {}",
+            mean(&empty)
+        );
+        let mut flipped = filters.section;
+        flipped.flipped = true;
+        settings.section_plane = flipped.plane();
+        assert_eq!(
+            full,
+            draw(
+                &mut renderer,
+                &settings,
+                mode,
+                &format!("section-flipped-{mode:?}")
+            )
+        );
+    }
+    settings.matcap = render::matcap::MatCap::Clay;
+    settings.section_plane = [0.; 4];
+    let cap = draw(
+        &mut renderer,
+        &settings,
+        DisplayMode::Material,
+        "section-cap-full",
+    );
+    filters.section.position = 64.;
+    settings.section_plane = filters.section.plane();
+    let half = draw(
+        &mut renderer,
+        &settings,
+        DisplayMode::Material,
+        "section-cap-half",
+    );
+    assert_ne!(cap, half);
+    assert!(mean(&half) > 5.);
+    settings.section_plane = [0.; 4];
+    assert_eq!(
+        cap,
+        draw(
+            &mut renderer,
+            &settings,
+            DisplayMode::Material,
+            "section-cap-restored"
+        )
+    );
+    assert_eq!(document.to_map_text(), text);
+    assert_eq!(document.revision(), revision);
+}
