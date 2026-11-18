@@ -37,8 +37,12 @@ pub const CORNERS: [(map_model::fillet::Corners, &str); 4] = [
 pub fn corners_tip() -> String {
     format!(
         "{}\n{}",
-        tr("A mitre lets the edges' own planes cut each other; rounding lays a ball into the corner as well"),
-        tr("A chamfer cuts the corner off flat; a setback lays a larger ball into it, starting further back"),
+        tr(
+            "A mitre lets the edges' own planes cut each other; rounding lays a ball into the corner as well"
+        ),
+        tr(
+            "A chamfer cuts the corner off flat; a setback lays a larger ball into it, starting further back"
+        ),
     )
 }
 

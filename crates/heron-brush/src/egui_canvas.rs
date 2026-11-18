@@ -1252,7 +1252,11 @@ mod streamed_segment_tests {
                                 meshes
                             };
                             let (legacy, streamed) = (render(false), render(true));
-                            assert_eq!(legacy.len(),streamed.len(),"ppp {ppp}, width {width}, cap {cap:?}, dash {dashed}, pending {pending}");
+                            assert_eq!(
+                                legacy.len(),
+                                streamed.len(),
+                                "ppp {ppp}, width {width}, cap {cap:?}, dash {dashed}, pending {pending}"
+                            );
                             for (a, b) in legacy.iter().zip(&streamed) {
                                 assert_eq!(a.vertices, b.vertices);
                                 assert_eq!(a.indices, b.indices);
