@@ -153,6 +153,7 @@ impl Document {
         if hidden {
             self.deselect_layer(index);
         }
+        self.history.invalidate_saved();
         self.note_modification();
         self.mark_visibility_changed();
         true
@@ -169,6 +170,7 @@ impl Document {
         if locked {
             self.deselect_layer(index);
         }
+        self.history.invalidate_saved();
         self.note_modification();
         self.mark_visibility_changed();
         true

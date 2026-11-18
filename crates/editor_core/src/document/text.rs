@@ -205,6 +205,7 @@ impl Document {
         self.selection = preview.selection;
         self.face_selection = preview.faces;
         if preview.saved {
+            self.history.invalidate_saved();
             self.modified = true;
         }
         self.mark_changed();

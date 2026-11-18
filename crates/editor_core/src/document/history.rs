@@ -519,6 +519,7 @@ impl Document {
         let edit = self.history.undo()?;
         let description = edit.description();
         self.apply(&edit);
+        self.modified = !self.history.is_saved();
         self.forget_vanished_selection();
         if let Some(on_edit) = self.on_edit.clone() {
             on_edit(&edit, &self.layer_ids());
@@ -538,6 +539,7 @@ impl Document {
         let edit = self.history.redo()?;
         let description = edit.description();
         self.apply(&edit);
+        self.modified = !self.history.is_saved();
         self.forget_vanished_selection();
         if let Some(on_edit) = self.on_edit.clone() {
             on_edit(&edit, &self.layer_ids());
@@ -672,6 +674,7 @@ impl Document {
         self.open_group = None;
         self.leak_trace = None;
         self.history = History::new();
+        self.history.invalidate_saved();
         self.repeat_stack.clear();
         self.note_modification();
         self.mark_changed();
@@ -701,6 +704,7 @@ impl Document {
     /// layer's contents there. Either way the peers end with the same map, whichever
     /// message arrived first, and the console says what moved.
     pub fn apply_remote_to(&mut self, edit: &Edit, targets: &[Option<String>]) {
+        self.history.invalidate_saved();
         let mut moved = 0;
         self.apply_remote_parts(edit, &mut targets.iter(), &mut moved);
         if moved > 0 {

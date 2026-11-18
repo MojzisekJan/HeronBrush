@@ -261,6 +261,7 @@ impl Edit {
 /// The undo and redo stacks.
 #[derive(Debug)]
 pub struct History {
+    saved_mark: Option<usize>,
     undo: Vec<Edit>,
     /// Number of steps removed from the front; marks remain stable after eviction.
     offset: usize,
@@ -279,6 +280,7 @@ pub struct History {
 impl Default for History {
     fn default() -> Self {
         History {
+            saved_mark: Some(0),
             undo: Vec::new(),
             offset: 0,
             group_depth: 0,
@@ -308,10 +310,23 @@ impl History {
     /// This clears the redo stack: once the document has moved in a new direction, the
     /// edits that were undone can no longer be replayed onto it.
     pub fn record(&mut self, edit: Edit) {
+        if self.saved_mark.is_some_and(|saved| saved > self.mark()) {
+            self.saved_mark = None;
+        }
         self.weight += edit.weight();
         self.undo.push(edit);
         self.forget_the_oldest();
         self.redo.clear();
+    }
+
+    pub(crate) fn mark_saved(&mut self) {
+        self.saved_mark = Some(self.mark());
+    }
+    pub(crate) fn invalidate_saved(&mut self) {
+        self.saved_mark = None;
+    }
+    pub(crate) fn is_saved(&self) -> bool {
+        self.saved_mark == Some(self.mark())
     }
 
     /// Drops the oldest steps until the stack is within both limits.
@@ -357,7 +372,15 @@ impl History {
     /// Flattens nested batches and retains only the endpoints of consecutive changes
     /// to the same nodes. Long slider gestures keep one original and one final snapshot.
     pub fn coalesce_since(&mut self, mark: usize) {
+        let end = self.mark();
         let mark = mark.saturating_sub(self.offset).min(self.undo.len());
+        let saved_end = self.saved_mark == Some(end);
+        if self
+            .saved_mark
+            .is_some_and(|saved| saved > self.offset + mark && saved < end)
+        {
+            self.saved_mark = None;
+        }
         let steps: Vec<Edit> = self.undo.drain(mark..).collect();
         self.weight = self
             .weight
@@ -399,6 +422,9 @@ impl History {
         };
         self.weight += edit.weight();
         self.undo.push(edit);
+        if saved_end {
+            self.mark_saved();
+        }
     }
 
     /// Updates snapshots after Save As rebases file-backed resources.
@@ -438,6 +464,7 @@ impl History {
         ids: &[map_model::node::NodeId],
         nodes: Vec<Node>,
     ) -> bool {
+        let invalidates_saved = self.saved_mark.is_some_and(|saved| saved >= self.mark());
         let Some(Edit::Added {
             layer: old_layer,
             nodes: old,
@@ -453,6 +480,9 @@ impl History {
         }
         let before = weigh(old);
         *old = nodes;
+        if invalidates_saved {
+            self.saved_mark = None;
+        }
         self.weight = self.weight.saturating_sub(before) + weigh(old);
         self.redo.clear();
         self.forget_the_oldest();

@@ -3290,6 +3290,11 @@ impl Document {
         let previous_path = self.path.replace(path);
         self.adopt_imported_references(&imported_refs, previous_path.as_deref());
         self.modified = false;
+        if self.text_preview.is_none() && !self.in_transaction() {
+            self.history.mark_saved();
+        } else {
+            self.history.invalidate_saved();
+        }
         if let Some(preview) = &mut self.text_preview {
             preview.saved = true;
         }
@@ -3357,6 +3362,7 @@ impl Document {
         let mut document = Self::from_map_owned(map, bounds, path);
         crate::assets::load_library_materials(&mut document);
         document.restore_material_paths(text, copy);
+        document.history.invalidate_saved();
         document.modified = true;
         Ok(document)
     }
@@ -3395,3 +3401,7 @@ mod basic_workflow_tests;
 #[cfg(test)]
 #[path = "document/quake_tests.rs"]
 pub(crate) mod quake_tests;
+
+#[cfg(test)]
+#[path = "document/history_sequence_tests.rs"]
+mod history_sequence_tests;
