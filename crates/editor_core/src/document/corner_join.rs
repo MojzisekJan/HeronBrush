@@ -2603,15 +2603,36 @@ mod overlap_tests {
     }
 
     #[test]
+    fn snapped_roundings_that_fit_can_be_applied_and_undone() {
+        let mut d = owners_ten_walls();
+        let before = d.to_map_text();
+        let draft = d.preview_corner_join_options(owners_settings()).unwrap();
+        assert_eq!(draft.corners, 10);
+        no_overlap(&draft.after_all);
+        assert!(d.corner_join_refusal(owners_settings()).is_none());
+        d.join_corner_options(draft.revision, owners_settings())
+            .unwrap();
+        no_overlap(
+            &node::brushes(d.tree_world())
+                .into_iter()
+                .cloned()
+                .collect::<Vec<_>>(),
+        );
+        d.undo();
+        assert_eq!(d.to_map_text(), before);
+    }
+
+    #[test]
     fn the_owners_wedges_running_into_each_other_are_refused_with_the_cause() {
         let mut d = owners_ten_walls();
         let before = d.to_map_text();
-        // As in the screenshot: unsnapped the two fans on the 32 long wall just fit;
-        // snapped to a grid of 1, their thin wedges tip into each other.
-        let error = d
-            .preview_corner_join_options(owners_settings())
-            .err()
-            .unwrap();
+        // These fans fit before snapping; grid rounding tips their wedges into
+        // each other on the short wall. Radius 13 with nine segments still fits.
+        let rounding = Rounding {
+            inner: Some((15.0, 6)),
+            ..owners_settings()
+        };
+        let error = d.preview_corner_join_options(rounding).err().unwrap();
         assert!(
             error.contains(
                 "would overlap along the brush at (-112 136 64) once their new corners are snapped to the grid"
@@ -2619,16 +2640,14 @@ mod overlap_tests {
             "{error}"
         );
         assert!(error.contains("unsnapped it fits"), "{error}");
-        let refusal = d.corner_join_refusal(owners_settings()).expect("marked");
+        let refusal = d.corner_join_refusal(rounding).expect("marked");
         assert!(refusal.place.is_some());
         assert_eq!(refusal.message, error);
-        assert!(d
-            .join_corner_options(d.revision(), owners_settings())
-            .is_err());
+        assert!(d.join_corner_options(d.revision(), rounding).is_err());
         assert_eq!(d.to_map_text(), before, "nothing applied");
         let unsnapped = Rounding {
             snap: None,
-            ..owners_settings()
+            ..rounding
         };
         let draft = d.preview_corner_join_options(unsnapped).unwrap();
         assert_eq!(draft.corners, 10);

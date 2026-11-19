@@ -1819,7 +1819,7 @@ mod tests {
 
     #[test]
     fn roundings_that_run_into_each_other_are_refused_in_the_window() {
-        // The owner's screenshot: all ten walls, full-thickness wedges, inner radius 13.
+        // Full-thickness wedges fit before snapping, but overlap on the unit grid.
         let ctx = egui::Context::default();
         crate::theme::install(&ctx);
         let editor = owner_map(
@@ -1833,8 +1833,8 @@ mod tests {
             corner_radius: 8.0,
             corner_segments: 8,
             corner_inner: true,
-            corner_inner_radius: 13.0,
-            corner_inner_segments: 9,
+            corner_inner_radius: 15.0,
+            corner_inner_segments: 6,
             corner_wedges: true,
             corner_preserve_thickness: true,
             corner_snap: true,
