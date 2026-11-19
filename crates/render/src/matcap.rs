@@ -36,6 +36,13 @@ impl MatCap {
 /// Three 128-pixel material captures side by side, in sRGB RGBA8.
 /// Rim texels extend to the equator so bilinear filtering never samples a background.
 pub fn atlas() -> (u32, u32, Vec<u8>) {
+    // Shared by additional viewports and offline renderers; keep ownership of the
+    // returned pixels independent while avoiding repeated sphere shading.
+    static ATLAS: std::sync::OnceLock<(u32, u32, Vec<u8>)> = std::sync::OnceLock::new();
+    ATLAS.get_or_init(bake_atlas).clone()
+}
+
+fn bake_atlas() -> (u32, u32, Vec<u8>) {
     let side = 128u32;
     let mut pixels = Vec::with_capacity((side * side * 3 * 4) as usize);
     let normalize = |v: [f32; 3]| {
@@ -92,6 +99,15 @@ pub fn atlas() -> (u32, u32, Vec<u8>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn cached_atlas_preserves_pixels_and_independent_ownership() {
+        let expected = bake_atlas();
+        let mut first = atlas();
+        assert_eq!(first, expected);
+        first.2.fill(0);
+        assert_eq!(atlas(), expected);
+    }
+
     #[test]
     fn builtins_are_opaque_distinct_and_have_directional_detail() {
         let (w, h, p) = atlas();

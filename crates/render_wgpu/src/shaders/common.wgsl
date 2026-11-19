@@ -1,5 +1,6 @@
 // Shared by every pass: the per-frame uniform, the object and material tables, and the
-// small helpers (sky, encodings, noise) more than one pass needs.
+// small encoding and screen-space helpers. Lighting, environment, material sampling
+// and surface-grid helpers are included only by the passes that use them.
 
 struct Frame {
     view_proj: mat4x4<f32>,
@@ -189,44 +190,6 @@ fn interleaved_gradient_noise(p: vec2<f32>) -> f32 {
     return fract(52.9829189 * fract(dot(p, vec2<f32>(0.06711056, 0.00583715))));
 }
 
-// Three-band sky, as the GL renderer's `sky()`: ground, horizon haze, zenith, plus the
-// sun's glint when `sun_weight` > 0.
-fn sky_light(direction: vec3<f32>, roughness: f32, sun_weight: f32) -> vec3<f32> {
-    let up = clamp(direction.z, -1.0, 1.0);
-    let above = mix(frame.horizon.rgb, frame.sky.rgb, pow(clamp(up, 0.0, 1.0), 0.45));
-    let below = mix(frame.horizon.rgb, frame.ground.rgb, pow(clamp(-up, 0.0, 1.0), 0.35));
-    var result = select(below, above, up >= 0.0);
-    if (sun_weight > 0.0) {
-        let to_sun = normalize(-frame.light_dir.xyz);
-        let alignment = clamp(dot(direction, to_sun), 0.0, 1.0);
-        let sharpness = mix(2000.0, 8.0, clamp(roughness, 0.0, 1.0));
-        result += frame.light_color.rgb * pow(alignment, sharpness) * (1.0 - roughness * 0.6) * sun_weight;
-    }
-    return result;
-}
-
-// The procedural sky as seen, without the sun's disc: zenith, horizon haze warmed
-// towards the sun at sunset, ground, dimmed at night, and the glow round the sun. What
-// the view shows behind the geometry and what the environment map is made from.
-fn sky_radiance(direction: vec3<f32>) -> vec3<f32> {
-    let up = clamp(direction.z, -1.0, 1.0);
-    let sun = normalize(-frame.light_dir.xyz);
-    let sun_height = sun.z;
-    let daylight = smoothstep(-0.12, 0.08, sun_height);
-    let sunset = (1.0 - smoothstep(0.04, 0.4, abs(sun_height))) * daylight;
-    let facing = pow(max(dot(direction.xy, sun.xy), 0.0), 3.0);
-    let horizon = mix(frame.horizon.rgb, vec3<f32>(1.0, 0.40, 0.12), sunset * facing * 0.55);
-    let zenith = mix(frame.sky.rgb, frame.sky.rgb * vec3<f32>(0.65, 0.55, 0.85), sunset * 0.3);
-    let above = mix(horizon, zenith, pow(max(up, 0.0), 0.38));
-    let below = mix(horizon, frame.ground.rgb, pow(max(-up, 0.0), 0.35));
-    var color = select(below, above, up >= 0.0) * mix(0.055, 1.0, daylight);
-    let angle = acos(clamp(dot(direction, sun), -1.0, 1.0));
-    let halo = 0.65 * exp(-angle * 18.0) + 0.12 * exp(-angle * 3.0);
-    let warmth = mix(vec3<f32>(1.0), vec3<f32>(1.0, 0.48, 0.16), sunset);
-    color += frame.sun_color.rgb * warmth * halo * smoothstep(-0.12, 0.06, up) * smoothstep(-0.06, 0.0, sun_height + radians(0.75));
-    return color;
-}
-
 struct FullscreenOut {
     @builtin(position) position: vec4<f32>,
     @location(0) uv: vec2<f32>,
@@ -247,89 +210,4 @@ fn view_position(uv: vec2<f32>, d: f32) -> vec3<f32> {
     let clip = vec4<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, d, 1.0);
     let v = frame.inv_proj * clip;
     return v.xyz / v.w;
-}
-
-// Full-resolution scene-linear panorama; wrap longitude and clamp at the poles.
-fn panorama_radiance(environment_map: texture_2d<f32>, direction: vec3<f32>) -> vec3<f32> {
-    let angle=atan2(direction.y,direction.x)-frame.environment.z;
-    let uv=vec2<f32>(fract(angle/(2.0*PI)+0.5),acos(clamp(direction.z,-1.0,1.0))/PI);
-    let size=vec2<i32>(textureDimensions(environment_map));
-    let position=vec2<f32>(uv.x*f32(size.x)-0.5,clamp(uv.y*f32(size.y)-0.5,0.0,f32(size.y-1)));
-    let base=vec2<i32>(floor(position));
-    let weight=fract(position);
-    let x0=((base.x%size.x)+size.x)%size.x;
-    let x1=(x0+1)%size.x;
-    let y0=clamp(base.y,0,size.y-1);
-    let y1=min(y0+1,size.y-1);
-    let a=mix(textureLoad(environment_map,vec2<i32>(x0,y0),0).rgb,textureLoad(environment_map,vec2<i32>(x1,y0),0).rgb,weight.x);
-    let b=mix(textureLoad(environment_map,vec2<i32>(x0,y1),0).rgb,textureLoad(environment_map,vec2<i32>(x1,y1),0).rgb,weight.x);
-    return min(mix(a,b,weight.y)*frame.environment.y,vec3<f32>(65504.0));
-}
-
-// Depth-aware visibility and octahedral bent normal, shared by forward lighting and SSR.
-fn occlusion_at(map:texture_2d<f32>,pixel:vec2<f32>,depth:f32)->vec4<f32> {
-    let size=vec2<i32>(textureDimensions(map));
-    if (frame.ao.x<1.5) {return textureLoad(map,clamp(vec2<i32>(pixel),vec2<i32>(0),size-1),0);}
-    let position=pixel/frame.ao.x-0.5;
-    let base=vec2<i32>(floor(position));
-    let fraction=fract(position);
-    var visibility=0.0;var bent=vec3<f32>(0.0);var weights=0.0;
-    for (var y=0;y<2;y+=1) {for (var x=0;x<2;x+=1) {
-        let texel=textureLoad(map,clamp(base+vec2<i32>(x,y),vec2<i32>(0),size-1),0);
-        let bilinear=select(1.0-fraction.x,fraction.x,x==1)*select(1.0-fraction.y,fraction.y,y==1);
-        let weight=bilinear/(0.001+abs(texel.g-depth)/max(depth,1.0)*20.0)+0.00001;
-        visibility+=texel.r*weight;bent+=octahedral_decode(texel.zw)*weight;weights+=weight;
-    }}
-    return vec4<f32>(visibility/weights,depth,octahedral_encode(normalize(bent)));
-}
-fn specular_cone_visibility(direction:vec3<f32>,bent:vec3<f32>,visibility:f32,roughness:f32)->f32 {
-    // Approximate the visible hemisphere by a cone; broaden its edge for rough lobes.
-    let horizon=sqrt(clamp(1.0-visibility,0.0,1.0));
-    let edge=max(roughness*roughness,0.02);
-    return mix(smoothstep(horizon-edge,horizon+edge,dot(direction,bent)),1.0,visibility*visibility);
-}
-
-fn probe_weight(probe:LocalProbe,world:vec3<f32>)->f32 {
-    let relative=abs(world-probe.position.xyz)/probe.half_size.xyz;
-    return 1.0-smoothstep(1.0-probe.half_size.w,1.0,max(relative.x,max(relative.y,relative.z)));
-}
-fn probe_direction(probe:LocalProbe,world:vec3<f32>,direction:vec3<f32>)->vec3<f32> {
-    let safe=select(vec3<f32>(0.000001),direction,abs(direction)>vec3<f32>(0.000001));
-    let lower=(probe.position.xyz-probe.half_size.xyz-world)/safe;
-    let upper=(probe.position.xyz+probe.half_size.xyz-world)/safe;
-    let exit=max(lower,upper);let distance=max(min(exit.x,min(exit.y,exit.z)),0.0);
-    return world+direction*distance-probe.position.xyz;
-}
-fn local_specular(map:texture_cube_array<f32>,linear_sampler:sampler,world:vec3<f32>,direction:vec3<f32>,roughness:f32,global:vec3<f32>)->vec3<f32> {
-    var total=vec3<f32>(0.0);var weights=0.0;
-    for (var i=0u;i<u32(frame.local_probes.x);i+=1u) {
-        let probe=probes[i];let weight=probe_weight(probe,world)*probe.params.x;
-        if (weight>0.0) {total+=textureSampleLevel(map,linear_sampler,probe_direction(probe,world,direction),i32(i),roughness*probe.params.z).rgb*weight*probe.position.w;weights+=weight;}
-    }
-    return global*max(1.0-weights,0.0)+total/max(weights,1.0);
-}
-fn probe_irradiance(probe:LocalProbe,n:vec3<f32>)->vec3<f32> {
-    var e=probe.sh[0].rgb*0.282095;
-    e+=(2.0/3.0)*0.488603*(probe.sh[1].rgb*n.y+probe.sh[2].rgb*n.z+probe.sh[3].rgb*n.x);
-    e+=0.25*(1.092548*(probe.sh[4].rgb*n.x*n.y+probe.sh[5].rgb*n.y*n.z+probe.sh[7].rgb*n.x*n.z)+0.315392*probe.sh[6].rgb*(3.0*n.z*n.z-1.0)+0.546274*probe.sh[8].rgb*(n.x*n.x-n.y*n.y));
-    return max(e,vec3<f32>(0.0));
-}
-fn local_diffuse(world:vec3<f32>,normal:vec3<f32>,global:vec3<f32>)->vec3<f32> {
-    var total=vec3<f32>(0.0);var weights=0.0;
-    for (var i=0u;i<u32(frame.local_probes.x);i+=1u) {let probe=probes[i];let weight=probe_weight(probe,world)*probe.params.y;
-        total+=probe_irradiance(probe,normal)*weight*probe.position.w;weights+=weight;
-    }
-    return global*max(1.0-weights,0.0)+total/max(weights,1.0);
-}
-
-// What the albedo texture gives at a texel, or -- while the texture is still being
-// streamed in -- the material's average colour (sRGB bytes packed in factors.w).
-fn albedo_texel(m: Material, sampled: vec4<f32>) -> vec4<f32> {
-    if ((m.flags & MATERIAL_PENDING) == 0u) {
-        return sampled;
-    }
-    let average = unpack4x8unorm(bitcast<u32>(m.factors.w));
-    let c = average.rgb;
-    let linear = select(pow((c + 0.055) / 1.055, vec3<f32>(2.4)), c / 12.92, c <= vec3<f32>(0.04045));
-    return vec4<f32>(linear, average.a);
 }

@@ -98,7 +98,7 @@ impl CubeShadows {
             view_formats: &[],
         });
         let array_view = texture.create_view(&wgpu::TextureViewDescriptor {
-            dimension: Some(wgpu::TextureViewDimension::CubeArray),
+            dimension: Some(crate::cube_array::view_dimension()),
             ..Default::default()
         });
         let faces = (0..6 * slots as u32)
@@ -239,7 +239,7 @@ impl Lights {
             view_formats: &[],
         });
         let no_shadows = no_shadows_texture.create_view(&wgpu::TextureViewDescriptor {
-            dimension: Some(wgpu::TextureViewDimension::CubeArray),
+            dimension: Some(crate::cube_array::view_dimension()),
             ..Default::default()
         });
         Self {

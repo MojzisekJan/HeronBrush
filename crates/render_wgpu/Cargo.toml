@@ -6,6 +6,10 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Exercise the simulator cube-array compatibility path on a desktop GPU.
+cube-array-fallback = []
+
 [dependencies]
 # std::time, with an Instant and a SystemTime that work in the browser too.
 web-time = "1"

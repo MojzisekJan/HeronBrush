@@ -4559,3 +4559,132 @@ fn surface_grid_follows_world_planes_and_survives_distance() {
     assert_ne!(plain.2, grid.2, "MatCap hid the editor grid");
     save("grid-matcap", &grid);
 }
+
+/// Manual diagnostic: reports stages separately, with no machine-dependent timing
+/// assertions. The final stage includes GPU completion and pixel readback, not just
+/// GPU execution, and does not wait for asynchronous texture streaming to settle.
+#[test]
+#[ignore = "manual first-frame profiling on a local GPU"]
+fn profile_first_frame_stages() {
+    use std::time::Instant;
+    let (device, queue) = device().expect("first-frame profiling requires a GPU");
+    // Optionally model another window while the first renderer stays alive.
+    let keep_first = std::env::var_os("HERON_PROFILE_KEEP_FIRST_RENDERER").is_some();
+    let mut first_renderer = None;
+    for round in 0..3 {
+        let start = Instant::now();
+        let document = open("assets/dragon.map");
+        let opened = start.elapsed();
+        let start = Instant::now();
+        let mut renderer = Renderer::new(&device, &queue);
+        let initialized = start.elapsed();
+        let start = Instant::now();
+        let mut tracker = SceneTracker::new();
+        assert!(tracker.sync(
+            &document,
+            &ViewFilters::default(),
+            None,
+            Pose::Rest,
+            &mut renderer.scene
+        ));
+        let synced = start.elapsed();
+        let mut camera = Camera3d::default();
+        camera.frame(&document.bounds().unwrap());
+        let settings = single_frame_settings();
+        let start = Instant::now();
+        renderer.render(&view(
+            &camera,
+            &settings,
+            DisplayMode::Material,
+            Tonemapper::Agx,
+            (640, 480),
+        ));
+        let (_, _, pixels) = renderer.read_output().expect("first frame readback");
+        let first_frame = start.elapsed();
+        assert_eq!(pixels.len(), 640 * 480 * 4);
+        assert!(mean(&pixels) > 1.0);
+        eprintln!(
+            "round={round} open_ms={:.3} renderer_init_ms={:.3} scene_sync_ms={:.3} first_frame_and_readback_ms={:.3} triangles={}",
+            opened.as_secs_f64() * 1000.,
+            initialized.as_secs_f64() * 1000.,
+            synced.as_secs_f64() * 1000.,
+            first_frame.as_secs_f64() * 1000.,
+            tracker.stats.triangles
+        );
+        if keep_first && round == 0 {
+            first_renderer = Some(renderer);
+        }
+    }
+    drop(first_renderer);
+}
+
+#[test]
+fn additional_renderers_keep_independent_scenes_and_survive_owner_drop() {
+    let (device, queue) = device().expect("renderer isolation test requires a GPU");
+    let (document, _) = lit_room();
+    let mut camera = Camera3d::default();
+    camera.frame(&document.bounds().unwrap());
+    let mut settings = single_frame_settings();
+    settings.shadows = false;
+    settings.ambient_occlusion = false;
+    settings.reflections = false;
+    settings.bloom = false;
+    let mut first = Renderer::new(&device, &queue);
+    SceneTracker::new().sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut first.scene,
+    );
+    let mut second = Renderer::new(&device, &queue);
+    SceneTracker::new().sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut second.scene,
+    );
+    let draw = |renderer: &mut Renderer| {
+        renderer.render(&view(
+            &camera,
+            &settings,
+            DisplayMode::Solid,
+            Tonemapper::Agx,
+            (240, 160),
+        ));
+        renderer.read_output().unwrap().2
+    };
+    let expected = draw(&mut first);
+    assert_eq!(draw(&mut second), expected);
+    // Replace one scene and resize its targets; the other must keep its own geometry.
+    let empty = Document::new(Default::default());
+    SceneTracker::new().sync(
+        &empty,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut first.scene,
+    );
+    first.render(&view(
+        &camera,
+        &settings,
+        DisplayMode::Solid,
+        Tonemapper::Agx,
+        (128, 96),
+    ));
+    assert_eq!(draw(&mut second), expected);
+    drop(first);
+    assert_eq!(draw(&mut second), expected);
+    drop(second);
+    // Closing every renderer releases the weak cache. Reopening still works.
+    let mut reopened = Renderer::new(&device, &queue);
+    SceneTracker::new().sync(
+        &document,
+        &ViewFilters::default(),
+        None,
+        Pose::Rest,
+        &mut reopened.scene,
+    );
+    assert_eq!(draw(&mut reopened), expected);
+}

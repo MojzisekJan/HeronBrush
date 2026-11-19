@@ -61,10 +61,10 @@ Other suites:
   them up as an export time.
 - **Map loading**: `crates/map_model/examples/map_load_probe.rs` times parsing (`parse`)
   or parsing plus document-tree construction (`load`, or `borrowed` for the borrowing
-  `build_tree` path). `scripts/tests/generate_map_load_fixtures.py <dir>` writes the five
+  `build_tree` path). `scripts/tests/generate_map_load_fixtures.py <dir>` writes deterministic
   fixtures; `scripts/tests/benchmark_map_loading.py <before> <after> <fixtures> <out.json>
   --cpu N` alternates two prebuilt probes, one process at a time, pinned to one CPU
-  (Linux, `taskset`).
+  (Linux, `taskset`). Omit `--cpu` on macOS; processes still alternate serially.
 - **Archives**: `cargo test -p map_model --lib bench_archive_residency -- --ignored
   --nocapture --test-threads=1` (and `bench_zip_archive_residency`) measures RSS after
   mounting a sparse PAK (ZIP) with large unused members, sized by `HERON_BENCH_PAK_MB`
@@ -296,3 +296,205 @@ takes about 200 ms of main-thread preparation and about 4 s in the export worker
   milliseconds per edit.
 - **Small maps parse slightly slower** with the streaming tokenizer than they did with a
   token vector; large maps parse faster.
+
+
+## Group hierarchy loading and malformed input
+
+Measured on Apple M4 on 2026-11-19 against `5d453df`, using `map_load_probe` in
+release mode (`CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_LTO=false
+CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16`). The comparison script alternated before,
+after, after, before, with one warmup and 31 samples per process. macOS runs were
+not pinned to a CPU. These timings cover parsing and tree construction, not texture
+loading, filesystem reads or the first rendered frame.
+
+| Input | Before (ms) | After (ms) |
+|---|---:|---:|
+| 4,096 groups, chains of 64 | 3.19 | 2.06 |
+| 4,096 groups, chains of 128 | 3.89 | 2.07 |
+| 4,096 independent groups | 1.46 | 1.51 |
+| 1,000 boxes | 6.30 | 6.23 |
+| Bundled dragon map | 1.58 | 1.54 |
+
+Parent depths are resolved once per group without recursion. Stable ordering,
+first-occurrence handling of duplicate IDs and the existing cycle-depth sentinel
+are unchanged. Short timings outside the nested-group cases show only small
+variation, not a demonstrated general speedup for all maps.
+
+A 15,000-group chain caused a stack-overflow abort with a 1 MiB process stack before
+the fix. Tree construction now limits nesting to 128 groups: an attachment that
+would exceed the limit moves the entire subtree to the default layer and records a
+warning. No group, brush or entity is discarded. The limit applies to map loading;
+it is not a general limit imposed on every editing operation.
+
+`map_load_resilience` covers deep chains and cycles on a 1 MiB thread stack through
+both tree builders, cloning, saving, reopening and destruction, including geometry
+and a named entity at the deepest point. It also checks the 128/129 boundary and
+truncation/token mutations of a valid map. Unit tests compare depth results with the
+previous algorithm for every four-node parent graph and exercise 50,000-node chains
+and cycles. These are bounded regression cases, not a claim that every malformed
+input is safe.
+
+
+## Material discovery and first-frame stages
+
+On Apple M4 (2026-11-19), reusing successful image headers when pairing normal maps
+reduced discovery time for 512 albedos plus 512 normals from 16.58 ms to 10.27 ms
+(38%). For 512 albedos without normals the medians were 5.11 and 5.20 ms. Fixtures
+use copies of the bundled small clip PNG; these measurements do not represent large
+pixel decodes, network storage or completely cold filesystem caches.
+
+Build `material_load_probe` in `map_model` with the release settings above, preserving
+a before and after executable. Run `scripts/tests/benchmark_material_loading.py
+<before> <after> <results.json> --runs 31`. The script generates disposable fixtures
+and alternates before/after/after/before serially. The collection loader retains its
+existing bounded header-reader parallelism. The per-load header lookup is keyed by
+full file path, including files superseded by higher-priority extensions; it is not
+a persistent cache, so reloading a changed image reads its new dimensions.
+
+A separate manual GPU diagnostic, `profile_first_frame_stages` in the `render_wgpu`
+headless tests, measures document open, renderer initialization, scene sync, and the
+first frame with pixel readback. Run with `--ignored --nocapture --test-threads=1`
+and an isolated `XDG_CONFIG_HOME`. It uses a 640x480 view of the bundled dragon map.
+Device creation is excluded, and asynchronous texture streaming need not have
+settled when the first frame is read. There are no machine-dependent speed asserts.
+
+The current **unoptimized development build** on Apple M4 reported:
+
+| Stage | First renderer (ms) | Second (ms) | Third (ms) |
+|---|---:|---:|---:|
+| Open document and its material sources | 41.60 | 33.59 | 33.42 |
+| Initialize renderer | 1041.18 | 215.61 | 214.33 |
+| Sync geometry | 6.32 | 5.85 | 5.74 |
+| First frame, GPU completion and readback | 43.33 | 26.41 | 23.22 |
+
+These are stage diagnostics, not pure GPU timings or release performance claims.
+The three renderers share one device, and driver caches may affect later rounds.
+Renderer initialization is the next profiling target; it was not changed by the
+material-header optimization.
+
+
+## Renderer initialization: pass-specific helpers and shared MatCap pixels
+
+The same Apple M4 development build was profiled further on 2026-11-19. With warm
+driver caches, shader module creation took about 135–140 ms, pipeline creation
+56–60 ms, and MatCap atlas baking 18–19 ms. Every shader previously received the
+entire shared lighting/environment helper set and the surface-grid implementation,
+even when it did not use them.
+
+Each pass now includes only the helper groups it needs. WGSL function bodies and
+frame/material layouts are unchanged. The immutable 384x128 RGBA8 MatCap atlas is
+baked once per process (192 KiB retained); callers still receive independently owned
+pixel buffers. This removes repeated CPU work without deferring shader setup into
+the first frame or sharing device-bound GPU resources.
+
+Four serial processes alternated before/after/after/before, creating three renderers
+per process. Excluding each process's first renderer, the initialization median fell
+from **209.55 to 139.52 ms (33.4%)**. The first-frame-plus-readback median was 25.14 ms
+before and 24.31 ms after. The first after-process still encountered a cold driver
+shader cache (729.60 ms), so this experiment does **not** establish a controlled
+cold-start speedup or a release-build speedup. Device initialization remains outside
+the measurement.
+
+All 50 PNG references from display modes, effects and surface-grid checks matched
+byte for byte. All 36 ordinary headless GPU tests passed; six manual benchmarks or
+profiling tests remained ignored. The suite covers shadows, environment lighting,
+reflections, transparency, normals, streaming, temporal filtering, MatCap and section
+views. A unit test also compares cached MatCap output with the original bake and
+checks that modifying a returned buffer cannot affect later callers.
+
+
+## Additional renderer windows: device-scoped shader reuse
+
+Live renderers created on the same thread and GPU device now share immutable shader
+modules. Each renderer still owns its scene, pipelines, render targets, textures,
+lighting and temporal state. A thread-local weak index neither keeps modules alive
+after their last owner closes nor shares them across different devices. This targets
+additional 3D and image-render windows, not the first renderer of a process.
+
+Set `HERON_PROFILE_KEEP_FIRST_RENDERER=1` for `profile_first_frame_stages` to retain
+the first renderer while measuring the next two. Four processes alternated
+before/after/after/before on Apple M4 in the same development profile. The median for
+additional renderer initialization fell from **133.67 to 53.99 ms (59.6%)**. The
+first-frame-plus-readback median remained similar: 25.81 versus 25.33 ms. This does
+not establish a cold-start improvement or release-build performance.
+
+A separate `/usr/bin/time -l` run reported peak process RSS of 112.6 MiB before and
+110.1 MiB after. This single sample is a sanity check, not evidence of a meaningful
+memory reduction or a measurement of all GPU allocations. Shader modules are now
+retained while their renderers remain open, instead of rebuilding them for each new
+window; the weak-cache lifecycle test verifies release after the final owner closes.
+
+All 37 ordinary headless GPU tests passed (six manual tests ignored). New tests
+exercise two distinct devices, shared ownership and release, independent scene
+replacement and resizing, closing one renderer while another remains usable, and
+reopening after every renderer has closed.
+
+## Deferred brush-primitive UV resolution
+
+Material discovery now resolves pending brush-primitive UV matrices in one tree
+walk. Previously it collected replacement brushes, then searched the tree again
+for each ID and copied each replacement. Brushes whose pending materials are all
+missing now return no replacement; their matrices remain available for later
+material discovery. Geometry and UV conversion arithmetic are unchanged.
+
+Reproduce the isolated traversal comparison with:
+
+```sh
+CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_LTO=false \
+CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 \
+cargo run --locked --release -p map_model --example primitive_uv_probe
+```
+
+On Apple M4, seven measured rounds after one warmup alternated execution order.
+Each round started from a fresh world clone outside the timer. The probe checks
+that both algorithms produce identical serialized maps, including node IDs.
+
+| Brushes with pending UV matrices | Repeated lookup | Single traversal |
+| --- | ---: | ---: |
+| 1,000 | 1.337 ms | 0.612 ms |
+| 4,000 | 10.234 ms | 1.922 ms |
+| 8,000 | 34.175 ms | 3.896 ms |
+
+This measures UV resolution only, not total map opening, texture I/O, renderer
+initialization or GPU time. Both paths use the same updated per-brush conversion;
+the comparison isolates traversal and replacement costs when materials exist.
+Regression tests cover missing and partially discovered materials, unchanged
+geometry, UV coordinates, repeat resolution, and layers with nested groups and
+brush entities. The document test also covers save/reopen, UV edits, undo and
+subsequent texture discovery.
+
+## Prepared UV sampling during surface construction
+
+Surface construction prepares UV axes and safe scales once per face instead of
+recomputing them for every triangle corner. Gradient colors reuse those corner UVs.
+The projection is local to the current build, so edits cannot leave stale mappings.
+Division, float conversion and offset addition retain the scalar path's order.
+
+Run the isolated optimized sampling probe with the existing release configuration:
+
+```sh
+CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 CARGO_PROFILE_RELEASE_LTO=false \
+CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 \
+cargo run --locked --release -p map_model --example uv_projection_probe
+```
+
+Apple M4, 20,000 faces per run, alternating order, seven measured rounds after one
+warmup (median milliseconds):
+
+| Mapping | Corners per face | Scalar sampling | Prepared sampling |
+| --- | ---: | ---: | ---: |
+| Paraxial | 6 | 4.665 | 0.911 |
+| Paraxial | 48 | 40.313 | 2.068 |
+| Parallel | 6 | 0.472 | 0.239 |
+| Parallel | 48 | 3.325 | 1.164 |
+
+These are isolated UV sampling costs, not whole-scene build, map loading or frame
+times. The probe includes projection preparation and checks identical accumulated
+results. Tests compare UV bits across all six axis directions, a sloped normal,
+rotations, offsets, skewed axes, negative, zero and tiny scales. A surface regression
+test independently checks positions, UVs and gradient colors against scalar face
+sampling for both mapping systems.
+
+Validation passed: 295 model unit tests, eight surface tests and all 37 ordinary
+headless GPU tests (six manual GPU benchmarks ignored). All 50 saved GPU reference
+PNGs matched byte for byte after the change.

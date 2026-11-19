@@ -36,6 +36,7 @@
 
 #![allow(clippy::too_many_arguments)]
 
+mod cube_array;
 mod frame_timer;
 mod ibl;
 mod lights;
@@ -43,6 +44,7 @@ pub mod present;
 mod probes;
 pub mod scene;
 mod shadows;
+mod shader_modules;
 mod taa;
 mod textures;
 mod timer;
@@ -311,6 +313,7 @@ struct Accumulation {
 
 /// The renderer: a retained scene, pipelines and per-size targets on the host's device.
 pub struct Renderer {
+    _shaders: std::sync::Arc<shader_modules::ShaderModules>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     /// The render world. Feed it through [`editor_core::render_scene::SceneTracker`].
@@ -364,17 +367,6 @@ pub struct Renderer {
     textures_changed: bool,
     /// What the last frame did.
     pub stats: FrameStats,
-}
-
-const COMMON: &str = include_str!("shaders/common.wgsl");
-
-fn module(device: &wgpu::Device, label: &str, source: &str) -> wgpu::ShaderModule {
-    device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some(label),
-        source: wgpu::ShaderSource::Wgsl(
-            format!("{COMMON}\n{}\n{source}", include_str!("shaders/surface_grid.wgsl")).into(),
-        ),
-    })
 }
 
 fn texture_entry(binding: u32, sample_type: wgpu::TextureSampleType) -> wgpu::BindGroupLayoutEntry {
@@ -677,7 +669,7 @@ impl Renderer {
                 texture_entry_dim(4, filterable, wgpu::TextureViewDimension::Cube),
                 sampler_entry(5, wgpu::SamplerBindingType::Filtering),
                 texture_entry(6, unfilterable),
-                texture_entry_dim(7, filterable, wgpu::TextureViewDimension::CubeArray),
+                texture_entry_dim(7, filterable, cube_array::view_dimension()),
             ],
         );
         let fxaa_layout = layout_of(
@@ -723,10 +715,10 @@ impl Renderer {
                 fragment_storage(7),
                 fragment_storage(8),
                 fragment_storage(9),
-                texture_entry_dim(10, T::Depth, wgpu::TextureViewDimension::CubeArray),
+                texture_entry_dim(10, T::Depth, cube_array::view_dimension()),
                 texture_entry(11, T::Depth),
                 texture_entry(12, unfilterable),
-                texture_entry_dim(13, filterable, wgpu::TextureViewDimension::CubeArray),
+                texture_entry_dim(13, filterable, cube_array::view_dimension()),
                 texture_entry(14, filterable),
                 texture_entry_dim(15, unfilterable, wgpu::TextureViewDimension::D2Array),
             ],
@@ -774,40 +766,17 @@ impl Renderer {
         let ssr_pipeline_layout = layout("render_wgpu ssr", &[&ssr_layout]);
         let taa_pipeline_layout = layout("render_wgpu taa", &[&taa_layout]);
 
-        let scene_module = module(
-            device,
-            "render_wgpu scene",
-            include_str!("shaders/scene.wgsl"),
-        );
-        let shadow_module = module(
-            device,
-            "render_wgpu shadow",
-            include_str!("shaders/shadow.wgsl"),
-        );
-        let post_module = module(
-            device,
-            "render_wgpu post",
-            include_str!("shaders/post.wgsl"),
-        );
-        let overlay_module = module(
-            device,
-            "render_wgpu overlay",
-            include_str!("shaders/overlay.wgsl"),
-        );
-        let sprite_module = module(
-            device,
-            "render_wgpu sprite",
-            include_str!("shaders/sprite.wgsl"),
-        );
-        let ao_module = module(device, "render_wgpu ao", include_str!("shaders/ao.wgsl"));
-        let bloom_module = module(
-            device,
-            "render_wgpu bloom",
-            include_str!("shaders/bloom.wgsl"),
-        );
-        let ibl_module = module(device, "render_wgpu ibl", include_str!("shaders/ibl.wgsl"));
-        let ssr_module = module(device, "render_wgpu ssr", include_str!("shaders/ssr.wgsl"));
-        let taa_module = module(device, "render_wgpu taa", include_str!("shaders/taa.wgsl"));
+        let shaders = shader_modules::get(device);
+        let scene_module = shaders.scene.clone();
+        let shadow_module = shaders.shadow.clone();
+        let post_module = shaders.post.clone();
+        let overlay_module = shaders.overlay.clone();
+        let sprite_module = shaders.sprite.clone();
+        let ao_module = shaders.ao.clone();
+        let bloom_module = shaders.bloom.clone();
+        let ibl_module = shaders.ibl.clone();
+        let ssr_module = shaders.ssr.clone();
+        let taa_module = shaders.taa.clone();
 
         let vertex_layout = [Some(wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<scene::Vertex>() as u64,
@@ -1376,6 +1345,7 @@ impl Renderer {
         let matcap_view = matcap.create_view(&Default::default());
         let ibl = ibl::Ibl::new(device, queue, &frame_layout, &ibl_module);
         Self {
+            _shaders: shaders,
             device: device.clone(),
             queue: queue.clone(),
             scene,

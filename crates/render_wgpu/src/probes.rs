@@ -31,7 +31,7 @@ impl Probes {
             view_formats: &[],
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
-            dimension: Some(wgpu::TextureViewDimension::CubeArray),
+            dimension: Some(crate::cube_array::view_dimension()),
             ..Default::default()
         });
         let buffer = device.create_buffer(&wgpu::BufferDescriptor {
