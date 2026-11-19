@@ -617,19 +617,14 @@ impl Document {
     /// almost all of them; a face whose material is still missing keeps its matrix for the
     /// next time a collection loads.
     fn resolve_brush_primitive_uv(&mut self) {
-        let size_of = |name: &str| {
-            self.materials
-                .get(name)
-                .map(|material| Vec2f::new(material.width as f32, material.height as f32))
-        };
-        let resolved: Vec<(NodeId, map_model::brush::Brush)> =
-            node::brushes_with_ids(&self.tree.world)
-                .into_iter()
-                .filter_map(|(id, brush)| brush.resolved_primitive_uv(size_of).map(|b| (id, b)))
-                .collect();
-        for (id, brush) in resolved {
-            node::replace_brush(&mut self.tree.world, id, brush);
-        }
+        let materials = &self.materials;
+        node::map_brushes(&mut self.tree.world, |brush| {
+            brush.resolved_primitive_uv(|name| {
+                materials
+                    .get(name)
+                    .map(|material| Vec2f::new(material.width as f32, material.height as f32))
+            })
+        });
     }
 
     /// Returns the materials a face may wear.

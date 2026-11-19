@@ -127,6 +127,25 @@ pub enum UvCoordSystem {
     },
 }
 
+/// A face's prepared UV mapping for sampling several points without rebuilding its axes.
+/// Recreate it after changing the face normal or UV attributes.
+#[derive(Debug, Clone, Copy)]
+pub struct UvProjection {
+    axes: (Vec3d, Vec3d),
+    scale: [f64; 2],
+    offset: Vec2f,
+}
+
+impl UvProjection {
+    /// Maps a world position to texels, preserving the scalar mapping's arithmetic order.
+    #[inline]
+    pub fn uv_coords(&self, point: Vec3d) -> Vec2f {
+        let u = vec::dot(point, self.axes.0) / self.scale[0];
+        let v = vec::dot(point, self.axes.1) / self.scale[1];
+        Vec2f::new(u as f32, v as f32) + self.offset
+    }
+}
+
 impl UvCoordSystem {
     /// Returns the U and V axes this system maps with, for a face with the given normal
     /// and attributes.
@@ -141,6 +160,18 @@ impl UvCoordSystem {
             }
             // The rotation is already baked into the stored axes.
             UvCoordSystem::Parallel { u_axis, v_axis } => (*u_axis, *v_axis),
+        }
+    }
+
+    /// Prepares the axes and safe scales once for a batch of points on one face.
+    pub fn projection(&self, normal: Vec3d, attributes: &UvAttributes) -> UvProjection {
+        UvProjection {
+            axes: self.axes(normal, attributes),
+            scale: [
+                f64::from(safe_scale(attributes.scale.x())),
+                f64::from(safe_scale(attributes.scale.y())),
+            ],
+            offset: attributes.offset,
         }
     }
 
@@ -1182,5 +1213,59 @@ mod wrap_tests {
             panic!()
         };
         geometry_math::assert_approx_eq!(u2, u1 * 2.0, 1e-9);
+    }
+}
+
+#[cfg(test)]
+mod projection_tests {
+    use super::*;
+
+    #[test]
+    fn prepared_projection_matches_scalar_mapping_exactly() {
+        for normal in [
+            Vec3d::new(1., 0., 0.),
+            Vec3d::new(-1., 0., 0.),
+            Vec3d::new(0., 1., 0.),
+            Vec3d::new(0., -1., 0.),
+            Vec3d::new(0., 0., 1.),
+            Vec3d::new(0., 0., -1.),
+            vec::normalize(Vec3d::new(1., 2., 3.)),
+        ] {
+            for system in [
+                UvCoordSystem::Paraxial,
+                UvCoordSystem::Parallel {
+                    u_axis: Vec3d::new(0.3, -0.8, 0.2),
+                    v_axis: Vec3d::new(-0.1, 0.4, 1.2),
+                },
+            ] {
+                for rotation in [0., 90., -37.25, 360.] {
+                    for scale in [
+                        Vec2f::new(1., 1.),
+                        Vec2f::new(-0.125, 3.7),
+                        Vec2f::new(0., -0.),
+                        Vec2f::new(1e-20, -1e-20),
+                    ] {
+                        let attributes = UvAttributes {
+                            offset: Vec2f::new(13.25, -29.5),
+                            scale,
+                            rotation,
+                        };
+                        let projection = system.projection(normal, &attributes);
+                        for point in [
+                            Vec3d::zero(),
+                            Vec3d::new(123.45, -678.9, 11.),
+                            Vec3d::new(-16384., 16384., 0.001),
+                        ] {
+                            let expected = system.uv_coords(point, normal, &attributes);
+                            let actual = projection.uv_coords(point);
+                            assert_eq!(
+                                [actual.x().to_bits(), actual.y().to_bits()],
+                                [expected.x().to_bits(), expected.y().to_bits()]
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 }

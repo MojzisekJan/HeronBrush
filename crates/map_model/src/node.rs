@@ -309,6 +309,13 @@ pub enum TreeWarning {
         /// The line of the node that named it.
         line: usize,
     },
+    /// An excessively nested subtree was moved intact to the default layer.
+    GroupDepthLimit {
+        /// The group that could not safely receive another subtree.
+        id: String,
+        /// The source line of the moved subtree.
+        line: usize,
+    },
     /// A brush's faces do not enclose a volume, so the brush was dropped.
     InvalidBrush {
         /// Why it could not be built.
@@ -327,6 +334,10 @@ impl std::fmt::Display for TreeWarning {
             TreeWarning::MissingParent { id, line } => write!(
                 f,
                 "line {line}: no layer or group has id \"{id}\", so its contents went to the default layer"
+            ),
+            TreeWarning::GroupDepthLimit { id, line } => write!(
+                f,
+                "line {line}: nesting under group \"{id}\" exceeds {MAX_GROUP_DEPTH} groups; moved the subtree intact to the default layer"
             ),
             TreeWarning::InvalidBrush { cause, line } => {
                 write!(f, "line {line}: dropped a brush: {cause}")
@@ -475,18 +486,15 @@ fn build_tree_with(
         .rev()
         .map(|(index, group)| (group.group.id.as_str(), index))
         .collect();
-    let depth = |mut at: usize| {
-        let mut depth = 0;
-        while let Some(&parent) = groups[at].parent.as_deref().and_then(|id| first.get(id)) {
-            depth += 1;
-            if depth > groups.len() {
-                break;
-            }
-            at = parent;
-        }
-        depth
-    };
-    let mut order: Vec<(usize, usize)> = (0..groups.len()).map(|at| (depth(at), at)).collect();
+    let parent_indices: Vec<_> = groups
+        .iter()
+        .map(|group| group.parent.as_deref().and_then(|id| first.get(id)).copied())
+        .collect();
+    let mut order: Vec<_> = group_depths(&parent_indices)
+        .into_iter()
+        .enumerate()
+        .map(|(index, depth)| (depth, index))
+        .collect();
     order.sort_by_key(|(depth, _)| *depth);
     let file_index: Vec<usize> = order.iter().map(|(_, at)| *at).collect();
     let mut pending: Vec<Option<PendingGroup>> = groups.into_iter().map(Some).collect();
@@ -529,6 +537,7 @@ fn build_tree_with(
         };
         place(
             node,
+            0,
             parent,
             entity.line,
             &parents,
@@ -549,9 +558,11 @@ fn build_tree_with(
         }
         let parent = group.parent.clone();
         let line = group.line;
+        let height = group.height;
         let node = Node::new(NodeKind::Group(group.group));
         place(
             node,
+            height,
             parent,
             line,
             &parents,
@@ -610,9 +621,46 @@ fn build_tree_with(
     Tree { world, warnings }
 }
 
+// Loaded maps may contain arbitrarily long parent chains, but downstream tree
+// operations are recursive. This leaves room for entities and their geometry too.
+const MAX_GROUP_DEPTH: usize = 128;
+
+/// Resolve each parent chain once, without recursion. Chains entering a cycle keep
+/// the old walk's sentinel depth so stable sorting and malformed-file recovery agree.
+fn group_depths(parents: &[Option<usize>]) -> Vec<usize> {
+    let mut depths: Vec<Option<usize>> = vec![None; parents.len()];
+    let mut visiting = vec![false; parents.len()];
+    let mut path = Vec::new();
+    let cycle_depth = parents.len() + 1;
+    for start in 0..parents.len() {
+        let mut at = Some(start);
+        while let Some(index) = at {
+            if depths[index].is_some() || visiting[index] {
+                break;
+            }
+            visiting[index] = true;
+            path.push(index);
+            at = parents[index];
+        }
+        let cycle = at.is_some_and(|index| depths[index].is_none());
+        while let Some(index) = path.pop() {
+            depths[index] = Some(if cycle {
+                cycle_depth
+            } else {
+                parents[index].map_or(0, |parent| {
+                    (depths[parent].expect("parent depth was resolved") + 1).min(cycle_depth)
+                })
+            });
+            visiting[index] = false;
+        }
+    }
+    depths.into_iter().map(Option::unwrap).collect()
+}
+
 /// A group together with where it belongs, while the tree is being assembled.
 struct PendingGroup {
     group: Group,
+    height: usize,
     parent: Option<String>,
     line: usize,
 }
@@ -634,6 +682,7 @@ struct ParentIndex {
 #[allow(clippy::too_many_arguments)]
 fn place(
     node: Node,
+    height: usize,
     parent: Option<String>,
     line: usize,
     parents: &ParentIndex,
@@ -648,6 +697,14 @@ fn place(
     };
 
     if let Some(&index) = parents.groups.get(&id) {
+        // Bound recursive visits, cloning and destruction before the tree exists.
+        // Recover the entire subtree rather than silently dropping map content.
+        if height >= MAX_GROUP_DEPTH {
+            warnings.push(TreeWarning::GroupDepthLimit { id, line });
+            default_layer.children.push(node);
+            return;
+        }
+        groups[index].height = groups[index].height.max(height + 1);
         groups[index].group.children.push(node);
         return;
     }
@@ -697,6 +754,7 @@ fn read_layer(entity: &RawEntity) -> Layer {
 /// Reads a group from the `func_group` entity standing for it.
 fn read_group(entity: &RawEntity) -> PendingGroup {
     PendingGroup {
+        height: 1,
         group: Group {
             id: entity.property(keys::TB_ID).unwrap_or_default().to_string(),
             name: entity
@@ -1945,5 +2003,48 @@ mod duplicate_id_tests {
                 .iter()
                 .any(|w| matches!(w, TreeWarning::DuplicateNodeId { .. })));
         }
+    }
+}
+
+#[cfg(test)]
+mod group_depth_tests {
+    use super::group_depths;
+
+    #[test]
+    fn memoized_depths_match_legacy_order_for_every_small_parent_graph() {
+        // Covers roots, self-links, cycles and chains entering cycles, without
+        // assuming valid input or a particular order in the file.
+        for encoded in 0..5usize.pow(4) {
+            let mut value = encoded;
+            let parents: Vec<_> = (0..4)
+                .map(|_| {
+                    let digit = value % 5;
+                    value /= 5;
+                    (digit < 4).then_some(digit)
+                })
+                .collect();
+            let expected: Vec<_> = (0..4)
+                .map(|mut index| {
+                    let mut depth = 0;
+                    while let Some(parent) = parents[index] {
+                        depth += 1;
+                        if depth > parents.len() {
+                            break;
+                        }
+                        index = parent;
+                    }
+                    depth
+                })
+                .collect();
+            assert_eq!(group_depths(&parents), expected, "{parents:?}");
+        }
+    }
+
+    #[test]
+    fn long_parent_chains_and_cycles_do_not_require_recursion() {
+        let mut parents: Vec<_> = (0..50_000usize).map(|i| i.checked_sub(1)).collect();
+        assert_eq!(group_depths(&parents)[49_999], 49_999);
+        parents[0] = Some(49_999);
+        assert!(group_depths(&parents).iter().all(|&depth| depth == 50_001));
     }
 }

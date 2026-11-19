@@ -904,20 +904,22 @@ fn brush_surface(
             } else {
                 alpha
             };
+            let projection = face.uv_coord_system.projection(normal, &face.uv_attributes);
             let face_start = result.len();
             for corners in map_model::brush_face::paint_triangles(face, polygon, paint) {
+                let uv = corners.map(|corner| projection.uv_coords(corner));
                 result.push(Triangle {
                     corner_normals: None,
                     surface_material: if is_skip { None } else { face.surface_material },
                     positions: corners,
                     normal,
-                    uv: corners.map(|corner| face.uv_coords(corner)),
+                    uv,
                     material,
                     color,
                     alpha: alpha * opacity,
                     corner_colors: gradient
                         .as_ref()
-                        .map(|gradient| corners.map(|corner| gradient.at(face, corner))),
+                        .map(|gradient| uv.map(|coords| gradient.at_uv(coords))),
                     locked,
                     selected: selected && paint.is_none(),
                     painted: paint.is_some(),
@@ -956,6 +958,72 @@ mod tests {
         }
         document.clear_selection();
         document
+    }
+
+    #[test]
+    fn prepared_uv_and_gradient_samples_match_scalar_face_mapping() {
+        use map_model::uv::{UvAttributes, UvCoordSystem};
+        let mut document = boxes(1);
+        document.select_all();
+        for system in [
+            UvCoordSystem::Paraxial,
+            UvCoordSystem::Parallel {
+                u_axis: Vec3d::new(0.3, -0.8, 0.2),
+                v_axis: Vec3d::new(-0.1, 0.4, 1.2),
+            },
+        ] {
+            document.edit_faces(|face| {
+                face.uv_coord_system = system;
+                face.uv_attributes = UvAttributes {
+                    offset: Vec2f::new(13.25, -29.5),
+                    scale: Vec2f::new(-0.125, 3.7),
+                    rotation: 37.25,
+                };
+            });
+            for paint in [
+                None,
+                Some(FaceColor::gradient(
+                    Rgb {
+                        r: 20,
+                        g: 80,
+                        b: 230,
+                    },
+                    Rgb {
+                        r: 200,
+                        g: 10,
+                        b: 45,
+                    },
+                    30.,
+                )),
+            ] {
+                document.set_face_color(paint);
+                let actual = document.preview_mesh(&ViewFilters::default()).triangles;
+                let mut expected = Vec::new();
+                document.selectable_brushes()[0]
+                    .1
+                    .for_each_geometry_face(|_, face, polygon| {
+                        let gradient = paint.map(|paint| {
+                            map_model::brush_face::PaintOnFace::new(face, polygon, paint)
+                        });
+                        for corners in map_model::brush_face::paint_triangles(face, polygon, paint)
+                        {
+                            expected.push((
+                                corners,
+                                corners.map(|point| face.uv_coords(point)),
+                                gradient
+                                    .as_ref()
+                                    .map(|gradient| corners.map(|point| gradient.at(face, point))),
+                            ));
+                        }
+                    });
+                assert_eq!(actual.len(), expected.len());
+                for (actual, (positions, uv, colors)) in actual.iter().zip(expected) {
+                    assert_eq!(actual.positions, positions);
+                    assert_eq!(actual.uv, uv);
+                    assert_eq!(actual.corner_colors, colors);
+                }
+            }
+        }
     }
 
     #[test]

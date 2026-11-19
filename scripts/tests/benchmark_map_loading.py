@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Alternate two prebuilt map_load_probe binaries on one CPU; never build/download."""
+"""Alternate two prebuilt map_load_probe binaries; never build/download."""
 import argparse
 import hashlib
 import json
 from pathlib import Path
 import statistics
 import subprocess
+import sys
 
 
 def main():
@@ -14,10 +15,12 @@ def main():
     parser.add_argument("after", type=Path)
     parser.add_argument("fixtures", type=Path)
     parser.add_argument("output", type=Path)
-    parser.add_argument("--cpu", type=int, required=True)
+    parser.add_argument("--cpu", type=int, help="Pin to this CPU on Linux; omit on macOS")
     parser.add_argument("--runs", type=int, default=7, choices=range(1, 32))
     args = parser.parse_args()
-    result = {"cpu": args.cpu, "order": ["before", "after", "after", "before"],
+    if args.cpu is not None and sys.platform != "linux":
+        parser.error("--cpu requires Linux taskset; omit it on this platform")
+    result = {"platform": sys.platform, "cpu": args.cpu, "order": ["before", "after", "after", "before"],
               "runs_per_process": args.runs, "cases": []}
     for fixture in sorted(args.fixtures.glob("*.map")):
         for mode in ["parse", "load"]:
@@ -25,7 +28,10 @@ def main():
                     "mode": mode, "processes": []}
             for variant in result["order"]:
                 binary = getattr(args, variant).resolve()
-                completed = subprocess.run(["nice", "-n", "10", "taskset", "-c", str(args.cpu),
+                prefix = ["nice", "-n", "10"]
+                if args.cpu is not None:
+                    prefix += ["taskset", "-c", str(args.cpu)]
+                completed = subprocess.run(prefix + [
                     str(binary), str(fixture.resolve()), mode, str(args.runs)],
                     check=True, capture_output=True, text=True, timeout=60)
                 sample = json.loads(completed.stdout)

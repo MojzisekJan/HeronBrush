@@ -32,6 +32,12 @@ def main():
     groups += ''.join(f'{{ "classname" "func_group" "_tb_type" "_tb_group" "_tb_id" "{i}" }}\n' for i in range(10000))
     groups += ''.join(f'{{ "classname" "light" "_tb_group" "{i}" }}\n' for i in range(10000))
     (args.output / "groups-10000.map").write_text(groups)
+    for depth in [1, 64, 128]:
+        lines = ['{"classname" "worldspawn"}']
+        for index in range(4096):
+            parent = f'"_tb_group" "{index - 1}"' if index % depth else ''
+            lines.append(f'{{"classname" "func_group" "_tb_type" "_tb_group" "_tb_id" "{index}" {parent}}}')
+        (args.output / f"groups-depth-{depth}.map").write_text('\n'.join(lines))
     dragon = (Path(__file__).resolve().parents[2] / "assets/dragon.map").read_text()
     body = dragon[dragon.index('{') + 1:dragon.rfind('}')]
     body = '\n'.join(line for line in body.splitlines() if not line.startswith('// heron_brush id'))

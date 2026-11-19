@@ -846,9 +846,13 @@ impl MaterialCollection {
         // Read in a stable order, so the browser lists them the same way every time.
         paths.sort();
 
+        // Keep headers by file, including lower-priority duplicate material names:
+        // companion selection may choose a different file than the albedo picker.
+        let mut headers = HashMap::with_capacity(paths.len());
         for decoded in read_headers(&root, &paths) {
             match decoded {
                 Ok(material) => {
+                    headers.insert(material.path.clone(), (material.width, material.height));
                     let rank = |path: &Path| {
                         EXTENSIONS
                             .iter()
@@ -892,8 +896,11 @@ impl MaterialCollection {
                 else {
                     continue;
                 };
-                match read_header(&path) {
-                    Ok((width, height, _)) => {
+                let dimensions = headers.get(&path).copied().map(Ok).unwrap_or_else(|| {
+                    read_header(&path).map(|(width, height, _)| (width, height))
+                });
+                match dimensions {
+                    Ok((width, height)) => {
                         material.normal_map = Some(NormalMap::lazy(
                             path.clone(),
                             width,
@@ -1654,6 +1661,54 @@ mod tests {
         let collection = MaterialCollection::load_directory(&root).unwrap();
         assert!(collection.get("stone_albedo").is_some());
         assert!(!collection.warnings().is_empty());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn companion_headers_belong_to_the_selected_file_and_refresh_on_reload() {
+        let root = temp_dir("companion-header-files");
+        write_png(&root.join("stone_albedo.png"), 2, 2, [180, 150, 120, 255]);
+        write_png(&root.join("stone_normal.png"), 7, 2, [128, 128, 255, 255]);
+        // The companion resolver picks the alphabetically first file, whereas
+        // material-name deduplication prefers PNG. Its dimensions must not leak
+        // into the JPEG companion, even though their material names are equal.
+        let jpeg = root.join("stone_normal.jpg");
+        image::RgbImage::from_pixel(5, 3, image::Rgb([128, 128, 255]))
+            .save(&jpeg)
+            .unwrap();
+        for (width, height) in [(5, 3), (9, 4)] {
+            image::RgbImage::from_pixel(width, height, image::Rgb([128, 128, 255]))
+                .save(&jpeg)
+                .unwrap();
+            let collection = MaterialCollection::load_directory(&root).unwrap();
+            assert!(collection.warnings().is_empty());
+            let normal = collection
+                .get("stone_albedo")
+                .unwrap()
+                .normal_map
+                .as_ref()
+                .unwrap();
+            assert_eq!(normal.path, jpeg);
+            assert_eq!((normal.width, normal.height), (width, height));
+            assert_eq!(
+                normal.pixels().unwrap().len(),
+                (width * height * 4) as usize
+            );
+        }
+        // A damaged preferred suffix must still fall back to a valid normal map.
+        std::fs::write(root.join("stone_normal_gl.png"), b"broken").unwrap();
+        let collection = MaterialCollection::load_directory(&root).unwrap();
+        assert!(!collection.warnings().is_empty());
+        assert_eq!(
+            collection
+                .get("stone_albedo")
+                .unwrap()
+                .normal_map
+                .as_ref()
+                .unwrap()
+                .path,
+            jpeg
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 

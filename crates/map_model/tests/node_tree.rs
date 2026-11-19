@@ -836,3 +836,59 @@ fn consuming_tree_keeps_worldspawn_selection_and_warning_order() {
         write_map(&flatten_tree(&owned.world, MapFormat::LOSSLESS, None))
     );
 }
+
+#[test]
+fn deferred_uv_resolution_preserves_nested_nodes_and_missing_materials() {
+    use geometry_math::vec::Vec2f;
+    use map_model::{map_format::MapFormat, node};
+    let source = format!(
+        "{{\"classname\" \"worldspawn\" {} }}\n\
+         {{\"classname\" \"func_group\" \"_tb_type\" \"_tb_layer\" \"_tb_id\" \"2\" \"_tb_name\" \"Detail\" {} }}\n\
+         {{\"classname\" \"func_group\" \"_tb_type\" \"_tb_group\" \"_tb_id\" \"3\" \"_tb_name\" \"Outer\" \"_tb_layer\" \"2\" {} }}\n\
+         {{\"classname\" \"func_group\" \"_tb_type\" \"_tb_group\" \"_tb_id\" \"4\" \"_tb_name\" \"Inner\" \"_tb_group\" \"3\" {} }}\n\
+         {{\"classname\" \"func_door\" \"targetname\" \"door\" \"_tb_group\" \"4\" {} }}",
+        cube(-64, 64), cube(-64, 64), cube(-64, 64), cube(-64, 64), cube(-64, 64)
+    );
+    let mut map = read_map(&source, None).unwrap();
+    for entity in &mut map.entities {
+        for brush in &mut entity.brushes {
+            for face in &mut brush.faces {
+                face.primitive_uv = Some(Box::new([[0.01, 0., 0.25], [0., 0.02, -0.5]]));
+            }
+            brush.faces[0].material_name = "missing".into();
+        }
+    }
+    let mut tree = build_tree(&map, &world_bounds());
+    assert!(tree.warnings.is_empty());
+    let mut expected = tree.world.clone();
+    let size = |name: &str| (name == "stone").then_some(Vec2f::new(128., 64.));
+    let replacements: Vec<_> = node::brushes_with_ids(&expected)
+        .into_iter()
+        .map(|(id, brush)| (id, brush.resolved_primitive_uv(size).unwrap()))
+        .collect();
+    assert_eq!(replacements.len(), 5);
+    for (id, brush) in replacements {
+        node::replace_brush(&mut expected, id, brush);
+    }
+    node::map_brushes(&mut tree.world, |brush| brush.resolved_primitive_uv(size));
+    assert_eq!(
+        node::flatten_tree(&tree.world, MapFormat::Valve, None),
+        node::flatten_tree(&expected, MapFormat::Valve, None)
+    );
+    for brush in brushes(&tree.world) {
+        assert_eq!(
+            brush
+                .faces()
+                .iter()
+                .filter(|face| face.primitive_uv.is_some())
+                .count(),
+            1
+        );
+    }
+    let saved = node::flatten_tree(&tree.world, MapFormat::Valve, None);
+    node::map_brushes(&mut tree.world, |brush| brush.resolved_primitive_uv(size));
+    assert_eq!(
+        node::flatten_tree(&tree.world, MapFormat::Valve, None),
+        saved
+    );
+}

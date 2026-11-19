@@ -1431,26 +1431,20 @@ impl Brush {
     }
 
     /// Returns this brush with every pending brush-primitive texture matrix turned into
-    /// real UV axes, `size_of` giving each material's pixel size. `None` when no face was
-    /// waiting -- the usual case -- so the caller skips the copy. A face whose material
-    /// `size_of` does not know keeps its matrix for a later try.
+    /// real UV axes, `size_of` giving each material's pixel size. Returns `None` when
+    /// no pending face has a known material size, so the caller skips the copy. A face
+    /// whose material `size_of` does not know keeps its matrix for a later try.
     pub fn resolved_primitive_uv(&self, size_of: impl Fn(&str) -> Option<Vec2f>) -> Option<Self> {
-        if !self.has_pending_primitive_uv() {
-            return None;
-        }
-        let mut faces = self.faces.clone();
-        for face in &mut faces {
+        let mut resolved = None;
+        for (index, face) in self.faces.iter().enumerate() {
             if face.primitive_uv.is_some() {
                 if let Some(size) = size_of(&face.material_name) {
-                    face.resolve_primitive_uv(size);
+                    let brush = resolved.get_or_insert_with(|| self.clone());
+                    brush.faces[index].resolve_primitive_uv(size);
                 }
             }
         }
-        Some(Self {
-            faces,
-            geometry: self.geometry.clone(),
-            face_of_geometry: self.face_of_geometry.clone(),
-        })
+        resolved
     }
 
     /// Returns the index of the face whose plane points most nearly the same way as the
@@ -1819,5 +1813,56 @@ mod small_transform_tests {
             ) - f.plane.distance
                 < 1e-7));
         }
+    }
+}
+
+#[cfg(test)]
+mod primitive_uv_resolution_tests {
+    use super::*;
+
+    #[test]
+    fn missing_materials_wait_without_replacing_the_brush() {
+        let world = Bbox3d::from_scalars(-4096., 4096.);
+        let mut brush =
+            crate::shapes::create_cuboid(&world, &Bbox3d::from_scalars(-64., 64.), "stone")
+                .unwrap();
+        assert!(brush
+            .resolved_primitive_uv(|_| panic!("no pending UV"))
+            .is_none());
+        for face in &mut brush.faces {
+            face.primitive_uv = Some(Box::new([[0.01, 0.002, 0.25], [-0.003, 0.02, -0.5]]));
+        }
+        brush.faces[0].material_name = "missing".into();
+        assert!(brush.resolved_primitive_uv(|_| None).is_none());
+        let partial = brush
+            .resolved_primitive_uv(|name| (name == "stone").then_some(Vec2f::new(128., 64.)))
+            .unwrap();
+        assert!(partial.faces[0].primitive_uv.is_some());
+        assert!(partial.faces[1..]
+            .iter()
+            .all(|face| face.primitive_uv.is_none()));
+        assert!(brush.faces.iter().all(|face| face.primitive_uv.is_some()));
+        assert_eq!(partial.vertex_positions(), brush.vertex_positions());
+        for (original, actual) in brush.faces[1..].iter().zip(&partial.faces[1..]) {
+            let mut expected = original.clone();
+            expected.resolve_primitive_uv(Vec2f::new(128., 64.));
+            for point in original.points {
+                geometry_math::assert_approx_eq!(
+                    actual.uv_coords(point),
+                    expected.uv_coords(point),
+                    1e-5
+                );
+            }
+        }
+        let complete = partial
+            .resolved_primitive_uv(|name| {
+                assert_eq!(name, "missing");
+                Some(Vec2f::new(32., 256.))
+            })
+            .unwrap();
+        assert!(!complete.has_pending_primitive_uv());
+        assert!(complete
+            .resolved_primitive_uv(|_| panic!("already resolved"))
+            .is_none());
     }
 }
