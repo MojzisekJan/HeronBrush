@@ -24,6 +24,8 @@ mod egui_canvas;
 mod entity_graph_page;
 mod entity_page;
 mod export_page;
+#[cfg(target_os = "ios")]
+pub mod ios;
 #[cfg(target_os = "macos")]
 mod macos;
 mod manual_page;
@@ -49,6 +51,7 @@ mod gl_glue;
 mod idle;
 mod imaging_controls;
 mod inspector;
+mod ipad_shell;
 mod layout;
 mod map_page;
 mod material_page;
@@ -69,6 +72,8 @@ mod texture_gizmo;
 mod theme;
 mod tool_rows;
 mod touch;
+#[cfg(any(target_os = "ios", test))]
+mod touch_keyboard;
 mod trigger_panel;
 #[cfg(test)]
 mod ui_tests;
@@ -449,6 +454,8 @@ pub(crate) struct Startup {
 }
 
 struct App {
+    #[cfg(target_os = "ios")]
+    ios_view: Option<ios::View>,
     /// A developer's input script, from `HERON_BRUSH_SCRIPT`.
     script: Option<script::Script>,
     /// The frame-time logger, while `HERON_BRUSH_PROFILE` is set.
@@ -550,6 +557,10 @@ impl App {
         let gpu = Gpu::from_creation_context(cc)?;
         let mut app = Self::build(&cc.egui_ctx, gpu, startup)?;
         // What an editor that stopped without saving left behind, offered once at start.
+        #[cfg(target_os = "ios")]
+        {
+            app.ios_view = ios::View::from_context(cc);
+        }
         app.recovery.look_for_copies();
         app.script = script::Script::from_env();
         if app.script.is_some() {
@@ -589,11 +600,16 @@ impl App {
             Pane2d::new(&editor, ViewPlane::Side),
         ];
         let window = Rc::new(RefCell::new(WindowState::default()));
+        if cfg!(target_os = "ios") {
+            window.borrow_mut().panes.maximised = Some(0);
+        }
         let commands = commands_for(&editor, ctx, &window);
         let live = editor_core::godot_live::LiveLink::new(&editor.document);
         let autosaver = editor_core::autosave::Autosaver::new(&editor.document.borrow());
         let recovery = recovery_offer::RecoveryState::new(&editor.document.borrow());
         Ok(Self {
+            #[cfg(target_os = "ios")]
+            ios_view: None,
             script: None,
             profiler: profile::Profiler::from_env(),
             startup: welcome,
@@ -644,7 +660,7 @@ impl App {
             tabs: Vec::new(),
             touch: touch::Gestures::default(),
             touch_layout_set: false,
-            inspector_share: 0.45,
+            inspector_share: if cfg!(target_os = "ios") { 0.34 } else { 0.45 },
         })
     }
 
@@ -754,7 +770,11 @@ impl App {
 
     /// The map views, as the layout arranges them.
     fn views(&mut self, ui: &mut egui::Ui, area: egui::Rect) {
-        let layout = editor_core::preferences::pref(|p| p.map_view_layout);
+        let layout = if cfg!(target_os = "ios") {
+            editor_core::preferences::Layout::Four
+        } else {
+            editor_core::preferences::pref(|p| p.map_view_layout)
+        };
         let placed = {
             let mut window = self.window.borrow_mut();
             window.panes.detached = self.chrome.detach_3d;
@@ -1002,6 +1022,12 @@ impl App {
     /// it opened on.
     fn place(&mut self, ui: &egui::Ui) {
         let rescaled = theme::fit_scale(ui.ctx());
+        // UIKit owns the window's size and origin. Desktop centering would move the
+        // drawable off-screen on iPad, leaving a clipped UI and a black strip.
+        if cfg!(target_os = "ios") {
+            self.placed = true;
+            return;
+        }
         // The zoom takes effect on the next frame, and the viewport info (the monitor size)
         // catches up a frame after that, so the window is placed once two frames have
         // gone by unchanged.
@@ -1149,6 +1175,10 @@ impl eframe::App for App {
         if let Some(script) = &mut self.script {
             script.feed(ctx, raw_input);
         }
+        #[cfg(target_os = "ios")]
+        if let Some(view) = &self.ios_view {
+            view.keyboard_insets(ctx, raw_input);
+        }
         self.touch.filter(ctx, raw_input);
         #[cfg(target_os = "android")]
         {
@@ -1179,7 +1209,19 @@ impl eframe::App for App {
         }
     }
 
+    #[cfg(not(target_os = "ios"))]
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.finish_session();
+    }
+
+    #[cfg(target_os = "ios")]
+    fn on_exit(&mut self) {
+        self.finish_session();
+    }
+}
+
+impl App {
+    fn finish_session(&mut self) {
         self.live.stop("Window closed");
         // A clean exit: the map was saved or its changes let go, so its recovery copy
         // goes, and this editor is no longer marked running.
@@ -1198,9 +1240,7 @@ impl eframe::App for App {
             detached.view.destroy();
         }
     }
-}
 
-impl App {
     /// One frame of the window: everything [`eframe::App::ui`] does, timed or not.
     fn frame(&mut self, ui: &mut egui::Ui) {
         // A paste from the menu in the browser: the clipboard text the page read.
@@ -1396,9 +1436,25 @@ impl App {
         };
 
         ui.painter().rect_filled(ui.max_rect(), 0.0, theme::panel());
-        let header =
-            egui::Rect::from_min_size(window.min, egui::vec2(window.width(), theme::HEADER_HEIGHT));
-        let toolbar_height = if toolbar_hidden {
+        let header = egui::Rect::from_min_size(
+            window.min,
+            egui::vec2(
+                window.width(),
+                if cfg!(target_os = "ios") {
+                    ipad_shell::HEADER
+                } else {
+                    theme::HEADER_HEIGHT
+                },
+            ),
+        );
+        let toolbar_height = if cfg!(target_os = "ios") {
+            ipad_shell::SHELF
+                * if ipad_shell::has_tool_options(*self.editor.tool.borrow()) {
+                    2.0
+                } else {
+                    1.0
+                }
+        } else if toolbar_hidden {
             0.0
         } else {
             theme::TOOLBAR_HEIGHT
@@ -1419,9 +1475,28 @@ impl App {
             web::update_playtest(ui.ctx(), &self.editor.document.borrow());
         }
         let status = self.status(title);
-        self.chrome.header(ui, header, &status);
-        if !toolbar_hidden {
-            self.chrome.toolbar(ui, toolbar);
+        if cfg!(target_os = "ios") {
+            ipad_shell::header(ui, header, &mut self.chrome, &status);
+            let shelf = toolbar.with_max_y(toolbar.top() + ipad_shell::SHELF);
+            ipad_shell::shelf(
+                ui,
+                shelf,
+                &mut self.chrome,
+                &mut self.window.borrow_mut().panes.maximised,
+            );
+            if toolbar.height() > ipad_shell::SHELF {
+                self.chrome.tool_controls(
+                    ui,
+                    toolbar
+                        .with_min_y(shelf.bottom())
+                        .shrink2(egui::vec2(12.0, 4.0)),
+                );
+            }
+        } else {
+            self.chrome.header(ui, header, &status);
+            if !toolbar_hidden {
+                self.chrome.toolbar(ui, toolbar);
+            }
         }
 
         if *self.editor.tool.borrow() != editor_core::tool::Tool::Brush {
@@ -1447,10 +1522,12 @@ impl App {
             egui::pos2(workspace.left(), workspace.bottom() - console::STRIP_HEIGHT),
             workspace.max,
         );
-        if console::strip(ui, strip, console_shown) {
+        if (!cfg!(target_os = "ios") || console_shown) && console::strip(ui, strip, console_shown) {
             self.window.borrow_mut().console = !console_shown;
         }
-        workspace.max.y = strip.top();
+        if !cfg!(target_os = "ios") || console_shown {
+            workspace.max.y = strip.top();
+        }
         if console_shown {
             let pane = egui::Rect::from_min_max(
                 egui::pos2(workspace.left(), workspace.bottom() - console::HEIGHT),
@@ -1501,7 +1578,9 @@ impl App {
         // inspector goes under the views instead.
         if inspector_hidden {
             self.views(ui, workspace);
-        } else if workspace.width() < 600.0 && workspace.height() > workspace.width() {
+        } else if (cfg!(target_os = "ios") && ipad_shell::inspector_below(workspace.size()))
+            || (workspace.width() < 600.0 && workspace.height() > workspace.width())
+        {
             let height = (workspace.height() * self.inspector_share)
                 .clamp(160.0, (workspace.height() - 160.0).max(160.0));
             let divider_y = workspace.bottom() - height - 1.0;
@@ -1771,7 +1850,7 @@ fn request_device(options: &mut eframe::egui_wgpu::WgpuConfiguration) {
         setup.device_descriptor = std::sync::Arc::new(move |adapter: &wgpu::Adapter| {
             let mut descriptor = base(adapter);
             descriptor.required_features |= adapter.features() & wgpu::Features::TIMESTAMP_QUERY;
-            if cfg!(target_os = "android") {
+            if cfg!(any(target_os = "android", target_os = "ios")) {
                 descriptor.required_limits = adapter.limits();
             }
             descriptor
@@ -1780,7 +1859,7 @@ fn request_device(options: &mut eframe::egui_wgpu::WgpuConfiguration) {
 }
 
 /// The editor, for eframe's app creator on Android and on the web.
-#[cfg(any(target_os = "android", target_arch = "wasm32"))]
+#[cfg(any(target_os = "android", target_os = "ios", target_arch = "wasm32"))]
 fn create_app(
     cc: &eframe::CreationContext<'_>,
     startup: Startup,

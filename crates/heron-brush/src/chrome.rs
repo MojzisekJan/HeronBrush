@@ -66,6 +66,8 @@ pub enum Popup {
     /// Every menu, each as a submenu: the menu bar folded into one button where the
     /// window is too narrow for it (a phone).
     AllMenus,
+    /// Touch-sized tool chooser for iPad.
+    TabletTools,
     /// The grid size chooser.
     GridSize,
     /// The grid and view toggles.
@@ -363,7 +365,7 @@ pub fn menus(
                 .icon(icon::CUBE_FOCUS)
                 .icon_tone(menu::IconTone::View)
                 .checked(detached)
-                .enabled(!cfg!(target_os = "android")),
+                .enabled(!cfg!(any(target_os = "android", target_os = "ios"))),
             item(tr("Go to"), Action::GoTo).icon(icon::CROSSHAIR),
             item(tr("Entity links"), Action::EntityGraph).icon(icon::FLOW_ARROW),
             Entry::Separator,
@@ -798,6 +800,7 @@ impl Chrome {
                 ))
                 .map(|(name, entries)| Entry::sub(tr(name), entries))
                 .collect(),
+            Popup::TabletTools => crate::ipad_shell::tools(),
             Popup::GridSize => grid_sizes(&self.grid.borrow()),
             Popup::GridSettings => grid_settings(
                 &self.grid.borrow(),
@@ -1066,6 +1069,12 @@ impl Chrome {
             Pos2::new(x, rect.top() + 3.0),
             Pos2::new(right.max(x), rect.bottom() - 3.0),
         );
+        self.tool_controls(ui, area);
+    }
+
+    /// Contextual controls shared by the desktop toolbar and iPad editing shelf.
+    pub fn tool_controls(&mut self, ui: &mut Ui, area: Rect) {
+        let tool = *self.tool.borrow();
         let mut row = ui.new_child(
             egui::UiBuilder::new()
                 .max_rect(area)
@@ -1073,7 +1082,7 @@ impl Chrome {
         );
         row.set_clip_rect(area);
         row.spacing_mut().item_spacing.x = 4.0;
-        row.spacing_mut().interact_size.y = 24.0;
+        row.spacing_mut().interact_size.y = if cfg!(target_os = "ios") { 44.0 } else { 24.0 };
         row.spacing_mut().button_padding = egui::vec2(8.0, 2.0);
         // Keep header controls at full height even when touch mode uses solid bars.
         row.spacing_mut().scroll.floating = true;
@@ -1251,7 +1260,14 @@ pub fn button_style() -> ButtonStyle {
             Ok("gnome") => ButtonStyle::Gnome,
             Ok("mac") => ButtonStyle::Mac,
             Ok("none") => ButtonStyle::Nothing,
-            _ if cfg!(any(target_os = "android", target_arch = "wasm32")) => ButtonStyle::Nothing,
+            _ if cfg!(any(
+                target_os = "android",
+                target_os = "ios",
+                target_arch = "wasm32"
+            )) =>
+            {
+                ButtonStyle::Nothing
+            }
             _ if cfg!(target_os = "macos") => ButtonStyle::Mac,
             _ if cfg!(target_os = "windows") => ButtonStyle::Windows,
             _ => ButtonStyle::Gnome,

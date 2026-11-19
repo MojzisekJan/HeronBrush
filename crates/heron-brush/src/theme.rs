@@ -325,7 +325,7 @@ pub const CONTROL_HEIGHT: f32 = if TOUCH_SIZES { 40.0 } else { 28.0 };
 const BASE_TEXT_SIZE: f32 = if TOUCH_SIZES { 14.0 } else { 13.0 };
 
 /// Whether the controls take a touch screen's sizes rather than a desktop's.
-const TOUCH_SIZES: bool = cfg!(target_os = "android");
+const TOUCH_SIZES: bool = cfg!(any(target_os = "android", target_os = "ios"));
 
 /// The body text size in use, as f32 bits. The desktop's text scale (Xft.dpi) can differ
 /// from the whole-number window scale: text follows the former and widgets the latter,

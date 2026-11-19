@@ -14,7 +14,7 @@ use std::sync::Arc;
 use editor_core::camera3d::Camera3d;
 use editor_core::view3d::{Scene3d, Scene3dParts};
 use eframe::egui;
-use eframe::egui_glow;
+
 use glow::HasContext;
 
 use crate::editor::Editor;
@@ -48,10 +48,14 @@ impl Gpu {
         if cc.gl.is_some() {
             return Ok(Gpu::Gl(Arc::new(|_| std::ptr::null())));
         }
-        cc.get_proc_address
+        #[cfg(not(target_os = "ios"))]
+        return cc
+            .get_proc_address
             .clone()
             .map(Gpu::Gl)
-            .ok_or_else(|| "eframe started with no usable renderer".to_string())
+            .ok_or_else(|| "eframe started with no usable renderer".to_string());
+        #[cfg(target_os = "ios")]
+        Err("eframe started with no Metal renderer".to_string())
     }
 }
 
@@ -769,7 +773,7 @@ impl GlView {
         let source = crate::gl_glue::name(target.framebuffer);
         #[cfg(not(target_arch = "wasm32"))]
         let callback = egui_glow::CallbackFn::new(move |info, painter| {
-            use eframe::glow::HasContext as _;
+            use egui_glow::glow::HasContext as _;
             let gl = painter.gl();
             let viewport = info.viewport_in_pixels();
             // SAFETY: egui_glow runs paint callbacks with its context current, and
@@ -777,10 +781,10 @@ impl GlView {
             // `source` names the view's framebuffer here too. A name deleted since only
             // raises a GL error. The read binding found on entry is restored.
             unsafe {
-                let previous = gl.get_parameter_i32(eframe::glow::READ_FRAMEBUFFER_BINDING);
+                let previous = gl.get_parameter_i32(egui_glow::glow::READ_FRAMEBUFFER_BINDING);
                 let source = crate::gl_glue::eframe_framebuffer(source)
                     .expect("framebuffer names are non-zero");
-                gl.bind_framebuffer(eframe::glow::READ_FRAMEBUFFER, Some(source));
+                gl.bind_framebuffer(egui_glow::glow::READ_FRAMEBUFFER, Some(source));
                 gl.blit_framebuffer(
                     0,
                     0,
@@ -790,11 +794,11 @@ impl GlView {
                     viewport.from_bottom_px,
                     viewport.left_px + viewport.width_px,
                     viewport.from_bottom_px + viewport.height_px,
-                    eframe::glow::COLOR_BUFFER_BIT,
-                    eframe::glow::LINEAR,
+                    egui_glow::glow::COLOR_BUFFER_BIT,
+                    egui_glow::glow::LINEAR,
                 );
                 gl.bind_framebuffer(
-                    eframe::glow::READ_FRAMEBUFFER,
+                    egui_glow::glow::READ_FRAMEBUFFER,
                     crate::gl_glue::eframe_framebuffer(previous),
                 );
             }

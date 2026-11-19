@@ -42,12 +42,13 @@ serde_json = "1"
 # The engine logos in the export window are PNGs.
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 
-eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"] }
+eframe = { version = "0.37.0", default-features = false, features = ["default_fonts"] }
+egui_glow = { version = "0.37.0", default-features = false }
 egui_extras = { version = "0.37.0", default-features = false, features = ["svg"] }
 # Icons beside the menu items, drawn as glyphs of a font so they take the text colour.
 egui-phosphor = "0.14.0"
 
-[target.'cfg(not(any(target_os = "android", target_arch = "wasm32")))'.dependencies]
+[target.'cfg(not(any(target_os = "android", target_os = "ios", target_arch = "wasm32")))'.dependencies]
 eframe = { version = "0.37.0", default-features = false, features = ["wayland", "x11", "accesskit", "clipboard"] }
 # Native file choosers: the system dialog on Windows and macOS, the desktop portal on
 # Linux, so choosing a file needs no toolkit libraries. Android has its own in-app
@@ -89,3 +90,14 @@ winit = { version = "0.30.13", default-features = false }
 objc2 = "0.5.2"
 objc2-app-kit = { version = "0.2.2", default-features = false, features = ["NSApplication"] }
 objc2-foundation = { version = "0.2.2", default-features = false, features = ["NSArray", "NSString", "NSURL"] }
+
+# OpenGL window creation is unavailable on iOS; that target uses Metal through wgpu.
+[target.'cfg(not(target_os = "ios"))'.dependencies.eframe]
+version = "0.37.0"
+default-features = false
+features = ["glow"]
+
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "0.5.2"
+objc2-foundation = { version = "0.2.2", default-features = false, features = ["NSGeometry"] }
+raw-window-handle = "0.6"

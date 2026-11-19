@@ -107,7 +107,7 @@ impl Inspector {
         let grid = &editor.grid;
         let handles = &editor.handles;
         ui.painter().rect_filled(rect, 0.0, theme::panel_layer());
-        let tabs = Rect::from_min_size(rect.min, egui::vec2(rect.width(), 32.0));
+        let tabs = Rect::from_min_size(rect.min, egui::vec2(rect.width(), if cfg!(target_os = "ios") { 48.0 } else { 32.0 }));
         self.tabs(ui, tabs);
 
         let body = Rect::from_min_max(
@@ -208,7 +208,7 @@ impl Inspector {
         let mut x = rect.left() + 6.0;
         let mut responses = Vec::with_capacity(all.len());
         for (index, (tab, label)) in all.into_iter().enumerate() {
-            let width = crate::chrome::text_width(ui, label, theme::body()) + 22.0;
+            let width = (crate::chrome::text_width(ui, label, theme::body()) + 22.0).max(if cfg!(target_os = "ios") { 76.0 } else { 0.0 });
             let slot =
                 Rect::from_min_size(Pos2::new(x, rect.top()), egui::vec2(width, rect.height()));
             x += width;

@@ -5,7 +5,7 @@
 // stdio (`--mcp`, `--version` read by a script) still works.
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 fn main() -> eframe::Result {
     heron_brush::run_desktop()
 }
@@ -13,3 +13,8 @@ fn main() -> eframe::Result {
 /// The web build starts from crates/heron-brush-web, not from here.
 #[cfg(target_arch = "wasm32")]
 fn main() {}
+
+#[cfg(target_os = "ios")]
+fn main() -> eframe::Result {
+    heron_brush::ios::run()
+}

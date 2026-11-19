@@ -32,12 +32,12 @@ const SLOP: f32 = 10.0;
 /// How long a still finger takes to become a right-click, in seconds.
 const LONG_PRESS: f64 = 0.5;
 
-/// Whether the editor is driven by touch: on Android, with `HERON_BRUSH_TOUCH=1`, or once
+/// Whether the editor is driven by touch: on Android or iOS, with `HERON_BRUSH_TOUCH=1`, or once
 /// a touch has been seen. Larger hit areas and the touch layout follow it.
 pub fn enabled(ctx: &egui::Context) -> bool {
     static FORCED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     let forced = *FORCED.get_or_init(|| {
-        cfg!(target_os = "android")
+        cfg!(any(target_os = "android", target_os = "ios"))
             || std::env::var_os("HERON_BRUSH_TOUCH").is_some_and(|v| !v.is_empty() && v != "0")
     });
     forced || ctx.data(|d| d.get_temp::<bool>(seen_id()).unwrap_or(false))
@@ -241,7 +241,12 @@ impl Gestures {
                     let before = self.state != State::Idle;
                     // A finger on the strip is the strip's, not a view's.
                     let on_strip = strip.is_some_and(|strip| strip.contains(pos));
-                    if on_strip && phase == TouchPhase::Start {
+                    let on_overlay = ctx
+                        .layer_id_at(pos)
+                        .is_some_and(|layer| layer.order != egui::Order::Background);
+                    // A dialog or popup above a view owns its touches. Its emulated
+                    // pointer events must reach egui rather than becoming map gestures.
+                    if (on_strip || on_overlay) && phase == TouchPhase::Start {
                         self.passed.insert(id.0);
                     }
                     self.touch(
@@ -288,6 +293,12 @@ impl Gestures {
         out: &mut Vec<Event>,
         motions: &mut Vec<(usize, Motion)>,
     ) {
+        // UIKit may coalesce a short drag into start/end, or deliver a final
+        // position beyond the last move. Consume it before releasing the finger.
+        // Cancellation must never add motion or turn a pending touch into a drag.
+        if phase == TouchPhase::End && self.fingers.get(&finger).is_some_and(|at| *at != pos) {
+            self.touch(finger, TouchPhase::Move, pos, now, views, modifiers, out, motions);
+        }
         match phase {
             TouchPhase::Start => {
                 self.fingers.insert(finger, pos);
@@ -561,7 +572,7 @@ impl Gestures {
 }
 
 /// Larger hit areas and handles for fingers: egui's interaction radius and scroll bars.
-/// The editor's own controls are sized for fingers on Android only (theme::CONTROL_HEIGHT);
+/// The editor's own controls are sized for fingers on Android and iOS (theme::CONTROL_HEIGHT);
 /// see docs/android.md.
 pub fn style(ctx: &egui::Context) {
     if !enabled(ctx) {
@@ -645,6 +656,61 @@ mod tests {
     }
 
     #[test]
+    fn an_overlay_above_a_map_receives_touch_pointer_events() {
+        let (ctx, mut gestures) = setup();
+        for _ in 0..2 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(800., 600.),
+                    )),
+                    ..Default::default()
+                },
+                |ui| {
+                    egui::Area::new(egui::Id::unique("touch-overlay-test"))
+                        .order(egui::Order::Foreground)
+                        .fixed_pos(egui::Pos2::ZERO)
+                        .show(ui.ctx(), |ui| {
+                            ui.allocate_space(egui::vec2(300., 250.));
+                        });
+                },
+            );
+            output.textures_delta.clear();
+        }
+        let pointer = egui::pos2(100., 100.);
+        assert_eq!(
+            ctx.layer_id_at(pointer).unwrap().order,
+            egui::Order::Foreground
+        );
+        let down = frame(
+            &ctx,
+            &mut gestures,
+            0.,
+            vec![
+                touch(1, TouchPhase::Start, 100., 100.),
+                Event::PointerMoved(pointer),
+                primary(true, 100., 100.),
+            ],
+        );
+        assert_eq!(
+            down,
+            vec![Event::PointerMoved(pointer), primary(true, 100., 100.)]
+        );
+        let up = frame(
+            &ctx,
+            &mut gestures,
+            0.1,
+            vec![
+                touch(1, TouchPhase::End, 100., 100.),
+                primary(false, 100., 100.),
+            ],
+        );
+        assert_eq!(up, vec![primary(false, 100., 100.)]);
+        assert!(take_motion(&ctx, 0).is_none());
+    }
+
+    #[test]
     fn a_tap_in_a_view_is_a_click_where_the_finger_went_down() {
         let (ctx, mut gestures) = setup();
         let down = frame(
@@ -724,6 +790,42 @@ mod tests {
             lifted.is_empty(),
             "lifting after a long press clicks nothing: {lifted:?}"
         );
+    }
+
+    #[test]
+    fn release_consumes_coalesced_motion_without_selecting() {
+        let (ctx, mut gestures) = setup();
+        frame(&ctx, &mut gestures, 0., vec![touch(1, TouchPhase::Start, 100., 100.)]);
+        let up = frame(&ctx, &mut gestures, 0.1, vec![
+            touch(1, TouchPhase::End, 150., 130.), primary(false, 150., 130.)]);
+        assert!(up.is_empty());
+        let motion = take_motion(&ctx, 0).unwrap();
+        assert_eq!(motion.orbit, egui::vec2(50., 30.));
+        assert!(motion.started);
+        assert_eq!(gestures.state, State::Idle);
+        assert!(gestures.fingers.is_empty());
+    }
+
+    #[test]
+    fn release_adds_only_the_motion_since_the_last_move() {
+        let (ctx, mut gestures) = setup();
+        frame(&ctx, &mut gestures, 0., vec![touch(1, TouchPhase::Start, 100., 100.)]);
+        frame(&ctx, &mut gestures, 0.05, vec![touch(1, TouchPhase::Move, 130., 100.)]);
+        take_motion(&ctx, 0).unwrap();
+        frame(&ctx, &mut gestures, 0.1, vec![touch(1, TouchPhase::End, 140., 110.)]);
+        let motion = take_motion(&ctx, 0).unwrap();
+        assert_eq!(motion.orbit, egui::vec2(10., 10.));
+        assert!(!motion.started);
+    }
+
+    #[test]
+    fn cancelled_touch_does_not_apply_its_final_position() {
+        let (ctx, mut gestures) = setup();
+        frame(&ctx, &mut gestures, 0., vec![touch(1, TouchPhase::Start, 100., 100.)]);
+        let up = frame(&ctx, &mut gestures, 0.1, vec![touch(1, TouchPhase::Cancel, 150., 130.)]);
+        assert!(up.is_empty());
+        assert!(take_motion(&ctx, 0).is_none());
+        assert_eq!(gestures.state, State::Idle);
     }
 
     #[test]

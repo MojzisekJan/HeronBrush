@@ -28,9 +28,12 @@ use crate::{dialog, theme};
 pub fn in_app() -> bool {
     static IN_APP: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *IN_APP.get_or_init(|| {
-        cfg!(any(target_os = "android", target_arch = "wasm32"))
-            || std::env::var_os("HERON_BRUSH_IN_APP_FILES")
-                .is_some_and(|v| !v.is_empty() && v != "0")
+        cfg!(any(
+            target_os = "android",
+            target_os = "ios",
+            target_arch = "wasm32"
+        )) || std::env::var_os("HERON_BRUSH_IN_APP_FILES")
+            .is_some_and(|v| !v.is_empty() && v != "0")
             || std::env::var_os("HERON_BRUSH_SCRIPT").is_some()
     })
 }
@@ -157,7 +160,7 @@ impl FileDialog {
     }
 
     /// The system's dialog, which answers before it returns.
-    #[cfg(not(any(target_os = "android", target_arch = "wasm32")))]
+    #[cfg(not(any(target_os = "android", target_os = "ios", target_arch = "wasm32")))]
     fn system(self, kind: Kind) -> Option<PathBuf> {
         let mut dialog = rfd::FileDialog::new();
         if let Some(title) = self.title {
@@ -179,7 +182,7 @@ impl FileDialog {
         }
     }
 
-    #[cfg(target_os = "android")]
+    #[cfg(any(target_os = "android", target_os = "ios"))]
     fn system(self, _kind: Kind) -> Option<PathBuf> {
         None
     }
@@ -242,7 +245,7 @@ pub fn question(
     })
 }
 
-#[cfg(not(any(target_os = "android", target_arch = "wasm32")))]
+#[cfg(not(any(target_os = "android", target_os = "ios", target_arch = "wasm32")))]
 fn system_question(title: &str, message: &str, buttons: &[&str]) -> Option<usize> {
     let choice = match buttons {
         [yes, no] => rfd::MessageButtons::OkCancelCustom(yes.to_string(), no.to_string()),
@@ -267,7 +270,7 @@ fn system_question(title: &str, message: &str, buttons: &[&str]) -> Option<usize
     }
 }
 
-#[cfg(any(target_os = "android", target_arch = "wasm32"))]
+#[cfg(any(target_os = "android", target_os = "ios", target_arch = "wasm32"))]
 fn system_question(_title: &str, _message: &str, _buttons: &[&str]) -> Option<usize> {
     None
 }
@@ -276,7 +279,7 @@ fn system_question(_title: &str, _message: &str, _buttons: &[&str]) -> Option<us
 pub type Place = (String, PathBuf);
 
 /// Sets the places the in-app browser lists along its top (Android sets its storage).
-#[cfg(target_os = "android")]
+#[cfg(any(target_os = "android", target_os = "ios"))]
 pub fn set_places(places: Vec<Place>) {
     STATE.with(|state| state.borrow_mut().places = places);
 }

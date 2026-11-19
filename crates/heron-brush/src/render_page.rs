@@ -23,7 +23,7 @@ use editor_core::{
     i18n::{tr, translation_key},
     render_camera::{self, Job, Lighting, Navigation, Settings},
 };
-use eframe::{egui, egui_glow};
+use eframe::egui;
 use glow::HasContext;
 use map_model::node::NodeId;
 
@@ -1335,7 +1335,7 @@ impl RenderPage {
             let source = crate::gl_glue::name(target.framebuffer);
             let (width, height) = target.size;
             let callback = egui_glow::CallbackFn::new(move |info, painter| {
-                use eframe::glow::HasContext as _;
+                use egui_glow::glow::HasContext as _;
                 let gl = painter.gl();
                 let viewport = info.viewport_in_pixels();
                 // SAFETY: egui_glow runs paint callbacks with its context current, and
@@ -1343,10 +1343,10 @@ impl RenderPage {
                 // preview's framebuffer here too. A name deleted since only raises a GL
                 // error. The read binding found on entry is restored.
                 unsafe {
-                    let previous = gl.get_parameter_i32(eframe::glow::READ_FRAMEBUFFER_BINDING);
+                    let previous = gl.get_parameter_i32(egui_glow::glow::READ_FRAMEBUFFER_BINDING);
                     let source = crate::gl_glue::eframe_framebuffer(source)
                         .expect("framebuffer names are non-zero");
-                    gl.bind_framebuffer(eframe::glow::READ_FRAMEBUFFER, Some(source));
+                    gl.bind_framebuffer(egui_glow::glow::READ_FRAMEBUFFER, Some(source));
                     gl.blit_framebuffer(
                         0,
                         0,
@@ -1356,11 +1356,11 @@ impl RenderPage {
                         viewport.from_bottom_px,
                         viewport.left_px + viewport.width_px,
                         viewport.from_bottom_px + viewport.height_px,
-                        eframe::glow::COLOR_BUFFER_BIT,
-                        eframe::glow::LINEAR,
+                        egui_glow::glow::COLOR_BUFFER_BIT,
+                        egui_glow::glow::LINEAR,
                     );
                     gl.bind_framebuffer(
-                        eframe::glow::READ_FRAMEBUFFER,
+                        egui_glow::glow::READ_FRAMEBUFFER,
                         crate::gl_glue::eframe_framebuffer(previous),
                     );
                 }

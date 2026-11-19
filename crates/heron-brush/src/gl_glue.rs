@@ -36,8 +36,8 @@ pub unsafe fn context(proc_address: &ProcAddress) -> glow::Context {
 
 /// The same in eframe's glow, whose context egui paints with.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn eframe_framebuffer(binding: i32) -> Option<eframe::glow::Framebuffer> {
-    std::num::NonZeroU32::new(binding as u32).map(eframe::glow::NativeFramebuffer)
+pub fn eframe_framebuffer(binding: i32) -> Option<egui_glow::glow::Framebuffer> {
+    std::num::NonZeroU32::new(binding as u32).map(egui_glow::glow::NativeFramebuffer)
 }
 
 /// A framebuffer's name, which egui's context can bind it by.

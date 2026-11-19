@@ -988,6 +988,10 @@ impl App {
                 next.startup = false;
                 next.mcp = self.mcp.take();
                 next.instance = self.instance.take();
+                #[cfg(target_os = "ios")]
+                {
+                    next.ios_view = self.ios_view.take();
+                }
                 next.welcome.open = false;
                 next.script = self.script.take();
                 next.inspector_width = self.inspector_width;

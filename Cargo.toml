@@ -50,3 +50,6 @@ strip = true
 # raised. Drop this once upstream publishes one.
 [patch.crates-io]
 egui-phosphor = { path = "vendor/egui-phosphor" }
+
+# iOS drawable coordinates must include safe areas; see vendor/winit/HERON_PATCH.md.
+winit = { path = "vendor/winit" }

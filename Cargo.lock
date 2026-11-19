@@ -2363,6 +2363,7 @@ dependencies = [
  "egui-phosphor",
  "egui-wgpu",
  "egui_extras",
+ "egui_glow",
  "egui_native_look",
  "flate2",
  "geometry_math",
@@ -2374,6 +2375,7 @@ dependencies = [
  "objc2 0.5.2",
  "objc2-app-kit 0.2.2",
  "objc2-foundation 0.2.2",
+ "raw-window-handle",
  "render",
  "render_wgpu",
  "rfd",
@@ -7113,8 +7115,6 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 [[package]]
 name = "winit"
 version = "0.30.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6755fa58a9f8350bd1e472d4c3fcc25f824ec358933bba33306d0b63df5978d"
 dependencies = [
  "ahash",
  "android-activity",

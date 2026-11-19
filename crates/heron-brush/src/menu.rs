@@ -10,7 +10,7 @@ use eframe::egui::{self, Color32, CornerRadius, Id, Pos2, Rect, Sense, Stroke, U
 use crate::theme;
 
 /// The height of one row.
-pub const ROW: f32 = 24.0;
+pub const ROW: f32 = if cfg!(target_os = "ios") { 44.0 } else { 24.0 };
 /// The space left of a label, where a check mark or an icon goes.
 const CHECK_COLUMN: f32 = 28.0;
 /// The space right of a label before its shortcut or submenu arrow.
@@ -214,7 +214,7 @@ pub fn popup_aligned<A: Clone>(
         .show(ctx, |ui| {
             let tall = ui.ctx().content_rect().height() * 0.8;
             frame(ui.style()).show(ui, |ui| {
-                if entries.len() > 24 {
+                if entries.len() > 24 || (cfg!(target_os = "ios") && entries.len() as f32 * ROW > tall) {
                     egui::ScrollArea::vertical()
                         .max_height(tall)
                         .show(ui, |ui| picked = show(ui, id, entries));
